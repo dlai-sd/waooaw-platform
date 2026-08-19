@@ -28,7 +28,7 @@ variable "image_digests" {
 variable "key_vault_secret_ids" {
   type = map(string)
   validation {
-    condition     = setequals(toset(keys(var.key_vault_secret_ids)), toset(keys(var.image_digests)))
+    condition     = toset(keys(var.key_vault_secret_ids)) == toset(keys(var.image_digests))
     error_message = "Every release member requires one Key Vault secret reference."
   }
 }
@@ -56,4 +56,10 @@ variable "workload_enabled" {
   type        = bool
   description = "False after lease expiry or revocation; removes disposable workload resources from desired state."
   default     = true
+}
+
+variable "ghcr_packages_public" {
+  type        = bool
+  description = "Administrator attestation that all exact-six GHCR packages allow anonymous digest pulls."
+  default     = false
 }

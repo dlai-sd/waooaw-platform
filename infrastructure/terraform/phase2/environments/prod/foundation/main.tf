@@ -18,9 +18,10 @@ provider "azurerm" {
 }
 
 module "foundation" {
-  source                 = "../../../modules/foundation"
-  environment            = "prod"
-  location               = "centralindia"
-  repository_id          = "dlai-sd/waooaw-platform"
-  repository_environment = "prod"
+  source                     = "../../../modules/foundation"
+  environment                = "prod"
+  location                   = "centralindia"
+  repository_id              = "dlai-sd/waooaw-platform"
+  repository_environment     = "prod"
+  tfstate_storage_account_id = var.tfstate_storage_account_id
 }

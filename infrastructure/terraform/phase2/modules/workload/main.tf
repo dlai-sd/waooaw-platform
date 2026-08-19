@@ -109,8 +109,13 @@ resource "azurerm_container_app" "member" {
 
   lifecycle {
     precondition {
-      condition     = setequals(toset(keys(var.image_digests)), local.release_members)
+      condition     = toset(keys(var.image_digests)) == local.release_members
       error_message = "Release membership must be exactly CE, BP, PR, AIR, Web, and Billing."
+    }
+
+    precondition {
+      condition     = !var.workload_enabled || var.ghcr_packages_public
+      error_message = "Enabled workloads require administrator verification that all exact-six GHCR packages allow anonymous digest pulls."
     }
   }
 }

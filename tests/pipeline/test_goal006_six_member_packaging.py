@@ -15,6 +15,7 @@ RELEASE_MEMBERS = {
     "web": ("3000", "web/Dockerfile"),
     "billing-engine": ("8140", "src/billing-engine/Dockerfile"),
 }
+CI_WORKFLOW = REPO_ROOT / ".github/workflows/ci.yaml"
 
 
 def _compose() -> dict:
@@ -29,6 +30,56 @@ def test_exactly_six_release_members_have_explicit_builds() -> None:
         build = services[member]["build"]
         assert build["context"] == "."
         assert build["dockerfile"] == dockerfile
+
+
+def test_ci_publishes_only_main_with_attestations_and_digest_artifacts() -> None:
+    workflow = CI_WORKFLOW.read_text(encoding="utf-8")
+    jobs = yaml.safe_load(workflow)["jobs"]
+    build = jobs["build"]
+    publish = jobs["publish"]
+    assert build["if"] == "github.event_name == 'pull_request'"
+    assert build["permissions"] == {"contents": "read", "security-events": "write"}
+    assert publish["if"] == "github.event_name == 'push' && github.ref == 'refs/heads/main'"
+    assert publish["permissions"] == {
+        "contents": "read",
+        "packages": "write",
+        "id-token": "write",
+        "attestations": "write",
+    }
+    assert "push: false" in workflow
+    assert "load: true" in workflow
+    assert "sbom: false" in workflow
+    assert "provenance: false" in workflow
+    assert workflow.count("push: true") == 1
+    assert "sbom: true" in workflow
+    assert "provenance: mode=max" in workflow
+    assert "steps.image.outputs.digest" in workflow
+    assert "goal006-digest-${{ matrix.service.name }}" in workflow
+    assert "goal006-attestation-${{ matrix.service.name }}" in workflow
+    assert "docker buildx imagetools inspect" in workflow
+    assert "subject-digest: ${{ steps.image.outputs.digest }}" in workflow
+    assert "push-to-registry: true" in workflow
+    assert "Scan pull-request image" in workflow
+    assert "release-manifest:" in workflow
+    assert "python scripts/goal006_registry_manifest.py" in workflow
+    assert "actions/attest-build-provenance@v2" in workflow
+    assert "attestations: write" in workflow
+    assert "goal006-exact-six-release-${{ github.sha }}" in workflow
+
+
+def test_ci_has_deterministic_spec_and_fixable_vulnerability_gates() -> None:
+    workflow = CI_WORKFLOW.read_text(encoding="utf-8")
+    spectral = (REPO_ROOT / ".spectral.yaml").read_text(encoding="utf-8")
+    assert "spectral:oas" in spectral
+    assert "@stoplight/spectral-cli@6.15.0" in workflow
+    assert "bufbuild/buf:1.72.0" in workflow
+    assert "github.event.pull_request.base.sha" in workflow
+    assert "github.event.before" in workflow
+    assert 'git cat-file -e "${BASE_SHA}^{commit}"' in workflow
+    assert workflow.count("scanners: vuln") == 2
+    assert workflow.count("ignore-unfixed: true") == 2
+    assert workflow.count("severity: CRITICAL,HIGH") == 2
+    assert workflow.count("exit-code: 1") >= 2
 
 
 def test_release_images_are_non_root_and_expose_accepted_ports() -> None:

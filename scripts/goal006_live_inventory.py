@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+"""Verify live Azure Container Apps equal one GOAL-006 exact-six release tuple."""
+
+from __future__ import annotations
+
+import argparse
+import json
+from collections.abc import Mapping, Sequence
+from pathlib import Path
+from typing import Any
+
+from goal006_registry_manifest import RELEASE_MEMBERS, validate_registry_manifest
+
+
+def validate_inventory(environment: str, manifest: Mapping[str, Any], inventory: Sequence[Any]) -> list[str]:
+    violations = validate_registry_manifest(manifest)
+    if environment not in {"demo", "uat", "prod"}:
+        violations.append("ENVIRONMENT_INVALID")
+        return sorted(set(violations))
+    expected = {f"ca-{environment}-{member}": image for member, image in manifest.get("images", {}).items()}
+    actual: dict[str, Mapping[str, Any]] = {}
+    for item in inventory:
+        if not isinstance(item, Mapping) or not isinstance(item.get("name"), str):
+            violations.append("INVENTORY_RECORD_INVALID")
+            continue
+        actual[str(item["name"])] = item
+    if set(actual) != set(expected):
+        violations.append("LIVE_MEMBERSHIP_INVALID")
+    for name, image in expected.items():
+        record = actual.get(name, {})
+        if record.get("image") != image:
+            violations.append(f"{name}:DIGEST_MISMATCH")
+        if str(record.get("provisioningState", "")).lower() != "succeeded":
+            violations.append(f"{name}:PROVISIONING_INCOMPLETE")
+    return sorted(set(violations))
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--environment", required=True)
+    parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument("--inventory", type=Path, required=True)
+    args = parser.parse_args()
+    manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
+    inventory = json.loads(args.inventory.read_text(encoding="utf-8"))
+    violations = validate_inventory(args.environment, manifest, inventory)
+    print(json.dumps({"passed": not violations, "violations": violations}, sort_keys=True))
+    return 0 if not violations else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

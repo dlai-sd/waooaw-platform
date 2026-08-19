@@ -1,272 +1,117 @@
-# Promote Pipeline — runs on merge to main
-# Constitutional basis: GENESIS Engineering Quality Mandate (image promotion);
-#                       ADR-013 (CI/CD pipeline structure)
-# Purpose: Deploy to dev, run integration tests + CCTs.
-#          On success, retag image as :dev-ready.
-#          Constitutional Compliance Tests are a mandatory gate — failure blocks all promotion.
-
-name: Promote — Dev Deploy + CCTs
+name: GOAL-006 Promote Exact Release
 
 on:
-  push:
-    branches: [main]
+  workflow_run:
+    workflows: ["CI — Build & Test"]
+    types: [completed]
 
-env:
-  REGISTRY: ghcr.io
-  REGISTRY_PREFIX: ghcr.io/${{ github.repository_owner }}
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+
+concurrency:
+  group: goal006-promotion
+  cancel-in-progress: true
 
 jobs:
-
-  # ─── Retag images for dev ─────────────────────────────────────────────────
-  tag-dev:
-    name: Retag images → :dev
+  authorize-release:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      vars.GOAL006_PROMOTION_ENABLED == 'true'
     runs-on: ubuntu-latest
-    permissions:
-      packages: write
+    outputs:
+      release_sha: ${{ steps.freshness.outputs.release_sha }}
     steps:
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Retag all images to :dev
-        run: |
-          SERVICES=(constitutional-engine business-platform professional-runtime ai-runtime web)
-          for svc in "${SERVICES[@]}"; do
-            docker pull ${{ env.REGISTRY_PREFIX }}/$svc:sha-${{ github.sha }}
-            docker tag ${{ env.REGISTRY_PREFIX }}/$svc:sha-${{ github.sha }} \
-                       ${{ env.REGISTRY_PREFIX }}/$svc:dev
-            docker push ${{ env.REGISTRY_PREFIX }}/$svc:dev
-          done
-
-  # ─── Dev deployment ───────────────────────────────────────────────────────
-  deploy-dev:
-    name: Deploy to dev
-    runs-on: ubuntu-latest
-    needs: tag-dev
-    environment: dev
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Azure login
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS_DEV }}
-
-      # ─── C-067 Cost Gate — check before any deployment ───────────────────
-      - name: Cost gate check (C-067 — constitutional cost ceiling)
-        run: |
-          ENVIRONMENT="dev"
-          CEILING=10000  # INR 10,000/month for dev (ADR-027 / C-067)
-
-          # Query current month Azure spend for dev resource group
-          CURRENT_MONTH=$(date +%Y-%m-01)
-          CURRENT_COST=$(az consumption usage list \
-            --start-date "$CURRENT_MONTH" \
-            --end-date "$(date +%Y-%m-%d)" \
-            --query "sum([?contains(instanceId,'waooaw-dev')].pretaxCost)" \
-            --output tsv 2>/dev/null || echo "0")
-          CURRENT_COST=${CURRENT_COST:-0}
-
-          echo "Current month spend (dev): ₹${CURRENT_COST} / ₹${CEILING}"
-
-          if (( $(echo "$CURRENT_COST > $CEILING * 0.95" | bc -l) )); then
-            echo "❌ COST GATE BLOCKED (C-067): Monthly spend exceeds 95% of ₹${CEILING} ceiling"
-            exit 1
-          fi
-          if (( $(echo "$CURRENT_COST > $CEILING * 0.80" | bc -l) )); then
-            echo "⚠️  COST WARNING: spend >80% of constitutional ceiling"
-          fi
-          echo "✓ Cost gate passed"
-
-      # ─── C-067 Blue-Green deployment to dev ───────────────────────────────
-      - name: Blue-Green deploy to dev (C-067)
-        run: |
-          SERVICES=(constitutional-engine business-platform professional-runtime ai-runtime web)
-          for svc in "${SERVICES[@]}"; do
-            ./scripts/blue-green-deploy.sh \
-              --service "$svc" \
-              --image "${{ env.REGISTRY_PREFIX }}/$svc:sha-${{ github.sha }}" \
-              --resource-group "waooaw-dev" \
-              --environment "dev" \
-              --sha "${{ github.sha }}"
-          done
+      - name: Reject stale or non-main release
+        id: freshness
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          test "$RELEASE_SHA" = "$latest_main_sha"
+          echo "release_sha=$RELEASE_SHA" >> "$GITHUB_OUTPUT"
 
+  demo:
+    needs: authorize-release
+    uses: ./.github/workflows/deploy-environment.yaml
+    with:
+      environment: demo
+      release_run_id: ${{ github.event.workflow_run.id }}
+      release_sha: ${{ github.event.workflow_run.head_sha }}
+      apply: true
+    secrets: inherit
 
-  # ─── Integration tests ────────────────────────────────────────────────────
-  integration-tests:
-    name: Integration tests
+  verify-demo:
+    needs: demo
+    uses: ./.github/workflows/post-deploy-verify.yaml
+    with:
+      environment: demo
+      release_run_id: ${{ github.event.workflow_run.id }}
+      release_sha: ${{ github.event.workflow_run.head_sha }}
+    secrets: inherit
+
+  accept-demo:
+    needs: verify-demo
     runs-on: ubuntu-latest
-    needs: deploy-dev
+    environment: demo-acceptance
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.x'
-
-      - name: Run integration tests
+      - name: Verify independent Demo acceptance record
         env:
-          WAOOAW_DEV_BASE_URL: ${{ secrets.DEV_BASE_URL }}
-          WAOOAW_DEV_JWT: ${{ secrets.DEV_TEST_JWT }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          dotnet test tests/integration \
-            --logger "trx;LogFileName=integration-results.trx"
+          latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          test "$RELEASE_SHA" = "$latest_main_sha"
+          test '${{ vars.GOAL006_DEMO_ACCEPTED_RELEASE_RUN_ID }}' = '${{ github.event.workflow_run.id }}'
+          test '${{ vars.GOAL006_DEMO_ACCEPTED_RELEASE_SHA }}' = '${{ github.event.workflow_run.head_sha }}'
+          test -n '${{ vars.GOAL006_DEMO_ACCEPTANCE_EVIDENCE_SHA256 }}'
+          echo '${{ vars.GOAL006_DEMO_ACCEPTANCE_EVIDENCE_SHA256 }}' | grep -Eq '^sha256:[0-9a-f]{64}$'
 
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: integration-results
-          path: tests/integration/**/*.trx
+  uat:
+    needs: accept-demo
+    uses: ./.github/workflows/deploy-environment.yaml
+    with:
+      environment: uat
+      release_run_id: ${{ github.event.workflow_run.id }}
+      release_sha: ${{ github.event.workflow_run.head_sha }}
+      apply: true
+    secrets: inherit
 
-  # ─── Constitutional Compliance Tests ─────────────────────────────────────
-  #
-  # This is the constitutional gate. Failure here blocks ALL promotion.
-  # No manual override exists. No exception process exists.
-  # If a CCT fails, raise a Constitutional Blocker in blockers/ and fix the violation.
-  #
-  ccts:
-    name: Constitutional Compliance Tests — MANDATORY GATE
+  verify-uat:
+    needs: uat
+    uses: ./.github/workflows/post-deploy-verify.yaml
+    with:
+      environment: uat
+      release_run_id: ${{ github.event.workflow_run.id }}
+      release_sha: ${{ github.event.workflow_run.head_sha }}
+    secrets: inherit
+
+  accept-uat:
+    needs: verify-uat
     runs-on: ubuntu-latest
-    needs: deploy-dev
+    environment: uat-acceptance
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.x'
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install CCT dependencies
-        run: pip install uv && uv sync
-        working-directory: tests/constitutional
-
-      - name: Run all CCTs
+      - name: Verify independent UAT acceptance record
         env:
-          WAOOAW_DEV_BASE_URL: ${{ secrets.DEV_BASE_URL }}
-          WAOOAW_DEV_DB_URL: ${{ secrets.DEV_CONSTITUTIONAL_DB_URL }}
-          WAOOAW_DEV_JWT_TENANT_A: ${{ secrets.DEV_TEST_JWT_TENANT_A }}
-          WAOOAW_DEV_JWT_TENANT_B: ${{ secrets.DEV_TEST_JWT_TENANT_B }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          # G-06 FIX: Verify CCT suite is non-empty before running.
-          # An empty test/constitutional/ directory produces a pytest exit-0 false-pass.
-          # Constitutional principle: a passing gate with zero tests is not a passing gate.
-          CCT_COUNT=$(find tests/constitutional -name "test_cct_*.py" | wc -l)
-          if [ "$CCT_COUNT" -eq "0" ]; then
-            echo "❌ CCT GATE BLOCKED: No CCT test files found in tests/constitutional/"
-            echo "Constitutional Compliance Tests must exist before promotion is authorized."
-            echo "Sprint 012 (CE skeleton) must add CCT-EF-01 and CCT-HO-01 as first tests."
-            echo "This gate cannot be bypassed. Raise a Constitutional Blocker if blocked."
-            exit 1
-          fi
-          echo "✓ CCT suite contains $CCT_COUNT test file(s) — proceeding"
+          latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          test "$RELEASE_SHA" = "$latest_main_sha"
+          test '${{ vars.GOAL006_UAT_ACCEPTED_RELEASE_RUN_ID }}' = '${{ github.event.workflow_run.id }}'
+          test '${{ vars.GOAL006_UAT_ACCEPTED_RELEASE_SHA }}' = '${{ github.event.workflow_run.head_sha }}'
+          test -n '${{ vars.GOAL006_UAT_ACCEPTANCE_EVIDENCE_SHA256 }}'
+          echo '${{ vars.GOAL006_UAT_ACCEPTANCE_EVIDENCE_SHA256 }}' | grep -Eq '^sha256:[0-9a-f]{64}$'
 
-          # Run .NET CCTs
-          dotnet test tests/constitutional \
-            --logger "trx;LogFileName=cct-results.trx" \
-            --filter "Category=CCT"
-
-          # Run Python CCTs
-          uv run pytest tests/constitutional \
-            --junit-xml=cct-python-results.xml \
-            -v
-
-      - name: Upload CCT results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cct-results
-          path: |
-            tests/constitutional/**/*.trx
-            tests/constitutional/**/*.xml
-
-      # CCT failure annotation — makes the violation visible in the PR
-      - name: Annotate CCT failures
-        if: failure()
-        run: |
-          echo "::error title=Constitutional Compliance Test Failure::One or more Constitutional Compliance Tests failed. This is a constitutional violation — not a bug. Raise a Constitutional Blocker in blockers/ before investigating."
-
-  # ─── Promote to QA (if CCTs pass) ────────────────────────────────────────
-  promote-to-qa:
-    name: Promote → :qa (if CCTs pass)
-    runs-on: ubuntu-latest
-    needs: [ccts, integration-tests]
-    permissions:
-      packages: write
-    steps:
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Retag images to :qa
-        run: |
-          SERVICES=(constitutional-engine business-platform professional-runtime ai-runtime web)
-          for svc in "${SERVICES[@]}"; do
-            docker pull ${{ env.REGISTRY_PREFIX }}/$svc:sha-${{ github.sha }}
-            docker tag ${{ env.REGISTRY_PREFIX }}/$svc:sha-${{ github.sha }} \
-                       ${{ env.REGISTRY_PREFIX }}/$svc:qa
-            docker push ${{ env.REGISTRY_PREFIX }}/$svc:qa
-          done
-
-      - name: Create promotion record
-        run: |
-          echo "Image sha-${{ github.sha }} promoted to :qa at $(date -u)" >> promotion-log.txt
-
-      - name: Upload promotion record
-        uses: actions/upload-artifact@v4
-        with:
-          name: promotion-record-${{ github.sha }}
-          path: promotion-log.txt
-
-  # ─── DAST — OWASP ZAP against QA ─────────────────────────────────────────
-  # Constitutional basis: GENESIS AI Security Mandate; ADR-013 (DAST on QA/UAT);
-  #                       C-062 (AI Security); security/SECURITY-HEADERS.md
-  # Runs AFTER QA deployment. Tests the running application for:
-  #   - Authentication bypass
-  #   - Security header misconfiguration
-  #   - CORS misconfiguration
-  #   - Common web vulnerabilities (XSS, SQLi probes)
-  #   - Error message information leakage
-  dast:
-    name: DAST — OWASP ZAP
-    runs-on: ubuntu-latest
-    needs: tag-qa  # Runs after QA deployment
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Run OWASP ZAP Full Scan
-        uses: zaproxy/action-full-scan@v0.10.0
-        with:
-          target: ${{ secrets.QA_API_BASE_URL }}
-          rules_file_name: '.zap/rules.tsv'
-          cmd_options: '-a'  # ajaxSpider for SPA support
-          fail_action: true
-          allow_issue_writing: true  # Creates GitHub issue for findings
-
-      - name: Upload ZAP report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: zap-report-${{ github.sha }}
-          path: report_html.html
-
-      - name: Check security headers (Mozilla Observatory CLI)
-        run: |
-          npm install -g observatory-cli
-          observatory ${{ secrets.QA_WEB_BASE_URL }} \
-            --format report \
-            --min-grade B \  # Minimum acceptable grade
-            --rescan
-        continue-on-error: true  # Advisory — generates report but does not block
+  production-plan:
+    needs: accept-uat
+    uses: ./.github/workflows/deploy-environment.yaml
+    with:
+      environment: prod
+      release_run_id: ${{ github.event.workflow_run.id }}
+      release_sha: ${{ github.event.workflow_run.head_sha }}
+      apply: false
+    secrets: inherit

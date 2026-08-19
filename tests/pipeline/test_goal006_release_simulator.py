@@ -184,7 +184,10 @@ def test_ci_build_and_scan_matrices_contain_exactly_six_release_members() -> Non
     }
     assert build_members == expected
     assert scan_members == expected
-    assert workflow["jobs"]["build"]["steps"][-1]["with"]["context"] == "."
+    build_step = next(
+        step for step in workflow["jobs"]["build"]["steps"] if step.get("uses") == "docker/build-push-action@v5"
+    )
+    assert build_step["with"]["context"] == "."
 
 
 def test_ci_audits_billing_dependencies_and_offline_workflow_has_no_provider_authority() -> None:

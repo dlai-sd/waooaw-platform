@@ -29,9 +29,13 @@ def test_environment_roots_have_isolated_state_and_oidc(environment: str) -> Non
 
     assert f'key = "goal006/{environment}/foundation.tfstate"' in foundation
     assert f'key = "goal006/{environment}/workload.tfstate"' in workload
-    assert f'key = "goal006/{environment}/foundation.tfstate"' in workload
+    assert re.search(rf'key\s*=\s*"goal006/{environment}/foundation.tfstate"', workload)
+    for backend_field in ("resource_group_name", "storage_account_name", "container_name"):
+        assert backend_field in workload
+    assert "use_oidc             = true" in workload
+    assert "use_azuread_auth     = true" in workload
     assert re.search(rf'environment\s*=\s*"{environment}"', foundation)
-    assert 'source                 = "../../../modules/foundation"' in foundation
+    assert re.search(r'source\s*=\s*"../../../modules/foundation"', foundation)
     assert 'source = "../../../modules/workload"' in workload
     for contract in (foundation, workload):
         assert re.search(r"use_oidc\s*=\s*true", contract)
@@ -56,6 +60,7 @@ def test_workloads_use_exact_six_digests_and_multiple_revision_mode() -> None:
     assert re.search(r'revision_mode\s*=\s*"Multiple"', contract)
     assert "@sha256:" in variables
     assert ":latest" not in f"{contract}\n{variables}"
+    assert "setequals(" not in f"{contract}\n{variables}"
     for member in (*PRIVATE_MEMBERS, *PUBLIC_CANDIDATES):
         assert f'"{member}"' in contract
 
@@ -82,6 +87,19 @@ def test_each_release_member_has_its_own_identity_and_secret_scope() -> None:
     assert "runtime_identity_client_id" not in contract
 
 
+def test_deployment_identity_is_environment_scoped_for_resources_and_rbac() -> None:
+    contract = read_contract("modules/foundation/main.tf")
+
+    assert contract.count("scope                = azurerm_resource_group.environment.id") == 3
+    assert 'role_definition_name = "Contributor"' in contract
+    assert 'role_definition_name = "Role Based Access Control Administrator"' in contract
+    assert "azurerm_user_assigned_identity.deployment.principal_id" in contract
+    assert 'output "deployment_client_id"' in contract
+    assert 'role_definition_name = "Reader"' in contract
+    assert "azurerm_user_assigned_identity.verification.principal_id" in contract
+    assert 'output "verification_client_id"' in contract
+
+
 def test_disabled_lease_removes_all_disposable_workload_resources() -> None:
     contract = read_contract("modules/workload/main.tf")
 
@@ -90,14 +108,34 @@ def test_disabled_lease_removes_all_disposable_workload_resources() -> None:
     assert "var.workload_enabled ? local.minimum_replicas" not in contract
 
 
+def test_enabled_workloads_require_verified_public_ghcr_packages() -> None:
+    contract = read_contract("modules/workload/main.tf")
+    variables = read_contract("modules/workload/variables.tf")
+
+    assert 'variable "ghcr_packages_public"' in variables
+    assert re.search(r'variable "ghcr_packages_public"\s*{[^}]*default\s*=\s*false', variables, re.DOTALL)
+    assert "!var.workload_enabled || var.ghcr_packages_public" in contract
+    assert "allow anonymous digest pulls" in contract
+    for environment in ENVIRONMENTS:
+        root = read_contract(f"environments/{environment}/workload/main.tf")
+        root_variables = read_contract(f"environments/{environment}/workload/variables.tf")
+        assert "ghcr_packages_public         = var.ghcr_packages_public" in root
+        assert re.search(
+            r'variable "ghcr_packages_public"\s*{[^}]*default\s*=\s*false',
+            root_variables,
+            re.DOTALL,
+        )
+
+
 def test_foundation_is_private_isolated_and_environment_scoped() -> None:
     contract = read_contract("modules/foundation/main.tf")
 
+    assert 'name     = "${local.name}-rg"' in contract
+    assert 'name     = "rg-${local.name}"' not in contract
     for cidr in ("10.60.0.0/16", "10.61.0.0/16", "10.62.0.0/16"):
         assert cidr in contract
-    assert 'subject             = "repo:${var.repository_id}:environment:${var.repository_environment}' in contract
-    assert ":ref:${var.repository_ref}:" in contract
-    assert "job_workflow_ref:${var.repository_id}/${each.value}@${var.repository_ref}" in contract
+    assert 'subject             = "repo:${var.repository_id}:environment:${var.repository_environment}"' in contract
+    assert 'subject             = "repo:${var.repository_id}:environment:${var.repository_environment}-verification"' in contract
     assert "public_network_access_enabled = false" in contract
     assert 'default_action = "Deny"' in contract
     assert 'subresource_names              = ["vault"]' in contract
@@ -172,29 +210,105 @@ def test_lease_lifecycle_preserves_foundation_and_prohibits_production() -> None
     assert 'module "lease"' not in read_contract("environments/prod/workload/main.tf")
 
 
+def test_expired_leases_are_reconciled_by_deletion_only_nonproduction_workflow() -> None:
+    workflow = (REPO_ROOT / ".github/workflows/reconcile-workload-leases.yaml").read_text(encoding="utf-8")
+    validator = (REPO_ROOT / "scripts/goal006_lease_reconciliation.py").read_text(encoding="utf-8")
+
+    assert "cron: '7 * * * *'" in workflow
+    assert "environment: [demo, uat]" in workflow
+    assert "environment: [demo, uat, prod]" not in workflow
+    assert "lease_reconciliation_inputs" in workflow
+    assert "reconciliation-plan.json" in workflow
+    assert workflow.index("--plan reconciliation-plan.json") < workflow.index("terraform apply")
+    assert "PRODUCTION_RECONCILIATION_PROHIBITED" in validator
+    assert "DISPOSABLE_PREFIXES" in validator
+
+
 def test_oidc_policy_requires_exact_governed_refs_and_workflows() -> None:
     policy = json.loads(read_contract("policies/oidc-trust-policy.json"))
 
     assert policy["repository"] == "dlai-sd/waooaw-platform"
     assert policy["allowed_environments"] == ["demo", "uat", "prod"]
-    assert policy["allowed_refs"] == ["refs/heads/main"]
-    assert policy["allowed_workflows"] == [
-        ".github/workflows/promote.yaml",
-        ".github/workflows/post-deploy-verify.yaml",
+    assert policy["allowed_verification_environments"] == [
+        "demo-verification",
+        "uat-verification",
+        "prod-verification",
     ]
-    assert policy["subject_claim_template"] == ["repo", "environment", "ref", "job_workflow_ref"]
+    assert policy["allowed_refs"] == ["refs/heads/main"]
+    assert policy["allowed_workflows"] == [".github/workflows/promote.yaml@refs/heads/main"]
+    assert policy["subject_claim_template"] == ["repo", "environment"]
     assert policy["wildcards_allowed"] is False
     assert all("*" not in value for value in (*policy["allowed_refs"], *policy["allowed_workflows"]))
-    assert policy["enforcement_stage"] == "P2-WC03_FEDERATED_CREDENTIAL_AND_P2-WC06_WORKFLOW_GATE"
+    assert policy["workflow_allowlist_enforcement"] == (
+        "exact_github_workflow_ref_guard_before_oidc_login_plus_protected_main_only_environments"
+    )
+    assert policy["credential_enforcement"] == "exact_repository_environment_subject_without_wildcards"
 
     foundation = read_contract("modules/foundation/main.tf")
     variables = read_contract("modules/foundation/variables.tf")
-    assert "for_each = var.repository_workflows" in foundation
-    assert "ref:${var.repository_ref}" in foundation
-    assert "job_workflow_ref:${var.repository_id}/${each.value}@${var.repository_ref}" in foundation
-    assert 'default = "refs/heads/main"' in variables
-    assert ".github/workflows/promote.yaml" in variables
-    assert ".github/workflows/post-deploy-verify.yaml" in variables
+    assert "for_each = var.repository_workflows" not in foundation
+    assert "environment:${var.repository_environment}" in foundation
+    assert "environment:${var.repository_environment}-verification" in foundation
+    assert "repository_ref" not in variables
+    assert "repository_workflows" not in variables
+
+
+def test_deployment_workflow_pins_accepted_terraform_version() -> None:
+    workflow = (REPO_ROOT / ".github/workflows/deploy-environment.yaml").read_text(encoding="utf-8")
+
+    assert "hashicorp/setup-terraform@v3" in workflow
+    assert "terraform_version: 1.9.8" in workflow
+    assert "docker/setup-buildx-action@v3" in workflow
+    assert '--evidence-directory "$evidence"' in workflow
+    assert 'gh attestation verify "oci://$image"' in workflow
+    assert 'docker buildx imagetools inspect "$image"' in workflow
+    assert "--ghcr-packages-public-verified" in workflow
+    assert workflow.index("docker buildx imagetools inspect") < workflow.index("--ghcr-packages-public-verified")
+    assert workflow.count('-backend-config="use_oidc=true"') == 2
+    assert workflow.count('-backend-config="use_azuread_auth=true"') == 2
+    assert "Enforce caller and Production plan-only boundary" in workflow
+    assert 'EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/promote.yaml@refs/heads/main' in workflow
+    assert '[[ "$TARGET_ENVIRONMENT" == "prod" && "$APPLY_REQUESTED" == "true" ]]' in workflow
+    assert workflow.index("Enforce caller and Production plan-only boundary") < workflow.index("azure/login@v2")
+    assert "Reject stale release before cloud access" in workflow
+    assert workflow.count('gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main"') == 3
+    assert workflow.count("terraform apply -input=false -auto-approve") == 2
+    for apply_command in (
+        "terraform apply -input=false -auto-approve foundation.tfplan",
+        "terraform apply -input=false -auto-approve workload.tfplan",
+    ):
+        apply_index = workflow.index(apply_command)
+        assert workflow.rfind('test \'${{ inputs.release_sha }}\' = "$latest_main_sha"', 0, apply_index) != -1
+
+
+def test_promotion_requires_explicit_readiness_enablement_and_keeps_production_plan_only() -> None:
+    workflow = (REPO_ROOT / ".github/workflows/promote.yaml").read_text(encoding="utf-8")
+
+    assert "vars.GOAL006_PROMOTION_ENABLED == 'true'" in workflow
+    assert "Reject stale or non-main release" in workflow
+    assert 'gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main"' in workflow
+    assert 'test "$RELEASE_SHA" = "$latest_main_sha"' in workflow
+    assert "cancel-in-progress: true" in workflow
+    assert workflow.count('gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main"') == 3
+    assert "environment: demo-acceptance" in workflow
+    assert "environment: uat-acceptance" in workflow
+    assert "GOAL006_DEMO_ACCEPTED_RELEASE_RUN_ID" in workflow
+    assert "GOAL006_DEMO_ACCEPTED_RELEASE_SHA" in workflow
+    assert "GOAL006_DEMO_ACCEPTANCE_EVIDENCE_SHA256" in workflow
+    assert "GOAL006_UAT_ACCEPTED_RELEASE_RUN_ID" in workflow
+    assert "GOAL006_UAT_ACCEPTED_RELEASE_SHA" in workflow
+    assert "GOAL006_UAT_ACCEPTANCE_EVIDENCE_SHA256" in workflow
+    assert "needs: accept-demo" in workflow
+    assert "needs: accept-uat" in workflow
+    assert "environment: prod" in workflow
+    assert "apply: false" in workflow
+
+    verification = (REPO_ROOT / ".github/workflows/post-deploy-verify.yaml").read_text(encoding="utf-8")
+    assert "Reject stale release before independent verification" in verification
+    assert 'test "$RELEASE_SHA" = "$latest_main_sha"' in verification
+    assert verification.index("Reject stale release before independent verification") < verification.index(
+        "azure/login@v2"
+    )
 
 
 def test_edge_and_break_glass_policies_are_fail_closed() -> None:

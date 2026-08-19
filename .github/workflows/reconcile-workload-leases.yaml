@@ -1,0 +1,125 @@
+name: GOAL-006 Reconcile Workload Leases
+
+on:
+  schedule:
+    - cron: '7 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: goal006-lease-reconciliation
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    name: Reconcile ${{ matrix.environment }} lease
+    runs-on: ubuntu-latest
+    environment: ${{ matrix.environment }}
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [demo, uat]
+    env:
+      ARM_CLIENT_ID: ${{ vars.GOAL006_BOOTSTRAP_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.GOAL006_AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.GOAL006_AZURE_SUBSCRIPTION_ID }}
+      DEPLOYMENT_CLIENT_ID: ${{ vars.GOAL006_DEPLOYMENT_CLIENT_ID }}
+      TFSTATE_RESOURCE_GROUP: ${{ vars.GOAL006_TFSTATE_RESOURCE_GROUP }}
+      TFSTATE_STORAGE_ACCOUNT: ${{ vars.GOAL006_TFSTATE_STORAGE_ACCOUNT }}
+      TFSTATE_CONTAINER: ${{ vars.GOAL006_TFSTATE_CONTAINER }}
+      TF_VAR_tfstate_resource_group: ${{ vars.GOAL006_TFSTATE_RESOURCE_GROUP }}
+      TF_VAR_tfstate_storage_account: ${{ vars.GOAL006_TFSTATE_STORAGE_ACCOUNT }}
+      TF_VAR_tfstate_container: ${{ vars.GOAL006_TFSTATE_CONTAINER }}
+    defaults:
+      run:
+        working-directory: infrastructure/terraform/phase2/environments/${{ matrix.environment }}/workload
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Azure login with constrained bootstrap OIDC identity
+        uses: azure/login@v2
+        with:
+          client-id: ${{ env.ARM_CLIENT_ID }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
+      - name: Open temporary state firewall rule
+        run: |
+          test "$ARM_SUBSCRIPTION_ID" = "2ed11839-6a0f-4eaa-bd94-44ca96ff5d84"
+          test "$TFSTATE_RESOURCE_GROUP" = "waooaw-platform-rg"
+          test "$TFSTATE_STORAGE_ACCOUNT" = "waooawp3tfstate2ed118"
+          runner_ip=$(curl --fail --silent --show-error https://api.ipify.org)
+          echo "RUNNER_IP=$runner_ip" >> "$GITHUB_ENV"
+          az storage account network-rule add \
+            --resource-group "$TFSTATE_RESOURCE_GROUP" \
+            --account-name "$TFSTATE_STORAGE_ACCOUNT" \
+            --ip-address "$runner_ip" --output none
+
+      - name: Read applied lease from protected state
+        id: lease
+        run: |
+          terraform init -input=false \
+            -backend-config="resource_group_name=$TFSTATE_RESOURCE_GROUP" \
+            -backend-config="storage_account_name=$TFSTATE_STORAGE_ACCOUNT" \
+            -backend-config="container_name=$TFSTATE_CONTAINER" \
+            -backend-config="use_oidc=true" \
+            -backend-config="use_azuread_auth=true"
+          terraform output -json lease_reconciliation_inputs > lease-reconciliation.auto.tfvars.json
+          reconcile=$(python "$GITHUB_WORKSPACE/scripts/goal006_lease_reconciliation.py" \
+            --environment '${{ matrix.environment }}' \
+            --inputs lease-reconciliation.auto.tfvars.json)
+          echo "required=$reconcile" >> "$GITHUB_OUTPUT"
+
+      - name: Azure login with environment deployment OIDC identity
+        if: steps.lease.outputs.required == 'true'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ env.DEPLOYMENT_CLIENT_ID }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
+      - name: Plan and validate deletion-only reconciliation
+        if: steps.lease.outputs.required == 'true'
+        run: |
+          terraform plan -input=false -lock-timeout=5m -out=reconciliation.tfplan
+          terraform show -json reconciliation.tfplan > reconciliation-plan.json
+          python "$GITHUB_WORKSPACE/scripts/goal006_lease_reconciliation.py" \
+            --environment '${{ matrix.environment }}' \
+            --plan reconciliation-plan.json
+
+      - name: Apply validated lease teardown
+        if: steps.lease.outputs.required == 'true'
+        run: terraform apply -input=false -auto-approve reconciliation.tfplan
+
+      - name: Upload reconciliation evidence
+        if: always() && steps.lease.outputs.required == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: goal006-${{ matrix.environment }}-lease-reconciliation-${{ github.run_id }}
+          path: |
+            infrastructure/terraform/phase2/environments/${{ matrix.environment }}/workload/reconciliation-plan.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Reauthenticate bootstrap identity for cleanup
+        if: always() && env.RUNNER_IP != ''
+        uses: azure/login@v2
+        with:
+          client-id: ${{ env.ARM_CLIENT_ID }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
+      - name: Close state firewall rule
+        if: always() && env.RUNNER_IP != ''
+        run: |
+          az storage account network-rule remove \
+            --resource-group "$TFSTATE_RESOURCE_GROUP" \
+            --account-name "$TFSTATE_STORAGE_ACCOUNT" \
+            --ip-address "$RUNNER_IP" --output none

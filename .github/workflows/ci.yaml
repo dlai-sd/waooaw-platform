@@ -24,14 +24,101 @@ env:
 
 jobs:
 
-  # ─── Build all 6 release images ──────────────────────────────────────────
+  # ─── Build and scan affected pull-request images ─────────────────────────
   build:
-    name: Build Docker images
+    name: Build Docker image (${{ matrix.service.name }})
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        service:
+          - name: constitutional-engine
+            dockerfile: src/constitutional-engine/Dockerfile
+            path_pattern: ^src/constitutional-engine/
+          - name: business-platform
+            dockerfile: src/business-platform/Dockerfile
+            path_pattern: ^src/business-platform/
+          - name: professional-runtime
+            dockerfile: src/professional-runtime/Dockerfile
+            path_pattern: ^src/professional-runtime/
+          - name: ai-runtime
+            dockerfile: src/ai-runtime/Dockerfile
+            path_pattern: ^src/ai-runtime/
+          - name: web
+            dockerfile: web/Dockerfile
+            path_pattern: ^web/
+          - name: billing-engine
+            dockerfile: src/billing-engine/Dockerfile
+            path_pattern: ^src/billing-engine/
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect affected image
+        id: affected
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          PATH_PATTERN: ${{ matrix.service.path_pattern }}
+        run: |
+          if ! git cat-file -e "${BASE_SHA}^{commit}"; then
+            git fetch --no-tags origin "$BASE_SHA"
+          fi
+          if git diff --name-only "$BASE_SHA" HEAD | grep -Eq "$PATH_PATTERN"; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Set up Docker Buildx
+        if: steps.affected.outputs.build == 'true'
+        uses: docker/setup-buildx-action@v3
+      - name: Build pull-request image
+        if: steps.affected.outputs.build == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ matrix.service.dockerfile }}
+          push: false
+          load: true
+          tags: ${{ env.REGISTRY_PREFIX }}/${{ matrix.service.name }}:sha-${{ github.sha }}
+          sbom: false
+          provenance: false
+          cache-from: type=gha,scope=release-${{ matrix.service.name }}
+          cache-to: type=gha,mode=max,scope=release-${{ matrix.service.name }}
+      - name: Scan pull-request image
+        if: steps.affected.outputs.build == 'true'
+        uses: aquasecurity/trivy-action@2736533278103862a861f4a35ebac3e97854d956
+        with:
+          image-ref: ${{ env.REGISTRY_PREFIX }}/${{ matrix.service.name }}:sha-${{ github.sha }}
+          format: sarif
+          output: trivy-${{ matrix.service.name }}.sarif
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: 1
+      - name: Upload pull-request scan results
+        if: always() && steps.affected.outputs.build == 'true'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-${{ matrix.service.name }}.sarif
+
+  publish:
+    name: Publish Docker image (${{ matrix.service.name }})
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: read
       packages: write
+      id-token: write
+      attestations: write
     strategy:
+      fail-fast: false
+      max-parallel: 6
       matrix:
         service:
           - name: constitutional-engine
@@ -48,18 +135,16 @@ jobs:
             dockerfile: src/billing-engine/Dockerfile
     steps:
       - uses: actions/checkout@v4
-
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Build and push image
+      - name: Publish attested image
+        id: image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -67,6 +152,8 @@ jobs:
           push: true
           tags: |
             ${{ env.REGISTRY_PREFIX }}/${{ matrix.service.name }}:sha-${{ github.sha }}
+          sbom: true
+          provenance: mode=max
           # G-08 FIX: spec_version label links deployed binary to the architecture
           # spec revision it was built against. Enables bidirectional traceability
           # from production incident → spec revision → constitutional claim (C-073).
@@ -75,8 +162,49 @@ jobs:
             org.waooaw.ib_item=IB-009
             org.waooaw.build_date=${{ github.run_id }}
             org.opencontainers.image.revision=${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=release-${{ matrix.service.name }}
+          cache-to: type=gha,mode=max,scope=release-${{ matrix.service.name }}
+
+      - name: Record immutable registry digest
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p release-digest
+          printf '%s\n' '${{ steps.image.outputs.digest }}' > "release-digest/${{ matrix.service.name }}.digest"
+
+      - name: Attest published image digest
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: image-attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY_PREFIX }}/${{ matrix.service.name }}
+          subject-digest: ${{ steps.image.outputs.digest }}
+          push-to-registry: true
+
+      - name: Collect registry attestation evidence
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          image='${{ env.REGISTRY_PREFIX }}/${{ matrix.service.name }}@${{ steps.image.outputs.digest }}'
+          mkdir -p release-attestation
+          docker buildx imagetools inspect "$image" --format '{{ json .SBOM }}' > "release-attestation/${{ matrix.service.name }}.sbom.json"
+          docker buildx imagetools inspect "$image" --format '{{ json .Provenance }}' > "release-attestation/${{ matrix.service.name }}.provenance.json"
+          jq -e '. != null and (type == "object" or type == "array") and length > 0' "release-attestation/${{ matrix.service.name }}.sbom.json" >/dev/null
+          jq -e '. != null and (type == "object" or type == "array") and length > 0' "release-attestation/${{ matrix.service.name }}.provenance.json" >/dev/null
+          cp '${{ steps.image-attestation.outputs.bundle-path }}' "release-attestation/${{ matrix.service.name }}.signature.jsonl"
+
+      - name: Upload immutable registry digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: goal006-digest-${{ matrix.service.name }}
+          path: release-digest/${{ matrix.service.name }}.digest
+          if-no-files-found: error
+          retention-days: 90
+      - name: Upload registry attestation evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: goal006-attestation-${{ matrix.service.name }}
+          path: release-attestation
+          if-no-files-found: error
+          retention-days: 90
 
   # ─── Secret detection ─────────────────────────────────────────────────────
   secrets:
@@ -94,7 +222,6 @@ jobs:
   test-dotnet:
     name: .NET unit tests
     runs-on: ubuntu-latest
-    needs: build
     strategy:
       fail-fast: false
       matrix:
@@ -154,7 +281,6 @@ jobs:
   test-python:
     name: Python unit tests + lint
     runs-on: ubuntu-latest
-    needs: build
     strategy:
       matrix:
         include:
@@ -228,7 +354,6 @@ jobs:
   test-web:
     name: Web unit tests + type check
     runs-on: ubuntu-latest
-    needs: build
     steps:
       - uses: actions/checkout@v4
       - name: Build TypeScript Docker test runner (C-080)
@@ -262,17 +387,14 @@ jobs:
             architecture/reference/api-specs/professional-runtime.openapi.yaml
 
       - name: buf lint — Constitutional Service proto
-        uses: bufbuild/buf-setup-action@v1
-        with:
-          version: '1.72.0'
-          github_token: ${{ github.token }}
-
-      - name: Validate proto format and compatibility
-        working-directory: architecture/reference/proto
         run: |
-          buf format --diff --exit-code
-          buf lint
-          buf breaking --against 'https://github.com/${{ github.repository }}.git#branch=main,subdir=architecture/reference/proto'
+          docker run --rm -v "$PWD:/workspace" -w /workspace/architecture/reference/proto \
+            bufbuild/buf:1.72.0 format --diff --exit-code
+          docker run --rm -v "$PWD:/workspace" -w /workspace/architecture/reference/proto \
+            bufbuild/buf:1.72.0 lint
+          docker run --rm -v "$PWD:/workspace" -w /workspace/architecture/reference/proto \
+            bufbuild/buf:1.72.0 breaking \
+            --against 'https://github.com/${{ github.repository }}.git#branch=main,subdir=architecture/reference/proto'
 
   # ─── Security — SAST ──────────────────────────────────────────────────────
   sast:
@@ -299,30 +421,48 @@ jobs:
   trivy:
     name: Trivy image scan
     runs-on: ubuntu-latest
-    needs: build
+    needs: publish
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
     strategy:
       fail-fast: false
       matrix:
         image: [constitutional-engine, business-platform, professional-runtime, ai-runtime, web, billing-engine]
     steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Run Trivy
-        run: |
-          docker run --rm \
-            -v "$PWD:/workspace" \
-            aquasec/trivy:0.69.3 image \
-            --scanners vuln \
-            --ignore-unfixed \
-            --severity CRITICAL,HIGH \
-            --exit-code 1 \
-            --format sarif \
-            --output "/workspace/trivy-${{ matrix.image }}.sarif" \
-            "${{ env.REGISTRY_PREFIX }}/${{ matrix.image }}:sha-${{ github.sha }}"
+        uses: aquasecurity/trivy-action@2736533278103862a861f4a35ebac3e97854d956
+        with:
+          image-ref: ${{ env.REGISTRY_PREFIX }}/${{ matrix.image }}:sha-${{ github.sha }}
+          format: sarif
+          output: trivy-${{ matrix.image }}.sarif
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: 1
 
       - name: Upload Trivy results
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: trivy-${{ matrix.image }}.sarif
+
+      - name: Retain release scan evidence
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: goal006-scan-${{ matrix.image }}
+          path: trivy-${{ matrix.image }}.sarif
+          if-no-files-found: error
+          retention-days: 90
 
   # ─── Dependency vulnerability scanning ───────────────────────────────────
   # Catches vulnerable dependencies BEFORE image build — faster feedback than Trivy alone.
@@ -573,5 +713,93 @@ jobs:
         with:
           name: test-champion-evidence-${{ github.run_id }}
           path: qa-evidence/test-champion-verdict.json
+          if-no-files-found: error
+          retention-days: 90
+
+  release-manifest:
+    name: Attest exact-six release manifest
+    runs-on: ubuntu-latest
+    if: >-
+      always() &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.publish.result == 'success' &&
+      needs.secrets.result == 'success' &&
+      needs.test-dotnet.result == 'success' &&
+      needs.test-python.result == 'success' &&
+      needs.test-web.result == 'success' &&
+      needs.spec-lint.result == 'success' &&
+      needs.sast.result == 'success' &&
+      needs.trivy.result == 'success' &&
+      needs.dep-scan.result == 'success' &&
+      needs.license-check.result == 'success'
+    needs:
+      - build
+      - publish
+      - secrets
+      - test-dotnet
+      - test-python
+      - test-web
+      - spec-lint
+      - sast
+      - trivy
+      - dep-scan
+      - license-check
+      - constitutional-commit-gate
+      - authorization-tier-check
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download exact-six registry digests
+        uses: actions/download-artifact@v4
+        with:
+          pattern: goal006-digest-*
+          path: release-digests
+          merge-multiple: true
+
+      - name: Download exact-six scan evidence
+        uses: actions/download-artifact@v4
+        with:
+          pattern: goal006-scan-*
+          path: release-evidence
+          merge-multiple: true
+
+      - name: Download exact-six registry attestations
+        uses: actions/download-artifact@v4
+        with:
+          pattern: goal006-attestation-*
+          path: release-evidence
+          merge-multiple: true
+
+      - name: Create immutable registry manifest
+        run: |
+          mkdir -p release/goal006/evidence
+          cp release-evidence/* release/goal006/evidence/
+          python scripts/goal006_registry_manifest.py \
+            release-digests \
+            release/goal006/evidence \
+            release/goal006/registry-release-manifest.json \
+            --source-commit '${{ github.sha }}' \
+            --run-id '${{ github.run_id }}'
+
+      - name: Attest immutable registry manifest
+        id: attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: release/goal006/registry-release-manifest.json
+          show-summary: true
+
+      - name: Upload signed exact-six release tuple
+        uses: actions/upload-artifact@v4
+        with:
+          name: goal006-exact-six-release-${{ github.sha }}
+          path: |
+            release/goal006/registry-release-manifest.json
+            release/goal006/evidence
+            ${{ steps.attestation.outputs.bundle-path }}
           if-no-files-found: error
           retention-days: 90
