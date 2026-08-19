@@ -7,13 +7,18 @@
 | `record_id` | GEP-GOAL-006-INST-013-01 |
 | `record_type` | Execution Plan |
 | `produced_at` | 2026-08-13T12:03:00+00:00 |
-| Status | PROPOSED — no GO Authorization; awaiting fresh CA readiness review and Founder approval |
+| Status | EXECUTION BASELINE — Phase 1 and Phase 2 complete; Phase 3 execution authorized by FA-052 and in progress |
 | Governing requirements | Founder Session Directive plus GOAL-006 FR-001 through FR-056 |
 
-## Approval Stop
+## Historical Approval Stop
 
-This plan is a proposal only. No contributing Institution may accept or begin work, and INST-013
-may not issue a GO Authorization, until:
+The following stop governed initial approval of this plan and is retained as historical evidence.
+It was cleared by the recorded Phase 1 review, Founder acknowledgements and subsequent authorization
+records. Current execution authority and limits are controlled by
+`goals/GOAL-006-phase3-authorization-records.md`, including FA-052.
+
+Before that clearance, no contributing Institution could accept or begin work, and INST-013 could
+not issue a GO Authorization, until:
 
 1. a fresh Constitutional Analyst reviews the provisional classification and this complete plan;
 2. the R2-10 classification challenge is closed;
@@ -138,18 +143,18 @@ Phase 1 owners must refine these into approved Work Components; no Azure action 
 7. Platform Operations activation, supervised handover, and incident simulation.
 8. Final evidence reports and Founder production acceptance.
 
-## Completeness Ledger — Proposed Plan
+## Completeness Ledger — Execution Status
 
 | Obligation | Owner | Materiality | Required evidence | Dependencies | Status | Validation |
 |---|---|---|---|---|---|---|
-| PLAN-01 Classification review | Fresh INST-002 | M3 | Classification verdict | GUR/GCL | BLOCKED pending approval route | Independent review |
-| PLAN-02 Registrant approval | Founder | M3 | Attested acknowledgement | PLAN-01 | BLOCKED | Exact record IDs |
-| PLAN-03 Phase 1 contributions | Specialist owners | M2 | P1-WC01 through P1-WC11 records | PLAN-02 and phased GOAs | BLOCKED | Owner acceptance and deterministic checks |
-| PLAN-04 Phase 1 clearance | Fresh INST-002 | M3 | Clearance Record | PLAN-03 | BLOCKED | GEOM G-6 criteria |
-| PLAN-05 Phase 2 authorization | Founder | M3 | Approved WCs plus session authorization | PLAN-04 | BLOCKED | Explicit boundary |
-| PLAN-06 Phase 2 implementation | INST-010 and approved owners | M2 | Tested implementation and independent reviews | PLAN-05 | BLOCKED | Docker-only reproducible validation |
-| PLAN-07 Phase 3 authorization | Founder | M3 | Cloud/DNS/expenditure authorization | PLAN-06 merged | BLOCKED | Exact protected decisions |
-| PLAN-08 Deployment/handover | Approved execution and operations owners | M2/M3 | Environment qualification and activation evidence | PLAN-07 | BLOCKED | Independent acceptance |
+| PLAN-01 Classification review | Fresh INST-002 | M3 | Classification verdict | GUR/GCL | DONE | Independent review |
+| PLAN-02 Registrant approval | Founder | M3 | Attested acknowledgement | PLAN-01 | DONE | Exact record IDs |
+| PLAN-03 Phase 1 contributions | Specialist owners | M2 | P1-WC01 through P1-WC11 records | PLAN-02 and phased GOAs | DONE | Owner acceptance and deterministic checks |
+| PLAN-04 Phase 1 clearance | Fresh INST-002 | M3 | Clearance Record | PLAN-03 | DONE | GEOM G-6 criteria |
+| PLAN-05 Phase 2 authorization | Founder | M3 | Approved WCs plus session authorization | PLAN-04 | DONE | Explicit boundary |
+| PLAN-06 Phase 2 implementation | INST-010 and approved owners | M2 | Tested implementation and independent reviews | PLAN-05 | DONE — PR #284 and closure PR #285 merged | Docker-only reproducible validation |
+| PLAN-07 Phase 3 authorization | Founder | M3 | Cloud/DNS/expenditure authorization | PLAN-06 merged | DONE — FA-052 and Phase 3 GOA/Acceptance recorded | Exact protected decisions |
+| PLAN-08 Deployment/handover | Approved execution and operations owners | M2/M3 | Environment qualification and activation evidence | PLAN-07 | IN PROGRESS — see post-merge backlog in P3-WC01 readiness evidence | Independent acceptance |
 
 ## Dependency And Budget Controls
 
@@ -175,6 +180,7 @@ or attempted Platform Operations activation before acceptance.
 
 ## Next Action
 
-Obtain a fresh INST-002 classification/readiness review, then ask the Founder to approve or return
-the provisional classification and this proposed plan. Do not begin Phase 1 grooming contributions
-before both protected steps complete.
+Execute the numbered post-merge backlog in `goals/GOAL-006-p3-wc01-readiness-evidence.md` under
+FA-052. Repair and independently review the trusted-main release path before enabling promotion;
+then qualify Demo and UAT in order. Production remains plan-only and all Founder-reserved decisions
+remain protected.
