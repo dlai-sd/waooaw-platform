@@ -37,7 +37,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Configuration readiness repair | DONE - PR #309 merged; second plan proved exact Blob retry and verified firewall cleanup |
 | Real Demo OIDC plan | BLOCKED - run `32371262629` reached Terraform init, then backend list received Storage `403 AuthorizationFailure`; no plan/apply occurred |
 | Private runner decision | ACCEPTED - independent EA and Security review of commit `7e5bd4b` returned APPROVE with no blockers |
-| Demo runner bootstrap | IMPLEMENTED - inactive Deployment Stack compiles, ARM validates, immutable verifier and 51 focused tests pass; review pending |
+| Demo runner bootstrap | IMPLEMENTED - inactive Deployment Stack compiles, ARM validates, immutable verifier and 52 focused tests pass; review pending |
 | Local validation | PASS - 42 focused tests, Ruff, actionlint and editor diagnostics |
 | Architecture review | CLEAR - author review, focused EA review and focused INST-007 Security correction complete; no separate review artifact required |
 | Demo deploy / verify | BLOCKED - Demo runner bootstrap implementation and private-path qualification required before workflow label activation |

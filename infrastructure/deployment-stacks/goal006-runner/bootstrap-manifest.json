@@ -5,8 +5,9 @@
   "activation_state": "INACTIVE",
   "files": {
     "architecture/reference/pipeline/github-runner-app-manifest.json": "cfcb9d66abc259123dd7ef3a57a8d71af4e3a0d36e146f2f11dea6abd0d85700",
+    "infrastructure/deployment-stacks/goal006-runner/cost-estimate.json": "207bf61e5903f95cf8e8d59761fc880797881d75f916e68f608d30a9cef48a0e",
     "infrastructure/deployment-stacks/goal006-runner/demo.parameters.json": "5240e51dc66d724ccae832456dfe5716703e5178d3bcc95b8d326ea888d5fed8",
     "infrastructure/deployment-stacks/goal006-runner/main.bicep": "005de5bb2f5437bf7c8a2bb7a5bd6a37634d004a36980322c031caf11a70d45b",
-    "infrastructure/deployment-stacks/goal006-runner/subscription.bicep": "813f30d39bc458d44f91359ffae043a59208aa7f97b691152a19473f327df467"
+    "infrastructure/deployment-stacks/goal006-runner/subscription.bicep": "29109f1090bfd7cf7f7035bb0f681a2524edb7527641a5079f2b7e52f76dca3d"
   }
 }

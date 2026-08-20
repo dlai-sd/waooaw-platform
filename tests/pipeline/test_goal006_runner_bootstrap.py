@@ -20,6 +20,7 @@ def _write_manifest(tmp_path: Path, *, parameter_mutator=None) -> tuple[Path, Pa
         "infrastructure/deployment-stacks/goal006-runner/main.bicep",
         "infrastructure/deployment-stacks/goal006-runner/subscription.bicep",
         "infrastructure/deployment-stacks/goal006-runner/demo.parameters.json",
+        "infrastructure/deployment-stacks/goal006-runner/cost-estimate.json",
         "architecture/reference/pipeline/github-runner-app-manifest.json",
     ):
         source = REPOSITORY_ROOT / relative_path
@@ -93,3 +94,12 @@ def test_manifest_metadata_cannot_activate_stack(tmp_path: Path) -> None:
     changed["activation_state"] = "ACTIVE"
     manifest_path.write_text(json.dumps(changed), encoding="utf-8")
     assert "ACTIVATION_NOT_INACTIVE" in validate_bootstrap_manifest(repository, manifest_path)
+
+
+def test_unreviewed_cost_estimate_fails_closed(tmp_path: Path) -> None:
+    repository, manifest_path = _write_manifest(tmp_path)
+    estimate_path = repository / "infrastructure/deployment-stacks/goal006-runner/cost-estimate.json"
+    estimate = json.loads(estimate_path.read_text(encoding="utf-8"))
+    estimate["planned_incremental_monthly_cost_inr"] = 999
+    estimate_path.write_text(json.dumps(estimate), encoding="utf-8")
+    assert "COST_ESTIMATE_INVALID" in validate_bootstrap_manifest(repository, manifest_path)

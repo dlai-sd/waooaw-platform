@@ -18,6 +18,12 @@ EXPECTED_STATE_ID = (
     "waooaw-platform-rg/providers/Microsoft.Storage/storageAccounts/waooawp3tfstate2ed118"
 )
 EXPECTED_BOOTSTRAP_PRINCIPAL = "77147af5-a32d-4151-b557-e719f319b55b"
+EXPECTED_COST_ESTIMATE = {
+    "planned_incremental_monthly_cost_inr": 1000,
+    "cumulative_one_time_cost_inr": 1000,
+    "source_run_id": 32371262629,
+    "source_configuration": "deployment-config/demo/workload-configuration.json",
+}
 IMMUTABLE_IMAGE = re.compile(r"^[a-z0-9.-]+(?:/[a-z0-9._-]+)+@sha256:[0-9a-f]{64}$")
 PROHIBITED_KEYS = {"clientsecret", "password", "privatekey", "runnertoken", "secretvalue"}
 REQUIRED_TEMPLATE_TERMS = {
@@ -39,7 +45,7 @@ REQUIRED_TEMPLATE_TERMS = {
 REQUIRED_SUBSCRIPTION_TERMS = {
     "Microsoft.Consumption/budgets",
     "Microsoft.KeyVault/vaults/secrets/setSecret/action",
-    "Microsoft.KeyVault/vaults/secrets/delete/action",
+    "Microsoft.KeyVault/vaults/secrets/delete",
     "goal006-cumulative-monthly",
 }
 
@@ -103,6 +109,10 @@ def validate_bootstrap_manifest(repository_root: Path, manifest_path: Path) -> l
             violations.append(f"IMAGE_NOT_IMMUTABLE:{name}")
     if PROHIBITED_KEYS.intersection(_walk_keys(parameters_document)):
         violations.append("PROHIBITED_CREDENTIAL_FIELD")
+
+    cost_path = repository_root / "infrastructure/deployment-stacks/goal006-runner/cost-estimate.json"
+    if json.loads(cost_path.read_text(encoding="utf-8")) != EXPECTED_COST_ESTIMATE:
+        violations.append("COST_ESTIMATE_INVALID")
 
     try:
         vnet = ipaddress.ip_network(str(parameters["runnerVnetAddressPrefix"]))

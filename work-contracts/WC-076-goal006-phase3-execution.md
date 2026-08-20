@@ -39,7 +39,7 @@ per-task evidence documents, duplicate pass reports or narrative handoff records
 | P3-EX02 | IMPLEMENTED - independent gate pending | Durable `WAOOAW_PLATFORM_*` migration contract; legacy runtime variables absent |
 | P3-EX03 | IMPLEMENTED - independent gate pending | Demo/UAT root output tests; all six Terraform 1.9.8 roots validate |
 | P3-EX04 tooling | READY FOR INST-009/007 | Read-only OIDC/RBAC verifier; four fail-closed Docker tests |
-| P3-EX07 runner bootstrap | IMPLEMENTED - review pending | Inactive Demo Deployment Stack; ARM validation; 51 focused tests; no cloud mutation |
+| P3-EX07 runner bootstrap | IMPLEMENTED - review pending | Inactive Demo Deployment Stack; ARM validation; 52 focused tests; no cloud mutation |
 
 ## Definition Of Done
 

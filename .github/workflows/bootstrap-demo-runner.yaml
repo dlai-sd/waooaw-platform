@@ -67,7 +67,23 @@ jobs:
           az rest --method post \
             --url "https://management.azure.com${scope}/providers/Microsoft.CostManagement/query?api-version=2023-11-01" \
             --body "$query" > actual-cost.json
-          jq -e '.properties.columns and .properties.rows' actual-cost.json >/dev/null
+          month_start=$(date -u +%Y-%m-01T00:00:00Z)
+          month_end=$(date -u -d "$(date -u -d "$month_start +1 month" +%Y-%m-%dT00:00:00Z) -1 second" +%Y-%m-%dT%H:%M:%SZ)
+          forecast=$(jq -cn --arg from "$month_start" --arg to "$month_end" '{
+            type: "Usage",
+            timeframe: "Custom",
+            timePeriod: {from: $from, to: $to},
+            includeActualCost: true,
+            includeFreshPartialCost: true,
+            dataset: {granularity: "None", aggregation: {totalCost: {name: "PreTaxCost", function: "Sum"}}}
+          }')
+          az rest --method post \
+            --url "https://management.azure.com${scope}/providers/Microsoft.CostManagement/forecast?api-version=2023-11-01" \
+            --body "$forecast" > forecast-cost.json
+          python scripts/goal006_cost_gate.py \
+            --actual actual-cost.json \
+            --forecast forecast-cost.json \
+            --configuration "$STACK_ROOT/cost-estimate.json"
 
       - name: Validate and preview inactive stack
         run: |
@@ -105,6 +121,7 @@ jobs:
           name: goal006-demo-runner-bootstrap-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             actual-cost.json
+            forecast-cost.json
             runner-stack-what-if.json
           retention-days: 90
           if-no-files-found: warn

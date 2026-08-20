@@ -62,7 +62,7 @@ resource cleanupSecretDeleterRole 'Microsoft.Authorization/roleDefinitions@2022-
       {
         actions: []
         notActions: []
-        dataActions: ['Microsoft.KeyVault/vaults/secrets/delete/action']
+        dataActions: ['Microsoft.KeyVault/vaults/secrets/delete']
         notDataActions: []
       }
     ]
