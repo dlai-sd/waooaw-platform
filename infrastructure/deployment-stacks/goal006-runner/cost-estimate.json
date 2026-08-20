@@ -1,0 +1,6 @@
+{
+  "planned_incremental_monthly_cost_inr": 1000,
+  "cumulative_one_time_cost_inr": 1000,
+  "source_run_id": 32371262629,
+  "source_configuration": "deployment-config/demo/workload-configuration.json"
+}
