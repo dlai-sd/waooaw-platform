@@ -1,6 +1,10 @@
 targetScope = 'subscription'
 
-@allowed(['demo'])
+@allowed([
+  'demo'
+  'uat'
+  'prod'
+])
 param environment string
 
 param location string = 'centralindia'
@@ -16,8 +20,10 @@ var commonTags = {
   'managed-by': 'goal006-bootstrap-prerequisites'
   'runner-activation': 'INACTIVE'
 }
-var bootstrapSecretWriterRoleName = guid(subscription().id, 'goal006-bootstrap-secret-writer')
-var cleanupSecretDeleterRoleName = guid(subscription().id, 'goal006-cleanup-secret-deleter')
+var bootstrapSecretWriterRoleSeed = environment == 'demo' ? 'goal006-bootstrap-secret-writer' : 'goal006-${environment}-bootstrap-secret-writer'
+var cleanupSecretDeleterRoleSeed = environment == 'demo' ? 'goal006-cleanup-secret-deleter' : 'goal006-${environment}-cleanup-secret-deleter'
+var bootstrapSecretWriterRoleName = guid(subscription().id, bootstrapSecretWriterRoleSeed)
+var cleanupSecretDeleterRoleName = guid(subscription().id, cleanupSecretDeleterRoleSeed)
 var deploymentStackOwnerRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'adb29209-aa1d-457b-a786-c913953d2891')
 
 resource runnerResourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' = {
@@ -29,7 +35,7 @@ resource runnerResourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' = {
 resource bootstrapSecretWriterRole 'Microsoft.Authorization/roleDefinitions@2022-04-01' = {
   name: bootstrapSecretWriterRoleName
   properties: {
-    roleName: 'GOAL-006 Bootstrap Secret Writer'
+    roleName: 'GOAL-006 ${environment} Bootstrap Secret Writer'
     description: 'Set the short-lived environment runner registration secret without read, list, or delete authority.'
     type: 'CustomRole'
     permissions: [
@@ -47,7 +53,7 @@ resource bootstrapSecretWriterRole 'Microsoft.Authorization/roleDefinitions@2022
 resource cleanupSecretDeleterRole 'Microsoft.Authorization/roleDefinitions@2022-04-01' = {
   name: cleanupSecretDeleterRoleName
   properties: {
-    roleName: 'GOAL-006 Cleanup Secret Deleter'
+    roleName: 'GOAL-006 ${environment} Cleanup Secret Deleter'
     description: 'Delete the short-lived environment runner registration secret without read, list, or write authority.'
     type: 'CustomRole'
     permissions: [

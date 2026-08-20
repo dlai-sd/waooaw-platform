@@ -9,8 +9,8 @@
     "infrastructure/deployment-stacks/goal006-runner/demo.parameters.json": "f28db23728635c2d2db80d87d66038844c7815c3671d8bc3c6e75154eb33285c",
     "infrastructure/deployment-stacks/goal006-runner/demo.prerequisites.parameters.json": "386a1c2bca52beb285d8646af62eb56f82891ff52c0ac1dd7ec74fc5d688e4aa",
     "infrastructure/deployment-stacks/goal006-runner/main.bicep": "005de5bb2f5437bf7c8a2bb7a5bd6a37634d004a36980322c031caf11a70d45b",
-    "infrastructure/deployment-stacks/goal006-runner/prerequisites-rg.bicep": "29d9c15d18de45b511af18b52ea209d3233d600c71a7e2ba00a8b3aeaea5e081",
-    "infrastructure/deployment-stacks/goal006-runner/prerequisites.bicep": "8bbe05cb58e8d341342a0450d2c9241ef1eb67f5c3746af071449d4820a61f8f",
-    "infrastructure/deployment-stacks/goal006-runner/subscription.bicep": "92efba64113880ae9c66cca8e145e63c182b295c66acac5ba271f0242b22b9e4"
+    "infrastructure/deployment-stacks/goal006-runner/prerequisites-rg.bicep": "8888f32c53f62ee9c5e03674aedee48542945c55e246248b0aaec1e0692ea0cb",
+    "infrastructure/deployment-stacks/goal006-runner/prerequisites.bicep": "8fffda699f23b110e98f9f316da9cc87d06d1567b6f3d34edb9521af670e0799",
+    "infrastructure/deployment-stacks/goal006-runner/subscription.bicep": "cd852b9299497253927f74c93a1fc9a0187cdc2bbf93f7be652f34fddac2418f"
   }
 }

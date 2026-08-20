@@ -15,8 +15,10 @@ param reconcilerImage string
 param runnerVnetAddressPrefix string
 param runnerSubnetAddressPrefix string
 param privateEndpointSubnetAddressPrefix string
-var bootstrapSecretWriterRoleName = guid(subscription().id, 'goal006-bootstrap-secret-writer')
-var cleanupSecretDeleterRoleName = guid(subscription().id, 'goal006-cleanup-secret-deleter')
+var bootstrapSecretWriterRoleSeed = environment == 'demo' ? 'goal006-bootstrap-secret-writer' : 'goal006-${environment}-bootstrap-secret-writer'
+var cleanupSecretDeleterRoleSeed = environment == 'demo' ? 'goal006-cleanup-secret-deleter' : 'goal006-${environment}-cleanup-secret-deleter'
+var bootstrapSecretWriterRoleName = guid(subscription().id, bootstrapSecretWriterRoleSeed)
+var cleanupSecretDeleterRoleName = guid(subscription().id, cleanupSecretDeleterRoleSeed)
 
 resource runnerResourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' existing = {
   name: runnerResourceGroupName

@@ -102,15 +102,15 @@ jobs:
           runner_scope="$subscription_scope/resourceGroups/$RUNNER_RESOURCE_GROUP"
           roles=$(az role assignment list --assignee-object-id "$ARM_PRINCIPAL_ID" --include-inherited --all -o json)
           jq -e --arg scope "$subscription_scope" \
-            'any(.[]; .roleDefinitionName == "Azure Deployment Stack Owner" and .scope == $scope)' \
+            'any(.[]; .roleDefinitionName == "Azure Deployment Stack Owner" and (.scope | ascii_downcase) == ($scope | ascii_downcase))' \
             <<< "$roles" >/dev/null
           for role in Contributor "Role Based Access Control Administrator"; do
             jq -e --arg role "$role" --arg scope "$runner_scope" \
-              'any(.[]; .roleDefinitionName == $role and .scope == $scope)' \
+              'any(.[]; .roleDefinitionName == $role and (.scope | ascii_downcase) == ($scope | ascii_downcase))' \
               <<< "$roles" >/dev/null
           done
           az group show --name "$RUNNER_RESOURCE_GROUP" --output none
-          for role_name in "GOAL-006 Bootstrap Secret Writer" "GOAL-006 Cleanup Secret Deleter"; do
+          for role_name in "GOAL-006 $TARGET_ENVIRONMENT Bootstrap Secret Writer" "GOAL-006 $TARGET_ENVIRONMENT Cleanup Secret Deleter"; do
             test "$(az role definition list --name "$role_name" --query 'length(@)' -o tsv)" = "1"
           done
           python scripts/azure_rest_retry.py \
