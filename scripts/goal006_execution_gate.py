@@ -29,6 +29,7 @@ def main() -> int:
     parser.add_argument("--execution", required=True, choices=("true", "false"))
     parser.add_argument("--state-adopted", required=True, type=parse_boolean)
     arguments = parser.parse_args()
+    required = False
     try:
         required = state_adoption_required(
             execution=arguments.execution,
