@@ -349,8 +349,24 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert workflow.index("Enforce current Demo-only authorization") < workflow.index("azure/login@v2")
     assert "Reject stale release before cloud access" in workflow
     assert 'timeframe: "Custom"' in workflow
-    assert "Verify required Azure providers" in workflow
+    assert "Verify bootstrap RBAC and required Azure providers" in workflow
     assert "Microsoft.Network" in workflow
+    assert "Cost Management Reader" in workflow
+    assert "Storage Account Contributor" in workflow
+    assert "Storage Blob Data Contributor" in workflow
+    assert workflow.count("Role Based Access Control Administrator") == 2
+    assert "bootstrap-role-assignments.json" in workflow
+    assert "subscription-budget.json" in workflow
+    assert "actual-cost.json" in workflow
+    assert "forecast-cost.json" in workflow
+    assert "Bootstrap identity must not have Owner" in workflow
+    assert workflow.index("Verify bootstrap RBAC and required Azure providers") < workflow.index(
+        "Verify approved subscription budget"
+    )
+    assert workflow.index("Verify approved subscription budget") < workflow.index("Open temporary state firewall rule")
+    assert workflow.index("Query month-to-date subscription cost") < workflow.index("Query forecast and enforce cost boundary")
+    assert "secrets.WAOOAW_PLATFORM_WORKLOAD_CONFIGURATION" in workflow
+    assert "vars.WAOOAW_PLATFORM_WORKLOAD_CONFIGURATION" not in workflow
     assert "terraform state show \"$resource_address\"" in workflow
     assert "terraform import -input=false -lock-timeout=5m" in workflow
     assert "waooaw-platform-bootstrap" in workflow

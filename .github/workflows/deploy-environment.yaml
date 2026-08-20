@@ -45,7 +45,7 @@ jobs:
       TF_VAR_tfstate_storage_account: ${{ vars.WAOOAW_PLATFORM_TFSTATE_STORAGE_ACCOUNT }}
       TF_VAR_tfstate_container: ${{ vars.WAOOAW_PLATFORM_TFSTATE_CONTAINER }}
       TF_VAR_tfstate_storage_account_id: ${{ vars.WAOOAW_PLATFORM_TFSTATE_STORAGE_ACCOUNT_ID }}
-      WORKLOAD_CONFIGURATION: ${{ vars.WAOOAW_PLATFORM_WORKLOAD_CONFIGURATION }}
+      WORKLOAD_CONFIGURATION: ${{ secrets.WAOOAW_PLATFORM_WORKLOAD_CONFIGURATION }}
       SEEDER_IMAGE: mcr.microsoft.com/azure-cli@sha256:4faeb3c955086c3842d4f8cf0ff1d900ce3a1c68c6e6c6430c5e8a3cb882c5aa
       SEEDER_JOB: goal006-secret-seeder
     steps:
@@ -122,20 +122,77 @@ jobs:
           tenant-id: ${{ env.ARM_TENANT_ID }}
           subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
 
-      - name: Enforce subscription and budget boundary
+      - name: Verify bootstrap RBAC and required Azure providers
         run: |
           test "$ARM_SUBSCRIPTION_ID" = "2ed11839-6a0f-4eaa-bd94-44ca96ff5d84"
           test "$TFSTATE_RESOURCE_GROUP" = "waooaw-platform-rg"
           test "$TFSTATE_STORAGE_ACCOUNT" = "waooawp3tfstate2ed118"
           test "$TFSTATE_CONTAINER" = "tfstate"
           test "$TF_VAR_tfstate_storage_account_id" = "/subscriptions/2ed11839-6a0f-4eaa-bd94-44ca96ff5d84/resourceGroups/waooaw-platform-rg/providers/Microsoft.Storage/storageAccounts/waooawp3tfstate2ed118"
-          amount=$(az rest --method get \
-            --url "https://management.azure.com/subscriptions/$ARM_SUBSCRIPTION_ID/providers/Microsoft.Consumption/budgets/waooaw-phase3-monthly?api-version=2023-11-01" \
-            --query properties.amount -o tsv)
+          subscription_scope="/subscriptions/$ARM_SUBSCRIPTION_ID"
+          state_scope="$TF_VAR_tfstate_storage_account_id"
+          environment_scope="$subscription_scope/resourceGroups/waooaw-${{ inputs.environment }}-rg"
+          principal_id=$(az account get-access-token --resource https://management.azure.com/ --query accessToken -o tsv | python -c 'import base64, json, sys; payload=sys.stdin.read().strip().split(".")[1]; print(json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))["oid"])')
+          az role assignment list --assignee-object-id "$principal_id" --all --include-inherited > bootstrap-role-assignments.json
+          require_role() {
+            role=$1
+            role_scope=$2
+            jq -e --arg role "$role" --arg scope "$role_scope" \
+              'any(.[]; .roleDefinitionName == $role and (.scope | ascii_downcase) == ($scope | ascii_downcase))' \
+              bootstrap-role-assignments.json >/dev/null || {
+                echo "Bootstrap identity is missing '$role' at '$role_scope'" >&2
+                exit 1
+              }
+          }
+          require_role "Cost Management Reader" "$subscription_scope"
+          require_role "Storage Account Contributor" "$state_scope"
+          require_role "Storage Blob Data Contributor" "$state_scope"
+          require_role "Role Based Access Control Administrator" "$state_scope"
+          require_role "Contributor" "$environment_scope"
+          require_role "Role Based Access Control Administrator" "$environment_scope"
+          jq -e 'all(.[]; .roleDefinitionName != "Owner")' bootstrap-role-assignments.json >/dev/null || {
+            echo "Bootstrap identity must not have Owner" >&2
+            exit 1
+          }
+          for namespace in Microsoft.App Microsoft.Authorization Microsoft.KeyVault Microsoft.ManagedIdentity Microsoft.Network Microsoft.Resources Microsoft.Storage; do
+            state=$(az provider show --namespace "$namespace" --query registrationState -o tsv)
+            test "$state" = "Registered" || {
+              echo "$namespace must be registered before Demo deployment (current state: $state)" >&2
+              exit 1
+            }
+          done
+
+      - name: Verify approved subscription budget
+        run: |
+          for attempt in $(seq 1 5); do
+            if az rest --method get \
+              --url "https://management.azure.com/subscriptions/$ARM_SUBSCRIPTION_ID/providers/Microsoft.Consumption/budgets/waooaw-phase3-monthly?api-version=2023-11-01" \
+              > subscription-budget.json; then
+              break
+            fi
+            test "$attempt" != 5
+            sleep $((attempt * 5))
+          done
+          amount=$(jq -r '.properties.amount' subscription-budget.json)
           test "$amount" = "10000.0" || test "$amount" = "10000"
+
+      - name: Query month-to-date subscription cost
+        run: |
           scope="/subscriptions/$ARM_SUBSCRIPTION_ID"
           query='{"type":"ActualCost","timeframe":"MonthToDate","dataset":{"granularity":"None","aggregation":{"totalCost":{"name":"PreTaxCost","function":"Sum"}}}}'
-          az rest --method post --url "https://management.azure.com${scope}/providers/Microsoft.CostManagement/query?api-version=2023-11-01" --body "$query" > actual-cost.json
+          for attempt in $(seq 1 5); do
+            if az rest --method post \
+              --url "https://management.azure.com${scope}/providers/Microsoft.CostManagement/query?api-version=2023-11-01" \
+              --body "$query" > actual-cost.json; then
+              break
+            fi
+            test "$attempt" != 5
+            sleep $((attempt * 5))
+          done
+
+      - name: Query forecast and enforce cost boundary
+        run: |
+          scope="/subscriptions/$ARM_SUBSCRIPTION_ID"
           month_start=$(date -u +%Y-%m-01T00:00:00Z)
           month_end=$(date -u -d "$(date -u -d "$month_start +1 month" +%Y-%m-%dT00:00:00Z) -1 second" +%Y-%m-%dT%H:%M:%SZ)
           forecast=$(jq -cn --arg from "$month_start" --arg to "$month_end" '{
@@ -146,21 +203,19 @@ jobs:
             includeFreshPartialCost: true,
             dataset: {granularity: "None", aggregation: {totalCost: {name: "PreTaxCost", function: "Sum"}}}
           }')
-          az rest --method post --url "https://management.azure.com${scope}/providers/Microsoft.CostManagement/forecast?api-version=2023-11-01" --body "$forecast" > forecast-cost.json
+          for attempt in $(seq 1 5); do
+            if az rest --method post \
+              --url "https://management.azure.com${scope}/providers/Microsoft.CostManagement/forecast?api-version=2023-11-01" \
+              --body "$forecast" > forecast-cost.json; then
+              break
+            fi
+            test "$attempt" != 5
+            sleep $((attempt * 5))
+          done
           python scripts/goal006_cost_gate.py \
             --actual actual-cost.json \
             --forecast forecast-cost.json \
             --configuration workload-configuration.json
-
-      - name: Verify required Azure providers
-        run: |
-          for namespace in Microsoft.App Microsoft.Authorization Microsoft.KeyVault Microsoft.ManagedIdentity Microsoft.Network Microsoft.Resources Microsoft.Storage; do
-            state=$(az provider show --namespace "$namespace" --query registrationState -o tsv)
-            test "$state" = "Registered" || {
-              echo "$namespace must be registered before Demo deployment (current state: $state)" >&2
-              exit 1
-            }
-          done
 
       - name: Open temporary state firewall rule
         run: |
@@ -339,6 +394,10 @@ jobs:
           name: goal006-${{ inputs.environment }}-${{ inputs.apply && 'apply' || 'plan' }}-${{ inputs.release_run_id }}
           path: |
             registry-release-manifest.json
+            bootstrap-role-assignments.json
+            subscription-budget.json
+            actual-cost.json
+            forecast-cost.json
             secret-seeder-execution.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation.tfplan
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload.tfplan
