@@ -6,6 +6,7 @@ from copy import deepcopy
 
 from scripts.goal006_bootstrap_oidc import (
     COST_ROLE,
+    STACK_ROLE,
     STATE_MANAGEMENT_ROLE,
     STATE_RBAC_ROLE,
     STATE_ROLE,
@@ -20,6 +21,7 @@ ENVIRONMENT_SCOPES = {
     f"{SUBSCRIPTION_SCOPE}/resourceGroups/waooaw-uat-rg",
     f"{SUBSCRIPTION_SCOPE}/resourceGroups/waooaw-prod-rg",
 }
+RUNNER_SCOPE = f"{SUBSCRIPTION_SCOPE}/resourceGroups/waooaw-demo-runner-rg"
 SUBJECTS = {
     "repo:dlai-sd/waooaw-platform:environment:demo",
     "repo:dlai-sd/waooaw-platform:environment:uat",
@@ -27,10 +29,12 @@ SUBJECTS = {
 }
 ROLES = {
     (COST_ROLE, SUBSCRIPTION_SCOPE),
+    (STACK_ROLE, SUBSCRIPTION_SCOPE),
     (STATE_MANAGEMENT_ROLE, STATE_SCOPE),
     (STATE_ROLE, STATE_SCOPE),
     (STATE_RBAC_ROLE, STATE_SCOPE),
     *{(role, scope) for scope in ENVIRONMENT_SCOPES for role in ("Contributor", STATE_RBAC_ROLE)},
+    *{(role, RUNNER_SCOPE) for role in ("Contributor", STATE_RBAC_ROLE)},
 }
 
 
@@ -69,6 +73,7 @@ def validate(
         subscription_scope=SUBSCRIPTION_SCOPE,
         state_scope=STATE_SCOPE,
         environment_scopes=ENVIRONMENT_SCOPES,
+        runner_scope=RUNNER_SCOPE,
     )
 
 
@@ -113,6 +118,21 @@ def test_missing_cost_access_fails_closed() -> None:
     assert validate(service_principal, credentials, federation, assignments) == [
         "ROLE_ASSIGNMENT_SET_MISMATCH",
         "SUBSCRIPTION_COST_ACCESS_MISSING",
+    ]
+
+
+def test_missing_runner_bootstrap_authority_fails_closed() -> None:
+    service_principal, credentials, federation, assignments = deepcopy(evidence())
+    assignments = [
+        assignment
+        for assignment in assignments
+        if assignment["roleDefinitionName"] != STACK_ROLE and assignment["scope"] != RUNNER_SCOPE
+    ]
+    assert validate(service_principal, credentials, federation, assignments) == [
+        "ROLE_ASSIGNMENT_SET_MISMATCH",
+        "RUNNER_CONTRIBUTOR_ACCESS_MISSING",
+        "RUNNER_RBAC_ACCESS_MISSING",
+        "SUBSCRIPTION_STACK_ACCESS_MISSING",
     ]
 
 

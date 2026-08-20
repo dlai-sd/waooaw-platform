@@ -42,11 +42,17 @@ REQUIRED_TEMPLATE_TERMS = {
     "deny-inbound",
     "deny-other-egress",
 }
-REQUIRED_SUBSCRIPTION_TERMS = {
+REQUIRED_PREREQUISITE_TERMS = {
     "Microsoft.Consumption/budgets",
     "Microsoft.KeyVault/vaults/secrets/setSecret/action",
     "Microsoft.KeyVault/vaults/secrets/delete",
     "goal006-cumulative-monthly",
+    "adb29209-aa1d-457b-a786-c913953d2891",
+    "prerequisites-rg.bicep",
+}
+REQUIRED_SUBSCRIPTION_TERMS = {
+    "existing =",
+    "runnerControlPlane",
 }
 
 
@@ -102,8 +108,25 @@ def validate_bootstrap_manifest(repository_root: Path, manifest_path: Path) -> l
         violations.append("STATE_STORAGE_ID_INVALID")
     if parameters.get("bootstrapPrincipalId") != EXPECTED_BOOTSTRAP_PRINCIPAL:
         violations.append("BOOTSTRAP_PRINCIPAL_INVALID")
-    if parameters.get("monthlyBudgetInr") != 10000:
+    prerequisite_parameter_path = (
+        repository_root
+        / "infrastructure/deployment-stacks/goal006-runner/demo.prerequisites.parameters.json"
+    )
+    prerequisite_parameters_document = json.loads(
+        prerequisite_parameter_path.read_text(encoding="utf-8")
+    )
+    prerequisite_parameters = {
+        key: item.get("value")
+        for key, item in prerequisite_parameters_document.get("parameters", {}).items()
+    }
+    if prerequisite_parameters.get("monthlyBudgetInr") != 10000:
         violations.append("MONTHLY_BUDGET_INVALID")
+    if prerequisite_parameters.get("runnerResourceGroupName") != parameters.get(
+        "runnerResourceGroupName"
+    ):
+        violations.append("PREREQUISITE_RESOURCE_GROUP_MISMATCH")
+    if prerequisite_parameters.get("bootstrapPrincipalId") != EXPECTED_BOOTSTRAP_PRINCIPAL:
+        violations.append("PREREQUISITE_PRINCIPAL_INVALID")
     for name in ("runnerImage", "reconcilerImage"):
         if not IMMUTABLE_IMAGE.fullmatch(str(parameters.get(name, ""))):
             violations.append(f"IMAGE_NOT_IMMUTABLE:{name}")
@@ -135,6 +158,12 @@ def validate_bootstrap_manifest(repository_root: Path, manifest_path: Path) -> l
     for term in sorted(REQUIRED_SUBSCRIPTION_TERMS):
         if term not in subscription_text:
             violations.append(f"SUBSCRIPTION_CONTRACT_MISSING:{term}")
+    prerequisite_text = (
+        repository_root / "infrastructure/deployment-stacks/goal006-runner/prerequisites.bicep"
+    ).read_text(encoding="utf-8")
+    for term in sorted(REQUIRED_PREREQUISITE_TERMS):
+        if term not in prerequisite_text:
+            violations.append(f"PREREQUISITE_CONTRACT_MISSING:{term}")
     if "Key Vault Crypto User" in template_text or "Key Vault Secrets Officer" in template_text:
         violations.append("PREMATURE_OR_BROAD_KEY_VAULT_ROLE")
     return sorted(set(violations))

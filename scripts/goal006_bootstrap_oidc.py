@@ -12,6 +12,7 @@ from typing import Any
 OIDC_ISSUER = "https://token.actions.githubusercontent.com"
 OIDC_AUDIENCE = "api://AzureADTokenExchange"
 COST_ROLE = "Cost Management Reader"
+STACK_ROLE = "Azure Deployment Stack Owner"
 ENVIRONMENT_ROLES = {"Contributor", "Role Based Access Control Administrator"}
 STATE_MANAGEMENT_ROLE = "Storage Account Contributor"
 STATE_ROLE = "Storage Blob Data Contributor"
@@ -35,14 +36,17 @@ def validate_bootstrap_oidc(
     subscription_scope: str,
     state_scope: str,
     environment_scopes: set[str],
+    runner_scope: str,
 ) -> list[str]:
     violations: list[str] = []
     normalized_roles = {(role, scope.rstrip("/")) for role, scope in expected_roles}
     normalized_subscription_scope = subscription_scope.rstrip("/")
     normalized_state_scope = state_scope.rstrip("/")
     normalized_environment_scopes = {scope.rstrip("/") for scope in environment_scopes}
+    normalized_runner_scope = runner_scope.rstrip("/")
     required_roles = {
         (COST_ROLE, normalized_subscription_scope),
+        (STACK_ROLE, normalized_subscription_scope),
         (STATE_MANAGEMENT_ROLE, normalized_state_scope),
         (STATE_ROLE, normalized_state_scope),
         (STATE_RBAC_ROLE, normalized_state_scope),
@@ -51,6 +55,7 @@ def validate_bootstrap_oidc(
             for scope in normalized_environment_scopes
             for role in ENVIRONMENT_ROLES
         },
+        *{(role, normalized_runner_scope) for role in ENVIRONMENT_ROLES},
     }
 
     if service_principal.get("id") != principal_id:
@@ -88,6 +93,8 @@ def validate_bootstrap_oidc(
         violations.append("EXPECTED_ROLE_TOPOLOGY_MISMATCH")
     if (COST_ROLE, normalized_subscription_scope) not in observed_roles:
         violations.append("SUBSCRIPTION_COST_ACCESS_MISSING")
+    if (STACK_ROLE, normalized_subscription_scope) not in observed_roles:
+        violations.append("SUBSCRIPTION_STACK_ACCESS_MISSING")
     if (STATE_MANAGEMENT_ROLE, normalized_state_scope) not in observed_roles:
         violations.append("STATE_MANAGEMENT_ACCESS_MISSING")
     if (STATE_ROLE, normalized_state_scope) not in observed_roles:
@@ -98,6 +105,10 @@ def validate_bootstrap_oidc(
         violations.append("ENVIRONMENT_CONTRIBUTOR_ACCESS_MISSING")
     if any((STATE_RBAC_ROLE, scope) not in observed_roles for scope in normalized_environment_scopes):
         violations.append("ENVIRONMENT_RBAC_ACCESS_MISSING")
+    if ("Contributor", normalized_runner_scope) not in observed_roles:
+        violations.append("RUNNER_CONTRIBUTOR_ACCESS_MISSING")
+    if (STATE_RBAC_ROLE, normalized_runner_scope) not in observed_roles:
+        violations.append("RUNNER_RBAC_ACCESS_MISSING")
 
     return sorted(set(violations))
 
@@ -114,6 +125,7 @@ def main() -> int:
     parser.add_argument("--subscription-scope", required=True)
     parser.add_argument("--state-scope", required=True)
     parser.add_argument("--environment-scope", action="append", required=True)
+    parser.add_argument("--runner-scope", required=True)
     args = parser.parse_args()
     violations = validate_bootstrap_oidc(
         json.loads(args.service_principal.read_text(encoding="utf-8")),
@@ -126,6 +138,7 @@ def main() -> int:
         subscription_scope=args.subscription_scope,
         state_scope=args.state_scope,
         environment_scopes=set(args.environment_scope),
+        runner_scope=args.runner_scope,
     )
     print(json.dumps({"passed": not violations, "violations": violations}, sort_keys=True))
     return 0 if not violations else 1
