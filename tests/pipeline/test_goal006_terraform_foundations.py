@@ -399,8 +399,21 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "WAOOAW_PLATFORM_" not in workflow
     assert "CONFIG_CONTAINER: deployment-config" in workflow
     assert "CONFIG_BLOB: demo/workload-configuration.json" in workflow
-    assert "az storage blob download" in workflow
-    assert '--auth-mode login --overwrite --output none' in workflow
+    assert "scripts/goal006_storage_download.py" in workflow
+    assert "configuration-download-attempts.jsonl" in workflow
+    assert "Capture configuration storage diagnostics" in workflow
+    assert "if: failure() && steps.configuration.outcome == 'failure'" in workflow
+    assert "configuration-storage-diagnostics.json" in workflow
+    assert "configuration-container-diagnostics.json" in workflow
+    assert "runner_rule_present" in workflow
+    assert "id: open_state_firewall" in workflow
+    assert 'ipaddress.ip_address(sys.argv[1])' in workflow
+    assert 'address.version != 4' in workflow
+    assert 'contains(networkRuleSet.ipRules[].value, \'$RUNNER_IP\')' in workflow
+    assert 'status: "REMOVED"' in workflow
+    assert 'status: "FAILED"' in workflow
+    assert "firewall-cleanup.json" in workflow
+    assert workflow.index("Close state firewall rule") < workflow.index("Upload plans and evidence")
     assert 'manifest_digest="sha256:$(sha256sum registry-release-manifest.json' in workflow
     assert "'.manifest_digest = $manifest_digest'" in workflow
     assert "terraform state show \"$resource_address\"" in workflow
@@ -410,7 +423,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert workflow.index("scripts/goal006_execution_gate.py") < workflow.index("terraform import")
     assert "terraform import -input=false -lock-timeout=5m" in workflow
     assert "waooaw-platform-bootstrap" in workflow
-    assert "az storage container show" in workflow
+    assert "az storage container show" not in workflow
     assert workflow.count('gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main"') == 3
     assert workflow.count("terraform apply -input=false -auto-approve") == 2
     assert "mcr.microsoft.com/azure-cli@sha256:" in workflow

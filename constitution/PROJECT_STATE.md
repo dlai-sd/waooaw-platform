@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 117
+**State Revision:** 118
 **Last Updated:** 2026-08-20
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -20,8 +20,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-074 - GOAL-006 Enterprise Delivery Addendum |
-| Latest merge | PR #298 merged to `main` as `73f9ad730514524801ff41ec72b974418ae4c220` |
-| Active delivery | WC-076 P3-EX07 Founder-only Demo deployment under issue #299; UAT prohibited |
+| Latest merge | PR #308 merged to `main` as `390790694bdf4baefa64e1935bf918facbf2050e` |
+| Active delivery | WC-076 incremental Demo plan readiness repair; UAT prohibited |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 
@@ -31,11 +31,14 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Azure read-only preflight | DONE - tenant, subscription, budget, state and providers verified |
 | WC-076 P3-EX01 through P3-EX06 | DONE - issue #296 closed after protected environments, OIDC and signed exact-six release evidence |
 | INST-010 GOA / Acceptance | VALID - GOA-GOAL-006-INST-010-03 and later ACC-GOAL-006-INST-010-03 recorded on PR #294 |
-| Trusted-main exact-six release | DONE - run `32329838734`, commit `73f9ad7`, artifact `9392723229`; reference tuple becomes stale after repair merge |
-| Demo deployment repair | IMPLEMENTED - commit `93b7bd7`; Founder-only dispatch, private vault seeder, generated verifier handoff, /32 ingress and workload rollback |
-| Local validation | PASS - 37 focused tests, actionlint, Terraform fmt and both Demo roots against Terraform 1.9.8 / AzureRM 4.14.0 |
-| Independent review | CLEAR - no blocking INST-007 or INST-015 findings; UAT/Production path remains sealed |
-| Demo deploy / verify | PENDING - repair PR, Founder merge and fresh trusted-main signed tuple required before Azure mutation |
+| Azure topology and CI prechecks | DONE - PR #307 merged as `7a74c14`; EA/SA review R-140 accepted the incremental deployment topology |
+| Incremental OIDC plan readiness | DONE - PR #308 merged as `3907906`; plan mode rejects state mutation and reconciliation is manual Demo-only plan |
+| Trusted-main exact-six release | DONE - run `32366719992`, commit `3907906`, artifact `goal006-exact-six-release-390790694bdf4baefa64e1935bf918facbf2050e` |
+| Real Demo OIDC plan | BLOCKED - run `32367292746` stopped before Terraform when exact configuration Blob access returned Azure network-rule denial 12 seconds after rule creation |
+| Configuration readiness repair | APPROVED LOCALLY - exact-path bounded retry, permanent-error fail-fast, sanitized diagnostics, strict runner IPv4 and verified firewall cleanup |
+| Local validation | PASS - 42 focused tests, Ruff, actionlint and editor diagnostics |
+| Independent review | CLEAR - second-pass review APPROVE with no blockers; UAT/Production path remains sealed |
+| Demo deploy / verify | PENDING - focused repair PR, Founder merge, fresh trusted-main signed tuple and Founder-dispatched plan required |
 | Founder Demo acceptance | PENDING - P3-EX08 remains a separate control point after the verified Azure URL is returned |
 | UAT deploy / verify / accept | PROHIBITED - no token, plan, apply or environment request before explicit Founder Demo acceptance |
 | Production | PLAN ONLY - deployment, traffic and final acceptance remain Founder-reserved |
@@ -44,8 +47,9 @@ or evidence artifact. Completed history remains in git and the archive index bel
 
 - **Authority:** Founder authorization on issue #299 permits P3-EX07 Demo mutation and expenditure only; Founder-only Azure URL review is authorized.
 - **Execution contract:** `work-contracts/WC-076-goal006-phase3-execution.md`; backlog P3-EX01 through P3-EX11.
-- **Cloud state:** no Demo/UAT/Production workload resources have been created; automatic promotion is replaced by an explicit rejection gate.
-- **Release rule:** merging the deployment repair changes `main`; P3-EX07 must use the resulting fresh trusted-main signed tuple, never the pre-repair tuple.
+- **Cloud state:** no Demo/UAT/Production workload resources have been created; failed run `32367292746` made only the bounded temporary state-account firewall mutation and cleanup removed it.
+- **RCA boundary:** the GitHub OIDC principal has Blob data-plane RBAC and the failed run reached the exact Blob 12 seconds after the rule update; local propagation testing is authorization-inconclusive because the local user lacks Blob data-plane RBAC.
+- **Release rule:** merging the configuration-readiness repair changes `main`; the next plan must use its fresh trusted-main signed tuple, never the current `3907906` tuple.
 - **Boundary:** no UAT, custom DNS, customer traffic, Production apply, Platform Operations activation, final Goal acceptance, self-approval or self-merge.
 
 ## Authorization Boundary
@@ -59,15 +63,15 @@ progression.
 
 ## Current Blockers
 
-P3-EX07 Azure execution is blocked until the repair PR passes CI, the Founder merges it, and trusted
-`main` produces a fresh signed exact-six tuple containing the repair. UAT remains constitutionally
-blocked until the Founder explicitly accepts the resulting Demo deployment.
+P3-EX07 Azure planning is blocked until the configuration-readiness PR passes CI, the Founder merges
+it, and trusted `main` produces a fresh signed exact-six tuple containing the repair. UAT remains
+constitutionally blocked until the Founder explicitly accepts the resulting Demo deployment.
 
 ## Next Authorized Action
 
-Push commit `93b7bd7` and this checkpoint, open the issue #299 repair PR, pass CI and obtain Founder
-merge. Then use the fresh trusted-main signed tuple to manually dispatch the Founder-only Demo
-workflow, verify exact-six live inventory and return the Azure-generated Web URL. Do not initiate UAT.
+Commit and push the configuration-readiness repair with this checkpoint, open the focused PR, pass CI
+and obtain Founder merge. Then use the fresh trusted-main signed tuple to manually dispatch the
+Founder-only Demo workflow in plan mode. Do not apply and do not initiate UAT.
 
 ## History And Evidence
 
