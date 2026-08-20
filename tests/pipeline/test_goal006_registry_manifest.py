@@ -73,6 +73,28 @@ def test_direct_spdx_document_still_fails_closed(tmp_path: Path, payload: str) -
         create_registry_manifest(tmp_path, tmp_path, "a" * 40, "12345")
 
 
+def test_direct_single_platform_slsa_document_is_accepted(tmp_path: Path) -> None:
+    write_digests(tmp_path)
+    write_evidence(tmp_path)
+    (tmp_path / "web.provenance.json").write_text(
+        '{"SLSA":{"buildDefinition":{"buildType":"https://mobyproject.org/buildkit@v1"},'
+        '"runDetails":{"builder":{"id":"https://github.com/dlai-sd/waooaw-platform/actions/'
+        'runs/12345"}}}}\n',
+        encoding="utf-8",
+    )
+    manifest = create_registry_manifest(tmp_path, tmp_path, "a" * 40, "12345")
+    assert validate_registry_manifest(manifest, evidence_directory=tmp_path) == []
+
+
+@pytest.mark.parametrize("payload", ["{}", '{"unrelated":true}', '{"SLSA":{}}'])
+def test_direct_slsa_document_still_fails_closed(tmp_path: Path, payload: str) -> None:
+    write_digests(tmp_path)
+    write_evidence(tmp_path)
+    (tmp_path / "web.provenance.json").write_text(payload, encoding="utf-8")
+    with pytest.raises(ValueError, match="invalid registry SLSA evidence"):
+        create_registry_manifest(tmp_path, tmp_path, "a" * 40, "12345")
+
+
 def test_missing_or_additional_digest_file_is_rejected(tmp_path: Path) -> None:
     write_digests(tmp_path)
     write_evidence(tmp_path)

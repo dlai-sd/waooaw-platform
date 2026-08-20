@@ -61,10 +61,11 @@ def _validate_sbom(path: Path) -> None:
 
 def _validate_provenance(path: Path, run_id: str) -> None:
     document = _read_json(path)
-    expected_builder = f"https://github.com/dlai-sd/waooaw-platform/actions/runs/{run_id}/"
+    expected_builder = f"https://github.com/dlai-sd/waooaw-platform/actions/runs/{run_id}"
     if not isinstance(document, Mapping) or not document:
         raise ValueError(f"invalid registry SLSA evidence: {path.name}")
-    for platform, attestation in document.items():
+    attestations = {"linux/unknown": document} if "SLSA" in document else document
+    for platform, attestation in attestations.items():
         slsa = attestation.get("SLSA") if isinstance(attestation, Mapping) else None
         build_type = slsa.get("buildDefinition", {}).get("buildType") if isinstance(slsa, Mapping) else None
         builder_id = slsa.get("runDetails", {}).get("builder", {}).get("id") if isinstance(slsa, Mapping) else None
@@ -73,7 +74,7 @@ def _validate_provenance(path: Path, run_id: str) -> None:
             or not isinstance(build_type, str)
             or "buildkit" not in build_type.lower()
             or not isinstance(builder_id, str)
-            or not builder_id.startswith(expected_builder)
+            or (builder_id != expected_builder and not builder_id.startswith(f"{expected_builder}/"))
         ):
             raise ValueError(f"invalid registry SLSA evidence: {path.name}")
 
