@@ -1,0 +1,110 @@
+name: GOAL-006 Bootstrap Demo Runner
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Reconcile the inactive Demo runner Deployment Stack
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: goal006-demo-runner-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    environment: demo
+    env:
+      ARM_CLIENT_ID: 60c07330-4cc1-4e12-95a2-adc0966f1941
+      ARM_TENANT_ID: 0471534c-1bbe-40ab-ae65-3f721b62582c
+      ARM_SUBSCRIPTION_ID: 2ed11839-6a0f-4eaa-bd94-44ca96ff5d84
+      STACK_NAME: goal006-demo-private-runner
+      STACK_ROOT: infrastructure/deployment-stacks/goal006-runner
+    steps:
+      - name: Require trusted current main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$GITHUB_REF" = "refs/heads/main"
+          latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          test "$GITHUB_SHA" = "$latest_main_sha"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Verify immutable bootstrap manifest
+        run: |
+          python scripts/goal006_runner_bootstrap.py \
+            --manifest "$STACK_ROOT/bootstrap-manifest.json"
+          az bicep build --file "$STACK_ROOT/subscription.bicep" --stdout >/dev/null
+
+      - name: Azure login with constrained bootstrap OIDC identity
+        uses: azure/login@v2
+        with:
+          client-id: ${{ env.ARM_CLIENT_ID }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
+      - name: Enforce cumulative cost and provider preconditions
+        run: |
+          test "$(az account show --query id -o tsv)" = "$ARM_SUBSCRIPTION_ID"
+          for namespace in Microsoft.App Microsoft.Authorization Microsoft.Consumption Microsoft.KeyVault Microsoft.ManagedIdentity Microsoft.Network Microsoft.OperationalInsights Microsoft.Resources; do
+            test "$(az provider show --namespace "$namespace" --query registrationState -o tsv)" = "Registered"
+          done
+          budget=$(az rest --method get \
+            --url "https://management.azure.com/subscriptions/$ARM_SUBSCRIPTION_ID/providers/Microsoft.Consumption/budgets/waooaw-phase3-monthly?api-version=2023-11-01")
+          jq -e '.properties.amount == 10000' <<< "$budget" >/dev/null
+          scope="/subscriptions/$ARM_SUBSCRIPTION_ID"
+          query='{"type":"ActualCost","timeframe":"MonthToDate","dataset":{"granularity":"None","aggregation":{"totalCost":{"name":"PreTaxCost","function":"Sum"}}}}'
+          az rest --method post \
+            --url "https://management.azure.com${scope}/providers/Microsoft.CostManagement/query?api-version=2023-11-01" \
+            --body "$query" > actual-cost.json
+          jq -e '.properties.columns and .properties.rows' actual-cost.json >/dev/null
+
+      - name: Validate and preview inactive stack
+        run: |
+          az stack sub validate \
+            --name "$STACK_NAME" \
+            --location centralindia \
+            --template-file "$STACK_ROOT/subscription.bicep" \
+            --parameters "@$STACK_ROOT/demo.parameters.json" \
+            --deny-settings-mode denyDelete \
+            --action-on-unmanage detachAll
+          az deployment sub what-if \
+            --name "$STACK_NAME-what-if" \
+            --location centralindia \
+            --template-file "$STACK_ROOT/subscription.bicep" \
+            --parameters "@$STACK_ROOT/demo.parameters.json" \
+            --result-format FullResourcePayloads > runner-stack-what-if.json
+
+      - name: Reconcile inactive stack
+        if: inputs.apply
+        run: |
+          az stack sub create \
+            --name "$STACK_NAME" \
+            --location centralindia \
+            --template-file "$STACK_ROOT/subscription.bicep" \
+            --parameters "@$STACK_ROOT/demo.parameters.json" \
+            --deny-settings-mode denyDelete \
+            --action-on-unmanage detachAll \
+            --yes
+          test "$(az stack sub show --name "$STACK_NAME" --query provisioningState -o tsv)" = "Succeeded"
+
+      - name: Retain token-free bootstrap evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: goal006-demo-runner-bootstrap-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            actual-cost.json
+            runner-stack-what-if.json
+          retention-days: 90
+          if-no-files-found: warn
