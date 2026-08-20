@@ -36,11 +36,13 @@ permissions:
 jobs:
   generate-report:
     name: Generate Platform Delivery Matrix
+    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main
 
       - name: Generate delivery matrix report
         id: report
