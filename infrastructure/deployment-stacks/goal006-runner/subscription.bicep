@@ -12,102 +12,22 @@ param stateStorageAccountId string
 param bootstrapPrincipalId string
 param runnerImage string
 param reconcilerImage string
-param founderAlertEmail string
-param budgetStartDate string
 param runnerVnetAddressPrefix string
 param runnerSubnetAddressPrefix string
 param privateEndpointSubnetAddressPrefix string
-param monthlyBudgetInr int = 10000
-
-var commonTags = {
-  environment: environment
-  goal: 'GOAL-006'
-  'managed-by': 'azure-deployment-stacks'
-  'runner-activation': activationState
-}
 var bootstrapSecretWriterRoleName = guid(subscription().id, 'goal006-bootstrap-secret-writer')
 var cleanupSecretDeleterRoleName = guid(subscription().id, 'goal006-cleanup-secret-deleter')
 
-resource runnerResourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' = {
+resource runnerResourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' existing = {
   name: runnerResourceGroupName
-  location: location
-  tags: commonTags
 }
 
-resource bootstrapSecretWriterRole 'Microsoft.Authorization/roleDefinitions@2022-04-01' = {
+resource bootstrapSecretWriterRole 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
   name: bootstrapSecretWriterRoleName
-  properties: {
-    roleName: 'GOAL-006 Bootstrap Secret Writer'
-    description: 'Set the short-lived environment runner registration secret without read, list, or delete authority.'
-    type: 'CustomRole'
-    permissions: [
-      {
-        actions: []
-        notActions: []
-        dataActions: ['Microsoft.KeyVault/vaults/secrets/setSecret/action']
-        notDataActions: []
-      }
-    ]
-    assignableScopes: [runnerResourceGroup.id]
-  }
 }
 
-resource cleanupSecretDeleterRole 'Microsoft.Authorization/roleDefinitions@2022-04-01' = {
+resource cleanupSecretDeleterRole 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
   name: cleanupSecretDeleterRoleName
-  properties: {
-    roleName: 'GOAL-006 Cleanup Secret Deleter'
-    description: 'Delete the short-lived environment runner registration secret without read, list, or write authority.'
-    type: 'CustomRole'
-    permissions: [
-      {
-        actions: []
-        notActions: []
-        dataActions: ['Microsoft.KeyVault/vaults/secrets/delete']
-        notDataActions: []
-      }
-    ]
-    assignableScopes: [runnerResourceGroup.id]
-  }
-}
-
-resource monthlyBudget 'Microsoft.Consumption/budgets@2023-11-01' = {
-  name: 'goal006-cumulative-monthly'
-  properties: {
-    amount: monthlyBudgetInr
-    category: 'Cost'
-    timeGrain: 'Monthly'
-    timePeriod: {
-      startDate: budgetStartDate
-      endDate: '2030-08-01T00:00:00Z'
-    }
-    filter: {
-      tags: {
-        name: 'goal'
-        operator: 'In'
-        values: ['GOAL-006']
-      }
-    }
-    notifications: {
-      Actual_GreaterThan_50_Percent: {
-        enabled: true
-        operator: 'GreaterThan'
-        threshold: 50
-        contactEmails: [founderAlertEmail]
-      }
-      Actual_GreaterThan_80_Percent: {
-        enabled: true
-        operator: 'GreaterThan'
-        threshold: 80
-        contactEmails: [founderAlertEmail]
-      }
-      Actual_GreaterThan_100_Percent: {
-        enabled: true
-        operator: 'GreaterThan'
-        threshold: 100
-        contactEmails: [founderAlertEmail]
-      }
-    }
-  }
 }
 
 module runnerControlPlane 'main.bicep' = {

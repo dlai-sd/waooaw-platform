@@ -19,7 +19,10 @@ def _write_manifest(tmp_path: Path, *, parameter_mutator=None) -> tuple[Path, Pa
     for relative_path in (
         "infrastructure/deployment-stacks/goal006-runner/main.bicep",
         "infrastructure/deployment-stacks/goal006-runner/subscription.bicep",
+        "infrastructure/deployment-stacks/goal006-runner/prerequisites.bicep",
+        "infrastructure/deployment-stacks/goal006-runner/prerequisites-rg.bicep",
         "infrastructure/deployment-stacks/goal006-runner/demo.parameters.json",
+        "infrastructure/deployment-stacks/goal006-runner/demo.prerequisites.parameters.json",
         "infrastructure/deployment-stacks/goal006-runner/cost-estimate.json",
         "architecture/reference/pipeline/github-runner-app-manifest.json",
     ):

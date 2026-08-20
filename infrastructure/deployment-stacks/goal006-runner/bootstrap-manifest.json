@@ -6,8 +6,11 @@
   "files": {
     "architecture/reference/pipeline/github-runner-app-manifest.json": "cfcb9d66abc259123dd7ef3a57a8d71af4e3a0d36e146f2f11dea6abd0d85700",
     "infrastructure/deployment-stacks/goal006-runner/cost-estimate.json": "207bf61e5903f95cf8e8d59761fc880797881d75f916e68f608d30a9cef48a0e",
-    "infrastructure/deployment-stacks/goal006-runner/demo.parameters.json": "5240e51dc66d724ccae832456dfe5716703e5178d3bcc95b8d326ea888d5fed8",
+    "infrastructure/deployment-stacks/goal006-runner/demo.parameters.json": "f28db23728635c2d2db80d87d66038844c7815c3671d8bc3c6e75154eb33285c",
+    "infrastructure/deployment-stacks/goal006-runner/demo.prerequisites.parameters.json": "386a1c2bca52beb285d8646af62eb56f82891ff52c0ac1dd7ec74fc5d688e4aa",
     "infrastructure/deployment-stacks/goal006-runner/main.bicep": "005de5bb2f5437bf7c8a2bb7a5bd6a37634d004a36980322c031caf11a70d45b",
-    "infrastructure/deployment-stacks/goal006-runner/subscription.bicep": "29109f1090bfd7cf7f7035bb0f681a2524edb7527641a5079f2b7e52f76dca3d"
+    "infrastructure/deployment-stacks/goal006-runner/prerequisites-rg.bicep": "29d9c15d18de45b511af18b52ea209d3233d600c71a7e2ba00a8b3aeaea5e081",
+    "infrastructure/deployment-stacks/goal006-runner/prerequisites.bicep": "8bbe05cb58e8d341342a0450d2c9241ef1eb67f5c3746af071449d4820a61f8f",
+    "infrastructure/deployment-stacks/goal006-runner/subscription.bicep": "92efba64113880ae9c66cca8e145e63c182b295c66acac5ba271f0242b22b9e4"
   }
 }
