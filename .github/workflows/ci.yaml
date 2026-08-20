@@ -174,12 +174,43 @@ jobs:
 
       - name: Attest published image digest
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        id: image-attestation
+        id: image-attestation-primary
+        continue-on-error: true
         uses: actions/attest-build-provenance@v2
         with:
           subject-name: ${{ env.REGISTRY_PREFIX }}/${{ matrix.service.name }}
           subject-digest: ${{ steps.image.outputs.digest }}
           push-to-registry: true
+
+      - name: Back off after transient attestation failure
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.image-attestation-primary.outcome == 'failure'
+        run: sleep 10
+
+      - name: Retry published image attestation
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.image-attestation-primary.outcome == 'failure'
+        id: image-attestation-retry
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY_PREFIX }}/${{ matrix.service.name }}
+          subject-digest: ${{ steps.image.outputs.digest }}
+          push-to-registry: true
+
+      - name: Select successful image attestation
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: image-attestation
+        env:
+          PRIMARY_BUNDLE: ${{ steps.image-attestation-primary.outputs.bundle-path }}
+          RETRY_BUNDLE: ${{ steps.image-attestation-retry.outputs.bundle-path }}
+        run: |
+          if test -n "$PRIMARY_BUNDLE" && test -f "$PRIMARY_BUNDLE"; then
+            bundle_path=$PRIMARY_BUNDLE
+          elif test -n "$RETRY_BUNDLE" && test -f "$RETRY_BUNDLE"; then
+            bundle_path=$RETRY_BUNDLE
+          else
+            echo "No successful image attestation bundle was produced" >&2
+            exit 1
+          fi
+          echo "bundle-path=$bundle_path" >> "$GITHUB_OUTPUT"
 
       - name: Collect registry attestation evidence
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
