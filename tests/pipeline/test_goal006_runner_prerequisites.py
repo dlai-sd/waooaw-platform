@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -104,3 +106,29 @@ def test_custom_role_rejects_wrong_name_or_scope(
             "GOAL-006 demo Cleanup Secret Deleter",
             "/subscriptions/sub/resourceGroups/demo-rg",
         )
+
+
+def test_reviewed_environment_parameters_are_isolated_and_consistent() -> None:
+    directory = Path("infrastructure/deployment-stacks/goal006-runner")
+    expected_shared = {
+        "location": "centralindia",
+        "bootstrapPrincipalId": "77147af5-a32d-4151-b557-e719f319b55b",
+        "founderAlertEmail": "yogeshk7377@gmail.com",
+        "budgetStartDate": "2026-08-01T00:00:00Z",
+        "monthlyBudgetInr": 10000,
+    }
+
+    for environment in ("demo", "uat", "prod"):
+        document = json.loads(
+            (directory / f"{environment}.prerequisites.parameters.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        parameters = {
+            name: item["value"] for name, item in document["parameters"].items()
+        }
+        assert parameters == {
+            "environment": environment,
+            "runnerResourceGroupName": f"waooaw-{environment}-runner-rg",
+            **expected_shared,
+        }
