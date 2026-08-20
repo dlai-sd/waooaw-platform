@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 118
+**State Revision:** 119
 **Last Updated:** 2026-08-20
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -20,8 +20,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-074 - GOAL-006 Enterprise Delivery Addendum |
-| Latest merge | PR #308 merged to `main` as `390790694bdf4baefa64e1935bf918facbf2050e` |
-| Active delivery | WC-076 incremental Demo plan readiness repair; UAT prohibited |
+| Latest merge | PR #309 merged to `main` as `235c08a4c5d67707cf12578d6b4f0a1b6b501a9d` |
+| Active delivery | WC-076 private ephemeral runner architecture review; runnable implementation held; UAT prohibited |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 
@@ -33,12 +33,13 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | INST-010 GOA / Acceptance | VALID - GOA-GOAL-006-INST-010-03 and later ACC-GOAL-006-INST-010-03 recorded on PR #294 |
 | Azure topology and CI prechecks | DONE - PR #307 merged as `7a74c14`; EA/SA review R-140 accepted the incremental deployment topology |
 | Incremental OIDC plan readiness | DONE - PR #308 merged as `3907906`; plan mode rejects state mutation and reconciliation is manual Demo-only plan |
-| Trusted-main exact-six release | DONE - run `32366719992`, commit `3907906`, artifact `goal006-exact-six-release-390790694bdf4baefa64e1935bf918facbf2050e` |
-| Real Demo OIDC plan | BLOCKED - run `32367292746` stopped before Terraform when exact configuration Blob access returned Azure network-rule denial 12 seconds after rule creation |
-| Configuration readiness repair | APPROVED LOCALLY - exact-path bounded retry, permanent-error fail-fast, sanitized diagnostics, strict runner IPv4 and verified firewall cleanup |
+| Trusted-main exact-six release | DONE - run `32370596796`, commit `235c08a`, artifact `goal006-exact-six-release-235c08a4c5d67707cf12578d6b4f0a1b6b501a9d` |
+| Configuration readiness repair | DONE - PR #309 merged; second plan proved exact Blob retry and verified firewall cleanup |
+| Real Demo OIDC plan | BLOCKED - run `32371262629` reached Terraform init, then backend list received Storage `403 AuthorizationFailure`; no plan/apply occurred |
+| Private runner decision | PROPOSED - ADR-047 and topology repairs specify environment-isolated ACA Job runners, Deployment Stack bootstrap and Storage private endpoints |
 | Local validation | PASS - 42 focused tests, Ruff, actionlint and editor diagnostics |
-| Independent review | CLEAR - second-pass review APPROVE with no blockers; UAT/Production path remains sealed |
-| Demo deploy / verify | PENDING - focused repair PR, Founder merge, fresh trusted-main signed tuple and Founder-dispatched plan required |
+| Architecture review | HOLD - EA required bootstrap, isolation, DNS, interface and ADR repairs; repaired immutable branch review pending EA and Security acceptance |
+| Demo deploy / verify | BLOCKED - no runnable runner infrastructure or workflow label change until ADR-047 is accepted |
 | Founder Demo acceptance | PENDING - P3-EX08 remains a separate control point after the verified Azure URL is returned |
 | UAT deploy / verify / accept | PROHIBITED - no token, plan, apply or environment request before explicit Founder Demo acceptance |
 | Production | PLAN ONLY - deployment, traffic and final acceptance remain Founder-reserved |
@@ -47,9 +48,9 @@ or evidence artifact. Completed history remains in git and the archive index bel
 
 - **Authority:** Founder authorization on issue #299 permits P3-EX07 Demo mutation and expenditure only; Founder-only Azure URL review is authorized.
 - **Execution contract:** `work-contracts/WC-076-goal006-phase3-execution.md`; backlog P3-EX01 through P3-EX11.
-- **Cloud state:** no Demo/UAT/Production workload resources have been created; failed run `32367292746` made only the bounded temporary state-account firewall mutation and cleanup removed it.
-- **RCA boundary:** the GitHub OIDC principal has Blob data-plane RBAC and the failed run reached the exact Blob 12 seconds after the rule update; local propagation testing is authorization-inconclusive because the local user lacks Blob data-plane RBAC.
-- **Release rule:** merging the configuration-readiness repair changes `main`; the next plan must use its fresh trusted-main signed tuple, never the current `3907906` tuple.
+- **Cloud state:** no Demo/UAT/Production workload resources have been created; run `32371262629` made only the bounded temporary state-account firewall mutation and evidence proves cleanup removed it.
+- **RCA boundary:** configuration access succeeded after one network-rule retry, while Terraform backend access failed moments later; discovered GitHub-hosted public egress is not an acceptable durable trust boundary.
+- **Architecture gate:** ADR-047 remains Proposed. No Bicep/ARM, ACA runner Job, GitHub App, private endpoint, runner-label switch or Storage public-network disablement may begin before independent EA and Security acceptance.
 - **Boundary:** no UAT, custom DNS, customer traffic, Production apply, Platform Operations activation, final Goal acceptance, self-approval or self-merge.
 
 ## Authorization Boundary
@@ -63,15 +64,15 @@ progression.
 
 ## Current Blockers
 
-P3-EX07 Azure planning is blocked until the configuration-readiness PR passes CI, the Founder merges
-it, and trusted `main` produces a fresh signed exact-six tuple containing the repair. UAT remains
-constitutionally blocked until the Founder explicitly accepts the resulting Demo deployment.
+P3-EX07 Azure planning is blocked until ADR-047 and the repaired private-runner topology receive
+independent EA and Security acceptance. UAT remains constitutionally blocked until the Founder
+explicitly accepts the resulting Demo deployment.
 
 ## Next Authorized Action
 
-Commit and push the configuration-readiness repair with this checkpoint, open the focused PR, pass CI
-and obtain Founder merge. Then use the fresh trusted-main signed tuple to manually dispatch the
-Founder-only Demo workflow in plan mode. Do not apply and do not initiate UAT.
+Commit and push the proposed ADR-047 architecture package, obtain immutable-commit EA and Security
+review, and repair any findings. Only after both accept may bounded Demo runner implementation begin.
+Do not create UAT/Production runner resources, apply Demo workloads, or initiate UAT.
 
 ## History And Evidence
 

@@ -84,11 +84,43 @@ PostgreSQL Flexible Server cannot remain stopped indefinitely: Azure automatical
 ## Network And Trust Boundaries
 
 - One VNet per environment with delegated ACA, delegated PostgreSQL, and private-endpoint subnets.
+- Deployment jobs run on ephemeral Azure self-hosted runners inside environment-isolated runner subnets. GitHub-hosted runner public-IP discovery and temporary Storage firewall rules are prohibited after the Demo runner activation gate passes.
+- Demo, UAT, and Production reuse one versioned runner blueprint, but never one runner instance or one unrestricted subnet. Each environment has a distinct runner label, subnet, managed identity boundary, and Storage private endpoint. Production runners remain at zero capacity unless a separately authorized Production job is active.
+- The runner control plane is bootstrapped separately from environment Terraform because a runner must exist before Terraform can read its remote backend. Bootstrap state and credentials must not depend on the protected backend they create. GitHub App runner-registration material is held in Azure Key Vault, retrieved through managed identity, and never stored in GitHub variables or client secrets.
+- Private endpoint addresses are environment-local private IPs, not public ingress addresses. One `privatelink.blob.core.windows.net` private DNS zone may be centrally managed and linked to the isolated runner VNets; VNet links do not grant cross-environment data or identity access.
+- Terraform state and reviewed deployment configuration use Storage private endpoints. Public network access is disabled after private-path qualification. No load balancer, public IP, application DNS record, or TLS certificate is introduced by the Storage private endpoint path.
 - Key Vault and PostgreSQL use private networking and private DNS.
 - Only Web, Business Platform API, and a pinned identity-edge proxy receive public hostnames. Keycloak itself remains internal. The identity edge allowlists required OIDC discovery, realm, token, login, callback, and static-resource paths; it denies admin, management, metrics, and arbitrary proxying. CE, AIR, Billing, Redis, Temporal, database, direct Keycloak endpoints, and verification jobs remain private.
 - ACA egress is default-deny with explicit HTTPS, Azure DNS, private network, GHCR, Azure control-plane, and approved provider destinations.
 - Deployment and independent verification use distinct environment-scoped OIDC identities. Workloads use per-service managed identities and least-privilege Key Vault references.
 - Terraform never registers subscription resource providers. Bootstrap owns the explicit provider allowlist.
+
+### Private Runner Isolation Matrix
+
+| Boundary | Demo | UAT | Production | Enforcement |
+|---|---|---|---|---|
+| Runner execution | ACA manual Job, zero idle executions | Not provisioned before Founder Demo acceptance | Zero capacity; plan-only until separate authorization | Distinct GitHub runner group and environment-specific label; one ephemeral registration per execution |
+| Runner subnet ingress | Deny all | Deny all | Deny all | No public IP, load balancer, inbound endpoint or reusable runner listener |
+| Runner subnet egress | HTTPS to GitHub Actions/GHCR and Azure management; private endpoints for Storage and Key Vault; Azure DNS | Same after activation | Same after activation | NSG default deny; explicit service tags/FQDN-capable ACA environment controls; no cross-environment address ranges |
+| Runner managed identity | Read runner-registration material from bootstrap Key Vault; no secret write; no environment deployment role | Separate identity and vault scope | Separate identity and vault scope | `Key Vault Secrets User` on the one environment runner secret set only |
+| Deployment OIDC identity | Environment resource-group deployment roles and environment state container access; no GitHub App secret access | Separate environment scope | Separate environment scope | Azure RBAC and exact GitHub environment subject; runner identity and deployment identity are never interchangeable |
+| Storage path | Demo private endpoint and Demo backend/config prefixes | UAT private endpoint and UAT prefixes | Production private endpoint and Production prefixes | Public network disabled after qualification; data-plane RBAC denies every cross-environment identity |
+| Negative proof | Demo runner cannot read UAT/Production state or runner secrets | UAT runner cannot read Demo/Production state or runner secrets | Production runner cannot read Demo/UAT state or runner secrets | Activation blocks until independent RBAC and data-plane denial tests pass |
+
+The central Platform Architect owns the `privatelink.blob.core.windows.net` zone and its audit log. Each VNet link requires the environment owner and Security Architect to approve the expected Storage account resource ID and endpoint IP. A DNS answer is qualification evidence only: successful access still requires matching environment RBAC. Conflicting endpoint records, unexpected VNet links, or resolution to a public Storage address block activation.
+
+### Runner Bootstrap Playbook
+
+1. A GitHub-hosted bootstrap job authenticates to Azure with the constrained bootstrap OIDC identity. It may call Azure management APIs and GitHub APIs, but it never reads Terraform state or deployment configuration.
+2. The job reconciles a versioned Azure Deployment Stack containing the environment runner VNet/subnet, NSG, ACA environment and manual Job, runner managed identity, bootstrap Key Vault access, Storage private endpoint, private DNS link, budgets, and diagnostics. Azure Deployment Stacks are the bootstrap ownership/state record; no local Terraform state or circular dependency on the protected backend is permitted.
+3. The stack deployment is idempotent and deny-delete protected for retained networking, identity, vault, DNS, and endpoint resources. An interrupted reconciliation is rerun against the same stack name and template digest. Unexpected ownership, drift, denied deletion, or partial provisioning stops before runner registration.
+4. The GitHub-hosted job requests one short-lived repository-scoped runner registration token using a GitHub App. The App has only organization/repository self-hosted-runner administration metadata permissions required by GitHub; it has no contents write, Actions workflow write, environment approval, PR approval, or package mutation permission.
+5. GitHub App ID, installation ID, and private key are held in the bootstrap Key Vault. The GitHub-hosted bootstrap OIDC identity may request the registration token through a bounded broker operation; the ACA runner identity can read only the resulting short-lived token. Neither identity can export the App private key into workflow output, environment variables, artifacts, or runner logs.
+6. The bootstrap job starts one ACA manual Job execution with an ephemeral environment label. The runner accepts one matching deployment job, removes its GitHub registration on exit, and the ACA execution terminates. Timeout, cancellation, or orphan detection triggers bounded deregistration and job termination.
+7. Activation evidence proves private DNS resolution, exact configuration Blob access, Terraform backend list/read/write/lock behavior, no public Storage route, no cross-environment access, runner deregistration, zero active executions, cost estimate, and Deployment Stack health. Only then may the Demo deployment workflow replace `ubuntu-latest` and remove temporary public-IP firewall mutation.
+8. Bootstrap resources survive Demo/UAT lease expiry at zero runner executions. Recovery reconciles the same Deployment Stack. Key deletion, App revocation, unresolved drift, or failed orphan cleanup raises a blocker; it never falls back to a public endpoint or long-lived credential.
+
+The GitHub App private key rotates at most every 90 days and immediately after suspected disclosure. Two Key Vault versions overlap only for a bounded validation window; the previous version is disabled after a successful registration test. Recovery requires Founder-controlled GitHub App key issuance plus Security Architect validation. Key Vault soft delete and purge protection are mandatory; no plaintext backup is retained.
 
 ## Data And Migration Contract
 
@@ -106,6 +138,7 @@ PostgreSQL Flexible Server cannot remain stopped indefinitely: Azure automatical
 
 | Gate | Required input | Output | Fail-closed behavior | Evidence owner |
 |---|---|---|---|---|
+| Runner bootstrap | Accepted ADR-047, versioned Deployment Stack template, GitHub App permission manifest, environment label/group, subnet/NSG/RBAC/DNS matrix and cost estimate | One healthy ephemeral runner execution with private state/config access, negative isolation proof, deregistration and zero-idle evidence | Missing ADR acceptance, secret material, private resolution, exact backend operation, isolation denial, cleanup, stack health or cost proof blocks runner-label activation; no public fallback | INST-009 with INST-007; INST-015 independently verifies |
 | State isolation | Environment backend key, resource scope, OIDC subject, naming and tags | Separate environment plan/state with no cross-environment reference | Wrong subscription, scope, backend or existing-resource ownership stops plan | INST-009 with INST-007 |
 | Release and dependencies | Signed exact-six manifest, signed pinned-dependency manifest, reviewed config digest, schema compatibility | One immutable deployment tuple | Missing member, digest/signature mismatch, mutable dependency or incompatible schema stops before cloud mutation | INST-009 with INST-006/007 |
 | Runtime configuration | Versioned non-secret schema, Key Vault references, per-service identity matrix | Validated startup configuration with no image-baked environment values | Missing/unknown config, secret fallback or identity failure keeps revision unready | INST-005/007 with INST-009 |
@@ -132,6 +165,9 @@ Demo may shift directly from zero to 100% after verification. UAT proves the sam
 ## Cost Controls
 
 - Reuse the existing state account and GHCR release evidence.
+- Private runner networking is budgeted independently from application infrastructure: approximately one Private Link endpoint-hour charge per active environment plus low-volume data processing and one shared private DNS zone. VNet/subnet creation, private IP allocation, load balancers, and certificates add no runner-path charge because the design does not provision public ingress.
+- Runner compute is ephemeral and starts at zero capacity. Demo is activated and cost-qualified first; UAT remains unprovisioned until Founder Demo acceptance; Production runner capacity remains zero and its private path is plan-only until separately authorized.
+- The target state boundary is one Storage account per environment. During incremental migration, multiple environment-specific private endpoints may reach the existing account, but backend keys, identities, subnets, and evidence remain isolated; account separation must complete before UAT qualification.
 - Use one small PostgreSQL Flexible Server per non-Production environment; stop it on lease expiry and reconcile the stopped state.
 - Keep ACA workloads at min replicas zero outside active leases.
 - Use short non-Production log retention and bounded ingestion.
@@ -140,11 +176,12 @@ Demo may shift directly from zero to 100% after verification. UAT proves the sam
 
 ## Implementation Order
 
-1. **Control plane:** explicit provider ownership, plan-only real OIDC gate, state and cost evidence.
-2. **Foundation:** VNet/subnets, Log Analytics, Key Vault, PostgreSQL Flexible Server, private DNS, environment identities, DNS prerequisites.
-3. **Runtime dependencies:** database roles/config references, Keycloak, Temporal, transient Redis; remove sidecar databases.
-4. **Application plane:** exact-six ACA revisions, private/public boundaries, custom domains, managed TLS, managed identities.
-5. **Release mechanics:** migration job, pre-traffic verification, blue-green traffic switch, rollback, lease expiry and scale-to-zero reconciliation.
-6. **Promotion:** Founder Demo acceptance gate, same-tuple UAT deployment/qualification, dark-Production plan only.
+1. **Runner control plane:** bootstrap the Demo ephemeral self-hosted runner subnet, managed identity, Storage private endpoint and shared private DNS without depending on the protected remote backend; prove exact-blob and Terraform backend access, teardown, and cost evidence before changing workflow runner labels.
+2. **Control plane:** switch Demo plan jobs to the environment-scoped runner label, disable temporary public-IP firewall mutation, then disable Storage public network access after private-path qualification. Repeat for UAT only after Founder Demo acceptance; keep Production plan-only and zero-capacity.
+3. **Foundation:** VNet/subnets, Log Analytics, Key Vault, PostgreSQL Flexible Server, private DNS, environment identities, DNS prerequisites.
+4. **Runtime dependencies:** database roles/config references, Keycloak, Temporal, transient Redis; remove sidecar databases.
+5. **Application plane:** exact-six ACA revisions, private/public boundaries, custom domains, managed TLS, managed identities.
+6. **Release mechanics:** migration job, pre-traffic verification, blue-green traffic switch, rollback, lease expiry and scale-to-zero reconciliation.
+7. **Promotion:** Founder Demo acceptance gate, same-tuple UAT deployment/qualification, dark-Production plan only.
 
 A full Demo apply is prohibited until slices 1 through 5 pass a real OIDC plan and independent review. Documentation updates are limited to this contract, WC-076 execution references, and PROJECT_STATE checkpoints; executable code and cloud evidence remain primary.
