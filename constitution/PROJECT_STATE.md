@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 121
+**State Revision:** 122
 **Last Updated:** 2026-08-20
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -38,7 +38,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Real Demo OIDC plan | BLOCKED - run `32371262629` reached Terraform init, then backend list received Storage `403 AuthorizationFailure`; no plan/apply occurred |
 | Private runner decision | PROPOSED - ADR-047 now specifies immutable bootstrap inputs, non-exportable App signing, correlation-only cleanup, outage/security holds, measurable SLAs and three-layer isolation proof |
 | Local validation | PASS - 42 focused tests, Ruff, actionlint and editor diagnostics |
-| Architecture review | HOLD - final EA/Security findings repaired locally; immutable repair commit and fresh dual acceptance pending |
+| Architecture review | HOLD - EA conceptual boundaries and Security handoff clarifications repaired locally; immutable final re-review pending |
 | Demo deploy / verify | BLOCKED - no runnable runner infrastructure or workflow label change until ADR-047 is accepted |
 | Founder Demo acceptance | PENDING - P3-EX08 remains a separate control point after the verified Azure URL is returned |
 | UAT deploy / verify / accept | PROHIBITED - no token, plan, apply or environment request before explicit Founder Demo acceptance |
