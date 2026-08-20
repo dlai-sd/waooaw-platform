@@ -69,6 +69,7 @@ def test_environment_roots_have_isolated_state_and_oidc(environment: str) -> Non
     for contract in (foundation, workload):
         assert re.search(r"use_oidc\s*=\s*true", contract)
         assert re.search(r"use_cli\s*=\s*false", contract)
+        assert re.search(r'resource_provider_registrations\s*=\s*"none"', contract)
         assert "client_secret" not in contract.lower()
 
 
@@ -80,6 +81,24 @@ def test_foundation_and_workload_have_distinct_owners() -> None:
         assert 'module "workload"' not in foundation
         assert 'module "foundation"' not in workload
         assert 'data "terraform_remote_state" "foundation"' in workload
+
+
+@pytest.mark.parametrize("environment", ENVIRONMENTS)
+def test_workload_roots_use_current_secret_and_ingress_contract(environment: str) -> None:
+    workload = read_contract(f"environments/{environment}/workload/main.tf")
+    variables = read_contract(f"environments/{environment}/workload/variables.tf")
+
+    for field in (
+        "container_app_environment_default_domain",
+        "verification_principal_id",
+        "key_vault_secret_uris",
+        "key_vault_secret_resource_ids",
+        "founder_ipv4_cidr",
+    ):
+        assert re.search(rf"{field}\s*=\s*", workload)
+        if field in {"key_vault_secret_uris", "key_vault_secret_resource_ids", "founder_ipv4_cidr"}:
+            assert f'variable "{field}"' in variables
+    assert "key_vault_secret_ids" not in f"{workload}\n{variables}"
 
 
 def test_workloads_use_exact_six_digests_and_multiple_revision_mode() -> None:
@@ -238,10 +257,10 @@ def test_scale_contract_is_bounded_and_defaults_to_zero() -> None:
     assert contract.count("default = 0") == 2
     assert "var.max_replicas > 0 && var.max_replicas <= 10" in contract
     uat_root = read_contract("environments/uat/workload/main.tf")
-    assert "ce_min_replicas              = 0" in uat_root
-    assert "pr_min_replicas              = 0" in uat_root
-    assert "ce_min_replicas              = var.ce_min_replicas" in prod_root
-    assert "pr_min_replicas              = var.pr_min_replicas" in prod_root
+    assert re.search(r"ce_min_replicas\s*=\s*0", uat_root)
+    assert re.search(r"pr_min_replicas\s*=\s*0", uat_root)
+    assert re.search(r"ce_min_replicas\s*=\s*var\.ce_min_replicas", prod_root)
+    assert re.search(r"pr_min_replicas\s*=\s*var\.pr_min_replicas", prod_root)
     assert prod_variables.count("requires an accepted positive owner value") == 2
 
 
@@ -286,16 +305,19 @@ def test_lease_lifecycle_preserves_foundation_and_prohibits_production() -> None
     assert 'module "lease"' not in read_contract("environments/prod/workload/main.tf")
 
 
-def test_expired_leases_are_reconciled_by_deletion_only_nonproduction_workflow() -> None:
+def test_lease_reconciliation_is_manual_demo_plan_only_until_activation() -> None:
     workflow = (REPO_ROOT / ".github/workflows/reconcile-workload-leases.yaml").read_text(encoding="utf-8")
     validator = (REPO_ROOT / "scripts/goal006_lease_reconciliation.py").read_text(encoding="utf-8")
 
-    assert "cron: '7 * * * *'" in workflow
-    assert "environment: [demo, uat]" in workflow
-    assert "environment: [demo, uat, prod]" not in workflow
+    assert "schedule:" not in workflow
+    assert "workflow_dispatch:" in workflow
+    assert "environment: demo" in workflow
+    assert "environment: uat" not in workflow
+    assert "environment: prod" not in workflow
+    assert "WAOOAW_PLATFORM_DEPLOYMENT_CLIENT_ID" not in workflow
     assert "lease_reconciliation_inputs" in workflow
     assert "reconciliation-plan.json" in workflow
-    assert workflow.index("--plan reconciliation-plan.json") < workflow.index("terraform apply")
+    assert "terraform apply" not in workflow
     assert "PRODUCTION_RECONCILIATION_PROHIBITED" in validator
     assert "DISPOSABLE_PREFIXES" in validator
 
@@ -345,7 +367,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "Enforce current Demo-only authorization" in workflow
     assert 'EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy-demo.yaml@refs/heads/main' in workflow
     assert 'test "$TARGET_ENVIRONMENT" = "demo"' in workflow
-    assert 'test "$APPLY_REQUESTED" = "true"' in workflow
+    assert 'case "$APPLY_REQUESTED" in true|false)' in workflow
     assert workflow.index("Enforce current Demo-only authorization") < workflow.index("azure/login@v2")
     assert "Reject stale release before cloud access" in workflow
     assert 'timeframe: "Custom"' in workflow
@@ -382,6 +404,10 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert 'manifest_digest="sha256:$(sha256sum registry-release-manifest.json' in workflow
     assert "'.manifest_digest = $manifest_digest'" in workflow
     assert "terraform state show \"$resource_address\"" in workflow
+    assert "scripts/goal006_execution_gate.py" in workflow
+    assert '--execution "$APPLY_REQUESTED"' in workflow
+    assert '--state-adopted "$state_adopted"' in workflow
+    assert workflow.index("scripts/goal006_execution_gate.py") < workflow.index("terraform import")
     assert "terraform import -input=false -lock-timeout=5m" in workflow
     assert "waooaw-platform-bootstrap" in workflow
     assert "az storage container show" in workflow
@@ -394,6 +420,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     )
     assert "Create private digest-pinned credential seeder" in workflow
     assert "Run private credential seeder" in workflow
+    assert workflow.count("if: inputs.apply") == 8
     assert "Delete private credential seeder" in workflow
     assert "if: always() && steps.foundation.outcome == 'success'" in workflow
     assert "--key-vault-id '${{ steps.foundation.outputs.key_vault_id }}'" in workflow
@@ -462,6 +489,7 @@ def test_oidc_workflows_do_not_depend_on_github_platform_identifiers() -> None:
         "WAOOAW_PLATFORM_TFSTATE_STORAGE_ACCOUNT",
         "WAOOAW_PLATFORM_TFSTATE_STORAGE_ACCOUNT_ID",
         "WAOOAW_PLATFORM_WORKLOAD_CONFIGURATION",
+        "WAOOAW_PLATFORM_DEPLOYMENT_CLIENT_ID",
     ):
         assert variable not in workflows
 
@@ -485,7 +513,12 @@ def test_founder_demo_is_the_only_authorized_deployment_path() -> None:
     assert "release_run_id: ${{ fromJSON(needs.authorize-demo.outputs.release_run_id) }}" in demo
     assert "release_sha: ${{ needs.authorize-demo.outputs.release_sha }}" in demo
     assert "environment: demo" in demo
-    assert "apply: true" in demo
+    assert "default: plan" in demo
+    assert "- plan" in demo
+    assert "- apply" in demo
+    assert "case \"$EXECUTION_MODE\" in plan|apply)" in demo
+    assert "apply: ${{ inputs.execution == 'apply' }}" in demo
+    assert demo.count("if: inputs.execution == 'apply'") == 2
     assert "verification_client_id: ${{ needs.deploy-demo.outputs.verification_client_id }}" in demo
     assert "web_url: ${{ needs.deploy-demo.outputs.web_url }}" in demo
     assert "environment: uat" not in demo

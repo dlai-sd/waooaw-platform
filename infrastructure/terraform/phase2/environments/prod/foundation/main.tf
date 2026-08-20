@@ -12,8 +12,9 @@ terraform {
 }
 
 provider "azurerm" {
-  use_oidc = true
-  use_cli  = false
+  use_oidc                        = true
+  use_cli                         = false
+  resource_provider_registrations = "none"
   features {}
 }
 

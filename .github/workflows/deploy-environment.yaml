@@ -59,7 +59,7 @@ jobs:
         run: |
           test "$CALLER_WORKFLOW_REF" = "$EXPECTED_CALLER_WORKFLOW_REF"
           test "$TARGET_ENVIRONMENT" = "demo"
-          test "$APPLY_REQUESTED" = "true"
+          case "$APPLY_REQUESTED" in true|false) ;; *) exit 1 ;; esac
 
       - name: Reject stale release before cloud access
         env:
@@ -249,6 +249,8 @@ jobs:
 
       - name: Terraform foundation plan
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
+        env:
+          APPLY_REQUESTED: ${{ inputs.apply }}
         run: |
           terraform init -input=false \
             -backend-config="resource_group_name=$TFSTATE_RESOURCE_GROUP" \
@@ -257,7 +259,15 @@ jobs:
             -backend-config="use_oidc=true" \
             -backend-config="use_azuread_auth=true"
           resource_address=module.foundation.azurerm_resource_group.environment
-          if ! terraform state show "$resource_address" >/dev/null 2>&1; then
+          if terraform state show "$resource_address" >/dev/null 2>&1; then
+            state_adopted=true
+          else
+            state_adopted=false
+          fi
+          adopt_state=$(python "$GITHUB_WORKSPACE/scripts/goal006_execution_gate.py" \
+            --execution "$APPLY_REQUESTED" \
+            --state-adopted "$state_adopted")
+          if [ "$adopt_state" = "true" ]; then
             resource_group="waooaw-${{ inputs.environment }}-rg"
             resource_group_record=$(az group show --name "$resource_group" -o json)
             resource_group_id=$(jq -r \
@@ -304,6 +314,7 @@ jobs:
         run: test "$(az account show --query id -o tsv)" = "$ARM_SUBSCRIPTION_ID"
 
       - name: Create private digest-pinned credential seeder
+        if: inputs.apply
         env:
           CONTAINER_APP_ENVIRONMENT: ${{ steps.foundation.outputs.container_app_environment_name }}
           DEPLOYMENT_CLIENT_ID: ${{ steps.foundation.outputs.deployment_client_id }}
@@ -333,6 +344,7 @@ jobs:
             --output none
 
       - name: Run private credential seeder
+        if: inputs.apply
         id: seeder
         env:
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
@@ -358,6 +370,7 @@ jobs:
           done
 
       - name: Build workload inputs from trusted foundation outputs
+        if: inputs.apply
         run: |
           python scripts/goal006_deployment_inputs.py \
             --environment '${{ inputs.environment }}' \

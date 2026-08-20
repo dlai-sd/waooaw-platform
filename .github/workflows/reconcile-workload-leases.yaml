@@ -1,8 +1,6 @@
 name: GOAL-006 Reconcile Workload Leases
 
 on:
-  schedule:
-    - cron: '7 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -15,18 +13,13 @@ concurrency:
 
 jobs:
   reconcile:
-    name: Reconcile ${{ matrix.environment }} lease
+    name: Plan Demo lease reconciliation
     runs-on: ubuntu-latest
-    environment: ${{ matrix.environment }}
-    strategy:
-      fail-fast: false
-      matrix:
-        environment: [demo, uat]
+    environment: demo
     env:
       ARM_CLIENT_ID: 60c07330-4cc1-4e12-95a2-adc0966f1941
       ARM_TENANT_ID: 0471534c-1bbe-40ab-ae65-3f721b62582c
       ARM_SUBSCRIPTION_ID: 2ed11839-6a0f-4eaa-bd94-44ca96ff5d84
-      DEPLOYMENT_CLIENT_ID: ${{ vars.WAOOAW_PLATFORM_DEPLOYMENT_CLIENT_ID }}
       TFSTATE_RESOURCE_GROUP: waooaw-platform-rg
       TFSTATE_STORAGE_ACCOUNT: waooawp3tfstate2ed118
       TFSTATE_CONTAINER: tfstate
@@ -35,7 +28,7 @@ jobs:
       TF_VAR_tfstate_container: tfstate
     defaults:
       run:
-        working-directory: infrastructure/terraform/phase2/environments/${{ matrix.environment }}/workload
+        working-directory: infrastructure/terraform/phase2/environments/demo/workload
     steps:
       - uses: actions/checkout@v4
 
@@ -73,17 +66,9 @@ jobs:
             -backend-config="use_azuread_auth=true"
           terraform output -json lease_reconciliation_inputs > lease-reconciliation.auto.tfvars.json
           reconcile=$(python "$GITHUB_WORKSPACE/scripts/goal006_lease_reconciliation.py" \
-            --environment '${{ matrix.environment }}' \
+            --environment demo \
             --inputs lease-reconciliation.auto.tfvars.json)
           echo "required=$reconcile" >> "$GITHUB_OUTPUT"
-
-      - name: Azure login with environment deployment OIDC identity
-        if: steps.lease.outputs.required == 'true'
-        uses: azure/login@v2
-        with:
-          client-id: ${{ env.DEPLOYMENT_CLIENT_ID }}
-          tenant-id: ${{ env.ARM_TENANT_ID }}
-          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
 
       - name: Plan and validate deletion-only reconciliation
         if: steps.lease.outputs.required == 'true'
@@ -91,20 +76,16 @@ jobs:
           terraform plan -input=false -lock-timeout=5m -out=reconciliation.tfplan
           terraform show -json reconciliation.tfplan > reconciliation-plan.json
           python "$GITHUB_WORKSPACE/scripts/goal006_lease_reconciliation.py" \
-            --environment '${{ matrix.environment }}' \
+            --environment demo \
             --plan reconciliation-plan.json
-
-      - name: Apply validated lease teardown
-        if: steps.lease.outputs.required == 'true'
-        run: terraform apply -input=false -auto-approve reconciliation.tfplan
 
       - name: Upload reconciliation evidence
         if: always() && steps.lease.outputs.required == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: goal006-${{ matrix.environment }}-lease-reconciliation-${{ github.run_id }}
+          name: goal006-demo-lease-reconciliation-plan-${{ github.run_id }}
           path: |
-            infrastructure/terraform/phase2/environments/${{ matrix.environment }}/workload/reconciliation-plan.json
+            infrastructure/terraform/phase2/environments/demo/workload/reconciliation-plan.json
           if-no-files-found: error
           retention-days: 90
 
