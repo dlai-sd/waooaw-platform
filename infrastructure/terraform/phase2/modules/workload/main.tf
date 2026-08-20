@@ -56,7 +56,7 @@ resource "azurerm_user_assigned_identity" "member" {
 resource "azurerm_role_assignment" "member_secret" {
   for_each = local.active_members
 
-  scope                = var.key_vault_secret_ids[each.key]
+  scope                = var.key_vault_secret_resource_ids[each.key]
   role_definition_name = "Key Vault Secrets User"
   principal_id         = azurerm_user_assigned_identity.member[each.key].principal_id
 }
@@ -77,7 +77,7 @@ resource "azurerm_container_app" "member" {
   secret {
     name                = "runtime-reference"
     identity            = azurerm_user_assigned_identity.member[each.key].id
-    key_vault_secret_id = var.key_vault_secret_ids[each.key]
+    key_vault_secret_id = var.key_vault_secret_uris[each.key]
   }
 
   template {
@@ -105,6 +105,16 @@ resource "azurerm_container_app" "member" {
       latest_revision = true
       percentage      = 100
     }
+
+    dynamic "ip_security_restriction" {
+      for_each = local.public_ingress[each.key] ? [var.founder_ipv4_cidr] : []
+      content {
+        name             = "founder-review"
+        ip_address_range = ip_security_restriction.value
+        action           = "Allow"
+        description      = "Founder-only Demo review"
+      }
+    }
   }
 
   lifecycle {
@@ -118,4 +128,8 @@ resource "azurerm_container_app" "member" {
       error_message = "Enabled workloads require administrator verification that all exact-six GHCR packages allow anonymous digest pulls."
     }
   }
+}
+
+output "web_url" {
+  value = try("https://${azurerm_container_app.member["web"].latest_revision_fqdn}", null)
 }

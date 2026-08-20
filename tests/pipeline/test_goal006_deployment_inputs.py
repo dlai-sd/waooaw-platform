@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from goal006_deployment_inputs import LEASE_FIELDS, create_inputs
+from goal006_deployment_inputs import LEASE_FIELDS, add_key_vault_references, create_inputs
 from goal006_registry_manifest import RELEASE_MEMBERS
 
 
@@ -50,12 +50,17 @@ def manifest() -> dict[str, Any]:
 
 def configuration() -> dict[str, Any]:
     values: dict[str, Any] = {
-        "key_vault_secret_ids": {
+        "key_vault_secret_uris": {
+            member: f"https://kv-demo.vault.azure.net/secrets/{member}"
+            for member in RELEASE_MEMBERS
+        },
+        "key_vault_secret_resource_ids": {
             member: f"/subscriptions/test/resourceGroups/test/providers/Microsoft.KeyVault/vaults/test/secrets/{member}"
             for member in RELEASE_MEMBERS
         },
         "planned_incremental_monthly_cost_inr": 1000,
         "cumulative_one_time_cost_inr": 1000,
+        "founder_ipv4_cidr": "203.0.113.8/32",
     }
     values.update({field: f"accepted-{field}" for field in LEASE_FIELDS})
     values["lease_state"] = "ACTIVE"
@@ -77,13 +82,78 @@ def test_anonymous_ghcr_verification_is_required() -> None:
 
 def test_missing_member_or_lease_field_is_rejected() -> None:
     values = configuration()
-    del values["key_vault_secret_ids"]["web"]
+    del values["key_vault_secret_uris"]["web"]
     with pytest.raises(ValueError, match="exactly the six"):
         create_inputs("demo", manifest(), values, True)
     values = configuration()
     del values["lease_expires_at"]
     with pytest.raises(ValueError, match="lease_expires_at"):
         create_inputs("uat", manifest(), values, True)
+
+
+def test_secret_uri_and_rbac_scope_types_are_not_interchangeable() -> None:
+    values = configuration()
+    values["key_vault_secret_uris"] = values["key_vault_secret_resource_ids"]
+    with pytest.raises(ValueError, match="versionless secret URI"):
+        create_inputs("demo", manifest(), values, True)
+
+
+def test_vault_references_are_derived_from_foundation_outputs() -> None:
+    values = configuration()
+    del values["key_vault_secret_uris"]
+    del values["key_vault_secret_resource_ids"]
+    values = add_key_vault_references(
+        values,
+        "/subscriptions/test/resourceGroups/demo/providers/Microsoft.KeyVault/vaults/kv-demo",
+        "https://kv-demo.vault.azure.net/",
+    )
+    inputs = create_inputs("demo", manifest(), values, True)
+    assert inputs["key_vault_secret_uris"]["web"] == "https://kv-demo.vault.azure.net/secrets/web"
+    assert inputs["key_vault_secret_resource_ids"]["web"].endswith("/vaults/kv-demo/secrets/web")
+
+
+@pytest.mark.parametrize(
+    "vault_uri",
+    [
+        "https://attacker.example/.vault.azure.net/",
+        "https://kv-demo.vault.azure.net.attacker.example/",
+        "https://user@kv-demo.vault.azure.net/",
+        "https://kv-demo.vault.azure.net/?redirect=attacker",
+    ],
+)
+def test_foundation_vault_uri_rejects_spoofed_urls(vault_uri: str) -> None:
+    with pytest.raises(ValueError, match="Azure Key Vault URI"):
+        add_key_vault_references(
+            configuration(),
+            "/subscriptions/test/resourceGroups/demo/providers/Microsoft.KeyVault/vaults/kv-demo",
+            vault_uri,
+        )
+
+
+def test_runtime_secret_uri_rejects_vault_text_in_path() -> None:
+    values = configuration()
+    values["key_vault_secret_uris"]["web"] = "https://attacker.example/.vault.azure.net/secrets/web"
+    with pytest.raises(ValueError, match="versionless secret URI"):
+        create_inputs("demo", manifest(), values, True)
+
+
+def test_runtime_secret_uri_rejects_versioned_or_nested_paths() -> None:
+    values = configuration()
+    values["key_vault_secret_uris"]["web"] = "https://kv-demo.vault.azure.net/secrets/web/version"
+    with pytest.raises(ValueError, match="versionless secret URI"):
+        create_inputs("demo", manifest(), values, True)
+
+
+@pytest.mark.parametrize("cidr", ["0.0.0.0/32", "203.0.113.0/24", "2001:db8::1/128", "invalid"])
+def test_demo_requires_one_nonzero_founder_ipv4_host(cidr: str) -> None:
+    values = configuration()
+    values["founder_ipv4_cidr"] = cidr
+    with pytest.raises(ValueError, match="one nonzero IPv4 /32"):
+        create_inputs("demo", manifest(), values, True)
+    values = configuration()
+    values["key_vault_secret_resource_ids"] = values["key_vault_secret_uris"]
+    with pytest.raises(ValueError, match="secret resource ID"):
+        create_inputs("demo", manifest(), values, True)
 
 
 def test_production_requires_positive_accepted_replica_values() -> None:

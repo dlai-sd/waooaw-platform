@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 116
-**Last Updated:** 2026-08-19
+**State Revision:** 117
+**Last Updated:** 2026-08-20
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -20,8 +20,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-074 - GOAL-006 Enterprise Delivery Addendum |
-| Latest merge | PR #289 merged to `main` as `d49dad13fa3d7e9a670d847010f7b73e5612da51` |
-| Active delivery | WC-076 GOAL-006 Phase 3 execution - P3-EX01 through P3-EX04 implementation checkpoint |
+| Latest merge | PR #298 merged to `main` as `73f9ad730514524801ff41ec72b974418ae4c220` |
+| Active delivery | WC-076 P3-EX07 Founder-only Demo deployment under issue #299; UAT prohibited |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 
@@ -29,25 +29,24 @@ or evidence artifact. Completed history remains in git and the archive index bel
 |---|---|
 | Cloud-only PR #289 | DONE - independently approved by R-131 and merged by Founder as `d49dad1` |
 | Azure read-only preflight | DONE - tenant, subscription, budget, state and providers verified |
-| WC-076 execution contract | READY - compact code-first contract; no duplicate evidence documents |
+| WC-076 P3-EX01 through P3-EX06 | DONE - issue #296 closed after protected environments, OIDC and signed exact-six release evidence |
 | INST-010 GOA / Acceptance | VALID - GOA-GOAL-006-INST-010-03 and later ACC-GOAL-006-INST-010-03 recorded on PR #294 |
-| Trusted-main release scan | IMPLEMENTED - SARIF severity filter and Docker regression pass; independent CI gate pending |
-| Durable environment configuration | IMPLEMENTED - `WAOOAW_PLATFORM_*` schema and migration contract pass |
-| Terraform identity outputs | IMPLEMENTED - Demo/UAT roots expose deployment/verifier client IDs; six roots validate |
-| Bootstrap OIDC identity | TOOLING READY - read-only verifier passes; INST-009 live verification and INST-007 review pending |
-| GitHub protected environments | PENDING - Founder/admin action only after configuration contract repair |
-| Signed exact-six tuple | BLOCKED - trusted-main release manifest not produced |
-| Demo deploy / verify / accept | PENDING - no resources created |
-| UAT deploy / verify / accept | PENDING - no resources created |
+| Trusted-main exact-six release | DONE - run `32329838734`, commit `73f9ad7`, artifact `9392723229`; reference tuple becomes stale after repair merge |
+| Demo deployment repair | IMPLEMENTED - commit `93b7bd7`; Founder-only dispatch, private vault seeder, generated verifier handoff, /32 ingress and workload rollback |
+| Local validation | PASS - 37 focused tests, actionlint, Terraform fmt and both Demo roots against Terraform 1.9.8 / AzureRM 4.14.0 |
+| Independent review | CLEAR - no blocking INST-007 or INST-015 findings; UAT/Production path remains sealed |
+| Demo deploy / verify | PENDING - repair PR, Founder merge and fresh trusted-main signed tuple required before Azure mutation |
+| Founder Demo acceptance | PENDING - P3-EX08 remains a separate control point after the verified Azure URL is returned |
+| UAT deploy / verify / accept | PROHIBITED - no token, plan, apply or environment request before explicit Founder Demo acceptance |
 | Production | PLAN ONLY - deployment, traffic and final acceptance remain Founder-reserved |
 
 ### Checkpoint Context
 
-- **Authority:** FA-052 and the accepted Phase 3 autonomous GO Authorization remain controlling through 2026-09-13 unless stopped or revoked earlier.
+- **Authority:** Founder authorization on issue #299 permits P3-EX07 Demo mutation and expenditure only; Founder-only Azure URL review is authorized.
 - **Execution contract:** `work-contracts/WC-076-goal006-phase3-execution.md`; backlog P3-EX01 through P3-EX11.
-- **Cloud state:** no Demo/UAT resources or identities have been created; promotion remains disabled.
-- **Founder action:** none until release, configuration, Terraform output and bootstrap identity repairs are complete and independently reviewed.
-- **Boundary:** no client secret, Production apply, customer traffic, Platform Operations activation, final Goal acceptance, self-approval or self-merge.
+- **Cloud state:** no Demo/UAT/Production workload resources have been created; automatic promotion is replaced by an explicit rejection gate.
+- **Release rule:** merging the deployment repair changes `main`; P3-EX07 must use the resulting fresh trusted-main signed tuple, never the pre-repair tuple.
+- **Boundary:** no UAT, custom DNS, customer traffic, Production apply, Platform Operations activation, final Goal acceptance, self-approval or self-merge.
 
 ## Authorization Boundary
 
@@ -60,15 +59,15 @@ progression.
 
 ## Current Blockers
 
-Demo remains blocked until P3-EX01 through P3-EX06 close. P3-EX01 through P3-EX03 require
-independent review, CI and Founder merge; P3-EX04 requires INST-009 live verification and INST-007
-security review. GitHub environment administration also returns HTTP 403 for the current integration token.
+P3-EX07 Azure execution is blocked until the repair PR passes CI, the Founder merges it, and trusted
+`main` produces a fresh signed exact-six tuple containing the repair. UAT remains constitutionally
+blocked until the Founder explicitly accepts the resulting Demo deployment.
 
 ## Next Authorized Action
 
-Open the P3-EX01 through P3-EX04 implementation PR, obtain INST-015 plus INST-009/007 review and
-Founder merge, then request the single P3-EX05 GitHub environment administration action. Produce a
-signed exact-six release before Demo.
+Push commit `93b7bd7` and this checkpoint, open the issue #299 repair PR, pass CI and obtain Founder
+merge. Then use the fresh trusted-main signed tuple to manually dispatch the Founder-only Demo
+workflow, verify exact-six live inventory and return the Azure-generated Web URL. Do not initiate UAT.
 
 ## History And Evidence
 

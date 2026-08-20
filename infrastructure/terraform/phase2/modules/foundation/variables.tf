@@ -25,3 +25,9 @@ variable "tfstate_storage_account_id" {
     error_message = "Phase 3 state access is restricted to the authorized protected storage account."
   }
 }
+
+variable "external_environment" {
+  type        = bool
+  description = "Expose the Container Apps environment load balancer. Authorized only for bounded Demo review."
+  default     = false
+}

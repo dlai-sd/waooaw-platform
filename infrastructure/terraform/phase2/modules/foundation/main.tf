@@ -193,6 +193,12 @@ resource "azurerm_key_vault" "environment" {
   }
 }
 
+resource "azurerm_role_assignment" "deployment_secret_officer" {
+  scope                = azurerm_key_vault.environment.id
+  role_definition_name = "Key Vault Secrets Officer"
+  principal_id         = azurerm_user_assigned_identity.deployment.principal_id
+}
+
 resource "azurerm_private_endpoint" "key_vault" {
   name                = "pe-${local.name}-vault"
   location            = azurerm_resource_group.environment.location
@@ -206,6 +212,25 @@ resource "azurerm_private_endpoint" "key_vault" {
     subresource_names              = ["vault"]
     is_manual_connection           = false
   }
+
+  private_dns_zone_group {
+    name                 = "zone-${local.name}-vault"
+    private_dns_zone_ids = [azurerm_private_dns_zone.key_vault.id]
+  }
+}
+
+resource "azurerm_private_dns_zone" "key_vault" {
+  name                = "privatelink.vaultcore.azure.net"
+  resource_group_name = azurerm_resource_group.environment.name
+  tags                = local.tags
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "key_vault" {
+  name                  = "link-${local.name}-vault"
+  resource_group_name   = azurerm_resource_group.environment.name
+  private_dns_zone_name = azurerm_private_dns_zone.key_vault.name
+  virtual_network_id    = azurerm_virtual_network.environment.id
+  tags                  = local.tags
 }
 
 resource "azurerm_container_app_environment" "environment" {
@@ -213,7 +238,7 @@ resource "azurerm_container_app_environment" "environment" {
   location                       = azurerm_resource_group.environment.location
   resource_group_name            = azurerm_resource_group.environment.name
   infrastructure_subnet_id       = azurerm_subnet.container_apps.id
-  internal_load_balancer_enabled = true
+  internal_load_balancer_enabled = !var.external_environment
   tags                           = local.tags
 }
 
@@ -229,12 +254,28 @@ output "key_vault_id" {
   value = azurerm_key_vault.environment.id
 }
 
+output "key_vault_name" {
+  value = azurerm_key_vault.environment.name
+}
+
+output "key_vault_uri" {
+  value = azurerm_key_vault.environment.vault_uri
+}
+
+output "container_app_environment_name" {
+  value = azurerm_container_app_environment.environment.name
+}
+
 output "location" {
   value = azurerm_resource_group.environment.location
 }
 
 output "deployment_client_id" {
   value = azurerm_user_assigned_identity.deployment.client_id
+}
+
+output "deployment_identity_id" {
+  value = azurerm_user_assigned_identity.deployment.id
 }
 
 output "verification_client_id" {

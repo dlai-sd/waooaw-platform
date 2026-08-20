@@ -1,117 +1,16 @@
-name: GOAL-006 Promote Exact Release
+name: GOAL-006 UAT Promotion Not Authorized
 
 on:
-  workflow_run:
-    workflows: ["CI — Build & Test"]
-    types: [completed]
+  workflow_dispatch:
 
 permissions:
   contents: read
-  actions: read
-  id-token: write
-
-concurrency:
-  group: goal006-promotion
-  cancel-in-progress: true
 
 jobs:
-  authorize-release:
-    if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_branch == 'main' &&
-      vars.WAOOAW_PLATFORM_PROMOTION_ENABLED == 'true'
+  enforce-demo-acceptance-boundary:
     runs-on: ubuntu-latest
-    outputs:
-      release_sha: ${{ steps.freshness.outputs.release_sha }}
     steps:
-      - name: Reject stale or non-main release
-        id: freshness
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+      - name: Reject UAT and Production promotion
         run: |
-          latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
-          test "$RELEASE_SHA" = "$latest_main_sha"
-          echo "release_sha=$RELEASE_SHA" >> "$GITHUB_OUTPUT"
-
-  demo:
-    needs: authorize-release
-    uses: ./.github/workflows/deploy-environment.yaml
-    with:
-      environment: demo
-      release_run_id: ${{ github.event.workflow_run.id }}
-      release_sha: ${{ github.event.workflow_run.head_sha }}
-      apply: true
-    secrets: inherit
-
-  verify-demo:
-    needs: demo
-    uses: ./.github/workflows/post-deploy-verify.yaml
-    with:
-      environment: demo
-      release_run_id: ${{ github.event.workflow_run.id }}
-      release_sha: ${{ github.event.workflow_run.head_sha }}
-    secrets: inherit
-
-  accept-demo:
-    needs: verify-demo
-    runs-on: ubuntu-latest
-    environment: demo-acceptance
-    steps:
-      - name: Verify independent Demo acceptance record
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
-        run: |
-          latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
-          test "$RELEASE_SHA" = "$latest_main_sha"
-          test '${{ vars.WAOOAW_PLATFORM_DEMO_ACCEPTED_RELEASE_RUN_ID }}' = '${{ github.event.workflow_run.id }}'
-          test '${{ vars.WAOOAW_PLATFORM_DEMO_ACCEPTED_RELEASE_SHA }}' = '${{ github.event.workflow_run.head_sha }}'
-          test -n '${{ vars.WAOOAW_PLATFORM_DEMO_ACCEPTANCE_EVIDENCE_SHA256 }}'
-          echo '${{ vars.WAOOAW_PLATFORM_DEMO_ACCEPTANCE_EVIDENCE_SHA256 }}' | grep -Eq '^sha256:[0-9a-f]{64}$'
-
-  uat:
-    needs: accept-demo
-    uses: ./.github/workflows/deploy-environment.yaml
-    with:
-      environment: uat
-      release_run_id: ${{ github.event.workflow_run.id }}
-      release_sha: ${{ github.event.workflow_run.head_sha }}
-      apply: true
-    secrets: inherit
-
-  verify-uat:
-    needs: uat
-    uses: ./.github/workflows/post-deploy-verify.yaml
-    with:
-      environment: uat
-      release_run_id: ${{ github.event.workflow_run.id }}
-      release_sha: ${{ github.event.workflow_run.head_sha }}
-    secrets: inherit
-
-  accept-uat:
-    needs: verify-uat
-    runs-on: ubuntu-latest
-    environment: uat-acceptance
-    steps:
-      - name: Verify independent UAT acceptance record
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
-        run: |
-          latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
-          test "$RELEASE_SHA" = "$latest_main_sha"
-          test '${{ vars.WAOOAW_PLATFORM_UAT_ACCEPTED_RELEASE_RUN_ID }}' = '${{ github.event.workflow_run.id }}'
-          test '${{ vars.WAOOAW_PLATFORM_UAT_ACCEPTED_RELEASE_SHA }}' = '${{ github.event.workflow_run.head_sha }}'
-          test -n '${{ vars.WAOOAW_PLATFORM_UAT_ACCEPTANCE_EVIDENCE_SHA256 }}'
-          echo '${{ vars.WAOOAW_PLATFORM_UAT_ACCEPTANCE_EVIDENCE_SHA256 }}' | grep -Eq '^sha256:[0-9a-f]{64}$'
-
-  production-plan:
-    needs: accept-uat
-    uses: ./.github/workflows/deploy-environment.yaml
-    with:
-      environment: prod
-      release_run_id: ${{ github.event.workflow_run.id }}
-      release_sha: ${{ github.event.workflow_run.head_sha }}
-      apply: false
-    secrets: inherit
+          echo "UAT remains prohibited until explicit Founder acceptance of the Demo deployment." >&2
+          exit 1

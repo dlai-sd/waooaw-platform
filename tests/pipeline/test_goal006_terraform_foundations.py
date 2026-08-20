@@ -74,6 +74,8 @@ def test_private_boundaries_and_key_vault_references_are_explicit() -> None:
         assert re.search(rf'"{member}"\s*=\s*true', contract)
     assert "key_vault_secret_id" in contract
     assert "secret_value" not in contract
+    assert "var.key_vault_secret_uris[each.key]" in contract
+    assert "var.key_vault_secret_resource_ids[each.key]" in contract
 
 
 def test_each_release_member_has_its_own_identity_and_secret_scope() -> None:
@@ -82,7 +84,7 @@ def test_each_release_member_has_its_own_identity_and_secret_scope() -> None:
     assert 'resource "azurerm_user_assigned_identity" "member"' in contract
     assert 'resource "azurerm_role_assignment" "member_secret"' in contract
     assert "azurerm_user_assigned_identity.member[each.key].id" in contract
-    assert "scope                = var.key_vault_secret_ids[each.key]" in contract
+    assert "scope                = var.key_vault_secret_resource_ids[each.key]" in contract
     assert "runtime_identity_id" not in contract
     assert "runtime_identity_client_id" not in contract
 
@@ -95,6 +97,9 @@ def test_deployment_identity_is_environment_scoped_for_resources_and_rbac() -> N
     assert 'role_definition_name = "Role Based Access Control Administrator"' in contract
     assert "azurerm_user_assigned_identity.deployment.principal_id" in contract
     assert 'output "deployment_client_id"' in contract
+    assert 'role_definition_name = "Key Vault Secrets Officer"' in contract
+    assert 'scope                = azurerm_key_vault.environment.id' in contract
+    assert 'output "deployment_identity_id"' in contract
     assert 'role_definition_name = "Reader"' in contract
     assert "azurerm_user_assigned_identity.verification.principal_id" in contract
     assert 'output "verification_client_id"' in contract
@@ -106,6 +111,8 @@ def test_environment_foundation_roots_expose_identity_client_ids(environment: st
 
     assert re.search(r'output "deployment_client_id"\s*{\s*value\s*=\s*module\.foundation\.deployment_client_id', contract)
     assert re.search(r'output "verification_client_id"\s*{\s*value\s*=\s*module\.foundation\.verification_client_id', contract)
+    if environment == "demo":
+        assert re.search(r'output "deployment_identity_id"\s*{\s*value\s*=\s*module\.foundation\.deployment_identity_id', contract)
 
 
 def test_disabled_lease_removes_all_disposable_workload_resources() -> None:
@@ -127,7 +134,7 @@ def test_enabled_workloads_require_verified_public_ghcr_packages() -> None:
     for environment in ENVIRONMENTS:
         root = read_contract(f"environments/{environment}/workload/main.tf")
         root_variables = read_contract(f"environments/{environment}/workload/variables.tf")
-        assert "ghcr_packages_public         = var.ghcr_packages_public" in root
+        assert re.search(r"ghcr_packages_public\s*=\s*var\.ghcr_packages_public", root)
         assert re.search(
             r'variable "ghcr_packages_public"\s*{[^}]*default\s*=\s*false',
             root_variables,
@@ -148,7 +155,27 @@ def test_foundation_is_private_isolated_and_environment_scoped() -> None:
     assert 'default_action = "Deny"' in contract
     assert 'subresource_names              = ["vault"]' in contract
     assert contract.count("azurerm_subnet_network_security_group_association") == 2
-    assert "internal_load_balancer_enabled = true" in contract
+    assert "internal_load_balancer_enabled = !var.external_environment" in contract
+    assert 'name                = "privatelink.vaultcore.azure.net"' in contract
+    assert 'private_dns_zone_group {' in contract
+    assert "private_dns_zone_ids = [azurerm_private_dns_zone.key_vault.id]" in contract
+
+
+def test_demo_review_ingress_is_founder_restricted_and_other_environments_remain_private() -> None:
+    demo = read_contract("environments/demo/foundation/main.tf")
+    uat = read_contract("environments/uat/foundation/main.tf")
+    prod = read_contract("environments/prod/foundation/main.tf")
+    workload = read_contract("modules/workload/main.tf")
+    demo_workload = read_contract("environments/demo/workload/main.tf")
+
+    assert "external_environment       = true" in demo
+    assert "external_environment" not in uat
+    assert "external_environment" not in prod
+    assert 'name             = "founder-review"' in workload
+    assert "ip_address_range = ip_security_restriction.value" in workload
+    assert re.search(r"founder_ipv4_cidr\s*=\s*var\.founder_ipv4_cidr", demo_workload)
+    assert re.search(r"max_replicas\s*=\s*1", demo_workload)
+    assert 'output "web_url"' in demo_workload
 
 
 def test_network_egress_is_explicitly_fail_closed() -> None:
@@ -214,7 +241,7 @@ def test_lease_lifecycle_preserves_foundation_and_prohibits_production() -> None
     for environment in ("demo", "uat"):
         workload = read_contract(f"environments/{environment}/workload/main.tf")
         assert 'module "lease"' in workload
-        assert "workload_enabled             = module.lease.workload_enabled" in workload
+        assert re.search(r"workload_enabled\s*=\s*module\.lease\.workload_enabled", workload)
     assert 'module "lease"' not in read_contract("environments/prod/workload/main.tf")
 
 
@@ -243,7 +270,7 @@ def test_oidc_policy_requires_exact_governed_refs_and_workflows() -> None:
         "prod-verification",
     ]
     assert policy["allowed_refs"] == ["refs/heads/main"]
-    assert policy["allowed_workflows"] == [".github/workflows/promote.yaml@refs/heads/main"]
+    assert policy["allowed_workflows"] == [".github/workflows/deploy-demo.yaml@refs/heads/main"]
     assert policy["subject_claim_template"] == ["repo", "environment"]
     assert policy["wildcards_allowed"] is False
     assert all("*" not in value for value in (*policy["allowed_refs"], *policy["allowed_workflows"]))
@@ -274,13 +301,32 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert workflow.index("docker buildx imagetools inspect") < workflow.index("--ghcr-packages-public-verified")
     assert workflow.count('-backend-config="use_oidc=true"') == 2
     assert workflow.count('-backend-config="use_azuread_auth=true"') == 2
-    assert "Enforce caller and Production plan-only boundary" in workflow
-    assert 'EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/promote.yaml@refs/heads/main' in workflow
-    assert '[[ "$TARGET_ENVIRONMENT" == "prod" && "$APPLY_REQUESTED" == "true" ]]' in workflow
-    assert workflow.index("Enforce caller and Production plan-only boundary") < workflow.index("azure/login@v2")
+    assert "Enforce current Demo-only authorization" in workflow
+    assert 'EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy-demo.yaml@refs/heads/main' in workflow
+    assert 'test "$TARGET_ENVIRONMENT" = "demo"' in workflow
+    assert 'test "$APPLY_REQUESTED" = "true"' in workflow
+    assert workflow.index("Enforce current Demo-only authorization") < workflow.index("azure/login@v2")
     assert "Reject stale release before cloud access" in workflow
     assert workflow.count('gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main"') == 3
     assert workflow.count("terraform apply -input=false -auto-approve") == 2
+    assert "mcr.microsoft.com/azure-cli@sha256:" in workflow
+    assert "Create private digest-pinned runtime secret seeder" in workflow
+    assert "Run private runtime secret seeder" in workflow
+    assert "Delete private runtime secret seeder" in workflow
+    assert "if: always() && steps.foundation.outcome == 'success'" in workflow
+    assert "--key-vault-id '${{ steps.foundation.outputs.key_vault_id }}'" in workflow
+    assert workflow.index("terraform apply -input=false -auto-approve foundation.tfplan") < workflow.index(
+        "Create private digest-pinned runtime secret seeder"
+    )
+    assert workflow.index("Run private runtime secret seeder") < workflow.index("Terraform workload plan")
+    assert "Roll back disposable Demo workload after apply failure" in workflow
+    assert "if: failure() && steps.workload.outcome == 'failure'" in workflow
+    assert "terraform destroy -input=false -auto-approve -lock-timeout=5m" in workflow
+    assert workflow.index("Terraform workload apply") < workflow.index("Roll back disposable Demo workload after apply failure")
+    assert workflow.index("Roll back disposable Demo workload after apply failure") < workflow.index(
+        "Delete private runtime secret seeder"
+    )
+    assert "set -x" not in workflow
     for apply_command in (
         "terraform apply -input=false -auto-approve foundation.tfplan",
         "terraform apply -input=false -auto-approve workload.tfplan",
@@ -289,27 +335,22 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
         assert workflow.rfind('test \'${{ inputs.release_sha }}\' = "$latest_main_sha"', 0, apply_index) != -1
 
 
-def test_promotion_requires_explicit_readiness_enablement_and_keeps_production_plan_only() -> None:
+def test_founder_demo_is_the_only_authorized_deployment_path() -> None:
+    demo = (REPO_ROOT / ".github/workflows/deploy-demo.yaml").read_text(encoding="utf-8")
     workflow = (REPO_ROOT / ".github/workflows/promote.yaml").read_text(encoding="utf-8")
 
-    assert "vars.WAOOAW_PLATFORM_PROMOTION_ENABLED == 'true'" in workflow
-    assert "Reject stale or non-main release" in workflow
-    assert 'gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main"' in workflow
-    assert 'test "$RELEASE_SHA" = "$latest_main_sha"' in workflow
-    assert "cancel-in-progress: true" in workflow
-    assert workflow.count('gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main"') == 3
-    assert "environment: demo-acceptance" in workflow
-    assert "environment: uat-acceptance" in workflow
-    assert "WAOOAW_PLATFORM_DEMO_ACCEPTED_RELEASE_RUN_ID" in workflow
-    assert "WAOOAW_PLATFORM_DEMO_ACCEPTED_RELEASE_SHA" in workflow
-    assert "WAOOAW_PLATFORM_DEMO_ACCEPTANCE_EVIDENCE_SHA256" in workflow
-    assert "WAOOAW_PLATFORM_UAT_ACCEPTED_RELEASE_RUN_ID" in workflow
-    assert "WAOOAW_PLATFORM_UAT_ACCEPTED_RELEASE_SHA" in workflow
-    assert "WAOOAW_PLATFORM_UAT_ACCEPTANCE_EVIDENCE_SHA256" in workflow
-    assert "needs: accept-demo" in workflow
-    assert "needs: accept-uat" in workflow
-    assert "environment: prod" in workflow
-    assert "apply: false" in workflow
+    assert "workflow_dispatch:" in demo
+    assert 'test "$DISPATCH_ACTOR" = "dlai-sd"' in demo
+    assert 'test "$DISPATCH_REF" = "refs/heads/main"' in demo
+    assert "environment: demo" in demo
+    assert "apply: true" in demo
+    assert "verification_client_id: ${{ needs.deploy-demo.outputs.verification_client_id }}" in demo
+    assert "web_url: ${{ needs.deploy-demo.outputs.web_url }}" in demo
+    assert "environment: uat" not in demo
+    assert "environment: prod" not in demo
+    assert "UAT remains prohibited until explicit Founder acceptance" in workflow
+    assert "exit 1" in workflow
+    assert "uses: ./.github/workflows/deploy-environment.yaml" not in workflow
 
     verification = (REPO_ROOT / ".github/workflows/post-deploy-verify.yaml").read_text(encoding="utf-8")
     assert "Reject stale release before independent verification" in verification
@@ -317,6 +358,10 @@ def test_promotion_requires_explicit_readiness_enablement_and_keeps_production_p
     assert verification.index("Reject stale release before independent verification") < verification.index(
         "azure/login@v2"
     )
+    assert "ARM_CLIENT_ID: ${{ inputs.verification_client_id }}" in verification
+    assert "WAOOAW_PLATFORM_VERIFICATION_CLIENT_ID" not in verification
+    assert 'test "$TARGET_ENVIRONMENT" = "demo"' in verification
+    assert "Verify returned Web URL binds to the deployed revision" in verification
 
     delivery_surfaces = [
         REPO_ROOT / ".github/workflows/deploy-environment.yaml",
