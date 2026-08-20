@@ -35,17 +35,18 @@ jobs:
       verification_client_id: ${{ steps.foundation.outputs.verification_client_id }}
       web_url: ${{ steps.workload.outputs.web_url }}
     env:
-      ARM_CLIENT_ID: ${{ vars.WAOOAW_PLATFORM_BOOTSTRAP_CLIENT_ID }}
-      ARM_TENANT_ID: ${{ vars.WAOOAW_PLATFORM_AZURE_TENANT_ID }}
-      ARM_SUBSCRIPTION_ID: ${{ vars.WAOOAW_PLATFORM_AZURE_SUBSCRIPTION_ID }}
-      TFSTATE_RESOURCE_GROUP: ${{ vars.WAOOAW_PLATFORM_TFSTATE_RESOURCE_GROUP }}
-      TFSTATE_STORAGE_ACCOUNT: ${{ vars.WAOOAW_PLATFORM_TFSTATE_STORAGE_ACCOUNT }}
-      TFSTATE_CONTAINER: ${{ vars.WAOOAW_PLATFORM_TFSTATE_CONTAINER }}
-      TF_VAR_tfstate_resource_group: ${{ vars.WAOOAW_PLATFORM_TFSTATE_RESOURCE_GROUP }}
-      TF_VAR_tfstate_storage_account: ${{ vars.WAOOAW_PLATFORM_TFSTATE_STORAGE_ACCOUNT }}
-      TF_VAR_tfstate_container: ${{ vars.WAOOAW_PLATFORM_TFSTATE_CONTAINER }}
-      TF_VAR_tfstate_storage_account_id: ${{ vars.WAOOAW_PLATFORM_TFSTATE_STORAGE_ACCOUNT_ID }}
-      WORKLOAD_CONFIGURATION: ${{ secrets.WAOOAW_PLATFORM_WORKLOAD_CONFIGURATION }}
+      ARM_CLIENT_ID: 60c07330-4cc1-4e12-95a2-adc0966f1941
+      ARM_TENANT_ID: 0471534c-1bbe-40ab-ae65-3f721b62582c
+      ARM_SUBSCRIPTION_ID: 2ed11839-6a0f-4eaa-bd94-44ca96ff5d84
+      TFSTATE_RESOURCE_GROUP: waooaw-platform-rg
+      TFSTATE_STORAGE_ACCOUNT: waooawp3tfstate2ed118
+      TFSTATE_CONTAINER: tfstate
+      TF_VAR_tfstate_resource_group: waooaw-platform-rg
+      TF_VAR_tfstate_storage_account: waooawp3tfstate2ed118
+      TF_VAR_tfstate_container: tfstate
+      TF_VAR_tfstate_storage_account_id: /subscriptions/2ed11839-6a0f-4eaa-bd94-44ca96ff5d84/resourceGroups/waooaw-platform-rg/providers/Microsoft.Storage/storageAccounts/waooawp3tfstate2ed118
+      CONFIG_CONTAINER: deployment-config
+      CONFIG_BLOB: demo/workload-configuration.json
       SEEDER_IMAGE: mcr.microsoft.com/azure-cli@sha256:4faeb3c955086c3842d4f8cf0ff1d900ce3a1c68c6e6c6430c5e8a3cb882c5aa
       SEEDER_JOB: goal006-secret-seeder
     steps:
@@ -105,15 +106,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - name: Verify anonymous exact-six GHCR pulls and configuration presence
+      - name: Verify anonymous exact-six GHCR pulls
         run: |
           while IFS= read -r image; do
             docker buildx imagetools inspect "$image" >/dev/null
           done < <(jq -r '.images | to_entries[] | .value' registry-release-manifest.json)
-          test -n "$WORKLOAD_CONFIGURATION"
-          printf '%s' "$WORKLOAD_CONFIGURATION" > workload-configuration.json
-          jq -e '.founder_ipv4_cidr and .planned_incremental_monthly_cost_inr != null and .cumulative_one_time_cost_inr != null' \
-            workload-configuration.json >/dev/null
 
       - name: Azure login with constrained bootstrap OIDC identity
         uses: azure/login@v2
@@ -161,6 +158,40 @@ jobs:
               exit 1
             }
           done
+
+      - name: Open temporary state firewall rule
+        run: |
+          runner_ip=$(curl --fail --silent --show-error https://api.ipify.org)
+          echo "RUNNER_IP=$runner_ip" >> "$GITHUB_ENV"
+          az storage account network-rule add \
+            --resource-group "$TFSTATE_RESOURCE_GROUP" \
+            --account-name "$TFSTATE_STORAGE_ACCOUNT" \
+            --ip-address "$runner_ip" --output none
+          for attempt in $(seq 1 12); do
+            if az storage container show \
+              --account-name "$TFSTATE_STORAGE_ACCOUNT" \
+              --name "$TFSTATE_CONTAINER" \
+              --auth-mode login --output none 2>/dev/null; then
+              exit 0
+            fi
+            test "$attempt" != 12
+            sleep 10
+          done
+
+      - name: Download Demo configuration with OIDC
+        run: |
+          az storage blob download \
+            --account-name "$TFSTATE_STORAGE_ACCOUNT" \
+            --container-name "$CONFIG_CONTAINER" \
+            --name "$CONFIG_BLOB" \
+            --file workload-configuration.json \
+            --auth-mode login --overwrite --output none
+          manifest_digest="sha256:$(sha256sum registry-release-manifest.json | cut -d' ' -f1)"
+          jq --arg manifest_digest "$manifest_digest" \
+            '.manifest_digest = $manifest_digest' workload-configuration.json > workload-configuration.bound.json
+          mv workload-configuration.bound.json workload-configuration.json
+          jq -e '.founder_ipv4_cidr and .planned_incremental_monthly_cost_inr != null and .cumulative_one_time_cost_inr != null' \
+            workload-configuration.json >/dev/null
 
       - name: Verify approved subscription budget
         run: |
@@ -216,25 +247,6 @@ jobs:
             --actual actual-cost.json \
             --forecast forecast-cost.json \
             --configuration workload-configuration.json
-
-      - name: Open temporary state firewall rule
-        run: |
-          runner_ip=$(curl --fail --silent --show-error https://api.ipify.org)
-          echo "RUNNER_IP=$runner_ip" >> "$GITHUB_ENV"
-          az storage account network-rule add \
-            --resource-group "$TFSTATE_RESOURCE_GROUP" \
-            --account-name "$TFSTATE_STORAGE_ACCOUNT" \
-            --ip-address "$runner_ip" --output none
-          for attempt in $(seq 1 12); do
-            if az storage container show \
-              --account-name "$TFSTATE_STORAGE_ACCOUNT" \
-              --name "$TFSTATE_CONTAINER" \
-              --auth-mode login --output none 2>/dev/null; then
-              exit 0
-            fi
-            test "$attempt" != 12
-            sleep 10
-          done
 
       - name: Terraform foundation plan
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
