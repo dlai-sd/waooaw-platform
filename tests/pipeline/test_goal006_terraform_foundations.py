@@ -429,6 +429,21 @@ def test_deployment_identities_verify_the_active_subscription() -> None:
     assert verification.count(subscription_check) == 1
 
 
+def test_release_attestation_has_one_bounded_fail_closed_retry() -> None:
+    workflow = (REPO_ROOT / ".github/workflows/ci.yaml").read_text(encoding="utf-8")
+
+    assert workflow.count("uses: actions/attest-build-provenance@v2") == 3
+    assert "id: image-attestation-primary" in workflow
+    assert "id: image-attestation-retry" in workflow
+    assert "continue-on-error: true" in workflow
+    assert "steps.image-attestation-primary.outcome == 'failure'" in workflow
+    assert "Back off after transient attestation failure" in workflow
+    assert "Retry published image attestation" in workflow
+    assert "No successful image attestation bundle was produced" in workflow
+    assert "echo \"bundle-path=$bundle_path\"" in workflow
+    assert "steps.image-attestation.outputs.bundle-path" in workflow
+
+
 def test_oidc_workflows_do_not_depend_on_github_platform_identifiers() -> None:
     workflows = "\n".join(
         (REPO_ROOT / path).read_text(encoding="utf-8")
