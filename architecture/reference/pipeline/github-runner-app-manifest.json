@@ -28,6 +28,18 @@
     "uat": "goal006-uat-private",
     "prod": "goal006-prod-private"
   },
+  "cleanup_selection": {
+    "required_match_fields": [
+      "runner_group",
+      "environment_label",
+      "goal006_environment_name_prefix",
+      "github_workflow_run_id",
+      "aca_execution_correlation_id",
+      "lifecycle_predicate"
+    ],
+    "required_match_count": 1,
+    "enumeration_grants_deletion_authority": false
+  },
   "owner": "INST-007",
   "validator": "INST-009"
 }
