@@ -45,7 +45,8 @@ def _validate_sbom(path: Path) -> None:
     document = _read_json(path)
     if not isinstance(document, Mapping) or not document:
         raise ValueError(f"invalid registry SPDX evidence: {path.name}")
-    for platform, attestation in document.items():
+    attestations = {"linux/unknown": document} if "SPDX" in document else document
+    for platform, attestation in attestations.items():
         spdx = attestation.get("SPDX") if isinstance(attestation, Mapping) else None
         if (
             not str(platform).startswith("linux/")
