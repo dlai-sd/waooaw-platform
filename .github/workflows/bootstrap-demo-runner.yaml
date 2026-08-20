@@ -13,6 +13,28 @@ permissions:
   contents: read
   id-token: write
 
+env:
+  ARM_CLIENT_ID: 60c07330-4cc1-4e12-95a2-adc0966f1941
+  ARM_TENANT_ID: 0471534c-1bbe-40ab-ae65-3f721b62582c
+  ARM_SUBSCRIPTION_ID: 2ed11839-6a0f-4eaa-bd94-44ca96ff5d84
+  AZURE_LOCATION: centralindia
+  REQUIRED_PROVIDERS: >-
+    Microsoft.App Microsoft.Authorization Microsoft.Consumption
+    Microsoft.KeyVault Microsoft.ManagedIdentity Microsoft.Network
+    Microsoft.OperationalInsights Microsoft.Resources
+  BUDGET_NAME: waooaw-phase3-monthly
+  BUDGET_AMOUNT_INR: "10000"
+  CONSUMPTION_API_VERSION: 2023-11-01
+  COST_MANAGEMENT_API_VERSION: 2023-11-01
+  AZURE_REST_RETRY_ATTEMPTS: "5"
+  AZURE_REST_RETRY_BASE_DELAY_SECONDS: "5"
+  STACK_NAME: goal006-demo-private-runner
+  STACK_ROOT: infrastructure/deployment-stacks/goal006-runner
+  STACK_PARAMETERS_FILE: demo.parameters.json
+  STACK_DENY_SETTINGS_MODE: denyDelete
+  STACK_ACTION_ON_UNMANAGE: detachAll
+  EVIDENCE_RETENTION_DAYS: "90"
+
 concurrency:
   group: goal006-demo-runner-bootstrap
   cancel-in-progress: false
@@ -21,12 +43,6 @@ jobs:
   bootstrap:
     runs-on: ubuntu-latest
     environment: demo
-    env:
-      ARM_CLIENT_ID: 60c07330-4cc1-4e12-95a2-adc0966f1941
-      ARM_TENANT_ID: 0471534c-1bbe-40ab-ae65-3f721b62582c
-      ARM_SUBSCRIPTION_ID: 2ed11839-6a0f-4eaa-bd94-44ca96ff5d84
-      STACK_NAME: goal006-demo-private-runner
-      STACK_ROOT: infrastructure/deployment-stacks/goal006-runner
     steps:
       - name: Require trusted current main
         env:
@@ -56,22 +72,26 @@ jobs:
       - name: Enforce cumulative cost and provider preconditions
         run: |
           test "$(az account show --query id -o tsv)" = "$ARM_SUBSCRIPTION_ID"
-          for namespace in Microsoft.App Microsoft.Authorization Microsoft.Consumption Microsoft.KeyVault Microsoft.ManagedIdentity Microsoft.Network Microsoft.OperationalInsights Microsoft.Resources; do
+          for namespace in $REQUIRED_PROVIDERS; do
             test "$(az provider show --namespace "$namespace" --query registrationState -o tsv)" = "Registered"
           done
           python scripts/azure_rest_retry.py \
             --label "cumulative budget" \
             --output budget.json \
+            --attempts "$AZURE_REST_RETRY_ATTEMPTS" \
+            --base-delay-seconds "$AZURE_REST_RETRY_BASE_DELAY_SECONDS" \
             -- --method get \
-            --url "https://management.azure.com/subscriptions/$ARM_SUBSCRIPTION_ID/providers/Microsoft.Consumption/budgets/waooaw-phase3-monthly?api-version=2023-11-01"
-          jq -e '.properties.amount == 10000' budget.json >/dev/null
+            --url "https://management.azure.com/subscriptions/$ARM_SUBSCRIPTION_ID/providers/Microsoft.Consumption/budgets/$BUDGET_NAME?api-version=$CONSUMPTION_API_VERSION"
+          jq -e --argjson expected "$BUDGET_AMOUNT_INR" '.properties.amount == $expected' budget.json >/dev/null
           scope="/subscriptions/$ARM_SUBSCRIPTION_ID"
           query='{"type":"ActualCost","timeframe":"MonthToDate","dataset":{"granularity":"None","aggregation":{"totalCost":{"name":"PreTaxCost","function":"Sum"}}}}'
           python scripts/azure_rest_retry.py \
             --label "month-to-date actual cost" \
             --output actual-cost.json \
+            --attempts "$AZURE_REST_RETRY_ATTEMPTS" \
+            --base-delay-seconds "$AZURE_REST_RETRY_BASE_DELAY_SECONDS" \
             -- --method post \
-            --url "https://management.azure.com${scope}/providers/Microsoft.CostManagement/query?api-version=2023-11-01" \
+            --url "https://management.azure.com${scope}/providers/Microsoft.CostManagement/query?api-version=$COST_MANAGEMENT_API_VERSION" \
             --body "$query"
           month_start=$(date -u +%Y-%m-01T00:00:00Z)
           month_end=$(date -u -d "$(date -u -d "$month_start +1 month" +%Y-%m-%dT00:00:00Z) -1 second" +%Y-%m-%dT%H:%M:%SZ)
@@ -86,8 +106,10 @@ jobs:
           python scripts/azure_rest_retry.py \
             --label "monthly forecast cost" \
             --output forecast-cost.json \
+            --attempts "$AZURE_REST_RETRY_ATTEMPTS" \
+            --base-delay-seconds "$AZURE_REST_RETRY_BASE_DELAY_SECONDS" \
             -- --method post \
-            --url "https://management.azure.com${scope}/providers/Microsoft.CostManagement/forecast?api-version=2023-11-01" \
+            --url "https://management.azure.com${scope}/providers/Microsoft.CostManagement/forecast?api-version=$COST_MANAGEMENT_API_VERSION" \
             --body "$forecast"
           python scripts/goal006_cost_gate.py \
             --actual actual-cost.json \
@@ -98,16 +120,16 @@ jobs:
         run: |
           az stack sub validate \
             --name "$STACK_NAME" \
-            --location centralindia \
+            --location "$AZURE_LOCATION" \
             --template-file "$STACK_ROOT/subscription.bicep" \
-            --parameters "@$STACK_ROOT/demo.parameters.json" \
-            --deny-settings-mode denyDelete \
-            --action-on-unmanage detachAll
+            --parameters "@$STACK_ROOT/$STACK_PARAMETERS_FILE" \
+            --deny-settings-mode "$STACK_DENY_SETTINGS_MODE" \
+            --action-on-unmanage "$STACK_ACTION_ON_UNMANAGE"
           az deployment sub what-if \
             --name "$STACK_NAME-what-if" \
-            --location centralindia \
+            --location "$AZURE_LOCATION" \
             --template-file "$STACK_ROOT/subscription.bicep" \
-            --parameters "@$STACK_ROOT/demo.parameters.json" \
+            --parameters "@$STACK_ROOT/$STACK_PARAMETERS_FILE" \
             --result-format FullResourcePayloads > runner-stack-what-if.json
 
       - name: Reconcile inactive stack
@@ -115,11 +137,11 @@ jobs:
         run: |
           az stack sub create \
             --name "$STACK_NAME" \
-            --location centralindia \
+            --location "$AZURE_LOCATION" \
             --template-file "$STACK_ROOT/subscription.bicep" \
-            --parameters "@$STACK_ROOT/demo.parameters.json" \
-            --deny-settings-mode denyDelete \
-            --action-on-unmanage detachAll \
+            --parameters "@$STACK_ROOT/$STACK_PARAMETERS_FILE" \
+            --deny-settings-mode "$STACK_DENY_SETTINGS_MODE" \
+            --action-on-unmanage "$STACK_ACTION_ON_UNMANAGE" \
             --yes
           test "$(az stack sub show --name "$STACK_NAME" --query provisioningState -o tsv)" = "Succeeded"
 
@@ -133,5 +155,5 @@ jobs:
             actual-cost.json
             forecast-cost.json
             runner-stack-what-if.json
-          retention-days: 90
+          retention-days: ${{ env.EVIDENCE_RETENTION_DAYS }}
           if-no-files-found: warn
