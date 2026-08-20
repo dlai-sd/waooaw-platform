@@ -204,3 +204,48 @@ removes routine Founder handoffs, not evidence gates or protected final decision
 | Excluded authority | All FA-052 Founder-reserved decisions, scope/ceiling expansion, self-review, PR approval and merge |
 
 Acceptance establishes execution accountability but does not predetermine any component result.
+
+## WC-076 INST-010 Replacement GO Authorization
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-006 |
+| `record_id` | GOA-GOAL-006-INST-010-03 |
+| `record_type` | Authorization Record - replacement |
+| `authorization_id` | GOA-GOAL-006-INST-010-03 |
+| Authorized Institution | INST-010 - Platform IT Expert, active Skill 17 |
+| Founder authority | Founder confirmation dated 2026-08-20; Skill 17 remains active under FA-049; reconcile the missing WC-076 authorization chain |
+| Contribution scope | Execute WC-076 P3-EX01 through P3-EX11 only within FA-052, preserving the current P3-EX07 Demo-first checkpoint and dependency order |
+| Participation Window | Through 2026-09-13 or accepted P3-WC07 completion, subject to FA-052 stop and revocation conditions |
+| Financial ceiling | INR 15,000 one-time Phase 3 spend and INR 10,000 monthly cloud spend; warn and consolidate at 80%; stop before either ceiling |
+| Progression constraint | Demo deployment and independent verification precede Founder Demo acceptance; UAT remains prohibited until that acceptance is explicit |
+| Independence constraint | INST-010 may not independently accept its own material contribution, approve or merge its PR, waive an independent gate or exercise a Founder-reserved decision |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-20T08:31:23Z |
+
+This replacement GOA repairs the missing source record referenced by WC-076 and PROJECT_STATE. It
+does not expand FA-052, authorize UAT before Founder Demo acceptance, or predetermine any technical,
+security, recovery, cost or independent-verification result. It becomes executable only after a
+temporally later INST-010 Acceptance Record.
+
+## WC-076 INST-010 Replacement Acceptance
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-010 |
+| `goal_id` | GOAL-006 |
+| `record_id` | ACC-GOAL-006-INST-010-03 |
+| `record_type` | Acceptance Record - replacement |
+| `produced_at` | 2026-08-20T08:31:55Z |
+| `authorization_id` | GOA-GOAL-006-INST-010-03 |
+| `acceptance_timestamp` | 2026-08-20T08:31:55Z |
+| Decision | ACCEPTED |
+| Accepted scope | WC-076 P3-EX01 through P3-EX11 within FA-052, beginning from the current P3-EX07 Demo deployment checkpoint |
+| First discriminating check | Revalidate the trusted-main signed exact-six release and complete Demo preflight before any deployment retry; stop on authority, evidence, security, recovery, cost or scope failure |
+| Progression constraint | Return the independently verified Demo URL for Founder acceptance; do not initiate UAT before that explicit acceptance |
+| Excluded authority | Scope or ceiling expansion, customer traffic, material Production risk acceptance, Platform Operations activation, final GOAL-006 acceptance, self-review, PR approval and merge |
+
+INST-010 accepts the replacement GOA after issuance. Acceptance makes the bounded WC-076 execution
+scope current; it does not convert prior failed attempts into passing evidence or waive any remaining
+Demo gate.

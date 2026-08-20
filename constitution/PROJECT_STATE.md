@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 117
+**State Revision:** 118
 **Last Updated:** 2026-08-20
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -30,7 +30,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Cloud-only PR #289 | DONE - independently approved by R-131 and merged by Founder as `d49dad1` |
 | Azure read-only preflight | DONE - tenant, subscription, budget, state and providers verified |
 | WC-076 P3-EX01 through P3-EX06 | DONE - issue #296 closed after protected environments, OIDC and signed exact-six release evidence |
-| INST-010 GOA / Acceptance | VALID - GOA-GOAL-006-INST-010-03 and later ACC-GOAL-006-INST-010-03 recorded on PR #294 |
+| INST-010 GOA / Acceptance | VALID - replacement GOA-GOAL-006-INST-010-03 issued 2026-08-20T08:31:23Z and later ACC-GOAL-006-INST-010-03 accepted 2026-08-20T08:31:55Z under Founder reconciliation authority |
 | Trusted-main exact-six release | DONE - run `32329838734`, commit `73f9ad7`, artifact `9392723229`; reference tuple becomes stale after repair merge |
 | Demo deployment repair | IMPLEMENTED - commit `93b7bd7`; Founder-only dispatch, private vault seeder, generated verifier handoff, /32 ingress and workload rollback |
 | Local validation | PASS - 37 focused tests, actionlint, Terraform fmt and both Demo roots against Terraform 1.9.8 / AzureRM 4.14.0 |
