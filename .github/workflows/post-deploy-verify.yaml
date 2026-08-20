@@ -82,7 +82,7 @@ jobs:
           tenant-id: ${{ env.ARM_TENANT_ID }}
           subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
 
-      - name: Verify exact-six live inventory and digest equality
+      - name: Verify signed release and pinned dependency inventory
         run: |
           az containerapp list --resource-group 'waooaw-${{ inputs.environment }}-rg' \
             --query '[].{name:name,image:properties.template.containers[0].image,provisioningState:properties.provisioningState}' \
@@ -91,6 +91,47 @@ jobs:
             --environment '${{ inputs.environment }}' \
             --manifest registry-release-manifest.json \
             --inventory live-inventory.json
+
+      - name: Verify active healthy revisions
+        env:
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          for app in constitutional-engine business-platform professional-runtime ai-runtime web billing-engine keycloak; do
+            az containerapp revision list \
+              --resource-group "waooaw-$TARGET_ENVIRONMENT-rg" \
+              --name "ca-$TARGET_ENVIRONMENT-$app" \
+              --query "[?properties.active && properties.provisioningState==\`Provisioned\` && properties.healthState==\`Healthy\`] | [0].name" \
+              -o tsv | grep -q .
+          done
+
+      - name: Run internal functional verification
+        id: functional
+        env:
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          execution_name=""
+          for attempt in $(seq 1 12); do
+            execution_name=$(az containerapp job start \
+              --name "job-$TARGET_ENVIRONMENT-deployment-verification" \
+              --resource-group "waooaw-$TARGET_ENVIRONMENT-rg" \
+              --query name -o tsv 2>/dev/null) && break
+            test "$attempt" != 12
+            sleep 10
+          done
+          test -n "$execution_name"
+          for attempt in $(seq 1 40); do
+            az containerapp job execution show \
+              --name "job-$TARGET_ENVIRONMENT-deployment-verification" \
+              --resource-group "waooaw-$TARGET_ENVIRONMENT-rg" \
+              --job-execution-name "$execution_name" > functional-verification.json
+            status=$(jq -r '.properties.status' functional-verification.json)
+            case "$status" in
+              Succeeded) exit 0 ;;
+              Failed) echo "Internal Web/BP/Keycloak/CE verification failed" >&2; exit 1 ;;
+            esac
+            test "$attempt" != 40
+            sleep 10
+          done
 
       - name: Verify returned Web URL binds to the deployed revision
         env:
@@ -103,7 +144,7 @@ jobs:
             --arg environment '${{ inputs.environment }}' \
             --arg release_sha '${{ inputs.release_sha }}' \
             --arg web_url "$EXPECTED_WEB_URL" \
-            '{environment: $environment, release_sha: $release_sha, web_url: $web_url, exact_six_verified: true}' \
+            '{environment: $environment, release_sha: $release_sha, web_url: $web_url, exact_six_verified: true, dependencies_verified: true, functional_verification: true}' \
             > deployment-verification.json
 
       - name: Upload independent evidence
@@ -114,6 +155,7 @@ jobs:
           path: |
             registry-release-manifest.json
             live-inventory.json
+            functional-verification.json
             deployment-verification.json
           if-no-files-found: warn
           retention-days: 90

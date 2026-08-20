@@ -26,7 +26,10 @@ jobs:
           DISPATCH_REF: ${{ github.ref }}
           GH_TOKEN: ${{ github.token }}
         run: |
-          test "$DISPATCH_ACTOR" = "dlai-sd"
+          case "$DISPATCH_ACTOR" in
+            dlai-sd|yk-dlaisd) ;;
+            *) echo "Unauthorized Demo dispatcher" >&2; exit 1 ;;
+          esac
           test "$DISPATCH_REF" = "refs/heads/main"
           latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
           release_run_id=$(gh api \

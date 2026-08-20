@@ -136,12 +136,31 @@ jobs:
           scope="/subscriptions/$ARM_SUBSCRIPTION_ID"
           query='{"type":"ActualCost","timeframe":"MonthToDate","dataset":{"granularity":"None","aggregation":{"totalCost":{"name":"PreTaxCost","function":"Sum"}}}}'
           az rest --method post --url "https://management.azure.com${scope}/providers/Microsoft.CostManagement/query?api-version=2023-11-01" --body "$query" > actual-cost.json
-          forecast='{"type":"Usage","timeframe":"MonthToDate","includeActualCost":true,"includeFreshPartialCost":true,"dataset":{"granularity":"None","aggregation":{"totalCost":{"name":"PreTaxCost","function":"Sum"}}}}'
+          month_start=$(date -u +%Y-%m-01T00:00:00Z)
+          month_end=$(date -u -d "$(date -u -d "$month_start +1 month" +%Y-%m-%dT00:00:00Z) -1 second" +%Y-%m-%dT%H:%M:%SZ)
+          forecast=$(jq -cn --arg from "$month_start" --arg to "$month_end" '{
+            type: "Usage",
+            timeframe: "Custom",
+            timePeriod: {from: $from, to: $to},
+            includeActualCost: true,
+            includeFreshPartialCost: true,
+            dataset: {granularity: "None", aggregation: {totalCost: {name: "PreTaxCost", function: "Sum"}}}
+          }')
           az rest --method post --url "https://management.azure.com${scope}/providers/Microsoft.CostManagement/forecast?api-version=2023-11-01" --body "$forecast" > forecast-cost.json
           python scripts/goal006_cost_gate.py \
             --actual actual-cost.json \
             --forecast forecast-cost.json \
             --configuration workload-configuration.json
+
+      - name: Verify required Azure providers
+        run: |
+          for namespace in Microsoft.App Microsoft.Authorization Microsoft.KeyVault Microsoft.ManagedIdentity Microsoft.Network Microsoft.Resources Microsoft.Storage; do
+            state=$(az provider show --namespace "$namespace" --query registrationState -o tsv)
+            test "$state" = "Registered" || {
+              echo "$namespace must be registered before Demo deployment (current state: $state)" >&2
+              exit 1
+            }
+          done
 
       - name: Open temporary state firewall rule
         run: |
@@ -151,6 +170,16 @@ jobs:
             --resource-group "$TFSTATE_RESOURCE_GROUP" \
             --account-name "$TFSTATE_STORAGE_ACCOUNT" \
             --ip-address "$runner_ip" --output none
+          for attempt in $(seq 1 12); do
+            if az storage container show \
+              --account-name "$TFSTATE_STORAGE_ACCOUNT" \
+              --name "$TFSTATE_CONTAINER" \
+              --auth-mode login --output none 2>/dev/null; then
+              exit 0
+            fi
+            test "$attempt" != 12
+            sleep 10
+          done
 
       - name: Terraform foundation plan
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
@@ -161,6 +190,14 @@ jobs:
             -backend-config="container_name=$TFSTATE_CONTAINER" \
             -backend-config="use_oidc=true" \
             -backend-config="use_azuread_auth=true"
+          resource_address=module.foundation.azurerm_resource_group.environment
+          if ! terraform state show "$resource_address" >/dev/null 2>&1; then
+            resource_group="waooaw-${{ inputs.environment }}-rg"
+            resource_group_id=$(az group show --name "$resource_group" \
+              --query "[?location=='centralindia' && tags.environment=='${{ inputs.environment }}' && tags.goal=='GOAL-006' && tags.\"managed-by\"=='waooaw-platform-bootstrap'].id | [0]" -o tsv)
+            test -n "$resource_group_id"
+            terraform import -input=false -lock-timeout=5m "$resource_address" "$resource_group_id"
+          fi
           terraform validate
           terraform plan -input=false -lock-timeout=5m -out=foundation.tfplan
 
@@ -172,14 +209,16 @@ jobs:
           latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
           test '${{ inputs.release_sha }}' = "$latest_main_sha"
           terraform apply -input=false -auto-approve foundation.tfplan
-          echo "deployment_client_id=$(terraform output -raw deployment_client_id)" >> "$GITHUB_OUTPUT"
-          echo "deployment_identity_id=$(terraform output -raw deployment_identity_id)" >> "$GITHUB_OUTPUT"
-          echo "verification_client_id=$(terraform output -raw verification_client_id)" >> "$GITHUB_OUTPUT"
-          echo "resource_group_name=$(terraform output -raw resource_group_name)" >> "$GITHUB_OUTPUT"
-          echo "container_app_environment_name=$(terraform output -raw container_app_environment_name)" >> "$GITHUB_OUTPUT"
-          echo "key_vault_id=$(terraform output -raw key_vault_id)" >> "$GITHUB_OUTPUT"
-          echo "key_vault_name=$(terraform output -raw key_vault_name)" >> "$GITHUB_OUTPUT"
-          echo "key_vault_uri=$(terraform output -raw key_vault_uri)" >> "$GITHUB_OUTPUT"
+          {
+            echo "deployment_client_id=$(terraform output -raw deployment_client_id)"
+            echo "deployment_identity_id=$(terraform output -raw deployment_identity_id)"
+            echo "verification_client_id=$(terraform output -raw verification_client_id)"
+            echo "resource_group_name=$(terraform output -raw resource_group_name)"
+            echo "container_app_environment_name=$(terraform output -raw container_app_environment_name)"
+            echo "key_vault_id=$(terraform output -raw key_vault_id)"
+            echo "key_vault_name=$(terraform output -raw key_vault_name)"
+            echo "key_vault_uri=$(terraform output -raw key_vault_uri)"
+          } >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -191,7 +230,7 @@ jobs:
           tenant-id: ${{ env.ARM_TENANT_ID }}
           subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
 
-      - name: Create private digest-pinned runtime secret seeder
+      - name: Create private digest-pinned credential seeder
         env:
           CONTAINER_APP_ENVIRONMENT: ${{ steps.foundation.outputs.container_app_environment_name }}
           DEPLOYMENT_CLIENT_ID: ${{ steps.foundation.outputs.deployment_client_id }}
@@ -200,6 +239,7 @@ jobs:
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
         run: |
           az containerapp job delete --name "$SEEDER_JOB" --resource-group "$RESOURCE_GROUP" --yes --output none 2>/dev/null || true
+          # shellcheck disable=SC2016
           az containerapp job create \
             --name "$SEEDER_JOB" \
             --resource-group "$RESOURCE_GROUP" \
@@ -215,10 +255,10 @@ jobs:
             --memory 0.5Gi \
             --env-vars "AZURE_CLIENT_ID=$DEPLOYMENT_CLIENT_ID" "KEY_VAULT_NAME=$KEY_VAULT_NAME" \
             --command /bin/sh \
-            --args -c 'set -eu; az login --identity --client-id "$AZURE_CLIENT_ID" --allow-no-subscriptions --output none; for name in constitutional-engine business-platform professional-runtime ai-runtime web billing-engine; do value=$(head -c 48 /dev/urandom | base64 | tr -d "\n"); for attempt in 1 2 3 4 5 6; do if az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name "$name" --value "$value" --output none; then break; fi; test "$attempt" != 6; sleep 10; done; unset value; done' \
+            --args -c 'set -eu; az login --identity --client-id "$AZURE_CLIENT_ID" --allow-no-subscriptions --output none; for name in constitutional-engine business-platform professional-runtime ai-runtime web billing-engine; do credential=$(head -c 48 /dev/urandom | base64 | tr -d "\n"); for attempt in 1 2 3 4 5 6; do if az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name "$name" --value "$credential" --output none; then break; fi; test "$attempt" != 6; sleep 10; done; unset credential; done' \
             --output none
 
-      - name: Run private runtime secret seeder
+      - name: Run private credential seeder
         id: seeder
         env:
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
@@ -237,7 +277,7 @@ jobs:
                   --job-execution-name "$execution_name" > secret-seeder-execution.json
                 exit 0
                 ;;
-              Failed) echo "Private runtime secret seeder failed" >&2; exit 1 ;;
+              Failed) echo "Private credential seeder failed" >&2; exit 1 ;;
             esac
             test "$attempt" != 60
             sleep 10
@@ -286,7 +326,7 @@ jobs:
         run: |
           terraform destroy -input=false -auto-approve -lock-timeout=5m
 
-      - name: Delete private runtime secret seeder
+      - name: Delete private credential seeder
         if: always() && steps.foundation.outcome == 'success'
         env:
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}

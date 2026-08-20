@@ -74,8 +74,17 @@ def test_private_boundaries_and_key_vault_references_are_explicit() -> None:
         assert re.search(rf'"{member}"\s*=\s*true', contract)
     assert "key_vault_secret_id" in contract
     assert "secret_value" not in contract
-    assert "var.key_vault_secret_uris[each.key]" in contract
-    assert "var.key_vault_secret_resource_ids[each.key]" in contract
+    assert "var.key_vault_secret_uris[local.credential_member[each.key]]" in contract
+    assert "var.key_vault_secret_resource_ids[local.credential_member[each.key]]" in contract
+    assert "KEYCLOAK_CLIENT_SECRET" in contract
+    assert "NEXTAUTH_SECRET" in contract
+    assert "OPS_AUTH_TOKEN" in contract
+    assert 'key_vault_secret_uris["business-platform"]' in contract
+    assert '"ai-runtime"            = "professional-runtime"' in contract
+    assert "BP_BASE_URL" in contract
+    assert "ca-${var.environment}-constitutional-engine:80" in contract
+    assert 'resource "azurerm_container_app_job" "verification"' in contract
+    assert 'role_definition_name = "Container Apps Jobs Operator"' in contract
 
 
 def test_each_release_member_has_its_own_identity_and_secret_scope() -> None:
@@ -84,7 +93,8 @@ def test_each_release_member_has_its_own_identity_and_secret_scope() -> None:
     assert 'resource "azurerm_user_assigned_identity" "member"' in contract
     assert 'resource "azurerm_role_assignment" "member_secret"' in contract
     assert "azurerm_user_assigned_identity.member[each.key].id" in contract
-    assert "scope                = var.key_vault_secret_resource_ids[each.key]" in contract
+    assert "scope                = var.key_vault_secret_resource_ids[local.credential_member[each.key]]" in contract
+    assert 'resource "azurerm_role_assignment" "professional_runtime_bp_secret"' in contract
     assert "runtime_identity_id" not in contract
     assert "runtime_identity_client_id" not in contract
 
@@ -183,10 +193,12 @@ def test_network_egress_is_explicitly_fail_closed() -> None:
 
     assert contract.count('name                       = "deny-unapproved-egress"') == 2
     assert contract.count('priority                   = 4096') == 2
-    assert contract.count('direction                  = "Outbound"') == 3
+    assert contract.count('direction                  = "Outbound"') == 5
     assert contract.count('access                     = "Deny"') == 2
     assert 'destination_address_prefix = "VirtualNetwork"' in contract
-    assert 'destination_address_prefix = "Internet"' not in contract
+    assert 'destination_address_prefix = "AzurePlatformDNS"' in contract
+    assert 'destination_port_range     = "443"' in contract
+    assert 'destination_address_prefix = "Internet"' in contract
 
 
 def test_scale_contract_is_bounded_and_defaults_to_zero() -> None:
@@ -307,24 +319,31 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert 'test "$APPLY_REQUESTED" = "true"' in workflow
     assert workflow.index("Enforce current Demo-only authorization") < workflow.index("azure/login@v2")
     assert "Reject stale release before cloud access" in workflow
+    assert 'timeframe: "Custom"' in workflow
+    assert "Verify required Azure providers" in workflow
+    assert "Microsoft.Network" in workflow
+    assert "terraform state show \"$resource_address\"" in workflow
+    assert "terraform import -input=false -lock-timeout=5m" in workflow
+    assert "waooaw-platform-bootstrap" in workflow
+    assert "az storage container show" in workflow
     assert workflow.count('gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main"') == 3
     assert workflow.count("terraform apply -input=false -auto-approve") == 2
     assert "mcr.microsoft.com/azure-cli@sha256:" in workflow
-    assert "Create private digest-pinned runtime secret seeder" in workflow
-    assert "Run private runtime secret seeder" in workflow
-    assert "Delete private runtime secret seeder" in workflow
+    assert "Create private digest-pinned credential seeder" in workflow
+    assert "Run private credential seeder" in workflow
+    assert "Delete private credential seeder" in workflow
     assert "if: always() && steps.foundation.outcome == 'success'" in workflow
     assert "--key-vault-id '${{ steps.foundation.outputs.key_vault_id }}'" in workflow
     assert workflow.index("terraform apply -input=false -auto-approve foundation.tfplan") < workflow.index(
-        "Create private digest-pinned runtime secret seeder"
+        "Create private digest-pinned credential seeder"
     )
-    assert workflow.index("Run private runtime secret seeder") < workflow.index("Terraform workload plan")
+    assert workflow.index("Run private credential seeder") < workflow.index("Terraform workload plan")
     assert "Roll back disposable Demo workload after apply failure" in workflow
     assert "if: failure() && steps.workload.outcome == 'failure'" in workflow
     assert "terraform destroy -input=false -auto-approve -lock-timeout=5m" in workflow
     assert workflow.index("Terraform workload apply") < workflow.index("Roll back disposable Demo workload after apply failure")
     assert workflow.index("Roll back disposable Demo workload after apply failure") < workflow.index(
-        "Delete private runtime secret seeder"
+        "Delete private credential seeder"
     )
     assert "set -x" not in workflow
     for apply_command in (
@@ -344,7 +363,8 @@ def test_founder_demo_is_the_only_authorized_deployment_path() -> None:
     assert "Trusted-main exact-six release commit SHA" not in demo
     assert "${{ inputs.release_run_id }}" not in demo
     assert "${{ inputs.release_sha }}" not in demo
-    assert 'test "$DISPATCH_ACTOR" = "dlai-sd"' in demo
+    assert "dlai-sd|yk-dlaisd" in demo
+    assert '*) echo "Unauthorized Demo dispatcher" >&2; exit 1 ;;' in demo
     assert 'test "$DISPATCH_REF" = "refs/heads/main"' in demo
     assert "actions/workflows/ci.yaml/runs?branch=main&event=push&status=success" in demo
     assert 'artifact_name="goal006-exact-six-release-$latest_main_sha"' in demo
@@ -372,6 +392,9 @@ def test_founder_demo_is_the_only_authorized_deployment_path() -> None:
     assert "WAOOAW_PLATFORM_VERIFICATION_CLIENT_ID" not in verification
     assert 'test "$TARGET_ENVIRONMENT" = "demo"' in verification
     assert "Verify returned Web URL binds to the deployed revision" in verification
+    assert "Verify active healthy revisions" in verification
+    assert "Run internal functional verification" in verification
+    assert "functional-verification.json" in verification
 
     delivery_surfaces = [
         REPO_ROOT / ".github/workflows/deploy-environment.yaml",
