@@ -59,14 +59,20 @@ jobs:
           for namespace in Microsoft.App Microsoft.Authorization Microsoft.Consumption Microsoft.KeyVault Microsoft.ManagedIdentity Microsoft.Network Microsoft.OperationalInsights Microsoft.Resources; do
             test "$(az provider show --namespace "$namespace" --query registrationState -o tsv)" = "Registered"
           done
-          budget=$(az rest --method get \
-            --url "https://management.azure.com/subscriptions/$ARM_SUBSCRIPTION_ID/providers/Microsoft.Consumption/budgets/waooaw-phase3-monthly?api-version=2023-11-01")
-          jq -e '.properties.amount == 10000' <<< "$budget" >/dev/null
+          python scripts/azure_rest_retry.py \
+            --label "cumulative budget" \
+            --output budget.json \
+            -- --method get \
+            --url "https://management.azure.com/subscriptions/$ARM_SUBSCRIPTION_ID/providers/Microsoft.Consumption/budgets/waooaw-phase3-monthly?api-version=2023-11-01"
+          jq -e '.properties.amount == 10000' budget.json >/dev/null
           scope="/subscriptions/$ARM_SUBSCRIPTION_ID"
           query='{"type":"ActualCost","timeframe":"MonthToDate","dataset":{"granularity":"None","aggregation":{"totalCost":{"name":"PreTaxCost","function":"Sum"}}}}'
-          az rest --method post \
+          python scripts/azure_rest_retry.py \
+            --label "month-to-date actual cost" \
+            --output actual-cost.json \
+            -- --method post \
             --url "https://management.azure.com${scope}/providers/Microsoft.CostManagement/query?api-version=2023-11-01" \
-            --body "$query" > actual-cost.json
+            --body "$query"
           month_start=$(date -u +%Y-%m-01T00:00:00Z)
           month_end=$(date -u -d "$(date -u -d "$month_start +1 month" +%Y-%m-%dT00:00:00Z) -1 second" +%Y-%m-%dT%H:%M:%SZ)
           forecast=$(jq -cn --arg from "$month_start" --arg to "$month_end" '{
@@ -77,9 +83,12 @@ jobs:
             includeFreshPartialCost: true,
             dataset: {granularity: "None", aggregation: {totalCost: {name: "PreTaxCost", function: "Sum"}}}
           }')
-          az rest --method post \
+          python scripts/azure_rest_retry.py \
+            --label "monthly forecast cost" \
+            --output forecast-cost.json \
+            -- --method post \
             --url "https://management.azure.com${scope}/providers/Microsoft.CostManagement/forecast?api-version=2023-11-01" \
-            --body "$forecast" > forecast-cost.json
+            --body "$forecast"
           python scripts/goal006_cost_gate.py \
             --actual actual-cost.json \
             --forecast forecast-cost.json \
@@ -120,6 +129,7 @@ jobs:
         with:
           name: goal006-demo-runner-bootstrap-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
+            budget.json
             actual-cost.json
             forecast-cost.json
             runner-stack-what-if.json
