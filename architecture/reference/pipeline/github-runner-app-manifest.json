@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "installation_target": "organization",
+  "organization": "dlai-sd",
+  "repositories": [
+    "waooaw-platform"
+  ],
+  "organization_permissions": {
+    "organization_self_hosted_runners": "write"
+  },
+  "repository_permissions": {
+    "metadata": "read"
+  },
+  "prohibited_permissions": [
+    "administration",
+    "actions",
+    "contents",
+    "deployments",
+    "environments",
+    "issues",
+    "packages",
+    "pull_requests",
+    "secrets",
+    "workflows"
+  ],
+  "runner_groups": {
+    "demo": "goal006-demo-private",
+    "uat": "goal006-uat-private",
+    "prod": "goal006-prod-private"
+  },
+  "cleanup_selection": {
+    "required_match_fields": [
+      "runner_group",
+      "environment_label",
+      "goal006_environment_name_prefix",
+      "github_workflow_run_id",
+      "aca_execution_correlation_id",
+      "lifecycle_predicate"
+    ],
+    "required_match_count": 1,
+    "enumeration_grants_deletion_authority": false
+  },
+  "owner": "INST-007",
+  "validator": "INST-009"
+}

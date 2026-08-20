@@ -1,0 +1,133 @@
+# ADR-047: Private Ephemeral Deployment Runners
+
+**Status:** Accepted - independent EA and Security review APPROVE, no blockers (commit `7e5bd4b`)
+**Date:** 2026-08-20
+**Roles Applied:** Enterprise Architect, Security Architect, Platform Architect
+**Constitutional Basis:** C-023 Evidence First; C-059 Implementation Traceability; C-065 SDLC Separation; C-066 Authorization Tiers; C-067 Blue-Green and Cost Ceiling; ADR-013; ADR-014; FA-052; WC-076
+
+## Context
+
+GOAL-006 deployment uses GitHub Actions OIDC and an Azure Storage backend with default-deny public networking. A GitHub-hosted runner temporarily allowed the public IP reported by `api.ipify.org`. The exact configuration Blob succeeded after propagation, but Terraform's backend client received `403 AuthorizationFailure` moments later. A discovered public egress address is not a stable trust boundary across tools or requests.
+
+Terraform cannot create the network path required to read its own protected backend. The private runner control plane therefore needs a separate, deterministic bootstrap lifecycle that retains no always-on runner compute and does not introduce GitHub variables, client secrets, public ingress, or a second infrastructure orchestrator state file.
+
+## Decision
+
+WAOOAW will execute environment deployment jobs on ephemeral self-hosted GitHub runners implemented as Azure Container Apps manual Jobs inside environment-isolated runner subnets.
+
+1. A GitHub-hosted management-plane bootstrap job uses the constrained Azure OIDC identity to reconcile a versioned Azure Deployment Stack. The stack owns runner networking, NSG, ACA environment/job, managed identity, bootstrap Key Vault access, Storage private endpoint, private DNS link, diagnostics, and budget controls.
+2. Azure Deployment Stacks are the bootstrap ownership and reconciliation record. Bootstrap does not use the protected Terraform backend or retain local Terraform state.
+3. Demo, UAT, and Production share one versioned blueprint but have distinct runner groups, labels, subnets, managed identities, private endpoints, state boundaries, and activation evidence. UAT is not provisioned before Founder Demo acceptance. Production remains zero-capacity and plan-only until separately authorized.
+4. Storage state and deployment configuration resolve through private endpoints. Public Storage access is disabled only after the Demo private path passes exact backend and rollback qualification. No public-IP allowlist fallback is permitted after activation.
+5. One centrally managed `privatelink.blob.core.windows.net` zone may link to isolated runner VNets. DNS does not grant access; NSGs and Azure RBAC enforce environment separation.
+6. An organization-installed GitHub App issues short-lived runner registration tokens. Its RSA private key is imported as a non-exportable, purge-protected Azure Key Vault key with a maximum 90-day expiry and 14-day alert. The bootstrap OIDC identity can invoke RS256 signing on that exact key version but cannot export it; private key bytes never enter workflow or runner memory. The live App must exactly match `architecture/reference/pipeline/github-runner-app-manifest.json`. The resulting registration token alone is written to a 15-minute environment-specific Key Vault secret readable only by the runner identity.
+7. The workflow separates GitHub-hosted `bootstrap-runner` and `cleanup-runner` jobs from the self-hosted `deploy-private` job. `cleanup-runner` uses `if: always()` for ordinary completion/failure/cancellation. ACA enforces a 60-minute execution limit. A separate two-minute ACA `runner-reconciler` Job runs every five minutes to cover hard workflow termination; its distinct identity can sign a GitHub App JWT, administer runner registrations, delete expired token secrets and stop ACA executions, but cannot read state/configuration or deploy environments. Cleanup verifies deregistration and zero runner execution within five minutes, retries for at most 15 minutes, then keeps the label inactive and alerts INST-009/007. No next deployment runs while an orphan remains. Runner compute is zero between executions; reconciler execution cost is included in the gate forecast.
+8. Runner managed identity, bootstrap OIDC identity, and environment deployment OIDC identity are separate authorities. The runner identity cannot deploy resources; the deployment identity cannot read GitHub App material; the bootstrap identity cannot bypass environment authorization.
+
+The normative bootstrap sequence, network/RBAC matrix, DNS ownership, negative tests, cost controls, and activation gate are defined in `architecture/reference/pipeline/azure-deployment-topology.md`.
+
+### Infrastructure Identity Boundary
+
+ADR-047 governs infrastructure-provisioning identities only; these are not SPIFFE workloads, ADR-046 service identities, or constitutional authorization. GitHub issues the bootstrap OIDC assertion for the exact repository, workflow reference and environment subject. Azure Entra exchanges it only for the bootstrap app registration's audience and environment-scoped management roles. The runner and reconciler use distinct Azure managed identities. The deployment job separately exchanges GitHub OIDC for the environment deployment identity. No identity accepts another identity's audience or assumes another identity's role.
+
+Revocation disables the affected Entra federated credential or managed identity assignment, revokes the GitHub App key version, removes outstanding runner registrations, stops active ACA executions and leaves the environment label inactive. Suspected compromise triggers this sequence before key rotation or recovery. Authentication proves only identity; Deployment Stack reconciliation, policy gates and independent activation evidence remain required proof of readiness.
+
+### Credential Lifecycle
+
+The bootstrap uses the Azure Key Vault Cryptography client or REST `sign` operation with algorithm `RS256`, a 10-second request timeout, at most three bounded transient retries and no plaintext/export fallback. It constructs a GitHub App JWT with an expiry no more than ten minutes, exchanges it at `POST /app/installations/{installation_id}/access_tokens`, then calls `POST /orgs/dlai-sd/actions/runners/registration-token` with the installation token. GitHub, not Azure OIDC, validates the App JWT and issues the runner registration token.
+
+Token issuance occurs only after stack, DNS and permission reconciliation and immediately before ACA execution start. The token secret expires after 15 minutes even though GitHub's upstream token validity may be longer; ACA must consume it and register within ten minutes. Failure or delay at minutes 12, 14 or 16 stops the execution, deletes the secret through the cleanup identity, leaves the label inactive and restarts from a newly issued token only after the pre-start gates pass again. Tokens are never renewed inside a running execution.
+
+### Lifecycle, Drift, And Cost Governance
+
+INST-009 owns Deployment Stack names, template/parameter digests, `what-if` reconciliation and retained run artifacts. Expected absent resources may be reconciled from the approved immutable template. Unexpected ownership, permissions, NSG, endpoint, DNS link/record or destructive drift is alert-only and requires INST-007/009 approval before reconciliation; it never auto-accepts live state. INST-015 independently attests ten consecutive runs whose post-reconciliation `what-if` contains no resource changes.
+
+The implementation must check in the complete Bicep/ARM Deployment Stack template and environment parameter manifests before the first cloud reconciliation. Bootstrap checks out an exact trusted-main commit, computes SHA-256 over those files, compares the result with the reviewed bootstrap manifest and records the commit/digest in evidence before `what-if` or deployment. Runtime template generation, mutable URI templates and unrecorded parameter overrides are prohibited. Identical commit, template digest and parameter digest must produce a no-change `what-if` after convergence; any difference blocks token issuance. The template, verifier and executable idempotency tests are Runner Bootstrap interface-gate outputs, not artifacts permitted while this ADR remains Proposed.
+
+Bootstrap is **state-idempotent and convergent**, not bitwise resource-identical: the same approved commit/template/parameter tuple may be rerun safely and must converge to the same declared Azure resource properties despite provider-generated IDs and timestamps. Its scope is the complete Deployment Stack in Decision item 1, including runner identities, role assignments, NSG, ACA Jobs, private endpoint, DNS link, diagnostics and budgets. It does not include GitHub token issuance, runner execution or environment deployment. A partial Azure deployment is retained under the same stack ownership record; bootstrap records failed operations, reruns `what-if` against the same tuple and repairs only expected absent/failed resources. It never rolls back by deleting retained network, identity, vault, endpoint or DNS resources. Convergence is achieved in at most three deployment attempts; otherwise the stack enters `BOOTSTRAP_DRIFT_HOLD` and requires INST-007/009 disposition. Bootstrap authentication is the exact GitHub OIDC-to-Entra identity defined here, not an ADR-046 workload identity and not a Key Vault credential.
+
+The reconciler stops only an ACA execution older than 60 minutes or one whose recorded GitHub workflow run is terminal/absent while the runner remains registered. It may delete the corresponding GitHub runner registration and expired token secret. It cannot stop a healthy execution below the limit. Any orphan persisting beyond five minutes resets the complete qualification count, leaves the label inactive and requires cleanup before a new qualification attempt.
+
+GitHub's organization runner administration permission may expose organization runner inventory; the App manifest cannot create a narrower synthetic permission. Cleanup therefore acts only when all selectors match: approved runner group, exact environment label, `goal006-{environment}-` name prefix, recorded GitHub run ID, ACA execution correlation ID and age/terminal predicate. Zero or multiple matches fail closed and alert INST-007/009; cleanup never selects by age, name or group alone. The reconciler may enumerate for comparison but may delete only the single correlated registration. Every decision records candidate count, matched selectors and deletion outcome without token or credential content.
+
+The GitHub-hosted bootstrap job creates the correlation ID before ACA start as `goal006:{environment}:{github_run_id}:{github_run_attempt}`. It records the value in the bootstrap manifest and injects it unchanged into the ACA execution metadata, runner name/labels and cleanup input; the runner cannot choose or alter it. The environment runner group is pre-created and centrally owned, with exactly one group per environment and concurrency one. Registration is idempotent only for the unique correlation-derived runner name; an existing name or active registration blocks creation rather than being reused.
+
+The lifecycle predicate is exact: cleanup may remove the correlated registration after its GitHub job is terminal, when the recorded run/attempt is absent, or when its ACA execution age is at least 60 minutes. It must first prove no non-terminal job is assigned to that runner. The matching ACA execution is then stopped and its token secret deleted. A healthy execution below 60 minutes is never eligible. These states are determined from GitHub API and Azure ACA control-plane records, never from runner assertions.
+
+Primary cleanup and the scheduled reconciler use separate identities and execution paths. If primary cleanup cannot authenticate or reach GitHub/Azure, the environment concurrency lock and runner label remain unavailable, an alert is raised immediately and the next successful five-minute reconciliation must remove the orphan. If the reconciler itself misses two schedules or cannot authenticate for ten minutes, the environment enters `RUNNER_CLEANUP_DEGRADED`: bootstrap and deployment remain blocked, no stale registration is eligible for a new job, and INST-009 performs the same correlation-checked cleanup from the approved GitHub-hosted recovery workflow after INST-007 authorization. ACA scheduled Jobs do not use Kubernetes pod-disruption budgets; availability is proved by Azure Job execution diagnostics, missed-schedule alerts and the independent recovery path.
+
+The reconciler is a stateless ACA scheduled Job, not a pod, daemon or Temporal workflow. Azure ACA execution metadata, GitHub run/runner state and the immutable bootstrap manifest are its decision inputs; it keeps no correctness-critical local state. Every reconciliation writes a structured decision record to Log Analytics and uploads a token-free JSON artifact keyed by correlation ID with at least 90-day retention. The artifact includes observed states, selector results, decision, API response classes and cleanup outcome. Missing or conflicting input fails closed and enters cleanup-degraded hold.
+
+ACA concurrency is one per environment, each execution has a 60-minute limit, and the reconciler has a two-minute/five-minute schedule bound. INST-009 owns Azure budget alerts and the per-run/monthly forecast; alerts fire at 50%, 80% and 100% of FA-052's monthly ceiling to INST-009 and the Founder. Azure budgets are detective, not a guaranteed billing cutoff. Preventive controls are the concurrency/runtime bounds and the pre-start forecast gate; crossing the forecast ceiling blocks new executions and requires Founder disposition.
+
+Azure Cost Management actual and forecast data, tagged Azure resources and the immutable per-run estimate are authoritative for GOAL-006 cloud spend. Customer billing ledgers are not an Azure infrastructure cost-control source. The implementation gate must prove the existing pre-start cost check includes private endpoints, DNS, runner/reconciler executions, logs and retained bootstrap resources and blocks when actual plus forecast exceeds FA-052's INR 10,000 monthly or INR 15,000 one-time ceiling.
+
+FA-052 is the Founder Authorization named in WC-076 and applies cumulatively to all tagged GOAL-006 Azure resources in the authorized subscription, not per environment or per run. The monthly INR 10,000 and one-time INR 15,000 checks are hard pre-start gates. They query Azure Cost Management actual month-to-date cost and forecast, combine that with the reviewed incremental estimate for the requested stack/run, and fail closed if the API is unavailable, data is older than 24 hours, tags are incomplete or either ceiling would be exceeded. The gate is infrastructure control-plane logic and does not depend on Constitutional Engine availability. Inputs, timestamps, estimates and allow/block result are written before mutation to the named run artifact; its digest is appended to the GOAL-006 evidence record. Post-run actuals are reconciled on the next gate and in the weekly exception report.
+
+### Incident Response And Measurable SLAs
+
+Compromise signals include an unexpected App permission or installation change, key-sign operation outside a recorded bootstrap/reconcile run, runner registration outside the approved group/prefix, token-secret access by an unexpected principal, selector mismatch, cross-environment access attempt, unexplained ACA execution or credential material in logs. Any signal immediately sets the affected environment to `RUNNER_SECURITY_HOLD` and blocks bootstrap, token issuance and deployment.
+
+Within five minutes of detection, INST-007 directs and INST-009 executes: disable the affected Entra federated credential and managed-identity assignments; disable the current Key Vault key version; revoke the GitHub App installation token/key; cancel correlated workflow runs; stop correlated ACA executions; remove registrations using the full selector set; delete token secrets; and retain Azure, GitHub and Key Vault audit evidence. A failed step keeps the hold active and escalates to the Founder. Recovery requires a new non-exportable key version, exact live-manifest equality, clean runner/secret/execution inventory, successful private-route and denial tests, one forced-cancellation cleanup test and explicit INST-007 release of the hold before labels are re-enabled.
+
+Containment order is fail-closed: disable the environment federated credential first; disable the App key version and revoke installation tokens; cancel runs and disable the runner group; remove managed-identity role assignments and verify Azure completion; stop correlated ACA executions; remove registrations and token secrets; then confirm audit evidence. The five-minute SLA ends only when all applicable revocations are confirmed, not when requests are submitted. INST-007 release is an explicit human approval on the protected recovery environment/PR; comments and automated self-approval cannot release a hold.
+
+Operational objectives are measured per environment: 100% of executions terminate by 60 minutes; 100% of residual registrations and token secrets are removed by the first successful reconciliation and no later than 15 minutes while either cleanup path is available; two missed reconciler schedules trigger `RUNNER_CLEANUP_DEGRADED`; and suspected-compromise containment completes within five minutes. The App key rotates at or before 60 days, never exceeds 90 days, alerts at 14 days remaining and overlaps at most two versions only for the bounded validation window. Azure Job diagnostics, GitHub audit events, Key Vault audit logs and weekly INST-009 exception reports are the evidence. Any SLA miss resets qualification and requires INST-007 disposition.
+
+Runner-control states are `INACTIVE`, `BOOTSTRAP_RECONCILING`, `READY`, `RUNNING`, `CLEANUP_PENDING`, `RUNNER_CLEANUP_DEGRADED`, `BOOTSTRAP_DRIFT_HOLD` and `RUNNER_SECURITY_HOLD`. Only successful interface-gate evidence moves `INACTIVE` to `READY`; token issuance moves `READY` to `RUNNING`; terminal/timeout events move it to `CLEANUP_PENDING`; verified zero registration/execution/secret returns it to `READY` or `INACTIVE`. Any ambiguous drift, cleanup outage or security signal enters the corresponding hold. Holds have no automatic exit and all block token issuance and deployment.
+
+## Activation Gates
+
+Demo workflow activation requires all of the following:
+
+- Deployment Stack reconciliation is healthy and idempotent.
+- The runner resolves Storage to the approved private endpoint and cannot reach the public endpoint.
+- Exact configuration Blob access and Terraform backend list/read/write/lock operations pass with OIDC/Azure AD authentication.
+- Cross-environment Storage and Key Vault access is denied by RBAC.
+- Runner registration is ephemeral; completion leaves no online runner and zero ACA job executions.
+- Public-IP mutation steps remain present until private qualification, then are removed in the same reviewed activation change that switches the runner label.
+- Forecast cost remains inside FA-052.
+- INST-007 reviews security evidence and INST-015 independently verifies behavior.
+
+INST-009 owns the interface gate. INST-003 acceptance precedes INST-007 security acceptance; INST-009 then collects immutable stack, permission, NSG/RBAC/DNS and cost manifests; INST-015 independently executes route, denial, cancellation/orphan and zero-idle tests. The environment label remains inactive until all evidence passes. Demo qualification requires ten successful executions and five forced cancellations without an orphan beyond five minutes.
+
+This sequence governs design and activation authority. After activation, INST-009 alone executes approved runner-stack changes; INST-007 must approve any NSG, RBAC, identity, App permission, private endpoint, DNS security boundary or hold-release change before execution; INST-015 reruns affected proofs independently. Emergency restoration uses the same separation and may not grant broad standing roles. Denial tests are automated deployment-evidence gates run before label activation, after every relevant stack change and at least weekly while an environment is active; they are not one-time manual assertions and are not application CCTs.
+
+INST-007 acceptance covers OIDC subjects/audiences, App key lifecycle and permissions, reconciler/runner/bootstrap RBAC, NSGs and cross-environment denial. INST-009 validates implementability, manifest equality, Deployment Stack lifecycle, sequencing and cost. INST-015 executes rather than merely audits the qualification matrix; any failed assertion blocks activation. Every new App permission requires an ADR amendment and fresh INST-007 acceptance.
+
+Negative proofs are stage-specific: Demo must have no grants or routes to reserved UAT/Production scopes; UAT activation must prove reciprocal Demo/UAT Storage and Key Vault denial plus Production denial; Production must prove reciprocal denial against both lower environments. Evidence consists of RBAC exports, denied data-plane requests, diagnostic logs, no-peering inventory, NSG rules, private DNS results and Network Watcher connection tests. DNS resolution alone is insufficient.
+
+For every pair of source and forbidden target environments, INST-015 must execute all three independent negative tests: resolve the target service FQDN and prove it does not resolve to a reachable target endpoint; call the target Storage and Key Vault data planes with the source identity and prove Azure RBAC returns denial; and attempt TCP 443 to the target private endpoint IP and prove Network Watcher/NSG or no-route enforcement denies the path. A DNS failure alone cannot substitute for RBAC and network denial, and a successful DNS answer is acceptable only when the latter two controls still deny access. Diagnostic and flow evidence must account for every attempted connection.
+
+Forbidden pairs are every ordered pair among Demo, UAT and Production for runner-to-target Storage, Key Vault and runner-token scopes, plus every runner subnet to another environment's private endpoint address space. Public runner ingress and public Storage/Key Vault data-plane paths are forbidden in every environment after private qualification. Network Watcher connection troubleshoot supplies immediate route/NSG evidence; Azure resource diagnostic logs are queried with bounded backoff for up to five minutes. Missing evidence or parser/API failure is a failed test, never an inferred denial.
+
+The centrally managed private DNS Deployment Stack uses a reviewed parameter manifest of exact Storage resource IDs, endpoint private IPs and VNet links. A wrong resource ID/IP, unexpected link/record or public answer is security drift: bootstrap stops before token creation or ACA start, records the live inventory, alerts INST-007/009 and requires approved repair. A transient Azure API timeout or NXDOMAIN during expected propagation retries at most three times with bounded backoff, then fails the deployment and alerts INST-009; it does not create an orphan because execution has not started. Runner VNets are never peered. NSGs deny other environment address ranges; Storage and Key Vault public access are disabled after qualification. Required GitHub/GHCR Internet HTTPS egress is acknowledged explicitly rather than represented as unsupported NSG FQDN filtering.
+
+ADR-046 continues to govern workload-to-service authentication. Runner trust uses GitHub ephemeral registration, Azure managed identity and environment-scoped OIDC; it creates no runner CA or substitute for ADR-046 mTLS on governed service calls.
+
+Qualification is per Demo runner blueprint version and must complete within seven consecutive days: ten consecutive successful no-drift executions and five forced-cancellation executions, including cancellation before assignment, during Terraform init, during plan, and one hard workflow termination. Any orphan beyond five minutes resets qualification. Evidence is retained in the named GOAL-006 run artifact and checked on every bootstrap; live permission, RBAC, DNS and stack manifests are preventive gates, while diagnostic/denial/cancellation records are detective evidence.
+
+UAT repeats the gates only after Founder Demo acceptance. Production may be planned but not activated under WC-076.
+
+## Alternatives Considered
+
+| Option | Disposition |
+|---|---|
+| GitHub-hosted runner with discovered temporary public IP | Rejected: observed client/request egress is not a reliable Storage trust boundary. |
+| Permanent VM self-hosted runner with static public IP | Rejected: public Storage path, persistent attack surface, patching burden, and non-zero idle compute. |
+| NAT Gateway with reserved public IP | Rejected for state access: stable but still public and adds always-on cost; retain only if a future approved external dependency requires fixed egress. |
+| Azure VM Scale Set runner | Deferred: valid private option but heavier image, scaling, patching, and lifecycle operations than one-shot ACA jobs. |
+| Shared runner/subnet across environments | Rejected: cross-environment blast radius and Production boundary violation. |
+| Separate private DNS zone per environment | Rejected as unnecessary duplication; shared zone plus isolated endpoint/RBAC controls is sufficient and cheaper. |
+
+## Consequences
+
+**Benefits:** private state path, stable Azure networking, zero idle runner compute, no temporary Storage firewall mutation, environment isolation, deterministic bootstrap ownership, OIDC deployment authority, and evidence-bearing teardown.
+
+**Trade-offs:** a new GitHub App lifecycle, bootstrap Deployment Stack, runner image maintenance, private endpoint/DNS charges, and orphan-recovery monitoring.
+
+**Cost:** approximately one Private Link endpoint-hour charge per provisioned environment plus low-volume data and one shared private DNS zone. VNet/subnet/private IP allocation adds no direct charge. No load balancer, public IP, or TLS certificate is required. Runner compute is charged only during ACA Job executions. The combined plan blocks above FA-052's INR 15,000 one-time or INR 10,000 monthly ceiling.
+
+## Implementation Gate
+
+Implementation may proceed incrementally under WC-076 and current-session Founder authorization. Demo bootstrap and qualification come first. UAT remains prohibited until Founder Demo acceptance; Production remains zero-capacity and plan-only. No runner-label switch, public-IP mutation removal, or Storage public-network disablement occurs before the activation proof matrix passes.
