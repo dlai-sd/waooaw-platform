@@ -30,8 +30,8 @@ jobs:
     environment: ${{ inputs.environment }}-verification
     env:
       ARM_CLIENT_ID: ${{ inputs.verification_client_id }}
-      ARM_TENANT_ID: ${{ vars.WAOOAW_PLATFORM_AZURE_TENANT_ID }}
-      ARM_SUBSCRIPTION_ID: ${{ vars.WAOOAW_PLATFORM_AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: 0471534c-1bbe-40ab-ae65-3f721b62582c
+      ARM_SUBSCRIPTION_ID: 2ed11839-6a0f-4eaa-bd94-44ca96ff5d84
     steps:
       - name: Enforce trusted caller workflow and ref
         env:

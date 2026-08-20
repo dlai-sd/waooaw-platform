@@ -363,10 +363,19 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert workflow.index("Verify bootstrap RBAC and required Azure providers") < workflow.index(
         "Verify approved subscription budget"
     )
-    assert workflow.index("Verify approved subscription budget") < workflow.index("Open temporary state firewall rule")
+    assert workflow.index("Verify bootstrap RBAC and required Azure providers") < workflow.index(
+        "Open temporary state firewall rule"
+    )
+    assert workflow.index("Open temporary state firewall rule") < workflow.index("Download Demo configuration with OIDC")
+    assert workflow.index("Download Demo configuration with OIDC") < workflow.index("Verify approved subscription budget")
     assert workflow.index("Query month-to-date subscription cost") < workflow.index("Query forecast and enforce cost boundary")
-    assert "secrets.WAOOAW_PLATFORM_WORKLOAD_CONFIGURATION" in workflow
-    assert "vars.WAOOAW_PLATFORM_WORKLOAD_CONFIGURATION" not in workflow
+    assert "WAOOAW_PLATFORM_" not in workflow
+    assert "CONFIG_CONTAINER: deployment-config" in workflow
+    assert "CONFIG_BLOB: demo/workload-configuration.json" in workflow
+    assert "az storage blob download" in workflow
+    assert '--auth-mode login --overwrite --output none' in workflow
+    assert 'manifest_digest="sha256:$(sha256sum registry-release-manifest.json' in workflow
+    assert "'.manifest_digest = $manifest_digest'" in workflow
     assert "terraform state show \"$resource_address\"" in workflow
     assert "terraform import -input=false -lock-timeout=5m" in workflow
     assert "waooaw-platform-bootstrap" in workflow
@@ -397,6 +406,28 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     ):
         apply_index = workflow.index(apply_command)
         assert workflow.rfind('test \'${{ inputs.release_sha }}\' = "$latest_main_sha"', 0, apply_index) != -1
+
+
+def test_oidc_workflows_do_not_depend_on_github_platform_identifiers() -> None:
+    workflows = "\n".join(
+        (REPO_ROOT / path).read_text(encoding="utf-8")
+        for path in (
+            ".github/workflows/deploy-environment.yaml",
+            ".github/workflows/post-deploy-verify.yaml",
+            ".github/workflows/reconcile-workload-leases.yaml",
+        )
+    )
+    for variable in (
+        "WAOOAW_PLATFORM_AZURE_SUBSCRIPTION_ID",
+        "WAOOAW_PLATFORM_AZURE_TENANT_ID",
+        "WAOOAW_PLATFORM_BOOTSTRAP_CLIENT_ID",
+        "WAOOAW_PLATFORM_TFSTATE_CONTAINER",
+        "WAOOAW_PLATFORM_TFSTATE_RESOURCE_GROUP",
+        "WAOOAW_PLATFORM_TFSTATE_STORAGE_ACCOUNT",
+        "WAOOAW_PLATFORM_TFSTATE_STORAGE_ACCOUNT_ID",
+        "WAOOAW_PLATFORM_WORKLOAD_CONFIGURATION",
+    ):
+        assert variable not in workflows
 
 
 def test_founder_demo_is_the_only_authorized_deployment_path() -> None:

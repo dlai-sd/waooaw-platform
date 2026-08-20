@@ -23,16 +23,16 @@ jobs:
       matrix:
         environment: [demo, uat]
     env:
-      ARM_CLIENT_ID: ${{ vars.WAOOAW_PLATFORM_BOOTSTRAP_CLIENT_ID }}
-      ARM_TENANT_ID: ${{ vars.WAOOAW_PLATFORM_AZURE_TENANT_ID }}
-      ARM_SUBSCRIPTION_ID: ${{ vars.WAOOAW_PLATFORM_AZURE_SUBSCRIPTION_ID }}
+      ARM_CLIENT_ID: 60c07330-4cc1-4e12-95a2-adc0966f1941
+      ARM_TENANT_ID: 0471534c-1bbe-40ab-ae65-3f721b62582c
+      ARM_SUBSCRIPTION_ID: 2ed11839-6a0f-4eaa-bd94-44ca96ff5d84
       DEPLOYMENT_CLIENT_ID: ${{ vars.WAOOAW_PLATFORM_DEPLOYMENT_CLIENT_ID }}
-      TFSTATE_RESOURCE_GROUP: ${{ vars.WAOOAW_PLATFORM_TFSTATE_RESOURCE_GROUP }}
-      TFSTATE_STORAGE_ACCOUNT: ${{ vars.WAOOAW_PLATFORM_TFSTATE_STORAGE_ACCOUNT }}
-      TFSTATE_CONTAINER: ${{ vars.WAOOAW_PLATFORM_TFSTATE_CONTAINER }}
-      TF_VAR_tfstate_resource_group: ${{ vars.WAOOAW_PLATFORM_TFSTATE_RESOURCE_GROUP }}
-      TF_VAR_tfstate_storage_account: ${{ vars.WAOOAW_PLATFORM_TFSTATE_STORAGE_ACCOUNT }}
-      TF_VAR_tfstate_container: ${{ vars.WAOOAW_PLATFORM_TFSTATE_CONTAINER }}
+      TFSTATE_RESOURCE_GROUP: waooaw-platform-rg
+      TFSTATE_STORAGE_ACCOUNT: waooawp3tfstate2ed118
+      TFSTATE_CONTAINER: tfstate
+      TF_VAR_tfstate_resource_group: waooaw-platform-rg
+      TF_VAR_tfstate_storage_account: waooawp3tfstate2ed118
+      TF_VAR_tfstate_container: tfstate
     defaults:
       run:
         working-directory: infrastructure/terraform/phase2/environments/${{ matrix.environment }}/workload
