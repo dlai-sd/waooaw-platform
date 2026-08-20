@@ -1,0 +1,83 @@
+name: GOAL-006 Founder Demo Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_run_id:
+        description: Trusted-main exact-six release workflow run ID
+        required: true
+        type: string
+      release_sha:
+        description: Trusted-main exact-six release commit SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+
+concurrency:
+  group: goal006-founder-demo
+  cancel-in-progress: false
+
+jobs:
+  authorize-demo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce Founder-only main dispatch
+        env:
+          DISPATCH_ACTOR: ${{ github.actor }}
+          DISPATCH_REF: ${{ github.ref }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_RUN_ID: ${{ inputs.release_run_id }}
+          RELEASE_SHA: ${{ inputs.release_sha }}
+        run: |
+          test "$DISPATCH_ACTOR" = "dlai-sd"
+          test "$DISPATCH_REF" = "refs/heads/main"
+          echo "$RELEASE_RUN_ID" | grep -Eq '^[1-9][0-9]*$'
+          echo "$RELEASE_SHA" | grep -Eq '^[0-9a-f]{40}$'
+          latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          test "$RELEASE_SHA" = "$latest_main_sha"
+
+  deploy-demo:
+    needs: authorize-demo
+    uses: ./.github/workflows/deploy-environment.yaml
+    with:
+      environment: demo
+      release_run_id: ${{ fromJSON(inputs.release_run_id) }}
+      release_sha: ${{ inputs.release_sha }}
+      apply: true
+    secrets: inherit
+
+  verify-demo:
+    needs: deploy-demo
+    uses: ./.github/workflows/post-deploy-verify.yaml
+    with:
+      environment: demo
+      release_run_id: ${{ fromJSON(inputs.release_run_id) }}
+      release_sha: ${{ inputs.release_sha }}
+      verification_client_id: ${{ needs.deploy-demo.outputs.verification_client_id }}
+      web_url: ${{ needs.deploy-demo.outputs.web_url }}
+    secrets: inherit
+
+  publish-founder-url:
+    needs: [deploy-demo, verify-demo]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish verified Founder Demo URL
+        env:
+          RELEASE_RUN_ID: ${{ inputs.release_run_id }}
+          RELEASE_SHA: ${{ inputs.release_sha }}
+          WEB_URL: ${{ needs.deploy-demo.outputs.web_url }}
+        run: |
+          test -n "$WEB_URL"
+          {
+            echo "## Founder Demo ready"
+            echo
+            echo "- URL: $WEB_URL"
+            echo "- Release run: $RELEASE_RUN_ID"
+            echo "- Release SHA: $RELEASE_SHA"
+            echo "- Access boundary: configured Founder IPv4 /32 only"
+            echo "- UAT status: prohibited pending explicit Founder Demo acceptance"
+          } >> "$GITHUB_STEP_SUMMARY"

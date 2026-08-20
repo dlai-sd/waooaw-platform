@@ -25,11 +25,34 @@ variable "image_digests" {
   }
 }
 
-variable "key_vault_secret_ids" {
+variable "key_vault_secret_uris" {
   type = map(string)
   validation {
-    condition     = toset(keys(var.key_vault_secret_ids)) == toset(keys(var.image_digests))
-    error_message = "Every release member requires one Key Vault secret reference."
+    condition = (
+      toset(keys(var.key_vault_secret_uris)) == toset(keys(var.image_digests)) &&
+      alltrue([for uri in values(var.key_vault_secret_uris) : can(regex("^https://[^/]+[.]vault[.]azure[.]net/secrets/[^/]+$", uri))])
+    )
+    error_message = "Every release member requires one versionless Key Vault secret URI."
+  }
+}
+
+variable "key_vault_secret_resource_ids" {
+  type = map(string)
+  validation {
+    condition = (
+      toset(keys(var.key_vault_secret_resource_ids)) == toset(keys(var.image_digests)) &&
+      alltrue([for id in values(var.key_vault_secret_resource_ids) : can(regex("^/subscriptions/.+/secrets/[^/]+$", id))])
+    )
+    error_message = "Every release member requires one Key Vault secret RBAC resource ID."
+  }
+}
+
+variable "founder_ipv4_cidr" {
+  type        = string
+  description = "Single Founder IPv4 /32 permitted to reach public Demo applications."
+  validation {
+    condition     = can(regex("^(?:[0-9]{1,3}[.]){3}[0-9]{1,3}/32$", var.founder_ipv4_cidr)) && var.founder_ipv4_cidr != "0.0.0.0/32"
+    error_message = "Founder review access requires one nonzero IPv4 /32."
   }
 }
 

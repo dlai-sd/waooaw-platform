@@ -15,6 +15,11 @@ on:
       apply:
         required: true
         type: boolean
+    outputs:
+      verification_client_id:
+        value: ${{ jobs.terraform.outputs.verification_client_id }}
+      web_url:
+        value: ${{ jobs.terraform.outputs.web_url }}
 
 permissions:
   contents: read
@@ -26,6 +31,9 @@ jobs:
     name: ${{ inputs.apply && 'Apply' || 'Plan' }} ${{ inputs.environment }}
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    outputs:
+      verification_client_id: ${{ steps.foundation.outputs.verification_client_id }}
+      web_url: ${{ steps.workload.outputs.web_url }}
     env:
       ARM_CLIENT_ID: ${{ vars.WAOOAW_PLATFORM_BOOTSTRAP_CLIENT_ID }}
       ARM_TENANT_ID: ${{ vars.WAOOAW_PLATFORM_AZURE_TENANT_ID }}
@@ -38,23 +46,19 @@ jobs:
       TF_VAR_tfstate_container: ${{ vars.WAOOAW_PLATFORM_TFSTATE_CONTAINER }}
       TF_VAR_tfstate_storage_account_id: ${{ vars.WAOOAW_PLATFORM_TFSTATE_STORAGE_ACCOUNT_ID }}
       WORKLOAD_CONFIGURATION: ${{ vars.WAOOAW_PLATFORM_WORKLOAD_CONFIGURATION }}
+      SEEDER_IMAGE: mcr.microsoft.com/azure-cli@sha256:4faeb3c955086c3842d4f8cf0ff1d900ce3a1c68c6e6c6430c5e8a3cb882c5aa
+      SEEDER_JOB: goal006-secret-seeder
     steps:
-      - name: Enforce caller and Production plan-only boundary
+      - name: Enforce current Demo-only authorization
         env:
           CALLER_WORKFLOW_REF: ${{ github.workflow_ref }}
-          EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/promote.yaml@refs/heads/main
+          EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy-demo.yaml@refs/heads/main
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
           APPLY_REQUESTED: ${{ inputs.apply }}
         run: |
           test "$CALLER_WORKFLOW_REF" = "$EXPECTED_CALLER_WORKFLOW_REF"
-          case "$TARGET_ENVIRONMENT" in
-            demo|uat|prod) ;;
-            *) echo "Unsupported environment: $TARGET_ENVIRONMENT" >&2; exit 1 ;;
-          esac
-          if [[ "$TARGET_ENVIRONMENT" == "prod" && "$APPLY_REQUESTED" == "true" ]]; then
-            echo "Production is plan-only under FA-052" >&2
-            exit 1
-          fi
+          test "$TARGET_ENVIRONMENT" = "demo"
+          test "$APPLY_REQUESTED" = "true"
 
       - name: Reject stale release before cloud access
         env:
@@ -101,19 +105,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - name: Verify anonymous exact-six GHCR pulls and validate environment inputs
+      - name: Verify anonymous exact-six GHCR pulls and configuration presence
         run: |
           while IFS= read -r image; do
             docker buildx imagetools inspect "$image" >/dev/null
           done < <(jq -r '.images | to_entries[] | .value' registry-release-manifest.json)
           test -n "$WORKLOAD_CONFIGURATION"
           printf '%s' "$WORKLOAD_CONFIGURATION" > workload-configuration.json
-          python scripts/goal006_deployment_inputs.py \
-            --environment '${{ inputs.environment }}' \
-            --manifest registry-release-manifest.json \
-            --configuration workload-configuration.json \
-            --output workload.auto.tfvars.json \
-            --ghcr-packages-public-verified
+          jq -e '.founder_ipv4_cidr and .planned_incremental_monthly_cost_inr != null and .cumulative_one_time_cost_inr != null' \
+            workload-configuration.json >/dev/null
 
       - name: Azure login with constrained bootstrap OIDC identity
         uses: azure/login@v2
@@ -173,6 +173,13 @@ jobs:
           test '${{ inputs.release_sha }}' = "$latest_main_sha"
           terraform apply -input=false -auto-approve foundation.tfplan
           echo "deployment_client_id=$(terraform output -raw deployment_client_id)" >> "$GITHUB_OUTPUT"
+          echo "deployment_identity_id=$(terraform output -raw deployment_identity_id)" >> "$GITHUB_OUTPUT"
+          echo "verification_client_id=$(terraform output -raw verification_client_id)" >> "$GITHUB_OUTPUT"
+          echo "resource_group_name=$(terraform output -raw resource_group_name)" >> "$GITHUB_OUTPUT"
+          echo "container_app_environment_name=$(terraform output -raw container_app_environment_name)" >> "$GITHUB_OUTPUT"
+          echo "key_vault_id=$(terraform output -raw key_vault_id)" >> "$GITHUB_OUTPUT"
+          echo "key_vault_name=$(terraform output -raw key_vault_name)" >> "$GITHUB_OUTPUT"
+          echo "key_vault_uri=$(terraform output -raw key_vault_uri)" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -183,6 +190,69 @@ jobs:
           client-id: ${{ steps.foundation.outputs.deployment_client_id }}
           tenant-id: ${{ env.ARM_TENANT_ID }}
           subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
+      - name: Create private digest-pinned runtime secret seeder
+        env:
+          CONTAINER_APP_ENVIRONMENT: ${{ steps.foundation.outputs.container_app_environment_name }}
+          DEPLOYMENT_CLIENT_ID: ${{ steps.foundation.outputs.deployment_client_id }}
+          DEPLOYMENT_IDENTITY_ID: ${{ steps.foundation.outputs.deployment_identity_id }}
+          KEY_VAULT_NAME: ${{ steps.foundation.outputs.key_vault_name }}
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+        run: |
+          az containerapp job delete --name "$SEEDER_JOB" --resource-group "$RESOURCE_GROUP" --yes --output none 2>/dev/null || true
+          az containerapp job create \
+            --name "$SEEDER_JOB" \
+            --resource-group "$RESOURCE_GROUP" \
+            --environment "$CONTAINER_APP_ENVIRONMENT" \
+            --trigger-type Manual \
+            --replica-timeout 600 \
+            --replica-retry-limit 1 \
+            --replica-completion-count 1 \
+            --parallelism 1 \
+            --image "$SEEDER_IMAGE" \
+            --mi-user-assigned "$DEPLOYMENT_IDENTITY_ID" \
+            --cpu 0.25 \
+            --memory 0.5Gi \
+            --env-vars "AZURE_CLIENT_ID=$DEPLOYMENT_CLIENT_ID" "KEY_VAULT_NAME=$KEY_VAULT_NAME" \
+            --command /bin/sh \
+            --args -c 'set -eu; az login --identity --client-id "$AZURE_CLIENT_ID" --allow-no-subscriptions --output none; for name in constitutional-engine business-platform professional-runtime ai-runtime web billing-engine; do value=$(head -c 48 /dev/urandom | base64 | tr -d "\n"); for attempt in 1 2 3 4 5 6; do if az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name "$name" --value "$value" --output none; then break; fi; test "$attempt" != 6; sleep 10; done; unset value; done' \
+            --output none
+
+      - name: Run private runtime secret seeder
+        id: seeder
+        env:
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+        run: |
+          execution_name=$(az containerapp job start --name "$SEEDER_JOB" --resource-group "$RESOURCE_GROUP" --query name -o tsv)
+          test -n "$execution_name"
+          for attempt in $(seq 1 60); do
+            status=$(az containerapp job execution show \
+              --name "$SEEDER_JOB" \
+              --resource-group "$RESOURCE_GROUP" \
+              --job-execution-name "$execution_name" \
+              --query properties.status -o tsv)
+            case "$status" in
+              Succeeded)
+                az containerapp job execution show --name "$SEEDER_JOB" --resource-group "$RESOURCE_GROUP" \
+                  --job-execution-name "$execution_name" > secret-seeder-execution.json
+                exit 0
+                ;;
+              Failed) echo "Private runtime secret seeder failed" >&2; exit 1 ;;
+            esac
+            test "$attempt" != 60
+            sleep 10
+          done
+
+      - name: Build workload inputs from trusted foundation outputs
+        run: |
+          python scripts/goal006_deployment_inputs.py \
+            --environment '${{ inputs.environment }}' \
+            --manifest registry-release-manifest.json \
+            --configuration workload-configuration.json \
+            --key-vault-id '${{ steps.foundation.outputs.key_vault_id }}' \
+            --key-vault-uri '${{ steps.foundation.outputs.key_vault_uri }}' \
+            --output workload.auto.tfvars.json \
+            --ghcr-packages-public-verified
 
       - name: Terraform workload plan
         if: inputs.apply
@@ -200,13 +270,27 @@ jobs:
 
       - name: Terraform workload apply
         if: inputs.apply
+        id: workload
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload
         run: |
           latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
           test '${{ inputs.release_sha }}' = "$latest_main_sha"
           terraform apply -input=false -auto-approve workload.tfplan
+          echo "web_url=$(terraform output -raw web_url)" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ github.token }}
+
+      - name: Roll back disposable Demo workload after apply failure
+        if: failure() && steps.workload.outcome == 'failure'
+        working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload
+        run: |
+          terraform destroy -input=false -auto-approve -lock-timeout=5m
+
+      - name: Delete private runtime secret seeder
+        if: always() && steps.foundation.outcome == 'success'
+        env:
+          RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
+        run: az containerapp job delete --name "$SEEDER_JOB" --resource-group "$RESOURCE_GROUP" --yes --output none
 
       - name: Upload plans and evidence
         if: always()
@@ -215,6 +299,7 @@ jobs:
           name: goal006-${{ inputs.environment }}-${{ inputs.apply && 'apply' || 'plan' }}-${{ inputs.release_run_id }}
           path: |
             registry-release-manifest.json
+            secret-seeder-execution.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation.tfplan
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload.tfplan
           if-no-files-found: warn
