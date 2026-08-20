@@ -1,0 +1,13 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environment": { "value": "uat" },
+    "location": { "value": "centralindia" },
+    "runnerResourceGroupName": { "value": "waooaw-uat-runner-rg" },
+    "bootstrapPrincipalId": { "value": "77147af5-a32d-4151-b557-e719f319b55b" },
+    "founderAlertEmail": { "value": "yogeshk7377@gmail.com" },
+    "budgetStartDate": { "value": "2026-08-01T00:00:00Z" },
+    "monthlyBudgetInr": { "value": 10000 }
+  }
+}
