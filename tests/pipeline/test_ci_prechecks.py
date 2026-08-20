@@ -8,12 +8,9 @@ CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yaml"
 def test_c059_accepts_markdown_formatted_pr_metadata() -> None:
     workflow = CI_WORKFLOW.read_text(encoding="utf-8")
 
-    assert "PR_METADATA=\"$(tr -d '*_`' <<< \"$PR_BODY\")\"" in workflow
-    assert "Work Contract:[[:space:]]*WC-[0-9]+" in workflow
-    assert (
-        "grep -qiE 'Constitutional basis(:|[[:space:]]*$)' <<< \"$PR_METADATA\""
-        in workflow
-    )
+    assert "python scripts/validate_c059.py" in workflow
+    assert "--pr-body-file /tmp/pr-body.md" in workflow
+    assert "PR_METADATA=" not in workflow
 
 
 def test_c066_reconciles_delayed_authorization_labels() -> None:

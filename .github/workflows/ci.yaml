@@ -585,50 +585,12 @@ jobs:
         run: |
           BASE="${{ github.event.pull_request.base.sha }}"
           HEAD="${{ github.event.pull_request.head.sha }}"
-          PR_BODY="$(gh pr view ${{ github.event.pull_request.number }} --json body --jq .body --repo ${{ github.repository }})"
-           PR_METADATA="$(tr -d '*_`' <<< "$PR_BODY")"
-          FAIL=0
-
-           if ! grep -qE 'Work Contract:[[:space:]]*WC-[0-9]+' <<< "$PR_METADATA" ||
-             ! grep -qiE 'Constitutional basis(:|[[:space:]]*$)' <<< "$PR_METADATA"; then
-            echo "❌ PR body must declare its Work Contract and Constitutional basis."
-            FAIL=1
-          fi
-
-          while IFS= read -r msg; do
-            # Skip merge commits
-            if echo "$msg" | grep -q "^Merge "; then
-              continue
-            fi
-
-            # Check conventional commit format
-            if ! echo "$msg" | grep -qP "^(feat|fix|constitutional|cct|chore|refactor|security|docs|agent)\("; then
-              echo "❌ Commit does not follow conventional format: $msg"
-              FAIL=1
-              continue
-            fi
-
-            # Check IB or Fix reference (C-059 traceability)
-            if ! echo "$msg" | grep -qP "(IB:|FIX:|Constitutional:|chore\(|docs\()"; then
-              echo "⚠️  Commit missing IB/FIX reference (C-059): $msg"
-              # Warning only for chore/docs commits; blocking for feat/fix/constitutional
-              if echo "$msg" | grep -qP "^(feat|fix|constitutional|cct)\("; then
-                FAIL=1
-              fi
-            fi
-
-          done < <(git log "$BASE..$HEAD" --format="%s" 2>/dev/null || true)
-
-          if [ "$FAIL" -eq "1" ]; then
-            echo ""
-            echo "Constitutional Commit Gate FAILED (C-059 — Implementation Traceability)"
-            echo "All feat/fix/constitutional/cct commits must:"
-            echo "  1. Follow conventional commit format: {type}({component}): {description}"
-            echo "  2. Reference an IB item or Fix issue in the commit body"
-            exit 1
-          fi
-
-          echo "✓ All commits satisfy C-059 Implementation Traceability"
+          gh pr view ${{ github.event.pull_request.number }} \
+            --json body --jq .body --repo ${{ github.repository }} > /tmp/pr-body.md
+          python scripts/validate_c059.py \
+            --pr-body-file /tmp/pr-body.md \
+            --base "$BASE" \
+            --head "$HEAD"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

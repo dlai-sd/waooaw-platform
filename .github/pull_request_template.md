@@ -3,13 +3,19 @@
 <!-- One sentence: what does this PR implement? -->
 
 
+## Required Traceability
+
+<!-- C-059: replace both placeholders. Keep these exact field names. -->
+**Work Contract:** WC-NNN
+**Constitutional Basis:** C-NNN | ADR-NNN | DP-NNN
+
+
 ## IB Reference
 
 <!-- Link the GitHub Issue this PR closes -->
 Closes #
 
 **IB Item:** IB-NNN  
-**Work Contract:** WC-NNN  
 **Office:** Runtime Professional / Enterprise Architect / ...  
 **Sprint:** N  
 
