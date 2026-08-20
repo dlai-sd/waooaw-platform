@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 122
+**State Revision:** 123
 **Last Updated:** 2026-08-20
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -36,10 +36,10 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Trusted-main exact-six release | DONE - run `32370596796`, commit `235c08a`, artifact `goal006-exact-six-release-235c08a4c5d67707cf12578d6b4f0a1b6b501a9d` |
 | Configuration readiness repair | DONE - PR #309 merged; second plan proved exact Blob retry and verified firewall cleanup |
 | Real Demo OIDC plan | BLOCKED - run `32371262629` reached Terraform init, then backend list received Storage `403 AuthorizationFailure`; no plan/apply occurred |
-| Private runner decision | PROPOSED - ADR-047 now specifies immutable bootstrap inputs, non-exportable App signing, correlation-only cleanup, outage/security holds, measurable SLAs and three-layer isolation proof |
+| Private runner decision | ACCEPTED - independent EA and Security review of commit `7e5bd4b` returned APPROVE with no blockers |
 | Local validation | PASS - 42 focused tests, Ruff, actionlint and editor diagnostics |
-| Architecture review | HOLD - EA conceptual boundaries and Security handoff clarifications repaired locally; immutable final re-review pending |
-| Demo deploy / verify | BLOCKED - no runnable runner infrastructure or workflow label change until ADR-047 is accepted |
+| Architecture review | CLEAR - author review, focused EA review and focused INST-007 Security correction complete; no separate review artifact required |
+| Demo deploy / verify | BLOCKED - Demo runner bootstrap implementation and private-path qualification required before workflow label activation |
 | Founder Demo acceptance | PENDING - P3-EX08 remains a separate control point after the verified Azure URL is returned |
 | UAT deploy / verify / accept | PROHIBITED - no token, plan, apply or environment request before explicit Founder Demo acceptance |
 | Production | PLAN ONLY - deployment, traffic and final acceptance remain Founder-reserved |

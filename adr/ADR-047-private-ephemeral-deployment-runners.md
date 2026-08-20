@@ -1,6 +1,6 @@
 # ADR-047: Private Ephemeral Deployment Runners
 
-**Status:** Proposed - implementation prohibited until independent EA and Security acceptance
+**Status:** Accepted - independent EA and Security review APPROVE, no blockers (commit `7e5bd4b`)
 **Date:** 2026-08-20
 **Roles Applied:** Enterprise Architect, Security Architect, Platform Architect
 **Constitutional Basis:** C-023 Evidence First; C-059 Implementation Traceability; C-065 SDLC Separation; C-066 Authorization Tiers; C-067 Blue-Green and Cost Ceiling; ADR-013; ADR-014; FA-052; WC-076
@@ -128,6 +128,6 @@ UAT repeats the gates only after Founder Demo acceptance. Production may be plan
 
 **Cost:** approximately one Private Link endpoint-hour charge per provisioned environment plus low-volume data and one shared private DNS zone. VNet/subnet/private IP allocation adds no direct charge. No load balancer, public IP, or TLS certificate is required. Runner compute is charged only during ACA Job executions. The combined plan blocks above FA-052's INR 15,000 one-time or INR 10,000 monthly ceiling.
 
-## Implementation Hold
+## Implementation Gate
 
-No Bicep/ARM template, runner image, GitHub App, Key Vault secret, private endpoint, ACA Job, workflow runner-label change, or public-network disablement may be created under this ADR while its status is Proposed. Independent Enterprise Architecture and Security acceptance must change the status to Accepted first.
+Implementation may proceed incrementally under WC-076 and current-session Founder authorization. Demo bootstrap and qualification come first. UAT remains prohibited until Founder Demo acceptance; Production remains zero-capacity and plan-only. No runner-label switch, public-IP mutation removal, or Storage public-network disablement occurs before the activation proof matrix passes.
