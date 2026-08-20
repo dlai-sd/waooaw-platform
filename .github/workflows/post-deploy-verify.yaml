@@ -82,6 +82,9 @@ jobs:
           tenant-id: ${{ env.ARM_TENANT_ID }}
           subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
 
+      - name: Verify independent deployment subscription
+        run: test "$(az account show --query id -o tsv)" = "$ARM_SUBSCRIPTION_ID"
+
       - name: Verify signed release and pinned dependency inventory
         run: |
           az containerapp list --resource-group 'waooaw-${{ inputs.environment }}-rg' \

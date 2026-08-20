@@ -122,6 +122,7 @@ jobs:
       - name: Verify bootstrap RBAC and required Azure providers
         run: |
           test "$ARM_SUBSCRIPTION_ID" = "2ed11839-6a0f-4eaa-bd94-44ca96ff5d84"
+          test "$(az account show --query id -o tsv)" = "$ARM_SUBSCRIPTION_ID"
           test "$TFSTATE_RESOURCE_GROUP" = "waooaw-platform-rg"
           test "$TFSTATE_STORAGE_ACCOUNT" = "waooawp3tfstate2ed118"
           test "$TFSTATE_CONTAINER" = "tfstate"
@@ -131,6 +132,8 @@ jobs:
           environment_scope="$subscription_scope/resourceGroups/waooaw-${{ inputs.environment }}-rg"
           principal_id=$(az account get-access-token --resource https://management.azure.com/ --query accessToken -o tsv | python -c 'import base64, json, sys; payload=sys.stdin.read().strip().split(".")[1]; print(json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))["oid"])')
           az role assignment list --assignee-object-id "$principal_id" --all --include-inherited > bootstrap-role-assignments.json
+          # Exact role topology is independently validated by goal006_bootstrap_oidc.py. Runtime
+          # self-enumeration cannot see subscription assignments without broader authorization.
           require_role() {
             role=$1
             role_scope=$2
@@ -141,16 +144,11 @@ jobs:
                 exit 1
               }
           }
-          require_role "Cost Management Reader" "$subscription_scope"
           require_role "Storage Account Contributor" "$state_scope"
           require_role "Storage Blob Data Contributor" "$state_scope"
           require_role "Role Based Access Control Administrator" "$state_scope"
           require_role "Contributor" "$environment_scope"
           require_role "Role Based Access Control Administrator" "$environment_scope"
-          jq -e 'all(.[]; .roleDefinitionName != "Owner")' bootstrap-role-assignments.json >/dev/null || {
-            echo "Bootstrap identity must not have Owner" >&2
-            exit 1
-          }
           for namespace in Microsoft.App Microsoft.Authorization Microsoft.KeyVault Microsoft.ManagedIdentity Microsoft.Network Microsoft.Resources Microsoft.Storage; do
             state=$(az provider show --namespace "$namespace" --query registrationState -o tsv)
             test "$state" = "Registered" || {
@@ -158,6 +156,33 @@ jobs:
               exit 1
             }
           done
+
+      - name: Probe subscription cost access
+        run: |
+          for attempt in $(seq 1 5); do
+            if az rest --method get \
+              --url "https://management.azure.com/subscriptions/$ARM_SUBSCRIPTION_ID/providers/Microsoft.Consumption/budgets/waooaw-phase3-monthly?api-version=2023-11-01" \
+              > subscription-budget.json; then
+              break
+            fi
+            test "$attempt" != 5
+            sleep $((attempt * 5))
+          done
+          amount=$(jq -r '.properties.amount' subscription-budget.json)
+          test "$amount" = "10000.0" || test "$amount" = "10000"
+
+          scope="/subscriptions/$ARM_SUBSCRIPTION_ID"
+          query='{"type":"ActualCost","timeframe":"MonthToDate","dataset":{"granularity":"None","aggregation":{"totalCost":{"name":"PreTaxCost","function":"Sum"}}}}'
+          for attempt in $(seq 1 5); do
+            if az rest --method post \
+              --url "https://management.azure.com${scope}/providers/Microsoft.CostManagement/query?api-version=2023-11-01" \
+              --body "$query" > actual-cost.json; then
+              break
+            fi
+            test "$attempt" != 5
+            sleep $((attempt * 5))
+          done
+          jq -e '.properties.columns and .properties.rows' actual-cost.json >/dev/null
 
       - name: Open temporary state firewall rule
         run: |
@@ -167,15 +192,17 @@ jobs:
             --resource-group "$TFSTATE_RESOURCE_GROUP" \
             --account-name "$TFSTATE_STORAGE_ACCOUNT" \
             --ip-address "$runner_ip" --output none
-          for attempt in $(seq 1 12); do
+          for attempt in $(seq 1 18); do
             if az storage container show \
               --account-name "$TFSTATE_STORAGE_ACCOUNT" \
               --name "$TFSTATE_CONTAINER" \
               --auth-mode login --output none 2>/dev/null; then
               exit 0
             fi
-            test "$attempt" != 12
-            sleep 10
+            test "$attempt" != 18
+            delay=$((attempt * 5))
+            test "$delay" -le 20 || delay=20
+            sleep "$delay"
           done
 
       - name: Download Demo configuration with OIDC
@@ -192,34 +219,6 @@ jobs:
           mv workload-configuration.bound.json workload-configuration.json
           jq -e '.founder_ipv4_cidr and .planned_incremental_monthly_cost_inr != null and .cumulative_one_time_cost_inr != null' \
             workload-configuration.json >/dev/null
-
-      - name: Verify approved subscription budget
-        run: |
-          for attempt in $(seq 1 5); do
-            if az rest --method get \
-              --url "https://management.azure.com/subscriptions/$ARM_SUBSCRIPTION_ID/providers/Microsoft.Consumption/budgets/waooaw-phase3-monthly?api-version=2023-11-01" \
-              > subscription-budget.json; then
-              break
-            fi
-            test "$attempt" != 5
-            sleep $((attempt * 5))
-          done
-          amount=$(jq -r '.properties.amount' subscription-budget.json)
-          test "$amount" = "10000.0" || test "$amount" = "10000"
-
-      - name: Query month-to-date subscription cost
-        run: |
-          scope="/subscriptions/$ARM_SUBSCRIPTION_ID"
-          query='{"type":"ActualCost","timeframe":"MonthToDate","dataset":{"granularity":"None","aggregation":{"totalCost":{"name":"PreTaxCost","function":"Sum"}}}}'
-          for attempt in $(seq 1 5); do
-            if az rest --method post \
-              --url "https://management.azure.com${scope}/providers/Microsoft.CostManagement/query?api-version=2023-11-01" \
-              --body "$query" > actual-cost.json; then
-              break
-            fi
-            test "$attempt" != 5
-            sleep $((attempt * 5))
-          done
 
       - name: Query forecast and enforce cost boundary
         run: |
@@ -260,8 +259,11 @@ jobs:
           resource_address=module.foundation.azurerm_resource_group.environment
           if ! terraform state show "$resource_address" >/dev/null 2>&1; then
             resource_group="waooaw-${{ inputs.environment }}-rg"
-            resource_group_id=$(az group show --name "$resource_group" \
-              --query "[?location=='centralindia' && tags.environment=='${{ inputs.environment }}' && tags.goal=='GOAL-006' && tags.\"managed-by\"=='waooaw-platform-bootstrap'].id | [0]" -o tsv)
+            resource_group_record=$(az group show --name "$resource_group" -o json)
+            resource_group_id=$(jq -r \
+              --arg environment '${{ inputs.environment }}' \
+              'select(.location == "centralindia" and .tags.environment == $environment and .tags.goal == "GOAL-006" and .tags["managed-by"] == "waooaw-platform-bootstrap") | .id' \
+              <<< "$resource_group_record")
             test -n "$resource_group_id"
             terraform import -input=false -lock-timeout=5m "$resource_address" "$resource_group_id"
           fi
@@ -297,6 +299,10 @@ jobs:
           tenant-id: ${{ env.ARM_TENANT_ID }}
           subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
 
+      - name: Verify environment deployment subscription
+        if: inputs.apply
+        run: test "$(az account show --query id -o tsv)" = "$ARM_SUBSCRIPTION_ID"
+
       - name: Create private digest-pinned credential seeder
         env:
           CONTAINER_APP_ENVIRONMENT: ${{ steps.foundation.outputs.container_app_environment_name }}
@@ -305,6 +311,7 @@ jobs:
           KEY_VAULT_NAME: ${{ steps.foundation.outputs.key_vault_name }}
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
         run: |
+          docker buildx imagetools inspect "$SEEDER_IMAGE" >/dev/null
           az containerapp job delete --name "$SEEDER_JOB" --resource-group "$RESOURCE_GROUP" --yes --output none 2>/dev/null || true
           # shellcheck disable=SC2016
           az containerapp job create \

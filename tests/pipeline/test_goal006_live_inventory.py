@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from goal006_live_inventory import validate_inventory
+from goal006_live_inventory import KEYCLOAK_IMAGE, validate_inventory
 from goal006_registry_manifest import RELEASE_MEMBERS
 
 
@@ -47,10 +47,18 @@ def manifest() -> dict[str, Any]:
 
 
 def inventory(environment: str, release: dict[str, Any]) -> list[dict[str, str]]:
-    return [
+    live = [
         {"name": f"ca-{environment}-{member}", "image": image, "provisioningState": "Succeeded"}
         for member, image in release["images"].items()
     ]
+    live.append(
+        {
+            "name": f"ca-{environment}-keycloak",
+            "image": KEYCLOAK_IMAGE,
+            "provisioningState": "Succeeded",
+        }
+    )
+    return live
 
 
 def test_exact_six_live_inventory_passes() -> None:

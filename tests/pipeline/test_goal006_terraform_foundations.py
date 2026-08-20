@@ -351,7 +351,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert 'timeframe: "Custom"' in workflow
     assert "Verify bootstrap RBAC and required Azure providers" in workflow
     assert "Microsoft.Network" in workflow
-    assert "Cost Management Reader" in workflow
+    assert 'require_role "Cost Management Reader"' not in workflow
     assert "Storage Account Contributor" in workflow
     assert "Storage Blob Data Contributor" in workflow
     assert workflow.count("Role Based Access Control Administrator") == 2
@@ -359,16 +359,21 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "subscription-budget.json" in workflow
     assert "actual-cost.json" in workflow
     assert "forecast-cost.json" in workflow
-    assert "Bootstrap identity must not have Owner" in workflow
+    assert "Exact role topology is independently validated by goal006_bootstrap_oidc.py" in workflow
+    assert "self-enumeration cannot see subscription assignments" in workflow
+    assert "Bootstrap identity must not have Owner" not in workflow
     assert workflow.index("Verify bootstrap RBAC and required Azure providers") < workflow.index(
-        "Verify approved subscription budget"
+        "Probe subscription cost access"
     )
     assert workflow.index("Verify bootstrap RBAC and required Azure providers") < workflow.index(
         "Open temporary state firewall rule"
     )
+    assert workflow.index("Probe subscription cost access") < workflow.index("Open temporary state firewall rule")
     assert workflow.index("Open temporary state firewall rule") < workflow.index("Download Demo configuration with OIDC")
-    assert workflow.index("Download Demo configuration with OIDC") < workflow.index("Verify approved subscription budget")
-    assert workflow.index("Query month-to-date subscription cost") < workflow.index("Query forecast and enforce cost boundary")
+    assert workflow.index("Probe subscription cost access") < workflow.index("Query forecast and enforce cost boundary")
+    assert workflow.index("Download Demo configuration with OIDC") < workflow.index(
+        "Query forecast and enforce cost boundary"
+    )
     assert "WAOOAW_PLATFORM_" not in workflow
     assert "CONFIG_CONTAINER: deployment-config" in workflow
     assert "CONFIG_BLOB: demo/workload-configuration.json" in workflow
@@ -383,6 +388,10 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert workflow.count('gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main"') == 3
     assert workflow.count("terraform apply -input=false -auto-approve") == 2
     assert "mcr.microsoft.com/azure-cli@sha256:" in workflow
+    assert 'docker buildx imagetools inspect "$SEEDER_IMAGE"' in workflow
+    assert workflow.index('docker buildx imagetools inspect "$SEEDER_IMAGE"') > workflow.index(
+        "Create private digest-pinned credential seeder"
+    )
     assert "Create private digest-pinned credential seeder" in workflow
     assert "Run private credential seeder" in workflow
     assert "Delete private credential seeder" in workflow
@@ -400,12 +409,24 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
         "Delete private credential seeder"
     )
     assert "set -x" not in workflow
+    assert "resource_group_record=$(az group show" in workflow
+    assert 'tags["managed-by"] == "waooaw-platform-bootstrap"' in workflow
+    assert "[?location==" not in workflow
     for apply_command in (
         "terraform apply -input=false -auto-approve foundation.tfplan",
         "terraform apply -input=false -auto-approve workload.tfplan",
     ):
         apply_index = workflow.index(apply_command)
         assert workflow.rfind('test \'${{ inputs.release_sha }}\' = "$latest_main_sha"', 0, apply_index) != -1
+
+
+def test_deployment_identities_verify_the_active_subscription() -> None:
+    deployment = (REPO_ROOT / ".github/workflows/deploy-environment.yaml").read_text(encoding="utf-8")
+    verification = (REPO_ROOT / ".github/workflows/post-deploy-verify.yaml").read_text(encoding="utf-8")
+
+    subscription_check = 'test "$(az account show --query id -o tsv)" = "$ARM_SUBSCRIPTION_ID"'
+    assert deployment.count(subscription_check) == 2
+    assert verification.count(subscription_check) == 1
 
 
 def test_oidc_workflows_do_not_depend_on_github_platform_identifiers() -> None:
