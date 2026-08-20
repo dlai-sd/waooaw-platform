@@ -114,7 +114,7 @@ services:
       - "5432:5432"
     environment:
       POSTGRES_USER: waooaw
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-waooaw-local-dev-only}
       POSTGRES_DB: waooaw
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -145,7 +145,7 @@ services:
       # Auth — password passed at runtime (ADR-014: no secrets in compose)
       PGBOUNCER_AUTH_TYPE: scram-sha-256
       PGBOUNCER_AUTH_USER: waooaw
-      PGBOUNCER_AUTH_PASSWORD: ${POSTGRES_PASSWORD}
+      PGBOUNCER_AUTH_PASSWORD: ${POSTGRES_PASSWORD:-waooaw-local-dev-only}
     depends_on:
       postgres:
         condition: service_healthy
@@ -162,11 +162,11 @@ services:
       - "8443:8080"
     environment:
       KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-waooaw-keycloak-local-dev-only}
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/waooaw
       KC_DB_USERNAME: waooaw
-      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-waooaw-local-dev-only}
       KC_DB_SCHEMA: keycloak
     volumes:
       - ./infrastructure/keycloak:/opt/keycloak/data/import
@@ -187,7 +187,7 @@ services:
       DB: postgresql
       DB_PORT: 5432
       POSTGRES_USER: waooaw
-      POSTGRES_PWD: ${POSTGRES_PASSWORD}
+      POSTGRES_PWD: ${POSTGRES_PASSWORD:-waooaw-local-dev-only}
       POSTGRES_SEEDS: postgres
       DYNAMIC_CONFIG_FILE_PATH: /etc/temporal/dynamicconfig.yaml
     volumes:
@@ -263,7 +263,7 @@ services:
       - "5002:5002"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=waooaw;Username=constitutional_app;Password=${POSTGRES_PASSWORD}"
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=waooaw;Username=constitutional_app;Password=${POSTGRES_PASSWORD:-waooaw-local-dev-only}"
       OTLP_ENDPOINT: http://jaeger:4317
       GRPC_PORT: "5002"
     depends_on:
@@ -284,14 +284,14 @@ services:
       - "5001:5001"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=waooaw;Username=business_app;Password=${POSTGRES_PASSWORD}"
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=waooaw;Username=business_app;Password=${POSTGRES_PASSWORD:-waooaw-local-dev-only}"
       ConstitutionalEngine__Address: http://constitutional-engine:5002
       Temporal__Address: temporal:7233
       Keycloak__Authority: http://keycloak:8080/realms/waooaw
       Keycloak__Audience: waooaw-platform
-      Identity__Hmac__Key: ${IDENTITY_HMAC_KEY}
-      WhatsApp__WebhookSecret: ${WHATSAPP_WEBHOOK_SECRET}
-      WhatsApp__TenantTokenKey: ${WHATSAPP_TENANT_TOKEN_KEY}
+      Identity__Hmac__Key: ${IDENTITY_HMAC_KEY:-waooaw-identity-local-dev-only-32chars}
+      WhatsApp__WebhookSecret: ${WHATSAPP_WEBHOOK_SECRET:-waooaw-webhook-local-dev-only-32chars}
+      WhatsApp__TenantTokenKey: ${WHATSAPP_TENANT_TOKEN_KEY:-waooaw-tenant-token-local-dev-only-32chars}
       OTLP_ENDPOINT: http://jaeger:4317
     depends_on:
       constitutional-engine:
@@ -313,9 +313,9 @@ services:
       - "5003:5003"
     environment:
       ENVIRONMENT: development
-      DATABASE_URL: "postgresql+asyncpg://runtime_app:${POSTGRES_PASSWORD}@postgres:5432/waooaw"
+      DATABASE_URL: "postgresql+asyncpg://runtime_app:${POSTGRES_PASSWORD:-waooaw-local-dev-only}@postgres:5432/waooaw"
       CONSTITUTIONAL_ENGINE_ADDRESS: constitutional-engine:5002
-      BP_SERVICE_JWT_SECRET: ${BP_SERVICE_JWT_SECRET}
+      BP_SERVICE_JWT_SECRET: ${BP_SERVICE_JWT_SECRET:-waooaw-bp-jwt-local-dev-only-32chars}
       AI_RUNTIME_URL: http://ai-runtime:5004
       BUSINESS_PLATFORM_URL: http://business-platform:5001
       TEMPORAL_ADDRESS: temporal:7233
@@ -358,7 +358,7 @@ services:
       - "5004:5004"
     environment:
       ENVIRONMENT: development
-      DATABASE_URL: "postgresql+asyncpg://runtime_app:${POSTGRES_PASSWORD}@postgres:5432/waooaw"
+      DATABASE_URL: "postgresql+asyncpg://runtime_app:${POSTGRES_PASSWORD:-waooaw-local-dev-only}@postgres:5432/waooaw"
       # ── LLM Provider config (ADR-029 — Multi-Provider Strategy) ────────────
       # LOCAL tier
       OLLAMA_BASE_URL: http://ollama:11434
