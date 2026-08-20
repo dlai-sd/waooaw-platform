@@ -142,7 +142,23 @@ def apply(
     )
 
 
-def verify(parameters: dict[str, Any], subscription_id: str) -> dict[str, Any]:
+def verify_custom_role(role_id: str, expected_name: str, expected_scope: str) -> None:
+    definition = _az(
+        "rest",
+        "--method",
+        "get",
+        "--url",
+        f"https://management.azure.com{role_id}?api-version=2022-04-01",
+    )
+    properties = definition.get("properties", {})
+    scopes = {str(scope).lower() for scope in properties.get("assignableScopes", [])}
+    if properties.get("roleName") != expected_name or expected_scope.lower() not in scopes:
+        raise RuntimeError(f"custom role scope mismatch: {expected_name}")
+
+
+def verify(
+    parameters: dict[str, Any], subscription_id: str, deployment_name: str
+) -> dict[str, Any]:
     environment = str(parameters["environment"])
     resource_group = str(parameters["runnerResourceGroupName"])
     principal_id = str(parameters["bootstrapPrincipalId"])
@@ -180,13 +196,14 @@ def verify(parameters: dict[str, Any], subscription_id: str) -> dict[str, Any]:
     )
     if float(budget["properties"]["amount"]) != float(parameters["monthlyBudgetInr"]):
         raise RuntimeError("cumulative budget amount mismatch")
-    for suffix in ("Bootstrap Secret Writer", "Cleanup Secret Deleter"):
-        role_name = f"GOAL-006 {environment} {suffix}"
-        definitions = _az("role", "definition", "list", "--name", role_name)
-        if len(definitions) != 1 or runner_scope.lower() not in {
-            str(scope).lower() for scope in definitions[0].get("assignableScopes", [])
-        }:
-            raise RuntimeError(f"custom role scope mismatch: {role_name}")
+    deployment = _az("deployment", "sub", "show", "--name", deployment_name)
+    outputs = deployment["properties"]["outputs"]
+    custom_roles = {
+        "Bootstrap Secret Writer": outputs["bootstrapWriterRoleDefinitionId"]["value"],
+        "Cleanup Secret Deleter": outputs["cleanupDeleterRoleDefinitionId"]["value"],
+    }
+    for suffix, role_id in custom_roles.items():
+        verify_custom_role(role_id, f"GOAL-006 {environment} {suffix}", runner_scope)
     return {
         "environment": environment,
         "resource_group_id": group["id"],
@@ -227,7 +244,9 @@ def main() -> int:
                 deployment_name=deployment_name,
                 location=arguments.location,
             )
-            result["verification"] = verify(parameters, arguments.subscription_id)
+            result["verification"] = verify(
+                parameters, arguments.subscription_id, deployment_name
+            )
         print(json.dumps(result, sort_keys=True))
         return 0
     except RuntimeError as error:
