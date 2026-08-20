@@ -4,20 +4,33 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-from scripts.goal006_bootstrap_oidc import STATE_ROLE, validate_bootstrap_oidc
+from scripts.goal006_bootstrap_oidc import (
+    COST_ROLE,
+    STATE_MANAGEMENT_ROLE,
+    STATE_RBAC_ROLE,
+    STATE_ROLE,
+    validate_bootstrap_oidc,
+)
 
 PRINCIPAL_ID = "00000000-0000-0000-0000-000000000010"
 STATE_SCOPE = "/subscriptions/sub/resourceGroups/state/providers/Microsoft.Storage/storageAccounts/state"
 SUBSCRIPTION_SCOPE = "/subscriptions/sub"
+ENVIRONMENT_SCOPES = {
+    f"{SUBSCRIPTION_SCOPE}/resourceGroups/waooaw-demo-rg",
+    f"{SUBSCRIPTION_SCOPE}/resourceGroups/waooaw-uat-rg",
+    f"{SUBSCRIPTION_SCOPE}/resourceGroups/waooaw-prod-rg",
+}
 SUBJECTS = {
     "repo:dlai-sd/waooaw-platform:environment:demo",
     "repo:dlai-sd/waooaw-platform:environment:uat",
     "repo:dlai-sd/waooaw-platform:environment:prod",
 }
 ROLES = {
-    ("Contributor", SUBSCRIPTION_SCOPE),
-    ("Role Based Access Control Administrator", SUBSCRIPTION_SCOPE),
+    (COST_ROLE, SUBSCRIPTION_SCOPE),
+    (STATE_MANAGEMENT_ROLE, STATE_SCOPE),
     (STATE_ROLE, STATE_SCOPE),
+    (STATE_RBAC_ROLE, STATE_SCOPE),
+    *{(role, scope) for scope in ENVIRONMENT_SCOPES for role in ("Contributor", STATE_RBAC_ROLE)},
 }
 
 
@@ -53,7 +66,9 @@ def validate(
         principal_id=PRINCIPAL_ID,
         expected_subjects=SUBJECTS,
         expected_roles=ROLES,
+        subscription_scope=SUBSCRIPTION_SCOPE,
         state_scope=STATE_SCOPE,
+        environment_scopes=ENVIRONMENT_SCOPES,
     )
 
 
@@ -89,4 +104,39 @@ def test_missing_state_access_or_unexpected_role_fails_closed() -> None:
     assert validate(service_principal, credentials, federation, assignments) == [
         "ROLE_ASSIGNMENT_SET_MISMATCH",
         "STATE_ACCESS_MISSING",
+    ]
+
+
+def test_missing_cost_access_fails_closed() -> None:
+    service_principal, credentials, federation, assignments = deepcopy(evidence())
+    assignments = [assignment for assignment in assignments if assignment["roleDefinitionName"] != COST_ROLE]
+    assert validate(service_principal, credentials, federation, assignments) == [
+        "ROLE_ASSIGNMENT_SET_MISMATCH",
+        "SUBSCRIPTION_COST_ACCESS_MISSING",
+    ]
+
+
+def test_missing_state_management_or_rbac_access_fails_closed() -> None:
+    service_principal, credentials, federation, assignments = deepcopy(evidence())
+    assignments = [
+        assignment
+        for assignment in assignments
+        if assignment["roleDefinitionName"] not in {STATE_MANAGEMENT_ROLE, STATE_RBAC_ROLE}
+        or assignment["scope"] != STATE_SCOPE
+    ]
+    assert validate(service_principal, credentials, federation, assignments) == [
+        "ROLE_ASSIGNMENT_SET_MISMATCH",
+        "STATE_MANAGEMENT_ACCESS_MISSING",
+        "STATE_RBAC_ACCESS_MISSING",
+    ]
+
+
+def test_missing_environment_authority_fails_closed() -> None:
+    service_principal, credentials, federation, assignments = deepcopy(evidence())
+    environment_scope = min(ENVIRONMENT_SCOPES)
+    assignments = [assignment for assignment in assignments if assignment["scope"] != environment_scope]
+    assert validate(service_principal, credentials, federation, assignments) == [
+        "ENVIRONMENT_CONTRIBUTOR_ACCESS_MISSING",
+        "ENVIRONMENT_RBAC_ACCESS_MISSING",
+        "ROLE_ASSIGNMENT_SET_MISMATCH",
     ]
