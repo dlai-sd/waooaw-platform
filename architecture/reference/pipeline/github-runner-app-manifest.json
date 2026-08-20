@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "installation_target": "organization",
+  "organization": "dlai-sd",
+  "repositories": [
+    "waooaw-platform"
+  ],
+  "organization_permissions": {
+    "organization_self_hosted_runners": "write"
+  },
+  "repository_permissions": {
+    "metadata": "read"
+  },
+  "prohibited_permissions": [
+    "administration",
+    "actions",
+    "contents",
+    "deployments",
+    "environments",
+    "issues",
+    "packages",
+    "pull_requests",
+    "secrets",
+    "workflows"
+  ],
+  "runner_groups": {
+    "demo": "goal006-demo-private",
+    "uat": "goal006-uat-private",
+    "prod": "goal006-prod-private"
+  },
+  "owner": "INST-007",
+  "validator": "INST-009"
+}
