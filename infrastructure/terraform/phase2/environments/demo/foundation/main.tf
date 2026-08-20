@@ -39,6 +39,10 @@ output "container_app_environment_name" {
   value = module.foundation.container_app_environment_name
 }
 
+output "container_app_environment_default_domain" {
+  value = module.foundation.container_app_environment_default_domain
+}
+
 output "key_vault_id" {
   value = module.foundation.key_vault_id
 }
@@ -65,4 +69,8 @@ output "deployment_identity_id" {
 
 output "verification_client_id" {
   value = module.foundation.verification_client_id
+}
+
+output "verification_principal_id" {
+  value = module.foundation.verification_principal_id
 }

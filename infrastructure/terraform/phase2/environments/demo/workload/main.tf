@@ -48,19 +48,21 @@ module "lease" {
 module "workload" {
   source = "../../../modules/workload"
 
-  environment                   = "demo"
-  location                      = data.terraform_remote_state.foundation.outputs.location
-  resource_group_name           = data.terraform_remote_state.foundation.outputs.resource_group_name
-  container_app_environment_id  = data.terraform_remote_state.foundation.outputs.container_app_environment_id
-  image_digests                 = var.image_digests
-  key_vault_secret_uris         = var.key_vault_secret_uris
-  key_vault_secret_resource_ids = var.key_vault_secret_resource_ids
-  ghcr_packages_public          = var.ghcr_packages_public
-  founder_ipv4_cidr             = var.founder_ipv4_cidr
-  ce_min_replicas               = 0
-  pr_min_replicas               = 0
-  max_replicas                  = 1
-  workload_enabled              = module.lease.workload_enabled
+  environment                              = "demo"
+  location                                 = data.terraform_remote_state.foundation.outputs.location
+  resource_group_name                      = data.terraform_remote_state.foundation.outputs.resource_group_name
+  container_app_environment_id             = data.terraform_remote_state.foundation.outputs.container_app_environment_id
+  container_app_environment_default_domain = data.terraform_remote_state.foundation.outputs.container_app_environment_default_domain
+  verification_principal_id                = data.terraform_remote_state.foundation.outputs.verification_principal_id
+  image_digests                            = var.image_digests
+  key_vault_secret_uris                    = var.key_vault_secret_uris
+  key_vault_secret_resource_ids            = var.key_vault_secret_resource_ids
+  ghcr_packages_public                     = var.ghcr_packages_public
+  founder_ipv4_cidr                        = var.founder_ipv4_cidr
+  ce_min_replicas                          = 0
+  pr_min_replicas                          = 0
+  max_replicas                             = 1
+  workload_enabled                         = module.lease.workload_enabled
 }
 
 output "lease_reconciliation_inputs" {

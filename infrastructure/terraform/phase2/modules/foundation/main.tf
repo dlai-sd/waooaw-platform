@@ -116,6 +116,30 @@ resource "azurerm_network_security_group" "container_apps" {
   }
 
   security_rule {
+    name                       = "allow-platform-dns"
+    priority                   = 110
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "Udp"
+    source_port_range          = "*"
+    destination_port_range     = "53"
+    source_address_prefix      = "*"
+    destination_address_prefix = "AzurePlatformDNS"
+  }
+
+  security_rule {
+    name                       = "allow-https-egress"
+    priority                   = 120
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = "*"
+    destination_address_prefix = "Internet"
+  }
+
+  security_rule {
     name                       = "deny-unapproved-egress"
     priority                   = 4096
     direction                  = "Outbound"
@@ -266,6 +290,10 @@ output "container_app_environment_name" {
   value = azurerm_container_app_environment.environment.name
 }
 
+output "container_app_environment_default_domain" {
+  value = azurerm_container_app_environment.environment.default_domain
+}
+
 output "location" {
   value = azurerm_resource_group.environment.location
 }
@@ -280,4 +308,8 @@ output "deployment_identity_id" {
 
 output "verification_client_id" {
   value = azurerm_user_assigned_identity.verification.client_id
+}
+
+output "verification_principal_id" {
+  value = azurerm_user_assigned_identity.verification.principal_id
 }

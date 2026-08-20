@@ -14,6 +14,18 @@ variable "container_app_environment_id" {
   type = string
 }
 
+variable "container_app_environment_default_domain" {
+  type    = string
+  default = "unconfigured.invalid"
+}
+
+variable "verification_principal_id" {
+  type        = string
+  description = "Independent verification identity permitted only to execute the scoped internal probe job."
+  default     = null
+  nullable    = true
+}
+
 variable "image_digests" {
   type = map(string)
   validation {
