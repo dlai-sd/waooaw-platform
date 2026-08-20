@@ -340,8 +340,18 @@ def test_founder_demo_is_the_only_authorized_deployment_path() -> None:
     workflow = (REPO_ROOT / ".github/workflows/promote.yaml").read_text(encoding="utf-8")
 
     assert "workflow_dispatch:" in demo
+    assert "Trusted-main exact-six release workflow run ID" not in demo
+    assert "Trusted-main exact-six release commit SHA" not in demo
+    assert "${{ inputs.release_run_id }}" not in demo
+    assert "${{ inputs.release_sha }}" not in demo
     assert 'test "$DISPATCH_ACTOR" = "dlai-sd"' in demo
     assert 'test "$DISPATCH_REF" = "refs/heads/main"' in demo
+    assert "actions/workflows/ci.yaml/runs?branch=main&event=push&status=success" in demo
+    assert 'artifact_name="goal006-exact-six-release-$latest_main_sha"' in demo
+    assert 'test -n "$release_run_id"' in demo
+    assert 'test -n "$artifact_id"' in demo
+    assert "release_run_id: ${{ fromJSON(needs.authorize-demo.outputs.release_run_id) }}" in demo
+    assert "release_sha: ${{ needs.authorize-demo.outputs.release_sha }}" in demo
     assert "environment: demo" in demo
     assert "apply: true" in demo
     assert "verification_client_id: ${{ needs.deploy-demo.outputs.verification_client_id }}" in demo
