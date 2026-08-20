@@ -32,7 +32,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | WC-076 P3-EX01 through P3-EX06 | DONE - issue #296 closed after protected environments, OIDC and signed exact-six release evidence |
 | INST-010 GOA / Acceptance | VALID - GOA-GOAL-006-INST-010-03 and later ACC-GOAL-006-INST-010-03 recorded on PR #294 |
 | Trusted-main exact-six release | DONE - run `32329838734`, commit `73f9ad7`, artifact `9392723229`; reference tuple becomes stale after repair merge |
-| Demo deployment repair | IMPLEMENTED - commit `f1e28e0`; Founder-only dispatch, private vault seeder, generated verifier handoff, /32 ingress and workload rollback |
+| Demo deployment repair | IMPLEMENTED - commit `93b7bd7`; Founder-only dispatch, private vault seeder, generated verifier handoff, /32 ingress and workload rollback |
 | Local validation | PASS - 37 focused tests, actionlint, Terraform fmt and both Demo roots against Terraform 1.9.8 / AzureRM 4.14.0 |
 | Independent review | CLEAR - no blocking INST-007 or INST-015 findings; UAT/Production path remains sealed |
 | Demo deploy / verify | PENDING - repair PR, Founder merge and fresh trusted-main signed tuple required before Azure mutation |
@@ -65,7 +65,7 @@ blocked until the Founder explicitly accepts the resulting Demo deployment.
 
 ## Next Authorized Action
 
-Push commit `f1e28e0` and this checkpoint, open the issue #299 repair PR, pass CI and obtain Founder
+Push commit `93b7bd7` and this checkpoint, open the issue #299 repair PR, pass CI and obtain Founder
 merge. Then use the fresh trusted-main signed tuple to manually dispatch the Founder-only Demo
 workflow, verify exact-six live inventory and return the Azure-generated Web URL. Do not initiate UAT.
 
