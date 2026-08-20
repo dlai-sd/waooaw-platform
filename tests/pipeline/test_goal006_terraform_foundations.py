@@ -4,12 +4,17 @@ from __future__ import annotations
 
 import re
 import json
+import sys
 from pathlib import Path
 
 import pytest
 
 
 REPO_ROOT = Path(__file__).parents[2]
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+
+import goal006_live_inventory  # noqa: E402
+
 PHASE2_ROOT = REPO_ROOT / "infrastructure" / "terraform" / "phase2"
 ENVIRONMENTS = ("demo", "uat", "prod")
 PRIVATE_MEMBERS = ("constitutional-engine", "ai-runtime", "billing-engine")
@@ -20,6 +25,30 @@ def read_contract(relative_path: str) -> str:
     path = PHASE2_ROOT / relative_path
     assert path.is_file(), f"missing P2-WC03 contract: {path.relative_to(REPO_ROOT)}"
     return path.read_text(encoding="utf-8")
+
+
+def test_live_inventory_requires_pinned_keycloak_dependency(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(goal006_live_inventory, "validate_registry_manifest", lambda manifest: [])
+    images = {
+        member: f"ghcr.io/dlai-sd/{member}@sha256:{'a' * 64}"
+        for member in goal006_live_inventory.RELEASE_MEMBERS
+    }
+    inventory = [
+        {"name": f"ca-demo-{member}", "image": image, "provisioningState": "Succeeded"}
+        for member, image in images.items()
+    ]
+    inventory.append(
+        {
+            "name": "ca-demo-keycloak",
+            "image": goal006_live_inventory.KEYCLOAK_IMAGE,
+            "provisioningState": "Succeeded",
+        }
+    )
+
+    assert goal006_live_inventory.validate_inventory("demo", {"images": images}, inventory) == []
+    assert "LIVE_MEMBERSHIP_INVALID" in goal006_live_inventory.validate_inventory(
+        "demo", {"images": images}, inventory[:-1]
+    )
 
 
 @pytest.mark.parametrize("environment", ENVIRONMENTS)
