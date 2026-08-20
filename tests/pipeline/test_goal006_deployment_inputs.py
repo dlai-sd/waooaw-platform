@@ -112,6 +112,38 @@ def test_vault_references_are_derived_from_foundation_outputs() -> None:
     assert inputs["key_vault_secret_resource_ids"]["web"].endswith("/vaults/kv-demo/secrets/web")
 
 
+@pytest.mark.parametrize(
+    "vault_uri",
+    [
+        "https://attacker.example/.vault.azure.net/",
+        "https://kv-demo.vault.azure.net.attacker.example/",
+        "https://user@kv-demo.vault.azure.net/",
+        "https://kv-demo.vault.azure.net/?redirect=attacker",
+    ],
+)
+def test_foundation_vault_uri_rejects_spoofed_urls(vault_uri: str) -> None:
+    with pytest.raises(ValueError, match="Azure Key Vault URI"):
+        add_key_vault_references(
+            configuration(),
+            "/subscriptions/test/resourceGroups/demo/providers/Microsoft.KeyVault/vaults/kv-demo",
+            vault_uri,
+        )
+
+
+def test_runtime_secret_uri_rejects_vault_text_in_path() -> None:
+    values = configuration()
+    values["key_vault_secret_uris"]["web"] = "https://attacker.example/.vault.azure.net/secrets/web"
+    with pytest.raises(ValueError, match="versionless secret URI"):
+        create_inputs("demo", manifest(), values, True)
+
+
+def test_runtime_secret_uri_rejects_versioned_or_nested_paths() -> None:
+    values = configuration()
+    values["key_vault_secret_uris"]["web"] = "https://kv-demo.vault.azure.net/secrets/web/version"
+    with pytest.raises(ValueError, match="versionless secret URI"):
+        create_inputs("demo", manifest(), values, True)
+
+
 @pytest.mark.parametrize("cidr", ["0.0.0.0/32", "203.0.113.0/24", "2001:db8::1/128", "invalid"])
 def test_demo_requires_one_nonzero_founder_ipv4_host(cidr: str) -> None:
     values = configuration()

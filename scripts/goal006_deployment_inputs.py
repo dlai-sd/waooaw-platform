@@ -6,9 +6,11 @@ from __future__ import annotations
 import argparse
 import ipaddress
 import json
+import re
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from goal006_registry_manifest import RELEASE_MEMBERS, validate_registry_manifest
 
@@ -26,6 +28,23 @@ LEASE_FIELDS = frozenset(
 )
 
 
+def parse_key_vault_url(value: Any):
+    if not isinstance(value, str):
+        return None
+    parsed = urlsplit(value)
+    valid = (
+        parsed.scheme == "https"
+        and parsed.hostname is not None
+        and re.fullmatch(r"[a-z0-9-]{3,24}[.]vault[.]azure[.]net", parsed.hostname) is not None
+        and parsed.username is None
+        and parsed.password is None
+        and parsed.port is None
+        and not parsed.query
+        and not parsed.fragment
+    )
+    return parsed if valid else None
+
+
 def add_key_vault_references(
     configuration: Mapping[str, Any],
     key_vault_id: str,
@@ -33,7 +52,8 @@ def add_key_vault_references(
 ) -> dict[str, Any]:
     if not key_vault_id.startswith("/subscriptions/") or "/vaults/" not in key_vault_id:
         raise ValueError("key_vault_id must be an Azure Key Vault resource ID")
-    if not key_vault_uri.startswith("https://") or not key_vault_uri.endswith(".vault.azure.net/"):
+    parsed_vault_uri = parse_key_vault_url(key_vault_uri)
+    if parsed_vault_uri is None or parsed_vault_uri.path != "/":
         raise ValueError("key_vault_uri must be an Azure Key Vault URI")
     values = dict(configuration)
     values["key_vault_secret_uris"] = {
@@ -62,7 +82,8 @@ def create_inputs(
     if not isinstance(secret_uris, Mapping) or set(secret_uris) != RELEASE_MEMBERS:
         raise ValueError("key_vault_secret_uris must contain exactly the six release members")
     if not all(
-        isinstance(value, str) and value.startswith("https://") and ".vault.azure.net/secrets/" in value
+        (parsed := parse_key_vault_url(value)) is not None
+        and re.fullmatch(r"/secrets/[^/]+", parsed.path) is not None
         for value in secret_uris.values()
     ):
         raise ValueError("every Key Vault runtime reference must be a versionless secret URI")
