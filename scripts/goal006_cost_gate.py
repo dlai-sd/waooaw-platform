@@ -54,6 +54,8 @@ def validate_cost_gate(
         return sorted(violations)
     if actual + planned_monthly >= MONTHLY_CEILING_INR:
         violations.append("MONTHLY_CEILING_REACHED")
+    # Azure forecast covers existing resources; planned_monthly is the accepted incremental
+    # cost of the not-yet-deployed workload and must be added before mutation.
     projected_forecast = forecast + planned_monthly
     if projected_forecast >= MONTHLY_CEILING_INR:
         violations.append("MONTHLY_FORECAST_CEILING_REACHED")
