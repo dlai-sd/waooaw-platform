@@ -12,8 +12,9 @@ terraform {
 }
 
 provider "azurerm" {
-  use_oidc = true
-  use_cli  = false
+  use_oidc                        = true
+  use_cli                         = false
+  resource_provider_registrations = "none"
   features {}
 }
 
@@ -48,32 +49,37 @@ module "lease" {
 module "workload" {
   source = "../../../modules/workload"
 
-  environment                  = "uat"
-  location                     = data.terraform_remote_state.foundation.outputs.location
-  resource_group_name          = data.terraform_remote_state.foundation.outputs.resource_group_name
-  container_app_environment_id = data.terraform_remote_state.foundation.outputs.container_app_environment_id
-  image_digests                = var.image_digests
-  key_vault_secret_ids         = var.key_vault_secret_ids
-  ghcr_packages_public         = var.ghcr_packages_public
-  ce_min_replicas              = 0
-  pr_min_replicas              = 0
-  workload_enabled             = module.lease.workload_enabled
+  environment                              = "uat"
+  location                                 = data.terraform_remote_state.foundation.outputs.location
+  resource_group_name                      = data.terraform_remote_state.foundation.outputs.resource_group_name
+  container_app_environment_id             = data.terraform_remote_state.foundation.outputs.container_app_environment_id
+  container_app_environment_default_domain = data.terraform_remote_state.foundation.outputs.container_app_environment_default_domain
+  verification_principal_id                = data.terraform_remote_state.foundation.outputs.verification_principal_id
+  image_digests                            = var.image_digests
+  key_vault_secret_uris                    = var.key_vault_secret_uris
+  key_vault_secret_resource_ids            = var.key_vault_secret_resource_ids
+  founder_ipv4_cidr                        = var.founder_ipv4_cidr
+  ghcr_packages_public                     = var.ghcr_packages_public
+  ce_min_replicas                          = 0
+  pr_min_replicas                          = 0
+  workload_enabled                         = module.lease.workload_enabled
 }
 
 output "lease_reconciliation_inputs" {
   sensitive = true
   value = {
-    image_digests        = var.image_digests
-    key_vault_secret_ids = var.key_vault_secret_ids
-    ghcr_packages_public = var.ghcr_packages_public
-    lease_purpose        = var.lease_purpose
-    manifest_digest      = var.manifest_digest
-    owner_principal_id   = var.owner_principal_id
-    lease_issued_at      = var.lease_issued_at
-    lease_expires_at     = var.lease_expires_at
-    lease_state          = var.lease_state
-    lease_revoked_at     = var.lease_revoked_at
-    cost_centre          = var.cost_centre
-    evidence_digest      = var.evidence_digest
+    image_digests                 = var.image_digests
+    key_vault_secret_uris         = var.key_vault_secret_uris
+    key_vault_secret_resource_ids = var.key_vault_secret_resource_ids
+    ghcr_packages_public          = var.ghcr_packages_public
+    lease_purpose                 = var.lease_purpose
+    manifest_digest               = var.manifest_digest
+    owner_principal_id            = var.owner_principal_id
+    lease_issued_at               = var.lease_issued_at
+    lease_expires_at              = var.lease_expires_at
+    lease_state                   = var.lease_state
+    lease_revoked_at              = var.lease_revoked_at
+    cost_centre                   = var.cost_centre
+    evidence_digest               = var.evidence_digest
   }
 }

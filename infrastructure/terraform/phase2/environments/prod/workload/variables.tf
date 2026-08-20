@@ -2,8 +2,16 @@ variable "image_digests" {
   type = map(string)
 }
 
-variable "key_vault_secret_ids" {
+variable "key_vault_secret_uris" {
   type = map(string)
+}
+
+variable "key_vault_secret_resource_ids" {
+  type = map(string)
+}
+
+variable "founder_ipv4_cidr" {
+  type = string
 }
 
 variable "ghcr_packages_public" {

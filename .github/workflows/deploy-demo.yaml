@@ -2,6 +2,15 @@ name: Founder Demo Deployment
 
 on:
   workflow_dispatch:
+    inputs:
+      execution:
+        description: "Run a zero-resource foundation plan or the full Demo deployment"
+        required: true
+        default: plan
+        type: choice
+        options:
+          - plan
+          - apply
 
 permissions:
   contents: read
@@ -24,6 +33,7 @@ jobs:
         env:
           DISPATCH_ACTOR: ${{ github.actor }}
           DISPATCH_REF: ${{ github.ref }}
+          EXECUTION_MODE: ${{ inputs.execution }}
           GH_TOKEN: ${{ github.token }}
         run: |
           case "$DISPATCH_ACTOR" in
@@ -31,6 +41,7 @@ jobs:
             *) echo "Unauthorized Demo dispatcher" >&2; exit 1 ;;
           esac
           test "$DISPATCH_REF" = "refs/heads/main"
+          case "$EXECUTION_MODE" in plan|apply) ;; *) exit 1 ;; esac
           latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
           release_run_id=$(gh api \
             "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yaml/runs?branch=main&event=push&status=success&per_page=100" \
@@ -52,10 +63,11 @@ jobs:
       environment: demo
       release_run_id: ${{ fromJSON(needs.authorize-demo.outputs.release_run_id) }}
       release_sha: ${{ needs.authorize-demo.outputs.release_sha }}
-      apply: true
+      apply: ${{ inputs.execution == 'apply' }}
     secrets: inherit
 
   verify-demo:
+    if: inputs.execution == 'apply'
     needs: [authorize-demo, deploy-demo]
     uses: ./.github/workflows/post-deploy-verify.yaml
     with:
@@ -67,6 +79,7 @@ jobs:
     secrets: inherit
 
   publish-founder-url:
+    if: inputs.execution == 'apply'
     needs: [authorize-demo, deploy-demo, verify-demo]
     runs-on: ubuntu-latest
     steps:
