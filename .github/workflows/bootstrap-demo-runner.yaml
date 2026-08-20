@@ -3,11 +3,18 @@ name: GOAL-006 Bootstrap Demo Runner
 on:
   workflow_dispatch:
     inputs:
-      apply:
-        description: Reconcile the inactive Demo runner Deployment Stack
+      environment:
+        description: Environment
         required: true
-        default: false
-        type: boolean
+        default: demo
+        type: choice
+        options:
+          - demo
+      remarks:
+        description: Remarks
+        required: true
+        default: GOAL-006 inactive Demo runner reconciliation
+        type: string
 
 permissions:
   contents: read
@@ -42,19 +49,33 @@ concurrency:
 jobs:
   bootstrap:
     runs-on: ubuntu-latest
-    environment: demo
+    environment: ${{ inputs.environment }}
+    env:
+      TARGET_ENVIRONMENT: ${{ inputs.environment }}
+      RUN_REMARKS: ${{ inputs.remarks }}
     steps:
       - name: Require trusted current main
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           test "$GITHUB_REF" = "refs/heads/main"
+          test "$TARGET_ENVIRONMENT" = "demo"
           latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
           test "$GITHUB_SHA" = "$latest_main_sha"
 
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
+
+      - name: Record dispatch context
+        run: |
+          jq -n \
+            --arg environment "$TARGET_ENVIRONMENT" \
+            --arg remarks "$RUN_REMARKS" \
+            --arg actor "$GITHUB_ACTOR" \
+            --arg commit_sha "$GITHUB_SHA" \
+            '{environment: $environment, remarks: $remarks, actor: $actor, commit_sha: $commit_sha}' \
+            > dispatch-context.json
 
       - name: Verify immutable bootstrap manifest
         run: |
@@ -133,7 +154,6 @@ jobs:
             --result-format FullResourcePayloads > runner-stack-what-if.json
 
       - name: Reconcile inactive stack
-        if: inputs.apply
         run: |
           az stack sub create \
             --name "$STACK_NAME" \
@@ -151,6 +171,7 @@ jobs:
         with:
           name: goal006-demo-runner-bootstrap-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
+            dispatch-context.json
             budget.json
             actual-cost.json
             forecast-cost.json
