@@ -1,4 +1,4 @@
-name: GOAL-006 Founder Demo Deployment
+name: Founder Demo Deployment
 
 on:
   workflow_dispatch:
