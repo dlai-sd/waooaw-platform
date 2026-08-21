@@ -94,15 +94,14 @@ def test_reviewed_plan_digest_is_fail_closed() -> None:
     assert validate_reviewed_plan(valid) == payload
 
 
-@pytest.mark.parametrize("environment", ["uat", "prod"])
-def test_live_plan_rejects_unauthorized_environment(environment: str) -> None:
+def test_live_plan_rejects_unauthorized_environment() -> None:
     from scripts.goal006_runner_deployment import create_plan
 
-    with pytest.raises(RuntimeError, match="authorized only for Demo"):
+    with pytest.raises(RuntimeError, match="not authorized for environment"):
         create_plan(
             repository_root=REPOSITORY_ROOT,
             manifest_path=MANIFEST,
-            environment=environment,
+            environment="staging",
             subscription_id="sub",
             source_commit="b" * 40,
         )

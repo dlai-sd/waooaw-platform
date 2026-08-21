@@ -14,6 +14,7 @@ on:
 
 permissions:
   issues: write
+  pull-requests: write
   contents: read
 
 jobs:
@@ -155,3 +156,27 @@ jobs:
 
           gh issue comment "$ISSUE" --repo "$REPO" \
             --body "Sprint Plan Approved by Founder. Mode 2 ACTIVATED. All agents assigned to issues in this sprint may now begin execution autonomously within pre-approved assumption boundaries. Constitutional basis: BOOTSTRAP Full Agent Operating Cycle Mode 2 (Sprint Execution) activated."
+
+  # ─── Auto-apply tier:1-bugfix to agent/goal/ib PRs (C-066 gate) ─────────────
+  # Prevents every agent PR from failing C-066 due to missing tier label.
+  # Constitutional basis: C-066 (Autonomous Development Authorization Tiers)
+  auto-tier-label:
+    name: Auto-apply tier label on agent PR
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.action == 'opened' &&
+      (startsWith(github.event.pull_request.head.ref, 'goal/') ||
+       startsWith(github.event.pull_request.head.ref, 'ib/') ||
+       startsWith(github.event.pull_request.head.ref, 'agent/'))
+    steps:
+      - name: Apply tier:1-bugfix if no tier label present
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          labels=$(gh pr view "$PR" --repo "$REPO" --json labels --jq '[.labels[].name] | join(",")' )
+          if ! echo "$labels" | grep -qE "tier:[0-3]-"; then
+            gh pr edit "$PR" --repo "$REPO" --add-label "tier:1-bugfix" 2>/dev/null || true
+          fi

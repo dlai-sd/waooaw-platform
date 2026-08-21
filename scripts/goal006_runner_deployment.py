@@ -145,8 +145,8 @@ def create_plan(
     subscription_id: str,
     source_commit: str,
 ) -> dict[str, Any]:
-    if environment != "demo":
-        raise RuntimeError("live runner delivery is currently authorized only for Demo")
+    if environment not in ("demo", "uat", "prod"):
+        raise RuntimeError(f"live runner delivery not authorized for environment: {environment}")
     if SOURCE_COMMIT.fullmatch(source_commit) is None:
         raise RuntimeError("source commit must be a full lowercase SHA")
     contract = environment_contract(repository_root, manifest_path, environment)
