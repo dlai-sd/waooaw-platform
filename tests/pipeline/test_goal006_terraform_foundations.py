@@ -295,7 +295,8 @@ def test_lease_lifecycle_preserves_foundation_and_prohibits_production() -> None
         assert term in contract
     assert "protected_foundation_id" in contract
     assert 'contains(["demo", "uat"], var.environment)' in variables
-    assert "timecmp(var.expires_at, timestamp()) > 0" in contract
+    assert "timecmp(var.expires_at, plantimestamp()) > 0" in contract
+    assert "timecmp(var.expires_at, timestamp())" not in contract
     assert 'output "workload_enabled"' in contract
 
     for environment in ("demo", "uat"):
@@ -320,6 +321,31 @@ def test_lease_reconciliation_is_manual_demo_plan_only_until_activation() -> Non
     assert "terraform apply" not in workflow
     assert "PRODUCTION_RECONCILIATION_PROHIBITED" in validator
     assert "DISPOSABLE_PREFIXES" in validator
+
+
+def test_demo_credential_seeder_passes_shell_flags_as_container_arguments() -> None:
+    workflow = (REPO_ROOT / ".github/workflows/deploy-environment.yaml").read_text(encoding="utf-8")
+
+    assert "--command /bin/sh -c" not in workflow
+    assert "seeder_args=$(jq -cn --arg script" in workflow
+    assert "'[\"-c\", $script]')" in workflow
+    assert '--args "$seeder_args"' in workflow
+
+
+def test_local_rehearsal_is_offline_pinned_and_covers_the_full_goal006_path() -> None:
+    rehearsal = (REPO_ROOT / "scripts/run_goal006_local_rehearsal.sh").read_text(encoding="utf-8")
+
+    assert "azure/login" not in rehearsal
+    assert "az login --" not in rehearsal
+    assert "az containerapp job create" in rehearsal
+    assert "Please run 'az login'" in rehearsal
+    assert "hashicorp/terraform:1.9.8" in rehearsal
+    assert "for environment in demo uat prod" in rehearsal
+    assert "for root in foundation workload" in rehearsal
+    assert "terraform plan: lease-controlled workload membership" in rehearsal
+    assert "for_each = module.lease.workload_enabled" in rehearsal
+    assert "rhysd/actionlint:1.7.7" in rehearsal
+    assert "pytest tests/pipeline/test_goal006_*.py" in rehearsal
 
 
 def test_oidc_policy_requires_exact_governed_refs_and_workflows() -> None:
