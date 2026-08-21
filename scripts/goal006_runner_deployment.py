@@ -48,6 +48,26 @@ def _canonical(value: Mapping[str, Any]) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
 
 
+def _stable_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Return payload with non-deterministic Azure what-if details stripped from changes.
+
+    The ``details`` field inside each normalized change contains raw ARM what-if
+    response data (before/after/delta) that may differ across successive API calls
+    for the same logical state.  Only ``change_type`` and ``resource_id`` are
+    stable and are included in the digest and equality check.
+    """
+    result: dict[str, Any] = {}
+    for key, value in payload.items():
+        if key == "changes":
+            result[key] = [
+                {"change_type": item["change_type"], "resource_id": item["resource_id"]}
+                for item in value
+            ]
+        else:
+            result[key] = value
+    return result
+
+
 def _digest_bytes(value: bytes) -> str:
     return "sha256:" + hashlib.sha256(value).hexdigest()
 
@@ -186,14 +206,14 @@ def create_plan(
         "reconciler_image": contract["reconciler_image"],
         "changes": normalize_changes(what_if.get("changes", [])),
     }
-    return {"payload": payload, "plan_digest": _digest_bytes(_canonical(payload))}
+    return {"payload": payload, "plan_digest": _digest_bytes(_canonical(_stable_payload(payload)))}
 
 
 def validate_reviewed_plan(plan: Mapping[str, Any]) -> dict[str, Any]:
     payload = plan.get("payload")
     if not isinstance(payload, dict) or payload.get("schema") != PLAN_SCHEMA:
         raise RuntimeError("reviewed plan schema invalid")
-    if plan.get("plan_digest") != _digest_bytes(_canonical(payload)):
+    if plan.get("plan_digest") != _digest_bytes(_canonical(_stable_payload(payload))):
         raise RuntimeError("reviewed plan digest invalid")
     return payload
 
@@ -266,7 +286,7 @@ def revalidate_reviewed_plan(
         subscription_id=subscription_id,
         source_commit=source_commit,
     )
-    if current_plan != reviewed_plan:
+    if _stable_payload(current_plan["payload"]) != _stable_payload(reviewed_plan["payload"]):
         raise RuntimeError("current Azure plan differs from reviewed plan")
     return current_plan
 
