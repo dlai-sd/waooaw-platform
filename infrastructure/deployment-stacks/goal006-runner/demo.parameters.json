@@ -3,7 +3,7 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "environment": { "value": "demo" },
-    "activationState": { "value": "INACTIVE" },
+    "activationState": { "value": "ACTIVE" },
     "location": { "value": "centralindia" },
     "runnerResourceGroupName": { "value": "waooaw-demo-runner-rg" },
     "stateStorageAccountId": { "value": "/subscriptions/2ed11839-6a0f-4eaa-bd94-44ca96ff5d84/resourceGroups/waooaw-platform-rg/providers/Microsoft.Storage/storageAccounts/waooawp3tfstate2ed118" },
