@@ -264,6 +264,10 @@ resource "azurerm_container_app_environment" "environment" {
   infrastructure_subnet_id       = azurerm_subnet.container_apps.id
   internal_load_balancer_enabled = !var.external_environment
   tags                           = local.tags
+
+  lifecycle {
+    ignore_changes = [infrastructure_resource_group_name]
+  }
 }
 
 output "resource_group_name" {
