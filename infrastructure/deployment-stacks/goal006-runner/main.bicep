@@ -87,7 +87,7 @@ resource runnerNsg 'Microsoft.Network/networkSecurityGroups@2024-05-01' = {
           sourcePortRange: '*'
           destinationPortRange: '53'
           sourceAddressPrefix: '*'
-          destinationAddressPrefix: 'AzurePlatformDNS'
+          destinationAddressPrefix: '168.63.129.16/32'
         }
       }
       {

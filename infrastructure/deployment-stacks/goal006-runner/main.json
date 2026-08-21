@@ -1,0 +1,618 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.46.1.21595",
+      "templateHash": "17104544023083317663"
+    }
+  },
+  "parameters": {
+    "environment": {
+      "type": "string",
+      "allowedValues": [
+        "demo",
+        "uat",
+        "prod"
+      ]
+    },
+    "activationState": {
+      "type": "string",
+      "defaultValue": "INACTIVE",
+      "allowedValues": [
+        "INACTIVE"
+      ]
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "centralindia"
+    },
+    "stateStorageAccountId": {
+      "type": "string"
+    },
+    "bootstrapPrincipalId": {
+      "type": "string"
+    },
+    "bootstrapWriterRoleDefinitionId": {
+      "type": "string"
+    },
+    "cleanupDeleterRoleDefinitionId": {
+      "type": "string"
+    },
+    "runnerImage": {
+      "type": "string"
+    },
+    "reconcilerImage": {
+      "type": "string"
+    },
+    "runnerVnetAddressPrefix": {
+      "type": "string",
+      "defaultValue": "10.70.0.0/24"
+    },
+    "runnerSubnetAddressPrefix": {
+      "type": "string",
+      "defaultValue": "10.70.0.0/27"
+    },
+    "privateEndpointSubnetAddressPrefix": {
+      "type": "string",
+      "defaultValue": "10.70.0.32/27"
+    }
+  },
+  "variables": {
+    "prefix": "[format('goal006-{0}-runner', parameters('environment'))]",
+    "commonTags": {
+      "environment": "[parameters('environment')]",
+      "goal": "GOAL-006",
+      "managed-by": "azure-deployment-stacks",
+      "runner-activation": "[parameters('activationState')]"
+    },
+    "runnerSubnetId": "[format('{0}/subnets/runner', resourceId('Microsoft.Network/virtualNetworks', format('{0}-vnet', variables('prefix'))))]",
+    "privateEndpointSubnetId": "[format('{0}/subnets/private-endpoints', resourceId('Microsoft.Network/virtualNetworks', format('{0}-vnet', variables('prefix'))))]",
+    "keyVaultSecretsUserRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.OperationalInsights/workspaces",
+      "apiVersion": "2023-09-01",
+      "name": "[format('{0}-logs', variables('prefix'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('commonTags')]",
+      "properties": {
+        "retentionInDays": 90,
+        "sku": {
+          "name": "PerGB2018"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}-nsg', variables('prefix'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('commonTags')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "deny-inbound",
+            "properties": {
+              "priority": 100,
+              "direction": "Inbound",
+              "access": "Deny",
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*"
+            }
+          },
+          {
+            "name": "allow-vnet-https",
+            "properties": {
+              "priority": 100,
+              "direction": "Outbound",
+              "access": "Allow",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "VirtualNetwork"
+            }
+          },
+          {
+            "name": "allow-azure-dns",
+            "properties": {
+              "priority": 110,
+              "direction": "Outbound",
+              "access": "Allow",
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "53",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "168.63.129.16/32"
+            }
+          },
+          {
+            "name": "allow-required-https-egress",
+            "properties": {
+              "priority": 120,
+              "direction": "Outbound",
+              "access": "Allow",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "Internet"
+            }
+          },
+          {
+            "name": "deny-other-egress",
+            "properties": {
+              "priority": 4096,
+              "direction": "Outbound",
+              "access": "Deny",
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}-vnet', variables('prefix'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('commonTags')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[parameters('runnerVnetAddressPrefix')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "runner",
+            "properties": {
+              "addressPrefix": "[parameters('runnerSubnetAddressPrefix')]",
+              "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-nsg', variables('prefix')))]"
+              },
+              "delegations": [
+                {
+                  "name": "aca-environment",
+                  "properties": {
+                    "serviceName": "Microsoft.App/environments"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "private-endpoints",
+            "properties": {
+              "addressPrefix": "[parameters('privateEndpointSubnetAddressPrefix')]",
+              "privateEndpointNetworkPolicies": "Disabled",
+              "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-nsg', variables('prefix')))]"
+              }
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-nsg', variables('prefix')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "apiVersion": "2023-01-31",
+      "name": "[format('{0}-identity', variables('prefix'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('commonTags')]"
+    },
+    {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "apiVersion": "2023-01-31",
+      "name": "[format('{0}-cleanup-identity', variables('prefix'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('commonTags')]"
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "2023-07-01",
+      "name": "[format('waooaw-{0}-runner-kv', parameters('environment'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('commonTags')]",
+      "properties": {
+        "tenantId": "[subscription().tenantId]",
+        "enableRbacAuthorization": true,
+        "enablePurgeProtection": true,
+        "enableSoftDelete": true,
+        "softDeleteRetentionInDays": 90,
+        "publicNetworkAccess": "Disabled",
+        "networkAcls": {
+          "bypass": "None",
+          "defaultAction": "Deny"
+        },
+        "sku": {
+          "family": "A",
+          "name": "standard"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment')))]",
+      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment'))), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', variables('prefix'))), variables('keyVaultSecretsUserRoleId'))]",
+      "properties": {
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', variables('prefix'))), '2023-01-31').principalId]",
+        "principalType": "ServicePrincipal",
+        "roleDefinitionId": "[variables('keyVaultSecretsUserRoleId')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', variables('prefix')))]",
+        "[resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment')))]",
+      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment'))), parameters('bootstrapPrincipalId'), parameters('bootstrapWriterRoleDefinitionId'))]",
+      "properties": {
+        "principalId": "[parameters('bootstrapPrincipalId')]",
+        "principalType": "ServicePrincipal",
+        "roleDefinitionId": "[parameters('bootstrapWriterRoleDefinitionId')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment')))]",
+      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment'))), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-cleanup-identity', variables('prefix'))), parameters('cleanupDeleterRoleDefinitionId'))]",
+      "properties": {
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-cleanup-identity', variables('prefix'))), '2023-01-31').principalId]",
+        "principalType": "ServicePrincipal",
+        "roleDefinitionId": "[parameters('cleanupDeleterRoleDefinitionId')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-cleanup-identity', variables('prefix')))]",
+        "[resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateDnsZones",
+      "apiVersion": "2024-06-01",
+      "name": "[format('privatelink.blob.{0}', environment().suffixes.storage)]",
+      "location": "global",
+      "tags": "[variables('commonTags')]"
+    },
+    {
+      "type": "Microsoft.Network/privateDnsZones",
+      "apiVersion": "2024-06-01",
+      "name": "[format('privatelink{0}', environment().suffixes.keyvaultDns)]",
+      "location": "global",
+      "tags": "[variables('commonTags')]"
+    },
+    {
+      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+      "apiVersion": "2024-06-01",
+      "name": "[format('{0}/{1}', format('privatelink.blob.{0}', environment().suffixes.storage), format('{0}-blob-link', variables('prefix')))]",
+      "location": "global",
+      "tags": "[variables('commonTags')]",
+      "properties": {
+        "registrationEnabled": false,
+        "virtualNetwork": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworks', format('{0}-vnet', variables('prefix')))]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateDnsZones', format('privatelink.blob.{0}', environment().suffixes.storage))]",
+        "[resourceId('Microsoft.Network/virtualNetworks', format('{0}-vnet', variables('prefix')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+      "apiVersion": "2024-06-01",
+      "name": "[format('{0}/{1}', format('privatelink{0}', environment().suffixes.keyvaultDns), format('{0}-vault-link', variables('prefix')))]",
+      "location": "global",
+      "tags": "[variables('commonTags')]",
+      "properties": {
+        "registrationEnabled": false,
+        "virtualNetwork": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworks', format('{0}-vnet', variables('prefix')))]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', format('{0}-vnet', variables('prefix')))]",
+        "[resourceId('Microsoft.Network/privateDnsZones', format('privatelink{0}', environment().suffixes.keyvaultDns))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateEndpoints",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}-state-pe', variables('prefix'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('commonTags')]",
+      "properties": {
+        "subnet": {
+          "id": "[variables('privateEndpointSubnetId')]"
+        },
+        "privateLinkServiceConnections": [
+          {
+            "name": "state-blob",
+            "properties": {
+              "privateLinkServiceId": "[parameters('stateStorageAccountId')]",
+              "groupIds": [
+                "blob"
+              ]
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', format('{0}-vnet', variables('prefix')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}/{1}', format('{0}-state-pe', variables('prefix')), 'blob')]",
+      "properties": {
+        "privateDnsZoneConfigs": [
+          {
+            "name": "blob",
+            "properties": {
+              "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', format('privatelink.blob.{0}', environment().suffixes.storage))]"
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateDnsZones', format('privatelink.blob.{0}', environment().suffixes.storage))]",
+        "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-state-pe', variables('prefix')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateEndpoints",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}-vault-pe', variables('prefix'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('commonTags')]",
+      "properties": {
+        "subnet": {
+          "id": "[variables('privateEndpointSubnetId')]"
+        },
+        "privateLinkServiceConnections": [
+          {
+            "name": "runner-vault",
+            "properties": {
+              "privateLinkServiceId": "[resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment')))]",
+              "groupIds": [
+                "vault"
+              ]
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment')))]",
+        "[resourceId('Microsoft.Network/virtualNetworks', format('{0}-vnet', variables('prefix')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}/{1}', format('{0}-vault-pe', variables('prefix')), 'vault')]",
+      "properties": {
+        "privateDnsZoneConfigs": [
+          {
+            "name": "vault",
+            "properties": {
+              "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', format('privatelink{0}', environment().suffixes.keyvaultDns))]"
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateDnsZones', format('privatelink{0}', environment().suffixes.keyvaultDns))]",
+        "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-vault-pe', variables('prefix')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.App/managedEnvironments",
+      "apiVersion": "2024-03-01",
+      "name": "[format('{0}-aca', variables('prefix'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('commonTags')]",
+      "properties": {
+        "vnetConfiguration": {
+          "infrastructureSubnetId": "[variables('runnerSubnetId')]",
+          "internal": true
+        },
+        "appLogsConfiguration": {
+          "destination": "log-analytics",
+          "logAnalyticsConfiguration": {
+            "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', format('{0}-logs', variables('prefix'))), '2023-09-01').customerId]",
+            "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', format('{0}-logs', variables('prefix'))), '2023-09-01').primarySharedKey]"
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', format('{0}-logs', variables('prefix')))]",
+        "[resourceId('Microsoft.Network/virtualNetworks', format('{0}-vnet', variables('prefix')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.App/jobs",
+      "apiVersion": "2024-03-01",
+      "name": "[format('{0}-job', variables('prefix'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('commonTags')]",
+      "identity": {
+        "type": "UserAssigned",
+        "userAssignedIdentities": {
+          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', variables('prefix'))))]": {}
+        }
+      },
+      "properties": {
+        "environmentId": "[resourceId('Microsoft.App/managedEnvironments', format('{0}-aca', variables('prefix')))]",
+        "configuration": {
+          "triggerType": "Manual",
+          "replicaTimeout": 3600,
+          "replicaRetryLimit": 0,
+          "manualTriggerConfig": {
+            "parallelism": 1,
+            "replicaCompletionCount": 1
+          }
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "runner",
+              "image": "[parameters('runnerImage')]",
+              "command": [
+                "/bin/bash",
+                "-lc"
+              ],
+              "args": [
+                "test \"$RUNNER_ACTIVATION_STATE\" = \"ACTIVE\" && test -n \"$ACTIONS_RUNNER_INPUT_JITCONFIG\" && exec ./run.sh --jitconfig \"$ACTIONS_RUNNER_INPUT_JITCONFIG\" || exit 0"
+              ],
+              "env": [
+                {
+                  "name": "RUNNER_ACTIVATION_STATE",
+                  "value": "[parameters('activationState')]"
+                },
+                {
+                  "name": "RUNNER_GROUP",
+                  "value": "[format('goal006-{0}-private', parameters('environment'))]"
+                },
+                {
+                  "name": "RUNNER_LABEL",
+                  "value": "[format('goal006-{0}-private', parameters('environment'))]"
+                }
+              ],
+              "resources": {
+                "cpu": "[json('1.0')]",
+                "memory": "2Gi"
+              }
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/managedEnvironments', format('{0}-aca', variables('prefix')))]",
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', variables('prefix')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.App/jobs",
+      "apiVersion": "2024-03-01",
+      "name": "[format('{0}-reconciler', variables('prefix'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('commonTags')]",
+      "identity": {
+        "type": "UserAssigned",
+        "userAssignedIdentities": {
+          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-cleanup-identity', variables('prefix'))))]": {}
+        }
+      },
+      "properties": {
+        "environmentId": "[resourceId('Microsoft.App/managedEnvironments', format('{0}-aca', variables('prefix')))]",
+        "configuration": {
+          "triggerType": "Schedule",
+          "replicaTimeout": 120,
+          "replicaRetryLimit": 0,
+          "scheduleTriggerConfig": {
+            "cronExpression": "*/5 * * * *",
+            "parallelism": 1,
+            "replicaCompletionCount": 1
+          }
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "reconciler",
+              "image": "[parameters('reconcilerImage')]",
+              "command": [
+                "/bin/sh",
+                "-c"
+              ],
+              "args": [
+                "test \"$RUNNER_ACTIVATION_STATE\" = \"ACTIVE\" && exit 64 || exit 0"
+              ],
+              "env": [
+                {
+                  "name": "RUNNER_ACTIVATION_STATE",
+                  "value": "[parameters('activationState')]"
+                }
+              ],
+              "resources": {
+                "cpu": "[json('0.25')]",
+                "memory": "0.5Gi"
+              }
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-cleanup-identity', variables('prefix')))]",
+        "[resourceId('Microsoft.App/managedEnvironments', format('{0}-aca', variables('prefix')))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "activationState": {
+      "type": "string",
+      "value": "[parameters('activationState')]"
+    },
+    "runnerResourceGroupId": {
+      "type": "string",
+      "value": "[resourceGroup().id]"
+    },
+    "runnerVnetId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Network/virtualNetworks', format('{0}-vnet', variables('prefix')))]"
+    },
+    "runnerSubnetId": {
+      "type": "string",
+      "value": "[variables('runnerSubnetId')]"
+    },
+    "statePrivateEndpointId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-state-pe', variables('prefix')))]"
+    },
+    "runnerVaultId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment')))]"
+    },
+    "runnerIdentityId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', variables('prefix')))]"
+    },
+    "cleanupIdentityId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-cleanup-identity', variables('prefix')))]"
+    },
+    "runnerEnvironmentId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.App/managedEnvironments', format('{0}-aca', variables('prefix')))]"
+    },
+    "runnerJobId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.App/jobs', format('{0}-job', variables('prefix')))]"
+    },
+    "reconcilerJobId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.App/jobs', format('{0}-reconciler', variables('prefix')))]"
+    }
+  }
+}

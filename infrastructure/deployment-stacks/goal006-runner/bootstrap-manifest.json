@@ -26,7 +26,7 @@
     "infrastructure/deployment-stacks/goal006-runner/prod.parameters.json": "390b23b7032eb06d97bb7ddb29d49ad6c56a5df5b0946e66574f91240814468a",
     "infrastructure/deployment-stacks/goal006-runner/uat.prerequisites.parameters.json": "05523b9700ab82b98232c8bc554fced45445f8417d81e98ae9c67fa879fbec87",
     "infrastructure/deployment-stacks/goal006-runner/prod.prerequisites.parameters.json": "6de60ab62f2bdccfc4728f338428c7de523e43a8b6626597677943e77e0ede10",
-    "infrastructure/deployment-stacks/goal006-runner/main.bicep": "3034dddbb4e67f4087c35c6bfad1e5adcd091190e85dc469bcd2932b6a02d030",
+    "infrastructure/deployment-stacks/goal006-runner/main.bicep": "896a61d80268cb628d70a0f373747b8cd58deb6577ac91ea62e13bb7c6ce1645",
     "infrastructure/deployment-stacks/goal006-runner/prerequisites-rg.bicep": "8888f32c53f62ee9c5e03674aedee48542945c55e246248b0aaec1e0692ea0cb",
     "infrastructure/deployment-stacks/goal006-runner/prerequisites.bicep": "8fffda699f23b110e98f9f316da9cc87d06d1567b6f3d34edb9521af670e0799",
     "infrastructure/deployment-stacks/goal006-runner/subscription.bicep": "6a2802b2df5a39e8856cce06ccd7e48c183b669483afe9da2183d1729a20c656",
