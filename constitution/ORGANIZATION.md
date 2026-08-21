@@ -114,10 +114,18 @@ Every office charter contains seven attributes:
 3. **Inputs** — What it may consume (only from approved upstream outputs)
 4. **Outputs** — What it must produce before the next office may begin
 5. **Quality Gate** — The standard that outputs must meet
-6. **Reviewer** — Who approves the outputs
+6. **Review authority** — Founder approval by default; optional institutional expertise only on explicit Founder request
 7. **Constitutional Obligations** — What this office is **forbidden** to do, and the constitutional source of that prohibition
 
 The Constitutional Obligation is the most important attribute. It is traceable to a specific article in the Constitution, a ratified precedent, or a Genesis principle.
+
+### Founder-Gated Review Rule
+
+Every `Reviewer` field below identifies expertise the Founder may request; it is not an instruction
+for an office, role, agent, workflow, or subagent to invoke another institution. Each assigned office
+performs author review and executable validation, then submits its output to the Founder. Only the
+Founder may request an institutional review, approve, return, or merge the output. No review artifact
+or reviewer context is created without that explicit request. Self-approval and self-merge remain prohibited.
 
 An obligation without a constitutional source can be argued away. An obligation with one cannot.
 
@@ -634,20 +642,12 @@ Solution Architect (validates architectural faithfulness). Platform Architect (v
 - May not deploy to production without Platform Architect approval and observability readiness. *(Deployment gate)*
 - **C-087 — Generic Sprint Solution Mandate:** Before implementing any pipeline fix or enhancement (`scripts/`, `.github/workflows/`), MUST verify: (1) the fix works for all sprint types — greenfield, enhancement, tech debt, agent spec — not just the current sprint; (2) `logs/failure-registry.jsonl` shows ≥3 entries for the same error pattern across different `run_id`s before a targeted fix is applied; (3) if fewer than 3 entries exist, raise a Constitutional Blocker and request more runs rather than proceeding with a narrow fix. A fix that only works for the current sprint in progress is a constitutional violation.
 
-**Two-Hat Operation — Autonomous Sprint (C-065 · C-066 Tier 2A):**
+**Founder-Gated Pull Request Operation (C-065):**
 
-In the autonomous sprint cycle, INST-010 operates under two separate constitutional identities:
-
-| Hat | Identity | GitHub token | Constitutional role |
-|---|---|---|---|
-| **Author** (execute job) | `GITHUB_TOKEN` (Actions default) | Writes code, commits, opens PR | Implementation — author |
-| **Reviewer** (review job) | `waooaw-reviewer` GitHub App (Key Vault credentials) | Reviews PR, posts formal approval, triggers merge | PR Review — reviewer |
-
-These are DIFFERENT identities — C-065 (SDLC Separation) is satisfied at the infrastructure level. The same GitHub token cannot open AND approve a PR (GitHub platform enforces this). CODEOWNERS authorizes the reviewer App to approve and merge `src/`, `tests/`, `scripts/`, `web/` autonomously (C-066 Tier 2A).
-
-Founder authorization: *"Our platform instinct — full autonomous execution. I am not supposed to do merging."* — Yogesh Khandge, 2026-07-23.
-
-See: GEOM §11 (Autonomous Goal Execution) for the full sprint → GEOM lifecycle mapping.
+INST-010 uses one author identity to write, test, perform author review, commit, and open the PR.
+Automated checks may report technical evidence but may not approve or merge. The Founder is the
+approval and merge identity. The `waooaw-reviewer` GitHub App must not be invoked to approve or merge
+an authoring agent's PR. Institutional review occurs only when explicitly requested by the Founder.
 
 ---
 
@@ -1074,54 +1074,45 @@ Step 1 — VALIDATE INPUTS
   If all inputs are present and approved → go to Step 3.
 
 Step 2 — DECLARE MISSING INPUTS
-  Create a Constitutional Blocker in blockers/ (CB-XXX format).
-  Stop. Do not compensate. Do not proceed. Wait.
+  Stop. Do not compensate. Report the exact missing input to the Founder.
+  Create a blocker artifact only when the Work Contract or Founder explicitly requires it.
   Resume at Step 1 when the blocker is resolved.
 
 Step 3 — ACCEPT DECISION SPACE
-  Read your Office Charter in this document.
+  Read the compact office card in .github/agent-context/.
   Confirm you understand what you MAY do and what you are FORBIDDEN to do.
   If any instruction conflicts with your Constitutional Obligations → escalate. Do not comply.
 
 Step 4 — LOAD WORK CONTRACT
-  Read your current Work Contract from work-contracts/.
+  Read only the control, authority, inputs, Definition of Done, and stop sections of the assigned Work Contract.
   Confirm you understand the tasks, dependencies, and Definition of Done.
   If any task requires input not listed in Step 1 → raise a Constitutional Blocker.
 
 Step 5 — EXECUTE TASKS
   Execute tasks in dependency order.
   Produce only what the Work Contract specifies.
-  Record every ambiguity or decision as an Operational Discovery note.
+  Record only material decisions that the Work Contract requires as durable evidence.
   Do not produce anything outside your Decision Space.
 
 Step 6 — PRODUCE EVIDENCE
-  Document all outputs in the format specified by your Work Contract.
+  Prefer executable tests, CI artifacts, code, commits, and machine-readable evidence.
+  Update documentation only when the Work Contract explicitly requires it.
   Every output must be traceable to a task in the Work Contract.
   Outputs without task traceability shall not be submitted.
 
-Step 7 — AGENT PEER REVIEW (mandatory)
+Step 7 — AUTHOR REVIEW AND FOUNDER GATE (mandatory)
   Place completed outputs in the location specified by the Work Contract.
-  Raise a review request to the Reviewer office defined in your Charter.
-  The Reviewer is an AI agent occupying the Reviewer office — NOT the Founder.
-  The reviewing agent executes a critical review and produces a record in reviews/.
-    APPROVED → proceed to Step 8
-    APPROVED WITH NOTES → address notes, reviewer confirms, then proceed to Step 8
-    REJECT → return to Step 5 with reviewer findings
+  Perform author review and all applicable executable validation.
+  Submit the PR or output to the Founder for review and merge.
+  Do not invoke another role, institution, reviewer agent, or review subagent unless the Founder explicitly requests it.
+  Create no review record unless that Founder-requested institutional review requires one.
 
 Step 8 — CLOSE OR ESCALATE
-  After agent review approval:
-    If Gate passage or constitutional ratification is required → present to Founder.
-    If no constitutional deliberation is required → merge to main directly.
-
-  Founder’s role is constitutional deliberations ONLY:
-    - Ratifying LAW and CONFIRMED claim types produced by the Constitutional Analyst
-    - Approving Phase Gate passage
-    - Resolving constitutional conflicts between claims or between offices
-    - Ratifying amendments and Founder Resolutions
-  Founders do NOT perform routine quality review. That is the Reviewer office’s responsibility.
+  Founder may approve, return, request institutional review, or merge.
+  The assigned role may not approve or merge its own output.
 ```
 
-**This protocol does not change per office. It does not change per sprint. Changes to this protocol require evidence from at least two completed office sprints.**
+**This protocol does not change per office or sprint. Founder direction controls protocol changes.**
 
 ---
 

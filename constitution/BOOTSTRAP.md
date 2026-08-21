@@ -1,6 +1,6 @@
 # BOOTSTRAP.md — Agent Onboarding Protocol
 
-**Classification:** First-read document. Every AI agent reads this before reading anything else.
+**Classification:** Founder-authorized onboarding document. Do not read or run automatically.
 
 **Purpose:** Deterministic onboarding of any AI agent into the correct Constitutional Office, at the correct point in the institution's lifecycle, with the correct Decision Space and minimum required context.
 
@@ -34,22 +34,65 @@ An agent that skips this protocol and starts reading documents has violated the 
 
 Execute these steps in exact order. Do not skip. Do not reorder.
 
-**CRITICAL BEFORE STEP 1:** Do NOT consult `/memories/`, `/memories/repo/`, or `/memories/session/` before completing this sequence. Memory files may only be used AFTER Step 8 declares READY, and only to supplement — never replace — this sequence. Prior conversation history, a `/resume` command, or any user shortcut does NOT override these steps.
+**ACTIVATION RULE:** Do not execute this sequence unless the Founder explicitly asks for or approves bootstrap in the current conversation. If authorization is absent, ask for permission and stop. Once completed, bootstrap remains valid for the continuous working conversation; context compaction, `/resume`, interruption, model handoff, or a conversation summary does not require another run. Repeat only with explicit Founder request or approval.
+
+**CRITICAL BEFORE STEP 1:** After bootstrap is authorized, do NOT consult `/memories/`, `/memories/repo/`, or `/memories/session/` before completing this sequence. Memory files may only be used AFTER Step 8 declares READY, and only to supplement — never replace — this sequence.
+
+### Token Budget And Engineering-First Rule
+
+- Bootstrap is a routing check, not a repository study. Target at most 2,000 input tokens before READY.
+- Read only named headings or exact sections. Never read a full long file when a compact status, office card, index row, Work Contract control block, or skill section answers the gate.
+- Start from the assigned task, failing check, changed file, or requested skill. Load adjacent implementation and tests before background narrative.
+- Prefer code, workflows, infrastructure, tests, executable checks, and machine-readable manifests over prose artifacts.
+- Do not create a Work Contract, review record, checkpoint record, architecture document, or status report unless the Founder explicitly asks for it or the current authorized Work Contract makes that exact artifact mandatory.
+- Documentation is downstream of verified engineering. Keep mandatory evidence in the owning existing artifact and update it once after technical validation; do not create parallel summaries.
+- Do not invoke another role, institution, reviewer agent, or review subagent. The assigned role performs author review and executable validation. Founder review and merge are the default approval gate. Institutional review occurs only when the Founder explicitly requests it.
+- If any later section conflicts with this token-budget rule, this rule controls.
+
+### Mandatory Author Review Technique
+
+Author review is a WAOOAW way of working inherited by every agent in every occupied office or role.
+It applies to each material authored output, not only code or Pull Requests. Before declaring an
+activity complete or presenting its output, the author must:
+
+1. Re-read the complete output against the authorized scope, source inputs, acceptance criteria,
+  constitutional obligations, and the office's Professional Standard.
+2. Review the applicable quality lenses:
+  - Code: correctness, tests, security, compatibility, failure handling, and rollback.
+  - Documents and policy: factual support, internal consistency, authority, traceability, ambiguity,
+    and downstream effects.
+  - Infrastructure and delivery: plan/diff, least privilege, secrets, state, blast radius,
+    observability, rollback, and executable validation.
+  - Architecture and design: requirements coverage, assumptions, interfaces, failure modes,
+    security, operability, reversibility, and decision traceability.
+  - Any other output: use its acceptance criteria and domain-specific Professional Standard.
+3. Record findings, repair every finding within scope, and repeat the affected checks. If a finding
+  cannot be resolved, stop and report it as a blocker; never mark the activity PASS.
+4. Keep evidence proportionate and in the owning artifact. Do not create a separate review document
+  unless the Work Contract or Founder requires one.
+5. For a PR, complete the mandatory Author Review section only after the final push, bind it to the
+  exact 40-character head commit, and set PASS only when all checks and findings are resolved. Any
+  later commit invalidates that review and requires a fresh author review.
+
+Author review is self-verification, not approval. The author may not self-approve, self-merge, or
+claim independent assurance. Only the Founder may request an additional institutional review.
 
 ```
-STEP 1 — Read this file completely before reading anything else.
+STEP 1 — Read only this Boot Sequence through Step 10b.
   Do NOT use memory or prior session context as a substitute.
-  This sequence is mandatory every session, without exception.
+  Complete this sequence once per explicit Founder authorization.
 
-STEP 2 — Read README.md
+STEP 2 — Read only README.md "Platform Status".
   Extract:
     - Current Epoch
     - Current Gate
     - Authorized Office
     - Engineering Status (AUTHORIZED / PROHIBITED)
 
-STEP 3 — Determine your state
-  Read Engineering Status from README.md.
+STEP 3 — Read only these PROJECT_STATE.md headings:
+  Institutional Snapshot; Authorization Boundary; Current Blockers;
+  Next Authorized Action; SPRINT_STATE_MACHINE.
+  Determine state from Engineering Status.
   "PROHIBITED" applies to Architecture and Implementation phases only.
   Knowledge work (Constitutional Analyst) and governance work remain authorized
   at Gate G2 even when Architecture Status shows PROHIBITED.
@@ -68,26 +111,17 @@ STEP 3 — Determine your state
 
 STEP 4 — Confirm your assigned office
   Option A: You were given an office by the activating instruction.
-  Option B: Read constitution/INSTITUTIONAL_BACKLOG.md → find the IN_PROGRESS item → that office is yours.
-  Option C: If neither is clear → STOP → raise CB-001 (Office Assignment Unknown)
+  Option B: Use the assigned GitHub Issue or active PROJECT_STATE entry.
+  Option C: If neither is clear → ask the Founder which office to occupy. Do not scan the backlog.
 
-STEP 5 — Load ONLY your Office Knowledge Specification (see below)
-
-  EFFICIENCY FIRST: Before loading any files, read:
-    constitution/AGENT-ENTRY.md  ← routing table, current state in 10 lines, key file map
-    adr/ADR-INDEX.md             ← one-line summary of all 18 ADRs; read full ADRs only if needed
-    .github/agent-context/office-{your-office}.md  ← compressed charter (50 lines vs 880 in ORGANIZATION.md)
-
-  Then load only the files listed for your office in AGENT-ENTRY.md.
-  Do NOT load every file in your Knowledge Specification if the index gives you sufficient context.
-  Extra context contaminates reasoning AND increases cost.
-  Record what you have loaded.
-
-  NOTE: If your office is Platform IT Expert (INST-010) or Goal Orchestrator (INST-013),
-  ALSO read: constitution/GEOM.md
-  This is the Goal Execution Operating Model — it defines the autonomous sprint execution path,
-  EEM Step 08 (GoalExecutor → MagicLLM pipeline), and the Human Override mechanism.
-  Without GEOM.md, agents cannot know the correct execution architecture or the GO seam.
+STEP 5 — Load the compact route only
+  Read the assigned office row in constitution/AGENT-ENTRY.md and the matching
+  .github/agent-context/office-{office}.md card. Do not read ORGANIZATION.md.
+  Read ADR-INDEX or a full ADR only when the task or card names that ADR.
+  For Platform IT Expert, use the 1-17 inventory in its office card and read only
+  the selected skill section from platform-it-expert-agent.md.
+  For Goal work, read only the applicable authorization/acceptance section in GEOM
+  or the Goal record; do not load GEOM in full.
 
   If your office is Goal Orchestrator (INST-013), ALSO read:
     standards/GOAL-ORCHESTRATOR-VNEXT-STANDARD.md
@@ -95,36 +129,32 @@ STEP 5 — Load ONLY your Office Knowledge Specification (see below)
   Contribution Necessity Gate, reuse test, Materiality Challenge, Completeness Ledger,
   dependency-impact, model-escalation, and budget-state controls before dispatching any context.
 
-STEP 6 — Read your Work Contract from work-contracts/
-  Find the Work Contract assigned to your office and current sprint.
+STEP 6 — Read the exact assigned Work Contract sections
+  Resolve the Work Contract from the user request, Issue, office card, or PROJECT_STATE.
+  Read only Record Control, Authority/Scope, Inputs, Definition of Done, and Stops.
   If a Work Contract exists → load it and proceed to STEP 7.
   If no Work Contract exists:
-    (a) If your backlog items are clearly defined in constitution/INSTITUTIONAL_BACKLOG.md
-        → Create the Work Contract from those items as your FIRST action.
-        → Proceed with the newly created contract.
-    (b) If backlog items are ambiguous or undefined
-        → STOP → raise Constitutional Blocker → wait.
+    → Ask the Founder whether a Work Contract is required. Do not create one automatically.
   Never produce sprint outputs before a Work Contract exists.
 
 STEP 7 — Validate all required inputs
   For each input listed in your Work Contract:
     Does the file exist? → YES / NO
-    Has it been approved? → Check status in constitution/INSTITUTIONAL_BACKLOG.md and constitution/ORGANIZATION.md
+    Has it been approved? → Check the named status/authority record only.
+  Do not read input contents until the implementation path needs them.
   If any required input is missing or unapproved → STOP → raise Constitutional Blocker
 
 STEP 8 — Declare state
-  All inputs validated → declare: READY
-  Any input missing → declare: BLOCKED [list missing items]
+  Use one compact line: Office | Skill | Work Contract | READY/BLOCKED | missing input.
 
 STEP 9 — If READY, execute the Office Operating Protocol
-  Read constitution/ORGANIZATION.md → Office Operating Protocol section
-  Follow steps 1–9 of the protocol exactly
-  Do not interpret. Do not extend. Execute.
+  Use the compact office card. Do not load ORGANIZATION.md unless the Founder asks
+  for institutional design or the card lacks a decisive authority boundary.
 
 STEP 10 — Produce only what your Work Contract specifies
-  Stop when all tasks are DONE.
-  Submit for review.
-  Wait.
+  Implement and validate the complete authorized engineering component.
+  Perform author review, submit the PR for Founder review and merge, then wait.
+  Do not dispatch institutional reviews without an explicit Founder request.
   Do not produce anything beyond your Work Contract scope.
 
 STEP 10b — IMPLEMENTATION SPRINT GATE: Spec-First Rule (C-059)
@@ -379,14 +409,15 @@ This protocol is the only thing that stands between a capable AI model and a con
 
 ## Full Agent Operating Cycle
 
-The boot sequence above gets you to READY. This section governs the complete operating cycle for each session — from onboarding through session close. Review and refine this on a need basis as the institution evolves.
+Reference only after READY. Do not load this section during bootstrap unless the assigned task reaches
+the named phase. The compact Boot Sequence and Token Budget rule above control any conflict.
 
 ---
 
-### STEP 1 — BOOTSTRAP (mandatory, no shortcuts)
+### STEP 1 — BOOTSTRAP (explicitly authorized, no shortcuts once started)
 
 ```
-Read: constitution/BOOTSTRAP.md → README.md → constitution/PROJECT_STATE.md
+Read only the compact sections named in Boot Sequence Steps 1-3.
 Declare: current Epoch, Gate, Engineering Status
 If Engineering Status = PROHIBITED → STOP. Do not proceed.
 ```
@@ -396,7 +427,7 @@ If Engineering Status = PROHIBITED → STOP. Do not proceed.
 ### STEP 2 — ROLE CONFIRMATION
 
 ```
-Read: Your Office Charter from constitution/ORGANIZATION.md
+Read the compact office card from .github/agent-context/.
 Declare explicitly:
   - WHAT I CAN DO: my Decision Space
   - WHAT I AM FORBIDDEN TO DO: my Constitutional Obligations (7th attribute)
@@ -409,17 +440,9 @@ Wait for user confirmation. Do not begin work without confirmed role.
 ### STEP 3 — KNOWLEDGE LOADING
 
 ```
-EFFICIENCY PROTOCOL (read in this order):
-  1. constitution/AGENT-ENTRY.md          ← routing table + current state (200 lines)
-  2. adr/ADR-INDEX.md                     ← all 18 ADRs summarised (18 lines)
-  3. .github/agent-context/office-{name}.md ← your charter compressed (50 lines)
-  4. Your Professional Standard from standards/[your-office].md
-
-Then load ONLY the specific files your office needs (per AGENT-ENTRY.md routing table).
-Do NOT load full ADR files unless ADR-INDEX says "read full if..." applies to your task.
-Do NOT load ORGANIZATION.md in full — the office quick-start card is sufficient.
-Do NOT scan the full repository. Broad context contaminates reasoning AND wastes tokens.
-Record what you loaded. Declare your loaded context to the user.
+Read only: assigned office row → compact office card → selected skill section → exact Work Contract
+sections → touched engineering files and nearest tests. Load a named ADR/claim section only when a
+concrete decision requires it. Do not narrate or separately document the loaded context.
 ```
 
 ---
@@ -427,36 +450,9 @@ Record what you loaded. Declare your loaded context to the user.
 ### STEP 4 — WORK PLANNING (gate-filtered)
 
 ```
-Check: Does an approved Sprint Plan exist for this session?
-  Read: work-contracts/sprint-*-plan.md (most recent)
-  Approved = file exists AND contains "Approved by: Founder"
-
-If Sprint Plan is approved → MODE 2 (Sprint Execution):
-  Read your assigned items from the Sprint Plan in order.
-  Execute within your Decision Space and pre-approved assumption boundaries.
-  Do NOT wait for per-item Founder approval — the Sprint Plan is your authority.
-  Log any decision outside pre-approved boundaries → work-contracts/sprint-NNN-assumptions.md
-  Constitutional Stops always override the Sprint Plan → escalate immediately.
-  See: Sprint Operating Modes section at the end of this document.
-
-If no Sprint Plan exists → MODE 1 (Founder-Assigned):
-  FIRST — check constitution/PROJECT_STATE.md for a "## WORK MENU" section.
-  If WORK MENU exists → present it to the Founder exactly as written, without modification.
-    Do NOT re-derive from INSTITUTIONAL_BACKLOG.md.
-    The WORK MENU is already filtered, gate-checked, and sequenced by the previous session.
-    Wait for Founder to select a track. Do not begin execution until selection is made.
-  If no WORK MENU → fall back to INSTITUTIONAL_BACKLOG.md:
-    Filter: present ONLY items that are:
-      (a) Authorized for the current Gate
-      (b) Within your office's Decision Space
-      (c) Not blocked by missing upstream artifacts
-    Present: filtered list with your recommendation for where to start and why.
-    Wait for Founder selection before beginning execution.
-
-If your office = Product Owner and no Sprint Plan exists:
-  Produce a Sprint Plan (format: constitution/ORGANIZATION.md Office 11).
-  Present to Founder for approval.
-  Mode 2 activates only after Founder explicitly approves the Sprint Plan.
+If the Founder, Issue, or active Work Contract assigns work, execute that assignment and do not scan
+sprint plans, work menus, or the backlog. Only the Product Owner, when explicitly asked to plan,
+loads planning sources. If no work is assigned, ask the Founder for the task in one sentence.
 ```
 
 ---
@@ -470,52 +466,20 @@ Before beginning any task:
   Do NOT compensate for missing inputs.
 
 During execution:
-  Follow your Professional Standard reasoning protocol exactly.
-  Record every decision and ambiguity as an Operational Discovery.
+  Follow the compact office card and selected skill.
+  Record only material decisions that the Work Contract requires as durable evidence.
   If you encounter a missing input mid-execution → raise Constitutional Blocker → stop that task.
   Do not produce artifacts outside your Work Contract scope.
 ```
 
-### SESSION CHECKPOINTING — Mandatory During Execution
+### SESSION CHECKPOINTING — State Transitions Only
 
 ```
-AI sessions can time out without warning. Governance records must survive any timeout.
-
-At the START of each session:
-  Replace the single Active Checkpoint table in constitution/PROJECT_STATE.md:
-
-    | Milestone                  | Status      |
-    |----------------------------|-------------|
-    | [WC-XXX created]           | pending     |
-    | [R-XXX review produced]    | pending     |
-    | [IB-XXX marked DONE]       | pending     |
-    | [Gate close]               | pending     |
-
-After EACH internal milestone completes:
-  Update the row in the checkpoint table:
-    pending → ✓ DONE — [brief note]
-  Commit the change to PROJECT_STATE.md before beginning the next milestone.
-
-After the FINAL milestone:
-  Reduce the checkpoint to a concise closure summary and next authorized action.
-  Record durable detail in the owning Work Contract, Goal record, review, evidence,
-  or other purpose-built artifact. Do not append a full session record here.
-  Push to origin.
-
-Retention and versioning rules:
-  - PROJECT_STATE.md is a current snapshot, not an append-only ledger.
-  - Keep exactly one Active Checkpoint and one SPRINT_STATE_MACHINE block.
-  - Keep the file below 200 lines; update State Revision for each state change.
-  - Increment State Schema only when required fields or semantics change.
-  - Preserve completed history through git and constitution/PROJECT_STATE_ARCHIVE.md.
-  - Never copy completed session records back into the current-state file.
-
-Why this matters:
-  If the session times out after milestone 2 of 4, the next agent reads
-  PROJECT_STATE.md and knows exactly which milestones are complete and which
-  to resume — without re-reading the full session history.
-  An agent that skips checkpointing forces the next agent to reconstruct
-  state from git history — wasting session context and risking mistakes.
+Do not edit PROJECT_STATE for bootstrap completion, file edits, test runs, internal milestones,
+author review, or routine progress. Update it once only when the institutional state actually changes:
+new authorization, external blocker, environment transition, accepted delivery, or Goal/Work Contract
+closure. Keep durable technical detail in code, tests, CI artifacts, commits, and the owning existing
+record. Never create a documentation-only commit merely to checkpoint agent activity.
 ```
 
 ### IMPLEMENTATION GATE — TWO MODES (C-066 + C-070 Third Instinct)
@@ -563,7 +527,7 @@ MODE B — AUTONOMOUS SPRINT AGENT (GitHub Actions scheduled trigger)
 ⛔ WHAT NEVER CHANGES REGARDLESS OF MODE:
   - Class 1 documents cannot be modified (CONSTITUTION.md, GENESIS.md)
   - C-007 Audit Ledger is always append-only — no delete/update ever
-  - C-065 SDLC Separation: Implementation job ≠ Review job (different workflow context)
+  - C-065 SDLC Separation: Author ≠ Approver / Merger; author review remains mandatory
   - C-059 commit format mandatory — IB: and Constitutional: fields always required
   - CCT-EF-01 must pass before any sprint is considered DONE
 ```
@@ -602,18 +566,16 @@ Branch strategy:
   - Work on a feature branch (never directly on main)
   - Commit with clear, traceable messages
 
-Two-Agent Review Policy (mandatory for all output):
-  Raise a review request to the Reviewer office defined in your Charter.
-  The Reviewer is an AI agent — NOT the Founder.
-  The reviewing agent produces a record in reviews/R-NNN-[sprint]-[office]-review.md
-    APPROVED             → merge to main; present to Founder only if Gate passage
-                           or constitutional ratification is required
-    APPROVED WITH NOTES  → address notes, reviewer confirms, then merge
-    REJECT               → address findings, re-request review
-  Founders do NOT perform routine quality review.
-  Founders are involved for: constitutional ratification, Gate passage, amendment approval.
+Founder-Gated Review Policy (mandatory for all output):
+  The assigned role applies the Mandatory Author Review Technique to every material authored output
+  and completes all applicable executable quality gates.
+  It must not invoke another role, institution, reviewer agent, or review subagent.
+  The PR is then submitted to the Founder, who alone decides whether to review, request an
+  institutional review, approve, return, or merge it. No separate review document is created
+  unless the Founder explicitly requests that institutional review.
+  Author review is evidence of diligence, not approval; self-approval and self-merge remain prohibited.
 
-Merge to main only after agent review approval. Do not self-approve.
+Merge to main only through Founder approval and merge. Do not self-approve or self-merge.
 ```
 
 ---
@@ -621,25 +583,14 @@ Merge to main only after agent review approval. Do not self-approve.
 ### STEP 7 — SESSION CLOSE
 
 ```
-Update: constitution/PROJECT_STATE.md with:
-  - Current checkpoint status (completed, pending, and WIP milestones)
-  - Blockers raised (CB-XXX references)
-  - Next authorized item (what should start next session)
-  - Last updated: [date]
-  - Incremented State Revision
-
-Move detailed completed-session evidence to its owning durable artifact; do not append it
-to PROJECT_STATE.md. Confirm the file remains below 200 lines and contains exactly one
-SPRINT_STATE_MACHINE block.
-
-Commit PROJECT_STATE.md to the feature branch.
-Push to origin.
-Declare: "Session complete. PROJECT_STATE.md updated."
+Update PROJECT_STATE only when the state-transition rule above applies or the Work Contract explicitly
+requires it. Otherwise close with the implementation result, executable validation, commit/PR state,
+and any real blocker. Do not create a session-summary artifact.
 ```
 
 ---
 
-*Every agent reads this first. Every agent executes this before any other action. No exceptions.*
+*Only a Founder-authorized bootstrap reads the compact Boot Sequence. Continuous sessions do not repeat it.*
 
 ---
 

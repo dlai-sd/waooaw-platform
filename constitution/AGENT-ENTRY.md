@@ -62,7 +62,7 @@ Azure infrastructure:
 - **Trading v1.8** — Activation Gate PASS recorded; FA-005 authorized the escalation protocol only, not v1.8; no current-version Founder approval or customer proof.
 - **Agricultural Advisor v2.8** — Activation Gate PASS recorded; no current-version Founder approval or customer proof.
 - **Private Tutor v1.1** — Activation Gate PASS recorded; standalone review and Founder approval not recorded; NOT ACTIVATED.
-- **Platform IT Expert v1.3 candidate** — Skills 1–16 remain ACTIVE under v1.2/FA-033. Proposed Skill 17 Governed Cloud Delivery Engineering awaits independent EA review and Founder activation; no GOAL-006 implementation or cloud authority follows from the proposal.
+- **Platform IT Expert v1.3** — Skills 1–17 ACTIVE; Skill 17 Governed Cloud Delivery Engineering activated by FA-049. Skill activation does not itself grant cloud, deployment, spend, DNS, Production, or Work Contract authority.
 - **Steward Assistant v1.0** — APPROVED. ops.waooaw.ai entry (C-068). Always FRONTIER (ADR-028).
 - **Self-Improvement Analyst v1.0** — APPROVED. C-069. Prompt improvement pipeline.
 - **Platform Operations v1.0** — DRAFT; EA review and Founder approval pending; NOT ACTIVATED.
@@ -106,7 +106,7 @@ Azure infrastructure:
 | **Constitutional Analyst** | This file + WC + CONSTITUTION.md + GENESIS.md + simulation/PRECEDENTS.md + simulation/ (cases) + RED_TEAM.md | architecture/, src/, knowledge/ (you produce it) |
 | **Product Owner** | This file + INSTITUTIONAL_BACKLOG.md + PROJECT_STATE.md + ORGANIZATION.md (office charters) | architecture/, src/, knowledge/claims/, simulation/ |
 | **Platform Delivery Tracker** | This file + INSTITUTIONAL_BACKLOG.md + PROJECT_STATE.md + GitHub Issues | Everything else — read-only |
-| **WAOOAW AI Agent — Platform IT Expert** | This file + platform-it-expert-agent.md + C-065.md + C-066.md + C-067.md + [ADR-INDEX.md](ADR-INDEX.md) + .github/workflows/ | knowledge/claims/ (except C-059/C-065/C-066/C-067), simulation/, legal/ |
+| **WAOOAW AI Agent — Platform IT Expert** | [.github/agent-context/office-platform-it-expert.md](../.github/agent-context/office-platform-it-expert.md) + assigned Work Contract + selected Skill section + touched engineering files/tests; ADR/claim sections only when named by the task | Full agent spec, full ADR index, full GEOM/ORGANIZATION, unrelated workflows, knowledge/claims/, simulation/, legal/ |
 | **WAOOAW AI Agent — Legal** | This file + legal/ (all 5 documents) + knowledge/claims/C-060.md + C-061.md + C-063.md | architecture/, src/, simulation/, agent specs |
 | **Program Management Office** | This file + pmo/PROGRAM-PLAN.md + constitution/PROJECT_STATE.md + constitution/INSTITUTIONAL_BACKLOG.md + work-contracts/ (active WCs only) + security/FOUNDER-ACTIONS.md | architecture/ (detailed), src/, knowledge/claims/, simulation/, constitution/CONSTITUTION.md full |
 | **Operations Management / Customer Success** | This file + standards/INCIDENT-MANAGEMENT-POLICY.md + standards/CHANGE-MANAGEMENT-POLICY.md + standards/RELEASE-MANAGEMENT-POLICY.md + pmo/PROGRAM-PLAN.md §6 (SLA/OLA) + constitution/PROJECT_STATE.md | architecture/, src/, knowledge/claims/, simulation/ — read operational artefacts only |

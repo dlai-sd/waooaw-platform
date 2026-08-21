@@ -64,6 +64,19 @@ Coverage:         NN% (threshold: NN%)
 
 ---
 
+## Author Review
+
+<!-- Complete after the final push. Any new commit makes this review stale and CI will fail. -->
+- [ ] Reviewed the complete diff against the authorized scope
+- [ ] Reviewed test and quality-gate results
+- [ ] Reviewed security, constitutional, and rollback impact
+- [ ] Resolved every finding or recorded no findings
+
+**Reviewed Commit:** FULL_40_CHARACTER_HEAD_SHA
+**Author Review Result:** PENDING
+
+---
+
 ## Specification Compliance
 
 <!-- Confirm implementation matches the approved architecture -->
@@ -97,15 +110,11 @@ Coverage:         NN% (threshold: NN%)
 
 ---
 
-## Reviewer Instructions
+## Founder Review
 
-> **Constitutional review:** `@copilot review this PR as the [Reviewer Office per ORGANIZATION.md]`
->
-> **Reviewer checklist:**
-> - Does every change trace to an approved architecture specification?
-> - Are all constitutional principles correctly implemented (not just mentioned)?
-> - Do the CCTs prove the principle is architecturally enforced?
-> - Are there any Decision Space violations (code outside the Work Contract scope)?
+Author review and automated gates provide evidence, not approval. The Founder may review, return,
+request an institutional review, approve, or merge. The author must not invoke another institution,
+approve, or merge this PR.
 
 ---
 
@@ -137,8 +146,8 @@ Coverage:         NN% (threshold: NN%)
 | 6 — Data Gate (AD-004) | ✅ PASS / ❌ FAIL | RLS + GRANT for every new table? |
 | 7 — Constitutional Gate | ✅ PASS / ❌ FAIL | C-042/043/044/045/046/047 checks done? |
 | 8 — Architecture Chain Gate | ✅ PASS / ❌ FAIL | All 16 layers in Section 11.1 verified? |
-| 9 — Review Gate | ✅ PASS / ❌ FAIL | EA APPROVED + Founder approved? |
+| 9 — Review Gate | ✅ PASS / ❌ FAIL | Author review PASS; Founder decides whether institutional review is needed |
 
 **Overall gate result:** ✅ ALL PASS — agent may be activated | ❌ BLOCKED — resolve failures first
 
-> An EA reviewer who issues APPROVED without a completed gate table has violated GENESIS Part 05.
+> The author completes this table. It is evidence for Founder review and does not authorize activation or merge.

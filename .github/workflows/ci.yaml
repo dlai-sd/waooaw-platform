@@ -596,6 +596,28 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # ─── Author review gate (C-065) ──────────────────────────────────────────
+  # Review evidence is bound to the exact PR head. A later commit invalidates
+  # the declaration and requires a fresh author review before Founder review.
+  author-review-gate:
+    name: C-065 Author Review Gate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate author review evidence
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          gh pr view "$PR_NUMBER" --json body --jq .body --repo "$REPOSITORY" > /tmp/pr-body.md
+          python scripts/validate_author_review.py \
+            --pr-body-file /tmp/pr-body.md \
+            --head "$HEAD_SHA"
+
   # ─── Authorization boundary check (C-066) ─────────────────────────────────
   # Every PR may run CI. Authorization to enter main is enforced by the
   # Founder-controlled review and merge gate, not fragile PR labels.
@@ -635,6 +657,7 @@ jobs:
       - dep-scan
       - license-check
       - constitutional-commit-gate
+      - author-review-gate
       - authorization-tier-check
     steps:
       - name: Synthesize immutable gate evidence
