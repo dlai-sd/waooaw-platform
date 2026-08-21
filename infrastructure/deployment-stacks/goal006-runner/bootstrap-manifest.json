@@ -17,7 +17,7 @@
     }
   },
   "files": {
-    ".github/workflows/runner-environment-delivery.yaml": "19642c5fab8d36eaa942e16918884712886378ee63481ff8e56f8e13138c0dee",
+        ".github/workflows/runner-environment-delivery.yaml": "c72d99ebd1da64f008fceb94208bbb9f30b3301cb6fafbc1b46882b930a9541c",
     "architecture/reference/pipeline/github-runner-app-manifest.json": "cfcb9d66abc259123dd7ef3a57a8d71af4e3a0d36e146f2f11dea6abd0d85700",
     "infrastructure/deployment-stacks/goal006-runner/cost-estimate.json": "207bf61e5903f95cf8e8d59761fc880797881d75f916e68f608d30a9cef48a0e",
     "infrastructure/deployment-stacks/goal006-runner/demo.parameters.json": "8a832e5205f117961603396c03316d57d8e27d5fba8f658be97155860c51c2c8",
@@ -33,7 +33,7 @@
     "scripts/azure_rest_retry.py": "e38324fd3391a4a22ae2c19644e5bdc27240a27d944d33cef209370164e3fdb0",
     "scripts/goal006_cost_gate.py": "f721b2bc16e4948c348216cedaa645fbf1ed19299aded462935d13178d6417ad",
     "scripts/goal006_runner_bootstrap.py": "2bd9b3e8ce9998bf8aa3ecaac23a91c8315f39e5aed0f7aff5ef55675cbba359",
-    "scripts/goal006_runner_deployment.py": "5b9479f7847ac8cfd2e46d4b2387f118dacac225e0a2a79cfb7c3d1684b14eba",
+        "scripts/goal006_runner_deployment.py": "d5af25cef6cee78939a3a552b6a6682516d725a9a319b5a7ee17c4b2d6c1eddd",
     "scripts/goal006_runner_prerequisites.py": "da7331830bbf4828a7ad7525ef01148ed635a2a1e8dab864bd282dc39c2b8a04"
   }
 }
