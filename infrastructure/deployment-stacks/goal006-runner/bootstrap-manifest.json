@@ -33,7 +33,7 @@
     "scripts/azure_rest_retry.py": "e38324fd3391a4a22ae2c19644e5bdc27240a27d944d33cef209370164e3fdb0",
     "scripts/goal006_cost_gate.py": "f721b2bc16e4948c348216cedaa645fbf1ed19299aded462935d13178d6417ad",
     "scripts/goal006_runner_bootstrap.py": "cde1a14b8e1792fa1785d39cbd25ef8bf3e8b80cad784d03abd9524cd6f7475b",
-    "scripts/goal006_runner_deployment.py": "8de465d3ecdf3ce617392faa5487ad988d15bbb100ea2d751c274acc2394c1e6",
+    "scripts/goal006_runner_deployment.py": "5b9479f7847ac8cfd2e46d4b2387f118dacac225e0a2a79cfb7c3d1684b14eba",
     "scripts/goal006_runner_prerequisites.py": "da7331830bbf4828a7ad7525ef01148ed635a2a1e8dab864bd282dc39c2b8a04"
   }
 }

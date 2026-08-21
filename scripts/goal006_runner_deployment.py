@@ -488,6 +488,8 @@ def main() -> int:
                 subscription_id=arguments.subscription_id,
                 source_commit=arguments.source_commit,
             )
+            _write_json(arguments.output, result)
+            print(json.dumps(result, sort_keys=True))
         elif arguments.operation in {"review", "apply"}:
             if arguments.reviewed_plan is None:
                 parser.error("review and apply require --reviewed-plan")
@@ -505,8 +507,8 @@ def main() -> int:
                 if arguments.operation == "apply"
                 else revalidate_reviewed_plan(**common)
             )
-        _write_json(arguments.output, result)
-        print(json.dumps(result, sort_keys=True))
+            _write_json(arguments.output, result)
+            print(json.dumps(result, sort_keys=True))
         return 0
     except RuntimeError as error:
         print(json.dumps({"passed": False, "error": str(error)}, sort_keys=True), file=sys.stderr)
