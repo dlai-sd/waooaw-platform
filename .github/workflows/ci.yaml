@@ -304,10 +304,11 @@ jobs:
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
+        continue-on-error: true  # geo-restricted runners must not break the gate
         with:
           directory: ./coverage/${{ matrix.service }}
           token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: true
+          fail_ci_if_error: false
 
   # ─── Python unit tests ────────────────────────────────────────────────────
   test-python:
@@ -368,10 +369,11 @@ jobs:
       - name: Upload coverage
         if: always()
         uses: codecov/codecov-action@v4
+        continue-on-error: true  # geo-restricted runners must not break the gate
         with:
           files: coverage/${{ matrix.service }}/coverage.xml
           token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: true
+          fail_ci_if_error: false
 
       - name: Retain raw coverage evidence
         if: always()
