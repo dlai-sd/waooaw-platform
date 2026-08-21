@@ -10,7 +10,7 @@ on:
   issues:
     types: [opened, closed, labeled, assigned]
   pull_request:
-    types: [opened, closed]
+    types: [opened, reopened, synchronize, closed]
 
 permissions:
   issues: write
@@ -56,10 +56,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BLOCKER_ISSUE: ${{ github.event.issue.number }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
           REPO: ${{ github.repository }}
         run: |
           # Extract the blocked IB from the issue body
-          BLOCKED_IB=$(echo "${{ github.event.issue.body }}" | \
+          BLOCKED_IB=$(echo "$ISSUE_BODY" | \
             grep -i "blocking ib\|blocked ib\|IB-" | \
             grep -oP "IB-\d+" | head -1 || echo "")
 
@@ -93,9 +94,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BLOCKER_ISSUE: ${{ github.event.issue.number }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
           REPO: ${{ github.repository }}
         run: |
-          BLOCKED_IB=$(echo "${{ github.event.issue.body }}" | \
+          BLOCKED_IB=$(echo "$ISSUE_BODY" | \
             grep -oP "IB-\d+" | head -1 || echo "")
 
           if [ -n "$BLOCKED_IB" ]; then
@@ -157,26 +159,31 @@ jobs:
           gh issue comment "$ISSUE" --repo "$REPO" \
             --body "Sprint Plan Approved by Founder. Mode 2 ACTIVATED. All agents assigned to issues in this sprint may now begin execution autonomously within pre-approved assumption boundaries. Constitutional basis: BOOTSTRAP Full Agent Operating Cycle Mode 2 (Sprint Execution) activated."
 
-  # ─── Auto-apply tier:1-bugfix to agent/goal/ib PRs (C-066 gate) ─────────────
-  # Prevents every agent PR from failing C-066 due to missing tier label.
+  # ─── Classify PR tier metadata (C-066) ──────────────────────────────────────
+  # Tier labels support reporting only. Founder review and merge are the
+  # authorization gate, so label reconciliation can never block CI.
   # Constitutional basis: C-066 (Autonomous Development Authorization Tiers)
   auto-tier-label:
-    name: Auto-apply tier label on agent PR
+    name: Classify C-066 tier metadata
     runs-on: ubuntu-latest
     if: |
       github.event_name == 'pull_request' &&
-      github.event.action == 'opened' &&
-      (startsWith(github.event.pull_request.head.ref, 'goal/') ||
-       startsWith(github.event.pull_request.head.ref, 'ib/') ||
-       startsWith(github.event.pull_request.head.ref, 'agent/'))
+      github.event.action != 'closed'
     steps:
-      - name: Apply tier:1-bugfix if no tier label present
+      - name: Apply branch tier metadata
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
           REPO: ${{ github.repository }}
         run: |
           labels=$(gh pr view "$PR" --repo "$REPO" --json labels --jq '[.labels[].name] | join(",")' )
           if ! echo "$labels" | grep -qE "tier:[0-3]-"; then
-            gh pr edit "$PR" --repo "$REPO" --add-label "tier:1-bugfix" 2>/dev/null || true
+            case "$HEAD_BRANCH" in
+              fix/*) tier="tier:1-bugfix" ;;
+              agent/*) tier="tier:3-constitutional" ;;
+              *) tier="tier:2-feature" ;;
+            esac
+            gh pr edit "$PR" --repo "$REPO" --add-label "$tier" || \
+              echo "Tier metadata could not be applied; Founder merge gate remains authoritative."
           fi

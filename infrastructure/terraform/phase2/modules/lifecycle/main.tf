@@ -6,7 +6,7 @@ locals {
   workload_enabled = (
     var.lifecycle_state == "ACTIVE" &&
     var.revoked_at == null &&
-    timecmp(var.expires_at, timestamp()) > 0
+    timecmp(var.expires_at, plantimestamp()) > 0
   )
 }
 

@@ -304,6 +304,8 @@ jobs:
           fi
           terraform validate
           terraform plan -input=false -lock-timeout=5m -out=foundation.tfplan
+          terraform show -json foundation.tfplan > foundation-plan.json
+          python "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" --plan foundation-plan.json
 
       - name: Terraform foundation apply
         if: inputs.apply
@@ -350,6 +352,7 @@ jobs:
           docker buildx imagetools inspect "$SEEDER_IMAGE" >/dev/null
           az containerapp job delete --name "$SEEDER_JOB" --resource-group "$RESOURCE_GROUP" --yes --output none 2>/dev/null || true
           # shellcheck disable=SC2016
+          seeder_args=$(jq -cn --arg script 'set -eu; az login --identity --client-id "$AZURE_CLIENT_ID" --allow-no-subscriptions --output none; for name in constitutional-engine business-platform professional-runtime ai-runtime web billing-engine; do credential=$(head -c 48 /dev/urandom | base64 | tr -d "\n"); for attempt in 1 2 3 4 5 6; do if az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name "$name" --value "$credential" --output none; then break; fi; test "$attempt" != 6; sleep 10; done; unset credential; done' '["-c", $script]')
           az containerapp job create \
             --name "$SEEDER_JOB" \
             --resource-group "$RESOURCE_GROUP" \
@@ -364,8 +367,8 @@ jobs:
             --cpu 0.25 \
             --memory 0.5Gi \
             --env-vars "AZURE_CLIENT_ID=$DEPLOYMENT_CLIENT_ID" "KEY_VAULT_NAME=$KEY_VAULT_NAME" \
-            --command /bin/sh -c \
-            --args 'set -eu; az login --identity --client-id "$AZURE_CLIENT_ID" --allow-no-subscriptions --output none; for name in constitutional-engine business-platform professional-runtime ai-runtime web billing-engine; do credential=$(head -c 48 /dev/urandom | base64 | tr -d "\n"); for attempt in 1 2 3 4 5 6; do if az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name "$name" --value "$credential" --output none; then break; fi; test "$attempt" != 6; sleep 10; done; unset credential; done' \
+            --command /bin/sh \
+            --args "$seeder_args" \
             --output none
 
       - name: Run private credential seeder
@@ -494,6 +497,7 @@ jobs:
             configuration-container-diagnostics.json
             firewall-cleanup.json
             secret-seeder-execution.json
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation.tfplan
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload.tfplan
           if-no-files-found: warn
