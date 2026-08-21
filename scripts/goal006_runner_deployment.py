@@ -298,7 +298,7 @@ def verify_deployment(
 ) -> dict[str, Any]:
     contract = environment_contract(repository_root, manifest_path, environment)
     stack = _az("stack", "sub", "show", "--name", contract["stack_name"])
-    if stack.get("provisioningState") != "Succeeded":
+    if str(stack.get("provisioningState", "")).lower() != "succeeded":
         raise RuntimeError("deployment stack is not Succeeded")
     if str(stack.get("denySettings", {}).get("mode", "")).lower() != "denydelete":
         raise RuntimeError("deployment stack deny mode is not denyDelete")
