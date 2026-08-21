@@ -244,7 +244,7 @@ def test_network_egress_is_explicitly_fail_closed() -> None:
     assert contract.count('direction                  = "Outbound"') == 5
     assert contract.count('access                     = "Deny"') == 2
     assert 'destination_address_prefix = "VirtualNetwork"' in contract
-    assert 'destination_address_prefix = "AzurePlatformDNS"' in contract
+    assert 'destination_address_prefix = "168.63.129.16/32"' in contract
     assert 'destination_port_range     = "443"' in contract
     assert 'destination_address_prefix = "Internet"' in contract
 

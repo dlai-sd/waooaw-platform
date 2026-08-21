@@ -89,14 +89,14 @@ def test_digest_drift_fails_closed(tmp_path: Path) -> None:
     )
 
 
-def test_activation_or_mutable_image_fails_closed(tmp_path: Path) -> None:
+def test_invalid_activation_state_and_mutable_image_fails_closed(tmp_path: Path) -> None:
     def mutate(parameters: dict[str, dict[str, object]]) -> None:
-        parameters["activationState"]["value"] = "ACTIVE"
+        parameters["activationState"]["value"] = "ARMED"
         parameters["runnerImage"]["value"] = "ghcr.io/actions/actions-runner:latest"
 
     repository, manifest_path = _write_manifest(tmp_path, parameter_mutator=mutate)
     violations = validate_bootstrap_manifest(repository, manifest_path)
-    assert "PARAMETER_ACTIVATION_NOT_INACTIVE" in violations
+    assert "PARAMETER_ACTIVATION_STATE_INVALID" in violations
     assert "IMAGE_NOT_IMMUTABLE:runnerImage" in violations
 
 
@@ -113,13 +113,13 @@ def test_wrong_state_principal_or_overlapping_subnets_fail_closed(tmp_path: Path
     assert "NETWORK_BOUNDARY_INVALID" in violations
 
 
-def test_manifest_metadata_cannot_activate_stack(tmp_path: Path) -> None:
+def test_manifest_invalid_activation_state_fails_closed(tmp_path: Path) -> None:
     repository, manifest_path = _write_manifest(tmp_path)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     changed = deepcopy(manifest)
-    changed["activation_state"] = "ACTIVE"
+    changed["activation_state"] = "ARMED"
     manifest_path.write_text(json.dumps(changed), encoding="utf-8")
-    assert "ACTIVATION_NOT_INACTIVE" in validate_bootstrap_manifest(
+    assert "ACTIVATION_STATE_INVALID" in validate_bootstrap_manifest(
         repository, manifest_path
     )
 

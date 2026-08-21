@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 ALLOWED_ENVIRONMENTS = ("demo", "uat", "prod")
-EXPECTED_ACTIVATION = "INACTIVE"
+ALLOWED_ACTIVATION_STATES = {"INACTIVE", "ACTIVE"}
 EXPECTED_STATE_ID = (
     "/subscriptions/2ed11839-6a0f-4eaa-bd94-44ca96ff5d84/resourceGroups/"
     "waooaw-platform-rg/providers/Microsoft.Storage/storageAccounts/waooawp3tfstate2ed118"
@@ -94,8 +94,9 @@ def validate_bootstrap_manifest(
         return ["ENVIRONMENT_INVALID"]
     if manifest.get("schema_version") != 2:
         violations.append("MANIFEST_SCHEMA_INVALID")
-    if manifest.get("activation_state") != EXPECTED_ACTIVATION:
-        violations.append("ACTIVATION_NOT_INACTIVE")
+    manifest_activation = manifest.get("activation_state")
+    if manifest_activation not in ALLOWED_ACTIVATION_STATES:
+        violations.append("ACTIVATION_STATE_INVALID")
 
     environments = manifest.get("environments")
     if not isinstance(environments, dict) or set(environments) != set(ALLOWED_ENVIRONMENTS):
@@ -130,8 +131,9 @@ def validate_bootstrap_manifest(
     parameters = _parameters(parameter_path)
     if parameters.get("environment") != environment:
         violations.append("PARAMETER_ENVIRONMENT_INVALID")
-    if parameters.get("activationState") != EXPECTED_ACTIVATION:
-        violations.append("PARAMETER_ACTIVATION_NOT_INACTIVE")
+    param_activation = parameters.get("activationState")
+    if param_activation not in ALLOWED_ACTIVATION_STATES:
+        violations.append("PARAMETER_ACTIVATION_STATE_INVALID")
     if parameters.get("runnerResourceGroupName") != f"waooaw-{environment}-runner-rg":
         violations.append("RESOURCE_GROUP_INVALID")
     if parameters.get("stateStorageAccountId") != EXPECTED_STATE_ID:

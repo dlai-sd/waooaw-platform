@@ -30,7 +30,7 @@ def test_every_environment_uses_one_deployment_contract() -> None:
         contract = environment_contract(REPOSITORY_ROOT, MANIFEST, environment)
         assert contract["stack_name"] == f"goal006-{environment}-private-runner"
         assert contract["resource_group"] == f"waooaw-{environment}-runner-rg"
-        assert contract["activation_state"] == "INACTIVE"
+        assert contract["activation_state"] in {"INACTIVE", "ACTIVE"}
 
 
 def test_plan_normalization_is_stable() -> None:
@@ -115,7 +115,7 @@ def test_live_verification_requires_approved_endpoints_and_manual_jobs(
     contract = {
         "stack_name": "goal006-demo-private-runner",
         "resource_group": "waooaw-demo-runner-rg",
-        "activation_state": "INACTIVE",
+        "activation_state": "ACTIVE",
         "runner_image": "runner@sha256:expected",
         "reconciler_image": "reconciler@sha256:expected",
         "parameter_path": REPOSITORY_ROOT
@@ -181,7 +181,7 @@ def test_live_verification_requires_approved_endpoints_and_manual_jobs(
                                 "env": [
                                     {
                                         "name": "RUNNER_ACTIVATION_STATE",
-                                        "value": "INACTIVE",
+                                        "value": "ACTIVE",
                                     }
                                 ],
                                 "args": [

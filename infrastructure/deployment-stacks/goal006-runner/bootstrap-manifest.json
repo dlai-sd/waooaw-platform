@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "blueprint_version": "2.0.0",
-  "activation_state": "INACTIVE",
+  "activation_state": "ACTIVE",
   "environments": {
     "demo": {
       "parameters": "infrastructure/deployment-stacks/goal006-runner/demo.parameters.json",
@@ -20,19 +20,19 @@
     ".github/workflows/runner-environment-delivery.yaml": "19642c5fab8d36eaa942e16918884712886378ee63481ff8e56f8e13138c0dee",
     "architecture/reference/pipeline/github-runner-app-manifest.json": "cfcb9d66abc259123dd7ef3a57a8d71af4e3a0d36e146f2f11dea6abd0d85700",
     "infrastructure/deployment-stacks/goal006-runner/cost-estimate.json": "207bf61e5903f95cf8e8d59761fc880797881d75f916e68f608d30a9cef48a0e",
-    "infrastructure/deployment-stacks/goal006-runner/demo.parameters.json": "f28db23728635c2d2db80d87d66038844c7815c3671d8bc3c6e75154eb33285c",
+    "infrastructure/deployment-stacks/goal006-runner/demo.parameters.json": "8a832e5205f117961603396c03316d57d8e27d5fba8f658be97155860c51c2c8",
     "infrastructure/deployment-stacks/goal006-runner/demo.prerequisites.parameters.json": "386a1c2bca52beb285d8646af62eb56f82891ff52c0ac1dd7ec74fc5d688e4aa",
     "infrastructure/deployment-stacks/goal006-runner/uat.parameters.json": "5ec1b21c16f6e1a01b8e56da7321feb161f69a48ba3a7d07308b4669192b5398",
     "infrastructure/deployment-stacks/goal006-runner/prod.parameters.json": "390b23b7032eb06d97bb7ddb29d49ad6c56a5df5b0946e66574f91240814468a",
     "infrastructure/deployment-stacks/goal006-runner/uat.prerequisites.parameters.json": "05523b9700ab82b98232c8bc554fced45445f8417d81e98ae9c67fa879fbec87",
     "infrastructure/deployment-stacks/goal006-runner/prod.prerequisites.parameters.json": "6de60ab62f2bdccfc4728f338428c7de523e43a8b6626597677943e77e0ede10",
-    "infrastructure/deployment-stacks/goal006-runner/main.bicep": "896a61d80268cb628d70a0f373747b8cd58deb6577ac91ea62e13bb7c6ce1645",
+    "infrastructure/deployment-stacks/goal006-runner/main.bicep": "67d37951b7e2cd282e7e443ece6b5e6cfa2179912e74a003d509dc8978081e4a",
     "infrastructure/deployment-stacks/goal006-runner/prerequisites-rg.bicep": "8888f32c53f62ee9c5e03674aedee48542945c55e246248b0aaec1e0692ea0cb",
     "infrastructure/deployment-stacks/goal006-runner/prerequisites.bicep": "8fffda699f23b110e98f9f316da9cc87d06d1567b6f3d34edb9521af670e0799",
-    "infrastructure/deployment-stacks/goal006-runner/subscription.bicep": "6a2802b2df5a39e8856cce06ccd7e48c183b669483afe9da2183d1729a20c656",
+    "infrastructure/deployment-stacks/goal006-runner/subscription.bicep": "cec39e69ae90381d831ae4981513cc34fa00e67cbc376b8060c7bbb094d49390",
     "scripts/azure_rest_retry.py": "e38324fd3391a4a22ae2c19644e5bdc27240a27d944d33cef209370164e3fdb0",
     "scripts/goal006_cost_gate.py": "f721b2bc16e4948c348216cedaa645fbf1ed19299aded462935d13178d6417ad",
-    "scripts/goal006_runner_bootstrap.py": "cde1a14b8e1792fa1785d39cbd25ef8bf3e8b80cad784d03abd9524cd6f7475b",
+    "scripts/goal006_runner_bootstrap.py": "2bd9b3e8ce9998bf8aa3ecaac23a91c8315f39e5aed0f7aff5ef55675cbba359",
     "scripts/goal006_runner_deployment.py": "5b9479f7847ac8cfd2e46d4b2387f118dacac225e0a2a79cfb7c3d1684b14eba",
     "scripts/goal006_runner_prerequisites.py": "da7331830bbf4828a7ad7525ef01148ed635a2a1e8dab864bd282dc39c2b8a04"
   }

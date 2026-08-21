@@ -7,7 +7,7 @@ targetScope = 'resourceGroup'
 ])
 param environment string
 
-@allowed(['INACTIVE'])
+@allowed(['INACTIVE', 'ACTIVE'])
 param activationState string = 'INACTIVE'
 
 param location string = 'centralindia'
