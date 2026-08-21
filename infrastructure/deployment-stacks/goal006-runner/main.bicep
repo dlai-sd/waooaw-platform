@@ -1,6 +1,10 @@
 targetScope = 'resourceGroup'
 
-@allowed(['demo'])
+@allowed([
+  'demo'
+  'uat'
+  'prod'
+])
 param environment string
 
 @allowed(['INACTIVE'])
@@ -83,7 +87,7 @@ resource runnerNsg 'Microsoft.Network/networkSecurityGroups@2024-05-01' = {
           sourcePortRange: '*'
           destinationPortRange: '53'
           sourceAddressPrefix: '*'
-          destinationAddressPrefix: 'AzurePlatformDNS'
+          destinationAddressPrefix: '168.63.129.16/32'
         }
       }
       {
@@ -227,7 +231,7 @@ resource blobPrivateDns 'Microsoft.Network/privateDnsZones@2024-06-01' = {
 }
 
 resource vaultPrivateDns 'Microsoft.Network/privateDnsZones@2024-06-01' = {
-  name: 'privatelink.${az.environment().suffixes.keyvaultDns}'
+  name: 'privatelink${az.environment().suffixes.keyvaultDns}'
   location: 'global'
   tags: commonTags
 }
@@ -374,7 +378,7 @@ resource runnerJob 'Microsoft.App/jobs@2024-03-01' = {
           name: 'runner'
           image: runnerImage
           command: ['/bin/bash', '-lc']
-          args: ['test "$RUNNER_ACTIVATION_STATE" = "ACTIVE" && exec ./run.sh || exit 0']
+          args: ['test "$RUNNER_ACTIVATION_STATE" = "ACTIVE" && test -n "$ACTIONS_RUNNER_INPUT_JITCONFIG" && exec ./run.sh --jitconfig "$ACTIONS_RUNNER_INPUT_JITCONFIG" || exit 0']
           env: [
             {
               name: 'RUNNER_ACTIVATION_STATE'
@@ -382,11 +386,11 @@ resource runnerJob 'Microsoft.App/jobs@2024-03-01' = {
             }
             {
               name: 'RUNNER_GROUP'
-              value: 'goal006-demo-private'
+              value: 'goal006-${environment}-private'
             }
             {
               name: 'RUNNER_LABEL'
-              value: 'goal006-demo-private'
+              value: 'goal006-${environment}-private'
             }
           ]
           resources: {

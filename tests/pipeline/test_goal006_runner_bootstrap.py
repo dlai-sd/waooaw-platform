@@ -14,23 +14,37 @@ STACK_ROOT = REPOSITORY_ROOT / "infrastructure/deployment-stacks/goal006-runner"
 MANIFEST_PATH = STACK_ROOT / "bootstrap-manifest.json"
 
 
-def _write_manifest(tmp_path: Path, *, parameter_mutator=None) -> tuple[Path, Path]:
+def _write_manifest(
+    tmp_path: Path, *, environment: str = "demo", parameter_mutator=None
+) -> tuple[Path, Path]:
     repository = tmp_path / "repository"
-    for relative_path in (
+    relative_paths = [
         "infrastructure/deployment-stacks/goal006-runner/main.bicep",
         "infrastructure/deployment-stacks/goal006-runner/subscription.bicep",
         "infrastructure/deployment-stacks/goal006-runner/prerequisites.bicep",
         "infrastructure/deployment-stacks/goal006-runner/prerequisites-rg.bicep",
-        "infrastructure/deployment-stacks/goal006-runner/demo.parameters.json",
-        "infrastructure/deployment-stacks/goal006-runner/demo.prerequisites.parameters.json",
         "infrastructure/deployment-stacks/goal006-runner/cost-estimate.json",
         "architecture/reference/pipeline/github-runner-app-manifest.json",
-    ):
+    ]
+    for item_environment in ("demo", "uat", "prod"):
+        relative_paths.extend(
+            [
+                "infrastructure/deployment-stacks/goal006-runner/"
+                f"{item_environment}.parameters.json",
+                "infrastructure/deployment-stacks/goal006-runner/"
+                f"{item_environment}.prerequisites.parameters.json",
+            ]
+        )
+    for relative_path in relative_paths:
         source = REPOSITORY_ROOT / relative_path
         destination = repository / relative_path
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(source.read_bytes())
-    parameter_path = repository / "infrastructure/deployment-stacks/goal006-runner/demo.parameters.json"
+    parameter_path = (
+        repository
+        / "infrastructure/deployment-stacks/goal006-runner"
+        / f"{environment}.parameters.json"
+    )
     if parameter_mutator:
         parameters = json.loads(parameter_path.read_text(encoding="utf-8"))
         parameter_mutator(parameters["parameters"])
@@ -41,10 +55,18 @@ def _write_manifest(tmp_path: Path, *, parameter_mutator=None) -> tuple[Path, Pa
         if path.is_file()
     }
     manifest = {
-        "schema_version": 1,
-        "blueprint_version": "1.0.0",
-        "environment": "demo",
+        "schema_version": 2,
+        "blueprint_version": "2.0.0",
         "activation_state": "INACTIVE",
+        "environments": {
+            item_environment: {
+                "parameters": "infrastructure/deployment-stacks/goal006-runner/"
+                f"{item_environment}.parameters.json",
+                "prerequisites": "infrastructure/deployment-stacks/goal006-runner/"
+                f"{item_environment}.prerequisites.parameters.json",
+            }
+            for item_environment in ("demo", "uat", "prod")
+        },
         "files": files,
     }
     manifest_path = repository / "bootstrap-manifest.json"
@@ -53,7 +75,8 @@ def _write_manifest(tmp_path: Path, *, parameter_mutator=None) -> tuple[Path, Pa
 
 
 def test_reviewed_bootstrap_manifest_passes() -> None:
-    assert validate_bootstrap_manifest(REPOSITORY_ROOT, MANIFEST_PATH) == []
+    for environment in ("demo", "uat", "prod"):
+        assert validate_bootstrap_manifest(REPOSITORY_ROOT, MANIFEST_PATH, environment) == []
 
 
 def test_digest_drift_fails_closed(tmp_path: Path) -> None:
@@ -96,7 +119,24 @@ def test_manifest_metadata_cannot_activate_stack(tmp_path: Path) -> None:
     changed = deepcopy(manifest)
     changed["activation_state"] = "ACTIVE"
     manifest_path.write_text(json.dumps(changed), encoding="utf-8")
-    assert "ACTIVATION_NOT_INACTIVE" in validate_bootstrap_manifest(repository, manifest_path)
+    assert "ACTIVATION_NOT_INACTIVE" in validate_bootstrap_manifest(
+        repository, manifest_path
+    )
+
+
+def test_cross_environment_network_overlap_fails_closed(tmp_path: Path) -> None:
+    repository, manifest_path = _write_manifest(tmp_path)
+    uat_path = (
+        repository
+        / "infrastructure/deployment-stacks/goal006-runner/uat.parameters.json"
+    )
+    uat = json.loads(uat_path.read_text(encoding="utf-8"))
+    uat["parameters"]["runnerVnetAddressPrefix"]["value"] = "10.70.0.0/24"
+    uat_path.write_text(json.dumps(uat), encoding="utf-8")
+
+    assert "CROSS_ENVIRONMENT_NETWORK_OVERLAP" in validate_bootstrap_manifest(
+        repository, manifest_path
+    )
 
 
 def test_unreviewed_cost_estimate_fails_closed(tmp_path: Path) -> None:
@@ -106,3 +146,15 @@ def test_unreviewed_cost_estimate_fails_closed(tmp_path: Path) -> None:
     estimate["planned_incremental_monthly_cost_inr"] = 999
     estimate_path.write_text(json.dumps(estimate), encoding="utf-8")
     assert "COST_ESTIMATE_INVALID" in validate_bootstrap_manifest(repository, manifest_path)
+
+
+def test_stack_is_environment_generic_and_uses_valid_private_dns() -> None:
+    main = (STACK_ROOT / "main.bicep").read_text(encoding="utf-8")
+    subscription = (STACK_ROOT / "subscription.bicep").read_text(encoding="utf-8")
+
+    for environment in ("demo", "uat", "prod"):
+        assert f"  '{environment}'" in main
+        assert f"  '{environment}'" in subscription
+    assert "privatelink${az.environment().suffixes.keyvaultDns}" in main
+    assert "privatelink.${az.environment().suffixes.keyvaultDns}" not in main
+    assert "goal006-${environment}-private" in main

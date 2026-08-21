@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-EXPECTED_ENVIRONMENT = "demo"
+ALLOWED_ENVIRONMENTS = ("demo", "uat", "prod")
 EXPECTED_ACTIVATION = "INACTIVE"
 EXPECTED_STATE_ID = (
     "/subscriptions/2ed11839-6a0f-4eaa-bd94-44ca96ff5d84/resourceGroups/"
@@ -36,7 +36,10 @@ REQUIRED_TEMPLATE_TERMS = {
     "Microsoft.Network/privateDnsZones",
     "Microsoft.Network/virtualNetworks",
     "Microsoft.OperationalInsights/workspaces",
-    "*/5 * * * *",
+    "ACTIONS_RUNNER_INPUT_JITCONFIG",
+    "RUNNER_ACTIVATION_STATE",
+    "triggerType: 'Schedule'",
+    "cronExpression: '*/5 * * * *'",
     "replicaTimeout: 3600",
     "replicaTimeout: 120",
     "deny-inbound",
@@ -53,6 +56,11 @@ REQUIRED_PREREQUISITE_TERMS = {
 REQUIRED_SUBSCRIPTION_TERMS = {
     "existing =",
     "runnerControlPlane",
+}
+EXPECTED_NETWORKS = {
+    "demo": ("10.70.0.0/24", "10.70.0.0/27", "10.70.0.32/27"),
+    "uat": ("10.71.0.0/24", "10.71.0.0/27", "10.71.0.32/27"),
+    "prod": ("10.72.0.0/24", "10.72.0.0/27", "10.72.0.32/27"),
 }
 
 
@@ -72,15 +80,27 @@ def _walk_keys(value: Any) -> list[str]:
     return keys
 
 
-def validate_bootstrap_manifest(repository_root: Path, manifest_path: Path) -> list[str]:
+def _parameters(path: Path) -> dict[str, Any]:
+    document = json.loads(path.read_text(encoding="utf-8"))
+    return {key: item.get("value") for key, item in document.get("parameters", {}).items()}
+
+
+def validate_bootstrap_manifest(
+    repository_root: Path, manifest_path: Path, environment: str = "demo"
+) -> list[str]:
     violations: list[str] = []
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    if manifest.get("schema_version") != 1:
+    if environment not in ALLOWED_ENVIRONMENTS:
+        return ["ENVIRONMENT_INVALID"]
+    if manifest.get("schema_version") != 2:
         violations.append("MANIFEST_SCHEMA_INVALID")
-    if manifest.get("environment") != EXPECTED_ENVIRONMENT:
-        violations.append("ENVIRONMENT_INVALID")
     if manifest.get("activation_state") != EXPECTED_ACTIVATION:
         violations.append("ACTIVATION_NOT_INACTIVE")
+
+    environments = manifest.get("environments")
+    if not isinstance(environments, dict) or set(environments) != set(ALLOWED_ENVIRONMENTS):
+        violations.append("MANIFEST_ENVIRONMENTS_INVALID")
+        environments = {}
 
     files = manifest.get("files")
     if not isinstance(files, dict) or not files:
@@ -95,30 +115,32 @@ def validate_bootstrap_manifest(repository_root: Path, manifest_path: Path) -> l
         elif _digest(path) != expected_digest:
             violations.append(f"DIGEST_MISMATCH:{relative_path}")
 
-    parameter_path = repository_root / "infrastructure/deployment-stacks/goal006-runner/demo.parameters.json"
+    environment_record = environments.get(environment, {})
+    parameter_value = environment_record.get("parameters")
+    prerequisite_value = environment_record.get("prerequisites")
+    if not isinstance(parameter_value, str) or not isinstance(prerequisite_value, str):
+        violations.append("ENVIRONMENT_RECORD_INVALID")
+        return sorted(set(violations))
+    parameter_path = repository_root / parameter_value
+    prerequisite_parameter_path = repository_root / prerequisite_value
+    if not parameter_path.is_file() or not prerequisite_parameter_path.is_file():
+        violations.append("ENVIRONMENT_FILE_MISSING")
+        return sorted(set(violations))
     parameters_document = json.loads(parameter_path.read_text(encoding="utf-8"))
-    parameters = {
-        key: item.get("value") for key, item in parameters_document.get("parameters", {}).items()
-    }
-    if parameters.get("environment") != EXPECTED_ENVIRONMENT:
+    parameters = _parameters(parameter_path)
+    if parameters.get("environment") != environment:
         violations.append("PARAMETER_ENVIRONMENT_INVALID")
     if parameters.get("activationState") != EXPECTED_ACTIVATION:
         violations.append("PARAMETER_ACTIVATION_NOT_INACTIVE")
+    if parameters.get("runnerResourceGroupName") != f"waooaw-{environment}-runner-rg":
+        violations.append("RESOURCE_GROUP_INVALID")
     if parameters.get("stateStorageAccountId") != EXPECTED_STATE_ID:
         violations.append("STATE_STORAGE_ID_INVALID")
     if parameters.get("bootstrapPrincipalId") != EXPECTED_BOOTSTRAP_PRINCIPAL:
         violations.append("BOOTSTRAP_PRINCIPAL_INVALID")
-    prerequisite_parameter_path = (
-        repository_root
-        / "infrastructure/deployment-stacks/goal006-runner/demo.prerequisites.parameters.json"
-    )
-    prerequisite_parameters_document = json.loads(
-        prerequisite_parameter_path.read_text(encoding="utf-8")
-    )
-    prerequisite_parameters = {
-        key: item.get("value")
-        for key, item in prerequisite_parameters_document.get("parameters", {}).items()
-    }
+    prerequisite_parameters = _parameters(prerequisite_parameter_path)
+    if prerequisite_parameters.get("environment") != environment:
+        violations.append("PREREQUISITE_ENVIRONMENT_INVALID")
     if prerequisite_parameters.get("monthlyBudgetInr") != 10000:
         violations.append("MONTHLY_BUDGET_INVALID")
     if prerequisite_parameters.get("runnerResourceGroupName") != parameters.get(
@@ -137,14 +159,38 @@ def validate_bootstrap_manifest(repository_root: Path, manifest_path: Path) -> l
     if json.loads(cost_path.read_text(encoding="utf-8")) != EXPECTED_COST_ESTIMATE:
         violations.append("COST_ESTIMATE_INVALID")
 
+    observed_networks: list[ipaddress.IPv4Network | ipaddress.IPv6Network] = []
     try:
         vnet = ipaddress.ip_network(str(parameters["runnerVnetAddressPrefix"]))
         runner = ipaddress.ip_network(str(parameters["runnerSubnetAddressPrefix"]))
         endpoints = ipaddress.ip_network(str(parameters["privateEndpointSubnetAddressPrefix"]))
-        if not runner.subnet_of(vnet) or not endpoints.subnet_of(vnet) or runner.overlaps(endpoints):
+        if (
+            tuple(str(item) for item in (vnet, runner, endpoints)) != EXPECTED_NETWORKS[environment]
+            or not runner.subnet_of(vnet)
+            or not endpoints.subnet_of(vnet)
+            or runner.overlaps(endpoints)
+        ):
             violations.append("NETWORK_BOUNDARY_INVALID")
     except (KeyError, ValueError):
         violations.append("NETWORK_BOUNDARY_INVALID")
+    for item_environment in ALLOWED_ENVIRONMENTS:
+        record = environments.get(item_environment, {})
+        item_path_value = record.get("parameters")
+        if not isinstance(item_path_value, str):
+            continue
+        item_path = repository_root / item_path_value
+        if not item_path.is_file():
+            continue
+        try:
+            item_network = ipaddress.ip_network(
+                str(_parameters(item_path)["runnerVnetAddressPrefix"])
+            )
+        except (KeyError, ValueError):
+            violations.append(f"{item_environment}:NETWORK_BOUNDARY_INVALID")
+            continue
+        if any(item_network.overlaps(observed) for observed in observed_networks):
+            violations.append("CROSS_ENVIRONMENT_NETWORK_OVERLAP")
+        observed_networks.append(item_network)
 
     template_text = (repository_root / "infrastructure/deployment-stacks/goal006-runner/main.bicep").read_text(
         encoding="utf-8"
@@ -173,8 +219,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repository-root", type=Path, default=Path.cwd())
     parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument("--environment", choices=ALLOWED_ENVIRONMENTS, required=True)
     args = parser.parse_args()
-    violations = validate_bootstrap_manifest(args.repository_root, args.manifest)
+    violations = validate_bootstrap_manifest(
+        args.repository_root, args.manifest, args.environment
+    )
     print(json.dumps({"passed": not violations, "violations": violations}, sort_keys=True))
     return 0 if not violations else 1
 

@@ -1,6 +1,10 @@
 targetScope = 'subscription'
 
-@allowed(['demo'])
+@allowed([
+  'demo'
+  'uat'
+  'prod'
+])
 param environment string
 
 @allowed(['INACTIVE'])
