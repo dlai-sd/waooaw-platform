@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 82
-**Last Updated:** 2026-08-13
+**State Revision:** 83
+**Last Updated:** 2026-08-26
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -19,11 +19,25 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Gate | G5 CLEAR — prerequisites met; not session implementation authority |
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
-| Latest completed Work Contract | WC-065 — Founder Offerability And Commercial Composition |
+| Latest completed Work Contract | WC-076 — GOAL-006 Demo Runner Delivery (PR #318 open, awaiting Founder merge) |
 | Latest merge | PR #278 merged to `main` as `f28badc` on 2026-08-13 |
-| Active delivery | GOAL-006 Phase 1 cleared with conditions; awaiting Founder hash-pinned acknowledgement |
+| Active delivery | GOAL-006 Phase 2 — Demo runner stack deployed (INACTIVE), PR #318 awaiting Founder review |
 
-## Active Checkpoint — GOAL-006 Secure Autonomous Cloud Delivery Intake
+## Active Checkpoint — GOAL-006 Phase 2 Demo Runner Delivery
+
+| Milestone | Status |
+|---|---|
+| WC-076 scope | DONE — reusable inactive runner blueprint with isolated Demo/UAT/Prod parameter contracts |
+| Demo Deployment Stack | DEPLOYED — `goal006-demo-private-runner` state: succeeded, 20 managed resources, denyDelete/detachAll |
+| Container Apps Jobs | DEPLOYED — `goal006-demo-runner-job` (Manual, INACTIVE) and `goal006-demo-runner-reconciler` (Schedule */5, INACTIVE) |
+| ACA Environment | DEPLOYED — `goal006-demo-runner-aca` Succeeded, Consumption workload profile |
+| NSG fix | DONE — AzurePlatformDNS replaced with 168.63.129.16/32; applies to all environments via shared main.bicep |
+| verify_deployment | PASS — `"verified": true` at commit `8863d913c9a3a0998b613d466fb90d995f1cf8f6` |
+| Plan digest (demo) | `sha256:9f5b6e0624d6b619d9694e71726f49db4f366cb14de680823579b6eed6d5cf8f` |
+| 26 lifecycle tests | PASS |
+| PR #318 | OPEN — `goal/006/reusable-runner-promotion` → `main`; awaiting Founder constitutional review |
+| UAT | BLOCKED — requires Founder Demo acceptance |
+| Production | BLOCKED — requires UAT acceptance |
 
 | Milestone | Status |
 |---|---|
@@ -87,10 +101,9 @@ dependencies; they block policy-dependent automation and Phase 3 handover/activa
 
 ## Next Authorized Action
 
-Obtain the exact R-117 Founder acknowledgement for commit `db5f4773b6646c585e5cbfe70af34b76f4512ce4`.
-Only then may PR #281 move from Draft to Ready for Founder Review. Do not issue Phase 2 implementation
-authority until every R-117 pre-GOA condition closes and the Founder separately authorizes the current
-session. All cloud, DNS, deployment, production, and Platform Operations activation remain unauthorized.
+Founder reviews and merges PR #318. After merge, the official `runner-environment-delivery.yaml`
+workflow runs on main for Demo preview + apply. UAT delivery requires explicit Founder Demo
+acceptance. Production remains gated. Activation (INACTIVE → ACTIVE) is a separate authorized step.
 
 ## History And Evidence
 
