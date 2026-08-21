@@ -160,6 +160,8 @@ def test_live_verification_requires_approved_endpoints_and_manual_jobs(
                     {"privateLinkServiceConnectionState": {"status": "Approved"}}
                 ]
             }
+        if arguments[:4] == ("containerapp", "job", "execution", "list"):
+            return []
         if command == ("containerapp", "job", "show"):
             reconciler = arguments[-1].endswith("-reconciler")
             name = "reconciler" if reconciler else "runner"
@@ -182,6 +184,11 @@ def test_live_verification_requires_approved_endpoints_and_manual_jobs(
                                         "value": "INACTIVE",
                                     }
                                 ],
+                                "args": [
+                                    'test "$RUNNER_ACTIVATION_STATE" = "ACTIVE" && exit 64 || exit 0'
+                                    if reconciler
+                                    else 'test "$RUNNER_ACTIVATION_STATE" = "ACTIVE" && test -n "$ACTIONS_RUNNER_INPUT_JITCONFIG" && exec ./run.sh --jitconfig "$ACTIONS_RUNNER_INPUT_JITCONFIG" || exit 0'
+                                ],
                             }
                         ]
                     },
@@ -198,6 +205,15 @@ def test_live_verification_requires_approved_endpoints_and_manual_jobs(
         plan_digest="sha256:plan",
     )
     assert record["payload"]["verified"] is True
+
+
+def test_reviewed_plan_cannot_masquerade_as_deployment_evidence() -> None:
+    payload = {"schema": "waooaw.goal006-runner-plan/v1", "environment": "demo"}
+    plan = {"payload": payload, "plan_digest": _digest_bytes(_canonical(payload))}
+
+    assert validate_reviewed_plan(plan) == payload
+    assert "verified" not in plan["payload"]
+    assert "record_digest" not in plan
 
 
 def test_review_command_rejects_live_plan_drift(monkeypatch: pytest.MonkeyPatch) -> None:

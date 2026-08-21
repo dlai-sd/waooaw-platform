@@ -375,11 +375,38 @@ def verify_deployment(
         raise RuntimeError("reconciler job trigger is not Schedule")
     if reconciler_configuration.get("scheduleTriggerConfig", {}).get("cronExpression") != "*/5 * * * *":
         raise RuntimeError("reconciler job schedule is not every five minutes")
-    expected_jobs = (
-        (runner_job, "runner", contract["runner_image"]),
-        (reconciler_job, "reconciler", contract["reconciler_image"]),
+    runner_executions = _az(
+        "containerapp",
+        "job",
+        "execution",
+        "list",
+        "--resource-group",
+        contract["resource_group"],
+        "--name",
+        f"{prefix}-job",
     )
-    for job, container_name, expected_image in expected_jobs:
+    active_execution_states = {"processing", "running", "waiting"}
+    if any(
+        str(item.get("properties", {}).get("status", "")).lower()
+        in active_execution_states
+        for item in runner_executions
+    ):
+        raise RuntimeError("runner job has an active execution while blueprint is INACTIVE")
+    expected_jobs = (
+        (
+            runner_job,
+            "runner",
+            contract["runner_image"],
+            'test "$RUNNER_ACTIVATION_STATE" = "ACTIVE" && test -n "$ACTIONS_RUNNER_INPUT_JITCONFIG" && exec ./run.sh --jitconfig "$ACTIONS_RUNNER_INPUT_JITCONFIG" || exit 0',
+        ),
+        (
+            reconciler_job,
+            "reconciler",
+            contract["reconciler_image"],
+            'test "$RUNNER_ACTIVATION_STATE" = "ACTIVE" && exit 64 || exit 0',
+        ),
+    )
+    for job, container_name, expected_image, expected_argument in expected_jobs:
         containers = job.get("properties", {}).get("template", {}).get("containers", [])
         container = next(
             (item for item in containers if item.get("name") == container_name),
@@ -392,6 +419,8 @@ def verify_deployment(
         }
         if environment_values.get("RUNNER_ACTIVATION_STATE") != contract["activation_state"]:
             raise RuntimeError(f"{container_name} job activation state differs from blueprint")
+        if container.get("args") != [expected_argument]:
+            raise RuntimeError(f"{container_name} job fail-closed command differs from blueprint")
     payload: dict[str, Any] = {
         "schema": DEPLOYMENT_SCHEMA,
         "environment": environment,
