@@ -219,6 +219,19 @@ def test_foundation_is_private_isolated_and_environment_scoped() -> None:
     assert "private_dns_zone_ids = [azurerm_private_dns_zone.key_vault.id]" in contract
 
 
+def test_container_app_environment_ignores_unconfigurable_force_new_drift() -> None:
+    contract = read_contract("modules/foundation/main.tf")
+
+    environment = re.search(
+        r'resource "azurerm_container_app_environment" "environment" \{(?P<body>.*?)\n\}',
+        contract,
+        re.DOTALL,
+    )
+    assert environment is not None
+    assert "ignore_changes = [infrastructure_resource_group_name]" in environment.group("body")
+    assert "infrastructure_resource_group_name =" not in environment.group("body")
+
+
 def test_demo_review_ingress_is_founder_restricted_and_other_environments_remain_private() -> None:
     demo = read_contract("environments/demo/foundation/main.tf")
     uat = read_contract("environments/uat/foundation/main.tf")
