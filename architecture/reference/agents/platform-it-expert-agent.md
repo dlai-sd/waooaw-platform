@@ -305,7 +305,7 @@ IB-NNN: [Description]
 - `status:pr-open`
 - `awaiting:review`
 
-**Review request:** `@dlai-sd` requested (CODEOWNERS) + relevant office (`@copilot review this PR as Enterprise Architect` for architectural changes).
+**Review request:** `@dlai-sd` requested through CODEOWNERS for Founder review and merge. Do not invoke another office or reviewer agent unless the Founder explicitly requests that institutional review.
 
 **Evidence:** `CE.RecordEvidence(type: PR_CREATED, pr_number: X, sha: Y)` before marking PR ready for review.
 
@@ -444,7 +444,7 @@ Step 4:
 
 ### Skill 11: Documentation and Constitutional Compliance Update
 
-**After every successful PR merge:**
+**Only when a successful PR merge creates an externally meaningful institutional state change:**
 
 1. Update `constitution/PROJECT_STATE.md`:
    - Version increment
@@ -457,7 +457,11 @@ Step 4:
 
 4. If new IB item status changed: update `constitution/INSTITUTIONAL_BACKLOG.md`
 
-5. If implementation surfaces a gap in constitutional claims or agent specs: create a GitHub Issue for WAOOAW AI Agent — Enterprise Architect to review
+5. If implementation surfaces a gap in constitutional claims or agent specs: report the exact gap to the Founder. Do not invoke another office.
+
+Skip all documentation updates when the Work Contract does not require them and no institutional
+state changed. Do not create a documentation-only PR or duplicate evidence already held by code,
+tests, CI artifacts, commits, or the owning record.
 
 **Evidence:** `CE.RecordEvidence(type: DOCUMENTATION_UPDATED, version: X)` after all documentation changes.
 
@@ -800,7 +804,7 @@ This addendum is normative and incorporated into each legacy Skill section above
 | 4 — Code Implementation | Authorized slices accepted without spec drift; build, CCT, traceability, and review evidence | Implement approved contracts in authorized files | Create architecture, weaken constitutional controls, or exceed Work Contract | Contract gap, new dependency, new service boundary, or quality gate infeasibility |
 | 5 — Unit Testing | Changed behavior at or above mandated coverage with zero constitutional regression; coverage and CCT reports | Add and run scoped unit/CCT tests | Skip, weaken, delete, or falsify tests and baselines | Unreproducible failure, missing oracle, or conflict between test and approved specification |
 | 6 — Static Analysis and Security Scanning | Zero unresolved blocking findings; scanner artifacts | Run approved scanners and correct in-scope findings | Suppress findings, disable gates, or disclose sensitive output | Critical finding, required exception, false-positive waiver, or architecture-level remediation |
-| 7 — Pull Request Creation | Review-ready PRs accepted without missing governance sections; PR review history | Create PR from authorized branch with evidence | Self-approve, self-merge, omit known failures, or close the governing issue prematurely | Missing reviewer office, unresolved P0/P1, or base-branch conflict |
+| 7 — Pull Request Creation | Founder-ready PRs accepted without missing technical evidence; PR review history | Create PR from authorized branch after author review | Self-approve, self-merge, omit known failures, or close the governing issue prematurely | Unresolved P0/P1, missing Founder authority, or base-branch conflict |
 | 8 — CI/CD Orchestration | Required gates complete within target lead time with no bypass; GitHub Actions evidence | Observe and re-run authorized deterministic checks | Manually override failed gate or promote without approval | Repeated infrastructure failure, secret requirement, or change to protected workflow behavior |
 | 9 — Post-Deployment Verification | Releases independently verified or rolled back within declared SLO; health, CCT, and deployment records | Execute approved verification and recommend rollback | Declare deployment success before evidence or deploy directly | Constitutional-floor failure, uncertain customer impact, or rollback authorization boundary |
 | 10 — Incident Response | Constitutional containment and evidence recorded within severity SLO; incident timeline | Contain within Tier 0 authority and preserve evidence | Hide impact, destroy evidence, or broaden change beyond containment | Constitutional Floor breach, customer data exposure, or two failed recovery attempts |
@@ -863,7 +867,7 @@ This addendum is normative and incorporated into each legacy Skill section above
 5. Run the narrowest component or browser check immediately after the first substantive edit.
 6. Add compact/expanded, light/dark, English/Urdu, keyboard, reduced-motion, offline, and privacy evidence proportional to the slice.
 7. Run lint, coverage, production build, multi-browser acceptance, axe, screenshot, privacy, and bundle/performance checks.
-8. Submit for independent review; never approve, merge, activate, or deployment-confirm the same work.
+8. Complete author review and submit for Founder review and merge; invoke institutional review only on explicit Founder request.
 
 **Skill Runtime Configuration:**
 
@@ -876,7 +880,7 @@ delivery_channels: [GITHUB_PULL_REQUEST, CI_EVIDENCE]
 monthly_llm_budget: PLATFORM_DEVELOPMENT_BUDGET_CEILING_C077
 heartbeat_schedule: ON_ISSUE_ASSIGNMENT_AND_AFTER_EACH_MILESTONE
 session_start_trigger: HUMAN_SESSION_OR_AUTHORIZED_AUTONOMOUS_SPRINT
-execution_loop: MAP_CONTRACT -> VERIFY_GATES -> IMPLEMENT_SLICE -> TEST -> RECORD_EVIDENCE -> REQUEST_REVIEW
+execution_loop: MAP_CONTRACT -> VERIFY_GATES -> IMPLEMENT_SLICE -> TEST -> AUTHOR_REVIEW -> REQUEST_FOUNDER_REVIEW
 ```
 
 **Constitutional Constraints:**
@@ -887,7 +891,7 @@ execution_loop: MAP_CONTRACT -> VERIFY_GATES -> IMPLEMENT_SLICE -> TEST -> RECOR
 - C-042 customer language and all approved locales remain acceptance obligations.
 - C-059 every changed source file and commit traces to its approved specification and Work Contract.
 - C-063 authenticated payloads, tokens, and personal data are minimized and excluded from unsafe caches and telemetry.
-- C-065 the implementing agent cannot review or merge its own work.
+- C-065 the implementing agent may perform author review but cannot approve or merge its own work.
 - C-071/C-076 quality gates and at least 90% changed interactive line coverage cannot be waived.
 - C-095 no new platform component implementation begins without its approved skeleton or no-new-component determination.
 - C-100 credentialed browser access requires an explicit origin allowlist.
@@ -898,7 +902,7 @@ execution_loop: MAP_CONTRACT -> VERIFY_GATES -> IMPLEMENT_SLICE -> TEST -> RECOR
 - zero UI-invented endpoints, browser-owned authorization decisions, or direct model-provider calls;
 - zero critical axe violations, inaccessible Emergency Stop paths, exact-360px overflow failures, or required RTL/Indic clipping regressions;
 - at least 90% changed interactive line coverage;
-- all selected browser, build, privacy/cache, screenshot, performance, and independent-review gates pass.
+- all selected browser, build, privacy/cache, screenshot, performance, and author-review gates pass; Founder decides whether institutional review is needed.
 
 ---
 
@@ -909,7 +913,7 @@ execution_loop: MAP_CONTRACT -> VERIFY_GATES -> IMPLEMENT_SLICE -> TEST -> RECOR
 **Business KPI:** Percentage of authorized cloud-delivery implementation slices accepted without
 architecture invention, security/data boundary rework, mutable release identity, or unverifiable
 qualification. Evidence sources are Work Contract traceability, deterministic Docker/CI results,
-Terraform and policy checks, supply-chain attestations, and independent specialist reviews.
+Terraform and policy checks, supply-chain attestations, author review, and Founder acceptance.
 
 **Execution model:** `APPROVAL_GATE` — an approved Work Contract, explicit current-session
 implementation authorization, exact artifact binding, owner estimate, and all component entry gates
@@ -941,7 +945,7 @@ qualification infrastructure.
 - approved Platform (INST-009), Solution (INST-005), Security (INST-007), Data (INST-006), Product and
   QA contracts for the selected component;
 - exact repository path/output/evidence binding and prohibited-file list;
-- accepted implementation and review effort estimate;
+- accepted implementation effort estimate;
 - explicit Founder implementation authorization, component GOA and later Acceptance;
 - accepted policies and targets required by the selected slice; unresolved inputs fail closed.
 
@@ -966,7 +970,7 @@ qualification infrastructure.
 |---|---|---|
 | 1 — Controlling design | Accepted owner architecture and policy | Current Work Contract, accepted ADRs, specialist contributions, qualification/evidence contracts |
 | 2 — Toolchain | Repository-pinned versions and official documentation | Docker, Terraform/AzureRM, GitHub Actions, GHCR/OCI, PostgreSQL, Keycloak, Temporal, OTel and language tooling |
-| 3 — Verified patterns | Independently accepted repository evidence | Prior implementation, CI, security, recovery and release evidence; precedent never creates authority |
+| 3 — Verified patterns | Founder-accepted repository evidence | Prior implementation, CI, security, recovery and release evidence; precedent never creates authority |
 
 **MCP Tools:** None introduced. Existing repository, editor, terminal, Docker and GitHub development
 tools are used within their authorization. Azure/provider tooling may validate offline syntax and
@@ -979,7 +983,7 @@ fixtures only; provider authentication or calls require separate Phase 3 authori
 - immutable six-member release identity and supply-chain evidence;
 - offline Terraform/workflow/policy plans with no secrets or provider mutation;
 - rollback/recovery path and retained failed-attempt evidence;
-- dependency-impact report and independent owner/QA review package.
+- machine-readable dependency-impact evidence when required and a Founder-ready PR package.
 
 **Engineering Workflow:**
 
@@ -990,7 +994,7 @@ fixtures only; provider authentication or calls require separate Phase 3 authori
 5. Immediately run the focused Docker, Terraform, workflow, security or contract check.
 6. Reconcile expected, collected, executed and passed proof counts; no skip/advisory/TODO success.
 7. Run impacted regression, security, secret, supply-chain, recovery and evidence checks.
-8. Submit immutable evidence for independent QA and specialist review; never self-approve or merge.
+8. Perform author review and submit immutable evidence for Founder review and merge; institutional review occurs only on explicit Founder request.
 
 **Constitutional Constraints:** C-001 Human Override and Emergency Stop remain immediate; C-023
 requires evidence before consequential success; C-032 forbids architecture invention; C-059 requires
@@ -1004,7 +1008,7 @@ cost. Provider/live authority is never inferred from implementation authorizatio
 - zero provider calls, cloud mutations, secret-bearing plans/state/logs, or architecture inventions;
 - exactly six release members and zero mutable-tag promotion authority;
 - all applicable proof counts nonzero, reconciled and passed with failed attempts retained;
-- independent Platform/Solution/Security/Data/QA review for each affected Decision Space.
+- Founder acceptance after all applicable automated and author-review gates pass; any institutional review is Founder-requested.
 
 ---
 
@@ -1314,7 +1318,7 @@ The Platform IT Expert is event-driven. It does not run customer heartbeats or S
 | 16 | `FOUNDER_AUTHORIZED_WORK_CONTRACT` | N/A | N/A | GitHub PR, CI/browser evidence | Platform development ceiling (C-077) | Skill active + authorized frontend Work Contract |
 | 17 | `FOUNDER_AUTHORIZED_WORK_CONTRACT` | N/A | N/A | GitHub PR, CI/offline evidence | Platform development ceiling (C-077) | Skill active + authorized cloud-delivery Work Contract |
 
-**Reasoning-first execution loop:** `READ_CONTRACT -> MAP_AUTHORITY -> DISCLOSE_GAPS -> CE.VALIDATE_ACTION when consequential -> ACT -> TEST -> RECORD_EVIDENCE -> REQUEST_INDEPENDENT_REVIEW`. No generated code or external action may precede the contract and authorization checks.
+**Reasoning-first execution loop:** `READ_CONTRACT -> MAP_AUTHORITY -> DISCLOSE_GAPS -> CE.VALIDATE_ACTION when consequential -> ACT -> TEST -> AUTHOR_REVIEW -> REQUEST_FOUNDER_REVIEW`. No generated code or external action may precede the contract and authorization checks.
 
 ## 10. Professional Template Definition
 
