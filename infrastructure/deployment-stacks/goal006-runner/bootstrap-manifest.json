@@ -1,17 +1,19 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "blueprint_version": "2.1.0",
-  "activation_state": "INACTIVE",
   "environments": {
     "demo": {
+      "activation_state": "ACTIVE",
       "parameters": "infrastructure/deployment-stacks/goal006-runner/demo.parameters.json",
       "prerequisites": "infrastructure/deployment-stacks/goal006-runner/demo.prerequisites.parameters.json"
     },
     "uat": {
+      "activation_state": "INACTIVE",
       "parameters": "infrastructure/deployment-stacks/goal006-runner/uat.parameters.json",
       "prerequisites": "infrastructure/deployment-stacks/goal006-runner/uat.prerequisites.parameters.json"
     },
     "prod": {
+      "activation_state": "INACTIVE",
       "parameters": "infrastructure/deployment-stacks/goal006-runner/prod.parameters.json",
       "prerequisites": "infrastructure/deployment-stacks/goal006-runner/prod.prerequisites.parameters.json"
     }
@@ -22,7 +24,7 @@
       ".github/workflows/goal006-runner-image.yaml": "e4c293d040a3da0804d4c7770d79edc42e5364cf102c0bfaa4ec9e6f0367000f",
     "architecture/reference/pipeline/github-runner-app-manifest.json": "6fa68add0231e96ebd85a29eb47ba36ee6bd78f80e6f20f1d375c5b2b31fb85c",
     "infrastructure/deployment-stacks/goal006-runner/cost-estimate.json": "207bf61e5903f95cf8e8d59761fc880797881d75f916e68f608d30a9cef48a0e",
-    "infrastructure/deployment-stacks/goal006-runner/demo.parameters.json": "06e616ae650429d52a6609ee04f7ba0b830db9b12c4412460d828663efb83348",
+    "infrastructure/deployment-stacks/goal006-runner/demo.parameters.json": "42e2824b33b150f57a77ceb860d771d7f01d6b359b4db052331f7b80f47786e9",
     "infrastructure/deployment-stacks/goal006-runner/demo.prerequisites.parameters.json": "386a1c2bca52beb285d8646af62eb56f82891ff52c0ac1dd7ec74fc5d688e4aa",
     "infrastructure/deployment-stacks/goal006-runner/uat.parameters.json": "c151077e98e345251887092005b683b22f5acefbeb916a7a7c34ee10b58d45dd",
     "infrastructure/deployment-stacks/goal006-runner/prod.parameters.json": "12730564670238e95df180538fda28c5f651bb67ea5f6c9797765a1157466860",
@@ -38,7 +40,7 @@
     "scripts/azure_rest_retry.py": "e38324fd3391a4a22ae2c19644e5bdc27240a27d944d33cef209370164e3fdb0",
     "scripts/goal006_cost_gate.py": "f721b2bc16e4948c348216cedaa645fbf1ed19299aded462935d13178d6417ad",
     "scripts/goal006_import_app_signing_material.sh": "9f45ba6158195d32f2de4e3f3410e2efebdb5a4fc8ccb2c464827c5757d4af45",
-    "scripts/goal006_runner_bootstrap.py": "775c67a10634514a60c361a556bcd0867941e24ef8093a0abacf7c76e50e9028",
+    "scripts/goal006_runner_bootstrap.py": "e0ef0ae4ac2a57be6d86b9d218cf6639198508584620224374a81707f487b052",
     "scripts/goal006_runner_deployment.py": "c91315987ddc6bb65ef44fb47ef2435ce34278a07425d2c88494df9df93ca55a",
     "scripts/goal006_runner_lifecycle.py": "3b32e3c9e103460c4c7cce6672ec1dbf289921d5b1b3d6f37d04f09037d930e7",
     "scripts/goal006_runner_qualification.py": "d8f29bacf716468b637e7cded8500820ae8d098664e1b0f7f0831f770f668aac",

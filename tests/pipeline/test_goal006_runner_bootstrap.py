@@ -56,11 +56,11 @@ def _write_manifest(
         if path.is_file()
     }
     manifest = {
-        "schema_version": 2,
+        "schema_version": 3,
         "blueprint_version": "2.0.0",
-        "activation_state": "INACTIVE",
         "environments": {
             item_environment: {
+            "activation_state": "ACTIVE" if item_environment == "demo" else "INACTIVE",
                 "parameters": "infrastructure/deployment-stacks/goal006-runner/"
                 f"{item_environment}.parameters.json",
                 "prerequisites": "infrastructure/deployment-stacks/goal006-runner/"
@@ -118,7 +118,7 @@ def test_manifest_invalid_activation_state_fails_closed(tmp_path: Path) -> None:
     repository, manifest_path = _write_manifest(tmp_path)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     changed = deepcopy(manifest)
-    changed["activation_state"] = "ARMED"
+    changed["environments"]["demo"]["activation_state"] = "ARMED"
     manifest_path.write_text(json.dumps(changed), encoding="utf-8")
     assert "ACTIVATION_STATE_INVALID" in validate_bootstrap_manifest(
         repository, manifest_path
@@ -129,7 +129,7 @@ def test_manifest_and_parameter_activation_must_match(tmp_path: Path) -> None:
     repository, manifest_path = _write_manifest(
         tmp_path,
         parameter_mutator=lambda parameters: parameters["activationState"].update(
-            value="ACTIVE"
+            value="INACTIVE"
         ),
     )
 
@@ -201,14 +201,12 @@ def test_stack_is_environment_generic_and_uses_valid_private_dns() -> None:
 def test_active_stack_requires_existing_app_identifiers(tmp_path: Path) -> None:
     def mutate(parameters: dict[str, dict[str, object]]) -> None:
         parameters["activationState"]["value"] = "ACTIVE"
+        parameters["githubAppId"]["value"] = "PENDING"
+        parameters["githubAppInstallationId"]["value"] = "PENDING"
         parameters["githubAppKeyName"]["value"] = "app-key"
         parameters["githubAppKeyVersion"]["value"] = "a" * 32
 
     repository, manifest_path = _write_manifest(tmp_path, parameter_mutator=mutate)
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    manifest["activation_state"] = "ACTIVE"
-    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
-
     violations = validate_bootstrap_manifest(repository, manifest_path)
     assert "GITHUB_APP_KEY_NOT_CONFIGURED" in violations
     assert "RUNNER_IMAGE_NOT_PUBLISHED" not in violations

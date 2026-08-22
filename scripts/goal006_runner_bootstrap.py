@@ -105,16 +105,17 @@ def validate_bootstrap_manifest(
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if environment not in ALLOWED_ENVIRONMENTS:
         return ["ENVIRONMENT_INVALID"]
-    if manifest.get("schema_version") != 2:
+    if manifest.get("schema_version") != 3:
         violations.append("MANIFEST_SCHEMA_INVALID")
-    manifest_activation = manifest.get("activation_state")
-    if manifest_activation not in ALLOWED_ACTIVATION_STATES:
-        violations.append("ACTIVATION_STATE_INVALID")
 
     environments = manifest.get("environments")
     if not isinstance(environments, dict) or set(environments) != set(ALLOWED_ENVIRONMENTS):
         violations.append("MANIFEST_ENVIRONMENTS_INVALID")
         environments = {}
+    environment_record = environments.get(environment, {})
+    manifest_activation = environment_record.get("activation_state")
+    if manifest_activation not in ALLOWED_ACTIVATION_STATES:
+        violations.append("ACTIVATION_STATE_INVALID")
 
     files = manifest.get("files")
     if not isinstance(files, dict) or not files:
@@ -129,7 +130,6 @@ def validate_bootstrap_manifest(
         elif _digest(path) != expected_digest:
             violations.append(f"DIGEST_MISMATCH:{relative_path}")
 
-    environment_record = environments.get(environment, {})
     parameter_value = environment_record.get("parameters")
     prerequisite_value = environment_record.get("prerequisites")
     if not isinstance(parameter_value, str) or not isinstance(prerequisite_value, str):
