@@ -50,6 +50,8 @@ REQUIRED_TEMPLATE_TERMS = {
     "triggerType: activationState == 'ACTIVE' ? 'Schedule' : 'Manual'",
     "manualTriggerConfig:",
     "cronExpression: '*/5 * * * *'",
+    "loadTextContent('../../../scripts/goal006_runner_lifecycle.py')",
+    "'reconcile'",
     "replicaTimeout: 3600",
     "replicaTimeout: 120",
     "replicaTimeout: 300",
@@ -229,6 +231,8 @@ def validate_bootstrap_manifest(
     for term in sorted(REQUIRED_TEMPLATE_TERMS):
         if term not in template_text:
             violations.append(f"TEMPLATE_CONTRACT_MISSING:{term}")
+    if 'test "$RUNNER_ACTIVATION_STATE" = "ACTIVE" && exit 64 || exit 0' in template_text:
+        violations.append("RECONCILER_PLACEHOLDER_PROHIBITED")
     subscription_text = (
         repository_root / "infrastructure/deployment-stacks/goal006-runner/subscription.bicep"
     ).read_text(encoding="utf-8")

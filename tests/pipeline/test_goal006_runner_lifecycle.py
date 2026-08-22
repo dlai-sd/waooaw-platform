@@ -4,11 +4,15 @@ from __future__ import annotations
 
 import base64
 import json
+from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 
 from scripts.goal006_runner_lifecycle import (
+    HttpStatusError,
     LifecycleError,
+    ReconcilerContext,
     _assert_zero_active_executions,
     _find_correlated_execution,
     create_app_jwt,
@@ -17,8 +21,10 @@ from scripts.goal006_runner_lifecycle import (
     _execution_environment,
     runner_name,
     read_runner_token,
+    reconcile_runners,
     select_correlated_runner,
     validate_installation,
+    workflow_run_conclusion,
 )
 
 
@@ -111,17 +117,18 @@ def test_private_job_must_be_uniquely_terminal() -> None:
     )
 
 
-def test_app_manifest_does_not_grant_actions_permission() -> None:
+def test_app_manifest_grants_only_required_read_actions_permission() -> None:
     manifest = json.loads(
         __import__("pathlib").Path(
             "architecture/reference/pipeline/github-runner-app-manifest.json"
         ).read_text(encoding="utf-8")
     )
-    assert "actions" not in manifest["repository_permissions"]
-    assert "actions" in manifest["prohibited_permissions"]
+    assert manifest["repository_permissions"]["actions"] == "read"
+    assert "actions" not in manifest["prohibited_permissions"]
     assert manifest["installation_target"] == "user"
     assert manifest["account"] == "dlai-sd"
     assert manifest["repository_permissions"] == {
+        "actions": "read",
         "administration": "write",
         "metadata": "read",
     }
@@ -363,3 +370,149 @@ def test_broker_rejects_missing_correlated_execution() -> None:
     )()
     with pytest.raises(LifecycleError, match="ambiguous"):
         _find_correlated_execution(ExecutionApi(), context)
+
+
+def _reconciler_context() -> ReconcilerContext:
+    return ReconcilerContext(
+        environment="demo",
+        repository="dlai-sd/waooaw-platform",
+        subscription_id="sub",
+        resource_group="rg",
+        job_name="runner-job",
+        vault_url="https://vault.example",
+        token_secret_name="runner-token",
+        app_id="4680703",
+        installation_id="155648751",
+        app_key_id="https://vault.example/keys/app/version",
+        runner_label="goal006-demo-private",
+        activation_state="ACTIVE",
+    )
+
+
+def _active_execution(*, correlation: str = "goal006:demo:123:2") -> dict[str, object]:
+    return {
+        "name": "runner-job-execution",
+        "properties": {
+            "status": "Running",
+            "startTime": "2026-08-22T12:30:00Z",
+            "template": {
+                "containers": [
+                    {
+                        "name": "runner",
+                        "env": [
+                            {"name": "RUNNER_CORRELATION_ID", "value": correlation},
+                            {"name": "RUNNER_NAME", "value": "goal006-demo-123-2"},
+                            {"name": "RUNNER_LABEL", "value": "goal006-demo-private"},
+                            {"name": "GITHUB_REPOSITORY", "value": "dlai-sd/waooaw-platform"},
+                            {"name": "GITHUB_WORKFLOW_RUN_ID", "value": "123"},
+                            {"name": "GITHUB_WORKFLOW_RUN_ATTEMPT", "value": "2"},
+                        ],
+                    }
+                ]
+            },
+        },
+    }
+
+
+class _ReconcilerApi:
+    def __init__(self, executions: list[dict[str, object]]) -> None:
+        self.executions = executions
+
+    def request(self, method, url, **kwargs):
+        if url.endswith("/executions?api-version=2024-03-01"):
+            return {"value": self.executions}
+        if "/executions/" in url:
+            return self.executions[0]
+        raise AssertionError(url)
+
+
+def test_reconciler_succeeds_without_active_execution(tmp_path: Path) -> None:
+    record = reconcile_runners(
+        _ReconcilerApi([]),
+        _reconciler_context(),
+        tmp_path / "unused.json",
+    )
+    assert record["decision"] == "NO_ACTIVE_EXECUTIONS"
+    assert record["cleaned_executions"] == []
+
+
+def test_reconciler_rejects_ambiguous_active_executions(tmp_path: Path) -> None:
+    execution = _active_execution()
+    with pytest.raises(LifecycleError, match="selector is ambiguous"):
+        reconcile_runners(
+            _ReconcilerApi([execution, execution]),
+            _reconciler_context(),
+            tmp_path / "unused.json",
+        )
+
+
+def test_reconciler_rejects_correlation_mismatch(tmp_path: Path) -> None:
+    with pytest.raises(LifecycleError, match="correlation contract"):
+        reconcile_runners(
+            _ReconcilerApi([_active_execution(correlation="wrong")]),
+            _reconciler_context(),
+            tmp_path / "unused.json",
+            now=datetime(2026, 8, 22, 12, 35, tzinfo=timezone.utc),
+        )
+
+
+@pytest.mark.parametrize(
+    ("conclusion", "now", "expected_decision", "predicate"),
+    [
+        (None, datetime(2026, 8, 22, 12, 35, tzinfo=timezone.utc), "ACTIVE_RUN_WITHIN_LIMIT", None),
+        ("cancelled", datetime(2026, 8, 22, 12, 35, tzinfo=timezone.utc), "CLEANED_ELIGIBLE_EXECUTION", "cancelled"),
+        ("absent", datetime(2026, 8, 22, 12, 35, tzinfo=timezone.utc), "CLEANED_ELIGIBLE_EXECUTION", "absent"),
+        (None, datetime(2026, 8, 22, 13, 31, tzinfo=timezone.utc), "CLEANED_ELIGIBLE_EXECUTION", "AGE_LIMIT"),
+    ],
+)
+def test_reconciler_applies_exact_lifecycle_predicate(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    conclusion: str | None,
+    now: datetime,
+    expected_decision: str,
+    predicate: str | None,
+) -> None:
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "account": "dlai-sd",
+                "repositories": ["waooaw-platform"],
+                "repository_permissions": {"actions": "read", "administration": "write", "metadata": "read"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("scripts.goal006_runner_lifecycle.create_app_jwt", lambda *args: "jwt")
+    monkeypatch.setattr("scripts.goal006_runner_lifecycle.validate_installation", lambda *args: "installation-token")
+    monkeypatch.setattr("scripts.goal006_runner_lifecycle.workflow_run_conclusion", lambda *args: conclusion)
+    monkeypatch.setattr(
+        "scripts.goal006_runner_lifecycle.cleanup_correlated_runner",
+        lambda *args: {"aca_execution_name": "runner-job-execution"},
+    )
+
+    record = reconcile_runners(
+        _ReconcilerApi([_active_execution()]),
+        _reconciler_context(),
+        manifest,
+        now=now,
+    )
+    assert record["decision"] == expected_decision
+    if predicate is None:
+        assert "lifecycle_predicate" not in record
+    else:
+        assert record["lifecycle_predicate"] == predicate
+
+
+def test_missing_workflow_run_is_terminal_for_reconciliation() -> None:
+    class MissingRunApi:
+        def request(self, method, url, **kwargs):
+            raise HttpStatusError(method, url, 404)
+
+    assert workflow_run_conclusion(
+        MissingRunApi(),
+        _reconciler_context().runner_context("123", "2"),
+        "token",
+    ) == "absent"
