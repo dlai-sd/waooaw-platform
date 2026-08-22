@@ -191,6 +191,12 @@ def test_stack_is_environment_generic_and_uses_valid_private_dns() -> None:
     assert "bootstrapKeySignAccess" not in main
     assert "bootstrapSecretAccess" not in main
 
+    resource_names = [
+        f"goal006-{environment}-runner-cleanup"
+        for environment in ("demo", "uat", "prod")
+    ]
+    assert all(len(name) <= 32 for name in resource_names)
+
 
 def test_active_stack_requires_existing_app_identifiers(tmp_path: Path) -> None:
     def mutate(parameters: dict[str, dict[str, object]]) -> None:

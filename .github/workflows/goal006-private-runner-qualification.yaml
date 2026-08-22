@@ -23,7 +23,7 @@ env:
   ARM_SUBSCRIPTION_ID: 2ed11839-6a0f-4eaa-bd94-44ca96ff5d84
   RUNNER_RESOURCE_GROUP: waooaw-demo-runner-rg
   RUNNER_BROKER_JOB: goal006-demo-runner-broker
-  RUNNER_CLEANUP_BROKER_JOB: goal006-demo-runner-cleanup-broker
+  RUNNER_CLEANUP_BROKER_JOB: goal006-demo-runner-cleanup
   RUNNER_JOB: goal006-demo-runner-job
   TFSTATE_RESOURCE_GROUP: waooaw-platform-rg
   TFSTATE_STORAGE_ACCOUNT: waooawp3tfstate2ed118

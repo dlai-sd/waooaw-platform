@@ -377,7 +377,7 @@ resource statePrivateDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZone
 }
 
 resource vaultPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' = {
-  name: '${prefix}-vault-pe'
+  name: '${prefix}-vaultcore-pe'
   location: location
   tags: commonTags
   properties: {
@@ -591,7 +591,7 @@ resource brokerJob 'Microsoft.App/jobs@2024-03-01' = {
 }
 
 resource cleanupBrokerJob 'Microsoft.App/jobs@2024-03-01' = {
-  name: '${prefix}-cleanup-broker'
+  name: '${prefix}-cleanup'
   location: location
   tags: commonTags
   identity: {

@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.46.1.21595",
-      "templateHash": "4236340873562497613"
+      "templateHash": "9925046578913671803"
     }
   },
   "parameters": {
@@ -145,7 +145,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.46.1.21595",
-              "templateHash": "6316277098131652971"
+              "templateHash": "937316337094314171"
             }
           },
           "parameters": {
@@ -636,7 +636,7 @@
             {
               "type": "Microsoft.Network/privateEndpoints",
               "apiVersion": "2024-05-01",
-              "name": "[format('{0}-vault-pe', variables('prefix'))]",
+              "name": "[format('{0}-vaultcore-pe', variables('prefix'))]",
               "location": "[parameters('location')]",
               "tags": "[variables('commonTags')]",
               "properties": {
@@ -663,7 +663,7 @@
             {
               "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
               "apiVersion": "2024-05-01",
-              "name": "[format('{0}/{1}', format('{0}-vault-pe', variables('prefix')), 'vault')]",
+              "name": "[format('{0}/{1}', format('{0}-vaultcore-pe', variables('prefix')), 'vault')]",
               "properties": {
                 "privateDnsZoneConfigs": [
                   {
@@ -676,7 +676,7 @@
               },
               "dependsOn": [
                 "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.vaultcore.azure.net')]",
-                "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-vault-pe', variables('prefix')))]"
+                "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-vaultcore-pe', variables('prefix')))]"
               ]
             },
             {
@@ -959,7 +959,7 @@
             {
               "type": "Microsoft.App/jobs",
               "apiVersion": "2024-03-01",
-              "name": "[format('{0}-cleanup-broker', variables('prefix'))]",
+              "name": "[format('{0}-cleanup', variables('prefix'))]",
               "location": "[parameters('location')]",
               "tags": "[variables('commonTags')]",
               "identity": {
@@ -1188,7 +1188,7 @@
             },
             "cleanupBrokerJobId": {
               "type": "string",
-              "value": "[resourceId('Microsoft.App/jobs', format('{0}-cleanup-broker', variables('prefix')))]"
+              "value": "[resourceId('Microsoft.App/jobs', format('{0}-cleanup', variables('prefix')))]"
             },
             "reconcilerJobId": {
               "type": "string",

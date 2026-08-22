@@ -11,7 +11,7 @@ State verified against Azure subscription `2ed11839-6a0f-4eaa-bd94-44ca96ff5d84`
 | UAT | `waooaw-uat-runner-rg` | Applied and verified | 7 `NoChange`; no create, modify, or delete | INR 0 |
 | Production | `waooaw-prod-runner-rg` | Applied and verified | 7 `NoChange`; no create, modify, or delete | INR 0 |
 
-Each environment has two environment-specific custom roles and resource-group-scoped
+Each environment has four environment-specific custom roles and resource-group-scoped
 Contributor and RBAC Administrator assignments. All environments share the subscription-scoped
 Deployment Stack Owner assignment and cumulative GOAL-006 INR 10,000 monthly budget. The budget is
 an alert threshold, not committed spend.

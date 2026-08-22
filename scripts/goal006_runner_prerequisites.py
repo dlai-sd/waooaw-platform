@@ -199,8 +199,10 @@ def verify(
     deployment = _az("deployment", "sub", "show", "--name", deployment_name)
     outputs = deployment["properties"]["outputs"]
     custom_roles = {
-        "Bootstrap Secret Writer": outputs["bootstrapWriterRoleDefinitionId"]["value"],
+        "Broker Secret Writer": outputs["brokerWriterRoleDefinitionId"]["value"],
+        "Broker Job Operator": outputs["brokerJobOperatorRoleDefinitionId"]["value"],
         "Cleanup Secret Deleter": outputs["cleanupDeleterRoleDefinitionId"]["value"],
+        "Cleanup Job Operator": outputs["cleanupJobOperatorRoleDefinitionId"]["value"],
     }
     for suffix, role_id in custom_roles.items():
         verify_custom_role(role_id, f"GOAL-006 {environment} {suffix}", runner_scope)
