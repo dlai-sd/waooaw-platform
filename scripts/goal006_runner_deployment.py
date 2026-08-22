@@ -312,6 +312,38 @@ def _required_resource_names(environment: str) -> dict[str, str]:
     }
 
 
+def verify_signer_role_assignments(
+    *, resource_group: str, prefix: str, key_scope: str
+) -> None:
+    expected_scope = key_scope.lower()
+    for identity_name in (f"{prefix}-broker-identity", f"{prefix}-cleanup-identity"):
+        identity = _az(
+            "identity",
+            "show",
+            "--resource-group",
+            resource_group,
+            "--name",
+            identity_name,
+        )
+        principal_id = str(identity.get("principalId", ""))
+        assignments = _az(
+            "role",
+            "assignment",
+            "list",
+            "--assignee-object-id",
+            principal_id,
+            "--all",
+        )
+        if not any(
+            item.get("roleDefinitionName") == "Key Vault Crypto User"
+            and str(item.get("scope", "")).lower() == expected_scope
+            for item in assignments
+        ):
+            raise RuntimeError(
+                f"{identity_name} lacks Key Vault Crypto User at the signing key scope"
+            )
+
+
 def verify_deployment(
     *,
     repository_root: Path,
@@ -374,6 +406,16 @@ def verify_deployment(
         }
         if statuses != {"Approved"}:
             raise RuntimeError(f"private endpoint is not approved: {endpoint} {statuses}")
+    if contract["activation_state"] == "ACTIVE":
+        parameters = _parameters(contract["parameter_path"])
+        vault_id = observed[
+            (f"waooaw-{environment}-runner-kv", "Microsoft.KeyVault/vaults")
+        ]
+        verify_signer_role_assignments(
+            resource_group=contract["resource_group"],
+            prefix=prefix,
+            key_scope=f"{vault_id}/keys/{parameters['githubAppKeyName']}",
+        )
     runner_job = _az(
         "containerapp",
         "job",

@@ -229,11 +229,6 @@ resource githubAppKey 'Microsoft.KeyVault/vaults/keys@2023-07-01' existing = {
   name: githubAppKeyName
 }
 
-resource githubAppKeyVersionResource 'Microsoft.KeyVault/vaults/keys/versions@2023-07-01' existing = {
-  parent: githubAppKey
-  name: githubAppKeyVersion
-}
-
 resource runnerSecretAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   scope: runnerVault
   name: guid(runnerVault.id, runnerIdentity.id, keyVaultSecretsUserRoleId)
@@ -275,8 +270,8 @@ resource keyImportAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = 
 }
 
 resource brokerKeySignAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (activationState == 'ACTIVE') {
-  scope: githubAppKeyVersionResource
-  name: guid(githubAppKeyVersionResource.id, brokerIdentity.id, keyVaultCryptoUserRoleId)
+  scope: githubAppKey
+  name: guid(githubAppKey.id, brokerIdentity.id, keyVaultCryptoUserRoleId)
   properties: {
     principalId: brokerIdentity.properties.principalId
     principalType: 'ServicePrincipal'
@@ -285,8 +280,8 @@ resource brokerKeySignAccess 'Microsoft.Authorization/roleAssignments@2022-04-01
 }
 
 resource cleanupKeySignAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (activationState == 'ACTIVE') {
-  scope: githubAppKeyVersionResource
-  name: guid(githubAppKeyVersionResource.id, cleanupIdentity.id, keyVaultCryptoUserRoleId)
+  scope: githubAppKey
+  name: guid(githubAppKey.id, cleanupIdentity.id, keyVaultCryptoUserRoleId)
   properties: {
     principalId: cleanupIdentity.properties.principalId
     principalType: 'ServicePrincipal'
