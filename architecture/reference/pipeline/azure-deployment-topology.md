@@ -4,6 +4,42 @@
 
 This contract turns the accepted GOAL-006 constitutional, security, data, and platform decisions into one deployable Azure topology. Infrastructure and workflows MUST implement this contract before another full Demo apply.
 
+## Skill 17 Cloud Delivery Entry Point
+
+This document is the canonical implementation design for Platform IT Expert Skill 17 cloud-delivery
+work. Skill 17 supplies the professional capability; it does not permit a new topology or create
+cloud authority. The current authority and stop conditions come from `constitution/PROJECT_STATE.md`
+and the assigned Work Contract. ADR-047 controls the private runner decision. If any of those inputs
+is missing, inconsistent, or unapproved, execution stops rather than selecting another cloud path.
+
+| Concern | WAOOAW direction |
+|---|---|
+| Strategy | Azure-first with application-layer portability and a named escape hatch for each Azure-specific dependency. |
+| Design | GitHub Actions OIDC, immutable GHCR digests, isolated Azure Container Apps environments, managed identities, Key Vault, private networking, PostgreSQL, and OpenTelemetry/Azure Monitor. |
+| Delivery | Build the exact-six tuple once, promote the same digests through Demo, UAT, and Production, and fail closed on authorization, cost, security, recovery, or evidence failure. |
+| Runner path | A GitHub-hosted management job reconciles the Azure Deployment Stack; an ephemeral environment runner performs private deployment; independent cleanup removes its registration, token, and execution. |
+| Sequence | Qualify Demo first, obtain Founder Demo acceptance before UAT, and keep Production dark and plan-only until separately authorized. |
+| Operating posture | Prefer local deterministic validation for fast iteration, but use the protected workflow to prove OIDC identity, private DNS/data paths, environment approval, cleanup, and immutable evidence. |
+
+### Current Delivery State - 2026-08-22
+
+`constitution/PROJECT_STATE.md` remains authoritative for live authorization. This dated snapshot
+exists only to prevent implementation sessions from confusing deployed resource scaffolding with an
+operational private runner.
+
+| Area | Verified state | Required next result |
+|---|---|---|
+| Demo runner stack | Azure Deployment Stack succeeded with the VNet, ACA environment/jobs, managed identities, Key Vault, Storage/Key Vault private endpoints, private DNS zones, diagnostics, and deny-delete ownership. | Reconcile all live resources to the reviewed stack and retain a no-destructive-change preview. |
+| Runner lifecycle | The manual runner job has never executed. No JIT configuration or short-lived runner-token wiring is present. | Implement GitHub App signing/token exchange, bounded Key Vault handoff, ACA start, registration, and teardown. |
+| Cleanup | The reconciler is configured ACTIVE but its placeholder command exits nonzero every five minutes. | Return it to fail-closed inactive operation until correlation-checked cleanup is implemented and tested. |
+| Private path | Storage has an approved private endpoint and private A record. Key Vault has an approved endpoint but no private-zone A record. No runner-side DNS or Terraform backend operation has executed. | Prove private DNS plus exact Blob and Terraform list/read/write/lock operations from the ephemeral runner. |
+| Deployment workflow | Demo deployment still uses `ubuntu-latest` and temporary Storage public-IP firewall mutation. | Switch the runner label and remove public-IP mutation together only after the complete activation matrix passes. |
+| Higher environments | UAT and Production prerequisite resource groups exist, but their runner stacks do not. | Keep UAT blocked until Founder Demo acceptance and Production plan-only until separate authorization. |
+| Execution contract | PROJECT_STATE references WC-076, but its Work Contract file is absent from the current repository checkout. | Restore the approved contract before further Skill 17 execution; do not reconstruct its authority from architecture documents. |
+
+The detailed topology, controls, interface gates, and implementation order below are normative. This
+section is a routing summary and must not be copied into a separate implementation plan.
+
 ## Constitutional Delivery Invariants
 
 1. Build the exact-six application images once. Demo, UAT, Production, and rollback use the same immutable OCI digests.

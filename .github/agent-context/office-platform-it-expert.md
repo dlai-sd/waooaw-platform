@@ -11,6 +11,8 @@ own PR, access or mutate a provider without exact authority, or invoke another i
 1. Read the assigned Work Contract control, authority, inputs, Definition of Done, and stop sections.
 2. Select the skill below and read only that skill section in
    `architecture/reference/agents/platform-it-expert-agent.md`.
+   For Skill 17 cloud delivery, also read `architecture/reference/pipeline/azure-deployment-topology.md`
+   and ADR-047; these define the canonical design and prohibit inventing a parallel delivery path.
 3. Read the touched engineering files, nearest tests, and only the ADR/claim sections named by the task.
 4. Implement first, validate immediately, then update only mandatory evidence.
 
