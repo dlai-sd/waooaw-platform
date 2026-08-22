@@ -6,11 +6,11 @@
     "waooaw-platform"
   ],
   "repository_permissions": {
+    "actions": "read",
     "administration": "write",
     "metadata": "read"
   },
   "prohibited_permissions": [
-    "actions",
     "contents",
     "deployments",
     "environments",

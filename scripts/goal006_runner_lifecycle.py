@@ -10,6 +10,7 @@ import json
 import os
 import re
 import subprocess
+import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -39,6 +40,12 @@ RUN_NUMBER = re.compile(r"^[1-9][0-9]*$")
 
 class LifecycleError(RuntimeError):
     """Fail-closed lifecycle contract violation."""
+
+
+class HttpStatusError(LifecycleError):
+    def __init__(self, method: str, url: str, status: int) -> None:
+        super().__init__(f"{method} {url} failed with HTTP {status}")
+        self.status = status
 
 
 def _b64url(value: bytes) -> str:
@@ -150,6 +157,76 @@ class RunnerContext:
         )
 
 
+@dataclass(frozen=True)
+class ReconcilerContext:
+    environment: str
+    repository: str
+    subscription_id: str
+    resource_group: str
+    job_name: str
+    vault_url: str
+    token_secret_name: str
+    app_id: str
+    installation_id: str
+    app_key_id: str
+    runner_label: str
+    activation_state: str
+
+    @classmethod
+    def from_environment(cls) -> ReconcilerContext:
+        names = {
+            "environment": "RUNNER_ENVIRONMENT",
+            "repository": "GITHUB_REPOSITORY",
+            "subscription_id": "AZURE_SUBSCRIPTION_ID",
+            "resource_group": "RUNNER_RESOURCE_GROUP",
+            "job_name": "RUNNER_JOB_NAME",
+            "vault_url": "RUNNER_VAULT_URL",
+            "token_secret_name": "RUNNER_TOKEN_SECRET_NAME",
+            "app_id": "GITHUB_APP_ID",
+            "installation_id": "GITHUB_APP_INSTALLATION_ID",
+            "app_key_id": "GITHUB_APP_KEY_ID",
+            "runner_label": "RUNNER_LABEL",
+            "activation_state": "RUNNER_ACTIVATION_STATE",
+        }
+        values = {field: os.environ.get(variable, "").strip() for field, variable in names.items()}
+        missing = sorted(variable for field, variable in names.items() if not values[field])
+        if missing:
+            raise LifecycleError("required environment is missing: " + ", ".join(missing))
+        context = cls(**values)
+        if context.environment != "demo":
+            raise LifecycleError("reconciler environment is not authorized")
+        if context.activation_state != "ACTIVE":
+            raise LifecycleError("runner lifecycle is not ACTIVE")
+        if context.repository.count("/") != 1 or not context.vault_url.startswith("https://"):
+            raise LifecycleError("reconciler endpoint configuration is invalid")
+        return context
+
+    @property
+    def job_resource_id(self) -> str:
+        return (
+            f"/subscriptions/{self.subscription_id}/resourceGroups/{self.resource_group}"
+            f"/providers/Microsoft.App/jobs/{self.job_name}"
+        )
+
+    def runner_context(self, run_id: str, run_attempt: str) -> RunnerContext:
+        return RunnerContext(
+            environment=self.environment,
+            repository=self.repository,
+            run_id=run_id,
+            run_attempt=run_attempt,
+            subscription_id=self.subscription_id,
+            resource_group=self.resource_group,
+            job_name=self.job_name,
+            vault_url=self.vault_url,
+            token_secret_name=self.token_secret_name,
+            app_id=self.app_id,
+            installation_id=self.installation_id,
+            app_key_id=self.app_key_id,
+            runner_label=self.runner_label,
+            activation_state=self.activation_state,
+        )
+
+
 class JsonApi:
     def __init__(self, access_token: Callable[[str], str]) -> None:
         self._access_token = access_token
@@ -183,7 +260,7 @@ class JsonApi:
             with urllib.request.urlopen(request, timeout=10) as response:  # noqa: S310
                 payload = response.read()
         except urllib.error.HTTPError as error:
-            raise LifecycleError(f"{method} {url} failed with HTTP {error.code}") from error
+            raise HttpStatusError(method, url, error.code) from error
         except urllib.error.URLError as error:
             raise LifecycleError(f"{method} {url} failed") from error
         return json.loads(payload) if payload else None
@@ -630,6 +707,129 @@ def cleanup_correlated_runner(
     )
 
 
+def _parse_azure_time(value: str) -> datetime:
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise LifecycleError("ACA execution start time is invalid") from error
+    if parsed.tzinfo is None:
+        raise LifecycleError("ACA execution start time lacks timezone")
+    return parsed.astimezone(timezone.utc)
+
+
+def workflow_run_conclusion(
+    api: JsonApi,
+    context: RunnerContext,
+    installation_token: str,
+) -> str | None:
+    path = (
+        f"/repos/{context.repository}/actions/runs/{context.run_id}"
+        f"/attempts/{context.run_attempt}"
+    )
+    try:
+        run = _github(api, "GET", path, installation_token)
+    except HttpStatusError as error:
+        if error.status == 404:
+            return "absent"
+        raise
+    conclusion = run.get("conclusion")
+    if run.get("status") == "completed" and conclusion in TERMINAL_CONCLUSIONS:
+        return str(conclusion)
+    return None
+
+
+def reconcile_runners(
+    api: JsonApi,
+    context: ReconcilerContext,
+    manifest_path: Path,
+    *,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    observed_at = datetime.now(timezone.utc) if now is None else now.astimezone(timezone.utc)
+    executions_url = (
+        f"https://management.azure.com{context.job_resource_id}/executions"
+        "?api-version=2024-03-01"
+    )
+    response = api.request("GET", executions_url, resource=MANAGEMENT_RESOURCE)
+    active = [
+        item
+        for item in response.get("value", [])
+        if item.get("properties", {}).get("status") not in {"Succeeded", "Failed", "Stopped"}
+    ]
+    if not active:
+        return {
+            "schema": "waooaw.goal006-runner-reconcile/v1",
+            "environment": context.environment,
+            "observed_active_executions": 0,
+            "cleaned_executions": [],
+            "decision": "NO_ACTIVE_EXECUTIONS",
+        }
+    if len(active) != 1:
+        raise LifecycleError("active ACA runner execution selector is ambiguous")
+
+    execution_name = str(active[0].get("name", ""))
+    execution_url = (
+        f"https://management.azure.com{context.job_resource_id}/executions/"
+        f"{execution_name}?api-version=2024-03-01"
+    )
+    execution = api.request("GET", execution_url, resource=MANAGEMENT_RESOURCE)
+    environment = _execution_environment(execution)
+    run_id = environment.get("GITHUB_WORKFLOW_RUN_ID", "")
+    run_attempt = environment.get("GITHUB_WORKFLOW_RUN_ATTEMPT", "")
+    runner_context = context.runner_context(run_id, run_attempt)
+    expected_environment = {
+        "RUNNER_CORRELATION_ID": runner_context.correlation,
+        "RUNNER_NAME": runner_context.runner_name,
+        "RUNNER_LABEL": runner_context.runner_label,
+        "GITHUB_REPOSITORY": runner_context.repository,
+        "GITHUB_WORKFLOW_RUN_ID": runner_context.run_id,
+        "GITHUB_WORKFLOW_RUN_ATTEMPT": runner_context.run_attempt,
+    }
+    if any(environment.get(name) != value for name, value in expected_environment.items()):
+        raise LifecycleError("ACA execution correlation contract is invalid")
+
+    start_time = str(execution.get("properties", {}).get("startTime", ""))
+    age = observed_at - _parse_azure_time(start_time)
+    if age.total_seconds() < 0:
+        raise LifecycleError("ACA execution start time is in the future")
+
+    manifest = _read_manifest(manifest_path)
+    app_jwt = create_app_jwt(
+        context.app_id,
+        context.app_key_id,
+        lambda key_id, digest: key_vault_sign(api, key_id, digest),
+    )
+    installation_token = validate_installation(
+        api, manifest, context.installation_id, app_jwt
+    )
+    conclusion = workflow_run_conclusion(api, runner_context, installation_token)
+    if conclusion is None and age < timedelta(minutes=60):
+        return {
+            "schema": "waooaw.goal006-runner-reconcile/v1",
+            "environment": context.environment,
+            "observed_active_executions": 1,
+            "cleaned_executions": [],
+            "decision": "ACTIVE_RUN_WITHIN_LIMIT",
+            "correlation_id": runner_context.correlation,
+        }
+
+    cleanup = cleanup_correlated_runner(
+        api,
+        runner_context,
+        manifest_path,
+        "timed_out" if conclusion is None else conclusion,
+    )
+    return {
+        "schema": "waooaw.goal006-runner-reconcile/v1",
+        "environment": context.environment,
+        "observed_active_executions": 1,
+        "cleaned_executions": [cleanup["aca_execution_name"]],
+        "decision": "CLEANED_ELIGIBLE_EXECUTION",
+        "correlation_id": runner_context.correlation,
+        "lifecycle_predicate": "AGE_LIMIT" if conclusion is None else conclusion,
+    }
+
+
 def _write_record(path: Path, record: Mapping[str, Any]) -> None:
     path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
@@ -649,6 +849,11 @@ def main() -> int:
     cleanup_correlated_parser.add_argument("--app-manifest", type=Path, required=True)
     cleanup_correlated_parser.add_argument("--private-job-conclusion", required=True)
     cleanup_correlated_parser.add_argument("--output", type=Path, required=True)
+    reconcile_parser = subparsers.add_parser("reconcile")
+    reconcile_manifest = reconcile_parser.add_mutually_exclusive_group(required=True)
+    reconcile_manifest.add_argument("--app-manifest", type=Path)
+    reconcile_manifest.add_argument("--app-manifest-json")
+    reconcile_parser.add_argument("--output", type=Path, required=True)
     read_secret_parser = subparsers.add_parser("read-secret")
     read_secret_parser.add_argument("--vault-url", required=True)
     read_secret_parser.add_argument("--secret-name", required=True)
@@ -680,6 +885,24 @@ def main() -> int:
         )
         _write_record(args.output, record)
         print(json.dumps({"cleaned": True, "execution": record["aca_execution_name"]}))
+    elif args.command == "reconcile":
+        if args.app_manifest_json is not None:
+            with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8") as manifest_file:
+                manifest_file.write(args.app_manifest_json)
+                manifest_file.flush()
+                record = reconcile_runners(
+                    JsonApi(azure_access_token),
+                    ReconcilerContext.from_environment(),
+                    Path(manifest_file.name),
+                )
+        else:
+            record = reconcile_runners(
+                JsonApi(azure_access_token),
+                ReconcilerContext.from_environment(),
+                args.app_manifest,
+            )
+        _write_record(args.output, record)
+        print(json.dumps({"reconciled": True, "decision": record["decision"]}))
     elif args.command == "read-secret":
         print(
             read_runner_token(

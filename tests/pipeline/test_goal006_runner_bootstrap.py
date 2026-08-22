@@ -187,6 +187,9 @@ def test_stack_is_environment_generic_and_uses_valid_private_dns() -> None:
     assert "value: 'github-runner-app-signing'" in main
     assert "minReplicas: 0" in main
     assert "maxReplicas: 1" in main
+    assert "loadTextContent('../../../scripts/goal006_runner_lifecycle.py')" in main
+    assert "'reconcile'" in main
+    assert 'exit 64 || exit 0' not in main
     assert main.count("replicaTimeout: 300") == 2
     assert "bootstrapKeySignAccess" not in main
     assert "bootstrapSecretAccess" not in main

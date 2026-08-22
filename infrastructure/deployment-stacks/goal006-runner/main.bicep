@@ -678,13 +678,29 @@ resource reconcilerJob 'Microsoft.App/jobs@2024-03-01' = {
         {
           name: 'reconciler'
           image: reconcilerImage
-          command: ['/bin/sh', '-c']
-          args: ['test "$RUNNER_ACTIVATION_STATE" = "ACTIVE" && exit 64 || exit 0']
+          command: ['python3', '-c']
+          args: [
+            loadTextContent('../../../scripts/goal006_runner_lifecycle.py')
+            'reconcile'
+            '--app-manifest-json'
+            loadTextContent('../../../architecture/reference/pipeline/github-runner-app-manifest.json')
+            '--output'
+            '/tmp/reconciliation-record.json'
+          ]
           env: [
-            {
-              name: 'RUNNER_ACTIVATION_STATE'
-              value: activationState
-            }
+            { name: 'AZURE_CLIENT_ID', value: cleanupIdentity.properties.clientId }
+            { name: 'RUNNER_ACTIVATION_STATE', value: activationState }
+            { name: 'RUNNER_ENVIRONMENT', value: environment }
+            { name: 'GITHUB_REPOSITORY', value: 'dlai-sd/waooaw-platform' }
+            { name: 'AZURE_SUBSCRIPTION_ID', value: subscription().subscriptionId }
+            { name: 'RUNNER_RESOURCE_GROUP', value: resourceGroup().name }
+            { name: 'RUNNER_JOB_NAME', value: runnerJob.name }
+            { name: 'RUNNER_VAULT_URL', value: runnerVault.properties.vaultUri }
+            { name: 'RUNNER_TOKEN_SECRET_NAME', value: runnerTokenSecretName }
+            { name: 'GITHUB_APP_ID', value: githubAppId }
+            { name: 'GITHUB_APP_INSTALLATION_ID', value: githubAppInstallationId }
+            { name: 'GITHUB_APP_KEY_ID', value: '${runnerVault.properties.vaultUri}keys/${githubAppKeyName}/${githubAppKeyVersion}' }
+            { name: 'RUNNER_LABEL', value: 'goal006-${environment}-private' }
           ]
           resources: {
             cpu: json('0.25')
