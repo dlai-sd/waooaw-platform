@@ -203,9 +203,6 @@ def test_active_stack_requires_existing_app_identifiers(tmp_path: Path) -> None:
     manifest["activation_state"] = "ACTIVE"
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
 
-    assert "GITHUB_APP_KEY_NOT_CONFIGURED" in validate_bootstrap_manifest(
-        repository, manifest_path
-    )
-    assert "RUNNER_IMAGE_NOT_PUBLISHED" in validate_bootstrap_manifest(
-        repository, manifest_path
-    )
+    violations = validate_bootstrap_manifest(repository, manifest_path)
+    assert "GITHUB_APP_KEY_NOT_CONFIGURED" in violations
+    assert "RUNNER_IMAGE_NOT_PUBLISHED" not in violations

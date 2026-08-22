@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 126
+**State Revision:** 127
 **Last Updated:** 2026-08-22
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -20,8 +20,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-074 - GOAL-006 Enterprise Delivery Addendum |
-| Latest merge | PR #326 merged to `main` as `dee4ca6` |
-| Active delivery | WC-076 Demo runner account/DNS correction; activation blocked; UAT prohibited |
+| Latest merge | PR #327 merged to `main` as `e6dc699` |
+| Active delivery | WC-076 immutable Demo runner image pin; activation blocked; UAT prohibited |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 
@@ -39,7 +39,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Private runner decision | ACCEPTED - independent EA and Security review of commit `7e5bd4b` returned APPROVE with no blockers |
 | Demo runner bootstrap | MERGED - PR #326 merged as `dee4ca6`; runner image published and attested as `ghcr.io/dlai-sd/goal006-private-runner@sha256:83811baf0d2a425d8f8c308daef3cf172bdca173d9f8d12c7d9a02838a227518` |
 | Private signing decision | AUTHORIZED - dedicated `waooaw-private-runner` App is installed only on `dlai-sd/waooaw-platform`; zero-idle ACA broker and existing FA-052 ceiling are unchanged |
-| Activation correction | PR #327 OPEN - repository runner APIs, `privatelink.vaultcore.azure.net`, and a permanent zero-idle Azure-only App-key importer are implemented without GitHub Secrets |
+| Activation correction | MERGED - PR #327 implements repository runner APIs, `privatelink.vaultcore.azure.net`, and a permanent zero-idle Azure-only App-key importer without GitHub Secrets |
+| Runner image pin | IN PROGRESS - merged image `sha256:e377804b7b2857276979c3b870b69c25dc7a8f566ae12342a3486ccfdb168c9f` is attested and locally pinned for reviewed PR delivery |
 | Local validation | PASS - 69 GOAL-006 runner tests, Ruff, Bicep compilation, all-environment immutable manifest validation, image build and packaged importer smoke test |
 | Architecture review | PENDING - ADR-047 repository-installation amendment requires Founder review through the correction PR; no institutional reviewer invoked |
 | Demo deploy / verify | BLOCKED - correction must merge, Demo stack must reconcile from reviewed preview, App key must be imported over the proven private route, and private-path qualification must pass; no public fallback |
