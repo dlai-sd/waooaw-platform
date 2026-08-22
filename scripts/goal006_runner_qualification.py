@@ -61,6 +61,8 @@ def qualify(
         raise QualificationError("environment is invalid")
     if correlation.replace(":", "-") != correlation.replace(":", "-").lower():
         raise QualificationError("correlation is invalid")
+    output_directory = output_directory.resolve()
+    terraform_root = terraform_root.resolve()
     output_directory.mkdir(parents=True, exist_ok=True)
     hostname = f"{account_name}.blob.core.windows.net"
     addresses = resolve_private_addresses(hostname)
@@ -189,6 +191,12 @@ def qualify(
                 "plan",
                 "-input=false",
                 "-lock-timeout=5m",
+                (
+                    "-var=tfstate_storage_account_id=/subscriptions/"
+                    f"{os.environ['ARM_SUBSCRIPTION_ID']}/resourceGroups/"
+                    f"{os.environ['TFSTATE_RESOURCE_GROUP']}/providers/"
+                    f"Microsoft.Storage/storageAccounts/{account_name}"
+                ),
                 f"-out={plan_path}",
             ],
             cwd=terraform_root,

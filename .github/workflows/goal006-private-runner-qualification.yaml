@@ -98,13 +98,21 @@ jobs:
         run: |
           set -eu
           correlation="goal006:demo:$GITHUB_RUN_ID:$GITHUB_RUN_ATTEMPT"
+          runner_image=$(jq -er '.parameters.runnerImage.value' infrastructure/deployment-stacks/goal006-runner/demo.parameters.json)
+          az containerapp job show \
+            --resource-group "$RUNNER_RESOURCE_GROUP" \
+            --name "$RUNNER_BROKER_JOB" \
+            --output json > broker-job.json
+          python scripts/goal006_runner_execution.py broker \
+            --job broker-job.json \
+            --expected-image "$runner_image" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --output broker-execution.json
           execution=$(az containerapp job start \
             --resource-group "$RUNNER_RESOURCE_GROUP" \
             --name "$RUNNER_BROKER_JOB" \
-            --container-name broker \
-            --env-vars \
-              GITHUB_RUN_ID="$GITHUB_RUN_ID" \
-              GITHUB_RUN_ATTEMPT="$GITHUB_RUN_ATTEMPT" \
+            --yaml broker-execution.json \
             --query name -o tsv)
           test -n "$execution"
           for attempt in $(seq 1 60); do
@@ -178,6 +186,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: demo
     steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
       - name: Azure login with control-plane identity
         uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
         with:
@@ -190,17 +200,22 @@ jobs:
           PRIVATE_JOB_CONCLUSION: ${{ needs.qualify-private.result }}
         run: |
           set -eu
+          runner_image=$(jq -er '.parameters.runnerImage.value' infrastructure/deployment-stacks/goal006-runner/demo.parameters.json)
+          az containerapp job show \
+            --resource-group "$RUNNER_RESOURCE_GROUP" \
+            --name "$RUNNER_CLEANUP_BROKER_JOB" \
+            --output json > cleanup-job.json
+          python scripts/goal006_runner_execution.py cleanup \
+            --job cleanup-job.json \
+            --expected-image "$runner_image" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --private-job-conclusion "$PRIVATE_JOB_CONCLUSION" \
+            --output cleanup-execution.json
           execution=$(az containerapp job start \
             --resource-group "$RUNNER_RESOURCE_GROUP" \
             --name "$RUNNER_CLEANUP_BROKER_JOB" \
-            --container-name cleanup-broker \
-            --args cleanup-correlated \
-              --app-manifest /opt/waooaw/github-runner-app-manifest.json \
-              --private-job-conclusion "$PRIVATE_JOB_CONCLUSION" \
-              --output /home/runner/cleanup-record.json \
-            --env-vars \
-              GITHUB_RUN_ID="$GITHUB_RUN_ID" \
-              GITHUB_RUN_ATTEMPT="$GITHUB_RUN_ATTEMPT" \
+            --yaml cleanup-execution.json \
             --query name -o tsv)
           test -n "$execution"
           for attempt in $(seq 1 180); do

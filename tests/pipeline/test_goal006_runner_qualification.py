@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 import socket
+from pathlib import Path
 
 import pytest
 
-from scripts.goal006_runner_qualification import QualificationError, resolve_private_addresses
+from scripts.goal006_runner_qualification import (
+    QualificationError,
+    qualify,
+    resolve_private_addresses,
+)
 
 
 def test_private_dns_accepts_only_private_addresses(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -42,3 +47,43 @@ def test_dns_failure_is_not_inferred_as_isolation(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(socket, "getaddrinfo", fail)
     with pytest.raises(QualificationError, match="resolution failed"):
         resolve_private_addresses("state.blob.core.windows.net")
+
+
+def test_terraform_plan_uses_absolute_evidence_path(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    commands: list[tuple[list[str], Path | None]] = []
+
+    def run(arguments, *, cwd=None):
+        commands.append((arguments, cwd))
+        return "lease-id" if arguments[1:3] == ["storage", "blob"] and "acquire" in arguments else ""
+
+    monkeypatch.setattr(
+        "scripts.goal006_runner_qualification.resolve_private_addresses",
+        lambda hostname: ["10.70.0.36"],
+    )
+    monkeypatch.setattr("scripts.goal006_runner_qualification._run", run)
+    monkeypatch.setenv("ARM_SUBSCRIPTION_ID", "subscription")
+    monkeypatch.setenv("TFSTATE_RESOURCE_GROUP", "waooaw-platform-rg")
+    terraform_root = tmp_path / "terraform"
+    terraform_root.mkdir()
+    output_directory = tmp_path / "evidence"
+
+    record = qualify(
+        environment="demo",
+        correlation="goal006:demo:123:1",
+        account_name="state",
+        state_container="tfstate",
+        config_container="configuration",
+        config_blob="demo/configuration.json",
+        terraform_root=terraform_root,
+        output_directory=output_directory,
+    )
+
+    plan = next(arguments for arguments, _ in commands if arguments[:2] == ["terraform", "plan"])
+    assert (
+        "-var=tfstate_storage_account_id=/subscriptions/subscription/resourceGroups/"
+        "waooaw-platform-rg/providers/Microsoft.Storage/storageAccounts/state"
+    ) in plan
+    assert f"-out={output_directory.resolve() / 'foundation.tfplan'}" in plan
+    assert record["terraform_init_validate_plan"] is True

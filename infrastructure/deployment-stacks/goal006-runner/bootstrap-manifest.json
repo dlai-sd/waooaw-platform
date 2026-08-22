@@ -20,7 +20,7 @@
   },
   "files": {
       ".github/workflows/runner-environment-delivery.yaml": "abcc3770982664a1b8b2384f4263373cd166eacfbe0b62fb9475362c127bf8cd",
-      ".github/workflows/goal006-private-runner-qualification.yaml": "dc0130165db11971a2aa168e65309f1cd1f128d24884d0cba4578e69105db56f",
+      ".github/workflows/goal006-private-runner-qualification.yaml": "9396267378779f8dc9663b8a24f736a0c3b689307b6d4b290d61c48abaf4a055",
       ".github/workflows/goal006-runner-image.yaml": "e4c293d040a3da0804d4c7770d79edc42e5364cf102c0bfaa4ec9e6f0367000f",
     "architecture/reference/pipeline/github-runner-app-manifest.json": "c7d2e2d953509e23076406b2a12abf7b01538f8dd49de2f40b9855f019e1a552",
     "infrastructure/deployment-stacks/goal006-runner/cost-estimate.json": "207bf61e5903f95cf8e8d59761fc880797881d75f916e68f608d30a9cef48a0e",
@@ -42,8 +42,9 @@
     "scripts/goal006_import_app_signing_material.sh": "9f45ba6158195d32f2de4e3f3410e2efebdb5a4fc8ccb2c464827c5757d4af45",
     "scripts/goal006_runner_bootstrap.py": "311a6b684d3a3112eee548bd6d60d408ebdf5f00804e1a75c9533c11326f0093",
     "scripts/goal006_runner_deployment.py": "ff7eee1e4d4945857f90048ce327687d217242c9df69de6ef2ae12344f479ed1",
+    "scripts/goal006_runner_execution.py": "abdd33e22357b75085623063f96efd07b82d0d0b40fa88392bd8460bb75b1d99",
     "scripts/goal006_runner_lifecycle.py": "ce6439ed9e7efcaa6d1dc2f8c2a7b9b6576a409f2454a16e4cfad1e5b04bb1c4",
-    "scripts/goal006_runner_qualification.py": "d8f29bacf716468b637e7cded8500820ae8d098664e1b0f7f0831f770f668aac",
+    "scripts/goal006_runner_qualification.py": "b2bf72dbe6dfd61ad570acd3fb707cdefe9a8e79469cd96987f134170a27e667",
     "scripts/goal006_runner_prerequisites.py": "1e89987d131f35b9250c9ffdafe627a9e73adb679fa1b906a7b4aeeca9f62225"
   }
 }

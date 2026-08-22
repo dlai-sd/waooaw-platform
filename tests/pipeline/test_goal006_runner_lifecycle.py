@@ -15,6 +15,7 @@ from scripts.goal006_runner_lifecycle import (
     ReconcilerContext,
     _assert_zero_active_executions,
     _find_correlated_execution,
+    _start_execution,
     create_app_jwt,
     correlation_id,
     deployment_job_is_terminal,
@@ -321,6 +322,54 @@ def test_pre_token_gate_rejects_active_execution() -> None:
     )()
     with pytest.raises(LifecycleError, match="already exists"):
         _assert_zero_active_executions(ExecutionApi(), context)
+
+
+def test_runner_start_clones_complete_template_before_binding_correlation() -> None:
+    template = {
+        "containers": [
+            {
+                "name": "runner",
+                "image": "runner@sha256:" + "a" * 64,
+                "command": ["/opt/waooaw/entrypoint.sh"],
+                "resources": {"cpu": 1.0, "memory": "2Gi"},
+                "env": [{"name": "RUNNER_ACTIVATION_STATE", "value": "ACTIVE"}],
+            }
+        ]
+    }
+
+    class ExecutionApi:
+        def __init__(self) -> None:
+            self.body = None
+
+        def request(self, method, url, **kwargs):
+            if method == "GET":
+                return {"properties": {"template": template}}
+            self.body = kwargs["body"]
+            return {"name": "runner-execution"}
+
+    context = type(
+        "Context",
+        (),
+        {
+            "job_resource_id": "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.App/jobs/job",
+            "correlation": "goal006:demo:123:2",
+            "runner_name": "goal006-demo-123-2",
+            "runner_label": "goal006-demo-private",
+            "repository": "dlai-sd/waooaw-platform",
+            "run_id": "123",
+            "run_attempt": "2",
+        },
+    )()
+    api = ExecutionApi()
+
+    assert _start_execution(api, context) == "runner-execution"
+    container = api.body["template"]["containers"][0]
+    assert container["image"] == template["containers"][0]["image"]
+    assert container["command"] == ["/opt/waooaw/entrypoint.sh"]
+    assert container["resources"] == {"cpu": 1.0, "memory": "2Gi"}
+    environment = {item["name"]: item["value"] for item in container["env"]}
+    assert environment["RUNNER_CORRELATION_ID"] == "goal006:demo:123:2"
+    assert environment["GITHUB_WORKFLOW_RUN_ID"] == "123"
 
 
 def test_broker_finds_one_correlation_bound_execution() -> None:
