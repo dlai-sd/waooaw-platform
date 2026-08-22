@@ -135,9 +135,7 @@ jobs:
 
   qualify-private:
     needs: start-broker
-    runs-on:
-      group: goal006-demo-private
-      labels: goal006-demo-private
+    runs-on: [self-hosted, goal006-demo-private]
     environment: demo
     timeout-minutes: 45
     steps:

@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 124
-**Last Updated:** 2026-08-20
+**State Revision:** 126
+**Last Updated:** 2026-08-22
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -20,8 +20,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-074 - GOAL-006 Enterprise Delivery Addendum |
-| Latest merge | PR #325 merged to `main` as `d7f5f60` |
-| Active delivery | WC-076 private runner runtime PR #326; activation blocked; UAT prohibited |
+| Latest merge | PR #326 merged to `main` as `dee4ca6` |
+| Active delivery | WC-076 Demo runner account/DNS correction; activation blocked; UAT prohibited |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 
@@ -37,11 +37,12 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Configuration readiness repair | DONE - PR #309 merged; second plan proved exact Blob retry and verified firewall cleanup |
 | Real Demo OIDC plan | BLOCKED - run `32371262629` reached Terraform init, then backend list received Storage `403 AuthorizationFailure`; no plan/apply occurred |
 | Private runner decision | ACCEPTED - independent EA and Security review of commit `7e5bd4b` returned APPROVE with no blockers |
-| Demo runner bootstrap | IMPLEMENTED - PR #326 commit `a9af853` adds the inactive Deployment Stack repair and Founder-authorized private ACA signing/cleanup broker; Founder review pending |
-| Private signing decision | AUTHORIZED - GitHub-hosted management job starts a zero-idle broker in the existing private ACA environment; no GitHub account/setup change and no FA-052 ceiling increase |
-| Local validation | PASS - 75 focused runner tests, Ruff, Bicep compilation, all-environment manifest validation, image build/tool smoke and zero HIGH/CRITICAL OS findings |
-| Architecture review | CLEAR - author review, focused EA review and focused INST-007 Security correction complete; no separate review artifact required |
-| Demo deploy / verify | BLOCKED - broker implementation must merge, publish an immutable image, reconcile the Demo stack and pass private-path qualification before workflow label activation; no public fallback |
+| Demo runner bootstrap | MERGED - PR #326 merged as `dee4ca6`; runner image published and attested as `ghcr.io/dlai-sd/goal006-private-runner@sha256:83811baf0d2a425d8f8c308daef3cf172bdca173d9f8d12c7d9a02838a227518` |
+| Private signing decision | AUTHORIZED - dedicated `waooaw-private-runner` App is installed only on `dlai-sd/waooaw-platform`; zero-idle ACA broker and existing FA-052 ceiling are unchanged |
+| Activation correction | PR #327 OPEN - repository runner APIs, `privatelink.vaultcore.azure.net`, and a permanent zero-idle Azure-only App-key importer are implemented without GitHub Secrets |
+| Local validation | PASS - 69 GOAL-006 runner tests, Ruff, Bicep compilation, all-environment immutable manifest validation, image build and packaged importer smoke test |
+| Architecture review | PENDING - ADR-047 repository-installation amendment requires Founder review through the correction PR; no institutional reviewer invoked |
+| Demo deploy / verify | BLOCKED - correction must merge, Demo stack must reconcile from reviewed preview, App key must be imported over the proven private route, and private-path qualification must pass; no public fallback |
 | Founder Demo acceptance | PENDING - P3-EX08 remains a separate control point after the verified Azure URL is returned |
 | UAT deploy / verify / accept | PROHIBITED - no token, plan, apply or environment request before explicit Founder Demo acceptance |
 | Production | PLAN ONLY - deployment, traffic and final acceptance remain Founder-reserved |
@@ -52,7 +53,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 - **Execution contract:** `work-contracts/WC-076-goal006-phase3-execution.md`; backlog P3-EX01 through P3-EX11.
 - **Cloud state:** no Demo/UAT/Production workload resources have been created; run `32371262629` made only the bounded temporary state-account firewall mutation and evidence proves cleanup removed it.
 - **RCA boundary:** configuration access succeeded after one network-rule retry, while Terraform backend access failed moments later; discovered GitHub-hosted public egress is not an acceptable durable trust boundary.
-- **Architecture gate:** ADR-047 is Accepted through merged PR #310. The Founder authorized a private ACA signing broker in the current session with no GitHub account/setup change or cost-ceiling increase. PR #326 implements that path; token issuance, runner execution, label activation and Storage public-network disablement remain gated on merge and qualification.
+- **Architecture gate:** ADR-047 is Accepted through merged PR #310. PR #326 merged the private ACA signing broker, but activation proved `dlai-sd` is a personal account and the generated Key Vault private DNS zone was incorrect. The correction preserves the broker, private networking and cost boundary while using repository-scoped runner authority.
 - **Boundary:** no UAT, custom DNS, customer traffic, Production apply, Platform Operations activation, final Goal acceptance, self-approval or self-merge.
 
 ## Authorization Boundary
@@ -66,18 +67,19 @@ progression.
 
 ## Current Blockers
 
-P3-EX07 activation remains blocked while the Founder-authorized private ACA broker implementation in
-PR #326 awaits completion, merge, immutable image publication, Demo stack reconciliation and private
-qualification. The broker preserves `publicNetworkAccess=Disabled`, `defaultAction=Deny` and
+P3-EX07 activation remains blocked until the repository-scoped runner and Key Vault private DNS
+correction merges, the reviewed Demo Deployment Stack preview is applied, private DNS resolves the
+vault endpoint inside ACA, the replacement App key is imported through the permanent zero-idle importer, and private
+qualification passes. The broker preserves `publicNetworkAccess=Disabled`, `defaultAction=Deny` and
 `bypass=None`, and introduces no public fallback. UAT remains constitutionally blocked until the
 Founder explicitly accepts the resulting Demo deployment.
 
 ## Next Authorized Action
 
-Complete and merge the authorized private broker change in PR #326, publish and pin the runner image,
-reconcile the Demo Deployment Stack, and qualify the private path. Do not create UAT/Production runner
-resources, switch deployment labels, apply Demo workloads, disable Storage public access, or initiate
-UAT.
+Review and merge the repository-runner/DNS correction, run the existing Demo Deployment Stack preview
+and apply path, prove private Key Vault DNS from ACA, run `scripts/goal006_import_app_signing_material.sh demo`, and qualify the
+private path. Do not create UAT/Production runner resources, apply Demo workloads before qualification,
+disable Storage public access, or initiate UAT.
 
 ## History And Evidence
 

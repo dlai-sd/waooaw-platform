@@ -51,8 +51,8 @@ def test_private_qualification_uses_brokers_and_demo_runner_only() -> None:
         "RUNNER_CLEANUP_BROKER_JOB: goal006-demo-runner-cleanup-broker"
         in QUALIFICATION_WORKFLOW
     )
-    assert "group: goal006-demo-private" in QUALIFICATION_WORKFLOW
-    assert "labels: goal006-demo-private" in QUALIFICATION_WORKFLOW
+    assert "runs-on: [self-hosted, goal006-demo-private]" in QUALIFICATION_WORKFLOW
+    assert "group: goal006-demo-private" not in QUALIFICATION_WORKFLOW
     assert "goal006-uat" not in QUALIFICATION_WORKFLOW
     assert "goal006-prod" not in QUALIFICATION_WORKFLOW
     assert "if: always() && needs.start-broker.result == 'success'" in QUALIFICATION_WORKFLOW

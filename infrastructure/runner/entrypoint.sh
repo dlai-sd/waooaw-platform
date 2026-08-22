@@ -10,10 +10,9 @@ test "$RUNNER_ACTIVATION_STATE" = ACTIVE || exit 0
 
 required_environment=(
   RUNNER_NAME
-  RUNNER_GROUP
   RUNNER_LABEL
   RUNNER_CORRELATION_ID
-  GITHUB_ORGANIZATION
+  GITHUB_REPOSITORY
   GITHUB_WORKFLOW_RUN_ID
   GITHUB_WORKFLOW_RUN_ATTEMPT
   RUNNER_VAULT_URL
@@ -40,10 +39,9 @@ export RUNNER_REGISTRATION_TOKEN
   --unattended \
   --ephemeral \
   --disableupdate \
-  --url "https://github.com/$GITHUB_ORGANIZATION" \
+  --url "https://github.com/$GITHUB_REPOSITORY" \
   --token "$RUNNER_REGISTRATION_TOKEN" \
   --name "$RUNNER_NAME" \
-  --runnergroup "$RUNNER_GROUP" \
   --labels "$RUNNER_LABEL,$RUNNER_CORRELATION_ID,github-run-$GITHUB_WORKFLOW_RUN_ID"
 
 unset RUNNER_REGISTRATION_TOKEN

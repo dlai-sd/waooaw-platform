@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from copy import deepcopy
 from pathlib import Path
 
@@ -164,16 +165,28 @@ def test_unreviewed_cost_estimate_fails_closed(tmp_path: Path) -> None:
 def test_stack_is_environment_generic_and_uses_valid_private_dns() -> None:
     main = (STACK_ROOT / "main.bicep").read_text(encoding="utf-8")
     subscription = (STACK_ROOT / "subscription.bicep").read_text(encoding="utf-8")
+    vault_dns = re.search(
+        r"resource vaultPrivateDns[^=]*=\s*\{\s*name:\s*'([^']+)'",
+        main,
+    )
 
     for environment in ("demo", "uat", "prod"):
         assert f"  '{environment}'" in main
         assert f"  '{environment}'" in subscription
-    assert "privatelink${az.environment().suffixes.keyvaultDns}" in main
-    assert "privatelink.${az.environment().suffixes.keyvaultDns}" not in main
+    assert vault_dns is not None
+    assert vault_dns.group(1) == "privatelink.vaultcore.azure.net"
+    assert "privatelink${az.environment().suffixes.keyvaultDns}" not in main
     assert "goal006-${environment}-private" in main
     assert "resource brokerIdentity" in main
     assert "resource brokerJob" in main
     assert "resource cleanupBrokerJob" in main
+    assert "resource keyImportIdentity" in main
+    assert "resource keyImportAccess" in main
+    assert "resource keyImportApp" in main
+    assert "Microsoft.App/containerApps@2024-03-01" in main
+    assert "value: 'github-runner-app-signing'" in main
+    assert "minReplicas: 0" in main
+    assert "maxReplicas: 1" in main
     assert main.count("replicaTimeout: 300") == 2
     assert "bootstrapKeySignAccess" not in main
     assert "bootstrapSecretAccess" not in main
