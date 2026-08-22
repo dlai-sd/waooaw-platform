@@ -41,7 +41,7 @@
     "scripts/goal006_cost_gate.py": "f721b2bc16e4948c348216cedaa645fbf1ed19299aded462935d13178d6417ad",
     "scripts/goal006_import_app_signing_material.sh": "9f45ba6158195d32f2de4e3f3410e2efebdb5a4fc8ccb2c464827c5757d4af45",
     "scripts/goal006_runner_bootstrap.py": "311a6b684d3a3112eee548bd6d60d408ebdf5f00804e1a75c9533c11326f0093",
-    "scripts/goal006_runner_deployment.py": "c91315987ddc6bb65ef44fb47ef2435ce34278a07425d2c88494df9df93ca55a",
+    "scripts/goal006_runner_deployment.py": "ff7eee1e4d4945857f90048ce327687d217242c9df69de6ef2ae12344f479ed1",
     "scripts/goal006_runner_lifecycle.py": "ce6439ed9e7efcaa6d1dc2f8c2a7b9b6576a409f2454a16e4cfad1e5b04bb1c4",
     "scripts/goal006_runner_qualification.py": "d8f29bacf716468b637e7cded8500820ae8d098664e1b0f7f0831f770f668aac",
     "scripts/goal006_runner_prerequisites.py": "1e89987d131f35b9250c9ffdafe627a9e73adb679fa1b906a7b4aeeca9f62225"

@@ -21,6 +21,7 @@ DEPLOYMENT_SCHEMA = "waooaw.goal006-runner-deployment/v1"
 ALLOWED_CHANGE_TYPES = {"Create", "Ignore", "Modify", "NoChange"}
 SOURCE_COMMIT = re.compile(r"^[0-9a-f]{40}$")
 STACK_ROOT = Path("infrastructure/deployment-stacks/goal006-runner")
+RECONCILIATION_OUTPUT = "/tmp/reconciliation-record.json"  # noqa: S108
 
 
 def _run(arguments: list[str], *, capture: bool = True) -> str:
@@ -459,8 +460,20 @@ def verify_deployment(
             reconciler_job,
             "reconciler",
             contract["reconciler_image"],
-            ["/bin/sh", "-c"],
-            ['test "$RUNNER_ACTIVATION_STATE" = "ACTIVE" && exit 64 || exit 0'],
+            ["python3", "-c"],
+            [
+                (repository_root / "scripts/goal006_runner_lifecycle.py").read_text(
+                    encoding="utf-8"
+                ),
+                "reconcile",
+                "--app-manifest-json",
+                (
+                    repository_root
+                    / "architecture/reference/pipeline/github-runner-app-manifest.json"
+                ).read_text(encoding="utf-8"),
+                "--output",
+                RECONCILIATION_OUTPUT,
+            ],
         ),
         (
             broker_job,
@@ -491,7 +504,7 @@ def verify_deployment(
         if environment_values.get("RUNNER_ACTIVATION_STATE") != contract["activation_state"]:
             raise RuntimeError(f"{container_name} job activation state differs from blueprint")
         if container.get("command") != expected_command:
-            raise RuntimeError(f"{container_name} job fail-closed command differs from blueprint")
+            raise RuntimeError(f"{container_name} job command differs from blueprint")
         if expected_arguments is not None and container.get("args") != expected_arguments:
             raise RuntimeError(f"{container_name} job arguments differ from blueprint")
         if container_name in {"runner", "broker", "cleanup-broker"} and not {

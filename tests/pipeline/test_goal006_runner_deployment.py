@@ -120,13 +120,19 @@ def test_live_plan_rejects_unauthorized_environment() -> None:
 
 
 @pytest.mark.parametrize(
-    ("activation_state", "reconciler_trigger"),
-    [("ACTIVE", "Schedule"), ("INACTIVE", "Manual")],
+    ("activation_state", "reconciler_trigger", "reconciler_command", "expected_error"),
+    [
+        ("ACTIVE", "Schedule", ["python3", "-c"], None),
+        ("INACTIVE", "Manual", ["python3", "-c"], None),
+        ("ACTIVE", "Schedule", ["/bin/sh", "-c"], "reconciler job command differs"),
+    ],
 )
 def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
     monkeypatch: pytest.MonkeyPatch,
     activation_state: str,
     reconciler_trigger: str,
+    reconciler_command: list[str],
+    expected_error: str | None,
 ) -> None:
     environment = "demo"
     contract = {
@@ -222,13 +228,24 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
                                         {"name": "RUNNER_TOKEN_SECRET_NAME", "value": "token"},
                                     ]
                                 ),
-                                "command": ["/bin/sh", "-c"]
+                                "command": reconciler_command
                                 if reconciler
                                 else ["python3", "/opt/waooaw/goal006_runner_lifecycle.py"]
                                 if broker or cleanup_broker
                                 else ["/opt/waooaw/entrypoint.sh"],
                                 "args": [
-                                    'test "$RUNNER_ACTIVATION_STATE" = "ACTIVE" && exit 64 || exit 0'
+                                    (
+                                        REPOSITORY_ROOT
+                                        / "scripts/goal006_runner_lifecycle.py"
+                                    ).read_text(encoding="utf-8"),
+                                    "reconcile",
+                                    "--app-manifest-json",
+                                    (
+                                        REPOSITORY_ROOT
+                                        / "architecture/reference/pipeline/github-runner-app-manifest.json"
+                                    ).read_text(encoding="utf-8"),
+                                    "--output",
+                                    "/tmp/reconciliation-record.json",
                                 ]
                                 if reconciler
                                 else ["start", "--app-manifest", "/opt/waooaw/github-runner-app-manifest.json", "--output", "/home/runner/lifecycle-record.json"]
@@ -244,6 +261,16 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
         raise AssertionError(arguments)
 
     monkeypatch.setattr("scripts.goal006_runner_deployment._az", live_azure)
+    if expected_error is not None:
+        with pytest.raises(RuntimeError, match=expected_error):
+            verify_deployment(
+                repository_root=REPOSITORY_ROOT,
+                manifest_path=MANIFEST,
+                environment=environment,
+                source_commit="f" * 40,
+                plan_digest="sha256:plan",
+            )
+        return
     record = verify_deployment(
         repository_root=REPOSITORY_ROOT,
         manifest_path=MANIFEST,
