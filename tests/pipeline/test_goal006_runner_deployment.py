@@ -268,6 +268,10 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
                                     if reconciler
                                     else [
                                         {
+                                            "name": "AZURE_CLIENT_ID",
+                                            "value": "client-id",
+                                        },
+                                        {
                                             "name": "RUNNER_ACTIVATION_STATE",
                                             "value": activation_state,
                                         },
