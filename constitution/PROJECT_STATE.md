@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 125
+**State Revision:** 126
 **Last Updated:** 2026-08-22
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -39,8 +39,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Private runner decision | ACCEPTED - independent EA and Security review of commit `7e5bd4b` returned APPROVE with no blockers |
 | Demo runner bootstrap | MERGED - PR #326 merged as `dee4ca6`; runner image published and attested as `ghcr.io/dlai-sd/goal006-private-runner@sha256:83811baf0d2a425d8f8c308daef3cf172bdca173d9f8d12c7d9a02838a227518` |
 | Private signing decision | AUTHORIZED - dedicated `waooaw-private-runner` App is installed only on `dlai-sd/waooaw-platform`; zero-idle ACA broker and existing FA-052 ceiling are unchanged |
-| Activation correction | IN PROGRESS - personal-account installation requires repository runner APIs and Key Vault private DNS requires `privatelink.vaultcore.azure.net`; correction is implemented locally for reviewed PR delivery |
-| Local validation | PASS - 69 GOAL-006 runner tests, Ruff, Bicep compilation and all-environment immutable manifest validation |
+| Activation correction | PR #327 OPEN - repository runner APIs, `privatelink.vaultcore.azure.net`, and a permanent zero-idle Azure-only App-key importer are implemented without GitHub Secrets |
+| Local validation | PASS - 69 GOAL-006 runner tests, Ruff, Bicep compilation, all-environment immutable manifest validation, image build and packaged importer smoke test |
 | Architecture review | PENDING - ADR-047 repository-installation amendment requires Founder review through the correction PR; no institutional reviewer invoked |
 | Demo deploy / verify | BLOCKED - correction must merge, Demo stack must reconcile from reviewed preview, App key must be imported over the proven private route, and private-path qualification must pass; no public fallback |
 | Founder Demo acceptance | PENDING - P3-EX08 remains a separate control point after the verified Azure URL is returned |
@@ -69,7 +69,7 @@ progression.
 
 P3-EX07 activation remains blocked until the repository-scoped runner and Key Vault private DNS
 correction merges, the reviewed Demo Deployment Stack preview is applied, private DNS resolves the
-vault endpoint inside ACA, the replacement App key is imported without disclosure, and private
+vault endpoint inside ACA, the replacement App key is imported through the permanent zero-idle importer, and private
 qualification passes. The broker preserves `publicNetworkAccess=Disabled`, `defaultAction=Deny` and
 `bypass=None`, and introduces no public fallback. UAT remains constitutionally blocked until the
 Founder explicitly accepts the resulting Demo deployment.
@@ -77,7 +77,7 @@ Founder explicitly accepts the resulting Demo deployment.
 ## Next Authorized Action
 
 Review and merge the repository-runner/DNS correction, run the existing Demo Deployment Stack preview
-and apply path, prove private Key Vault DNS from ACA, import the replacement App key, and qualify the
+and apply path, prove private Key Vault DNS from ACA, run `scripts/goal006_import_app_signing_material.sh demo`, and qualify the
 private path. Do not create UAT/Production runner resources, apply Demo workloads before qualification,
 disable Storage public access, or initiate UAT.
 

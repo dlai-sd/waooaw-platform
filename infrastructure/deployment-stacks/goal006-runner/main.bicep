@@ -39,6 +39,7 @@ var runnerSubnetId = '${runnerVnet.id}/subnets/runner'
 var privateEndpointSubnetId = '${runnerVnet.id}/subnets/private-endpoints'
 var keyVaultSecretsUserRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
 var keyVaultCryptoUserRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '12338af0-0e69-4776-bea7-57ae8d297424')
+var keyVaultCryptoOfficerRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '14b46e9e-c2b7-41b4-b07b-48a6ebf60603')
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: '${prefix}-logs'
@@ -185,6 +186,12 @@ resource cleanupIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-
   tags: commonTags
 }
 
+resource keyImportIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: '${prefix}-key-import-identity'
+  location: location
+  tags: commonTags
+}
+
 resource cleanupFederatedCredential 'Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2023-01-31' = {
   parent: cleanupIdentity
   name: 'github-${environment}-runner-cleanup'
@@ -254,6 +261,16 @@ resource cleanupSecretAccess 'Microsoft.Authorization/roleAssignments@2022-04-01
     principalId: cleanupIdentity.properties.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: cleanupDeleterRoleDefinitionId
+  }
+}
+
+resource keyImportAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: runnerVault
+  name: guid(runnerVault.id, keyImportIdentity.id, keyVaultCryptoOfficerRoleId)
+  properties: {
+    principalId: keyImportIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: keyVaultCryptoOfficerRoleId
   }
 }
 
@@ -468,6 +485,46 @@ resource runnerJob 'Microsoft.App/jobs@2024-03-01' = {
   }
 }
 
+resource keyImportApp 'Microsoft.App/containerApps@2024-03-01' = {
+  name: '${prefix}-key-import'
+  location: location
+  tags: commonTags
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${keyImportIdentity.id}': {}
+    }
+  }
+  properties: {
+    managedEnvironmentId: runnerEnvironment.id
+    configuration: {
+      activeRevisionsMode: 'Single'
+    }
+    template: {
+      containers: [
+        {
+          name: 'key-import'
+          image: runnerImage
+          command: ['tail', '-f', '/dev/null']
+          env: [
+            { name: 'AZURE_CLIENT_ID', value: keyImportIdentity.properties.clientId }
+            { name: 'RUNNER_VAULT_NAME', value: runnerVault.name }
+            { name: 'GITHUB_APP_KEY_NAME', value: 'github-runner-app-signing' }
+          ]
+          resources: {
+            cpu: json('0.25')
+            memory: '0.5Gi'
+          }
+        }
+      ]
+      scale: {
+        minReplicas: 0
+        maxReplicas: 1
+      }
+    }
+  }
+}
+
 resource brokerJobControl 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   scope: runnerJob
   name: guid(runnerJob.id, brokerIdentity.id, brokerJobOperatorRoleDefinitionId)
@@ -650,9 +707,11 @@ output brokerIdentityId string = brokerIdentity.id
 output brokerIdentityClientId string = brokerIdentity.properties.clientId
 output cleanupIdentityId string = cleanupIdentity.id
 output cleanupIdentityClientId string = cleanupIdentity.properties.clientId
+output keyImportIdentityId string = keyImportIdentity.id
 output runnerVaultUri string = runnerVault.properties.vaultUri
 output runnerEnvironmentId string = runnerEnvironment.id
 output runnerJobId string = runnerJob.id
 output brokerJobId string = brokerJob.id
 output cleanupBrokerJobId string = cleanupBrokerJob.id
 output reconcilerJobId string = reconcilerJob.id
+output keyImportAppId string = keyImportApp.id

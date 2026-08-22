@@ -9,7 +9,7 @@ USER root
 
 RUN apt-get update \
   && apt-get upgrade -y \
-    && apt-get install -y --no-install-recommends ca-certificates dnsutils jq unzip \
+    && apt-get install -y --no-install-recommends ca-certificates dnsutils jq openssl unzip \
     && curl --fail --location --silent --show-error \
       --output /tmp/azure-cli.deb \
       "https://packages.microsoft.com/repos/azure-cli/pool/main/a/azure-cli/azure-cli_${AZURE_CLI_VERSION}_amd64.deb" \
@@ -25,7 +25,8 @@ RUN apt-get update \
 COPY --chown=runner:runner scripts/goal006_runner_lifecycle.py /opt/waooaw/goal006_runner_lifecycle.py
 COPY --chown=runner:runner architecture/reference/pipeline/github-runner-app-manifest.json /opt/waooaw/github-runner-app-manifest.json
 COPY --chown=runner:runner infrastructure/runner/entrypoint.sh /opt/waooaw/entrypoint.sh
-RUN chmod 0555 /opt/waooaw/entrypoint.sh /opt/waooaw/goal006_runner_lifecycle.py
+COPY --chown=runner:runner infrastructure/runner/import-app-signing-material.sh /opt/waooaw/import-app-signing-material.sh
+RUN chmod 0555 /opt/waooaw/entrypoint.sh /opt/waooaw/goal006_runner_lifecycle.py /opt/waooaw/import-app-signing-material.sh
 
 USER runner
 WORKDIR /home/runner

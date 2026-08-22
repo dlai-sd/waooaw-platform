@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.46.1.21595",
-      "templateHash": "3681056044085731623"
+      "templateHash": "4236340873562497613"
     }
   },
   "parameters": {
@@ -145,7 +145,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.46.1.21595",
-              "templateHash": "11786919639559686939"
+              "templateHash": "6316277098131652971"
             }
           },
           "parameters": {
@@ -230,7 +230,8 @@
             "runnerSubnetId": "[format('{0}/subnets/runner', resourceId('Microsoft.Network/virtualNetworks', format('{0}-vnet', variables('prefix'))))]",
             "privateEndpointSubnetId": "[format('{0}/subnets/private-endpoints', resourceId('Microsoft.Network/virtualNetworks', format('{0}-vnet', variables('prefix'))))]",
             "keyVaultSecretsUserRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
-            "keyVaultCryptoUserRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '12338af0-0e69-4776-bea7-57ae8d297424')]"
+            "keyVaultCryptoUserRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '12338af0-0e69-4776-bea7-57ae8d297424')]",
+            "keyVaultCryptoOfficerRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '14b46e9e-c2b7-41b4-b07b-48a6ebf60603')]"
           },
           "resources": [
             {
@@ -390,6 +391,13 @@
               "tags": "[variables('commonTags')]"
             },
             {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2023-01-31",
+              "name": "[format('{0}-key-import-identity', variables('prefix'))]",
+              "location": "[parameters('location')]",
+              "tags": "[variables('commonTags')]"
+            },
+            {
               "type": "Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials",
               "apiVersion": "2023-01-31",
               "name": "[format('{0}/{1}', format('{0}-cleanup-identity', variables('prefix')), format('github-{0}-runner-cleanup', parameters('environment')))]",
@@ -469,6 +477,21 @@
               },
               "dependsOn": [
                 "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-cleanup-identity', variables('prefix')))]",
+                "[resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment')))]",
+              "name": "[guid(resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment'))), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-key-import-identity', variables('prefix'))), variables('keyVaultCryptoOfficerRoleId'))]",
+              "properties": {
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-key-import-identity', variables('prefix'))), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal",
+                "roleDefinitionId": "[variables('keyVaultCryptoOfficerRoleId')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-key-import-identity', variables('prefix')))]",
                 "[resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment')))]"
               ]
             },
@@ -740,6 +763,65 @@
               "dependsOn": [
                 "[resourceId('Microsoft.App/managedEnvironments', format('{0}-aca', variables('prefix')))]",
                 "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', variables('prefix')))]",
+                "[resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2024-03-01",
+              "name": "[format('{0}-key-import', variables('prefix'))]",
+              "location": "[parameters('location')]",
+              "tags": "[variables('commonTags')]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-key-import-identity', variables('prefix'))))]": {}
+                }
+              },
+              "properties": {
+                "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', format('{0}-aca', variables('prefix')))]",
+                "configuration": {
+                  "activeRevisionsMode": "Single"
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "key-import",
+                      "image": "[parameters('runnerImage')]",
+                      "command": [
+                        "tail",
+                        "-f",
+                        "/dev/null"
+                      ],
+                      "env": [
+                        {
+                          "name": "AZURE_CLIENT_ID",
+                          "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-key-import-identity', variables('prefix'))), '2023-01-31').clientId]"
+                        },
+                        {
+                          "name": "RUNNER_VAULT_NAME",
+                          "value": "[format('waooaw-{0}-runner-kv', parameters('environment'))]"
+                        },
+                        {
+                          "name": "GITHUB_APP_KEY_NAME",
+                          "value": "github-runner-app-signing"
+                        }
+                      ],
+                      "resources": {
+                        "cpu": "[json('0.25')]",
+                        "memory": "0.5Gi"
+                      }
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": 0,
+                    "maxReplicas": 1
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-key-import-identity', variables('prefix')))]",
+                "[resourceId('Microsoft.App/managedEnvironments', format('{0}-aca', variables('prefix')))]",
                 "[resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment')))]"
               ]
             },
@@ -1084,6 +1166,10 @@
               "type": "string",
               "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-cleanup-identity', variables('prefix'))), '2023-01-31').clientId]"
             },
+            "keyImportIdentityId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-key-import-identity', variables('prefix')))]"
+            },
             "runnerVaultUri": {
               "type": "string",
               "value": "[reference(resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment'))), '2023-07-01').vaultUri]"
@@ -1107,6 +1193,10 @@
             "reconcilerJobId": {
               "type": "string",
               "value": "[resourceId('Microsoft.App/jobs', format('{0}-reconciler', variables('prefix')))]"
+            },
+            "keyImportAppId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.App/containerApps', format('{0}-key-import', variables('prefix')))]"
             }
           }
         }

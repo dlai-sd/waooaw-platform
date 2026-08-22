@@ -215,10 +215,13 @@ def test_runner_image_uses_immutable_inputs_and_ephemeral_registration() -> None
 
     dockerfile = Path("infrastructure/runner/Dockerfile").read_text(encoding="utf-8")
     entrypoint = Path("infrastructure/runner/entrypoint.sh").read_text(encoding="utf-8")
+    importer = Path("infrastructure/runner/import-app-signing-material.sh").read_text(encoding="utf-8")
+    operator = Path("scripts/goal006_import_app_signing_material.sh").read_text(encoding="utf-8")
 
     assert "FROM ghcr.io/actions/actions-runner@sha256:" in dockerfile
     assert "AZURE_CLI_SHA256=" in dockerfile
     assert "TERRAFORM_SHA256=" in dockerfile
+    assert "jq openssl unzip" in dockerfile
     assert "sha256sum --check --strict" in dockerfile
     assert "--ephemeral" in entrypoint
     assert "--disableupdate" in entrypoint
@@ -229,6 +232,16 @@ def test_runner_image_uses_immutable_inputs_and_ephemeral_registration() -> None
     assert "unset RUNNER_REGISTRATION_TOKEN" in entrypoint
     assert "--replace" not in entrypoint
     assert "github-runner-app-manifest.json /opt/waooaw/github-runner-app-manifest.json" in dockerfile
+    assert "import-app-signing-material.sh /opt/waooaw/import-app-signing-material.sh" in dockerfile
+    assert "stty -echo" in importer
+    assert "--pem-file" in importer
+    assert "--pem-string" not in importer
+    assert "--exportable false" in importer
+    assert "--ops sign verify" in importer
+    assert "unset" not in operator
+    assert "--min-replicas 1" in operator
+    assert "--min-replicas 0" in operator
+    assert "az containerapp exec" in operator
     assert entrypoint.index('test "$RUNNER_ACTIVATION_STATE" = ACTIVE || exit 0') < entrypoint.index("required_environment=(")
 
 
