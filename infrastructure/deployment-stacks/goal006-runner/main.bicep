@@ -293,7 +293,7 @@ resource blobPrivateDns 'Microsoft.Network/privateDnsZones@2024-06-01' = {
 }
 
 resource vaultPrivateDns 'Microsoft.Network/privateDnsZones@2024-06-01' = {
-  name: 'privatelink${az.environment().suffixes.keyvaultDns}'
+  name: 'privatelink.vaultcore.azure.net'
   location: 'global'
   tags: commonTags
 }
@@ -446,10 +446,6 @@ resource runnerJob 'Microsoft.App/jobs@2024-03-01' = {
               value: activationState
             }
             {
-              name: 'RUNNER_GROUP'
-              value: 'goal006-${environment}-private'
-            }
-            {
               name: 'RUNNER_LABEL'
               value: 'goal006-${environment}-private'
             }
@@ -525,7 +521,6 @@ resource brokerJob 'Microsoft.App/jobs@2024-03-01' = {
             { name: 'GITHUB_APP_ID', value: githubAppId }
             { name: 'GITHUB_APP_INSTALLATION_ID', value: githubAppInstallationId }
             { name: 'GITHUB_APP_KEY_ID', value: '${runnerVault.properties.vaultUri}keys/${githubAppKeyName}/${githubAppKeyVersion}' }
-            { name: 'RUNNER_GROUP', value: 'goal006-${environment}-private' }
             { name: 'RUNNER_LABEL', value: 'goal006-${environment}-private' }
           ]
           resources: {
@@ -581,7 +576,6 @@ resource cleanupBrokerJob 'Microsoft.App/jobs@2024-03-01' = {
             { name: 'GITHUB_APP_ID', value: githubAppId }
             { name: 'GITHUB_APP_INSTALLATION_ID', value: githubAppInstallationId }
             { name: 'GITHUB_APP_KEY_ID', value: '${runnerVault.properties.vaultUri}keys/${githubAppKeyName}/${githubAppKeyVersion}' }
-            { name: 'RUNNER_GROUP', value: 'goal006-${environment}-private' }
             { name: 'RUNNER_LABEL', value: 'goal006-${environment}-private' }
           ]
           resources: {

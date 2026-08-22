@@ -168,8 +168,8 @@ def test_stack_is_environment_generic_and_uses_valid_private_dns() -> None:
     for environment in ("demo", "uat", "prod"):
         assert f"  '{environment}'" in main
         assert f"  '{environment}'" in subscription
-    assert "privatelink${az.environment().suffixes.keyvaultDns}" in main
-    assert "privatelink.${az.environment().suffixes.keyvaultDns}" not in main
+    assert "privatelink.vaultcore.azure.net" in main
+    assert "privatelink${az.environment().suffixes.keyvaultDns}" not in main
     assert "goal006-${environment}-private" in main
     assert "resource brokerIdentity" in main
     assert "resource brokerJob" in main

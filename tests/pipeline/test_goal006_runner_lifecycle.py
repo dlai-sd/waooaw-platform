@@ -18,6 +18,7 @@ from scripts.goal006_runner_lifecycle import (
     runner_name,
     read_runner_token,
     select_correlated_runner,
+    validate_installation,
 )
 
 
@@ -116,11 +117,60 @@ def test_app_manifest_does_not_grant_actions_permission() -> None:
             "architecture/reference/pipeline/github-runner-app-manifest.json"
         ).read_text(encoding="utf-8")
     )
-    assert "actions" not in manifest["organization_permissions"]
     assert "actions" not in manifest["repository_permissions"]
     assert "actions" in manifest["prohibited_permissions"]
-    assert manifest["installation_target"] == "organization"
-    assert manifest["organization"] == "dlai-sd"
+    assert manifest["installation_target"] == "user"
+    assert manifest["account"] == "dlai-sd"
+    assert manifest["repository_permissions"] == {
+        "administration": "write",
+        "metadata": "read",
+    }
+
+
+def test_personal_installation_is_repository_scoped() -> None:
+    manifest = {
+        "installation_target": "user",
+        "account": "dlai-sd",
+        "repositories": ["waooaw-platform"],
+        "repository_permissions": {"administration": "write", "metadata": "read"},
+    }
+
+    class InstallationApi:
+        def __init__(self) -> None:
+            self.urls: list[str] = []
+
+        def request(self, method, url, **kwargs):
+            self.urls.append(url)
+            if url.endswith("/app/installations/155648751"):
+                return {
+                    "target_type": "User",
+                    "account": {"login": "dlai-sd"},
+                    "permissions": manifest["repository_permissions"],
+                }
+            if url.endswith("/app/installations/155648751/access_tokens"):
+                return {"token": "installation-token"}
+            if url.endswith("/installation/repositories?per_page=100"):
+                return {"repositories": [{"name": "waooaw-platform"}]}
+            raise AssertionError(url)
+
+    api = InstallationApi()
+    assert validate_installation(api, manifest, "155648751", "app-jwt") == (
+        "installation-token"
+    )
+    assert all("/orgs/" not in url for url in api.urls)
+
+
+def test_runner_control_uses_repository_endpoints() -> None:
+    source = __import__("pathlib").Path(
+        "scripts/goal006_runner_lifecycle.py"
+    ).read_text(encoding="utf-8")
+
+    assert 'f"/repos/{context.repository}/actions/runners?per_page=100"' in source
+    assert (
+        'f"/repos/{context.repository}/actions/runners/registration-token"' in source
+    )
+    assert 'f"/repos/{context.repository}/actions/runners/{runner[' in source
+    assert "/orgs/" not in source
 
 
 def test_lifecycle_source_never_serializes_tokens_into_evidence() -> None:
@@ -172,7 +222,9 @@ def test_runner_image_uses_immutable_inputs_and_ephemeral_registration() -> None
     assert "sha256sum --check --strict" in dockerfile
     assert "--ephemeral" in entrypoint
     assert "--disableupdate" in entrypoint
-    assert "--runnergroup" in entrypoint
+    assert '--url "https://github.com/$GITHUB_REPOSITORY"' in entrypoint
+    assert "--runnergroup" not in entrypoint
+    assert "RUNNER_GROUP" not in entrypoint
     assert "github-run-$GITHUB_WORKFLOW_RUN_ID" in entrypoint
     assert "unset RUNNER_REGISTRATION_TOKEN" in entrypoint
     assert "--replace" not in entrypoint

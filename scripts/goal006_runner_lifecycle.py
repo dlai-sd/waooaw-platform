@@ -95,7 +95,6 @@ class RunnerContext:
     app_id: str
     installation_id: str
     app_key_id: str
-    runner_group: str
     runner_label: str
     activation_state: str
 
@@ -114,7 +113,6 @@ class RunnerContext:
             "app_id": "GITHUB_APP_ID",
             "installation_id": "GITHUB_APP_INSTALLATION_ID",
             "app_key_id": "GITHUB_APP_KEY_ID",
-            "runner_group": "RUNNER_GROUP",
             "runner_label": "RUNNER_LABEL",
             "activation_state": "RUNNER_ACTIVATION_STATE",
         }
@@ -256,14 +254,11 @@ def validate_installation(
     app_jwt: str,
 ) -> str:
     installation = _github(api, "GET", f"/app/installations/{installation_id}", app_jwt)
-    expected_permissions = {
-        **manifest["organization_permissions"],
-        **manifest["repository_permissions"],
-    }
-    if installation.get("target_type") != "Organization":
-        raise LifecycleError("GitHub App installation target is not Organization")
-    if installation.get("account", {}).get("login") != manifest["organization"]:
-        raise LifecycleError("GitHub App organization differs from manifest")
+    expected_permissions = manifest["repository_permissions"]
+    if installation.get("target_type") != "User":
+        raise LifecycleError("GitHub App installation target is not User")
+    if installation.get("account", {}).get("login") != manifest["account"]:
+        raise LifecycleError("GitHub App account differs from manifest")
     if installation.get("permissions") != expected_permissions:
         raise LifecycleError("GitHub App permissions differ from manifest")
     token_response = _github(
@@ -280,16 +275,6 @@ def validate_installation(
     observed = sorted(item["name"] for item in repositories.get("repositories", []))
     if observed != sorted(manifest["repositories"]):
         raise LifecycleError("GitHub App repositories differ from manifest")
-    groups = _github(
-        api,
-        "GET",
-        f"/orgs/{manifest['organization']}/actions/runner-groups?per_page=100",
-        installation_token,
-    )
-    observed_groups = {item["name"] for item in groups.get("runner_groups", [])}
-    missing_groups = sorted(set(manifest["runner_groups"].values()) - observed_groups)
-    if missing_groups:
-        raise LifecycleError("GitHub runner groups missing: " + ", ".join(missing_groups))
     return installation_token
 
 
@@ -327,23 +312,6 @@ def _read_manifest(path: Path) -> dict[str, Any]:
     if manifest.get("schema_version") != "1.0":
         raise LifecycleError("GitHub App manifest schema is invalid")
     return manifest
-
-
-def _runner_group_id(
-    api: JsonApi, organization: str, group_name: str, installation_token: str
-) -> int:
-    response = _github(
-        api,
-        "GET",
-        f"/orgs/{organization}/actions/runner-groups?per_page=100",
-        installation_token,
-    )
-    matches = [
-        item for item in response.get("runner_groups", []) if item.get("name") == group_name
-    ]
-    if len(matches) != 1 or not isinstance(matches[0].get("id"), int):
-        raise LifecycleError("runner group selector is ambiguous")
-    return int(matches[0]["id"])
 
 
 def _execution_environment(execution: Mapping[str, Any]) -> dict[str, str]:
@@ -415,9 +383,8 @@ def _start_execution(api: JsonApi, context: RunnerContext) -> str:
     for name, value in {
         "RUNNER_CORRELATION_ID": context.correlation,
         "RUNNER_NAME": context.runner_name,
-        "RUNNER_GROUP": context.runner_group,
         "RUNNER_LABEL": context.runner_label,
-        "GITHUB_ORGANIZATION": context.organization,
+        "GITHUB_REPOSITORY": context.repository,
         "GITHUB_WORKFLOW_RUN_ID": context.run_id,
         "GITHUB_WORKFLOW_RUN_ATTEMPT": context.run_attempt,
     }.items():
@@ -484,10 +451,10 @@ def _find_correlated_execution(api: JsonApi, context: RunnerContext) -> str:
 
 def start_runner(api: JsonApi, context: RunnerContext, manifest_path: Path) -> dict[str, Any]:
     manifest = _read_manifest(manifest_path)
-    if manifest["organization"] != context.organization:
-        raise LifecycleError("repository organization differs from App manifest")
-    if manifest["runner_groups"].get(context.environment) != context.runner_group:
-        raise LifecycleError("runner group differs from App manifest")
+    if manifest["account"] != context.organization:
+        raise LifecycleError("repository account differs from App manifest")
+    if context.repository.split("/", 1)[1] not in manifest["repositories"]:
+        raise LifecycleError("repository differs from App manifest")
     app_jwt = create_app_jwt(
         context.app_id,
         context.app_key_id,
@@ -496,13 +463,10 @@ def start_runner(api: JsonApi, context: RunnerContext, manifest_path: Path) -> d
     installation_token = validate_installation(
         api, manifest, context.installation_id, app_jwt
     )
-    group_id = _runner_group_id(
-        api, context.organization, context.runner_group, installation_token
-    )
     runners = _github(
         api,
         "GET",
-        f"/orgs/{context.organization}/actions/runner-groups/{group_id}/runners?per_page=100",
+        f"/repos/{context.repository}/actions/runners?per_page=100",
         installation_token,
     ).get("runners", [])
     stale = [
@@ -518,7 +482,7 @@ def start_runner(api: JsonApi, context: RunnerContext, manifest_path: Path) -> d
     registration = _github(
         api,
         "POST",
-        f"/orgs/{context.organization}/actions/runners/registration-token",
+        f"/repos/{context.repository}/actions/runners/registration-token",
         installation_token,
     )
     registration_token = str(registration.get("token", ""))
@@ -531,7 +495,6 @@ def start_runner(api: JsonApi, context: RunnerContext, manifest_path: Path) -> d
         "environment": context.environment,
         "correlation_id": context.correlation,
         "runner_name": context.runner_name,
-        "runner_group": context.runner_group,
         "runner_label": context.runner_label,
         "workflow_run_id": context.run_id,
         "workflow_run_attempt": context.run_attempt,
@@ -552,7 +515,6 @@ def cleanup_runner(
         "environment": context.environment,
         "correlation_id": context.correlation,
         "runner_name": context.runner_name,
-        "runner_group": context.runner_group,
         "runner_label": context.runner_label,
         "workflow_run_id": context.run_id,
         "workflow_run_attempt": context.run_attempt,
@@ -576,12 +538,7 @@ def cleanup_runner(
     if private_job_conclusion not in TERMINAL_CONCLUSIONS:
         raise LifecycleError("private deployment job is not terminal")
 
-    group_id = _runner_group_id(
-        api, context.organization, context.runner_group, installation_token
-    )
-    runners_path = (
-        f"/orgs/{context.organization}/actions/runner-groups/{group_id}/runners?per_page=100"
-    )
+    runners_path = f"/repos/{context.repository}/actions/runners?per_page=100"
     runners = _github(api, "GET", runners_path, installation_token).get("runners", [])
     runner = select_correlated_runner(
         runners,
@@ -607,7 +564,7 @@ def cleanup_runner(
         _github(
             api,
             "DELETE",
-            f"/orgs/{context.organization}/actions/runners/{runner['id']}",
+            f"/repos/{context.repository}/actions/runners/{runner['id']}",
             installation_token,
         )
     execution_status = str(execution.get("properties", {}).get("status", ""))
@@ -658,7 +615,6 @@ def cleanup_correlated_runner(
         "environment": context.environment,
         "correlation_id": context.correlation,
         "runner_name": context.runner_name,
-        "runner_group": context.runner_group,
         "runner_label": context.runner_label,
         "workflow_run_id": context.run_id,
         "workflow_run_attempt": context.run_attempt,

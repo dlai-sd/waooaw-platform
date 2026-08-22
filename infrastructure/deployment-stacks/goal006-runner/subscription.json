@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.46.1.21595",
-      "templateHash": "16111207949522846464"
+      "templateHash": "3681056044085731623"
     }
   },
   "parameters": {
@@ -44,6 +44,18 @@
     "reconcilerImage": {
       "type": "string"
     },
+    "githubAppId": {
+      "type": "string"
+    },
+    "githubAppInstallationId": {
+      "type": "string"
+    },
+    "githubAppKeyName": {
+      "type": "string"
+    },
+    "githubAppKeyVersion": {
+      "type": "string"
+    },
     "runnerVnetAddressPrefix": {
       "type": "string"
     },
@@ -55,10 +67,12 @@
     }
   },
   "variables": {
-    "bootstrapSecretWriterRoleSeed": "[if(equals(parameters('environment'), 'demo'), 'goal006-bootstrap-secret-writer', format('goal006-{0}-bootstrap-secret-writer', parameters('environment')))]",
+    "brokerSecretWriterRoleSeed": "[if(equals(parameters('environment'), 'demo'), 'goal006-bootstrap-secret-writer', format('goal006-{0}-bootstrap-secret-writer', parameters('environment')))]",
     "cleanupSecretDeleterRoleSeed": "[if(equals(parameters('environment'), 'demo'), 'goal006-cleanup-secret-deleter', format('goal006-{0}-cleanup-secret-deleter', parameters('environment')))]",
-    "bootstrapSecretWriterRoleName": "[guid(subscription().id, variables('bootstrapSecretWriterRoleSeed'))]",
-    "cleanupSecretDeleterRoleName": "[guid(subscription().id, variables('cleanupSecretDeleterRoleSeed'))]"
+    "brokerSecretWriterRoleName": "[guid(subscription().id, variables('brokerSecretWriterRoleSeed'))]",
+    "cleanupSecretDeleterRoleName": "[guid(subscription().id, variables('cleanupSecretDeleterRoleSeed'))]",
+    "brokerJobOperatorRoleName": "[guid(subscription().id, format('goal006-{0}-broker-job-operator', parameters('environment')))]",
+    "cleanupJobOperatorRoleName": "[guid(subscription().id, format('goal006-{0}-cleanup-job-operator', parameters('environment')))]"
   },
   "resources": [
     {
@@ -84,20 +98,35 @@
           "stateStorageAccountId": {
             "value": "[parameters('stateStorageAccountId')]"
           },
-          "bootstrapPrincipalId": {
-            "value": "[parameters('bootstrapPrincipalId')]"
+          "brokerWriterRoleDefinitionId": {
+            "value": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('brokerSecretWriterRoleName'))]"
           },
-          "bootstrapWriterRoleDefinitionId": {
-            "value": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('bootstrapSecretWriterRoleName'))]"
+          "brokerJobOperatorRoleDefinitionId": {
+            "value": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('brokerJobOperatorRoleName'))]"
           },
           "cleanupDeleterRoleDefinitionId": {
             "value": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('cleanupSecretDeleterRoleName'))]"
+          },
+          "cleanupJobOperatorRoleDefinitionId": {
+            "value": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('cleanupJobOperatorRoleName'))]"
           },
           "runnerImage": {
             "value": "[parameters('runnerImage')]"
           },
           "reconcilerImage": {
             "value": "[parameters('reconcilerImage')]"
+          },
+          "githubAppId": {
+            "value": "[parameters('githubAppId')]"
+          },
+          "githubAppInstallationId": {
+            "value": "[parameters('githubAppInstallationId')]"
+          },
+          "githubAppKeyName": {
+            "value": "[parameters('githubAppKeyName')]"
+          },
+          "githubAppKeyVersion": {
+            "value": "[parameters('githubAppKeyVersion')]"
           },
           "runnerVnetAddressPrefix": {
             "value": "[parameters('runnerVnetAddressPrefix')]"
@@ -116,7 +145,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.46.1.21595",
-              "templateHash": "193786239859871713"
+              "templateHash": "11786919639559686939"
             }
           },
           "parameters": {
@@ -143,13 +172,16 @@
             "stateStorageAccountId": {
               "type": "string"
             },
-            "bootstrapPrincipalId": {
+            "brokerWriterRoleDefinitionId": {
               "type": "string"
             },
-            "bootstrapWriterRoleDefinitionId": {
+            "brokerJobOperatorRoleDefinitionId": {
               "type": "string"
             },
             "cleanupDeleterRoleDefinitionId": {
+              "type": "string"
+            },
+            "cleanupJobOperatorRoleDefinitionId": {
               "type": "string"
             },
             "runnerImage": {
@@ -157,6 +189,22 @@
             },
             "reconcilerImage": {
               "type": "string"
+            },
+            "githubAppId": {
+              "type": "string"
+            },
+            "githubAppInstallationId": {
+              "type": "string"
+            },
+            "githubAppKeyName": {
+              "type": "string"
+            },
+            "githubAppKeyVersion": {
+              "type": "string"
+            },
+            "runnerTokenSecretName": {
+              "type": "string",
+              "defaultValue": "runner-registration-token"
             },
             "runnerVnetAddressPrefix": {
               "type": "string",
@@ -181,7 +229,8 @@
             },
             "runnerSubnetId": "[format('{0}/subnets/runner', resourceId('Microsoft.Network/virtualNetworks', format('{0}-vnet', variables('prefix'))))]",
             "privateEndpointSubnetId": "[format('{0}/subnets/private-endpoints', resourceId('Microsoft.Network/virtualNetworks', format('{0}-vnet', variables('prefix'))))]",
-            "keyVaultSecretsUserRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]"
+            "keyVaultSecretsUserRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
+            "keyVaultCryptoUserRoleId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '12338af0-0e69-4776-bea7-57ae8d297424')]"
           },
           "resources": [
             {
@@ -329,9 +378,31 @@
             {
               "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
               "apiVersion": "2023-01-31",
+              "name": "[format('{0}-broker-identity', variables('prefix'))]",
+              "location": "[parameters('location')]",
+              "tags": "[variables('commonTags')]"
+            },
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2023-01-31",
               "name": "[format('{0}-cleanup-identity', variables('prefix'))]",
               "location": "[parameters('location')]",
               "tags": "[variables('commonTags')]"
+            },
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials",
+              "apiVersion": "2023-01-31",
+              "name": "[format('{0}/{1}', format('{0}-cleanup-identity', variables('prefix')), format('github-{0}-runner-cleanup', parameters('environment')))]",
+              "properties": {
+                "issuer": "https://token.actions.githubusercontent.com",
+                "subject": "[format('repo:dlai-sd/waooaw-platform:environment:{0}', parameters('environment'))]",
+                "audiences": [
+                  "api://AzureADTokenExchange"
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-cleanup-identity', variables('prefix')))]"
+              ]
             },
             {
               "type": "Microsoft.KeyVault/vaults",
@@ -375,13 +446,14 @@
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
               "scope": "[resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment')))]",
-              "name": "[guid(resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment'))), parameters('bootstrapPrincipalId'), parameters('bootstrapWriterRoleDefinitionId'))]",
+              "name": "[guid(resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment'))), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-broker-identity', variables('prefix'))), parameters('brokerWriterRoleDefinitionId'))]",
               "properties": {
-                "principalId": "[parameters('bootstrapPrincipalId')]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-broker-identity', variables('prefix'))), '2023-01-31').principalId]",
                 "principalType": "ServicePrincipal",
-                "roleDefinitionId": "[parameters('bootstrapWriterRoleDefinitionId')]"
+                "roleDefinitionId": "[parameters('brokerWriterRoleDefinitionId')]"
               },
               "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-broker-identity', variables('prefix')))]",
                 "[resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment')))]"
               ]
             },
@@ -401,6 +473,51 @@
               ]
             },
             {
+              "condition": "[equals(parameters('activationState'), 'ACTIVE')]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.KeyVault/vaults/keys/versions', format('waooaw-{0}-runner-kv', parameters('environment')), parameters('githubAppKeyName'), parameters('githubAppKeyVersion'))]",
+              "name": "[guid(resourceId('Microsoft.KeyVault/vaults/keys/versions', format('waooaw-{0}-runner-kv', parameters('environment')), parameters('githubAppKeyName'), parameters('githubAppKeyVersion')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-broker-identity', variables('prefix'))), variables('keyVaultCryptoUserRoleId'))]",
+              "properties": {
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-broker-identity', variables('prefix'))), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal",
+                "roleDefinitionId": "[variables('keyVaultCryptoUserRoleId')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-broker-identity', variables('prefix')))]",
+                "[resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment')))]"
+              ]
+            },
+            {
+              "condition": "[equals(parameters('activationState'), 'ACTIVE')]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.KeyVault/vaults/keys/versions', format('waooaw-{0}-runner-kv', parameters('environment')), parameters('githubAppKeyName'), parameters('githubAppKeyVersion'))]",
+              "name": "[guid(resourceId('Microsoft.KeyVault/vaults/keys/versions', format('waooaw-{0}-runner-kv', parameters('environment')), parameters('githubAppKeyName'), parameters('githubAppKeyVersion')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-cleanup-identity', variables('prefix'))), variables('keyVaultCryptoUserRoleId'))]",
+              "properties": {
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-cleanup-identity', variables('prefix'))), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal",
+                "roleDefinitionId": "[variables('keyVaultCryptoUserRoleId')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-cleanup-identity', variables('prefix')))]",
+                "[resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-cleanup-identity', variables('prefix'))), parameters('cleanupJobOperatorRoleDefinitionId'))]",
+              "properties": {
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-cleanup-identity', variables('prefix'))), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal",
+                "roleDefinitionId": "[parameters('cleanupJobOperatorRoleDefinitionId')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-cleanup-identity', variables('prefix')))]"
+              ]
+            },
+            {
               "type": "Microsoft.Network/privateDnsZones",
               "apiVersion": "2024-06-01",
               "name": "[format('privatelink.blob.{0}', environment().suffixes.storage)]",
@@ -410,7 +527,7 @@
             {
               "type": "Microsoft.Network/privateDnsZones",
               "apiVersion": "2024-06-01",
-              "name": "[format('privatelink{0}', environment().suffixes.keyvaultDns)]",
+              "name": "privatelink.vaultcore.azure.net",
               "location": "global",
               "tags": "[variables('commonTags')]"
             },
@@ -434,7 +551,7 @@
             {
               "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
               "apiVersion": "2024-06-01",
-              "name": "[format('{0}/{1}', format('privatelink{0}', environment().suffixes.keyvaultDns), format('{0}-vault-link', variables('prefix')))]",
+              "name": "[format('{0}/{1}', 'privatelink.vaultcore.azure.net', format('{0}-vault-link', variables('prefix')))]",
               "location": "global",
               "tags": "[variables('commonTags')]",
               "properties": {
@@ -445,7 +562,7 @@
               },
               "dependsOn": [
                 "[resourceId('Microsoft.Network/virtualNetworks', format('{0}-vnet', variables('prefix')))]",
-                "[resourceId('Microsoft.Network/privateDnsZones', format('privatelink{0}', environment().suffixes.keyvaultDns))]"
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.vaultcore.azure.net')]"
               ]
             },
             {
@@ -529,13 +646,13 @@
                   {
                     "name": "vault",
                     "properties": {
-                      "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', format('privatelink{0}', environment().suffixes.keyvaultDns))]"
+                      "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.vaultcore.azure.net')]"
                     }
                   }
                 ]
               },
               "dependsOn": [
-                "[resourceId('Microsoft.Network/privateDnsZones', format('privatelink{0}', environment().suffixes.keyvaultDns))]",
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.vaultcore.azure.net')]",
                 "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-vault-pe', variables('prefix')))]"
               ]
             },
@@ -592,11 +709,7 @@
                       "name": "runner",
                       "image": "[parameters('runnerImage')]",
                       "command": [
-                        "/bin/bash",
-                        "-lc"
-                      ],
-                      "args": [
-                        "test \"$RUNNER_ACTIVATION_STATE\" = \"ACTIVE\" && test -n \"$ACTIONS_RUNNER_INPUT_JITCONFIG\" && exec ./run.sh --jitconfig \"$ACTIONS_RUNNER_INPUT_JITCONFIG\" || exit 0"
+                        "/opt/waooaw/entrypoint.sh"
                       ],
                       "env": [
                         {
@@ -604,12 +717,16 @@
                           "value": "[parameters('activationState')]"
                         },
                         {
-                          "name": "RUNNER_GROUP",
+                          "name": "RUNNER_LABEL",
                           "value": "[format('goal006-{0}-private', parameters('environment'))]"
                         },
                         {
-                          "name": "RUNNER_LABEL",
-                          "value": "[format('goal006-{0}-private', parameters('environment'))]"
+                          "name": "RUNNER_VAULT_URL",
+                          "value": "[reference(resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment'))), '2023-07-01').vaultUri]"
+                        },
+                        {
+                          "name": "RUNNER_TOKEN_SECRET_NAME",
+                          "value": "[parameters('runnerTokenSecretName')]"
                         }
                       ],
                       "resources": {
@@ -622,7 +739,257 @@
               },
               "dependsOn": [
                 "[resourceId('Microsoft.App/managedEnvironments', format('{0}-aca', variables('prefix')))]",
-                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', variables('prefix')))]"
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', variables('prefix')))]",
+                "[resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.App/jobs', format('{0}-job', variables('prefix')))]",
+              "name": "[guid(resourceId('Microsoft.App/jobs', format('{0}-job', variables('prefix'))), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-broker-identity', variables('prefix'))), parameters('brokerJobOperatorRoleDefinitionId'))]",
+              "properties": {
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-broker-identity', variables('prefix'))), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal",
+                "roleDefinitionId": "[parameters('brokerJobOperatorRoleDefinitionId')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-broker-identity', variables('prefix')))]",
+                "[resourceId('Microsoft.App/jobs', format('{0}-job', variables('prefix')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.App/jobs",
+              "apiVersion": "2024-03-01",
+              "name": "[format('{0}-broker', variables('prefix'))]",
+              "location": "[parameters('location')]",
+              "tags": "[variables('commonTags')]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-broker-identity', variables('prefix'))))]": {}
+                }
+              },
+              "properties": {
+                "environmentId": "[resourceId('Microsoft.App/managedEnvironments', format('{0}-aca', variables('prefix')))]",
+                "configuration": {
+                  "triggerType": "Manual",
+                  "replicaTimeout": 300,
+                  "replicaRetryLimit": 0,
+                  "manualTriggerConfig": {
+                    "parallelism": 1,
+                    "replicaCompletionCount": 1
+                  }
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "broker",
+                      "image": "[parameters('runnerImage')]",
+                      "command": [
+                        "python3",
+                        "/opt/waooaw/goal006_runner_lifecycle.py"
+                      ],
+                      "args": [
+                        "start",
+                        "--app-manifest",
+                        "/opt/waooaw/github-runner-app-manifest.json",
+                        "--output",
+                        "/home/runner/lifecycle-record.json"
+                      ],
+                      "env": [
+                        {
+                          "name": "AZURE_CLIENT_ID",
+                          "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-broker-identity', variables('prefix'))), '2023-01-31').clientId]"
+                        },
+                        {
+                          "name": "RUNNER_ACTIVATION_STATE",
+                          "value": "[parameters('activationState')]"
+                        },
+                        {
+                          "name": "RUNNER_ENVIRONMENT",
+                          "value": "[parameters('environment')]"
+                        },
+                        {
+                          "name": "GITHUB_REPOSITORY",
+                          "value": "dlai-sd/waooaw-platform"
+                        },
+                        {
+                          "name": "GITHUB_RUN_ID",
+                          "value": "PENDING_EXECUTION_OVERRIDE"
+                        },
+                        {
+                          "name": "GITHUB_RUN_ATTEMPT",
+                          "value": "PENDING_EXECUTION_OVERRIDE"
+                        },
+                        {
+                          "name": "AZURE_SUBSCRIPTION_ID",
+                          "value": "[subscription().subscriptionId]"
+                        },
+                        {
+                          "name": "RUNNER_RESOURCE_GROUP",
+                          "value": "[resourceGroup().name]"
+                        },
+                        {
+                          "name": "RUNNER_JOB_NAME",
+                          "value": "[format('{0}-job', variables('prefix'))]"
+                        },
+                        {
+                          "name": "RUNNER_VAULT_URL",
+                          "value": "[reference(resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment'))), '2023-07-01').vaultUri]"
+                        },
+                        {
+                          "name": "RUNNER_TOKEN_SECRET_NAME",
+                          "value": "[parameters('runnerTokenSecretName')]"
+                        },
+                        {
+                          "name": "GITHUB_APP_ID",
+                          "value": "[parameters('githubAppId')]"
+                        },
+                        {
+                          "name": "GITHUB_APP_INSTALLATION_ID",
+                          "value": "[parameters('githubAppInstallationId')]"
+                        },
+                        {
+                          "name": "GITHUB_APP_KEY_ID",
+                          "value": "[format('{0}keys/{1}/{2}', reference(resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment'))), '2023-07-01').vaultUri, parameters('githubAppKeyName'), parameters('githubAppKeyVersion'))]"
+                        },
+                        {
+                          "name": "RUNNER_LABEL",
+                          "value": "[format('goal006-{0}-private', parameters('environment'))]"
+                        }
+                      ],
+                      "resources": {
+                        "cpu": "[json('0.25')]",
+                        "memory": "0.5Gi"
+                      }
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-broker-identity', variables('prefix')))]",
+                "[resourceId('Microsoft.App/managedEnvironments', format('{0}-aca', variables('prefix')))]",
+                "[resourceId('Microsoft.App/jobs', format('{0}-job', variables('prefix')))]",
+                "[resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.App/jobs",
+              "apiVersion": "2024-03-01",
+              "name": "[format('{0}-cleanup-broker', variables('prefix'))]",
+              "location": "[parameters('location')]",
+              "tags": "[variables('commonTags')]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-cleanup-identity', variables('prefix'))))]": {}
+                }
+              },
+              "properties": {
+                "environmentId": "[resourceId('Microsoft.App/managedEnvironments', format('{0}-aca', variables('prefix')))]",
+                "configuration": {
+                  "triggerType": "Manual",
+                  "replicaTimeout": 300,
+                  "replicaRetryLimit": 0,
+                  "manualTriggerConfig": {
+                    "parallelism": 1,
+                    "replicaCompletionCount": 1
+                  }
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "cleanup-broker",
+                      "image": "[parameters('runnerImage')]",
+                      "command": [
+                        "python3",
+                        "/opt/waooaw/goal006_runner_lifecycle.py"
+                      ],
+                      "args": [
+                        "cleanup-correlated",
+                        "--app-manifest",
+                        "/opt/waooaw/github-runner-app-manifest.json",
+                        "--private-job-conclusion",
+                        "PENDING_EXECUTION_OVERRIDE",
+                        "--output",
+                        "/home/runner/cleanup-record.json"
+                      ],
+                      "env": [
+                        {
+                          "name": "AZURE_CLIENT_ID",
+                          "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-cleanup-identity', variables('prefix'))), '2023-01-31').clientId]"
+                        },
+                        {
+                          "name": "RUNNER_ACTIVATION_STATE",
+                          "value": "[parameters('activationState')]"
+                        },
+                        {
+                          "name": "RUNNER_ENVIRONMENT",
+                          "value": "[parameters('environment')]"
+                        },
+                        {
+                          "name": "GITHUB_REPOSITORY",
+                          "value": "dlai-sd/waooaw-platform"
+                        },
+                        {
+                          "name": "GITHUB_RUN_ID",
+                          "value": "PENDING_EXECUTION_OVERRIDE"
+                        },
+                        {
+                          "name": "GITHUB_RUN_ATTEMPT",
+                          "value": "PENDING_EXECUTION_OVERRIDE"
+                        },
+                        {
+                          "name": "AZURE_SUBSCRIPTION_ID",
+                          "value": "[subscription().subscriptionId]"
+                        },
+                        {
+                          "name": "RUNNER_RESOURCE_GROUP",
+                          "value": "[resourceGroup().name]"
+                        },
+                        {
+                          "name": "RUNNER_JOB_NAME",
+                          "value": "[format('{0}-job', variables('prefix'))]"
+                        },
+                        {
+                          "name": "RUNNER_VAULT_URL",
+                          "value": "[reference(resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment'))), '2023-07-01').vaultUri]"
+                        },
+                        {
+                          "name": "RUNNER_TOKEN_SECRET_NAME",
+                          "value": "[parameters('runnerTokenSecretName')]"
+                        },
+                        {
+                          "name": "GITHUB_APP_ID",
+                          "value": "[parameters('githubAppId')]"
+                        },
+                        {
+                          "name": "GITHUB_APP_INSTALLATION_ID",
+                          "value": "[parameters('githubAppInstallationId')]"
+                        },
+                        {
+                          "name": "GITHUB_APP_KEY_ID",
+                          "value": "[format('{0}keys/{1}/{2}', reference(resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment'))), '2023-07-01').vaultUri, parameters('githubAppKeyName'), parameters('githubAppKeyVersion'))]"
+                        },
+                        {
+                          "name": "RUNNER_LABEL",
+                          "value": "[format('goal006-{0}-private', parameters('environment'))]"
+                        }
+                      ],
+                      "resources": {
+                        "cpu": "[json('0.25')]",
+                        "memory": "0.5Gi"
+                      }
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-cleanup-identity', variables('prefix')))]",
+                "[resourceId('Microsoft.App/managedEnvironments', format('{0}-aca', variables('prefix')))]",
+                "[resourceId('Microsoft.App/jobs', format('{0}-job', variables('prefix')))]",
+                "[resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment')))]"
               ]
             },
             {
@@ -639,16 +1006,7 @@
               },
               "properties": {
                 "environmentId": "[resourceId('Microsoft.App/managedEnvironments', format('{0}-aca', variables('prefix')))]",
-                "configuration": {
-                  "triggerType": "Schedule",
-                  "replicaTimeout": 120,
-                  "replicaRetryLimit": 0,
-                  "scheduleTriggerConfig": {
-                    "cronExpression": "*/5 * * * *",
-                    "parallelism": 1,
-                    "replicaCompletionCount": 1
-                  }
-                },
+                "configuration": "[union(createObject('triggerType', if(equals(parameters('activationState'), 'ACTIVE'), 'Schedule', 'Manual'), 'replicaTimeout', 120, 'replicaRetryLimit', 0), if(equals(parameters('activationState'), 'ACTIVE'), createObject('scheduleTriggerConfig', createObject('cronExpression', '*/5 * * * *', 'parallelism', 1, 'replicaCompletionCount', 1)), createObject('manualTriggerConfig', createObject('parallelism', 1, 'replicaCompletionCount', 1))))]",
                 "template": {
                   "containers": [
                     {
@@ -710,9 +1068,25 @@
               "type": "string",
               "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-identity', variables('prefix')))]"
             },
+            "brokerIdentityId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-broker-identity', variables('prefix')))]"
+            },
+            "brokerIdentityClientId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-broker-identity', variables('prefix'))), '2023-01-31').clientId]"
+            },
             "cleanupIdentityId": {
               "type": "string",
               "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-cleanup-identity', variables('prefix')))]"
+            },
+            "cleanupIdentityClientId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-cleanup-identity', variables('prefix'))), '2023-01-31').clientId]"
+            },
+            "runnerVaultUri": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.KeyVault/vaults', format('waooaw-{0}-runner-kv', parameters('environment'))), '2023-07-01').vaultUri]"
             },
             "runnerEnvironmentId": {
               "type": "string",
@@ -721,6 +1095,14 @@
             "runnerJobId": {
               "type": "string",
               "value": "[resourceId('Microsoft.App/jobs', format('{0}-job', variables('prefix')))]"
+            },
+            "brokerJobId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.App/jobs', format('{0}-broker', variables('prefix')))]"
+            },
+            "cleanupBrokerJobId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.App/jobs', format('{0}-cleanup-broker', variables('prefix')))]"
             },
             "reconcilerJobId": {
               "type": "string",
@@ -735,6 +1117,10 @@
     "activationState": {
       "type": "string",
       "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('runnerResourceGroupName')), 'Microsoft.Resources/deployments', format('goal006-{0}-runner-control-plane', parameters('environment'))), '2025-04-01').outputs.activationState.value]"
+    },
+    "bootstrapPrincipalId": {
+      "type": "string",
+      "value": "[parameters('bootstrapPrincipalId')]"
     },
     "runnerResourceGroupId": {
       "type": "string",
@@ -760,9 +1146,25 @@
       "type": "string",
       "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('runnerResourceGroupName')), 'Microsoft.Resources/deployments', format('goal006-{0}-runner-control-plane', parameters('environment'))), '2025-04-01').outputs.runnerIdentityId.value]"
     },
+    "brokerIdentityId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('runnerResourceGroupName')), 'Microsoft.Resources/deployments', format('goal006-{0}-runner-control-plane', parameters('environment'))), '2025-04-01').outputs.brokerIdentityId.value]"
+    },
+    "brokerIdentityClientId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('runnerResourceGroupName')), 'Microsoft.Resources/deployments', format('goal006-{0}-runner-control-plane', parameters('environment'))), '2025-04-01').outputs.brokerIdentityClientId.value]"
+    },
     "cleanupIdentityId": {
       "type": "string",
       "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('runnerResourceGroupName')), 'Microsoft.Resources/deployments', format('goal006-{0}-runner-control-plane', parameters('environment'))), '2025-04-01').outputs.cleanupIdentityId.value]"
+    },
+    "cleanupIdentityClientId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('runnerResourceGroupName')), 'Microsoft.Resources/deployments', format('goal006-{0}-runner-control-plane', parameters('environment'))), '2025-04-01').outputs.cleanupIdentityClientId.value]"
+    },
+    "runnerVaultUri": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('runnerResourceGroupName')), 'Microsoft.Resources/deployments', format('goal006-{0}-runner-control-plane', parameters('environment'))), '2025-04-01').outputs.runnerVaultUri.value]"
     },
     "runnerEnvironmentId": {
       "type": "string",
@@ -771,6 +1173,14 @@
     "runnerJobId": {
       "type": "string",
       "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('runnerResourceGroupName')), 'Microsoft.Resources/deployments', format('goal006-{0}-runner-control-plane', parameters('environment'))), '2025-04-01').outputs.runnerJobId.value]"
+    },
+    "brokerJobId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('runnerResourceGroupName')), 'Microsoft.Resources/deployments', format('goal006-{0}-runner-control-plane', parameters('environment'))), '2025-04-01').outputs.brokerJobId.value]"
+    },
+    "cleanupBrokerJobId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('runnerResourceGroupName')), 'Microsoft.Resources/deployments', format('goal006-{0}-runner-control-plane', parameters('environment'))), '2025-04-01').outputs.cleanupBrokerJobId.value]"
     },
     "reconcilerJobId": {
       "type": "string",

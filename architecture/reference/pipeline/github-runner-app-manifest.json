@@ -1,18 +1,15 @@
 {
   "schema_version": "1.0",
-  "installation_target": "organization",
-  "organization": "dlai-sd",
+  "installation_target": "user",
+  "account": "dlai-sd",
   "repositories": [
     "waooaw-platform"
   ],
-  "organization_permissions": {
-    "organization_self_hosted_runners": "write"
-  },
   "repository_permissions": {
+    "administration": "write",
     "metadata": "read"
   },
   "prohibited_permissions": [
-    "administration",
     "actions",
     "contents",
     "deployments",
@@ -23,14 +20,9 @@
     "secrets",
     "workflows"
   ],
-  "runner_groups": {
-    "demo": "goal006-demo-private",
-    "uat": "goal006-uat-private",
-    "prod": "goal006-prod-private"
-  },
   "cleanup_selection": {
     "required_match_fields": [
-      "runner_group",
+      "repository",
       "environment_label",
       "goal006_environment_name_prefix",
       "github_workflow_run_id",
