@@ -453,6 +453,35 @@ def _assert_zero_active_executions(api: JsonApi, context: RunnerContext) -> None
         raise LifecycleError("active ACA runner execution already exists")
 
 
+def _find_correlated_execution(api: JsonApi, context: RunnerContext) -> str:
+    response = api.request(
+        "GET",
+        (
+            f"https://management.azure.com{context.job_resource_id}/executions"
+            "?api-version=2024-03-01"
+        ),
+        resource=MANAGEMENT_RESOURCE,
+    )
+    matches: list[str] = []
+    for item in response.get("value", []):
+        execution_name = str(item.get("name", ""))
+        if not execution_name:
+            continue
+        execution = api.request(
+            "GET",
+            (
+                f"https://management.azure.com{context.job_resource_id}/executions/"
+                f"{execution_name}?api-version=2024-03-01"
+            ),
+            resource=MANAGEMENT_RESOURCE,
+        )
+        if _execution_environment(execution).get("RUNNER_CORRELATION_ID") == context.correlation:
+            matches.append(execution_name)
+    if len(matches) != 1:
+        raise LifecycleError("correlated ACA execution selector is ambiguous")
+    return matches[0]
+
+
 def start_runner(api: JsonApi, context: RunnerContext, manifest_path: Path) -> dict[str, Any]:
     manifest = _read_manifest(manifest_path)
     if manifest["organization"] != context.organization:
@@ -619,6 +648,32 @@ def cleanup_runner(
     }
 
 
+def cleanup_correlated_runner(
+    api: JsonApi,
+    context: RunnerContext,
+    manifest_path: Path,
+    private_job_conclusion: str,
+) -> dict[str, Any]:
+    lifecycle_record = {
+        "environment": context.environment,
+        "correlation_id": context.correlation,
+        "runner_name": context.runner_name,
+        "runner_group": context.runner_group,
+        "runner_label": context.runner_label,
+        "workflow_run_id": context.run_id,
+        "workflow_run_attempt": context.run_attempt,
+        "aca_execution_name": _find_correlated_execution(api, context),
+        "token_secret_name": context.token_secret_name,
+    }
+    return cleanup_runner(
+        api,
+        context,
+        manifest_path,
+        lifecycle_record,
+        private_job_conclusion,
+    )
+
+
 def _write_record(path: Path, record: Mapping[str, Any]) -> None:
     path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
@@ -634,6 +689,10 @@ def main() -> int:
     cleanup_parser.add_argument("--lifecycle-record", type=Path, required=True)
     cleanup_parser.add_argument("--private-job-conclusion", required=True)
     cleanup_parser.add_argument("--output", type=Path, required=True)
+    cleanup_correlated_parser = subparsers.add_parser("cleanup-correlated")
+    cleanup_correlated_parser.add_argument("--app-manifest", type=Path, required=True)
+    cleanup_correlated_parser.add_argument("--private-job-conclusion", required=True)
+    cleanup_correlated_parser.add_argument("--output", type=Path, required=True)
     read_secret_parser = subparsers.add_parser("read-secret")
     read_secret_parser.add_argument("--vault-url", required=True)
     read_secret_parser.add_argument("--secret-name", required=True)
@@ -651,6 +710,16 @@ def main() -> int:
             context,
             args.app_manifest,
             json.loads(args.lifecycle_record.read_text(encoding="utf-8")),
+            args.private_job_conclusion,
+        )
+        _write_record(args.output, record)
+        print(json.dumps({"cleaned": True, "execution": record["aca_execution_name"]}))
+    elif args.command == "cleanup-correlated":
+        context = RunnerContext.from_environment()
+        record = cleanup_correlated_runner(
+            JsonApi(azure_access_token),
+            context,
+            args.app_manifest,
             args.private_job_conclusion,
         )
         _write_record(args.output, record)

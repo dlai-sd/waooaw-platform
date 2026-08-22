@@ -39,8 +39,9 @@ per-task evidence documents, duplicate pass reports or narrative handoff records
 | P3-EX02 | IMPLEMENTED - independent gate pending | Durable `WAOOAW_PLATFORM_*` migration contract; legacy runtime variables absent |
 | P3-EX03 | IMPLEMENTED - independent gate pending | Demo/UAT root output tests; all six Terraform 1.9.8 roots validate |
 | P3-EX04 tooling | READY FOR INST-009/007 | Read-only OIDC/RBAC verifier; four fail-closed Docker tests |
-| P3-EX07 runner bootstrap | IMPLEMENTED - review pending | Inactive Demo Deployment Stack; digest-pinned runner image and lifecycle/private-path probes; Bicep compilation; 53 focused tests; no cloud mutation |
-| P3-EX07 runner activation | BLOCKED | GitHub-hosted bootstrap cannot reach the private-only Demo Key Vault signing endpoint, and no private bootstrap broker exists; no public-network fallback permitted |
+| P3-EX07 runner bootstrap | IMPLEMENTED - review pending | Inactive Demo Deployment Stack; digest-pinned runner image and lifecycle/private-path probes; Bicep compilation; no cloud mutation |
+| P3-EX07 private signing broker | IMPLEMENTED - review pending | Dedicated private ACA start/cleanup brokers reuse the zero-idle environment, subnet, Key Vault endpoint, DNS, logs and runner image; 75 focused tests, Ruff, Bicep, image smoke and zero HIGH/CRITICAL OS scan pass; existing organization-installed GitHub App and FA-052 ceilings remain unchanged |
+| P3-EX07 runner activation | BLOCKED | Broker implementation, review/merge, immutable image publication, Demo stack reconciliation and private-path qualification remain required; no public-network fallback permitted |
 
 ## Definition Of Done
 

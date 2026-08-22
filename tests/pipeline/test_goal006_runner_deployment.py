@@ -168,11 +168,19 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
         if arguments[:4] == ("containerapp", "job", "execution", "list"):
             return []
         if command == ("containerapp", "job", "show"):
-            reconciler = arguments[-1].endswith("-reconciler")
-            name = "reconciler" if reconciler else "runner"
+            job_name = arguments[-1]
+            reconciler = job_name.endswith("-reconciler")
+            broker = job_name.endswith("-broker") and not job_name.endswith("-cleanup-broker")
+            cleanup_broker = job_name.endswith("-cleanup-broker")
+            name = "reconciler" if reconciler else "broker" if broker else "cleanup-broker" if cleanup_broker else "runner"
             configuration = {
-                "triggerType": reconciler_trigger if reconciler else "Manual"
+                "triggerType": reconciler_trigger if reconciler else "Manual",
             }
+            if broker or cleanup_broker:
+                configuration.update(
+                    replicaTimeout=300,
+                    manualTriggerConfig={"parallelism": 1, "replicaCompletionCount": 1},
+                )
             if reconciler and reconciler_trigger == "Schedule":
                 configuration["scheduleTriggerConfig"] = {
                     "cronExpression": "*/5 * * * *"
@@ -184,7 +192,7 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
                         "containers": [
                             {
                                 "name": name,
-                                "image": contract[f"{name}_image"],
+                                "image": contract["reconciler_image"] if reconciler else contract["runner_image"],
                                 "env": (
                                     [
                                         {
@@ -204,11 +212,17 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
                                 ),
                                 "command": ["/bin/sh", "-c"]
                                 if reconciler
+                                else ["python3", "/opt/waooaw/goal006_runner_lifecycle.py"]
+                                if broker or cleanup_broker
                                 else ["/opt/waooaw/entrypoint.sh"],
                                 "args": [
                                     'test "$RUNNER_ACTIVATION_STATE" = "ACTIVE" && exit 64 || exit 0'
                                 ]
                                 if reconciler
+                                else ["start", "--app-manifest", "/opt/waooaw/github-runner-app-manifest.json", "--output", "/home/runner/lifecycle-record.json"]
+                                if broker
+                                else ["cleanup-correlated", "--app-manifest", "/opt/waooaw/github-runner-app-manifest.json", "--private-job-conclusion", "PENDING_EXECUTION_OVERRIDE", "--output", "/home/runner/cleanup-record.json"]
+                                if cleanup_broker
                                 else [],
                             }
                         ]

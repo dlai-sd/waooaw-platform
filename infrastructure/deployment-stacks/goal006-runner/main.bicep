@@ -12,12 +12,14 @@ param activationState string = 'INACTIVE'
 
 param location string = 'centralindia'
 param stateStorageAccountId string
-param bootstrapPrincipalId string
-param bootstrapWriterRoleDefinitionId string
+param brokerWriterRoleDefinitionId string
+param brokerJobOperatorRoleDefinitionId string
 param cleanupDeleterRoleDefinitionId string
 param cleanupJobOperatorRoleDefinitionId string
 param runnerImage string
 param reconcilerImage string
+param githubAppId string
+param githubAppInstallationId string
 param githubAppKeyName string
 param githubAppKeyVersion string
 param runnerTokenSecretName string = 'runner-registration-token'
@@ -171,6 +173,12 @@ resource runnerIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-0
   tags: commonTags
 }
 
+resource brokerIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: '${prefix}-broker-identity'
+  location: location
+  tags: commonTags
+}
+
 resource cleanupIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: '${prefix}-cleanup-identity'
   location: location
@@ -229,13 +237,13 @@ resource runnerSecretAccess 'Microsoft.Authorization/roleAssignments@2022-04-01'
   }
 }
 
-resource bootstrapSecretAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+resource brokerSecretAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   scope: runnerVault
-  name: guid(runnerVault.id, bootstrapPrincipalId, bootstrapWriterRoleDefinitionId)
+  name: guid(runnerVault.id, brokerIdentity.id, brokerWriterRoleDefinitionId)
   properties: {
-    principalId: bootstrapPrincipalId
+    principalId: brokerIdentity.properties.principalId
     principalType: 'ServicePrincipal'
-    roleDefinitionId: bootstrapWriterRoleDefinitionId
+    roleDefinitionId: brokerWriterRoleDefinitionId
   }
 }
 
@@ -249,11 +257,11 @@ resource cleanupSecretAccess 'Microsoft.Authorization/roleAssignments@2022-04-01
   }
 }
 
-resource bootstrapKeySignAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (activationState == 'ACTIVE') {
+resource brokerKeySignAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (activationState == 'ACTIVE') {
   scope: githubAppKeyVersionResource
-  name: guid(githubAppKeyVersionResource.id, bootstrapPrincipalId, keyVaultCryptoUserRoleId)
+  name: guid(githubAppKeyVersionResource.id, brokerIdentity.id, keyVaultCryptoUserRoleId)
   properties: {
-    principalId: bootstrapPrincipalId
+    principalId: brokerIdentity.properties.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: keyVaultCryptoUserRoleId
   }
@@ -464,6 +472,128 @@ resource runnerJob 'Microsoft.App/jobs@2024-03-01' = {
   }
 }
 
+resource brokerJobControl 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: runnerJob
+  name: guid(runnerJob.id, brokerIdentity.id, brokerJobOperatorRoleDefinitionId)
+  properties: {
+    principalId: brokerIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: brokerJobOperatorRoleDefinitionId
+  }
+}
+
+resource brokerJob 'Microsoft.App/jobs@2024-03-01' = {
+  name: '${prefix}-broker'
+  location: location
+  tags: commonTags
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${brokerIdentity.id}': {}
+    }
+  }
+  properties: {
+    environmentId: runnerEnvironment.id
+    configuration: {
+      triggerType: 'Manual'
+      replicaTimeout: 300
+      replicaRetryLimit: 0
+      manualTriggerConfig: {
+        parallelism: 1
+        replicaCompletionCount: 1
+      }
+    }
+    template: {
+      containers: [
+        {
+          name: 'broker'
+          image: runnerImage
+          command: ['python3', '/opt/waooaw/goal006_runner_lifecycle.py']
+          args: ['start', '--app-manifest', '/opt/waooaw/github-runner-app-manifest.json', '--output', '/home/runner/lifecycle-record.json']
+          env: [
+            { name: 'AZURE_CLIENT_ID', value: brokerIdentity.properties.clientId }
+            { name: 'RUNNER_ACTIVATION_STATE', value: activationState }
+            { name: 'RUNNER_ENVIRONMENT', value: environment }
+            { name: 'GITHUB_REPOSITORY', value: 'dlai-sd/waooaw-platform' }
+            { name: 'GITHUB_RUN_ID', value: 'PENDING_EXECUTION_OVERRIDE' }
+            { name: 'GITHUB_RUN_ATTEMPT', value: 'PENDING_EXECUTION_OVERRIDE' }
+            { name: 'AZURE_SUBSCRIPTION_ID', value: subscription().subscriptionId }
+            { name: 'RUNNER_RESOURCE_GROUP', value: resourceGroup().name }
+            { name: 'RUNNER_JOB_NAME', value: runnerJob.name }
+            { name: 'RUNNER_VAULT_URL', value: runnerVault.properties.vaultUri }
+            { name: 'RUNNER_TOKEN_SECRET_NAME', value: runnerTokenSecretName }
+            { name: 'GITHUB_APP_ID', value: githubAppId }
+            { name: 'GITHUB_APP_INSTALLATION_ID', value: githubAppInstallationId }
+            { name: 'GITHUB_APP_KEY_ID', value: '${runnerVault.properties.vaultUri}keys/${githubAppKeyName}/${githubAppKeyVersion}' }
+            { name: 'RUNNER_GROUP', value: 'goal006-${environment}-private' }
+            { name: 'RUNNER_LABEL', value: 'goal006-${environment}-private' }
+          ]
+          resources: {
+            cpu: json('0.25')
+            memory: '0.5Gi'
+          }
+        }
+      ]
+    }
+  }
+}
+
+resource cleanupBrokerJob 'Microsoft.App/jobs@2024-03-01' = {
+  name: '${prefix}-cleanup-broker'
+  location: location
+  tags: commonTags
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${cleanupIdentity.id}': {}
+    }
+  }
+  properties: {
+    environmentId: runnerEnvironment.id
+    configuration: {
+      triggerType: 'Manual'
+      replicaTimeout: 300
+      replicaRetryLimit: 0
+      manualTriggerConfig: {
+        parallelism: 1
+        replicaCompletionCount: 1
+      }
+    }
+    template: {
+      containers: [
+        {
+          name: 'cleanup-broker'
+          image: runnerImage
+          command: ['python3', '/opt/waooaw/goal006_runner_lifecycle.py']
+          args: ['cleanup-correlated', '--app-manifest', '/opt/waooaw/github-runner-app-manifest.json', '--private-job-conclusion', 'PENDING_EXECUTION_OVERRIDE', '--output', '/home/runner/cleanup-record.json']
+          env: [
+            { name: 'AZURE_CLIENT_ID', value: cleanupIdentity.properties.clientId }
+            { name: 'RUNNER_ACTIVATION_STATE', value: activationState }
+            { name: 'RUNNER_ENVIRONMENT', value: environment }
+            { name: 'GITHUB_REPOSITORY', value: 'dlai-sd/waooaw-platform' }
+            { name: 'GITHUB_RUN_ID', value: 'PENDING_EXECUTION_OVERRIDE' }
+            { name: 'GITHUB_RUN_ATTEMPT', value: 'PENDING_EXECUTION_OVERRIDE' }
+            { name: 'AZURE_SUBSCRIPTION_ID', value: subscription().subscriptionId }
+            { name: 'RUNNER_RESOURCE_GROUP', value: resourceGroup().name }
+            { name: 'RUNNER_JOB_NAME', value: runnerJob.name }
+            { name: 'RUNNER_VAULT_URL', value: runnerVault.properties.vaultUri }
+            { name: 'RUNNER_TOKEN_SECRET_NAME', value: runnerTokenSecretName }
+            { name: 'GITHUB_APP_ID', value: githubAppId }
+            { name: 'GITHUB_APP_INSTALLATION_ID', value: githubAppInstallationId }
+            { name: 'GITHUB_APP_KEY_ID', value: '${runnerVault.properties.vaultUri}keys/${githubAppKeyName}/${githubAppKeyVersion}' }
+            { name: 'RUNNER_GROUP', value: 'goal006-${environment}-private' }
+            { name: 'RUNNER_LABEL', value: 'goal006-${environment}-private' }
+          ]
+          resources: {
+            cpu: json('0.25')
+            memory: '0.5Gi'
+          }
+        }
+      ]
+    }
+  }
+}
+
 resource reconcilerJob 'Microsoft.App/jobs@2024-03-01' = {
   name: '${prefix}-reconciler'
   location: location
@@ -522,9 +652,13 @@ output runnerSubnetId string = runnerSubnetId
 output statePrivateEndpointId string = statePrivateEndpoint.id
 output runnerVaultId string = runnerVault.id
 output runnerIdentityId string = runnerIdentity.id
+output brokerIdentityId string = brokerIdentity.id
+output brokerIdentityClientId string = brokerIdentity.properties.clientId
 output cleanupIdentityId string = cleanupIdentity.id
 output cleanupIdentityClientId string = cleanupIdentity.properties.clientId
 output runnerVaultUri string = runnerVault.properties.vaultUri
 output runnerEnvironmentId string = runnerEnvironment.id
 output runnerJobId string = runnerJob.id
+output brokerJobId string = brokerJob.id
+output cleanupBrokerJobId string = cleanupBrokerJob.id
 output reconcilerJobId string = reconcilerJob.id

@@ -10,6 +10,8 @@
     "bootstrapPrincipalId": { "value": "77147af5-a32d-4151-b557-e719f319b55b" },
     "runnerImage": { "value": "ghcr.io/actions/actions-runner@sha256:db0dcae6d28559e54277755a33aba7d0665f255b3bd2a66cdc5e132712f155e0" },
     "reconcilerImage": { "value": "mcr.microsoft.com/azure-cli@sha256:4faeb3c955086c3842d4f8cf0ff1d900ce3a1c68c6e6c6430c5e8a3cb882c5aa" },
+    "githubAppId": { "value": "PENDING" },
+    "githubAppInstallationId": { "value": "PENDING" },
     "githubAppKeyName": { "value": "PENDING" },
     "githubAppKeyVersion": { "value": "PENDING" },
     "runnerVnetAddressPrefix": { "value": "10.71.0.0/24" },

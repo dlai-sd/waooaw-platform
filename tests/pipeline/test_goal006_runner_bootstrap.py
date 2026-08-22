@@ -171,3 +171,28 @@ def test_stack_is_environment_generic_and_uses_valid_private_dns() -> None:
     assert "privatelink${az.environment().suffixes.keyvaultDns}" in main
     assert "privatelink.${az.environment().suffixes.keyvaultDns}" not in main
     assert "goal006-${environment}-private" in main
+    assert "resource brokerIdentity" in main
+    assert "resource brokerJob" in main
+    assert "resource cleanupBrokerJob" in main
+    assert main.count("replicaTimeout: 300") == 2
+    assert "bootstrapKeySignAccess" not in main
+    assert "bootstrapSecretAccess" not in main
+
+
+def test_active_stack_requires_existing_app_identifiers(tmp_path: Path) -> None:
+    def mutate(parameters: dict[str, dict[str, object]]) -> None:
+        parameters["activationState"]["value"] = "ACTIVE"
+        parameters["githubAppKeyName"]["value"] = "app-key"
+        parameters["githubAppKeyVersion"]["value"] = "a" * 32
+
+    repository, manifest_path = _write_manifest(tmp_path, parameter_mutator=mutate)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["activation_state"] = "ACTIVE"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    assert "GITHUB_APP_KEY_NOT_CONFIGURED" in validate_bootstrap_manifest(
+        repository, manifest_path
+    )
+    assert "RUNNER_IMAGE_NOT_PUBLISHED" in validate_bootstrap_manifest(
+        repository, manifest_path
+    )

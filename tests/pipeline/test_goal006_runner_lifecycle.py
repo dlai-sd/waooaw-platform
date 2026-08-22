@@ -10,6 +10,7 @@ import pytest
 from scripts.goal006_runner_lifecycle import (
     LifecycleError,
     _assert_zero_active_executions,
+    _find_correlated_execution,
     create_app_jwt,
     correlation_id,
     deployment_job_is_terminal,
@@ -118,6 +119,8 @@ def test_app_manifest_does_not_grant_actions_permission() -> None:
     assert "actions" not in manifest["organization_permissions"]
     assert "actions" not in manifest["repository_permissions"]
     assert "actions" in manifest["prohibited_permissions"]
+    assert manifest["installation_target"] == "organization"
+    assert manifest["organization"] == "dlai-sd"
 
 
 def test_lifecycle_source_never_serializes_tokens_into_evidence() -> None:
@@ -173,7 +176,20 @@ def test_runner_image_uses_immutable_inputs_and_ephemeral_registration() -> None
     assert "github-run-$GITHUB_WORKFLOW_RUN_ID" in entrypoint
     assert "unset RUNNER_REGISTRATION_TOKEN" in entrypoint
     assert "--replace" not in entrypoint
+    assert "github-runner-app-manifest.json /opt/waooaw/github-runner-app-manifest.json" in dockerfile
     assert entrypoint.index('test "$RUNNER_ACTIVATION_STATE" = ACTIVE || exit 0') < entrypoint.index("required_environment=(")
+
+
+def test_runner_image_ci_blocks_on_fixable_os_vulnerabilities() -> None:
+    from pathlib import Path
+
+    workflow = Path(".github/workflows/goal006-runner-image.yaml").read_text(
+        encoding="utf-8"
+    )
+    assert "vuln-type: os" in workflow
+    assert "severity: CRITICAL,HIGH" in workflow
+    assert "ignore-unfixed: true" in workflow
+    assert "exit-code: 1" in workflow
 
 
 class _SecretApi:
@@ -233,3 +249,52 @@ def test_pre_token_gate_rejects_active_execution() -> None:
     )()
     with pytest.raises(LifecycleError, match="already exists"):
         _assert_zero_active_executions(ExecutionApi(), context)
+
+
+def test_broker_finds_one_correlation_bound_execution() -> None:
+    class ExecutionApi:
+        def request(self, method, url, **kwargs):
+            if url.endswith("/executions?api-version=2024-03-01"):
+                return {"value": [{"name": "runner-one"}, {"name": "runner-two"}]}
+            correlation = "goal006:demo:123:2" if "runner-two" in url else "other"
+            return {
+                "properties": {
+                    "template": {
+                        "containers": [
+                            {
+                                "name": "runner",
+                                "env": [
+                                    {"name": "RUNNER_CORRELATION_ID", "value": correlation}
+                                ],
+                            }
+                        ]
+                    }
+                }
+            }
+
+    context = type(
+        "Context",
+        (),
+        {
+            "job_resource_id": "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.App/jobs/job",
+            "correlation": "goal006:demo:123:2",
+        },
+    )()
+    assert _find_correlated_execution(ExecutionApi(), context) == "runner-two"
+
+
+def test_broker_rejects_missing_correlated_execution() -> None:
+    class ExecutionApi:
+        def request(self, method, url, **kwargs):
+            return {"value": []}
+
+    context = type(
+        "Context",
+        (),
+        {
+            "job_resource_id": "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.App/jobs/job",
+            "correlation": "goal006:demo:123:2",
+        },
+    )()
+    with pytest.raises(LifecycleError, match="ambiguous"):
+        _find_correlated_execution(ExecutionApi(), context)

@@ -20,10 +20,11 @@ var commonTags = {
   'managed-by': 'goal006-bootstrap-prerequisites'
   'runner-activation': 'INACTIVE'
 }
-var bootstrapSecretWriterRoleSeed = environment == 'demo' ? 'goal006-bootstrap-secret-writer' : 'goal006-${environment}-bootstrap-secret-writer'
+var brokerSecretWriterRoleSeed = environment == 'demo' ? 'goal006-bootstrap-secret-writer' : 'goal006-${environment}-bootstrap-secret-writer'
 var cleanupSecretDeleterRoleSeed = environment == 'demo' ? 'goal006-cleanup-secret-deleter' : 'goal006-${environment}-cleanup-secret-deleter'
-var bootstrapSecretWriterRoleName = guid(subscription().id, bootstrapSecretWriterRoleSeed)
+var brokerSecretWriterRoleName = guid(subscription().id, brokerSecretWriterRoleSeed)
 var cleanupSecretDeleterRoleName = guid(subscription().id, cleanupSecretDeleterRoleSeed)
+var brokerJobOperatorRoleName = guid(subscription().id, 'goal006-${environment}-broker-job-operator')
 var cleanupJobOperatorRoleName = guid(subscription().id, 'goal006-${environment}-cleanup-job-operator')
 var deploymentStackOwnerRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'adb29209-aa1d-457b-a786-c913953d2891')
 
@@ -33,17 +34,39 @@ resource runnerResourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   tags: commonTags
 }
 
-resource bootstrapSecretWriterRole 'Microsoft.Authorization/roleDefinitions@2022-04-01' = {
-  name: bootstrapSecretWriterRoleName
+resource brokerSecretWriterRole 'Microsoft.Authorization/roleDefinitions@2022-04-01' = {
+  name: brokerSecretWriterRoleName
   properties: {
-    roleName: 'GOAL-006 ${environment} Bootstrap Secret Writer'
-    description: 'Set the short-lived environment runner registration secret without read, list, or delete authority.'
+    roleName: 'GOAL-006 ${environment} Broker Secret Writer'
+    description: 'Allow the private broker to set the short-lived runner registration secret without read, list, or delete authority.'
     type: 'CustomRole'
     permissions: [
       {
         actions: []
         notActions: []
         dataActions: ['Microsoft.KeyVault/vaults/secrets/setSecret/action']
+        notDataActions: []
+      }
+    ]
+    assignableScopes: [runnerResourceGroup.id]
+  }
+}
+
+resource brokerJobOperatorRole 'Microsoft.Authorization/roleDefinitions@2022-04-01' = {
+  name: brokerJobOperatorRoleName
+  properties: {
+    roleName: 'GOAL-006 ${environment} Broker Job Operator'
+    description: 'Read the runner job and executions and start one correlation-bound execution.'
+    type: 'CustomRole'
+    permissions: [
+      {
+        actions: [
+          'Microsoft.App/jobs/read'
+          'Microsoft.App/jobs/executions/read'
+          'Microsoft.App/jobs/start/action'
+        ]
+        notActions: []
+        dataActions: []
         notDataActions: []
       }
     ]
@@ -80,7 +103,7 @@ resource cleanupJobOperatorRole 'Microsoft.Authorization/roleDefinitions@2022-04
         actions: [
           'Microsoft.App/jobs/read'
           'Microsoft.App/jobs/executions/read'
-          'Microsoft.App/jobs/executions/stop/action'
+          'Microsoft.App/jobs/stop/execution/action'
         ]
         notActions: []
         dataActions: []
@@ -149,6 +172,7 @@ module runnerRoleAssignments 'prerequisites-rg.bicep' = {
 }
 
 output runnerResourceGroupId string = runnerResourceGroup.id
-output bootstrapWriterRoleDefinitionId string = bootstrapSecretWriterRole.id
+output brokerWriterRoleDefinitionId string = brokerSecretWriterRole.id
+output brokerJobOperatorRoleDefinitionId string = brokerJobOperatorRole.id
 output cleanupDeleterRoleDefinitionId string = cleanupSecretDeleterRole.id
 output cleanupJobOperatorRoleDefinitionId string = cleanupJobOperatorRole.id

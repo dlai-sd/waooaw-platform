@@ -8,6 +8,7 @@ ARG TERRAFORM_SHA256=186e0145f5e5f2eb97cbd785bc78f21bae4ef15119349f6ad4fa535b83b
 USER root
 
 RUN apt-get update \
+  && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends ca-certificates dnsutils jq unzip \
     && curl --fail --location --silent --show-error \
       --output /tmp/azure-cli.deb \
@@ -22,6 +23,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* /tmp/azure-cli.deb /tmp/terraform.zip
 
 COPY --chown=runner:runner scripts/goal006_runner_lifecycle.py /opt/waooaw/goal006_runner_lifecycle.py
+COPY --chown=runner:runner architecture/reference/pipeline/github-runner-app-manifest.json /opt/waooaw/github-runner-app-manifest.json
 COPY --chown=runner:runner infrastructure/runner/entrypoint.sh /opt/waooaw/entrypoint.sh
 RUN chmod 0555 /opt/waooaw/entrypoint.sh /opt/waooaw/goal006_runner_lifecycle.py
 

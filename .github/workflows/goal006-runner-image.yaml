@@ -75,6 +75,7 @@ jobs:
           format: sarif
           output: trivy-goal006-private-runner.sarif
           scanners: vuln
+          vuln-type: os
           severity: CRITICAL,HIGH
           limit-severities-for-sarif: true
           ignore-unfixed: true
