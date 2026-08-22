@@ -11,6 +11,7 @@ import pytest
 from scripts.goal006_runner_prerequisites import (
     BUILT_IN_ROLES,
     reject_deletes,
+    verify,
     verify_custom_role,
     verify_role_catalogue,
 )
@@ -106,6 +107,65 @@ def test_custom_role_rejects_wrong_name_or_scope(
             "GOAL-006 demo Cleanup Secret Deleter",
             "/subscriptions/sub/resourceGroups/demo-rg",
         )
+
+
+def test_verify_requires_all_current_custom_roles(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runner_scope = "/subscriptions/sub/resourceGroups/demo-rg"
+    role_names = {
+        "broker-writer": "GOAL-006 demo Broker Secret Writer",
+        "broker-operator": "GOAL-006 demo Broker Job Operator",
+        "cleanup-deleter": "GOAL-006 demo Cleanup Secret Deleter",
+        "cleanup-operator": "GOAL-006 demo Cleanup Job Operator",
+    }
+
+    def live_azure(*arguments: str):
+        if arguments[:2] == ("group", "show"):
+            return {"id": runner_scope}
+        if arguments[:3] == ("role", "assignment", "list"):
+            return [
+                {"roleDefinitionName": "Azure Deployment Stack Owner", "scope": "/subscriptions/sub"},
+                {"roleDefinitionName": "Contributor", "scope": runner_scope},
+                {"roleDefinitionName": "Role Based Access Control Administrator", "scope": runner_scope},
+            ]
+        if arguments[:3] == ("deployment", "sub", "show"):
+            return {
+                "properties": {
+                    "outputs": {
+                        "brokerWriterRoleDefinitionId": {"value": f"{runner_scope}/broker-writer"},
+                        "brokerJobOperatorRoleDefinitionId": {"value": f"{runner_scope}/broker-operator"},
+                        "cleanupDeleterRoleDefinitionId": {"value": f"{runner_scope}/cleanup-deleter"},
+                        "cleanupJobOperatorRoleDefinitionId": {"value": f"{runner_scope}/cleanup-operator"},
+                    }
+                }
+            }
+        if arguments[:1] == ("rest",):
+            url = arguments[-1]
+            if "budgets/" in url:
+                return {"properties": {"amount": 10000}}
+            role_id = url.split("/")[-1].split("?")[0]
+            return {
+                "properties": {
+                    "roleName": role_names[role_id],
+                    "assignableScopes": [runner_scope],
+                }
+            }
+        raise AssertionError(arguments)
+
+    monkeypatch.setattr("scripts.goal006_runner_prerequisites._az", live_azure)
+    result = verify(
+        {
+            "environment": "demo",
+            "runnerResourceGroupName": "demo-rg",
+            "bootstrapPrincipalId": "principal",
+            "monthlyBudgetInr": 10000,
+        },
+        "sub",
+        "goal006-demo-runner-prerequisites",
+    )
+
+    assert result["environment"] == "demo"
 
 
 def test_reviewed_environment_parameters_are_isolated_and_consistent() -> None:

@@ -44,7 +44,7 @@ REQUIRED_TEMPLATE_TERMS = {
     "resource brokerJob",
     "resource cleanupBrokerJob",
     "name: '${prefix}-broker'",
-    "name: '${prefix}-cleanup-broker'",
+    "name: '${prefix}-cleanup'",
     "args: ['start'",
     "args: ['cleanup-correlated'",
     "triggerType: activationState == 'ACTIVE' ? 'Schedule' : 'Manual'",

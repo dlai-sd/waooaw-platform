@@ -33,6 +33,18 @@ def test_every_environment_uses_one_deployment_contract() -> None:
         assert contract["activation_state"] in {"INACTIVE", "ACTIVE"}
 
 
+def test_azure_resource_names_respect_service_limits() -> None:
+    resources = _required_resource_names("demo")
+    job_names = [
+        name
+        for name, resource_type in resources.items()
+        if resource_type == "Microsoft.App/jobs"
+    ]
+
+    assert all(len(name) <= 32 for name in job_names)
+    assert "goal006-demo-runner-vaultcore-pe" in resources
+
+
 def test_plan_normalization_is_stable() -> None:
     changes = [
         {"changeType": "Create", "resourceId": "/subscriptions/sub/resourceGroups/b"},
@@ -170,8 +182,8 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
         if command == ("containerapp", "job", "show"):
             job_name = arguments[-1]
             reconciler = job_name.endswith("-reconciler")
-            broker = job_name.endswith("-broker") and not job_name.endswith("-cleanup-broker")
-            cleanup_broker = job_name.endswith("-cleanup-broker")
+            broker = job_name.endswith("-broker")
+            cleanup_broker = job_name.endswith("-cleanup")
             name = "reconciler" if reconciler else "broker" if broker else "cleanup-broker" if cleanup_broker else "runner"
             configuration = {
                 "triggerType": reconciler_trigger if reconciler else "Manual",

@@ -48,7 +48,7 @@ def test_plan_and_deployment_evidence_are_retained() -> None:
 def test_private_qualification_uses_brokers_and_demo_runner_only() -> None:
     assert "RUNNER_BROKER_JOB: goal006-demo-runner-broker" in QUALIFICATION_WORKFLOW
     assert (
-        "RUNNER_CLEANUP_BROKER_JOB: goal006-demo-runner-cleanup-broker"
+        "RUNNER_CLEANUP_BROKER_JOB: goal006-demo-runner-cleanup"
         in QUALIFICATION_WORKFLOW
     )
     assert "runs-on: [self-hosted, goal006-demo-private]" in QUALIFICATION_WORKFLOW

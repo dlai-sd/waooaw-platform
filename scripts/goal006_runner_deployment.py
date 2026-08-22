@@ -302,11 +302,11 @@ def _required_resource_names(environment: str) -> dict[str, str]:
         f"{prefix}-cleanup-identity": "Microsoft.ManagedIdentity/userAssignedIdentities",
         f"waooaw-{environment}-runner-kv": "Microsoft.KeyVault/vaults",
         f"{prefix}-state-pe": "Microsoft.Network/privateEndpoints",
-        f"{prefix}-vault-pe": "Microsoft.Network/privateEndpoints",
+        f"{prefix}-vaultcore-pe": "Microsoft.Network/privateEndpoints",
         f"{prefix}-aca": "Microsoft.App/managedEnvironments",
         f"{prefix}-job": "Microsoft.App/jobs",
         f"{prefix}-broker": "Microsoft.App/jobs",
-        f"{prefix}-cleanup-broker": "Microsoft.App/jobs",
+        f"{prefix}-cleanup": "Microsoft.App/jobs",
         f"{prefix}-reconciler": "Microsoft.App/jobs",
     }
 
@@ -356,7 +356,7 @@ def verify_deployment(
     if unmanaged:
         raise RuntimeError(f"runner resources are not managed by deployment stack: {unmanaged}")
     prefix = f"goal006-{environment}-runner"
-    for endpoint in (f"{prefix}-state-pe", f"{prefix}-vault-pe"):
+    for endpoint in (f"{prefix}-state-pe", f"{prefix}-vaultcore-pe"):
         resource = _az(
             "network",
             "private-endpoint",
@@ -407,7 +407,7 @@ def verify_deployment(
         "--resource-group",
         contract["resource_group"],
         "--name",
-        f"{prefix}-cleanup-broker",
+        f"{prefix}-cleanup",
     )
     if runner_job.get("properties", {}).get("configuration", {}).get("triggerType") != "Manual":
         raise RuntimeError("runner job trigger is not Manual")
@@ -430,7 +430,7 @@ def verify_deployment(
     ):
         raise RuntimeError("reconciler job schedule is not every five minutes")
     active_execution_states = {"processing", "running", "waiting"}
-    for name in (f"{prefix}-job", f"{prefix}-broker", f"{prefix}-cleanup-broker"):
+    for name in (f"{prefix}-job", f"{prefix}-broker", f"{prefix}-cleanup"):
         executions = _az(
             "containerapp",
             "job",
