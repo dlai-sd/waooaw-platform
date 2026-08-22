@@ -20,8 +20,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-074 - GOAL-006 Enterprise Delivery Addendum |
-| Latest merge | PR #310 merged to `main` as `f7f7f2b465deb0b10dff41c779efc23d6e23cb74` |
-| Active delivery | WC-076 inactive Demo runner bootstrap implementation; UAT prohibited |
+| Latest merge | PR #325 merged to `main` as `d7f5f60` |
+| Active delivery | WC-076 private runner runtime PR #326; activation blocked; UAT prohibited |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 
@@ -37,10 +37,10 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Configuration readiness repair | DONE - PR #309 merged; second plan proved exact Blob retry and verified firewall cleanup |
 | Real Demo OIDC plan | BLOCKED - run `32371262629` reached Terraform init, then backend list received Storage `403 AuthorizationFailure`; no plan/apply occurred |
 | Private runner decision | ACCEPTED - independent EA and Security review of commit `7e5bd4b` returned APPROVE with no blockers |
-| Demo runner bootstrap | IMPLEMENTED - inactive Deployment Stack compiles, ARM validates, immutable verifier and 52 focused tests pass; review pending |
-| Local validation | PASS - 42 focused tests, Ruff, actionlint and editor diagnostics |
+| Demo runner bootstrap | IMPLEMENTED - PR #326 adds the inactive Deployment Stack repair, digest-pinned runner image, lifecycle controller and private-path probe; Founder review pending |
+| Local validation | PASS - 53 focused runner tests, Ruff, Bicep compilation, manifest validation, image build/tool smoke and editor diagnostics |
 | Architecture review | CLEAR - author review, focused EA review and focused INST-007 Security correction complete; no separate review artifact required |
-| Demo deploy / verify | BLOCKED - Demo runner bootstrap implementation and private-path qualification required before workflow label activation |
+| Demo deploy / verify | BLOCKED - private-only Key Vault signing is unreachable from the GitHub-hosted bootstrap and no private signing broker exists; no workflow label activation or public fallback |
 | Founder Demo acceptance | PENDING - P3-EX08 remains a separate control point after the verified Azure URL is returned |
 | UAT deploy / verify / accept | PROHIBITED - no token, plan, apply or environment request before explicit Founder Demo acceptance |
 | Production | PLAN ONLY - deployment, traffic and final acceptance remain Founder-reserved |
@@ -51,7 +51,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 - **Execution contract:** `work-contracts/WC-076-goal006-phase3-execution.md`; backlog P3-EX01 through P3-EX11.
 - **Cloud state:** no Demo/UAT/Production workload resources have been created; run `32371262629` made only the bounded temporary state-account firewall mutation and evidence proves cleanup removed it.
 - **RCA boundary:** configuration access succeeded after one network-rule retry, while Terraform backend access failed moments later; discovered GitHub-hosted public egress is not an acceptable durable trust boundary.
-- **Architecture gate:** ADR-047 is Accepted through merged PR #310. The inactive Demo bootstrap is implemented; token issuance, runner execution, label activation and Storage public-network disablement remain gated.
+- **Architecture gate:** ADR-047 is Accepted through merged PR #310. PR #326 implements inert reusable runtime assets; token issuance, runner execution, label activation and Storage public-network disablement remain gated on a reachable private signing path.
 - **Boundary:** no UAT, custom DNS, customer traffic, Production apply, Platform Operations activation, final Goal acceptance, self-approval or self-merge.
 
 ## Authorization Boundary
@@ -65,15 +65,19 @@ progression.
 
 ## Current Blockers
 
-P3-EX07 Azure planning is blocked until the inactive Demo runner bootstrap is independently accepted,
-merged and reconciled. UAT remains constitutionally blocked until the Founder explicitly accepts the
-resulting Demo deployment.
+P3-EX07 activation is blocked because the accepted GitHub-hosted bootstrap cannot reach the Demo
+runner Key Vault data plane while `publicNetworkAccess=Disabled`, `defaultAction=Deny` and
+`bypass=None`; no private bootstrap broker exists. PR #326 contains only inactive reusable assets and
+does not introduce a public fallback. UAT remains constitutionally blocked until the Founder
+explicitly accepts the resulting Demo deployment.
 
 ## Next Authorized Action
 
-Obtain focused review and Founder merge of the inactive Demo runner bootstrap, then reconcile its
-Deployment Stack and qualify the private path. Do not create UAT/Production runner resources, switch
-deployment labels, apply Demo workloads, disable Storage public access, or initiate UAT.
+Founder reviews PR #326 and selects an architecture-compliant private signing route before runner
+activation. After that decision is implemented and merged, publish and pin the runner image, reconcile
+the Demo Deployment Stack, and qualify the private path. Do not create UAT/Production runner
+resources, switch deployment labels, apply Demo workloads, disable Storage public access, or initiate
+UAT.
 
 ## History And Evidence
 
