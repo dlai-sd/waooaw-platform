@@ -452,7 +452,11 @@ def _start_execution(api: JsonApi, context: RunnerContext) -> str:
     containers = template.get("containers", [])
     if len(containers) != 1 or containers[0].get("name") != "runner":
         raise LifecycleError("runner job template is invalid")
-    override = json.loads(json.dumps(template))
+    override = {
+        name: json.loads(json.dumps(template[name]))
+        for name in ("containers", "initContainers")
+        if name in template
+    }
     environment = {
         str(item["name"]): item
         for item in override["containers"][0].get("env", [])
@@ -471,7 +475,7 @@ def _start_execution(api: JsonApi, context: RunnerContext) -> str:
         "POST",
         f"https://management.azure.com{context.job_resource_id}/start?api-version=2024-03-01",
         resource=MANAGEMENT_RESOURCE,
-        body={"template": override},
+        body=override,
     )
     execution_name = str((execution or {}).get("name", ""))
     if not execution_name:
