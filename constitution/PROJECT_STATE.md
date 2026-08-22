@@ -37,7 +37,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Configuration readiness repair | DONE - PR #309 merged; second plan proved exact Blob retry and verified firewall cleanup |
 | Real Demo OIDC plan | BLOCKED - run `32371262629` reached Terraform init, then backend list received Storage `403 AuthorizationFailure`; no plan/apply occurred |
 | Private runner decision | ACCEPTED - independent EA and Security review of commit `7e5bd4b` returned APPROVE with no blockers |
-| Demo runner bootstrap | IMPLEMENTED - PR #326 adds the inactive Deployment Stack repair and Founder-authorized private ACA signing/cleanup broker; Founder review pending |
+| Demo runner bootstrap | IMPLEMENTED - PR #326 commit `a9af853` adds the inactive Deployment Stack repair and Founder-authorized private ACA signing/cleanup broker; Founder review pending |
 | Private signing decision | AUTHORIZED - GitHub-hosted management job starts a zero-idle broker in the existing private ACA environment; no GitHub account/setup change and no FA-052 ceiling increase |
 | Local validation | PASS - 75 focused runner tests, Ruff, Bicep compilation, all-environment manifest validation, image build/tool smoke and zero HIGH/CRITICAL OS findings |
 | Architecture review | CLEAR - author review, focused EA review and focused INST-007 Security correction complete; no separate review artifact required |
