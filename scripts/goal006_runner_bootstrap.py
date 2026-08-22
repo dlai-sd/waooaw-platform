@@ -36,12 +36,23 @@ REQUIRED_TEMPLATE_TERMS = {
     "Microsoft.Network/privateDnsZones",
     "Microsoft.Network/virtualNetworks",
     "Microsoft.OperationalInsights/workspaces",
-    "ACTIONS_RUNNER_INPUT_JITCONFIG",
+    "/opt/waooaw/entrypoint.sh",
+    "RUNNER_VAULT_URL",
+    "RUNNER_TOKEN_SECRET_NAME",
     "RUNNER_ACTIVATION_STATE",
-    "triggerType: 'Schedule'",
+    "resource brokerIdentity",
+    "resource brokerJob",
+    "resource cleanupBrokerJob",
+    "name: '${prefix}-broker'",
+    "name: '${prefix}-cleanup-broker'",
+    "args: ['start'",
+    "args: ['cleanup-correlated'",
+    "triggerType: activationState == 'ACTIVE' ? 'Schedule' : 'Manual'",
+    "manualTriggerConfig:",
     "cronExpression: '*/5 * * * *'",
     "replicaTimeout: 3600",
     "replicaTimeout: 120",
+    "replicaTimeout: 300",
     "deny-inbound",
     "deny-other-egress",
 }
@@ -49,6 +60,8 @@ REQUIRED_PREREQUISITE_TERMS = {
     "Microsoft.Consumption/budgets",
     "Microsoft.KeyVault/vaults/secrets/setSecret/action",
     "Microsoft.KeyVault/vaults/secrets/delete",
+    "Microsoft.App/jobs/start/action",
+    "Microsoft.App/jobs/stop/execution/action",
     "goal006-cumulative-monthly",
     "adb29209-aa1d-457b-a786-c913953d2891",
     "prerequisites-rg.bicep",
@@ -134,6 +147,8 @@ def validate_bootstrap_manifest(
     param_activation = parameters.get("activationState")
     if param_activation not in ALLOWED_ACTIVATION_STATES:
         violations.append("PARAMETER_ACTIVATION_STATE_INVALID")
+    if param_activation != manifest_activation:
+        violations.append("ACTIVATION_STATE_MISMATCH")
     if parameters.get("runnerResourceGroupName") != f"waooaw-{environment}-runner-rg":
         violations.append("RESOURCE_GROUP_INVALID")
     if parameters.get("stateStorageAccountId") != EXPECTED_STATE_ID:
@@ -154,6 +169,20 @@ def validate_bootstrap_manifest(
     for name in ("runnerImage", "reconcilerImage"):
         if not IMMUTABLE_IMAGE.fullmatch(str(parameters.get(name, ""))):
             violations.append(f"IMAGE_NOT_IMMUTABLE:{name}")
+    if param_activation == "ACTIVE" and (
+        parameters.get("githubAppId") == "PENDING"
+        or parameters.get("githubAppInstallationId") == "PENDING"
+        or not str(parameters.get("githubAppId", "")).isdigit()
+        or not str(parameters.get("githubAppInstallationId", "")).isdigit()
+        or
+        parameters.get("githubAppKeyName") == "PENDING"
+        or parameters.get("githubAppKeyVersion") == "PENDING"
+    ):
+        violations.append("GITHUB_APP_KEY_NOT_CONFIGURED")
+    if param_activation == "ACTIVE" and not str(parameters.get("runnerImage", "")).startswith(
+        "ghcr.io/dlai-sd/goal006-private-runner@sha256:"
+    ):
+        violations.append("RUNNER_IMAGE_NOT_PUBLISHED")
     if PROHIBITED_KEYS.intersection(_walk_keys(parameters_document)):
         violations.append("PROHIBITED_CREDENTIAL_FIELD")
 
@@ -214,6 +243,8 @@ def validate_bootstrap_manifest(
             violations.append(f"PREREQUISITE_CONTRACT_MISSING:{term}")
     if "Key Vault Crypto User" in template_text or "Key Vault Secrets Officer" in template_text:
         violations.append("PREMATURE_OR_BROAD_KEY_VAULT_ROLE")
+    if "bootstrapKeySignAccess" in template_text or "bootstrapSecretAccess" in template_text:
+        violations.append("HOSTED_BOOTSTRAP_CREDENTIAL_AUTHORITY")
     return sorted(set(violations))
 
 

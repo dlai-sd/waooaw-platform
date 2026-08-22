@@ -298,12 +298,15 @@ def _required_resource_names(environment: str) -> dict[str, str]:
         f"{prefix}-nsg": "Microsoft.Network/networkSecurityGroups",
         f"{prefix}-vnet": "Microsoft.Network/virtualNetworks",
         f"{prefix}-identity": "Microsoft.ManagedIdentity/userAssignedIdentities",
+        f"{prefix}-broker-identity": "Microsoft.ManagedIdentity/userAssignedIdentities",
         f"{prefix}-cleanup-identity": "Microsoft.ManagedIdentity/userAssignedIdentities",
         f"waooaw-{environment}-runner-kv": "Microsoft.KeyVault/vaults",
         f"{prefix}-state-pe": "Microsoft.Network/privateEndpoints",
         f"{prefix}-vault-pe": "Microsoft.Network/privateEndpoints",
         f"{prefix}-aca": "Microsoft.App/managedEnvironments",
         f"{prefix}-job": "Microsoft.App/jobs",
+        f"{prefix}-broker": "Microsoft.App/jobs",
+        f"{prefix}-cleanup-broker": "Microsoft.App/jobs",
         f"{prefix}-reconciler": "Microsoft.App/jobs",
     }
 
@@ -388,45 +391,93 @@ def verify_deployment(
         "--name",
         f"{prefix}-reconciler",
     )
-    if runner_job.get("properties", {}).get("configuration", {}).get("triggerType") != "Manual":
-        raise RuntimeError("runner job trigger is not Manual")
-    reconciler_configuration = reconciler_job.get("properties", {}).get("configuration", {})
-    if reconciler_configuration.get("triggerType") != "Schedule":
-        raise RuntimeError("reconciler job trigger is not Schedule")
-    if reconciler_configuration.get("scheduleTriggerConfig", {}).get("cronExpression") != "*/5 * * * *":
-        raise RuntimeError("reconciler job schedule is not every five minutes")
-    runner_executions = _az(
+    broker_job = _az(
         "containerapp",
         "job",
-        "execution",
-        "list",
+        "show",
         "--resource-group",
         contract["resource_group"],
         "--name",
-        f"{prefix}-job",
+        f"{prefix}-broker",
     )
-    active_execution_states = {"processing", "running", "waiting"}
-    if any(
-        str(item.get("properties", {}).get("status", "")).lower()
-        in active_execution_states
-        for item in runner_executions
+    cleanup_broker_job = _az(
+        "containerapp",
+        "job",
+        "show",
+        "--resource-group",
+        contract["resource_group"],
+        "--name",
+        f"{prefix}-cleanup-broker",
+    )
+    if runner_job.get("properties", {}).get("configuration", {}).get("triggerType") != "Manual":
+        raise RuntimeError("runner job trigger is not Manual")
+    for name, job in (("broker", broker_job), ("cleanup broker", cleanup_broker_job)):
+        configuration = job.get("properties", {}).get("configuration", {})
+        if configuration.get("triggerType") != "Manual":
+            raise RuntimeError(f"{name} job trigger is not Manual")
+        if configuration.get("replicaTimeout") != 300:
+            raise RuntimeError(f"{name} job timeout is not 300 seconds")
+        manual = configuration.get("manualTriggerConfig", {})
+        if manual.get("parallelism") != 1 or manual.get("replicaCompletionCount") != 1:
+            raise RuntimeError(f"{name} job concurrency is not one")
+    reconciler_configuration = reconciler_job.get("properties", {}).get("configuration", {})
+    expected_trigger = "Schedule" if contract["activation_state"] == "ACTIVE" else "Manual"
+    if reconciler_configuration.get("triggerType") != expected_trigger:
+        raise RuntimeError(f"reconciler job trigger is not {expected_trigger}")
+    if expected_trigger == "Schedule" and (
+        reconciler_configuration.get("scheduleTriggerConfig", {}).get("cronExpression")
+        != "*/5 * * * *"
     ):
-        raise RuntimeError("runner job has an active execution while blueprint is INACTIVE")
+        raise RuntimeError("reconciler job schedule is not every five minutes")
+    active_execution_states = {"processing", "running", "waiting"}
+    for name in (f"{prefix}-job", f"{prefix}-broker", f"{prefix}-cleanup-broker"):
+        executions = _az(
+            "containerapp",
+            "job",
+            "execution",
+            "list",
+            "--resource-group",
+            contract["resource_group"],
+            "--name",
+            name,
+        )
+        if any(
+            str(item.get("properties", {}).get("status", "")).lower()
+            in active_execution_states
+            for item in executions
+        ):
+            raise RuntimeError(f"{name} has an active execution during verification")
     expected_jobs = (
         (
             runner_job,
             "runner",
             contract["runner_image"],
-            'test "$RUNNER_ACTIVATION_STATE" = "ACTIVE" && test -n "$ACTIONS_RUNNER_INPUT_JITCONFIG" && exec ./run.sh --jitconfig "$ACTIONS_RUNNER_INPUT_JITCONFIG" || exit 0',
+            ["/opt/waooaw/entrypoint.sh"],
+            None,
         ),
         (
             reconciler_job,
             "reconciler",
             contract["reconciler_image"],
-            'test "$RUNNER_ACTIVATION_STATE" = "ACTIVE" && exit 64 || exit 0',
+            ["/bin/sh", "-c"],
+            ['test "$RUNNER_ACTIVATION_STATE" = "ACTIVE" && exit 64 || exit 0'],
+        ),
+        (
+            broker_job,
+            "broker",
+            contract["runner_image"],
+            ["python3", "/opt/waooaw/goal006_runner_lifecycle.py"],
+            ["start", "--app-manifest", "/opt/waooaw/github-runner-app-manifest.json", "--output", "/home/runner/lifecycle-record.json"],
+        ),
+        (
+            cleanup_broker_job,
+            "cleanup-broker",
+            contract["runner_image"],
+            ["python3", "/opt/waooaw/goal006_runner_lifecycle.py"],
+            ["cleanup-correlated", "--app-manifest", "/opt/waooaw/github-runner-app-manifest.json", "--private-job-conclusion", "PENDING_EXECUTION_OVERRIDE", "--output", "/home/runner/cleanup-record.json"],
         ),
     )
-    for job, container_name, expected_image, expected_argument in expected_jobs:
+    for job, container_name, expected_image, expected_command, expected_arguments in expected_jobs:
         containers = job.get("properties", {}).get("template", {}).get("containers", [])
         container = next(
             (item for item in containers if item.get("name") == container_name),
@@ -439,8 +490,15 @@ def verify_deployment(
         }
         if environment_values.get("RUNNER_ACTIVATION_STATE") != contract["activation_state"]:
             raise RuntimeError(f"{container_name} job activation state differs from blueprint")
-        if container.get("args") != [expected_argument]:
+        if container.get("command") != expected_command:
             raise RuntimeError(f"{container_name} job fail-closed command differs from blueprint")
+        if expected_arguments is not None and container.get("args") != expected_arguments:
+            raise RuntimeError(f"{container_name} job arguments differ from blueprint")
+        if container_name in {"runner", "broker", "cleanup-broker"} and not {
+            "RUNNER_VAULT_URL",
+            "RUNNER_TOKEN_SECRET_NAME",
+        }.issubset(environment_values):
+            raise RuntimeError(f"{container_name} job token environment is incomplete")
     payload: dict[str, Any] = {
         "schema": DEPLOYMENT_SCHEMA,
         "environment": environment,

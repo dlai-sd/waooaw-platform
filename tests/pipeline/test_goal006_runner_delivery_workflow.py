@@ -5,6 +5,9 @@ from pathlib import Path
 WORKFLOW = Path(".github/workflows/runner-environment-delivery.yaml").read_text(
     encoding="utf-8"
 )
+QUALIFICATION_WORKFLOW = Path(
+    ".github/workflows/goal006-private-runner-qualification.yaml"
+).read_text(encoding="utf-8")
 
 
 def test_workflow_exposes_only_authorized_demo_environment() -> None:
@@ -40,3 +43,26 @@ def test_plan_and_deployment_evidence_are_retained() -> None:
     assert "goal006-runner-deployment-${{ inputs.environment }}-${{ github.run_id }}" in WORKFLOW
     assert "runner-plan.json" in WORKFLOW
     assert "deployment-record.json" in WORKFLOW
+
+
+def test_private_qualification_uses_brokers_and_demo_runner_only() -> None:
+    assert "RUNNER_BROKER_JOB: goal006-demo-runner-broker" in QUALIFICATION_WORKFLOW
+    assert (
+        "RUNNER_CLEANUP_BROKER_JOB: goal006-demo-runner-cleanup-broker"
+        in QUALIFICATION_WORKFLOW
+    )
+    assert "group: goal006-demo-private" in QUALIFICATION_WORKFLOW
+    assert "labels: goal006-demo-private" in QUALIFICATION_WORKFLOW
+    assert "goal006-uat" not in QUALIFICATION_WORKFLOW
+    assert "goal006-prod" not in QUALIFICATION_WORKFLOW
+    assert "if: always() && needs.start-broker.result == 'success'" in QUALIFICATION_WORKFLOW
+
+
+def test_hosted_qualification_never_signs_or_handles_runner_tokens() -> None:
+    assert QUALIFICATION_WORKFLOW.count("runs-on: ubuntu-latest") == 2
+    assert "containerapp job start" in QUALIFICATION_WORKFLOW
+    assert "/sign?" not in QUALIFICATION_WORKFLOW
+    assert "GITHUB_APP_ID" not in QUALIFICATION_WORKFLOW
+    assert "GITHUB_APP_INSTALLATION_ID" not in QUALIFICATION_WORKFLOW
+    assert "RUNNER_REGISTRATION_TOKEN" not in QUALIFICATION_WORKFLOW
+    assert "network-rule add" not in QUALIFICATION_WORKFLOW
