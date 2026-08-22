@@ -181,7 +181,7 @@ jobs:
           retention-days: ${{ env.EVIDENCE_RETENTION_DAYS }}
 
   cleanup-private:
-    if: always() && needs.start-broker.result == 'success'
+    if: always()
     needs: [start-broker, qualify-private]
     runs-on: ubuntu-latest
     environment: demo

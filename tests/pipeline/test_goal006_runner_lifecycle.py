@@ -14,9 +14,11 @@ from scripts.goal006_runner_lifecycle import (
     JsonApi,
     LifecycleError,
     ReconcilerContext,
+    RunnerContext,
     _assert_zero_active_executions,
     _find_correlated_execution,
     _start_execution,
+    cleanup_correlated_runner,
     create_app_jwt,
     correlation_id,
     deployment_job_is_terminal,
@@ -37,6 +39,34 @@ def _decode_jwt_segment(value: str) -> dict[str, object]:
 def test_correlation_and_runner_name_are_environment_scoped() -> None:
     assert correlation_id("demo", "123", "2") == "goal006:demo:123:2"
     assert runner_name("demo", "123", "2") == "goal006-demo-123-2"
+
+
+def _runner_context(run_id: str = "123", run_attempt: str = "2") -> RunnerContext:
+    return RunnerContext(
+        environment="demo",
+        repository="dlai-sd/waooaw-platform",
+        run_id=run_id,
+        run_attempt=run_attempt,
+        subscription_id="sub",
+        resource_group="rg",
+        job_name="runner-job",
+        vault_url="https://vault.example",
+        token_secret_name="runner-token",
+        app_id="4680703",
+        installation_id="155648751",
+        app_key_id="https://vault.example/keys/app/version",
+        runner_label="goal006-demo-private",
+        activation_state="ACTIVE",
+    )
+
+
+def test_token_secret_name_is_unique_per_workflow_attempt() -> None:
+    first = _runner_context(run_attempt="1").correlated_token_secret_name
+    second = _runner_context(run_attempt="2").correlated_token_secret_name
+
+    assert first == "runner-token-demo-123-1"
+    assert second == "runner-token-demo-123-2"
+    assert first != second
 
 
 @pytest.mark.parametrize(
@@ -356,6 +386,7 @@ def test_runner_start_clones_complete_template_before_binding_correlation() -> N
             "correlation": "goal006:demo:123:2",
             "runner_name": "goal006-demo-123-2",
             "runner_label": "goal006-demo-private",
+            "correlated_token_secret_name": "runner-token-demo-123-2",
             "repository": "dlai-sd/waooaw-platform",
             "run_id": "123",
             "run_attempt": "2",
@@ -372,6 +403,7 @@ def test_runner_start_clones_complete_template_before_binding_correlation() -> N
     assert container["resources"] == {"cpu": 1.0, "memory": "2Gi"}
     environment = {item["name"]: item["value"] for item in container["env"]}
     assert environment["RUNNER_CORRELATION_ID"] == "goal006:demo:123:2"
+    assert environment["RUNNER_TOKEN_SECRET_NAME"] == "runner-token-demo-123-2"
     assert environment["GITHUB_WORKFLOW_RUN_ID"] == "123"
 
 
@@ -413,6 +445,7 @@ def test_runner_start_serializes_azure_execution_template_at_body_root(monkeypat
             "correlation": "goal006:demo:123:2",
             "runner_name": "goal006-demo-123-2",
             "runner_label": "goal006-demo-private",
+            "correlated_token_secret_name": "runner-token-demo-123-2",
             "repository": "dlai-sd/waooaw-platform",
             "run_id": "123",
             "run_attempt": "2",
@@ -428,6 +461,7 @@ def test_runner_start_serializes_azure_execution_template_at_body_root(monkeypat
                     {"name": "RUNNER_CORRELATION_ID", "value": "goal006:demo:123:2"},
                     {"name": "RUNNER_NAME", "value": "goal006-demo-123-2"},
                     {"name": "RUNNER_LABEL", "value": "goal006-demo-private"},
+                    {"name": "RUNNER_TOKEN_SECRET_NAME", "value": "runner-token-demo-123-2"},
                     {"name": "GITHUB_REPOSITORY", "value": "dlai-sd/waooaw-platform"},
                     {"name": "GITHUB_WORKFLOW_RUN_ID", "value": "123"},
                     {"name": "GITHUB_WORKFLOW_RUN_ATTEMPT", "value": "2"},
@@ -523,6 +557,7 @@ def _active_execution(*, correlation: str = "goal006:demo:123:2") -> dict[str, o
                             {"name": "RUNNER_CORRELATION_ID", "value": correlation},
                             {"name": "RUNNER_NAME", "value": "goal006-demo-123-2"},
                             {"name": "RUNNER_LABEL", "value": "goal006-demo-private"},
+                            {"name": "RUNNER_TOKEN_SECRET_NAME", "value": "runner-token-demo-123-2"},
                             {"name": "GITHUB_REPOSITORY", "value": "dlai-sd/waooaw-platform"},
                             {"name": "GITHUB_WORKFLOW_RUN_ID", "value": "123"},
                             {"name": "GITHUB_WORKFLOW_RUN_ATTEMPT", "value": "2"},
@@ -636,3 +671,56 @@ def test_missing_workflow_run_is_terminal_for_reconciliation() -> None:
         _reconciler_context().runner_context("123", "2"),
         "token",
     ) == "absent"
+
+
+def test_cleanup_is_idempotent_when_broker_created_no_secret_or_execution(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    deleted_urls = []
+
+    class PartialBrokerApi:
+        def request(self, method, url, **kwargs):
+            if url.endswith("/executions?api-version=2024-03-01"):
+                return {"value": []}
+            if url.endswith("/actions/runners?per_page=100"):
+                return {"runners": []}
+            if method == "DELETE" and "/secrets/" in url:
+                deleted_urls.append(url)
+                raise HttpStatusError(method, url, 404)
+            raise AssertionError((method, url))
+
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "account": "dlai-sd",
+                "repositories": ["waooaw-platform"],
+                "repository_permissions": {
+                    "actions": "read",
+                    "administration": "write",
+                    "metadata": "read",
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "scripts.goal006_runner_lifecycle.create_app_jwt", lambda *args: "jwt"
+    )
+    monkeypatch.setattr(
+        "scripts.goal006_runner_lifecycle.validate_installation",
+        lambda *args: "installation-token",
+    )
+
+    record = cleanup_correlated_runner(
+        PartialBrokerApi(), _runner_context(), manifest, "failure"
+    )
+
+    assert record["aca_execution_name"] == ""
+    assert record["token_secret_name"] == "runner-token-demo-123-2"
+    assert record["token_secret_deleted"] is True
+    assert deleted_urls == [
+        "https://vault.example/secrets/runner-token-demo-123-2?api-version=7.4"
+    ]

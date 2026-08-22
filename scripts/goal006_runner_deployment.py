@@ -550,6 +550,7 @@ def verify_deployment(
         if expected_arguments is not None and container.get("args") != expected_arguments:
             raise RuntimeError(f"{container_name} job arguments differ from blueprint")
         if container_name in {"runner", "broker", "cleanup-broker"} and not {
+            "AZURE_CLIENT_ID",
             "RUNNER_VAULT_URL",
             "RUNNER_TOKEN_SECRET_NAME",
         }.issubset(environment_values):
