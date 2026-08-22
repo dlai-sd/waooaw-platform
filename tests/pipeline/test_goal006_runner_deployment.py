@@ -16,12 +16,16 @@ from scripts.goal006_runner_deployment import (
     revalidate_reviewed_plan,
     validate_reviewed_plan,
     verify_deployment,
+    verify_signer_role_assignments,
 )
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
 MANIFEST = (
     REPOSITORY_ROOT
     / "infrastructure/deployment-stacks/goal006-runner/bootstrap-manifest.json"
+)
+RUNNER_TEMPLATE = (
+    REPOSITORY_ROOT / "infrastructure/deployment-stacks/goal006-runner/main.bicep"
 )
 
 
@@ -31,6 +35,39 @@ def test_every_environment_uses_one_deployment_contract() -> None:
         assert contract["stack_name"] == f"goal006-{environment}-private-runner"
         assert contract["resource_group"] == f"waooaw-{environment}-runner-rg"
         assert contract["activation_state"] in {"INACTIVE", "ACTIVE"}
+
+
+def test_signer_roles_are_scoped_to_key_not_key_version() -> None:
+    template = RUNNER_TEMPLATE.read_text(encoding="utf-8")
+
+    assert "scope: githubAppKey\n" in template
+    assert "scope: githubAppKeyVersionResource" not in template
+    assert "Microsoft.KeyVault/vaults/keys/versions" not in template
+
+
+def test_live_signer_verification_rejects_key_version_scope(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    key_scope = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.KeyVault/vaults/vault/keys/app"
+
+    def version_scoped_assignment(*arguments: str):
+        if arguments[:2] == ("identity", "show"):
+            return {"principalId": "principal"}
+        if arguments[:3] == ("role", "assignment", "list"):
+            return [
+                {
+                    "roleDefinitionName": "Key Vault Crypto User",
+                    "scope": f"{key_scope}/versions/version-id",
+                }
+            ]
+        raise AssertionError(arguments)
+
+    monkeypatch.setattr("scripts.goal006_runner_deployment._az", version_scoped_assignment)
+
+    with pytest.raises(RuntimeError, match="lacks Key Vault Crypto User"):
+        verify_signer_role_assignments(
+            resource_group="rg", prefix="goal006-demo-runner", key_scope=key_scope
+        )
 
 
 def test_azure_resource_names_respect_service_limits() -> None:
@@ -183,6 +220,16 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
                     {"privateLinkServiceConnectionState": {"status": "Approved"}}
                 ]
             }
+        if arguments[:2] == ("identity", "show"):
+            return {"principalId": arguments[-1] + "-principal"}
+        if command == ("role", "assignment", "list"):
+            key_scope = (
+                "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.KeyVault/"
+                "vaults/waooaw-demo-runner-kv/keys/github-runner-app-signing"
+            )
+            return [
+                {"roleDefinitionName": "Key Vault Crypto User", "scope": key_scope}
+            ]
         if arguments[:4] == ("containerapp", "job", "execution", "list"):
             return []
         if command == ("containerapp", "job", "show"):
