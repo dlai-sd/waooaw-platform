@@ -51,8 +51,8 @@ jobs:
           push: ${{ github.event_name == 'push' }}
           load: ${{ github.event_name == 'pull_request' }}
           tags: ${{ env.IMAGE }}:sha-${{ github.sha }}
-          sbom: true
-          provenance: mode=max
+          sbom: ${{ github.event_name == 'push' }}
+          provenance: ${{ github.event_name == 'push' && 'mode=max' || 'false' }}
           labels: |
             org.opencontainers.image.revision=${{ github.sha }}
             org.waooaw.goal=GOAL-006
@@ -81,7 +81,7 @@ jobs:
           exit-code: 1
 
       - name: Upload scan results
-        if: always() && github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request' && steps.image.outcome == 'success'
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-goal006-private-runner.sarif

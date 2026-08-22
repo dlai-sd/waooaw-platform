@@ -18,7 +18,7 @@
   },
   "files": {
       ".github/workflows/runner-environment-delivery.yaml": "abcc3770982664a1b8b2384f4263373cd166eacfbe0b62fb9475362c127bf8cd",
-      ".github/workflows/goal006-runner-image.yaml": "332a7e28048236d1e86f26a9a6e9837369a019c52e6c4569c5bc67e03be4b592",
+      ".github/workflows/goal006-runner-image.yaml": "01c58cc68e9cfbf11c1dc864f0f4baf0186aea8f77c344eb034bdb95cd9f7b93",
     "architecture/reference/pipeline/github-runner-app-manifest.json": "cfcb9d66abc259123dd7ef3a57a8d71af4e3a0d36e146f2f11dea6abd0d85700",
     "infrastructure/deployment-stacks/goal006-runner/cost-estimate.json": "207bf61e5903f95cf8e8d59761fc880797881d75f916e68f608d30a9cef48a0e",
     "infrastructure/deployment-stacks/goal006-runner/demo.parameters.json": "d3586d547d0b90a99dec11193201ad46306a1d96792cfb5abb29bf78a388bfba",
