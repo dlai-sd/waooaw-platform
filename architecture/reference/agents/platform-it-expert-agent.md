@@ -920,6 +920,13 @@ implementation authorization, exact artifact binding, owner estimate, and all co
 are mandatory before any runnable change. This skill grants no provider query, Terraform apply,
 Azure creation, DNS, expenditure, deployment, Production action, or operational activation.
 
+**Canonical cloud-delivery route:** For every Skill 17 cloud task, read
+`architecture/reference/pipeline/azure-deployment-topology.md` as the controlling implementation
+design and ADR-047 as the controlling private-runner decision, after checking current authority in
+`constitution/PROJECT_STATE.md` and the assigned Work Contract. Repository or live-cloud state does
+not override those authorities. Missing or conflicting inputs require a stop; they never authorize an
+alternative topology, credential path, deployment workflow, or environment sequence.
+
 **Trigger:** An approved Work Contract requires implementation or deterministic testing of Docker
 packaging, Terraform/Azure configuration, GitHub Actions, OIDC/RBAC, immutable OCI promotion,
 supply-chain evidence, data/recovery automation, observability, lifecycle/cost controls, or cloud
