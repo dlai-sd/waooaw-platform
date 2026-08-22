@@ -15,8 +15,12 @@ param stateStorageAccountId string
 param bootstrapPrincipalId string
 param bootstrapWriterRoleDefinitionId string
 param cleanupDeleterRoleDefinitionId string
+param cleanupJobOperatorRoleDefinitionId string
 param runnerImage string
 param reconcilerImage string
+param githubAppKeyName string
+param githubAppKeyVersion string
+param runnerTokenSecretName string = 'runner-registration-token'
 
 param runnerVnetAddressPrefix string = '10.70.0.0/24'
 param runnerSubnetAddressPrefix string = '10.70.0.0/27'
@@ -32,6 +36,7 @@ var commonTags = {
 var runnerSubnetId = '${runnerVnet.id}/subnets/runner'
 var privateEndpointSubnetId = '${runnerVnet.id}/subnets/private-endpoints'
 var keyVaultSecretsUserRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
+var keyVaultCryptoUserRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '12338af0-0e69-4776-bea7-57ae8d297424')
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: '${prefix}-logs'
@@ -172,6 +177,16 @@ resource cleanupIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-
   tags: commonTags
 }
 
+resource cleanupFederatedCredential 'Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2023-01-31' = {
+  parent: cleanupIdentity
+  name: 'github-${environment}-runner-cleanup'
+  properties: {
+    issuer: 'https://token.actions.githubusercontent.com'
+    subject: 'repo:dlai-sd/waooaw-platform:environment:${environment}'
+    audiences: ['api://AzureADTokenExchange']
+  }
+}
+
 resource runnerVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
   name: 'waooaw-${environment}-runner-kv'
   location: location
@@ -192,6 +207,16 @@ resource runnerVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
       name: 'standard'
     }
   }
+}
+
+resource githubAppKey 'Microsoft.KeyVault/vaults/keys@2023-07-01' existing = {
+  parent: runnerVault
+  name: githubAppKeyName
+}
+
+resource githubAppKeyVersionResource 'Microsoft.KeyVault/vaults/keys/versions@2023-07-01' existing = {
+  parent: githubAppKey
+  name: githubAppKeyVersion
 }
 
 resource runnerSecretAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
@@ -221,6 +246,35 @@ resource cleanupSecretAccess 'Microsoft.Authorization/roleAssignments@2022-04-01
     principalId: cleanupIdentity.properties.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: cleanupDeleterRoleDefinitionId
+  }
+}
+
+resource bootstrapKeySignAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (activationState == 'ACTIVE') {
+  scope: githubAppKeyVersionResource
+  name: guid(githubAppKeyVersionResource.id, bootstrapPrincipalId, keyVaultCryptoUserRoleId)
+  properties: {
+    principalId: bootstrapPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: keyVaultCryptoUserRoleId
+  }
+}
+
+resource cleanupKeySignAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (activationState == 'ACTIVE') {
+  scope: githubAppKeyVersionResource
+  name: guid(githubAppKeyVersionResource.id, cleanupIdentity.id, keyVaultCryptoUserRoleId)
+  properties: {
+    principalId: cleanupIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: keyVaultCryptoUserRoleId
+  }
+}
+
+resource cleanupJobControl 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(resourceGroup().id, cleanupIdentity.id, cleanupJobOperatorRoleDefinitionId)
+  properties: {
+    principalId: cleanupIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: cleanupJobOperatorRoleDefinitionId
   }
 }
 
@@ -377,8 +431,7 @@ resource runnerJob 'Microsoft.App/jobs@2024-03-01' = {
         {
           name: 'runner'
           image: runnerImage
-          command: ['/bin/bash', '-lc']
-          args: ['test "$RUNNER_ACTIVATION_STATE" = "ACTIVE" && test -n "$ACTIONS_RUNNER_INPUT_JITCONFIG" && exec ./run.sh --jitconfig "$ACTIONS_RUNNER_INPUT_JITCONFIG" || exit 0']
+          command: ['/opt/waooaw/entrypoint.sh']
           env: [
             {
               name: 'RUNNER_ACTIVATION_STATE'
@@ -391,6 +444,14 @@ resource runnerJob 'Microsoft.App/jobs@2024-03-01' = {
             {
               name: 'RUNNER_LABEL'
               value: 'goal006-${environment}-private'
+            }
+            {
+              name: 'RUNNER_VAULT_URL'
+              value: runnerVault.properties.vaultUri
+            }
+            {
+              name: 'RUNNER_TOKEN_SECRET_NAME'
+              value: runnerTokenSecretName
             }
           ]
           resources: {
@@ -415,16 +476,22 @@ resource reconcilerJob 'Microsoft.App/jobs@2024-03-01' = {
   }
   properties: {
     environmentId: runnerEnvironment.id
-    configuration: {
-      triggerType: 'Schedule'
+    configuration: union({
+      triggerType: activationState == 'ACTIVE' ? 'Schedule' : 'Manual'
       replicaTimeout: 120
       replicaRetryLimit: 0
+    }, activationState == 'ACTIVE' ? {
       scheduleTriggerConfig: {
         cronExpression: '*/5 * * * *'
         parallelism: 1
         replicaCompletionCount: 1
       }
-    }
+    } : {
+      manualTriggerConfig: {
+        parallelism: 1
+        replicaCompletionCount: 1
+      }
+    })
     template: {
       containers: [
         {
@@ -456,6 +523,8 @@ output statePrivateEndpointId string = statePrivateEndpoint.id
 output runnerVaultId string = runnerVault.id
 output runnerIdentityId string = runnerIdentity.id
 output cleanupIdentityId string = cleanupIdentity.id
+output cleanupIdentityClientId string = cleanupIdentity.properties.clientId
+output runnerVaultUri string = runnerVault.properties.vaultUri
 output runnerEnvironmentId string = runnerEnvironment.id
 output runnerJobId string = runnerJob.id
 output reconcilerJobId string = reconcilerJob.id

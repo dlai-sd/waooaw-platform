@@ -124,6 +124,19 @@ def test_manifest_invalid_activation_state_fails_closed(tmp_path: Path) -> None:
     )
 
 
+def test_manifest_and_parameter_activation_must_match(tmp_path: Path) -> None:
+    repository, manifest_path = _write_manifest(
+        tmp_path,
+        parameter_mutator=lambda parameters: parameters["activationState"].update(
+            value="ACTIVE"
+        ),
+    )
+
+    assert "ACTIVATION_STATE_MISMATCH" in validate_bootstrap_manifest(
+        repository, manifest_path
+    )
+
+
 def test_cross_environment_network_overlap_fails_closed(tmp_path: Path) -> None:
     repository, manifest_path = _write_manifest(tmp_path)
     uat_path = (

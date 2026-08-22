@@ -1,0 +1,271 @@
+#!/usr/bin/env python3
+"""Qualify GOAL-006 private Storage and Terraform paths from an ephemeral runner."""
+
+from __future__ import annotations
+
+import argparse
+import ipaddress
+import json
+import os
+import socket
+import subprocess
+from collections.abc import Sequence
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+
+class QualificationError(RuntimeError):
+    """Fail-closed private-path qualification error."""
+
+
+def resolve_private_addresses(hostname: str) -> list[str]:
+    try:
+        addresses = sorted(
+            {item[4][0] for item in socket.getaddrinfo(hostname, 443, type=socket.SOCK_STREAM)}
+        )
+    except socket.gaierror as error:
+        raise QualificationError(f"private DNS resolution failed for {hostname}") from error
+    if not addresses or any(not ipaddress.ip_address(value).is_private for value in addresses):
+        raise QualificationError(f"public or empty DNS answer rejected for {hostname}")
+    return addresses
+
+
+def _run(arguments: Sequence[str], *, cwd: Path | None = None) -> str:
+    result = subprocess.run(  # noqa: S603
+        arguments,
+        cwd=cwd,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode:
+        raise QualificationError(
+            f"command failed ({result.returncode}): {arguments[0]} {arguments[1]}"
+        )
+    return result.stdout
+
+
+def qualify(
+    *,
+    environment: str,
+    correlation: str,
+    account_name: str,
+    state_container: str,
+    config_container: str,
+    config_blob: str,
+    terraform_root: Path,
+    output_directory: Path,
+) -> dict[str, Any]:
+    if environment not in {"demo", "uat", "prod"}:
+        raise QualificationError("environment is invalid")
+    if correlation.replace(":", "-") != correlation.replace(":", "-").lower():
+        raise QualificationError("correlation is invalid")
+    output_directory.mkdir(parents=True, exist_ok=True)
+    hostname = f"{account_name}.blob.core.windows.net"
+    addresses = resolve_private_addresses(hostname)
+    configuration_path = output_directory / "workload-configuration.json"
+    probe_path = output_directory / "storage-probe.json"
+    plan_path = output_directory / "foundation.tfplan"
+    probe_blob = f"goal006/{environment}/qualification/{correlation.replace(':', '-')}.json"
+    probe_path.write_text(
+        json.dumps(
+            {
+                "schema": "waooaw.goal006-private-path-probe/v1",
+                "environment": environment,
+                "correlation_id": correlation,
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    storage = ["az", "storage", "blob"]
+    common = ["--account-name", account_name, "--auth-mode", "login", "--only-show-errors"]
+    _run(
+        [
+            *storage,
+            "download",
+            "--container-name",
+            config_container,
+            "--name",
+            config_blob,
+            "--file",
+            str(configuration_path),
+            "--overwrite",
+            "--output",
+            "none",
+            *common,
+        ]
+    )
+    uploaded = False
+    lease_id = ""
+    try:
+        _run(
+            [
+                *storage,
+                "upload",
+                "--container-name",
+                state_container,
+                "--name",
+                probe_blob,
+                "--file",
+                str(probe_path),
+                "--overwrite",
+                "false",
+                "--output",
+                "none",
+                *common,
+            ]
+        )
+        uploaded = True
+        _run(
+            [
+                *storage,
+                "show",
+                "--container-name",
+                state_container,
+                "--name",
+                probe_blob,
+                "--output",
+                "json",
+                *common,
+            ]
+        )
+        lease_id = _run(
+            [
+                *storage,
+                "lease",
+                "acquire",
+                "--blob-name",
+                probe_blob,
+                "--container-name",
+                state_container,
+                "--lease-duration",
+                "15",
+                "--query",
+                "leaseId",
+                "--output",
+                "tsv",
+                *common,
+            ]
+        ).strip()
+        if not lease_id:
+            raise QualificationError("Storage lease ID is empty")
+        _run(
+            [
+                *storage,
+                "lease",
+                "release",
+                "--blob-name",
+                probe_blob,
+                "--container-name",
+                state_container,
+                "--lease-id",
+                lease_id,
+                "--output",
+                "none",
+                *common,
+            ]
+        )
+        lease_id = ""
+        _run(
+            [
+                "terraform",
+                "init",
+                "-input=false",
+                f"-backend-config=resource_group_name={os.environ['TFSTATE_RESOURCE_GROUP']}",
+                f"-backend-config=storage_account_name={account_name}",
+                f"-backend-config=container_name={state_container}",
+                "-backend-config=use_oidc=true",
+                "-backend-config=use_azuread_auth=true",
+            ],
+            cwd=terraform_root,
+        )
+        _run(["terraform", "validate"], cwd=terraform_root)
+        _run(
+            [
+                "terraform",
+                "plan",
+                "-input=false",
+                "-lock-timeout=5m",
+                f"-out={plan_path}",
+            ],
+            cwd=terraform_root,
+        )
+    finally:
+        if lease_id:
+            _run(
+                [
+                    *storage,
+                    "lease",
+                    "release",
+                    "--blob-name",
+                    probe_blob,
+                    "--container-name",
+                    state_container,
+                    "--lease-id",
+                    lease_id,
+                    "--output",
+                    "none",
+                    *common,
+                ]
+            )
+        if uploaded:
+            _run(
+                [
+                    *storage,
+                    "delete",
+                    "--container-name",
+                    state_container,
+                    "--name",
+                    probe_blob,
+                    "--output",
+                    "none",
+                    *common,
+                ]
+            )
+    return {
+        "schema": "waooaw.goal006-private-path-qualification/v1",
+        "recorded_at": datetime.now(timezone.utc).isoformat(),
+        "environment": environment,
+        "correlation_id": correlation,
+        "storage_hostname": hostname,
+        "resolved_private_addresses": addresses,
+        "configuration_blob": f"{config_container}/{config_blob}",
+        "state_probe_blob": probe_blob,
+        "configuration_read": True,
+        "state_create_read_lock_delete": True,
+        "terraform_init_validate_plan": True,
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--environment", choices=("demo", "uat", "prod"), required=True)
+    parser.add_argument("--correlation", required=True)
+    parser.add_argument("--account-name", required=True)
+    parser.add_argument("--state-container", required=True)
+    parser.add_argument("--config-container", required=True)
+    parser.add_argument("--config-blob", required=True)
+    parser.add_argument("--terraform-root", required=True, type=Path)
+    parser.add_argument("--output-directory", required=True, type=Path)
+    parser.add_argument("--output", required=True, type=Path)
+    args = parser.parse_args()
+    record = qualify(
+        environment=args.environment,
+        correlation=args.correlation,
+        account_name=args.account_name,
+        state_container=args.state_container,
+        config_container=args.config_container,
+        config_blob=args.config_blob,
+        terraform_root=args.terraform_root,
+        output_directory=args.output_directory,
+    )
+    args.output.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(json.dumps({"qualified": True, "correlation_id": args.correlation}))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

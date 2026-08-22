@@ -36,9 +36,12 @@ REQUIRED_TEMPLATE_TERMS = {
     "Microsoft.Network/privateDnsZones",
     "Microsoft.Network/virtualNetworks",
     "Microsoft.OperationalInsights/workspaces",
-    "ACTIONS_RUNNER_INPUT_JITCONFIG",
+    "/opt/waooaw/entrypoint.sh",
+    "RUNNER_VAULT_URL",
+    "RUNNER_TOKEN_SECRET_NAME",
     "RUNNER_ACTIVATION_STATE",
-    "triggerType: 'Schedule'",
+    "triggerType: activationState == 'ACTIVE' ? 'Schedule' : 'Manual'",
+    "manualTriggerConfig:",
     "cronExpression: '*/5 * * * *'",
     "replicaTimeout: 3600",
     "replicaTimeout: 120",
@@ -134,6 +137,8 @@ def validate_bootstrap_manifest(
     param_activation = parameters.get("activationState")
     if param_activation not in ALLOWED_ACTIVATION_STATES:
         violations.append("PARAMETER_ACTIVATION_STATE_INVALID")
+    if param_activation != manifest_activation:
+        violations.append("ACTIVATION_STATE_MISMATCH")
     if parameters.get("runnerResourceGroupName") != f"waooaw-{environment}-runner-rg":
         violations.append("RESOURCE_GROUP_INVALID")
     if parameters.get("stateStorageAccountId") != EXPECTED_STATE_ID:
@@ -154,6 +159,11 @@ def validate_bootstrap_manifest(
     for name in ("runnerImage", "reconcilerImage"):
         if not IMMUTABLE_IMAGE.fullmatch(str(parameters.get(name, ""))):
             violations.append(f"IMAGE_NOT_IMMUTABLE:{name}")
+    if param_activation == "ACTIVE" and (
+        parameters.get("githubAppKeyName") == "PENDING"
+        or parameters.get("githubAppKeyVersion") == "PENDING"
+    ):
+        violations.append("GITHUB_APP_KEY_NOT_CONFIGURED")
     if PROHIBITED_KEYS.intersection(_walk_keys(parameters_document)):
         violations.append("PROHIBITED_CREDENTIAL_FIELD")
 

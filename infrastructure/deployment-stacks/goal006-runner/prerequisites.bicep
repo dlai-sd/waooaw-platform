@@ -24,6 +24,7 @@ var bootstrapSecretWriterRoleSeed = environment == 'demo' ? 'goal006-bootstrap-s
 var cleanupSecretDeleterRoleSeed = environment == 'demo' ? 'goal006-cleanup-secret-deleter' : 'goal006-${environment}-cleanup-secret-deleter'
 var bootstrapSecretWriterRoleName = guid(subscription().id, bootstrapSecretWriterRoleSeed)
 var cleanupSecretDeleterRoleName = guid(subscription().id, cleanupSecretDeleterRoleSeed)
+var cleanupJobOperatorRoleName = guid(subscription().id, 'goal006-${environment}-cleanup-job-operator')
 var deploymentStackOwnerRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'adb29209-aa1d-457b-a786-c913953d2891')
 
 resource runnerResourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' = {
@@ -61,6 +62,28 @@ resource cleanupSecretDeleterRole 'Microsoft.Authorization/roleDefinitions@2022-
         actions: []
         notActions: []
         dataActions: ['Microsoft.KeyVault/vaults/secrets/delete']
+        notDataActions: []
+      }
+    ]
+    assignableScopes: [runnerResourceGroup.id]
+  }
+}
+
+resource cleanupJobOperatorRole 'Microsoft.Authorization/roleDefinitions@2022-04-01' = {
+  name: cleanupJobOperatorRoleName
+  properties: {
+    roleName: 'GOAL-006 ${environment} Cleanup Job Operator'
+    description: 'Read and stop correlated Container Apps Job executions during runner cleanup.'
+    type: 'CustomRole'
+    permissions: [
+      {
+        actions: [
+          'Microsoft.App/jobs/read'
+          'Microsoft.App/jobs/executions/read'
+          'Microsoft.App/jobs/executions/stop/action'
+        ]
+        notActions: []
+        dataActions: []
         notDataActions: []
       }
     ]
@@ -128,3 +151,4 @@ module runnerRoleAssignments 'prerequisites-rg.bicep' = {
 output runnerResourceGroupId string = runnerResourceGroup.id
 output bootstrapWriterRoleDefinitionId string = bootstrapSecretWriterRole.id
 output cleanupDeleterRoleDefinitionId string = cleanupSecretDeleterRole.id
+output cleanupJobOperatorRoleDefinitionId string = cleanupJobOperatorRole.id

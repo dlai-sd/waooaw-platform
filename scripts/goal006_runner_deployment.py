@@ -391,9 +391,13 @@ def verify_deployment(
     if runner_job.get("properties", {}).get("configuration", {}).get("triggerType") != "Manual":
         raise RuntimeError("runner job trigger is not Manual")
     reconciler_configuration = reconciler_job.get("properties", {}).get("configuration", {})
-    if reconciler_configuration.get("triggerType") != "Schedule":
-        raise RuntimeError("reconciler job trigger is not Schedule")
-    if reconciler_configuration.get("scheduleTriggerConfig", {}).get("cronExpression") != "*/5 * * * *":
+    expected_trigger = "Schedule" if contract["activation_state"] == "ACTIVE" else "Manual"
+    if reconciler_configuration.get("triggerType") != expected_trigger:
+        raise RuntimeError(f"reconciler job trigger is not {expected_trigger}")
+    if expected_trigger == "Schedule" and (
+        reconciler_configuration.get("scheduleTriggerConfig", {}).get("cronExpression")
+        != "*/5 * * * *"
+    ):
         raise RuntimeError("reconciler job schedule is not every five minutes")
     runner_executions = _az(
         "containerapp",
@@ -417,16 +421,18 @@ def verify_deployment(
             runner_job,
             "runner",
             contract["runner_image"],
-            'test "$RUNNER_ACTIVATION_STATE" = "ACTIVE" && test -n "$ACTIONS_RUNNER_INPUT_JITCONFIG" && exec ./run.sh --jitconfig "$ACTIONS_RUNNER_INPUT_JITCONFIG" || exit 0',
+            ["/opt/waooaw/entrypoint.sh"],
+            None,
         ),
         (
             reconciler_job,
             "reconciler",
             contract["reconciler_image"],
-            'test "$RUNNER_ACTIVATION_STATE" = "ACTIVE" && exit 64 || exit 0',
+            ["/bin/sh", "-c"],
+            ['test "$RUNNER_ACTIVATION_STATE" = "ACTIVE" && exit 64 || exit 0'],
         ),
     )
-    for job, container_name, expected_image, expected_argument in expected_jobs:
+    for job, container_name, expected_image, expected_command, expected_arguments in expected_jobs:
         containers = job.get("properties", {}).get("template", {}).get("containers", [])
         container = next(
             (item for item in containers if item.get("name") == container_name),
@@ -439,8 +445,15 @@ def verify_deployment(
         }
         if environment_values.get("RUNNER_ACTIVATION_STATE") != contract["activation_state"]:
             raise RuntimeError(f"{container_name} job activation state differs from blueprint")
-        if container.get("args") != [expected_argument]:
+        if container.get("command") != expected_command:
             raise RuntimeError(f"{container_name} job fail-closed command differs from blueprint")
+        if expected_arguments is not None and container.get("args") != expected_arguments:
+            raise RuntimeError(f"{container_name} job arguments differ from blueprint")
+        if container_name == "runner" and not {
+            "RUNNER_VAULT_URL",
+            "RUNNER_TOKEN_SECRET_NAME",
+        }.issubset(environment_values):
+            raise RuntimeError("runner job token retrieval environment is incomplete")
     payload: dict[str, Any] = {
         "schema": DEPLOYMENT_SCHEMA,
         "environment": environment,
