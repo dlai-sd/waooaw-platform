@@ -11,6 +11,7 @@ import pytest
 
 from scripts.goal006_runner_lifecycle import (
     HttpStatusError,
+    JsonApi,
     LifecycleError,
     ReconcilerContext,
     _assert_zero_active_executions,
@@ -363,13 +364,83 @@ def test_runner_start_clones_complete_template_before_binding_correlation() -> N
     api = ExecutionApi()
 
     assert _start_execution(api, context) == "runner-execution"
-    container = api.body["template"]["containers"][0]
+    assert set(api.body) <= {"containers", "initContainers"}
+    assert "template" not in api.body
+    container = api.body["containers"][0]
     assert container["image"] == template["containers"][0]["image"]
     assert container["command"] == ["/opt/waooaw/entrypoint.sh"]
     assert container["resources"] == {"cpu": 1.0, "memory": "2Gi"}
     environment = {item["name"]: item["value"] for item in container["env"]}
     assert environment["RUNNER_CORRELATION_ID"] == "goal006:demo:123:2"
     assert environment["GITHUB_WORKFLOW_RUN_ID"] == "123"
+
+
+def test_runner_start_serializes_azure_execution_template_at_body_root(monkeypatch) -> None:
+    template = {
+        "containers": [{"name": "runner", "env": []}],
+        "initContainers": [{"name": "prepare"}],
+        "volumes": [{"name": "job-template-only"}],
+    }
+    requests = []
+
+    class Response:
+        def __init__(self, payload: dict[str, object]) -> None:
+            self.payload = payload
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+        def read(self) -> bytes:
+            return json.dumps(self.payload).encode("utf-8")
+
+    def urlopen(request, timeout):
+        requests.append(request)
+        if request.get_method() == "GET":
+            return Response({"properties": {"template": template}})
+        return Response({"name": "runner-execution"})
+
+    monkeypatch.setattr(
+        "scripts.goal006_runner_lifecycle.urllib.request.urlopen", urlopen
+    )
+    context = type(
+        "Context",
+        (),
+        {
+            "job_resource_id": "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.App/jobs/job",
+            "correlation": "goal006:demo:123:2",
+            "runner_name": "goal006-demo-123-2",
+            "runner_label": "goal006-demo-private",
+            "repository": "dlai-sd/waooaw-platform",
+            "run_id": "123",
+            "run_attempt": "2",
+        },
+    )()
+
+    assert _start_execution(JsonApi(lambda resource: "token"), context) == "runner-execution"
+    expected_body = {
+        "containers": [
+            {
+                "name": "runner",
+                "env": [
+                    {"name": "RUNNER_CORRELATION_ID", "value": "goal006:demo:123:2"},
+                    {"name": "RUNNER_NAME", "value": "goal006-demo-123-2"},
+                    {"name": "RUNNER_LABEL", "value": "goal006-demo-private"},
+                    {"name": "GITHUB_REPOSITORY", "value": "dlai-sd/waooaw-platform"},
+                    {"name": "GITHUB_WORKFLOW_RUN_ID", "value": "123"},
+                    {"name": "GITHUB_WORKFLOW_RUN_ATTEMPT", "value": "2"},
+                ],
+            }
+        ],
+        "initContainers": [{"name": "prepare"}],
+    }
+    assert requests[1].get_method() == "POST"
+    assert requests[1].full_url.endswith("/start?api-version=2024-03-01")
+    assert requests[1].data == json.dumps(expected_body, separators=(",", ":")).encode(
+        "utf-8"
+    )
 
 
 def test_broker_finds_one_correlation_bound_execution() -> None:
