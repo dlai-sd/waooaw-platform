@@ -56,6 +56,13 @@ def test_private_qualification_uses_brokers_and_demo_runner_only() -> None:
     assert "goal006-uat" not in QUALIFICATION_WORKFLOW
     assert "goal006-prod" not in QUALIFICATION_WORKFLOW
     assert "if: always() && needs.start-broker.result == 'success'" in QUALIFICATION_WORKFLOW
+    assert QUALIFICATION_WORKFLOW.count(
+        "runner_image=$(jq -er '.parameters.runnerImage.value'"
+    ) == 2
+    assert QUALIFICATION_WORKFLOW.count("goal006_runner_execution.py") == 2
+    assert QUALIFICATION_WORKFLOW.count("--yaml") == 2
+    assert "--container-name broker" not in QUALIFICATION_WORKFLOW
+    assert "--container-name cleanup-broker" not in QUALIFICATION_WORKFLOW
 
 
 def test_hosted_qualification_never_signs_or_handles_runner_tokens() -> None:
