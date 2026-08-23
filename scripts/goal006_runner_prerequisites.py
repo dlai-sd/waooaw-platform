@@ -7,6 +7,7 @@ import argparse
 import json
 import subprocess
 import sys
+import time
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -51,6 +52,12 @@ CUSTOM_ROLE_PERMISSIONS = {
             }
         ),
         "dataActions": frozenset(),
+    },
+    "Cleanup Evidence Writer": {
+        "actions": frozenset(),
+        "dataActions": frozenset(
+            {"Microsoft.Storage/storageAccounts/blobServices/containers/blobs/write"}
+        ),
     },
 }
 
@@ -219,6 +226,7 @@ def verify(
     principal_id = str(parameters["bootstrapPrincipalId"])
     subscription_scope = f"/subscriptions/{subscription_id}"
     runner_scope = f"{subscription_scope}/resourceGroups/{resource_group}"
+    evidence_scope = str(parameters["stateStorageAccountId"])
     group = _az("group", "show", "--name", resource_group)
     assignments = _az(
         "role",
@@ -254,16 +262,32 @@ def verify(
     deployment = _az("deployment", "sub", "show", "--name", deployment_name)
     outputs = deployment["properties"]["outputs"]
     custom_roles = {
-        "Broker Secret Writer": outputs["brokerWriterRoleDefinitionId"]["value"],
-        "Broker Job Operator": outputs["brokerJobOperatorRoleDefinitionId"]["value"],
-        "Cleanup Secret Deleter": outputs["cleanupDeleterRoleDefinitionId"]["value"],
-        "Cleanup Job Operator": outputs["cleanupJobOperatorRoleDefinitionId"]["value"],
+        "Broker Secret Writer": (
+            outputs["brokerWriterRoleDefinitionId"]["value"],
+            runner_scope,
+        ),
+        "Broker Job Operator": (
+            outputs["brokerJobOperatorRoleDefinitionId"]["value"],
+            runner_scope,
+        ),
+        "Cleanup Secret Deleter": (
+            outputs["cleanupDeleterRoleDefinitionId"]["value"],
+            runner_scope,
+        ),
+        "Cleanup Job Operator": (
+            outputs["cleanupJobOperatorRoleDefinitionId"]["value"],
+            runner_scope,
+        ),
+        "Cleanup Evidence Writer": (
+            outputs["evidenceWriterRoleDefinitionId"]["value"],
+            evidence_scope,
+        ),
     }
-    for suffix, role_id in custom_roles.items():
+    for suffix, (role_id, assignable_scope) in custom_roles.items():
         verify_custom_role(
             role_id,
             f"GOAL-006 {environment} {suffix}",
-            runner_scope,
+            assignable_scope,
             CUSTOM_ROLE_PERMISSIONS[suffix],
         )
     return {
@@ -272,6 +296,19 @@ def verify(
         "verified_roles": sorted(role for role, _ in required),
         "budget_inr": parameters["monthlyBudgetInr"],
     }
+
+
+def verify_with_retry(
+    parameters: dict[str, Any], subscription_id: str, deployment_name: str
+) -> dict[str, Any]:
+    for attempt in range(1, 7):
+        try:
+            return verify(parameters, subscription_id, deployment_name)
+        except RuntimeError:
+            if attempt == 6:
+                raise
+            time.sleep(5)
+    raise RuntimeError("prerequisite verification retry contract is invalid")
 
 
 def main() -> int:
@@ -306,7 +343,7 @@ def main() -> int:
                 deployment_name=deployment_name,
                 location=arguments.location,
             )
-            result["verification"] = verify(
+            result["verification"] = verify_with_retry(
                 parameters, arguments.subscription_id, deployment_name
             )
         print(json.dumps(result, sort_keys=True))
