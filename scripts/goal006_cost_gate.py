@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -14,7 +15,7 @@ ONE_TIME_CEILING_INR = 15_000.0
 CONSOLIDATION_RATIO = 0.8
 
 
-def _cost(response: Mapping[str, Any]) -> tuple[float, str]:
+def _cost(response: Mapping[str, Any], *, cost_status: str | None = None) -> tuple[float, str]:
     properties = response.get("properties")
     if not isinstance(properties, Mapping):
         raise ValueError("cost response properties missing")
@@ -23,14 +24,36 @@ def _cost(response: Mapping[str, Any]) -> tuple[float, str]:
     if not isinstance(columns, Sequence) or not isinstance(rows, Sequence) or not rows:
         raise ValueError("cost response rows missing")
     names = [str(column.get("name", "")).lower() if isinstance(column, Mapping) else "" for column in columns]
-    row = rows[0]
-    if not isinstance(row, Sequence):
+    if any(
+        not isinstance(candidate, Sequence)
+        or isinstance(candidate, str | bytes)
+        or len(candidate) != len(columns)
+        for candidate in rows
+    ):
         raise ValueError("cost response row invalid")
+    row = rows[0]
+    if cost_status is not None:
+        status_index = next(
+            (index for index, name in enumerate(names) if name == "coststatus"), None
+        )
+        if status_index is None:
+            raise ValueError("cost status column missing")
+        matches = [
+            candidate
+            for candidate in rows
+            if str(candidate[status_index]).casefold() == cost_status.casefold()
+        ]
+        if len(matches) != 1:
+            raise ValueError(f"{cost_status} cost row missing or ambiguous")
+        row = matches[0]
     cost_index = next((index for index, name in enumerate(names) if name in {"pretaxcost", "cost"}), None)
     currency_index = next((index for index, name in enumerate(names) if name == "currency"), None)
     if cost_index is None or currency_index is None:
         raise ValueError("cost or currency column missing")
-    return float(row[cost_index]), str(row[currency_index]).upper()
+    cost = float(row[cost_index])
+    if not math.isfinite(cost):
+        raise ValueError("cost value must be finite")
+    return cost, str(row[currency_index]).upper()
 
 
 def validate_cost_gate(
@@ -39,7 +62,7 @@ def validate_cost_gate(
     violations: list[str] = []
     try:
         actual, actual_currency = _cost(actual_response)
-        forecast, forecast_currency = _cost(forecast_response)
+        forecast, forecast_currency = _cost(forecast_response, cost_status="Forecast")
     except (ValueError, TypeError, StopIteration) as error:
         return [f"COST_EVIDENCE_INVALID:{error}"]
     planned_monthly = configuration.get("planned_incremental_monthly_cost_inr")

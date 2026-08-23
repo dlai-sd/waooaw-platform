@@ -60,7 +60,9 @@ def test_private_qualification_uses_brokers_and_demo_runner_only() -> None:
     assert QUALIFICATION_WORKFLOW.count(
         "runner_image=$(jq -er '.parameters.runnerImage.value'"
     ) == 2
-    assert QUALIFICATION_WORKFLOW.count("goal006_runner_execution.py") == 2
+    assert QUALIFICATION_WORKFLOW.count("goal006_runner_execution.py broker") == 1
+    assert QUALIFICATION_WORKFLOW.count("goal006_runner_execution.py cleanup") == 1
+    assert QUALIFICATION_WORKFLOW.count("goal006_runner_execution.py evidence") == 1
     assert QUALIFICATION_WORKFLOW.count("--yaml") == 2
     assert "--container-name broker" not in QUALIFICATION_WORKFLOW
     assert "--container-name cleanup-broker" not in QUALIFICATION_WORKFLOW
@@ -83,6 +85,17 @@ def test_cleanup_is_ungated_and_uses_dedicated_identity() -> None:
     assert "client-id: ${{ env.RUNNER_CLEANUP_CLIENT_ID }}" in cleanup
     assert "client-id: ${{ env.ARM_CLIENT_ID }}" not in cleanup
     assert "RUNNER_CLEANUP_CLIENT_ID: 0cbfdc62-b91f-44ee-ac27-90785b3d2eb5" in QUALIFICATION_WORKFLOW
+
+
+def test_cleanup_evidence_is_retrieved_by_exact_execution_and_retained() -> None:
+    cleanup = QUALIFICATION_WORKFLOW.split("  cleanup-private:", 1)[1]
+
+    assert "az containerapp job logs show" in cleanup
+    assert '--execution "$execution"' in cleanup
+    assert "goal006_runner_execution.py evidence" in cleanup
+    assert "cleanup-record.json" in cleanup
+    assert "goal006-private-runner-cleanup-${{ github.run_id }}-${{ github.run_attempt }}" in cleanup
+    assert "path: cleanup-job.log" not in cleanup
 
 
 def test_private_qualification_invokes_available_python_runtime() -> None:

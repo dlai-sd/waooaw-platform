@@ -16,6 +16,7 @@ from scripts.goal006_runner_deployment import (
     revalidate_reviewed_plan,
     validate_reviewed_plan,
     verify_deployment,
+    verify_audit_diagnostics,
     verify_signer_role_assignments,
 )
 
@@ -54,6 +55,39 @@ def test_signer_roles_are_scoped_to_key_not_key_version() -> None:
     assert "scope: githubAppKey\n" in template
     assert "scope: githubAppKeyVersionResource" not in template
     assert "Microsoft.KeyVault/vaults/keys/versions" not in template
+
+
+def test_template_sends_blob_and_vault_audit_events_to_log_analytics() -> None:
+    template = RUNNER_TEMPLATE.read_text(encoding="utf-8")
+    blob_template = (
+        RUNNER_TEMPLATE.parent / "blob-diagnostics.bicep"
+    ).read_text(encoding="utf-8")
+
+    assert "scope: runnerVault" in template
+    assert "scope: resourceGroup(stateStorageAccountSegments[2], stateStorageAccountSegments[4])" in template
+    assert "scope: stateBlobService" in blob_template
+    assert "category: 'AuditEvent'" in template
+    for category in ("StorageRead", "StorageWrite", "StorageDelete"):
+        assert f"category: '{category}'" in blob_template
+    assert "workspaceId: logAnalytics.id" in template
+    assert "workspaceId: workspaceId" in blob_template
+
+
+def test_live_diagnostics_reject_wrong_workspace(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "scripts.goal006_runner_deployment._az",
+        lambda *arguments: {
+            "workspaceId": "/subscriptions/sub/resourceGroups/rg/providers/workspaces/wrong",
+            "logs": [{"category": "AuditEvent", "enabled": True}],
+        },
+    )
+    with pytest.raises(RuntimeError, match="workspace differs"):
+        verify_audit_diagnostics(
+            resource_id="/subscriptions/sub/resourceGroups/rg/providers/Microsoft.KeyVault/vaults/vault",
+            setting_name="vault-audit",
+            workspace_id="/subscriptions/sub/resourceGroups/rg/providers/workspaces/expected",
+            categories={"AuditEvent"},
+        )
 
 
 def test_live_signer_verification_rejects_key_version_scope(
@@ -241,6 +275,21 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
             return [
                 {"roleDefinitionName": "Key Vault Crypto User", "scope": key_scope}
             ]
+        if command == ("monitor", "diagnostic-settings", "show"):
+            setting_name = arguments[-1]
+            categories = (
+                ["AuditEvent"]
+                if setting_name.endswith("-vault-audit")
+                else ["StorageRead", "StorageWrite", "StorageDelete"]
+            )
+            return {
+                "workspaceId": "/subscriptions/sub/resourceGroups/rg/providers/"
+                "Microsoft.OperationalInsights/workspaces/goal006-demo-runner-logs",
+                "logs": [
+                    {"category": category, "enabled": True}
+                    for category in categories
+                ],
+            }
         if arguments[:4] == ("containerapp", "job", "execution", "list"):
             return []
         if command == ("containerapp", "job", "show"):

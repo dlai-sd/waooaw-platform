@@ -48,6 +48,18 @@ def test_source_requests_machine_readable_what_if() -> None:
     assert '"--no-pretty-print"' in getsource(preview)
 
 
+def test_cleanup_role_grants_only_exact_job_log_read_action() -> None:
+    template = Path(
+        "infrastructure/deployment-stacks/goal006-runner/prerequisites.bicep"
+    ).read_text(encoding="utf-8")
+    cleanup_role = template.split("resource cleanupJobOperatorRole", 1)[1].split(
+        "resource monthlyBudget", 1
+    )[0]
+
+    assert "Microsoft.App/jobs/logstream/action" in cleanup_role
+    assert "Microsoft.OperationalInsights" not in cleanup_role
+
+
 def test_custom_role_is_verified_by_direct_resource_id(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

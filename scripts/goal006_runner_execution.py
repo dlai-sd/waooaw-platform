@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import re
 from copy import deepcopy
@@ -11,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from goal006_runner_lifecycle import TERMINAL_CONCLUSIONS
+from goal006_runner_lifecycle import CLEANUP_EVIDENCE_PREFIX
 
 RUN_NUMBER = re.compile(r"^[1-9][0-9]*$")
 PINNED_IMAGE = re.compile(r"^.+@sha256:[0-9a-f]{64}$")
@@ -52,6 +54,47 @@ REQUIRED_ENVIRONMENT = {
 
 class ExecutionTemplateError(RuntimeError):
     """Fail-closed execution-template validation error."""
+
+
+def extract_cleanup_evidence(
+    log_text: str,
+    *,
+    run_id: str,
+    run_attempt: str,
+    private_job_conclusion: str,
+) -> dict[str, Any]:
+    if RUN_NUMBER.fullmatch(run_id) is None or RUN_NUMBER.fullmatch(run_attempt) is None:
+        raise ExecutionTemplateError("workflow run identity is invalid")
+    if private_job_conclusion not in TERMINAL_CONCLUSIONS:
+        raise ExecutionTemplateError("private job conclusion is invalid")
+    encoded_records = re.findall(
+        re.escape(CLEANUP_EVIDENCE_PREFIX) + r"([A-Za-z0-9+/]+={0,2})", log_text
+    )
+    if len(encoded_records) != 1:
+        raise ExecutionTemplateError("cleanup evidence record is missing or ambiguous")
+    try:
+        record = json.loads(base64.b64decode(encoded_records[0], validate=True))
+    except (ValueError, json.JSONDecodeError) as error:
+        raise ExecutionTemplateError("cleanup evidence record is invalid") from error
+    expected = {
+        "schema": "waooaw.goal006-runner-cleanup/v1",
+        "environment": "demo",
+        "correlation_id": f"goal006:demo:{run_id}:{run_attempt}",
+        "runner_name": f"goal006-demo-{run_id}-{run_attempt}",
+        "runner_label": "goal006-demo-private",
+        "workflow_run_id": run_id,
+        "workflow_run_attempt": run_attempt,
+        "private_job_conclusion": private_job_conclusion,
+        "token_secret_name": f"runner-registration-token-demo-{run_id}-{run_attempt}",
+        "registration_absent": True,
+        "execution_terminal": True,
+        "token_secret_deleted": True,
+    }
+    if not isinstance(record, dict) or any(record.get(key) != value for key, value in expected.items()):
+        raise ExecutionTemplateError("cleanup evidence correlation or outcome is invalid")
+    if not isinstance(record.get("aca_execution_name"), str):
+        raise ExecutionTemplateError("cleanup evidence execution name is invalid")
+    return record
 
 
 def build_execution_template(
@@ -127,14 +170,33 @@ def build_execution_template(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=("broker", "cleanup"))
-    parser.add_argument("--job", required=True, type=Path)
-    parser.add_argument("--expected-image", required=True)
-    parser.add_argument("--run-id", required=True)
-    parser.add_argument("--run-attempt", required=True)
-    parser.add_argument("--private-job-conclusion")
-    parser.add_argument("--output", required=True, type=Path)
+    subparsers = parser.add_subparsers(dest="mode", required=True)
+    for mode in ("broker", "cleanup"):
+        execution_parser = subparsers.add_parser(mode)
+        execution_parser.add_argument("--job", required=True, type=Path)
+        execution_parser.add_argument("--expected-image", required=True)
+        execution_parser.add_argument("--run-id", required=True)
+        execution_parser.add_argument("--run-attempt", required=True)
+        execution_parser.add_argument("--private-job-conclusion")
+        execution_parser.add_argument("--output", required=True, type=Path)
+    evidence_parser = subparsers.add_parser("evidence")
+    evidence_parser.add_argument("--log", required=True, type=Path)
+    evidence_parser.add_argument("--run-id", required=True)
+    evidence_parser.add_argument("--run-attempt", required=True)
+    evidence_parser.add_argument("--private-job-conclusion", required=True)
+    evidence_parser.add_argument("--output", required=True, type=Path)
     arguments = parser.parse_args()
+    if arguments.mode == "evidence":
+        record = extract_cleanup_evidence(
+            arguments.log.read_text(encoding="utf-8"),
+            run_id=arguments.run_id,
+            run_attempt=arguments.run_attempt,
+            private_job_conclusion=arguments.private_job_conclusion,
+        )
+        arguments.output.write_text(
+            json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        return 0
     job = json.loads(arguments.job.read_text(encoding="utf-8"))
     template = build_execution_template(
         job,

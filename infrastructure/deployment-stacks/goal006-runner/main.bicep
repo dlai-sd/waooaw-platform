@@ -41,6 +41,7 @@ var privateEndpointSubnetId = '${runnerVnet.id}/subnets/private-endpoints'
 var keyVaultSecretsUserRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
 var keyVaultCryptoUserRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '12338af0-0e69-4776-bea7-57ae8d297424')
 var keyVaultCryptoOfficerRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '14b46e9e-c2b7-41b4-b07b-48a6ebf60603')
+var stateStorageAccountSegments = split(stateStorageAccountId, '/')
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: '${prefix}-logs'
@@ -222,6 +223,30 @@ resource runnerVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
       family: 'A'
       name: 'standard'
     }
+  }
+}
+
+resource runnerVaultDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  scope: runnerVault
+  name: '${prefix}-vault-audit'
+  properties: {
+    workspaceId: logAnalytics.id
+    logs: [
+      {
+        category: 'AuditEvent'
+        enabled: true
+      }
+    ]
+  }
+}
+
+module stateBlobDiagnostics 'blob-diagnostics.bicep' = {
+  scope: resourceGroup(stateStorageAccountSegments[2], stateStorageAccountSegments[4])
+  name: '${prefix}-blob-diagnostics'
+  params: {
+    diagnosticSettingName: '${prefix}-blob-audit'
+    storageAccountName: stateStorageAccountSegments[8]
+    workspaceId: logAnalytics.id
   }
 }
 

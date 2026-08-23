@@ -1,5 +1,7 @@
 """Contracts for complete private-runner Container Apps execution templates."""
 
+import base64
+import json
 from copy import deepcopy
 
 import pytest
@@ -11,6 +13,7 @@ from scripts.goal006_runner_execution import (
     ExecutionTemplateError,
     REQUIRED_ENVIRONMENT,
     build_execution_template,
+    extract_cleanup_evidence,
 )
 
 IMAGE = "ghcr.io/dlai-sd/runner@sha256:" + "a" * 64
@@ -87,6 +90,58 @@ def test_cleanup_template_binds_terminal_conclusion() -> None:
     )
     arguments = result["containers"][0]["args"]
     assert arguments[arguments.index("--private-job-conclusion") + 1] == "failure"
+
+
+def test_cleanup_evidence_is_correlation_bound_and_complete() -> None:
+    record = {
+        "schema": "waooaw.goal006-runner-cleanup/v1",
+        "environment": "demo",
+        "correlation_id": "goal006:demo:123:2",
+        "runner_name": "goal006-demo-123-2",
+        "runner_label": "goal006-demo-private",
+        "workflow_run_id": "123",
+        "workflow_run_attempt": "2",
+        "private_job_conclusion": "success",
+        "token_secret_name": "runner-registration-token-demo-123-2",
+        "aca_execution_name": "runner-execution",
+        "registration_absent": True,
+        "execution_terminal": True,
+        "token_secret_deleted": True,
+    }
+    encoded = base64.b64encode(json.dumps(record).encode()).decode()
+    result = extract_cleanup_evidence(
+        f"2026-08-23T00:00:00Z GOAL006_CLEANUP_RECORD_B64={encoded}\n",
+        run_id="123",
+        run_attempt="2",
+        private_job_conclusion="success",
+    )
+    assert result == record
+
+
+def test_cleanup_evidence_rejects_false_outcome() -> None:
+    record = {
+        "schema": "waooaw.goal006-runner-cleanup/v1",
+        "environment": "demo",
+        "correlation_id": "goal006:demo:123:2",
+        "runner_name": "goal006-demo-123-2",
+        "runner_label": "goal006-demo-private",
+        "workflow_run_id": "123",
+        "workflow_run_attempt": "2",
+        "private_job_conclusion": "failure",
+        "token_secret_name": "runner-registration-token-demo-123-2",
+        "aca_execution_name": "runner-execution",
+        "registration_absent": True,
+        "execution_terminal": True,
+        "token_secret_deleted": False,
+    }
+    encoded = base64.b64encode(json.dumps(record).encode()).decode()
+    with pytest.raises(ExecutionTemplateError, match="outcome"):
+        extract_cleanup_evidence(
+            f"GOAL006_CLEANUP_RECORD_B64={encoded}",
+            run_id="123",
+            run_attempt="2",
+            private_job_conclusion="failure",
+        )
 
 
 @pytest.mark.parametrize(

@@ -38,5 +38,9 @@ def test_runner_image_executes_real_storage_lease_contract() -> None:
     assert "mcr.microsoft.com/azure-storage/azurite@sha256:" in WORKFLOW
     assert "from scripts.goal006_runner_qualification import acquire_blob_lease" in WORKFLOW
     assert "from scripts.goal006_runner_qualification import release_blob_lease" in WORKFLOW
+    assert "from scripts.goal006_runner_qualification import reconcile_stale_probe_blobs" in WORKFLOW
+    assert "goal006/demo/qualification/goal006-demo-123-1.json" in WORKFLOW
+    assert "assert deleted ==" in WORKFLOW
+    assert WORKFLOW.count("az storage blob exists") == 2
     assert "--query properties.lease.status" in WORKFLOW
     assert 'test "$ready" = true' in WORKFLOW

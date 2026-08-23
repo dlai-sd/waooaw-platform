@@ -231,6 +231,25 @@ jobs:
             test "$attempt" != 180
             sleep 5
           done
+          for attempt in $(seq 1 12); do
+            if az containerapp job logs show \
+              --resource-group "$RUNNER_RESOURCE_GROUP" \
+              --name "$RUNNER_CLEANUP_BROKER_JOB" \
+              --execution "$execution" \
+              --container cleanup-broker \
+              --tail 50 \
+              --format text > cleanup-job.log && \
+              python scripts/goal006_runner_execution.py evidence \
+                --log cleanup-job.log \
+                --run-id "$GITHUB_RUN_ID" \
+                --run-attempt "$GITHUB_RUN_ATTEMPT" \
+                --private-job-conclusion "$PRIVATE_JOB_CONCLUSION" \
+                --output cleanup-record.json; then
+              break
+            fi
+            test "$attempt" != 12
+            sleep 5
+          done
 
       - name: Verify zero active private executions
         run: |
@@ -243,3 +262,12 @@ jobs:
               -o tsv)
             test "$active" = "0"
           done
+
+      - name: Retain hosted cleanup evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: goal006-private-runner-cleanup-${{ github.run_id }}-${{ github.run_attempt }}
+          path: cleanup-record.json
+          if-no-files-found: error
+          retention-days: ${{ env.EVIDENCE_RETENTION_DAYS }}

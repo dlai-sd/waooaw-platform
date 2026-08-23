@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import socket
 import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -12,8 +14,21 @@ from scripts.goal006_runner_qualification import (
     QualificationError,
     _run,
     qualify,
+    reconcile_stale_probe_blobs,
     resolve_private_addresses,
+    validate_workload_configuration,
 )
+
+
+def valid_configuration() -> dict:
+    return {
+        "lease_state": "ACTIVE",
+        "lease_issued_at": "2026-08-23T08:00:00Z",
+        "lease_expires_at": "2026-08-23T12:00:00Z",
+        "planned_incremental_monthly_cost_inr": 1000,
+        "cumulative_one_time_cost_inr": 1000,
+        "evidence_digest": "sha256:" + "a" * 64,
+    }
 
 
 def test_private_dns_accepts_only_private_addresses(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -51,6 +66,63 @@ def test_dns_failure_is_not_inferred_as_isolation(monkeypatch: pytest.MonkeyPatc
         resolve_private_addresses("state.blob.core.windows.net")
 
 
+def test_expired_workload_configuration_fails_closed() -> None:
+    configuration = valid_configuration()
+    configuration["lease_expires_at"] = "2026-08-23T09:00:00Z"
+    with pytest.raises(QualificationError, match="not current"):
+        validate_workload_configuration(
+            configuration, now=datetime(2026, 8, 23, 10, tzinfo=timezone.utc)
+        )
+
+
+def test_timezone_naive_workload_configuration_fails_closed() -> None:
+    configuration = valid_configuration()
+    configuration["lease_expires_at"] = "2026-08-23T12:00:00"
+    with pytest.raises(QualificationError, match="timezone"):
+        validate_workload_configuration(
+            configuration, now=datetime(2026, 8, 23, 10, tzinfo=timezone.utc)
+        )
+
+
+def test_only_old_correlation_shaped_probes_are_reconciled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    commands: list[list[str]] = []
+
+    def run(arguments, *, cwd=None):
+        commands.append(arguments)
+        if "list" in arguments:
+            return json.dumps(
+                [
+                    {
+                        "name": "goal006/demo/qualification/goal006-demo-100-1.json",
+                        "properties": {"lastModified": "2026-08-23T08:00:00Z"},
+                    },
+                    {
+                        "name": "goal006/demo/qualification/goal006-demo-200-1.json",
+                        "properties": {"lastModified": "2026-08-23T09:30:00Z"},
+                    },
+                    {
+                        "name": "goal006/demo/qualification/not-a-probe.json",
+                        "properties": {"lastModified": "2026-08-20T08:00:00Z"},
+                    },
+                ]
+            )
+        return ""
+
+    monkeypatch.setattr("scripts.goal006_runner_qualification._run", run)
+    deleted = reconcile_stale_probe_blobs(
+        ["az", "storage", "blob"],
+        ["--account-name", "state"],
+        environment="demo",
+        container_name="tfstate",
+        current_blob="goal006/demo/qualification/goal006-demo-300-1.json",
+        now=datetime(2026, 8, 23, 10, tzinfo=timezone.utc),
+    )
+    assert deleted == ["goal006/demo/qualification/goal006-demo-100-1.json"]
+    assert [command[command.index("--name") + 1] for command in commands if "delete" in command] == deleted
+
+
 def test_terraform_plan_uses_absolute_evidence_path(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -58,6 +130,12 @@ def test_terraform_plan_uses_absolute_evidence_path(
 
     def run(arguments, *, cwd=None):
         commands.append((arguments, cwd))
+        if "download" in arguments:
+            Path(arguments[arguments.index("--file") + 1]).write_text(
+                json.dumps(valid_configuration()), encoding="utf-8"
+            )
+        if "list" in arguments:
+            return "[]"
         return ""
 
     monkeypatch.setattr(
@@ -122,6 +200,12 @@ def test_probe_delete_is_attempted_when_lease_release_fails(
 
     def run(arguments, *, cwd=None):
         commands.append(arguments)
+        if "download" in arguments:
+            Path(arguments[arguments.index("--file") + 1]).write_text(
+                json.dumps(valid_configuration()), encoding="utf-8"
+            )
+        if "list" in arguments:
+            return "[]"
         if "release" in arguments:
             raise QualificationError("lease release failed")
         return ""

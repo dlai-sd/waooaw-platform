@@ -17,6 +17,7 @@ from scripts.goal006_runner_lifecycle import (
     RunnerContext,
     _assert_zero_active_executions,
     _find_correlated_execution,
+    _cleanup_evidence_line,
     _start_execution,
     cleanup_correlated_runner,
     create_app_jwt,
@@ -219,6 +220,17 @@ def test_lifecycle_source_never_serializes_tokens_into_evidence() -> None:
     record_block = source.split("return {", 1)[1].split("}\n", 1)[0]
     assert "registration_token" not in record_block
     assert "installation_token" not in record_block
+
+
+def test_cleanup_log_evidence_is_encoded_without_tokens() -> None:
+    line = _cleanup_evidence_line(
+        {
+            "schema": "waooaw.goal006-runner-cleanup/v1",
+            "registration_absent": True,
+        }
+    )
+    assert line.startswith("GOAL006_CLEANUP_RECORD_B64=")
+    assert "token" not in line.casefold()
 
 
 def test_execution_correlation_is_read_from_runner_override() -> None:
@@ -728,6 +740,7 @@ def test_cleanup_is_idempotent_when_broker_created_no_secret_or_execution(
     assert record["aca_execution_name"] == ""
     assert record["token_secret_name"] == "runner-token-demo-123-2"
     assert record["token_secret_deleted"] is True
+    assert record["private_job_conclusion"] == "failure"
     assert deleted_urls == [
         "https://vault.example/secrets/runner-token-demo-123-2?api-version=7.4"
     ]

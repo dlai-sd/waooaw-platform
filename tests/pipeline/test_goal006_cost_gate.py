@@ -14,6 +14,19 @@ def response(cost: float, currency: str = "INR") -> dict:
     }
 
 
+def forecast_response(actual: float, forecast: float, currency: str = "INR") -> dict:
+    return {
+        "properties": {
+            "columns": [
+                {"name": "PreTaxCost"},
+                {"name": "CostStatus"},
+                {"name": "Currency"},
+            ],
+            "rows": [[actual, "Actual", currency], [forecast, "Forecast", currency]],
+        }
+    }
+
+
 def configuration(monthly: float = 1000, one_time: float = 1000) -> dict:
     return {
         "planned_incremental_monthly_cost_inr": monthly,
@@ -22,7 +35,28 @@ def configuration(monthly: float = 1000, one_time: float = 1000) -> dict:
 
 
 def test_cost_gate_passes_below_consolidation_thresholds() -> None:
-    assert validate_cost_gate(response(1000), response(2000), configuration()) == []
+    assert validate_cost_gate(response(1000), forecast_response(1000, 2000), configuration()) == []
+
+
+def test_cost_gate_selects_labeled_forecast_row() -> None:
+    violations = validate_cost_gate(
+        response(1000), forecast_response(1000, 9500), configuration(monthly=500)
+    )
+    assert "MONTHLY_FORECAST_CEILING_REACHED" in violations
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [
+        [[1000, "Forecast"]],
+        [["NaN", "Forecast", "INR"]],
+    ],
+)
+def test_cost_gate_rejects_malformed_or_nonfinite_forecast_rows(rows: list) -> None:
+    forecast = forecast_response(1000, 2000)
+    forecast["properties"]["rows"] = rows
+    violations = validate_cost_gate(response(1000), forecast, configuration())
+    assert violations[0].startswith("COST_EVIDENCE_INVALID")
 
 
 @pytest.mark.parametrize(
@@ -37,9 +71,15 @@ def test_cost_gate_passes_below_consolidation_thresholds() -> None:
     ],
 )
 def test_cost_gate_fails_closed_at_thresholds(actual: float, forecast: float, monthly: float, one_time: float, code: str) -> None:
-    assert code in validate_cost_gate(response(actual), response(forecast), configuration(monthly, one_time))
+    assert code in validate_cost_gate(
+        response(actual), forecast_response(actual, forecast), configuration(monthly, one_time)
+    )
 
 
 def test_cost_gate_rejects_non_inr_or_missing_evidence() -> None:
-    assert "COST_CURRENCY_NOT_INR" in validate_cost_gate(response(1, "USD"), response(1), configuration())
-    assert validate_cost_gate({}, response(1), configuration())[0].startswith("COST_EVIDENCE_INVALID")
+    assert "COST_CURRENCY_NOT_INR" in validate_cost_gate(
+        response(1, "USD"), forecast_response(1, 1), configuration()
+    )
+    assert validate_cost_gate({}, forecast_response(1, 1), configuration())[0].startswith(
+        "COST_EVIDENCE_INVALID"
+    )

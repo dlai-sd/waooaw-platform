@@ -37,6 +37,7 @@ TERMINAL_CONCLUSIONS = {
 ENVIRONMENT = re.compile(r"^(demo|uat|prod)$")
 RUN_NUMBER = re.compile(r"^[1-9][0-9]*$")
 KEY_VAULT_SECRET_NAME = re.compile(r"^[0-9A-Za-z-]{1,127}$")
+CLEANUP_EVIDENCE_PREFIX = "GOAL006_CLEANUP_RECORD_B64="
 
 
 class LifecycleError(RuntimeError):
@@ -708,6 +709,7 @@ def cleanup_runner(
         **expected,
         "schema": "waooaw.goal006-runner-cleanup/v1",
         "aca_execution_name": execution_name,
+        "private_job_conclusion": private_job_conclusion,
         "registration_absent": True,
         "execution_terminal": True,
         "token_secret_deleted": True,
@@ -892,6 +894,13 @@ def _write_record(path: Path, record: Mapping[str, Any]) -> None:
     path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def _cleanup_evidence_line(record: Mapping[str, Any]) -> str:
+    encoded = base64.b64encode(
+        json.dumps(record, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    ).decode("ascii")
+    return CLEANUP_EVIDENCE_PREFIX + encoded
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -932,7 +941,7 @@ def main() -> int:
             args.private_job_conclusion,
         )
         _write_record(args.output, record)
-        print(json.dumps({"cleaned": True, "execution": record["aca_execution_name"]}))
+        print(_cleanup_evidence_line(record))
     elif args.command == "cleanup-correlated":
         context = RunnerContext.from_environment()
         record = cleanup_correlated_runner(
@@ -942,7 +951,7 @@ def main() -> int:
             args.private_job_conclusion,
         )
         _write_record(args.output, record)
-        print(json.dumps({"cleaned": True, "execution": record["aca_execution_name"]}))
+        print(_cleanup_evidence_line(record))
     elif args.command == "reconcile":
         if args.app_manifest_json is not None:
             with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8") as manifest_file:
