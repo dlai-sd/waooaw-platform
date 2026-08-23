@@ -344,6 +344,29 @@ def verify_signer_role_assignments(
             )
 
 
+def verify_audit_diagnostics(
+    *, resource_id: str, setting_name: str, workspace_id: str, categories: set[str]
+) -> None:
+    setting = _az(
+        "monitor",
+        "diagnostic-settings",
+        "show",
+        "--resource",
+        resource_id,
+        "--name",
+        setting_name,
+    )
+    observed_categories = {
+        str(item.get("category"))
+        for item in setting.get("logs", [])
+        if item.get("enabled") is True
+    }
+    if observed_categories != categories:
+        raise RuntimeError(f"audit diagnostic categories differ: {setting_name}")
+    if str(setting.get("workspaceId", "")).lower() != workspace_id.lower():
+        raise RuntimeError(f"audit diagnostic workspace differs: {setting_name}")
+
+
 def verify_deployment(
     *,
     repository_root: Path,
@@ -406,11 +429,26 @@ def verify_deployment(
         }
         if statuses != {"Approved"}:
             raise RuntimeError(f"private endpoint is not approved: {endpoint} {statuses}")
+    parameters = _parameters(contract["parameter_path"])
+    workspace_id = observed[
+        (f"{prefix}-logs", "Microsoft.OperationalInsights/workspaces")
+    ]
+    vault_id = observed[
+        (f"waooaw-{environment}-runner-kv", "Microsoft.KeyVault/vaults")
+    ]
+    verify_audit_diagnostics(
+        resource_id=vault_id,
+        setting_name=f"{prefix}-vault-audit",
+        workspace_id=workspace_id,
+        categories={"AuditEvent"},
+    )
+    verify_audit_diagnostics(
+        resource_id=f"{parameters['stateStorageAccountId']}/blobServices/default",
+        setting_name=f"{prefix}-blob-audit",
+        workspace_id=workspace_id,
+        categories={"StorageRead", "StorageWrite", "StorageDelete"},
+    )
     if contract["activation_state"] == "ACTIVE":
-        parameters = _parameters(contract["parameter_path"])
-        vault_id = observed[
-            (f"waooaw-{environment}-runner-kv", "Microsoft.KeyVault/vaults")
-        ]
         verify_signer_role_assignments(
             resource_group=contract["resource_group"],
             prefix=prefix,

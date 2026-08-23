@@ -96,13 +96,14 @@ resource cleanupJobOperatorRole 'Microsoft.Authorization/roleDefinitions@2022-04
   name: cleanupJobOperatorRoleName
   properties: {
     roleName: 'GOAL-006 ${environment} Cleanup Job Operator'
-    description: 'Read runner jobs and start the cleanup broker or stop correlated executions during runner cleanup.'
+    description: 'Read runner jobs and cleanup logs, start the cleanup broker, or stop correlated executions during runner cleanup.'
     type: 'CustomRole'
     permissions: [
       {
         actions: [
           'Microsoft.App/jobs/read'
           'Microsoft.App/jobs/executions/read'
+          'Microsoft.App/jobs/logstream/action'
           'Microsoft.App/jobs/start/action'
           'Microsoft.App/jobs/stop/execution/action'
         ]

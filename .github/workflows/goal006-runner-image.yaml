@@ -128,6 +128,19 @@ jobs:
               az storage blob delete --container-name qualification-contract --name probe \
                 --connection-string "$AZURE_STORAGE_CONNECTION_STRING" \
                 --only-show-errors --output none
+              stale_probe=goal006/demo/qualification/goal006-demo-123-1.json
+              current_probe=goal006/demo/qualification/goal006-demo-456-1.json
+              az storage blob upload --container-name qualification-contract --name "$stale_probe" \
+                --file /tmp/storage-probe --connection-string "$AZURE_STORAGE_CONNECTION_STRING" \
+                --only-show-errors --output none
+              az storage blob upload --container-name qualification-contract --name "$current_probe" \
+                --file /tmp/storage-probe --connection-string "$AZURE_STORAGE_CONNECTION_STRING" \
+                --only-show-errors --output none
+              CURRENT_PROBE="$current_probe" PYTHONPATH=/workspace python3 -c "import os; from datetime import datetime, timedelta, timezone; from scripts.goal006_runner_qualification import reconcile_stale_probe_blobs; deleted = reconcile_stale_probe_blobs([\"az\", \"storage\", \"blob\"], [\"--connection-string\", os.environ[\"AZURE_STORAGE_CONNECTION_STRING\"], \"--only-show-errors\"], environment=\"demo\", container_name=\"qualification-contract\", current_blob=os.environ[\"CURRENT_PROBE\"], now=datetime.now(timezone.utc) + timedelta(hours=2)); assert deleted == [\"goal006/demo/qualification/goal006-demo-123-1.json\"]"
+              test "$(az storage blob exists --container-name qualification-contract --name "$stale_probe" \
+                --connection-string "$AZURE_STORAGE_CONNECTION_STRING" --only-show-errors --query exists -o tsv)" = false
+              test "$(az storage blob exists --container-name qualification-contract --name "$current_probe" \
+                --connection-string "$AZURE_STORAGE_CONNECTION_STRING" --only-show-errors --query exists -o tsv)" = true
             '
 
       - name: Scan private runner

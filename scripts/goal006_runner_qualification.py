@@ -7,17 +7,25 @@ import argparse
 import ipaddress
 import json
 import os
+import re
 import socket
 import subprocess
 import uuid
-from collections.abc import Sequence
-from datetime import datetime, timezone
+from collections.abc import Mapping, Sequence
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
 
 class QualificationError(RuntimeError):
     """Fail-closed private-path qualification error."""
+
+
+PROBE_NAME = re.compile(
+    r"^goal006/(?P<environment>demo|uat|prod)/qualification/"
+    r"goal006-(?P=environment)-(?P<run_id>[1-9][0-9]*)-(?P<attempt>[1-9][0-9]*)[.]json$"
+)
+STALE_PROBE_AGE = timedelta(hours=1)
 
 
 def resolve_private_addresses(hostname: str) -> list[str]:
@@ -49,6 +57,105 @@ def _run(arguments: Sequence[str], *, cwd: Path | None = None) -> str:
             f"command failed ({result.returncode}): {arguments[0]} {arguments[1]}{detail}"
         )
     return result.stdout
+
+
+def validate_workload_configuration(
+    configuration: Mapping[str, Any], *, now: datetime | None = None
+) -> None:
+    observed_at = datetime.now(timezone.utc) if now is None else now.astimezone(timezone.utc)
+    if configuration.get("lease_state") != "ACTIVE":
+        raise QualificationError("workload lease is not ACTIVE")
+    try:
+        issued_at = datetime.fromisoformat(
+            str(configuration["lease_issued_at"]).replace("Z", "+00:00")
+        )
+        expires_at = datetime.fromisoformat(
+            str(configuration["lease_expires_at"]).replace("Z", "+00:00")
+        )
+    except (KeyError, ValueError) as error:
+        raise QualificationError("workload lease timestamps must be RFC3339") from error
+    if issued_at.tzinfo is None or expires_at.tzinfo is None:
+        raise QualificationError("workload lease timestamps must include timezone")
+    issued_at = issued_at.astimezone(timezone.utc)
+    expires_at = expires_at.astimezone(timezone.utc)
+    if issued_at > observed_at or expires_at <= observed_at or expires_at <= issued_at:
+        raise QualificationError("workload lease is not current")
+    for field in ("planned_incremental_monthly_cost_inr", "cumulative_one_time_cost_inr"):
+        value = configuration.get(field)
+        if isinstance(value, bool) or not isinstance(value, int | float) or value < 0:
+            raise QualificationError(f"{field} is invalid")
+    evidence_digest = configuration.get("evidence_digest")
+    if not isinstance(evidence_digest, str) or re.fullmatch(
+        r"sha256:[0-9a-f]{64}", evidence_digest
+    ) is None:
+        raise QualificationError("evidence_digest is invalid")
+
+
+def reconcile_stale_probe_blobs(
+    storage: Sequence[str],
+    common: Sequence[str],
+    *,
+    environment: str,
+    container_name: str,
+    current_blob: str,
+    now: datetime | None = None,
+) -> list[str]:
+    observed_at = datetime.now(timezone.utc) if now is None else now.astimezone(timezone.utc)
+    output = _run(
+        [
+            *storage,
+            "list",
+            "--container-name",
+            container_name,
+            "--prefix",
+            f"goal006/{environment}/qualification/",
+            "--output",
+            "json",
+            *common,
+        ]
+    )
+    try:
+        blobs = json.loads(output)
+    except json.JSONDecodeError as error:
+        raise QualificationError("stale probe inventory is invalid") from error
+    if not isinstance(blobs, list):
+        raise QualificationError("stale probe inventory is invalid")
+    deleted: list[str] = []
+    for blob in blobs:
+        if not isinstance(blob, Mapping):
+            raise QualificationError("stale probe inventory entry is invalid")
+        name = str(blob.get("name", ""))
+        if name == current_blob or PROBE_NAME.fullmatch(name) is None:
+            continue
+        properties = blob.get("properties")
+        if not isinstance(properties, Mapping):
+            raise QualificationError("stale probe properties are invalid")
+        try:
+            modified_at = datetime.fromisoformat(
+                str(properties["lastModified"]).replace("Z", "+00:00")
+            )
+        except (KeyError, ValueError) as error:
+            raise QualificationError("stale probe timestamp is invalid") from error
+        if modified_at.tzinfo is None:
+            raise QualificationError("stale probe timestamp lacks timezone")
+        modified_at = modified_at.astimezone(timezone.utc)
+        if observed_at - modified_at < STALE_PROBE_AGE:
+            continue
+        _run(
+            [
+                *storage,
+                "delete",
+                "--container-name",
+                container_name,
+                "--name",
+                name,
+                "--output",
+                "none",
+                *common,
+            ]
+        )
+        deleted.append(name)
+    return sorted(deleted)
 
 
 def acquire_blob_lease(
@@ -159,6 +266,20 @@ def qualify(
             "none",
             *common,
         ]
+    )
+    try:
+        configuration = json.loads(configuration_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as error:
+        raise QualificationError("workload configuration is invalid") from error
+    if not isinstance(configuration, Mapping):
+        raise QualificationError("workload configuration is invalid")
+    validate_workload_configuration(configuration)
+    reconciled_probe_blobs = reconcile_stale_probe_blobs(
+        storage,
+        common,
+        environment=environment,
+        container_name=state_container,
+        current_blob=probe_blob,
     )
     uploaded = False
     lease_id = ""
@@ -287,6 +408,8 @@ def qualify(
         "resolved_private_addresses": addresses,
         "configuration_blob": f"{config_container}/{config_blob}",
         "state_probe_blob": probe_blob,
+        "stale_probe_blobs_deleted": reconciled_probe_blobs,
+        "configuration_lease_valid": True,
         "configuration_read": True,
         "state_create_read_lock_delete": True,
         "terraform_init_validate_plan": True,
