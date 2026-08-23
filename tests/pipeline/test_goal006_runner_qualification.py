@@ -23,8 +23,8 @@ from scripts.goal006_runner_qualification import (
 def valid_configuration() -> dict:
     return {
         "lease_state": "ACTIVE",
-        "lease_issued_at": "2026-08-23T08:00:00Z",
-        "lease_expires_at": "2026-08-23T12:00:00Z",
+        "lease_issued_at": "2020-01-01T00:00:00Z",
+        "lease_expires_at": "2099-01-01T00:00:00Z",
         "planned_incremental_monthly_cost_inr": 1000,
         "cumulative_one_time_cost_inr": 1000,
         "evidence_digest": "sha256:" + "a" * 64,
