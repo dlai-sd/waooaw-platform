@@ -454,6 +454,10 @@ resource runnerJob 'Microsoft.App/jobs@2024-03-01' = {
           command: ['/opt/waooaw/entrypoint.sh']
           env: [
             {
+              name: 'AZURE_CLIENT_ID'
+              value: runnerIdentity.properties.clientId
+            }
+            {
               name: 'RUNNER_ACTIVATION_STATE'
               value: activationState
             }

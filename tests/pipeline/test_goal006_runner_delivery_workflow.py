@@ -55,7 +55,8 @@ def test_private_qualification_uses_brokers_and_demo_runner_only() -> None:
     assert "group: goal006-demo-private" not in QUALIFICATION_WORKFLOW
     assert "goal006-uat" not in QUALIFICATION_WORKFLOW
     assert "goal006-prod" not in QUALIFICATION_WORKFLOW
-    assert "if: always() && needs.start-broker.result == 'success'" in QUALIFICATION_WORKFLOW
+    assert "if: always()" in QUALIFICATION_WORKFLOW
+    assert "needs.start-broker.result == 'success'" not in QUALIFICATION_WORKFLOW
     assert QUALIFICATION_WORKFLOW.count(
         "runner_image=$(jq -er '.parameters.runnerImage.value'"
     ) == 2

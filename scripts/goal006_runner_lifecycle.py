@@ -36,6 +36,7 @@ TERMINAL_CONCLUSIONS = {
 }
 ENVIRONMENT = re.compile(r"^(demo|uat|prod)$")
 RUN_NUMBER = re.compile(r"^[1-9][0-9]*$")
+KEY_VAULT_SECRET_NAME = re.compile(r"^[0-9A-Za-z-]{1,127}$")
 
 
 class LifecycleError(RuntimeError):
@@ -135,6 +136,7 @@ class RunnerContext:
             raise LifecycleError("GitHub repository is invalid")
         if not context.vault_url.startswith("https://"):
             raise LifecycleError("runner vault URL is invalid")
+        _ = context.correlated_token_secret_name
         return context
 
     @property
@@ -148,6 +150,15 @@ class RunnerContext:
     @property
     def runner_name(self) -> str:
         return runner_name(self.environment, self.run_id, self.run_attempt)
+
+    @property
+    def correlated_token_secret_name(self) -> str:
+        name = (
+            f"{self.token_secret_name}-{self.environment}-{self.run_id}-{self.run_attempt}"
+        )
+        if KEY_VAULT_SECRET_NAME.fullmatch(name) is None:
+            raise LifecycleError("correlated runner token secret name is invalid")
+        return name
 
     @property
     def job_resource_id(self) -> str:
@@ -405,7 +416,7 @@ def _put_runner_secret(api: JsonApi, context: RunnerContext, token: str) -> None
     expires = datetime.now(timezone.utc) + timedelta(minutes=15)
     api.request(
         "PUT",
-        f"{context.vault_url.rstrip('/')}/secrets/{context.token_secret_name}?api-version=7.4",
+        f"{context.vault_url.rstrip('/')}/secrets/{context.correlated_token_secret_name}?api-version=7.4",
         resource=KEY_VAULT_RESOURCE,
         body={
             "value": token,
@@ -465,6 +476,7 @@ def _start_execution(api: JsonApi, context: RunnerContext) -> str:
         "RUNNER_CORRELATION_ID": context.correlation,
         "RUNNER_NAME": context.runner_name,
         "RUNNER_LABEL": context.runner_label,
+        "RUNNER_TOKEN_SECRET_NAME": context.correlated_token_secret_name,
         "GITHUB_REPOSITORY": context.repository,
         "GITHUB_WORKFLOW_RUN_ID": context.run_id,
         "GITHUB_WORKFLOW_RUN_ATTEMPT": context.run_attempt,
@@ -501,7 +513,9 @@ def _assert_zero_active_executions(api: JsonApi, context: RunnerContext) -> None
         raise LifecycleError("active ACA runner execution already exists")
 
 
-def _find_correlated_execution(api: JsonApi, context: RunnerContext) -> str:
+def _find_correlated_execution(
+    api: JsonApi, context: RunnerContext, *, required: bool = True
+) -> str | None:
     response = api.request(
         "GET",
         (
@@ -525,9 +539,9 @@ def _find_correlated_execution(api: JsonApi, context: RunnerContext) -> str:
         )
         if _execution_environment(execution).get("RUNNER_CORRELATION_ID") == context.correlation:
             matches.append(execution_name)
-    if len(matches) != 1:
+    if len(matches) > 1 or (required and len(matches) != 1):
         raise LifecycleError("correlated ACA execution selector is ambiguous")
-    return matches[0]
+    return matches[0] if matches else None
 
 
 def start_runner(api: JsonApi, context: RunnerContext, manifest_path: Path) -> dict[str, Any]:
@@ -580,7 +594,7 @@ def start_runner(api: JsonApi, context: RunnerContext, manifest_path: Path) -> d
         "workflow_run_id": context.run_id,
         "workflow_run_attempt": context.run_attempt,
         "aca_execution_name": execution_name,
-        "token_secret_name": context.token_secret_name,
+        "token_secret_name": context.correlated_token_secret_name,
         "token_expires_within_minutes": 15,
     }
 
@@ -599,12 +613,12 @@ def cleanup_runner(
         "runner_label": context.runner_label,
         "workflow_run_id": context.run_id,
         "workflow_run_attempt": context.run_attempt,
-        "token_secret_name": context.token_secret_name,
+        "token_secret_name": context.correlated_token_secret_name,
     }
     if any(lifecycle_record.get(name) != value for name, value in expected.items()):
         raise LifecycleError("lifecycle record differs from cleanup context")
     execution_name = str(lifecycle_record.get("aca_execution_name", ""))
-    if not execution_name.startswith(f"{context.job_name}-"):
+    if execution_name and not execution_name.startswith(f"{context.job_name}-"):
         raise LifecycleError("ACA execution name differs from runner job")
 
     manifest = _read_manifest(manifest_path)
@@ -633,13 +647,22 @@ def cleanup_runner(
     if runner is not None and runner.get("busy") is not False:
         raise LifecycleError("correlated runner still has a non-terminal job")
 
-    execution_url = (
-        f"https://management.azure.com{context.job_resource_id}/executions/"
-        f"{execution_name}?api-version=2024-03-01"
-    )
-    execution = api.request("GET", execution_url, resource=MANAGEMENT_RESOURCE)
-    if _execution_environment(execution).get("RUNNER_CORRELATION_ID") != context.correlation:
-        raise LifecycleError("ACA execution correlation differs from lifecycle record")
+    execution_url = ""
+    execution = None
+    if execution_name:
+        execution_url = (
+            f"https://management.azure.com{context.job_resource_id}/executions/"
+            f"{execution_name}?api-version=2024-03-01"
+        )
+        execution = api.request("GET", execution_url, resource=MANAGEMENT_RESOURCE)
+        execution_environment = _execution_environment(execution)
+        if execution_environment.get("RUNNER_CORRELATION_ID") != context.correlation:
+            raise LifecycleError("ACA execution correlation differs from lifecycle record")
+        if (
+            execution_environment.get("RUNNER_TOKEN_SECRET_NAME")
+            != context.correlated_token_secret_name
+        ):
+            raise LifecycleError("ACA execution token secret differs from cleanup context")
 
     if runner is not None:
         _github(
@@ -648,19 +671,23 @@ def cleanup_runner(
             f"/repos/{context.repository}/actions/runners/{runner['id']}",
             installation_token,
         )
-    execution_status = str(execution.get("properties", {}).get("status", ""))
-    if execution_status not in {"Succeeded", "Failed", "Stopped"}:
+    execution_status = str((execution or {}).get("properties", {}).get("status", ""))
+    if execution is not None and execution_status not in {"Succeeded", "Failed", "Stopped"}:
         api.request(
             "POST",
             execution_url.replace("?api-version", "/stop?api-version"),
             resource=MANAGEMENT_RESOURCE,
             body={},
         )
-    api.request(
-        "DELETE",
-        f"{context.vault_url.rstrip('/')}/secrets/{context.token_secret_name}?api-version=7.4",
-        resource=KEY_VAULT_RESOURCE,
-    )
+    try:
+        api.request(
+            "DELETE",
+            f"{context.vault_url.rstrip('/')}/secrets/{context.correlated_token_secret_name}?api-version=7.4",
+            resource=KEY_VAULT_RESOURCE,
+        )
+    except HttpStatusError as error:
+        if error.status != 404:
+            raise
 
     remaining = _github(api, "GET", runners_path, installation_token).get("runners", [])
     if select_correlated_runner(
@@ -669,13 +696,14 @@ def cleanup_runner(
         required_labels={context.runner_label, context.correlation},
     ) is not None:
         raise LifecycleError("correlated runner registration remains after cleanup")
-    refreshed_execution = api.request("GET", execution_url, resource=MANAGEMENT_RESOURCE)
-    if str(refreshed_execution.get("properties", {}).get("status", "")) not in {
-        "Succeeded",
-        "Failed",
-        "Stopped",
-    }:
-        raise LifecycleError("ACA runner execution remains active after cleanup")
+    if execution is not None:
+        refreshed_execution = api.request("GET", execution_url, resource=MANAGEMENT_RESOURCE)
+        if str(refreshed_execution.get("properties", {}).get("status", "")) not in {
+            "Succeeded",
+            "Failed",
+            "Stopped",
+        }:
+            raise LifecycleError("ACA runner execution remains active after cleanup")
     return {
         **expected,
         "schema": "waooaw.goal006-runner-cleanup/v1",
@@ -699,8 +727,8 @@ def cleanup_correlated_runner(
         "runner_label": context.runner_label,
         "workflow_run_id": context.run_id,
         "workflow_run_attempt": context.run_attempt,
-        "aca_execution_name": _find_correlated_execution(api, context),
-        "token_secret_name": context.token_secret_name,
+        "aca_execution_name": _find_correlated_execution(api, context, required=False) or "",
+        "token_secret_name": context.correlated_token_secret_name,
     }
     return cleanup_runner(
         api,
@@ -785,6 +813,7 @@ def reconcile_runners(
         "RUNNER_CORRELATION_ID": runner_context.correlation,
         "RUNNER_NAME": runner_context.runner_name,
         "RUNNER_LABEL": runner_context.runner_label,
+        "RUNNER_TOKEN_SECRET_NAME": runner_context.correlated_token_secret_name,
         "GITHUB_REPOSITORY": runner_context.repository,
         "GITHUB_WORKFLOW_RUN_ID": runner_context.run_id,
         "GITHUB_WORKFLOW_RUN_ATTEMPT": runner_context.run_attempt,
