@@ -33,7 +33,7 @@
     "infrastructure/deployment-stacks/goal006-runner/blob-diagnostics.bicep": "34d2c762628ebf0833cf9735ab186bf63a6cd991613a1430f5221be72d846ec5",
     "infrastructure/deployment-stacks/goal006-runner/main.bicep": "c95874e628c31e8658c344e2d6fe6756859e6a2a9c111eaa79c9b0ca525b3fa5",
     "infrastructure/deployment-stacks/goal006-runner/prerequisites-rg.bicep": "8888f32c53f62ee9c5e03674aedee48542945c55e246248b0aaec1e0692ea0cb",
-    "infrastructure/deployment-stacks/goal006-runner/prerequisites.bicep": "452e64294d359f4be5af14e19d9449f6b47c23acd785e94d7a1687855f2b22db",
+    "infrastructure/deployment-stacks/goal006-runner/prerequisites.bicep": "681b8aeeaf11e5a4c1d687c2cc5811a9e2a1298c1a9a4a03f45767b616f882bf",
     "infrastructure/deployment-stacks/goal006-runner/subscription.bicep": "9a2bea678c7c48738c934bb7e315d88379a1924f376052ef09b411c83c39c814",
     "infrastructure/runner/Dockerfile": "aabd8cd4d5c44b1838b99a9884b9b5f83c36276021006918812cbc1265d21c9c",
     "infrastructure/runner/entrypoint.sh": "fe467ae6782b0792bdf0e2dfada98e277abd5f8ec11bc817768ccf032cfe62a7",
@@ -46,6 +46,6 @@
     "scripts/goal006_runner_execution.py": "b9a72b76a782761e80fea35ec5af49d0e818a58aa0870fda1077f906ec0c1653",
     "scripts/goal006_runner_lifecycle.py": "10ba5dc5bac89b466a760487e8679a75d9cf728eb61cf8c07e0ff94bcd8c0b98",
     "scripts/goal006_runner_qualification.py": "f28dad7ce8ea18110f986b5d04b0744ca7835053d4d00839c1461a45bdfb2f31",
-    "scripts/goal006_runner_prerequisites.py": "9b06594091f78df77373a8e7cf1aa9fa2cdf6eb9f450b75cee38f59ed0d1832c"
+    "scripts/goal006_runner_prerequisites.py": "65352b1b2addbb362a9c1b0735635ab3d2f1f0d53f4b3f2d281a1dad06d39f96"
   }
 }

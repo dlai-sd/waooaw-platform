@@ -49,7 +49,7 @@ def test_source_requests_machine_readable_what_if() -> None:
     assert '"--no-pretty-print"' in getsource(preview)
 
 
-def test_cleanup_role_grants_only_exact_job_log_read_actions() -> None:
+def test_cleanup_role_grants_only_exact_job_log_token_action() -> None:
     template = Path(
         "infrastructure/deployment-stacks/goal006-runner/prerequisites.bicep"
     ).read_text(encoding="utf-8")
@@ -58,7 +58,7 @@ def test_cleanup_role_grants_only_exact_job_log_read_actions() -> None:
     )[0]
 
     assert "Microsoft.App/jobs/getAuthToken/action" in cleanup_role
-    assert "Microsoft.App/jobs/logstream/action" in cleanup_role
+    assert "Microsoft.App/jobs/logstream/action" not in cleanup_role
     assert "Microsoft.OperationalInsights" not in cleanup_role
 
 

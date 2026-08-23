@@ -43,7 +43,6 @@ CUSTOM_ROLE_PERMISSIONS = {
                 "Microsoft.App/jobs/read",
                 "Microsoft.App/jobs/executions/read",
                 "Microsoft.App/jobs/getAuthToken/action",
-                "Microsoft.App/jobs/logstream/action",
                 "Microsoft.App/jobs/start/action",
                 "Microsoft.App/jobs/stop/execution/action",
             }
