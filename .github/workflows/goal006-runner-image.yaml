@@ -62,6 +62,7 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           docker run --rm --entrypoint /bin/bash '${{ env.IMAGE }}:sha-${{ github.sha }}' -lc '
+            /home/runner/bin/Runner.Listener --version | grep -Fxq "2.336.0"
             test "$(terraform version -json | jq -r .terraform_version)" = "1.9.8"
             test "$(az version --query "\"azure-cli\"" -o tsv)" = "2.79.0"
             python3 /opt/waooaw/goal006_runner_lifecycle.py --help >/dev/null
