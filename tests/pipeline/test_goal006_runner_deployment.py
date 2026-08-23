@@ -309,6 +309,7 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
             }
         if command == ("role", "assignment", "list"):
             if "--scope" in arguments:
+                assert "--all" not in arguments
                 return [
                     {
                         "roleDefinitionName": "GOAL-006 demo Cleanup Evidence Writer",

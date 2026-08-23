@@ -477,7 +477,6 @@ def verify_deployment(
         str(evidence_identity.get("principalId", "")),
         "--scope",
         evidence_container_id,
-        "--all",
     )
     if not any(
         item.get("roleDefinitionName")
