@@ -24,7 +24,7 @@
       ".github/workflows/goal006-runner-image.yaml": "2a35c4bcf5cbaa1cb319d47c84c775e1dd0f7d5014a2e3572796393950feecb7",
     "architecture/reference/pipeline/github-runner-app-manifest.json": "c7d2e2d953509e23076406b2a12abf7b01538f8dd49de2f40b9855f019e1a552",
     "infrastructure/deployment-stacks/goal006-runner/cost-estimate.json": "207bf61e5903f95cf8e8d59761fc880797881d75f916e68f608d30a9cef48a0e",
-    "infrastructure/deployment-stacks/goal006-runner/demo.parameters.json": "03a35fedd9feaa7151624627482c06b871085e97ee90ac365009091bf6efa12a",
+    "infrastructure/deployment-stacks/goal006-runner/demo.parameters.json": "2ccf415a7f695c812d37550d0a24854ae0a0da52098c58b92381452b6e4900db",
     "infrastructure/deployment-stacks/goal006-runner/demo.prerequisites.parameters.json": "386a1c2bca52beb285d8646af62eb56f82891ff52c0ac1dd7ec74fc5d688e4aa",
     "infrastructure/deployment-stacks/goal006-runner/uat.parameters.json": "c151077e98e345251887092005b683b22f5acefbeb916a7a7c34ee10b58d45dd",
     "infrastructure/deployment-stacks/goal006-runner/prod.parameters.json": "12730564670238e95df180538fda28c5f651bb67ea5f6c9797765a1157466860",

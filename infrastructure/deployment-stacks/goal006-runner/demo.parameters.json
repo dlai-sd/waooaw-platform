@@ -8,7 +8,7 @@
     "runnerResourceGroupName": { "value": "waooaw-demo-runner-rg" },
     "stateStorageAccountId": { "value": "/subscriptions/2ed11839-6a0f-4eaa-bd94-44ca96ff5d84/resourceGroups/waooaw-platform-rg/providers/Microsoft.Storage/storageAccounts/waooawp3tfstate2ed118" },
     "bootstrapPrincipalId": { "value": "77147af5-a32d-4151-b557-e719f319b55b" },
-    "runnerImage": { "value": "ghcr.io/dlai-sd/goal006-private-runner@sha256:cdc42a10c2045163fba9f19f52f28db401a563c2f69654503e2eec51e3e75b8f" },
+    "runnerImage": { "value": "ghcr.io/dlai-sd/goal006-private-runner@sha256:46736cbc892a927badd39895fcc89d9ba889e7b0d90bfffe3a2347196a897836" },
     "reconcilerImage": { "value": "mcr.microsoft.com/azure-cli@sha256:4faeb3c955086c3842d4f8cf0ff1d900ce3a1c68c6e6c6430c5e8a3cb882c5aa" },
     "githubAppId": { "value": "4680703" },
     "githubAppInstallationId": { "value": "155648751" },
