@@ -164,6 +164,24 @@ def test_plan_normalization_preserves_property_delta() -> None:
     assert normalized[0]["details"]["delta"][0]["path"] == "properties.access"
 
 
+def test_plan_allows_only_deferred_evidence_writer_assignment() -> None:
+    resource_id = (
+        "[extensionResourceId('/subscriptions/sub/resourceGroups/platform/providers/"
+        "Microsoft.Storage/storageAccounts/state/blobServices/default/containers/"
+        "goal006-demo-runner-evidence', 'Microsoft.Authorization/roleAssignments', "
+        "reference('/subscriptions/sub/resourceGroups/demo/providers/Microsoft.ManagedIdentity/"
+        "userAssignedIdentities/goal006-demo-runner-evidence-writer-identity').principalId)]"
+    )
+
+    assert normalize_changes(
+        [{"changeType": "Unsupported", "resourceId": resource_id}]
+    )[0] == {
+        "change_type": "Unsupported",
+        "resource_id": resource_id,
+        "details": {},
+    }
+
+
 @pytest.mark.parametrize("change_type", ["Delete", "Deploy", "Unsupported", ""])
 def test_destructive_or_ambiguous_plan_is_rejected(change_type: str) -> None:
     with pytest.raises(RuntimeError, match="unsupported or destructive"):

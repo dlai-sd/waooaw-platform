@@ -119,9 +119,16 @@ def normalize_changes(changes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for change in changes:
         change_type = str(change.get("changeType", ""))
         resource_id = str(change.get("resourceId", ""))
-        if change_type not in ALLOWED_CHANGE_TYPES:
+        deferred_evidence_assignment = (
+            change_type == "Unsupported"
+            and resource_id.startswith("[extensionResourceId(")
+            and "goal006-demo-runner-evidence" in resource_id
+            and "Microsoft.Authorization/roleAssignments" in resource_id
+            and "goal006-demo-runner-evidence-writer-identity" in resource_id
+        )
+        if change_type not in ALLOWED_CHANGE_TYPES and not deferred_evidence_assignment:
             raise RuntimeError(f"unsupported or destructive change rejected: {change_type} {resource_id}")
-        if not resource_id.startswith("/subscriptions/"):
+        if not resource_id.startswith("/subscriptions/") and not deferred_evidence_assignment:
             raise RuntimeError(f"invalid planned resource ID: {resource_id}")
         normalized.append(
             {
