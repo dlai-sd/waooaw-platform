@@ -244,6 +244,12 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
         "parameter_path": REPOSITORY_ROOT
         / "infrastructure/deployment-stacks/goal006-runner/demo.parameters.json",
     }
+    evidence_container_id = (
+        "/subscriptions/2ed11839-6a0f-4eaa-bd94-44ca96ff5d84/resourceGroups/"
+        "waooaw-platform-rg/providers/Microsoft.Storage/storageAccounts/"
+        "waooawp3tfstate2ed118/blobServices/default/containers/"
+        "goal006-demo-runner-evidence"
+    )
     monkeypatch.setattr(
         "scripts.goal006_runner_deployment.environment_contract",
         lambda *arguments: contract,
@@ -266,6 +272,13 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
                         "status": "managed",
                     }
                     for name, resource_type in _required_resource_names(environment).items()
+                ]
+                + [
+                    {"id": evidence_container_id, "status": "managed"},
+                    {
+                        "id": f"{evidence_container_id}/immutabilityPolicies/default",
+                        "status": "managed",
+                    },
                 ],
             }
         if command == ("resource", "list", "--resource-group"):
@@ -277,6 +290,10 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
                 }
                 for name, resource_type in _required_resource_names(environment).items()
             ]
+        if command == ("resource", "show", "--ids"):
+            if arguments[-1].endswith("/immutabilityPolicies/default"):
+                return {"properties": {"immutabilityPeriodSinceCreationInDays": 90}}
+            return {"properties": {"publicAccess": "None"}}
         if command == ("network", "private-endpoint", "show"):
             return {
                 "privateLinkServiceConnections": [
@@ -284,8 +301,20 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
                 ]
             }
         if arguments[:2] == ("identity", "show"):
-            return {"principalId": arguments[-1] + "-principal"}
+            identity_name = arguments[-1]
+            return {
+                "id": f"/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/{identity_name}",
+                "clientId": "11111111-2222-3333-4444-555555555555",
+                "principalId": identity_name + "-principal",
+            }
         if command == ("role", "assignment", "list"):
+            if "--scope" in arguments:
+                return [
+                    {
+                        "roleDefinitionName": "GOAL-006 demo Cleanup Evidence Writer",
+                        "scope": evidence_container_id,
+                    }
+                ]
             key_scope = (
                 "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.KeyVault/"
                 "vaults/waooaw-demo-runner-kv/keys/github-runner-app-signing"
@@ -329,6 +358,14 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
                     "cronExpression": "*/5 * * * *"
                 }
             return {
+                "identity": {
+                    "userAssignedIdentities": {
+                        "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/goal006-demo-runner-cleanup-identity": {},
+                        "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/goal006-demo-runner-evidence-writer-identity": {},
+                    }
+                }
+                if cleanup_broker
+                else {},
                 "properties": {
                     "configuration": configuration,
                     "template": {
@@ -355,6 +392,14 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
                                         },
                                         {"name": "RUNNER_VAULT_URL", "value": "https://vault"},
                                         {"name": "RUNNER_TOKEN_SECRET_NAME", "value": "token"},
+                                        {
+                                            "name": "EVIDENCE_WRITER_CLIENT_ID",
+                                            "value": "11111111-2222-3333-4444-555555555555",
+                                        },
+                                        {
+                                            "name": "RUNNER_EVIDENCE_CONTAINER_URL",
+                                            "value": "https://waooawp3tfstate2ed118.blob.core.windows.net/goal006-demo-runner-evidence",
+                                        },
                                     ]
                                 ),
                                 "command": reconciler_command
