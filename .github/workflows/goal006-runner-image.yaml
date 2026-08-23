@@ -6,12 +6,20 @@ on:
     paths:
       - infrastructure/runner/**
       - scripts/goal006_runner_lifecycle.py
+      - scripts/goal006_runner_qualification.py
+      - infrastructure/terraform/phase2/environments/demo/foundation/**
+      - infrastructure/terraform/phase2/modules/foundation/**
+      - .github/workflows/goal006-private-runner-qualification.yaml
       - .github/workflows/goal006-runner-image.yaml
   push:
     branches: [main]
     paths:
       - infrastructure/runner/**
       - scripts/goal006_runner_lifecycle.py
+      - scripts/goal006_runner_qualification.py
+      - infrastructure/terraform/phase2/environments/demo/foundation/**
+      - infrastructure/terraform/phase2/modules/foundation/**
+      - .github/workflows/goal006-private-runner-qualification.yaml
       - .github/workflows/goal006-runner-image.yaml
 
 permissions:
@@ -61,11 +69,16 @@ jobs:
       - name: Verify runner toolchain
         if: github.event_name == 'pull_request'
         run: |
-          docker run --rm --entrypoint /bin/bash '${{ env.IMAGE }}:sha-${{ github.sha }}' -lc '
+          docker run --rm --volume "$GITHUB_WORKSPACE:/workspace" --entrypoint /bin/bash '${{ env.IMAGE }}:sha-${{ github.sha }}' -lc '
             /home/runner/bin/Runner.Listener --version | grep -Fxq "2.336.0"
             test "$(terraform version -json | jq -r .terraform_version)" = "1.9.8"
             test "$(az version --query "\"azure-cli\"" -o tsv)" = "2.79.0"
             python3 /opt/waooaw/goal006_runner_lifecycle.py --help >/dev/null
+            python3 /workspace/scripts/goal006_runner_qualification.py --help >/dev/null
+            az storage blob lease acquire --help >/dev/null
+            az storage blob lease release --help >/dev/null
+            terraform -chdir=/workspace/infrastructure/terraform/phase2/environments/demo/foundation init -backend=false -input=false
+            terraform -chdir=/workspace/infrastructure/terraform/phase2/environments/demo/foundation validate
           '
 
       - name: Scan private runner

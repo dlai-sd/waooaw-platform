@@ -40,8 +40,12 @@ def _run(arguments: Sequence[str], *, cwd: Path | None = None) -> str:
         text=True,
     )
     if result.returncode:
+        diagnostics = "\n".join(
+            value.strip() for value in (result.stderr, result.stdout) if value.strip()
+        )[-4000:]
+        detail = f"\n{diagnostics}" if diagnostics else ""
         raise QualificationError(
-            f"command failed ({result.returncode}): {arguments[0]} {arguments[1]}"
+            f"command failed ({result.returncode}): {arguments[0]} {arguments[1]}{detail}"
         )
     return result.stdout
 
@@ -102,6 +106,7 @@ def qualify(
     )
     uploaded = False
     lease_id = ""
+    operation_error: Exception | None = None
     try:
         _run(
             [
@@ -201,8 +206,11 @@ def qualify(
             ],
             cwd=terraform_root,
         )
-    finally:
-        if lease_id:
+    except Exception as error:
+        operation_error = error
+    cleanup_errors: list[QualificationError] = []
+    if lease_id:
+        try:
             _run(
                 [
                     *storage,
@@ -219,7 +227,10 @@ def qualify(
                     *common,
                 ]
             )
-        if uploaded:
+        except QualificationError as error:
+            cleanup_errors.append(error)
+    if uploaded:
+        try:
             _run(
                 [
                     *storage,
@@ -233,6 +244,16 @@ def qualify(
                     *common,
                 ]
             )
+        except QualificationError as error:
+            cleanup_errors.append(error)
+    if operation_error is not None:
+        if cleanup_errors:
+            details = "; ".join(str(error) for error in cleanup_errors)
+            raise QualificationError(f"{operation_error}; cleanup failed: {details}") from operation_error
+        raise operation_error
+    if cleanup_errors:
+        details = "; ".join(str(error) for error in cleanup_errors)
+        raise QualificationError(f"cleanup failed: {details}")
     return {
         "schema": "waooaw.goal006-private-path-qualification/v1",
         "recorded_at": datetime.now(timezone.utc).isoformat(),

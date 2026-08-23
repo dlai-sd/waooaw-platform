@@ -788,7 +788,25 @@ def reconcile_runners(
         for item in response.get("value", [])
         if item.get("properties", {}).get("status") not in {"Succeeded", "Failed", "Stopped"}
     ]
-    if not active:
+    if len(active) > 1:
+        raise LifecycleError("active ACA runner execution selector is ambiguous")
+    selected_is_active = bool(active)
+    candidates = active
+    if not candidates:
+        recent_terminal = []
+        for item in response.get("value", []):
+            if item.get("properties", {}).get("status") not in {"Succeeded", "Failed", "Stopped"}:
+                continue
+            start_time = str(item.get("properties", {}).get("startTime", ""))
+            age = observed_at - _parse_azure_time(start_time)
+            if timedelta(0) <= age < timedelta(minutes=60):
+                recent_terminal.append(item)
+        candidates = sorted(
+            recent_terminal,
+            key=lambda item: str(item.get("properties", {}).get("startTime", "")),
+            reverse=True,
+        )[:1]
+    if not candidates:
         return {
             "schema": "waooaw.goal006-runner-reconcile/v1",
             "environment": context.environment,
@@ -796,10 +814,8 @@ def reconcile_runners(
             "cleaned_executions": [],
             "decision": "NO_ACTIVE_EXECUTIONS",
         }
-    if len(active) != 1:
-        raise LifecycleError("active ACA runner execution selector is ambiguous")
 
-    execution_name = str(active[0].get("name", ""))
+    execution_name = str(candidates[0].get("name", ""))
     execution_url = (
         f"https://management.azure.com{context.job_resource_id}/executions/"
         f"{execution_name}?api-version=2024-03-01"
@@ -836,13 +852,22 @@ def reconcile_runners(
         api, manifest, context.installation_id, app_jwt
     )
     conclusion = workflow_run_conclusion(api, runner_context, installation_token)
-    if conclusion is None and age < timedelta(minutes=60):
+    if conclusion is None and selected_is_active and age < timedelta(minutes=60):
         return {
             "schema": "waooaw.goal006-runner-reconcile/v1",
             "environment": context.environment,
             "observed_active_executions": 1,
             "cleaned_executions": [],
             "decision": "ACTIVE_RUN_WITHIN_LIMIT",
+            "correlation_id": runner_context.correlation,
+        }
+    if conclusion is None and not selected_is_active:
+        return {
+            "schema": "waooaw.goal006-runner-reconcile/v1",
+            "environment": context.environment,
+            "observed_active_executions": 0,
+            "cleaned_executions": [],
+            "decision": "TERMINAL_EXECUTION_AWAITING_RUN",
             "correlation_id": runner_context.correlation,
         }
 
@@ -855,7 +880,7 @@ def reconcile_runners(
     return {
         "schema": "waooaw.goal006-runner-reconcile/v1",
         "environment": context.environment,
-        "observed_active_executions": 1,
+        "observed_active_executions": 1 if selected_is_active else 0,
         "cleaned_executions": [cleanup["aca_execution_name"]],
         "decision": "CLEANED_ELIGIBLE_EXECUTION",
         "correlation_id": runner_context.correlation,

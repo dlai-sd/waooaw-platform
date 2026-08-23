@@ -37,6 +37,17 @@ def test_every_environment_uses_one_deployment_contract() -> None:
         assert contract["activation_state"] in {"INACTIVE", "ACTIVE"}
 
 
+def test_cleanup_oidc_subject_is_branch_bound_for_demo_only() -> None:
+    stack_root = REPOSITORY_ROOT / "infrastructure/deployment-stacks/goal006-runner"
+    demo = (stack_root / "demo.parameters.json").read_text(encoding="utf-8")
+    uat = (stack_root / "uat.parameters.json").read_text(encoding="utf-8")
+    prod = (stack_root / "prod.parameters.json").read_text(encoding="utf-8")
+
+    assert "repo:dlai-sd/waooaw-platform:ref:refs/heads/main" in demo
+    assert "cleanupFederatedSubject" not in uat
+    assert "cleanupFederatedSubject" not in prod
+
+
 def test_signer_roles_are_scoped_to_key_not_key_version() -> None:
     template = RUNNER_TEMPLATE.read_text(encoding="utf-8")
 

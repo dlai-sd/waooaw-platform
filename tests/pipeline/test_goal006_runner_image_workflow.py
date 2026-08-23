@@ -23,3 +23,12 @@ def test_runner_image_is_scanned_attested_and_digest_recorded() -> None:
     assert "actions/attest-build-provenance@" in WORKFLOW
     assert "${{ steps.image.outputs.digest }}" in WORKFLOW
     assert "goal006-private-runner-${{ github.sha }}" in WORKFLOW
+
+
+def test_runner_image_executes_qualification_contract_and_terraform_root() -> None:
+    assert 'volume "$GITHUB_WORKSPACE:/workspace"' in WORKFLOW
+    assert "python3 /workspace/scripts/goal006_runner_qualification.py --help" in WORKFLOW
+    assert "az storage blob lease acquire --help" in WORKFLOW
+    assert "az storage blob lease release --help" in WORKFLOW
+    assert "terraform -chdir=/workspace/infrastructure/terraform/phase2/environments/demo/foundation init -backend=false" in WORKFLOW
+    assert "terraform -chdir=/workspace/infrastructure/terraform/phase2/environments/demo/foundation validate" in WORKFLOW
