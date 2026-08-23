@@ -81,6 +81,55 @@ jobs:
             terraform -chdir=/workspace/infrastructure/terraform/phase2/environments/demo/foundation validate
           '
 
+      - name: Verify real Storage lease contract
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          network="goal006-storage-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          emulator="goal006-azurite-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          account_name="goal006"
+          account_key="MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMA=="
+          connection_string="DefaultEndpointsProtocol=http;AccountName=${account_name};AccountKey=${account_key};BlobEndpoint=http://${emulator}:10000/${account_name};"
+          cleanup() {
+            docker rm -f "$emulator" >/dev/null 2>&1 || true
+            docker network rm "$network" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          docker network create "$network" >/dev/null
+          docker run --detach --name "$emulator" --network "$network" \
+            --env "AZURITE_ACCOUNTS=${account_name}:${account_key}" \
+            mcr.microsoft.com/azure-storage/azurite@sha256:647c63a91102a9d8e8000aab803436e1fc85fbb285e7ce830a82ee5d6661cf37 \
+            azurite-blob --blobHost 0.0.0.0 >/dev/null
+          ready=false
+          for attempt in $(seq 1 30); do
+            if docker run --rm --network "$network" \
+              --entrypoint az '${{ env.IMAGE }}:sha-${{ github.sha }}' \
+              storage container create --name qualification-contract \
+              --connection-string "$connection_string" --only-show-errors --output none; then
+              ready=true
+              break
+            fi
+          done
+          test "$ready" = true
+          docker run --rm --network "$network" \
+            --volume "$GITHUB_WORKSPACE:/workspace" \
+            --env "AZURE_STORAGE_CONNECTION_STRING=$connection_string" \
+            --entrypoint /bin/bash '${{ env.IMAGE }}:sha-${{ github.sha }}' -lc '
+              set -euo pipefail
+              printf "%s\n" probe > /tmp/storage-probe
+              az storage blob upload --container-name qualification-contract --name probe \
+                --file /tmp/storage-probe --connection-string "$AZURE_STORAGE_CONNECTION_STRING" \
+                --only-show-errors --output none
+              lease_id=$(PYTHONPATH=/workspace python3 -c "import os; from scripts.goal006_runner_qualification import acquire_blob_lease; print(acquire_blob_lease([\"az\", \"storage\", \"blob\"], [\"--connection-string\", os.environ[\"AZURE_STORAGE_CONNECTION_STRING\"], \"--only-show-errors\"], container_name=\"qualification-contract\", blob_name=\"probe\"))")
+              test "$(az storage blob show --container-name qualification-contract --name probe \
+                --connection-string "$AZURE_STORAGE_CONNECTION_STRING" --query properties.lease.status \
+                --only-show-errors --output tsv)" = locked
+              LEASE_ID="$lease_id" PYTHONPATH=/workspace python3 -c "import os; from scripts.goal006_runner_qualification import release_blob_lease; release_blob_lease([\"az\", \"storage\", \"blob\"], [\"--connection-string\", os.environ[\"AZURE_STORAGE_CONNECTION_STRING\"], \"--only-show-errors\"], container_name=\"qualification-contract\", blob_name=\"probe\", lease_id=os.environ[\"LEASE_ID\"] )"
+              az storage blob delete --container-name qualification-contract --name probe \
+                --connection-string "$AZURE_STORAGE_CONNECTION_STRING" \
+                --only-show-errors --output none
+            '
+
       - name: Scan private runner
         if: github.event_name == 'pull_request'
         uses: aquasecurity/trivy-action@2736533278103862a861f4a35ebac3e97854d956

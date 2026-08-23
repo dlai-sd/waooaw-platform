@@ -32,3 +32,11 @@ def test_runner_image_executes_qualification_contract_and_terraform_root() -> No
     assert "az storage blob lease release --help" in WORKFLOW
     assert "terraform -chdir=/workspace/infrastructure/terraform/phase2/environments/demo/foundation init -backend=false" in WORKFLOW
     assert "terraform -chdir=/workspace/infrastructure/terraform/phase2/environments/demo/foundation validate" in WORKFLOW
+
+
+def test_runner_image_executes_real_storage_lease_contract() -> None:
+    assert "mcr.microsoft.com/azure-storage/azurite@sha256:" in WORKFLOW
+    assert "from scripts.goal006_runner_qualification import acquire_blob_lease" in WORKFLOW
+    assert "from scripts.goal006_runner_qualification import release_blob_lease" in WORKFLOW
+    assert "--query properties.lease.status" in WORKFLOW
+    assert 'test "$ready" = true' in WORKFLOW
