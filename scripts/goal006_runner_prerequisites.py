@@ -45,6 +45,9 @@ CUSTOM_ROLE_PERMISSIONS = {
                 "Microsoft.App/jobs/getAuthToken/action",
                 "Microsoft.App/jobs/start/action",
                 "Microsoft.App/jobs/stop/execution/action",
+                "Microsoft.OperationalInsights/workspaces/read",
+                "Microsoft.OperationalInsights/workspaces/analytics/query/action",
+                "Microsoft.OperationalInsights/workspaces/query/ContainerAppConsoleLogs/read",
             }
         ),
         "dataActions": frozenset(),
