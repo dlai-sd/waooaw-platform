@@ -58,7 +58,7 @@ def test_terraform_plan_uses_absolute_evidence_path(
 
     def run(arguments, *, cwd=None):
         commands.append((arguments, cwd))
-        return "lease-id" if arguments[1:3] == ["storage", "blob"] and "acquire" in arguments else ""
+        return ""
 
     monkeypatch.setattr(
         "scripts.goal006_runner_qualification.resolve_private_addresses",
@@ -83,6 +83,10 @@ def test_terraform_plan_uses_absolute_evidence_path(
     )
 
     plan = next(arguments for arguments, _ in commands if arguments[:2] == ["terraform", "plan"])
+    acquire = next(arguments for arguments, _ in commands if "acquire" in arguments)
+    release = next(arguments for arguments, _ in commands if "release" in arguments)
+    proposed_lease_id = acquire[acquire.index("--proposed-lease-id") + 1]
+    assert release[release.index("--lease-id") + 1] == proposed_lease_id
     assert (
         "-var=tfstate_storage_account_id=/subscriptions/subscription/resourceGroups/"
         "waooaw-platform-rg/providers/Microsoft.Storage/storageAccounts/state"
@@ -118,8 +122,6 @@ def test_probe_delete_is_attempted_when_lease_release_fails(
 
     def run(arguments, *, cwd=None):
         commands.append(arguments)
-        if "acquire" in arguments:
-            return "lease-id"
         if "release" in arguments:
             raise QualificationError("lease release failed")
         return ""

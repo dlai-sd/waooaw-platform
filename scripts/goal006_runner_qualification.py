@@ -9,6 +9,7 @@ import json
 import os
 import socket
 import subprocess
+import uuid
 from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
@@ -48,6 +49,61 @@ def _run(arguments: Sequence[str], *, cwd: Path | None = None) -> str:
             f"command failed ({result.returncode}): {arguments[0]} {arguments[1]}{detail}"
         )
     return result.stdout
+
+
+def acquire_blob_lease(
+    storage: Sequence[str],
+    common: Sequence[str],
+    *,
+    container_name: str,
+    blob_name: str,
+) -> str:
+    proposed_lease_id = str(uuid.uuid4())
+    _run(
+        [
+            *storage,
+            "lease",
+            "acquire",
+            "--blob-name",
+            blob_name,
+            "--container-name",
+            container_name,
+            "--lease-duration",
+            "15",
+            "--proposed-lease-id",
+            proposed_lease_id,
+            "--output",
+            "none",
+            *common,
+        ]
+    )
+    return proposed_lease_id
+
+
+def release_blob_lease(
+    storage: Sequence[str],
+    common: Sequence[str],
+    *,
+    container_name: str,
+    blob_name: str,
+    lease_id: str,
+) -> None:
+    _run(
+        [
+            *storage,
+            "lease",
+            "release",
+            "--blob-name",
+            blob_name,
+            "--container-name",
+            container_name,
+            "--lease-id",
+            lease_id,
+            "--output",
+            "none",
+            *common,
+        ]
+    )
 
 
 def qualify(
@@ -139,41 +195,18 @@ def qualify(
                 *common,
             ]
         )
-        lease_id = _run(
-            [
-                *storage,
-                "lease",
-                "acquire",
-                "--blob-name",
-                probe_blob,
-                "--container-name",
-                state_container,
-                "--lease-duration",
-                "15",
-                "--query",
-                "leaseId",
-                "--output",
-                "tsv",
-                *common,
-            ]
-        ).strip()
-        if not lease_id:
-            raise QualificationError("Storage lease ID is empty")
-        _run(
-            [
-                *storage,
-                "lease",
-                "release",
-                "--blob-name",
-                probe_blob,
-                "--container-name",
-                state_container,
-                "--lease-id",
-                lease_id,
-                "--output",
-                "none",
-                *common,
-            ]
+        lease_id = acquire_blob_lease(
+            storage,
+            common,
+            container_name=state_container,
+            blob_name=probe_blob,
+        )
+        release_blob_lease(
+            storage,
+            common,
+            container_name=state_container,
+            blob_name=probe_blob,
+            lease_id=lease_id,
         )
         lease_id = ""
         _run(
@@ -211,21 +244,12 @@ def qualify(
     cleanup_errors: list[QualificationError] = []
     if lease_id:
         try:
-            _run(
-                [
-                    *storage,
-                    "lease",
-                    "release",
-                    "--blob-name",
-                    probe_blob,
-                    "--container-name",
-                    state_container,
-                    "--lease-id",
-                    lease_id,
-                    "--output",
-                    "none",
-                    *common,
-                ]
+            release_blob_lease(
+                storage,
+                common,
+                container_name=state_container,
+                blob_name=probe_blob,
+                lease_id=lease_id,
             )
         except QualificationError as error:
             cleanup_errors.append(error)
