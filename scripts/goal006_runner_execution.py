@@ -50,6 +50,10 @@ REQUIRED_ENVIRONMENT = {
     "GITHUB_APP_KEY_ID",
     "RUNNER_LABEL",
 }
+CLEANUP_REQUIRED_ENVIRONMENT = {
+    "EVIDENCE_WRITER_CLIENT_ID",
+    "RUNNER_EVIDENCE_CONTAINER_URL",
+}
 
 
 class ExecutionTemplateError(RuntimeError):
@@ -95,6 +99,42 @@ def extract_cleanup_evidence(
     if not isinstance(record.get("aca_execution_name"), str):
         raise ExecutionTemplateError("cleanup evidence execution name is invalid")
     return record
+
+
+def build_cleanup_evidence_pointer(
+    *,
+    environment: str,
+    run_id: str,
+    run_attempt: str,
+    private_job_conclusion: str,
+    cleanup_execution_name: str,
+    evidence_container_url: str,
+) -> dict[str, str]:
+    if environment != "demo":
+        raise ExecutionTemplateError("cleanup evidence environment is invalid")
+    if RUN_NUMBER.fullmatch(run_id) is None or RUN_NUMBER.fullmatch(run_attempt) is None:
+        raise ExecutionTemplateError("workflow run identity is invalid")
+    if private_job_conclusion not in TERMINAL_CONCLUSIONS:
+        raise ExecutionTemplateError("private job conclusion is invalid")
+    if not cleanup_execution_name.startswith("goal006-demo-runner-cleanup-"):
+        raise ExecutionTemplateError("cleanup execution name is invalid")
+    if not evidence_container_url.startswith("https://"):
+        raise ExecutionTemplateError("cleanup evidence container URL is invalid")
+    return {
+        "schema": "waooaw.goal006-runner-cleanup-pointer/v1",
+        "evidence_schema": "waooaw.goal006-runner-cleanup/v1",
+        "environment": environment,
+        "correlation_id": f"goal006:{environment}:{run_id}:{run_attempt}",
+        "workflow_run_id": run_id,
+        "workflow_run_attempt": run_attempt,
+        "private_job_conclusion": private_job_conclusion,
+        "cleanup_execution_name": cleanup_execution_name,
+        "evidence_blob_url": (
+            f"{evidence_container_url.rstrip('/')}/cleanup/"
+            f"{environment}/{run_id}/{run_attempt}.json"
+        ),
+        "producer_status": "Succeeded",
+    }
 
 
 def build_execution_template(
@@ -143,7 +183,10 @@ def build_execution_template(
     names = [item.get("name") for item in environment]
     if len(names) != len(set(names)):
         raise ExecutionTemplateError("job environment contains duplicate names")
-    if not REQUIRED_ENVIRONMENT.issubset(names):
+    required_environment = REQUIRED_ENVIRONMENT | (
+        CLEANUP_REQUIRED_ENVIRONMENT if mode == "cleanup" else set()
+    )
+    if not required_environment.issubset(names):
         raise ExecutionTemplateError("job environment is incomplete")
     values = {item.get("name"): item for item in environment}
     expected_values = {
@@ -185,6 +228,14 @@ def main() -> int:
     evidence_parser.add_argument("--run-attempt", required=True)
     evidence_parser.add_argument("--private-job-conclusion", required=True)
     evidence_parser.add_argument("--output", required=True, type=Path)
+    pointer_parser = subparsers.add_parser("pointer")
+    pointer_parser.add_argument("--environment", required=True)
+    pointer_parser.add_argument("--run-id", required=True)
+    pointer_parser.add_argument("--run-attempt", required=True)
+    pointer_parser.add_argument("--private-job-conclusion", required=True)
+    pointer_parser.add_argument("--cleanup-execution-name", required=True)
+    pointer_parser.add_argument("--evidence-container-url", required=True)
+    pointer_parser.add_argument("--output", required=True, type=Path)
     arguments = parser.parse_args()
     if arguments.mode == "evidence":
         record = extract_cleanup_evidence(
@@ -195,6 +246,19 @@ def main() -> int:
         )
         arguments.output.write_text(
             json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        return 0
+    if arguments.mode == "pointer":
+        pointer = build_cleanup_evidence_pointer(
+            environment=arguments.environment,
+            run_id=arguments.run_id,
+            run_attempt=arguments.run_attempt,
+            private_job_conclusion=arguments.private_job_conclusion,
+            cleanup_execution_name=arguments.cleanup_execution_name,
+            evidence_container_url=arguments.evidence_container_url,
+        )
+        arguments.output.write_text(
+            json.dumps(pointer, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
         return 0
     job = json.loads(arguments.job.read_text(encoding="utf-8"))

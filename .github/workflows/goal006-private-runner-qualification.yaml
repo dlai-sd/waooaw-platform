@@ -31,7 +31,7 @@ env:
   TFSTATE_CONTAINER: tfstate
   CONFIG_CONTAINER: deployment-config
   CONFIG_BLOB: demo/workload-configuration.json
-  LOG_ANALYTICS_WORKSPACE_ID: 0aca0e09-155d-464d-8a5d-29d14cf8ba40
+  CLEANUP_EVIDENCE_CONTAINER: goal006-demo-runner-evidence
   EVIDENCE_RETENTION_DAYS: "90"
 
 jobs:
@@ -232,44 +232,23 @@ jobs:
             test "$attempt" != 180
             sleep 5
           done
-          for attempt in $(seq 1 12); do
-            log_ready=false
-            if az containerapp job logs show \
-              --resource-group "$RUNNER_RESOURCE_GROUP" \
-              --name "$RUNNER_CLEANUP_BROKER_JOB" \
-              --execution "$execution" \
-              --container cleanup-broker \
-              --tail 50 \
-              --format text > cleanup-job.log; then
-              log_ready=true
-            fi
-            if [ "$log_ready" = false ]; then
-              query="ContainerAppConsoleLogs_CL
-                | where ContainerJobName_s == '$RUNNER_CLEANUP_BROKER_JOB'
-                | where ContainerGroupName_s startswith '$execution'
-                | project TimeGenerated, Log_s
-                | order by TimeGenerated asc"
-              if az monitor log-analytics query \
-                --workspace "$LOG_ANALYTICS_WORKSPACE_ID" \
-                --analytics-query "$query" \
-                --timespan PT15M \
-                --output json > cleanup-log-records.json && \
-                jq -r '.[].Log_s' cleanup-log-records.json > cleanup-job.log; then
-                log_ready=true
-              fi
-            fi
-            if [ "$log_ready" = true ] && \
-              python scripts/goal006_runner_execution.py evidence \
-                --log cleanup-job.log \
-                --run-id "$GITHUB_RUN_ID" \
-                --run-attempt "$GITHUB_RUN_ATTEMPT" \
-                --private-job-conclusion "$PRIVATE_JOB_CONCLUSION" \
-                --output cleanup-record.json; then
-              break
-            fi
-            test "$attempt" != 12
-            sleep 5
-          done
+          az containerapp job logs show \
+            --resource-group "$RUNNER_RESOURCE_GROUP" \
+            --name "$RUNNER_CLEANUP_BROKER_JOB" \
+            --execution "$execution" \
+            --container cleanup-broker \
+            --tail 50 \
+            --format text > cleanup-job.log 2>&1 || true
+          evidence_container_url="https://$TFSTATE_STORAGE_ACCOUNT.blob.core.windows.net/$CLEANUP_EVIDENCE_CONTAINER"
+          python scripts/goal006_runner_execution.py pointer \
+            --environment demo \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --private-job-conclusion "$PRIVATE_JOB_CONCLUSION" \
+            --cleanup-execution-name "$execution" \
+            --evidence-container-url "$evidence_container_url" \
+            --output cleanup-record.json
+          grep -F "cleanup/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT.json" cleanup-record.json
 
       - name: Verify zero active private executions
         run: |

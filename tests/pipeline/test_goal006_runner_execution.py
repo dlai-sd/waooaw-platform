@@ -9,9 +9,11 @@ import pytest
 from scripts.goal006_runner_execution import (
     BROKER_ARGS,
     CLEANUP_ARGS,
+    CLEANUP_REQUIRED_ENVIRONMENT,
     COMMAND,
     ExecutionTemplateError,
     REQUIRED_ENVIRONMENT,
+    build_cleanup_evidence_pointer,
     build_execution_template,
     extract_cleanup_evidence,
 )
@@ -22,7 +24,7 @@ IMAGE = "ghcr.io/dlai-sd/runner@sha256:" + "a" * 64
 def job(name: str, arguments: list[str]) -> dict:
     environment = [
         {"name": key, "value": f"value-{key.lower()}"}
-        for key in sorted(REQUIRED_ENVIRONMENT)
+        for key in sorted(REQUIRED_ENVIRONMENT | CLEANUP_REQUIRED_ENVIRONMENT)
     ]
     values = {item["name"]: item for item in environment}
     values["RUNNER_ACTIVATION_STATE"]["value"] = "ACTIVE"
@@ -142,6 +144,30 @@ def test_cleanup_evidence_rejects_false_outcome() -> None:
             run_attempt="2",
             private_job_conclusion="failure",
         )
+
+
+def test_cleanup_evidence_pointer_is_correlation_bound() -> None:
+    assert build_cleanup_evidence_pointer(
+        environment="demo",
+        run_id="123",
+        run_attempt="2",
+        private_job_conclusion="success",
+        cleanup_execution_name="goal006-demo-runner-cleanup-abc123",
+        evidence_container_url="https://storage.example/goal006-runner-evidence",
+    ) == {
+        "schema": "waooaw.goal006-runner-cleanup-pointer/v1",
+        "evidence_schema": "waooaw.goal006-runner-cleanup/v1",
+        "environment": "demo",
+        "correlation_id": "goal006:demo:123:2",
+        "workflow_run_id": "123",
+        "workflow_run_attempt": "2",
+        "private_job_conclusion": "success",
+        "cleanup_execution_name": "goal006-demo-runner-cleanup-abc123",
+        "evidence_blob_url": (
+            "https://storage.example/goal006-runner-evidence/cleanup/demo/123/2.json"
+        ),
+        "producer_status": "Succeeded",
+    }
 
 
 @pytest.mark.parametrize(

@@ -9,6 +9,7 @@ param environment string
 
 param location string = 'centralindia'
 param runnerResourceGroupName string
+param stateStorageAccountId string
 param bootstrapPrincipalId string
 param founderAlertEmail string
 param budgetStartDate string
@@ -26,6 +27,7 @@ var brokerSecretWriterRoleName = guid(subscription().id, brokerSecretWriterRoleS
 var cleanupSecretDeleterRoleName = guid(subscription().id, cleanupSecretDeleterRoleSeed)
 var brokerJobOperatorRoleName = guid(subscription().id, 'goal006-${environment}-broker-job-operator')
 var cleanupJobOperatorRoleName = guid(subscription().id, 'goal006-${environment}-cleanup-job-operator')
+var evidenceWriterRoleName = guid(subscription().id, 'goal006-${environment}-evidence-writer')
 var deploymentStackOwnerRoleId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'adb29209-aa1d-457b-a786-c913953d2891')
 
 resource runnerResourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' = {
@@ -119,6 +121,26 @@ resource cleanupJobOperatorRole 'Microsoft.Authorization/roleDefinitions@2022-04
   }
 }
 
+resource evidenceWriterRole 'Microsoft.Authorization/roleDefinitions@2022-04-01' = {
+  name: evidenceWriterRoleName
+  properties: {
+    roleName: 'GOAL-006 ${environment} Cleanup Evidence Writer'
+    description: 'Create correlation-bound cleanup evidence blobs without read, list, or delete authority.'
+    type: 'CustomRole'
+    permissions: [
+      {
+        actions: []
+        notActions: []
+        dataActions: [
+          'Microsoft.Storage/storageAccounts/blobServices/containers/blobs/write'
+        ]
+        notDataActions: []
+      }
+    ]
+    assignableScopes: [stateStorageAccountId]
+  }
+}
+
 resource monthlyBudget 'Microsoft.Consumption/budgets@2023-11-01' = {
   name: 'goal006-cumulative-monthly'
   properties: {
@@ -181,3 +203,4 @@ output brokerWriterRoleDefinitionId string = brokerSecretWriterRole.id
 output brokerJobOperatorRoleDefinitionId string = brokerJobOperatorRole.id
 output cleanupDeleterRoleDefinitionId string = cleanupSecretDeleterRole.id
 output cleanupJobOperatorRoleDefinitionId string = cleanupJobOperatorRole.id
+output evidenceWriterRoleDefinitionId string = evidenceWriterRole.id

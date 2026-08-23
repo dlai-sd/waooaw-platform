@@ -20,6 +20,7 @@ from scripts.goal006_runner_lifecycle import (
     _cleanup_evidence_line,
     _start_execution,
     cleanup_correlated_runner,
+    cleanup_evidence_blob_name,
     create_app_jwt,
     correlation_id,
     deployment_job_is_terminal,
@@ -29,6 +30,7 @@ from scripts.goal006_runner_lifecycle import (
     reconcile_runners,
     select_correlated_runner,
     validate_installation,
+    write_cleanup_evidence,
     workflow_run_conclusion,
 )
 
@@ -40,6 +42,44 @@ def _decode_jwt_segment(value: str) -> dict[str, object]:
 def test_correlation_and_runner_name_are_environment_scoped() -> None:
     assert correlation_id("demo", "123", "2") == "goal006:demo:123:2"
     assert runner_name("demo", "123", "2") == "goal006-demo-123-2"
+
+
+def test_cleanup_evidence_blob_name_is_correlation_bound() -> None:
+    assert cleanup_evidence_blob_name("demo", "123", "2") == (
+        "cleanup/demo/123/2.json"
+    )
+
+
+def test_cleanup_evidence_is_written_once_with_canonical_digest() -> None:
+    requests: list[tuple[str, str, dict[str, object]]] = []
+
+    class EvidenceApi:
+        def request(self, method, url, **kwargs):
+            requests.append((method, url, kwargs))
+            return None
+
+    record = {
+        "schema": "waooaw.goal006-runner-cleanup/v1",
+        "correlation_id": "goal006:demo:123:2",
+        "registration_absent": True,
+    }
+    pointer = write_cleanup_evidence(EvidenceApi(), _runner_context(), record)
+
+    method, url, kwargs = requests[0]
+    assert method == "PUT"
+    assert url == (
+        "https://storage.example/goal006-runner-evidence/cleanup/demo/123/2.json"
+    )
+    assert kwargs["headers"]["If-None-Match"] == "*"
+    assert kwargs["headers"]["x-ms-blob-type"] == "BlockBlob"
+    assert kwargs["headers"]["x-ms-date"].endswith(" GMT")
+    assert json.loads(kwargs["raw_body"]) == record
+    assert pointer == {
+        "schema": "waooaw.goal006-runner-cleanup-pointer/v1",
+        "correlation_id": "goal006:demo:123:2",
+        "evidence_blob_url": url,
+        "evidence_sha256": "sha256:08929851925ad1654551c862d6c575923c08a9f5c65456443e626868f5f9af13",
+    }
 
 
 def _runner_context(run_id: str = "123", run_attempt: str = "2") -> RunnerContext:
@@ -58,6 +98,8 @@ def _runner_context(run_id: str = "123", run_attempt: str = "2") -> RunnerContex
         app_key_id="https://vault.example/keys/app/version",
         runner_label="goal006-demo-private",
         activation_state="ACTIVE",
+        evidence_container_url="https://storage.example/goal006-runner-evidence",
+        evidence_writer_client_id="11111111-2222-3333-4444-555555555555",
     )
 
 

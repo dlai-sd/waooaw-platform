@@ -257,6 +257,11 @@ def test_reviewed_environment_parameters_are_isolated_and_consistent() -> None:
         "founderAlertEmail": "yogeshk7377@gmail.com",
         "budgetStartDate": "2026-08-01T00:00:00Z",
         "monthlyBudgetInr": 10000,
+        "stateStorageAccountId": (
+            "/subscriptions/2ed11839-6a0f-4eaa-bd94-44ca96ff5d84/"
+            "resourceGroups/waooaw-platform-rg/providers/Microsoft.Storage/"
+            "storageAccounts/waooawp3tfstate2ed118"
+        ),
     }
 
     for environment in ("demo", "uat", "prod"):

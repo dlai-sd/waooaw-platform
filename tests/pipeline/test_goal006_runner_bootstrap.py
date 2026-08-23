@@ -192,6 +192,13 @@ def test_stack_is_environment_generic_and_uses_valid_private_dns() -> None:
     assert "resource brokerIdentity" in main
     assert "resource brokerJob" in main
     assert "resource cleanupBrokerJob" in main
+    assert "resource evidenceWriterIdentity" in main
+    assert "module cleanupEvidenceStorage" in main
+    assert "RUNNER_EVIDENCE_CONTAINER_URL" in main
+    assert "EVIDENCE_WRITER_CLIENT_ID" in main
+    assert "immutabilityPeriodSinceCreationInDays: 90" in (
+        STACK_ROOT / "cleanup-evidence-storage.bicep"
+    ).read_text(encoding="utf-8")
     assert "resource keyImportIdentity" in main
     assert "resource keyImportAccess" in main
     assert "resource keyImportApp" in main

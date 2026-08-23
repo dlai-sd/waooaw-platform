@@ -16,6 +16,7 @@ param brokerWriterRoleDefinitionId string
 param brokerJobOperatorRoleDefinitionId string
 param cleanupDeleterRoleDefinitionId string
 param cleanupJobOperatorRoleDefinitionId string
+param evidenceWriterRoleDefinitionId string
 param runnerImage string
 param reconcilerImage string
 param githubAppId string
@@ -188,6 +189,12 @@ resource cleanupIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-
   tags: commonTags
 }
 
+resource evidenceWriterIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: '${prefix}-evidence-writer-identity'
+  location: location
+  tags: commonTags
+}
+
 resource keyImportIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: '${prefix}-key-import-identity'
   location: location
@@ -247,6 +254,17 @@ module stateBlobDiagnostics 'blob-diagnostics.bicep' = {
     diagnosticSettingName: '${prefix}-blob-audit'
     storageAccountName: stateStorageAccountSegments[8]
     workspaceId: logAnalytics.id
+  }
+}
+
+module cleanupEvidenceStorage 'cleanup-evidence-storage.bicep' = {
+  scope: resourceGroup(stateStorageAccountSegments[2], stateStorageAccountSegments[4])
+  name: '${prefix}-cleanup-evidence-storage'
+  params: {
+    storageAccountName: stateStorageAccountSegments[8]
+    containerName: 'goal006-${environment}-runner-evidence'
+    writerPrincipalId: evidenceWriterIdentity.properties.principalId
+    writerRoleDefinitionId: evidenceWriterRoleDefinitionId
   }
 }
 
@@ -623,6 +641,7 @@ resource cleanupBrokerJob 'Microsoft.App/jobs@2024-03-01' = {
     type: 'UserAssigned'
     userAssignedIdentities: {
       '${cleanupIdentity.id}': {}
+      '${evidenceWriterIdentity.id}': {}
     }
   }
   properties: {
@@ -645,6 +664,8 @@ resource cleanupBrokerJob 'Microsoft.App/jobs@2024-03-01' = {
           args: ['cleanup-correlated', '--app-manifest', '/opt/waooaw/github-runner-app-manifest.json', '--private-job-conclusion', 'PENDING_EXECUTION_OVERRIDE', '--output', '/home/runner/cleanup-record.json']
           env: [
             { name: 'AZURE_CLIENT_ID', value: cleanupIdentity.properties.clientId }
+            { name: 'EVIDENCE_WRITER_CLIENT_ID', value: evidenceWriterIdentity.properties.clientId }
+            { name: 'RUNNER_EVIDENCE_CONTAINER_URL', value: cleanupEvidenceStorage.outputs.containerUrl }
             { name: 'RUNNER_ACTIVATION_STATE', value: activationState }
             { name: 'RUNNER_ENVIRONMENT', value: environment }
             { name: 'GITHUB_REPOSITORY', value: 'dlai-sd/waooaw-platform' }
@@ -748,6 +769,10 @@ output brokerIdentityId string = brokerIdentity.id
 output brokerIdentityClientId string = brokerIdentity.properties.clientId
 output cleanupIdentityId string = cleanupIdentity.id
 output cleanupIdentityClientId string = cleanupIdentity.properties.clientId
+output evidenceWriterIdentityId string = evidenceWriterIdentity.id
+output evidenceWriterIdentityClientId string = evidenceWriterIdentity.properties.clientId
+output cleanupEvidenceContainerId string = cleanupEvidenceStorage.outputs.containerId
+output cleanupEvidenceContainerUrl string = cleanupEvidenceStorage.outputs.containerUrl
 output keyImportIdentityId string = keyImportIdentity.id
 output runnerVaultUri string = runnerVault.properties.vaultUri
 output runnerEnvironmentId string = runnerEnvironment.id

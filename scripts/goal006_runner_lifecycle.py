@@ -18,12 +18,14 @@ import urllib.request
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from email.utils import format_datetime
 from pathlib import Path
 from typing import Any
 
 GITHUB_API = "https://api.github.com"
 MANAGEMENT_RESOURCE = "https://management.azure.com/"
 KEY_VAULT_RESOURCE = "https://vault.azure.net"
+STORAGE_RESOURCE = "https://storage.azure.com/"
 TERMINAL_CONCLUSIONS = {
     "success",
     "failure",
@@ -37,6 +39,9 @@ TERMINAL_CONCLUSIONS = {
 ENVIRONMENT = re.compile(r"^(demo|uat|prod)$")
 RUN_NUMBER = re.compile(r"^[1-9][0-9]*$")
 KEY_VAULT_SECRET_NAME = re.compile(r"^[0-9A-Za-z-]{1,127}$")
+AZURE_CLIENT_ID = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
 CLEANUP_EVIDENCE_PREFIX = "GOAL006_CLEANUP_RECORD_B64="
 
 
@@ -65,6 +70,13 @@ def correlation_id(environment: str, run_id: str, run_attempt: str) -> str:
 def runner_name(environment: str, run_id: str, run_attempt: str) -> str:
     correlation_id(environment, run_id, run_attempt)
     return f"goal006-{environment}-{run_id}-{run_attempt}"
+
+
+def cleanup_evidence_blob_name(
+    environment: str, run_id: str, run_attempt: str
+) -> str:
+    correlation_id(environment, run_id, run_attempt)
+    return f"cleanup/{environment}/{run_id}/{run_attempt}.json"
 
 
 def create_app_jwt(
@@ -106,6 +118,8 @@ class RunnerContext:
     app_key_id: str
     runner_label: str
     activation_state: str
+    evidence_container_url: str = ""
+    evidence_writer_client_id: str = ""
 
     @classmethod
     def from_environment(cls) -> RunnerContext:
@@ -126,6 +140,12 @@ class RunnerContext:
             "activation_state": "RUNNER_ACTIVATION_STATE",
         }
         values = {field: os.environ.get(variable, "").strip() for field, variable in names.items()}
+        values["evidence_container_url"] = os.environ.get(
+            "RUNNER_EVIDENCE_CONTAINER_URL", ""
+        ).strip()
+        values["evidence_writer_client_id"] = os.environ.get(
+            "EVIDENCE_WRITER_CLIENT_ID", ""
+        ).strip()
         missing = sorted(variable for field, variable in names.items() if not values[field])
         if missing:
             raise LifecycleError("required environment is missing: " + ", ".join(missing))
@@ -251,11 +271,19 @@ class JsonApi:
         resource: str,
         body: Mapping[str, Any] | None = None,
         github_token: str | None = None,
+        headers: Mapping[str, str] | None = None,
+        raw_body: bytes | None = None,
     ) -> Any:
+        if body is not None and raw_body is not None:
+            raise LifecycleError("HTTP request body is ambiguous")
         token = github_token or self._access_token(resource)
-        headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+        request_headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+            **(headers or {}),
+        }
         if url.startswith(GITHUB_API):
-            headers.update(
+            request_headers.update(
                 {
                     "Accept": "application/vnd.github+json",
                     "X-GitHub-Api-Version": "2022-11-28",
@@ -264,9 +292,11 @@ class JsonApi:
         data = None
         if body is not None:
             data = json.dumps(body, separators=(",", ":")).encode("utf-8")
-            headers["Content-Type"] = "application/json"
+            request_headers["Content-Type"] = "application/json"
+        elif raw_body is not None:
+            data = raw_body
         request = urllib.request.Request(  # noqa: S310
-            url, data=data, headers=headers, method=method
+            url, data=data, headers=request_headers, method=method
         )
         try:
             with urllib.request.urlopen(request, timeout=10) as response:  # noqa: S310
@@ -278,7 +308,7 @@ class JsonApi:
         return json.loads(payload) if payload else None
 
 
-def azure_access_token(resource: str) -> str:
+def azure_access_token(resource: str, client_id: str | None = None) -> str:
     identity_endpoint = os.environ.get("IDENTITY_ENDPOINT")
     identity_header = os.environ.get("IDENTITY_HEADER")
     if identity_endpoint and identity_header:
@@ -286,7 +316,7 @@ def azure_access_token(resource: str) -> str:
             {
                 "api-version": "2019-08-01",
                 "resource": resource,
-                "client_id": os.environ.get("AZURE_CLIENT_ID", ""),
+                "client_id": client_id or os.environ.get("AZURE_CLIENT_ID", ""),
             }
         )
         request = urllib.request.Request(  # noqa: S310
@@ -741,6 +771,41 @@ def cleanup_correlated_runner(
     )
 
 
+def write_cleanup_evidence(
+    api: JsonApi,
+    context: RunnerContext,
+    record: Mapping[str, Any],
+) -> dict[str, str]:
+    if not context.evidence_container_url.startswith("https://"):
+        raise LifecycleError("cleanup evidence container URL is invalid")
+    if AZURE_CLIENT_ID.fullmatch(context.evidence_writer_client_id) is None:
+        raise LifecycleError("cleanup evidence writer client ID is invalid")
+    body = json.dumps(record, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    blob_url = (
+        f"{context.evidence_container_url.rstrip('/')}/"
+        f"{cleanup_evidence_blob_name(context.environment, context.run_id, context.run_attempt)}"
+    )
+    api.request(
+        "PUT",
+        blob_url,
+        resource=STORAGE_RESOURCE,
+        raw_body=body,
+        headers={
+            "Content-Type": "application/json",
+            "If-None-Match": "*",
+            "x-ms-blob-type": "BlockBlob",
+            "x-ms-date": format_datetime(datetime.now(timezone.utc), usegmt=True),
+            "x-ms-version": "2023-11-03",
+        },
+    )
+    return {
+        "schema": "waooaw.goal006-runner-cleanup-pointer/v1",
+        "correlation_id": context.correlation,
+        "evidence_blob_url": blob_url,
+        "evidence_sha256": f"sha256:{hashlib.sha256(body).hexdigest()}",
+    }
+
+
 def _parse_azure_time(value: str) -> datetime:
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
@@ -941,7 +1006,17 @@ def main() -> int:
             args.private_job_conclusion,
         )
         _write_record(args.output, record)
+        pointer = write_cleanup_evidence(
+            JsonApi(
+                lambda resource: azure_access_token(
+                    resource, context.evidence_writer_client_id
+                )
+            ),
+            context,
+            record,
+        )
         print(_cleanup_evidence_line(record))
+        print(json.dumps(pointer, sort_keys=True))
     elif args.command == "cleanup-correlated":
         context = RunnerContext.from_environment()
         record = cleanup_correlated_runner(
@@ -951,7 +1026,17 @@ def main() -> int:
             args.private_job_conclusion,
         )
         _write_record(args.output, record)
+        pointer = write_cleanup_evidence(
+            JsonApi(
+                lambda resource: azure_access_token(
+                    resource, context.evidence_writer_client_id
+                )
+            ),
+            context,
+            record,
+        )
         print(_cleanup_evidence_line(record))
+        print(json.dumps(pointer, sort_keys=True))
     elif args.command == "reconcile":
         if args.app_manifest_json is not None:
             with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8") as manifest_file:
