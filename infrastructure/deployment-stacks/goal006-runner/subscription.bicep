@@ -30,6 +30,7 @@ var brokerSecretWriterRoleName = guid(subscription().id, brokerSecretWriterRoleS
 var cleanupSecretDeleterRoleName = guid(subscription().id, cleanupSecretDeleterRoleSeed)
 var brokerJobOperatorRoleName = guid(subscription().id, 'goal006-${environment}-broker-job-operator')
 var cleanupJobOperatorRoleName = guid(subscription().id, 'goal006-${environment}-cleanup-job-operator')
+var evidenceWriterRoleName = guid(subscription().id, 'goal006-${environment}-evidence-writer')
 
 resource runnerResourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' existing = {
   name: runnerResourceGroupName
@@ -51,6 +52,10 @@ resource brokerJobOperatorRole 'Microsoft.Authorization/roleDefinitions@2022-04-
   name: brokerJobOperatorRoleName
 }
 
+resource evidenceWriterRole 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  name: evidenceWriterRoleName
+}
+
 module runnerControlPlane 'main.bicep' = {
   name: 'goal006-${environment}-runner-control-plane'
   scope: runnerResourceGroup
@@ -63,6 +68,7 @@ module runnerControlPlane 'main.bicep' = {
     brokerJobOperatorRoleDefinitionId: brokerJobOperatorRole.id
     cleanupDeleterRoleDefinitionId: cleanupSecretDeleterRole.id
     cleanupJobOperatorRoleDefinitionId: cleanupJobOperatorRole.id
+    evidenceWriterRoleDefinitionId: evidenceWriterRole.id
     runnerImage: runnerImage
     reconcilerImage: reconcilerImage
     githubAppId: githubAppId

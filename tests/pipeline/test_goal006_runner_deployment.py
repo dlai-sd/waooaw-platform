@@ -164,6 +164,24 @@ def test_plan_normalization_preserves_property_delta() -> None:
     assert normalized[0]["details"]["delta"][0]["path"] == "properties.access"
 
 
+def test_plan_allows_only_deferred_evidence_writer_assignment() -> None:
+    resource_id = (
+        "[extensionResourceId('/subscriptions/sub/resourceGroups/platform/providers/"
+        "Microsoft.Storage/storageAccounts/state/blobServices/default/containers/"
+        "goal006-demo-runner-evidence', 'Microsoft.Authorization/roleAssignments', "
+        "reference('/subscriptions/sub/resourceGroups/demo/providers/Microsoft.ManagedIdentity/"
+        "userAssignedIdentities/goal006-demo-runner-evidence-writer-identity').principalId)]"
+    )
+
+    assert normalize_changes(
+        [{"changeType": "Unsupported", "resourceId": resource_id}]
+    )[0] == {
+        "change_type": "Unsupported",
+        "resource_id": resource_id,
+        "details": {},
+    }
+
+
 @pytest.mark.parametrize("change_type", ["Delete", "Deploy", "Unsupported", ""])
 def test_destructive_or_ambiguous_plan_is_rejected(change_type: str) -> None:
     with pytest.raises(RuntimeError, match="unsupported or destructive"):
@@ -226,6 +244,12 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
         "parameter_path": REPOSITORY_ROOT
         / "infrastructure/deployment-stacks/goal006-runner/demo.parameters.json",
     }
+    evidence_container_id = (
+        "/subscriptions/2ed11839-6a0f-4eaa-bd94-44ca96ff5d84/resourceGroups/"
+        "waooaw-platform-rg/providers/Microsoft.Storage/storageAccounts/"
+        "waooawp3tfstate2ed118/blobServices/default/containers/"
+        "goal006-demo-runner-evidence"
+    )
     monkeypatch.setattr(
         "scripts.goal006_runner_deployment.environment_contract",
         lambda *arguments: contract,
@@ -248,6 +272,13 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
                         "status": "managed",
                     }
                     for name, resource_type in _required_resource_names(environment).items()
+                ]
+                + [
+                    {"id": evidence_container_id, "status": "managed"},
+                    {
+                        "id": f"{evidence_container_id}/immutabilityPolicies/default",
+                        "status": "managed",
+                    },
                 ],
             }
         if command == ("resource", "list", "--resource-group"):
@@ -259,6 +290,10 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
                 }
                 for name, resource_type in _required_resource_names(environment).items()
             ]
+        if command == ("resource", "show", "--ids"):
+            if arguments[-1].endswith("/immutabilityPolicies/default"):
+                return {"properties": {"immutabilityPeriodSinceCreationInDays": 90}}
+            return {"properties": {"publicAccess": "None"}}
         if command == ("network", "private-endpoint", "show"):
             return {
                 "privateLinkServiceConnections": [
@@ -266,8 +301,21 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
                 ]
             }
         if arguments[:2] == ("identity", "show"):
-            return {"principalId": arguments[-1] + "-principal"}
+            identity_name = arguments[-1]
+            return {
+                "id": f"/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/{identity_name}",
+                "clientId": "11111111-2222-3333-4444-555555555555",
+                "principalId": identity_name + "-principal",
+            }
         if command == ("role", "assignment", "list"):
+            if "--scope" in arguments:
+                assert "--all" not in arguments
+                return [
+                    {
+                        "roleDefinitionName": "GOAL-006 demo Cleanup Evidence Writer",
+                        "scope": evidence_container_id,
+                    }
+                ]
             key_scope = (
                 "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.KeyVault/"
                 "vaults/waooaw-demo-runner-kv/keys/github-runner-app-signing"
@@ -311,6 +359,14 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
                     "cronExpression": "*/5 * * * *"
                 }
             return {
+                "identity": {
+                    "userAssignedIdentities": {
+                        "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/goal006-demo-runner-cleanup-identity": {},
+                        "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/goal006-demo-runner-evidence-writer-identity": {},
+                    }
+                }
+                if cleanup_broker
+                else {},
                 "properties": {
                     "configuration": configuration,
                     "template": {
@@ -337,12 +393,22 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
                                         },
                                         {"name": "RUNNER_VAULT_URL", "value": "https://vault"},
                                         {"name": "RUNNER_TOKEN_SECRET_NAME", "value": "token"},
+                                        {
+                                            "name": "EVIDENCE_WRITER_CLIENT_ID",
+                                            "value": "11111111-2222-3333-4444-555555555555",
+                                        },
+                                        {
+                                            "name": "RUNNER_EVIDENCE_CONTAINER_URL",
+                                            "value": "https://waooawp3tfstate2ed118.blob.core.windows.net/goal006-demo-runner-evidence",
+                                        },
                                     ]
                                 ),
                                 "command": reconciler_command
                                 if reconciler
+                                else ["python3", "-c"]
+                                if cleanup_broker
                                 else ["python3", "/opt/waooaw/goal006_runner_lifecycle.py"]
-                                if broker or cleanup_broker
+                                if broker
                                 else ["/opt/waooaw/entrypoint.sh"],
                                 "args": [
                                     (
@@ -361,7 +427,19 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
                                 if reconciler
                                 else ["start", "--app-manifest", "/opt/waooaw/github-runner-app-manifest.json", "--output", "/home/runner/lifecycle-record.json"]
                                 if broker
-                                else ["cleanup-correlated", "--app-manifest", "/opt/waooaw/github-runner-app-manifest.json", "--private-job-conclusion", "PENDING_EXECUTION_OVERRIDE", "--output", "/home/runner/cleanup-record.json"]
+                                else [
+                                    (
+                                        REPOSITORY_ROOT
+                                        / "scripts/goal006_runner_lifecycle.py"
+                                    ).read_text(encoding="utf-8"),
+                                    "cleanup-correlated",
+                                    "--app-manifest",
+                                    "/opt/waooaw/github-runner-app-manifest.json",
+                                    "--private-job-conclusion",
+                                    "PENDING_EXECUTION_OVERRIDE",
+                                    "--output",
+                                    "/home/runner/cleanup-record.json",
+                                ]
                                 if cleanup_broker
                                 else [],
                             }

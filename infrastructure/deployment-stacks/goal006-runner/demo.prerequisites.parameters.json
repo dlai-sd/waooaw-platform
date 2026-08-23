@@ -5,6 +5,7 @@
     "environment": { "value": "demo" },
     "location": { "value": "centralindia" },
     "runnerResourceGroupName": { "value": "waooaw-demo-runner-rg" },
+    "stateStorageAccountId": { "value": "/subscriptions/2ed11839-6a0f-4eaa-bd94-44ca96ff5d84/resourceGroups/waooaw-platform-rg/providers/Microsoft.Storage/storageAccounts/waooawp3tfstate2ed118" },
     "bootstrapPrincipalId": { "value": "77147af5-a32d-4151-b557-e719f319b55b" },
     "founderAlertEmail": { "value": "yogeshk7377@gmail.com" },
     "budgetStartDate": { "value": "2026-08-01T00:00:00Z" },

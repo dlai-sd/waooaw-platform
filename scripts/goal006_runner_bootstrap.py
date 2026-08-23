@@ -46,7 +46,7 @@ REQUIRED_TEMPLATE_TERMS = {
     "name: '${prefix}-broker'",
     "name: '${prefix}-cleanup'",
     "args: ['start'",
-    "args: ['cleanup-correlated'",
+    "'cleanup-correlated'",
     "triggerType: activationState == 'ACTIVE' ? 'Schedule' : 'Manual'",
     "manualTriggerConfig:",
     "cronExpression: '*/5 * * * *'",
@@ -64,6 +64,7 @@ REQUIRED_PREREQUISITE_TERMS = {
     "Microsoft.KeyVault/vaults/secrets/delete",
     "Microsoft.App/jobs/start/action",
     "Microsoft.App/jobs/stop/execution/action",
+    "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/write",
     "goal006-cumulative-monthly",
     "adb29209-aa1d-457b-a786-c913953d2891",
     "prerequisites-rg.bicep",
@@ -166,6 +167,8 @@ def validate_bootstrap_manifest(
         "runnerResourceGroupName"
     ):
         violations.append("PREREQUISITE_RESOURCE_GROUP_MISMATCH")
+    if prerequisite_parameters.get("stateStorageAccountId") != EXPECTED_STATE_ID:
+        violations.append("PREREQUISITE_STATE_STORAGE_ID_INVALID")
     if prerequisite_parameters.get("bootstrapPrincipalId") != EXPECTED_BOOTSTRAP_PRINCIPAL:
         violations.append("PREREQUISITE_PRINCIPAL_INVALID")
     for name in ("runnerImage", "reconcilerImage"):

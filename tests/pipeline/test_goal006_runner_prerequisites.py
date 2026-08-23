@@ -14,6 +14,7 @@ from scripts.goal006_runner_prerequisites import (
     reject_deletes,
     verify,
     verify_custom_role,
+    verify_with_retry,
     verify_role_catalogue,
 )
 
@@ -184,11 +185,13 @@ def test_verify_requires_all_current_custom_roles(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     runner_scope = "/subscriptions/sub/resourceGroups/demo-rg"
+    evidence_scope = "/subscriptions/sub/resourceGroups/platform-rg/providers/Microsoft.Storage/storageAccounts/state"
     role_names = {
         "broker-writer": "GOAL-006 demo Broker Secret Writer",
         "broker-operator": "GOAL-006 demo Broker Job Operator",
         "cleanup-deleter": "GOAL-006 demo Cleanup Secret Deleter",
         "cleanup-operator": "GOAL-006 demo Cleanup Job Operator",
+        "evidence-writer": "GOAL-006 demo Cleanup Evidence Writer",
     }
 
     def live_azure(*arguments: str):
@@ -208,6 +211,7 @@ def test_verify_requires_all_current_custom_roles(
                         "brokerJobOperatorRoleDefinitionId": {"value": f"{runner_scope}/broker-operator"},
                         "cleanupDeleterRoleDefinitionId": {"value": f"{runner_scope}/cleanup-deleter"},
                         "cleanupJobOperatorRoleDefinitionId": {"value": f"{runner_scope}/cleanup-operator"},
+                        "evidenceWriterRoleDefinitionId": {"value": f"{runner_scope}/evidence-writer"},
                     }
                 }
             }
@@ -218,10 +222,13 @@ def test_verify_requires_all_current_custom_roles(
             role_id = url.split("/")[-1].split("?")[0]
             suffix = role_names[role_id].removeprefix("GOAL-006 demo ")
             expected = CUSTOM_ROLE_PERMISSIONS[suffix]
+            assignable_scope = (
+                evidence_scope if suffix == "Cleanup Evidence Writer" else runner_scope
+            )
             return {
                 "properties": {
                     "roleName": role_names[role_id],
-                    "assignableScopes": [runner_scope],
+                    "assignableScopes": [assignable_scope],
                     "permissions": [
                         {
                             "actions": sorted(expected["actions"]),
@@ -241,12 +248,32 @@ def test_verify_requires_all_current_custom_roles(
             "runnerResourceGroupName": "demo-rg",
             "bootstrapPrincipalId": "principal",
             "monthlyBudgetInr": 10000,
+            "stateStorageAccountId": evidence_scope,
         },
         "sub",
         "goal006-demo-runner-prerequisites",
     )
 
     assert result["environment"] == "demo"
+
+
+def test_post_apply_verification_retries_control_plane_propagation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attempts = iter([RuntimeError("role pending"), {"environment": "demo"}])
+    sleeps: list[int] = []
+
+    def delayed_verify(*args):
+        result = next(attempts)
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    monkeypatch.setattr("scripts.goal006_runner_prerequisites.verify", delayed_verify)
+    monkeypatch.setattr("scripts.goal006_runner_prerequisites.time.sleep", sleeps.append)
+
+    assert verify_with_retry({}, "sub", "deployment") == {"environment": "demo"}
+    assert sleeps == [5]
 
 
 def test_reviewed_environment_parameters_are_isolated_and_consistent() -> None:
@@ -257,6 +284,11 @@ def test_reviewed_environment_parameters_are_isolated_and_consistent() -> None:
         "founderAlertEmail": "yogeshk7377@gmail.com",
         "budgetStartDate": "2026-08-01T00:00:00Z",
         "monthlyBudgetInr": 10000,
+        "stateStorageAccountId": (
+            "/subscriptions/2ed11839-6a0f-4eaa-bd94-44ca96ff5d84/"
+            "resourceGroups/waooaw-platform-rg/providers/Microsoft.Storage/"
+            "storageAccounts/waooawp3tfstate2ed118"
+        ),
     }
 
     for environment in ("demo", "uat", "prod"):

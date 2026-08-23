@@ -14,7 +14,10 @@ from pathlib import Path
 from typing import Any
 
 from goal006_runner_bootstrap import validate_bootstrap_manifest
-from goal006_runner_prerequisites import _parameters, verify as verify_prerequisites
+from goal006_runner_prerequisites import (
+    _parameters,
+    verify_with_retry as verify_prerequisites,
+)
 
 PLAN_SCHEMA = "waooaw.goal006-runner-plan/v1"
 DEPLOYMENT_SCHEMA = "waooaw.goal006-runner-deployment/v1"
@@ -116,9 +119,16 @@ def normalize_changes(changes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for change in changes:
         change_type = str(change.get("changeType", ""))
         resource_id = str(change.get("resourceId", ""))
-        if change_type not in ALLOWED_CHANGE_TYPES:
+        deferred_evidence_assignment = (
+            change_type == "Unsupported"
+            and resource_id.startswith("[extensionResourceId(")
+            and "goal006-demo-runner-evidence" in resource_id
+            and "Microsoft.Authorization/roleAssignments" in resource_id
+            and "goal006-demo-runner-evidence-writer-identity" in resource_id
+        )
+        if change_type not in ALLOWED_CHANGE_TYPES and not deferred_evidence_assignment:
             raise RuntimeError(f"unsupported or destructive change rejected: {change_type} {resource_id}")
-        if not resource_id.startswith("/subscriptions/"):
+        if not resource_id.startswith("/subscriptions/") and not deferred_evidence_assignment:
             raise RuntimeError(f"invalid planned resource ID: {resource_id}")
         normalized.append(
             {
@@ -301,6 +311,7 @@ def _required_resource_names(environment: str) -> dict[str, str]:
         f"{prefix}-identity": "Microsoft.ManagedIdentity/userAssignedIdentities",
         f"{prefix}-broker-identity": "Microsoft.ManagedIdentity/userAssignedIdentities",
         f"{prefix}-cleanup-identity": "Microsoft.ManagedIdentity/userAssignedIdentities",
+        f"{prefix}-evidence-writer-identity": "Microsoft.ManagedIdentity/userAssignedIdentities",
         f"waooaw-{environment}-runner-kv": "Microsoft.KeyVault/vaults",
         f"{prefix}-state-pe": "Microsoft.Network/privateEndpoints",
         f"{prefix}-vaultcore-pe": "Microsoft.Network/privateEndpoints",
@@ -430,6 +441,50 @@ def verify_deployment(
         if statuses != {"Approved"}:
             raise RuntimeError(f"private endpoint is not approved: {endpoint} {statuses}")
     parameters = _parameters(contract["parameter_path"])
+    evidence_identity = _az(
+        "identity",
+        "show",
+        "--resource-group",
+        contract["resource_group"],
+        "--name",
+        f"{prefix}-evidence-writer-identity",
+    )
+    state_account_id = str(parameters["stateStorageAccountId"])
+    evidence_container_id = (
+        f"{state_account_id}/blobServices/default/containers/"
+        f"goal006-{environment}-runner-evidence"
+    )
+    evidence_policy_id = f"{evidence_container_id}/immutabilityPolicies/default"
+    for evidence_resource_id in (evidence_container_id, evidence_policy_id):
+        if evidence_resource_id.lower() not in managed_resource_ids:
+            raise RuntimeError("cleanup evidence storage is not managed by deployment stack")
+    evidence_container = _az("resource", "show", "--ids", evidence_container_id)
+    if evidence_container.get("properties", {}).get("publicAccess") != "None":
+        raise RuntimeError("cleanup evidence container is not private")
+    evidence_policy = _az("resource", "show", "--ids", evidence_policy_id)
+    if (
+        evidence_policy.get("properties", {}).get(
+            "immutabilityPeriodSinceCreationInDays"
+        )
+        != 90
+    ):
+        raise RuntimeError("cleanup evidence retention is not 90 days")
+    evidence_assignments = _az(
+        "role",
+        "assignment",
+        "list",
+        "--assignee-object-id",
+        str(evidence_identity.get("principalId", "")),
+        "--scope",
+        evidence_container_id,
+    )
+    if not any(
+        item.get("roleDefinitionName")
+        == f"GOAL-006 {environment} Cleanup Evidence Writer"
+        and str(item.get("scope", "")).lower() == evidence_container_id.lower()
+        for item in evidence_assignments
+    ):
+        raise RuntimeError("cleanup evidence writer assignment is missing")
     workspace_id = observed[
         (f"{prefix}-logs", "Microsoft.OperationalInsights/workspaces")
     ]
@@ -490,6 +545,20 @@ def verify_deployment(
         "--name",
         f"{prefix}-cleanup",
     )
+    cleanup_identity_id = observed[
+        (
+            f"{prefix}-cleanup-identity",
+            "Microsoft.ManagedIdentity/userAssignedIdentities",
+        )
+    ]
+    evidence_identity_id = str(evidence_identity.get("id", "")).lower()
+    cleanup_job_identities = {
+        str(identity_id).lower()
+        for identity_id in cleanup_broker_job.get("identity", {})
+        .get("userAssignedIdentities", {})
+    }
+    if cleanup_job_identities != {cleanup_identity_id, evidence_identity_id}:
+        raise RuntimeError("cleanup broker identity boundary differs from blueprint")
     if runner_job.get("properties", {}).get("configuration", {}).get("triggerType") != "Manual":
         raise RuntimeError("runner job trigger is not Manual")
     for name, job in (("broker", broker_job), ("cleanup broker", cleanup_broker_job)):
@@ -566,8 +635,19 @@ def verify_deployment(
             cleanup_broker_job,
             "cleanup-broker",
             contract["runner_image"],
-            ["python3", "/opt/waooaw/goal006_runner_lifecycle.py"],
-            ["cleanup-correlated", "--app-manifest", "/opt/waooaw/github-runner-app-manifest.json", "--private-job-conclusion", "PENDING_EXECUTION_OVERRIDE", "--output", "/home/runner/cleanup-record.json"],
+            ["python3", "-c"],
+            [
+                (repository_root / "scripts/goal006_runner_lifecycle.py").read_text(
+                    encoding="utf-8"
+                ),
+                "cleanup-correlated",
+                "--app-manifest",
+                "/opt/waooaw/github-runner-app-manifest.json",
+                "--private-job-conclusion",
+                "PENDING_EXECUTION_OVERRIDE",
+                "--output",
+                "/home/runner/cleanup-record.json",
+            ],
         ),
     )
     for job, container_name, expected_image, expected_command, expected_arguments in expected_jobs:
@@ -593,6 +673,20 @@ def verify_deployment(
             "RUNNER_TOKEN_SECRET_NAME",
         }.issubset(environment_values):
             raise RuntimeError(f"{container_name} job token environment is incomplete")
+        if container_name == "cleanup-broker":
+            storage_account_name = state_account_id.rsplit("/", 1)[-1]
+            expected_evidence_environment = {
+                "EVIDENCE_WRITER_CLIENT_ID": evidence_identity.get("clientId"),
+                "RUNNER_EVIDENCE_CONTAINER_URL": (
+                    f"https://{storage_account_name}.blob.core.windows.net/"
+                    f"goal006-{environment}-runner-evidence"
+                ),
+            }
+            if any(
+                environment_values.get(name) != value
+                for name, value in expected_evidence_environment.items()
+            ):
+                raise RuntimeError("cleanup broker evidence environment differs from blueprint")
     payload: dict[str, Any] = {
         "schema": DEPLOYMENT_SCHEMA,
         "environment": environment,
