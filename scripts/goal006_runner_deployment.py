@@ -635,8 +635,19 @@ def verify_deployment(
             cleanup_broker_job,
             "cleanup-broker",
             contract["runner_image"],
-            ["python3", "/opt/waooaw/goal006_runner_lifecycle.py"],
-            ["cleanup-correlated", "--app-manifest", "/opt/waooaw/github-runner-app-manifest.json", "--private-job-conclusion", "PENDING_EXECUTION_OVERRIDE", "--output", "/home/runner/cleanup-record.json"],
+            ["python3", "-c"],
+            [
+                (repository_root / "scripts/goal006_runner_lifecycle.py").read_text(
+                    encoding="utf-8"
+                ),
+                "cleanup-correlated",
+                "--app-manifest",
+                "/opt/waooaw/github-runner-app-manifest.json",
+                "--private-job-conclusion",
+                "PENDING_EXECUTION_OVERRIDE",
+                "--output",
+                "/home/runner/cleanup-record.json",
+            ],
         ),
     )
     for job, container_name, expected_image, expected_command, expected_arguments in expected_jobs:

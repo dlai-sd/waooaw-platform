@@ -17,6 +17,7 @@ from goal006_runner_lifecycle import CLEANUP_EVIDENCE_PREFIX
 RUN_NUMBER = re.compile(r"^[1-9][0-9]*$")
 PINNED_IMAGE = re.compile(r"^.+@sha256:[0-9a-f]{64}$")
 COMMAND = ["python3", "/opt/waooaw/goal006_runner_lifecycle.py"]
+CLEANUP_COMMAND = ["python3", "-c"]
 BROKER_ARGS = [
     "start",
     "--app-manifest",
@@ -25,6 +26,7 @@ BROKER_ARGS = [
     "/home/runner/lifecycle-record.json",
 ]
 CLEANUP_ARGS = [
+    Path(__file__).with_name("goal006_runner_lifecycle.py").read_text(encoding="utf-8"),
     "cleanup-correlated",
     "--app-manifest",
     "/opt/waooaw/github-runner-app-manifest.json",
@@ -171,7 +173,8 @@ def build_execution_template(
     container = containers[0]
     if container.get("image") != expected_image:
         raise ExecutionTemplateError("job image differs from immutable parameters")
-    if container.get("command") != COMMAND:
+    expected_command = COMMAND if mode == "broker" else CLEANUP_COMMAND
+    if container.get("command") != expected_command:
         raise ExecutionTemplateError("job command differs from blueprint")
     expected_args = BROKER_ARGS if mode == "broker" else CLEANUP_ARGS
     if container.get("args") != expected_args:

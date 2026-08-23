@@ -405,8 +405,10 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
                                 ),
                                 "command": reconciler_command
                                 if reconciler
+                                else ["python3", "-c"]
+                                if cleanup_broker
                                 else ["python3", "/opt/waooaw/goal006_runner_lifecycle.py"]
-                                if broker or cleanup_broker
+                                if broker
                                 else ["/opt/waooaw/entrypoint.sh"],
                                 "args": [
                                     (
@@ -425,7 +427,19 @@ def test_live_verification_requires_approved_endpoints_and_guarded_jobs(
                                 if reconciler
                                 else ["start", "--app-manifest", "/opt/waooaw/github-runner-app-manifest.json", "--output", "/home/runner/lifecycle-record.json"]
                                 if broker
-                                else ["cleanup-correlated", "--app-manifest", "/opt/waooaw/github-runner-app-manifest.json", "--private-job-conclusion", "PENDING_EXECUTION_OVERRIDE", "--output", "/home/runner/cleanup-record.json"]
+                                else [
+                                    (
+                                        REPOSITORY_ROOT
+                                        / "scripts/goal006_runner_lifecycle.py"
+                                    ).read_text(encoding="utf-8"),
+                                    "cleanup-correlated",
+                                    "--app-manifest",
+                                    "/opt/waooaw/github-runner-app-manifest.json",
+                                    "--private-job-conclusion",
+                                    "PENDING_EXECUTION_OVERRIDE",
+                                    "--output",
+                                    "/home/runner/cleanup-record.json",
+                                ]
                                 if cleanup_broker
                                 else [],
                             }

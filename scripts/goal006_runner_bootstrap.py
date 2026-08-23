@@ -46,7 +46,7 @@ REQUIRED_TEMPLATE_TERMS = {
     "name: '${prefix}-broker'",
     "name: '${prefix}-cleanup'",
     "args: ['start'",
-    "args: ['cleanup-correlated'",
+    "'cleanup-correlated'",
     "triggerType: activationState == 'ACTIVE' ? 'Schedule' : 'Manual'",
     "manualTriggerConfig:",
     "cronExpression: '*/5 * * * *'",

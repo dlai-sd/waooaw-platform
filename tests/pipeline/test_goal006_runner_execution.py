@@ -9,6 +9,7 @@ import pytest
 from scripts.goal006_runner_execution import (
     BROKER_ARGS,
     CLEANUP_ARGS,
+    CLEANUP_COMMAND,
     CLEANUP_REQUIRED_ENVIRONMENT,
     COMMAND,
     ExecutionTemplateError,
@@ -44,7 +45,7 @@ def job(name: str, arguments: list[str]) -> dict:
                     {
                         "name": name,
                         "image": IMAGE,
-                        "command": COMMAND,
+                        "command": CLEANUP_COMMAND if arguments == CLEANUP_ARGS else COMMAND,
                         "args": arguments,
                         "resources": {"cpu": 0.25, "memory": "0.5Gi"},
                         "env": environment,
@@ -91,6 +92,8 @@ def test_cleanup_template_binds_terminal_conclusion() -> None:
         private_job_conclusion="failure",
     )
     arguments = result["containers"][0]["args"]
+    assert result["containers"][0]["command"] == CLEANUP_COMMAND
+    assert "def write_cleanup_evidence(" in arguments[0]
     assert arguments[arguments.index("--private-job-conclusion") + 1] == "failure"
 
 

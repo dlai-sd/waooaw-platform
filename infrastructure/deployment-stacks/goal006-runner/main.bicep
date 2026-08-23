@@ -660,8 +660,17 @@ resource cleanupBrokerJob 'Microsoft.App/jobs@2024-03-01' = {
         {
           name: 'cleanup-broker'
           image: runnerImage
-          command: ['python3', '/opt/waooaw/goal006_runner_lifecycle.py']
-          args: ['cleanup-correlated', '--app-manifest', '/opt/waooaw/github-runner-app-manifest.json', '--private-job-conclusion', 'PENDING_EXECUTION_OVERRIDE', '--output', '/home/runner/cleanup-record.json']
+          command: ['python3', '-c']
+          args: [
+            loadTextContent('../../../scripts/goal006_runner_lifecycle.py')
+            'cleanup-correlated'
+            '--app-manifest'
+            '/opt/waooaw/github-runner-app-manifest.json'
+            '--private-job-conclusion'
+            'PENDING_EXECUTION_OVERRIDE'
+            '--output'
+            '/home/runner/cleanup-record.json'
+          ]
           env: [
             { name: 'AZURE_CLIENT_ID', value: cleanupIdentity.properties.clientId }
             { name: 'EVIDENCE_WRITER_CLIENT_ID', value: evidenceWriterIdentity.properties.clientId }
