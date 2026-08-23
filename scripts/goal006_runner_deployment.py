@@ -14,7 +14,10 @@ from pathlib import Path
 from typing import Any
 
 from goal006_runner_bootstrap import validate_bootstrap_manifest
-from goal006_runner_prerequisites import _parameters, verify as verify_prerequisites
+from goal006_runner_prerequisites import (
+    _parameters,
+    verify_with_retry as verify_prerequisites,
+)
 
 PLAN_SCHEMA = "waooaw.goal006-runner-plan/v1"
 DEPLOYMENT_SCHEMA = "waooaw.goal006-runner-deployment/v1"
