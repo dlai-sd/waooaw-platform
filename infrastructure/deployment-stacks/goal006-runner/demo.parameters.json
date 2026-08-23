@@ -16,6 +16,7 @@
     "githubAppKeyVersion": { "value": "fd3d73a5545844169b49382fab819c0d" },
     "runnerVnetAddressPrefix": { "value": "10.70.0.0/24" },
     "runnerSubnetAddressPrefix": { "value": "10.70.0.0/27" },
-    "privateEndpointSubnetAddressPrefix": { "value": "10.70.0.32/27" }
+    "privateEndpointSubnetAddressPrefix": { "value": "10.70.0.32/27" },
+    "cleanupFederatedSubject": { "value": "repo:dlai-sd/waooaw-platform:ref:refs/heads/main" }
   }
 }

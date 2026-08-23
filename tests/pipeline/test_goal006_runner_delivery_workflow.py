@@ -74,3 +74,17 @@ def test_hosted_qualification_never_signs_or_handles_runner_tokens() -> None:
     assert "GITHUB_APP_INSTALLATION_ID" not in QUALIFICATION_WORKFLOW
     assert "RUNNER_REGISTRATION_TOKEN" not in QUALIFICATION_WORKFLOW
     assert "network-rule add" not in QUALIFICATION_WORKFLOW
+
+
+def test_cleanup_is_ungated_and_uses_dedicated_identity() -> None:
+    cleanup = QUALIFICATION_WORKFLOW.split("  cleanup-private:", 1)[1]
+
+    assert "environment: demo" not in cleanup
+    assert "client-id: ${{ env.RUNNER_CLEANUP_CLIENT_ID }}" in cleanup
+    assert "client-id: ${{ env.ARM_CLIENT_ID }}" not in cleanup
+    assert "RUNNER_CLEANUP_CLIENT_ID: 0cbfdc62-b91f-44ee-ac27-90785b3d2eb5" in QUALIFICATION_WORKFLOW
+
+
+def test_private_qualification_invokes_available_python_runtime() -> None:
+    assert "python3 scripts/goal006_runner_qualification.py" in QUALIFICATION_WORKFLOW
+    assert "python scripts/goal006_runner_qualification.py" not in QUALIFICATION_WORKFLOW

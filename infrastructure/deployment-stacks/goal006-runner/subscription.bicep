@@ -23,6 +23,7 @@ param githubAppKeyVersion string
 param runnerVnetAddressPrefix string
 param runnerSubnetAddressPrefix string
 param privateEndpointSubnetAddressPrefix string
+param cleanupFederatedSubject string = 'repo:dlai-sd/waooaw-platform:environment:${environment}'
 var brokerSecretWriterRoleSeed = environment == 'demo' ? 'goal006-bootstrap-secret-writer' : 'goal006-${environment}-bootstrap-secret-writer'
 var cleanupSecretDeleterRoleSeed = environment == 'demo' ? 'goal006-cleanup-secret-deleter' : 'goal006-${environment}-cleanup-secret-deleter'
 var brokerSecretWriterRoleName = guid(subscription().id, brokerSecretWriterRoleSeed)
@@ -71,6 +72,7 @@ module runnerControlPlane 'main.bicep' = {
     runnerVnetAddressPrefix: runnerVnetAddressPrefix
     runnerSubnetAddressPrefix: runnerSubnetAddressPrefix
     privateEndpointSubnetAddressPrefix: privateEndpointSubnetAddressPrefix
+    cleanupFederatedSubject: cleanupFederatedSubject
   }
 }
 

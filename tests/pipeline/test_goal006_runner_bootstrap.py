@@ -80,6 +80,18 @@ def test_reviewed_bootstrap_manifest_passes() -> None:
         assert validate_bootstrap_manifest(REPOSITORY_ROOT, MANIFEST_PATH, environment) == []
 
 
+def test_cleanup_operator_can_start_only_governed_job_operations() -> None:
+    template = (STACK_ROOT / "prerequisites.bicep").read_text(encoding="utf-8")
+    cleanup_role = template.split("resource cleanupJobOperatorRole", 1)[1].split(
+        "resource monthlyBudget", 1
+    )[0]
+
+    assert "Microsoft.App/jobs/start/action" in cleanup_role
+    assert "Microsoft.App/jobs/stop/execution/action" in cleanup_role
+    assert "Microsoft.App/jobs/write" not in cleanup_role
+    assert "Microsoft.App/jobs/delete" not in cleanup_role
+
+
 def test_digest_drift_fails_closed(tmp_path: Path) -> None:
     repository, manifest_path = _write_manifest(tmp_path)
     template = repository / "infrastructure/deployment-stacks/goal006-runner/main.bicep"

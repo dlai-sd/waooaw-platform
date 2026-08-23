@@ -543,11 +543,13 @@ def _reconciler_context() -> ReconcilerContext:
     )
 
 
-def _active_execution(*, correlation: str = "goal006:demo:123:2") -> dict[str, object]:
+def _active_execution(
+    *, correlation: str = "goal006:demo:123:2", status: str = "Running"
+) -> dict[str, object]:
     return {
         "name": "runner-job-execution",
         "properties": {
-            "status": "Running",
+            "status": status,
             "startTime": "2026-08-22T12:30:00Z",
             "template": {
                 "containers": [
@@ -612,21 +614,25 @@ def test_reconciler_rejects_correlation_mismatch(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    ("conclusion", "now", "expected_decision", "predicate"),
+    ("execution_status", "conclusion", "now", "expected_decision", "predicate", "active_count"),
     [
-        (None, datetime(2026, 8, 22, 12, 35, tzinfo=timezone.utc), "ACTIVE_RUN_WITHIN_LIMIT", None),
-        ("cancelled", datetime(2026, 8, 22, 12, 35, tzinfo=timezone.utc), "CLEANED_ELIGIBLE_EXECUTION", "cancelled"),
-        ("absent", datetime(2026, 8, 22, 12, 35, tzinfo=timezone.utc), "CLEANED_ELIGIBLE_EXECUTION", "absent"),
-        (None, datetime(2026, 8, 22, 13, 31, tzinfo=timezone.utc), "CLEANED_ELIGIBLE_EXECUTION", "AGE_LIMIT"),
+        ("Running", None, datetime(2026, 8, 22, 12, 35, tzinfo=timezone.utc), "ACTIVE_RUN_WITHIN_LIMIT", None, 1),
+        ("Running", "cancelled", datetime(2026, 8, 22, 12, 35, tzinfo=timezone.utc), "CLEANED_ELIGIBLE_EXECUTION", "cancelled", 1),
+        ("Running", "absent", datetime(2026, 8, 22, 12, 35, tzinfo=timezone.utc), "CLEANED_ELIGIBLE_EXECUTION", "absent", 1),
+        ("Running", None, datetime(2026, 8, 22, 13, 31, tzinfo=timezone.utc), "CLEANED_ELIGIBLE_EXECUTION", "AGE_LIMIT", 1),
+        ("Succeeded", None, datetime(2026, 8, 22, 12, 35, tzinfo=timezone.utc), "TERMINAL_EXECUTION_AWAITING_RUN", None, 0),
+        ("Succeeded", "cancelled", datetime(2026, 8, 22, 12, 35, tzinfo=timezone.utc), "CLEANED_ELIGIBLE_EXECUTION", "cancelled", 0),
     ],
 )
 def test_reconciler_applies_exact_lifecycle_predicate(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
+    execution_status: str,
     conclusion: str | None,
     now: datetime,
     expected_decision: str,
     predicate: str | None,
+    active_count: int,
 ) -> None:
     manifest = tmp_path / "manifest.json"
     manifest.write_text(
@@ -649,12 +655,13 @@ def test_reconciler_applies_exact_lifecycle_predicate(
     )
 
     record = reconcile_runners(
-        _ReconcilerApi([_active_execution()]),
+        _ReconcilerApi([_active_execution(status=execution_status)]),
         _reconciler_context(),
         manifest,
         now=now,
     )
     assert record["decision"] == expected_decision
+    assert record["observed_active_executions"] == active_count
     if predicate is None:
         assert "lifecycle_predicate" not in record
     else:

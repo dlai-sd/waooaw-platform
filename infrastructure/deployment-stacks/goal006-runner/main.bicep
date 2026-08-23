@@ -23,6 +23,7 @@ param githubAppInstallationId string
 param githubAppKeyName string
 param githubAppKeyVersion string
 param runnerTokenSecretName string = 'runner-registration-token'
+param cleanupFederatedSubject string = 'repo:dlai-sd/waooaw-platform:environment:${environment}'
 
 param runnerVnetAddressPrefix string = '10.70.0.0/24'
 param runnerSubnetAddressPrefix string = '10.70.0.0/27'
@@ -197,7 +198,7 @@ resource cleanupFederatedCredential 'Microsoft.ManagedIdentity/userAssignedIdent
   name: 'github-${environment}-runner-cleanup'
   properties: {
     issuer: 'https://token.actions.githubusercontent.com'
-    subject: 'repo:dlai-sd/waooaw-platform:environment:${environment}'
+    subject: cleanupFederatedSubject
     audiences: ['api://AzureADTokenExchange']
   }
 }
