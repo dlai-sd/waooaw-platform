@@ -10,6 +10,7 @@ import pytest
 
 from scripts.goal006_runner_prerequisites import (
     BUILT_IN_ROLES,
+    CUSTOM_ROLE_PERMISSIONS,
     reject_deletes,
     verify,
     verify_custom_role,
@@ -48,7 +49,7 @@ def test_source_requests_machine_readable_what_if() -> None:
     assert '"--no-pretty-print"' in getsource(preview)
 
 
-def test_cleanup_role_grants_only_exact_job_log_read_action() -> None:
+def test_cleanup_role_grants_only_exact_job_log_read_actions() -> None:
     template = Path(
         "infrastructure/deployment-stacks/goal006-runner/prerequisites.bicep"
     ).read_text(encoding="utf-8")
@@ -56,6 +57,7 @@ def test_cleanup_role_grants_only_exact_job_log_read_action() -> None:
         "resource monthlyBudget", 1
     )[0]
 
+    assert "Microsoft.App/jobs/getAuthToken/action" in cleanup_role
     assert "Microsoft.App/jobs/logstream/action" in cleanup_role
     assert "Microsoft.OperationalInsights" not in cleanup_role
 
@@ -71,6 +73,14 @@ def test_custom_role_is_verified_by_direct_resource_id(
             "properties": {
                 "roleName": "GOAL-006 demo Cleanup Secret Deleter",
                 "assignableScopes": ["/subscriptions/sub/resourceGroups/demo-rg"],
+                "permissions": [
+                    {
+                        "actions": [],
+                        "notActions": [],
+                        "dataActions": ["Microsoft.KeyVault/vaults/secrets/delete"],
+                        "notDataActions": [],
+                    }
+                ],
             }
         }
 
@@ -79,6 +89,7 @@ def test_custom_role_is_verified_by_direct_resource_id(
         "/subscriptions/sub/providers/Microsoft.Authorization/roleDefinitions/role-id",
         "GOAL-006 demo Cleanup Secret Deleter",
         "/subscriptions/sub/resourceGroups/demo-rg",
+        CUSTOM_ROLE_PERMISSIONS["Cleanup Secret Deleter"],
     )
 
     assert observed == [
@@ -109,6 +120,7 @@ def test_custom_role_rejects_wrong_name_or_scope(
             "properties": {
                 "roleName": role_name,
                 "assignableScopes": [scope],
+                "permissions": [],
             }
         },
     )
@@ -118,6 +130,47 @@ def test_custom_role_rejects_wrong_name_or_scope(
             "/subscriptions/sub/providers/Microsoft.Authorization/roleDefinitions/role-id",
             "GOAL-006 demo Cleanup Secret Deleter",
             "/subscriptions/sub/resourceGroups/demo-rg",
+            CUSTOM_ROLE_PERMISSIONS["Cleanup Secret Deleter"],
+        )
+
+
+@pytest.mark.parametrize(
+    "actions",
+    [
+        ["Microsoft.App/jobs/logstream/action"],
+        [
+            "Microsoft.App/jobs/getAuthToken/action",
+            "Microsoft.App/jobs/logstream/action",
+            "Microsoft.OperationalInsights/workspaces/query/read",
+        ],
+    ],
+)
+def test_custom_role_rejects_missing_or_unexpected_actions(
+    monkeypatch: pytest.MonkeyPatch, actions: list[str]
+) -> None:
+    monkeypatch.setattr(
+        "scripts.goal006_runner_prerequisites._az",
+        lambda *arguments: {
+            "properties": {
+                "roleName": "GOAL-006 demo Cleanup Job Operator",
+                "assignableScopes": ["/subscriptions/sub/resourceGroups/demo-rg"],
+                "permissions": [
+                    {
+                        "actions": actions,
+                        "notActions": [],
+                        "dataActions": [],
+                        "notDataActions": [],
+                    }
+                ],
+            }
+        },
+    )
+    with pytest.raises(RuntimeError, match="permissions mismatch"):
+        verify_custom_role(
+            "/subscriptions/sub/providers/Microsoft.Authorization/roleDefinitions/role-id",
+            "GOAL-006 demo Cleanup Job Operator",
+            "/subscriptions/sub/resourceGroups/demo-rg",
+            CUSTOM_ROLE_PERMISSIONS["Cleanup Job Operator"],
         )
 
 
@@ -157,10 +210,20 @@ def test_verify_requires_all_current_custom_roles(
             if "budgets/" in url:
                 return {"properties": {"amount": 10000}}
             role_id = url.split("/")[-1].split("?")[0]
+            suffix = role_names[role_id].removeprefix("GOAL-006 demo ")
+            expected = CUSTOM_ROLE_PERMISSIONS[suffix]
             return {
                 "properties": {
                     "roleName": role_names[role_id],
                     "assignableScopes": [runner_scope],
+                    "permissions": [
+                        {
+                            "actions": sorted(expected["actions"]),
+                            "notActions": [],
+                            "dataActions": sorted(expected["dataActions"]),
+                            "notDataActions": [],
+                        }
+                    ],
                 }
             }
         raise AssertionError(arguments)

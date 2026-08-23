@@ -7,6 +7,7 @@ import argparse
 import json
 import subprocess
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,40 @@ BUILT_IN_ROLES = {
     "Azure Deployment Stack Owner": "adb29209-aa1d-457b-a786-c913953d2891",
     "Contributor": "b24988ac-6180-42a0-ab88-20f7382dd24c",
     "Role Based Access Control Administrator": "f58310d9-a9f6-439a-9e8d-f62e7b41a168",
+}
+
+CUSTOM_ROLE_PERMISSIONS = {
+    "Broker Secret Writer": {
+        "actions": frozenset(),
+        "dataActions": frozenset({"Microsoft.KeyVault/vaults/secrets/setSecret/action"}),
+    },
+    "Broker Job Operator": {
+        "actions": frozenset(
+            {
+                "Microsoft.App/jobs/read",
+                "Microsoft.App/jobs/executions/read",
+                "Microsoft.App/jobs/start/action",
+            }
+        ),
+        "dataActions": frozenset(),
+    },
+    "Cleanup Secret Deleter": {
+        "actions": frozenset(),
+        "dataActions": frozenset({"Microsoft.KeyVault/vaults/secrets/delete"}),
+    },
+    "Cleanup Job Operator": {
+        "actions": frozenset(
+            {
+                "Microsoft.App/jobs/read",
+                "Microsoft.App/jobs/executions/read",
+                "Microsoft.App/jobs/getAuthToken/action",
+                "Microsoft.App/jobs/logstream/action",
+                "Microsoft.App/jobs/start/action",
+                "Microsoft.App/jobs/stop/execution/action",
+            }
+        ),
+        "dataActions": frozenset(),
+    },
 }
 
 
@@ -142,7 +177,12 @@ def apply(
     )
 
 
-def verify_custom_role(role_id: str, expected_name: str, expected_scope: str) -> None:
+def verify_custom_role(
+    role_id: str,
+    expected_name: str,
+    expected_scope: str,
+    expected_permissions: Mapping[str, frozenset[str]],
+) -> None:
     definition = _az(
         "rest",
         "--method",
@@ -154,6 +194,19 @@ def verify_custom_role(role_id: str, expected_name: str, expected_scope: str) ->
     scopes = {str(scope).lower() for scope in properties.get("assignableScopes", [])}
     if properties.get("roleName") != expected_name or expected_scope.lower() not in scopes:
         raise RuntimeError(f"custom role scope mismatch: {expected_name}")
+    permissions = properties.get("permissions", [])
+    if len(permissions) != 1:
+        raise RuntimeError(f"custom role permissions mismatch: {expected_name}")
+    observed_permissions = {
+        "actions": frozenset(permissions[0].get("actions", [])),
+        "dataActions": frozenset(permissions[0].get("dataActions", [])),
+    }
+    if (
+        observed_permissions != expected_permissions
+        or permissions[0].get("notActions", [])
+        or permissions[0].get("notDataActions", [])
+    ):
+        raise RuntimeError(f"custom role permissions mismatch: {expected_name}")
 
 
 def verify(
@@ -205,7 +258,12 @@ def verify(
         "Cleanup Job Operator": outputs["cleanupJobOperatorRoleDefinitionId"]["value"],
     }
     for suffix, role_id in custom_roles.items():
-        verify_custom_role(role_id, f"GOAL-006 {environment} {suffix}", runner_scope)
+        verify_custom_role(
+            role_id,
+            f"GOAL-006 {environment} {suffix}",
+            runner_scope,
+            CUSTOM_ROLE_PERMISSIONS[suffix],
+        )
     return {
         "environment": environment,
         "resource_group_id": group["id"],
