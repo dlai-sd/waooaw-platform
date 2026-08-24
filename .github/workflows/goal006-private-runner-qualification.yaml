@@ -248,7 +248,7 @@ jobs:
             --cleanup-execution-name "$execution" \
             --evidence-container-url "$evidence_container_url" \
             --output cleanup-record.json
-          grep -F "cleanup/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT.json" cleanup-record.json
+          grep -F "cleanup/demo/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT.json" cleanup-record.json
 
       - name: Verify zero active private executions
         run: |
