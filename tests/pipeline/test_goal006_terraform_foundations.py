@@ -395,12 +395,14 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
 
     assert "hashicorp/setup-terraform@v3" in workflow
     assert "terraform_version: 1.9.8" in workflow
-    assert "docker/setup-buildx-action@v3" in workflow
+    assert "docker/setup-buildx-action" not in workflow
     assert '--evidence-directory "$evidence"' in workflow
     assert 'gh attestation verify "oci://$image"' in workflow
-    assert 'docker buildx imagetools inspect "$image"' in workflow
+    assert "https://ghcr.io/v2/$repository/manifests/$expected_digest" in workflow
+    assert "https://mcr.microsoft.com/v2/$repository/manifests/$expected_digest" in workflow
+    assert workflow.count('test "$actual_digest" = "$expected_digest"') == 2
     assert "--ghcr-packages-public-verified" in workflow
-    assert workflow.index("docker buildx imagetools inspect") < workflow.index("--ghcr-packages-public-verified")
+    assert workflow.index("https://ghcr.io/v2/") < workflow.index("--ghcr-packages-public-verified")
     assert workflow.count('-backend-config="use_oidc=true"') == 2
     assert workflow.count('-backend-config="use_azuread_auth=true"') == 2
     assert "Enforce current Demo-only authorization" in workflow
@@ -409,7 +411,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert 'case "$APPLY_REQUESTED" in true|false)' in workflow
     assert workflow.index("Enforce current Demo-only authorization") < workflow.index("azure/login@v2")
     assert "Reject stale release before cloud access" in workflow
-    assert 'timeframe: "Custom"' in workflow
+    assert 'timeframe:"Custom"' in workflow.replace(" ", "")
     assert "Verify bootstrap RBAC and required Azure providers" in workflow
     assert "Microsoft.Network" in workflow
     assert 'require_role "Cost Management Reader"' not in workflow
@@ -424,16 +426,18 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "self-enumeration cannot see subscription assignments" in workflow
     assert "Bootstrap identity must not have Owner" not in workflow
     assert workflow.index("Verify bootstrap RBAC and required Azure providers") < workflow.index(
-        "Probe subscription cost access"
+        "Verify subscription budget"
     )
     assert workflow.index("Verify bootstrap RBAC and required Azure providers") < workflow.index(
-        "Open temporary state firewall rule"
+        "Download Demo configuration with OIDC"
     )
-    assert workflow.index("Probe subscription cost access") < workflow.index("Open temporary state firewall rule")
-    assert workflow.index("Open temporary state firewall rule") < workflow.index("Download Demo configuration with OIDC")
-    assert workflow.index("Probe subscription cost access") < workflow.index("Query forecast and enforce cost boundary")
+    assert "Open temporary state firewall rule" not in workflow
+    assert "Close state firewall rule" not in workflow
+    assert "network-rule add" not in workflow
+    assert "network-rule remove" not in workflow
+    assert workflow.index("Verify subscription budget") < workflow.index("Enforce workload cost boundary")
     assert workflow.index("Download Demo configuration with OIDC") < workflow.index(
-        "Query forecast and enforce cost boundary"
+        "Enforce workload cost boundary"
     )
     assert "WAOOAW_PLATFORM_" not in workflow
     assert "CONFIG_CONTAINER: deployment-config" in workflow
@@ -444,15 +448,8 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "if: failure() && steps.configuration.outcome == 'failure'" in workflow
     assert "configuration-storage-diagnostics.json" in workflow
     assert "configuration-container-diagnostics.json" in workflow
-    assert "runner_rule_present" in workflow
-    assert "id: open_state_firewall" in workflow
-    assert 'ipaddress.ip_address(sys.argv[1])' in workflow
-    assert 'address.version != 4' in workflow
-    assert 'contains(networkRuleSet.ipRules[].value, \'$RUNNER_IP\')' in workflow
-    assert 'status: "REMOVED"' in workflow
-    assert 'status: "FAILED"' in workflow
-    assert "firewall-cleanup.json" in workflow
-    assert workflow.index("Close state firewall rule") < workflow.index("Upload plans and evidence")
+    assert "runner_rule_present" not in workflow
+    assert "firewall-cleanup.json" not in workflow
     assert 'manifest_digest="sha256:$(sha256sum registry-release-manifest.json' in workflow
     assert "'.manifest_digest = $manifest_digest'" in workflow
     assert "terraform state show \"$resource_address\"" in workflow
@@ -463,11 +460,12 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "terraform import -input=false -lock-timeout=5m" in workflow
     assert "waooaw-platform-bootstrap" in workflow
     assert "az storage container show" not in workflow
-    assert workflow.count('gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main"') == 3
+    assert workflow.count('gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main"') == 1
+    assert workflow.count("https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main") == 3
     assert workflow.count("terraform apply -input=false -auto-approve") == 2
     assert "mcr.microsoft.com/azure-cli@sha256:" in workflow
-    assert 'docker buildx imagetools inspect "$SEEDER_IMAGE"' in workflow
-    assert workflow.index('docker buildx imagetools inspect "$SEEDER_IMAGE"') > workflow.index(
+    assert "https://mcr.microsoft.com/v2/$repository/manifests/$expected_digest" in workflow
+    assert workflow.index("https://mcr.microsoft.com/v2/") > workflow.index(
         "Create private digest-pinned credential seeder"
     )
     assert "Create private digest-pinned credential seeder" in workflow
