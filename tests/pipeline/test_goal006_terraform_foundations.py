@@ -393,8 +393,9 @@ def test_oidc_policy_requires_exact_governed_refs_and_workflows() -> None:
 def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     workflow = (REPO_ROOT / ".github/workflows/deploy-environment.yaml").read_text(encoding="utf-8")
 
-    assert "hashicorp/setup-terraform@v3" in workflow
-    assert "terraform_version: 1.9.8" in workflow
+    assert "hashicorp/setup-terraform" not in workflow
+    assert 'test "$(command -v terraform)" = "/usr/local/bin/terraform"' in workflow
+    assert 'test "$(terraform version -json | jq -r \'.terraform_version\')" = "1.9.8"' in workflow
     assert "docker/setup-buildx-action" not in workflow
     assert '--evidence-directory "$evidence"' in workflow
     assert 'gh attestation verify "oci://$image"' in workflow

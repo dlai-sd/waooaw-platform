@@ -47,6 +47,14 @@ def test_private_job_uses_only_live_runner_commands() -> None:
     assert "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" in private_job
 
 
+def test_private_job_uses_pinned_native_terraform_without_node_wrapper() -> None:
+    private_job = WORKFLOW.split("  terraform:", 1)[1].split("  cleanup-private:", 1)[0]
+
+    assert "hashicorp/setup-terraform" not in private_job
+    assert 'test "$(command -v terraform)" = "/usr/local/bin/terraform"' in private_job
+    assert 'test "$(terraform version -json | jq -r \'.terraform_version\')" = "1.9.8"' in private_job
+
+
 def test_cost_evidence_is_queried_once_and_reused_by_private_job() -> None:
     assert WORKFLOW.count("CostManagement/query?api-version=2023-11-01") == 1
     assert WORKFLOW.count("CostManagement/forecast?api-version=2023-11-01") == 1

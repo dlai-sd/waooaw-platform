@@ -246,9 +246,10 @@ jobs:
           name: goal006-private-runner-prestart-${{ github.run_id }}-${{ github.run_attempt }}
           path: .
 
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.9.8
+      - name: Verify pinned private runner Terraform
+        run: |
+          test "$(command -v terraform)" = "/usr/local/bin/terraform"
+          test "$(terraform version -json | jq -r '.terraform_version')" = "1.9.8"
 
       - name: Azure login with constrained bootstrap OIDC identity
         uses: azure/login@v2
