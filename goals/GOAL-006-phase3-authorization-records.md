@@ -166,6 +166,27 @@ envelope. It does not weaken constitutional, security, data, evidence, independe
 rollback gates. A failed gate stops progression and routes repair within the remaining mandate; a
 scope or ceiling change returns to the Founder.
 
+## Founder Demo Runner Qualification Deviation
+
+| Decision field | Authorized value |
+|---|---|
+| `institution_id` | INST-001 |
+| `goal_id` | GOAL-006 |
+| `record_id` | FA-053 |
+| `record_type` | Founder Action - Demo qualification residual-risk acceptance |
+| `produced_at` | 2026-08-24T07:44:05Z |
+| Registrant | Yogesh Khandge, Founder |
+| Decision | APPROVED - accept one successful qualification and zero forced cancellations for Demo only |
+| Accepted evidence | GitHub Actions run `32698031369` completed broker, private runner and cleanup successfully against trusted `main`; Azure evidence confirms durable private Blob cleanup, scheduled reconciliation and zero residual on-demand executions |
+| Superseded gate | ADR-047 and the Azure deployment topology requirement for ten successful executions and five forced cancellations is replaced for Demo by one successful execution and zero forced cancellations |
+| Accepted residual risk | Hard-cancellation cleanup behavior remains unproven; the Founder explicitly accepts this residual risk for Demo activation only |
+| Preserved controls | Private networking, durable cleanup evidence, scheduled reconciliation, zero-active-runner verification, cost, security, immutable evidence, UAT and Production gates remain unchanged |
+| Excluded authority | No UAT progression, Production activation, customer traffic, Platform Operations activation, final GOAL-006 acceptance, PR approval or merge |
+| Status | EFFECTIVE after this exact decision is merged into the controlling authorization and design records |
+
+FA-053 is a narrow Demo evidence-volume deviation. It does not convert failed run `32699387743`
+into qualification evidence, waive any other activation proof, or authorize a public fallback.
+
 ## Phase 3 Autonomous GO Authorization
 
 | Field | Value |
