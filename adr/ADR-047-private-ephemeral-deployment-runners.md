@@ -91,7 +91,7 @@ Demo workflow activation requires all of the following:
 - Forecast cost remains inside FA-052.
 - INST-007 reviews security evidence and INST-015 independently verifies behavior.
 
-INST-009 owns the interface gate. INST-003 acceptance precedes INST-007 security acceptance; INST-009 then collects immutable stack, permission, NSG/RBAC/DNS and cost manifests; INST-015 independently executes route, denial, cancellation/orphan and zero-idle tests. The environment label remains inactive until all evidence passes. Demo qualification requires ten successful executions and five forced cancellations without an orphan beyond five minutes.
+INST-009 owns the interface gate. INST-003 acceptance precedes INST-007 security acceptance; INST-009 then collects immutable stack, permission, NSG/RBAC/DNS and cost manifests; INST-015 independently executes applicable route, denial, cleanup/orphan and zero-idle tests. The environment label remains inactive until all applicable evidence passes. Under FA-053, Demo qualification requires successful run `32698031369` and zero forced-cancellation executions. FA-053 accepts the residual risk that hard-cancellation cleanup is unproven for Demo only; it does not waive any other proof or alter UAT or Production gates.
 
 This sequence governs design and activation authority. After activation, INST-009 alone executes approved runner-stack changes; INST-007 must approve any NSG, RBAC, identity, App permission, private endpoint, DNS security boundary or hold-release change before execution; INST-015 reruns affected proofs independently. Emergency restoration uses the same separation and may not grant broad standing roles. Denial tests are automated deployment-evidence gates run before label activation, after every relevant stack change and at least weekly while an environment is active; they are not one-time manual assertions and are not application CCTs.
 
@@ -107,7 +107,7 @@ The centrally managed private DNS Deployment Stack uses a reviewed parameter man
 
 ADR-046 continues to govern workload-to-service authentication. Runner trust uses GitHub ephemeral registration, Azure managed identity and environment-scoped OIDC; it creates no runner CA or substitute for ADR-046 mTLS on governed service calls.
 
-Qualification is per Demo runner blueprint version and must complete within seven consecutive days: ten consecutive successful no-drift executions and five forced-cancellation executions, including cancellation before assignment, during Terraform init, during plan, and one hard workflow termination. Any orphan beyond five minutes resets qualification. Evidence is retained in the named GOAL-006 run artifact and checked on every bootstrap; live permission, RBAC, DNS and stack manifests are preventive gates, while diagnostic/denial/cancellation records are detective evidence.
+Qualification remains bound to the Demo runner blueprint version used by successful run `32698031369`. FA-053 replaces the former ten-success and five-forced-cancellation sample requirement with that one successful execution and zero forced cancellations for Demo only. Any observed orphan beyond five minutes invalidates qualification. Evidence is retained in the named GOAL-006 run artifact and checked on every bootstrap; live permission, RBAC, DNS and stack manifests are preventive gates, while available diagnostic, denial and cleanup records are detective evidence.
 
 UAT repeats the gates only after Founder Demo acceptance. Production may be planned but not activated under WC-076.
 
