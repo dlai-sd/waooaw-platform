@@ -135,6 +135,21 @@ def test_private_boundaries_and_key_vault_references_are_explicit() -> None:
     assert 'role_definition_name = "Container Apps Jobs Operator"' in contract
 
 
+def test_internal_verification_bypasses_founder_restricted_public_ingress() -> None:
+    contract = read_contract("modules/workload/main.tf")
+    verification_job = contract.split(
+        'resource "azurerm_container_app_job" "verification"', 1
+    )[1]
+
+    assert 'web               = "http://ca-${var.environment}-web"' in contract
+    assert 'keycloak          = "http://ca-${var.environment}-keycloak"' in contract
+    assert 'probe web "${local.verification_urls.web}/"' in verification_job
+    assert 'probe business-platform "${local.verification_urls.business_platform}/health/ready"' in verification_job
+    assert 'probe keycloak "${local.verification_urls.keycloak}/realms/waooaw/.well-known/openid-configuration"' in verification_job
+    assert "local.service_urls.web" not in verification_job
+    assert "local.service_urls.keycloak" not in verification_job
+
+
 def test_each_release_member_has_its_own_identity_and_secret_scope() -> None:
     contract = read_contract("modules/workload/main.tf")
 
@@ -232,6 +247,50 @@ def test_container_app_environment_ignores_unconfigurable_force_new_drift() -> N
     assert "infrastructure_resource_group_name =" not in environment.group("body")
 
 
+def test_each_environment_persists_container_app_logs() -> None:
+    contract = read_contract("modules/foundation/main.tf")
+
+    assert 'resource "azurerm_log_analytics_workspace" "environment"' in contract
+    assert 'name                = coalesce(var.log_analytics_workspace_name, "law-${local.name}")' in contract
+    assert "retention_in_days   = 30" in contract
+    assert "log_analytics_workspace_id     = azurerm_log_analytics_workspace.environment.id" in contract
+    assert 'output "log_analytics_workspace_id"' in contract
+
+
+def test_demo_adopts_existing_validation_workspace_without_cleanup_debt() -> None:
+    demo = read_contract("environments/demo/foundation/main.tf")
+
+    assert "to = module.foundation.azurerm_log_analytics_workspace.environment" in demo
+    assert "workspaces/law-waooaw-demo-validation" in demo
+    assert 'log_analytics_workspace_name = "law-waooaw-demo-validation"' in demo
+
+
+def test_verification_emits_structured_probe_results() -> None:
+    contract = read_contract("modules/workload/main.tf")
+    verification_job = contract.split(
+        'resource "azurerm_container_app_job" "verification"', 1
+    )[1]
+
+    assert "probe_result name=$name status=succeeded" in verification_job
+    assert "probe_attempt name=$name status=failed" in verification_job
+    assert "http_code=$http_code" in verification_job
+    assert "curl_exit=$curl_exit" in verification_job
+
+
+def test_post_deploy_verification_retains_each_container_log() -> None:
+    workflow = (REPO_ROOT / ".github/workflows/post-deploy-verify.yaml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "capture_functional_evidence()" in workflow
+    assert "for container in http-probes constitutional-health" in workflow
+    assert 'functional-$container.log' in workflow
+    assert "functional-http-probes.log" in workflow
+    assert "functional-constitutional-health.log" in workflow
+    assert "Failed|Stopped)" in workflow
+    assert "verification timed out with status" in workflow
+
+
 def test_demo_review_ingress_is_founder_restricted_and_other_environments_remain_private() -> None:
     demo = read_contract("environments/demo/foundation/main.tf")
     uat = read_contract("environments/uat/foundation/main.tf")
@@ -239,7 +298,7 @@ def test_demo_review_ingress_is_founder_restricted_and_other_environments_remain
     workload = read_contract("modules/workload/main.tf")
     demo_workload = read_contract("environments/demo/workload/main.tf")
 
-    assert "external_environment       = true" in demo
+    assert re.search(r"external_environment\s*=\s*true", demo)
     assert "external_environment" not in uat
     assert "external_environment" not in prod
     assert 'name             = "founder-review"' in workload

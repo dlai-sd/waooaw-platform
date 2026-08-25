@@ -257,12 +257,22 @@ resource "azurerm_private_dns_zone_virtual_network_link" "key_vault" {
   tags                  = local.tags
 }
 
+resource "azurerm_log_analytics_workspace" "environment" {
+  name                = coalesce(var.log_analytics_workspace_name, "law-${local.name}")
+  location            = azurerm_resource_group.environment.location
+  resource_group_name = azurerm_resource_group.environment.name
+  sku                 = "PerGB2018"
+  retention_in_days   = 30
+  tags                = local.tags
+}
+
 resource "azurerm_container_app_environment" "environment" {
   name                           = "cae-${local.name}"
   location                       = azurerm_resource_group.environment.location
   resource_group_name            = azurerm_resource_group.environment.name
   infrastructure_subnet_id       = azurerm_subnet.container_apps.id
   internal_load_balancer_enabled = !var.external_environment
+  log_analytics_workspace_id     = azurerm_log_analytics_workspace.environment.id
   tags                           = local.tags
 
   lifecycle {
@@ -296,6 +306,10 @@ output "container_app_environment_name" {
 
 output "container_app_environment_default_domain" {
   value = azurerm_container_app_environment.environment.default_domain
+}
+
+output "log_analytics_workspace_id" {
+  value = azurerm_log_analytics_workspace.environment.id
 }
 
 output "location" {

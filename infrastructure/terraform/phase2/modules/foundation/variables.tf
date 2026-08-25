@@ -31,3 +31,14 @@ variable "external_environment" {
   description = "Expose the Container Apps environment load balancer. Authorized only for bounded Demo review."
   default     = false
 }
+
+variable "log_analytics_workspace_name" {
+  type        = string
+  description = "Existing workspace name to adopt when one was provisioned before Terraform ownership."
+  default     = null
+  nullable    = true
+  validation {
+    condition     = var.log_analytics_workspace_name == null || can(regex("^law-waooaw-(demo|uat|prod)(-validation)?$", var.log_analytics_workspace_name))
+    error_message = "Log Analytics workspace name must belong to a WAOOAW deployment environment."
+  }
+}

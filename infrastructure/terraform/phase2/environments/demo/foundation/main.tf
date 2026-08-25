@@ -18,14 +18,20 @@ provider "azurerm" {
   features {}
 }
 
+import {
+  to = module.foundation.azurerm_log_analytics_workspace.environment
+  id = "/subscriptions/2ed11839-6a0f-4eaa-bd94-44ca96ff5d84/resourceGroups/waooaw-demo-rg/providers/Microsoft.OperationalInsights/workspaces/law-waooaw-demo-validation"
+}
+
 module "foundation" {
-  source                     = "../../../modules/foundation"
-  environment                = "demo"
-  location                   = "centralindia"
-  repository_id              = "dlai-sd/waooaw-platform"
-  repository_environment     = "demo"
-  tfstate_storage_account_id = var.tfstate_storage_account_id
-  external_environment       = true
+  source                       = "../../../modules/foundation"
+  environment                  = "demo"
+  location                     = "centralindia"
+  repository_id                = "dlai-sd/waooaw-platform"
+  repository_environment       = "demo"
+  tfstate_storage_account_id   = var.tfstate_storage_account_id
+  external_environment         = true
+  log_analytics_workspace_name = "law-waooaw-demo-validation"
 }
 
 output "resource_group_name" {

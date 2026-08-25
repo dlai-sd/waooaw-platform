@@ -122,6 +122,22 @@ jobs:
             sleep 10
           done
           test -n "$execution_name"
+          capture_functional_evidence() {
+            az containerapp job execution show \
+              --name "job-$TARGET_ENVIRONMENT-deployment-verification" \
+              --resource-group "waooaw-$TARGET_ENVIRONMENT-rg" \
+              --job-execution-name "$execution_name" \
+              --output json > functional-verification.json
+            for container in http-probes constitutional-health; do
+              az containerapp job logs show \
+                --name "job-$TARGET_ENVIRONMENT-deployment-verification" \
+                --resource-group "waooaw-$TARGET_ENVIRONMENT-rg" \
+                --execution "$execution_name" \
+                --container "$container" \
+                --tail 200 \
+                --format text > "functional-$container.log" 2>&1 || true
+            done
+          }
           for attempt in $(seq 1 40); do
             az containerapp job execution show \
               --name "job-$TARGET_ENVIRONMENT-deployment-verification" \
@@ -129,10 +145,25 @@ jobs:
               --job-execution-name "$execution_name" > functional-verification.json
             status=$(jq -r '.properties.status' functional-verification.json)
             case "$status" in
-              Succeeded) exit 0 ;;
-              Failed) echo "Internal Web/BP/Keycloak/CE verification failed" >&2; exit 1 ;;
+              Succeeded)
+                capture_functional_evidence
+                exit 0
+                ;;
+              Failed|Stopped)
+                capture_functional_evidence
+                cat functional-http-probes.log >&2
+                cat functional-constitutional-health.log >&2
+                echo "Internal Web/BP/Keycloak/CE verification failed with status: $status" >&2
+                exit 1
+                ;;
             esac
-            test "$attempt" != 40
+            if [ "$attempt" = 40 ]; then
+              capture_functional_evidence
+              cat functional-http-probes.log >&2
+              cat functional-constitutional-health.log >&2
+              echo "Internal Web/BP/Keycloak/CE verification timed out with status: $status" >&2
+              exit 1
+            fi
             sleep 10
           done
 
@@ -159,6 +190,8 @@ jobs:
             registry-release-manifest.json
             live-inventory.json
             functional-verification.json
+            functional-http-probes.log
+            functional-constitutional-health.log
             deployment-verification.json
           if-no-files-found: warn
           retention-days: 90

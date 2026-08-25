@@ -955,6 +955,7 @@ When this IB is authorized and completed:
 | IB-023 | PTR v3: Service Boundary Schema | EA + PIT Expert | P1 | Post-WC013 | PLANNED |
 | **IB-024** | **Trust Layer & Open Platform Integration** | **PIT Expert** | **P0** | **Post-WC-036** | **AUTHORIZED — 2026-08-06** |
 | **IB-025** | **Skill Architecture (Layer 4)** | **PIT Expert** | **P0** | **Post-WC-039** | **AUTHORIZED — 2026-08-06** |
+| **IB-030** | **Efficient Image Promotion, Blue-Green Deployment, and Rollback** | **Platform IT Expert** | **P1** | **Release delivery** | **WAITING — Founder prioritization required** |
 
 
 
@@ -1010,4 +1011,52 @@ When this IB is authorized and completed:
 - [ ] DMA agent Employment Contract can declare `skills: [content_publish@1.0.0]`
 - [ ] PAAS session with content_publish skill requires Intent Crystallization before any meta.post_content call
 - [ ] No 6th service — Skill Runtime is in PR, Skill Catalog is BP Postgres table
+
+---
+
+## IB-030 — Efficient Image Promotion, Blue-Green Deployment, and Rollback
+
+**Proposed from:** Platform IT Expert production-delivery analysis — 2026-08-25
+**Status:** WAITING — Founder prioritization required
+**Priority recommendation:** P1 — establish promotion and recovery safety before optimizing build and deployment work
+**Gate:** Release delivery
+**Owner on activation:** Platform IT Expert (INST-010)
+**Depends On:** Stable signed release manifest and post-deployment verification
+
+**Background and evidence:**
+- Current CI rebuilds, scans, signs, and publishes all six application images for every release even when most service inputs are unchanged.
+- Deployment processes the complete exact-six release rather than calculating and applying a changed-service subset.
+- The existing exact-six manifest provides useful atomic release identity and attestation, but unchanged images are not reused from a previously qualified release.
+- Release safety must remain primary: build efficiency must not precede a proven image-promotion model, controlled blue-green traffic transition, and automated rollback to the last qualified release.
+
+**Impact if deferred:**
+- Unchanged services consume avoidable build, scan, publication, deployment, and verification time.
+- Rebuilding identical source inputs creates new release work without adding product value.
+- UAT and production promotion may depend on rebuilding instead of promoting already qualified immutable digests.
+- Failed releases lack a complete, routinely exercised blue-green rollback path with retained evidence.
+
+**Available grooming and delivery order:**
+- Phase A — image promotion: define one immutable release manifest whose qualified digests are promoted from Demo to UAT and Production without rebuilding.
+- Phase B — deployment safety: implement blue-green revisions, pre-traffic verification, controlled traffic shift, automatic rollback thresholds, and explicit rollback to the last qualified manifest.
+- Phase C — build efficiency: calculate affected services from dependency-aware path changes, reuse unchanged qualified image digests, and build/scan/sign only changed images while still emitting one complete exact-six release manifest.
+- Phase D — targeted delivery: deploy and verify changed services plus their declared dependants, while retaining full release inventory and constitutional critical-path checks.
+- Preserve manual full rebuild/redeploy as an auditable recovery option; do not weaken attestation, vulnerability scanning, provenance, or environment approval gates.
+
+**Estimated effort:** 40–64 engineering hours, split into independently verifiable promotion, deployment-safety, and optimization milestones.
+
+**Success Criteria:**
+- [ ] UAT and Production consume the same qualified immutable image digests produced for the release; no environment-specific rebuild occurs.
+- [ ] Every release retains one complete exact-six manifest, including reused and newly built image provenance.
+- [ ] Dependency-aware change detection builds, scans, signs, and publishes only affected services.
+- [ ] Deployment creates a green revision, verifies it before traffic, shifts traffic under an explicit policy, and preserves the blue revision during the rollback window.
+- [ ] A failed health or functional gate automatically restores traffic to the last qualified release and retains correlated evidence.
+- [ ] An operator can explicitly roll back to a selected qualified manifest without rebuilding images.
+- [ ] Targeted verification covers changed services, dependants, and mandatory constitutional critical paths.
+- [ ] A forced full rebuild and full verification path remains available and produces equivalent release evidence.
+
+**Expected Outputs:**
+- Dependency-aware release planning and complete manifest assembly
+- Immutable image promotion workflow across Demo, UAT, and Production
+- Blue-green deployment and automatic/manual rollback workflow
+- Focused and full-path verification evidence with release and revision correlation
 
