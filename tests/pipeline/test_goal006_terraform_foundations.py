@@ -80,6 +80,27 @@ def test_environment_roots_have_isolated_state_and_oidc(environment: str) -> Non
         assert "client_secret" not in contract.lower()
 
 
+def test_all_foundation_roots_publish_the_same_workload_contract() -> None:
+    expected_outputs = {
+        "resource_group_name",
+        "container_app_environment_id",
+        "container_app_environment_name",
+        "container_app_environment_default_domain",
+        "key_vault_id",
+        "key_vault_name",
+        "key_vault_uri",
+        "location",
+        "deployment_client_id",
+        "deployment_identity_id",
+        "verification_client_id",
+        "verification_principal_id",
+    }
+
+    for environment in ENVIRONMENTS:
+        foundation = read_contract(f"environments/{environment}/foundation/main.tf")
+        assert set(re.findall(r'^output "([^"]+)"', foundation, re.MULTILINE)) == expected_outputs
+
+
 def test_foundation_and_workload_have_distinct_owners() -> None:
     assert not list((PHASE2_ROOT / "modules" / "environment").glob("*.tf"))
     for environment in ENVIRONMENTS:
@@ -617,7 +638,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     )
     assert "WAOOAW_PLATFORM_" not in workflow
     assert "CONFIG_CONTAINER: deployment-config" in workflow
-    assert "CONFIG_BLOB: demo/workload-configuration.json" in workflow
+    assert "CONFIG_BLOB: ${{ inputs.environment }}/workload-configuration.json" in workflow
     assert "scripts/goal006_storage_download.py" in workflow
     assert "configuration-download-attempts.jsonl" in workflow
     assert "Capture configuration storage diagnostics" in workflow
@@ -661,11 +682,14 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
         "Create private digest-pinned credential seeder"
     )
     assert workflow.index("Run private credential seeder") < workflow.index("Terraform workload plan")
-    assert "Roll back disposable Demo workload after apply failure" in workflow
+    assert "Preserve workload state after apply failure" in workflow
     assert "if: failure() && steps.workload.outcome == 'failure'" in workflow
-    assert "terraform destroy -input=false -auto-approve -lock-timeout=5m" in workflow
-    assert workflow.index("Terraform workload apply") < workflow.index("Roll back disposable Demo workload after apply failure")
-    assert workflow.index("Roll back disposable Demo workload after apply failure") < workflow.index(
+    assert "terraform destroy" not in workflow
+    assert "terraform state list > workload-state-after-apply-failure.txt" in workflow
+    assert "managed resources were preserved for reconciliation" in workflow
+    assert "workload/workload-state-after-apply-failure.txt" in workflow
+    assert workflow.index("Terraform workload apply") < workflow.index("Preserve workload state after apply failure")
+    assert workflow.index("Preserve workload state after apply failure") < workflow.index(
         "Delete private credential seeder"
     )
     assert "set -x" not in workflow
