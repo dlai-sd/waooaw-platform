@@ -231,9 +231,9 @@ jobs:
       TF_VAR_tfstate_container: tfstate
       TF_VAR_tfstate_storage_account_id: /subscriptions/2ed11839-6a0f-4eaa-bd94-44ca96ff5d84/resourceGroups/waooaw-platform-rg/providers/Microsoft.Storage/storageAccounts/waooawp3tfstate2ed118
       CONFIG_CONTAINER: deployment-config
-      CONFIG_BLOB: demo/workload-configuration.json
+      CONFIG_BLOB: ${{ inputs.environment }}/workload-configuration.json
       SEEDER_IMAGE: mcr.microsoft.com/azure-cli@sha256:4faeb3c955086c3842d4f8cf0ff1d900ce3a1c68c6e6c6430c5e8a3cb882c5aa
-      SEEDER_JOB: goal006-secret-seeder
+      SEEDER_JOB: goal006-${{ inputs.environment }}-secret-seeder
     steps:
       - name: Enforce current Demo-only authorization
         env:
@@ -385,6 +385,7 @@ jobs:
         env:
           APPLY_REQUESTED: ${{ inputs.apply }}
         run: |
+          set -euo pipefail
           terraform init -input=false \
             -backend-config="resource_group_name=$TFSTATE_RESOURCE_GROUP" \
             -backend-config="storage_account_name=$TFSTATE_STORAGE_ACCOUNT" \
@@ -587,6 +588,7 @@ jobs:
         if: inputs.apply
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload
         run: |
+          set -euo pipefail
           cp "$GITHUB_WORKSPACE/workload.auto.tfvars.json" .
           terraform init -input=false \
             -backend-config="resource_group_name=$TFSTATE_RESOURCE_GROUP" \
@@ -595,15 +597,17 @@ jobs:
             -backend-config="use_oidc=true" \
             -backend-config="use_azuread_auth=true"
           resource_address='module.workload.azurerm_container_app.identity_edge[0]'
-          if ! terraform state show "$resource_address" >/dev/null 2>&1; then
+          terraform state list > workload-state-before-plan.txt
+          if ! grep -Fxq "$resource_address" workload-state-before-plan.txt; then
             edge_name="ca-${{ inputs.environment }}-identity-edge"
+            edge_resource_group='${{ steps.foundation.outputs.resource_group_name }}'
             edge_inventory=$(az containerapp list \
-              --resource-group '${{ steps.foundation.outputs.resource_group_name }}' \
+              --resource-group "$edge_resource_group" \
               --only-show-errors \
               --output json)
             edge_count=$(jq -r --arg name "$edge_name" '[.[] | select(.name == $name)] | length' <<< "$edge_inventory")
             if [ "$edge_count" = "1" ]; then
-              edge_id=$(jq -er \
+              azure_edge_id=$(jq -er \
                 --arg name "$edge_name" \
                 --arg environment_id '${{ steps.foundation.outputs.container_app_environment_id }}' \
                 --arg image 'nginxinc/nginx-unprivileged@sha256:62a904036bfc0e4a4f2b556e34cbf17bc136b47fde8cdb4628762725f48c5782' \
@@ -615,6 +619,10 @@ jobs:
                   .properties.configuration.ingress.targetPort == 8080 and
                   .properties.provisioningState == "Succeeded"
                 ) | .id' <<< "$edge_inventory")
+              edge_id=$(python3 "$GITHUB_WORKSPACE/scripts/goal006_azure_resource_id.py" \
+                --container-app-id "$azure_edge_id" \
+                --expected-resource-group "$edge_resource_group" \
+                --expected-name "$edge_name")
               test -n "$edge_id"
               terraform import -input=false -lock-timeout=5m "$resource_address" "$edge_id"
             elif [ "$edge_count" != "0" ]; then
@@ -642,11 +650,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - name: Roll back disposable Demo workload after apply failure
+      - name: Preserve workload state after apply failure
         if: failure() && steps.workload.outcome == 'failure'
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload
         run: |
-          terraform destroy -input=false -auto-approve -lock-timeout=5m
+          if ! terraform state list > workload-state-after-apply-failure.txt; then
+            echo "Terraform state listing failed after workload apply failure" > workload-state-after-apply-failure.txt
+          fi
+          echo "::error::Workload apply failed; managed resources were preserved for reconciliation"
 
       - name: Delete private credential seeder
         if: always() && steps.foundation.outcome == 'success'
@@ -676,6 +687,8 @@ jobs:
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation.tfplan
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-plan.json
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-state-before-plan.txt
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-state-after-apply-failure.txt
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload.tfplan
           if-no-files-found: warn
           retention-days: 90

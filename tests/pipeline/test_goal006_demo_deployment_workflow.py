@@ -82,7 +82,8 @@ def test_workload_plan_safely_adopts_the_live_identity_edge() -> None:
     )[0]
 
     assert "module.workload.azurerm_container_app.identity_edge[0]" in workload_plan
-    assert 'if ! terraform state show "$resource_address"' in workload_plan
+    assert "terraform state list > workload-state-before-plan.txt" in workload_plan
+    assert 'if ! grep -Fxq "$resource_address" workload-state-before-plan.txt' in workload_plan
     assert 'edge_name="ca-${{ inputs.environment }}-identity-edge"' in workload_plan
     assert "az containerapp list" in workload_plan
     assert 'if [ "$edge_count" = "1" ]' in workload_plan
@@ -92,7 +93,13 @@ def test_workload_plan_safely_adopts_the_live_identity_edge() -> None:
     assert ".properties.configuration.ingress.external == true" in workload_plan
     assert ".properties.configuration.ingress.targetPort == 8080" in workload_plan
     assert '.properties.provisioningState == "Succeeded"' in workload_plan
+    assert "azure_edge_id=$(jq -er" in workload_plan
+    assert "scripts/goal006_azure_resource_id.py" in workload_plan
+    assert '--container-app-id "$azure_edge_id"' in workload_plan
+    assert '--expected-resource-group "$edge_resource_group"' in workload_plan
+    assert '--expected-name "$edge_name"' in workload_plan
     assert 'terraform import -input=false -lock-timeout=5m "$resource_address" "$edge_id"' in workload_plan
+    assert workload_plan.index("goal006_azure_resource_id.py") < workload_plan.index("terraform import")
     assert workload_plan.index("terraform import") < workload_plan.index("terraform plan")
     assert "terraform show -json workload.tfplan > workload-plan.json" in workload_plan
     assert "scripts/goal006_tfplan_policy.py" in workload_plan
@@ -100,6 +107,7 @@ def test_workload_plan_safely_adopts_the_live_identity_edge() -> None:
         "      - name: Terraform workload apply"
     )
     assert "workload/workload-plan.json" in WORKFLOW
+    assert "workload/workload-state-before-plan.txt" in WORKFLOW
 
 
 def test_identity_edge_state_reconciliation_is_environment_parameterized() -> None:
@@ -112,6 +120,14 @@ def test_identity_edge_state_reconciliation_is_environment_parameterized() -> No
         assert f'edge_name="ca-{environment}-identity-edge"' in rendered_plan
 
     assert 'edge_name="ca-demo-identity-edge"' not in workload_plan
+
+
+def test_private_workload_inputs_and_temporary_resources_are_environment_scoped() -> None:
+    assert "CONFIG_BLOB: ${{ inputs.environment }}/workload-configuration.json" in WORKFLOW
+    assert "SEEDER_JOB: goal006-${{ inputs.environment }}-secret-seeder" in WORKFLOW
+    assert "CONFIG_BLOB: demo/workload-configuration.json" not in WORKFLOW
+    assert "SEEDER_JOB: goal006-secret-seeder" not in WORKFLOW
+    assert WORKFLOW.count("set -euo pipefail") >= 2
 
 
 def test_private_seeder_retains_diagnostics_before_deletion() -> None:
