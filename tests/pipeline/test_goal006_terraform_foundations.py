@@ -150,6 +150,29 @@ def test_internal_verification_bypasses_founder_restricted_public_ingress() -> N
     assert "local.service_urls.keycloak" not in verification_job
 
 
+def test_keycloak_realm_import_matches_the_web_oidc_contract() -> None:
+    contract = read_contract("modules/workload/main.tf")
+    keycloak = contract.split('resource "azurerm_container_app" "keycloak"', 1)[1].split(
+        'resource "azurerm_container_app_job" "verification"', 1
+    )[0]
+
+    assert re.search(r'clientId\s*=\s*"waooaw-web"', contract)
+    assert re.search(r'publicClient\s*=\s*false', contract)
+    assert re.search(r'secret\s*=\s*"\$\$\{KEYCLOAK_CLIENT_SECRET\}"', contract)
+    assert '"${local.service_urls.web}/api/auth/callback/keycloak"' in contract
+    assert 'webOrigins = [local.service_urls.web]' in contract
+    assert "tenant_id_mapper" in contract
+    assert "oidc-hardcoded-claim-mapper" in contract
+    assert '"claim.value" = "00000000-0000-0000-0000-000000000001"' in contract
+    assert "audience_mapper" in contract
+    assert "--import-realm" in keycloak
+    assert "/opt/keycloak/data/import/waooaw-realm.json" in keycloak
+    assert "until /opt/keycloak/bin/kcadm.sh" not in keycloak
+    assert 'name  = "KEYCLOAK_ADMIN"' in keycloak
+    assert 'name        = "KEYCLOAK_ADMIN_PASSWORD"' in keycloak
+    assert "KC_BOOTSTRAP_ADMIN" not in keycloak
+
+
 def test_each_release_member_has_its_own_identity_and_secret_scope() -> None:
     contract = read_contract("modules/workload/main.tf")
 

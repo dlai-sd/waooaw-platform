@@ -66,6 +66,16 @@ def test_private_seeder_passes_distinct_shell_arguments_in_structured_definition
     assert "--args=" not in private_job
 
 
+def test_private_credential_seeding_preserves_existing_values() -> None:
+    seeder = WORKFLOW.split("seeder_script=", 1)[1].split("\n", 1)[0]
+
+    assert "az keyvault secret show" in seeder
+    assert 'if az keyvault secret show --vault-name "$KEY_VAULT_NAME" --name "$name"' in seeder
+    assert 'echo "credential_status name=$name status=preserved"' in seeder
+    assert 'echo "credential_status name=$name status=created"' in seeder
+    assert seeder.index("az keyvault secret show") < seeder.index("/dev/urandom")
+
+
 def test_private_seeder_retains_diagnostics_before_deletion() -> None:
     private_job = WORKFLOW.split("  terraform:", 1)[1].split("  cleanup-private:", 1)[0]
 
