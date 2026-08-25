@@ -51,14 +51,15 @@ def main() -> int:
     parser.add_argument("--expected-name", required=True)
     arguments = parser.parse_args()
     try:
-        canonical_id = canonical_container_app_id(
-            arguments.container_app_id,
-            expected_resource_group=arguments.expected_resource_group,
-            expected_name=arguments.expected_name,
+        print(
+            canonical_container_app_id(
+                arguments.container_app_id,
+                expected_resource_group=arguments.expected_resource_group,
+                expected_name=arguments.expected_name,
+            )
         )
     except ValueError as error:
         parser.error(str(error))
-    print(canonical_id)
     return 0
 
 
