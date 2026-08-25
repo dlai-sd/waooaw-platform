@@ -597,22 +597,30 @@ jobs:
           resource_address='module.workload.azurerm_container_app.identity_edge[0]'
           if ! terraform state show "$resource_address" >/dev/null 2>&1; then
             edge_name="ca-${{ inputs.environment }}-identity-edge"
-            edge_record=$(az containerapp show \
+            edge_inventory=$(az containerapp list \
               --resource-group '${{ steps.foundation.outputs.resource_group_name }}' \
-              --name "$edge_name" \
+              --only-show-errors \
               --output json)
-            edge_id=$(jq -er \
-              --arg environment_id '${{ steps.foundation.outputs.container_app_environment_id }}' \
-              --arg image 'nginxinc/nginx-unprivileged@sha256:62a904036bfc0e4a4f2b556e34cbf17bc136b47fde8cdb4628762725f48c5782' \
-              'select(
-                .properties.managedEnvironmentId == $environment_id and
-                .properties.template.containers[0].image == $image and
-                .properties.configuration.ingress.external == true and
-                .properties.configuration.ingress.targetPort == 8080 and
-                .properties.provisioningState == "Succeeded"
-              ) | .id' <<< "$edge_record")
-            test -n "$edge_id"
-            terraform import -input=false -lock-timeout=5m "$resource_address" "$edge_id"
+            edge_count=$(jq -r --arg name "$edge_name" '[.[] | select(.name == $name)] | length' <<< "$edge_inventory")
+            if [ "$edge_count" = "1" ]; then
+              edge_id=$(jq -er \
+                --arg name "$edge_name" \
+                --arg environment_id '${{ steps.foundation.outputs.container_app_environment_id }}' \
+                --arg image 'nginxinc/nginx-unprivileged@sha256:62a904036bfc0e4a4f2b556e34cbf17bc136b47fde8cdb4628762725f48c5782' \
+                '.[] | select(
+                  .name == $name and
+                  .properties.managedEnvironmentId == $environment_id and
+                  .properties.template.containers[0].image == $image and
+                  .properties.configuration.ingress.external == true and
+                  .properties.configuration.ingress.targetPort == 8080 and
+                  .properties.provisioningState == "Succeeded"
+                ) | .id' <<< "$edge_inventory")
+              test -n "$edge_id"
+              terraform import -input=false -lock-timeout=5m "$resource_address" "$edge_id"
+            elif [ "$edge_count" != "0" ]; then
+              echo "Expected zero or one identity edge named $edge_name; found $edge_count" >&2
+              exit 1
+            fi
           fi
           terraform validate
           terraform plan -input=false -lock-timeout=5m -out=workload.tfplan

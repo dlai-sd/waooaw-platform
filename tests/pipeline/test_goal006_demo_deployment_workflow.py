@@ -84,6 +84,9 @@ def test_workload_plan_safely_adopts_the_live_identity_edge() -> None:
     assert "module.workload.azurerm_container_app.identity_edge[0]" in workload_plan
     assert 'if ! terraform state show "$resource_address"' in workload_plan
     assert 'edge_name="ca-${{ inputs.environment }}-identity-edge"' in workload_plan
+    assert "az containerapp list" in workload_plan
+    assert 'if [ "$edge_count" = "1" ]' in workload_plan
+    assert 'elif [ "$edge_count" != "0" ]' in workload_plan
     assert ".properties.managedEnvironmentId == $environment_id" in workload_plan
     assert "nginxinc/nginx-unprivileged@sha256:62a904036bfc0e4a4f2b556e34cbf17bc136b47fde8cdb4628762725f48c5782" in workload_plan
     assert ".properties.configuration.ingress.external == true" in workload_plan
@@ -97,6 +100,18 @@ def test_workload_plan_safely_adopts_the_live_identity_edge() -> None:
         "      - name: Terraform workload apply"
     )
     assert "workload/workload-plan.json" in WORKFLOW
+
+
+def test_identity_edge_state_reconciliation_is_environment_parameterized() -> None:
+    workload_plan = WORKFLOW.split("      - name: Terraform workload plan", 1)[1].split(
+        "      - name: Terraform workload apply", 1
+    )[0]
+
+    for environment in ("demo", "uat", "prod"):
+        rendered_plan = workload_plan.replace("${{ inputs.environment }}", environment)
+        assert f'edge_name="ca-{environment}-identity-edge"' in rendered_plan
+
+    assert 'edge_name="ca-demo-identity-edge"' not in workload_plan
 
 
 def test_private_seeder_retains_diagnostics_before_deletion() -> None:
