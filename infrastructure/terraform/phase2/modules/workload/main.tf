@@ -52,6 +52,11 @@ locals {
     keycloak              = "https://ca-${var.environment}-keycloak.${var.container_app_environment_default_domain}"
     web                   = "https://ca-${var.environment}-web.${var.container_app_environment_default_domain}"
   }
+  verification_urls = {
+    business_platform = "http://ca-${var.environment}-business-platform"
+    keycloak          = "http://ca-${var.environment}-keycloak"
+    web               = "http://ca-${var.environment}-web"
+  }
   runtime_environment = {
     "constitutional-engine" = {
       ASPNETCORE_URLS                      = "http://+:5002"
@@ -379,10 +384,24 @@ resource "azurerm_container_app_job" "verification" {
       command = ["/bin/sh", "-c"]
       args = [<<-EOT
         set -eu
-        probe() { for attempt in 1 2 3 4 5 6 7 8 9 10; do curl --fail --silent --show-error --max-time 15 "$1" >/dev/null && return; sleep 6; done; return 1; }
-        probe "${local.service_urls.web}/"
-        probe "${local.service_urls.business_platform}/health/ready"
-        probe "${local.service_urls.keycloak}/realms/waooaw/.well-known/openid-configuration"
+        probe() {
+          name="$1"
+          url="$2"
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            http_code=$(curl --silent --show-error --max-time 15 --output /dev/null --write-out '%%{http_code}' "$url") && curl_exit=0 || curl_exit=$?
+            if [ "$curl_exit" -eq 0 ] && [ "$http_code" -ge 200 ] && [ "$http_code" -lt 400 ]; then
+              echo "probe_result name=$name status=succeeded http_code=$http_code attempt=$attempt url=$url"
+              return 0
+            fi
+            echo "probe_attempt name=$name status=failed curl_exit=$curl_exit http_code=$http_code attempt=$attempt url=$url" >&2
+            sleep 6
+          done
+          echo "probe_result name=$name status=failed url=$url" >&2
+          return 1
+        }
+        probe web "${local.verification_urls.web}/"
+        probe business-platform "${local.verification_urls.business_platform}/health/ready"
+        probe keycloak "${local.verification_urls.keycloak}/realms/waooaw/.well-known/openid-configuration"
       EOT
       ]
     }
