@@ -11,6 +11,14 @@ on:
         options:
           - plan
           - apply
+      cost_controls:
+        description: "Enforce cost evidence or suppress Azure cost calls during pipeline build stabilization"
+        required: true
+        default: enforce
+        type: choice
+        options:
+          - enforce
+          - suppress-for-pipeline-build
 
 permissions:
   contents: read
@@ -34,6 +42,7 @@ jobs:
           DISPATCH_ACTOR: ${{ github.actor }}
           DISPATCH_REF: ${{ github.ref }}
           EXECUTION_MODE: ${{ inputs.execution }}
+          COST_CONTROLS: ${{ inputs.cost_controls }}
           GH_TOKEN: ${{ github.token }}
         run: |
           case "$DISPATCH_ACTOR" in
@@ -42,6 +51,7 @@ jobs:
           esac
           test "$DISPATCH_REF" = "refs/heads/main"
           case "$EXECUTION_MODE" in plan|apply) ;; *) exit 1 ;; esac
+          case "$COST_CONTROLS" in enforce|suppress-for-pipeline-build) ;; *) exit 1 ;; esac
           latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
           release_run_id=$(gh api \
             "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yaml/runs?branch=main&event=push&status=success&per_page=100" \
@@ -64,6 +74,7 @@ jobs:
       release_run_id: ${{ fromJSON(needs.authorize-demo.outputs.release_run_id) }}
       release_sha: ${{ needs.authorize-demo.outputs.release_sha }}
       apply: ${{ inputs.execution == 'apply' }}
+      enforce_cost_controls: ${{ inputs.cost_controls == 'enforce' }}
     secrets: inherit
 
   verify-demo:

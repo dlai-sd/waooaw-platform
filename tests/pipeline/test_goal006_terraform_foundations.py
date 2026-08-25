@@ -636,6 +636,11 @@ def test_founder_demo_is_the_only_authorized_deployment_path() -> None:
     assert "- apply" in demo
     assert "case \"$EXECUTION_MODE\" in plan|apply)" in demo
     assert "apply: ${{ inputs.execution == 'apply' }}" in demo
+    assert "cost_controls:" in demo
+    assert "default: enforce" in demo
+    assert "suppress-for-pipeline-build" in demo
+    assert 'case "$COST_CONTROLS" in enforce|suppress-for-pipeline-build)' in demo
+    assert "enforce_cost_controls: ${{ inputs.cost_controls == 'enforce' }}" in demo
     assert demo.count("if: inputs.execution == 'apply'") == 2
     assert "verification_client_id: ${{ needs.deploy-demo.outputs.verification_client_id }}" in demo
     assert "web_url: ${{ needs.deploy-demo.outputs.web_url }}" in demo
