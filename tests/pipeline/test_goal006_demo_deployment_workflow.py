@@ -91,6 +91,15 @@ def test_cost_evidence_is_queried_once_and_reused_by_private_job() -> None:
     assert "Enforce workload cost boundary" in WORKFLOW
 
 
+def test_batch_cost_control_suppresses_every_azure_cost_call_with_evidence() -> None:
+    assert "enforce_cost_controls:" in WORKFLOW
+    assert WORKFLOW.count("if: inputs.enforce_cost_controls") == 3
+    assert "Record batch cost control mode" in WORKFLOW
+    assert "cost-control.json" in WORKFLOW
+    assert "suppress-for-pipeline-build" in WORKFLOW
+    assert "Azure cost and budget calls are suppressed" in WORKFLOW
+
+
 def test_demo_deployment_cleanup_is_independent_and_retains_evidence() -> None:
     cleanup = WORKFLOW.split("  cleanup-private:", 1)[1]
 
