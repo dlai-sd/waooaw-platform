@@ -749,7 +749,7 @@ Continuous. Triggered by: (1) PR merge to main, (2) daily schedule (06:00 UTC / 
 **Decision Space (read-only):**
 - Read: `constitution/INSTITUTIONAL_BACKLOG.md`, `constitution/PROJECT_STATE.md`, GitHub Issues, GitHub Project data, CI/CD CCT results
 - Produce: component × domain delivery matrix, open blocker list, gate readiness summary, velocity metrics
-- Update: `constitution/PROJECT_STATE.md` summary section (automated via `pm-report.yaml`)
+- Publish: status reports as comments on the pinned Platform Status issue (automated via `pm-report.yaml`)
 
 **This office has NO authority to:**
 - Create or modify IB items
