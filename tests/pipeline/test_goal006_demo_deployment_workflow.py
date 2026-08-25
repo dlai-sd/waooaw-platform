@@ -55,6 +55,34 @@ def test_private_job_uses_pinned_native_terraform_without_node_wrapper() -> None
     assert 'test "$(terraform version -json | jq -r \'.terraform_version\')" = "1.9.8"' in private_job
 
 
+def test_private_seeder_passes_distinct_shell_arguments_in_structured_definition() -> None:
+    private_job = WORKFLOW.split("  terraform:", 1)[1].split("  cleanup-private:", 1)[0]
+
+    assert "seeder_script='set -eu;" in private_job
+    assert 'command: ["/bin/sh"]' in private_job
+    assert 'args: ["-c", $script]' in private_job
+    assert "--yaml secret-seeder-job-definition.json" in private_job
+    assert "seeder_args=$(jq" not in private_job
+    assert "--args=" not in private_job
+
+
+def test_private_seeder_retains_diagnostics_before_deletion() -> None:
+    private_job = WORKFLOW.split("  terraform:", 1)[1].split("  cleanup-private:", 1)[0]
+
+    assert "capture_seeder_evidence()" in private_job
+    assert "secret-seeder-job-definition.json" in private_job
+    assert "secret-seeder-job.json" in private_job
+    assert "secret-seeder-execution.json" in private_job
+    assert "secret-seeder-console.log" in private_job
+    assert "az containerapp job logs show" in private_job
+    assert "Failed|Stopped)" in private_job
+    assert "Private credential seeder timed out" in private_job
+    assert private_job.count("capture_seeder_evidence") == 4
+    assert 'cat secret-seeder-console.log >&2' in private_job
+    delete_index = private_job.index("Delete private credential seeder")
+    assert private_job.rindex("capture_seeder_evidence", 0, delete_index) < delete_index
+
+
 def test_cost_evidence_is_queried_once_and_reused_by_private_job() -> None:
     assert WORKFLOW.count("CostManagement/query?api-version=2023-11-01") == 1
     assert WORKFLOW.count("CostManagement/forecast?api-version=2023-11-01") == 1

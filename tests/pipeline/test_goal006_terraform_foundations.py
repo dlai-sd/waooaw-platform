@@ -340,9 +340,10 @@ def test_demo_credential_seeder_passes_shell_flags_as_container_arguments() -> N
     workflow = (REPO_ROOT / ".github/workflows/deploy-environment.yaml").read_text(encoding="utf-8")
 
     assert "--command /bin/sh -c" not in workflow
-    assert "seeder_args=$(jq -cn --arg script" in workflow
-    assert "'[\"-c\", $script]')" in workflow
-    assert '--args "$seeder_args"' in workflow
+    assert "seeder_script='set -eu;" in workflow
+    assert 'args: ["-c", $script]' in workflow
+    assert "--yaml secret-seeder-job-definition.json" in workflow
+    assert "seeder_args=$(jq" not in workflow
 
 
 def test_local_rehearsal_is_offline_pinned_and_covers_the_full_goal006_path() -> None:
@@ -471,6 +472,13 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     )
     assert "Create private digest-pinned credential seeder" in workflow
     assert "Run private credential seeder" in workflow
+    assert 'args: ["-c", $script]' in workflow
+    assert "--yaml secret-seeder-job-definition.json" in workflow
+    assert "seeder_args=$(jq" not in workflow
+    assert "capture_seeder_evidence()" in workflow
+    assert "secret-seeder-job.json" in workflow
+    assert "secret-seeder-console.log" in workflow
+    assert workflow.index("capture_seeder_evidence()") < workflow.index("Delete private credential seeder")
     assert workflow.count("if: inputs.apply") == 8
     assert "Delete private credential seeder" in workflow
     assert "if: always() && steps.foundation.outcome == 'success'" in workflow
