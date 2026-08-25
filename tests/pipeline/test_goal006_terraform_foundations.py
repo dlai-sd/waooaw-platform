@@ -251,10 +251,18 @@ def test_each_environment_persists_container_app_logs() -> None:
     contract = read_contract("modules/foundation/main.tf")
 
     assert 'resource "azurerm_log_analytics_workspace" "environment"' in contract
-    assert 'name                = "law-${local.name}"' in contract
+    assert 'name                = coalesce(var.log_analytics_workspace_name, "law-${local.name}")' in contract
     assert "retention_in_days   = 30" in contract
     assert "log_analytics_workspace_id     = azurerm_log_analytics_workspace.environment.id" in contract
     assert 'output "log_analytics_workspace_id"' in contract
+
+
+def test_demo_adopts_existing_validation_workspace_without_cleanup_debt() -> None:
+    demo = read_contract("environments/demo/foundation/main.tf")
+
+    assert "to = module.foundation.azurerm_log_analytics_workspace.environment" in demo
+    assert "workspaces/law-waooaw-demo-validation" in demo
+    assert 'log_analytics_workspace_name = "law-waooaw-demo-validation"' in demo
 
 
 def test_verification_emits_structured_probe_results() -> None:
@@ -290,7 +298,7 @@ def test_demo_review_ingress_is_founder_restricted_and_other_environments_remain
     workload = read_contract("modules/workload/main.tf")
     demo_workload = read_contract("environments/demo/workload/main.tf")
 
-    assert "external_environment       = true" in demo
+    assert re.search(r"external_environment\s*=\s*true", demo)
     assert "external_environment" not in uat
     assert "external_environment" not in prod
     assert 'name             = "founder-review"' in workload

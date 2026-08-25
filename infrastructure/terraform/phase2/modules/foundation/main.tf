@@ -258,7 +258,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "key_vault" {
 }
 
 resource "azurerm_log_analytics_workspace" "environment" {
-  name                = "law-${local.name}"
+  name                = coalesce(var.log_analytics_workspace_name, "law-${local.name}")
   location            = azurerm_resource_group.environment.location
   resource_group_name = azurerm_resource_group.environment.name
   sku                 = "PerGB2018"
