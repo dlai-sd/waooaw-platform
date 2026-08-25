@@ -406,6 +406,7 @@ jobs:
             echo "deployment_identity_id=$(terraform output -raw deployment_identity_id)"
             echo "verification_client_id=$(terraform output -raw verification_client_id)"
             echo "resource_group_name=$(terraform output -raw resource_group_name)"
+            echo "container_app_environment_id=$(terraform output -raw container_app_environment_id)"
             echo "container_app_environment_name=$(terraform output -raw container_app_environment_name)"
             echo "key_vault_id=$(terraform output -raw key_vault_id)"
             echo "key_vault_name=$(terraform output -raw key_vault_name)"
@@ -429,7 +430,7 @@ jobs:
       - name: Create private digest-pinned credential seeder
         if: inputs.apply
         env:
-          CONTAINER_APP_ENVIRONMENT: ${{ steps.foundation.outputs.container_app_environment_name }}
+          CONTAINER_APP_ENVIRONMENT_ID: ${{ steps.foundation.outputs.container_app_environment_id }}
           DEPLOYMENT_CLIENT_ID: ${{ steps.foundation.outputs.deployment_client_id }}
           DEPLOYMENT_IDENTITY_ID: ${{ steps.foundation.outputs.deployment_identity_id }}
           KEY_VAULT_NAME: ${{ steps.foundation.outputs.key_vault_name }}
@@ -445,23 +446,51 @@ jobs:
           test "$actual_digest" = "$expected_digest"
           az containerapp job delete --name "$SEEDER_JOB" --resource-group "$RESOURCE_GROUP" --yes --output none 2>/dev/null || true
           # shellcheck disable=SC2016
-          seeder_args=$(jq -cn --arg script 'set -eu; az login --identity --client-id "$AZURE_CLIENT_ID" --allow-no-subscriptions --output none; for name in constitutional-engine business-platform professional-runtime ai-runtime web billing-engine; do credential=$(head -c 48 /dev/urandom | base64 | tr -d "\n"); for attempt in 1 2 3 4 5 6; do if az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name "$name" --value "$credential" --output none; then break; fi; test "$attempt" != 6; sleep 10; done; unset credential; done' '["-c", $script]')
+          seeder_script='set -eu; az login --identity --client-id "$AZURE_CLIENT_ID" --allow-no-subscriptions --output none; for name in constitutional-engine business-platform professional-runtime ai-runtime web billing-engine; do credential=$(head -c 48 /dev/urandom | base64 | tr -d "\n"); for attempt in 1 2 3 4 5 6; do if az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name "$name" --value "$credential" --output none; then break; fi; test "$attempt" != 6; sleep 10; done; unset credential; done'
+          jq -n \
+            --arg name "$SEEDER_JOB" \
+            --arg environment_id "$CONTAINER_APP_ENVIRONMENT_ID" \
+            --arg identity_id "$DEPLOYMENT_IDENTITY_ID" \
+            --arg image "$SEEDER_IMAGE" \
+            --arg client_id "$DEPLOYMENT_CLIENT_ID" \
+            --arg key_vault_name "$KEY_VAULT_NAME" \
+            --arg script "$seeder_script" \
+            '{
+              name: $name,
+              identity: {
+                type: "UserAssigned",
+                userAssignedIdentities: {($identity_id): {}}
+              },
+              properties: {
+                environmentId: $environment_id,
+                configuration: {
+                  triggerType: "Manual",
+                  replicaTimeout: 600,
+                  replicaRetryLimit: 1,
+                  manualTriggerConfig: {
+                    replicaCompletionCount: 1,
+                    parallelism: 1
+                  }
+                },
+                template: {
+                  containers: [{
+                    name: $name,
+                    image: $image,
+                    command: ["/bin/sh"],
+                    args: ["-c", $script],
+                    env: [
+                      {name: "AZURE_CLIENT_ID", value: $client_id},
+                      {name: "KEY_VAULT_NAME", value: $key_vault_name}
+                    ],
+                    resources: {cpu: 0.25, memory: "0.5Gi"}
+                  }]
+                }
+              }
+            }' > secret-seeder-job-definition.json
           az containerapp job create \
             --name "$SEEDER_JOB" \
             --resource-group "$RESOURCE_GROUP" \
-            --environment "$CONTAINER_APP_ENVIRONMENT" \
-            --trigger-type Manual \
-            --replica-timeout 600 \
-            --replica-retry-limit 1 \
-            --replica-completion-count 1 \
-            --parallelism 1 \
-            --image "$SEEDER_IMAGE" \
-            --mi-user-assigned "$DEPLOYMENT_IDENTITY_ID" \
-            --cpu 0.25 \
-            --memory 0.5Gi \
-            --env-vars "AZURE_CLIENT_ID=$DEPLOYMENT_CLIENT_ID" "KEY_VAULT_NAME=$KEY_VAULT_NAME" \
-            --command /bin/sh \
-            --args "$seeder_args" \
+            --yaml secret-seeder-job-definition.json \
             --output none
 
       - name: Run private credential seeder
@@ -472,6 +501,24 @@ jobs:
         run: |
           execution_name=$(az containerapp job start --name "$SEEDER_JOB" --resource-group "$RESOURCE_GROUP" --query name -o tsv)
           test -n "$execution_name"
+          capture_seeder_evidence() {
+            az containerapp job show \
+              --name "$SEEDER_JOB" \
+              --resource-group "$RESOURCE_GROUP" \
+              --output json > secret-seeder-job.json
+            az containerapp job execution show \
+              --name "$SEEDER_JOB" \
+              --resource-group "$RESOURCE_GROUP" \
+              --job-execution-name "$execution_name" \
+              --output json > secret-seeder-execution.json
+            az containerapp job logs show \
+              --name "$SEEDER_JOB" \
+              --resource-group "$RESOURCE_GROUP" \
+              --execution "$execution_name" \
+              --container "$SEEDER_JOB" \
+              --tail 200 \
+              --format text > secret-seeder-console.log 2>&1 || true
+          }
           for attempt in $(seq 1 60); do
             status=$(az containerapp job execution show \
               --name "$SEEDER_JOB" \
@@ -480,13 +527,22 @@ jobs:
               --query properties.status -o tsv)
             case "$status" in
               Succeeded)
-                az containerapp job execution show --name "$SEEDER_JOB" --resource-group "$RESOURCE_GROUP" \
-                  --job-execution-name "$execution_name" > secret-seeder-execution.json
+                capture_seeder_evidence
                 exit 0
                 ;;
-              Failed) echo "Private credential seeder failed" >&2; exit 1 ;;
+              Failed|Stopped)
+                capture_seeder_evidence
+                cat secret-seeder-console.log >&2
+                echo "Private credential seeder failed with status: $status" >&2
+                exit 1
+                ;;
             esac
-            test "$attempt" != 60
+            if [ "$attempt" = 60 ]; then
+              capture_seeder_evidence
+              cat secret-seeder-console.log >&2
+              echo "Private credential seeder timed out with status: $status" >&2
+              exit 1
+            fi
             sleep 10
           done
 
@@ -557,7 +613,10 @@ jobs:
             configuration-download-attempts.jsonl
             configuration-storage-diagnostics.json
             configuration-container-diagnostics.json
+            secret-seeder-job-definition.json
+            secret-seeder-job.json
             secret-seeder-execution.json
+            secret-seeder-console.log
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation.tfplan
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload.tfplan
