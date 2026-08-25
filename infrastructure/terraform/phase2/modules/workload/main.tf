@@ -57,6 +57,106 @@ locals {
     keycloak          = "http://ca-${var.environment}-keycloak"
     web               = "http://ca-${var.environment}-web"
   }
+  keycloak_realm = {
+    realm                  = "waooaw"
+    displayName            = "WAOOAW Platform"
+    enabled                = true
+    sslRequired            = "external"
+    registrationAllowed    = false
+    loginWithEmailAllowed  = true
+    duplicateEmailsAllowed = false
+    resetPasswordAllowed   = false
+    editUsernameAllowed    = false
+    bruteForceProtected    = true
+    accessTokenLifespan    = 900
+    ssoSessionMaxLifespan  = 86400
+    refreshTokenMaxReuse   = 0
+    revokeRefreshToken     = true
+    passwordPolicy         = "length(12) and upperCase(1) and digits(1) and specialChars(1) and notUsername"
+    identityProviders      = []
+    clients = [
+      {
+        clientId                  = "waooaw-web"
+        name                      = "WAOOAW Web Application"
+        enabled                   = true
+        publicClient              = false
+        secret                    = "$${KEYCLOAK_CLIENT_SECRET}"
+        standardFlowEnabled       = true
+        implicitFlowEnabled       = false
+        directAccessGrantsEnabled = false
+        redirectUris = [
+          "${local.service_urls.web}/api/auth/callback/keycloak",
+        ]
+        webOrigins = [local.service_urls.web]
+        attributes = {
+          "pkce.code.challenge.method" = "S256"
+        }
+        protocolMappers = [
+          {
+            name           = "tenant_id_mapper"
+            protocol       = "openid-connect"
+            protocolMapper = var.environment == "demo" ? "oidc-hardcoded-claim-mapper" : "oidc-usermodel-attribute-mapper"
+            config = merge({
+              "claim.name"           = "tenant_id"
+              "jsonType.label"       = "String"
+              "id.token.claim"       = "true"
+              "access.token.claim"   = "true"
+              "userinfo.token.claim" = "true"
+              }, var.environment == "demo" ? {
+              "claim.value" = "00000000-0000-0000-0000-000000000001"
+              } : {
+              "user.attribute" = "tenant_id"
+            })
+          },
+          {
+            name           = "audience_mapper"
+            protocol       = "openid-connect"
+            protocolMapper = "oidc-audience-mapper"
+            config = {
+              "included.client.audience" = "waooaw-platform"
+              "id.token.claim"           = "false"
+              "access.token.claim"       = "true"
+            }
+          },
+        ]
+      },
+      {
+        clientId                  = "waooaw-platform"
+        name                      = "WAOOAW Platform Services"
+        enabled                   = true
+        bearerOnly                = true
+        publicClient              = false
+        standardFlowEnabled       = false
+        directAccessGrantsEnabled = false
+      },
+    ]
+    roles = {
+      realm = [
+        { name = "customer" },
+        { name = "founder" },
+      ]
+    }
+    defaultRoles = ["customer"]
+    users = var.environment == "demo" ? [
+      {
+        username      = "founder@waooaw.local"
+        email         = "founder@waooaw.local"
+        enabled       = true
+        emailVerified = true
+        firstName     = "Demo"
+        lastName      = "Founder"
+        credentials = [
+          {
+            type      = "password"
+            value     = "$${DEMO_FOUNDER_PASSWORD}"
+            temporary = false
+          },
+        ]
+        realmRoles = ["customer", "founder"]
+      },
+    ] : []
+  }
+  keycloak_realm_base64 = base64encode(jsonencode(local.keycloak_realm))
   runtime_environment = {
     "constitutional-engine" = {
       ASPNETCORE_URLS                      = "http://+:5002"
@@ -315,26 +415,26 @@ resource "azurerm_container_app" "keycloak" {
       command = ["/bin/sh", "-c"]
       args = [<<-EOT
         set -eu
-        /opt/keycloak/bin/kc.sh start-dev --http-enabled=true --hostname-strict=false &
-        server_pid=$!
-        until /opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8080 --realm master --user "$KC_BOOTSTRAP_ADMIN_USERNAME" --password "$KC_BOOTSTRAP_ADMIN_PASSWORD"; do sleep 2; done
-        /opt/keycloak/bin/kcadm.sh get realms/waooaw >/dev/null 2>&1 || /opt/keycloak/bin/kcadm.sh create realms -s realm=waooaw -s enabled=true
-        client_id=$(/opt/keycloak/bin/kcadm.sh get clients -r waooaw -q clientId=waooaw-web --fields id --format csv --noquotes 2>/dev/null || true)
-        test -n "$client_id" || /opt/keycloak/bin/kcadm.sh create clients -r waooaw -s clientId=waooaw-web -s enabled=true -s publicClient=false -s standardFlowEnabled=true -s 'redirectUris=["${local.service_urls.web}/*"]' -s 'webOrigins=["${local.service_urls.web}"]' -s secret="$KEYCLOAK_CLIENT_SECRET"
-        wait "$server_pid"
+        mkdir -p /opt/keycloak/data/import
+        printf '%%s' '${local.keycloak_realm_base64}' | base64 --decode > /opt/keycloak/data/import/waooaw-realm.json
+        exec /opt/keycloak/bin/kc.sh start-dev --db=dev-mem --http-enabled=true --hostname-strict=false --import-realm
       EOT
       ]
 
       env {
-        name  = "KC_BOOTSTRAP_ADMIN_USERNAME"
+        name  = "KEYCLOAK_ADMIN"
         value = "demo-admin"
       }
       env {
-        name        = "KC_BOOTSTRAP_ADMIN_PASSWORD"
+        name        = "KEYCLOAK_ADMIN_PASSWORD"
         secret_name = "keycloak-credential"
       }
       env {
         name        = "KEYCLOAK_CLIENT_SECRET"
+        secret_name = "keycloak-credential"
+      }
+      env {
+        name        = "DEMO_FOUNDER_PASSWORD"
         secret_name = "keycloak-credential"
       }
     }
