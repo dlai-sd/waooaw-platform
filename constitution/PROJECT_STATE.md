@@ -146,5 +146,5 @@ notes: |
 
 ## Platform Delivery Summary
 
-Last PM report: 2026-08-24
+Last PM report: 2026-08-25
 Platform Status issue: see GitHub Issues with label `platform-status`
