@@ -1,3 +1,5 @@
+# Implements: architecture/reference/agents/platform-it-expert-agent.md Skill 17
+# Constitutional basis: C-059 (Implementation Traceability)
 FROM python:3.12-slim-bookworm AS dependencies
 WORKDIR /install
 COPY src/ai-runtime/requirements.txt .
