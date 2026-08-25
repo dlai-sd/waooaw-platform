@@ -1,7 +1,6 @@
 # PM Report — Platform Delivery Matrix
 # Triggered: on PR close (merged), daily at 06:00 UTC (11:30 IST), and manual dispatch.
 # Produces: a status report posted as a comment on the designated Platform Status issue.
-#           Also updates a summary section in constitution/PROJECT_STATE.md.
 #
 # Constitutional basis: Platform Delivery Tracker (Office 12) — read-only status role.
 # No decisions are made. No code is changed. No IB items are modified.
@@ -30,7 +29,7 @@ on:
 
 permissions:
   issues: write
-  contents: write
+  contents: read
   pull-requests: read
 
 jobs:
@@ -41,7 +40,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
           ref: main
 
       - name: Generate delivery matrix report
@@ -203,29 +201,3 @@ jobs:
             --body "$(cat report.md)"
 
           echo "Posted report to issue #${STATUS_ISSUE}"
-
-      - name: Update PROJECT_STATE.md delivery summary
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-        run: |
-          DATE=$(date -u '+%Y-%m-%d')
-
-          # Update the last-reported date in PROJECT_STATE.md
-          if grep -q "## Platform Delivery Summary" constitution/PROJECT_STATE.md; then
-            # Section exists — update date line
-            sed -i "s/Last PM report: .*/Last PM report: ${DATE}/" constitution/PROJECT_STATE.md
-          else
-            # Append section
-            echo "" >> constitution/PROJECT_STATE.md
-            echo "## Platform Delivery Summary" >> constitution/PROJECT_STATE.md
-            echo "" >> constitution/PROJECT_STATE.md
-            echo "Last PM report: ${DATE}" >> constitution/PROJECT_STATE.md
-            echo "Platform Status issue: see GitHub Issues with label \`platform-status\`" >> constitution/PROJECT_STATE.md
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add constitution/PROJECT_STATE.md
-          git diff --staged --quiet || git commit -m "chore(pm): platform delivery matrix report ${DATE}"
-          git push
