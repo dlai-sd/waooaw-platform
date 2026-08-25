@@ -594,8 +594,30 @@ jobs:
             -backend-config="container_name=$TFSTATE_CONTAINER" \
             -backend-config="use_oidc=true" \
             -backend-config="use_azuread_auth=true"
+          resource_address='module.workload.azurerm_container_app.identity_edge[0]'
+          if ! terraform state show "$resource_address" >/dev/null 2>&1; then
+            edge_name="ca-${{ inputs.environment }}-identity-edge"
+            edge_record=$(az containerapp show \
+              --resource-group '${{ steps.foundation.outputs.resource_group_name }}' \
+              --name "$edge_name" \
+              --output json)
+            edge_id=$(jq -er \
+              --arg environment_id '${{ steps.foundation.outputs.container_app_environment_id }}' \
+              --arg image 'nginxinc/nginx-unprivileged@sha256:62a904036bfc0e4a4f2b556e34cbf17bc136b47fde8cdb4628762725f48c5782' \
+              'select(
+                .properties.managedEnvironmentId == $environment_id and
+                .properties.template.containers[0].image == $image and
+                .properties.configuration.ingress.external == true and
+                .properties.configuration.ingress.targetPort == 8080 and
+                .properties.provisioningState == "Succeeded"
+              ) | .id' <<< "$edge_record")
+            test -n "$edge_id"
+            terraform import -input=false -lock-timeout=5m "$resource_address" "$edge_id"
+          fi
           terraform validate
           terraform plan -input=false -lock-timeout=5m -out=workload.tfplan
+          terraform show -json workload.tfplan > workload-plan.json
+          python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" --plan workload-plan.json
 
       - name: Terraform workload apply
         if: inputs.apply
@@ -645,6 +667,7 @@ jobs:
             secret-seeder-console.log
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation-plan.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation/foundation.tfplan
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-plan.json
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload.tfplan
           if-no-files-found: warn
           retention-days: 90
