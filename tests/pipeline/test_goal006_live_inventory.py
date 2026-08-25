@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from goal006_live_inventory import KEYCLOAK_IMAGE, validate_inventory
+from goal006_live_inventory import IDENTITY_EDGE_IMAGE, KEYCLOAK_IMAGE, validate_inventory
 from goal006_registry_manifest import RELEASE_MEMBERS
 
 
@@ -55,6 +55,13 @@ def inventory(environment: str, release: dict[str, Any]) -> list[dict[str, str]]
         {
             "name": f"ca-{environment}-keycloak",
             "image": KEYCLOAK_IMAGE,
+            "provisioningState": "Succeeded",
+        }
+    )
+    live.append(
+        {
+            "name": f"ca-{environment}-identity-edge",
+            "image": IDENTITY_EDGE_IMAGE,
             "provisioningState": "Succeeded",
         }
     )

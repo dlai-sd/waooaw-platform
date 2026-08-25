@@ -99,12 +99,28 @@ jobs:
         env:
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
-          for app in constitutional-engine business-platform professional-runtime ai-runtime web billing-engine keycloak; do
-            az containerapp revision list \
+          mkdir -p revision-evidence
+          for app in constitutional-engine business-platform professional-runtime ai-runtime web billing-engine keycloak identity-edge; do
+            az containerapp show \
               --resource-group "waooaw-$TARGET_ENVIRONMENT-rg" \
               --name "ca-$TARGET_ENVIRONMENT-$app" \
-              --query "[?properties.active && properties.provisioningState==\`Provisioned\` && properties.healthState==\`Healthy\`] | [0].name" \
-              -o tsv | grep -q .
+              --query '{latestRevision:properties.latestRevisionName,latestReadyRevision:properties.latestReadyRevisionName}' \
+              -o json > "revision-evidence/$app-app.json"
+            latest_revision=$(jq -r '.latestRevision // empty' "revision-evidence/$app-app.json")
+            latest_ready_revision=$(jq -r '.latestReadyRevision // empty' "revision-evidence/$app-app.json")
+            test -n "$latest_revision"
+            test "$latest_revision" = "$latest_ready_revision"
+            az containerapp revision show \
+              --resource-group "waooaw-$TARGET_ENVIRONMENT-rg" \
+              --name "ca-$TARGET_ENVIRONMENT-$app" \
+              --revision "$latest_revision" \
+              -o json > "revision-evidence/$app-revision.json"
+            jq -e '
+              .properties.active == true and
+              .properties.provisioningState == "Provisioned" and
+              .properties.healthState == "Healthy" and
+              (.properties.runningState | startswith("Running"))
+            ' "revision-evidence/$app-revision.json" >/dev/null
           done
 
       - name: Run internal functional verification
@@ -192,6 +208,7 @@ jobs:
             functional-verification.json
             functional-http-probes.log
             functional-constitutional-health.log
+            revision-evidence/
             deployment-verification.json
           if-no-files-found: warn
           retention-days: 90

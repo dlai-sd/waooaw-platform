@@ -1,0 +1,29 @@
+pid /tmp/nginx.pid;
+worker_processes auto;
+events { worker_connections 256; }
+http {
+  access_log /dev/stdout;
+  error_log /dev/stderr warn;
+  client_body_temp_path /tmp/client_temp;
+  proxy_temp_path /tmp/proxy_temp;
+  upstream keycloak { server ca-${environment}-keycloak.internal.${default_domain}:443; }
+  server {
+    listen 8080;
+    server_name _;
+    proxy_http_version 1.1;
+    proxy_ssl_server_name on;
+    proxy_ssl_name ca-${environment}-keycloak.internal.${default_domain};
+    proxy_set_header Host ca-${environment}-keycloak.internal.${default_domain};
+    proxy_set_header X-Forwarded-Host ca-${environment}-identity-edge.${default_domain};
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-Port 443;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    location = /realms/waooaw { proxy_pass https://keycloak; }
+    location ^~ /realms/waooaw/.well-known/ { proxy_pass https://keycloak; }
+    location ^~ /realms/waooaw/protocol/openid-connect/ { proxy_pass https://keycloak; }
+    location ^~ /realms/waooaw/login-actions/ { proxy_pass https://keycloak; }
+    location ^~ /realms/waooaw/broker/ { proxy_pass https://keycloak; }
+    location ^~ /resources/ { proxy_pass https://keycloak; }
+    location / { return 404; }
+  }
+}

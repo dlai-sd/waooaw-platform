@@ -12,6 +12,7 @@ from typing import Any
 from goal006_registry_manifest import RELEASE_MEMBERS, validate_registry_manifest
 
 KEYCLOAK_IMAGE = "quay.io/keycloak/keycloak@sha256:82c5b7a110456dbd42b86ea572e728878549954cc8bd03cd65410d75328095d2"
+IDENTITY_EDGE_IMAGE = "nginxinc/nginx-unprivileged@sha256:62a904036bfc0e4a4f2b556e34cbf17bc136b47fde8cdb4628762725f48c5782"
 
 
 def validate_inventory(environment: str, manifest: Mapping[str, Any], inventory: Sequence[Any]) -> list[str]:
@@ -21,6 +22,7 @@ def validate_inventory(environment: str, manifest: Mapping[str, Any], inventory:
         return sorted(set(violations))
     expected = {f"ca-{environment}-{member}": image for member, image in manifest.get("images", {}).items()}
     expected[f"ca-{environment}-keycloak"] = KEYCLOAK_IMAGE
+    expected[f"ca-{environment}-identity-edge"] = IDENTITY_EDGE_IMAGE
     actual: dict[str, Mapping[str, Any]] = {}
     for item in inventory:
         if not isinstance(item, Mapping) or not isinstance(item.get("name"), str):

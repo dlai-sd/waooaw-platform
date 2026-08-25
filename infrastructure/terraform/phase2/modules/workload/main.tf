@@ -49,12 +49,13 @@ locals {
     professional_runtime  = "http://ca-${var.environment}-professional-runtime"
     ai_runtime            = "http://ca-${var.environment}-ai-runtime"
     billing_engine        = "http://ca-${var.environment}-billing-engine"
-    keycloak              = "https://ca-${var.environment}-keycloak.${var.container_app_environment_default_domain}"
+    identity_edge         = "https://ca-${var.environment}-identity-edge.${var.container_app_environment_default_domain}"
+    keycloak              = "http://ca-${var.environment}-keycloak"
     web                   = "https://ca-${var.environment}-web.${var.container_app_environment_default_domain}"
   }
   verification_urls = {
     business_platform = "http://ca-${var.environment}-business-platform"
-    keycloak          = "http://ca-${var.environment}-keycloak"
+    identity_edge     = "https://ca-${var.environment}-identity-edge.${var.container_app_environment_default_domain}"
     web               = "http://ca-${var.environment}-web"
   }
   keycloak_realm = {
@@ -118,6 +119,19 @@ locals {
               "access.token.claim"       = "true"
             }
           },
+          {
+            name           = "realm_roles_mapper"
+            protocol       = "openid-connect"
+            protocolMapper = "oidc-usermodel-realm-role-mapper"
+            config = {
+              "claim.name"           = "realm_access.roles"
+              "jsonType.label"       = "String"
+              "multivalued"          = "true"
+              "id.token.claim"       = "true"
+              "access.token.claim"   = "true"
+              "userinfo.token.claim" = "true"
+            }
+          },
         ]
       },
       {
@@ -157,6 +171,11 @@ locals {
     ] : []
   }
   keycloak_realm_base64 = base64encode(jsonencode(local.keycloak_realm))
+  identity_edge_config = templatefile("${path.module}/identity-edge.conf.tftpl", {
+    environment    = var.environment
+    default_domain = var.container_app_environment_default_domain
+  })
+  identity_edge_config_base64 = base64encode(local.identity_edge_config)
   runtime_environment = {
     "constitutional-engine" = {
       ASPNETCORE_URLS                      = "http://+:5002"
@@ -168,15 +187,15 @@ locals {
       ConnectionStrings__DefaultConnection = "Host=localhost;Port=5432;Database=waooaw;Username=postgres"
       ConstitutionalEngine__Address        = local.service_urls.constitutional_engine
       Keycloak__Audience                   = "waooaw-platform"
-      Keycloak__Authority                  = "${local.service_urls.keycloak}/realms/waooaw"
+      Keycloak__Authority                  = "${local.service_urls.identity_edge}/realms/waooaw"
       Keycloak__RequireHttpsMetadata       = "true"
     }
     "professional-runtime" = {
       AIR_TRANSCRIPTION_BASE_URL    = local.service_urls.ai_runtime
       CONSTITUTIONAL_ENGINE_ADDRESS = "ca-${var.environment}-constitutional-engine:80"
       KEYCLOAK_AUDIENCE             = "waooaw-platform"
-      KEYCLOAK_ISSUER               = "${local.service_urls.keycloak}/realms/waooaw"
-      KEYCLOAK_JWKS_URL             = "${local.service_urls.keycloak}/realms/waooaw/protocol/openid-connect/certs"
+      KEYCLOAK_ISSUER               = "${local.service_urls.identity_edge}/realms/waooaw"
+      KEYCLOAK_JWKS_URL             = "${local.service_urls.identity_edge}/realms/waooaw/protocol/openid-connect/certs"
     }
     "ai-runtime" = {
       BP_BASE_URL                   = local.service_urls.business_platform
@@ -186,7 +205,7 @@ locals {
     "web" = {
       BUSINESS_PLATFORM_URL = local.service_urls.business_platform
       KEYCLOAK_CLIENT_ID    = "waooaw-web"
-      KEYCLOAK_ISSUER       = "${local.service_urls.keycloak}/realms/waooaw"
+      KEYCLOAK_ISSUER       = "${local.service_urls.identity_edge}/realms/waooaw"
       NEXTAUTH_URL          = local.service_urls.web
       NODE_ENV              = "production"
     }
@@ -404,7 +423,7 @@ resource "azurerm_container_app" "keycloak" {
   }
 
   template {
-    min_replicas = 0
+    min_replicas = 1
     max_replicas = 1
 
     container {
@@ -416,7 +435,7 @@ resource "azurerm_container_app" "keycloak" {
       args = [<<-EOT
         set -eu
         mkdir -p /opt/keycloak/data/import
-        printf '%%s' '${local.keycloak_realm_base64}' | base64 --decode > /opt/keycloak/data/import/waooaw-realm.json
+        printf '%s' '${local.keycloak_realm_base64}' | base64 --decode > /opt/keycloak/data/import/waooaw-realm.json
         exec /opt/keycloak/bin/kc.sh start-dev --db=dev-mem --http-enabled=true --hostname-strict=false --import-realm
       EOT
       ]
@@ -437,6 +456,55 @@ resource "azurerm_container_app" "keycloak" {
         name        = "DEMO_FOUNDER_PASSWORD"
         secret_name = "keycloak-credential"
       }
+      env {
+        name  = "KC_HOSTNAME"
+        value = local.service_urls.identity_edge
+      }
+      env {
+        name  = "KC_PROXY_HEADERS"
+        value = "xforwarded"
+      }
+    }
+  }
+
+  ingress {
+    external_enabled = false
+    target_port      = 8080
+
+    traffic_weight {
+      latest_revision = true
+      percentage      = 100
+    }
+
+  }
+
+  depends_on = [azurerm_role_assignment.member_secret]
+}
+
+resource "azurerm_container_app" "identity_edge" {
+  count = var.workload_enabled ? 1 : 0
+
+  name                         = "ca-${var.environment}-identity-edge"
+  container_app_environment_id = var.container_app_environment_id
+  resource_group_name          = var.resource_group_name
+  revision_mode                = "Single"
+
+  template {
+    min_replicas = 1
+    max_replicas = 1
+
+    container {
+      name    = "identity-edge"
+      image   = "nginxinc/nginx-unprivileged@sha256:62a904036bfc0e4a4f2b556e34cbf17bc136b47fde8cdb4628762725f48c5782"
+      cpu     = 0.25
+      memory  = "0.5Gi"
+      command = ["/bin/sh", "-c"]
+      args = [<<-EOT
+        set -eu
+        printf '%s' '${local.identity_edge_config_base64}' | base64 -d > /tmp/nginx.conf
+        exec nginx -c /tmp/nginx.conf -g 'daemon off;'
+      EOT
+      ]
     }
   }
 
@@ -448,16 +516,9 @@ resource "azurerm_container_app" "keycloak" {
       latest_revision = true
       percentage      = 100
     }
-
-    ip_security_restriction {
-      name             = "founder-review"
-      ip_address_range = var.founder_ipv4_cidr
-      action           = "Allow"
-      description      = "Founder-only Demo identity"
-    }
   }
 
-  depends_on = [azurerm_role_assignment.member_secret]
+  depends_on = [azurerm_container_app.keycloak]
 }
 
 resource "azurerm_container_app_job" "verification" {
@@ -501,7 +562,7 @@ resource "azurerm_container_app_job" "verification" {
         }
         probe web "${local.verification_urls.web}/"
         probe business-platform "${local.verification_urls.business_platform}/health/ready"
-        probe keycloak "${local.verification_urls.keycloak}/realms/waooaw/.well-known/openid-configuration"
+        probe identity-edge "${local.verification_urls.identity_edge}/realms/waooaw/.well-known/openid-configuration"
       EOT
       ]
     }
@@ -516,7 +577,7 @@ resource "azurerm_container_app_job" "verification" {
     }
   }
 
-  depends_on = [azurerm_container_app.member, azurerm_container_app.keycloak]
+  depends_on = [azurerm_container_app.member, azurerm_container_app.keycloak, azurerm_container_app.identity_edge]
 }
 
 resource "azurerm_role_assignment" "verification_job_operator" {

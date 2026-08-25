@@ -27,7 +27,7 @@ def read_contract(relative_path: str) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def test_live_inventory_requires_pinned_keycloak_dependency(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_live_inventory_requires_pinned_identity_dependencies(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(goal006_live_inventory, "validate_registry_manifest", lambda manifest: [])
     images = {
         member: f"ghcr.io/dlai-sd/{member}@sha256:{'a' * 64}"
@@ -41,6 +41,13 @@ def test_live_inventory_requires_pinned_keycloak_dependency(monkeypatch: pytest.
         {
             "name": "ca-demo-keycloak",
             "image": goal006_live_inventory.KEYCLOAK_IMAGE,
+            "provisioningState": "Succeeded",
+        }
+    )
+    inventory.append(
+        {
+            "name": "ca-demo-identity-edge",
+            "image": goal006_live_inventory.IDENTITY_EDGE_IMAGE,
             "provisioningState": "Succeeded",
         }
     )
@@ -135,17 +142,20 @@ def test_private_boundaries_and_key_vault_references_are_explicit() -> None:
     assert 'role_definition_name = "Container Apps Jobs Operator"' in contract
 
 
-def test_internal_verification_bypasses_founder_restricted_public_ingress() -> None:
+def test_internal_verification_uses_the_identity_edge() -> None:
     contract = read_contract("modules/workload/main.tf")
     verification_job = contract.split(
         'resource "azurerm_container_app_job" "verification"', 1
     )[1]
 
     assert 'web               = "http://ca-${var.environment}-web"' in contract
-    assert 'keycloak          = "http://ca-${var.environment}-keycloak"' in contract
+    assert (
+        'identity_edge     = "https://ca-${var.environment}-identity-edge.'
+        '${var.container_app_environment_default_domain}"'
+    ) in contract
     assert 'probe web "${local.verification_urls.web}/"' in verification_job
     assert 'probe business-platform "${local.verification_urls.business_platform}/health/ready"' in verification_job
-    assert 'probe keycloak "${local.verification_urls.keycloak}/realms/waooaw/.well-known/openid-configuration"' in verification_job
+    assert 'probe identity-edge "${local.verification_urls.identity_edge}/realms/waooaw/.well-known/openid-configuration"' in verification_job
     assert "local.service_urls.web" not in verification_job
     assert "local.service_urls.keycloak" not in verification_job
 
@@ -165,12 +175,80 @@ def test_keycloak_realm_import_matches_the_web_oidc_contract() -> None:
     assert "oidc-hardcoded-claim-mapper" in contract
     assert '"claim.value" = "00000000-0000-0000-0000-000000000001"' in contract
     assert "audience_mapper" in contract
+    assert "realm_roles_mapper" in contract
+    assert 'protocolMapper = "oidc-usermodel-realm-role-mapper"' in contract
+    assert '"claim.name"           = "realm_access.roles"' in contract
+    assert '"userinfo.token.claim" = "true"' in contract
     assert "--import-realm" in keycloak
     assert "/opt/keycloak/data/import/waooaw-realm.json" in keycloak
     assert "until /opt/keycloak/bin/kcadm.sh" not in keycloak
     assert 'name  = "KEYCLOAK_ADMIN"' in keycloak
     assert 'name        = "KEYCLOAK_ADMIN_PASSWORD"' in keycloak
+    assert "printf '%s'" in keycloak
+    assert "printf '%%s'" not in keycloak
+    assert 'name  = "KC_HOSTNAME"' in keycloak
+    assert 'value = local.service_urls.identity_edge' in keycloak
+    assert 'name  = "KC_PROXY_HEADERS"' in keycloak
+    assert 'value = "xforwarded"' in keycloak
+    assert re.search(r"external_enabled\s*=\s*false", keycloak)
+    assert "allow_insecure_connections" not in keycloak
+    assert "min_replicas = 1" in keycloak
+    assert "ip_security_restriction" not in keycloak
     assert "KC_BOOTSTRAP_ADMIN" not in keycloak
+
+
+def test_identity_edge_exposes_only_customer_authentication_paths() -> None:
+    contract = read_contract("modules/workload/main.tf")
+    policy = read_contract("modules/workload/identity-edge.conf.tftpl")
+    identity_edge = contract.split(
+        'resource "azurerm_container_app" "identity_edge"', 1
+    )[1].split('resource "azurerm_container_app_job" "verification"', 1)[0]
+
+    assert goal006_live_inventory.IDENTITY_EDGE_IMAGE in identity_edge
+    assert "external_enabled = true" in identity_edge
+    assert "min_replicas = 1" in identity_edge
+    assert "ip_security_restriction" not in identity_edge
+    assert "templatefile(" in contract
+    assert "identity-edge.conf.tftpl" in contract
+    assert "base64 -d > /tmp/nginx.conf" in identity_edge
+    assert "server ca-${environment}-keycloak.internal.${default_domain}:443;" in policy
+    assert "proxy_http_version 1.1;" in policy
+    assert "proxy_ssl_server_name on;" in policy
+    assert (
+        "proxy_ssl_name ca-${environment}-keycloak.internal.${default_domain};"
+    ) in policy
+    assert (
+        "proxy_set_header Host "
+        "ca-${environment}-keycloak.internal.${default_domain};"
+    ) in policy
+    assert "proxy_pass http://keycloak" not in policy
+    for path in (
+        "/realms/waooaw/.well-known/",
+        "/realms/waooaw/protocol/openid-connect/",
+        "/realms/waooaw/login-actions/",
+        "/realms/waooaw/broker/",
+        "/resources/",
+    ):
+        assert f"location ^~ {path}" in policy
+    assert "location / { return 404; }" in policy
+    for denied_path in ("/admin", "/management", "/metrics", "/health"):
+        assert f"location ^~ {denied_path}" not in policy
+
+
+def test_runtime_uses_public_identity_edge_while_keycloak_stays_internal() -> None:
+    contract = read_contract("modules/workload/main.tf")
+
+    assert 'identity_edge         = "https://ca-${var.environment}-identity-edge.' in contract
+    assert 'keycloak              = "http://ca-${var.environment}-keycloak"' in contract
+    for setting in (
+        "Keycloak__Authority",
+        "KEYCLOAK_ISSUER",
+        "KEYCLOAK_JWKS_URL",
+        "KC_HOSTNAME",
+    ):
+        assert setting in contract
+    assert contract.count("local.service_urls.identity_edge") == 5
+    assert 'KEYCLOAK_ISSUER       = "${local.service_urls.keycloak}' not in contract
 
 
 def test_each_release_member_has_its_own_identity_and_secret_scope() -> None:
@@ -312,6 +390,20 @@ def test_post_deploy_verification_retains_each_container_log() -> None:
     assert "functional-constitutional-health.log" in workflow
     assert "Failed|Stopped)" in workflow
     assert "verification timed out with status" in workflow
+
+
+def test_post_deploy_verification_requires_the_exact_latest_revision() -> None:
+    workflow = (REPO_ROOT / ".github/workflows/post-deploy-verify.yaml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "identity-edge" in workflow
+    assert "properties.latestRevisionName" in workflow
+    assert "properties.latestReadyRevisionName" in workflow
+    assert 'test "$latest_revision" = "$latest_ready_revision"' in workflow
+    assert "az containerapp revision show" in workflow
+    assert 'properties.provisioningState == "Provisioned"' in workflow
+    assert 'properties.healthState == "Healthy"' in workflow
 
 
 def test_demo_review_ingress_is_founder_restricted_and_other_environments_remain_private() -> None:
