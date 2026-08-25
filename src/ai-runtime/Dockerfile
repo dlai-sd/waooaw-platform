@@ -1,3 +1,5 @@
+# Implements: architecture/reference/agents/platform-it-expert-agent.md Skill 17
+# Constitutional basis: C-059 (Implementation Traceability)
 FROM python:3.12-slim-bookworm AS dependencies
 WORKDIR /install
 COPY src/ai-runtime/requirements.txt .
@@ -9,5 +11,6 @@ WORKDIR /app
 COPY --from=dependencies /install/packages /usr/local
 COPY --chown=waooaw:waooaw src/ai-runtime/ .
 USER waooaw
+RUN python -c "import main"
 EXPOSE 5004
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5004"]

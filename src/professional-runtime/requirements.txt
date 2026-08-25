@@ -1,3 +1,5 @@
+# Implements: architecture/reference/agents/platform-it-expert-agent.md Skill 17
+# Constitutional basis: C-059 (Implementation Traceability)
 # requirements-professional-runtime.txt
 # Reference dependency file for src/professional-runtime/
 # Constitutional basis: ADR-005 (PAAS isolation), ADR-015 (Temporal), ADR-018 (Emergency Stop)
@@ -36,4 +38,5 @@ opentelemetry-instrumentation-fastapi==0.49b2
 opentelemetry-exporter-otlp==1.28.2
 
 # ─── Utilities ───────────────────────────────────────────────────────────────
+cryptography==50.0.0
 python-multipart==0.0.32
