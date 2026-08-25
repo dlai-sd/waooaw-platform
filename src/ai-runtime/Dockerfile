@@ -9,5 +9,6 @@ WORKDIR /app
 COPY --from=dependencies /install/packages /usr/local
 COPY --chown=waooaw:waooaw src/ai-runtime/ .
 USER waooaw
+RUN python -c "import main"
 EXPOSE 5004
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5004"]

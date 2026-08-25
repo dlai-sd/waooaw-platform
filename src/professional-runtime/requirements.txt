@@ -36,4 +36,5 @@ opentelemetry-instrumentation-fastapi==0.49b2
 opentelemetry-exporter-otlp==1.28.2
 
 # ─── Utilities ───────────────────────────────────────────────────────────────
+cryptography==50.0.0
 python-multipart==0.0.32
