@@ -146,3 +146,34 @@ merge. It does not claim that PR #367's changed workflow has executed in Azure: 
 a release SHA that is not current `main`. After Founder review and merge, one trusted Demo apply is
 still required to prove the submitted browser IPv4 persistence, automatic lease, foundation-cache
 miss/hit behavior, conditional seeding, parallel probes, and reused release evidence end to end.
+
+## Post-Merge Attempt 1 - Scoped RBAC Preflight Failure
+
+| Field | Value |
+|---|---|
+| Workflow run | `32971678939` |
+| Trusted release | CI run `32970620994`; source `a0fd4e9e3f068ac9f6f0c7efd3304b921db2abe3` |
+| Requested access | `4.240.18.226/32` |
+| Result | FAIL before configuration, Terraform or workload mutation |
+| Cleanup | PASS; cleanup execution `goal006-demo-runner-cleanup-8naos0r` succeeded |
+
+The exact-six release artifact was downloaded locally and
+`goal006_registry_manifest.py` returned `{"passed": true, "violations": []}`. Authorization,
+environment resolution, broker execution and ephemeral runner registration passed. The correlated
+runner `goal006-demo-32971678939-1` came online with the exact run labels and accepted the private
+job.
+
+The private job failed at `az role assignment list --all --include-inherited`. No configuration,
+lease, foundation, credential or workload step ran. Live web ingress remained
+`49.36.51.221/32`, and independent verification was correctly skipped.
+
+A human control-plane query proved client `60c07330-4cc1-4e12-95a2-adc0966f1941` already has all
+five required assignments at the exact state-account and Demo resource-group scopes. No RBAC grant
+was missing and no permission was added. The defect was the subscription-wide self-enumeration,
+which exceeded the deployment identity's read boundary before the exact-scope assertions could run.
+
+The follow-up repair replaces the broad query with separate `--scope` queries for the state account
+and selected environment resource group, combines those records, and retains all five exact-role
+assertions. Local qualification passed the focused contract, pinned actionlint and the complete
+pipeline suite (1,246 tests). The deployment may be retried only after this repair reaches trusted
+`main`.
