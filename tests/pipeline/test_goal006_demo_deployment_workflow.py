@@ -130,6 +130,44 @@ def test_private_workload_inputs_and_temporary_resources_are_environment_scoped(
     assert WORKFLOW.count("set -euo pipefail") >= 2
 
 
+def test_expired_lease_fails_before_foundation_plan_and_apply_renewal_is_etag_bound() -> None:
+    configuration = WORKFLOW.split("      - name: Download Demo configuration with OIDC", 1)[1].split(
+        "      - name: Capture configuration storage diagnostics", 1
+    )[0]
+
+    assert configuration.count("properties.etag") == 3
+    assert 'test "$etag_before" = "$etag_after"' in configuration
+    assert "REQUESTED_LEASE_EXPIRES_AT" in configuration
+    assert "TARGET_ENVIRONMENT" in configuration
+    assert 'if test "$TARGET_ENVIRONMENT" = prod' in configuration
+    assert 'test -z "$REQUESTED_LEASE_EXPIRES_AT"' in configuration
+    assert "--expires-at \"$REQUESTED_LEASE_EXPIRES_AT\"" in configuration
+    assert "--expires-at '${{ inputs.lease_expires_at }}'" not in configuration
+    assert "scripts/goal006_lease.py" in configuration
+    assert '--if-match "$etag_after"' in configuration
+    assert 'test "$renewed_sha256" = "$verified_sha256"' in configuration
+    assert "previous_etag" in configuration
+    assert "renewed_etag" in configuration
+    assert "configuration-lease-renewal.json" in WORKFLOW
+    assert "configuration-lease-validation.json" in WORKFLOW
+    assert "configuration-renewal-verification-attempts.jsonl" in WORKFLOW
+    assert WORKFLOW.index("configuration-lease-validation.json") < WORKFLOW.index(
+        "      - name: Terraform foundation plan"
+    )
+
+
+def test_plan_policy_reports_the_plan_scope() -> None:
+    foundation = WORKFLOW.split("      - name: Terraform foundation plan", 1)[1].split(
+        "      - name: Terraform foundation apply", 1
+    )[0]
+    workload = WORKFLOW.split("      - name: Terraform workload plan", 1)[1].split(
+        "      - name: Terraform workload apply", 1
+    )[0]
+
+    assert "--scope foundation" in foundation
+    assert "--scope workload" in workload
+
+
 def test_private_seeder_retains_diagnostics_before_deletion() -> None:
     private_job = WORKFLOW.split("  terraform:", 1)[1].split("  cleanup-private:", 1)[0]
 

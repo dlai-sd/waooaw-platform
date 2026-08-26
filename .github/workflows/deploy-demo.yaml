@@ -19,6 +19,10 @@ on:
         options:
           - enforce
           - suppress-for-pipeline-build
+      lease_expires_at:
+        description: "Future RFC3339 expiry required for an apply; leave empty for plan"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -43,6 +47,7 @@ jobs:
           DISPATCH_REF: ${{ github.ref }}
           EXECUTION_MODE: ${{ inputs.execution }}
           COST_CONTROLS: ${{ inputs.cost_controls }}
+          LEASE_EXPIRES_AT: ${{ inputs.lease_expires_at }}
           GH_TOKEN: ${{ github.token }}
         run: |
           case "$DISPATCH_ACTOR" in
@@ -51,6 +56,13 @@ jobs:
           esac
           test "$DISPATCH_REF" = "refs/heads/main"
           case "$EXECUTION_MODE" in plan|apply) ;; *) exit 1 ;; esac
+          if test "$EXECUTION_MODE" = plan; then
+            test -z "$LEASE_EXPIRES_AT"
+          else
+            test -n "$LEASE_EXPIRES_AT"
+            expiry_epoch=$(date -u -d "$LEASE_EXPIRES_AT" +%s)
+            test "$expiry_epoch" -gt "$(date -u +%s)"
+          fi
           case "$COST_CONTROLS" in enforce|suppress-for-pipeline-build) ;; *) exit 1 ;; esac
           latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
           release_run_id=$(gh api \
@@ -75,6 +87,7 @@ jobs:
       release_sha: ${{ needs.authorize-demo.outputs.release_sha }}
       apply: ${{ inputs.execution == 'apply' }}
       enforce_cost_controls: ${{ inputs.cost_controls == 'enforce' }}
+      lease_expires_at: ${{ inputs.lease_expires_at }}
     secrets: inherit
 
   verify-demo:

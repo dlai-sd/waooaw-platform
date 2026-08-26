@@ -18,6 +18,9 @@ on:
       enforce_cost_controls:
         required: true
         type: boolean
+      lease_expires_at:
+        required: false
+        type: string
     outputs:
       verification_client_id:
         value: ${{ jobs.terraform.outputs.verification_client_id }}
@@ -337,13 +340,79 @@ jobs:
 
       - name: Download Demo configuration with OIDC
         id: configuration
+        env:
+          REQUESTED_LEASE_EXPIRES_AT: ${{ inputs.lease_expires_at }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
+          etag_before=$(az storage blob show \
+            --account-name "$TFSTATE_STORAGE_ACCOUNT" \
+            --container-name "$CONFIG_CONTAINER" \
+            --name "$CONFIG_BLOB" \
+            --auth-mode login \
+            --query properties.etag -o tsv)
           python3 scripts/goal006_storage_download.py \
             --account-name "$TFSTATE_STORAGE_ACCOUNT" \
             --container-name "$CONFIG_CONTAINER" \
             --blob-name "$CONFIG_BLOB" \
             --output workload-configuration.json \
             --evidence configuration-download-attempts.jsonl
+          etag_after=$(az storage blob show \
+            --account-name "$TFSTATE_STORAGE_ACCOUNT" \
+            --container-name "$CONFIG_CONTAINER" \
+            --name "$CONFIG_BLOB" \
+            --auth-mode login \
+            --query properties.etag -o tsv)
+          test "$etag_before" = "$etag_after"
+          if test "$TARGET_ENVIRONMENT" = prod; then
+            test -z "$REQUESTED_LEASE_EXPIRES_AT"
+          else
+            if test '${{ inputs.apply }}' = true; then
+              issued_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+              python3 scripts/goal006_lease.py \
+                --configuration workload-configuration.json \
+                --issued-at "$issued_at" \
+                --expires-at "$REQUESTED_LEASE_EXPIRES_AT" \
+                --renewed-output workload-configuration.renewed.json \
+                > configuration-lease-renewal.json
+              renewed_sha256=$(sha256sum workload-configuration.renewed.json | cut -d' ' -f1)
+              az storage blob upload \
+                --account-name "$TFSTATE_STORAGE_ACCOUNT" \
+                --container-name "$CONFIG_CONTAINER" \
+                --name "$CONFIG_BLOB" \
+                --file workload-configuration.renewed.json \
+                --auth-mode login \
+                --overwrite \
+                --if-match "$etag_after" \
+                --only-show-errors \
+                --output none
+              renewed_etag=$(az storage blob show \
+                --account-name "$TFSTATE_STORAGE_ACCOUNT" \
+                --container-name "$CONFIG_CONTAINER" \
+                --name "$CONFIG_BLOB" \
+                --auth-mode login \
+                --query properties.etag -o tsv)
+              python3 scripts/goal006_storage_download.py \
+                --account-name "$TFSTATE_STORAGE_ACCOUNT" \
+                --container-name "$CONFIG_CONTAINER" \
+                --blob-name "$CONFIG_BLOB" \
+                --output workload-configuration.verified.json \
+                --evidence configuration-renewal-verification-attempts.jsonl
+              verified_sha256=$(sha256sum workload-configuration.verified.json | cut -d' ' -f1)
+              test "$renewed_sha256" = "$verified_sha256"
+              jq \
+                --arg previous_etag "$etag_after" \
+                --arg renewed_etag "$renewed_etag" \
+                --arg sha256 "$verified_sha256" \
+                '. + {previous_etag: $previous_etag, renewed_etag: $renewed_etag, verified_sha256: $sha256}' \
+                configuration-lease-renewal.json > configuration-lease-renewal.bound.json
+              mv configuration-lease-renewal.bound.json configuration-lease-renewal.json
+              mv workload-configuration.verified.json workload-configuration.json
+              rm workload-configuration.renewed.json
+            fi
+            python3 scripts/goal006_lease.py \
+              --configuration workload-configuration.json \
+              > configuration-lease-validation.json
+          fi
           manifest_digest="sha256:$(sha256sum registry-release-manifest.json | cut -d' ' -f1)"
           jq --arg manifest_digest "$manifest_digest" \
             '.manifest_digest = $manifest_digest' workload-configuration.json > workload-configuration.bound.json
@@ -414,7 +483,9 @@ jobs:
           terraform validate
           terraform plan -input=false -lock-timeout=5m -out=foundation.tfplan
           terraform show -json foundation.tfplan > foundation-plan.json
-          python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" --plan foundation-plan.json
+          python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
+            --scope foundation \
+            --plan foundation-plan.json
 
       - name: Terraform foundation apply
         if: inputs.apply
@@ -633,7 +704,9 @@ jobs:
           terraform validate
           terraform plan -input=false -lock-timeout=5m -out=workload.tfplan
           terraform show -json workload.tfplan > workload-plan.json
-          python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" --plan workload-plan.json
+          python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
+            --scope workload \
+            --plan workload-plan.json
 
       - name: Terraform workload apply
         if: inputs.apply
@@ -678,6 +751,9 @@ jobs:
             actual-cost.json
             forecast-cost.json
             configuration-download-attempts.jsonl
+            configuration-lease-renewal.json
+            configuration-lease-validation.json
+            configuration-renewal-verification-attempts.jsonl
             configuration-storage-diagnostics.json
             configuration-container-diagnostics.json
             secret-seeder-job-definition.json

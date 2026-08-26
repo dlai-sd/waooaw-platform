@@ -41,25 +41,31 @@ def destructive_changes(plan: dict[str, Any]) -> list[str]:
     return destructive
 
 
-def enforce_foundation_plan(plan: dict[str, Any]) -> None:
-    """Reject deletion and replacement in an application foundation plan."""
+def enforce_plan(plan: dict[str, Any], scope: str) -> None:
+    """Reject deletion and replacement in an application plan."""
     destructive = destructive_changes(plan)
     if destructive:
         raise ValueError(
-            "Foundation plan contains delete or replacement actions: "
+            f"{scope.capitalize()} plan contains delete or replacement actions: "
             + ", ".join(destructive)
         )
+
+
+def enforce_foundation_plan(plan: dict[str, Any]) -> None:
+    """Preserve the foundation-specific policy API for existing callers."""
+    enforce_plan(plan, "foundation")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--plan", required=True, type=Path)
+    parser.add_argument("--scope", required=True, choices=("foundation", "workload"))
     arguments = parser.parse_args()
     try:
         plan = json.loads(arguments.plan.read_text(encoding="utf-8"))
         if not isinstance(plan, dict):
             raise ValueError("Terraform plan JSON must be an object")
-        enforce_foundation_plan(plan)
+        enforce_plan(plan, arguments.scope)
     except (OSError, json.JSONDecodeError, ValueError) as error:
         parser.error(str(error))
     print(json.dumps({"status": "PASS", "destructive_changes": 0}, sort_keys=True))
