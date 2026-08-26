@@ -602,11 +602,11 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert workflow.index("https://ghcr.io/v2/") < workflow.index("--ghcr-packages-public-verified")
     assert workflow.count('-backend-config="use_oidc=true"') == 2
     assert workflow.count('-backend-config="use_azuread_auth=true"') == 2
-    assert "Enforce current Demo-only authorization" in workflow
+    assert "Enforce selected environment authorization" in workflow
     assert 'EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy-demo.yaml@refs/heads/main' in workflow
-    assert 'test "$TARGET_ENVIRONMENT" = "demo"' in workflow
+    assert 'case "$TARGET_ENVIRONMENT" in demo|uat|prod)' in workflow
     assert 'case "$APPLY_REQUESTED" in true|false)' in workflow
-    assert workflow.index("Enforce current Demo-only authorization") < workflow.index("azure/login@v2")
+    assert workflow.index("Enforce selected environment authorization") < workflow.index("azure/login@v2")
     assert "Reject stale release before cloud access" in workflow
     assert 'timeframe:"Custom"' in workflow.replace(" ", "")
     assert "Verify bootstrap RBAC and required Azure providers" in workflow
@@ -626,14 +626,14 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
         "Verify subscription budget"
     )
     assert workflow.index("Verify bootstrap RBAC and required Azure providers") < workflow.index(
-        "Download Demo configuration with OIDC"
+        "Download environment configuration with OIDC"
     )
     assert "Open temporary state firewall rule" not in workflow
     assert "Close state firewall rule" not in workflow
     assert "network-rule add" not in workflow
     assert "network-rule remove" not in workflow
     assert workflow.index("Verify subscription budget") < workflow.index("Enforce workload cost boundary")
-    assert workflow.index("Download Demo configuration with OIDC") < workflow.index(
+    assert workflow.index("Download environment configuration with OIDC") < workflow.index(
         "Enforce workload cost boundary"
     )
     assert "WAOOAW_PLATFORM_" not in workflow
@@ -674,9 +674,18 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "secret-seeder-job.json" in workflow
     assert "secret-seeder-console.log" in workflow
     assert workflow.index("capture_seeder_evidence()") < workflow.index("Delete private credential seeder")
-    assert workflow.count("if: inputs.apply") == 8
+    assert workflow.count("if: inputs.apply") == 10
+    assert '--context "state_account=$TFSTATE_STORAGE_ACCOUNT"' in workflow
+    assert "if: steps.foundation-cache.outputs.cache_hit != 'true'" in workflow
+    assert "if: inputs.apply && steps.foundation-cache.outputs.cache_hit != 'true'" in workflow
+    assert "for output_name in container_app_environment_id key_vault_id deployment_identity_id" in workflow
+    assert 'az resource show --ids "$resource_id" --output none || live_valid=false' in workflow
+    assert 'cache_reason="live-resource-missing"' in workflow
+    assert "goal006_foundation_cache.py create" in workflow
+    assert '--name "$FOUNDATION_CACHE_BLOB"' in workflow
+    assert workflow.count("steps.credential-inventory.outputs.seeding_required == 'true'") == 3
     assert "Delete private credential seeder" in workflow
-    assert "if: always() && steps.foundation.outcome == 'success'" in workflow
+    assert "if: always() && steps.credential-inventory.outputs.seeding_required == 'true'" in workflow
     assert "--key-vault-id '${{ steps.foundation.outputs.key_vault_id }}'" in workflow
     assert workflow.index("terraform apply -input=false -auto-approve foundation.tfplan") < workflow.index(
         "Create private digest-pinned credential seeder"
@@ -763,7 +772,7 @@ def test_oidc_workflows_do_not_depend_on_github_platform_identifiers() -> None:
         assert variable not in workflows
 
 
-def test_founder_demo_is_the_only_authorized_deployment_path() -> None:
+def test_environment_deployment_is_authorized_without_changing_promotion_state() -> None:
     demo = (REPO_ROOT / ".github/workflows/deploy-demo.yaml").read_text(encoding="utf-8")
     workflow = (REPO_ROOT / ".github/workflows/promote.yaml").read_text(encoding="utf-8")
 
@@ -779,24 +788,22 @@ def test_founder_demo_is_the_only_authorized_deployment_path() -> None:
     assert 'artifact_name="goal006-exact-six-release-$latest_main_sha"' in demo
     assert 'test -n "$release_run_id"' in demo
     assert 'test -n "$artifact_id"' in demo
-    assert "release_run_id: ${{ fromJSON(needs.authorize-demo.outputs.release_run_id) }}" in demo
-    assert "release_sha: ${{ needs.authorize-demo.outputs.release_sha }}" in demo
-    assert "environment: demo" in demo
+    assert "release_run_id: ${{ fromJSON(needs.authorize-deployment.outputs.release_run_id) }}" in demo
+    assert "release_sha: ${{ needs.authorize-deployment.outputs.release_sha }}" in demo
+    assert "environment: ${{ inputs.target_environment }}" in demo
+    assert "target_environment:" in demo
+    for environment in ("demo", "uat", "prod"):
+        assert f"          - {environment}" in demo
     assert "default: plan" in demo
     assert "- plan" in demo
     assert "- apply" in demo
     assert "case \"$EXECUTION_MODE\" in plan|apply)" in demo
     assert "apply: ${{ inputs.execution == 'apply' }}" in demo
-    assert "cost_controls:" in demo
-    assert "default: enforce" in demo
-    assert "suppress-for-pipeline-build" in demo
-    assert 'case "$COST_CONTROLS" in enforce|suppress-for-pipeline-build)' in demo
-    assert "enforce_cost_controls: ${{ inputs.cost_controls == 'enforce' }}" in demo
+    assert "cost_controls:" not in demo
+    assert "enforce_cost_controls:" not in demo
     assert demo.count("if: inputs.execution == 'apply'") == 2
-    assert "verification_client_id: ${{ needs.deploy-demo.outputs.verification_client_id }}" in demo
-    assert "web_url: ${{ needs.deploy-demo.outputs.web_url }}" in demo
-    assert "environment: uat" not in demo
-    assert "environment: prod" not in demo
+    assert "verification_client_id: ${{ needs.deploy-environment.outputs.verification_client_id }}" in demo
+    assert "web_url: ${{ needs.deploy-environment.outputs.web_url }}" in demo
     assert "UAT remains prohibited until explicit Founder acceptance" in workflow
     assert "exit 1" in workflow
     assert "uses: ./.github/workflows/deploy-environment.yaml" not in workflow
@@ -809,7 +816,8 @@ def test_founder_demo_is_the_only_authorized_deployment_path() -> None:
     )
     assert "ARM_CLIENT_ID: ${{ inputs.verification_client_id }}" in verification
     assert "WAOOAW_PLATFORM_VERIFICATION_CLIENT_ID" not in verification
-    assert 'test "$TARGET_ENVIRONMENT" = "demo"' in verification
+    assert 'case "$TARGET_ENVIRONMENT" in demo|uat|prod)' in verification
+    assert "Verify reusable release evidence" in verification
     assert "Verify returned Web URL binds to the deployed app ingress" in verification
     assert "Verify active healthy revisions" in verification
     assert "Run internal functional verification" in verification

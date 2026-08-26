@@ -8,12 +8,15 @@ WORKFLOW = Path(".github/workflows/deploy-environment.yaml").read_text(
 )
 
 
-def test_demo_deployment_uses_qualified_private_runner_lifecycle() -> None:
+def test_environment_deployment_uses_qualified_private_runner_lifecycle() -> None:
+    assert "  resolve-environment:" in WORKFLOW
     assert "  start-broker:" in WORKFLOW
-    assert "needs: start-broker" in WORKFLOW
-    assert "runs-on: [self-hosted, goal006-demo-private]" in WORKFLOW
+    assert "needs: resolve-environment" in WORKFLOW
+    assert "needs: [resolve-environment, start-broker]" in WORKFLOW
+    assert "${{ needs.resolve-environment.outputs.runner_label }}" in WORKFLOW
+    assert "goal006-demo-private" not in WORKFLOW
     assert "  cleanup-private:" in WORKFLOW
-    assert "needs: [start-broker, terraform]" in WORKFLOW
+    assert "needs: [resolve-environment, start-broker, terraform]" in WORKFLOW
     assert "if: always()" in WORKFLOW
     assert WORKFLOW.count("goal006_runner_execution.py broker") == 1
     assert WORKFLOW.count("goal006_runner_execution.py cleanup") == 1
@@ -70,10 +73,21 @@ def test_private_credential_seeding_preserves_existing_values() -> None:
     seeder = WORKFLOW.split("seeder_script=", 1)[1].split("\n", 1)[0]
 
     assert "az keyvault secret show" in seeder
-    assert 'if az keyvault secret show --vault-name "$KEY_VAULT_NAME" --name "$name"' in seeder
+    assert 'if secret_json=$(az keyvault secret show --vault-name "$KEY_VAULT_NAME" --name "$name"' in seeder
+    assert "az keyvault secret set-attributes" in seeder
+    assert 'goal006-credential-schema="$CREDENTIAL_SCHEMA"' in seeder
     assert 'echo "credential_status name=$name status=preserved"' in seeder
     assert 'echo "credential_status name=$name status=created"' in seeder
     assert seeder.index("az keyvault secret show") < seeder.index("/dev/urandom")
+
+
+def test_private_credential_seeding_runs_only_for_incomplete_inventory() -> None:
+    assert "      - name: Check credential inventory" in WORKFLOW
+    assert "credential-inventory.json" in WORKFLOW
+    assert WORKFLOW.count("steps.credential-inventory.outputs.seeding_required == 'true'") == 3
+    assert "schema-update-required" in WORKFLOW
+    assert "SecretNotFound" in WORKFLOW
+    assert "is disabled and will not be re-enabled automatically" in WORKFLOW
 
 
 def test_workload_plan_safely_adopts_the_live_identity_edge() -> None:
@@ -131,16 +145,20 @@ def test_private_workload_inputs_and_temporary_resources_are_environment_scoped(
 
 
 def test_expired_lease_fails_before_foundation_plan_and_apply_renewal_is_etag_bound() -> None:
-    configuration = WORKFLOW.split("      - name: Download Demo configuration with OIDC", 1)[1].split(
+    configuration = WORKFLOW.split("      - name: Download environment configuration with OIDC", 1)[1].split(
         "      - name: Capture configuration storage diagnostics", 1
     )[0]
 
     assert configuration.count("properties.etag") == 3
     assert 'test "$etag_before" = "$etag_after"' in configuration
     assert "REQUESTED_LEASE_EXPIRES_AT" in configuration
+    assert "REQUESTED_ACCESS_CIDR" in configuration
     assert "TARGET_ENVIRONMENT" in configuration
     assert 'if test "$TARGET_ENVIRONMENT" = prod' in configuration
     assert 'test -z "$REQUESTED_LEASE_EXPIRES_AT"' in configuration
+    assert 'test -z "$REQUESTED_ACCESS_CIDR"' in configuration
+    assert 'if test "$TARGET_ENVIRONMENT" = demo' in configuration
+    assert '.founder_ipv4_cidr = $access_cidr' in configuration
     assert "--expires-at \"$REQUESTED_LEASE_EXPIRES_AT\"" in configuration
     assert "--expires-at '${{ inputs.lease_expires_at }}'" not in configuration
     assert "scripts/goal006_lease.py" in configuration
@@ -202,14 +220,14 @@ def test_batch_cost_control_suppresses_every_azure_cost_call_with_evidence() -> 
     assert "Azure cost and budget calls are suppressed" in WORKFLOW
 
 
-def test_demo_deployment_cleanup_is_independent_and_retains_evidence() -> None:
+def test_environment_deployment_cleanup_is_independent_and_retains_evidence() -> None:
     cleanup = WORKFLOW.split("  cleanup-private:", 1)[1]
 
     assert "client-id: ${{ env.RUNNER_CLEANUP_CLIENT_ID }}" in cleanup
     assert "client-id: ${{ env.ARM_CLIENT_ID }}" not in cleanup
     assert '--private-job-conclusion "$PRIVATE_JOB_CONCLUSION"' in cleanup
     assert '--cleanup-execution-name "$execution"' in cleanup
-    assert 'cleanup/demo/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT.json' in cleanup
+    assert 'cleanup/${{ inputs.environment }}/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT.json' in cleanup
     assert "goal006-private-runner-cleanup-${{ github.run_id }}-${{ github.run_attempt }}" in cleanup
 
 
