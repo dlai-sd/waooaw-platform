@@ -119,7 +119,7 @@ jobs:
               .properties.active == true and
               .properties.provisioningState == "Provisioned" and
               .properties.healthState == "Healthy" and
-              (.properties.runningState | startswith("Running"))
+              ((.properties.runningState | startswith("Running")) or .properties.runningState == "ScaledToZero")
             ' "revision-evidence/$app-revision.json" >/dev/null
           done
 
@@ -183,12 +183,12 @@ jobs:
             sleep 10
           done
 
-      - name: Verify returned Web URL binds to the deployed revision
+      - name: Verify returned Web URL binds to the deployed app ingress
         env:
           EXPECTED_WEB_URL: ${{ inputs.web_url }}
         run: |
           live_fqdn=$(az containerapp show --resource-group 'waooaw-${{ inputs.environment }}-rg' \
-            --name 'ca-${{ inputs.environment }}-web' --query properties.latestRevisionFqdn -o tsv)
+            --name 'ca-${{ inputs.environment }}-web' --query properties.configuration.ingress.fqdn -o tsv)
           test "$EXPECTED_WEB_URL" = "https://$live_fqdn"
           jq -n \
             --arg environment '${{ inputs.environment }}' \
