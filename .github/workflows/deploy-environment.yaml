@@ -16,9 +16,13 @@ on:
         required: true
         type: boolean
       enforce_cost_controls:
-        required: true
+        required: false
         type: boolean
+        default: false
       lease_expires_at:
+        required: false
+        type: string
+      access_cidr:
         required: false
         type: string
     outputs:
@@ -33,22 +37,50 @@ permissions:
   id-token: write
 
 env:
-  ARM_CLIENT_ID: 60c07330-4cc1-4e12-95a2-adc0966f1941
   ARM_TENANT_ID: 0471534c-1bbe-40ab-ae65-3f721b62582c
   ARM_SUBSCRIPTION_ID: 2ed11839-6a0f-4eaa-bd94-44ca96ff5d84
-  RUNNER_RESOURCE_GROUP: waooaw-demo-runner-rg
-  RUNNER_BROKER_JOB: goal006-demo-runner-broker
-  RUNNER_CLEANUP_BROKER_JOB: goal006-demo-runner-cleanup
-  RUNNER_CLEANUP_CLIENT_ID: 0cbfdc62-b91f-44ee-ac27-90785b3d2eb5
-  RUNNER_JOB: goal006-demo-runner-job
-  TFSTATE_STORAGE_ACCOUNT: waooawp3tfstate2ed118
-  CLEANUP_EVIDENCE_CONTAINER: goal006-demo-runner-evidence
   EVIDENCE_RETENTION_DAYS: "90"
 
 jobs:
-  start-broker:
+  resolve-environment:
     runs-on: ubuntu-latest
-    environment: demo
+    outputs:
+      control_plane_client_id: ${{ steps.config.outputs.control_plane_client_id }}
+      cleanup_client_id: ${{ steps.config.outputs.cleanup_client_id }}
+      runner_resource_group: ${{ steps.config.outputs.runner_resource_group }}
+      runner_broker_job: ${{ steps.config.outputs.runner_broker_job }}
+      runner_cleanup_broker_job: ${{ steps.config.outputs.runner_cleanup_broker_job }}
+      runner_job: ${{ steps.config.outputs.runner_job }}
+      runner_label: ${{ steps.config.outputs.runner_label }}
+      state_storage_account_id: ${{ steps.config.outputs.state_storage_account_id }}
+      state_storage_account: ${{ steps.config.outputs.state_storage_account }}
+      cleanup_evidence_container: ${{ steps.config.outputs.cleanup_evidence_container }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.release_sha }}
+
+      - name: Resolve active environment configuration
+        id: config
+        env:
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          config=$(python3 scripts/goal006_environment_config.py --environment "$TARGET_ENVIRONMENT")
+          jq -e . >/dev/null <<< "$config"
+          for key in control_plane_client_id cleanup_client_id runner_resource_group \
+            runner_broker_job runner_cleanup_broker_job runner_job runner_label \
+            state_storage_account_id state_storage_account cleanup_evidence_container; do
+            echo "$key=$(jq -r --arg key "$key" '.[$key]' <<< "$config")" >> "$GITHUB_OUTPUT"
+          done
+
+  start-broker:
+    needs: resolve-environment
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      ARM_CLIENT_ID: ${{ needs.resolve-environment.outputs.control_plane_client_id }}
+      RUNNER_RESOURCE_GROUP: ${{ needs.resolve-environment.outputs.runner_resource_group }}
+      RUNNER_BROKER_JOB: ${{ needs.resolve-environment.outputs.runner_broker_job }}
     steps:
       - name: Require trusted current main
         env:
@@ -90,6 +122,11 @@ jobs:
             gh attestation verify "oci://$image" --repo "$GITHUB_REPOSITORY"
           done < <(jq -r '.images | to_entries[] | .value' "$manifest")
           cp "$manifest" registry-release-manifest.json
+          python scripts/goal006_release_verification.py create \
+            --release-sha '${{ inputs.release_sha }}' \
+            --release-run-id '${{ inputs.release_run_id }}' \
+            --manifest registry-release-manifest.json \
+            --record release-verification.json
 
       - name: Verify anonymous exact-six GHCR pulls
         run: |
@@ -116,7 +153,7 @@ jobs:
       - name: Verify immutable broker blueprint
         run: |
           python scripts/goal006_runner_bootstrap.py \
-            --environment demo \
+            --environment '${{ inputs.environment }}' \
             --manifest infrastructure/deployment-stacks/goal006-runner/bootstrap-manifest.json
 
       - name: Azure login with control-plane identity
@@ -175,7 +212,8 @@ jobs:
       - name: Start private signing broker
         run: |
           set -eu
-          runner_image=$(jq -er '.parameters.runnerImage.value' infrastructure/deployment-stacks/goal006-runner/demo.parameters.json)
+          runner_image=$(jq -er '.parameters.runnerImage.value' \
+            'infrastructure/deployment-stacks/goal006-runner/${{ inputs.environment }}.parameters.json')
           az containerapp job show \
             --resource-group "$RUNNER_RESOURCE_GROUP" \
             --name "$RUNNER_BROKER_JOB" \
@@ -215,30 +253,35 @@ jobs:
             cost-control.json
             forecast-cost.json
             registry-release-manifest.json
+            release-verification.json
           if-no-files-found: error
           retention-days: ${{ env.EVIDENCE_RETENTION_DAYS }}
 
   terraform:
     name: ${{ inputs.apply && 'Apply' || 'Plan' }} ${{ inputs.environment }}
-    needs: start-broker
-    runs-on: [self-hosted, goal006-demo-private]
+    needs: [resolve-environment, start-broker]
+    runs-on:
+      - self-hosted
+      - ${{ needs.resolve-environment.outputs.runner_label }}
     environment: ${{ inputs.environment }}
     outputs:
       verification_client_id: ${{ steps.foundation.outputs.verification_client_id }}
       web_url: ${{ steps.workload.outputs.web_url }}
     env:
+      ARM_CLIENT_ID: ${{ needs.resolve-environment.outputs.control_plane_client_id }}
       TFSTATE_RESOURCE_GROUP: waooaw-platform-rg
       TFSTATE_CONTAINER: tfstate
       TF_VAR_tfstate_resource_group: waooaw-platform-rg
-      TF_VAR_tfstate_storage_account: waooawp3tfstate2ed118
+      TF_VAR_tfstate_storage_account: ${{ needs.resolve-environment.outputs.state_storage_account }}
       TF_VAR_tfstate_container: tfstate
-      TF_VAR_tfstate_storage_account_id: /subscriptions/2ed11839-6a0f-4eaa-bd94-44ca96ff5d84/resourceGroups/waooaw-platform-rg/providers/Microsoft.Storage/storageAccounts/waooawp3tfstate2ed118
+      TF_VAR_tfstate_storage_account_id: ${{ needs.resolve-environment.outputs.state_storage_account_id }}
       CONFIG_CONTAINER: deployment-config
       CONFIG_BLOB: ${{ inputs.environment }}/workload-configuration.json
+      FOUNDATION_CACHE_BLOB: ${{ inputs.environment }}/foundation-cache.json
       SEEDER_IMAGE: mcr.microsoft.com/azure-cli@sha256:4faeb3c955086c3842d4f8cf0ff1d900ce3a1c68c6e6c6430c5e8a3cb882c5aa
       SEEDER_JOB: goal006-${{ inputs.environment }}-secret-seeder
     steps:
-      - name: Enforce current Demo-only authorization
+      - name: Enforce selected environment authorization
         env:
           CALLER_WORKFLOW_REF: ${{ github.workflow_ref }}
           EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy-demo.yaml@refs/heads/main
@@ -247,7 +290,7 @@ jobs:
           COST_CONTROLS_ENFORCED: ${{ inputs.enforce_cost_controls }}
         run: |
           test "$CALLER_WORKFLOW_REF" = "$EXPECTED_CALLER_WORKFLOW_REF"
-          test "$TARGET_ENVIRONMENT" = "demo"
+          case "$TARGET_ENVIRONMENT" in demo|uat|prod) ;; *) exit 1 ;; esac
           case "$APPLY_REQUESTED" in true|false) ;; *) exit 1 ;; esac
           case "$COST_CONTROLS_ENFORCED" in true|false) ;; *) exit 1 ;; esac
 
@@ -289,9 +332,9 @@ jobs:
           test "$ARM_SUBSCRIPTION_ID" = "2ed11839-6a0f-4eaa-bd94-44ca96ff5d84"
           test "$(az account show --query id -o tsv)" = "$ARM_SUBSCRIPTION_ID"
           test "$TFSTATE_RESOURCE_GROUP" = "waooaw-platform-rg"
-          test "$TFSTATE_STORAGE_ACCOUNT" = "waooawp3tfstate2ed118"
+          test -n "$TFSTATE_STORAGE_ACCOUNT"
           test "$TFSTATE_CONTAINER" = "tfstate"
-          test "$TF_VAR_tfstate_storage_account_id" = "/subscriptions/2ed11839-6a0f-4eaa-bd94-44ca96ff5d84/resourceGroups/waooaw-platform-rg/providers/Microsoft.Storage/storageAccounts/waooawp3tfstate2ed118"
+          test "$TF_VAR_tfstate_storage_account_id" = "/subscriptions/$ARM_SUBSCRIPTION_ID/resourceGroups/$TFSTATE_RESOURCE_GROUP/providers/Microsoft.Storage/storageAccounts/$TFSTATE_STORAGE_ACCOUNT"
           subscription_scope="/subscriptions/$ARM_SUBSCRIPTION_ID"
           state_scope="$TF_VAR_tfstate_storage_account_id"
           environment_scope="$subscription_scope/resourceGroups/waooaw-${{ inputs.environment }}-rg"
@@ -317,7 +360,7 @@ jobs:
           for namespace in Microsoft.App Microsoft.Authorization Microsoft.KeyVault Microsoft.ManagedIdentity Microsoft.Network Microsoft.Resources Microsoft.Storage; do
             state=$(az provider show --namespace "$namespace" --query registrationState -o tsv)
             test "$state" = "Registered" || {
-              echo "$namespace must be registered before Demo deployment (current state: $state)" >&2
+              echo "$namespace must be registered before ${{ inputs.environment }} deployment (current state: $state)" >&2
               exit 1
             }
           done
@@ -338,10 +381,11 @@ jobs:
           test "$amount" = "10000.0" || test "$amount" = "10000"
           jq -e '.properties.columns and .properties.rows' actual-cost.json >/dev/null
 
-      - name: Download Demo configuration with OIDC
+      - name: Download environment configuration with OIDC
         id: configuration
         env:
           REQUESTED_LEASE_EXPIRES_AT: ${{ inputs.lease_expires_at }}
+          REQUESTED_ACCESS_CIDR: ${{ inputs.access_cidr }}
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           etag_before=$(az storage blob show \
@@ -365,8 +409,18 @@ jobs:
           test "$etag_before" = "$etag_after"
           if test "$TARGET_ENVIRONMENT" = prod; then
             test -z "$REQUESTED_LEASE_EXPIRES_AT"
+            test -z "$REQUESTED_ACCESS_CIDR"
           else
             if test '${{ inputs.apply }}' = true; then
+              if test "$TARGET_ENVIRONMENT" = demo; then
+                test -n "$REQUESTED_ACCESS_CIDR"
+                jq --arg access_cidr "$REQUESTED_ACCESS_CIDR" \
+                  '.founder_ipv4_cidr = $access_cidr' \
+                  workload-configuration.json > workload-configuration.access.json
+                mv workload-configuration.access.json workload-configuration.json
+              else
+                test -z "$REQUESTED_ACCESS_CIDR"
+              fi
               issued_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
               python3 scripts/goal006_lease.py \
                 --configuration workload-configuration.json \
@@ -449,7 +503,74 @@ jobs:
             --forecast forecast-cost.json \
             --configuration workload-configuration.json
 
+      - name: Resolve foundation cache
+        id: foundation-cache
+        env:
+          APPLY_REQUESTED: ${{ inputs.apply }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          fingerprint=$(python3 scripts/goal006_foundation_cache.py fingerprint \
+            --environment "$TARGET_ENVIRONMENT" \
+            --context "subscription_id=$ARM_SUBSCRIPTION_ID" \
+            --context "state_resource_group=$TFSTATE_RESOURCE_GROUP" \
+            --context "state_account=$TFSTATE_STORAGE_ACCOUNT" \
+            --context "state_container=$TFSTATE_CONTAINER" \
+            --context "state_account_id=$TF_VAR_tfstate_storage_account_id")
+          cache_hit=false
+          cache_reason="not-requested"
+          if test "$APPLY_REQUESTED" = true; then
+            cache_reason=missing
+            cache_exists=$(az storage blob exists \
+              --account-name "$TFSTATE_STORAGE_ACCOUNT" \
+              --container-name "$CONFIG_CONTAINER" \
+              --name "$FOUNDATION_CACHE_BLOB" \
+              --auth-mode login \
+              --query exists -o tsv)
+            if test "$cache_exists" = true; then
+              az storage blob download \
+                --account-name "$TFSTATE_STORAGE_ACCOUNT" \
+                --container-name "$CONFIG_CONTAINER" \
+                --name "$FOUNDATION_CACHE_BLOB" \
+                --auth-mode login \
+                --file foundation-cache.json \
+                --overwrite \
+                --only-show-errors \
+                --output none
+              if python3 scripts/goal006_foundation_cache.py validate \
+                --environment "$TARGET_ENVIRONMENT" \
+                --fingerprint "$fingerprint" \
+                --record foundation-cache.json > foundation-cache-outputs.json; then
+                resource_group=$(jq -r '.resource_group_name' foundation-cache-outputs.json)
+                live_valid=true
+                az group show --name "$resource_group" --output none || live_valid=false
+                for output_name in container_app_environment_id key_vault_id deployment_identity_id; do
+                  resource_id=$(jq -r --arg name "$output_name" '.[$name]' foundation-cache-outputs.json)
+                  az resource show --ids "$resource_id" --output none || live_valid=false
+                done
+                if test "$live_valid" = true; then
+                  cache_hit=true
+                  cache_reason=verified
+                else
+                  cache_reason="live-resource-missing"
+                fi
+              else
+                cache_reason="fingerprint-or-contract-mismatch"
+              fi
+            fi
+          fi
+          jq -n \
+            --arg environment "$TARGET_ENVIRONMENT" \
+            --arg fingerprint "$fingerprint" \
+            --argjson cache_hit "$cache_hit" \
+            --arg reason "$cache_reason" \
+            '{environment: $environment, fingerprint: $fingerprint, cache_hit: $cache_hit, reason: $reason}' \
+            > foundation-cache-decision.json
+          echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
+          echo "cache_hit=$cache_hit" >> "$GITHUB_OUTPUT"
+
       - name: Terraform foundation plan
+        if: steps.foundation-cache.outputs.cache_hit != 'true'
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
         env:
           APPLY_REQUESTED: ${{ inputs.apply }}
@@ -488,8 +609,7 @@ jobs:
             --plan foundation-plan.json
 
       - name: Terraform foundation apply
-        if: inputs.apply
-        id: foundation
+        if: inputs.apply && steps.foundation-cache.outputs.cache_hit != 'true'
         working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation
         run: |
           latest_main_sha=$(curl --fail --silent --show-error \
@@ -498,19 +618,49 @@ jobs:
             "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" | jq -er '.object.sha')
           test '${{ inputs.release_sha }}' = "$latest_main_sha"
           terraform apply -input=false -auto-approve foundation.tfplan
-          {
-            echo "deployment_client_id=$(terraform output -raw deployment_client_id)"
-            echo "deployment_identity_id=$(terraform output -raw deployment_identity_id)"
-            echo "verification_client_id=$(terraform output -raw verification_client_id)"
-            echo "resource_group_name=$(terraform output -raw resource_group_name)"
-            echo "container_app_environment_id=$(terraform output -raw container_app_environment_id)"
-            echo "container_app_environment_name=$(terraform output -raw container_app_environment_name)"
-            echo "key_vault_id=$(terraform output -raw key_vault_id)"
-            echo "key_vault_name=$(terraform output -raw key_vault_name)"
-            echo "key_vault_uri=$(terraform output -raw key_vault_uri)"
-          } >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ github.token }}
+
+      - name: Resolve foundation outputs
+        if: inputs.apply
+        id: foundation
+        env:
+          CACHE_HIT: ${{ steps.foundation-cache.outputs.cache_hit }}
+          FINGERPRINT: ${{ steps.foundation-cache.outputs.fingerprint }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          if test "$CACHE_HIT" = true; then
+            outputs=$(cat foundation-cache-outputs.json)
+          else
+            terraform -chdir="infrastructure/terraform/phase2/environments/$TARGET_ENVIRONMENT/foundation" \
+              output -json > foundation-terraform-outputs.json
+            python3 scripts/goal006_foundation_cache.py create \
+              --environment "$TARGET_ENVIRONMENT" \
+              --fingerprint "$FINGERPRINT" \
+              --terraform-outputs foundation-terraform-outputs.json \
+              --output foundation-cache.json
+            outputs=$(python3 scripts/goal006_foundation_cache.py validate \
+              --environment "$TARGET_ENVIRONMENT" \
+              --fingerprint "$FINGERPRINT" \
+              --record foundation-cache.json)
+            az storage blob upload \
+              --account-name "$TFSTATE_STORAGE_ACCOUNT" \
+              --container-name "$CONFIG_CONTAINER" \
+              --name "$FOUNDATION_CACHE_BLOB" \
+              --auth-mode login \
+              --file foundation-cache.json \
+              --overwrite \
+              --only-show-errors \
+              --output none
+          fi
+          {
+            for key in deployment_client_id deployment_identity_id verification_client_id \
+              resource_group_name container_app_environment_id container_app_environment_name \
+              key_vault_id key_vault_name key_vault_uri; do
+              echo "$key=$(jq -r --arg key "$key" '.[$key]' <<< "$outputs")"
+            done
+          } >> "$GITHUB_OUTPUT"
 
       - name: Azure login with environment deployment OIDC identity
         if: inputs.apply
@@ -524,10 +674,56 @@ jobs:
         if: inputs.apply
         run: test "$(az account show --query id -o tsv)" = "$ARM_SUBSCRIPTION_ID"
 
-      - name: Create private digest-pinned credential seeder
+      - name: Check credential inventory
         if: inputs.apply
+        id: credential-inventory
+        env:
+          KEY_VAULT_NAME: ${{ steps.foundation.outputs.key_vault_name }}
+        run: |
+          set -euo pipefail
+          credential_names="constitutional-engine business-platform professional-runtime ai-runtime web billing-engine"
+          credential_schema=$(printf '%s\n%s\n' "$SEEDER_IMAGE" "$credential_names" | sha256sum | cut -d' ' -f1)
+          seeding_required=false
+          jq -n --arg schema "$credential_schema" '{schema: $schema, credentials: []}' > credential-inventory.json
+          for name in $credential_names; do
+            lookup_error=$(mktemp)
+            if az keyvault secret show --vault-name "$KEY_VAULT_NAME" --name "$name" -o json \
+              > credential.json 2>"$lookup_error"; then
+              rm -f "$lookup_error"
+              enabled=$(jq -r '.attributes.enabled' credential.json)
+              test "$enabled" = true || {
+                echo "Credential $name is disabled and will not be re-enabled automatically" >&2
+                exit 1
+              }
+              actual_schema=$(jq -r '.tags["goal006-credential-schema"] // ""' credential.json)
+              status=ready
+              if test "$actual_schema" != "$credential_schema"; then
+                status=schema-update-required
+                seeding_required=true
+              fi
+            elif grep -q "SecretNotFound" "$lookup_error"; then
+              rm -f "$lookup_error"
+              actual_schema=""
+              status=missing
+              seeding_required=true
+            else
+              cat "$lookup_error" >&2
+              rm -f "$lookup_error"
+              exit 1
+            fi
+            jq --arg name "$name" --arg status "$status" --arg schema "$actual_schema" \
+              '.credentials += [{name: $name, status: $status, schema: $schema}]' \
+              credential-inventory.json > credential-inventory.next.json
+            mv credential-inventory.next.json credential-inventory.json
+          done
+          echo "seeding_required=$seeding_required" >> "$GITHUB_OUTPUT"
+          echo "credential_schema=$credential_schema" >> "$GITHUB_OUTPUT"
+
+      - name: Create private digest-pinned credential seeder
+        if: inputs.apply && steps.credential-inventory.outputs.seeding_required == 'true'
         env:
           CONTAINER_APP_ENVIRONMENT_ID: ${{ steps.foundation.outputs.container_app_environment_id }}
+          CREDENTIAL_SCHEMA: ${{ steps.credential-inventory.outputs.credential_schema }}
           DEPLOYMENT_CLIENT_ID: ${{ steps.foundation.outputs.deployment_client_id }}
           DEPLOYMENT_IDENTITY_ID: ${{ steps.foundation.outputs.deployment_identity_id }}
           KEY_VAULT_NAME: ${{ steps.foundation.outputs.key_vault_name }}
@@ -543,13 +739,14 @@ jobs:
           test "$actual_digest" = "$expected_digest"
           az containerapp job delete --name "$SEEDER_JOB" --resource-group "$RESOURCE_GROUP" --yes --output none 2>/dev/null || true
           # shellcheck disable=SC2016
-          seeder_script='set -eu; az login --identity --client-id "$AZURE_CLIENT_ID" --allow-no-subscriptions --output none; for name in constitutional-engine business-platform professional-runtime ai-runtime web billing-engine; do lookup_error=$(mktemp); if az keyvault secret show --vault-name "$KEY_VAULT_NAME" --name "$name" --output none 2>"$lookup_error"; then rm -f "$lookup_error"; echo "credential_status name=$name status=preserved"; continue; fi; if ! grep -q "SecretNotFound" "$lookup_error"; then cat "$lookup_error" >&2; rm -f "$lookup_error"; exit 1; fi; rm -f "$lookup_error"; credential=$(head -c 48 /dev/urandom | base64 | tr -d "\n"); created=false; for attempt in 1 2 3 4 5 6; do if az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name "$name" --value "$credential" --output none; then created=true; echo "credential_status name=$name status=created"; break; fi; test "$attempt" != 6; sleep 10; done; unset credential; test "$created" = true; done'
+          seeder_script='set -eu; az login --identity --client-id "$AZURE_CLIENT_ID" --allow-no-subscriptions --output none; for name in constitutional-engine business-platform professional-runtime ai-runtime web billing-engine; do lookup_error=$(mktemp); if secret_json=$(az keyvault secret show --vault-name "$KEY_VAULT_NAME" --name "$name" -o json 2>"$lookup_error"); then rm -f "$lookup_error"; test "$(printf "%s" "$secret_json" | jq -r ".attributes.enabled")" = true || { echo "credential_status name=$name status=disabled" >&2; exit 1; }; az keyvault secret set-attributes --vault-name "$KEY_VAULT_NAME" --name "$name" --tags goal006-credential-schema="$CREDENTIAL_SCHEMA" --output none; echo "credential_status name=$name status=preserved"; continue; fi; if ! grep -q "SecretNotFound" "$lookup_error"; then cat "$lookup_error" >&2; rm -f "$lookup_error"; exit 1; fi; rm -f "$lookup_error"; credential=$(head -c 48 /dev/urandom | base64 | tr -d "\n"); created=false; for attempt in 1 2 3 4 5 6; do if az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name "$name" --value "$credential" --tags goal006-credential-schema="$CREDENTIAL_SCHEMA" --output none; then created=true; echo "credential_status name=$name status=created"; break; fi; test "$attempt" != 6; sleep 10; done; unset credential; test "$created" = true; done'
           jq -n \
             --arg name "$SEEDER_JOB" \
             --arg environment_id "$CONTAINER_APP_ENVIRONMENT_ID" \
             --arg identity_id "$DEPLOYMENT_IDENTITY_ID" \
             --arg image "$SEEDER_IMAGE" \
             --arg client_id "$DEPLOYMENT_CLIENT_ID" \
+            --arg credential_schema "$CREDENTIAL_SCHEMA" \
             --arg key_vault_name "$KEY_VAULT_NAME" \
             --arg script "$seeder_script" \
             '{
@@ -577,6 +774,7 @@ jobs:
                     args: ["-c", $script],
                     env: [
                       {name: "AZURE_CLIENT_ID", value: $client_id},
+                      {name: "CREDENTIAL_SCHEMA", value: $credential_schema},
                       {name: "KEY_VAULT_NAME", value: $key_vault_name}
                     ],
                     resources: {cpu: 0.25, memory: "0.5Gi"}
@@ -591,7 +789,7 @@ jobs:
             --output none
 
       - name: Run private credential seeder
-        if: inputs.apply
+        if: inputs.apply && steps.credential-inventory.outputs.seeding_required == 'true'
         id: seeder
         env:
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
@@ -733,7 +931,7 @@ jobs:
           echo "::error::Workload apply failed; managed resources were preserved for reconciliation"
 
       - name: Delete private credential seeder
-        if: always() && steps.foundation.outcome == 'success'
+        if: always() && steps.credential-inventory.outputs.seeding_required == 'true'
         env:
           RESOURCE_GROUP: ${{ steps.foundation.outputs.resource_group_name }}
         run: az containerapp job delete --name "$SEEDER_JOB" --resource-group "$RESOURCE_GROUP" --yes --output none
@@ -756,6 +954,9 @@ jobs:
             configuration-renewal-verification-attempts.jsonl
             configuration-storage-diagnostics.json
             configuration-container-diagnostics.json
+            credential-inventory.json
+            foundation-cache-decision.json
+            foundation-cache.json
             secret-seeder-job-definition.json
             secret-seeder-job.json
             secret-seeder-execution.json
@@ -770,9 +971,17 @@ jobs:
           retention-days: 90
 
   cleanup-private:
-    if: always()
-    needs: [start-broker, terraform]
+    if: always() && needs.resolve-environment.result == 'success'
+    needs: [resolve-environment, start-broker, terraform]
     runs-on: ubuntu-latest
+    env:
+      RUNNER_CLEANUP_CLIENT_ID: ${{ needs.resolve-environment.outputs.cleanup_client_id }}
+      RUNNER_RESOURCE_GROUP: ${{ needs.resolve-environment.outputs.runner_resource_group }}
+      RUNNER_BROKER_JOB: ${{ needs.resolve-environment.outputs.runner_broker_job }}
+      RUNNER_CLEANUP_BROKER_JOB: ${{ needs.resolve-environment.outputs.runner_cleanup_broker_job }}
+      RUNNER_JOB: ${{ needs.resolve-environment.outputs.runner_job }}
+      TFSTATE_STORAGE_ACCOUNT: ${{ needs.resolve-environment.outputs.state_storage_account }}
+      CLEANUP_EVIDENCE_CONTAINER: ${{ needs.resolve-environment.outputs.cleanup_evidence_container }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -790,7 +999,8 @@ jobs:
           PRIVATE_JOB_CONCLUSION: ${{ needs.terraform.result }}
         run: |
           set -eu
-          runner_image=$(jq -er '.parameters.runnerImage.value' infrastructure/deployment-stacks/goal006-runner/demo.parameters.json)
+          runner_image=$(jq -er '.parameters.runnerImage.value' \
+            'infrastructure/deployment-stacks/goal006-runner/${{ inputs.environment }}.parameters.json')
           az containerapp job show \
             --resource-group "$RUNNER_RESOURCE_GROUP" \
             --name "$RUNNER_CLEANUP_BROKER_JOB" \
@@ -830,14 +1040,14 @@ jobs:
             --format text > cleanup-job.log 2>&1 || true
           evidence_container_url="https://$TFSTATE_STORAGE_ACCOUNT.blob.core.windows.net/$CLEANUP_EVIDENCE_CONTAINER"
           python scripts/goal006_runner_execution.py pointer \
-            --environment demo \
+            --environment '${{ inputs.environment }}' \
             --run-id "$GITHUB_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT" \
             --private-job-conclusion "$PRIVATE_JOB_CONCLUSION" \
             --cleanup-execution-name "$execution" \
             --evidence-container-url "$evidence_container_url" \
             --output cleanup-record.json
-          grep -F "cleanup/demo/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT.json" cleanup-record.json
+          grep -F "cleanup/${{ inputs.environment }}/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT.json" cleanup-record.json
 
       - name: Verify zero active private executions
         run: |

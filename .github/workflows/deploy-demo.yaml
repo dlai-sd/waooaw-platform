@@ -1,26 +1,27 @@
-name: Founder Demo Deployment
+name: Environment Deployment
 
 on:
   workflow_dispatch:
     inputs:
+      target_environment:
+        description: "Deployment environment"
+        required: true
+        default: demo
+        type: choice
+        options:
+          - demo
+          - uat
+          - prod
       execution:
-        description: "Run a zero-resource foundation plan or the full Demo deployment"
+        description: "Plan or apply the selected environment"
         required: true
         default: plan
         type: choice
         options:
           - plan
           - apply
-      cost_controls:
-        description: "Enforce cost evidence or suppress Azure cost calls during pipeline build stabilization"
-        required: true
-        default: enforce
-        type: choice
-        options:
-          - enforce
-          - suppress-for-pipeline-build
-      lease_expires_at:
-        description: "Future RFC3339 expiry required for an apply; leave empty for plan"
+      access_ipv4:
+        description: "Demo apply only: public IPv4 shown by https://api.ipify.org"
         required: false
         type: string
 
@@ -30,24 +31,41 @@ permissions:
   id-token: write
 
 concurrency:
-  group: goal006-founder-demo
+  group: goal006-${{ inputs.target_environment }}-deployment
   cancel-in-progress: false
 
 jobs:
-  authorize-demo:
+  authorize-deployment:
     runs-on: ubuntu-latest
     outputs:
       release_run_id: ${{ steps.release.outputs.release_run_id }}
       release_sha: ${{ steps.release.outputs.release_sha }}
+      lease_expires_at: ${{ steps.dispatch.outputs.lease_expires_at }}
+      access_cidr: ${{ steps.dispatch.outputs.access_cidr }}
     steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Validate deployment inputs
+        id: dispatch
+        env:
+          TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
+          EXECUTION_MODE: ${{ inputs.execution }}
+          ACCESS_IPV4: ${{ inputs.access_ipv4 }}
+        run: |
+          normalized=$(python3 scripts/goal006_dispatch_inputs.py \
+            --environment "$TARGET_ENVIRONMENT" \
+            --execution "$EXECUTION_MODE" \
+            --access-ipv4 "$ACCESS_IPV4")
+          jq -e . >/dev/null <<< "$normalized"
+          echo "lease_expires_at=$(jq -r '.lease_expires_at' <<< "$normalized")" >> "$GITHUB_OUTPUT"
+          echo "access_cidr=$(jq -r '.access_cidr' <<< "$normalized")" >> "$GITHUB_OUTPUT"
+
       - name: Select trusted current-main release
         id: release
         env:
           DISPATCH_ACTOR: ${{ github.actor }}
           DISPATCH_REF: ${{ github.ref }}
           EXECUTION_MODE: ${{ inputs.execution }}
-          COST_CONTROLS: ${{ inputs.cost_controls }}
-          LEASE_EXPIRES_AT: ${{ inputs.lease_expires_at }}
           GH_TOKEN: ${{ github.token }}
         run: |
           case "$DISPATCH_ACTOR" in
@@ -56,14 +74,6 @@ jobs:
           esac
           test "$DISPATCH_REF" = "refs/heads/main"
           case "$EXECUTION_MODE" in plan|apply) ;; *) exit 1 ;; esac
-          if test "$EXECUTION_MODE" = plan; then
-            test -z "$LEASE_EXPIRES_AT"
-          else
-            test -n "$LEASE_EXPIRES_AT"
-            expiry_epoch=$(date -u -d "$LEASE_EXPIRES_AT" +%s)
-            test "$expiry_epoch" -gt "$(date -u +%s)"
-          fi
-          case "$COST_CONTROLS" in enforce|suppress-for-pipeline-build) ;; *) exit 1 ;; esac
           latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
           release_run_id=$(gh api \
             "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yaml/runs?branch=main&event=push&status=success&per_page=100" \
@@ -78,48 +88,52 @@ jobs:
           echo "release_run_id=$release_run_id" >> "$GITHUB_OUTPUT"
           echo "release_sha=$latest_main_sha" >> "$GITHUB_OUTPUT"
 
-  deploy-demo:
-    needs: authorize-demo
+  deploy-environment:
+    needs: authorize-deployment
     uses: ./.github/workflows/deploy-environment.yaml
     with:
-      environment: demo
-      release_run_id: ${{ fromJSON(needs.authorize-demo.outputs.release_run_id) }}
-      release_sha: ${{ needs.authorize-demo.outputs.release_sha }}
+      environment: ${{ inputs.target_environment }}
+      release_run_id: ${{ fromJSON(needs.authorize-deployment.outputs.release_run_id) }}
+      release_sha: ${{ needs.authorize-deployment.outputs.release_sha }}
       apply: ${{ inputs.execution == 'apply' }}
-      enforce_cost_controls: ${{ inputs.cost_controls == 'enforce' }}
-      lease_expires_at: ${{ inputs.lease_expires_at }}
+      lease_expires_at: ${{ needs.authorize-deployment.outputs.lease_expires_at }}
+      access_cidr: ${{ needs.authorize-deployment.outputs.access_cidr }}
     secrets: inherit
 
-  verify-demo:
+  verify-environment:
     if: inputs.execution == 'apply'
-    needs: [authorize-demo, deploy-demo]
+    needs: [authorize-deployment, deploy-environment]
     uses: ./.github/workflows/post-deploy-verify.yaml
     with:
-      environment: demo
-      release_run_id: ${{ fromJSON(needs.authorize-demo.outputs.release_run_id) }}
-      release_sha: ${{ needs.authorize-demo.outputs.release_sha }}
-      verification_client_id: ${{ needs.deploy-demo.outputs.verification_client_id }}
-      web_url: ${{ needs.deploy-demo.outputs.web_url }}
+      environment: ${{ inputs.target_environment }}
+      release_run_id: ${{ fromJSON(needs.authorize-deployment.outputs.release_run_id) }}
+      release_sha: ${{ needs.authorize-deployment.outputs.release_sha }}
+      verification_client_id: ${{ needs.deploy-environment.outputs.verification_client_id }}
+      web_url: ${{ needs.deploy-environment.outputs.web_url }}
+      expected_access_cidr: ${{ needs.authorize-deployment.outputs.access_cidr }}
     secrets: inherit
 
-  publish-founder-url:
+  publish-environment-url:
     if: inputs.execution == 'apply'
-    needs: [authorize-demo, deploy-demo, verify-demo]
+    needs: [authorize-deployment, deploy-environment, verify-environment]
     runs-on: ubuntu-latest
     steps:
-      - name: Publish verified Founder Demo URL
+      - name: Publish verified environment URL
         env:
-          RELEASE_RUN_ID: ${{ needs.authorize-demo.outputs.release_run_id }}
-          RELEASE_SHA: ${{ needs.authorize-demo.outputs.release_sha }}
-          WEB_URL: ${{ needs.deploy-demo.outputs.web_url }}
+          TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
+          RELEASE_RUN_ID: ${{ needs.authorize-deployment.outputs.release_run_id }}
+          RELEASE_SHA: ${{ needs.authorize-deployment.outputs.release_sha }}
+          WEB_URL: ${{ needs.deploy-environment.outputs.web_url }}
+          ACCESS_CIDR: ${{ needs.authorize-deployment.outputs.access_cidr }}
         run: |
           test -n "$WEB_URL"
           {
-            echo "## Founder Demo ready"
+            echo "## $TARGET_ENVIRONMENT deployment ready"
             echo
             echo "- URL: $WEB_URL"
             echo "- Release run: $RELEASE_RUN_ID"
             echo "- Release SHA: $RELEASE_SHA"
-            echo "- Access boundary: configured Founder IPv4 /32 only"
-            echo "- UAT status: prohibited pending explicit Founder Demo acceptance"
+            if test -n "$ACCESS_CIDR"; then
+              echo "- Access boundary: $ACCESS_CIDR"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"

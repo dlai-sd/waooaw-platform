@@ -560,9 +560,14 @@ resource "azurerm_container_app_job" "verification" {
           echo "probe_result name=$name status=failed url=$url" >&2
           return 1
         }
-        probe web "${local.verification_urls.web}/"
-        probe business-platform "${local.verification_urls.business_platform}/health/ready"
-        probe identity-edge "${local.verification_urls.identity_edge}/realms/waooaw/.well-known/openid-configuration"
+        probe web "${local.verification_urls.web}/" & web_pid=$!
+        probe business-platform "${local.verification_urls.business_platform}/health/ready" & business_platform_pid=$!
+        probe identity-edge "${local.verification_urls.identity_edge}/realms/waooaw/.well-known/openid-configuration" & identity_edge_pid=$!
+        probe_status=0
+        for probe_pid in "$web_pid" "$business_platform_pid" "$identity_edge_pid"; do
+          wait "$probe_pid" || probe_status=1
+        done
+        exit "$probe_status"
       EOT
       ]
     }
