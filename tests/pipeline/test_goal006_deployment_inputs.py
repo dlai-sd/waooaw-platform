@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
 
 import pytest
@@ -64,15 +65,37 @@ def configuration() -> dict[str, Any]:
     }
     values.update({field: f"accepted-{field}" for field in LEASE_FIELDS})
     values["lease_state"] = "ACTIVE"
+    values["lease_issued_at"] = "2026-08-23T12:46:35Z"
+    values["lease_expires_at"] = "2026-08-27T12:46:35Z"
     return values
 
 
 @pytest.mark.parametrize("environment", ["demo", "uat"])
 def test_nonproduction_inputs_require_lease_and_preserve_exact_tuple(environment: str) -> None:
-    inputs = create_inputs(environment, manifest(), configuration(), True)
+    inputs = create_inputs(
+        environment,
+        manifest(),
+        configuration(),
+        True,
+        current_time=datetime(2026, 8, 25, tzinfo=timezone.utc),
+    )
     assert set(inputs["image_digests"]) == RELEASE_MEMBERS
     assert inputs["lease_state"] == "ACTIVE"
     assert inputs["ghcr_packages_public"] is True
+
+
+def test_expired_nonproduction_lease_is_rejected_before_terraform_inputs() -> None:
+    values = configuration()
+    values["lease_expires_at"] = "2026-08-25T12:46:35Z"
+
+    with pytest.raises(ValueError, match="deployment lease expired at 2026-08-25T12:46:35Z"):
+        create_inputs(
+            "demo",
+            manifest(),
+            values,
+            True,
+            current_time=datetime(2026, 8, 25, 17, 23, tzinfo=timezone.utc),
+        )
 
 
 def test_anonymous_ghcr_verification_is_required() -> None:

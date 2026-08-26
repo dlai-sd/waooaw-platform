@@ -8,10 +8,12 @@ import ipaddress
 import json
 import re
 from collections.abc import Mapping
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
+from goal006_lease import validate_active_lease
 from goal006_registry_manifest import RELEASE_MEMBERS, validate_registry_manifest
 
 LEASE_FIELDS = frozenset(
@@ -70,6 +72,7 @@ def create_inputs(
     manifest: Mapping[str, Any],
     configuration: Mapping[str, Any],
     ghcr_packages_public_verified: bool,
+    current_time: datetime | None = None,
 ) -> dict[str, Any]:
     violations = validate_registry_manifest(manifest)
     if violations:
@@ -110,6 +113,7 @@ def create_inputs(
         missing = sorted(field for field in LEASE_FIELDS if not configuration.get(field))
         if missing:
             raise ValueError("missing lease fields: " + ", ".join(missing))
+        validate_active_lease(configuration, current_time or datetime.now(timezone.utc))
         inputs.update({field: configuration[field] for field in LEASE_FIELDS})
         inputs["lease_revoked_at"] = configuration.get("lease_revoked_at")
         if environment == "demo":
