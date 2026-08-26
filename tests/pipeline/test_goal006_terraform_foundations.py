@@ -713,6 +713,18 @@ def test_deployment_identities_verify_the_active_subscription() -> None:
     assert verification.count(subscription_check) == 1
 
 
+def test_founder_web_url_uses_stable_app_ingress() -> None:
+    workload = (PHASE2_ROOT / "modules/workload/main.tf").read_text(encoding="utf-8")
+    verification = (REPO_ROOT / ".github/workflows/post-deploy-verify.yaml").read_text(encoding="utf-8")
+
+    assert 'azurerm_container_app.member["web"].ingress[0].fqdn' in workload
+    assert "latest_revision_fqdn" not in workload
+    assert "properties.configuration.ingress.fqdn" in verification
+    assert "properties.latestRevisionFqdn" not in verification
+    assert "Verify returned Web URL binds to the deployed app ingress" in verification
+    assert '.properties.runningState == "ScaledToZero"' in verification
+
+
 def test_release_attestation_has_one_bounded_fail_closed_retry() -> None:
     workflow = (REPO_ROOT / ".github/workflows/ci.yaml").read_text(encoding="utf-8")
 
@@ -798,7 +810,7 @@ def test_founder_demo_is_the_only_authorized_deployment_path() -> None:
     assert "ARM_CLIENT_ID: ${{ inputs.verification_client_id }}" in verification
     assert "WAOOAW_PLATFORM_VERIFICATION_CLIENT_ID" not in verification
     assert 'test "$TARGET_ENVIRONMENT" = "demo"' in verification
-    assert "Verify returned Web URL binds to the deployed revision" in verification
+    assert "Verify returned Web URL binds to the deployed app ingress" in verification
     assert "Verify active healthy revisions" in verification
     assert "Run internal functional verification" in verification
     assert "functional-verification.json" in verification

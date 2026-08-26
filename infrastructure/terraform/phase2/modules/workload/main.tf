@@ -589,5 +589,5 @@ resource "azurerm_role_assignment" "verification_job_operator" {
 }
 
 output "web_url" {
-  value = try("https://${azurerm_container_app.member["web"].latest_revision_fqdn}", null)
+  value = try("https://${azurerm_container_app.member["web"].ingress[0].fqdn}", null)
 }
