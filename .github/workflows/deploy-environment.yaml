@@ -270,6 +270,7 @@ jobs:
     env:
       ARM_CLIENT_ID: ${{ needs.resolve-environment.outputs.control_plane_client_id }}
       TFSTATE_RESOURCE_GROUP: waooaw-platform-rg
+      TFSTATE_STORAGE_ACCOUNT: ${{ needs.resolve-environment.outputs.state_storage_account }}
       TFSTATE_CONTAINER: tfstate
       TF_VAR_tfstate_resource_group: waooaw-platform-rg
       TF_VAR_tfstate_storage_account: ${{ needs.resolve-environment.outputs.state_storage_account }}
@@ -329,10 +330,11 @@ jobs:
 
       - name: Verify bootstrap RBAC and required Azure providers
         run: |
+          set -euo pipefail
+          : "${TFSTATE_STORAGE_ACCOUNT:?TFSTATE_STORAGE_ACCOUNT is required}"
           test "$ARM_SUBSCRIPTION_ID" = "2ed11839-6a0f-4eaa-bd94-44ca96ff5d84"
           test "$(az account show --query id -o tsv)" = "$ARM_SUBSCRIPTION_ID"
           test "$TFSTATE_RESOURCE_GROUP" = "waooaw-platform-rg"
-          test -n "$TFSTATE_STORAGE_ACCOUNT"
           test "$TFSTATE_CONTAINER" = "tfstate"
           test "$TF_VAR_tfstate_storage_account_id" = "/subscriptions/$ARM_SUBSCRIPTION_ID/resourceGroups/$TFSTATE_RESOURCE_GROUP/providers/Microsoft.Storage/storageAccounts/$TFSTATE_STORAGE_ACCOUNT"
           subscription_scope="/subscriptions/$ARM_SUBSCRIPTION_ID"

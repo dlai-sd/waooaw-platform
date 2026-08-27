@@ -610,6 +610,8 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "Reject stale release before cloud access" in workflow
     assert 'timeframe:"Custom"' in workflow.replace(" ", "")
     assert "Verify bootstrap RBAC and required Azure providers" in workflow
+    assert "TFSTATE_STORAGE_ACCOUNT: ${{ needs.resolve-environment.outputs.state_storage_account }}" in workflow
+    assert ': "${TFSTATE_STORAGE_ACCOUNT:?TFSTATE_STORAGE_ACCOUNT is required}"' in workflow
     assert "Microsoft.Network" in workflow
     assert 'require_role "Cost Management Reader"' not in workflow
     assert "Storage Account Contributor" in workflow
