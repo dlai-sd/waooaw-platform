@@ -66,7 +66,7 @@ def configuration() -> dict[str, Any]:
     values.update({field: f"accepted-{field}" for field in LEASE_FIELDS})
     values["lease_state"] = "ACTIVE"
     values["lease_issued_at"] = "2026-08-23T12:46:35Z"
-    values["lease_expires_at"] = "2026-08-27T12:46:35Z"
+    values["lease_expires_at"] = "2099-08-27T12:46:35Z"
     return values
 
 

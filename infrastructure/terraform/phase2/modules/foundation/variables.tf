@@ -26,6 +26,14 @@ variable "tfstate_storage_account_id" {
   }
 }
 
+variable "runner_virtual_network_id" {
+  type = string
+  validation {
+    condition     = can(regex("^/subscriptions/[0-9a-f-]+/resourceGroups/waooaw-(demo|uat|prod)-runner-rg/providers/Microsoft.Network/virtualNetworks/goal006-(demo|uat|prod)-runner-vnet$", var.runner_virtual_network_id))
+    error_message = "Runner virtual network ID must identify an environment-scoped GOAL-006 runner VNet."
+  }
+}
+
 variable "external_environment" {
   type        = bool
   description = "Expose the Container Apps environment load balancer. Authorized only for bounded Demo review."

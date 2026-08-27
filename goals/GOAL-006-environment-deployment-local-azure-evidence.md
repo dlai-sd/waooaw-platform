@@ -147,7 +147,7 @@ a release SHA that is not current `main`. After Founder review and merge, one tr
 still required to prove the submitted browser IPv4 persistence, automatic lease, foundation-cache
 miss/hit behavior, conditional seeding, parallel probes, and reused release evidence end to end.
 
-## Post-Merge Attempt 1 - Scoped RBAC Preflight Failure
+## Post-Merge Attempt 1 - Preflight Failure
 
 | Field | Value |
 |---|---|
@@ -163,17 +163,25 @@ environment resolution, broker execution and ephemeral runner registration passe
 runner `goal006-demo-32971678939-1` came online with the exact run labels and accepted the private
 job.
 
-The private job failed at `az role assignment list --all --include-inherited`. No configuration,
-lease, foundation, credential or workload step ran. Live web ingress remained
-`49.36.51.221/32`, and independent verification was correctly skipped.
+The private job failed in the RBAC/provider preflight. No configuration, lease, foundation,
+credential or workload step ran. Live web ingress remained `49.36.51.221/32`, and independent
+verification was correctly skipped.
 
 A human control-plane query proved client `60c07330-4cc1-4e12-95a2-adc0966f1941` already has all
 five required assignments at the exact state-account and Demo resource-group scopes. No RBAC grant
-was missing and no permission was added. The defect was the subscription-wide self-enumeration,
-which exceeded the deployment identity's read boundary before the exact-scope assertions could run.
+was missing and no permission was added.
 
-The follow-up repair replaces the broad query with separate `--scope` queries for the state account
-and selected environment resource group, combines those records, and retains all five exact-role
-assertions. Local qualification passed the focused contract, pinned actionlint and the complete
-pipeline suite (1,246 tests). The deployment may be retried only after this repair reaches trusted
-`main`.
+### Forensic Correction - 2026-08-27
+
+The original diagnosis attributed the failure to
+`az role assignment list --all --include-inherited`, but the run log did not prove that command
+executed. GitHub printed the complete shell block before execution, the step then exited without an
+Azure CLI error, and no role-assignment artifact was created. A later audit reproduced the earlier
+failure at `test -n "$TFSTATE_STORAGE_ACCOUNT"`: PR #367 had removed that job-level variable while
+retaining its uses throughout the deployment job. The private runner definition does not inject the
+variable.
+
+PR #368's exact-scope RBAC queries reduced enumeration scope, but its regression test checked YAML
+text rather than executing the preflight environment contract. It therefore did not repair or detect
+the missing variable. Claims that the first run was proven to fail at the broad RBAC query, or that
+the scoped-query change was runtime-qualified, are withdrawn by this correction.

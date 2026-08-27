@@ -49,6 +49,10 @@ def test_active_environment_resolves_all_environment_scoped_values(tmp_path: Pat
     assert config["runner_cleanup_broker_job"] == "goal006-demo-runner-cleanup"
     assert config["runner_job"] == "goal006-demo-runner-job"
     assert config["runner_label"] == "goal006-demo-private"
+    assert config["runner_virtual_network_id"] == (
+        "/subscriptions/sub/resourceGroups/waooaw-demo-runner-rg/providers/"
+        "Microsoft.Network/virtualNetworks/goal006-demo-runner-vnet"
+    )
     assert config["state_storage_account"] == "stateaccount"
     assert config["cleanup_evidence_container"] == "goal006-demo-runner-evidence"
 

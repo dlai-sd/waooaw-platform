@@ -51,13 +51,19 @@ def resolve_environment_config(
     if not isinstance(state_storage_account_id, str) or "/storageAccounts/" not in state_storage_account_id:
         raise ValueError("stateStorageAccountId must be an Azure Storage account resource ID")
     state_storage_account = state_storage_account_id.rsplit("/", 1)[-1]
+    subscription_id = state_storage_account_id.split("/")[2]
+    runner_resource_group = str(_parameter(parameters, "runnerResourceGroupName"))
 
     return {
         "environment": environment,
         "activation_state": str(activation_state),
         "control_plane_client_id": str(control_plane_client_id or ""),
         "cleanup_client_id": str(cleanup_client_id or ""),
-        "runner_resource_group": str(_parameter(parameters, "runnerResourceGroupName")),
+        "runner_resource_group": runner_resource_group,
+        "runner_virtual_network_id": (
+            f"/subscriptions/{subscription_id}/resourceGroups/{runner_resource_group}/providers/"
+            f"Microsoft.Network/virtualNetworks/goal006-{environment}-runner-vnet"
+        ),
         "runner_broker_job": f"goal006-{environment}-runner-broker",
         "runner_cleanup_broker_job": f"goal006-{environment}-runner-cleanup",
         "runner_job": f"goal006-{environment}-runner-job",
