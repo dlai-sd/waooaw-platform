@@ -3,13 +3,13 @@
 | Field | Value |
 |---|---|
 | `record_id` | `ER-GOAL-006-ENV-DEPLOY-01` |
-| `record_type` | Local Azure CLI read-only evidence |
-| Observation time | 2026-08-26T12:37:27Z through 2026-08-26T12:42Z |
-| Observation point | Implementation commit `0ac5b8ea7ae0d95de526677cc5972d17019b759a`; PR #367 |
+| `record_type` | Local Azure CLI and pre-PR deployment qualification evidence |
+| Observation time | 2026-08-26T12:37:27Z through 2026-08-27T15:25:32Z |
+| Observation point | Qualification run `33085991935`; source `218792566470292c56300bf953822405c0a731db` |
 | Azure identity | User `yogesh.khandge@dlaisd.com` |
 | Azure boundary | Tenant `0471534c-1bbe-40ab-ae65-3f721b62582c`; subscription `2ed11839-6a0f-4eaa-bd94-44ca96ff5d84` (`Enabled`) |
-| Mutation and spend | None; read-only CLI and HTTP requests only |
-| Overall result | PASS for current Demo topology and controls; post-merge execution still required for the changed workflow |
+| Mutation and spend | Bounded Demo deployment mutation under FA-052; private runner cleanup passed |
+| Overall result | PASS - verified Demo deployment URL, exact-six inventory, functional probes and `49.36.49.189/32` ingress |
 
 ## Commands Executed
 
@@ -252,3 +252,26 @@ The corrected topology creates an environment-scoped private endpoint for the wo
 runner VNet's existing `private-endpoints` subnet and points the runner-zone A record to that local
 endpoint. Both endpoint and record IDs participate in guarded foundation-cache evidence for Demo,
 UAT and Prod.
+
+## Pre-PR Qualification - Verified Demo Deployment
+
+| Field | Value |
+|---|---|
+| Workflow run | `33085991935` - PASS |
+| Qualification source | `218792566470292c56300bf953822405c0a731db` |
+| Trusted release | CI run `33068493419`; source `4ae12b0fbde1507eb4dc52fa62d6bb43e06f98e5` |
+| Verified Demo URL | `https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io` |
+| Access boundary | `49.36.49.189/32` |
+| Web revision | `ca-demo-web--0000006`; latest and latest-ready; provisioning `Succeeded` |
+| Runner vault route | Private endpoint `pe-waooaw-demo-vault-runner` approved at `10.70.0.39`; runner-zone record `kv-waooaw-demo -> 10.70.0.39` |
+| Functional verification | `job-demo-deployment-verification-nh5hps6` - `Succeeded` |
+| Cleanup | PASS; temporary branch policies and cleanup OIDC credential removed; only `main` remains trusted |
+
+The private apply passed foundation reconciliation, credential inventory, digest-pinned credential
+seeding, workload plan and workload apply. Independent verification passed trusted release checks,
+live exact-six image inventory, active healthy revision checks, internal functional probes and the
+returned URL/ingress binding. URL publication then completed successfully.
+
+Retained run artifacts are `goal006-private-runner-prestart-33085991935-1`,
+`goal006-demo-apply-33068493419`, `goal006-private-runner-cleanup-33085991935-1` and
+`goal006-demo-independent-verification-33068493419`.

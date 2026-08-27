@@ -7,7 +7,7 @@
 | Implementation executor | INST-010 - Platform IT Expert, Skill 17 |
 | Authority | FA-052; GOA-GOAL-006-INST-010-03; ACC-GOAL-006-INST-010-03 |
 | Scope | P3-EX01 through P3-EX11 in dependency order |
-| Status | IN PROGRESS - P3-EX01 through P3-EX03 implemented; P3-EX04 tooling ready for owner verification |
+| Status | IN PROGRESS - P3-EX07 Demo deployment and independent verification passed; Founder Demo acceptance pending |
 
 ## Outcome
 
@@ -41,7 +41,7 @@ per-task evidence documents, duplicate pass reports or narrative handoff records
 | P3-EX04 tooling | READY FOR INST-009/007 | Read-only OIDC/RBAC verifier; four fail-closed Docker tests |
 | P3-EX07 runner bootstrap | IMPLEMENTED - review pending | Inactive Demo Deployment Stack; digest-pinned runner image and lifecycle/private-path probes; Bicep compilation; no cloud mutation |
 | P3-EX07 private signing broker | IMPLEMENTED - review pending | Dedicated private ACA start/cleanup brokers reuse the zero-idle environment, subnet, Key Vault endpoint, DNS, logs and runner image; 75 focused tests, Ruff, Bicep, image smoke and zero HIGH/CRITICAL OS scan pass; existing organization-installed GitHub App and FA-052 ceilings remain unchanged |
-| P3-EX07 runner activation | BLOCKED | Broker implementation, review/merge, immutable image publication, Demo stack reconciliation and private-path qualification remain required; no public-network fallback permitted |
+| P3-EX07 runner activation | VERIFIED | Run `33085991935`; private apply, exact-six inventory, functional verification, URL/ingress binding and cleanup passed; Founder acceptance remains separate |
 
 ## Definition Of Done
 
