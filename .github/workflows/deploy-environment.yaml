@@ -59,7 +59,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: fix/goal006-demo-deployment-runtime
+          ref: ${{ inputs.release_sha }}
 
       - name: Resolve active environment configuration
         id: config
@@ -89,13 +89,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -eu
-          test "$GITHUB_REF" = "refs/heads/fix/goal006-demo-deployment-runtime"
+          test "$GITHUB_REF" = "refs/heads/main"
           latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
           test '${{ inputs.release_sha }}' = "$latest_main_sha"
+          test "$GITHUB_SHA" = "$latest_main_sha"
 
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: fix/goal006-demo-deployment-runtime
+          ref: ${{ inputs.release_sha }}
 
       - name: Download signed exact-six tuple
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
@@ -287,7 +288,7 @@ jobs:
       - name: Enforce selected environment authorization
         env:
           CALLER_WORKFLOW_REF: ${{ github.workflow_ref }}
-          EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy-demo.yaml@refs/heads/fix/goal006-demo-deployment-runtime
+          EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy-demo.yaml@refs/heads/main
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
           APPLY_REQUESTED: ${{ inputs.apply }}
           COST_CONTROLS_ENFORCED: ${{ inputs.enforce_cost_controls }}
@@ -310,7 +311,7 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          ref: fix/goal006-demo-deployment-runtime
+          ref: ${{ inputs.release_sha }}
 
       - name: Download pre-start cost evidence
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
@@ -991,7 +992,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: fix/goal006-demo-deployment-runtime
+          ref: ${{ inputs.release_sha }}
 
       - name: Azure login with cleanup identity
         uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
