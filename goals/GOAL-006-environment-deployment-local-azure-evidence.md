@@ -230,3 +230,25 @@ The corrected design manages an environment-scoped A record for the workload vau
 runner-owned zone instead of attempting a second overlapping zone link. The record ID is part of
 guarded foundation-cache evidence, so a missing record forces foundation reconciliation for Demo,
 UAT and Prod.
+
+## Pre-PR Qualification - Cross-VNet Address Unroutable
+
+| Field | Value |
+|---|---|
+| Workflow run | `33083587636` |
+| Qualification source | `4484f673973a377be266050879a9b0b626727fec` |
+| Trusted release | CI run `33068493419`; source `4ae12b0fbde1507eb4dc52fa62d6bb43e06f98e5` |
+| Requested access | `49.36.49.189/32` |
+| Result | FAIL during credential inventory before workload plan/apply |
+| Cleanup | PASS; temporary branch policies and cleanup OIDC credential removed |
+
+Foundation plan and apply succeeded and created `kv-waooaw-demo -> 10.60.2.4` in the runner-owned
+private DNS zone. The first Key Vault inventory call then timed out after 300 seconds. Azure CLI
+proved that neither `goal006-demo-runner-vnet` nor `vnet-waooaw-demo` had any VNet peering, and the
+runner resource group had no private endpoint targeting `kv-waooaw-demo`. The A record therefore
+resolved correctly but directed the runner to an unroutable private endpoint in the workload VNet.
+
+The corrected topology creates an environment-scoped private endpoint for the workload vault in the
+runner VNet's existing `private-endpoints` subnet and points the runner-zone A record to that local
+endpoint. Both endpoint and record IDs participate in guarded foundation-cache evidence for Demo,
+UAT and Prod.
