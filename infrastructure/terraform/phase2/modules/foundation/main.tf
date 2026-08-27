@@ -257,12 +257,12 @@ resource "azurerm_private_dns_zone_virtual_network_link" "key_vault" {
   tags                  = local.tags
 }
 
-resource "azurerm_private_dns_zone_virtual_network_link" "key_vault_runner" {
-  name                  = "link-${local.name}-vault-runner"
-  resource_group_name   = azurerm_resource_group.environment.name
-  private_dns_zone_name = azurerm_private_dns_zone.key_vault.name
-  virtual_network_id    = var.runner_virtual_network_id
-  tags                  = local.tags
+resource "azurerm_private_dns_a_record" "key_vault_runner" {
+  name                = azurerm_key_vault.environment.name
+  zone_name           = azurerm_private_dns_zone.key_vault.name
+  resource_group_name = var.runner_resource_group_name
+  ttl                 = 10
+  records             = [azurerm_private_endpoint.key_vault.private_service_connection[0].private_ip_address]
 }
 
 resource "azurerm_log_analytics_workspace" "environment" {
@@ -308,8 +308,8 @@ output "key_vault_uri" {
   value = azurerm_key_vault.environment.vault_uri
 }
 
-output "runner_key_vault_dns_link_id" {
-  value = azurerm_private_dns_zone_virtual_network_link.key_vault_runner.id
+output "runner_key_vault_dns_record_id" {
+  value = azurerm_private_dns_a_record.key_vault_runner.id
 }
 
 output "container_app_environment_name" {

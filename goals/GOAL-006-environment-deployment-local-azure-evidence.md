@@ -185,3 +185,48 @@ PR #368's exact-scope RBAC queries reduced enumeration scope, but its regression
 text rather than executing the preflight environment contract. It therefore did not repair or detect
 the missing variable. Claims that the first run was proven to fail at the broad RBAC query, or that
 the scoped-query change was runtime-qualified, are withdrawn by this correction.
+
+## Pre-PR Qualification - Key Vault DNS Failure
+
+| Field | Value |
+|---|---|
+| Workflow run | `33072729696` |
+| Qualification source | `d3f07e6958154877d19eb95ea0a845955e004b42` |
+| Trusted release | CI run `33068493419`; source `4ae12b0fbde1507eb4dc52fa62d6bb43e06f98e5` |
+| Requested access | `49.36.49.189/32` |
+| Result | FAIL at credential inventory after foundation plan/apply |
+| Cleanup | PASS; temporary branch policies and cleanup OIDC credential removed |
+
+The repaired storage-account contract, exact-scope RBAC preflight, configuration download,
+foundation plan, foundation policy, foundation apply and deployment-identity OIDC login all passed.
+The foundation plan reported no drift. Credential inventory then failed because the private runner
+could not resolve `kv-waooaw-demo.vault.azure.net`.
+
+Azure CLI showed that `privatelink.vaultcore.azure.net` was linked only to `vnet-waooaw-demo`; the
+private runner executes in `goal006-demo-runner-vnet`.
+
+## Pre-PR Qualification - Overlapping Private DNS Zone Rejected
+
+| Field | Value |
+|---|---|
+| Workflow run | `33075103178` |
+| Qualification source | `e59175fe2271d041e74724407f8631349ac2420b` |
+| Trusted release | CI run `33068493419`; source `4ae12b0fbde1507eb4dc52fa62d6bb43e06f98e5` |
+| Requested access | `49.36.49.189/32` |
+| Result | FAIL during foundation apply before credential inventory |
+| Cleanup | PASS; temporary branch policies and cleanup OIDC credential removed |
+
+The qualification executed the repair branch's Terraform and scripts while retaining the trusted
+current-main exact-six release. Foundation planning correctly proposed a runner VNet link, but Azure
+rejected its creation because `goal006-demo-runner-vnet` was already linked to another private DNS
+zone named `privatelink.vaultcore.azure.net` in `waooaw-demo-runner-rg`.
+
+Azure CLI then proved that the runner-owned zone and VNet link were healthy, but the zone contained
+only the runner vault record. The Demo workload Key Vault private endpoint was healthy at
+`10.60.2.4`; its record existed only in the workload-owned zone, which the isolated runner VNet
+cannot use.
+
+The corrected design manages an environment-scoped A record for the workload vault in the existing
+runner-owned zone instead of attempting a second overlapping zone link. The record ID is part of
+guarded foundation-cache evidence, so a missing record forces foundation reconciliation for Demo,
+UAT and Prod.

@@ -52,7 +52,6 @@ jobs:
       runner_cleanup_broker_job: ${{ steps.config.outputs.runner_cleanup_broker_job }}
       runner_job: ${{ steps.config.outputs.runner_job }}
       runner_label: ${{ steps.config.outputs.runner_label }}
-      runner_virtual_network_id: ${{ steps.config.outputs.runner_virtual_network_id }}
       state_storage_account_id: ${{ steps.config.outputs.state_storage_account_id }}
       state_storage_account: ${{ steps.config.outputs.state_storage_account }}
       cleanup_evidence_container: ${{ steps.config.outputs.cleanup_evidence_container }}
@@ -70,8 +69,7 @@ jobs:
           jq -e . >/dev/null <<< "$config"
           for key in control_plane_client_id cleanup_client_id runner_resource_group \
             runner_broker_job runner_cleanup_broker_job runner_job runner_label \
-            runner_virtual_network_id state_storage_account_id state_storage_account \
-            cleanup_evidence_container; do
+            state_storage_account_id state_storage_account cleanup_evidence_container; do
             echo "$key=$(jq -r --arg key "$key" '.[$key]' <<< "$config")" >> "$GITHUB_OUTPUT"
           done
 
@@ -275,7 +273,7 @@ jobs:
       TFSTATE_STORAGE_ACCOUNT: ${{ needs.resolve-environment.outputs.state_storage_account }}
       TFSTATE_CONTAINER: tfstate
       TF_VAR_tfstate_resource_group: waooaw-platform-rg
-      TF_VAR_runner_virtual_network_id: ${{ needs.resolve-environment.outputs.runner_virtual_network_id }}
+      TF_VAR_runner_resource_group_name: ${{ needs.resolve-environment.outputs.runner_resource_group }}
       TF_VAR_tfstate_storage_account: ${{ needs.resolve-environment.outputs.state_storage_account }}
       TF_VAR_tfstate_container: tfstate
       TF_VAR_tfstate_storage_account_id: ${{ needs.resolve-environment.outputs.state_storage_account_id }}
@@ -521,7 +519,7 @@ jobs:
             --context "state_resource_group=$TFSTATE_RESOURCE_GROUP" \
             --context "state_account=$TFSTATE_STORAGE_ACCOUNT" \
             --context "state_container=$TFSTATE_CONTAINER" \
-            --context "runner_virtual_network_id=$TF_VAR_runner_virtual_network_id" \
+            --context "runner_resource_group=$TF_VAR_runner_resource_group_name" \
             --context "state_account_id=$TF_VAR_tfstate_storage_account_id")
           cache_hit=false
           cache_reason="not-requested"
@@ -551,7 +549,7 @@ jobs:
                 live_valid=true
                 az group show --name "$resource_group" --output none || live_valid=false
                 for output_name in container_app_environment_id key_vault_id deployment_identity_id \
-                  runner_key_vault_dns_link_id; do
+                  runner_key_vault_dns_record_id; do
                   resource_id=$(jq -r --arg name "$output_name" '.[$name]' foundation-cache-outputs.json)
                   az resource show --ids "$resource_id" --output none || live_valid=false
                 done

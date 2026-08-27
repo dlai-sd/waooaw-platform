@@ -26,11 +26,11 @@ variable "tfstate_storage_account_id" {
   }
 }
 
-variable "runner_virtual_network_id" {
+variable "runner_resource_group_name" {
   type = string
   validation {
-    condition     = can(regex("^/subscriptions/[0-9a-f-]+/resourceGroups/waooaw-(demo|uat|prod)-runner-rg/providers/Microsoft.Network/virtualNetworks/goal006-(demo|uat|prod)-runner-vnet$", var.runner_virtual_network_id))
-    error_message = "Runner virtual network ID must identify an environment-scoped GOAL-006 runner VNet."
+    condition     = can(regex("^waooaw-(demo|uat|prod)-runner-rg$", var.runner_resource_group_name))
+    error_message = "Runner resource group must be environment-scoped."
   }
 }
 

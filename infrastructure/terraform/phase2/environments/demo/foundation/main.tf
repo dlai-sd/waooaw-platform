@@ -29,7 +29,7 @@ module "foundation" {
   location                     = "centralindia"
   repository_id                = "dlai-sd/waooaw-platform"
   repository_environment       = "demo"
-  runner_virtual_network_id    = var.runner_virtual_network_id
+  runner_resource_group_name   = var.runner_resource_group_name
   tfstate_storage_account_id   = var.tfstate_storage_account_id
   external_environment         = true
   log_analytics_workspace_name = "law-waooaw-demo-validation"
@@ -63,8 +63,8 @@ output "key_vault_uri" {
   value = module.foundation.key_vault_uri
 }
 
-output "runner_key_vault_dns_link_id" {
-  value = module.foundation.runner_key_vault_dns_link_id
+output "runner_key_vault_dns_record_id" {
+  value = module.foundation.runner_key_vault_dns_record_id
 }
 
 output "location" {
