@@ -39,7 +39,7 @@ jobs:
       - name: Enforce trusted caller workflow and ref
         env:
           CALLER_WORKFLOW_REF: ${{ github.workflow_ref }}
-          EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy-demo.yaml@refs/heads/main
+          EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy-demo.yaml@refs/heads/fix/goal006-demo-deployment-runtime
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           test "$CALLER_WORKFLOW_REF" = "$EXPECTED_CALLER_WORKFLOW_REF"
@@ -55,7 +55,7 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.release_sha }}
+          ref: fix/goal006-demo-deployment-runtime
 
       - name: Download verified exact-six tuple
         uses: actions/download-artifact@v4
