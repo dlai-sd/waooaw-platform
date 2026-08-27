@@ -257,6 +257,29 @@ resource "azurerm_private_dns_zone_virtual_network_link" "key_vault" {
   tags                  = local.tags
 }
 
+resource "azurerm_private_endpoint" "key_vault_runner" {
+  name                = "pe-${local.name}-vault-runner"
+  location            = azurerm_resource_group.environment.location
+  resource_group_name = var.runner_resource_group_name
+  subnet_id           = var.runner_private_endpoints_subnet_id
+  tags                = local.tags
+
+  private_service_connection {
+    name                           = "psc-${local.name}-vault-runner"
+    private_connection_resource_id = azurerm_key_vault.environment.id
+    subresource_names              = ["vault"]
+    is_manual_connection           = false
+  }
+}
+
+resource "azurerm_private_dns_a_record" "key_vault_runner" {
+  name                = azurerm_key_vault.environment.name
+  zone_name           = azurerm_private_dns_zone.key_vault.name
+  resource_group_name = var.runner_resource_group_name
+  ttl                 = 10
+  records             = [azurerm_private_endpoint.key_vault_runner.private_service_connection[0].private_ip_address]
+}
+
 resource "azurerm_log_analytics_workspace" "environment" {
   name                = coalesce(var.log_analytics_workspace_name, "law-${local.name}")
   location            = azurerm_resource_group.environment.location
@@ -298,6 +321,14 @@ output "key_vault_name" {
 
 output "key_vault_uri" {
   value = azurerm_key_vault.environment.vault_uri
+}
+
+output "runner_key_vault_dns_record_id" {
+  value = azurerm_private_dns_a_record.key_vault_runner.id
+}
+
+output "runner_key_vault_private_endpoint_id" {
+  value = azurerm_private_endpoint.key_vault_runner.id
 }
 
 output "container_app_environment_name" {

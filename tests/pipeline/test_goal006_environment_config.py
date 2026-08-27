@@ -45,6 +45,10 @@ def test_active_environment_resolves_all_environment_scoped_values(tmp_path: Pat
     config = resolve_environment_config("demo", stack_root=tmp_path)
 
     assert config["runner_resource_group"] == "waooaw-demo-runner-rg"
+    assert config["runner_private_endpoints_subnet_id"] == (
+        "/subscriptions/sub/resourceGroups/waooaw-demo-runner-rg/"
+        "providers/Microsoft.Network/virtualNetworks/goal006-demo-runner-vnet/subnets/private-endpoints"
+    )
     assert config["runner_broker_job"] == "goal006-demo-runner-broker"
     assert config["runner_cleanup_broker_job"] == "goal006-demo-runner-cleanup"
     assert config["runner_job"] == "goal006-demo-runner-job"

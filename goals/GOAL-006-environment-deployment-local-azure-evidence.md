@@ -3,13 +3,13 @@
 | Field | Value |
 |---|---|
 | `record_id` | `ER-GOAL-006-ENV-DEPLOY-01` |
-| `record_type` | Local Azure CLI read-only evidence |
-| Observation time | 2026-08-26T12:37:27Z through 2026-08-26T12:42Z |
-| Observation point | Implementation commit `0ac5b8ea7ae0d95de526677cc5972d17019b759a`; PR #367 |
+| `record_type` | Local Azure CLI and pre-PR deployment qualification evidence |
+| Observation time | 2026-08-26T12:37:27Z through 2026-08-27T15:25:32Z |
+| Observation point | Qualification run `33085991935`; source `218792566470292c56300bf953822405c0a731db` |
 | Azure identity | User `yogesh.khandge@dlaisd.com` |
 | Azure boundary | Tenant `0471534c-1bbe-40ab-ae65-3f721b62582c`; subscription `2ed11839-6a0f-4eaa-bd94-44ca96ff5d84` (`Enabled`) |
-| Mutation and spend | None; read-only CLI and HTTP requests only |
-| Overall result | PASS for current Demo topology and controls; post-merge execution still required for the changed workflow |
+| Mutation and spend | Bounded Demo deployment mutation under FA-052; private runner cleanup passed |
+| Overall result | PASS - verified Demo deployment URL, exact-six inventory, functional probes and `49.36.49.189/32` ingress |
 
 ## Commands Executed
 
@@ -147,7 +147,7 @@ a release SHA that is not current `main`. After Founder review and merge, one tr
 still required to prove the submitted browser IPv4 persistence, automatic lease, foundation-cache
 miss/hit behavior, conditional seeding, parallel probes, and reused release evidence end to end.
 
-## Post-Merge Attempt 1 - Scoped RBAC Preflight Failure
+## Post-Merge Attempt 1 - Preflight Failure
 
 | Field | Value |
 |---|---|
@@ -163,17 +163,115 @@ environment resolution, broker execution and ephemeral runner registration passe
 runner `goal006-demo-32971678939-1` came online with the exact run labels and accepted the private
 job.
 
-The private job failed at `az role assignment list --all --include-inherited`. No configuration,
-lease, foundation, credential or workload step ran. Live web ingress remained
-`49.36.51.221/32`, and independent verification was correctly skipped.
+The private job failed in the RBAC/provider preflight. No configuration, lease, foundation,
+credential or workload step ran. Live web ingress remained `49.36.51.221/32`, and independent
+verification was correctly skipped.
 
 A human control-plane query proved client `60c07330-4cc1-4e12-95a2-adc0966f1941` already has all
 five required assignments at the exact state-account and Demo resource-group scopes. No RBAC grant
-was missing and no permission was added. The defect was the subscription-wide self-enumeration,
-which exceeded the deployment identity's read boundary before the exact-scope assertions could run.
+was missing and no permission was added.
 
-The follow-up repair replaces the broad query with separate `--scope` queries for the state account
-and selected environment resource group, combines those records, and retains all five exact-role
-assertions. Local qualification passed the focused contract, pinned actionlint and the complete
-pipeline suite (1,246 tests). The deployment may be retried only after this repair reaches trusted
-`main`.
+### Forensic Correction - 2026-08-27
+
+The original diagnosis attributed the failure to
+`az role assignment list --all --include-inherited`, but the run log did not prove that command
+executed. GitHub printed the complete shell block before execution, the step then exited without an
+Azure CLI error, and no role-assignment artifact was created. A later audit reproduced the earlier
+failure at `test -n "$TFSTATE_STORAGE_ACCOUNT"`: PR #367 had removed that job-level variable while
+retaining its uses throughout the deployment job. The private runner definition does not inject the
+variable.
+
+PR #368's exact-scope RBAC queries reduced enumeration scope, but its regression test checked YAML
+text rather than executing the preflight environment contract. It therefore did not repair or detect
+the missing variable. Claims that the first run was proven to fail at the broad RBAC query, or that
+the scoped-query change was runtime-qualified, are withdrawn by this correction.
+
+## Pre-PR Qualification - Key Vault DNS Failure
+
+| Field | Value |
+|---|---|
+| Workflow run | `33072729696` |
+| Qualification source | `d3f07e6958154877d19eb95ea0a845955e004b42` |
+| Trusted release | CI run `33068493419`; source `4ae12b0fbde1507eb4dc52fa62d6bb43e06f98e5` |
+| Requested access | `49.36.49.189/32` |
+| Result | FAIL at credential inventory after foundation plan/apply |
+| Cleanup | PASS; temporary branch policies and cleanup OIDC credential removed |
+
+The repaired storage-account contract, exact-scope RBAC preflight, configuration download,
+foundation plan, foundation policy, foundation apply and deployment-identity OIDC login all passed.
+The foundation plan reported no drift. Credential inventory then failed because the private runner
+could not resolve `kv-waooaw-demo.vault.azure.net`.
+
+Azure CLI showed that `privatelink.vaultcore.azure.net` was linked only to `vnet-waooaw-demo`; the
+private runner executes in `goal006-demo-runner-vnet`.
+
+## Pre-PR Qualification - Overlapping Private DNS Zone Rejected
+
+| Field | Value |
+|---|---|
+| Workflow run | `33075103178` |
+| Qualification source | `e59175fe2271d041e74724407f8631349ac2420b` |
+| Trusted release | CI run `33068493419`; source `4ae12b0fbde1507eb4dc52fa62d6bb43e06f98e5` |
+| Requested access | `49.36.49.189/32` |
+| Result | FAIL during foundation apply before credential inventory |
+| Cleanup | PASS; temporary branch policies and cleanup OIDC credential removed |
+
+The qualification executed the repair branch's Terraform and scripts while retaining the trusted
+current-main exact-six release. Foundation planning correctly proposed a runner VNet link, but Azure
+rejected its creation because `goal006-demo-runner-vnet` was already linked to another private DNS
+zone named `privatelink.vaultcore.azure.net` in `waooaw-demo-runner-rg`.
+
+Azure CLI then proved that the runner-owned zone and VNet link were healthy, but the zone contained
+only the runner vault record. The Demo workload Key Vault private endpoint was healthy at
+`10.60.2.4`; its record existed only in the workload-owned zone, which the isolated runner VNet
+cannot use.
+
+The corrected design manages an environment-scoped A record for the workload vault in the existing
+runner-owned zone instead of attempting a second overlapping zone link. The record ID is part of
+guarded foundation-cache evidence, so a missing record forces foundation reconciliation for Demo,
+UAT and Prod.
+
+## Pre-PR Qualification - Cross-VNet Address Unroutable
+
+| Field | Value |
+|---|---|
+| Workflow run | `33083587636` |
+| Qualification source | `4484f673973a377be266050879a9b0b626727fec` |
+| Trusted release | CI run `33068493419`; source `4ae12b0fbde1507eb4dc52fa62d6bb43e06f98e5` |
+| Requested access | `49.36.49.189/32` |
+| Result | FAIL during credential inventory before workload plan/apply |
+| Cleanup | PASS; temporary branch policies and cleanup OIDC credential removed |
+
+Foundation plan and apply succeeded and created `kv-waooaw-demo -> 10.60.2.4` in the runner-owned
+private DNS zone. The first Key Vault inventory call then timed out after 300 seconds. Azure CLI
+proved that neither `goal006-demo-runner-vnet` nor `vnet-waooaw-demo` had any VNet peering, and the
+runner resource group had no private endpoint targeting `kv-waooaw-demo`. The A record therefore
+resolved correctly but directed the runner to an unroutable private endpoint in the workload VNet.
+
+The corrected topology creates an environment-scoped private endpoint for the workload vault in the
+runner VNet's existing `private-endpoints` subnet and points the runner-zone A record to that local
+endpoint. Both endpoint and record IDs participate in guarded foundation-cache evidence for Demo,
+UAT and Prod.
+
+## Pre-PR Qualification - Verified Demo Deployment
+
+| Field | Value |
+|---|---|
+| Workflow run | `33085991935` - PASS |
+| Qualification source | `218792566470292c56300bf953822405c0a731db` |
+| Trusted release | CI run `33068493419`; source `4ae12b0fbde1507eb4dc52fa62d6bb43e06f98e5` |
+| Verified Demo URL | `https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io` |
+| Access boundary | `49.36.49.189/32` |
+| Web revision | `ca-demo-web--0000006`; latest and latest-ready; provisioning `Succeeded` |
+| Runner vault route | Private endpoint `pe-waooaw-demo-vault-runner` approved at `10.70.0.39`; runner-zone record `kv-waooaw-demo -> 10.70.0.39` |
+| Functional verification | `job-demo-deployment-verification-nh5hps6` - `Succeeded` |
+| Cleanup | PASS; temporary branch policies and cleanup OIDC credential removed; only `main` remains trusted |
+
+The private apply passed foundation reconciliation, credential inventory, digest-pinned credential
+seeding, workload plan and workload apply. Independent verification passed trusted release checks,
+live exact-six image inventory, active healthy revision checks, internal functional probes and the
+returned URL/ingress binding. URL publication then completed successfully.
+
+Retained run artifacts are `goal006-private-runner-prestart-33085991935-1`,
+`goal006-demo-apply-33068493419`, `goal006-private-runner-cleanup-33085991935-1` and
+`goal006-demo-independent-verification-33068493419`.

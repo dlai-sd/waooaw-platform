@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-074 - GOAL-006 Enterprise Delivery Addendum |
 | Latest merge | PR #327 merged to `main` as `e6dc699` |
-| Active delivery | WC-076 immutable Demo runner image pin; activation blocked; UAT prohibited |
+| Active delivery | WC-076 verified Demo deployment; Founder Demo acceptance pending; UAT prohibited |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 
@@ -40,10 +40,10 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Demo runner bootstrap | MERGED - PR #326 merged as `dee4ca6`; runner image published and attested as `ghcr.io/dlai-sd/goal006-private-runner@sha256:83811baf0d2a425d8f8c308daef3cf172bdca173d9f8d12c7d9a02838a227518` |
 | Private signing decision | AUTHORIZED - dedicated `waooaw-private-runner` App is installed only on `dlai-sd/waooaw-platform`; zero-idle ACA broker and existing FA-052 ceiling are unchanged |
 | Activation correction | MERGED - PR #327 implements repository runner APIs, `privatelink.vaultcore.azure.net`, and a permanent zero-idle Azure-only App-key importer without GitHub Secrets |
-| Runner image pin | IN PROGRESS - merged image `sha256:e377804b7b2857276979c3b870b69c25dc7a8f566ae12342a3486ccfdb168c9f` is attested and locally pinned for reviewed PR delivery |
-| Local validation | PASS - 69 GOAL-006 runner tests, Ruff, Bicep compilation, all-environment immutable manifest validation, image build and packaged importer smoke test |
+| Runner image pin | DONE - trusted exact-six release run `33068493419` and source `4ae12b0fbde1507eb4dc52fa62d6bb43e06f98e5` passed deployment qualification |
+| Local validation | PASS - pipeline regression `1246/1246`, actionlint and Demo/UAT/Prod Terraform 1.9.8 validation |
 | Architecture review | PENDING - ADR-047 repository-installation amendment requires Founder review through the correction PR; no institutional reviewer invoked |
-| Demo deploy / verify | BLOCKED - correction must merge, Demo stack must reconcile from reviewed preview, App key must be imported over the proven private route, and private-path qualification must pass; no public fallback |
+| Demo deploy / verify | PASS - run `33085991935`; private apply, exact-six inventory, healthy revisions, functional probes, cleanup and URL publication passed; access restricted to `49.36.49.189/32` |
 | Founder Demo acceptance | PENDING - P3-EX08 remains a separate control point after the verified Azure URL is returned |
 | UAT deploy / verify / accept | PROHIBITED - no token, plan, apply or environment request before explicit Founder Demo acceptance |
 | Production | PLAN ONLY - deployment, traffic and final acceptance remain Founder-reserved |
@@ -52,7 +52,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 
 - **Authority:** Founder authorization on issue #299 permits P3-EX07 Demo mutation and expenditure only; Founder-only Azure URL review is authorized.
 - **Execution contract:** `work-contracts/WC-076-goal006-phase3-execution.md`; backlog P3-EX01 through P3-EX11.
-- **Cloud state:** no Demo/UAT/Production workload resources have been created; run `32371262629` made only the bounded temporary state-account firewall mutation and evidence proves cleanup removed it.
+- **Cloud state:** Demo is deployed and verified at `https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io`; UAT remains prohibited and Production remains plan-only.
 - **RCA boundary:** configuration access succeeded after one network-rule retry, while Terraform backend access failed moments later; discovered GitHub-hosted public egress is not an acceptable durable trust boundary.
 - **Architecture gate:** ADR-047 is Accepted through merged PR #310. PR #326 merged the private ACA signing broker, but activation proved `dlai-sd` is a personal account and the generated Key Vault private DNS zone was incorrect. The correction preserves the broker, private networking and cost boundary while using repository-scoped runner authority.
 - **Boundary:** no UAT, custom DNS, customer traffic, Production apply, Platform Operations activation, final Goal acceptance, self-approval or self-merge.

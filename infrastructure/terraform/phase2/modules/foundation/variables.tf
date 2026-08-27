@@ -26,6 +26,22 @@ variable "tfstate_storage_account_id" {
   }
 }
 
+variable "runner_resource_group_name" {
+  type = string
+  validation {
+    condition     = can(regex("^waooaw-(demo|uat|prod)-runner-rg$", var.runner_resource_group_name))
+    error_message = "Runner resource group must be environment-scoped."
+  }
+}
+
+variable "runner_private_endpoints_subnet_id" {
+  type = string
+  validation {
+    condition     = can(regex("/resourceGroups/waooaw-(demo|uat|prod)-runner-rg/providers/Microsoft.Network/virtualNetworks/goal006-(demo|uat|prod)-runner-vnet/subnets/private-endpoints$", var.runner_private_endpoints_subnet_id))
+    error_message = "Runner private endpoints subnet must be environment-scoped."
+  }
+}
+
 variable "external_environment" {
   type        = bool
   description = "Expose the Container Apps environment load balancer. Authorized only for bounded Demo review."

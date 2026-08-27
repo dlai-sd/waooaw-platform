@@ -24,14 +24,16 @@ import {
 }
 
 module "foundation" {
-  source                       = "../../../modules/foundation"
-  environment                  = "demo"
-  location                     = "centralindia"
-  repository_id                = "dlai-sd/waooaw-platform"
-  repository_environment       = "demo"
-  tfstate_storage_account_id   = var.tfstate_storage_account_id
-  external_environment         = true
-  log_analytics_workspace_name = "law-waooaw-demo-validation"
+  source                             = "../../../modules/foundation"
+  environment                        = "demo"
+  location                           = "centralindia"
+  repository_id                      = "dlai-sd/waooaw-platform"
+  repository_environment             = "demo"
+  runner_resource_group_name         = var.runner_resource_group_name
+  runner_private_endpoints_subnet_id = var.runner_private_endpoints_subnet_id
+  tfstate_storage_account_id         = var.tfstate_storage_account_id
+  external_environment               = true
+  log_analytics_workspace_name       = "law-waooaw-demo-validation"
 }
 
 output "resource_group_name" {
@@ -60,6 +62,14 @@ output "key_vault_name" {
 
 output "key_vault_uri" {
   value = module.foundation.key_vault_uri
+}
+
+output "runner_key_vault_dns_record_id" {
+  value = module.foundation.runner_key_vault_dns_record_id
+}
+
+output "runner_key_vault_private_endpoint_id" {
+  value = module.foundation.runner_key_vault_private_endpoint_id
 }
 
 output "location" {

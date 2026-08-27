@@ -21,6 +21,8 @@ REQUIRED_OUTPUTS = (
     "key_vault_id",
     "key_vault_name",
     "key_vault_uri",
+    "runner_key_vault_private_endpoint_id",
+    "runner_key_vault_dns_record_id",
 )
 
 

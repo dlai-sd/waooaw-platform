@@ -72,6 +72,10 @@ def test_environment_roots_have_isolated_state_and_oidc(environment: str) -> Non
     assert "use_azuread_auth     = true" in workload
     assert re.search(rf'environment\s*=\s*"{environment}"', foundation)
     assert re.search(r'source\s*=\s*"../../../modules/foundation"', foundation)
+    assert re.search(r'runner_resource_group_name\s*=\s*var\.runner_resource_group_name', foundation)
+    assert re.search(
+        r'runner_private_endpoints_subnet_id\s*=\s*var\.runner_private_endpoints_subnet_id', foundation
+    )
     assert 'source = "../../../modules/workload"' in workload
     for contract in (foundation, workload):
         assert re.search(r"use_oidc\s*=\s*true", contract)
@@ -89,6 +93,8 @@ def test_all_foundation_roots_publish_the_same_workload_contract() -> None:
         "key_vault_id",
         "key_vault_name",
         "key_vault_uri",
+        "runner_key_vault_private_endpoint_id",
+        "runner_key_vault_dns_record_id",
         "location",
         "deployment_client_id",
         "deployment_identity_id",
@@ -354,6 +360,11 @@ def test_foundation_is_private_isolated_and_environment_scoped() -> None:
     assert 'name                = "privatelink.vaultcore.azure.net"' in contract
     assert 'private_dns_zone_group {' in contract
     assert "private_dns_zone_ids = [azurerm_private_dns_zone.key_vault.id]" in contract
+    assert 'resource "azurerm_private_dns_a_record" "key_vault_runner"' in contract
+    assert 'resource "azurerm_private_endpoint" "key_vault_runner"' in contract
+    assert "subnet_id           = var.runner_private_endpoints_subnet_id" in contract
+    assert "resource_group_name = var.runner_resource_group_name" in contract
+    assert "azurerm_private_endpoint.key_vault_runner.private_service_connection[0].private_ip_address" in contract
 
 
 def test_container_app_environment_ignores_unconfigurable_force_new_drift() -> None:
@@ -384,7 +395,7 @@ def test_demo_adopts_existing_validation_workspace_without_cleanup_debt() -> Non
 
     assert "to = module.foundation.azurerm_log_analytics_workspace.environment" in demo
     assert "workspaces/law-waooaw-demo-validation" in demo
-    assert 'log_analytics_workspace_name = "law-waooaw-demo-validation"' in demo
+    assert re.search(r'log_analytics_workspace_name\s*=\s*"law-waooaw-demo-validation"', demo)
 
 
 def test_verification_emits_structured_probe_results() -> None:
@@ -610,6 +621,8 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "Reject stale release before cloud access" in workflow
     assert 'timeframe:"Custom"' in workflow.replace(" ", "")
     assert "Verify bootstrap RBAC and required Azure providers" in workflow
+    assert "TFSTATE_STORAGE_ACCOUNT: ${{ needs.resolve-environment.outputs.state_storage_account }}" in workflow
+    assert ': "${TFSTATE_STORAGE_ACCOUNT:?TFSTATE_STORAGE_ACCOUNT is required}"' in workflow
     assert "Microsoft.Network" in workflow
     assert 'require_role "Cost Management Reader"' not in workflow
     assert "Storage Account Contributor" in workflow
@@ -683,6 +696,10 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "for output_name in container_app_environment_id key_vault_id deployment_identity_id" in workflow
     assert 'az resource show --ids "$resource_id" --output none || live_valid=false' in workflow
     assert 'cache_reason="live-resource-missing"' in workflow
+    assert "runner_key_vault_private_endpoint_id" in workflow
+    assert "runner_key_vault_dns_record_id" in workflow
+    assert "TF_VAR_runner_resource_group_name" in workflow
+    assert "TF_VAR_runner_private_endpoints_subnet_id" in workflow
     assert "goal006_foundation_cache.py create" in workflow
     assert '--name "$FOUNDATION_CACHE_BLOB"' in workflow
     assert workflow.count("steps.credential-inventory.outputs.seeding_required == 'true'") == 3
