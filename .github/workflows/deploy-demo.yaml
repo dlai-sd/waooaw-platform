@@ -72,7 +72,7 @@ jobs:
             dlai-sd|yk-dlaisd) ;;
             *) echo "Unauthorized Demo dispatcher" >&2; exit 1 ;;
           esac
-          test "$DISPATCH_REF" = "refs/heads/main"
+          test "$DISPATCH_REF" = "refs/heads/fix/goal006-demo-deployment-runtime"
           case "$EXECUTION_MODE" in plan|apply) ;; *) exit 1 ;; esac
           latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
           release_run_id=$(gh api \
