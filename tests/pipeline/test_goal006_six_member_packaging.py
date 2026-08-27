@@ -73,9 +73,10 @@ def test_ci_has_deterministic_spec_and_fixable_vulnerability_gates() -> None:
     assert "spectral:oas" in spectral
     assert "@stoplight/spectral-cli@6.15.0" in workflow
     assert "bufbuild/buf:1.72.0" in workflow
-    assert "github.event.pull_request.base.sha" in workflow
-    assert "github.event.before" in workflow
-    assert 'git cat-file -e "${BASE_SHA}^{commit}"' in workflow
+    assert "Detect affected image" not in workflow
+    assert "steps.affected.outputs.build" not in workflow
+    assert workflow.count("Build pull-request image") == 1
+    assert workflow.count("Scan pull-request image") == 1
     assert workflow.count("scanners: vuln") == 2
     assert workflow.count("ignore-unfixed: true") == 2
     assert workflow.count("severity: CRITICAL,HIGH") == 2
@@ -93,6 +94,7 @@ def test_release_images_are_non_root_and_expose_accepted_ports() -> None:
 def test_web_configuration_is_runtime_external() -> None:
     content = (REPO_ROOT / "web/Dockerfile").read_text(encoding="utf-8")
     assert "ARG NEXT_PUBLIC_" not in content
+    assert "'libcrypto3>=3.5.8-r0' 'libssl3>=3.5.8-r0'" in content
 
 
 def test_baseline_excludes_oauth_vault_and_mcps() -> None:
