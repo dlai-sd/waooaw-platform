@@ -24,7 +24,7 @@ env:
 
 jobs:
 
-  # ─── Build and scan affected pull-request images ─────────────────────────
+  # ─── Build and scan all pull-request release images ──────────────────────
   build:
     name: Build Docker image (${{ matrix.service.name }})
     runs-on: ubuntu-latest
@@ -39,46 +39,22 @@ jobs:
         service:
           - name: constitutional-engine
             dockerfile: src/constitutional-engine/Dockerfile
-            path_pattern: ^src/constitutional-engine/
           - name: business-platform
             dockerfile: src/business-platform/Dockerfile
-            path_pattern: ^src/business-platform/
           - name: professional-runtime
             dockerfile: src/professional-runtime/Dockerfile
-            path_pattern: ^src/professional-runtime/
           - name: ai-runtime
             dockerfile: src/ai-runtime/Dockerfile
-            path_pattern: ^src/ai-runtime/
           - name: web
             dockerfile: web/Dockerfile
-            path_pattern: ^web/
           - name: billing-engine
             dockerfile: src/billing-engine/Dockerfile
-            path_pattern: ^src/billing-engine/
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Detect affected image
-        id: affected
-        env:
-          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
-          PATH_PATTERN: ${{ matrix.service.path_pattern }}
-        run: |
-          if ! git cat-file -e "${BASE_SHA}^{commit}"; then
-            git fetch --no-tags origin "$BASE_SHA"
-          fi
-          if git diff --name-only "$BASE_SHA" HEAD | grep -Eq "$PATH_PATTERN"; then
-            echo "build=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "build=false" >> "$GITHUB_OUTPUT"
-          fi
       - name: Set up Docker Buildx
-        if: steps.affected.outputs.build == 'true'
         uses: docker/setup-buildx-action@v3
       - name: Build pull-request image
-        if: steps.affected.outputs.build == 'true'
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -91,7 +67,6 @@ jobs:
           cache-from: type=gha,scope=release-${{ matrix.service.name }}
           cache-to: type=gha,mode=max,scope=release-${{ matrix.service.name }}
       - name: Scan pull-request image
-        if: steps.affected.outputs.build == 'true'
         uses: aquasecurity/trivy-action@2736533278103862a861f4a35ebac3e97854d956
         with:
           image-ref: ${{ env.REGISTRY_PREFIX }}/${{ matrix.service.name }}:sha-${{ github.sha }}
@@ -103,7 +78,7 @@ jobs:
           ignore-unfixed: true
           exit-code: 1
       - name: Upload pull-request scan results
-        if: always() && steps.affected.outputs.build == 'true'
+        if: always()
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-${{ matrix.service.name }}.sarif

@@ -14,6 +14,7 @@ RUN pnpm build
 
 FROM node:20-alpine
 RUN apk upgrade --no-cache \
+	&& apk add --no-cache 'libcrypto3>=3.5.8-r0' 'libssl3>=3.5.8-r0' \
 	&& rm -rf /usr/local/lib/node_modules/npm \
 	&& rm -f /usr/local/bin/npm /usr/local/bin/npx \
 	&& addgroup -S waooaw \
