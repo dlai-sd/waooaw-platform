@@ -616,11 +616,13 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "Storage Blob Data Contributor" in workflow
     assert workflow.count("Role Based Access Control Administrator") == 2
     assert "bootstrap-role-assignments.json" in workflow
+    assert '--scope "$state_scope" > state-role-assignments.json' in workflow
+    assert '--scope "$environment_scope" > environment-role-assignments.json' in workflow
+    assert "--all --include-inherited" not in workflow
+    assert "jq -s 'add' state-role-assignments.json environment-role-assignments.json" in workflow
     assert "subscription-budget.json" in workflow
     assert "actual-cost.json" in workflow
     assert "forecast-cost.json" in workflow
-    assert "Exact role topology is independently validated by goal006_bootstrap_oidc.py" in workflow
-    assert "self-enumeration cannot see subscription assignments" in workflow
     assert "Bootstrap identity must not have Owner" not in workflow
     assert workflow.index("Verify bootstrap RBAC and required Azure providers") < workflow.index(
         "Verify subscription budget"

@@ -339,9 +339,9 @@ jobs:
           state_scope="$TF_VAR_tfstate_storage_account_id"
           environment_scope="$subscription_scope/resourceGroups/waooaw-${{ inputs.environment }}-rg"
           principal_id=$(az account get-access-token --resource https://management.azure.com/ --query accessToken -o tsv | python3 -c 'import base64, json, sys; payload=sys.stdin.read().strip().split(".")[1]; print(json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))["oid"])')
-          az role assignment list --assignee-object-id "$principal_id" --all --include-inherited > bootstrap-role-assignments.json
-          # Exact role topology is independently validated by goal006_bootstrap_oidc.py. Runtime
-          # self-enumeration cannot see subscription assignments without broader authorization.
+          az role assignment list --assignee-object-id "$principal_id" --scope "$state_scope" > state-role-assignments.json
+          az role assignment list --assignee-object-id "$principal_id" --scope "$environment_scope" > environment-role-assignments.json
+          jq -s 'add' state-role-assignments.json environment-role-assignments.json > bootstrap-role-assignments.json
           require_role() {
             role=$1
             role_scope=$2
