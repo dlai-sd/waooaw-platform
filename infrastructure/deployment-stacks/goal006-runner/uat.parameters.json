@@ -13,7 +13,7 @@
     "githubAppId": { "value": "4680703" },
     "githubAppInstallationId": { "value": "155648751" },
     "githubAppKeyName": { "value": "github-runner-app-signing" },
-    "githubAppKeyVersion": { "value": "fd3d73a5545844169b49382fab819c0d" },
+    "githubAppKeyVersion": { "value": "8acf2a5fd066460dabcf3b27f207109a" },
     "runnerVnetAddressPrefix": { "value": "10.71.0.0/24" },
     "runnerSubnetAddressPrefix": { "value": "10.71.0.0/27" },
     "privateEndpointSubnetAddressPrefix": { "value": "10.71.0.32/27" },
