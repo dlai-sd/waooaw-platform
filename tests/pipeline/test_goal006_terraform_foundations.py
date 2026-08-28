@@ -617,7 +617,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert workflow.count('-backend-config="use_oidc=true"') == 2
     assert workflow.count('-backend-config="use_azuread_auth=true"') == 2
     assert "Enforce selected environment authorization" in workflow
-    assert 'EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy-demo.yaml@refs/heads/main' in workflow
+    assert 'EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy.yaml@refs/heads/main' in workflow
     assert 'case "$TARGET_ENVIRONMENT" in demo|uat|prod)' in workflow
     assert 'case "$APPLY_REQUESTED" in true|false)' in workflow
     assert workflow.index("Enforce selected environment authorization") < workflow.index("azure/login@v2")
