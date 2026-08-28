@@ -62,8 +62,12 @@ variable "key_vault_secret_resource_ids" {
 variable "founder_ipv4_cidr" {
   type        = string
   description = "Single Founder IPv4 /32 permitted to reach public Demo applications."
+  default     = null
+  nullable    = true
   validation {
-    condition     = can(regex("^(?:[0-9]{1,3}[.]){3}[0-9]{1,3}/32$", var.founder_ipv4_cidr)) && var.founder_ipv4_cidr != "0.0.0.0/32"
+    condition = var.environment != "demo" ? var.founder_ipv4_cidr == null : (
+      can(regex("^(?:[0-9]{1,3}[.]){3}[0-9]{1,3}/32$", var.founder_ipv4_cidr)) && var.founder_ipv4_cidr != "0.0.0.0/32"
+    )
     error_message = "Founder review access requires one nonzero IPv4 /32."
   }
 }

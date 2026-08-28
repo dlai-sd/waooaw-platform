@@ -380,7 +380,7 @@ resource "azurerm_container_app" "member" {
     }
 
     dynamic "ip_security_restriction" {
-      for_each = local.public_ingress[each.key] ? [var.founder_ipv4_cidr] : []
+      for_each = var.environment == "demo" && local.public_ingress[each.key] ? [var.founder_ipv4_cidr] : []
       content {
         name             = "founder-review"
         ip_address_range = ip_security_restriction.value

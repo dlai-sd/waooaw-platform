@@ -42,7 +42,6 @@ module "workload" {
   image_digests                            = var.image_digests
   key_vault_secret_uris                    = var.key_vault_secret_uris
   key_vault_secret_resource_ids            = var.key_vault_secret_resource_ids
-  founder_ipv4_cidr                        = var.founder_ipv4_cidr
   ghcr_packages_public                     = var.ghcr_packages_public
   ce_min_replicas                          = var.ce_min_replicas
   pr_min_replicas                          = var.pr_min_replicas

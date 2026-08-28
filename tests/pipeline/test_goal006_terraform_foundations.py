@@ -127,10 +127,9 @@ def test_workload_roots_use_current_secret_and_ingress_contract(environment: str
         "verification_principal_id",
         "key_vault_secret_uris",
         "key_vault_secret_resource_ids",
-        "founder_ipv4_cidr",
     ):
         assert re.search(rf"{field}\s*=\s*", workload)
-        if field in {"key_vault_secret_uris", "key_vault_secret_resource_ids", "founder_ipv4_cidr"}:
+        if field in {"key_vault_secret_uris", "key_vault_secret_resource_ids"}:
             assert f'variable "{field}"' in variables
     assert "key_vault_secret_ids" not in f"{workload}\n{variables}"
 
@@ -343,6 +342,36 @@ def test_enabled_workloads_require_verified_public_ghcr_packages() -> None:
         )
 
 
+def test_founder_ipv4_cidr_is_required_only_for_demo() -> None:
+    module_variables = read_contract("modules/workload/variables.tf")
+    demo_root = read_contract("environments/demo/workload/main.tf")
+    demo_variables = read_contract("environments/demo/workload/variables.tf")
+
+    assert re.search(r'variable "founder_ipv4_cidr"\s*{[^}]*default\s*=\s*null', module_variables, re.DOTALL)
+    assert 'var.environment != "demo"' in module_variables
+    assert 'var.environment == "demo" && local.public_ingress[each.key]' in read_contract("modules/workload/main.tf")
+    assert "founder_ipv4_cidr                        = var.founder_ipv4_cidr" in demo_root
+    assert 'variable "founder_ipv4_cidr"' in demo_variables
+
+    for environment in ("uat", "prod"):
+        root = read_contract(f"environments/{environment}/workload/main.tf")
+        root_variables = read_contract(f"environments/{environment}/workload/variables.tf")
+        assert "founder_ipv4_cidr" not in root
+        assert 'variable "founder_ipv4_cidr"' not in root_variables
+
+
+def test_demo_and_uat_are_public_while_production_defaults_private() -> None:
+    module_variables = read_contract("modules/foundation/variables.tf")
+
+    assert "explicitly authorized lower environment" in module_variables
+    for environment in ("demo", "uat"):
+        foundation = read_contract(f"environments/{environment}/foundation/main.tf")
+        assert re.search(r"external_environment\s*=\s*true", foundation)
+
+    production = read_contract("environments/prod/foundation/main.tf")
+    assert "external_environment" not in production
+
+
 def test_foundation_is_private_isolated_and_environment_scoped() -> None:
     contract = read_contract("modules/foundation/main.tf")
 
@@ -438,7 +467,7 @@ def test_post_deploy_verification_requires_the_exact_latest_revision() -> None:
     assert 'properties.healthState == "Healthy"' in workflow
 
 
-def test_demo_review_ingress_is_founder_restricted_and_other_environments_remain_private() -> None:
+def test_lower_environments_are_public_but_only_demo_is_founder_restricted() -> None:
     demo = read_contract("environments/demo/foundation/main.tf")
     uat = read_contract("environments/uat/foundation/main.tf")
     prod = read_contract("environments/prod/foundation/main.tf")
@@ -446,9 +475,10 @@ def test_demo_review_ingress_is_founder_restricted_and_other_environments_remain
     demo_workload = read_contract("environments/demo/workload/main.tf")
 
     assert re.search(r"external_environment\s*=\s*true", demo)
-    assert "external_environment" not in uat
+    assert re.search(r"external_environment\s*=\s*true", uat)
     assert "external_environment" not in prod
     assert 'name             = "founder-review"' in workload
+    assert 'var.environment == "demo" && local.public_ingress[each.key]' in workload
     assert "ip_address_range = ip_security_restriction.value" in workload
     assert re.search(r"founder_ipv4_cidr\s*=\s*var\.founder_ipv4_cidr", demo_workload)
     assert re.search(r"max_replicas\s*=\s*1", demo_workload)
