@@ -208,6 +208,11 @@ def test_keycloak_realm_import_matches_the_web_oidc_contract() -> None:
     assert "--import-realm" in keycloak
     assert "/opt/keycloak/data/import/waooaw-realm.json" in keycloak
     assert "until /opt/keycloak/bin/kcadm.sh" not in keycloak
+    assert "--db=dev-file" in keycloak
+    assert "--db=dev-mem" not in keycloak
+    assert "startup_probe" in keycloak
+    assert "readiness_probe" in keycloak
+    assert keycloak.count('path                    = "/realms/waooaw/.well-known/openid-configuration"') == 2
     assert 'name  = "KEYCLOAK_ADMIN"' in keycloak
     assert 'name        = "KEYCLOAK_ADMIN_PASSWORD"' in keycloak
     assert "printf '%s'" in keycloak

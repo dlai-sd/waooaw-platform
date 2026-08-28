@@ -441,9 +441,28 @@ resource "azurerm_container_app" "keycloak" {
         set -eu
         mkdir -p /opt/keycloak/data/import
         printf '%s' '${local.keycloak_realm_base64}' | base64 --decode > /opt/keycloak/data/import/waooaw-realm.json
-        exec /opt/keycloak/bin/kc.sh start-dev --db=dev-mem --http-enabled=true --hostname-strict=false --import-realm
+        exec /opt/keycloak/bin/kc.sh start-dev --db=dev-file --http-enabled=true --hostname-strict=false --import-realm
       EOT
       ]
+
+      startup_probe {
+        transport               = "HTTP"
+        port                    = 8080
+        path                    = "/realms/waooaw/.well-known/openid-configuration"
+        interval_seconds        = 5
+        timeout                 = 3
+        failure_count_threshold = 30
+      }
+
+      readiness_probe {
+        transport               = "HTTP"
+        port                    = 8080
+        path                    = "/realms/waooaw/.well-known/openid-configuration"
+        interval_seconds        = 10
+        timeout                 = 3
+        failure_count_threshold = 3
+        success_count_threshold = 1
+      }
 
       env {
         name  = "KEYCLOAK_ADMIN"
