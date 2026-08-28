@@ -64,17 +64,23 @@ authorization. UAT and Production runner activation remains prohibited; their bl
 |---|---|
 | Azure mutation | PASS - state account public network access disabled and private endpoint preserved |
 | Demo plan | PASS - run `33145397876` at qualification SHA `7c7700d41104036e4810e1457404126022424eff`; runner, broker and cleanup succeeded |
-| Demo apply | PASS - run `33146079390` at qualification SHA `a249f2192b270598380a3447f7904e5ccf828b61`; release SHA `10d7525ccca6fa0d7daa437da7e4630fb94bbeae` |
-| Exact-branch OIDC/private runner | PASS - plan and apply traversed the private runner; zero runner, broker and cleanup executions remained active |
+| Initial Demo apply | BACKEND PASS / FOUNDER BROWSER FAIL - run `33146079390` deployed release SHA `10d7525ccca6fa0d7daa437da7e4630fb94bbeae`, but used Codespace egress `4.240.39.204/32`; the Founder browser at `49.36.49.189` received `RBAC: access denied` at Azure ingress |
+| Corrective Demo apply | PASS - run `33147562517` at qualification SHA `9fe961219d609df01f1c9d9a5345b6052fa6f5bd`; Web, Business Platform and Professional Runtime now restrict ingress to Founder browser CIDR `49.36.49.189/32` |
+| Exact-branch OIDC/private runner | PASS - plan and both apply runs traversed the private runner; zero runner, broker and cleanup executions remained active |
 | Independent verification | PASS - exact-six, pinned dependencies, latest-ready revisions, internal HTTP/gRPC probes, URL and CIDR |
-| Demo endpoint | PASS - `https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io` returned HTTP 200 from the approved Founder boundary |
-| Demo ingress | PASS - Web, Business Platform and Professional Runtime restricted to `4.240.39.204/32`; private services remained internal |
-| Functional verification | PASS - execution `job-demo-deployment-verification-wx2x4xo`; Web, Business Platform and identity discovery returned HTTP 200; Constitutional Engine reported `SERVING` |
+| Demo endpoint | FOUNDER RETEST PENDING - `https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io`; do not claim acceptance until the Founder verifies it from the allowlisted browser/network |
+| Demo ingress | PASS - Web, Business Platform and Professional Runtime restricted to `49.36.49.189/32`; private services remained internal |
+| Functional verification | PASS - corrective execution `job-demo-deployment-verification-wri2jfa`; independent Web, Business Platform, identity discovery and Constitutional Engine probes succeeded |
 | Serving revisions | PASS - all eight latest revisions matched latest-ready and received 100% of routed traffic; retained zero-traffic rollback revisions were not mutated |
 | Exact-six digests | PASS - live Constitutional Engine, Business Platform, Professional Runtime, AI Runtime, Web and Billing Engine digests exactly matched the signed release manifest |
 | UAT activation/apply | NOT AUTHORIZED - requires Founder Demo acceptance |
 | Production | NOT AUTHORIZED - plan/apply not run |
 | Temporary trust cleanup | PASS - qualification branch policies and cleanup federation removed after each run; Demo, Demo verification and cleanup identity trust only `main` |
+
+RCA: `https://api.ipify.org` was initially queried from Codespace, so the deployed `/32` represented
+automation egress instead of the Founder's review browser. The canonical dispatch input now requires
+the address to be obtained in the Founder review browser and explicitly rejects Codespace or runner
+egress as the source. Focused workflow contracts passed 74/74 and actionlint passed after the change.
 
 The reusable workflow labels are environment-derived. The observed `Apply demo` job name is formed
 from the selected execution and `${{ inputs.environment }}`; the `demo-verification` protected
