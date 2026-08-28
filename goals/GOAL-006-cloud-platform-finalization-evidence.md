@@ -7,7 +7,7 @@
 | Baseline | `10d7525ccca6fa0d7daa437da7e4630fb94bbeae` |
 | Branch | `fix/goal006-cloud-platform-finalization` |
 | Authority | WC-076; FA-052; Founder current-session implementation, read-only Azure, temporary exact-branch trust, and Demo plan/apply authorization on 2026-08-28 |
-| Status | LOCAL QUALIFICATION PASS; STATE NETWORK PREFLIGHT PASS; PRIVATE QUALIFICATION PENDING |
+| Status | DEMO PLAN/APPLY PASS; PRIVATE QUALIFICATION PASS; FOUNDER DEMO ACCEPTANCE PENDING |
 
 ## Local And Offline Qualification
 
@@ -63,8 +63,20 @@ authorization. UAT and Production runner activation remains prohibited; their bl
 | Evidence type | Status |
 |---|---|
 | Azure mutation | PASS - state account public network access disabled and private endpoint preserved |
-| Exact-branch OIDC/private runner | NOT RUN - blocked before temporary trust creation |
-| Demo plan/apply and verification | NOT RUN |
+| Demo plan | PASS - run `33145397876` at qualification SHA `7c7700d41104036e4810e1457404126022424eff`; runner, broker and cleanup succeeded |
+| Demo apply | PASS - run `33146079390` at qualification SHA `a249f2192b270598380a3447f7904e5ccf828b61`; release SHA `10d7525ccca6fa0d7daa437da7e4630fb94bbeae` |
+| Exact-branch OIDC/private runner | PASS - plan and apply traversed the private runner; zero runner, broker and cleanup executions remained active |
+| Independent verification | PASS - exact-six, pinned dependencies, latest-ready revisions, internal HTTP/gRPC probes, URL and CIDR |
+| Demo endpoint | PASS - `https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io` returned HTTP 200 from the approved Founder boundary |
+| Demo ingress | PASS - Web, Business Platform and Professional Runtime restricted to `4.240.39.204/32`; private services remained internal |
+| Functional verification | PASS - execution `job-demo-deployment-verification-wx2x4xo`; Web, Business Platform and identity discovery returned HTTP 200; Constitutional Engine reported `SERVING` |
+| Serving revisions | PASS - all eight latest revisions matched latest-ready and received 100% of routed traffic; retained zero-traffic rollback revisions were not mutated |
+| Exact-six digests | PASS - live Constitutional Engine, Business Platform, Professional Runtime, AI Runtime, Web and Billing Engine digests exactly matched the signed release manifest |
 | UAT activation/apply | NOT AUTHORIZED - requires Founder Demo acceptance |
 | Production | NOT AUTHORIZED - plan/apply not run |
-| Temporary trust cleanup | NOT APPLICABLE - no temporary trust created |
+| Temporary trust cleanup | PASS - qualification branch policies and cleanup federation removed after each run; Demo, Demo verification and cleanup identity trust only `main` |
+
+The reusable workflow labels are environment-derived. The observed `Apply demo` job name is formed
+from the selected execution and `${{ inputs.environment }}`; the `demo-verification` protected
+environment is formed from `${{ inputs.environment }}-verification`. The temporary exact-branch
+wrapper was intentionally Demo-only for pre-PR qualification and is absent from the restored branch.
