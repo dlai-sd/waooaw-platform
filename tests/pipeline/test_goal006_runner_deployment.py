@@ -12,6 +12,7 @@ from scripts.goal006_runner_deployment import (
     _digest_bytes,
     _required_resource_names,
     environment_contract,
+    main,
     normalize_changes,
     revalidate_reviewed_plan,
     validate_reviewed_plan,
@@ -213,6 +214,35 @@ def test_live_plan_rejects_unauthorized_environment() -> None:
             subscription_id="sub",
             source_commit="b" * 40,
         )
+
+
+@pytest.mark.parametrize("environment", ["demo", "uat", "prod"])
+def test_cli_accepts_every_authorized_environment(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, environment: str
+) -> None:
+    output_path = tmp_path / "runner-plan.json"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "goal006_runner_deployment.py",
+            "preview",
+            "--environment",
+            environment,
+            "--subscription-id",
+            "sub",
+            "--source-commit",
+            "b" * 40,
+            "--output",
+            str(output_path),
+        ],
+    )
+    monkeypatch.setattr(
+        "scripts.goal006_runner_deployment.create_plan",
+        lambda **arguments: {"payload": {"environment": arguments["environment"]}},
+    )
+
+    assert main() == 0
+    assert f'"environment": "{environment}"' in output_path.read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize(

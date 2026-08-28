@@ -709,7 +709,7 @@ def _write_json(path: Path, value: Mapping[str, Any]) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("operation", choices=("preview", "review", "apply"))
-    parser.add_argument("--environment", choices=("demo",), required=True)
+    parser.add_argument("--environment", choices=("demo", "uat", "prod"), required=True)
     parser.add_argument("--subscription-id", required=True)
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--repository-root", type=Path, default=Path.cwd())
