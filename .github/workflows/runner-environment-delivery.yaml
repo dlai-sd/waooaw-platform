@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
-      - name: Require trusted qualification branch and valid input combination
+      - name: Require trusted current main and valid input combination
         env:
           GH_TOKEN: ${{ github.token }}
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
@@ -59,9 +59,9 @@ jobs:
           REVIEWED_PLAN_RUN_ID: ${{ inputs.reviewed_plan_run_id }}
         run: |
           set -eu
-          test "$GITHUB_REF" = "refs/heads/fix/goal006-cloud-platform-finalization"
-          qualification_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/fix/goal006-cloud-platform-finalization" --jq '.object.sha')
-          test "$GITHUB_SHA" = "$qualification_sha"
+          test "$GITHUB_REF" = "refs/heads/main"
+          latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          test "$GITHUB_SHA" = "$latest_main_sha"
           case "$TARGET_ENVIRONMENT" in demo|uat|prod) ;; *) echo "ENVIRONMENT_NOT_ALLOWED: $TARGET_ENVIRONMENT" >&2; exit 1 ;; esac
           case "$OPERATION" in
             preview)
@@ -87,7 +87,7 @@ jobs:
           jq -e --arg path "$WORKFLOW_PATH" '
             .conclusion == "success" and
             .event == "workflow_dispatch" and
-            .head_branch == "fix/goal006-cloud-platform-finalization" and
+            .head_branch == "main" and
             .path == $path
           ' <<< "$run" >/dev/null
 

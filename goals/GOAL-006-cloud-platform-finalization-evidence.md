@@ -7,7 +7,7 @@
 | Baseline | `10d7525ccca6fa0d7daa437da7e4630fb94bbeae` |
 | Branch | `fix/goal006-cloud-platform-finalization` |
 | Authority | WC-076; FA-052; Founder current-session implementation, read-only Azure, temporary exact-branch trust, and Demo plan/apply authorization on 2026-08-28 |
-| Status | DEMO ACCEPTED; UAT RUNNER ACTIVATION IN PROGRESS |
+| Status | DEMO ACCEPTED; UAT RUNNER ACTIVE; UAT WORKLOAD QUALIFICATION NEXT |
 
 ## Local And Offline Qualification
 
@@ -17,7 +17,7 @@
 | Focused workflow contracts | PASS - 21/21 |
 | Runner blueprint/bootstrap/deployment | PASS - 40/40 |
 | GOAL-006 pipeline regression | PASS - 470/470 |
-| Full pipeline regression | PASS - 1254/1254 |
+| Full pipeline regression | PASS - 1260/1260 at UAT runner qualification SHA `c3d6318d94adbee20c310f2f46c4d74b2ad289fb` |
 | Actionlint 1.7.7 | PASS - eight delivery workflows |
 | Terraform 1.9.8 formatting | PASS |
 | Terraform roots | PASS - Demo/UAT/Production foundation and workload, 6/6 |
@@ -54,9 +54,9 @@ runner Deployment Stack; those surfaces reference it as an existing resource. Pu
 disabled as directed, but durable infrastructure-as-code ownership remains deferred engineering debt.
 
 Production GitHub deployment and verification environments are also absent. Creating protected
-Production environments is a Founder/admin action and is outside the current Demo-only live
-authorization. UAT and Production runner activation remains prohibited; their blueprints are still
-`INACTIVE` and no identities were invented.
+Production environments remains a prerequisite for the authorized Production plan-only stage.
+Production runner activation remains prohibited and its blueprint is `INACTIVE`. UAT identities
+were recorded only from the verified Azure deployment outputs.
 
 ## Live Evidence
 
@@ -74,7 +74,10 @@ authorization. UAT and Production runner activation remains prohibited; their bl
 | Serving revisions | PASS - all eight latest revisions matched latest-ready and received 100% of routed traffic; retained zero-traffic rollback revisions were not mutated |
 | Exact-six digests | PASS - live Constitutional Engine, Business Platform, Professional Runtime, AI Runtime, Web and Billing Engine digests exactly matched the signed release manifest |
 | Founder Demo acceptance | PASS - Founder explicitly accepted and approved the Demo application on 2026-08-28 after browser-path verification |
-| UAT activation/apply | AUTHORIZED SEQUENCE ACTIVE - runner preview/apply, then UAT workload plan/apply using the Demo-proven exact-six release |
+| UAT prerequisite reconciliation | PASS - dedicated Azure CLI what-if contained zero deletes; apply refreshed the current six-output custom-role contract and verified RBAC plus INR 10,000 budget |
+| UAT runner preview | PASS - run `33149859100` at SHA `c3d6318d94adbee20c310f2f46c4d74b2ad289fb`; reviewed plan `sha256:6bcf94f36f1f77f550b5d6e5e51337e5a1aa801916b2c6d010415413991e9361` contained 36 creates, one resource-group ignore and one approved deferred same-environment evidence assignment, with zero deletes |
+| UAT runner apply | PASS - run `33150103583`; deployment record `sha256:8f725ff1c009f8b99d277cf8a771a456ba21ce2d92c29580361dd8935ec7640d`; stack verified ACTIVE with 37 managed resources, `denyDelete`, detach-on-unmanage, private approved endpoints, private RBAC vault, immutable job images and zero active runner/broker/cleanup executions |
+| UAT workload | NEXT - plan/apply the Demo-proven exact-six release using the UAT protected configuration boundary |
 | Production | NOT AUTHORIZED - plan/apply not run |
 | Temporary trust cleanup | PASS - qualification branch policies and cleanup federation removed after each run; Demo, Demo verification and cleanup identity trust only `main` |
 
