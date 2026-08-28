@@ -107,6 +107,13 @@ def test_all_foundation_roots_publish_the_same_workload_contract() -> None:
         assert set(re.findall(r'^output "([^"]+)"', foundation, re.MULTILINE)) == expected_outputs
 
 
+@pytest.mark.parametrize("environment", ENVIRONMENTS)
+def test_all_workload_roots_publish_web_url(environment: str) -> None:
+    workload = read_contract(f"environments/{environment}/workload/main.tf")
+
+    assert re.search(r'output "web_url"\s*{\s*value\s*=\s*module\.workload\.web_url\s*}', workload)
+
+
 def test_foundation_and_workload_have_distinct_owners() -> None:
     assert not list((PHASE2_ROOT / "modules" / "environment").glob("*.tf"))
     for environment in ENVIRONMENTS:
@@ -774,6 +781,15 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     ):
         apply_index = workflow.index(apply_command)
         assert workflow.rfind('test \'${{ inputs.release_sha }}\' = "$latest_main_sha"', 0, apply_index) != -1
+
+
+def test_deployment_workflow_fails_closed_when_web_url_is_missing() -> None:
+    workflow = (REPO_ROOT / ".github/workflows/deploy-environment.yaml").read_text(encoding="utf-8")
+
+    assert "web_url=$(terraform output -raw web_url)" in workflow
+    assert 'test -n "$web_url"' in workflow
+    assert 'echo "web_url=$web_url" >> "$GITHUB_OUTPUT"' in workflow
+    assert 'echo "web_url=$(terraform output -raw web_url)"' not in workflow
 
 
 def test_deployment_identities_verify_the_active_subscription() -> None:

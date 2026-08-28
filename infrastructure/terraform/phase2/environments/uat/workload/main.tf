@@ -82,3 +82,7 @@ output "lease_reconciliation_inputs" {
     evidence_digest               = var.evidence_digest
   }
 }
+
+output "web_url" {
+  value = module.workload.web_url
+}

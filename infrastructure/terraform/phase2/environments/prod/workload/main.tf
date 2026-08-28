@@ -46,3 +46,7 @@ module "workload" {
   ce_min_replicas                          = var.ce_min_replicas
   pr_min_replicas                          = var.pr_min_replicas
 }
+
+output "web_url" {
+  value = module.workload.web_url
+}
