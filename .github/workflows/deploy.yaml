@@ -21,7 +21,7 @@ on:
           - plan
           - apply
       access_ipv4:
-        description: "Demo apply only: public IPv4 shown by https://api.ipify.org"
+        description: "Demo only: IPv4 from https://api.ipify.org in the Founder review browser, never Codespace/runner egress"
         required: false
         type: string
 
