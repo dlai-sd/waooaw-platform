@@ -4,7 +4,7 @@
     "cleanup_client_id": "0cbfdc62-b91f-44ee-ac27-90785b3d2eb5"
   },
   "uat": {
-    "control_plane_client_id": "007c8ed1-bd11-41f3-8631-226a475c7faf",
+    "control_plane_client_id": "60c07330-4cc1-4e12-95a2-adc0966f1941",
     "cleanup_client_id": "08e1ff4d-2ba8-4703-87a7-2d53c862fd81"
   },
   "prod": {

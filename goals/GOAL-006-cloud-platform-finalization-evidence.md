@@ -55,8 +55,9 @@ disabled as directed, but durable infrastructure-as-code ownership remains defer
 
 Production GitHub deployment and verification environments are also absent. Creating protected
 Production environments remains a prerequisite for the authorized Production plan-only stage.
-Production runner activation remains prohibited and its blueprint is `INACTIVE`. UAT identities
-were recorded only from the verified Azure deployment outputs.
+Production runner activation remains prohibited and its blueprint is `INACTIVE`. UAT uses the
+approved environment-federated bootstrap app for hosted control-plane operations and the generated,
+verified cleanup managed identity for post-run cleanup.
 
 ## Live Evidence
 
