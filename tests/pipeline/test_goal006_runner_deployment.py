@@ -161,13 +161,16 @@ def test_plan_normalization_preserves_property_delta() -> None:
     assert normalized[0]["details"]["delta"][0]["path"] == "properties.access"
 
 
-def test_plan_allows_only_deferred_evidence_writer_assignment() -> None:
+@pytest.mark.parametrize("environment", ["demo", "uat", "prod"])
+def test_plan_allows_only_matching_deferred_evidence_writer_assignment(
+    environment: str,
+) -> None:
     resource_id = (
         "[extensionResourceId('/subscriptions/sub/resourceGroups/platform/providers/"
         "Microsoft.Storage/storageAccounts/state/blobServices/default/containers/"
-        "goal006-demo-runner-evidence', 'Microsoft.Authorization/roleAssignments', "
+        f"goal006-{environment}-runner-evidence', 'Microsoft.Authorization/roleAssignments', "
         "reference('/subscriptions/sub/resourceGroups/demo/providers/Microsoft.ManagedIdentity/"
-        "userAssignedIdentities/goal006-demo-runner-evidence-writer-identity').principalId)]"
+        f"userAssignedIdentities/goal006-{environment}-runner-evidence-writer-identity').principalId)]"
     )
 
     assert normalize_changes(
@@ -177,6 +180,19 @@ def test_plan_allows_only_deferred_evidence_writer_assignment() -> None:
         "resource_id": resource_id,
         "details": {},
     }
+
+
+def test_plan_rejects_cross_environment_deferred_evidence_assignment() -> None:
+    resource_id = (
+        "[extensionResourceId('/subscriptions/sub/resourceGroups/platform/providers/"
+        "Microsoft.Storage/storageAccounts/state/blobServices/default/containers/"
+        "goal006-uat-runner-evidence', 'Microsoft.Authorization/roleAssignments', "
+        "reference('/subscriptions/sub/resourceGroups/demo/providers/Microsoft.ManagedIdentity/"
+        "userAssignedIdentities/goal006-demo-runner-evidence-writer-identity').principalId)]"
+    )
+
+    with pytest.raises(RuntimeError, match="unsupported or destructive"):
+        normalize_changes([{"changeType": "Unsupported", "resourceId": resource_id}])
 
 
 @pytest.mark.parametrize("change_type", ["Delete", "Deploy", "Unsupported", ""])
