@@ -25,6 +25,10 @@ on:
       access_cidr:
         required: false
         type: string
+      initialize_configuration:
+        required: false
+        type: boolean
+        default: false
     outputs:
       verification_client_id:
         value: ${{ jobs.terraform.outputs.verification_client_id }}
@@ -386,6 +390,70 @@ jobs:
           test "$amount" = "10000.0" || test "$amount" = "10000"
           jq -e '.properties.columns and .properties.rows' actual-cost.json >/dev/null
 
+      - name: Initialize UAT configuration from Demo
+        if: inputs.initialize_configuration
+        env:
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          test "$TARGET_ENVIRONMENT" = uat
+          target_exists=$(az storage blob exists \
+            --account-name "$TFSTATE_STORAGE_ACCOUNT" \
+            --container-name "$CONFIG_CONTAINER" \
+            --name "$CONFIG_BLOB" \
+            --auth-mode login \
+            --query exists -o tsv)
+          if test "$target_exists" = false; then
+            source_blob=demo/workload-configuration.json
+            python3 scripts/goal006_storage_download.py \
+              --account-name "$TFSTATE_STORAGE_ACCOUNT" \
+              --container-name "$CONFIG_CONTAINER" \
+              --blob-name "$source_blob" \
+              --output workload-configuration.source.json \
+              --evidence configuration-promotion-download-attempts.jsonl
+            jq '.lease_purpose = "UAT exact-six qualification" | del(.founder_ipv4_cidr)' \
+              workload-configuration.source.json > workload-configuration.seed.json
+            issued_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+            expires_at=$(date -u -d '+10 days' +%Y-%m-%dT%H:%M:%SZ)
+            python3 scripts/goal006_lease.py \
+              --configuration workload-configuration.seed.json \
+              --issued-at "$issued_at" \
+              --expires-at "$expires_at" \
+              --renewed-output workload-configuration.promoted.json \
+              > configuration-promotion-lease.json
+            promoted_sha256=$(sha256sum workload-configuration.promoted.json | cut -d' ' -f1)
+            az storage blob upload \
+              --account-name "$TFSTATE_STORAGE_ACCOUNT" \
+              --container-name "$CONFIG_CONTAINER" \
+              --name "$CONFIG_BLOB" \
+              --file workload-configuration.promoted.json \
+              --auth-mode login \
+              --overwrite false \
+              --only-show-errors \
+              --output none
+            python3 scripts/goal006_storage_download.py \
+              --account-name "$TFSTATE_STORAGE_ACCOUNT" \
+              --container-name "$CONFIG_CONTAINER" \
+              --blob-name "$CONFIG_BLOB" \
+              --output workload-configuration.promoted-verified.json \
+              --evidence configuration-promotion-verification-attempts.jsonl
+            verified_sha256=$(sha256sum workload-configuration.promoted-verified.json | cut -d' ' -f1)
+            test "$promoted_sha256" = "$verified_sha256"
+            jq -n \
+              --arg source_blob "$source_blob" \
+              --arg target_blob "$CONFIG_BLOB" \
+              --arg sha256 "$verified_sha256" \
+              --arg issued_at "$issued_at" \
+              --arg expires_at "$expires_at" \
+              '{schema:"waooaw.goal006-configuration-promotion/v1", source_blob:$source_blob, target_blob:$target_blob, source_environment:"demo", target_environment:"uat", create_only:true, sha256:("sha256:" + $sha256), lease_issued_at:$issued_at, lease_expires_at:$expires_at}' \
+              > configuration-promotion.json
+          else
+            jq -n \
+              --arg target_blob "$CONFIG_BLOB" \
+              '{schema:"waooaw.goal006-configuration-promotion/v1", target_blob:$target_blob, target_environment:"uat", create_only:true, decision:"TARGET_ALREADY_EXISTS"}' \
+              > configuration-promotion.json
+          fi
+
       - name: Download environment configuration with OIDC
         id: configuration
         env:
@@ -476,8 +544,11 @@ jobs:
           jq --arg manifest_digest "$manifest_digest" \
             '.manifest_digest = $manifest_digest' workload-configuration.json > workload-configuration.bound.json
           mv workload-configuration.bound.json workload-configuration.json
-          jq -e '.founder_ipv4_cidr and .planned_incremental_monthly_cost_inr != null and .cumulative_one_time_cost_inr != null' \
+          jq -e '.planned_incremental_monthly_cost_inr != null and .cumulative_one_time_cost_inr != null' \
             workload-configuration.json >/dev/null
+          if test "$TARGET_ENVIRONMENT" = demo; then
+            jq -e '.founder_ipv4_cidr' workload-configuration.json >/dev/null
+          fi
 
       - name: Capture configuration storage diagnostics
         if: failure() && steps.configuration.outcome == 'failure'
@@ -956,6 +1027,10 @@ jobs:
             subscription-budget.json
             actual-cost.json
             forecast-cost.json
+            configuration-promotion.json
+            configuration-promotion-lease.json
+            configuration-promotion-download-attempts.jsonl
+            configuration-promotion-verification-attempts.jsonl
             configuration-download-attempts.jsonl
             configuration-lease-renewal.json
             configuration-lease-validation.json

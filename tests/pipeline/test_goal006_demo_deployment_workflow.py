@@ -6,6 +6,9 @@ from pathlib import Path
 WORKFLOW = Path(".github/workflows/deploy-environment.yaml").read_text(
     encoding="utf-8"
 )
+QUALIFICATION_WRAPPER = Path(".github/workflows/deploy-demo.yaml").read_text(
+    encoding="utf-8"
+)
 
 
 def test_environment_deployment_uses_qualified_private_runner_lifecycle() -> None:
@@ -142,6 +145,23 @@ def test_private_workload_inputs_and_temporary_resources_are_environment_scoped(
     assert "CONFIG_BLOB: demo/workload-configuration.json" not in WORKFLOW
     assert "SEEDER_JOB: goal006-secret-seeder" not in WORKFLOW
     assert WORKFLOW.count("set -euo pipefail") >= 2
+
+
+def test_uat_configuration_initialization_is_explicit_create_only_and_private() -> None:
+    initialization = WORKFLOW.split("      - name: Initialize UAT configuration from Demo", 1)[1].split(
+        "      - name: Download environment configuration with OIDC", 1
+    )[0]
+
+    assert "if: inputs.initialize_configuration" in initialization
+    assert 'test "$TARGET_ENVIRONMENT" = uat' in initialization
+    assert "source_blob=demo/workload-configuration.json" in initialization
+    assert "--overwrite false" in initialization
+    assert 'del(.founder_ipv4_cidr)' in initialization
+    assert "scripts/goal006_lease.py" in initialization
+    assert 'test "$promoted_sha256" = "$verified_sha256"' in initialization
+    assert "configuration-promotion.json" in initialization
+    assert "default: false" in WORKFLOW.split("initialize_configuration:", 1)[1]
+    assert "initialize_configuration: true" in QUALIFICATION_WRAPPER
 
 
 def test_expired_lease_fails_before_foundation_plan_and_apply_renewal_is_etag_bound() -> None:

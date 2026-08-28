@@ -81,6 +81,7 @@ jobs:
       release_run_id: ${{ fromJSON(needs.authorize.outputs.release_run_id) }}
       release_sha: ${{ needs.authorize.outputs.release_sha }}
       apply: ${{ inputs.execution == 'apply' }}
+      initialize_configuration: true
       lease_expires_at: ${{ needs.authorize.outputs.lease_expires_at }}
       access_cidr: ${{ needs.authorize.outputs.access_cidr }}
     secrets: inherit
