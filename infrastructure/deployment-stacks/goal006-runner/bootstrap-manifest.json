@@ -44,8 +44,8 @@
     "scripts/goal006_import_app_signing_material.sh": "9f45ba6158195d32f2de4e3f3410e2efebdb5a4fc8ccb2c464827c5757d4af45",
     "scripts/goal006_runner_bootstrap.py": "dbeb100c93c90442204791266cb98a098c4f916563171d9feebcf08b6240c537",
     "scripts/goal006_runner_deployment.py": "73f641559b7c9986761401188d9820163821a66f7315e40a0c0e4f91caa83427",
-    "scripts/goal006_runner_execution.py": "4bbf02d8ec67eb7fa3d77376df53846dc522ac48b04f17f2b0c066d70929358d",
-    "scripts/goal006_runner_lifecycle.py": "83ead0e994427a37be9064661400cacca0d67c211e8346cedfbc347c84a84781",
+    "scripts/goal006_runner_execution.py": "9fdc40dc48836ef46d4f00cfe959c4ac6bb33ee21dd918e412d40eec443fda37",
+    "scripts/goal006_runner_lifecycle.py": "d34cca3773ee67015db812ac5eea15855fc1f563cbdca5a57720ba65e054af9c",
     "scripts/goal006_runner_qualification.py": "f28dad7ce8ea18110f986b5d04b0744ca7835053d4d00839c1461a45bdfb2f31",
     "scripts/goal006_runner_prerequisites.py": "fdd05d982dda8088c4dee6bff14b747ea0358bb3ff15e26f1eb36e6d41d15482"
   }

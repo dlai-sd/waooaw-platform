@@ -22,18 +22,18 @@ from scripts.goal006_runner_execution import (
 IMAGE = "ghcr.io/dlai-sd/runner@sha256:" + "a" * 64
 
 
-def job(name: str, arguments: list[str]) -> dict:
+def job(name: str, arguments: list[str], environment_name: str = "demo") -> dict:
     environment = [
         {"name": key, "value": f"value-{key.lower()}"}
         for key in sorted(REQUIRED_ENVIRONMENT | CLEANUP_REQUIRED_ENVIRONMENT)
     ]
     values = {item["name"]: item for item in environment}
     values["RUNNER_ACTIVATION_STATE"]["value"] = "ACTIVE"
-    values["RUNNER_ENVIRONMENT"]["value"] = "demo"
+    values["RUNNER_ENVIRONMENT"]["value"] = environment_name
     values["GITHUB_REPOSITORY"]["value"] = "dlai-sd/waooaw-platform"
-    values["RUNNER_RESOURCE_GROUP"]["value"] = "waooaw-demo-runner-rg"
-    values["RUNNER_JOB_NAME"]["value"] = "goal006-demo-runner-job"
-    values["RUNNER_LABEL"]["value"] = "goal006-demo-private"
+    values["RUNNER_RESOURCE_GROUP"]["value"] = f"waooaw-{environment_name}-runner-rg"
+    values["RUNNER_JOB_NAME"]["value"] = f"goal006-{environment_name}-runner-job"
+    values["RUNNER_LABEL"]["value"] = f"goal006-{environment_name}-private"
     values["GITHUB_RUN_ID"]["value"] = "PENDING_EXECUTION_OVERRIDE"
     values["GITHUB_RUN_ATTEMPT"]["value"] = "PENDING_EXECUTION_OVERRIDE"
     return {
@@ -82,6 +82,27 @@ def test_broker_template_preserves_complete_container_and_binds_correlation() ->
     assert source_environment["GITHUB_RUN_ID"] == "PENDING_EXECUTION_OVERRIDE"
 
 
+def test_uat_broker_template_accepts_empty_azure_ephemeral_storage() -> None:
+    source = job("broker", BROKER_ARGS, "uat")
+    source["properties"]["template"]["containers"][0]["resources"][
+        "ephemeralStorage"
+    ] = ""
+
+    result = build_execution_template(
+        source,
+        mode="broker",
+        expected_image=IMAGE,
+        run_id="123",
+        run_attempt="2",
+    )
+
+    environment = {
+        item["name"]: item["value"] for item in result["containers"][0]["env"]
+    }
+    assert environment["RUNNER_ENVIRONMENT"] == "uat"
+    assert environment["RUNNER_LABEL"] == "goal006-uat-private"
+
+
 def test_cleanup_template_binds_terminal_conclusion() -> None:
     result = build_execution_template(
         job("cleanup-broker", CLEANUP_ARGS),
@@ -116,6 +137,7 @@ def test_cleanup_evidence_is_correlation_bound_and_complete() -> None:
     encoded = base64.b64encode(json.dumps(record).encode()).decode()
     result = extract_cleanup_evidence(
         f"2026-08-23T00:00:00Z GOAL006_CLEANUP_RECORD_B64={encoded}\n",
+        environment="demo",
         run_id="123",
         run_attempt="2",
         private_job_conclusion="success",
@@ -143,6 +165,7 @@ def test_cleanup_evidence_rejects_false_outcome() -> None:
     with pytest.raises(ExecutionTemplateError, match="outcome"):
         extract_cleanup_evidence(
             f"GOAL006_CLEANUP_RECORD_B64={encoded}",
+            environment="demo",
             run_id="123",
             run_attempt="2",
             private_job_conclusion="failure",
@@ -171,6 +194,50 @@ def test_cleanup_evidence_pointer_is_correlation_bound() -> None:
         ),
         "producer_status": "Succeeded",
     }
+
+
+def test_uat_cleanup_evidence_pointer_is_environment_bound() -> None:
+    result = build_cleanup_evidence_pointer(
+        environment="uat",
+        run_id="123",
+        run_attempt="2",
+        private_job_conclusion="success",
+        cleanup_execution_name="goal006-uat-runner-cleanup-abc123",
+        evidence_container_url="https://storage.example/goal006-uat-runner-evidence",
+    )
+
+    assert result["correlation_id"] == "goal006:uat:123:2"
+    assert result["evidence_blob_url"].endswith("/cleanup/uat/123/2.json")
+
+
+def test_cleanup_evidence_pointer_rejects_cross_environment_execution() -> None:
+    with pytest.raises(ExecutionTemplateError, match="execution name"):
+        build_cleanup_evidence_pointer(
+            environment="uat",
+            run_id="123",
+            run_attempt="2",
+            private_job_conclusion="success",
+            cleanup_execution_name="goal006-demo-runner-cleanup-abc123",
+            evidence_container_url="https://storage.example/goal006-uat-runner-evidence",
+        )
+
+
+def test_execution_template_rejects_cross_environment_resources() -> None:
+    source = job("broker", BROKER_ARGS, "uat")
+    values = {
+        item["name"]: item
+        for item in source["properties"]["template"]["containers"][0]["env"]
+    }
+    values["RUNNER_JOB_NAME"]["value"] = "goal006-demo-runner-job"
+
+    with pytest.raises(ExecutionTemplateError, match="approved blueprint"):
+        build_execution_template(
+            source,
+            mode="broker",
+            expected_image=IMAGE,
+            run_id="123",
+            run_attempt="2",
+        )
 
 
 @pytest.mark.parametrize(

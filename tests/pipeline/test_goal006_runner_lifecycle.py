@@ -597,6 +597,54 @@ def _reconciler_context() -> ReconcilerContext:
     )
 
 
+@pytest.mark.parametrize("environment", ["demo", "uat", "prod"])
+def test_reconciler_context_authorizes_supported_environment(
+    monkeypatch: pytest.MonkeyPatch, environment: str
+) -> None:
+    variables = {
+        "RUNNER_ENVIRONMENT": environment,
+        "GITHUB_REPOSITORY": "dlai-sd/waooaw-platform",
+        "AZURE_SUBSCRIPTION_ID": "sub",
+        "RUNNER_RESOURCE_GROUP": f"waooaw-{environment}-runner-rg",
+        "RUNNER_JOB_NAME": f"goal006-{environment}-runner-job",
+        "RUNNER_VAULT_URL": "https://vault.example",
+        "RUNNER_TOKEN_SECRET_NAME": "runner-token",
+        "GITHUB_APP_ID": "4680703",
+        "GITHUB_APP_INSTALLATION_ID": "155648751",
+        "GITHUB_APP_KEY_ID": "https://vault.example/keys/app/version",
+        "RUNNER_LABEL": f"goal006-{environment}-private",
+        "RUNNER_ACTIVATION_STATE": "ACTIVE",
+    }
+    for name, value in variables.items():
+        monkeypatch.setenv(name, value)
+
+    assert ReconcilerContext.from_environment().environment == environment
+
+
+def test_reconciler_context_rejects_unknown_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    variables = {
+        "RUNNER_ENVIRONMENT": "staging",
+        "GITHUB_REPOSITORY": "dlai-sd/waooaw-platform",
+        "AZURE_SUBSCRIPTION_ID": "sub",
+        "RUNNER_RESOURCE_GROUP": "waooaw-staging-runner-rg",
+        "RUNNER_JOB_NAME": "goal006-staging-runner-job",
+        "RUNNER_VAULT_URL": "https://vault.example",
+        "RUNNER_TOKEN_SECRET_NAME": "runner-token",
+        "GITHUB_APP_ID": "4680703",
+        "GITHUB_APP_INSTALLATION_ID": "155648751",
+        "GITHUB_APP_KEY_ID": "https://vault.example/keys/app/version",
+        "RUNNER_LABEL": "goal006-staging-private",
+        "RUNNER_ACTIVATION_STATE": "ACTIVE",
+    }
+    for name, value in variables.items():
+        monkeypatch.setenv(name, value)
+
+    with pytest.raises(LifecycleError, match="not authorized"):
+        ReconcilerContext.from_environment()
+
+
 def _active_execution(
     *, correlation: str = "goal006:demo:123:2", status: str = "Running"
 ) -> dict[str, object]:

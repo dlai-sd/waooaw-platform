@@ -225,7 +225,7 @@ class ReconcilerContext:
         if missing:
             raise LifecycleError("required environment is missing: " + ", ".join(missing))
         context = cls(**values)
-        if context.environment != "demo":
+        if ENVIRONMENT.fullmatch(context.environment) is None:
             raise LifecycleError("reconciler environment is not authorized")
         if context.activation_state != "ACTIVE":
             raise LifecycleError("runner lifecycle is not ACTIVE")

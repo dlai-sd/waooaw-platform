@@ -11,8 +11,7 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
-from goal006_runner_lifecycle import TERMINAL_CONCLUSIONS
-from goal006_runner_lifecycle import CLEANUP_EVIDENCE_PREFIX
+from goal006_runner_lifecycle import CLEANUP_EVIDENCE_PREFIX, ENVIRONMENT, TERMINAL_CONCLUSIONS
 
 RUN_NUMBER = re.compile(r"^[1-9][0-9]*$")
 PINNED_IMAGE = re.compile(r"^.+@sha256:[0-9a-f]{64}$")
@@ -65,10 +64,13 @@ class ExecutionTemplateError(RuntimeError):
 def extract_cleanup_evidence(
     log_text: str,
     *,
+    environment: str,
     run_id: str,
     run_attempt: str,
     private_job_conclusion: str,
 ) -> dict[str, Any]:
+    if ENVIRONMENT.fullmatch(environment) is None:
+        raise ExecutionTemplateError("cleanup evidence environment is invalid")
     if RUN_NUMBER.fullmatch(run_id) is None or RUN_NUMBER.fullmatch(run_attempt) is None:
         raise ExecutionTemplateError("workflow run identity is invalid")
     if private_job_conclusion not in TERMINAL_CONCLUSIONS:
@@ -84,14 +86,16 @@ def extract_cleanup_evidence(
         raise ExecutionTemplateError("cleanup evidence record is invalid") from error
     expected = {
         "schema": "waooaw.goal006-runner-cleanup/v1",
-        "environment": "demo",
-        "correlation_id": f"goal006:demo:{run_id}:{run_attempt}",
-        "runner_name": f"goal006-demo-{run_id}-{run_attempt}",
-        "runner_label": "goal006-demo-private",
+        "environment": environment,
+        "correlation_id": f"goal006:{environment}:{run_id}:{run_attempt}",
+        "runner_name": f"goal006-{environment}-{run_id}-{run_attempt}",
+        "runner_label": f"goal006-{environment}-private",
         "workflow_run_id": run_id,
         "workflow_run_attempt": run_attempt,
         "private_job_conclusion": private_job_conclusion,
-        "token_secret_name": f"runner-registration-token-demo-{run_id}-{run_attempt}",
+        "token_secret_name": (
+            f"runner-registration-token-{environment}-{run_id}-{run_attempt}"
+        ),
         "registration_absent": True,
         "execution_terminal": True,
         "token_secret_deleted": True,
@@ -112,13 +116,15 @@ def build_cleanup_evidence_pointer(
     cleanup_execution_name: str,
     evidence_container_url: str,
 ) -> dict[str, str]:
-    if environment != "demo":
+    if ENVIRONMENT.fullmatch(environment) is None:
         raise ExecutionTemplateError("cleanup evidence environment is invalid")
     if RUN_NUMBER.fullmatch(run_id) is None or RUN_NUMBER.fullmatch(run_attempt) is None:
         raise ExecutionTemplateError("workflow run identity is invalid")
     if private_job_conclusion not in TERMINAL_CONCLUSIONS:
         raise ExecutionTemplateError("private job conclusion is invalid")
-    if not cleanup_execution_name.startswith("goal006-demo-runner-cleanup-"):
+    if not cleanup_execution_name.startswith(
+        f"goal006-{environment}-runner-cleanup-"
+    ):
         raise ExecutionTemplateError("cleanup execution name is invalid")
     if not evidence_container_url.startswith("https://"):
         raise ExecutionTemplateError("cleanup evidence container URL is invalid")
@@ -179,7 +185,10 @@ def build_execution_template(
     expected_args = BROKER_ARGS if mode == "broker" else CLEANUP_ARGS
     if container.get("args") != expected_args:
         raise ExecutionTemplateError("job arguments differ from blueprint")
-    if container.get("resources") != {"cpu": 0.25, "memory": "0.5Gi"}:
+    resources = dict(container.get("resources", {}))
+    if resources.get("ephemeralStorage") in {None, ""}:
+        resources.pop("ephemeralStorage", None)
+    if resources != {"cpu": 0.25, "memory": "0.5Gi"}:
         raise ExecutionTemplateError("job resources differ from blueprint")
 
     environment = container.get("env", [])
@@ -192,16 +201,19 @@ def build_execution_template(
     if not required_environment.issubset(names):
         raise ExecutionTemplateError("job environment is incomplete")
     values = {item.get("name"): item for item in environment}
+    environment_name = str(values["RUNNER_ENVIRONMENT"].get("value", ""))
+    if ENVIRONMENT.fullmatch(environment_name) is None:
+        raise ExecutionTemplateError("job environment is not authorized")
     expected_values = {
         "RUNNER_ACTIVATION_STATE": "ACTIVE",
-        "RUNNER_ENVIRONMENT": "demo",
+        "RUNNER_ENVIRONMENT": environment_name,
         "GITHUB_REPOSITORY": "dlai-sd/waooaw-platform",
-        "RUNNER_RESOURCE_GROUP": "waooaw-demo-runner-rg",
-        "RUNNER_JOB_NAME": "goal006-demo-runner-job",
-        "RUNNER_LABEL": "goal006-demo-private",
+        "RUNNER_RESOURCE_GROUP": f"waooaw-{environment_name}-runner-rg",
+        "RUNNER_JOB_NAME": f"goal006-{environment_name}-runner-job",
+        "RUNNER_LABEL": f"goal006-{environment_name}-private",
     }
     if any(values[name].get("value") != value for name, value in expected_values.items()):
-        raise ExecutionTemplateError("job environment differs from Demo blueprint")
+        raise ExecutionTemplateError("job environment differs from approved blueprint")
     for name in ("GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT"):
         if values.get(name, {}).get("value") != "PENDING_EXECUTION_OVERRIDE":
             raise ExecutionTemplateError(f"{name} placeholder differs from blueprint")
@@ -227,6 +239,7 @@ def main() -> int:
         execution_parser.add_argument("--output", required=True, type=Path)
     evidence_parser = subparsers.add_parser("evidence")
     evidence_parser.add_argument("--log", required=True, type=Path)
+    evidence_parser.add_argument("--environment", required=True)
     evidence_parser.add_argument("--run-id", required=True)
     evidence_parser.add_argument("--run-attempt", required=True)
     evidence_parser.add_argument("--private-job-conclusion", required=True)
@@ -243,6 +256,7 @@ def main() -> int:
     if arguments.mode == "evidence":
         record = extract_cleanup_evidence(
             arguments.log.read_text(encoding="utf-8"),
+            environment=arguments.environment,
             run_id=arguments.run_id,
             run_attempt=arguments.run_attempt,
             private_job_conclusion=arguments.private_job_conclusion,
