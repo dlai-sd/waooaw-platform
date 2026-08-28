@@ -10,10 +10,9 @@ QUALIFICATION_WORKFLOW = Path(
 ).read_text(encoding="utf-8")
 
 
-def test_workflow_exposes_only_authorized_demo_environment() -> None:
-    assert "          - demo" in WORKFLOW
-    assert "          - uat" not in WORKFLOW
-    assert "          - prod" not in WORKFLOW
+def test_workflow_exposes_each_protected_environment() -> None:
+    for environment in ("demo", "uat", "prod"):
+        assert f"          - {environment}" in WORKFLOW
     assert "environment: ${{ inputs.environment }}" in WORKFLOW
     assert "goal006-runner-${{ inputs.environment }}" in WORKFLOW
 
@@ -45,16 +44,12 @@ def test_plan_and_deployment_evidence_are_retained() -> None:
     assert "deployment-record.json" in WORKFLOW
 
 
-def test_private_qualification_uses_brokers_and_demo_runner_only() -> None:
-    assert "RUNNER_BROKER_JOB: goal006-demo-runner-broker" in QUALIFICATION_WORKFLOW
-    assert (
-        "RUNNER_CLEANUP_BROKER_JOB: goal006-demo-runner-cleanup"
-        in QUALIFICATION_WORKFLOW
-    )
-    assert "runs-on: [self-hosted, goal006-demo-private]" in QUALIFICATION_WORKFLOW
-    assert "group: goal006-demo-private" not in QUALIFICATION_WORKFLOW
-    assert "goal006-uat" not in QUALIFICATION_WORKFLOW
-    assert "goal006-prod" not in QUALIFICATION_WORKFLOW
+def test_private_qualification_uses_environment_scoped_brokers_and_runner() -> None:
+    assert "goal006_environment_config.py" in QUALIFICATION_WORKFLOW
+    assert "needs.resolve-environment.outputs.runner_broker_job" in QUALIFICATION_WORKFLOW
+    assert "needs.resolve-environment.outputs.runner_cleanup_broker_job" in QUALIFICATION_WORKFLOW
+    assert "needs.resolve-environment.outputs.runner_label" in QUALIFICATION_WORKFLOW
+    assert "environment: ${{ inputs.environment }}" in QUALIFICATION_WORKFLOW
     assert "if: always()" in QUALIFICATION_WORKFLOW
     assert "needs.start-broker.result == 'success'" not in QUALIFICATION_WORKFLOW
     assert QUALIFICATION_WORKFLOW.count(
@@ -69,7 +64,7 @@ def test_private_qualification_uses_brokers_and_demo_runner_only() -> None:
 
 
 def test_hosted_qualification_never_signs_or_handles_runner_tokens() -> None:
-    assert QUALIFICATION_WORKFLOW.count("runs-on: ubuntu-latest") == 2
+    assert QUALIFICATION_WORKFLOW.count("runs-on: ubuntu-latest") == 3
     assert "containerapp job start" in QUALIFICATION_WORKFLOW
     assert "/sign?" not in QUALIFICATION_WORKFLOW
     assert "GITHUB_APP_ID" not in QUALIFICATION_WORKFLOW
@@ -81,10 +76,8 @@ def test_hosted_qualification_never_signs_or_handles_runner_tokens() -> None:
 def test_cleanup_is_ungated_and_uses_dedicated_identity() -> None:
     cleanup = QUALIFICATION_WORKFLOW.split("  cleanup-private:", 1)[1]
 
-    assert "environment: demo" not in cleanup
-    assert "client-id: ${{ env.RUNNER_CLEANUP_CLIENT_ID }}" in cleanup
+    assert "client-id: ${{ needs.resolve-environment.outputs.cleanup_client_id }}" in cleanup
     assert "client-id: ${{ env.ARM_CLIENT_ID }}" not in cleanup
-    assert "RUNNER_CLEANUP_CLIENT_ID: 0cbfdc62-b91f-44ee-ac27-90785b3d2eb5" in QUALIFICATION_WORKFLOW
 
 
 def test_cleanup_evidence_pointer_is_bound_to_exact_execution_and_retained() -> None:

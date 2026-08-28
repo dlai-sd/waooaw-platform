@@ -44,7 +44,7 @@ variable "runner_private_endpoints_subnet_id" {
 
 variable "external_environment" {
   type        = bool
-  description = "Expose the Container Apps environment load balancer. Authorized only for bounded Demo review."
+  description = "Expose the Container Apps environment load balancer for an explicitly authorized lower environment."
   default     = false
 }
 

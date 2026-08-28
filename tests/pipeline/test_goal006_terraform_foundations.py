@@ -107,6 +107,13 @@ def test_all_foundation_roots_publish_the_same_workload_contract() -> None:
         assert set(re.findall(r'^output "([^"]+)"', foundation, re.MULTILINE)) == expected_outputs
 
 
+@pytest.mark.parametrize("environment", ENVIRONMENTS)
+def test_all_workload_roots_publish_web_url(environment: str) -> None:
+    workload = read_contract(f"environments/{environment}/workload/main.tf")
+
+    assert re.search(r'output "web_url"\s*{\s*value\s*=\s*module\.workload\.web_url\s*}', workload)
+
+
 def test_foundation_and_workload_have_distinct_owners() -> None:
     assert not list((PHASE2_ROOT / "modules" / "environment").glob("*.tf"))
     for environment in ENVIRONMENTS:
@@ -127,10 +134,9 @@ def test_workload_roots_use_current_secret_and_ingress_contract(environment: str
         "verification_principal_id",
         "key_vault_secret_uris",
         "key_vault_secret_resource_ids",
-        "founder_ipv4_cidr",
     ):
         assert re.search(rf"{field}\s*=\s*", workload)
-        if field in {"key_vault_secret_uris", "key_vault_secret_resource_ids", "founder_ipv4_cidr"}:
+        if field in {"key_vault_secret_uris", "key_vault_secret_resource_ids"}:
             assert f'variable "{field}"' in variables
     assert "key_vault_secret_ids" not in f"{workload}\n{variables}"
 
@@ -209,6 +215,11 @@ def test_keycloak_realm_import_matches_the_web_oidc_contract() -> None:
     assert "--import-realm" in keycloak
     assert "/opt/keycloak/data/import/waooaw-realm.json" in keycloak
     assert "until /opt/keycloak/bin/kcadm.sh" not in keycloak
+    assert "--db=dev-file" in keycloak
+    assert "--db=dev-mem" not in keycloak
+    assert "startup_probe" in keycloak
+    assert "readiness_probe" in keycloak
+    assert keycloak.count('path                    = "/realms/waooaw/.well-known/openid-configuration"') == 2
     assert 'name  = "KEYCLOAK_ADMIN"' in keycloak
     assert 'name        = "KEYCLOAK_ADMIN_PASSWORD"' in keycloak
     assert "printf '%s'" in keycloak
@@ -286,6 +297,11 @@ def test_each_release_member_has_its_own_identity_and_secret_scope() -> None:
     assert "azurerm_user_assigned_identity.member[each.key].id" in contract
     assert "scope                = var.key_vault_secret_resource_ids[local.credential_member[each.key]]" in contract
     assert 'resource "azurerm_role_assignment" "professional_runtime_bp_secret"' in contract
+    member_app = contract.split('resource "azurerm_container_app" "member"', 1)[1].split(
+        'resource "azurerm_container_app" "keycloak"', 1
+    )[0]
+    assert "azurerm_role_assignment.member_secret" in member_app
+    assert "azurerm_role_assignment.professional_runtime_bp_secret" in member_app
     assert "runtime_identity_id" not in contract
     assert "runtime_identity_client_id" not in contract
 
@@ -341,6 +357,33 @@ def test_enabled_workloads_require_verified_public_ghcr_packages() -> None:
             root_variables,
             re.DOTALL,
         )
+
+
+def test_founder_ipv4_cidr_is_required_only_for_demo() -> None:
+    module_variables = read_contract("modules/workload/variables.tf")
+    demo_root = read_contract("environments/demo/workload/main.tf")
+    demo_variables = read_contract("environments/demo/workload/variables.tf")
+
+    assert re.search(r'variable "founder_ipv4_cidr"\s*{[^}]*default\s*=\s*null', module_variables, re.DOTALL)
+    assert 'var.environment != "demo"' in module_variables
+    assert 'var.environment == "demo" && local.public_ingress[each.key]' in read_contract("modules/workload/main.tf")
+    assert "founder_ipv4_cidr                        = var.founder_ipv4_cidr" in demo_root
+    assert 'variable "founder_ipv4_cidr"' in demo_variables
+
+    for environment in ("uat", "prod"):
+        root = read_contract(f"environments/{environment}/workload/main.tf")
+        root_variables = read_contract(f"environments/{environment}/workload/variables.tf")
+        assert "founder_ipv4_cidr" not in root
+        assert 'variable "founder_ipv4_cidr"' not in root_variables
+
+
+def test_all_managed_environments_are_public() -> None:
+    module_variables = read_contract("modules/foundation/variables.tf")
+
+    assert "explicitly authorized lower environment" in module_variables
+    for environment in ENVIRONMENTS:
+        foundation = read_contract(f"environments/{environment}/foundation/main.tf")
+        assert re.search(r"external_environment\s*=\s*true", foundation)
 
 
 def test_foundation_is_private_isolated_and_environment_scoped() -> None:
@@ -438,7 +481,7 @@ def test_post_deploy_verification_requires_the_exact_latest_revision() -> None:
     assert 'properties.healthState == "Healthy"' in workflow
 
 
-def test_demo_review_ingress_is_founder_restricted_and_other_environments_remain_private() -> None:
+def test_all_environments_are_public_but_only_demo_is_founder_restricted() -> None:
     demo = read_contract("environments/demo/foundation/main.tf")
     uat = read_contract("environments/uat/foundation/main.tf")
     prod = read_contract("environments/prod/foundation/main.tf")
@@ -446,9 +489,10 @@ def test_demo_review_ingress_is_founder_restricted_and_other_environments_remain
     demo_workload = read_contract("environments/demo/workload/main.tf")
 
     assert re.search(r"external_environment\s*=\s*true", demo)
-    assert "external_environment" not in uat
-    assert "external_environment" not in prod
+    assert re.search(r"external_environment\s*=\s*true", uat)
+    assert re.search(r"external_environment\s*=\s*true", prod)
     assert 'name             = "founder-review"' in workload
+    assert 'var.environment == "demo" && local.public_ingress[each.key]' in workload
     assert "ip_address_range = ip_security_restriction.value" in workload
     assert re.search(r"founder_ipv4_cidr\s*=\s*var\.founder_ipv4_cidr", demo_workload)
     assert re.search(r"max_replicas\s*=\s*1", demo_workload)
@@ -525,15 +569,18 @@ def test_lease_lifecycle_preserves_foundation_and_prohibits_production() -> None
     assert 'module "lease"' not in read_contract("environments/prod/workload/main.tf")
 
 
-def test_lease_reconciliation_is_manual_demo_plan_only_until_activation() -> None:
+def test_lease_reconciliation_is_manual_private_plan_only_until_activation() -> None:
     workflow = (REPO_ROOT / ".github/workflows/reconcile-workload-leases.yaml").read_text(encoding="utf-8")
     validator = (REPO_ROOT / "scripts/goal006_lease_reconciliation.py").read_text(encoding="utf-8")
 
     assert "schedule:" not in workflow
     assert "workflow_dispatch:" in workflow
-    assert "environment: demo" in workflow
-    assert "environment: uat" not in workflow
-    assert "environment: prod" not in workflow
+    assert "environment: ${{ inputs.environment }}" in workflow
+    for environment in ("demo", "uat", "prod"):
+        assert f"          - {environment}" in workflow
+    assert 'runs-on: [self-hosted, "${{ needs.resolve-environment.outputs.runner_label }}"]' in workflow
+    assert "network-rule add" not in workflow
+    assert "network-rule remove" not in workflow
     assert "WAOOAW_PLATFORM_DEPLOYMENT_CLIENT_ID" not in workflow
     assert "lease_reconciliation_inputs" in workflow
     assert "reconciliation-plan.json" in workflow
@@ -579,7 +626,7 @@ def test_oidc_policy_requires_exact_governed_refs_and_workflows() -> None:
         "prod-verification",
     ]
     assert policy["allowed_refs"] == ["refs/heads/main"]
-    assert policy["allowed_workflows"] == [".github/workflows/deploy-demo.yaml@refs/heads/main"]
+    assert policy["allowed_workflows"] == [".github/workflows/deploy.yaml@refs/heads/main"]
     assert policy["subject_claim_template"] == ["repo", "environment"]
     assert policy["wildcards_allowed"] is False
     assert all("*" not in value for value in (*policy["allowed_refs"], *policy["allowed_workflows"]))
@@ -614,7 +661,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert workflow.count('-backend-config="use_oidc=true"') == 2
     assert workflow.count('-backend-config="use_azuread_auth=true"') == 2
     assert "Enforce selected environment authorization" in workflow
-    assert 'EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy-demo.yaml@refs/heads/main' in workflow
+    assert 'EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy.yaml@refs/heads/main' in workflow
     assert 'case "$TARGET_ENVIRONMENT" in demo|uat|prod)' in workflow
     assert 'case "$APPLY_REQUESTED" in true|false)' in workflow
     assert workflow.index("Enforce selected environment authorization") < workflow.index("azure/login@v2")
@@ -691,6 +738,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert workflow.index("capture_seeder_evidence()") < workflow.index("Delete private credential seeder")
     assert workflow.count("if: inputs.apply") == 10
     assert '--context "state_account=$TFSTATE_STORAGE_ACCOUNT"' in workflow
+    assert '--context "external_environment=$external_environment"' in workflow
     assert "if: steps.foundation-cache.outputs.cache_hit != 'true'" in workflow
     assert "if: inputs.apply && steps.foundation-cache.outputs.cache_hit != 'true'" in workflow
     assert "for output_name in container_app_environment_id key_vault_id deployment_identity_id" in workflow
@@ -730,6 +778,15 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     ):
         apply_index = workflow.index(apply_command)
         assert workflow.rfind('test \'${{ inputs.release_sha }}\' = "$latest_main_sha"', 0, apply_index) != -1
+
+
+def test_deployment_workflow_fails_closed_when_web_url_is_missing() -> None:
+    workflow = (REPO_ROOT / ".github/workflows/deploy-environment.yaml").read_text(encoding="utf-8")
+
+    assert "web_url=$(terraform output -raw web_url)" in workflow
+    assert 'test -n "$web_url"' in workflow
+    assert 'echo "web_url=$web_url" >> "$GITHUB_OUTPUT"' in workflow
+    assert 'echo "web_url=$(terraform output -raw web_url)"' not in workflow
 
 
 def test_deployment_identities_verify_the_active_subscription() -> None:
@@ -792,40 +849,36 @@ def test_oidc_workflows_do_not_depend_on_github_platform_identifiers() -> None:
 
 
 def test_environment_deployment_is_authorized_without_changing_promotion_state() -> None:
-    demo = (REPO_ROOT / ".github/workflows/deploy-demo.yaml").read_text(encoding="utf-8")
-    workflow = (REPO_ROOT / ".github/workflows/promote.yaml").read_text(encoding="utf-8")
+    deploy = (REPO_ROOT / ".github/workflows/deploy.yaml").read_text(encoding="utf-8")
 
-    assert "workflow_dispatch:" in demo
-    assert "Trusted-main exact-six release workflow run ID" not in demo
-    assert "Trusted-main exact-six release commit SHA" not in demo
-    assert "${{ inputs.release_run_id }}" not in demo
-    assert "${{ inputs.release_sha }}" not in demo
-    assert "dlai-sd|yk-dlaisd" in demo
-    assert '*) echo "Unauthorized Demo dispatcher" >&2; exit 1 ;;' in demo
-    assert 'test "$DISPATCH_REF" = "refs/heads/main"' in demo
-    assert "actions/workflows/ci.yaml/runs?branch=main&event=push&status=success" in demo
-    assert 'artifact_name="goal006-exact-six-release-$latest_main_sha"' in demo
-    assert 'test -n "$release_run_id"' in demo
-    assert 'test -n "$artifact_id"' in demo
-    assert "release_run_id: ${{ fromJSON(needs.authorize-deployment.outputs.release_run_id) }}" in demo
-    assert "release_sha: ${{ needs.authorize-deployment.outputs.release_sha }}" in demo
-    assert "environment: ${{ inputs.target_environment }}" in demo
-    assert "target_environment:" in demo
+    assert "workflow_dispatch:" in deploy
+    assert "Trusted-main exact-six release workflow run ID" not in deploy
+    assert "Trusted-main exact-six release commit SHA" not in deploy
+    assert "${{ inputs.release_run_id }}" not in deploy
+    assert "${{ inputs.release_sha }}" not in deploy
+    assert "dlai-sd|yk-dlaisd" in deploy
+    assert '*) echo "Unauthorized deployment dispatcher" >&2; exit 1 ;;' in deploy
+    assert 'test "$DISPATCH_REF" = "refs/heads/main"' in deploy
+    assert "actions/workflows/ci.yaml/runs?branch=main&event=push&status=success" in deploy
+    assert 'artifact_name="goal006-exact-six-release-$latest_main_sha"' in deploy
+    assert 'test -n "$release_run_id"' in deploy
+    assert 'test -n "$artifact_id"' in deploy
+    assert "release_run_id: ${{ fromJSON(needs.authorize.outputs.release_run_id) }}" in deploy
+    assert "release_sha: ${{ needs.authorize.outputs.release_sha }}" in deploy
+    assert "environment: ${{ inputs.environment }}" in deploy
     for environment in ("demo", "uat", "prod"):
-        assert f"          - {environment}" in demo
-    assert "default: plan" in demo
-    assert "- plan" in demo
-    assert "- apply" in demo
-    assert "case \"$EXECUTION_MODE\" in plan|apply)" in demo
-    assert "apply: ${{ inputs.execution == 'apply' }}" in demo
-    assert "cost_controls:" not in demo
-    assert "enforce_cost_controls:" not in demo
-    assert demo.count("if: inputs.execution == 'apply'") == 2
-    assert "verification_client_id: ${{ needs.deploy-environment.outputs.verification_client_id }}" in demo
-    assert "web_url: ${{ needs.deploy-environment.outputs.web_url }}" in demo
-    assert "UAT remains prohibited until explicit Founder acceptance" in workflow
-    assert "exit 1" in workflow
-    assert "uses: ./.github/workflows/deploy-environment.yaml" not in workflow
+        assert f"          - {environment}" in deploy
+    assert "default: plan" in deploy
+    assert "- plan" in deploy
+    assert "- apply" in deploy
+    assert "case \"$EXECUTION_MODE\" in plan|apply)" in deploy
+    assert "apply: ${{ inputs.execution == 'apply' }}" in deploy
+    assert "cost_controls:" not in deploy
+    assert "enforce_cost_controls:" not in deploy
+    assert deploy.count("if: inputs.execution == 'apply'") == 2
+    assert "verification_client_id: ${{ needs.deploy.outputs.verification_client_id }}" in deploy
+    assert "web_url: ${{ needs.deploy.outputs.web_url }}" in deploy
+    assert not (REPO_ROOT / ".github/workflows/promote.yaml").exists()
 
     verification = (REPO_ROOT / ".github/workflows/post-deploy-verify.yaml").read_text(encoding="utf-8")
     assert "Reject stale release before independent verification" in verification
@@ -843,9 +896,9 @@ def test_environment_deployment_is_authorized_without_changing_promotion_state()
     assert "functional-verification.json" in verification
 
     delivery_surfaces = [
+        REPO_ROOT / ".github/workflows/deploy.yaml",
         REPO_ROOT / ".github/workflows/deploy-environment.yaml",
         REPO_ROOT / ".github/workflows/post-deploy-verify.yaml",
-        REPO_ROOT / ".github/workflows/promote.yaml",
         REPO_ROOT / ".github/workflows/reconcile-workload-leases.yaml",
         REPO_ROOT / "scripts/build_goal006_release_images.sh",
     ]

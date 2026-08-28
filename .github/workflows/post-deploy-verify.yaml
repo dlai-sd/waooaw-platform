@@ -39,7 +39,7 @@ jobs:
       - name: Enforce trusted caller workflow and ref
         env:
           CALLER_WORKFLOW_REF: ${{ github.workflow_ref }}
-          EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy-demo.yaml@refs/heads/main
+          EXPECTED_CALLER_WORKFLOW_REF: ${{ github.repository }}/.github/workflows/deploy.yaml@refs/heads/main
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           test "$CALLER_WORKFLOW_REF" = "$EXPECTED_CALLER_WORKFLOW_REF"

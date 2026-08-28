@@ -5,7 +5,7 @@ from pathlib import Path
 
 WORKFLOW = Path(".github/workflows/pm-report.yaml").read_text(encoding="utf-8")
 CI_WORKFLOW = Path(".github/workflows/ci.yaml").read_text(encoding="utf-8")
-DEPLOY_WORKFLOW = Path(".github/workflows/deploy-demo.yaml").read_text(encoding="utf-8")
+DEPLOY_WORKFLOW = Path(".github/workflows/deploy.yaml").read_text(encoding="utf-8")
 
 
 def test_pm_report_runs_after_merged_pull_requests() -> None:

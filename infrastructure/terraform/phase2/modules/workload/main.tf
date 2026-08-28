@@ -380,7 +380,7 @@ resource "azurerm_container_app" "member" {
     }
 
     dynamic "ip_security_restriction" {
-      for_each = local.public_ingress[each.key] ? [var.founder_ipv4_cidr] : []
+      for_each = var.environment == "demo" && local.public_ingress[each.key] ? [var.founder_ipv4_cidr] : []
       content {
         name             = "founder-review"
         ip_address_range = ip_security_restriction.value
@@ -401,6 +401,11 @@ resource "azurerm_container_app" "member" {
       error_message = "Enabled workloads require administrator verification that all exact-six GHCR packages allow anonymous digest pulls."
     }
   }
+
+  depends_on = [
+    azurerm_role_assignment.member_secret,
+    azurerm_role_assignment.professional_runtime_bp_secret,
+  ]
 }
 
 resource "azurerm_container_app" "keycloak" {
@@ -436,9 +441,28 @@ resource "azurerm_container_app" "keycloak" {
         set -eu
         mkdir -p /opt/keycloak/data/import
         printf '%s' '${local.keycloak_realm_base64}' | base64 --decode > /opt/keycloak/data/import/waooaw-realm.json
-        exec /opt/keycloak/bin/kc.sh start-dev --db=dev-mem --http-enabled=true --hostname-strict=false --import-realm
+        exec /opt/keycloak/bin/kc.sh start-dev --db=dev-file --http-enabled=true --hostname-strict=false --import-realm
       EOT
       ]
+
+      startup_probe {
+        transport               = "HTTP"
+        port                    = 8080
+        path                    = "/realms/waooaw/.well-known/openid-configuration"
+        interval_seconds        = 5
+        timeout                 = 3
+        failure_count_threshold = 30
+      }
+
+      readiness_probe {
+        transport               = "HTTP"
+        port                    = 8080
+        path                    = "/realms/waooaw/.well-known/openid-configuration"
+        interval_seconds        = 10
+        timeout                 = 3
+        failure_count_threshold = 3
+        success_count_threshold = 1
+      }
 
       env {
         name  = "KEYCLOAK_ADMIN"

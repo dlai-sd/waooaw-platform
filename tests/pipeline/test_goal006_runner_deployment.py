@@ -12,6 +12,7 @@ from scripts.goal006_runner_deployment import (
     _digest_bytes,
     _required_resource_names,
     environment_contract,
+    main,
     normalize_changes,
     revalidate_reviewed_plan,
     validate_reviewed_plan,
@@ -38,15 +39,11 @@ def test_every_environment_uses_one_deployment_contract() -> None:
         assert contract["activation_state"] in {"INACTIVE", "ACTIVE"}
 
 
-def test_cleanup_oidc_subject_is_branch_bound_for_demo_only() -> None:
+def test_cleanup_oidc_subject_is_branch_bound_for_each_environment() -> None:
     stack_root = REPOSITORY_ROOT / "infrastructure/deployment-stacks/goal006-runner"
-    demo = (stack_root / "demo.parameters.json").read_text(encoding="utf-8")
-    uat = (stack_root / "uat.parameters.json").read_text(encoding="utf-8")
-    prod = (stack_root / "prod.parameters.json").read_text(encoding="utf-8")
-
-    assert "repo:dlai-sd/waooaw-platform:ref:refs/heads/main" in demo
-    assert "cleanupFederatedSubject" not in uat
-    assert "cleanupFederatedSubject" not in prod
+    for environment in ("demo", "uat", "prod"):
+        parameters = (stack_root / f"{environment}.parameters.json").read_text(encoding="utf-8")
+        assert "repo:dlai-sd/waooaw-platform:ref:refs/heads/main" in parameters
 
 
 def test_signer_roles_are_scoped_to_key_not_key_version() -> None:
@@ -164,13 +161,16 @@ def test_plan_normalization_preserves_property_delta() -> None:
     assert normalized[0]["details"]["delta"][0]["path"] == "properties.access"
 
 
-def test_plan_allows_only_deferred_evidence_writer_assignment() -> None:
+@pytest.mark.parametrize("environment", ["demo", "uat", "prod"])
+def test_plan_allows_only_matching_deferred_evidence_writer_assignment(
+    environment: str,
+) -> None:
     resource_id = (
         "[extensionResourceId('/subscriptions/sub/resourceGroups/platform/providers/"
         "Microsoft.Storage/storageAccounts/state/blobServices/default/containers/"
-        "goal006-demo-runner-evidence', 'Microsoft.Authorization/roleAssignments', "
+        f"goal006-{environment}-runner-evidence', 'Microsoft.Authorization/roleAssignments', "
         "reference('/subscriptions/sub/resourceGroups/demo/providers/Microsoft.ManagedIdentity/"
-        "userAssignedIdentities/goal006-demo-runner-evidence-writer-identity').principalId)]"
+        f"userAssignedIdentities/goal006-{environment}-runner-evidence-writer-identity').principalId)]"
     )
 
     assert normalize_changes(
@@ -180,6 +180,19 @@ def test_plan_allows_only_deferred_evidence_writer_assignment() -> None:
         "resource_id": resource_id,
         "details": {},
     }
+
+
+def test_plan_rejects_cross_environment_deferred_evidence_assignment() -> None:
+    resource_id = (
+        "[extensionResourceId('/subscriptions/sub/resourceGroups/platform/providers/"
+        "Microsoft.Storage/storageAccounts/state/blobServices/default/containers/"
+        "goal006-uat-runner-evidence', 'Microsoft.Authorization/roleAssignments', "
+        "reference('/subscriptions/sub/resourceGroups/demo/providers/Microsoft.ManagedIdentity/"
+        "userAssignedIdentities/goal006-demo-runner-evidence-writer-identity').principalId)]"
+    )
+
+    with pytest.raises(RuntimeError, match="unsupported or destructive"):
+        normalize_changes([{"changeType": "Unsupported", "resourceId": resource_id}])
 
 
 @pytest.mark.parametrize("change_type", ["Delete", "Deploy", "Unsupported", ""])
@@ -217,6 +230,35 @@ def test_live_plan_rejects_unauthorized_environment() -> None:
             subscription_id="sub",
             source_commit="b" * 40,
         )
+
+
+@pytest.mark.parametrize("environment", ["demo", "uat", "prod"])
+def test_cli_accepts_every_authorized_environment(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, environment: str
+) -> None:
+    output_path = tmp_path / "runner-plan.json"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "goal006_runner_deployment.py",
+            "preview",
+            "--environment",
+            environment,
+            "--subscription-id",
+            "sub",
+            "--source-commit",
+            "b" * 40,
+            "--output",
+            str(output_path),
+        ],
+    )
+    monkeypatch.setattr(
+        "scripts.goal006_runner_deployment.create_plan",
+        lambda **arguments: {"payload": {"environment": arguments["environment"]}},
+    )
+
+    assert main() == 0
+    assert f'"environment": "{environment}"' in output_path.read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize(

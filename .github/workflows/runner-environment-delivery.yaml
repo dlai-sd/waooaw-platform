@@ -9,6 +9,8 @@ on:
         type: choice
         options:
           - demo
+          - uat
+          - prod
       operation:
         description: Operation
         required: true
@@ -60,7 +62,7 @@ jobs:
           test "$GITHUB_REF" = "refs/heads/main"
           latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
           test "$GITHUB_SHA" = "$latest_main_sha"
-          case "$TARGET_ENVIRONMENT" in demo) ;; *) echo "ENVIRONMENT_NOT_ALLOWED: $TARGET_ENVIRONMENT" >&2; exit 1 ;; esac
+          case "$TARGET_ENVIRONMENT" in demo|uat|prod) ;; *) echo "ENVIRONMENT_NOT_ALLOWED: $TARGET_ENVIRONMENT" >&2; exit 1 ;; esac
           case "$OPERATION" in
             preview)
               test -z "$REVIEWED_PLAN_RUN_ID"

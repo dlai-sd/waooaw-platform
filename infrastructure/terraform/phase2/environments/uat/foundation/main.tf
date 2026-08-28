@@ -27,6 +27,7 @@ module "foundation" {
   runner_resource_group_name         = var.runner_resource_group_name
   runner_private_endpoints_subnet_id = var.runner_private_endpoints_subnet_id
   tfstate_storage_account_id         = var.tfstate_storage_account_id
+  external_environment               = true
 }
 
 output "resource_group_name" {

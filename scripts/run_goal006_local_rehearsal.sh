@@ -10,7 +10,7 @@ cd "$REPO_ROOT"
 echo "[1/4] Linting GitHub Actions workflows"
 docker run --rm -v "$REPO_ROOT:/repo:ro" -w /repo rhysd/actionlint:1.7.7 \
   .github/workflows/ci.yaml \
-  .github/workflows/deploy-demo.yaml \
+  .github/workflows/deploy.yaml \
   .github/workflows/deploy-environment.yaml \
   .github/workflows/post-deploy-verify.yaml \
   .github/workflows/reconcile-workload-leases.yaml \

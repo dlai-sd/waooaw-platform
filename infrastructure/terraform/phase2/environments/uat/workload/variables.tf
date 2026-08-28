@@ -10,10 +10,6 @@ variable "key_vault_secret_resource_ids" {
   type = map(string)
 }
 
-variable "founder_ipv4_cidr" {
-  type = string
-}
-
 variable "ghcr_packages_public" {
   type        = bool
   description = "Administrator attestation that all exact-six GHCR packages allow anonymous digest pulls."

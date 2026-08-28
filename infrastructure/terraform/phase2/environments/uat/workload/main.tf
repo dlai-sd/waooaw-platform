@@ -58,7 +58,6 @@ module "workload" {
   image_digests                            = var.image_digests
   key_vault_secret_uris                    = var.key_vault_secret_uris
   key_vault_secret_resource_ids            = var.key_vault_secret_resource_ids
-  founder_ipv4_cidr                        = var.founder_ipv4_cidr
   ghcr_packages_public                     = var.ghcr_packages_public
   ce_min_replicas                          = 0
   pr_min_replicas                          = 0
@@ -82,4 +81,8 @@ output "lease_reconciliation_inputs" {
     cost_centre                   = var.cost_centre
     evidence_digest               = var.evidence_digest
   }
+}
+
+output "web_url" {
+  value = module.workload.web_url
 }

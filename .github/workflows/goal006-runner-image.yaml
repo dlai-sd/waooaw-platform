@@ -101,7 +101,7 @@ jobs:
             mcr.microsoft.com/azure-storage/azurite@sha256:647c63a91102a9d8e8000aab803436e1fc85fbb285e7ce830a82ee5d6661cf37 \
             azurite-blob --blobHost 0.0.0.0 >/dev/null
           ready=false
-          for attempt in $(seq 1 30); do
+          for _ in $(seq 1 30); do
             if docker run --rm --network "$network" \
               --entrypoint az '${{ env.IMAGE }}:sha-${{ github.sha }}' \
               storage container create --name qualification-contract \

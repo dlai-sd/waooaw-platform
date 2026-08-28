@@ -119,12 +119,23 @@ def normalize_changes(changes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for change in changes:
         change_type = str(change.get("changeType", ""))
         resource_id = str(change.get("resourceId", ""))
+        deferred_evidence_environment = next(
+            (
+                environment
+                for environment in ("demo", "uat", "prod")
+                if f"/containers/goal006-{environment}-runner-evidence'" in resource_id
+                and (
+                    f"/userAssignedIdentities/goal006-{environment}-runner-"
+                    "evidence-writer-identity'"
+                ) in resource_id
+            ),
+            None,
+        )
         deferred_evidence_assignment = (
             change_type == "Unsupported"
             and resource_id.startswith("[extensionResourceId(")
-            and "goal006-demo-runner-evidence" in resource_id
             and "Microsoft.Authorization/roleAssignments" in resource_id
-            and "goal006-demo-runner-evidence-writer-identity" in resource_id
+            and deferred_evidence_environment is not None
         )
         if change_type not in ALLOWED_CHANGE_TYPES and not deferred_evidence_assignment:
             raise RuntimeError(f"unsupported or destructive change rejected: {change_type} {resource_id}")
@@ -709,7 +720,7 @@ def _write_json(path: Path, value: Mapping[str, Any]) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("operation", choices=("preview", "review", "apply"))
-    parser.add_argument("--environment", choices=("demo",), required=True)
+    parser.add_argument("--environment", choices=("demo", "uat", "prod"), required=True)
     parser.add_argument("--subscription-id", required=True)
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--repository-root", type=Path, default=Path.cwd())

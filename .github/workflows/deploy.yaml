@@ -3,7 +3,7 @@ name: Environment Deployment
 on:
   workflow_dispatch:
     inputs:
-      target_environment:
+      environment:
         description: "Deployment environment"
         required: true
         default: demo
@@ -21,7 +21,7 @@ on:
           - plan
           - apply
       access_ipv4:
-        description: "Demo apply only: public IPv4 shown by https://api.ipify.org"
+        description: "Demo only: IPv4 from https://api.ipify.org in the Founder review browser, never Codespace/runner egress"
         required: false
         type: string
 
@@ -31,11 +31,11 @@ permissions:
   id-token: write
 
 concurrency:
-  group: goal006-${{ inputs.target_environment }}-deployment
+  group: goal006-${{ inputs.environment }}-deployment
   cancel-in-progress: false
 
 jobs:
-  authorize-deployment:
+  authorize:
     runs-on: ubuntu-latest
     outputs:
       release_run_id: ${{ steps.release.outputs.release_run_id }}
@@ -48,7 +48,7 @@ jobs:
       - name: Validate deployment inputs
         id: dispatch
         env:
-          TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
           EXECUTION_MODE: ${{ inputs.execution }}
           ACCESS_IPV4: ${{ inputs.access_ipv4 }}
         run: |
@@ -70,7 +70,7 @@ jobs:
         run: |
           case "$DISPATCH_ACTOR" in
             dlai-sd|yk-dlaisd) ;;
-            *) echo "Unauthorized Demo dispatcher" >&2; exit 1 ;;
+            *) echo "Unauthorized deployment dispatcher" >&2; exit 1 ;;
           esac
           test "$DISPATCH_REF" = "refs/heads/main"
           case "$EXECUTION_MODE" in plan|apply) ;; *) exit 1 ;; esac
@@ -88,43 +88,43 @@ jobs:
           echo "release_run_id=$release_run_id" >> "$GITHUB_OUTPUT"
           echo "release_sha=$latest_main_sha" >> "$GITHUB_OUTPUT"
 
-  deploy-environment:
-    needs: authorize-deployment
+  deploy:
+    needs: authorize
     uses: ./.github/workflows/deploy-environment.yaml
     with:
-      environment: ${{ inputs.target_environment }}
-      release_run_id: ${{ fromJSON(needs.authorize-deployment.outputs.release_run_id) }}
-      release_sha: ${{ needs.authorize-deployment.outputs.release_sha }}
+      environment: ${{ inputs.environment }}
+      release_run_id: ${{ fromJSON(needs.authorize.outputs.release_run_id) }}
+      release_sha: ${{ needs.authorize.outputs.release_sha }}
       apply: ${{ inputs.execution == 'apply' }}
-      lease_expires_at: ${{ needs.authorize-deployment.outputs.lease_expires_at }}
-      access_cidr: ${{ needs.authorize-deployment.outputs.access_cidr }}
+      lease_expires_at: ${{ needs.authorize.outputs.lease_expires_at }}
+      access_cidr: ${{ needs.authorize.outputs.access_cidr }}
     secrets: inherit
 
-  verify-environment:
+  verify:
     if: inputs.execution == 'apply'
-    needs: [authorize-deployment, deploy-environment]
+    needs: [authorize, deploy]
     uses: ./.github/workflows/post-deploy-verify.yaml
     with:
-      environment: ${{ inputs.target_environment }}
-      release_run_id: ${{ fromJSON(needs.authorize-deployment.outputs.release_run_id) }}
-      release_sha: ${{ needs.authorize-deployment.outputs.release_sha }}
-      verification_client_id: ${{ needs.deploy-environment.outputs.verification_client_id }}
-      web_url: ${{ needs.deploy-environment.outputs.web_url }}
-      expected_access_cidr: ${{ needs.authorize-deployment.outputs.access_cidr }}
+      environment: ${{ inputs.environment }}
+      release_run_id: ${{ fromJSON(needs.authorize.outputs.release_run_id) }}
+      release_sha: ${{ needs.authorize.outputs.release_sha }}
+      verification_client_id: ${{ needs.deploy.outputs.verification_client_id }}
+      web_url: ${{ needs.deploy.outputs.web_url }}
+      expected_access_cidr: ${{ needs.authorize.outputs.access_cidr }}
     secrets: inherit
 
-  publish-environment-url:
+  publish-url:
     if: inputs.execution == 'apply'
-    needs: [authorize-deployment, deploy-environment, verify-environment]
+    needs: [authorize, deploy, verify]
     runs-on: ubuntu-latest
     steps:
       - name: Publish verified environment URL
         env:
-          TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
-          RELEASE_RUN_ID: ${{ needs.authorize-deployment.outputs.release_run_id }}
-          RELEASE_SHA: ${{ needs.authorize-deployment.outputs.release_sha }}
-          WEB_URL: ${{ needs.deploy-environment.outputs.web_url }}
-          ACCESS_CIDR: ${{ needs.authorize-deployment.outputs.access_cidr }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+          RELEASE_RUN_ID: ${{ needs.authorize.outputs.release_run_id }}
+          RELEASE_SHA: ${{ needs.authorize.outputs.release_sha }}
+          WEB_URL: ${{ needs.deploy.outputs.web_url }}
+          ACCESS_CIDR: ${{ needs.authorize.outputs.access_cidr }}
         run: |
           test -n "$WEB_URL"
           {
