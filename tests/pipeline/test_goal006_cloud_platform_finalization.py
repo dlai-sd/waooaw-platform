@@ -40,7 +40,7 @@ def test_neutral_entry_delegates_deployment_and_verification() -> None:
 def test_demo_apply_accepts_and_bounds_current_public_ipv4() -> None:
     deploy = _workflow("deploy.yaml")
 
-    assert "https://api.ipify.org" in deploy
+    assert re.search(r"https://api\.ipify\.org(?:['\"\s]|$)", deploy)
     assert "scripts/goal006_dispatch_inputs.py" in deploy
     assert 'ACCESS_IPV4: ${{ inputs.access_ipv4 }}' in deploy
     assert "needs.authorize.outputs.access_cidr" in deploy
