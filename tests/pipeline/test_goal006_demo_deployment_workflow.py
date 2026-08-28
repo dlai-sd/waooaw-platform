@@ -6,7 +6,7 @@ from pathlib import Path
 WORKFLOW = Path(".github/workflows/deploy-environment.yaml").read_text(
     encoding="utf-8"
 )
-QUALIFICATION_WRAPPER = Path(".github/workflows/deploy-demo.yaml").read_text(
+DISPATCH_WORKFLOW = Path(".github/workflows/deploy.yaml").read_text(
     encoding="utf-8"
 )
 
@@ -161,7 +161,8 @@ def test_uat_configuration_initialization_is_explicit_create_only_and_private() 
     assert 'test "$promoted_sha256" = "$verified_sha256"' in initialization
     assert "configuration-promotion.json" in initialization
     assert "default: false" in WORKFLOW.split("initialize_configuration:", 1)[1]
-    assert "initialize_configuration: true" in QUALIFICATION_WRAPPER
+    assert "initialize_configuration: true" not in DISPATCH_WORKFLOW
+    assert not Path(".github/workflows/deploy-demo.yaml").exists()
 
 
 def test_expired_lease_fails_before_foundation_plan_and_apply_renewal_is_etag_bound() -> None:

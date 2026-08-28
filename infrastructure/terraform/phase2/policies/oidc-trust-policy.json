@@ -7,7 +7,7 @@
   "allowed_verification_environments": ["demo-verification", "uat-verification", "prod-verification"],
   "allowed_refs": ["refs/heads/main"],
   "allowed_workflows": [
-    ".github/workflows/deploy-demo.yaml@refs/heads/main"
+    ".github/workflows/deploy.yaml@refs/heads/main"
   ],
   "subject_claim_template": ["repo", "environment"],
   "wildcards_allowed": false,

@@ -377,16 +377,13 @@ def test_founder_ipv4_cidr_is_required_only_for_demo() -> None:
         assert 'variable "founder_ipv4_cidr"' not in root_variables
 
 
-def test_demo_and_uat_are_public_while_production_defaults_private() -> None:
+def test_all_managed_environments_are_public() -> None:
     module_variables = read_contract("modules/foundation/variables.tf")
 
     assert "explicitly authorized lower environment" in module_variables
-    for environment in ("demo", "uat"):
+    for environment in ENVIRONMENTS:
         foundation = read_contract(f"environments/{environment}/foundation/main.tf")
         assert re.search(r"external_environment\s*=\s*true", foundation)
-
-    production = read_contract("environments/prod/foundation/main.tf")
-    assert "external_environment" not in production
 
 
 def test_foundation_is_private_isolated_and_environment_scoped() -> None:
@@ -484,7 +481,7 @@ def test_post_deploy_verification_requires_the_exact_latest_revision() -> None:
     assert 'properties.healthState == "Healthy"' in workflow
 
 
-def test_lower_environments_are_public_but_only_demo_is_founder_restricted() -> None:
+def test_all_environments_are_public_but_only_demo_is_founder_restricted() -> None:
     demo = read_contract("environments/demo/foundation/main.tf")
     uat = read_contract("environments/uat/foundation/main.tf")
     prod = read_contract("environments/prod/foundation/main.tf")
@@ -493,7 +490,7 @@ def test_lower_environments_are_public_but_only_demo_is_founder_restricted() -> 
 
     assert re.search(r"external_environment\s*=\s*true", demo)
     assert re.search(r"external_environment\s*=\s*true", uat)
-    assert "external_environment" not in prod
+    assert re.search(r"external_environment\s*=\s*true", prod)
     assert 'name             = "founder-review"' in workload
     assert 'var.environment == "demo" && local.public_ingress[each.key]' in workload
     assert "ip_address_range = ip_security_restriction.value" in workload
@@ -629,7 +626,7 @@ def test_oidc_policy_requires_exact_governed_refs_and_workflows() -> None:
         "prod-verification",
     ]
     assert policy["allowed_refs"] == ["refs/heads/main"]
-    assert policy["allowed_workflows"] == [".github/workflows/deploy-demo.yaml@refs/heads/main"]
+    assert policy["allowed_workflows"] == [".github/workflows/deploy.yaml@refs/heads/main"]
     assert policy["subject_claim_template"] == ["repo", "environment"]
     assert policy["wildcards_allowed"] is False
     assert all("*" not in value for value in (*policy["allowed_refs"], *policy["allowed_workflows"]))

@@ -6,26 +6,24 @@
 |---|---|
 | Baseline | `10d7525ccca6fa0d7daa437da7e4630fb94bbeae` |
 | Branch | `fix/goal006-cloud-platform-finalization` |
-| Authority | WC-076; FA-052; Founder current-session implementation, read-only Azure, temporary exact-branch trust, and Demo plan/apply authorization on 2026-08-28 |
-| Status | DEMO ACCEPTED; UAT RUNNER ACTIVE; UAT WORKLOAD QUALIFICATION NEXT |
+| Authority | WC-076; FA-052; Founder current-session Demo/UAT implementation and Azure CLI proof authorization on 2026-08-28 |
+| Status | DEMO ACCEPTED; UAT DEPLOYED AND VERIFIED; PRODUCTION CODE-PREPARED / PLAN-ONLY PREREQUISITES PENDING |
 
 ## Local And Offline Qualification
 
 | Check | Result |
 |---|---|
 | Failing contract baseline | PASS - seven finalization contracts failed before implementation |
-| Focused workflow contracts | PASS - 21/21 |
-| Runner blueprint/bootstrap/deployment | PASS - 40/40 |
-| GOAL-006 pipeline regression | PASS - 470/470 |
-| Full pipeline regression | PASS - 1260/1260 at UAT runner qualification SHA `c3d6318d94adbee20c310f2f46c4d74b2ad289fb` |
-| Actionlint 1.7.7 | PASS - eight delivery workflows |
+| Focused Keycloak/output/trust contracts | PASS |
+| GOAL-006 focused regression | PASS - 181/181 after canonical trust restoration |
+| Full pipeline regression | PASS - 1275/1275 |
+| Actionlint | PASS - GOAL-006 deployment workflows |
 | Terraform 1.9.8 formatting | PASS |
 | Terraform roots | PASS - Demo/UAT/Production foundation and workload, 6/6 |
-| Editor diagnostics | PASS - no findings in touched workflow, test, or runner-stack paths |
 | Patch whitespace | PASS |
 
-All Python tests ran through `docker compose run --rm test-runner`. No host Python test process or
-virtual environment was used.
+Python contracts ran with the repository Python environment. Terraform formatting and validation
+ran with `hashicorp/terraform:1.9.8`.
 
 ## Azure Read-Only Preflight
 
@@ -39,7 +37,9 @@ virtual environment was used.
 | Demo runner executions | Zero active runner, broker, cleanup, or reconciler executions |
 | Demo runner Key Vault | Public network disabled; default deny; RBAC enabled |
 | State account | Public network disabled; default deny; no IP rules; approved Demo private endpoint present |
-| UAT/Production runner resources | Runner resource groups exist but contain no resources |
+| UAT runner resources | ACTIVE and proven through private broker, runner, and cleanup executions |
+| UAT managed environment | Public (`internal=false`), `Succeeded`, static IP `135.13.181.135` |
+| UAT active executions | Zero broker, runner, or cleanup executions after qualification |
 | OIDC subjects | Exact Demo, UAT, and Production GitHub Environment subjects exist |
 | GitHub Environments | Demo and UAT deployment/verification environments exist; Production deployment/verification environments are absent |
 
@@ -53,11 +53,11 @@ The shared Terraform state account has no declarative owner in the authorized Te
 runner Deployment Stack; those surfaces reference it as an existing resource. Public access is now
 disabled as directed, but durable infrastructure-as-code ownership remains deferred engineering debt.
 
-Production GitHub deployment and verification environments are also absent. Creating protected
-Production environments remains a prerequisite for the authorized Production plan-only stage.
-Production runner activation remains prohibited and its blueprint is `INACTIVE`. UAT uses the
-approved environment-federated bootstrap app for hosted control-plane operations and the generated,
-verified cleanup managed identity for post-run cleanup.
+Production GitHub deployment and verification environments are absent. Creating protected
+Production environments remains a prerequisite for any Production plan. Production foundation code
+now declares a public managed environment before first creation, and Production workload code omits
+the Demo Founder CIDR restriction; no Production plan or apply was run. Production runner activation
+remains prohibited and its blueprint is `INACTIVE`.
 
 ## Live Evidence
 
@@ -78,16 +78,24 @@ verified cleanup managed identity for post-run cleanup.
 | UAT prerequisite reconciliation | PASS - dedicated Azure CLI what-if contained zero deletes; apply refreshed the current six-output custom-role contract and verified RBAC plus INR 10,000 budget |
 | UAT runner preview | PASS - run `33149859100` at SHA `c3d6318d94adbee20c310f2f46c4d74b2ad289fb`; reviewed plan `sha256:6bcf94f36f1f77f550b5d6e5e51337e5a1aa801916b2c6d010415413991e9361` contained 36 creates, one resource-group ignore and one approved deferred same-environment evidence assignment, with zero deletes |
 | UAT runner apply | PASS - run `33150103583`; deployment record `sha256:8f725ff1c009f8b99d277cf8a771a456ba21ce2d92c29580361dd8935ec7640d`; stack verified ACTIVE with 37 managed resources, `denyDelete`, detach-on-unmanage, private approved endpoints, private RBAC vault, immutable job images and zero active runner/broker/cleanup executions |
-| UAT workload | NEXT - plan/apply the Demo-proven exact-six release using the UAT protected configuration boundary |
-| Production | NOT AUTHORIZED - plan/apply not run |
-| Temporary trust cleanup | PASS - qualification branch policies and cleanup federation removed after each run; Demo, Demo verification and cleanup identity trust only `main` |
+| UAT public foundation migration | PASS - empty private Container Apps environment replaced once with explicit Founder authorization; final environment `cae-waooaw-uat` is public, `Succeeded`, and reusable; strict no-delete policy restored afterward |
+| UAT initial workload | PASS - run `33160684332` deployed all eight apps and cleaned private execution resources; independent verification correctly failed on Keycloak HTTP 500 |
+| Keycloak RCA | CONFIRMED - in-memory H2 initialized/imported successfully, then presented an empty schema in the same JVM; revision lacked application readiness gating |
+| Keycloak correction | PASS - `dev-file` backing store plus OIDC startup/readiness probes; revision `ca-uat-keycloak--0000001` is healthy and latest-ready; public OIDC discovery returns HTTP 200 |
+| Output-chain RCA | CONFIRMED - UAT root omitted `web_url`; `echo "web_url=$(terraform output ...)"` masked Terraform failure and emitted an empty reusable-workflow output |
+| Output-chain correction | PASS - all workload roots forward `module.workload.web_url`; workflow captures and asserts a non-empty value before publishing it |
+| Final UAT qualification | PASS - run `33177257822` at SHA `40fe8131de635860ec86b8171e315ab607061d36`; authorize, resolve, broker, apply, cleanup, and independent verification all succeeded |
+| UAT functional verification | PASS - execution `job-uat-deployment-verification-rcxumkt`; OIDC HTTP 200 on attempt 1, Web and Business Platform HTTP 200 on attempt 2, Constitutional Engine `SERVING` |
+| UAT serving revisions | PASS - all eight apps report `Succeeded` and latest revision equals latest-ready; internal services remain internal and customer-facing services use public ingress |
+| UAT public endpoints | PASS - Web HTTP 200; identity-edge OIDC HTTP 200 with UAT issuer |
+| Production | CODE-PREPARED / NOT RUN - public-at-creation foundation and no CIDR restriction; protected environments and plan prerequisites remain pending; apply prohibited |
+| Temporary trust cleanup | PASS - exact-branch wrapper removed; reusable deployment and verification trust only `deploy.yaml@refs/heads/main` and immutable `release_sha` checkouts |
 
 RCA: `https://api.ipify.org` was initially queried from Codespace, so the deployed `/32` represented
 automation egress instead of the Founder's review browser. The canonical dispatch input now requires
 the address to be obtained in the Founder review browser and explicitly rejects Codespace or runner
 egress as the source. Focused workflow contracts passed 74/74 and actionlint passed after the change.
 
-The reusable workflow labels are environment-derived. The observed `Apply demo` job name is formed
-from the selected execution and `${{ inputs.environment }}`; the `demo-verification` protected
-environment is formed from `${{ inputs.environment }}-verification`. The temporary exact-branch
-wrapper was intentionally Demo-only for pre-PR qualification and is absent from the restored branch.
+The reusable workflow labels are environment-derived. Deployment uses the selected environment and
+verification uses `${{ inputs.environment }}-verification`. The temporary exact-branch wrapper used
+for UAT qualification is absent from the final branch.
