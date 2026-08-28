@@ -29,6 +29,10 @@ on:
         required: false
         type: boolean
         default: false
+      allow_uat_public_environment_replacement:
+        required: false
+        type: boolean
+        default: false
     outputs:
       verification_client_id:
         value: ${{ jobs.terraform.outputs.verification_client_id }}
@@ -586,6 +590,10 @@ jobs:
           TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -euo pipefail
+          external_environment=false
+          case "$TARGET_ENVIRONMENT" in
+            demo|uat) external_environment=true ;;
+          esac
           fingerprint=$(python3 scripts/goal006_foundation_cache.py fingerprint \
             --environment "$TARGET_ENVIRONMENT" \
             --context "subscription_id=$ARM_SUBSCRIPTION_ID" \
@@ -594,7 +602,8 @@ jobs:
             --context "state_container=$TFSTATE_CONTAINER" \
             --context "runner_resource_group=$TF_VAR_runner_resource_group_name" \
             --context "runner_private_endpoints_subnet_id=$TF_VAR_runner_private_endpoints_subnet_id" \
-            --context "state_account_id=$TF_VAR_tfstate_storage_account_id")
+            --context "state_account_id=$TF_VAR_tfstate_storage_account_id" \
+            --context "external_environment=$external_environment")
           cache_hit=false
           cache_reason="not-requested"
           if test "$APPLY_REQUESTED" = true; then
@@ -683,9 +692,16 @@ jobs:
           terraform validate
           terraform plan -input=false -lock-timeout=5m -out=foundation.tfplan
           terraform show -json foundation.tfplan > foundation-plan.json
+          replacement_args=()
+          if test '${{ inputs.allow_uat_public_environment_replacement }}' = true; then
+            test '${{ inputs.environment }}' = uat
+            test "$APPLY_REQUESTED" = true
+            replacement_args=(--allow-replacement module.foundation.azurerm_container_app_environment.environment)
+          fi
           python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
             --scope foundation \
-            --plan foundation-plan.json
+            --plan foundation-plan.json \
+            "${replacement_args[@]}"
 
       - name: Terraform foundation apply
         if: inputs.apply && steps.foundation-cache.outputs.cache_hit != 'true'

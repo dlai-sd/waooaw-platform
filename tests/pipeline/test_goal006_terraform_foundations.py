@@ -724,6 +724,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert workflow.index("capture_seeder_evidence()") < workflow.index("Delete private credential seeder")
     assert workflow.count("if: inputs.apply") == 10
     assert '--context "state_account=$TFSTATE_STORAGE_ACCOUNT"' in workflow
+    assert '--context "external_environment=$external_environment"' in workflow
     assert "if: steps.foundation-cache.outputs.cache_hit != 'true'" in workflow
     assert "if: inputs.apply && steps.foundation-cache.outputs.cache_hit != 'true'" in workflow
     assert "for output_name in container_app_environment_id key_vault_id deployment_identity_id" in workflow

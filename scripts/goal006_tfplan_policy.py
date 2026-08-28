@@ -9,6 +9,7 @@ from typing import Any
 
 
 KNOWN_ACTIONS = frozenset({"no-op", "create", "read", "update", "delete"})
+UAT_PUBLIC_ENVIRONMENT_ADDRESS = "module.foundation.azurerm_container_app_environment.environment"
 
 
 def destructive_changes(plan: dict[str, Any]) -> list[str]:
@@ -41,13 +42,26 @@ def destructive_changes(plan: dict[str, Any]) -> list[str]:
     return destructive
 
 
-def enforce_plan(plan: dict[str, Any], scope: str) -> None:
+def enforce_plan(
+    plan: dict[str, Any], scope: str, allowed_replacements: frozenset[str] = frozenset()
+) -> None:
     """Reject deletion and replacement in an application plan."""
     destructive = destructive_changes(plan)
-    if destructive:
+    unsupported = allowed_replacements - {UAT_PUBLIC_ENVIRONMENT_ADDRESS}
+    if unsupported or (allowed_replacements and scope != "foundation"):
+        raise ValueError("Replacement allowance is restricted to the UAT public environment migration")
+
+    unauthorized = []
+    for address in destructive:
+        resource_change = next(change for change in plan["resource_changes"] if change["address"] == address)
+        actions = set(resource_change["change"]["actions"])
+        if address not in allowed_replacements or actions != {"create", "delete"}:
+            unauthorized.append(address)
+
+    if unauthorized:
         raise ValueError(
             f"{scope.capitalize()} plan contains delete or replacement actions: "
-            + ", ".join(destructive)
+            + ", ".join(unauthorized)
         )
 
 
@@ -60,12 +74,18 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--plan", required=True, type=Path)
     parser.add_argument("--scope", required=True, choices=("foundation", "workload"))
+    parser.add_argument(
+        "--allow-replacement",
+        action="append",
+        default=[],
+        choices=(UAT_PUBLIC_ENVIRONMENT_ADDRESS,),
+    )
     arguments = parser.parse_args()
     try:
         plan = json.loads(arguments.plan.read_text(encoding="utf-8"))
         if not isinstance(plan, dict):
             raise ValueError("Terraform plan JSON must be an object")
-        enforce_plan(plan, arguments.scope)
+        enforce_plan(plan, arguments.scope, frozenset(arguments.allow_replacement))
     except (OSError, json.JSONDecodeError, ValueError) as error:
         parser.error(str(error))
     print(json.dumps({"status": "PASS", "destructive_changes": 0}, sort_keys=True))
