@@ -7,7 +7,7 @@
 | Baseline | `10d7525ccca6fa0d7daa437da7e4630fb94bbeae` |
 | Branch | `fix/goal006-cloud-platform-finalization` |
 | Authority | WC-076; FA-052; Founder current-session implementation, read-only Azure, temporary exact-branch trust, and Demo plan/apply authorization on 2026-08-28 |
-| Status | LOCAL QUALIFICATION PASS; LIVE QUALIFICATION BLOCKED |
+| Status | LOCAL QUALIFICATION PASS; STATE NETWORK PREFLIGHT PASS; PRIVATE QUALIFICATION PENDING |
 
 ## Local And Offline Qualification
 
@@ -38,20 +38,20 @@ virtual environment was used.
 | Current monthly spend | INR 504.22 observed 2026-08-28 |
 | Demo runner executions | Zero active runner, broker, cleanup, or reconciler executions |
 | Demo runner Key Vault | Public network disabled; default deny; RBAC enabled |
-| State account | Default deny; no IP rules; Demo private endpoint present; public network flag enabled |
+| State account | Public network disabled; default deny; no IP rules; approved Demo private endpoint present |
 | UAT/Production runner resources | Runner resource groups exist but contain no resources |
 | OIDC subjects | Exact Demo, UAT, and Production GitHub Environment subjects exist |
 | GitHub Environments | Demo and UAT deployment/verification environments exist; Production deployment/verification environments are absent |
 
-No Azure or GitHub configuration mutation was performed in this execution attempt.
+The Founder directed that the Terraform state account must not be public. Azure CLI disabled public
+network access on `waooawp3tfstate2ed118`; immediate verification confirmed default deny, zero IP
+rules and the existing approved Demo private endpoint. No state content was read.
 
-## Blocker
+## Remaining Boundaries
 
-Live qualification and Demo apply are stopped because the shared Terraform state account reports
-`publicNetworkAccess=Enabled`, while the controlling plan requires protected Storage public network
-access to remain disabled. The account has no declarative owner in the authorized Terraform roots or
-runner Deployment Stack; those surfaces reference it as an existing resource. A direct CLI toggle
-would create an unmanaged infrastructure path and is not inferred from Demo apply authority.
+The shared Terraform state account has no declarative owner in the authorized Terraform roots or
+runner Deployment Stack; those surfaces reference it as an existing resource. Public access is now
+disabled as directed, but durable infrastructure-as-code ownership remains deferred engineering debt.
 
 Production GitHub deployment and verification environments are also absent. Creating protected
 Production environments is a Founder/admin action and is outside the current Demo-only live
@@ -62,7 +62,7 @@ authorization. UAT and Production runner activation remains prohibited; their bl
 
 | Evidence type | Status |
 |---|---|
-| Azure mutation | NOT RUN - blocked before mutation |
+| Azure mutation | PASS - state account public network access disabled and private endpoint preserved |
 | Exact-branch OIDC/private runner | NOT RUN - blocked before temporary trust creation |
 | Demo plan/apply and verification | NOT RUN |
 | UAT activation/apply | NOT AUTHORIZED - requires Founder Demo acceptance |
