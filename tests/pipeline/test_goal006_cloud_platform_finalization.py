@@ -83,7 +83,7 @@ def test_deny_only_promotion_workflow_is_removed() -> None:
     assert not (WORKFLOWS / "promote.yaml").exists()
 
 
-def test_inactive_runner_blueprints_use_approved_immutable_repository_inputs() -> None:
+def test_promoted_runner_blueprints_use_approved_immutable_repository_inputs() -> None:
     stack_root = Path("infrastructure/deployment-stacks/goal006-runner")
     demo = json.loads((stack_root / "demo.parameters.json").read_text(encoding="utf-8"))["parameters"]
 
@@ -96,11 +96,12 @@ def test_inactive_runner_blueprints_use_approved_immutable_repository_inputs() -
         "githubAppKeyVersion",
         "cleanupFederatedSubject",
     )
-    for environment in ("uat", "prod"):
+    expected_activation = {"uat": "ACTIVE", "prod": "INACTIVE"}
+    for environment, activation_state in expected_activation.items():
         parameters = json.loads(
             (stack_root / f"{environment}.parameters.json").read_text(encoding="utf-8")
         )["parameters"]
-        assert parameters["activationState"]["value"] == "INACTIVE"
+        assert parameters["activationState"]["value"] == activation_state
         for name in shared_names:
             assert parameters[name]["value"] == demo[name]["value"]
             assert parameters[name]["value"] != "PENDING"

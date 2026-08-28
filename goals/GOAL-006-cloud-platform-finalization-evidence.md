@@ -7,7 +7,7 @@
 | Baseline | `10d7525ccca6fa0d7daa437da7e4630fb94bbeae` |
 | Branch | `fix/goal006-cloud-platform-finalization` |
 | Authority | WC-076; FA-052; Founder current-session implementation, read-only Azure, temporary exact-branch trust, and Demo plan/apply authorization on 2026-08-28 |
-| Status | DEMO PLAN/APPLY PASS; PRIVATE QUALIFICATION PASS; FOUNDER DEMO ACCEPTANCE PENDING |
+| Status | DEMO ACCEPTED; UAT RUNNER ACTIVATION IN PROGRESS |
 
 ## Local And Offline Qualification
 
@@ -68,12 +68,13 @@ authorization. UAT and Production runner activation remains prohibited; their bl
 | Corrective Demo apply | PASS - run `33147562517` at qualification SHA `9fe961219d609df01f1c9d9a5345b6052fa6f5bd`; Web, Business Platform and Professional Runtime now restrict ingress to Founder browser CIDR `49.36.49.189/32` |
 | Exact-branch OIDC/private runner | PASS - plan and both apply runs traversed the private runner; zero runner, broker and cleanup executions remained active |
 | Independent verification | PASS - exact-six, pinned dependencies, latest-ready revisions, internal HTTP/gRPC probes, URL and CIDR |
-| Demo endpoint | FOUNDER RETEST PENDING - `https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io`; do not claim acceptance until the Founder verifies it from the allowlisted browser/network |
+| Demo endpoint | ACCEPTED - Founder confirmed the corrected portal loaded at `https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io` on 2026-08-28 |
 | Demo ingress | PASS - Web, Business Platform and Professional Runtime restricted to `49.36.49.189/32`; private services remained internal |
 | Functional verification | PASS - corrective execution `job-demo-deployment-verification-wri2jfa`; independent Web, Business Platform, identity discovery and Constitutional Engine probes succeeded |
 | Serving revisions | PASS - all eight latest revisions matched latest-ready and received 100% of routed traffic; retained zero-traffic rollback revisions were not mutated |
 | Exact-six digests | PASS - live Constitutional Engine, Business Platform, Professional Runtime, AI Runtime, Web and Billing Engine digests exactly matched the signed release manifest |
-| UAT activation/apply | NOT AUTHORIZED - requires Founder Demo acceptance |
+| Founder Demo acceptance | PASS - Founder explicitly accepted and approved the Demo application on 2026-08-28 after browser-path verification |
+| UAT activation/apply | AUTHORIZED SEQUENCE ACTIVE - runner preview/apply, then UAT workload plan/apply using the Demo-proven exact-six release |
 | Production | NOT AUTHORIZED - plan/apply not run |
 | Temporary trust cleanup | PASS - qualification branch policies and cleanup federation removed after each run; Demo, Demo verification and cleanup identity trust only `main` |
 
