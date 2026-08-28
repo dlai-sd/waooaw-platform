@@ -82,7 +82,6 @@ jobs:
       release_sha: ${{ needs.authorize.outputs.release_sha }}
       apply: ${{ inputs.execution == 'apply' }}
       initialize_configuration: true
-      allow_uat_public_environment_replacement: ${{ inputs.execution == 'apply' }}
       lease_expires_at: ${{ needs.authorize.outputs.lease_expires_at }}
       access_cidr: ${{ needs.authorize.outputs.access_cidr }}
     secrets: inherit

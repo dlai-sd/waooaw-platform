@@ -29,10 +29,6 @@ on:
         required: false
         type: boolean
         default: false
-      allow_uat_public_environment_replacement:
-        required: false
-        type: boolean
-        default: false
     outputs:
       verification_client_id:
         value: ${{ jobs.terraform.outputs.verification_client_id }}
@@ -692,16 +688,9 @@ jobs:
           terraform validate
           terraform plan -input=false -lock-timeout=5m -out=foundation.tfplan
           terraform show -json foundation.tfplan > foundation-plan.json
-          replacement_args=()
-          if test '${{ inputs.allow_uat_public_environment_replacement }}' = true; then
-            test '${{ inputs.environment }}' = uat
-            test "$APPLY_REQUESTED" = true
-            replacement_args=(--allow-replacement module.foundation.azurerm_container_app_environment.environment)
-          fi
           python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
             --scope foundation \
-            --plan foundation-plan.json \
-            "${replacement_args[@]}"
+            --plan foundation-plan.json
 
       - name: Terraform foundation apply
         if: inputs.apply && steps.foundation-cache.outputs.cache_hit != 'true'

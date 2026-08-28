@@ -401,6 +401,11 @@ resource "azurerm_container_app" "member" {
       error_message = "Enabled workloads require administrator verification that all exact-six GHCR packages allow anonymous digest pulls."
     }
   }
+
+  depends_on = [
+    azurerm_role_assignment.member_secret,
+    azurerm_role_assignment.professional_runtime_bp_secret,
+  ]
 }
 
 resource "azurerm_container_app" "keycloak" {

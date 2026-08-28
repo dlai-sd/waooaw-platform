@@ -285,6 +285,11 @@ def test_each_release_member_has_its_own_identity_and_secret_scope() -> None:
     assert "azurerm_user_assigned_identity.member[each.key].id" in contract
     assert "scope                = var.key_vault_secret_resource_ids[local.credential_member[each.key]]" in contract
     assert 'resource "azurerm_role_assignment" "professional_runtime_bp_secret"' in contract
+    member_app = contract.split('resource "azurerm_container_app" "member"', 1)[1].split(
+        'resource "azurerm_container_app" "keycloak"', 1
+    )[0]
+    assert "azurerm_role_assignment.member_secret" in member_app
+    assert "azurerm_role_assignment.professional_runtime_bp_secret" in member_app
     assert "runtime_identity_id" not in contract
     assert "runtime_identity_client_id" not in contract
 

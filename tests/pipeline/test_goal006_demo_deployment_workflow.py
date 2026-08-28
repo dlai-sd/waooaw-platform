@@ -164,17 +164,6 @@ def test_uat_configuration_initialization_is_explicit_create_only_and_private() 
     assert "initialize_configuration: true" in QUALIFICATION_WRAPPER
 
 
-def test_uat_public_environment_replacement_is_explicit_and_apply_only() -> None:
-    assert "allow_uat_public_environment_replacement: ${{ inputs.execution == 'apply' }}" in QUALIFICATION_WRAPPER
-    migration = WORKFLOW.split("replacement_args=()", 1)[1].split(
-        'python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py"', 1
-    )[0]
-    assert "inputs.allow_uat_public_environment_replacement" in migration
-    assert "inputs.environment }}' = uat" in migration
-    assert 'test "$APPLY_REQUESTED" = true' in migration
-    assert "module.foundation.azurerm_container_app_environment.environment" in migration
-
-
 def test_expired_lease_fails_before_foundation_plan_and_apply_renewal_is_etag_bound() -> None:
     configuration = WORKFLOW.split("      - name: Download environment configuration with OIDC", 1)[1].split(
         "      - name: Capture configuration storage diagnostics", 1
