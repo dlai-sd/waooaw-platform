@@ -1,6 +1,7 @@
 """Contracts for the GOAL-006 cloud platform finalization workflow graph."""
 
 import json
+import re
 from pathlib import Path
 
 
@@ -93,7 +94,6 @@ def test_promoted_runner_blueprints_use_approved_immutable_repository_inputs() -
         "githubAppId",
         "githubAppInstallationId",
         "githubAppKeyName",
-        "githubAppKeyVersion",
         "cleanupFederatedSubject",
     )
     expected_activation = {"uat": "ACTIVE", "prod": "INACTIVE"}
@@ -105,3 +105,4 @@ def test_promoted_runner_blueprints_use_approved_immutable_repository_inputs() -
         for name in shared_names:
             assert parameters[name]["value"] == demo[name]["value"]
             assert parameters[name]["value"] != "PENDING"
+        assert re.fullmatch(r"[0-9a-f]{32}", parameters["githubAppKeyVersion"]["value"])
