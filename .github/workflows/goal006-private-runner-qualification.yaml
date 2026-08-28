@@ -3,6 +3,15 @@ name: GOAL-006 Private Runner Qualification
 on:
   workflow_dispatch:
     inputs:
+      environment:
+        description: Environment to diagnose
+        required: true
+        default: demo
+        type: choice
+        options:
+          - demo
+          - uat
+          - prod
       remarks:
         description: Qualification reason and evidence context
         required: true
@@ -14,30 +23,51 @@ permissions:
   id-token: write
 
 concurrency:
-  group: goal006-private-runner-demo
+  group: goal006-private-runner-${{ inputs.environment }}
   cancel-in-progress: false
 
 env:
-  ARM_CLIENT_ID: 60c07330-4cc1-4e12-95a2-adc0966f1941
   ARM_TENANT_ID: 0471534c-1bbe-40ab-ae65-3f721b62582c
   ARM_SUBSCRIPTION_ID: 2ed11839-6a0f-4eaa-bd94-44ca96ff5d84
-  RUNNER_RESOURCE_GROUP: waooaw-demo-runner-rg
-  RUNNER_BROKER_JOB: goal006-demo-runner-broker
-  RUNNER_CLEANUP_BROKER_JOB: goal006-demo-runner-cleanup
-  RUNNER_CLEANUP_CLIENT_ID: 0cbfdc62-b91f-44ee-ac27-90785b3d2eb5
-  RUNNER_JOB: goal006-demo-runner-job
-  TFSTATE_RESOURCE_GROUP: waooaw-platform-rg
-  TFSTATE_STORAGE_ACCOUNT: waooawp3tfstate2ed118
   TFSTATE_CONTAINER: tfstate
   CONFIG_CONTAINER: deployment-config
-  CONFIG_BLOB: demo/workload-configuration.json
-  CLEANUP_EVIDENCE_CONTAINER: goal006-demo-runner-evidence
   EVIDENCE_RETENTION_DAYS: "90"
 
 jobs:
-  start-broker:
+  resolve-environment:
     runs-on: ubuntu-latest
-    environment: demo
+    outputs:
+      control_plane_client_id: ${{ steps.config.outputs.control_plane_client_id }}
+      cleanup_client_id: ${{ steps.config.outputs.cleanup_client_id }}
+      runner_resource_group: ${{ steps.config.outputs.runner_resource_group }}
+      runner_broker_job: ${{ steps.config.outputs.runner_broker_job }}
+      runner_cleanup_broker_job: ${{ steps.config.outputs.runner_cleanup_broker_job }}
+      runner_job: ${{ steps.config.outputs.runner_job }}
+      runner_label: ${{ steps.config.outputs.runner_label }}
+      state_storage_account: ${{ steps.config.outputs.state_storage_account }}
+      cleanup_evidence_container: ${{ steps.config.outputs.cleanup_evidence_container }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Resolve active environment configuration
+        id: config
+        env:
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          config=$(python3 scripts/goal006_environment_config.py --environment "$TARGET_ENVIRONMENT")
+          for key in control_plane_client_id cleanup_client_id runner_resource_group runner_broker_job \
+            runner_cleanup_broker_job runner_job runner_label state_storage_account cleanup_evidence_container; do
+            echo "$key=$(jq -r --arg key "$key" '.[$key]' <<< "$config")" >> "$GITHUB_OUTPUT"
+          done
+
+  start-broker:
+    needs: resolve-environment
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      ARM_CLIENT_ID: ${{ needs.resolve-environment.outputs.control_plane_client_id }}
+      RUNNER_RESOURCE_GROUP: ${{ needs.resolve-environment.outputs.runner_resource_group }}
+      RUNNER_BROKER_JOB: ${{ needs.resolve-environment.outputs.runner_broker_job }}
     outputs:
       correlation: ${{ steps.start.outputs.correlation }}
       broker_execution: ${{ steps.start.outputs.execution }}
@@ -56,7 +86,7 @@ jobs:
       - name: Verify immutable broker blueprint
         run: |
           python scripts/goal006_runner_bootstrap.py \
-            --environment demo \
+            --environment '${{ inputs.environment }}' \
             --manifest infrastructure/deployment-stacks/goal006-runner/bootstrap-manifest.json
 
       - name: Azure login with control-plane identity
@@ -99,8 +129,8 @@ jobs:
         id: start
         run: |
           set -eu
-          correlation="goal006:demo:$GITHUB_RUN_ID:$GITHUB_RUN_ATTEMPT"
-          runner_image=$(jq -er '.parameters.runnerImage.value' infrastructure/deployment-stacks/goal006-runner/demo.parameters.json)
+          correlation="goal006:${{ inputs.environment }}:$GITHUB_RUN_ID:$GITHUB_RUN_ATTEMPT"
+          runner_image=$(jq -er '.parameters.runnerImage.value' infrastructure/deployment-stacks/goal006-runner/${{ inputs.environment }}.parameters.json)
           az containerapp job show \
             --resource-group "$RUNNER_RESOURCE_GROUP" \
             --name "$RUNNER_BROKER_JOB" \
@@ -144,9 +174,13 @@ jobs:
           retention-days: ${{ env.EVIDENCE_RETENTION_DAYS }}
 
   qualify-private:
-    needs: start-broker
-    runs-on: [self-hosted, goal006-demo-private]
-    environment: demo
+    needs: [resolve-environment, start-broker]
+    runs-on: [self-hosted, "${{ needs.resolve-environment.outputs.runner_label }}"]
+    environment: ${{ inputs.environment }}
+    env:
+      ARM_CLIENT_ID: ${{ needs.resolve-environment.outputs.control_plane_client_id }}
+      TFSTATE_STORAGE_ACCOUNT: ${{ needs.resolve-environment.outputs.state_storage_account }}
+      CONFIG_BLOB: ${{ inputs.environment }}/workload-configuration.json
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -161,13 +195,13 @@ jobs:
       - name: Qualify private Storage and Terraform path
         run: |
           python3 scripts/goal006_runner_qualification.py \
-            --environment demo \
+            --environment '${{ inputs.environment }}' \
             --correlation '${{ needs.start-broker.outputs.correlation }}' \
             --account-name "$TFSTATE_STORAGE_ACCOUNT" \
             --state-container "$TFSTATE_CONTAINER" \
             --config-container "$CONFIG_CONTAINER" \
             --config-blob "$CONFIG_BLOB" \
-            --terraform-root infrastructure/terraform/phase2/environments/demo/foundation \
+            --terraform-root infrastructure/terraform/phase2/environments/${{ inputs.environment }}/foundation \
             --output-directory qualification \
             --output qualification-record.json
 
@@ -184,15 +218,21 @@ jobs:
 
   cleanup-private:
     if: always()
-    needs: [start-broker, qualify-private]
+    needs: [resolve-environment, start-broker, qualify-private]
     runs-on: ubuntu-latest
+    env:
+      RUNNER_RESOURCE_GROUP: ${{ needs.resolve-environment.outputs.runner_resource_group }}
+      RUNNER_CLEANUP_BROKER_JOB: ${{ needs.resolve-environment.outputs.runner_cleanup_broker_job }}
+      RUNNER_JOB: ${{ needs.resolve-environment.outputs.runner_job }}
+      TFSTATE_STORAGE_ACCOUNT: ${{ needs.resolve-environment.outputs.state_storage_account }}
+      CLEANUP_EVIDENCE_CONTAINER: ${{ needs.resolve-environment.outputs.cleanup_evidence_container }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Azure login with control-plane identity
         uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
         with:
-          client-id: ${{ env.RUNNER_CLEANUP_CLIENT_ID }}
+          client-id: ${{ needs.resolve-environment.outputs.cleanup_client_id }}
           tenant-id: ${{ env.ARM_TENANT_ID }}
           subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
 
@@ -201,7 +241,7 @@ jobs:
           PRIVATE_JOB_CONCLUSION: ${{ needs.qualify-private.result }}
         run: |
           set -eu
-          runner_image=$(jq -er '.parameters.runnerImage.value' infrastructure/deployment-stacks/goal006-runner/demo.parameters.json)
+          runner_image=$(jq -er '.parameters.runnerImage.value' infrastructure/deployment-stacks/goal006-runner/${{ inputs.environment }}.parameters.json)
           az containerapp job show \
             --resource-group "$RUNNER_RESOURCE_GROUP" \
             --name "$RUNNER_CLEANUP_BROKER_JOB" \
@@ -241,14 +281,14 @@ jobs:
             --format text > cleanup-job.log 2>&1 || true
           evidence_container_url="https://$TFSTATE_STORAGE_ACCOUNT.blob.core.windows.net/$CLEANUP_EVIDENCE_CONTAINER"
           python scripts/goal006_runner_execution.py pointer \
-            --environment demo \
+            --environment '${{ inputs.environment }}' \
             --run-id "$GITHUB_RUN_ID" \
             --run-attempt "$GITHUB_RUN_ATTEMPT" \
             --private-job-conclusion "$PRIVATE_JOB_CONCLUSION" \
             --cleanup-execution-name "$execution" \
             --evidence-container-url "$evidence_container_url" \
             --output cleanup-record.json
-          grep -F "cleanup/demo/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT.json" cleanup-record.json
+          grep -F "cleanup/${{ inputs.environment }}/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT.json" cleanup-record.json
 
       - name: Verify zero active private executions
         run: |

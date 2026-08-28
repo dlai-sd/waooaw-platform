@@ -8,14 +8,15 @@
     "runnerResourceGroupName": { "value": "waooaw-uat-runner-rg" },
     "stateStorageAccountId": { "value": "/subscriptions/2ed11839-6a0f-4eaa-bd94-44ca96ff5d84/resourceGroups/waooaw-platform-rg/providers/Microsoft.Storage/storageAccounts/waooawp3tfstate2ed118" },
     "bootstrapPrincipalId": { "value": "77147af5-a32d-4151-b557-e719f319b55b" },
-    "runnerImage": { "value": "ghcr.io/actions/actions-runner@sha256:db0dcae6d28559e54277755a33aba7d0665f255b3bd2a66cdc5e132712f155e0" },
+    "runnerImage": { "value": "ghcr.io/dlai-sd/goal006-private-runner@sha256:332cbca530bebcf2e0429470a9a979cf2f2048e12b66e5797d614581b33e17af" },
     "reconcilerImage": { "value": "mcr.microsoft.com/azure-cli@sha256:4faeb3c955086c3842d4f8cf0ff1d900ce3a1c68c6e6c6430c5e8a3cb882c5aa" },
-    "githubAppId": { "value": "PENDING" },
-    "githubAppInstallationId": { "value": "PENDING" },
-    "githubAppKeyName": { "value": "PENDING" },
-    "githubAppKeyVersion": { "value": "PENDING" },
+    "githubAppId": { "value": "4680703" },
+    "githubAppInstallationId": { "value": "155648751" },
+    "githubAppKeyName": { "value": "github-runner-app-signing" },
+    "githubAppKeyVersion": { "value": "fd3d73a5545844169b49382fab819c0d" },
     "runnerVnetAddressPrefix": { "value": "10.71.0.0/24" },
     "runnerSubnetAddressPrefix": { "value": "10.71.0.0/27" },
-    "privateEndpointSubnetAddressPrefix": { "value": "10.71.0.32/27" }
+    "privateEndpointSubnetAddressPrefix": { "value": "10.71.0.32/27" },
+    "cleanupFederatedSubject": { "value": "repo:dlai-sd/waooaw-platform:ref:refs/heads/main" }
   }
 }

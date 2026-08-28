@@ -525,15 +525,18 @@ def test_lease_lifecycle_preserves_foundation_and_prohibits_production() -> None
     assert 'module "lease"' not in read_contract("environments/prod/workload/main.tf")
 
 
-def test_lease_reconciliation_is_manual_demo_plan_only_until_activation() -> None:
+def test_lease_reconciliation_is_manual_private_plan_only_until_activation() -> None:
     workflow = (REPO_ROOT / ".github/workflows/reconcile-workload-leases.yaml").read_text(encoding="utf-8")
     validator = (REPO_ROOT / "scripts/goal006_lease_reconciliation.py").read_text(encoding="utf-8")
 
     assert "schedule:" not in workflow
     assert "workflow_dispatch:" in workflow
-    assert "environment: demo" in workflow
-    assert "environment: uat" not in workflow
-    assert "environment: prod" not in workflow
+    assert "environment: ${{ inputs.environment }}" in workflow
+    for environment in ("demo", "uat", "prod"):
+        assert f"          - {environment}" in workflow
+    assert 'runs-on: [self-hosted, "${{ needs.resolve-environment.outputs.runner_label }}"]' in workflow
+    assert "network-rule add" not in workflow
+    assert "network-rule remove" not in workflow
     assert "WAOOAW_PLATFORM_DEPLOYMENT_CLIENT_ID" not in workflow
     assert "lease_reconciliation_inputs" in workflow
     assert "reconciliation-plan.json" in workflow
@@ -792,40 +795,36 @@ def test_oidc_workflows_do_not_depend_on_github_platform_identifiers() -> None:
 
 
 def test_environment_deployment_is_authorized_without_changing_promotion_state() -> None:
-    demo = (REPO_ROOT / ".github/workflows/deploy-demo.yaml").read_text(encoding="utf-8")
-    workflow = (REPO_ROOT / ".github/workflows/promote.yaml").read_text(encoding="utf-8")
+    deploy = (REPO_ROOT / ".github/workflows/deploy.yaml").read_text(encoding="utf-8")
 
-    assert "workflow_dispatch:" in demo
-    assert "Trusted-main exact-six release workflow run ID" not in demo
-    assert "Trusted-main exact-six release commit SHA" not in demo
-    assert "${{ inputs.release_run_id }}" not in demo
-    assert "${{ inputs.release_sha }}" not in demo
-    assert "dlai-sd|yk-dlaisd" in demo
-    assert '*) echo "Unauthorized Demo dispatcher" >&2; exit 1 ;;' in demo
-    assert 'test "$DISPATCH_REF" = "refs/heads/main"' in demo
-    assert "actions/workflows/ci.yaml/runs?branch=main&event=push&status=success" in demo
-    assert 'artifact_name="goal006-exact-six-release-$latest_main_sha"' in demo
-    assert 'test -n "$release_run_id"' in demo
-    assert 'test -n "$artifact_id"' in demo
-    assert "release_run_id: ${{ fromJSON(needs.authorize-deployment.outputs.release_run_id) }}" in demo
-    assert "release_sha: ${{ needs.authorize-deployment.outputs.release_sha }}" in demo
-    assert "environment: ${{ inputs.target_environment }}" in demo
-    assert "target_environment:" in demo
+    assert "workflow_dispatch:" in deploy
+    assert "Trusted-main exact-six release workflow run ID" not in deploy
+    assert "Trusted-main exact-six release commit SHA" not in deploy
+    assert "${{ inputs.release_run_id }}" not in deploy
+    assert "${{ inputs.release_sha }}" not in deploy
+    assert "dlai-sd|yk-dlaisd" in deploy
+    assert '*) echo "Unauthorized deployment dispatcher" >&2; exit 1 ;;' in deploy
+    assert 'test "$DISPATCH_REF" = "refs/heads/main"' in deploy
+    assert "actions/workflows/ci.yaml/runs?branch=main&event=push&status=success" in deploy
+    assert 'artifact_name="goal006-exact-six-release-$latest_main_sha"' in deploy
+    assert 'test -n "$release_run_id"' in deploy
+    assert 'test -n "$artifact_id"' in deploy
+    assert "release_run_id: ${{ fromJSON(needs.authorize.outputs.release_run_id) }}" in deploy
+    assert "release_sha: ${{ needs.authorize.outputs.release_sha }}" in deploy
+    assert "environment: ${{ inputs.environment }}" in deploy
     for environment in ("demo", "uat", "prod"):
-        assert f"          - {environment}" in demo
-    assert "default: plan" in demo
-    assert "- plan" in demo
-    assert "- apply" in demo
-    assert "case \"$EXECUTION_MODE\" in plan|apply)" in demo
-    assert "apply: ${{ inputs.execution == 'apply' }}" in demo
-    assert "cost_controls:" not in demo
-    assert "enforce_cost_controls:" not in demo
-    assert demo.count("if: inputs.execution == 'apply'") == 2
-    assert "verification_client_id: ${{ needs.deploy-environment.outputs.verification_client_id }}" in demo
-    assert "web_url: ${{ needs.deploy-environment.outputs.web_url }}" in demo
-    assert "UAT remains prohibited until explicit Founder acceptance" in workflow
-    assert "exit 1" in workflow
-    assert "uses: ./.github/workflows/deploy-environment.yaml" not in workflow
+        assert f"          - {environment}" in deploy
+    assert "default: plan" in deploy
+    assert "- plan" in deploy
+    assert "- apply" in deploy
+    assert "case \"$EXECUTION_MODE\" in plan|apply)" in deploy
+    assert "apply: ${{ inputs.execution == 'apply' }}" in deploy
+    assert "cost_controls:" not in deploy
+    assert "enforce_cost_controls:" not in deploy
+    assert deploy.count("if: inputs.execution == 'apply'") == 2
+    assert "verification_client_id: ${{ needs.deploy.outputs.verification_client_id }}" in deploy
+    assert "web_url: ${{ needs.deploy.outputs.web_url }}" in deploy
+    assert not (REPO_ROOT / ".github/workflows/promote.yaml").exists()
 
     verification = (REPO_ROOT / ".github/workflows/post-deploy-verify.yaml").read_text(encoding="utf-8")
     assert "Reject stale release before independent verification" in verification
@@ -843,9 +842,9 @@ def test_environment_deployment_is_authorized_without_changing_promotion_state()
     assert "functional-verification.json" in verification
 
     delivery_surfaces = [
+        REPO_ROOT / ".github/workflows/deploy.yaml",
         REPO_ROOT / ".github/workflows/deploy-environment.yaml",
         REPO_ROOT / ".github/workflows/post-deploy-verify.yaml",
-        REPO_ROOT / ".github/workflows/promote.yaml",
         REPO_ROOT / ".github/workflows/reconcile-workload-leases.yaml",
         REPO_ROOT / "scripts/build_goal006_release_images.sh",
     ]

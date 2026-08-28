@@ -2,60 +2,147 @@ name: GOAL-006 Reconcile Workload Leases
 
 on:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to reconcile
+        required: true
+        default: demo
+        type: choice
+        options:
+          - demo
+          - uat
+          - prod
 
 permissions:
   contents: read
   id-token: write
 
 concurrency:
-  group: goal006-lease-reconciliation
+  group: goal006-${{ inputs.environment }}-lease-reconciliation
   cancel-in-progress: false
 
+env:
+  ARM_TENANT_ID: 0471534c-1bbe-40ab-ae65-3f721b62582c
+  ARM_SUBSCRIPTION_ID: 2ed11839-6a0f-4eaa-bd94-44ca96ff5d84
+  TFSTATE_RESOURCE_GROUP: waooaw-platform-rg
+  TFSTATE_CONTAINER: tfstate
+  EVIDENCE_RETENTION_DAYS: "90"
+
 jobs:
-  reconcile:
-    name: Plan Demo lease reconciliation
+  resolve-environment:
     runs-on: ubuntu-latest
-    environment: demo
-    env:
-      ARM_CLIENT_ID: 60c07330-4cc1-4e12-95a2-adc0966f1941
-      ARM_TENANT_ID: 0471534c-1bbe-40ab-ae65-3f721b62582c
-      ARM_SUBSCRIPTION_ID: 2ed11839-6a0f-4eaa-bd94-44ca96ff5d84
-      TFSTATE_RESOURCE_GROUP: waooaw-platform-rg
-      TFSTATE_STORAGE_ACCOUNT: waooawp3tfstate2ed118
-      TFSTATE_CONTAINER: tfstate
-      TF_VAR_tfstate_resource_group: waooaw-platform-rg
-      TF_VAR_tfstate_storage_account: waooawp3tfstate2ed118
-      TF_VAR_tfstate_container: tfstate
-    defaults:
-      run:
-        working-directory: infrastructure/terraform/phase2/environments/demo/workload
+    outputs:
+      control_plane_client_id: ${{ steps.config.outputs.control_plane_client_id }}
+      cleanup_client_id: ${{ steps.config.outputs.cleanup_client_id }}
+      runner_resource_group: ${{ steps.config.outputs.runner_resource_group }}
+      runner_broker_job: ${{ steps.config.outputs.runner_broker_job }}
+      runner_cleanup_broker_job: ${{ steps.config.outputs.runner_cleanup_broker_job }}
+      runner_job: ${{ steps.config.outputs.runner_job }}
+      runner_label: ${{ steps.config.outputs.runner_label }}
+      state_storage_account: ${{ steps.config.outputs.state_storage_account }}
+      cleanup_evidence_container: ${{ steps.config.outputs.cleanup_evidence_container }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.9.8
+      - name: Resolve active environment configuration
+        id: config
+        env:
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          config=$(python3 scripts/goal006_environment_config.py --environment "$TARGET_ENVIRONMENT")
+          for key in control_plane_client_id cleanup_client_id runner_resource_group runner_broker_job \
+            runner_cleanup_broker_job runner_job runner_label state_storage_account cleanup_evidence_container; do
+            echo "$key=$(jq -r --arg key "$key" '.[$key]' <<< "$config")" >> "$GITHUB_OUTPUT"
+          done
 
-      - name: Azure login with constrained bootstrap OIDC identity
-        uses: azure/login@v2
+  start-broker:
+    needs: resolve-environment
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    outputs:
+      correlation: ${{ steps.start.outputs.correlation }}
+    env:
+      ARM_CLIENT_ID: ${{ needs.resolve-environment.outputs.control_plane_client_id }}
+      RUNNER_RESOURCE_GROUP: ${{ needs.resolve-environment.outputs.runner_resource_group }}
+      RUNNER_BROKER_JOB: ${{ needs.resolve-environment.outputs.runner_broker_job }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Azure login with control-plane identity
+        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
         with:
           client-id: ${{ env.ARM_CLIENT_ID }}
           tenant-id: ${{ env.ARM_TENANT_ID }}
           subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
 
-      - name: Open temporary state firewall rule
+      - name: Start private runner broker
+        id: start
         run: |
-          test "$ARM_SUBSCRIPTION_ID" = "2ed11839-6a0f-4eaa-bd94-44ca96ff5d84"
-          test "$TFSTATE_RESOURCE_GROUP" = "waooaw-platform-rg"
-          test "$TFSTATE_STORAGE_ACCOUNT" = "waooawp3tfstate2ed118"
-          runner_ip=$(curl --fail --silent --show-error https://api.ipify.org)
-          echo "RUNNER_IP=$runner_ip" >> "$GITHUB_ENV"
-          az storage account network-rule add \
-            --resource-group "$TFSTATE_RESOURCE_GROUP" \
-            --account-name "$TFSTATE_STORAGE_ACCOUNT" \
-            --ip-address "$runner_ip" --output none
+          set -eu
+          correlation="goal006:${{ inputs.environment }}:$GITHUB_RUN_ID:$GITHUB_RUN_ATTEMPT"
+          runner_image=$(jq -er '.parameters.runnerImage.value' infrastructure/deployment-stacks/goal006-runner/${{ inputs.environment }}.parameters.json)
+          az containerapp job show \
+            --resource-group "$RUNNER_RESOURCE_GROUP" \
+            --name "$RUNNER_BROKER_JOB" \
+            --output json > broker-job.json
+          python3 scripts/goal006_runner_execution.py broker \
+            --job broker-job.json \
+            --expected-image "$runner_image" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --output broker-execution.json
+          execution=$(az containerapp job start \
+            --resource-group "$RUNNER_RESOURCE_GROUP" \
+            --name "$RUNNER_BROKER_JOB" \
+            --yaml broker-execution.json \
+            --query name -o tsv)
+          test -n "$execution"
+          for attempt in $(seq 1 60); do
+            status=$(az containerapp job execution show \
+              --resource-group "$RUNNER_RESOURCE_GROUP" \
+              --name "$RUNNER_BROKER_JOB" \
+              --job-execution-name "$execution" \
+              --query properties.status -o tsv)
+            case "$status" in
+              Succeeded) break ;;
+              Failed|Stopped) echo "Private broker failed: $status" >&2; exit 1 ;;
+            esac
+            test "$attempt" != 60
+            sleep 5
+          done
+          echo "correlation=$correlation" >> "$GITHUB_OUTPUT"
 
-      - name: Read applied lease from protected state
+  reconcile:
+    name: Plan ${{ inputs.environment }} lease reconciliation
+    needs: [resolve-environment, start-broker]
+    runs-on: [self-hosted, "${{ needs.resolve-environment.outputs.runner_label }}"]
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 45
+    env:
+      ARM_CLIENT_ID: ${{ needs.resolve-environment.outputs.control_plane_client_id }}
+      TFSTATE_STORAGE_ACCOUNT: ${{ needs.resolve-environment.outputs.state_storage_account }}
+      TF_VAR_tfstate_resource_group: waooaw-platform-rg
+      TF_VAR_tfstate_storage_account: ${{ needs.resolve-environment.outputs.state_storage_account }}
+      TF_VAR_tfstate_container: tfstate
+    defaults:
+      run:
+        working-directory: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Verify pinned native Terraform
+        run: |
+          test "$(command -v terraform)" = "/usr/local/bin/terraform"
+          test "$(terraform version -json | jq -r '.terraform_version')" = "1.9.8"
+
+      - name: Azure login with constrained environment identity
+        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
+        with:
+          client-id: ${{ env.ARM_CLIENT_ID }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
+      - name: Read applied lease from private state path
         id: lease
         run: |
           terraform init -input=false \
@@ -65,8 +152,8 @@ jobs:
             -backend-config="use_oidc=true" \
             -backend-config="use_azuread_auth=true"
           terraform output -json lease_reconciliation_inputs > lease-reconciliation.auto.tfvars.json
-          reconcile=$(python "$GITHUB_WORKSPACE/scripts/goal006_lease_reconciliation.py" \
-            --environment demo \
+          reconcile=$(python3 "$GITHUB_WORKSPACE/scripts/goal006_lease_reconciliation.py" \
+            --environment '${{ inputs.environment }}' \
             --inputs lease-reconciliation.auto.tfvars.json)
           echo "required=$reconcile" >> "$GITHUB_OUTPUT"
 
@@ -75,32 +162,103 @@ jobs:
         run: |
           terraform plan -input=false -lock-timeout=5m -out=reconciliation.tfplan
           terraform show -json reconciliation.tfplan > reconciliation-plan.json
-          python "$GITHUB_WORKSPACE/scripts/goal006_lease_reconciliation.py" \
-            --environment demo \
+          python3 "$GITHUB_WORKSPACE/scripts/goal006_lease_reconciliation.py" \
+            --environment '${{ inputs.environment }}' \
             --plan reconciliation-plan.json
 
-      - name: Upload reconciliation evidence
+      - name: Retain reconciliation evidence
         if: always() && steps.lease.outputs.required == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: goal006-demo-lease-reconciliation-plan-${{ github.run_id }}
-          path: |
-            infrastructure/terraform/phase2/environments/demo/workload/reconciliation-plan.json
+          name: goal006-${{ inputs.environment }}-lease-reconciliation-plan-${{ github.run_id }}
+          path: infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/reconciliation-plan.json
           if-no-files-found: error
-          retention-days: 90
+          retention-days: ${{ env.EVIDENCE_RETENTION_DAYS }}
 
-      - name: Reauthenticate bootstrap identity for cleanup
-        if: always() && env.RUNNER_IP != ''
-        uses: azure/login@v2
+  cleanup-private:
+    if: always() && needs.resolve-environment.result == 'success'
+    needs: [resolve-environment, start-broker, reconcile]
+    runs-on: ubuntu-latest
+    env:
+      RUNNER_RESOURCE_GROUP: ${{ needs.resolve-environment.outputs.runner_resource_group }}
+      RUNNER_CLEANUP_BROKER_JOB: ${{ needs.resolve-environment.outputs.runner_cleanup_broker_job }}
+      RUNNER_JOB: ${{ needs.resolve-environment.outputs.runner_job }}
+      RUNNER_BROKER_JOB: ${{ needs.resolve-environment.outputs.runner_broker_job }}
+      TFSTATE_STORAGE_ACCOUNT: ${{ needs.resolve-environment.outputs.state_storage_account }}
+      CLEANUP_EVIDENCE_CONTAINER: ${{ needs.resolve-environment.outputs.cleanup_evidence_container }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Azure login with cleanup identity
+        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
         with:
-          client-id: ${{ env.ARM_CLIENT_ID }}
+          client-id: ${{ needs.resolve-environment.outputs.cleanup_client_id }}
           tenant-id: ${{ env.ARM_TENANT_ID }}
           subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
 
-      - name: Close state firewall rule
-        if: always() && env.RUNNER_IP != ''
+      - name: Start private cleanup broker
+        env:
+          PRIVATE_JOB_CONCLUSION: ${{ needs.reconcile.result }}
         run: |
-          az storage account network-rule remove \
-            --resource-group "$TFSTATE_RESOURCE_GROUP" \
-            --account-name "$TFSTATE_STORAGE_ACCOUNT" \
-            --ip-address "$RUNNER_IP" --output none
+          set -eu
+          runner_image=$(jq -er '.parameters.runnerImage.value' infrastructure/deployment-stacks/goal006-runner/${{ inputs.environment }}.parameters.json)
+          az containerapp job show \
+            --resource-group "$RUNNER_RESOURCE_GROUP" \
+            --name "$RUNNER_CLEANUP_BROKER_JOB" \
+            --output json > cleanup-job.json
+          python3 scripts/goal006_runner_execution.py cleanup \
+            --job cleanup-job.json \
+            --expected-image "$runner_image" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --private-job-conclusion "$PRIVATE_JOB_CONCLUSION" \
+            --output cleanup-execution.json
+          execution=$(az containerapp job start \
+            --resource-group "$RUNNER_RESOURCE_GROUP" \
+            --name "$RUNNER_CLEANUP_BROKER_JOB" \
+            --yaml cleanup-execution.json \
+            --query name -o tsv)
+          test -n "$execution"
+          for attempt in $(seq 1 180); do
+            status=$(az containerapp job execution show \
+              --resource-group "$RUNNER_RESOURCE_GROUP" \
+              --name "$RUNNER_CLEANUP_BROKER_JOB" \
+              --job-execution-name "$execution" \
+              --query properties.status -o tsv)
+            case "$status" in
+              Succeeded) break ;;
+              Failed|Stopped) echo "Private cleanup broker failed: $status" >&2; exit 1 ;;
+            esac
+            test "$attempt" != 180
+            sleep 5
+          done
+          evidence_container_url="https://$TFSTATE_STORAGE_ACCOUNT.blob.core.windows.net/$CLEANUP_EVIDENCE_CONTAINER"
+          python3 scripts/goal006_runner_execution.py pointer \
+            --environment '${{ inputs.environment }}' \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --private-job-conclusion "$PRIVATE_JOB_CONCLUSION" \
+            --cleanup-execution-name "$execution" \
+            --evidence-container-url "$evidence_container_url" \
+            --output cleanup-record.json
+          grep -F "cleanup/${{ inputs.environment }}/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT.json" cleanup-record.json
+
+      - name: Verify zero active private executions
+        run: |
+          for job in "$RUNNER_JOB" "$RUNNER_BROKER_JOB"; do
+            active=$(az containerapp job execution list \
+              --resource-group "$RUNNER_RESOURCE_GROUP" \
+              --name "$job" \
+              --query "[?properties.status=='Running' || properties.status=='Processing' || properties.status=='Waiting'] | length(@)" \
+              -o tsv)
+            test "$active" = "0"
+          done
+
+      - name: Retain cleanup evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: goal006-${{ inputs.environment }}-lease-cleanup-${{ github.run_id }}-${{ github.run_attempt }}
+          path: cleanup-record.json
+          if-no-files-found: error
+          retention-days: ${{ env.EVIDENCE_RETENTION_DAYS }}
