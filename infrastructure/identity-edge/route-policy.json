@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "1.0",
+  "default": "deny",
+  "realm": "waooaw",
+  "approvedBrokerAliases": ["google", "facebook", "apple"],
+  "allowedRouteClasses": [
+    "discovery",
+    "keys",
+    "authorization",
+    "token",
+    "logout",
+    "broker",
+    "login_action",
+    "static",
+    "edge_health"
+  ],
+  "deniedRouteClasses": [
+    "admin",
+    "management",
+    "metrics",
+    "keycloak_health",
+    "other_realm",
+    "userinfo",
+    "introspection",
+    "device_authorization",
+    "dynamic_client_registration",
+    "account_console",
+    "debug",
+    "arbitrary_proxy"
+  ],
+  "limits": {
+    "tokenRequestBytes": 16384,
+    "otherRequestBytes": 65536,
+    "connectTimeoutSeconds": 5,
+    "responseHeaderTimeoutSeconds": 30,
+    "totalRequestTimeoutSeconds": 60
+  },
+  "logging": {
+    "queryStrings": false,
+    "requestBodies": false,
+    "responseBodies": false,
+    "authorizationHeaders": false,
+    "cookies": false
+  }
+}

@@ -57,6 +57,19 @@ internal static class IdentityTestHelpers
 {
     private const string TestHmacKey = "test-only-identity-hmac-key-32-bytes-minimum";
 
+    private static readonly IdentityEnvironmentOptions TestEnvironment = new()
+    {
+        SchemaVersion = "1.0",
+        Environment = "local",
+        Providers =
+        [
+            new() { Id = "GOOGLE", DisplayName = "Google", AuthenticationPath = "GOOGLE", Enabled = true, BrokerAlias = "google", Scopes = ["openid", "profile", "email"], SecretReference = "kv://google-client", ReadinessEvidenceReference = "TEST-GOOGLE" },
+            new() { Id = "FACEBOOK", DisplayName = "Facebook", AuthenticationPath = "META", Enabled = false, UnavailableReason = "NOT_CONFIGURED", BrokerAlias = "facebook", Scopes = ["email", "public_profile"] },
+            new() { Id = "APPLE", DisplayName = "Apple", AuthenticationPath = "APPLE", Enabled = false, UnavailableReason = "NOT_CONFIGURED", BrokerAlias = "apple", Scopes = ["openid", "name", "email"] },
+            new() { Id = "EMAIL", DisplayName = "Email", AuthenticationPath = "CREDENTIAL", Enabled = true, Scopes = [], ReadinessEvidenceReference = "TEST-EMAIL" },
+        ],
+    };
+
     public static IdentityController CreateController(
         IDbContextFactory<IdentityDbContext> factory,
         string subject = "test-subject",
@@ -66,6 +79,7 @@ internal static class IdentityTestHelpers
         string? email = null,
         bool emailVerified = false,
         long? authTimestamp = null,
+        string[]? customerRoles = null,
         CapturingVerificationDispatcher? dispatcher = null)
     {
         var service = CreateService(factory, dispatcher);
@@ -79,6 +93,12 @@ internal static class IdentityTestHelpers
         if (identityProvider is not null) claims.Add(new Claim("identity_provider", identityProvider));
         if (providerIssuer is not null) claims.Add(new Claim("iss", providerIssuer));
         if (authTimestamp.HasValue) claims.Add(new Claim("auth_time", authTimestamp.Value.ToString()));
+        if (tenantId is not null)
+        {
+            claims.Add(new Claim("exp", DateTimeOffset.UtcNow.AddMinutes(15).ToUnixTimeSeconds().ToString()));
+            foreach (var role in customerRoles ?? ["OWNER"])
+                claims.Add(new Claim("waooaw_roles", role));
+        }
 
         var user = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
 
@@ -87,7 +107,10 @@ internal static class IdentityTestHelpers
         if (tenantId is not null)
             httpContext.Items[TenantIsolationMiddleware.TenantIdItemKey] = tenantId;
 
-        return new IdentityController(service, NullLogger<IdentityController>.Instance)
+        return new IdentityController(
+            service,
+            new IdentityProviderProjectionService(Options.Create(TestEnvironment)),
+            NullLogger<IdentityController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext },
         };
@@ -112,7 +135,8 @@ internal static class IdentityTestHelpers
         string subject = "test-subject",
         string? tenantId = null,
         string? identityProvider = null,
-        long? authTimestamp = null)
+        long? authTimestamp = null,
+        string[]? customerRoles = null)
     {
         var service = new IdentityService(
             factory,
@@ -122,6 +146,12 @@ internal static class IdentityTestHelpers
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, subject) };
         if (identityProvider is not null) claims.Add(new Claim("identity_provider", identityProvider));
         if (authTimestamp.HasValue) claims.Add(new Claim("auth_time", authTimestamp.Value.ToString()));
+        if (tenantId is not null)
+        {
+            claims.Add(new Claim("exp", DateTimeOffset.UtcNow.AddMinutes(15).ToUnixTimeSeconds().ToString()));
+            foreach (var role in customerRoles ?? ["OWNER"])
+                claims.Add(new Claim("waooaw_roles", role));
+        }
 
         var user = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
         var httpContext = new DefaultHttpContext { User = user };
@@ -129,10 +159,192 @@ internal static class IdentityTestHelpers
         if (tenantId is not null)
             httpContext.Items[TenantIsolationMiddleware.TenantIdItemKey] = tenantId;
 
-        return new IdentityController(service, NullLogger<IdentityController>.Instance)
+        return new IdentityController(
+            service,
+            new IdentityProviderProjectionService(Options.Create(TestEnvironment)),
+            NullLogger<IdentityController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext },
         };
+    }
+}
+
+public sealed class IdentityProviderProjectionTests
+{
+    private static string EnvironmentManifestPath(string environment) =>
+        Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "../../../../../infrastructure/identity-config/environments",
+            $"{environment}.json"));
+
+    [Fact]
+    public void F2_GetProviders_ReturnsOrderedReadinessWithoutSecrets()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var controller = IdentityTestHelpers.CreateController(factory);
+
+        var result = Assert.IsType<OkObjectResult>(controller.GetProviders());
+        var json = JsonSerializer.Serialize(result.Value);
+        var projection = JsonSerializer.SerializeToElement(result.Value);
+        var providers = projection.GetProperty("Providers").EnumerateArray().ToArray();
+
+        Assert.Equal(["GOOGLE", "FACEBOOK", "APPLE", "EMAIL"],
+            providers.Select(provider => provider.GetProperty("Id").GetString()!).ToArray());
+        Assert.Equal("AVAILABLE", providers[0].GetProperty("Availability").GetString());
+        Assert.Equal("UNAVAILABLE", providers[1].GetProperty("Availability").GetString());
+        Assert.Equal("NOT_CONFIGURED", providers[1].GetProperty("UnavailableReason").GetString());
+        Assert.DoesNotContain("SecretReference", json);
+        Assert.DoesNotContain("ReadinessEvidenceReference", json);
+        Assert.DoesNotContain("BrokerAlias", json);
+    }
+
+    [Fact]
+    public void F2_IdentityEnvironmentValidator_RejectsEnabledProviderWithoutReadinessEvidence()
+    {
+        var options = new IdentityEnvironmentOptions
+        {
+            SchemaVersion = "1.0",
+            Environment = "demo",
+            Providers =
+            [
+                new() { Id = "GOOGLE", DisplayName = "Google", AuthenticationPath = "GOOGLE", Enabled = true, BrokerAlias = "google", SecretReference = "kv://google-client" },
+                new() { Id = "FACEBOOK", DisplayName = "Facebook", AuthenticationPath = "META", Enabled = false, UnavailableReason = "NOT_CONFIGURED" },
+                new() { Id = "APPLE", DisplayName = "Apple", AuthenticationPath = "APPLE", Enabled = false, UnavailableReason = "NOT_CONFIGURED" },
+                new() { Id = "EMAIL", DisplayName = "Email", AuthenticationPath = "CREDENTIAL", Enabled = true },
+            ],
+        };
+
+        var result = new IdentityEnvironmentOptionsValidator().Validate(null, options);
+
+        Assert.True(result.Failed);
+        Assert.Contains(result.Failures, failure => failure.Contains("readiness evidence", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("demo")]
+    [InlineData("uat")]
+    [InlineData("prod")]
+    public void F2_IdentityEnvironmentManifest_IsStrictAndValid(string environment)
+    {
+        var json = File.ReadAllText(EnvironmentManifestPath(environment));
+        var options = JsonSerializer.Deserialize<IdentityEnvironmentOptions>(json,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        Assert.NotNull(options);
+        var result = new IdentityEnvironmentOptionsValidator().Validate(null, options);
+        Assert.True(result.Succeeded,
+            result.Failed ? string.Join(Environment.NewLine, result.Failures) : string.Empty);
+        Assert.All(options.Providers.Where(provider => provider.Enabled), provider =>
+            Assert.False(string.IsNullOrWhiteSpace(provider.ReadinessEvidenceReference)));
+        Assert.DoesNotContain("clientSecret", json, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void F2_IdentityEnvironmentValidator_RejectsWildcardProductionRedirect()
+    {
+        var json = File.ReadAllText(EnvironmentManifestPath("prod"));
+        var options = JsonSerializer.Deserialize<IdentityEnvironmentOptions>(json,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+        options.Clients[0].RedirectUris = ["https://app.waooaw.com/*"];
+
+        var result = new IdentityEnvironmentOptionsValidator().Validate(null, options);
+
+        Assert.True(result.Failed);
+        Assert.Contains(result.Failures, failure => failure.Contains("wildcard", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void F2_IdentityEnvironmentValidator_RejectsCrossEnvironmentRedirect()
+    {
+        var options = ReadManifest("prod");
+        options.Clients[0].RedirectUris = ["https://app.uat.waooaw.com/api/auth/callback/keycloak"];
+
+        var result = new IdentityEnvironmentOptionsValidator().Validate(null, options);
+
+        Assert.True(result.Failed);
+        Assert.Contains(result.Failures, failure => failure.Contains("does not belong to prod", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void F2_IdentityEnvironmentValidator_RejectsDuplicateBrokerAlias()
+    {
+        var options = ReadManifest("demo");
+        options.Providers[1].BrokerAlias = options.Providers[0].BrokerAlias;
+
+        var result = new IdentityEnvironmentOptionsValidator().Validate(null, options);
+
+        Assert.True(result.Failed);
+        Assert.Contains(result.Failures, failure => failure.Contains("broker aliases must be unique", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void F2_IdentityEnvironmentValidator_RejectsMetaBusinessScope()
+    {
+        var options = ReadManifest("uat");
+        options.Providers[1].Scopes.Add("business_management");
+
+        var result = new IdentityEnvironmentOptionsValidator().Validate(null, options);
+
+        Assert.True(result.Failed);
+        Assert.Contains(result.Failures, failure => failure.Contains("scopes must be exactly", StringComparison.Ordinal));
+    }
+
+    private static IdentityEnvironmentOptions ReadManifest(string environment) =>
+        JsonSerializer.Deserialize<IdentityEnvironmentOptions>(
+            File.ReadAllText(EnvironmentManifestPath(environment)),
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+}
+
+public sealed class IdentitySessionProjectionTests
+{
+    [Fact]
+    public async Task F2_GetSession_ReturnsActorBoundAccountAndOwnerHints()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var controller = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "session-owner",
+            tenantId: Guid.NewGuid().ToString(),
+            identityProvider: "google",
+            email: "owner@example.com",
+            emailVerified: true,
+            authTimestamp: DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+
+        var created = Assert.IsType<ObjectResult>(await controller.StartRegistrationAsync(
+            new StartRegistrationRequest("en"), CancellationToken.None));
+        var registrationId = JsonSerializer.SerializeToElement(created.Value)
+            .GetProperty("RegistrationId").GetGuid();
+        IdentityTestHelpers.RefreshIdempotencyKey(controller);
+        await controller.UpdateProfileAsync(registrationId,
+            new UpdateRegistrationProfileRequest("Owner", "Acme", "Retail", "en"),
+            CancellationToken.None);
+        IdentityTestHelpers.RefreshIdempotencyKey(controller);
+        await controller.CompleteRegistrationAsync(registrationId, CancellationToken.None);
+
+        var result = Assert.IsType<OkObjectResult>(await controller.GetSessionAsync(CancellationToken.None));
+        var json = JsonSerializer.SerializeToElement(result.Value);
+
+        Assert.Equal("AAL2_ACCOUNT", json.GetProperty("AssuranceLevel").GetString());
+        Assert.Contains("OWNER", json.GetProperty("Roles").EnumerateArray().Select(value => value.GetString()));
+        Assert.Contains("LINK_WHATSAPP", json.GetProperty("Capabilities").EnumerateArray().Select(value => value.GetString()));
+        Assert.False(json.TryGetProperty("TenantId", out _));
+    }
+
+    [Fact]
+    public async Task F2_StartAccountLink_ViewerRoleIsDeniedBeforeMutation()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var controller = IdentityTestHelpers.CreateController(
+            factory,
+            tenantId: Guid.NewGuid().ToString(),
+            authTimestamp: DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            customerRoles: ["VIEWER"]);
+
+        var result = Assert.IsType<ObjectResult>(await controller.StartAccountLinkAsync(
+            new StartAccountLinkRequest(Guid.NewGuid()), CancellationToken.None));
+
+        Assert.Equal(403, result.StatusCode);
+        Assert.Empty(factory.CreateDbContext().AccountLinks);
     }
 }
 
@@ -914,18 +1126,8 @@ public sealed class IdentityInputAndConfigurationTests
     public async Task F2_UnconfiguredDelivery_Returns503WithoutSuccessfulIdempotencyRecord()
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var service = new IdentityService(
-            factory,
-            Options.Create(new IdentityHmacOptions { Key = "test-only-identity-hmac-key-32-bytes-minimum" }),
-            new FailingVerificationDispatcher());
-        var user = new ClaimsPrincipal(new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, "delivery-failure")], "Test"));
-        var context = new DefaultHttpContext { User = user };
-        context.Request.Headers["Idempotency-Key"] = Guid.NewGuid().ToString();
-        var ctrl = new IdentityController(service, NullLogger<IdentityController>.Instance)
-        {
-            ControllerContext = new ControllerContext { HttpContext = context },
-        };
+        var ctrl = IdentityTestHelpers.CreateControllerWithDispatcher(
+            factory, new FailingVerificationDispatcher(), subject: "delivery-failure");
         var created = Assert.IsType<ObjectResult>(await ctrl.StartRegistrationAsync(new("en"), CancellationToken.None));
         var regId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
 

@@ -151,7 +151,19 @@ CTG Call Flow (ADR-042):
 ### Keycloak
 - **Technology:** Keycloak 25.x (pinned, ADR-008)
 - **Responsibility:** OAuth broker. Federates Google (and future providers) into a single Keycloak JWT. Application services never talk directly to OAuth providers.
-- **Hosting:** Container Apps (cloud) / Docker container (dev)
+- **Hosting:** Container Apps with internal ingress only (cloud) / Docker container (dev)
+
+### Identity Edge *(proposed - ADR-048)*
+- **Technology:** NGINX Open Source 1.27.5 Alpine, pinned by OCI digest after Founder acceptance and qualification
+- **Responsibility:** Deny-by-default public OIDC path mediation to private Keycloak. It is not a credential authority, token transformer, business API, or session store.
+- **Communication:** Public browser/mobile OIDC traffic to approved Keycloak paths only; private upstream to Keycloak; administration, management, metrics, unlisted realms, and arbitrary proxy paths denied.
+- **Hosting:** Container Apps public identity hostname (cloud) / Docker container (dev). It is a signed dependency-manifest member, not an exact-six application member.
+
+### Phone Identity Service
+- **Technology:** Internal platform service, port 8137 (ADR-023)
+- **Responsibility:** Validate Meta webhook HMAC and timestamp, deduplicate messages, map verified WhatsApp phone identity to organisation, auto-register first contact, and issue a short-lived internal session token.
+- **Communication:** Called through the Business Platform WhatsApp webhook boundary; invokes the logical Business Platform Identity Boundary for account continuation/linking. It never issues or upgrades to a Keycloak web/mobile session.
+- **Hosting:** Container Apps with internal ingress (cloud) / Docker container (dev). It is not an MCP server.
 
 ### oauth-vault *(new — WC-038)*
 - **Technology:** Python 3.12, FastAPI, `azure-identity` (DefaultAzureCredential)
@@ -234,7 +246,6 @@ The AI Runtime is an MCP client. Agent-specific capabilities that require real-t
 | `nse-calendar-mcp` | Trading Agent (all skills) | NSE/BSE market holidays, circuit filter status, exchange halts | Sidecar container (dev), Container Apps (cloud) |
 | `enam-mcp` | Agricultural Advisor Agent (Skill 3) | eNAM (National Agriculture Market) portal price data | Sidecar container (dev), Container Apps (cloud) |
 | `government-scheme-mcp` | Agricultural Advisor Agent (Skills 3, 4, 5) | PMFBY status, MSP announcements, APMC rules, government scheme updates (India) | Sidecar container (dev), Container Apps (cloud) |
-| `phone-identity-service` | All C-042 agents via Business Platform webhook handler | WhatsApp phone-to-organisation_id mapping; auto-registration; session token issuance; HMAC webhook validation (ADR-023) | Internal platform service (dev), Container Apps (cloud) |
 
 ### MCP Architecture Principles (ADR-020)
 

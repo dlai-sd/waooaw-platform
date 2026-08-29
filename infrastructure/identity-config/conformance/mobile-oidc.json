@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0",
+  "authorizationFlow": "authorization_code",
+  "authorizationServer": "KEYCLOAK",
+  "pkce": {
+    "required": true,
+    "codeChallengeMethod": "S256"
+  },
+  "browser": "SYSTEM",
+  "redirectBinding": "CLAIMED_HTTPS_OR_UNIVERSAL_LINK",
+  "tokenStorage": "SECURE_OS_STORAGE",
+  "acceptedAccessTokenAudience": "waooaw-platform",
+  "providerTokensAcceptedByApplication": false,
+  "whatsAppProofExchangeAllowed": false,
+  "businessPlatformOperations": [
+    "getIdentityProviders",
+    "getIdentitySession",
+    "startRegistration",
+    "getRegistration",
+    "updateRegistrationProfile",
+    "completeRegistration",
+    "startAccountMobileVerification",
+    "confirmAccountMobileVerification",
+    "startWhatsAppAccountLink",
+    "approveWhatsAppAccountLink",
+    "getWhatsAppAccountLink"
+  ]
+}

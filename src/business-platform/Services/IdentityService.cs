@@ -47,6 +47,11 @@ public sealed record IdentityCompletionResult(
     string AssuranceLevel,
     string DefaultTarget);
 
+public sealed record IdentitySessionState(
+    Guid AccountReference,
+    bool EmailVerified,
+    bool MobileVerified);
+
 public sealed class IdentityIdempotencyConflict(string idempotencyKey)
     : Exception($"Idempotency-Key {idempotencyKey} was reused with a different canonical request hash.");
 
@@ -98,10 +103,6 @@ public sealed class IdentityService
         string? emailHmacKey,
         CancellationToken ct)
     {
-        if (authPath is IdentityAuthenticationPath.Meta or IdentityAuthenticationPath.Apple)
-            throw new IdentityActionDeniedException(
-                $"{authPath} authentication path is not yet activated on this platform.");
-
         if (authPath == IdentityAuthenticationPath.WhatsApp)
             throw new IdentityActionDeniedException(
                 "WhatsApp registration uses an internal adapter and is not accepted by browser endpoints.");
@@ -513,6 +514,33 @@ public sealed class IdentityService
             canonicalHash, 200, $"{outcome}:{accountId}", ct);
 
         return (result, isNew);
+    }
+
+    public async Task<IdentitySessionState> GetSessionStateAsync(
+        string actorSubject,
+        CancellationToken ct)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(ct);
+        var registration = await db.Registrations
+            .Where(value => value.ActorSubject == actorSubject
+                && value.State == IdentityRegistrationState.Completed
+                && value.AccountId != null)
+            .OrderByDescending(value => value.UpdatedAt)
+            .FirstOrDefaultAsync(ct);
+
+        if (registration?.AccountId is null)
+            throw new IdentityResourceNotFoundException("Completed account session not found.");
+
+        var progressiveMobileVerified = await db.VerificationChallenges.AnyAsync(
+            value => value.ActorSubject == actorSubject
+                && value.Purpose == IdentityVerificationPurpose.Mobile
+                && value.VerifiedAt != null,
+            ct);
+
+        return new IdentitySessionState(
+            registration.AccountId.Value,
+            registration.EmailVerified,
+            registration.MobileVerified || progressiveMobileVerified);
     }
 
     // ── Account Links (WhatsApp-to-web) ──────────────────────────────────────

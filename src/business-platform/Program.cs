@@ -8,6 +8,7 @@ using Waooaw.BusinessPlatform.Workflows;
 using Waooaw.ConstitutionalEngine.Grpc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Options;
 using Temporalio.Extensions.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,10 +25,13 @@ builder.Services.AddHealthChecks();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.Authority = builder.Configuration["Keycloak:Authority"]
+        options.Authority = builder.Configuration["IdentityEnvironment:Keycloak:Issuer"]
+            ?? builder.Configuration["Keycloak:Authority"]
             ?? throw new InvalidOperationException(
                 "Keycloak:Authority is required (C-026 — tenant isolation cannot function without JWT issuer).");
-        options.Audience = builder.Configuration["Keycloak:Audience"] ?? "business-platform";
+        options.Audience = builder.Configuration["IdentityEnvironment:Keycloak:Audience"]
+            ?? builder.Configuration["Keycloak:Audience"]
+            ?? "waooaw-platform";
         options.RequireHttpsMetadata = builder.Configuration.GetValue<bool?>("Keycloak:RequireHttpsMetadata")
             ?? !builder.Environment.IsDevelopment();
 
@@ -43,7 +47,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
         options.Events = new JwtBearerEvents
         {
-            OnChallenge = ctx =>
+            OnChallenge = async ctx =>
             {
                 // Log every rejected token challenge for constitutional audit visibility
                 var logger = ctx.HttpContext.RequestServices
@@ -52,7 +56,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     "JWT challenge fired: {ErrorDescription} — path={Path} (C-026 enforcement)",
                     ctx.ErrorDescription,
                     ctx.Request.Path);
-                return Task.CompletedTask;
+
+                ctx.HandleResponse();
+                ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await ctx.Response.WriteAsJsonAsync(new
+                {
+                    type = "https://waooaw.com/errors/identity/identity-session-required",
+                    title = "IDENTITY_SESSION_REQUIRED",
+                    status = StatusCodes.Status401Unauthorized,
+                    detail = "A valid Keycloak-issued Bearer token is required.",
+                    code = "IDENTITY_SESSION_REQUIRED",
+                    correlationId = Guid.NewGuid(),
+                }, options: null, contentType: "application/problem+json",
+                    cancellationToken: ctx.HttpContext.RequestAborted);
             },
         };
     });
@@ -176,6 +192,7 @@ builder.Services.AddScoped<OfferabilityOrchestrationService>();
 builder.Services.AddScoped<ActivationOrchestrationService>();
 builder.Services.AddScoped<RelationshipTrialService>();
 builder.Services.Configure<WhatsAppJourneyOptions>(builder.Configuration.GetSection("WhatsApp"));
+builder.Services.Configure<PhoneIdentityAdapterOptions>(builder.Configuration.GetSection("PhoneIdentity"));
 builder.Services.AddScoped<IWhatsAppRegistrationEvidenceGateway, WhatsAppRegistrationEvidenceGateway>();
 builder.Services.AddScoped<WhatsAppJourneyService>();
 builder.Services.Configure<ChannelContinuityOptions>(builder.Configuration.GetSection("ChannelContinuity"));
@@ -213,6 +230,12 @@ builder.Services.AddDbContextFactory<Waooaw.BusinessPlatform.Infrastructure.Iden
         .AddInterceptors(services.GetRequiredService<TenantDbConnectionInterceptor>()));
 builder.Services.Configure<Waooaw.BusinessPlatform.Services.IdentityHmacOptions>(
     builder.Configuration.GetSection("Identity:Hmac"));
+builder.Services.AddSingleton<IValidateOptions<IdentityEnvironmentOptions>, IdentityEnvironmentOptionsValidator>();
+builder.Services.AddOptions<IdentityEnvironmentOptions>()
+    .Bind(builder.Configuration.GetSection(IdentityEnvironmentOptions.SectionName), options =>
+        options.ErrorOnUnknownConfiguration = true)
+    .ValidateOnStart();
+builder.Services.AddSingleton<IdentityProviderProjectionService>();
 builder.Services.AddSingleton<Waooaw.BusinessPlatform.Services.IIdentityVerificationDispatcher,
     Waooaw.BusinessPlatform.Services.UnconfiguredVerificationDispatcher>();
 builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.IdentityService>();

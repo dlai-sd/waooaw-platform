@@ -2,6 +2,7 @@
 // constitutional_basis: C-005, C-023, C-026, C-059
 using Waooaw.BusinessPlatform.Controllers;
 using Waooaw.ConstitutionalEngine.Grpc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
@@ -38,6 +39,12 @@ public sealed class TenantIsolationMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
+        if (context.GetEndpoint()?.Metadata.GetMetadata<IAllowAnonymous>() is not null)
+        {
+            await _next(context);
+            return;
+        }
+
         // Health endpoint is unauthenticated — pass through without tenant extraction.
         if (context.Request.Path.StartsWithSegments("/health", StringComparison.OrdinalIgnoreCase))
         {

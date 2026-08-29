@@ -12,8 +12,6 @@
     <RootNamespace>Waooaw.BusinessPlatform</RootNamespace>
     <AssemblyName>BusinessPlatform</AssemblyName>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
-    <!-- Suppress known OpenTelemetry.Api moderate vulnerability warning (NU1902) -->
-    <NoWarn>NU1902</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -44,7 +42,7 @@
 
     <!-- OpenTelemetry — NOTE: use OpenTelemetryProtocol NOT Otlp -->
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.17.0" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.11.1" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.17.0" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.17.0" />
   </ItemGroup>
 

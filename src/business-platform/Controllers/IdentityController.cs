@@ -80,11 +80,27 @@ public sealed record IdentityMobileStatusResponse(
     string MaskedMobile,
     DateTimeOffset VerifiedAt);
 
+public sealed record IdentityProviderCollectionResponse(
+    IReadOnlyList<IdentityProviderProjection> Providers);
+
+public sealed record IdentitySessionResponse(
+    Guid AccountReference,
+    IReadOnlyList<string> Roles,
+    IReadOnlyList<string> Capabilities,
+    string AssuranceLevel,
+    string AuthenticationPath,
+    bool EmailVerified,
+    bool MobileVerified,
+    DateTimeOffset AuthenticatedAt,
+    DateTimeOffset ExpiresAt,
+    string NextAction);
+
 [ApiController]
 [Route("api/v1/identity")]
 [Authorize]
 public sealed class IdentityController(
     IdentityService identityService,
+    IdentityProviderProjectionService providerProjectionService,
     ILogger<IdentityController> logger) : ControllerBase
 {
     // ── Helpers ──────────────────────────────────────────────────────────────
@@ -146,6 +162,24 @@ public sealed class IdentityController(
         User.FindFirstValue("auth_time") is string s && long.TryParse(s, out var ts)
             ? DateTimeOffset.FromUnixTimeSeconds(ts)
             : DateTimeOffset.UtcNow;
+
+    private IReadOnlyList<string> CustomerRoles
+    {
+        get
+        {
+            var roles = User.FindAll("waooaw_roles")
+                .SelectMany(claim => claim.Value.TrimStart().StartsWith('[')
+                    ? JsonSerializer.Deserialize<string[]>(claim.Value) ?? []
+                    : claim.Value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                .Where(role => role is "OWNER" or "MANAGER" or "VIEWER")
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(role => role, StringComparer.Ordinal)
+                .ToArray();
+            return roles;
+        }
+    }
+
+    private bool IsOwner => CustomerRoles.Contains("OWNER", StringComparer.Ordinal);
 
     private Guid IdempotencyKey
     {
@@ -214,6 +248,69 @@ public sealed class IdentityController(
     private static IdentityAccountLinkResponse ToResponse(IdentityAccountLinkRecord l) =>
         new(l.LinkId, ToScreamingSnakeCase(l.State.ToString()), "AAL3_FRESH", l.MaskedMobile, l.ExpiresAt, l.UpdatedAt);
 
+    [AllowAnonymous]
+    [HttpGet("providers")]
+    public IActionResult GetProviders() =>
+        Ok(new IdentityProviderCollectionResponse(providerProjectionService.GetProviders()));
+
+    [HttpGet("session")]
+    public async Task<IActionResult> GetSessionAsync(CancellationToken ct)
+    {
+        var tenantId = TenantIdFromContext;
+        var roles = CustomerRoles;
+        var expiresAtValue = User.FindFirstValue("exp");
+        if (tenantId is null || roles.Count == 0
+            || expiresAtValue is null || !long.TryParse(expiresAtValue, out var expiresAtSeconds))
+        {
+            return IdentityProblem(401, "IDENTITY_SESSION_REQUIRED", "A complete customer session is required.");
+        }
+
+        try
+        {
+            var state = await identityService.GetSessionStateAsync(ActorSubject, ct);
+            var capabilities = CapabilitiesFor(roles);
+            var authenticationPath = User.FindFirstValue("auth_path") == "MOBILE" ? "MOBILE" : "PORTAL";
+            var assurance = state.EmailVerified ? "AAL2_ACCOUNT" : "AAL1_CHANNEL";
+            if (state.MobileVerified && DateTimeOffset.UtcNow - AuthTime <= TimeSpan.FromMinutes(5))
+                assurance = "AAL3_FRESH";
+
+            var nextAction = !state.EmailVerified
+                ? "VERIFY_EMAIL"
+                : !state.MobileVerified ? "VERIFY_MOBILE" : "NONE";
+
+            return Ok(new IdentitySessionResponse(
+                state.AccountReference,
+                roles,
+                capabilities,
+                assurance,
+                authenticationPath,
+                state.EmailVerified,
+                state.MobileVerified,
+                AuthTime,
+                DateTimeOffset.FromUnixTimeSeconds(expiresAtSeconds),
+                nextAction));
+        }
+        catch (IdentityResourceNotFoundException)
+        {
+            return IdentityProblem(404, "IDENTITY_RESOURCE_NOT_ACCESSIBLE",
+                "Account session not found or not accessible.");
+        }
+    }
+
+    private static IReadOnlyList<string> CapabilitiesFor(IReadOnlyList<string> roles)
+    {
+        var capabilities = new HashSet<string>(StringComparer.Ordinal) { "READ_ACCOUNT" };
+        if (roles.Contains("MANAGER", StringComparer.Ordinal) || roles.Contains("OWNER", StringComparer.Ordinal))
+            capabilities.Add("MANAGE_ROUTINE_ACTIONS");
+        if (roles.Contains("OWNER", StringComparer.Ordinal))
+        {
+            capabilities.UnionWith([
+                "MANAGE_ACCOUNT", "LINK_WHATSAPP", "ACCEPT_CONTRACT",
+                "HIRE_PROFESSIONAL", "MANAGE_AUTHORITY"]);
+        }
+        return capabilities.OrderBy(value => value, StringComparer.Ordinal).ToArray();
+    }
+
     private IActionResult IdentityProblem(int status, string code, string detail, Guid? stepUpIntentId = null)
     {
         var correlationId = Guid.NewGuid();
@@ -247,6 +344,15 @@ public sealed class IdentityController(
                 return IdentityProblem(400, "IDENTITY_REQUEST_INVALID", "languagePreference is invalid.");
 
             var authPath = DeriveAuthPath(User);
+            var providerId = authPath switch
+            {
+                IdentityAuthenticationPath.Google => "GOOGLE",
+                IdentityAuthenticationPath.Meta => "FACEBOOK",
+                IdentityAuthenticationPath.Apple => "APPLE",
+                _ => "EMAIL",
+            };
+            if (!providerProjectionService.IsAvailable(providerId))
+                return IdentityProblem(403, "IDENTITY_ACTION_DENIED", "Authentication path is unavailable.");
             var idempotencyKey = IdempotencyKey;
             var hash = ComputeHash(req);
 
@@ -654,6 +760,8 @@ public sealed class IdentityController(
         var tenantId = TenantIdFromContext;
         if (tenantId is null)
             return IdentityProblem(401, "IDENTITY_SESSION_REQUIRED", "Authenticated account session required.");
+        if (!IsOwner)
+            return IdentityProblem(403, "IDENTITY_ACTION_DENIED", "Owner authorization is required.");
 
         try
         {
@@ -690,6 +798,8 @@ public sealed class IdentityController(
         var tenantId = TenantIdFromContext;
         if (tenantId is null)
             return IdentityProblem(401, "IDENTITY_SESSION_REQUIRED", "Authenticated account session required.");
+        if (!IsOwner)
+            return IdentityProblem(403, "IDENTITY_ACTION_DENIED", "Owner authorization is required.");
 
         try
         {
@@ -734,6 +844,8 @@ public sealed class IdentityController(
         var tenantId = TenantIdFromContext;
         if (tenantId is null)
             return IdentityProblem(401, "IDENTITY_SESSION_REQUIRED", "Authenticated account session required.");
+        if (!IsOwner)
+            return IdentityProblem(403, "IDENTITY_ACTION_DENIED", "Owner authorization is required.");
 
         try
         {

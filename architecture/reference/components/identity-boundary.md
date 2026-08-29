@@ -4,7 +4,7 @@
 **Owning office:** INST-005 — Solution Architect
 **Security consultation:** INST-007 — CONCUR WITH BLOCKERS, 2026-08-09
 **Work Contract:** WC-034 / IB-014 / F2 only
-**Status:** R-055 CONTRACT REMEDIATED — PENDING INDEPENDENT RE-REVIEW; IMPLEMENTATION BLOCKED BY GATE TABLE
+**Status:** WC-077 ACCEPTED FOR IMPLEMENTATION 2026-08-29; ENVIRONMENT GATES REMAIN INDEPENDENT
 **Canonical API:** `architecture/reference/api-specs/business-platform.openapi.yaml`
 **Normative parents:** ADR-002, ADR-003, ADR-008, ADR-017, ADR-023, `ae01-security-contract.md`, `hybrid-application-shell.md`, `hybrid-ui-acceptance-contract.md`
 **Explicit exclusions:** F3–F8, active Employment Relationship creation, payment, private endpoints, application code, deployment
@@ -38,6 +38,23 @@ The following invariants are mandatory:
 
 The Identity Boundary is a logical Business Platform component, not a separately exposed service. ADR-023 Phone Identity Service remains a separate internal component. No new internet-facing container or private browser endpoint is introduced.
 
+### 2.1 Customer role and institutional separation
+
+Customer eligibility and organization authority are distinct:
+
+- the accepted customer realm base role `customer` permits account entry only;
+- `waooaw_roles` contains one or more current organization roles: `OWNER`, `MANAGER`, or `VIEWER`;
+- Business Platform resolves command authority from current account, membership, contract, and policy
+  state on every request; a JWT role is necessary but never sufficient for a consequential command;
+- `waooaw-operator` is not a customer organization role and grants no customer command authority;
+- steward and other institutional sessions are outside WC-077 and use their separately approved
+  realm/client and command contracts. They are never merged into a customer JWT.
+
+Within this component, `VIEWER` may read authorized customer projections, `MANAGER` may additionally
+approve routine actions explicitly assigned to managers, and `OWNER` may perform owner-only account,
+contract, hiring, authority, and channel-link decisions. Emergency Stop activation remains available
+under its controlling contract and must not be delayed by ordinary role or step-up processing.
+
 ## 3. Approved Authentication Paths
 
 | Path | Contract | F2 disposition |
@@ -53,6 +70,36 @@ Google, Facebook, Apple, and email fallback must be designed as one `Continue wi
 ### Meta separation rule
 
 The customer-login Meta application and the DMA Business Manager OAuth application are separate security principals with separate client IDs, secrets, redirect URIs, consent text, and scopes. The login application must never request page, advertisement, post, contact, WhatsApp Business management, publishing, or business-activity permissions. FA-035 resolves the Founder policy decision; INST-004 must still reconcile ADR-008 before implementation begins.
+
+### 3.1 Keycloak token and broker-identity contract
+
+Business Platform accepts customer web/mobile tokens only when all of these conditions pass:
+
+| Claim or validation | Contract |
+|---|---|
+| `iss` | Exact environment customer-realm issuer from the reviewed identity environment manifest |
+| `aud` | Contains the exact Business Platform audience `waooaw-platform`; no web-client or other-service audience substitutes |
+| signature/JWKS | Valid signature from the issuer's configured JWKS; unknown key refresh is bounded and fails closed |
+| `sub` | Non-empty Keycloak subject; combined with Keycloak issuer for the actor/session key |
+| `tenant_id` | Required UUID after account completion; absent only on the pre-account registration scheme |
+| `roles` | Contains base customer eligibility; it is not organization command authority |
+| `waooaw_roles` | Array containing only `OWNER`, `MANAGER`, or `VIEWER`; current membership is rechecked server-side |
+| `email_verified` | Boolean; required for `AAL2_ACCOUNT`, never inferred from a plain email claim |
+| `auth_time` | Required for freshness; token issue or refresh time does not replace authentication time |
+| `auth_path` | `PORTAL` or `MOBILE` for Keycloak sessions; `WHATSAPP` exists only in the internal ADR-023 session |
+| broker identity | Keycloak supplies a normalized broker alias plus the upstream provider's stable subject through reviewed mappers; raw upstream tokens and authorization codes never enter Business Platform |
+
+Provider binding stores the normalized provider alias and stable upstream subject as the durable
+login-method key. The Keycloak issuer plus Keycloak subject remains the WAOOAW actor key. Email is a
+verified contact/candidate-resolution signal and never a provider-binding key. Google uses its stable
+OIDC subject, Facebook uses the stable subject returned by the isolated customer-login application,
+and Apple uses its stable Sign in with Apple subject; Business Platform does not invent upstream
+issuer URLs or parse provider tokens.
+
+Rejected tokens use `401 IDENTITY_SESSION_REQUIRED`. A valid token missing post-account tenant,
+membership, role, or required assurance uses a privacy-safe `403` without revealing another account
+or policy internals. Institutional-realm, wrong-environment, wrong-audience, expired, not-yet-valid,
+unsigned, altered, or untrusted-key tokens are rejected before any claim is consumed.
 
 ## 4. Assurance Contract
 
@@ -141,6 +188,8 @@ The normative HTTP details and generated models are in `business-platform.openap
 
 | Operation | Purpose | Authentication |
 |---|---|---|
+| `GET /api/v1/identity/providers` | Return the ordered Google, Facebook, Apple, and email choices with environment readiness; disabled choices disclose only a generic unavailable reason | Anonymous; configuration projection only |
+| `GET /api/v1/identity/session` | Return the caller's opaque account reference, assurance, current customer roles/capabilities, authentication path, and next required action | Post-account Keycloak bearer with `AAL2_ACCOUNT` |
 | `POST /api/v1/identity/registrations` | Start or replay web registration from a Keycloak broker session | Pre-account Keycloak bearer; provider path is derived from the server session |
 | `GET /api/v1/identity/registrations/{registrationId}` | Read the caller-bound registration projection | Same actor-bound pre-account session |
 | `PUT /api/v1/identity/registrations/{registrationId}/profile` | Set only approved minimum profile fields | Same actor-bound pre-account session |
@@ -156,6 +205,68 @@ The normative HTTP details and generated models are in `business-platform.openap
 | `GET /api/v1/identity/account-links/{linkId}` | Read caller-bound link status after fresh Meta confirmation | Same portal actor |
 
 No API accepts `tenantId`, raw provider access token, password, upstream provider authorization code, relationship ID, or return URL in a request body. Keycloak protocol endpoints and callbacks remain Keycloak/Next.js session-boundary concerns and are not re-exposed as BP convenience endpoints.
+
+### 7.1 Identity endpoint authorization matrix
+
+| Operations | Required context | Role and assurance |
+|---|---|---|
+| provider readiness | Anonymous | No role; static reviewed environment projection only |
+| registration read/mutations | Actor-bound pre-account Keycloak token | `AAL1_CHANNEL`; no tenant claim required; all resources bound to issuer and subject |
+| session projection and authenticated mobile-verification start/confirm | Post-account Keycloak token and current membership | Any current customer organization role; `AAL2_ACCOUNT` |
+| account-link start/approve/read | Post-account Keycloak token and current membership | `OWNER`; `AAL3_FRESH` and verified mobile |
+
+Authorization is deny-by-default. Business Platform validates the token, derives tenant, activates
+RLS, loads current membership and command policy, and then checks assurance. The session projection's
+`capabilities` are server-derived current values, not copied from JWT claims. A stale or removed role
+cannot retain authority until token expiry. Identity operations never grant institutional authority.
+
+### 7.2 Phone Identity internal adapter
+
+The separate ADR-023 Phone Identity Service owns the public Meta webhook verification boundary and
+calls the logical Identity Boundary through a private authenticated adapter. The adapter accepts only
+an opaque proof record containing a keyed phone HMAC, Meta message ID, proof time, proof expiry,
+`AAL1_CHANNEL`, and correlation ID. It does not accept a browser-supplied phone number, raw webhook,
+Meta token, or Phone Identity session token as public authority.
+
+The adapter returns one of `CONTINUE_REGISTRATION`, `ACCOUNT_LINK_CONFIRMATION_REQUIRED`,
+`ACCOUNT_LINKED`, `DUPLICATE_RESOLUTION_REQUIRED`, or `NO_CHANGE`, with opaque registration/link/account
+references and the next action. Same message ID and same proof replay the prior outcome; conflicting
+reuse fails unresolved. Invalid HMAC, stale timestamp, unknown signer, expired proof, ambiguous
+identity, suspended account, database failure, or evidence failure performs no account/link mutation.
+Transient failure returns an internal unavailable result so Meta retry remains safe. The internal
+30-minute session never crosses to web/mobile and cannot be exchanged for a Keycloak token.
+
+### 7.3 Environment configuration and reconciliation contract
+
+One strict schema controls Demo, UAT, and Production. Each reviewed manifest contains:
+
+- environment and schema version;
+- public web, API, and identity origins;
+- exact customer-realm issuer, audience, JWKS URI, realm name, token lifetimes, and clock skew;
+- separate web and mobile public-client IDs, exact redirect and post-logout URI arrays, allowed web
+  origins, PKCE requirement, and permitted scopes;
+- ordered provider IDs, enabled state, broker alias, exact permitted scopes, secret-reference names,
+  and accepted readiness-evidence references;
+- identity-edge image/policy references, Keycloak image/normalized-realm references, cookie policy,
+  Phone Identity internal audience, and channel enablement;
+- no institutional client values in this customer identity manifest.
+
+Unknown fields, duplicate provider aliases, literal secret-like values, wildcard redirects, HTTP
+outside local Docker, callback hosts outside the named environment, issuer/JWKS mismatch, missing
+secret references, unapproved scope, enabled provider without accepted readiness, or an unpinned
+dependency fails validation. Demo/UAT/Production values are separate; promotion copies schema and
+allowlisted non-secret meaning only, never hostnames, identities, state coordinates, credentials, or
+secret values. Keycloak is reconciled from normalized version-controlled inputs; unreviewed console
+drift blocks readiness.
+
+### 7.4 Release, compatibility, and rollback contract
+
+`architecture/reference/pipeline/identity-dependency-manifest.md` is the normative signed dependency
+manifest. Keycloak image plus normalized realm digest and identity-edge image plus route-policy digest
+are dependency members bound to, but not members of, the exact-six application tuple. Schema changes
+are additive and previous-image compatible; destructive down-migrations are prohibited. Rollback
+selects the immediately previous qualified application, dependency, configuration, and schema-compatible
+tuple without rebuild, retag, secret copying, data downgrade, or destructive migration.
 
 ## 8. Canonical Data Contracts
 

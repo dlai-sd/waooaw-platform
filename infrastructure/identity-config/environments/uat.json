@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "1.0",
+  "environment": "uat",
+  "origins": {
+    "web": "https://app.uat.waooaw.com",
+    "api": "https://api.uat.waooaw.com",
+    "identity": "https://identity.uat.waooaw.com"
+  },
+  "keycloak": {
+    "issuer": "https://identity.uat.waooaw.com/realms/waooaw",
+    "audience": "waooaw-platform",
+    "jwksUri": "https://identity.uat.waooaw.com/realms/waooaw/protocol/openid-connect/certs",
+    "realm": "waooaw",
+    "accessTokenMinutes": 15,
+    "refreshSessionHours": 8,
+    "clockSkewSeconds": 30
+  },
+  "clients": [
+    {
+      "id": "waooaw-web-uat",
+      "channel": "WEB",
+      "pkceRequired": true,
+      "redirectUris": ["https://app.uat.waooaw.com/api/auth/callback/keycloak"],
+      "postLogoutRedirectUris": ["https://app.uat.waooaw.com/login"],
+      "allowedOrigins": ["https://app.uat.waooaw.com"],
+      "scopes": ["openid", "profile", "email"]
+    },
+    {
+      "id": "waooaw-mobile-uat",
+      "channel": "MOBILE",
+      "pkceRequired": true,
+      "redirectUris": ["https://mobile.uat.waooaw.com/oidc/callback"],
+      "postLogoutRedirectUris": ["https://mobile.uat.waooaw.com/logout"],
+      "allowedOrigins": [],
+      "scopes": ["openid", "profile", "email"]
+    }
+  ],
+  "channels": { "web": true, "mobile": false, "whatsApp": true },
+  "cookie": { "name": "waooaw.uat.session", "secure": true, "sameSite": "Lax" },
+  "identityEdge": {
+    "image": "docker.io/library/nginx@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10",
+    "routePolicy": "infrastructure/identity-edge/nginx.conf.template"
+  },
+  "phoneIdentity": { "internalAudience": "waooaw-phone-identity-uat" },
+  "providers": [
+    { "id": "GOOGLE", "displayName": "Google", "authenticationPath": "GOOGLE", "enabled": false, "unavailableReason": "NOT_CONFIGURED", "brokerAlias": "google", "scopes": ["openid", "profile", "email"] },
+    { "id": "FACEBOOK", "displayName": "Facebook", "authenticationPath": "META", "enabled": false, "unavailableReason": "NOT_CONFIGURED", "brokerAlias": "facebook", "scopes": ["email", "public_profile"] },
+    { "id": "APPLE", "displayName": "Apple", "authenticationPath": "APPLE", "enabled": false, "unavailableReason": "NOT_CONFIGURED", "brokerAlias": "apple", "scopes": ["openid", "name", "email"] },
+    { "id": "EMAIL", "displayName": "Email", "authenticationPath": "CREDENTIAL", "enabled": true, "scopes": [], "readinessEvidenceReference": "UAT-EMAIL-READY" }
+  ]
+}

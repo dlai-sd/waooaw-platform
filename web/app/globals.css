@@ -321,6 +321,12 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 .auth-view h1, .content-page h1, .state-view h1 { font-size: 3.2rem; }
 .auth-view p, .content-page p, .state-view p { color: var(--muted); line-height: 1.65; }
 .auth-view .primary-command { margin-block: 1rem; }
+.provider-commands { display: grid; align-items: start; justify-items: start; gap: .75rem; margin-block: 1rem; }
+.provider-commands .primary-command { margin-block: 0; }
+.provider-command { min-height: 46px; padding: .75rem 1.15rem; border: 1px solid var(--border); border-radius: 6px; color: var(--ink); background: var(--surface); cursor: pointer; }
+.provider-command:hover { border-color: var(--blue); }
+.apple-sign-in { display: grid; gap: .5rem; }
+.apple-sign-in p { max-width: 52ch; margin: 0; color: var(--ink); }
 .identity-view { width: min(100% - 2rem, 760px); }
 .registration-flow { margin-block-start: 2rem; }
 .identity-form { display: grid; gap: 1rem; }

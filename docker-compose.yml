@@ -156,7 +156,7 @@ services:
       retries: 5
 
   keycloak:
-    image: quay.io/keycloak/keycloak:25.0.6
+    image: quay.io/keycloak/keycloak@sha256:82c5b7a110456dbd42b86ea572e728878549954cc8bd03cd65410d75328095d2
     command: start-dev --import-realm
     ports:
       - "8443:8080"
@@ -178,6 +178,25 @@ services:
       interval: 10s
       timeout: 5s
       retries: 15
+
+  identity-edge:
+    image: docker.io/library/nginx@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
+    ports:
+      - "8444:8080"
+    environment:
+      KEYCLOAK_REALM: waooaw
+      KEYCLOAK_UPSTREAM: keycloak:8080
+      WAOOAW_ENVIRONMENT: local
+    volumes:
+      - ./infrastructure/identity-edge/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:8080/healthz | grep -q healthy"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
   temporal:
     image: temporalio/auto-setup:1.24
@@ -290,6 +309,7 @@ services:
       Keycloak__Authority: http://keycloak:8080/realms/waooaw
       Keycloak__Audience: waooaw-platform
       Identity__Hmac__Key: ${IDENTITY_HMAC_KEY:-waooaw-identity-local-dev-only-32chars}
+      PhoneIdentity__SigningKey: ${PHONE_IDENTITY_SIGNING_KEY:-waooaw-phone-proof-local-dev-only-32chars}
       WhatsApp__WebhookSecret: ${WHATSAPP_WEBHOOK_SECRET:-waooaw-webhook-local-dev-only-32chars}
       WhatsApp__TenantTokenKey: ${WHATSAPP_TENANT_TOKEN_KEY:-waooaw-tenant-token-local-dev-only-32chars}
       OTLP_ENDPOINT: http://jaeger:4317
@@ -303,6 +323,28 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:5001/health || exit 1"]
       interval: 10s
+      retries: 5
+
+  phone-identity-service:
+    build:
+      context: .
+      dockerfile: src/phone-identity-service/Dockerfile
+    ports:
+      - "8137:8137"
+    environment:
+      PhoneIdentity__WebhookSecret: ${WHATSAPP_WEBHOOK_SECRET:-waooaw-webhook-local-dev-only-32chars}
+      PhoneIdentity__VerifyToken: ${WHATSAPP_VERIFY_TOKEN:-waooaw-verify-local-dev-only}
+      PhoneIdentity__PhoneHashKey: ${PHONE_IDENTITY_HASH_KEY:-waooaw-phone-hash-local-dev-only-32chars}
+      PhoneIdentity__InternalSigningKey: ${PHONE_IDENTITY_SIGNING_KEY:-waooaw-phone-proof-local-dev-only-32chars}
+      PhoneIdentity__InternalAudience: waooaw-phone-identity
+      PhoneIdentity__BusinessPlatformBaseUrl: http://business-platform:5001
+    depends_on:
+      business-platform:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8137"]
+      interval: 10s
+      timeout: 3s
       retries: 5
 
   professional-runtime:
