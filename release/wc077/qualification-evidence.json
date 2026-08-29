@@ -1,0 +1,68 @@
+{
+  "schema": "waooaw.wc-qualification-evidence/v1",
+  "work_contract": "WC-077",
+  "delivery_scope": "shared-identity-foundation",
+  "base_commit": "2aa876033d9c58ea90f331f854b18d03711bd611",
+  "implementation_commit": "0e3efff83997278966cb3eae9359f689ebe6e97d",
+  "execution_policy": {
+    "docker_only": true,
+    "virtual_environment_used": false,
+    "cloud_queried": false,
+    "cloud_mutated": false
+  },
+  "tests": {
+    "business_platform_focused": {"passed": 40, "failed": 0, "skipped": 0},
+    "business_platform_full": {"passed": 443, "failed": 0, "skipped": 0, "line_coverage": 0.9029, "branch_coverage": 0.8008},
+    "phone_identity": {"passed": 15, "failed": 0, "skipped": 0, "line_coverage": 0.9254, "branch_coverage": 0.85},
+    "identity_artifacts": {"passed": 4, "failed": 0, "skipped": 0, "python": "/usr/bin/python3", "system_prefix_verified": true},
+    "web": {"passed": 112, "failed": 0, "skipped": 0, "line_coverage": 0.9496, "branch_coverage": 0.8153, "function_coverage": 0.9015, "statement_coverage": 0.9177, "production_build": "pass"},
+    "schemathesis_negative_fuzz": {"passed": 1400, "failed": 0, "source_commit": "15c1aaa6", "status": "pre-rebase-evidence"}
+  },
+  "security": {
+    "gitleaks": {"versions": ["8.30.0", "8.24.3"], "commits_scanned": 2, "findings": 0},
+    "trivy": {
+      "version": "0.69.3",
+      "policy": "fixed HIGH or CRITICAL findings must equal zero",
+      "business_platform": {"findings": 0, "report_sha256": "410d86c0bf47ef68e8089daf9651f123a2dc3f19ed0e537512d2d0e320dfe4d0"},
+      "phone_identity": {"findings": 0, "report_sha256": "9f05be6bf46a4a1079bdeda44d69a15076d5d801f8d5634b5c645da171b4f0f1"},
+      "web": {"findings": 0, "report_sha256": "450f91e72939525f79205510ef21bfd45b2db0d0b0f3db736bae452136cefa52"}
+    }
+  },
+  "images": {
+    "business_platform": {"id": "sha256:ba62884f8b04048fc1f5ae21b56fc5e8330f19ad2762a214fadff8e9b4970533", "sbom_format": "cyclonedx-json", "sbom_sha256": "a52df2a781dfa29a6ca55b143acc7d3ae40e3cdb64dc2701b02a633d96c4b387"},
+    "phone_identity": {"id": "sha256:e58ad18dc47b47abc17e8ddb25ef98af14d0bef12a4d25817e175fb38076e867", "sbom_format": "cyclonedx-json", "sbom_sha256": "735e611cde05a25f7805a36f76cdbf4bfc9556267f89ea2a3a435f1b0360bb4a"},
+    "web": {"id": "sha256:e28979a50be824c3f372c9f82dec76e19e03eb489b94b4a4ce075dc2c7687041", "sbom_format": "cyclonedx-json", "sbom_sha256": "c81065f3c064a712d83e76180ced2e0cb131f9e50ec58de8e30bd636fd0f0dab"}
+  },
+  "identity_dependencies": {
+    "keycloak": "quay.io/keycloak/keycloak@sha256:82c5b7a110456dbd42b86ea572e728878549954cc8bd03cd65410d75328095d2",
+    "identity_edge": "docker.io/library/nginx@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10"
+  },
+  "artifact_hashes": [
+    {"path": "infrastructure/keycloak/waooaw-realm.json", "sha256": "e0f15c0b5559304bc4d3ed64ab59dfb14663f20ba909c376cb384250d932de96"},
+    {"path": "infrastructure/identity-edge/nginx.conf.template", "sha256": "09c6313b0da3c2c7e0a8a05a1692f052bbc3e1128d92f926cc5c4b57af9051b9"},
+    {"path": "infrastructure/identity-edge/route-policy.json", "sha256": "b7869c4d424dff4372cf0212bd4ff5d5cbcb1fb0613f203174b34de01f42d929"},
+    {"path": "architecture/reference/api-specs/business-platform.openapi.yaml", "sha256": "d31a869cf5e82a12d7a4e82e0eb1e3f3f1ef31b0968255d562736dd60592d359"},
+    {"path": "infrastructure/identity-config/environments/demo.json", "sha256": "e3cf652961cea35b9f7bd38cc53f23d2e83a553ac5d406ae450aa7d0761d2a88"},
+    {"path": "infrastructure/identity-config/environments/uat.json", "sha256": "d100164039430b0d06001b580cf2de8707695ebe03945e9ed1e96b0d906fa4bc"},
+    {"path": "infrastructure/identity-config/environments/prod.json", "sha256": "0727740ae25be7e3be6cc1aad8e508898281acb479d7927291742d9cb2665a3d"},
+    {"path": "infrastructure/identity-config/conformance/mobile-oidc.json", "sha256": "a6e756967baeb7fc451fb0810719262c5a936165613d1d2bd0ffdc3c0bac0a67"},
+    {"path": "docker-compose.yml", "sha256": "ba0fbd592a55698da5376a4b5d890405c03514edd81ba34d70a1b823a878e507"},
+    {"path": "docker-compose.release.yml", "sha256": "720dd6625942009eebda2789455e8ea6d0d420bf877bd70be33578c434ea0613"}
+  ],
+  "database": {
+    "schema_watermark": "24-offerability-decision.sql",
+    "ordered_migration_set_sha256": "90a8c7fde512917c79c8f16de0fc1e475e09e5abe1ef7443850b99253cce07f3"
+  },
+  "environment_gates": {
+    "demo": {"status": "blocked-pending-separate-deployment-authority-and-provider-prerequisites"},
+    "uat": {"status": "blocked-pending-demo-acceptance-and-separate-authority"},
+    "prod": {"status": "blocked-pending-uat-acceptance-and-separate-authority"}
+  },
+  "disclosures": [
+    "Full all-check static-contract Schemathesis remains broader pre-existing contract drift; WC-077 deterministic negative fuzz passed 1400/1400 before the main rebase.",
+    "One ClamAV test failed transiently during the earlier full run and passed immediately on focused retry; no product-code defect was identified.",
+    "An initial final Business Platform run failed 24 Migration22 tests because Docker storage exhausted during PostgreSQL initdb; after reclaiming disposable Docker artifacts, the unchanged suite passed 443/443 with zero skips.",
+    "No provider activation, DNS change, deployment, customer traffic, UAT action, or Production action was performed."
+  ],
+  "qualification_result": "pass-for-founder-review-not-deployment-authority"
+}
