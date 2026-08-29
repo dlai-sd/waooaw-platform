@@ -9,6 +9,7 @@ import { ExperienceControls } from './ExperienceControls';
 import { OfflineNotice } from './OfflineNotice';
 import { ProtectedAppShell } from './ProtectedAppShell';
 import { SignInCommand } from '@/components/auth/SignInCommand';
+import { AppleSignInCommand } from '@/components/auth/AppleSignInCommand';
 import { StateView } from '@/components/system/StateView';
 import { messages } from '@/lib/i18n';
 
@@ -83,5 +84,16 @@ describe('F1 shell primitives', () => {
     render(<SignInCommand label={messages.en.signInSecurely} />);
     fireEvent.click(screen.getByRole('button', { name: messages.en.signInSecurely }));
     expect(signIn).toHaveBeenCalledWith('keycloak', { callbackUrl: '/home' });
+  });
+
+  it('keeps unavailable Apple authentication local and recommends active alternatives', () => {
+    render(<AppleSignInCommand />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue with Apple' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Apple integration is coming soon. Meanwhile use your Google or Meta account.',
+    );
+    expect(signIn).not.toHaveBeenCalled();
   });
 });

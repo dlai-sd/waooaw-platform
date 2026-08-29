@@ -30,7 +30,7 @@ Each of the 26 business capabilities is owned by exactly one container. Ownershi
 | **5.1 Suspend Professional Employment** | Business Platform | Constitutional Engine (records suspension) |
 | **5.2 Terminate Professional Employment** | Business Platform | Constitutional Engine (records termination) |
 | **5.3 Export Customer Evidence** | Business Platform | Constitutional Engine (evidence export) |
-| **6.1 Authenticate and Authorize Customers** | Keycloak | Business Platform (JWT validation) |
+| **6.1 Authenticate and Authorize Customers** | Keycloak (web/mobile credential authority) | Business Platform (public facade, JWT and current-policy authorization); Phone Identity Service (ADR-023 WhatsApp proof); Identity Edge (proposed ADR-048 public OIDC mediation) |
 | **6.2 Isolate Tenant Data** | PostgreSQL (RLS) | All containers (JWT propagation) |
 | **6.3 Record Constitutional Evidence** | Constitutional Engine | — |
 | **6.4 Observe Platform Health** | All containers (OTel) | Jaeger/Azure Monitor |

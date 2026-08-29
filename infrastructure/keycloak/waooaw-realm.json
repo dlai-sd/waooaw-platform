@@ -50,6 +50,106 @@
             "access.token.claim": "true",
             "userinfo.token.claim": "true"
           }
+        },
+        {
+          "name": "waooaw_roles_mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "waooaw_roles",
+            "claim.name": "waooaw_roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "business_platform_audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "waooaw-platform",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "portal_auth_path",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "auth_path",
+            "claim.value": "PORTAL",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "waooaw-mobile",
+      "name": "WAOOAW Mobile Application",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "redirectUris": [
+        "https://mobile.local.waooaw.test/oidc/callback"
+      ],
+      "webOrigins": [],
+      "protocolMappers": [
+        {
+          "name": "tenant_id_mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-user-attribute-mapper",
+          "config": {
+            "user.attribute": "tenant_id",
+            "claim.name": "tenant_id",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "waooaw_roles_mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "waooaw_roles",
+            "claim.name": "waooaw_roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "business_platform_audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "waooaw-platform",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "mobile_auth_path",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "auth_path",
+            "claim.value": "MOBILE",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
         }
       ]
     },
@@ -93,7 +193,7 @@
       "alias": "google",
       "displayName": "Continue with Google",
       "providerId": "google",
-      "enabled": true,
+      "enabled": false,
       "trustEmail": true,
       "firstBrokerLoginFlowAlias": "first broker login",
       "config": {
@@ -101,6 +201,20 @@
         "clientSecret": "${GOOGLE_CLIENT_SECRET}",
         "syncMode": "IMPORT",
         "hostedDomain": ""
+      }
+    },
+    {
+      "alias": "facebook",
+      "displayName": "Continue with Facebook",
+      "providerId": "facebook",
+      "enabled": false,
+      "trustEmail": true,
+      "firstBrokerLoginFlowAlias": "first broker login",
+      "config": {
+        "clientId": "${META_LOGIN_CLIENT_ID}",
+        "clientSecret": "${META_LOGIN_CLIENT_SECRET}",
+        "defaultScope": "email public_profile",
+        "syncMode": "IMPORT"
       }
     }
   ],
@@ -137,7 +251,8 @@
       ],
       "realmRoles": ["customer"],
       "attributes": {
-        "tenant_id": ["00000000-0000-0000-0000-000000000001"]
+        "tenant_id": ["00000000-0000-0000-0000-000000000001"],
+        "waooaw_roles": ["OWNER"]
       }
     }
   ]

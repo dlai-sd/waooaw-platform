@@ -20,6 +20,8 @@ public sealed class WhatsAppJourneyServiceTests
 {
     private const string WebhookSecret = "webhook-secret-at-least-thirty-two-characters";
     private const string TokenKey = "tenant-token-key-at-least-thirty-two-characters";
+    private const string ProofSigningKey = "proof-signing-key-at-least-thirty-two-characters";
+    private const string ProofAudience = "waooaw-phone-identity-test";
 
     [Fact]
     public async Task ValidInboundCreatesOptInWithoutPersistingRawPhoneAndReplaysIdempotently()
@@ -210,6 +212,82 @@ public sealed class WhatsAppJourneyServiceTests
     }
 
     [Fact]
+    public async Task SignedPhoneIdentityProofIsAcceptedAndReplayedWithoutRawPhone()
+    {
+        var (service, factory, _) = Create();
+        var now = DateTimeOffset.UtcNow;
+        var proof = Proof("wamid-proof-valid", now);
+        var rawBody = JsonSerializer.Serialize(proof, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var controller = ProofController(service, rawBody, SignProof(rawBody));
+
+        var first = Assert.IsType<OkObjectResult>(await controller.ReceiveAsync(CancellationToken.None));
+        controller = ProofController(service, rawBody, SignProof(rawBody));
+        var replay = Assert.IsType<OkObjectResult>(await controller.ReceiveAsync(CancellationToken.None));
+
+        Assert.DoesNotContain("+919876543210", JsonSerializer.Serialize(first.Value), StringComparison.Ordinal);
+        Assert.True(JsonSerializer.SerializeToElement(replay.Value).GetProperty("replayed").GetBoolean());
+        await using var db = factory.CreateDbContext();
+        Assert.Single(await db.WhatsAppJourneyContacts.ToListAsync());
+        Assert.Single(await db.WhatsAppMessageReceipts.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData("wrong-audience", "AAL1_CHANNEL")]
+    [InlineData(ProofAudience, "AAL2_ACCOUNT")]
+    public async Task WrongAudienceOrAssuranceRejectsProofBeforeMutation(string audience, string assurance)
+    {
+        var (service, factory, _) = Create();
+        var now = DateTimeOffset.UtcNow;
+        var proof = Proof("wamid-proof-denied", now) with
+        {
+            Audience = audience,
+            AuthenticationAssurance = assurance,
+        };
+        var rawBody = JsonSerializer.Serialize(proof, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var controller = ProofController(service, rawBody, SignProof(rawBody));
+
+        var response = Assert.IsType<ObjectResult>(await controller.ReceiveAsync(CancellationToken.None));
+
+        Assert.Equal(403, response.StatusCode);
+        await using var db = factory.CreateDbContext();
+        Assert.Empty(await db.WhatsAppJourneyContacts.ToListAsync());
+        Assert.Empty(await db.WhatsAppMessageReceipts.ToListAsync());
+    }
+
+    [Fact]
+    public async Task ExpiredPhoneIdentityProofRejectsBeforeMutation()
+    {
+        var (service, factory, _) = Create();
+        var verifiedAt = DateTimeOffset.UtcNow.AddMinutes(-6);
+        var proof = Proof("wamid-proof-expired", verifiedAt);
+        var rawBody = JsonSerializer.Serialize(proof, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var controller = ProofController(service, rawBody, SignProof(rawBody));
+
+        var response = Assert.IsType<ObjectResult>(await controller.ReceiveAsync(CancellationToken.None));
+
+        Assert.Equal(400, response.StatusCode);
+        await using var db = factory.CreateDbContext();
+        Assert.Empty(await db.WhatsAppJourneyContacts.ToListAsync());
+        Assert.Empty(await db.WhatsAppMessageReceipts.ToListAsync());
+    }
+
+    [Fact]
+    public async Task TamperedPhoneIdentityProofRejectsBeforeMutation()
+    {
+        var (service, factory, _) = Create();
+        var proof = Proof("wamid-proof-tampered", DateTimeOffset.UtcNow);
+        var rawBody = JsonSerializer.Serialize(proof, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var controller = ProofController(service, rawBody, "sha256=00");
+
+        var response = Assert.IsType<ObjectResult>(await controller.ReceiveAsync(CancellationToken.None));
+
+        Assert.Equal(403, response.StatusCode);
+        await using var db = factory.CreateDbContext();
+        Assert.Empty(await db.WhatsAppJourneyContacts.ToListAsync());
+        Assert.Empty(await db.WhatsAppMessageReceipts.ToListAsync());
+    }
+
+    [Fact]
     public async Task CctAe01Auth01_MpinLocksOnThirdFailureAndRecoversAfterLockWindow()
     {
         var (service, factory, _) = Create();
@@ -374,6 +452,36 @@ public sealed class WhatsAppJourneyServiceTests
 
     private static string Sign(string body) => "sha256=" + Convert.ToHexStringLower(
         HMACSHA256.HashData(Encoding.UTF8.GetBytes(WebhookSecret), Encoding.UTF8.GetBytes(body)));
+
+    private static VerifiedPhoneIdentityProof Proof(string messageId, DateTimeOffset now) => new(
+        messageId,
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "status",
+        "TIER_1_LOW_RISK",
+        ProofAudience,
+        "AAL1_CHANNEL",
+        now,
+        now,
+        now.AddMinutes(5),
+        Guid.NewGuid());
+
+    private static PhoneIdentityProofController ProofController(
+        WhatsAppJourneyService service, string body, string signature)
+    {
+        var controller = new PhoneIdentityProofController(service, Options.Create(new PhoneIdentityAdapterOptions
+        {
+            SigningKey = ProofSigningKey,
+            Audience = ProofAudience,
+        }));
+        var context = new DefaultHttpContext();
+        context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
+        context.Request.Headers["X-WAOOAW-Phone-Signature"] = signature;
+        controller.ControllerContext = new ControllerContext { HttpContext = context };
+        return controller;
+    }
+
+    private static string SignProof(string body) => "sha256=" + Convert.ToHexStringLower(
+        HMACSHA256.HashData(Encoding.UTF8.GetBytes(ProofSigningKey), Encoding.UTF8.GetBytes(body)));
 
     private static long TokenExpiry(string token)
     {

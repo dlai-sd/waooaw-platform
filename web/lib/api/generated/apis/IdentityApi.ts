@@ -19,8 +19,10 @@ import type {
   IdentityCompletion,
   IdentityMobileStatus,
   IdentityProblemDetail,
+  IdentityProviderCollection,
   IdentityRegistration,
   IdentityRegistrationProfileRequest,
+  IdentitySession,
   IdentityVerificationChallenge,
   StartEmailVerificationRequest,
   StartIdentityAccountLinkRequest,
@@ -38,10 +40,14 @@ import {
   IdentityMobileStatusToJSON,
   IdentityProblemDetailFromJSON,
   IdentityProblemDetailToJSON,
+  IdentityProviderCollectionFromJSON,
+  IdentityProviderCollectionToJSON,
   IdentityRegistrationFromJSON,
   IdentityRegistrationToJSON,
   IdentityRegistrationProfileRequestFromJSON,
   IdentityRegistrationProfileRequestToJSON,
+  IdentitySessionFromJSON,
+  IdentitySessionToJSON,
   IdentityVerificationChallengeFromJSON,
   IdentityVerificationChallengeToJSON,
   StartEmailVerificationRequestFromJSON,
@@ -649,6 +655,93 @@ export class IdentityApi extends runtime.BaseAPI {
       requestParameters,
       initOverrides,
     );
+    return await response.value();
+  }
+
+  /**
+   * Returns current customer roles and capabilities after Business Platform validates the Keycloak token and reloads current account and membership state. Capabilities are server-derived authorization hints for user experience only; every command is authorized again at execution time. Institutional identity is excluded.
+   * Get the current customer identity session projection
+   */
+  async getIdentitySessionRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<IdentitySession>> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("BearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/identity/session`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      IdentitySessionFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * Returns current customer roles and capabilities after Business Platform validates the Keycloak token and reloads current account and membership state. Capabilities are server-derived authorization hints for user experience only; every command is authorized again at execution time. Institutional identity is excluded.
+   * Get the current customer identity session projection
+   */
+  async getIdentitySession(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<IdentitySession> {
+    const response = await this.getIdentitySessionRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Returns the reviewed Google, Facebook, Apple, and email choices in display order. Availability is an environment projection, not a provider health probe, and exposes no client secret, internal endpoint, readiness evidence, or account-existence fact.
+   * List customer authentication choices for this environment
+   */
+  async listIdentityProvidersRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<IdentityProviderCollection>> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    let urlPath = `/api/v1/identity/providers`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      IdentityProviderCollectionFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * Returns the reviewed Google, Facebook, Apple, and email choices in display order. Availability is an environment projection, not a provider health probe, and exposes no client secret, internal endpoint, readiness evidence, or account-existence fact.
+   * List customer authentication choices for this environment
+   */
+  async listIdentityProviders(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<IdentityProviderCollection> {
+    const response = await this.listIdentityProvidersRaw(initOverrides);
     return await response.value();
   }
 

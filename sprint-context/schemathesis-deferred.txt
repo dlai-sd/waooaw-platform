@@ -1,2 +1,2 @@
 WC013-04 Schemathesis deferred — run manually after WC-013 completes.
-Command: docker compose up business-platform && schemathesis run architecture/reference/api-specs/business-platform.openapi.yaml --url http://localhost:5001 --checks all
+Command: docker compose up -d business-platform && docker compose --profile test-python run --rm test-runner-python schemathesis run architecture/reference/api-specs/business-platform.openapi.yaml --url http://business-platform:5001 --checks all

@@ -38,6 +38,18 @@ public sealed record WhatsAppRelationshipResolution(
     Guid BindingId,
     string AuthenticationAssurance);
 
+public sealed record VerifiedPhoneIdentityProof(
+    string MessageId,
+    string PhoneSubjectHash,
+    string Text,
+    string? RiskTier,
+    string Audience,
+    string AuthenticationAssurance,
+    DateTimeOffset SentAt,
+    DateTimeOffset VerifiedAt,
+    DateTimeOffset ExpiresAt,
+    Guid CorrelationId);
+
 public sealed class WhatsAppWebhookException(int statusCode, string code) : Exception(code)
 {
     public int StatusCode { get; } = statusCode;
@@ -105,12 +117,37 @@ public sealed partial class WhatsAppJourneyService
         }
 
         var phoneHmac = HmacHex(_webhookSecret, inbound.From);
+        return await ReceiveVerifiedAsync(new VerifiedPhoneIdentityProof(
+            inbound.MessageId,
+            phoneHmac,
+            inbound.Text,
+            inbound.RiskTier,
+            "legacy-business-platform-adapter",
+            "AAL1_CHANNEL",
+            sentAt,
+            receivedAt,
+            receivedAt.AddMinutes(5),
+            Guid.NewGuid()), cancellationToken);
+    }
+
+    public async Task<WhatsAppJourneyReceipt> ReceiveVerifiedAsync(
+        VerifiedPhoneIdentityProof proof,
+        CancellationToken cancellationToken)
+    {
+        var receivedAt = proof.VerifiedAt;
+        if (string.IsNullOrWhiteSpace(proof.MessageId)
+            || string.IsNullOrWhiteSpace(proof.PhoneSubjectHash)
+            || string.IsNullOrWhiteSpace(proof.Text)
+            || proof.ExpiresAt <= DateTimeOffset.UtcNow
+            || (proof.VerifiedAt - proof.SentAt).Duration() > TimeSpan.FromMinutes(5))
+            throw new WhatsAppWebhookException(403, "PHONE_IDENTITY_PROOF_INVALID");
+
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
         var existingReceipt = await db.WhatsAppMessageReceipts
-            .SingleOrDefaultAsync(item => item.MessageId == inbound.MessageId, cancellationToken);
+            .SingleOrDefaultAsync(item => item.MessageId == proof.MessageId, cancellationToken);
         if (existingReceipt is not null && existingReceipt.ExpiresAt > receivedAt)
         {
-            return new(inbound.MessageId, "DUPLICATE", "UNKNOWN",
+            return new(proof.MessageId, "DUPLICATE", "UNKNOWN",
                 "This message was already received.", true, string.Empty);
         }
         if (existingReceipt is not null)
@@ -120,18 +157,18 @@ public sealed partial class WhatsAppJourneyService
         }
 
         var contact = await db.WhatsAppJourneyContacts.SingleOrDefaultAsync(
-            item => item.PhoneHmac == phoneHmac, cancellationToken);
+            item => item.PhoneHmac == proof.PhoneSubjectHash, cancellationToken);
         if (contact is null)
         {
             contact = new WhatsAppJourneyContact
             {
                 TenantId = Guid.NewGuid(),
-                PhoneHmac = phoneHmac,
+                PhoneHmac = proof.PhoneSubjectHash,
                 OptedInAt = receivedAt,
                 LastInboundAt = receivedAt,
             };
             await _evidenceGateway.RecordAsync(
-                contact.TenantId, inbound.MessageId, phoneHmac, receivedAt, cancellationToken);
+                contact.TenantId, proof.MessageId, proof.PhoneSubjectHash, receivedAt, cancellationToken);
             db.WhatsAppJourneyContacts.Add(contact);
         }
         contact.LastInboundAt = receivedAt;
@@ -139,7 +176,7 @@ public sealed partial class WhatsAppJourneyService
         var bindings = await db.ChannelBindings.AsNoTracking()
             .Where(value => value.TenantId == contact.TenantId
                 && value.Channel == "WHATSAPP"
-                && value.ExternalSubjectHash == phoneHmac
+                && value.ExternalSubjectHash == proof.PhoneSubjectHash
                 && value.Status == "ACTIVE")
             .ToListAsync(cancellationToken);
         var binding = bindings.Count == 1 ? bindings[0] : null;
@@ -147,9 +184,9 @@ public sealed partial class WhatsAppJourneyService
             .SingleOrDefaultAsync(value => value.TenantId == contact.TenantId
                 && value.RelationshipId == binding.RelationshipId, cancellationToken);
 
-        var riskTier = inbound.RiskTier?.Trim().ToUpperInvariant() ?? "TIER_1_LOW_RISK";
-        var confirmation = inbound.Text.Trim().Equals("YES", StringComparison.OrdinalIgnoreCase)
-            || inbound.Text.Trim().Equals("CONFIRM", StringComparison.OrdinalIgnoreCase);
+        var riskTier = proof.RiskTier?.Trim().ToUpperInvariant() ?? "TIER_1_LOW_RISK";
+        var confirmation = proof.Text.Trim().Equals("YES", StringComparison.OrdinalIgnoreCase)
+            || proof.Text.Trim().Equals("CONFIRM", StringComparison.OrdinalIgnoreCase);
         string status;
         string reply;
         if (attachedRelationship?.State == EmploymentRelationshipState.StoppedEmergency)
@@ -159,7 +196,7 @@ public sealed partial class WhatsAppJourneyService
             status = "STOPPED";
             reply = "This relationship is STOPPED_EMERGENCY. Consequential commands, configuration, contract, activation, and handoff remain blocked. Release is available only in the secure Tier-4 employer portal.";
         }
-        else if (binding is not null && inbound.Text.Contains("STOP", StringComparison.OrdinalIgnoreCase))
+        else if (binding is not null && proof.Text.Contains("STOP", StringComparison.OrdinalIgnoreCase))
         {
             if (_emergencyStops is null) throw new InvalidOperationException("Relationship Emergency Stop is unavailable.");
             await _emergencyStops.StopAsync(
@@ -191,13 +228,14 @@ public sealed partial class WhatsAppJourneyService
         {
             contact.PendingMediumRiskConfirmation = false;
             status = "ACCEPTED";
-            (contact.JourneyStage, reply) = Present(inbound.Text);
+            (contact.JourneyStage, reply) = Present(proof.Text);
         }
 
-        var (tenantToken, tokenHash, tokenExpiresAt) = IssueTenantToken(contact.TenantId, inbound.From, receivedAt);
+        var (tenantToken, tokenHash, tokenExpiresAt) = IssueTenantToken(
+            contact.TenantId, proof.PhoneSubjectHash, receivedAt);
         db.WhatsAppMessageReceipts.Add(new WhatsAppMessageReceipt
         {
-            MessageId = inbound.MessageId,
+            MessageId = proof.MessageId,
             TenantId = contact.TenantId,
             SessionTokenHash = tokenHash,
             SessionExpiresAt = tokenExpiresAt,
@@ -205,7 +243,7 @@ public sealed partial class WhatsAppJourneyService
             ExpiresAt = receivedAt.AddHours(24),
         });
         await db.SaveChangesAsync(cancellationToken);
-        return new(inbound.MessageId, status, contact.JourneyStage, reply, false, tenantToken);
+        return new(proof.MessageId, status, contact.JourneyStage, reply, false, tenantToken);
     }
 
     public async Task EnrolMpinAsync(
@@ -362,7 +400,7 @@ public sealed partial class WhatsAppJourneyService
 
     private (string Token, string TokenHash, DateTimeOffset ExpiresAt) IssueTenantToken(
         Guid tenantId,
-        string phone,
+        string phoneSubjectHash,
         DateTimeOffset now)
     {
         const string header = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9";
@@ -370,7 +408,7 @@ public sealed partial class WhatsAppJourneyService
         var payload = Base64Url(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
         {
             sub = tenantId,
-            phone,
+            phone_subject_hash = phoneSubjectHash,
             iss = "waooaw-phone-identity",
             iat = now.ToUnixTimeSeconds(),
             exp = expiresAt.ToUnixTimeSeconds(),

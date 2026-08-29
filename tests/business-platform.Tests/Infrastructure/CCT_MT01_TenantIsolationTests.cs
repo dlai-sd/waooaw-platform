@@ -321,4 +321,13 @@ public sealed class CCT_MT01_TenantIsolationTests : IClassFixture<TenantIsolatio
         response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized,
             because: "The health endpoint is unauthenticated and must be reachable by probes");
     }
+
+    [Fact]
+    public async Task Request_IdentityProviders_DoesNotRequireAuthentication()
+    {
+        var response = await _anonymousClient.GetAsync("/api/v1/identity/providers");
+
+        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized,
+            because: "the provider projection is public endpoint metadata and contains no tenant data");
+    }
 }

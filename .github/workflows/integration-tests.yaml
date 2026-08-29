@@ -114,26 +114,29 @@ jobs:
     needs: service-integration
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Install Schemathesis
-        run: pip install schemathesis
+      - name: Build Docker contract test runner
+        run: docker compose --profile test-python build test-runner-python
       - name: Fuzz Business Platform OpenAPI
         run: |
-          schemathesis run architecture/reference/api-specs/business-platform.openapi.yaml \
+          mkdir -p results
+          docker compose --profile test-python run --rm test-runner-python \
+            schemathesis run architecture/reference/api-specs/business-platform.openapi.yaml \
+            --url http://business-platform:5001 \
             --checks all \
-            --hypothesis-max-examples 100 \
-            --junit-xml=results/schemathesis-bp.xml \
-            --base-url http://localhost:5001  # Requires running service — stub in CI
+            --max-examples 100 \
+            --report junit \
+            --report-junit-path results/schemathesis-bp.xml
         continue-on-error: true  # Advisory until service is deployed in CI
       - name: Fuzz Professional Runtime OpenAPI
         run: |
-          schemathesis run architecture/reference/api-specs/professional-runtime.openapi.yaml \
+          mkdir -p results
+          docker compose --profile test-python run --rm test-runner-python \
+            schemathesis run architecture/reference/api-specs/professional-runtime.openapi.yaml \
+            --url http://professional-runtime:5003 \
             --checks all \
-            --hypothesis-max-examples 100 \
-            --junit-xml=results/schemathesis-pr.xml \
-            --base-url http://localhost:5003
+            --max-examples 100 \
+            --report junit \
+            --report-junit-path results/schemathesis-pr.xml
         continue-on-error: true
 
   # ─── seed-prompts.py contract test (C-059, ADR-028) ──────────────────────

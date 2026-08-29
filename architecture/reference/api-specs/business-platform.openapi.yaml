@@ -86,6 +86,46 @@ paths:
 
   # ─── Identity and Registration ────────────────────────────────────────────
 
+  /api/v1/identity/providers:
+    get:
+      tags: [Identity]
+      summary: List customer authentication choices for this environment
+      description: |
+        Returns the reviewed Google, Facebook, Apple, and email choices in display order.
+        Availability is an environment projection, not a provider health probe, and exposes
+        no client secret, internal endpoint, readiness evidence, or account-existence fact.
+      operationId: listIdentityProviders
+      security: []
+      responses:
+        "200":
+          description: Ordered customer authentication choices
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityProviderCollection"
+        "503": { $ref: "#/components/responses/IdentityUnavailable" }
+
+  /api/v1/identity/session:
+    get:
+      tags: [Identity]
+      summary: Get the current customer identity session projection
+      description: |
+        Returns current customer roles and capabilities after Business Platform validates
+        the Keycloak token and reloads current account and membership state. Capabilities
+        are server-derived authorization hints for user experience only; every command is
+        authorized again at execution time. Institutional identity is excluded.
+      operationId: getIdentitySession
+      responses:
+        "200":
+          description: Current privacy-safe customer session projection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentitySession"
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
+        "503": { $ref: "#/components/responses/IdentityUnavailable" }
+
   /api/v1/identity/registrations:
     post:
       tags: [Identity]
@@ -3562,6 +3602,10 @@ components:
       type: string
       enum: [GOOGLE, META, APPLE, CREDENTIAL, WHATSAPP]
 
+    IdentitySessionAuthenticationPath:
+      type: string
+      enum: [PORTAL, MOBILE]
+
     IdentityAssuranceLevel:
       type: string
       enum: [AAL1_CHANNEL, AAL2_ACCOUNT, AAL3_FRESH, AAL4_PAYMENT]
@@ -3929,6 +3973,76 @@ components:
         businessName: { type: string, maxLength: 160 }
         businessDomain: { type: string, maxLength: 100 }
         languagePreference: { type: string, maxLength: 5 }
+
+    IdentityProviderCollection:
+      type: object
+      additionalProperties: false
+      required: [providers]
+      properties:
+        providers:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items:
+            $ref: "#/components/schemas/IdentityProvider"
+
+    IdentityProvider:
+      type: object
+      additionalProperties: false
+      required: [id, displayName, authenticationPath, availability]
+      properties:
+        id:
+          type: string
+          enum: [GOOGLE, FACEBOOK, APPLE, EMAIL]
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 40
+        authenticationPath:
+          $ref: "#/components/schemas/IdentityAuthenticationPath"
+        availability:
+          type: string
+          enum: [AVAILABLE, UNAVAILABLE]
+        unavailableReason:
+          type: string
+          enum: [NOT_CONFIGURED, TEMPORARILY_UNAVAILABLE]
+          nullable: true
+          description: Generic display reason; omitted when available
+
+    IdentitySession:
+      type: object
+      additionalProperties: false
+      required: [accountReference, roles, capabilities, assuranceLevel, authenticationPath, emailVerified, mobileVerified, authenticatedAt, expiresAt, nextAction]
+      properties:
+        accountReference:
+          type: string
+          format: uuid
+          description: Opaque account reference; tenant identity is never returned
+        roles:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            enum: [OWNER, MANAGER, VIEWER]
+        capabilities:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum: [READ_ACCOUNT, MANAGE_ROUTINE_ACTIONS, MANAGE_ACCOUNT, LINK_WHATSAPP, ACCEPT_CONTRACT, HIRE_PROFESSIONAL, MANAGE_AUTHORITY]
+          description: Current server-derived UI hints; not command authorization
+        assuranceLevel:
+          $ref: "#/components/schemas/IdentityAssuranceLevel"
+        authenticationPath:
+          $ref: "#/components/schemas/IdentitySessionAuthenticationPath"
+        emailVerified: { type: boolean }
+        mobileVerified: { type: boolean }
+        authenticatedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        nextAction:
+          type: string
+          enum: [NONE, VERIFY_EMAIL, VERIFY_MOBILE, REAUTHENTICATE]
 
     IdentityRegistration:
       type: object

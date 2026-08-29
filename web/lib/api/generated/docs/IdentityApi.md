@@ -11,6 +11,8 @@ All URIs are relative to _http://localhost:5001_
 | [**confirmIdentityMobileVerification**](IdentityApi.md#confirmidentitymobileverification) | **POST** /api/v1/identity/registrations/{registrationId}/mobile-verifications/confirm | Confirm optional mobile verification during registration           |
 | [**getIdentityAccountLink**](IdentityApi.md#getidentityaccountlink)                       | **GET** /api/v1/identity/account-links/{linkId}                                       | Get caller-bound account-link status                               |
 | [**getIdentityRegistration**](IdentityApi.md#getidentityregistration)                     | **GET** /api/v1/identity/registrations/{registrationId}                               | Get the caller-bound registration state                            |
+| [**getIdentitySession**](IdentityApi.md#getidentitysession)                               | **GET** /api/v1/identity/session                                                      | Get the current customer identity session projection               |
+| [**listIdentityProviders**](IdentityApi.md#listidentityproviders)                         | **GET** /api/v1/identity/providers                                                    | List customer authentication choices for this environment          |
 | [**startAccountMobileVerification**](IdentityApi.md#startaccountmobileverification)       | **POST** /api/v1/identity/mobile-verifications                                        | Start or replay progressive mobile verification                    |
 | [**startIdentityAccountLink**](IdentityApi.md#startidentityaccountlinkoperation)          | **POST** /api/v1/identity/account-links                                               | Start or replay a WhatsApp-to-web account link                     |
 | [**startIdentityEmailVerification**](IdentityApi.md#startidentityemailverification)       | **POST** /api/v1/identity/registrations/{registrationId}/email-verifications          | Start or replay mandatory email verification                       |
@@ -542,6 +544,124 @@ example().catch(console.error);
 | **400**     | Identity request is malformed or unsupported; no submitted secret is echoed                                                     | -                |
 | **401**     | Identity session is missing, invalid, or expired                                                                                | -                |
 | **404**     | Identity resource is absent, inaccessible, or cross-tenant; one normalized shape and timing class prevents existence disclosure | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## getIdentitySession
+
+> IdentitySession getIdentitySession()
+
+Get the current customer identity session projection
+
+Returns current customer roles and capabilities after Business Platform validates the Keycloak token and reloads current account and membership state. Capabilities are server-derived authorization hints for user experience only; every command is authorized again at execution time. Institutional identity is excluded.
+
+### Example
+
+```ts
+import { Configuration, IdentityApi } from "";
+import type { GetIdentitySessionRequest } from "";
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new IdentityApi(config);
+
+  try {
+    const data = await api.getIdentitySession();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**IdentitySession**](IdentitySession.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                                 | Response headers |
+| ----------- | --------------------------------------------------------------------------- | ---------------- |
+| **200**     | Current privacy-safe customer session projection                            | -                |
+| **401**     | Identity session is missing, invalid, or expired                            | -                |
+| **403**     | Fresh or stronger Keycloak assurance is required before the command can run | -                |
+| **503**     | Identity dependency is unavailable and the outcome remains unresolved       | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## listIdentityProviders
+
+> IdentityProviderCollection listIdentityProviders()
+
+List customer authentication choices for this environment
+
+Returns the reviewed Google, Facebook, Apple, and email choices in display order. Availability is an environment projection, not a provider health probe, and exposes no client secret, internal endpoint, readiness evidence, or account-existence fact.
+
+### Example
+
+```ts
+import { Configuration, IdentityApi } from "";
+import type { ListIdentityProvidersRequest } from "";
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new IdentityApi();
+
+  try {
+    const data = await api.listIdentityProviders();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**IdentityProviderCollection**](IdentityProviderCollection.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                           | Response headers |
+| ----------- | --------------------------------------------------------------------- | ---------------- |
+| **200**     | Ordered customer authentication choices                               | -                |
+| **503**     | Identity dependency is unavailable and the outcome remains unresolved | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 

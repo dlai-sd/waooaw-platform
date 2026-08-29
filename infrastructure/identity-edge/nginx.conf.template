@@ -1,0 +1,78 @@
+map_hash_bucket_size 128;
+
+map "$request_method:$uri" $oidc_route_class {
+    default "";
+    "GET:/realms/${KEYCLOAK_REALM}/.well-known/openid-configuration" "discovery";
+    "HEAD:/realms/${KEYCLOAK_REALM}/.well-known/openid-configuration" "discovery";
+    "GET:/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs" "keys";
+    "HEAD:/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs" "keys";
+    "GET:/realms/${KEYCLOAK_REALM}/protocol/openid-connect/auth" "authorization";
+    "POST:/realms/${KEYCLOAK_REALM}/protocol/openid-connect/auth" "authorization";
+    "POST:/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token" "token";
+    "GET:/realms/${KEYCLOAK_REALM}/protocol/openid-connect/logout" "logout";
+    "POST:/realms/${KEYCLOAK_REALM}/protocol/openid-connect/logout" "logout";
+    ~^GET:/realms/${KEYCLOAK_REALM}/broker/(google|facebook)/(login|endpoint)$ "broker";
+    ~^POST:/realms/${KEYCLOAK_REALM}/broker/(google|facebook)/(login|endpoint)$ "broker";
+    ~^GET:/realms/${KEYCLOAK_REALM}/login-actions/[A-Za-z0-9._~/-]+$ "login_action";
+    ~^POST:/realms/${KEYCLOAK_REALM}/login-actions/[A-Za-z0-9._~/-]+$ "login_action";
+    ~^GET:/resources/[A-Za-z0-9._~/-]+$ "static";
+    ~^HEAD:/resources/[A-Za-z0-9._~/-]+$ "static";
+}
+
+map $oidc_route_class $forward_authorization {
+    default "";
+    token $http_authorization;
+}
+
+log_format identity_edge escape=json
+    '{"time":"$time_iso8601","environment":"${WAOOAW_ENVIRONMENT}",'
+    '"edge_version":"1.27.5-alpine","request_id":"$request_id",'
+    '"route_class":"$oidc_route_class","method":"$request_method",'
+    '"status":$status,"bytes":$body_bytes_sent,"latency":$request_time}';
+
+server {
+    listen 8080;
+    server_name _;
+
+    access_log /var/log/nginx/access.log identity_edge;
+    error_log /var/log/nginx/error.log warn;
+    server_tokens off;
+
+    location = /healthz {
+        access_log off;
+        default_type application/json;
+        return 200 '{"status":"healthy"}';
+    }
+
+    location = /realms/${KEYCLOAK_REALM}/protocol/openid-connect/token {
+        limit_except POST { deny all; }
+        client_max_body_size 16k;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 30s;
+        proxy_send_timeout 30s;
+        proxy_pass http://${KEYCLOAK_UPSTREAM};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Request-ID $request_id;
+        proxy_set_header Authorization $http_authorization;
+        proxy_set_header Connection "";
+    }
+
+    location / {
+        if ($oidc_route_class = "") { return 404; }
+        client_max_body_size 64k;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 30s;
+        proxy_send_timeout 30s;
+        proxy_pass http://${KEYCLOAK_UPSTREAM};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Request-ID $request_id;
+        proxy_set_header Authorization $forward_authorization;
+        proxy_set_header Connection "";
+    }
+}
