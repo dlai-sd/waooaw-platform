@@ -3,7 +3,7 @@
 **Office:** Enterprise Architect (INST-004)
 **Future executor:** Platform IT Expert (INST-010), Skills 1-8, 11-15, and 17
 **Assigned by:** Founder instruction, 2026-08-30
-**Status:** FOUNDER REVIEW CANDIDATE - INSTITUTIONALLY REPAIRED PLAN; IMPLEMENTATION NOT AUTHORIZED
+**Status:** FOUNDER ACCEPTANCE CANDIDATE - CONSOLIDATED IMPLEMENTATION SPECIFICATION; IMPLEMENTATION NOT AUTHORIZED
 **Delivery unit:** Versioned Agent Admission Contract, admission lifecycle, deterministic conformance, and activation gate
 **Constitutional basis:** C-001, C-002, C-003, C-007, C-023, C-032, C-034, C-036, C-037, C-038, C-039, C-041, C-048, C-049, C-059, C-063, C-065, C-070, C-071, C-076, C-077, C-079, C-080, C-083, C-084, C-085, C-088, C-094, C-099
 **Architectural decisions:** ADR-001, ADR-002, ADR-003, ADR-011, ADR-013, ADR-014, ADR-015, ADR-020, ADR-022, ADR-023, ADR-031, ADR-034, ADR-035, ADR-040, ADR-043, ADR-044
@@ -103,7 +103,7 @@ contracts and the tasks AA-00 through AA-13 below.
 | `architecture/reference/agents/AGENT-BASE-SPEC.md` | APPROVED and current | Universal platform-aware agent behavior |
 | `architecture/reference/agents/CONSTITUTIONAL_DNA.md` | RATIFIED and current | Universal constitutional inheritance |
 | `adr/ADR-035-platform-agent-contract-standard.md` and current PAC schemas | Accepted and current | Platform/agent compatibility and signal declarations |
-| `architecture/reference/product/agent-employment-experience-contract.md` | Accepted foundation | Uniform customer rights and employment journey boundary |
+| `architecture/reference/product/agent-employment-experience-contract.md` | v1.0-foundation contributed; Founder acceptance required before implementation | Uniform customer rights and employment journey boundary |
 | `architecture/reference/components/business-platform.md` | Accepted/current | Catalogue, admission state, employment, and skill ownership |
 | `architecture/reference/components/constitutional-engine.md` | Accepted/current | Governed transition validation and immutable evidence |
 | `architecture/reference/components/professional-runtime.md` | Accepted/current | Runtime activation and execution rejection boundary |
@@ -115,18 +115,22 @@ Mandatory specification gates before INST-010 source work:
 
 1. INST-004 publishes and receives Founder acceptance for the logical admission lifecycle, ownership,
    compatibility, and domain-model delta described by WC-079.
-2. INST-003 confirms the admission capability and measurable business outcome without inventing a
-   new professional product model.
-3. INST-005 publishes the exact versioned REST/internal contracts, errors, idempotency,
-   reconciliation, generated-client boundary, and compatibility rules. ADR-002 remains controlling.
-4. INST-006 publishes the immutable/revisioned persistence, keys, constraints, indexes, RLS,
-   retention, supersession, and migration contract. ADR-011 remains controlling.
-5. INST-007 publishes the threat model, service authorization, submitter/approver separation,
-   artifact integrity, secret/data minimization, and denial-disclosure rules.
-6. The constitutional owner confirms the complete contract preserves constitutional floors and that
-   no admission transition can bypass Evidence First, Human Override, or Decision Space.
+2. Founder acceptance of this consolidated specification accepts the INST-003 capability outcome and
+  exact representative fixtures defined below without creating a second professional product model.
+3. Founder acceptance of this consolidated specification accepts the INST-005 REST/internal
+  operations, errors, idempotency, generated-client boundary, and compatibility rules below. The
+  canonical OpenAPI must be changed spec-first before source implementation; ADR-002 controls.
+4. Founder acceptance of this consolidated specification accepts the INST-006 persistence, keys,
+  constraints, indexes, RLS, retention, supersession, migration, and rollback contract below.
+  ADR-011 controls.
+5. Founder acceptance of this consolidated specification accepts the INST-007 threat model,
+  service authorization, separation, integrity, minimization, and denial-disclosure rules below.
+6. Founder acceptance of this consolidated specification accepts the INST-002 rule-to-claim/CCT
+  matrix and confirms that Evidence First, Human Override, and Decision Space cannot be bypassed.
 7. The Founder accepts the specification package and explicitly authorizes WC-079 implementation for
    the current session. G5 CLEAR alone is not implementation authority.
+8. The Agent Employment Experience Contract v1.0-foundation must have an attributable Founder
+  acceptance record before implementation. Its contributed status is sufficient for planning only.
 
 ### Consolidated Institutional Handoff
 
@@ -143,10 +147,42 @@ package mechanical. It does not substitute for Founder acceptance or authorize s
 | INST-002 Constitutional Analyst | Every consequential transition remains Evidence First, Human Override reachable, and inside the actor's Decision Space | Rule-to-claim/CCT matrix and constitutional acceptance record |
 | INST-010 Platform IT Expert | Implementation follows only the accepted attachments and repository-owned paths | Skill 1 implementation-spec comment with IB/issue, tier, branch, exact files, commands, CCTs, and fixture versions |
 
-The implementation issue is not ready until every attachment above names its repository path,
-version or commit, approving authority, and acceptance evidence. INST-010 must record a specification
-gap and stop if any attachment is absent or contradictory; AA-00 may inventory accepted details but
-may not create policy.
+This WC is the single consolidated owner specification. The implementation issue attaches its
+Founder-accepted commit rather than creating parallel owner documents. It must name that commit,
+acceptance evidence, exact source/test paths, commands, CCTs, tier, and branch. INST-010 must record a
+specification gap and stop if the accepted commit, AEEC acceptance, or any required implementation
+binding is absent or contradictory; AA-00 may inventory accepted details but may not create policy.
+
+### Frozen Capability Outcome And Representative Fixtures
+
+Admission certifies a reusable professional type/version for the existing employment product. It
+does not create a second product, customer journey, price, provider, or agent-specific activation
+path. Qualification uses these exact professional specifications at the Founder-accepted WC commit:
+
+| Fixture role | Professional identity | Frozen specification | Required proof |
+|---|---|---|---|
+| Current multi-skill customer professional | `DIGITAL_MARKETING_LOCAL_SERVICE` v3.1 | `architecture/reference/agents/digital-marketing-agent.md` | Multiple skills pass one shared schema and validator |
+| Materially different professional | `TRADING_FO_CRYPTO` v1.8 | `architecture/reference/agents/trading-agent.md` | Different cadence, risk, and provider posture pass the same shared rules |
+
+The implementation issue records the SHA-256 digest of both files and the exact accepted Git commit.
+Substitution requires a new accepted WC revision; INST-010 may not select an alternate fixture.
+
+### Frozen Implementation Surfaces
+
+| Contract | Required repository surface |
+|---|---|
+| Canonical public/internal REST contract | `architecture/reference/api-specs/business-platform.openapi.yaml` |
+| Business Platform owner contract | `architecture/reference/components/business-platform.md` |
+| Additive database migration | `infrastructure/postgres/init/25-agent-admission.sql` |
+| BP implementation | `src/business-platform/Controllers/`, `Services/`, `Infrastructure/EmploymentRelationshipDbContext.cs`, `Program.cs` |
+| CE contract and implementation | Existing constitutional gRPC contract and CE service; no public REST surface |
+| PR activation guard | Existing Professional Runtime internal activation boundary |
+| Generated Web client | `web/scripts/generate-api.sh` and `web/lib/api/generated/`; include the `Professionals` tag |
+| Qualification command | `scripts/wc079_qualify.sh` and ignored `test-results/wc079/` evidence |
+
+The public `Professionals` projection is anonymous by design and returns only public-safe ACTIVE,
+current, compatible, environment-offerable records. Every admission management operation is
+authenticated and platform-owned; none is browser-public.
 
 ## Component And Ownership Determination
 
@@ -195,9 +231,11 @@ evidence references. Cross-language golden vectors, including Unicode, numbers, 
 empty values, and arrays, are part of the INST-005 contract.
 
 Each governed decision additionally binds an immutable `evidenceSetDigest`, calculated with the same
-profile over the sorted evidence-reference records. Approval binds the exact admission-content digest
-and evidence-set digest. Later readiness or lifecycle evidence appends a new evidence set and never
-changes the approved admission content.
+profile over evidence-reference records sorted lexicographically by `evidenceType`, `evidenceRef`,
+`subjectDigest`, `policyVersion`, then `observedAt` in normalized UTC RFC 3339 form. Duplicate sort-key
+tuples are invalid. Approval binds the exact admission-content digest and evidence-set digest. Later
+readiness or lifecycle evidence appends a new evidence set and never changes the approved admission
+content.
 
 ### Four Required Sections
 
@@ -280,29 +318,127 @@ Rules:
 - Supersession names the successor and migration/compatibility policy. Old evidence remains.
 - Every consequential transition is idempotent, attributable, and Evidence First.
 
+### Evidence First Transition Ordering
+
+For submit, approve, reject, activate, suspend, supersede, and retire, Business Platform must:
+
+1. authenticate and authorize the actor, including separation of duties;
+2. validate lifecycle state and exact revision, content, artifact, evidence-set, and policy digests;
+3. obtain the CE decision and immutable evidence reference for the exact intent;
+4. atomically persist the local projection, idempotency outcome, CE reference, and outbox row;
+5. return success only after step 4 commits, then publish the outbox event.
+
+Failure in steps 1-4 produces no governed success projection. Reconciliation may replay the same
+idempotency key and digest, but cannot manufacture approval, activation, or evidence. Human Override
+and Emergency Stop remain reachable independently of admission state, rate limits, and dependency
+degradation. CE unavailability fails every admission consequential write closed and cannot delay or
+disable Emergency Stop behavior.
+
 ## Logical API Capability
 
-Exact paths and schemas belong to the INST-005 specification gate. The accepted solution contract
-must provide these operation meanings without weakening them:
+ADR-002 remains controlling. These exact meanings and paths must be added to the canonical OpenAPI
+before source implementation:
 
-| Logical operation | Caller | Meaning |
-|---|---|---|
-| `createAgentAdmissionDraft` | Authorized agent owner/platform | Create or replay one DRAFT aggregate |
-| `putAgentAdmissionRevision` | Draft owner | Store a validated new draft revision; never mutate a submitted revision |
-| `validateAgentAdmission` | Draft owner/platform | Run deterministic rule set against an exact revision/digest |
-| `getAgentAdmissionFindings` | Authorized draft owner/reviewer | Read stable rule IDs, severity, affected path, basis, and remediation requirement |
-| `submitAgentAdmission` | Draft owner | Freeze and submit exact revision/digest for review |
-| `approveAgentAdmission` | Independently authorized authority | Bind approval to exact revision/digest after required acceptance evidence |
-| `rejectAgentAdmission` | Independently authorized authority | Record reason category and evidence without deleting the submission |
-| `activateAgentAdmission` | Platform internal authority | Activate only after all current readiness gates pass |
-| `suspendAgentAdmission` | Platform constitutional/operational authority | Fail closed with typed reason and customer-impact projection |
-| `supersedeAgentAdmission` | Authorized platform authority | Link immutable predecessor/successor and migration policy |
-| `retireAgentAdmission` | Authorized platform authority | Prevent new trial/hire while preserving existing evidence and governed relationship treatment |
-| `getOfferableProfessionalVersions` | Public/customer platform | Return only ACTIVE, compatible, environment-offerable versions and public-safe fields |
+| Operation | Method and path | Caller | Success |
+|---|---|---|---|
+| Create draft | `POST /api/v1/professionals/{type}/versions/{version}/admission/drafts` | Owner delegate or admission operator | `201`, identical replay `200` |
+| Put revision | `PUT /api/v1/professionals/{type}/versions/{version}/admission/drafts/{draftId}/revisions/{revision}` | Draft owner | `200` |
+| Validate | `POST /api/v1/professionals/{type}/versions/{version}/admission/drafts/{draftId}/validations` | Draft owner or validator operator | `202`, identical replay `200` |
+| Read findings | `GET /api/v1/professionals/{type}/versions/{version}/admission/drafts/{draftId}/validations/{validationId}/findings` | Draft owner or reviewer | `200` |
+| Submit | `POST /api/v1/professionals/{type}/versions/{version}/admission/submissions` | Draft owner | `201`, identical replay `200` |
+| Approve | `POST /api/v1/professionals/{type}/versions/{version}/admission/approvals` | Independent approver | `200` |
+| Reject | `POST /api/v1/professionals/{type}/versions/{version}/admission/rejections` | Independent approver | `200` |
+| Activate | `POST /api/v1/professionals/{type}/versions/{version}/admission/activations` | Platform activation authority | `200` |
+| Suspend | `POST /api/v1/professionals/{type}/versions/{version}/admission/suspensions` | Constitutional or operational authority | `200` |
+| Supersede | `POST /api/v1/professionals/{type}/versions/{version}/admission/supersessions` | Compatibility authority | `200` |
+| Retire | `POST /api/v1/professionals/{type}/versions/{version}/admission/retirements` | Retirement authority | `200` |
+| Offerable versions | `GET /api/v1/professionals/offerable-versions` | Anonymous/customer | `200` public-safe collection |
+
+Every mutating operation requires `Idempotency-Key`. The same key, actor, tenant, operation, subject,
+and canonical request hash replays the prior outcome; the same key with any different binding returns
+`409 ADMISSION_IDEMPOTENCY_CONFLICT` with no mutation. Stale aggregate versions return
+`409 ADMISSION_STATE_CONFLICT`; policy/readiness locks return `423 ADMISSION_TRANSITION_BLOCKED`;
+dependency failure returns `503 ADMISSION_UNAVAILABLE`. Invalid requests use `400`, unauthenticated
+requests `401`, and authenticated but unauthorized operation families `403` only before a resource
+identifier is resolved.
+
+All errors use RFC 9457 with stable `code` and `correlationId`. For an authenticated caller, absent,
+inaccessible, and cross-tenant identified resources all return the same `404 ADMISSION_NOT_FOUND`
+shape, headers, and timing envelope. Step-up, conflict, or policy details are disclosed only after
+resource authorization. Errors, findings, logs, and traces exclude reviewer identity, evidence IDs,
+artifact coordinates, credentials, prompts, customer payloads, storage paths, and policy internals.
+Authorization precedence is deterministic: an invalid or absent token returns `401`; an authenticated
+caller invoking an operation family it can never perform returns `403` only when no admission resource
+identifier is present; once any type, version, draft, validation, or admission identifier is present,
+failed role, ownership, tenant, or existence resolution returns normalized `404`. An authorized caller
+that resolves the resource may then receive `409`, `423`, or step-up detail.
+
+OpenAPI remains at `/api/v1`; a breaking wire change requires `/api/v2` and a coexistence window.
+`contractSchemaVersion` follows semantic versioning: a supported minor may add explicitly optional
+fields only after validator deployment; unsupported higher minor or major fails AAV-002; required,
+typed, removed, renamed, or meaning-changing fields require a new major. Unknown fields within an
+exact supported version fail validation. The Web generator adds the `Professionals` tag so public
+offerability uses the canonical generated client; admission management clients remain internal.
 
 No public caller supplies tenant authority, approval identity, evidence IDs, readiness outcomes, or
 lifecycle state as trusted facts. Public catalogue reads never expose internal findings, artifact
 coordinates, credentials, security details, or reviewer identity beyond approved public provenance.
+
+### Admission Authorization Matrix
+
+Caller identity, tenant, role, and assurance come only from validated server context. Evaluation
+order is authentication, tenant membership, ownership or institutional entitlement, lifecycle
+precondition, operation assurance, separation of duties, and digest binding. Ambiguity fails closed.
+
+| Operation family | Allowed principal | Mandatory denial |
+|---|---|---|
+| Create/revise/validate/submit | Exact professional owner delegate; validation also permits platform validator | Public/customer, non-owner, submitted-revision mutation |
+| Read findings | Exact owner delegate or assigned reviewer | Cross-tenant, unrelated reviewer, public caller |
+| Approve/reject | Founder or explicitly delegated independent admission approver with step-up MFA | Submitter, owner delegate, agent subject, missing step-up |
+| Activate | Internal platform activation authority with step-up MFA | Submitter, owner, public/customer, stale readiness |
+| Suspend | Internal constitutional or operations authority with step-up MFA | Agent subject, public/customer, insufficient authority |
+| Supersede/retire | Internal lifecycle authority with step-up MFA | Agent subject, public/customer, missing migration/retirement policy |
+| Offerable read | Anonymous/customer | Internal fields or any non-offerable version |
+
+The submitter subject may never approve, reject, activate, suspend, supersede, or retire the same
+professional version. Denial telemetry contains only correlation ID, pseudonymous actor hash,
+operation family, result code, policy version, and timestamp.
+
+## Persistence And Migration Contract
+
+Migration 25 is additive and creates no new service, schema, or shared ledger:
+
+| Table | Purpose | Primary and unique keys | Mutation policy |
+|---|---|---|---|
+| `business.agent_admissions` | Current aggregate projection | UUID PK; unique tenant/type/version; optimistic `state_version` | Guarded compare-and-swap projection only |
+| `business.agent_admission_revisions` | Exact contract revisions | UUID PK; unique admission/revision and admission/content digest | Append-only |
+| `business.agent_admission_validations` | Deterministic attempts | UUID PK; unique admission/revision/profile/idempotency key | Append-only |
+| `business.agent_admission_findings` | Stable findings | UUID PK; unique validation/rule/path | Append-only |
+| `business.agent_admission_assertions` | Readiness observations | UUID PK; unique admission/type/environment/subject/policy/observed time | Append-only; newer rows supersede logically |
+| `business.agent_admission_transitions` | Lifecycle and CE evidence links | UUID PK; unique admission/from/to/correlation | Append-only |
+| `business.agent_admission_idempotency` | Replay outcomes | UUID PK; unique admission/operation/key | Insert then one terminal outcome update |
+| `business.agent_admission_outbox` | Existing BP outbox-pattern extension | UUID PK; unique transition and scope hash | Event immutable; publication metadata update only |
+
+All tables carry non-null `tenant_id`; `ENABLE ROW LEVEL SECURITY` and `FORCE ROW LEVEL SECURITY`
+are mandatory. Every `SELECT`, `INSERT`, `UPDATE`, and permitted dispatcher operation has explicit
+`USING` and `WITH CHECK` policies using
+`tenant_id = nullif(current_setting('app.current_tenant_id', true), '')::uuid`. `business_app` receives
+only operation-required DML. Background reconciliation and outbox dispatch set the exact tenant
+context per transaction and use a constrained non-bypass role; no application or dispatcher role has
+`BYPASSRLS`. Digest checks require `sha256:` plus 64 lowercase hex characters. Assertion status and
+finding severity are constrained enums; assertion `valid_until` must be after `observed_at`. Foreign
+keys include tenant identity and cannot cross tenants.
+
+Aggregate transitions compare `expectedStateVersion` and increment exactly once in the same
+transaction as idempotency outcome, CE reference, and outbox insert. A stale version returns
+`ADMISSION_STATE_CONFLICT`. Revisions, findings, transitions, and evidence links are retained as
+lineage and cannot be hard-deleted. Assertion expiry is logical. Migration rollback before use drops
+only newly created empty tables in reverse dependency order; after any admission record exists,
+rollback is application-version selection and forward repair, never data deletion or rewrite.
+
+Legacy employment and skill endpoints retain `minItems: 1` goal behavior. Zero goals are permitted
+only in admission drafts/configuration; activation applies AAV-011 and fails unless every skill has a
+measurable goal or exact admitted non-goal exemption. No legacy endpoint changes semantics silently.
 
 ## Deterministic Conformance Rules
 
@@ -353,6 +489,51 @@ A non-goal exemption is part of the admitted Skill Definition and contains `exem
 scope, measurable operational outcome, approving authority, constitutional acceptance reference,
 effective period, and revocation conditions. It cannot be introduced during customer configuration
 or supplied by the agent as an asserted approval.
+
+### Threat Model And Integrity Controls
+
+| Threat | Mandatory control | Proof |
+|---|---|---|
+| Forged approval or activation actor | Validated identity, operation entitlement, step-up, CE decision | `CCT-SEC-06`, `CCT-SEC-09` |
+| Payload mutation or divergent replay | Server RFC 8785 digest, immutable submission, bound idempotency hash | `CCT-TR-13`, `BP-ADM-IDEMP-001..006` |
+| Approval repudiation | Append-only actor, authority, digest, policy, time, and CE evidence tuple | `CCT-EF-05` |
+| Identifier enumeration | Normalized not-accessible response and minimized telemetry | `CCT-SEC-07`, `CCT-MT-03` |
+| Validation abuse or findings scraping | Per-actor throttling after auth; idempotent replay; no internal disclosure | `CCT-SEC-08` |
+| Agent self-admission | Submitter/approver constraint and CE-enforced operation authority | `CCT-EF-06` |
+| Stale readiness activation | Exact subject/environment/policy/freshness checks | `CCT-TR-15` |
+| CE outage bypass | Fail-safe halt with no local success projection | `CCT-CE-AVAIL-02`, `CCT-EF-07` |
+
+Content and evidence digests are recomputed server-side for every consequential transition. The
+minimization allowlist for findings is the declared finding shape; denial telemetry uses only the
+fields named in the authorization matrix. No retry can convert unknown, unavailable, stale, or
+mismatched readiness into PASS without a new authoritative assertion.
+
+### Rule-To-Claim And CCT Matrix
+
+| Rule | Constitutional basis | Mandatory proof |
+|---|---|---|
+| AAV-001 | C-088, C-094 | `CCT-TR-11` |
+| AAV-002 | C-059 | `CCT-TR-12` |
+| AAV-003 | C-059, C-063 | `CCT-TR-13` |
+| AAV-004 | C-070, C-094 | `CCT-TR-14` |
+| AAV-005 | C-041, C-094 | `CCT-TR-15` |
+| AAV-006 | C-036, C-037 | `CCT-TR-16` |
+| AAV-007 | C-003, C-041 | `CCT-SEC-06` |
+| AAV-008 | C-038, C-088 | `CCT-TR-17` |
+| AAV-009 | C-023, C-059, C-099 | `CCT-EF-04` |
+| AAV-010 | C-001, C-049, C-079 | `CCT-HO-03` |
+| AAV-011 | C-037, C-049 | `CCT-TR-18` |
+| AAV-012 | C-063, C-079 | `CCT-CE-AVAIL-02` |
+| AAV-013 | C-003, C-065 | `CCT-SEC-09` |
+| AAV-014 | C-023, C-059, C-063 | `CCT-EF-05` |
+
+The implementation reserves `CCT-EF-04..07`, `CCT-SEC-06..09`, `CCT-MT-03`, `CCT-TR-11..18`,
+`CCT-HO-03`, and `CCT-CE-AVAIL-02` for WC-079. It also implements operation authorization
+`BP-ADM-AUTH-001..012`, idempotency `BP-ADM-IDEMP-001..006`, denial
+`BP-ADM-DENIAL-001..005`, CE transitions `CE-ADM-TRANS-001..008`, and runtime guards
+`PR-ADM-GUARD-001..006`. A proof ID reused across rows must contain separately asserted cases for
+every mapped rule and threat; one passing assertion cannot satisfy multiple obligations implicitly.
+Each test must fail against its named breach; execution alone is not proof.
 
 ## LLM And Token-Cost Controls
 
@@ -581,7 +762,7 @@ are not committed after qualification because changing HEAD invalidates the bind
 | AA-ACC-16 | Runtime admission validation requires no LLM/provider availability and optional draft assistance cannot determine PASS |
 | AA-ACC-17 | Focused checks are used during development; full coverage/build/SBOM/Trivy/Gitleaks execute once in final qualification |
 | AA-ACC-18 | One Docker qualification command emits schema-valid PASS evidence bound to final HEAD and reused hash-tagged image IDs |
-| AA-ACC-19 | Actual repository gates and pinned tool versions pass before one push; author review and PR metadata bind the same 40-character HEAD |
+| AA-ACC-19 | Local repository gates and pinned tools pass before one push; after PR creation, server-side C-065 metadata validation passes against the same 40-character HEAD before final PASS |
 
 ## Rollback And Compatibility
 
@@ -658,18 +839,19 @@ are not committed after qualification because changing HEAD invalidates the bind
 
 ## Author Review
 
-**Result:** PASS - focused institutional repair complete; Founder acceptance, implementation-issue
-attachments, and current-session implementation authorization remain separately gated.
+**Result:** PASS - targeted consolidated institutional repair complete; Founder acceptance of this
+exact commit, AEEC acceptance, implementation-issue binding, and current-session implementation
+authorization remain separately gated.
 
 | Review perspective | Result | Resolution |
 |---|---|---|
-| INST-003 Business Architect | PASS | Product/customer-employment separation retained; representative fixtures made an explicit accepted input |
-| INST-004 Enterprise Architect | PASS | Submission lifecycle, ownership, digest boundaries, readiness, reconciliation, and compatibility made deterministic |
-| INST-005 Solution Architect | PASS | Canonicalization, typed rule contract, version negotiation, and generated-contract attachment fixed |
-| INST-006 Data Architect | PASS | Append-only revision/evidence, atomic local projection, outbox, RLS, concurrency, and rollback obligations fixed |
-| INST-007 Security Architect | PASS | Separation, assertion authority, expiry/revocation, minimization, and anti-forgery obligations fixed |
-| INST-002 Constitutional Analyst | PASS | Stable rule ownership, Evidence First ordering, Human Override, and Decision Space remain mandatory |
-| INST-010 Platform IT Expert | PASS | AA-00 cannot invent policy; exact issue, files, commands, CCTs, fixtures, and branch are required before source work |
+| INST-003 Business Architect | PASS | Reusable admission outcome fixed; DMA v3.1 and Trading v1.8 frozen; no second product model |
+| INST-004 Enterprise Architect | PASS | Existing BP/CE/PR/WBE ownership retained; no new service; compatibility decisions closed |
+| INST-005 Solution Architect | PASS | Exact paths, callers, responses, errors, idempotency, versioning, and generated-client boundary fixed |
+| INST-006 Data Architect | PASS | Migration 25 tables, keys, RLS, concurrency, retention, outbox, and rollback fixed |
+| INST-007 Security Architect | PASS | Authorization matrix, step-up, separation, anti-enumeration, threat controls, and minimization fixed |
+| INST-002 Constitutional Analyst | PASS | AAV-to-claim/CCT mapping, Evidence First ordering, fail-safe halt, and Human Override fixed |
+| INST-010 Platform IT Expert | PASS | Frozen surfaces and test IDs make implementation mechanical after remaining acceptance gates |
 
 INST-004 reviewed this complete Work Contract against the Founder instruction, Objective B of the
 consolidated foundation assessment, the ratified claim index, ADR index, Agent Authoring Guide,
@@ -684,9 +866,12 @@ execution, safe disk recovery, focused development checks, image reuse, evidence
 final qualification, repository gate discovery, final-commit ordering, evidence/PR binding, and all
 constitutional stops.
 
-Findings repaired in this contract include ambiguity between self-preparation and self-admission,
-overlap with the customer Employment Journey Orchestrator, accidental creation of a new service,
-prematurely fixing exact wire/data contracts inside INST-004 Decision Space, conflation of 30-day
-review with execution cadence, mutable admission state, model-based PASS decisions, repeated
-heavyweight Docker validation, unsafe cleanup, blind infrastructure retries, and stale evidence after
-post-qualification commits. No unresolved in-scope author-review finding remains.
+Findings repaired in this contract include ambiguous fixture choice, pending AEEC status disclosure,
+missing exact wire and generated-client boundaries, absent persistence/RLS/concurrency details,
+underspecified actor authority and anti-enumeration, missing threat and AAV/CCT traceability, ambiguity
+between self-preparation and self-admission, customer-journey overlap, accidental creation of a new
+service, conflation of review and execution cadence, mutable admission state, model-based PASS,
+repeated heavyweight Docker validation, unsafe cleanup, blind retries, and stale qualification
+evidence. No unresolved technical or policy choice was found in the targeted review of this plan.
+Founder acceptance, AEEC acceptance, implementation binding, and current-session authority remain
+open gates; author review is not institutional approval and does not close them.
