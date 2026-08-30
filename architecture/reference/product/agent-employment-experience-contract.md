@@ -1,9 +1,10 @@
 # Agent Employment Experience Contract — Foundation v1.0
 
-**Status:** D-02 CONTRIBUTED — PENDING GATE REVIEW
+**Status:** FOUNDER ACCEPTED — FA-054
 **Version:** 1.0-foundation
 **Program:** GOAL-005
 **Work Contract:** WC-052
+**Founder acceptance:** 2026-08-30 — shared customer hiring and employment experience rules
 **Purpose:** Define the invariant customer-facing relationship shared by every WAOOAW professional across WhatsApp, web, mobile, and future supported channels.
 
 > This is not ADR-035's Platform-Agent Contract. ADR-035 governs machine signals between platform services and agents. Agent Base Spec v1.0 governs common agent behavior. This contract governs what a customer may consistently expect from the employment relationship.
@@ -86,3 +87,15 @@ Foundation conformance requires deterministic checks for rights-before-commitmen
 | `produced_at` | 2026-08-08T13:11:00+00:00 | 2026-08-08T13:11:01+00:00 | 2026-08-08T13:11:02+00:00 |
 | `authorization_id` | GOA-GOAL-005-INST-002-01 | GOA-GOAL-005-INST-002-01 | — |
 | Result | ACCEPTED | Rights, consent, Human Override, evidence, and traceability contributed | Rights must be lifecycle preconditions, not informational appendices |
+
+### Founder Acceptance
+
+| Field | Value |
+|---|---|
+| `record_id` | FA-054 |
+| `record_type` | Founder Action — Contract Acceptance |
+| `produced_at` | 2026-08-30T12:13:26Z |
+| Accepted artifact | Agent Employment Experience Contract v1.0-foundation |
+| Founder statement | `ok, i authorize - AEEC v1.0-foundation, the shared customer hiring and employment experience rules.` |
+| Result | **ACCEPTED** |
+| Boundary | Accepts the common customer hiring and employment rules; does not authorize WC-079 source implementation, deployment, provider activation, customer traffic, PR approval, or merge. |
