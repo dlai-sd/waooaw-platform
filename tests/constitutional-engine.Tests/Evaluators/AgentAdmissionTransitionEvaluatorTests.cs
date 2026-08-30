@@ -3,6 +3,7 @@
 
 using System.Text.Json;
 using Waooaw.ConstitutionalEngine.Evaluators;
+using Xunit;
 
 namespace Waooaw.ConstitutionalEngine.Tests.Evaluators;
 
