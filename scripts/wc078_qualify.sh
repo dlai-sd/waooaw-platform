@@ -20,7 +20,7 @@ test -z "$(git status --porcelain --untracked-files=all)" || { echo "qualificati
 
 SOURCE_FILES="$(git ls-files web docker-compose.yml architecture/reference/dockerfiles/Dockerfile.test-runner-ts architecture/reference/dockerfiles/Dockerfile.test-runner)"
 SOURCE_HASH="$(printf '%s\n' "$SOURCE_FILES" | LC_ALL=C sort | xargs sha256sum | sha256sum | cut -c1-12)"
-CONFIG_HASH="$({ docker compose config; git ls-files web/config web/package.json web/pnpm-lock.yaml web/next.config.mjs web/Dockerfile architecture/reference/dockerfiles/Dockerfile.test-runner-ts | LC_ALL=C sort | xargs sha256sum; } | sha256sum | cut -c1-12)"
+CONFIG_HASH="$({ docker compose config; git ls-files scripts/wc078_qualify.sh web/config web/package.json web/pnpm-lock.yaml web/next.config.mjs web/Dockerfile architecture/reference/dockerfiles/Dockerfile.test-runner-ts | LC_ALL=C sort | xargs sha256sum; } | sha256sum | cut -c1-12)"
 IMAGE_TAG="wc078-${SOURCE_HASH}-${CONFIG_HASH}"
 WEB_IMAGE="waooaw-web:${IMAGE_TAG}"
 TEST_IMAGE="waooaw-test-ts:${IMAGE_TAG}"
@@ -59,10 +59,10 @@ docker run --rm "$TEST_IMAGE" pnpm --dir web exec tsc --noEmit
 docker run --rm "$TEST_IMAGE" pnpm --dir web exec jest --runInBand --coverage --coverageReporters=text --coverageReporters=json-summary
 
 docker run --rm --user root --network "$NETWORK" \
-  -v "$PWD:/workspace:ro" \
+  -v "$PWD:/workspace" \
   -v "$NODE_MODULES_VOLUME:/workspace/web/node_modules" \
   -e "BASE_URL=http://${CONTAINER}:3000" \
-  "$RUNNER_IMAGE" sh -lc 'cd web && pnpm install --frozen-lockfile && pnpm exec playwright test tests/e2e/wc078-public-acquisition.spec.ts --output=/tmp/wc078-playwright'
+  "$RUNNER_IMAGE" sh -lc 'cd web && pnpm install --frozen-lockfile --store-dir=/tmp/pnpm-store && pnpm exec playwright test tests/e2e/wc078-public-acquisition.spec.ts --output=/tmp/wc078-playwright'
 
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/$EVIDENCE_DIR:/out" anchore/syft:v1.27.1 "docker:${WEB_IMAGE}" -o cyclonedx-json=/out/sbom.json
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/$EVIDENCE_DIR:/out" aquasec/trivy:0.66.0 image --severity HIGH,CRITICAL --exit-code 1 --format json --output /out/trivy.json "$WEB_IMAGE"
