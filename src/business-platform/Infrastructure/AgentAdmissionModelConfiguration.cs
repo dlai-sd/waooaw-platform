@@ -21,7 +21,9 @@ public static class AgentAdmissionModelConfiguration
             entity.Property(value => value.ProfessionalVersion).HasColumnName("professional_version");
             entity.Property(value => value.OwnerSubjectId).HasColumnName("owner_subject_id");
             entity.Property(value => value.SubmitterSubjectId).HasColumnName("submitter_subject_id");
-            entity.Property(value => value.State).HasColumnName("state").HasConversion(AgentAdmissionStateCodec.ToDatabase, AgentAdmissionStateCodec.FromDatabase);
+            entity.Property(value => value.State).HasColumnName("state").HasConversion(
+                state => AgentAdmissionStateCodec.ToDatabase(state),
+                state => AgentAdmissionStateCodec.FromDatabase(state));
             entity.Property(value => value.StateVersion).HasColumnName("state_version").IsConcurrencyToken();
             entity.Property(value => value.CurrentRevision).HasColumnName("current_revision");
             entity.Property(value => value.AdmissionContentDigest).HasColumnName("admission_content_digest");
@@ -188,7 +190,7 @@ public static class AgentAdmissionModelConfiguration
 
     private static void Parent<TEntity>(
         Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<TEntity> entity,
-        System.Linq.Expressions.Expression<Func<TEntity, object>> foreignKey)
+        System.Linq.Expressions.Expression<Func<TEntity, object?>> foreignKey)
         where TEntity : class => entity.HasOne<AgentAdmission>().WithMany()
             .HasForeignKey(foreignKey)
             .HasPrincipalKey(value => new { value.TenantId, value.AdmissionId });
