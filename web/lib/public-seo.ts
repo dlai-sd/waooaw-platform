@@ -7,9 +7,11 @@ export function publicMetadata(title: string, description: string, path: string,
   const canonical = absoluteUrl(path);
   const languages = Object.fromEntries([...siteConfig.locales.map((locale) => [locale, canonical]), ['x-default', canonical]]);
   const image = { url: absoluteUrl('/waooaw-platform-logo.png'), width: 1254, height: 1254, alt: 'WAOOAW Platform' };
+  const production = siteConfig.environment === 'production';
   return {
     title,
     description,
+    robots: { index: production, follow: production },
     alternates: { canonical, languages },
     openGraph: { type, title, description, url: canonical, siteName: siteConfig.name, images: [image] },
     twitter: { card: 'summary_large_image', title, description, images: [image.url] },

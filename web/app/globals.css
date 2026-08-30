@@ -478,6 +478,20 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 .public-document section, .article-index > article { padding-block: 2rem; border-block-end: 1px solid var(--line); }
 .public-document h2 { font-size: 1.5rem; }
 .public-document li { margin-block: .6rem; line-height: 1.55; }
+.platform-dna { padding: 3rem max(1.25rem, calc((100% - 1120px) / 2)); background: var(--ink); color: var(--page); }
+.platform-dna h2 { max-inline-size: 20ch; }
+.platform-dna dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-block: 2rem 0; }
+.platform-dna dl > div { padding-block-start: 1rem; border-block-start: 2px solid var(--orange); }
+.platform-dna dt { font-weight: 800; }
+.platform-dna dd { margin: .5rem 0 0; line-height: 1.5; }
+.legal-source { overflow-wrap: anywhere; }
+.legal-source > h2 { margin-block-start: 3rem; padding-block-start: 1rem; border-block-start: 1px solid var(--line); }
+.legal-source h3 { margin-block-start: 2rem; }
+.legal-source p, .legal-source td, .legal-source th { line-height: 1.65; }
+.legal-source table { display: block; max-inline-size: 100%; overflow-x: auto; border-collapse: collapse; }
+.legal-source th, .legal-source td { padding: .75rem; border: 1px solid var(--line); text-align: start; vertical-align: top; }
+.legal-source pre { max-inline-size: 100%; overflow-x: auto; padding: 1rem; background: var(--surface-raised); border: 1px solid var(--line); }
+.legal-source blockquote { margin-inline: 0; padding-inline-start: 1rem; border-inline-start: 4px solid var(--brand-blue); }
 .publication-note { padding: 1rem; border-inline-start: 3px solid var(--orange); }
 .article-index > article time, .blog-detail time { color: var(--muted); font-size: .82rem; }
 .public-footer { display: grid; grid-template-columns: 2fr repeat(3, 1fr) 1.5fr; gap: 2rem; padding: 3rem clamp(1.25rem, 5vw, 5rem); color: #fff; background: var(--color-brand-navy); }
@@ -499,7 +513,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 
 @media (max-width: 599px) {
   .catalog-header h1 { font-size: 3rem; }
-  .public-catalogue, .public-footer { grid-template-columns: minmax(0, 1fr); }
+  .public-catalogue, .public-footer, .platform-dna dl { grid-template-columns: minmax(0, 1fr); }
   .public-footer > * { grid-column: 1; }
   .handoff-console li { grid-template-columns: 22px minmax(0, 1fr); }
   .handoff-console li b { grid-column: 2; }

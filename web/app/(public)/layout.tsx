@@ -2,11 +2,12 @@
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
 import type { ReactNode } from 'react';
+import { AcquisitionController } from '@/components/public/AcquisitionController';
 import { ConsentController } from '@/components/public/ConsentController';
 import { AppShell } from '@/components/shell/AppShell';
 import { getRequestI18n } from '@/lib/i18n-server';
 
 export default async function PublicLayout({ children }: { children: ReactNode }) {
 	const { messages } = await getRequestI18n();
-	return <><AppShell messages={messages} variant="public">{children}</AppShell><ConsentController /></>;
+	return <><AppShell messages={messages} variant="public">{children}</AppShell><ConsentController /><AcquisitionController /></>;
 }

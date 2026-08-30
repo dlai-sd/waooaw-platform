@@ -13,6 +13,7 @@ import {
 } from 'next/font/google';
 import { cookies } from 'next/headers';
 import type { ReactNode } from 'react';
+import '@/config/public-config';
 import { siteConfig } from '@/config/site';
 import { OfflineNotice } from '@/components/shell/OfflineNotice';
 import { directionForLocale, resolveLocale, resolveTheme } from '@/lib/preferences';

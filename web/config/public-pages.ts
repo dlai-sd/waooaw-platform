@@ -10,9 +10,9 @@ export const publicPages = {
 } as const;
 
 export const legalPages = {
-  privacy: { path: '/privacy', title: 'Privacy Policy', effectiveDate: '18 July 2026', summary: 'WAOOAW minimizes personal data, separates customer contexts, and uses optional analytics only with consent.' },
-  terms: { path: '/terms', title: 'Terms of Service', effectiveDate: '18 July 2026', summary: 'These terms govern use of WAOOAW and preserve visible scope, customer control, and review rights.' },
-  cookies: { path: '/cookies', title: 'Cookie Policy', effectiveDate: '18 July 2026', summary: 'Necessary preferences support the service. Analytics and advertising storage remain off until explicit consent.' },
-  refund: { path: '/refund', title: 'Refund Policy', effectiveDate: '18 July 2026', summary: 'Eligible pauses, cancellations, and stops use the approved pro-rata refund rules.' },
-  grievance: { path: '/grievance', title: 'Grievance Policy', effectiveDate: '18 July 2026', summary: 'WAOOAW accepts grievances through one public support route and preserves the approved escalation process.' },
+  privacy: { path: '/privacy', title: 'Privacy Policy', sourceFile: 'privacy-policy.md', effectiveDate: '18 July 2026', summary: 'WAOOAW minimizes personal data, separates customer contexts, and uses optional analytics only with consent.' },
+  terms: { path: '/terms', title: 'Terms of Service', sourceFile: 'terms-of-service.md', effectiveDate: '18 July 2026', summary: 'These terms govern use of WAOOAW and preserve visible scope, customer control, and review rights.' },
+  cookies: { path: '/cookies', title: 'Cookie Policy', sourceFile: 'cookie-policy.md', effectiveDate: '18 July 2026', summary: 'Necessary preferences support the service. Analytics and advertising storage remain off until explicit consent.' },
+  refund: { path: '/refund', title: 'Refund Policy', sourceFile: 'refund-policy.md', effectiveDate: '18 July 2026', summary: 'Eligible pauses, cancellations, and stops use the approved pro-rata refund rules.' },
+  grievance: { path: '/grievance', title: 'Grievance Policy', sourceFile: 'grievance-policy.md', effectiveDate: '18 July 2026', summary: 'WAOOAW accepts grievances through one public support route and preserves the approved escalation process.' },
 } as const;

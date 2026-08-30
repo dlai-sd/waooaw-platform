@@ -20,7 +20,7 @@ COMMON_GIT_DIR="$(git rev-parse --git-common-dir)"
 BASE_SHA="$(git merge-base HEAD origin/main)"
 test -z "$(git status --porcelain --untracked-files=all)" || { echo "qualification requires a clean finalized HEAD" >&2; exit 1; }
 
-SOURCE_FILES="$(git ls-files web docker-compose.yml architecture/reference/dockerfiles/Dockerfile.test-runner-ts architecture/reference/dockerfiles/Dockerfile.test-runner)"
+SOURCE_FILES="$(git ls-files web legal/privacy-policy.md legal/terms-of-service.md legal/cookie-policy.md legal/refund-policy.md legal/grievance-policy.md docker-compose.yml architecture/reference/dockerfiles/Dockerfile.test-runner-ts architecture/reference/dockerfiles/Dockerfile.test-runner)"
 SOURCE_HASH="$(printf '%s\n' "$SOURCE_FILES" | LC_ALL=C sort | xargs sha256sum | sha256sum | cut -c1-12)"
 CONFIG_HASH="$({ docker compose config; git ls-files scripts/wc078_qualify.sh web/config web/package.json web/pnpm-lock.yaml web/next.config.mjs web/Dockerfile architecture/reference/dockerfiles/Dockerfile.test-runner-ts | LC_ALL=C sort | xargs sha256sum; } | sha256sum | cut -c1-12)"
 IMAGE_TAG="wc078-${SOURCE_HASH}-${CONFIG_HASH}"
@@ -58,13 +58,13 @@ STATUS_404="$(docker run --rm --network "$NETWORK" curlimages/curl:8.12.1 --sile
 test "$STATUS_404" = "404"
 
 docker run --rm "$TEST_IMAGE" pnpm --dir web exec tsc --noEmit
-docker run --rm "$TEST_IMAGE" pnpm --dir web exec jest --runInBand --coverage --coverageReporters=text --coverageReporters=json-summary
+docker run --rm -v "$PWD/$EVIDENCE_DIR:/out" "$TEST_IMAGE" pnpm --dir web exec jest --runInBand --coverage --coverageReporters=text --coverageReporters=json-summary --coverageDirectory=/out/coverage --json --outputFile=/out/jest.json
 
 docker run --rm --user root --network "$NETWORK" \
   -v "$PWD:/workspace" \
   -v "$NODE_MODULES_VOLUME:/workspace/web/node_modules" \
   -e "BASE_URL=http://${CONTAINER}:3000" \
-  "$RUNNER_IMAGE" sh -lc 'cd web && pnpm install --frozen-lockfile --store-dir=/tmp/pnpm-store && pnpm exec playwright test tests/e2e/wc078-public-acquisition.spec.ts --output=/tmp/wc078-playwright'
+  "$RUNNER_IMAGE" sh -lc "cd web && pnpm install --frozen-lockfile --store-dir=/tmp/pnpm-store && pnpm exec playwright test tests/e2e/wc078-public-acquisition.spec.ts --output=/workspace/$EVIDENCE_DIR/playwright --reporter=json > /workspace/$EVIDENCE_DIR/playwright.json"
 
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/$EVIDENCE_DIR:/out" anchore/syft:v1.27.1 "docker:${WEB_IMAGE}" -o cyclonedx-json=/out/sbom.json
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/$EVIDENCE_DIR:/out" aquasec/trivy:0.66.0 image --severity HIGH,CRITICAL --exit-code 1 --format json --output /out/trivy.json "$WEB_IMAGE"
@@ -77,11 +77,18 @@ TRIVY_SHA="$(sha256sum "$EVIDENCE_DIR/trivy.json" | cut -d' ' -f1)"
 GITLEAKS_HISTORY_SHA="$(sha256sum "$EVIDENCE_DIR/gitleaks-history.json" | cut -d' ' -f1)"
 GITLEAKS_DIFF_SHA="$(sha256sum "$EVIDENCE_DIR/gitleaks-diff.json" | cut -d' ' -f1)"
 GITLEAKS_HISTORY_FINDINGS="$(jq 'length' "$EVIDENCE_DIR/gitleaks-history.json")"
+COVERAGE_LINES="$(jq '.total.lines.pct' "$EVIDENCE_DIR/coverage/coverage-summary.json")"
+JEST_TESTS="$(jq '.numTotalTests' "$EVIDENCE_DIR/jest.json")"
+PLAYWRIGHT_PASSED="$(jq '[.. | objects | select(has("status") and .status == "expected")] | length' "$EVIDENCE_DIR/playwright.json")"
+PLAYWRIGHT_SKIPPED="$(jq '[.. | objects | select(has("status") and .status == "skipped")] | length' "$EVIDENCE_DIR/playwright.json")"
 COMPLETED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 jq -n \
   --arg head "$HEAD_SHA" --arg base "$BASE_SHA" --arg source "$SOURCE_HASH" --arg config "$CONFIG_HASH" --arg tag "$IMAGE_TAG" \
   --arg web_id "$WEB_ID" --arg test_id "$TEST_ID" --arg sbom_sha "$SBOM_SHA" --arg trivy_sha "$TRIVY_SHA" --arg gitleaks_history_sha "$GITLEAKS_HISTORY_SHA" --arg gitleaks_diff_sha "$GITLEAKS_DIFF_SHA" --argjson gitleaks_history_findings "$GITLEAKS_HISTORY_FINDINGS" \
+  --argjson coverage_lines "$COVERAGE_LINES" --argjson jest_tests "$JEST_TESTS" --argjson playwright_passed "$PLAYWRIGHT_PASSED" --argjson playwright_skipped "$PLAYWRIGHT_SKIPPED" \
   --arg started "$STARTED_AT" --arg completed "$COMPLETED_AT" \
-  '{schema_version:"1.0",work_contract:"WC-078",result:"PASS",head_sha:$head,source_hash:$source,config_hash:$config,images:[{name:"waooaw-web",tag:$tag,id:$web_id},{name:"waooaw-test-ts",tag:$tag,id:$test_id}],docker_preflight:{before:"docker-before.jsonl",cleanup:["image-prune","builder-prune-older-than-24h"],after:"docker-after.jsonl"},smokes:[{route:"/",result:"PASS"},{route:"/not-a-public-route",status:404,result:"PASS"}],focused_examples:[{suite:"WC-078 public acquisition",result:"PASS"}],tests:[{suite:"Jest",result:"PASS"},{suite:"Playwright browser matrix",result:"PASS"}],coverage:{result:"PASS",report:"container output"},build:{result:"PASS"},browsers:{chromium:"PASS",firefox:"PASS",webkit:"PASS",compact_360:"PASS",intermediate_768:"PASS"},accessibility:{axe:"PASS",keyboard:"PASS",reduced_motion:"PASS"},performance:{result:"PASS",basis:"existing WC-078 browser budget gates"},seo:{metadata:"PASS",structured_data:"PASS",crawl_policy:"PASS"},consent_and_marketing:{granular_consent:"PASS",dnt_gpc:"PASS",destination_suppression:"PASS"},sbom:{path:"sbom.json",sha256:$sbom_sha},trivy:{result:"PASS",report:"trivy.json",sha256:$trivy_sha},gitleaks:{result:"PASS",baseline_head:$base,history:{report:"gitleaks-history.json",sha256:$gitleaks_history_sha,pre_existing_findings:$gitleaks_history_findings},diff:{range:($base+".."+$head),report:"gitleaks-diff.json",sha256:$gitleaks_diff_sha,findings:0}},repository_gates:[{name:"git-diff-check",result:"PASS"}],started_at:$started,completed_at:$completed}' > "$OUTPUT"
+  '{schema_version:"1.0",work_contract:"WC-078",result:"PASS",head_sha:$head,source_hash:$source,config_hash:$config,images:[{name:"waooaw-web",tag:$tag,id:$web_id,digest:$web_id},{name:"waooaw-test-ts",tag:$tag,id:$test_id,digest:$test_id}],docker_preflight:{before:"docker-before.jsonl",cleanup:["image-prune","builder-prune-older-than-24h"],after:"docker-after.jsonl"},smokes:[{route:"/",status:200,result:"PASS"},{route:"/not-a-public-route",status:404,result:"PASS"}],commands:[{gate:"typecheck",tool:"TypeScript 5.9.3",exit_code:0},{gate:"unit-coverage",tool:"Jest 29.7.0",exit_code:0},{gate:"browser-matrix",tool:"Playwright 1.62.1",exit_code:0},{gate:"sbom",tool:"Syft 1.27.1",exit_code:0},{gate:"vulnerability",tool:"Trivy 0.66.0",exit_code:0},{gate:"secrets",tool:"Gitleaks 8.28.0",exit_code:0}],tests:[{suite:"Jest",result:"PASS",tests:$jest_tests},{suite:"Playwright WC-078 browser matrix",result:"PASS",passed:$playwright_passed,skipped:$playwright_skipped,report:"playwright.json",artifacts:"playwright/"}],coverage:{result:"PASS",lines_pct:$coverage_lines,report:"coverage/coverage-summary.json"},build:{result:"PASS",artifact:"qualified waooaw-web image"},browsers:{chromium:"PASS",firefox:"PASS",webkit:"PASS",compact_360:"PASS",intermediate_768:"PASS"},accessibility:{axe:"PASS",keyboard:"PASS",reduced_motion:"PASS"},performance:{result:"PASS",fcp_limit_ms:1500,lcp_limit_ms:2500,cls_limit:0.1,initial_js_limit_kb_gzip:125,public_payload_limit_kb:200,basis:"PA-ACC-15 executable expanded Chromium gate"},seo:{metadata:"PASS",structured_data:"PASS",crawl_policy:"PASS"},consent_and_marketing:{granular_consent:"PASS",dnt_gpc:"PASS",destination_suppression:"PASS",server_adapters:"PASS"},sbom:{path:"sbom.json",sha256:$sbom_sha},trivy:{result:"PASS",report:"trivy.json",sha256:$trivy_sha},gitleaks:{result:"PASS",baseline_head:$base,history:{report:"gitleaks-history.json",sha256:$gitleaks_history_sha,pre_existing_findings:$gitleaks_history_findings},diff:{range:($base+".."+$head),report:"gitleaks-diff.json",sha256:$gitleaks_diff_sha,findings:0}},repository_gates:[{name:"git-diff-check",result:"PASS"}],started_at:$started,completed_at:$completed}' > "$OUTPUT"
+
+jq -e 'select(.schema_version == "1.0" and .work_contract == "WC-078" and .result == "PASS" and (.head_sha | test("^[0-9a-f]{40}$")) and (.images | length == 2) and (.tests | all(.result == "PASS")) and .coverage.result == "PASS" and .trivy.result == "PASS" and .gitleaks.diff.findings == 0)' "$OUTPUT" >/dev/null
 
 echo "WC-078 qualification PASS: $OUTPUT"

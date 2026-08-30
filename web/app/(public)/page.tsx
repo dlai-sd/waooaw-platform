@@ -44,10 +44,11 @@ export default async function HomePage() {
 
       <section className="public-section trust-journey" aria-labelledby="trust-journey-title">
         <div><p className="eyebrow">02</p><h2 id="trust-journey-title">{messages.trustJourney}</h2><p>{messages.trustDescription}</p></div>
-        <div><Scale aria-hidden="true" size={32} /><h2>{messages.constitutionalPromise}</h2><p>{messages.constitutionalDescription}</p></div>
+        <div><Scale aria-hidden="true" size={32} /><p className="eyebrow">Illustrative governance journey</p><h2>{messages.constitutionalPromise}</h2><p>{messages.constitutionalDescription}</p></div>
       </section>
 
       <section className="public-section final-action"><p className="eyebrow">A professional relationship you can inspect</p><h2>Begin with visible scope, honest limits, and control that stays with you.</h2><div className="command-row"><a className="primary-link" href="/register">Start with a trial</a><Link href="/professionals">Browse professionals</Link></div></section>
+      <section className="platform-dna" aria-labelledby="platform-dna-title"><p className="eyebrow">Platform DNA</p><h2 id="platform-dna-title">Built through a connected institutional lineage.</h2><dl><div><dt>Yashus</dt><dd>Product and experience foundation</dd></div><div><dt>DLAI Satellite Data</dt><dd>Technology and operating company</dd></div><div><dt>WAOOAW</dt><dd>Constitutionally governed digital professionals</dd></div></dl></section>
     </div>
   );
 }

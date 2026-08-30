@@ -6,7 +6,11 @@ export const siteConfig = {
   company: 'DLAI Satellite Data (OPC) Pvt Ltd',
   canonicalOrigin: process.env.NEXT_PUBLIC_CANONICAL_ORIGIN ?? 'https://waooaw.com',
   contactEmail: 'customersupport@dlaisd.com',
+  environment: process.env.NEXT_PUBLIC_WAOOAW_ENVIRONMENT ?? 'demo',
   locales: ['en', 'hi', 'mr', 'ta', 'te', 'kn', 'gu', 'bn', 'ml', 'pa', 'ur'],
+  announcement: { enabled: false, message: '', href: '' },
+  sectionSwitches: { professionalPreview: true, trustJourney: true, finalAction: true, platformDna: true },
+  socialLinks: [],
   publicNavigation: [
     { href: '/', label: 'Home' },
     { href: '/professionals', label: 'Professionals' },

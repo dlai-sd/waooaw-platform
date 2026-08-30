@@ -7,7 +7,10 @@ import { PublicCatalogue } from './PublicCatalogue';
 import { listPublicProfessionals } from '@/config/professionals';
 
 describe('public acquisition components', () => {
-  beforeEach(() => { document.cookie = 'waooaw_consent=; Max-Age=0; Path=/'; });
+  beforeEach(() => {
+    document.cookie = 'waooaw_consent=; Max-Age=0; Path=/';
+    global.fetch = jest.fn(async () => ({ ok: true } as Response));
+  });
   it('renders the complete illustrative handoff in semantic order', () => {
     render(<AutonomyHandoffConsole />);
     expect(screen.getByRole('heading', { name: /From trial to autonomous productivity/ })).toBeVisible();
