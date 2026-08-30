@@ -14,7 +14,7 @@ CONVENTIONAL_COMMIT = re.compile(
 )
 BLOCKING_TRACE_TYPES = {"feat", "fix", "constitutional", "cct"}
 TRACE_REFERENCE = re.compile(
-    r"(?:IB:\s*IB-\d+|FIX:\s*#?\d+|Constitutional:\s*(?:C|ADR|DP)-\d+)",
+    r"(?:IB:\s*IB-\d+|WC-\d+|FIX:\s*#?\d+|Constitutional:\s*(?:C|ADR|DP)-\d+)",
     re.IGNORECASE,
 )
 WORK_CONTRACT = re.compile(r"^Work Contract:\s*WC-\d+\s*$", re.IGNORECASE | re.MULTILINE)
@@ -50,7 +50,7 @@ def validate_commit(subject: str, body: str) -> list[str]:
     commit_type = match.group(1)
     if commit_type in BLOCKING_TRACE_TYPES and not TRACE_REFERENCE.search(f"{subject}\n{body}"):
         return [
-            f"COMMIT_TRACE_MISSING: {subject} (add IB, FIX, or Constitutional reference "
+            f"COMMIT_TRACE_MISSING: {subject} (add IB, WC, FIX, or Constitutional reference "
             "to subject or body)"
         ]
     return []
