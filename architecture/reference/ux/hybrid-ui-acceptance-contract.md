@@ -3,7 +3,7 @@
 **Document type:** Architecture Reference — Executable Acceptance
 **Office:** Enterprise Architect (INST-004)
 **Work Contract:** WC-034 / WC034-A06
-**Status:** REVIEW CANDIDATE
+**Status:** RATIFIED - WC-034 released scope accepted through independent review and Founder merge
 **Normative parents:** `hybrid-application-shell.md`, `hybrid-visual-system-contract.md`, `constitutional-ux-vocabulary.md`
 **Constitutional basis:** C-001, C-002, C-009, C-023, C-042, C-059, C-063, C-065, C-071, C-076
 
