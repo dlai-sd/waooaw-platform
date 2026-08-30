@@ -44,11 +44,13 @@ def test_placeholders_do_not_pass() -> None:
 def test_commit_trace_reference_may_be_in_subject_or_body() -> None:
     assert validate_commit("fix(infra): repair gate Constitutional: C-059", "") == []
     assert validate_commit("fix(infra): repair gate", "Constitutional: C-059") == []
+    assert validate_commit("fix(cct): isolate WC-078 performance gate", "") == []
+    assert validate_commit("fix(cct): isolate performance gate", "Work Contract: WC-078") == []
 
 
 def test_blocking_commit_without_trace_fails() -> None:
     assert validate_commit("fix(infra): repair gate", "") == [
-        "COMMIT_TRACE_MISSING: fix(infra): repair gate (add IB, FIX, or Constitutional reference to subject or body)"
+        "COMMIT_TRACE_MISSING: fix(infra): repair gate (add IB, WC, FIX, or Constitutional reference to subject or body)"
     ]
 
 

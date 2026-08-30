@@ -1,0 +1,4 @@
+// Implements: work-contracts/WC-078-public-acquisition-experience-plan.md §Crawl And Sitemap
+// Constitutional basis: C-059 (Implementation Traceability)
+import type { MetadataRoute } from 'next'; import { absoluteUrl } from '@/config/site';
+export default function robots(): MetadataRoute.Robots { const production = process.env.WAOOAW_ENVIRONMENT === 'production'; return { rules: production ? { userAgent: '*', allow: '/', disallow: ['/api/', '/admin/', '/founder/', '/home/', '/relationships/', '/settings/', '/profile/'] } : { userAgent: '*', disallow: '/' }, sitemap: production ? absoluteUrl('/sitemap.xml') : undefined }; }

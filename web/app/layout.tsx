@@ -13,6 +13,8 @@ import {
 } from 'next/font/google';
 import { cookies } from 'next/headers';
 import type { ReactNode } from 'react';
+import '@/config/public-config';
+import { siteConfig } from '@/config/site';
 import { OfflineNotice } from '@/components/shell/OfflineNotice';
 import { directionForLocale, resolveLocale, resolveTheme } from '@/lib/preferences';
 import './globals.css';
@@ -36,9 +38,12 @@ const fontVariables = [notoSans, notoUrdu, notoDevanagari, notoTamil, notoTelugu
   .join(' ');
 
 export const metadata: Metadata = {
-  title: 'WAOOAW Employment Workspace',
-  description: 'Employ and govern WAOOAW digital professionals.',
+  metadataBase: new URL(siteConfig.canonicalOrigin),
+  title: { default: 'WAOOAW | Governed digital professionals', template: '%s' },
+  description: 'Employ a governed digital professional with visible scope, reviewable work, and control that remains yours.',
   manifest: '/manifest.webmanifest',
+  alternates: { canonical: '/' },
+  openGraph: { title: 'WAOOAW', description: 'Governed digital professionals for practical work.', url: '/', siteName: 'WAOOAW', type: 'website' },
 };
 
 export const viewport: Viewport = { themeColor: '#1e3352', width: 'device-width', initialScale: 1 };

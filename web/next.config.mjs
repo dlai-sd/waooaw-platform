@@ -8,8 +8,10 @@ const withPWA = withPWAInit({
   disable: process.env.NODE_ENV === 'development',
   register: true,
   cacheStartUrl: false,
+  dynamicStartUrl: false,
   cacheOnFrontEndNav: false,
   workboxOptions: {
+    exclude: [/static\/chunks\/app\/(?:\(auth\)|\(authenticated\)|\(founder\)|api)\//],
     runtimeCaching: [
       {
         urlPattern: ({ request }) => request.mode === 'navigate',
@@ -40,6 +42,15 @@ const nextConfig = {
   output: process.env.BUILD_STANDALONE === 'true' ? 'standalone' : undefined,
   poweredByHeader: false,
   reactStrictMode: true,
+  async headers() {
+    return [{ source: '/:path*', headers: [
+      { key: 'X-Frame-Options', value: 'DENY' },
+      { key: 'X-Content-Type-Options', value: 'nosniff' },
+      { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
+      { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+      { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },
+    ] }];
+  },
 };
 
 export default withPWA(nextConfig);

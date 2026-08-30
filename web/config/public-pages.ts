@@ -1,0 +1,18 @@
+// Implements: work-contracts/WC-078-public-acquisition-experience-plan.md §Public Information Architecture
+// Constitutional basis: C-002 (Evidence Integrity), C-059 (Implementation Traceability)
+
+export const publicPages = {
+  about: { path: '/about', title: 'About WAOOAW', summary: 'WAOOAW enables organizations to employ autonomous digital professionals under constitutional governance.', sections: [['An institution for governed autonomy', 'WAOOAW makes professional authority visible, work reviewable, and human control persistent.'], ['Platform DNA', 'Yashus, DLAI Satellite Data, and WAOOAW combine practical technology delivery with a written constitutional operating model.'], ['Human governance', 'The institution is governed by Founder Yogesh Khandge, Business Growth steward Sujay Khandge, and Ethics Officer Ojal Khandge.']] },
+  contact: { path: '/contact', title: 'Contact WAOOAW', summary: 'One public route for support, media, general enquiries, and grievances.', sections: [['Customer support', 'Tell us what you need and the platform will route the request without publishing personal or departmental addresses.']] },
+  careers: { path: '/careers', title: 'Careers at WAOOAW', summary: 'WAOOAW is building a governed employment model for autonomous digital professionals.', sections: [['Professional admission', 'Digital professionals are admitted through specification, testing, constitutional review, and Founder-controlled activation.'], ['Human opportunities', 'Current human opportunities are published only when an approved role is open.']] },
+  press: { path: '/press', title: 'WAOOAW press information', summary: 'Approved facts and contact information for media enquiries.', sections: [['Institutional fact', 'WAOOAW stands for Ways Of Working for the Autonomous World.'], ['Company', 'WAOOAW is operated by DLAI Satellite Data (OPC) Pvt Ltd in Pune, India.']] },
+  constitution: { path: '/constitution', title: 'Constitutional governance', summary: 'Every WAOOAW professional works within declared authority and constitutional floors.', sections: [['Human override', 'People retain the unconditional ability to stop active professional work.'], ['Evidence First', 'A professional may claim an outcome only when accepted evidence supports it.'], ['Decision Space', 'Each professional declares what it may do, what it may not do, and when it must ask.']] },
+} as const;
+
+export const legalPages = {
+  privacy: { path: '/privacy', title: 'Privacy Policy', sourceFile: 'privacy-policy.md', effectiveDate: '18 July 2026', summary: 'WAOOAW minimizes personal data, separates customer contexts, and uses optional analytics only with consent.' },
+  terms: { path: '/terms', title: 'Terms of Service', sourceFile: 'terms-of-service.md', effectiveDate: '18 July 2026', summary: 'These terms govern use of WAOOAW and preserve visible scope, customer control, and review rights.' },
+  cookies: { path: '/cookies', title: 'Cookie Policy', sourceFile: 'cookie-policy.md', effectiveDate: '18 July 2026', summary: 'Necessary preferences support the service. Analytics and advertising storage remain off until explicit consent.' },
+  refund: { path: '/refund', title: 'Refund Policy', sourceFile: 'refund-policy.md', effectiveDate: '18 July 2026', summary: 'Eligible pauses, cancellations, and stops use the approved pro-rata refund rules.' },
+  grievance: { path: '/grievance', title: 'Grievance Policy', sourceFile: 'grievance-policy.md', effectiveDate: '18 July 2026', summary: 'WAOOAW accepts grievances through one public support route and preserves the approved escalation process.' },
+} as const;

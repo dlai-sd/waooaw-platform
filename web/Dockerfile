@@ -23,6 +23,7 @@ WORKDIR /app
 COPY --from=build --chown=waooaw:waooaw /app/.next/standalone ./
 COPY --from=build --chown=waooaw:waooaw /app/.next/static ./.next/static
 COPY --from=build --chown=waooaw:waooaw /app/public ./public
+COPY --chown=waooaw:waooaw legal ./legal
 USER waooaw
 EXPOSE 3000
 ENV HOSTNAME=0.0.0.0 PORT=3000

@@ -3,7 +3,7 @@
 **Office:** Chief Solution Architect (INST-005)
 **Future executor:** Platform IT Expert (INST-010), Skill 16
 **Assigned by:** Founder instruction, 2026-08-30
-**Status:** PLAN REPAIRED - PENDING FOUNDER ACCEPTANCE; IMPLEMENTATION NOT AUTHORIZED FOR THIS SESSION
+**Status:** IMPLEMENTATION AUTHORIZED 2026-08-30; PA-ACC-15 FRAMEWORK FLOOR AMENDMENT AUTHORIZED 2026-08-30
 **Delivery unit:** Public landing, public content, search discovery, and consent-governed acquisition
 **Constitutional basis:** C-002, C-019, C-023, C-032, C-039, C-042, C-048, C-059, C-063, C-065, C-071, C-076, C-077, C-080, C-095, C-100
 
@@ -45,6 +45,10 @@ gates.
   internal, personal, departmental, telephone, or superseded contact. The legal substance, version,
   effective date, rights, and escalation sequence remain unchanged; every rendered contact command
   uses `customersupport@dlaisd.com` as the sole public intake address.
+10. The total initial JavaScript ceiling is 125KB gzipped. Founder authorized this narrow amendment
+  after executable qualification measured the ratified Next.js 15 and React 18 App Router framework
+  floor at 102.9KB before WAOOAW route code. The 200KB public payload and Core Web Vitals limits are
+  unchanged.
 
 ## Authority And Scope
 
@@ -724,7 +728,7 @@ an accepted plan does not mean the implementation tasks or acceptance conditions
 | PA-ACC-12 | GA4, server-side GTM, Meta, and Search Console behavior is independently environment-gated and fails without blocking the customer journey |
 | PA-ACC-13 | Advertising code and events are absent from authenticated and institutional bundles, pages, service-worker caches, and network traces |
 | PA-ACC-14 | Security headers and exact CSP allowlists pass; no secret or protected value appears in source, browser, logs, evidence, URLs, or metadata |
-| PA-ACC-15 | FCP <=1.5s, LCP <=2.5s, CLS <=0.10, INP <=200ms under the approved profile; public compressed weight <=200KB and initial JS <=100KB gzipped |
+| PA-ACC-15 | FCP <=1.5s, LCP <=2.5s, CLS <=0.10, INP <=200ms under the approved profile; public compressed weight <=200KB and initial JS <=125KB gzipped |
 | PA-ACC-16 | Zero critical axe violations, no unreviewed serious violations, keyboard journeys pass, and focus behavior is stable |
 | PA-ACC-17 | No runtime/test LLM call occurs; any separately authorized content-generation call has hard budget and token evidence |
 | PA-ACC-18 | One Docker qualification command produces schema-valid PASS evidence bound to final HEAD and reused image IDs |
