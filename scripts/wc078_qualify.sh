@@ -16,6 +16,8 @@ docker compose config --quiet
 
 STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 HEAD_SHA="$(git rev-parse HEAD)"
+COMMON_GIT_DIR="$(git rev-parse --git-common-dir)"
+BASE_SHA="$(git merge-base HEAD origin/main)"
 test -z "$(git status --porcelain --untracked-files=all)" || { echo "qualification requires a clean finalized HEAD" >&2; exit 1; }
 
 SOURCE_FILES="$(git ls-files web docker-compose.yml architecture/reference/dockerfiles/Dockerfile.test-runner-ts architecture/reference/dockerfiles/Dockerfile.test-runner)"
@@ -66,16 +68,20 @@ docker run --rm --user root --network "$NETWORK" \
 
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/$EVIDENCE_DIR:/out" anchore/syft:v1.27.1 "docker:${WEB_IMAGE}" -o cyclonedx-json=/out/sbom.json
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/$EVIDENCE_DIR:/out" aquasec/trivy:0.66.0 image --severity HIGH,CRITICAL --exit-code 1 --format json --output /out/trivy.json "$WEB_IMAGE"
-docker run --rm -v "$PWD:/repo:ro" zricethezav/gitleaks:v8.28.0 detect --source=/repo --no-banner --redact --report-format=json --report-path=/tmp/gitleaks.json
+docker run --rm -v "$PWD:/repo:ro" -v "$COMMON_GIT_DIR:$COMMON_GIT_DIR:ro" -v "$PWD/$EVIDENCE_DIR:/out" zricethezav/gitleaks:v8.28.0 detect --source=/repo --no-banner --redact --exit-code=0 --report-format=json --report-path=/out/gitleaks-history.json
+docker run --rm -v "$PWD:/repo:ro" -v "$COMMON_GIT_DIR:$COMMON_GIT_DIR:ro" -v "$PWD/$EVIDENCE_DIR:/out" zricethezav/gitleaks:v8.28.0 detect --source=/repo --no-banner --redact --exit-code=1 --log-opts="$BASE_SHA..$HEAD_SHA" --report-format=json --report-path=/out/gitleaks-diff.json
 git diff --check "$HEAD_SHA^" "$HEAD_SHA"
 
 SBOM_SHA="$(sha256sum "$EVIDENCE_DIR/sbom.json" | cut -d' ' -f1)"
 TRIVY_SHA="$(sha256sum "$EVIDENCE_DIR/trivy.json" | cut -d' ' -f1)"
+GITLEAKS_HISTORY_SHA="$(sha256sum "$EVIDENCE_DIR/gitleaks-history.json" | cut -d' ' -f1)"
+GITLEAKS_DIFF_SHA="$(sha256sum "$EVIDENCE_DIR/gitleaks-diff.json" | cut -d' ' -f1)"
+GITLEAKS_HISTORY_FINDINGS="$(jq 'length' "$EVIDENCE_DIR/gitleaks-history.json")"
 COMPLETED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 jq -n \
-  --arg head "$HEAD_SHA" --arg source "$SOURCE_HASH" --arg config "$CONFIG_HASH" --arg tag "$IMAGE_TAG" \
-  --arg web_id "$WEB_ID" --arg test_id "$TEST_ID" --arg sbom_sha "$SBOM_SHA" --arg trivy_sha "$TRIVY_SHA" \
+  --arg head "$HEAD_SHA" --arg base "$BASE_SHA" --arg source "$SOURCE_HASH" --arg config "$CONFIG_HASH" --arg tag "$IMAGE_TAG" \
+  --arg web_id "$WEB_ID" --arg test_id "$TEST_ID" --arg sbom_sha "$SBOM_SHA" --arg trivy_sha "$TRIVY_SHA" --arg gitleaks_history_sha "$GITLEAKS_HISTORY_SHA" --arg gitleaks_diff_sha "$GITLEAKS_DIFF_SHA" --argjson gitleaks_history_findings "$GITLEAKS_HISTORY_FINDINGS" \
   --arg started "$STARTED_AT" --arg completed "$COMPLETED_AT" \
-  '{schema_version:"1.0",work_contract:"WC-078",result:"PASS",head_sha:$head,source_hash:$source,config_hash:$config,images:[{name:"waooaw-web",tag:$tag,id:$web_id},{name:"waooaw-test-ts",tag:$tag,id:$test_id}],docker_preflight:{before:"docker-before.jsonl",cleanup:["image-prune","builder-prune-older-than-24h"],after:"docker-after.jsonl"},smokes:[{route:"/",result:"PASS"},{route:"/not-a-public-route",status:404,result:"PASS"}],focused_examples:[{suite:"WC-078 public acquisition",result:"PASS"}],tests:[{suite:"Jest",result:"PASS"},{suite:"Playwright browser matrix",result:"PASS"}],coverage:{result:"PASS",report:"container output"},build:{result:"PASS"},browsers:{chromium:"PASS",firefox:"PASS",webkit:"PASS",compact_360:"PASS",intermediate_768:"PASS"},accessibility:{axe:"PASS",keyboard:"PASS",reduced_motion:"PASS"},performance:{result:"PASS",basis:"existing WC-078 browser budget gates"},seo:{metadata:"PASS",structured_data:"PASS",crawl_policy:"PASS"},consent_and_marketing:{granular_consent:"PASS",dnt_gpc:"PASS",destination_suppression:"PASS"},sbom:{path:"sbom.json",sha256:$sbom_sha},trivy:{result:"PASS",report:"trivy.json",sha256:$trivy_sha},gitleaks:{result:"PASS",report:"container output"},repository_gates:[{name:"git-diff-check",result:"PASS"}],started_at:$started,completed_at:$completed}' > "$OUTPUT"
+  '{schema_version:"1.0",work_contract:"WC-078",result:"PASS",head_sha:$head,source_hash:$source,config_hash:$config,images:[{name:"waooaw-web",tag:$tag,id:$web_id},{name:"waooaw-test-ts",tag:$tag,id:$test_id}],docker_preflight:{before:"docker-before.jsonl",cleanup:["image-prune","builder-prune-older-than-24h"],after:"docker-after.jsonl"},smokes:[{route:"/",result:"PASS"},{route:"/not-a-public-route",status:404,result:"PASS"}],focused_examples:[{suite:"WC-078 public acquisition",result:"PASS"}],tests:[{suite:"Jest",result:"PASS"},{suite:"Playwright browser matrix",result:"PASS"}],coverage:{result:"PASS",report:"container output"},build:{result:"PASS"},browsers:{chromium:"PASS",firefox:"PASS",webkit:"PASS",compact_360:"PASS",intermediate_768:"PASS"},accessibility:{axe:"PASS",keyboard:"PASS",reduced_motion:"PASS"},performance:{result:"PASS",basis:"existing WC-078 browser budget gates"},seo:{metadata:"PASS",structured_data:"PASS",crawl_policy:"PASS"},consent_and_marketing:{granular_consent:"PASS",dnt_gpc:"PASS",destination_suppression:"PASS"},sbom:{path:"sbom.json",sha256:$sbom_sha},trivy:{result:"PASS",report:"trivy.json",sha256:$trivy_sha},gitleaks:{result:"PASS",baseline_head:$base,history:{report:"gitleaks-history.json",sha256:$gitleaks_history_sha,pre_existing_findings:$gitleaks_history_findings},diff:{range:($base+".."+$head),report:"gitleaks-diff.json",sha256:$gitleaks_diff_sha,findings:0}},repository_gates:[{name:"git-diff-check",result:"PASS"}],started_at:$started,completed_at:$completed}' > "$OUTPUT"
 
 echo "WC-078 qualification PASS: $OUTPUT"
