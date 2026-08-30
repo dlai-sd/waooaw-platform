@@ -547,6 +547,167 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/professionals/offerable-versions:
+    get:
+      tags: [Professionals]
+      summary: List active and currently offerable professional versions
+      operationId: getOfferableProfessionalVersions
+      security: []
+      parameters:
+        - name: environment
+          in: query
+          required: true
+          schema: { type: string, enum: [demo, uat, prod] }
+      responses:
+        "200":
+          description: Public-safe offerable professional versions
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/OfferableProfessionalVersion" } }
+
+  /api/v1/professionals/{type}/versions/{version}/admission/drafts:
+    post:
+      tags: [Agent Admission]
+      summary: Create or replay an admission draft
+      operationId: createAgentAdmissionDraft
+      parameters:
+        - $ref: "#/components/parameters/AdmissionProfessionalType"
+        - $ref: "#/components/parameters/AdmissionProfessionalVersion"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateAgentAdmissionDraftRequest" } } }
+      responses:
+        "200": { description: Existing identical draft replayed, content: { application/json: { schema: { $ref: "#/components/schemas/AgentAdmission" } } } }
+        "201": { description: Draft created, content: { application/json: { schema: { $ref: "#/components/schemas/AgentAdmission" } } } }
+        "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }
+        "401": { $ref: "#/components/responses/AdmissionUnauthorized" }
+        "404": { $ref: "#/components/responses/AdmissionNotFound" }
+        "409": { $ref: "#/components/responses/AdmissionConflict" }
+
+  /api/v1/professionals/{type}/versions/{version}/admission/drafts/{draftId}/revisions/{revision}:
+    put:
+      tags: [Agent Admission]
+      summary: Append an immutable admission draft revision
+      operationId: putAgentAdmissionRevision
+      parameters:
+        - $ref: "#/components/parameters/AdmissionProfessionalType"
+        - $ref: "#/components/parameters/AdmissionProfessionalVersion"
+        - $ref: "#/components/parameters/AdmissionDraftId"
+        - $ref: "#/components/parameters/AdmissionRevision"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PutAgentAdmissionRevisionRequest" } } }
+      responses:
+        "200": { description: Revision stored, content: { application/json: { schema: { $ref: "#/components/schemas/AgentAdmission" } } } }
+        "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }
+        "401": { $ref: "#/components/responses/AdmissionUnauthorized" }
+        "404": { $ref: "#/components/responses/AdmissionNotFound" }
+        "409": { $ref: "#/components/responses/AdmissionConflict" }
+
+  /api/v1/professionals/{type}/versions/{version}/admission/drafts/{draftId}/validations:
+    post:
+      tags: [Agent Admission]
+      summary: Validate an exact admission revision deterministically
+      operationId: validateAgentAdmission
+      parameters:
+        - $ref: "#/components/parameters/AdmissionProfessionalType"
+        - $ref: "#/components/parameters/AdmissionProfessionalVersion"
+        - $ref: "#/components/parameters/AdmissionDraftId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ValidateAgentAdmissionRequest" } } }
+      responses:
+        "200": { description: Existing identical validation replayed, content: { application/json: { schema: { $ref: "#/components/schemas/AgentAdmissionValidation" } } } }
+        "202": { description: Validation completed, content: { application/json: { schema: { $ref: "#/components/schemas/AgentAdmissionValidation" } } } }
+        "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }
+        "401": { $ref: "#/components/responses/AdmissionUnauthorized" }
+        "404": { $ref: "#/components/responses/AdmissionNotFound" }
+        "409": { $ref: "#/components/responses/AdmissionConflict" }
+
+  /api/v1/professionals/{type}/versions/{version}/admission/drafts/{draftId}/validations/{validationId}/findings:
+    get:
+      tags: [Agent Admission]
+      summary: Read safe deterministic admission findings
+      operationId: getAgentAdmissionFindings
+      parameters:
+        - $ref: "#/components/parameters/AdmissionProfessionalType"
+        - $ref: "#/components/parameters/AdmissionProfessionalVersion"
+        - $ref: "#/components/parameters/AdmissionDraftId"
+        - $ref: "#/components/parameters/AdmissionValidationId"
+      responses:
+        "200": { description: Validation findings, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/AgentAdmissionFinding" } } } } }
+        "401": { $ref: "#/components/responses/AdmissionUnauthorized" }
+        "404": { $ref: "#/components/responses/AdmissionNotFound" }
+
+  /api/v1/professionals/{type}/versions/{version}/admission/submissions:
+    post:
+      tags: [Agent Admission]
+      summary: Submit an exact validated revision for independent review
+      operationId: submitAgentAdmission
+      parameters:
+        - $ref: "#/components/parameters/AdmissionProfessionalType"
+        - $ref: "#/components/parameters/AdmissionProfessionalVersion"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody: { $ref: "#/components/requestBodies/AdmissionTransition" }
+      responses: { "200": { $ref: "#/components/responses/AdmissionTransitioned" }, "201": { $ref: "#/components/responses/AdmissionTransitioned" }, "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }, "401": { $ref: "#/components/responses/AdmissionUnauthorized" }, "404": { $ref: "#/components/responses/AdmissionNotFound" }, "409": { $ref: "#/components/responses/AdmissionConflict" }, "423": { $ref: "#/components/responses/AdmissionBlocked" }, "503": { $ref: "#/components/responses/AdmissionUnavailable" } }
+
+  /api/v1/professionals/{type}/versions/{version}/admission/approvals:
+    post:
+      tags: [Agent Admission]
+      summary: Independently approve an exact admission revision
+      operationId: approveAgentAdmission
+      parameters: [{ $ref: "#/components/parameters/AdmissionProfessionalType" }, { $ref: "#/components/parameters/AdmissionProfessionalVersion" }, { $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/AdmissionTransition" }
+      responses: { "200": { $ref: "#/components/responses/AdmissionTransitioned" }, "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }, "401": { $ref: "#/components/responses/AdmissionUnauthorized" }, "404": { $ref: "#/components/responses/AdmissionNotFound" }, "409": { $ref: "#/components/responses/AdmissionConflict" }, "423": { $ref: "#/components/responses/AdmissionBlocked" }, "503": { $ref: "#/components/responses/AdmissionUnavailable" } }
+
+  /api/v1/professionals/{type}/versions/{version}/admission/rejections:
+    post:
+      tags: [Agent Admission]
+      summary: Independently reject an exact admission revision
+      operationId: rejectAgentAdmission
+      parameters: [{ $ref: "#/components/parameters/AdmissionProfessionalType" }, { $ref: "#/components/parameters/AdmissionProfessionalVersion" }, { $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/AdmissionTransition" }
+      responses: { "200": { $ref: "#/components/responses/AdmissionTransitioned" }, "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }, "401": { $ref: "#/components/responses/AdmissionUnauthorized" }, "404": { $ref: "#/components/responses/AdmissionNotFound" }, "409": { $ref: "#/components/responses/AdmissionConflict" }, "423": { $ref: "#/components/responses/AdmissionBlocked" }, "503": { $ref: "#/components/responses/AdmissionUnavailable" } }
+
+  /api/v1/professionals/{type}/versions/{version}/admission/activations:
+    post:
+      tags: [Agent Admission]
+      summary: Activate an approved and currently ready professional version
+      operationId: activateAgentAdmission
+      parameters: [{ $ref: "#/components/parameters/AdmissionProfessionalType" }, { $ref: "#/components/parameters/AdmissionProfessionalVersion" }, { $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/AdmissionTransition" }
+      responses: { "200": { $ref: "#/components/responses/AdmissionTransitioned" }, "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }, "401": { $ref: "#/components/responses/AdmissionUnauthorized" }, "404": { $ref: "#/components/responses/AdmissionNotFound" }, "409": { $ref: "#/components/responses/AdmissionConflict" }, "423": { $ref: "#/components/responses/AdmissionBlocked" }, "503": { $ref: "#/components/responses/AdmissionUnavailable" } }
+
+  /api/v1/professionals/{type}/versions/{version}/admission/suspensions:
+    post:
+      tags: [Agent Admission]
+      summary: Suspend an active professional version immediately
+      operationId: suspendAgentAdmission
+      parameters: [{ $ref: "#/components/parameters/AdmissionProfessionalType" }, { $ref: "#/components/parameters/AdmissionProfessionalVersion" }, { $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/AdmissionTransition" }
+      responses: { "200": { $ref: "#/components/responses/AdmissionTransitioned" }, "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }, "401": { $ref: "#/components/responses/AdmissionUnauthorized" }, "404": { $ref: "#/components/responses/AdmissionNotFound" }, "409": { $ref: "#/components/responses/AdmissionConflict" }, "423": { $ref: "#/components/responses/AdmissionBlocked" }, "503": { $ref: "#/components/responses/AdmissionUnavailable" } }
+
+  /api/v1/professionals/{type}/versions/{version}/admission/supersessions:
+    post:
+      tags: [Agent Admission]
+      summary: Supersede a professional version under an explicit migration policy
+      operationId: supersedeAgentAdmission
+      parameters: [{ $ref: "#/components/parameters/AdmissionProfessionalType" }, { $ref: "#/components/parameters/AdmissionProfessionalVersion" }, { $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/AdmissionTransition" }
+      responses: { "200": { $ref: "#/components/responses/AdmissionTransitioned" }, "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }, "401": { $ref: "#/components/responses/AdmissionUnauthorized" }, "404": { $ref: "#/components/responses/AdmissionNotFound" }, "409": { $ref: "#/components/responses/AdmissionConflict" }, "423": { $ref: "#/components/responses/AdmissionBlocked" }, "503": { $ref: "#/components/responses/AdmissionUnavailable" } }
+
+  /api/v1/professionals/{type}/versions/{version}/admission/retirements:
+    post:
+      tags: [Agent Admission]
+      summary: Retire a professional version while preserving lineage
+      operationId: retireAgentAdmission
+      parameters: [{ $ref: "#/components/parameters/AdmissionProfessionalType" }, { $ref: "#/components/parameters/AdmissionProfessionalVersion" }, { $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/AdmissionTransition" }
+      responses: { "200": { $ref: "#/components/responses/AdmissionTransitioned" }, "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }, "401": { $ref: "#/components/responses/AdmissionUnauthorized" }, "404": { $ref: "#/components/responses/AdmissionNotFound" }, "409": { $ref: "#/components/responses/AdmissionConflict" }, "423": { $ref: "#/components/responses/AdmissionBlocked" }, "503": { $ref: "#/components/responses/AdmissionUnavailable" } }
+
   /api/v1/whatsapp/webhook:
     post:
       tags: [WhatsApp Journey]
@@ -3270,7 +3431,62 @@ components:
         format: uuid
       description: Approval request UUID
 
+    AdmissionProfessionalType:
+      name: type
+      in: path
+      required: true
+      schema: { type: string, pattern: '^[A-Z][A-Z0-9_]{2,99}$' }
+    AdmissionProfessionalVersion:
+      name: version
+      in: path
+      required: true
+      schema: { type: string, pattern: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' }
+    AdmissionDraftId:
+      name: draftId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    AdmissionRevision:
+      name: revision
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    AdmissionValidationId:
+      name: validationId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  requestBodies:
+    AdmissionTransition:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/AgentAdmissionTransitionRequest" }
+
   responses:
+    AdmissionInvalidRequest:
+      description: Agent admission request is invalid
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/AdmissionProblem" } } }
+    AdmissionUnauthorized:
+      description: Authentication is required
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/AdmissionProblem" } } }
+    AdmissionNotFound:
+      description: Admission resource is absent or inaccessible
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/AdmissionProblem" } } }
+    AdmissionConflict:
+      description: Idempotency or aggregate state conflict
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/AdmissionProblem" } } }
+    AdmissionBlocked:
+      description: Admission transition is blocked by policy or readiness
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/AdmissionProblem" } } }
+    AdmissionUnavailable:
+      description: A mandatory admission dependency is unavailable
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/AdmissionProblem" } } }
+    AdmissionTransitioned:
+      description: Admission transition committed with Evidence First reference
+      content: { application/json: { schema: { $ref: "#/components/schemas/AgentAdmission" } } }
+
     VoiceContributionInvalidRequest:
       description: Voice request or state is invalid
       content: { application/problem+json: { schema: { $ref: "#/components/schemas/ProblemDetail" } } }
@@ -3470,6 +3686,117 @@ components:
           schema: { $ref: "#/components/schemas/RelationshipWorkspaceProblemDetailV1" }
 
   schemas:
+
+    AdmissionDigest:
+      type: string
+      pattern: '^sha256:[0-9a-f]{64}$'
+    AgentAdmissionState:
+      type: string
+      enum: [DRAFT, VALIDATING, REMEDIATION_REQUIRED, VALIDATED, READY_FOR_REVIEW, APPROVED, ACTIVE, SUSPENDED, SUPERSEDED, RETIRED, REJECTED]
+    CreateAgentAdmissionDraftRequest:
+      type: object
+      additionalProperties: false
+      required: [ownerSubjectId]
+      properties:
+        ownerSubjectId: { type: string, format: uuid }
+    PutAgentAdmissionRevisionRequest:
+      type: object
+      additionalProperties: false
+      required: [expectedStateVersion, admissionContentDigest, admissionContent]
+      properties:
+        expectedStateVersion: { type: integer, minimum: 0 }
+        admissionContentDigest: { $ref: "#/components/schemas/AdmissionDigest" }
+        admissionContent: { $ref: "./schemas/agent-admission-contract-v1.schema.json" }
+    ValidateAgentAdmissionRequest:
+      type: object
+      additionalProperties: false
+      required: [revision, admissionContentDigest, validatorProfile]
+      properties:
+        revision: { type: integer, minimum: 1 }
+        admissionContentDigest: { $ref: "#/components/schemas/AdmissionDigest" }
+        validatorProfile: { const: AAV-1.0.0 }
+    AgentAdmissionTransitionRequest:
+      type: object
+      additionalProperties: false
+      required: [expectedStateVersion, revision, admissionContentDigest, evidenceSetDigest, policyVersion]
+      properties:
+        expectedStateVersion: { type: integer, minimum: 0 }
+        revision: { type: integer, minimum: 1 }
+        admissionContentDigest: { $ref: "#/components/schemas/AdmissionDigest" }
+        evidenceSetDigest: { $ref: "#/components/schemas/AdmissionDigest" }
+        artifactDigest: { $ref: "#/components/schemas/AdmissionDigest" }
+        policyVersion: { type: string, minLength: 1 }
+        reasonCategory: { type: string, minLength: 1 }
+        successorVersion: { type: string }
+    AgentAdmission:
+      type: object
+      additionalProperties: false
+      required: [admissionId, professionalTypeId, professionalVersion, state, stateVersion, currentRevision, admissionContentDigest, createdAt, updatedAt]
+      properties:
+        admissionId: { type: string, format: uuid }
+        professionalTypeId: { type: string }
+        professionalVersion: { type: string }
+        state: { $ref: "#/components/schemas/AgentAdmissionState" }
+        stateVersion: { type: integer, minimum: 0 }
+        currentRevision: { type: integer, minimum: 0 }
+        admissionContentDigest: { $ref: "#/components/schemas/AdmissionDigest" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    AgentAdmissionValidation:
+      type: object
+      additionalProperties: false
+      required: [validationId, revision, profile, result, findingCount]
+      properties:
+        validationId: { type: string, format: uuid }
+        revision: { type: integer, minimum: 1 }
+        profile: { type: string }
+        result: { type: string, enum: [PASS, FAIL] }
+        findingCount: { type: integer, minimum: 0 }
+    AgentAdmissionFinding:
+      type: object
+      additionalProperties: false
+      required: [ruleId, severity, contractPath, constitutionalBasis, expected, observedCategory, remediation, blocking]
+      properties:
+        ruleId: { type: string, pattern: '^AAV-0(0[1-9]|1[0-4])$' }
+        severity: { type: string, enum: [ERROR, WARNING] }
+        contractPath: { type: string }
+        constitutionalBasis: { type: string }
+        expected: { type: string }
+        observedCategory: { type: string }
+        remediation: { type: string }
+        blocking: { type: boolean }
+    OfferableProfessionalVersion:
+      type: object
+      additionalProperties: false
+      required: [professionalTypeId, professionalVersion, admissionContentDigest, displayName, supportedChannels, skills]
+      properties:
+        professionalTypeId: { type: string }
+        professionalVersion: { type: string }
+        admissionContentDigest: { $ref: "#/components/schemas/AdmissionDigest" }
+        displayName: { type: string }
+        supportedChannels: { type: array, items: { type: string } }
+        skills:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [skillId, skillVersion, capability, businessKpi]
+            properties:
+              skillId: { type: string }
+              skillVersion: { type: string }
+              capability: { type: string }
+              businessKpi: { type: string }
+    AdmissionProblem:
+      type: object
+      additionalProperties: true
+      required: [type, title, status, code, correlationId]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        code: { type: string }
+        correlationId: { type: string }
 
     EvaluateRelationshipOfferabilityRequest:
       type: object

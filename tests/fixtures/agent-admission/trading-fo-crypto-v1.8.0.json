@@ -1,0 +1,49 @@
+{
+  "contractSchemaVersion": "1.0.0",
+  "canonicalizationProfile": "RFC8785",
+  "professionalIdentity": {
+    "professionalTypeId": "TRADING_FO_CRYPTO",
+    "professionalVersion": "1.8.0",
+    "ownerSubjectId": "22222222-2222-2222-2222-222222222222",
+    "supportedLanguages": ["en"],
+    "supportedChannels": ["WEB", "API"],
+    "agentSpecification": { "path": "architecture/reference/agents/trading-agent.md", "version": "1.8", "digest": "sha256:10aaff0fa8c8fec8ec5becce8e85255ce43e0d0c7202c396aea26c28d07ce450" },
+    "agentVerificationDocument": { "path": "avd/AVD-TRADING-v1.8.md", "version": "1.8", "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111" }
+  },
+  "complianceDeclaration": {
+    "constitutionalDna": { "path": "architecture/reference/agents/CONSTITUTIONAL_DNA.md", "version": "1", "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222" },
+    "agentBaseSpec": { "path": "architecture/reference/agents/AGENT-BASE-SPEC.md", "version": "1", "digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333" },
+    "platformAgentContract": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444" },
+    "decisionSpaceSchema": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555" },
+    "decisionConsequenceMap": { "path": "architecture/reference/agents/dcm/trading.md", "version": "1.8", "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666" },
+    "evidenceFirstOperations": ["PROPOSE_TRADE", "PLACE_ORDER"],
+    "emergencyStop": { "supported": true, "signal": "EMERGENCY_STOP", "maximumResponseSeconds": 1 },
+    "constitutionalConformanceTests": ["CCT-EF-04", "CCT-HO-03", "CCT-SEC-09"],
+    "dataClasses": ["FINANCIAL_DATA"],
+    "retentionPolicy": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:7777777777777777777777777777777777777777777777777777777777777777" },
+    "securityPosture": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:8888888888888888888888888888888888888888888888888888888888888888" },
+    "limitationBehavior": "Never infer customer risk authority or guarantee returns.",
+    "degradationBehavior": "Cancel pending execution and preserve market evidence."
+  },
+  "skillManifest": [
+    {
+      "skillId": "MARKET_SIGNAL_ANALYSIS",
+      "skillVersion": "1.8.0",
+      "capability": "Analyze bounded market events and propose, but never self-authorize, a trade.",
+      "businessKpi": "risk-adjusted proposal quality against the approved benchmark",
+      "inputs": ["market event", "approved risk envelope"],
+      "outputs": ["trade proposal", "risk evidence"],
+      "decisionSpaceSubset": ["analyze market", "propose trade"],
+      "tools": [{ "toolId": "BROKER_MARKET_DATA", "providerId": "APPROVED_BROKER", "defaultDenied": true, "governedAction": "PROPOSE_TRADE" }],
+      "constitutionalActions": ["PROPOSE_TRADE", "PLACE_ORDER"],
+      "configurationSchema": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:9999999999999999999999999999999999999999999999999999999999999999" },
+      "goalSchema": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+      "schedulePolicy": { "mode": "EVENT_DRIVEN", "customerAdjustable": false, "governedEvents": ["MARKET_SIGNAL", "RISK_LIMIT_CHANGE"] },
+      "reviewPolicy": { "performanceReviewDays": 7, "customerContractReviewDays": 30 },
+      "costUnits": { "marketAnalysis": 1 },
+      "trialBehavior": "Paper analysis only; order placement is unavailable.",
+      "degradationBehavior": "Fail closed and produce no trade proposal from stale data.",
+      "compatibility": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+    }
+  ]
+}

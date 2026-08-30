@@ -1,0 +1,234 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://waooaw.com/schemas/agent-admission-contract/1.0.0",
+  "title": "WAOOAW Agent Admission Contract",
+  "description": "Submitter-controlled immutable content for professional-version admission. Activation evidence is platform-owned and excluded.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractSchemaVersion",
+    "canonicalizationProfile",
+    "professionalIdentity",
+    "complianceDeclaration",
+    "skillManifest"
+  ],
+  "properties": {
+    "contractSchemaVersion": { "const": "1.0.0" },
+    "canonicalizationProfile": { "const": "RFC8785" },
+    "professionalIdentity": { "$ref": "#/$defs/professionalIdentity" },
+    "complianceDeclaration": { "$ref": "#/$defs/complianceDeclaration" },
+    "skillManifest": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/skillDefinition" }
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "nonEmptyStringArray": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "schemaReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "schemaDigest"],
+      "properties": {
+        "schemaVersion": { "$ref": "#/$defs/semver" },
+        "schemaDigest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "artifactReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "version", "digest"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9_./-]+$" },
+        "version": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "professionalIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "professionalTypeId",
+        "professionalVersion",
+        "ownerSubjectId",
+        "supportedLanguages",
+        "supportedChannels",
+        "agentSpecification",
+        "agentVerificationDocument"
+      ],
+      "properties": {
+        "professionalTypeId": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,99}$" },
+        "professionalVersion": { "$ref": "#/$defs/semver" },
+        "ownerSubjectId": { "type": "string", "format": "uuid" },
+        "supportedLanguages": { "$ref": "#/$defs/nonEmptyStringArray" },
+        "supportedChannels": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["WEB", "WHATSAPP", "API"] }
+        },
+        "agentSpecification": { "$ref": "#/$defs/artifactReference" },
+        "agentVerificationDocument": { "$ref": "#/$defs/artifactReference" },
+        "predecessorVersion": { "$ref": "#/$defs/semver" }
+      }
+    },
+    "complianceDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "constitutionalDna",
+        "agentBaseSpec",
+        "platformAgentContract",
+        "decisionSpaceSchema",
+        "decisionConsequenceMap",
+        "evidenceFirstOperations",
+        "emergencyStop",
+        "constitutionalConformanceTests",
+        "dataClasses",
+        "retentionPolicy",
+        "securityPosture",
+        "limitationBehavior",
+        "degradationBehavior"
+      ],
+      "properties": {
+        "constitutionalDna": { "$ref": "#/$defs/artifactReference" },
+        "agentBaseSpec": { "$ref": "#/$defs/artifactReference" },
+        "platformAgentContract": { "$ref": "#/$defs/schemaReference" },
+        "decisionSpaceSchema": { "$ref": "#/$defs/schemaReference" },
+        "decisionConsequenceMap": { "$ref": "#/$defs/artifactReference" },
+        "evidenceFirstOperations": { "$ref": "#/$defs/nonEmptyStringArray" },
+        "emergencyStop": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["supported", "signal", "maximumResponseSeconds"],
+          "properties": {
+            "supported": { "const": true },
+            "signal": { "type": "string", "minLength": 1 },
+            "maximumResponseSeconds": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "constitutionalConformanceTests": { "$ref": "#/$defs/nonEmptyStringArray" },
+        "dataClasses": { "$ref": "#/$defs/nonEmptyStringArray" },
+        "retentionPolicy": { "$ref": "#/$defs/schemaReference" },
+        "securityPosture": { "$ref": "#/$defs/schemaReference" },
+        "limitationBehavior": { "type": "string", "minLength": 1 },
+        "degradationBehavior": { "type": "string", "minLength": 1 }
+      }
+    },
+    "toolDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["toolId", "providerId", "defaultDenied", "governedAction"],
+      "properties": {
+        "toolId": { "type": "string", "minLength": 1 },
+        "providerId": { "type": "string", "minLength": 1 },
+        "defaultDenied": { "const": true },
+        "governedAction": { "type": "string", "minLength": 1 }
+      }
+    },
+    "nonGoalExemption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exemptionId",
+        "purpose",
+        "scope",
+        "measurableOperationalOutcome",
+        "approvingAuthority",
+        "constitutionalAcceptanceReference",
+        "effectiveFrom",
+        "effectiveUntil",
+        "revocationConditions"
+      ],
+      "properties": {
+        "exemptionId": { "type": "string", "format": "uuid" },
+        "purpose": { "type": "string", "minLength": 1 },
+        "scope": { "type": "string", "minLength": 1 },
+        "measurableOperationalOutcome": { "type": "string", "minLength": 1 },
+        "approvingAuthority": { "type": "string", "minLength": 1 },
+        "constitutionalAcceptanceReference": { "type": "string", "minLength": 1 },
+        "effectiveFrom": { "type": "string", "format": "date-time" },
+        "effectiveUntil": { "type": "string", "format": "date-time" },
+        "revocationConditions": { "$ref": "#/$defs/nonEmptyStringArray" }
+      }
+    },
+    "skillDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "skillId",
+        "skillVersion",
+        "capability",
+        "businessKpi",
+        "inputs",
+        "outputs",
+        "decisionSpaceSubset",
+        "tools",
+        "constitutionalActions",
+        "configurationSchema",
+        "goalSchema",
+        "schedulePolicy",
+        "reviewPolicy",
+        "costUnits",
+        "trialBehavior",
+        "degradationBehavior",
+        "compatibility"
+      ],
+      "properties": {
+        "skillId": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,99}$" },
+        "skillVersion": { "$ref": "#/$defs/semver" },
+        "capability": { "type": "string", "minLength": 1 },
+        "businessKpi": { "type": "string", "minLength": 1 },
+        "inputs": { "$ref": "#/$defs/nonEmptyStringArray" },
+        "outputs": { "$ref": "#/$defs/nonEmptyStringArray" },
+        "decisionSpaceSubset": { "$ref": "#/$defs/nonEmptyStringArray" },
+        "tools": { "type": "array", "items": { "$ref": "#/$defs/toolDeclaration" } },
+        "constitutionalActions": { "$ref": "#/$defs/nonEmptyStringArray" },
+        "configurationSchema": { "$ref": "#/$defs/schemaReference" },
+        "goalSchema": { "$ref": "#/$defs/schemaReference" },
+        "schedulePolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "customerAdjustable"],
+          "properties": {
+            "mode": { "enum": ["BOUNDED", "EVENT_DRIVEN", "SCHEDULED"] },
+            "customerAdjustable": { "type": "boolean" },
+            "minimumIntervalSeconds": { "type": "integer", "minimum": 1 },
+            "governedEvents": { "$ref": "#/$defs/nonEmptyStringArray" }
+          }
+        },
+        "reviewPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["performanceReviewDays", "customerContractReviewDays"],
+          "properties": {
+            "performanceReviewDays": { "type": "integer", "minimum": 1, "default": 30 },
+            "customerContractReviewDays": { "type": "integer", "minimum": 1, "default": 30 }
+          }
+        },
+        "costUnits": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "type": "number", "minimum": 0 }
+        },
+        "trialBehavior": { "type": "string", "minLength": 1 },
+        "degradationBehavior": { "type": "string", "minLength": 1 },
+        "compatibility": { "$ref": "#/$defs/schemaReference" },
+        "nonGoalExemption": { "$ref": "#/$defs/nonGoalExemption" }
+      }
+    }
+  }
+}

@@ -314,6 +314,7 @@ async def _authorize(
     relationship_id: uuid.UUID,
     body: object | None = None,
     idempotency_key: str | None = None,
+    expected_tenant_id: str | None = None,
 ) -> DelegatedContext:
     correlation_id = request.headers.get("X-Correlation-ID", "00000000-0000-0000-0000-000000000000")
     auth: WorkloadAuth | None = getattr(request.app.state, "relationship_workload_auth", None)
@@ -336,6 +337,7 @@ async def _authorize(
         lambda context: (
             context.relationship_id == str(relationship_id)
             and bool(context.tenant_id)
+            and (expected_tenant_id is None or context.tenant_id == expected_tenant_id)
             and bool(context.actor_subject)
             and context.correlation_id == correlation_id
             and (idempotency_key is None or context.idempotency_key == idempotency_key)

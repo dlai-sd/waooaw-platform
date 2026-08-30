@@ -20,6 +20,7 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
     const employment = readFileSync(join(root, 'lib/api/generated/apis/EmploymentApi.ts'), 'utf8');
     const workspace = readFileSync(join(root, 'lib/api/generated/apis/RelationshipWorkspaceApi.ts'), 'utf8');
     const voice = readFileSync(join(root, 'lib/api/generated/apis/VoiceContributionsApi.ts'), 'utf8');
+    const professionals = readFileSync(join(root, 'lib/api/generated/apis/ProfessionalsApi.ts'), 'utf8');
     const version = readFileSync(join(root, 'lib/api/generated/.openapi-generator/VERSION'), 'utf8').trim();
     const generatedApis = readdirSync(join(root, 'lib/api/generated/apis')).sort();
 
@@ -29,6 +30,7 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
     expect(script).toContain('--tag Identity');
     expect(script).toContain('--tag Conversation');
     expect(script).toContain('--tag Employment');
+    expect(script).toContain('--tag Professionals');
     expect(script).toContain('--tag "Relationship Workspace"');
     expect(script).toContain('--tag "Voice Contributions"');
     expect(script).toContain('--schema EmploymentRelationship');
@@ -37,7 +39,7 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
     expect(script).toContain('hideGenerationTimestamp=true');
     expect(script).toContain('pnpm exec prettier --write lib/api/generated');
     expect(script).not.toContain('--skip-validate-spec');
-    expect(generatedApis).toEqual(['ConversationApi.ts', 'EmploymentApi.ts', 'IdentityApi.ts', 'RelationshipWorkspaceApi.ts', 'VoiceContributionsApi.ts', 'index.ts']);
+    expect(generatedApis).toEqual(['ConversationApi.ts', 'EmploymentApi.ts', 'IdentityApi.ts', 'ProfessionalsApi.ts', 'RelationshipWorkspaceApi.ts', 'VoiceContributionsApi.ts', 'index.ts']);
     expect(version).toBe('7.17.0');
     for (const operation of [
       'listConversationMessages',
@@ -72,6 +74,14 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
       'submitVoiceContributionCorrection', 'sendVoiceContribution',
       'cancelVoiceContributionSession', 'requestVoicePayloadErasure',
     ]) expect(voice).toContain(`async ${operation}(`);
+    for (const operation of [
+      'getOfferableProfessionalVersions', 'createAgentAdmissionDraft',
+      'putAgentAdmissionRevision', 'validateAgentAdmission', 'getAgentAdmissionFindings',
+      'submitAgentAdmission', 'approveAgentAdmission', 'rejectAgentAdmission',
+      'activateAgentAdmission', 'suspendAgentAdmission', 'supersedeAgentAdmission',
+      'retireAgentAdmission',
+    ]) expect(professionals).toContain(`async ${operation}(`);
+    expect(professionals.match(/token\("BearerAuth", \[\]\)/g)).toHaveLength(11);
 
     for (const model of [
       'ConversationMessageV1',
@@ -89,6 +99,10 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
       'RelationshipHandoff',
       'NeutralContinuityEnvelope',
       'ReleaseEmploymentRelationshipStopRequest',
+      'AgentAdmission',
+      'AgentAdmissionValidation',
+      'AgentAdmissionFinding',
+      'OfferableProfessionalVersion',
     ]) expect(statSync(join(root, `lib/api/generated/models/${model}.ts`)).isFile()).toBe(true);
   });
 

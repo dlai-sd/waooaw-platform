@@ -25,6 +25,7 @@ docker compose --profile test run --rm --no-deps test-runner \
   --tag Identity \
   --tag Conversation \
   --tag Employment \
+  --tag Professionals \
   --tag "Relationship Workspace" \
   --tag "Voice Contributions" \
   --schema EmploymentRelationship \
@@ -39,8 +40,8 @@ docker run --rm \
   --input-spec "$CONTAINER_SLICE_PATH" \
   --generator-name typescript-fetch \
   --output /local/web/lib/api/generated \
-  --global-property "apis=Identity:Conversation:Employment:RelationshipWorkspace:VoiceContributions,models,supportingFiles=runtime.ts:models/index.ts:index.ts" \
+  --global-property "apis=Identity:Conversation:Employment:Professionals:RelationshipWorkspace:VoiceContributions,models,supportingFiles=runtime.ts:models/index.ts:index.ts" \
   --additional-properties supportsES6=true,typescriptThreePlus=true,useSingleRequestParameter=true,hideGenerationTimestamp=true
 
 docker compose --profile test run --rm --no-deps test-runner \
-  sh -lc 'cd /workspace/web && pnpm exec prettier --write lib/api/generated'
+  sh -lc 'cd /workspace/web && pnpm install --frozen-lockfile --store-dir=/tmp/pnpm-store && pnpm exec prettier --write lib/api/generated'

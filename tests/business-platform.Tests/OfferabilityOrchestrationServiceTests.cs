@@ -122,6 +122,35 @@ public sealed class OfferabilityOrchestrationServiceTests
                 InitiatingParticipantId = Guid.NewGuid(),
                 StateVersion = 3,
             });
+            var admission = new AgentAdmission
+            {
+                TenantId = tenantId,
+                ProfessionalTypeId = "DMA",
+                ProfessionalVersion = "1.0.0",
+                OwnerSubjectId = Guid.NewGuid(),
+                State = AgentAdmissionState.Active,
+                CurrentRevision = 1,
+                AdmissionContentDigest = "sha256:" + new string('a', 64),
+            };
+            db.AgentAdmissions.Add(admission);
+            db.AgentAdmissionRevisions.Add(new AgentAdmissionRevision
+            {
+                TenantId = tenantId,
+                AdmissionId = admission.AdmissionId,
+                Revision = 1,
+                ContractSchemaVersion = "1.0.0",
+                AdmissionContentDigest = admission.AdmissionContentDigest,
+                AdmissionContentJson = "{\"skillManifest\":[{\"skillId\":\"SKILL\"}]}",
+                ActorSubjectId = admission.OwnerSubjectId,
+            });
+            db.RelationshipSkillConfigurations.Add(new RelationshipSkillConfiguration
+            {
+                TenantId = tenantId,
+                RelationshipId = relationshipId,
+                SkillId = "SKILL",
+                SkillVersion = "1.0.0",
+                GoalId = Guid.NewGuid(),
+            });
             await db.SaveChangesAsync();
         }
         var guard = new PersistentOfferabilityGuard(factory);

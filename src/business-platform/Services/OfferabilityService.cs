@@ -2,6 +2,7 @@
 // constitutional_basis: C-002, C-023, C-059, C-089, C-091
 
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using Waooaw.BusinessPlatform.Infrastructure;
 
 namespace Waooaw.BusinessPlatform.Services;
@@ -110,5 +111,36 @@ public sealed class PersistentOfferabilityGuard(
             || decision.ExpiresAt <= DateTimeOffset.UtcNow
             || decision.RelationshipStateVersion != relationshipVersion)
             throw new ActivationEligibilityException("Current eligible offerability decision is required.");
+
+        var professionalType = await db.EmploymentRelationships.AsNoTracking()
+            .Where(value => value.TenantId == tenantId && value.RelationshipId == relationshipId)
+            .Select(value => value.ProfessionalType)
+            .SingleAsync(cancellationToken);
+        var admitted = await db.AgentAdmissions.AsNoTracking()
+            .Where(value => value.TenantId == tenantId
+                && value.ProfessionalTypeId == professionalType
+                && value.State == AgentAdmissionState.Active)
+            .ToListAsync(cancellationToken);
+        if (admitted.Count != 1)
+            throw new ActivationEligibilityException("Exactly one active admitted professional version is required.");
+
+        var admission = admitted[0];
+        var revision = await db.AgentAdmissionRevisions.AsNoTracking().SingleOrDefaultAsync(
+            value => value.TenantId == tenantId
+                && value.AdmissionId == admission.AdmissionId
+                && value.Revision == admission.CurrentRevision,
+            cancellationToken) ?? throw new ActivationEligibilityException("Current admission revision is unavailable.");
+        using var document = JsonDocument.Parse(revision.AdmissionContentJson);
+        var exemptSkills = document.RootElement.GetProperty("skillManifest").EnumerateArray()
+            .Where(value => value.TryGetProperty("nonGoalExemption", out _))
+            .Select(value => value.GetProperty("skillId").GetString())
+            .Where(value => value is not null)
+            .ToHashSet(StringComparer.Ordinal);
+        var configurations = await db.RelationshipSkillConfigurations.AsNoTracking()
+            .Where(value => value.TenantId == tenantId && value.RelationshipId == relationshipId)
+            .ToListAsync(cancellationToken);
+        if (configurations.Count == 0
+            || configurations.Any(value => value.GoalId is null && !exemptSkills.Contains(value.SkillId)))
+            throw new ActivationEligibilityException("Every activated skill requires a goal or admitted non-goal exemption.");
     }
 }

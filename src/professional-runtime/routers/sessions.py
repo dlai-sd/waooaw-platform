@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import uuid
 from datetime import datetime, timezone
 
@@ -13,6 +14,9 @@ from temporalio.client import Client as TemporalClient
 from temporalio.client import WorkflowExecutionStatus
 from temporalio.service import RPCError
 
+from admission_guard import AdmissionActivationBinding, AdmissionActivationGuard, AdmissionGuardError
+from relationship_workspace import _authorize
+from workload_identity import DelegatedContext, ServiceAuthError
 from workflows.paas_workflow import (
     PAASSessionInput,
     PAASSessionWorkflow,
@@ -36,6 +40,13 @@ class SessionStartRequest(BaseModel):
     decision_space_version: str = Field(..., description="Pinned Decision Space version")
     organisation_id: str = Field(..., description="Organisation UUID")
     tenant_id: str = Field(..., description="Tenant UUID (gRPC metadata)")
+    professional_type_id: str = Field(..., description="Admitted reusable professional type")
+    professional_version: str = Field(..., description="Exact admitted professional version")
+    admission_state: str = Field(..., description="BP-owned admission lifecycle projection")
+    admission_content_digest: str = Field(..., description="Exact admitted contract digest")
+    artifact_digest: str = Field(..., description="Exact admitted implementation artifact digest")
+    runtime_version: str = Field(..., description="Exact compatible Professional Runtime version")
+    customer_contract_digest: str = Field(..., description="Exact accepted customer contract digest")
 
 
 class SessionStartResponse(BaseModel):
@@ -108,6 +119,24 @@ async def get_temporal_client(request: Request) -> TemporalClient:
     return client
 
 
+def get_admission_guard() -> AdmissionActivationGuard:
+    return AdmissionActivationGuard(os.getenv("PR_RUNTIME_VERSION"), os.getenv("PR_ARTIFACT_DIGEST"))
+
+
+async def require_session_workload_context(request: Request, body: SessionStartRequest) -> DelegatedContext:
+    try:
+        return await _authorize(
+            request,
+            "/api/v1/paas/sessions",
+            "startPaasSession",
+            body.contract_id,
+            body.model_dump(mode="json"),
+            expected_tenant_id=body.tenant_id,
+        )
+    except ServiceAuthError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=exc.code) from exc
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -149,6 +178,8 @@ def _map_workflow_status(raw_status: WorkflowExecutionStatus | None) -> str:
 async def start_session(
     body: SessionStartRequest,
     temporal: TemporalClient = Depends(get_temporal_client),
+    admission_guard: AdmissionActivationGuard = Depends(get_admission_guard),
+    workload_context: DelegatedContext = Depends(require_session_workload_context),
 ) -> SessionStartResponse:
     """
     C-025: Start a PAASSessionWorkflow in Temporal.
@@ -159,6 +190,22 @@ async def start_session(
     C-025: Session isolation — each workflow holds its own Decision Space in memory.
             No shared mutable state across workflow instances.
     """
+        _ = workload_context
+    try:
+        admission_guard.require_admitted(
+            AdmissionActivationBinding(
+                professional_type_id=body.professional_type_id,
+                professional_version=body.professional_version,
+                admission_state=body.admission_state,
+                admission_content_digest=body.admission_content_digest,
+                artifact_digest=body.artifact_digest,
+                runtime_version=body.runtime_version,
+                customer_contract_digest=body.customer_contract_digest,
+            )
+        )
+    except AdmissionGuardError as exc:
+        raise HTTPException(status_code=status.HTTP_423_LOCKED, detail=exc.code) from exc
+
     session_id = str(uuid.uuid4())
     started_at = _now_iso()
 
