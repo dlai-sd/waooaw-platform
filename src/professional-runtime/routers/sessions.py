@@ -125,11 +125,16 @@ def get_admission_guard() -> AdmissionActivationGuard:
 
 async def require_session_workload_context(request: Request, body: SessionStartRequest) -> DelegatedContext:
     try:
+        relationship_id = uuid.UUID(body.contract_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="INVALID_CONTRACT_ID") from exc
+
+    try:
         return await _authorize(
             request,
             "/api/v1/paas/sessions",
             "startPaasSession",
-            body.contract_id,
+            relationship_id,
             body.model_dump(mode="json"),
             expected_tenant_id=body.tenant_id,
         )

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import uuid
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -90,10 +91,21 @@ async def test_session_start_requires_exact_bp_workload_context() -> None:
         request,
         "/api/v1/paas/sessions",
         "startPaasSession",
-        body.contract_id,
+        uuid.UUID(body.contract_id),
         body.model_dump(mode="json"),
         expected_tenant_id=body.tenant_id,
     )
+
+
+async def test_session_start_rejects_malformed_contract_id_before_authorization() -> None:
+    body = _admitted_session_request().model_copy(update={"contract_id": "not-a-uuid"})
+    with patch("routers.sessions._authorize", new=AsyncMock()) as authorize:
+        with pytest.raises(HTTPException) as failure:
+            await require_session_workload_context(MagicMock(), body)
+
+    assert failure.value.status_code == 422
+    assert failure.value.detail == "INVALID_CONTRACT_ID"
+    authorize.assert_not_awaited()
 
 
 async def test_session_start_fails_closed_when_workload_authentication_fails() -> None:
@@ -319,7 +331,7 @@ async def test_cancellation_is_never_swallowed_by_router_or_workflow() -> None:
 
 def _admitted_session_request() -> SessionStartRequest:
     return SessionStartRequest(
-        contract_id="contract-a",
+        contract_id="12345678-1234-1234-1234-123456789abc",
         professional_id="professional-a",
         decision_space_version="v1",
         organisation_id="organisation-a",
