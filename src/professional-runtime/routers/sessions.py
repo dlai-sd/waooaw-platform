@@ -133,7 +133,7 @@ async def require_session_workload_context(request: Request, body: SessionStartR
         return await _authorize(
             request,
             "/api/v1/paas/sessions",
-            "startPaasSession",
+            "startPAASSession",
             relationship_id,
             body.model_dump(mode="json"),
             expected_tenant_id=body.tenant_id,

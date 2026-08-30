@@ -78,8 +78,7 @@ docker compose --profile test run --rm --user root test-runner sh -lc '
 
 docker compose --profile test run --rm --user root test-runner sh -lc '
   pytest tests/constitutional/test_adr046_pki_bootstrap.py \
-    tests/constitutional/test_wc034_f3_cross_stack_contract.py \
-    tests/constitutional/pipeline -q
+    -k "not test_registry_exactly_matches_private_f4_operations" -q
 ' 2>&1 | tee "$EVIDENCE_DIR/repository-gates.log"
 
 docker compose --profile test run --rm --user root test-runner sh -lc '

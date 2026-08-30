@@ -12,6 +12,7 @@ from pathlib import Path
 
 import jsonschema
 import pytest
+import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -61,3 +62,30 @@ def test_unknown_or_missing_contract_fields_fail() -> None:
         jsonschema.Draft202012Validator(SCHEMA).validate(unknown)
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.Draft202012Validator(SCHEMA).validate(missing)
+
+
+def test_session_workload_grant_matches_canonical_internal_operation() -> None:
+    spec = yaml.safe_load(
+        (ROOT / "architecture/reference/api-specs/professional-runtime.openapi.yaml").read_text(encoding="utf-8")
+    )
+    registry = yaml.safe_load((ROOT / "infrastructure/workload-identity/registry.yaml").read_text(encoding="utf-8"))
+    operation = spec["paths"]["/api/v1/paas/sessions"]["post"]
+    matching_grants = [
+        grant
+        for grant in registry["route_grants"]
+        if grant["caller"] == "business-platform"
+        and grant["target"] == "professional-runtime"
+        and grant["route"] == "/api/v1/paas/sessions"
+    ]
+
+    assert operation["x-internal"] is True
+    assert matching_grants == [
+        {
+            "caller": "business-platform",
+            "target": "professional-runtime",
+            "method": "POST",
+            "route": "/api/v1/paas/sessions",
+            "operation": operation["operationId"],
+            "contract_major": int(spec["info"]["version"].split(".", maxsplit=1)[0]),
+        }
+    ]

@@ -90,7 +90,7 @@ async def test_session_start_requires_exact_bp_workload_context() -> None:
     authorize.assert_awaited_once_with(
         request,
         "/api/v1/paas/sessions",
-        "startPaasSession",
+        "startPAASSession",
         uuid.UUID(body.contract_id),
         body.model_dump(mode="json"),
         expected_tenant_id=body.tenant_id,
