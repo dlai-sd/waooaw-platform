@@ -190,7 +190,7 @@ async def start_session(
     C-025: Session isolation — each workflow holds its own Decision Space in memory.
             No shared mutable state across workflow instances.
     """
-        _ = workload_context
+    _ = workload_context
     try:
         admission_guard.require_admitted(
             AdmissionActivationBinding(
