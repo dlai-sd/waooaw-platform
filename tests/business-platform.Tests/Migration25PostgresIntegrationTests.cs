@@ -4,6 +4,7 @@
 using System.Text.Json;
 using Npgsql;
 using Testcontainers.PostgreSql;
+using Xunit;
 
 namespace Waooaw.BusinessPlatform.Tests;
 
@@ -145,12 +146,16 @@ public sealed class Migration25PostgresIntegrationTests(Migration25PostgresFixtu
         return admission;
     }
 
-    private static string RevisionSql(Guid tenant, Guid admission, Guid revision, int number, Guid? predecessor) => $"""
-        INSERT INTO business.agent_admission_revisions
-            (revision_id, tenant_id, admission_id, revision, contract_schema_version,
-             admission_content_digest, admission_content, actor_subject_id, predecessor_revision_id)
-        VALUES ('{revision:D}', '{tenant:D}', '{admission:D}', {number}, '1.0.0',
-            '{ContentDigest}', '{{"professionalIdentity":{{"supportedChannels":["WEB","WHATSAPP"]}},"skillManifest":[{{"skillId":"PRIMARY_SKILL","skillVersion":"1.0.0","capability":"Bounded delivery","businessKpi":"verified outcomes"}}]}}',
-            gen_random_uuid(), {(predecessor is null ? "NULL" : $"'{predecessor:D}'")});
-        """;
+    private static string RevisionSql(Guid tenant, Guid admission, Guid revision, int number, Guid? predecessor)
+    {
+        const string content = """{"professionalIdentity":{"supportedChannels":["WEB","WHATSAPP"]},"skillManifest":[{"skillId":"PRIMARY_SKILL","skillVersion":"1.0.0","capability":"Bounded delivery","businessKpi":"verified outcomes"}]}""";
+        return $"""
+            INSERT INTO business.agent_admission_revisions
+                (revision_id, tenant_id, admission_id, revision, contract_schema_version,
+                 admission_content_digest, admission_content, actor_subject_id, predecessor_revision_id)
+            VALUES ('{revision:D}', '{tenant:D}', '{admission:D}', {number}, '1.0.0',
+                '{ContentDigest}', '{content}', gen_random_uuid(),
+                {(predecessor is null ? "NULL" : $"'{predecessor:D}'")});
+            """;
+    }
 }

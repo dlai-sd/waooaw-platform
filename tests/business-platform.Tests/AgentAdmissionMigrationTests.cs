@@ -2,6 +2,7 @@
 // constitutional_basis: C-005, C-007, C-023, C-026, C-059, C-063
 
 using FluentAssertions;
+using Xunit;
 
 namespace Waooaw.BusinessPlatform.Tests;
 

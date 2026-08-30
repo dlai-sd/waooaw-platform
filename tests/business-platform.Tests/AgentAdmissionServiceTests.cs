@@ -4,6 +4,7 @@
 using Microsoft.EntityFrameworkCore;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
+using Xunit;
 
 namespace Waooaw.BusinessPlatform.Tests;
 

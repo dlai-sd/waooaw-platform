@@ -4,6 +4,7 @@
 using System.Text.Json;
 using FluentAssertions;
 using Waooaw.BusinessPlatform.Services;
+using Xunit;
 
 namespace Waooaw.BusinessPlatform.Tests;
 
