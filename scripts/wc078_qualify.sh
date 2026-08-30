@@ -58,7 +58,7 @@ STATUS_404="$(docker run --rm --network "$NETWORK" curlimages/curl:8.12.1 --sile
 test "$STATUS_404" = "404"
 
 docker run --rm "$TEST_IMAGE" pnpm --dir web exec tsc --noEmit
-docker run --rm -v "$PWD/$EVIDENCE_DIR:/out" "$TEST_IMAGE" pnpm --dir web exec jest --runInBand --coverage --coverageReporters=text --coverageReporters=json-summary --coverageDirectory=/out/coverage --json --outputFile=/out/jest.json
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD/$EVIDENCE_DIR:/out" "$TEST_IMAGE" node /root/.cache/node/corepack/v1/pnpm/9.15.9/bin/pnpm.cjs --dir web exec jest --runInBand --coverage --coverageReporters=text --coverageReporters=json-summary --coverageDirectory=/out/coverage --json --outputFile=/out/jest.json
 
 docker run --rm --user root --network "$NETWORK" \
   -v "$PWD:/workspace" \
