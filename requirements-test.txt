@@ -33,6 +33,7 @@ pgvector==0.3.5                 # AI Runtime RAG import contract
 transformers==5.5.0             # AI Runtime retriever import contract
 
 # ── Contract testing ─────────────────────────────────────────────────────────
+jsonschema>=4.23                 # JSON Schema validation for versioned agent admission contracts
 schemathesis>=3.0                # OpenAPI fuzzing — auto-generates adversarial tests from spec (WC-013)
 httpx>=0.27                     # async HTTP client for E2E API tests
 httpx2                          # starlette TestClient requires httpx2 (httpx deprecated)
