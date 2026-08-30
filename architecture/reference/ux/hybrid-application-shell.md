@@ -3,7 +3,7 @@
 **Document type:** Architecture Reference — Customer Experience
 **Office:** Enterprise Architect (INST-004)
 **Work Contract:** WC-034
-**Status:** REVIEW CANDIDATE — WC034-A02 complete; A03-A06 companion contracts published
+**Status:** RATIFIED - WC-034 released scope accepted through independent review and Founder merge
 **Constitutional basis:** C-001, C-009, C-023, C-034, C-042, C-059, C-065, C-076
 **Architecture decision:** ADR-017 — Next.js 14 TypeScript PWA
 

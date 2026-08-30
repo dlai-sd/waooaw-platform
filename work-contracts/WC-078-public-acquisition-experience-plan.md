@@ -3,7 +3,7 @@
 **Office:** Chief Solution Architect (INST-005)
 **Future executor:** Platform IT Expert (INST-010), Skill 16
 **Assigned by:** Founder instruction, 2026-08-30
-**Status:** PLAN COMPLETE - PENDING FOUNDER ACCEPTANCE; IMPLEMENTATION NOT AUTHORIZED FOR THIS SESSION
+**Status:** PLAN REPAIRED - PENDING FOUNDER ACCEPTANCE; IMPLEMENTATION NOT AUTHORIZED FOR THIS SESSION
 **Delivery unit:** Public landing, public content, search discovery, and consent-governed acquisition
 **Constitutional basis:** C-002, C-019, C-023, C-032, C-039, C-042, C-048, C-059, C-063, C-065, C-071, C-076, C-077, C-080, C-095, C-100
 
@@ -41,6 +41,10 @@ gates.
    `customersupport@dlaisd.com`. No other public email address is rendered.
 8. WAOOAW remains an AI-agent-managed platform. Public contact routing must not imply separate human
    departments or publish personal contact details.
+9. The single-contact rule controls WAOOAW public rendering when a legal source record contains an
+  internal, personal, departmental, telephone, or superseded contact. The legal substance, version,
+  effective date, rights, and escalation sequence remain unchanged; every rendered contact command
+  uses `customersupport@dlaisd.com` as the sole public intake address.
 
 ## Authority And Scope
 
@@ -52,6 +56,15 @@ After separate explicit Founder implementation authorization, INST-010 may modif
 application, its tests, Docker qualification tooling, CI alignment, and mandatory evidence needed to
 deliver tasks PA-00 through PA-12. Any change under `src/`, any new deployable service, or any cloud
 action requires its own authority and is not implied by this contract.
+
+### Plan Acceptance And Implementation Authority
+
+Founder acceptance of this repaired plan confirms the implementation boundaries and acceptance
+criteria only. It does not authorize source changes. A future implementation session starts only
+after the Founder explicitly authorizes WC-078 implementation for that session and every
+pre-implementation gate below is satisfied. Plan acceptance, implementation authorization,
+implementation completion, Founder acceptance of Demo, and release authorization are separate
+control points and must never be reported as one another.
 
 ### In Scope
 
@@ -93,9 +106,9 @@ action requires its own authority and is not implied by this contract.
 |---|---|---|
 | `web/WAOOAWHome.html` at historical blob `798c183^` | Founder-approved design/content baseline | Migration inventory only |
 | `architecture/reference/ux/constitutional-ux-vocabulary.md` | RATIFIED | Controlling language, navigation, footer, public-page, accessibility, performance, and content rules |
-| `architecture/reference/ux/hybrid-visual-system-contract.md` | Reconcile `REVIEW CANDIDATE` marker with WC-034 completion before implementation closure | Token, shape, typography, motion, imagery, and precedence rules |
-| `architecture/reference/ux/hybrid-application-shell.md` | Reconcile `REVIEW CANDIDATE` marker with WC-034 completion before implementation closure | App Router, server/client, route, privacy, and API boundaries |
-| `architecture/reference/ux/hybrid-ui-acceptance-contract.md` | Reconcile `REVIEW CANDIDATE` marker with WC-034 completion before implementation closure | Existing executable quality floor |
+| `architecture/reference/ux/hybrid-visual-system-contract.md` | `RATIFIED` before any implementation source change | Token, shape, typography, motion, imagery, and precedence rules; no implementation-time reconciliation |
+| `architecture/reference/ux/hybrid-application-shell.md` | `RATIFIED` before any implementation source change | App Router, server/client, route, privacy, and API boundaries; no implementation-time reconciliation |
+| `architecture/reference/ux/hybrid-ui-acceptance-contract.md` | `RATIFIED` before any implementation source change | Existing executable quality floor; no implementation-time reconciliation |
 | `architecture/reference/components/identity-boundary.md` | Canonical; provider activation gates remain controlling | Login/register and provider-readiness projection |
 | `architecture/reference/api-specs/business-platform.openapi.yaml` | Canonical | Generated identity/provider client source |
 | `adr/ADR-008-keycloak-identity-broker.md` | Accepted v3 | Keycloak-only credential authority |
@@ -105,8 +118,10 @@ action requires its own authority and is not implied by this contract.
 | `constitution/PROJECT_STATE.md` | Re-read at implementation and deployment start | Current session/environment authority |
 
 Before source changes, INST-010 must confirm Skill 16 remains active, all controlling specifications
-are accepted for implementation, the Founder has explicitly authorized WC-078 implementation for the
-current session, and the implementation branch is not `main`.
+are `RATIFIED`, the Founder has explicitly authorized WC-078 implementation for the current session,
+the public-catalogue and acquisition boundaries below remain approved and unchanged, and the
+implementation branch is not `main`. A `REVIEW CANDIDATE` controlling input is a stop, not a deferred
+implementation task.
 
 ## Component Determination And Runtime Boundary
 
@@ -125,6 +140,38 @@ Web Application component under ADR-017. The following are internal modules of t
 The Business Platform remains the sole public business API facade. Keycloak remains credential
 authority. Public pages do not read relationship, customer, tenant, evidence, billing, conversation,
 or institutional data.
+
+### Public Professional Catalogue Boundary
+
+The anonymous `/professionals` and `/professionals/[slug]` routes do not call the authenticated,
+outcome-based Business Platform endpoints `/api/v1/professionals` or
+`/api/v1/professionals/{professionalType}/disclosure`. They render only a typed, repository-backed
+public publication catalogue owned by the Web Application component. Each admitted record has a
+stable public slug, professional type and version, approved public copy, approved trial/price display
+state, publication state, modification date, and source approval reference.
+
+The catalogue is release configuration, not a production fallback mock or live availability source.
+It may say only what its approval record supports and must not infer runtime capacity, eligibility,
+price, customer fit, or current service health. Dynamic discovery or availability requires a
+separately approved Business Platform public contract. INST-010 must stop rather than expose the
+authenticated endpoints, invent an anonymous endpoint, query protected data, or manufacture a live
+availability projection.
+
+### Public Acquisition Runtime Boundary
+
+The same-origin acquisition endpoint and destination adapters are internal modules of the existing
+Web Application component. The endpoint is stateless across requests: it validates and minimizes the
+event, re-derives public context, applies consent and environment policy, and forwards the stable
+event ID to each enabled destination that supports retry deduplication. It introduces no database,
+Redis key, durable queue, file store, raw-event ledger, or new public Business Platform API.
+
+WC-078 stores no raw acquisition event first-party. It does not promise exactly-once dispatch.
+Browser retries reuse the same event ID, destination adapters preserve that ID, and bounded retries
+remain destination-specific. Consent state is limited to the versioned first-party preference
+defined below. Any durable acquisition audit, cross-instance deduplication, attribution store,
+retention service, or new adapter contract requires separate architecture, privacy, security, and
+Founder approval. INST-010 must stop rather than choose persistence technology or silently weaken
+this boundary.
 
 ## Public Information Architecture
 
@@ -351,7 +398,7 @@ must match before release. Necessary authentication and CSRF cookies are not des
 | `registration_completed` | Server confirms account completion | No account or identity field |
 | `hire_journey_started` | User invokes an approved trial/hire journey | `professional_type`, `entry_route` |
 | `contact_invoked` | User selects the support mail command | `contact_intent` |
-| `consent_updated` | Consent preference changes | Category booleans only; routed to first-party audit/operations, never advertising |
+| `consent_updated` | Consent preference changes | Category booleans only; updates the versioned first-party preference and is never routed to advertising |
 
 Common envelope version `1.0` contains only: UUID event ID, event name, schema version, UTC timestamp,
 public route ID, locale, environment, consent-category snapshot, optional UTM source/medium/campaign,
@@ -360,8 +407,9 @@ session-scoped deduplication ID. It does not contain raw referrer URL.
 
 The browser cannot add arbitrary fields. It submits a discriminated event union to the same-origin
 boundary. The server validates the event, re-derives route/environment, removes unapproved fields,
-applies consent and destination policy, deduplicates event ID plus event name, and returns `202`
-without revealing destination details. Invalid input returns a privacy-safe problem response.
+applies consent and destination policy, preserves the event ID for destination-native retry
+deduplication, and returns `202` without revealing destination details. The response confirms
+request acceptance, not destination delivery. Invalid input returns a privacy-safe problem response.
 
 ### Prohibited Acquisition Data
 
@@ -397,13 +445,16 @@ institutional layouts, bundles, network traces, and service-worker caches.
 
 - Accept only normalized `utm_source`, `utm_medium`, and `utm_campaign` values with bounded length and
   character allowlists. Discard arbitrary campaign parameters.
-- Attribution is first-party, consent-scoped, and bounded to the configured acquisition window.
+- Attribution is held only in the consent-scoped browser session, bounded to the configured
+  acquisition window, and sent only in an allowed event envelope. WC-078 creates no server-side
+  attribution profile or raw-event store.
 - Duplicate browser/server Meta events share one event ID. Retry uses the same ID with bounded
   exponential backoff; no unbounded queue or request blocking is permitted.
 - Destination failure does not fail navigation, authentication, registration, or hiring. It emits a
   privacy-safe operational metric without customer payload.
-- Raw accepted acquisition events have an explicit short retention period in configuration, not
-  exceeding the approved policy. Destination retention remains separately governed.
+- WAOOAW does not retain raw accepted acquisition events first-party under WC-078. Destination
+  retention remains separately governed and must be reflected in the approved public policy before
+  that destination is enabled.
 - Consent withdrawal prevents future dispatch and clears optional browser identifiers/cookies within
   the same interaction. No claim of deleting data already lawfully received by a destination is made
   unless confirmed by that destination.
@@ -446,7 +497,7 @@ metadata, structured data, fixtures, and expected results are deterministic repo
 
 | Task | Scope and required output | Focused development check |
 |---|---|---|
-| PA-00 | Re-read gates, inventory historical sections against current routes, record one migrate/adapt location per content family, and confirm no new deployable component. | Configuration/schema unit test skeleton fails for one invalid fixture, proving the check is active |
+| PA-00 | Re-read gates; stop unless all three controlling UX contracts are `RATIFIED`; inventory historical sections against current routes; record one migrate/adapt location per content family; confirm the public catalogue and stateless acquisition boundaries; and confirm no new deployable component. | Gate check plus configuration/schema unit test skeleton fails for one invalid fixture, proving the check is active |
 | PA-01 | Normalize public primitives and semantic/constitutional tokens; remove alternate fonts, hardcoded component colors, viewport-scaled type, and RTL-breaking physical properties in touched public styles. | Token schema plus light/dark and LTR/RTL component test |
 | PA-02 | Add typed site/theme/marketing configuration and same-shape locale catalogs with build/start validation. | Valid config loads; unknown key, unsafe URL, missing locale key, and secret-like public value fail |
 | PA-03 | Implement shared public header, compact navigation, announcement, Platform DNA, and complete footer using approved assets and route-aware links. | Header/footer component test plus one 360px browser smoke |
@@ -455,7 +506,7 @@ metadata, structured data, fixtures, and expected results are deterministic repo
 | PA-06 | Implement deterministic repository-backed blog index/detail publication model, category/byline/CTA rules, draft exclusion, and related internal links. | Published/draft/unknown slug examples and Article schema test |
 | PA-07 | Implement route metadata, canonical/alternate rules, social metadata/assets, robots, sitemap, and typed JSON-LD. | Endpoint examples parse HTML, robots, sitemap, canonicals, noindex, and structured data |
 | PA-08 | Implement consent controller, category persistence, DNT/GPC override, withdrawal, policy-version behavior, and cookie-policy/runtime reconciliation. | Accept/reject/withdraw/DNT/GPC browser examples with cookie and network assertions |
-| PA-09 | Implement same-origin acquisition endpoint, discriminated event schema, minimization, attribution normalization, deduplication, retention hooks, and privacy-safe failures. | Endpoint examples for every event plus prohibited-field, duplicate, malformed, and no-consent cases |
+| PA-09 | Implement the stateless same-origin acquisition endpoint, discriminated event schema, minimization, session-bounded attribution normalization, stable destination event identity, and privacy-safe failures without first-party raw-event persistence. | Endpoint examples for every event plus prohibited-field, same-event-ID retry, malformed, no-consent, and no-persistence cases |
 | PA-10 | Implement environment adapters for GA4, server-side GTM, Meta, and Search Console verification; enforce public-only loading and independent safe disablement. | Destination fixture examples for Demo/UAT/Production and protected-layout absence |
 | PA-11 | Extend existing F1 browser, axe, visual, privacy, PWA, performance, locale/RTL, metadata, CSP, and marketing suppression checks to the complete public surface. | Run only newly affected suites while repairing; no full campaign yet |
 | PA-12 | Freeze commit history, build hash-tagged images once, run the complete Docker qualification once, repair only evidenced defects, bind final evidence and PR author review to final HEAD, validate repository gates, and push once. | `wc078-qualification.json` reports PASS and binds source/config/image/evidence hashes |
@@ -652,7 +703,10 @@ artifact locator are recorded in the PR body.
   merge. Any later commit invalidates qualification and bound review evidence and requires
   requalification, rebinding, and a justified additional push.
 
-## Acceptance Matrix
+## Implementation-Completion Acceptance Matrix
+
+These conditions are future runtime completion evidence. Their presence and structural validation in
+an accepted plan does not mean the implementation tasks or acceptance conditions have passed.
 
 | ID | Acceptance condition |
 |---|---|
@@ -666,7 +720,7 @@ artifact locator are recorded in the PR body.
 | PA-ACC-08 | All contact paths resolve only to `customersupport@dlaisd.com` |
 | PA-ACC-09 | Login/Register remain Keycloak-brokered; provider visibility is server-owned and unavailable providers are not presented as active |
 | PA-ACC-10 | Consent accept, reject, withdrawal, DNT, GPC, and policy-version changes deterministically control optional storage and dispatch |
-| PA-ACC-11 | Event union rejects arbitrary/prohibited fields; server re-derives context, normalizes attribution, and deduplicates retries |
+| PA-ACC-11 | Event union rejects arbitrary/prohibited fields; server re-derives context, normalizes only session-bounded attribution, preserves stable event identity for destination-native retry deduplication, and creates no first-party raw-event persistence |
 | PA-ACC-12 | GA4, server-side GTM, Meta, and Search Console behavior is independently environment-gated and fails without blocking the customer journey |
 | PA-ACC-13 | Advertising code and events are absent from authenticated and institutional bundles, pages, service-worker caches, and network traces |
 | PA-ACC-14 | Security headers and exact CSP allowlists pass; no secret or protected value appears in source, browser, logs, evidence, URLs, or metadata |
@@ -715,7 +769,19 @@ artifact locator are recorded in the PR body.
 - Never self-approve, self-merge, push directly to `main`, mutate an environment without exact current
   authority, or treat search ranking as guaranteed.
 
-## Definition Of Done
+## Plan Definition Of Done
+
+- The public professional catalogue source is explicitly repository-backed and cannot be confused
+  with the authenticated Business Platform discovery endpoints or live availability.
+- The acquisition endpoint is explicitly stateless, introduces no persistence technology, and does
+  not claim exactly-once destination delivery or first-party raw-event retention.
+- All controlling UX specifications are named as `RATIFIED` pre-implementation gates; no
+  implementation-time status reconciliation remains.
+- Plan acceptance is distinct from implementation authorization and runtime completion evidence.
+- No unresolved plan decision requires INST-010 to invent an API, persistence architecture,
+  authorization rule, legal contact route, or completion claim.
+
+## Future Implementation Definition Of Done
 
 - This contract provides INST-010 complete route, content, configuration, hero, SEO, consent,
   acquisition, privacy, security, Docker, evidence, rollback, and stop contracts.
@@ -735,7 +801,13 @@ artifact locator are recorded in the PR body.
 
 ## Author Review
 
-**Result:** PASS - plan complete; implementation remains separately gated.
+**Original result:** PASS - plan complete; implementation remained separately gated.
+
+**Focused repair result:** PASS - one Founder-requested concurrent INST-004/INST-005 review pass was
+limited to the four reported architecture gaps. The repaired contract now makes UX ratification a
+pre-source gate, defines the repository-backed public catalogue boundary, defines a stateless
+no-persistence acquisition boundary, separates plan acceptance from implementation completion, and
+records the Founder-fixed single public contact rule. No generic second review was performed.
 
 INST-005 reviewed the complete WC-078 output against the Founder-approved historical page, ratified
 UX vocabulary, current App Router and F1 acceptance implementation, identity boundary, legal source
@@ -749,7 +821,7 @@ behavior, no-new-component status, LLM token controls, Docker-only execution, di
 development checks, image reuse, evidence-first retry, single final qualification, final-commit
 ordering, evidence/PR binding, rollback, and constitutional stops.
 
-Findings repaired in this contract include the conflict between the historical numeric timeline and
+Original findings repaired in this contract include the conflict between the historical numeric timeline and
 the approved non-numeric headline, ambiguity between public landing scope and later customer/admin UI,
 the difference between search optimization and vendor tags, browser/server Meta deduplication, DNT/GPC
 behavior, exact support routing, test frequency, disposable Docker cleanup, stale evidence after a
