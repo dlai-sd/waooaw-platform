@@ -136,7 +136,8 @@ async def require_session_workload_context(request: Request, body: SessionStartR
             "startPAASSession",
             relationship_id,
             body.model_dump(mode="json"),
-            expected_tenant_id=body.tenant_id,
+            None,
+            body.tenant_id,
         )
     except ServiceAuthError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=exc.code) from exc

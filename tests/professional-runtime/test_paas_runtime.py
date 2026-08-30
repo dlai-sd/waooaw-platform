@@ -93,7 +93,8 @@ async def test_session_start_requires_exact_bp_workload_context() -> None:
         "startPAASSession",
         uuid.UUID(body.contract_id),
         body.model_dump(mode="json"),
-        expected_tenant_id=body.tenant_id,
+        None,
+        body.tenant_id,
     )
 
 
