@@ -1,3 +1,6 @@
+// Implements: architecture/reference/ux/hybrid-ui-acceptance-contract.md §F1 Acceptance Matrix
+// Constitutional basis: C-023 (Evidence First), C-059 (Implementation Traceability)
+
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { encode } from 'next-auth/jwt';

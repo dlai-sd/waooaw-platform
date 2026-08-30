@@ -1,3 +1,6 @@
+// Implements: work-contracts/WC-078-public-acquisition-experience-plan.md §Acceptance Matrix
+// Constitutional basis: C-023 (Evidence First), C-059 (Implementation Traceability)
+
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { messages } from '../../lib/i18n';
