@@ -80,8 +80,8 @@ GITLEAKS_DIFF_SHA="$(sha256sum "$EVIDENCE_DIR/gitleaks-diff.json" | cut -d' ' -f
 GITLEAKS_HISTORY_FINDINGS="$(jq 'length' "$EVIDENCE_DIR/gitleaks-history.json")"
 COVERAGE_LINES="$(jq '.total.lines.pct' "$EVIDENCE_DIR/coverage/coverage-summary.json")"
 JEST_TESTS="$(jq '.numTotalTests' "$EVIDENCE_DIR/jest.json")"
-PLAYWRIGHT_PASSED="$(jq '[.. | objects | select(has("status") and .status == "expected")] | length' "$EVIDENCE_DIR/playwright.json")"
-PLAYWRIGHT_SKIPPED="$(jq '[.. | objects | select(has("status") and .status == "skipped")] | length' "$EVIDENCE_DIR/playwright.json")"
+PLAYWRIGHT_PASSED="$(jq '[.suites[].specs[].tests[] | select(.status == "expected")] | length' "$EVIDENCE_DIR/playwright.json")"
+PLAYWRIGHT_SKIPPED="$(jq '[.suites[].specs[].tests[] | select(.status == "skipped")] | length' "$EVIDENCE_DIR/playwright.json")"
 COMPLETED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 jq -n \
   --arg head "$HEAD_SHA" --arg base "$BASE_SHA" --arg source "$SOURCE_HASH" --arg config "$CONFIG_HASH" --arg tag "$IMAGE_TAG" \
