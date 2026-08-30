@@ -54,7 +54,7 @@ test('UX-SHELL-01 UX-PWA-01: public navigation is private and installable', asyn
   });
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'WAOOAW' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: messages.en.gettingStarted })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Three clear steps. Then productive work begins.' })).toBeVisible();
   await expect(page.getByRole('heading', { name: messages.en.expertProfessionals })).toBeVisible();
   await expect(page.getByRole('heading', { name: messages.en.constitutionalPromise })).toBeVisible();
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/manifest.webmanifest');

@@ -2,6 +2,7 @@
 // Constitutional basis: C-001 (Human Override), C-059 (Implementation Traceability)
 
 import { BriefcaseBusiness, Home, MessageSquare, Settings, ShieldCheck } from 'lucide-react';
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { AccountSwitchCommand, SignOutCommand } from '@/components/auth/SignOutCommand';
 import type { Messages } from '@/lib/i18n';
@@ -48,7 +49,7 @@ export function ProtectedAppShell({ children, messages, stopContext, variant }: 
           <a href="/home"><MessageSquare aria-hidden="true" size={21} /><span>{messages.conversation}</span></a>
           <a href="/home?view=plan"><Home aria-hidden="true" size={21} /><span>{messages.plan}</span></a>
           <a href="/home?view=work"><BriefcaseBusiness aria-hidden="true" size={21} /><span>{messages.work}</span></a>
-          <a href="/professionals/mine"><Settings aria-hidden="true" size={21} /><span>{messages.waooawExperts}</span></a>
+          <Link href="/professionals/mine"><Settings aria-hidden="true" size={21} /><span>{messages.waooawExperts}</span></Link>
         </>
       )}
     </nav>

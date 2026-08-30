@@ -1,0 +1,34 @@
+'use client';
+// Implements: work-contracts/WC-078-public-acquisition-experience-plan.md §Consent Categories And State
+// Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
+
+import { useEffect, useState } from 'react';
+import { consentCookieName, createConsentPreference, optionalConsent, parseConsentCookie } from '@/lib/consent';
+
+const optionalCookieNames = ['_ga', '_gid', '_fbp', '_fbc'];
+
+export function ConsentController() {
+  const [saved, setSaved] = useState(false);
+  const [analytics, setAnalytics] = useState(false);
+  const [advertising, setAdvertising] = useState(false);
+  const [privacySignal, setPrivacySignal] = useState(false);
+  useEffect(() => {
+    const signal = navigator.doNotTrack === '1' || (navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl === true;
+    const stored = parseConsentCookie(document.cookie);
+    const allowed = optionalConsent(stored, signal);
+    setPrivacySignal(signal);
+    setAnalytics(allowed.analytics);
+    setAdvertising(allowed.advertising);
+    setSaved(stored !== null || signal);
+  }, []);
+  function persist(nextAnalytics: boolean, nextAdvertising: boolean) {
+    const next = createConsentPreference(privacySignal ? false : nextAnalytics, privacySignal ? false : nextAdvertising);
+    document.cookie = `${consentCookieName}=${encodeURIComponent(JSON.stringify(next))}; Path=/; Max-Age=31536000; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`;
+    setAnalytics(next.analytics);
+    setAdvertising(next.advertising);
+    if (!next.analytics || !next.advertising) optionalCookieNames.forEach((name) => { document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax`; });
+    setSaved(true);
+  }
+  if (saved) return <button className="cookie-preferences" type="button" onClick={() => setSaved(false)}>Cookie preferences</button>;
+  return <aside className="consent-banner" aria-label="Cookie preferences"><div><strong>Your privacy choices</strong><p>Necessary preferences are always on. Optional categories remain off unless selected.{privacySignal ? ' Your browser privacy signal keeps optional categories off.' : ''}</p><label><input checked={analytics} disabled={privacySignal} onChange={(event) => setAnalytics(event.target.checked)} type="checkbox" /> Analytics</label><label><input checked={advertising} disabled={privacySignal} onChange={(event) => setAdvertising(event.target.checked)} type="checkbox" /> Advertising</label></div><div><button type="button" onClick={() => persist(false, false)}>Reject optional</button><button type="button" onClick={() => persist(analytics, advertising)}>Save preferences</button><button className="primary-link" type="button" disabled={privacySignal} onClick={() => persist(true, true)}>Accept optional</button></div></aside>;
+}

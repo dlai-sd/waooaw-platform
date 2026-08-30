@@ -2,6 +2,8 @@
 // Constitutional basis: C-001 (Human Override), C-059 (Implementation Traceability)
 
 import type { ReactNode } from 'react';
+import { PublicFooter } from '@/components/public/PublicFooter';
+import { siteConfig } from '@/config/site';
 import type { Messages } from '@/lib/i18n';
 import { Brand } from './Brand';
 import { ExperienceControls } from './ExperienceControls';
@@ -17,7 +19,7 @@ export function AppShell({ bottomNavigation, children, headerStatus, messages, s
   stopControl?: ReactNode;
   variant: ShellVariant;
 }) {
-  const publicLinks = [{ href: '/professionals', label: messages.professionals }, { href: '/blogs', label: messages.blogs }];
+  const publicLinks = siteConfig.publicNavigation;
   return (
     <div className={`app-shell app-shell-${variant}`}>
       <a className="skip-link" href="#main-content">{messages.skipToContent}</a>
@@ -32,6 +34,7 @@ export function AppShell({ bottomNavigation, children, headerStatus, messages, s
       </header>
       {sideNavigation}
       <main className="main-content" id="main-content" tabIndex={-1}>{children}</main>
+      {variant === 'public' ? <PublicFooter /> : null}
       {stopControl}
       {bottomNavigation}
     </div>

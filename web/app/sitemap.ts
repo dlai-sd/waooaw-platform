@@ -1,0 +1,4 @@
+// Implements: work-contracts/WC-078-public-acquisition-experience-plan.md §Crawl And Sitemap
+// Constitutional basis: C-059 (Implementation Traceability)
+import type { MetadataRoute } from 'next'; import { listPublishedArticles } from '@/config/blogs'; import { listPublicProfessionals } from '@/config/professionals'; import { absoluteUrl } from '@/config/site';
+export default function sitemap(): MetadataRoute.Sitemap { const fixed = ['', '/professionals', '/blogs', '/about', '/contact', '/careers', '/press', '/constitution', '/privacy', '/terms', '/cookies', '/refund', '/grievance']; return [...fixed.map((path) => ({ url: absoluteUrl(path || '/'), lastModified: '2026-08-30' })), ...listPublicProfessionals().map(({ slug, modifiedAt }) => ({ url: absoluteUrl(`/professionals/${slug}`), lastModified: modifiedAt })), ...listPublishedArticles().map(({ slug, modifiedAt }) => ({ url: absoluteUrl(`/blogs/${slug}`), lastModified: modifiedAt }))]; }
