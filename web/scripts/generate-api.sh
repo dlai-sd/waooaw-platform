@@ -7,7 +7,7 @@ set -eu
 readonly GENERATOR_IMAGE="openapitools/openapi-generator-cli:v7.17.0"
 readonly REPOSITORY_ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)"
 readonly OUTPUT_PATH="$REPOSITORY_ROOT/web/lib/api/generated"
-readonly SLICE_PATH="$(mktemp "$REPOSITORY_ROOT/sprint-context/.f3-web-openapi.XXXXXX.yaml")"
+readonly SLICE_PATH="$(mktemp "$REPOSITORY_ROOT/architecture/reference/api-specs/.web-openapi.XXXXXX.yaml")"
 readonly CONTAINER_SLICE_PATH="/local${SLICE_PATH#"$REPOSITORY_ROOT"}"
 
 chmod 0666 "$SLICE_PATH"

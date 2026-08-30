@@ -567,7 +567,7 @@ paths:
 
   /api/v1/professionals/{type}/versions/{version}/admission/drafts:
     post:
-      tags: [Agent Admission]
+      tags: [Professionals]
       summary: Create or replay an admission draft
       operationId: createAgentAdmissionDraft
       parameters:
@@ -587,7 +587,7 @@ paths:
 
   /api/v1/professionals/{type}/versions/{version}/admission/drafts/{draftId}/revisions/{revision}:
     put:
-      tags: [Agent Admission]
+      tags: [Professionals]
       summary: Append an immutable admission draft revision
       operationId: putAgentAdmissionRevision
       parameters:
@@ -608,7 +608,7 @@ paths:
 
   /api/v1/professionals/{type}/versions/{version}/admission/drafts/{draftId}/validations:
     post:
-      tags: [Agent Admission]
+      tags: [Professionals]
       summary: Validate an exact admission revision deterministically
       operationId: validateAgentAdmission
       parameters:
@@ -629,7 +629,7 @@ paths:
 
   /api/v1/professionals/{type}/versions/{version}/admission/drafts/{draftId}/validations/{validationId}/findings:
     get:
-      tags: [Agent Admission]
+      tags: [Professionals]
       summary: Read safe deterministic admission findings
       operationId: getAgentAdmissionFindings
       parameters:
@@ -644,7 +644,7 @@ paths:
 
   /api/v1/professionals/{type}/versions/{version}/admission/submissions:
     post:
-      tags: [Agent Admission]
+      tags: [Professionals]
       summary: Submit an exact validated revision for independent review
       operationId: submitAgentAdmission
       parameters:
@@ -656,7 +656,7 @@ paths:
 
   /api/v1/professionals/{type}/versions/{version}/admission/approvals:
     post:
-      tags: [Agent Admission]
+      tags: [Professionals]
       summary: Independently approve an exact admission revision
       operationId: approveAgentAdmission
       parameters: [{ $ref: "#/components/parameters/AdmissionProfessionalType" }, { $ref: "#/components/parameters/AdmissionProfessionalVersion" }, { $ref: "#/components/parameters/IdempotencyKey" }]
@@ -665,7 +665,7 @@ paths:
 
   /api/v1/professionals/{type}/versions/{version}/admission/rejections:
     post:
-      tags: [Agent Admission]
+      tags: [Professionals]
       summary: Independently reject an exact admission revision
       operationId: rejectAgentAdmission
       parameters: [{ $ref: "#/components/parameters/AdmissionProfessionalType" }, { $ref: "#/components/parameters/AdmissionProfessionalVersion" }, { $ref: "#/components/parameters/IdempotencyKey" }]
@@ -674,7 +674,7 @@ paths:
 
   /api/v1/professionals/{type}/versions/{version}/admission/activations:
     post:
-      tags: [Agent Admission]
+      tags: [Professionals]
       summary: Activate an approved and currently ready professional version
       operationId: activateAgentAdmission
       parameters: [{ $ref: "#/components/parameters/AdmissionProfessionalType" }, { $ref: "#/components/parameters/AdmissionProfessionalVersion" }, { $ref: "#/components/parameters/IdempotencyKey" }]
@@ -683,7 +683,7 @@ paths:
 
   /api/v1/professionals/{type}/versions/{version}/admission/suspensions:
     post:
-      tags: [Agent Admission]
+      tags: [Professionals]
       summary: Suspend an active professional version immediately
       operationId: suspendAgentAdmission
       parameters: [{ $ref: "#/components/parameters/AdmissionProfessionalType" }, { $ref: "#/components/parameters/AdmissionProfessionalVersion" }, { $ref: "#/components/parameters/IdempotencyKey" }]
@@ -692,7 +692,7 @@ paths:
 
   /api/v1/professionals/{type}/versions/{version}/admission/supersessions:
     post:
-      tags: [Agent Admission]
+      tags: [Professionals]
       summary: Supersede a professional version under an explicit migration policy
       operationId: supersedeAgentAdmission
       parameters: [{ $ref: "#/components/parameters/AdmissionProfessionalType" }, { $ref: "#/components/parameters/AdmissionProfessionalVersion" }, { $ref: "#/components/parameters/IdempotencyKey" }]
@@ -701,7 +701,7 @@ paths:
 
   /api/v1/professionals/{type}/versions/{version}/admission/retirements:
     post:
-      tags: [Agent Admission]
+      tags: [Professionals]
       summary: Retire a professional version while preserving lineage
       operationId: retireAgentAdmission
       parameters: [{ $ref: "#/components/parameters/AdmissionProfessionalType" }, { $ref: "#/components/parameters/AdmissionProfessionalVersion" }, { $ref: "#/components/parameters/IdempotencyKey" }]

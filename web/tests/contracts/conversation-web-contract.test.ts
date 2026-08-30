@@ -81,7 +81,7 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
       'activateAgentAdmission', 'suspendAgentAdmission', 'supersedeAgentAdmission',
       'retireAgentAdmission',
     ]) expect(professionals).toContain(`async ${operation}(`);
-    expect(professionals.match(/token\("BearerAuth", \[\]\)/g)).toHaveLength(11);
+    expect(professionals.match(/token\("BearerAuth", \[\]\)/g)).toHaveLength(13);
 
     for (const model of [
       'ConversationMessageV1',
