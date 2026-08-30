@@ -56,7 +56,7 @@ STATUS_404="$(docker run --rm --network "$NETWORK" curlimages/curl:8.12.1 --sile
 test "$STATUS_404" = "404"
 
 docker run --rm "$TEST_IMAGE" pnpm --dir web exec tsc --noEmit
-docker run --rm "$TEST_IMAGE" pnpm --dir web test:coverage -- --coverageReporters=text --coverageReporters=json-summary
+docker run --rm "$TEST_IMAGE" pnpm --dir web exec jest --runInBand --coverage --coverageReporters=text --coverageReporters=json-summary
 
 docker run --rm --user root --network "$NETWORK" \
   -v "$PWD:/workspace:ro" \
