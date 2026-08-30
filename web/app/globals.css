@@ -479,6 +479,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 .public-document h2 { font-size: 1.5rem; }
 .public-document li { margin-block: .6rem; line-height: 1.55; }
 .platform-dna { padding: 3rem max(1.25rem, calc((100% - 1120px) / 2)); background: var(--ink); color: var(--page); }
+.platform-dna .eyebrow { color: #ffb45d; }
 .platform-dna h2 { max-inline-size: 20ch; }
 .platform-dna dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-block: 2rem 0; }
 .platform-dna dl > div { padding-block-start: 1rem; border-block-start: 2px solid var(--orange); }
@@ -490,7 +491,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 .legal-source p, .legal-source td, .legal-source th { line-height: 1.65; }
 .legal-source table { display: block; max-inline-size: 100%; overflow-x: auto; border-collapse: collapse; }
 .legal-source th, .legal-source td { padding: .75rem; border: 1px solid var(--line); text-align: start; vertical-align: top; }
-.legal-source pre { max-inline-size: 100%; overflow-x: auto; padding: 1rem; background: var(--surface-raised); border: 1px solid var(--line); }
+.legal-source pre { max-inline-size: 100%; overflow-wrap: anywhere; white-space: pre-wrap; padding: 1rem; background: var(--surface-raised); border: 1px solid var(--line); }
 .legal-source blockquote { margin-inline: 0; padding-inline-start: 1rem; border-inline-start: 4px solid var(--brand-blue); }
 .publication-note { padding: 1rem; border-inline-start: 3px solid var(--orange); }
 .article-index > article time, .blog-detail time { color: var(--muted); font-size: .82rem; }
