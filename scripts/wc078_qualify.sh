@@ -65,6 +65,7 @@ docker run --rm --user root --network "$NETWORK" \
   -v "$NODE_MODULES_VOLUME:/workspace/web/node_modules" \
   -e "BASE_URL=http://${CONTAINER}:3000" \
   "$RUNNER_IMAGE" sh -lc "cd web && pnpm install --frozen-lockfile --store-dir=/tmp/pnpm-store && pnpm exec playwright test tests/e2e/wc078-public-acquisition.spec.ts --output=/workspace/$EVIDENCE_DIR/playwright --reporter=json > /workspace/$EVIDENCE_DIR/playwright.json"
+docker run --rm -v "$PWD/$EVIDENCE_DIR:/out" alpine:3.22 chown -R "$(id -u):$(id -g)" /out/playwright /out/playwright.json
 
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/$EVIDENCE_DIR:/out" anchore/syft:v1.27.1 "docker:${WEB_IMAGE}" -o cyclonedx-json=/out/sbom.json
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/$EVIDENCE_DIR:/out" aquasec/trivy:0.66.0 image --severity HIGH,CRITICAL --exit-code 1 --format json --output /out/trivy.json "$WEB_IMAGE"
