@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WAOOAW — Hire AI Agents for Your Business</title>
+  <meta name="description" content="Hire constitutionally governed AI professionals for your dental clinic, farm, trading, or home tuition. Try before you buy." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+  :root{
+    --blue:#1A66C2; --blue-dark:#1456A8; --blue-dim:rgba(26,102,194,.10); --blue-glow:rgba(26,102,194,.28);
+    --green:#3DAD35; --green-text:#1B6B17;
+    --orange:#F7941D; --orange-text:#A85B00;
+    --navy:#1E3352;
+    --c-stop:#DC2626; --c-boundary:#7C3AED; --c-trial:#0891B2;
+    --bg:#F4F7FB; --surface:#FFFFFF; --border:rgba(0,0,0,.07); --border-md:rgba(0,0,0,.13);
+    --text:#1E3352; --text-2:#4A5568; --text-3:#8A9BB0; --text-muted:#94A3B8;
+    --r-sm:8px; --r-md:12px; --r-lg:20px; --r-xl:28px;
+    --sh-sm:0 2px 8px rgba(0,0,0,.05); --sh-md:0 4px 20px rgba(0,0,0,.08);
+    --sh-lg:0 16px 48px rgba(0,0,0,.12); --sh-hover:0 20px 60px rgba(0,0,0,.15);
+    --font:'Noto Sans','Inter',system-ui,sans-serif;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--font);
+    background:
+      radial-gradient(ellipse 70% 65% at 0% 0%,   rgba(26,102,194,.12) 0%,transparent 50%),
+      radial-gradient(ellipse 55% 45% at 45% 0%,  rgba(61,173,53,.07)  0%,transparent 45%),
+      radial-gradient(ellipse 40% 30% at 0% 80%,  rgba(247,148,29,.07) 0%,transparent 45%),
+      #ffffff;
+    color:var(--text);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+
+  /* ANNOUNCEMENT BAR */
+  .announce-bar{position:fixed;top:0;left:0;right:0;height:47px;z-index:200;background:linear-gradient(90deg,#1A66C2 0%,#2e9e3a 48%,#b36010 100%);display:flex;align-items:center;justify-content:center;gap:10px;font-size:13px;color:rgba(255,255,255,.95);padding-inline:48px;white-space:nowrap;overflow:hidden}
+  .announce-bar b{color:#fff;font-weight:600}
+  .announce-bar a{color:#3DAD35;font-weight:700;text-decoration:none;border-bottom:1px solid rgba(61,173,53,.45);transition:border-color .2s}
+  .announce-bar a:hover{border-color:#3DAD35}
+  .announce-dismiss{position:absolute;right:16px;background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer;line-height:1;padding:0 4px;transition:color .2s}
+  .announce-dismiss:hover{color:#fff}
+  body.no-announce .announce-bar{display:none}
+
+  /* NAV — transparent at top, dissolves to white on scroll */
+  nav{position:fixed;top:47px;left:0;right:0;z-index:100;height:108px;padding-inline:clamp(1rem,4vw,3rem);display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0);backdrop-filter:none;border-bottom:none;transition:background .25s ease,box-shadow .25s ease,backdrop-filter .25s ease,border-color .25s ease}
+  nav.scrolled{background:rgba(255,255,255,.88);backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);box-shadow:0 1px 16px rgba(0,0,0,.07);border-bottom:1px solid rgba(0,0,0,.07)}
+  body.no-announce nav{top:0}
+  .nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none;height:36px}
+  .nav-logo img{height:96px;width:auto;display:block}
+  .nav-logo-fallback{display:none;align-items:center;gap:8px}
+  .logo-mark{width:96px;height:96px;border-radius:12px;background:linear-gradient(135deg,var(--blue),var(--green));display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:700;color:#fff}
+  .logo-text{font-size:16px;font-weight:700;color:var(--navy);letter-spacing:-.3px}
+  .nav-links{display:flex;align-items:center;gap:4px;list-style:none}
+  .nav-links a{color:var(--text-2);text-decoration:none;padding:6px 14px;border-radius:var(--r-sm);font-size:14px;font-weight:500;transition:color .2s,background .2s}
+  .nav-links a:hover{color:var(--navy);background:var(--blue-dim)}
+  .nav-actions{display:flex;align-items:center;gap:8px}
+  .nav-ghost{background:none;border:1px solid var(--border-md);color:var(--text-2);padding:7px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font);transition:border-color .2s,color .2s}
+  .nav-ghost:hover{border-color:var(--blue);color:var(--blue)}
+  .nav-cta{background:var(--blue);border:none;color:#fff;padding:8px 18px;border-radius:var(--r-sm);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);text-decoration:none;display:inline-flex;align-items:center;transition:background .2s,box-shadow .2s}
+  .nav-cta:hover{background:var(--blue-dark);box-shadow:0 4px 16px var(--blue-glow)}
+
+  /* LAYOUT */
+  main{padding-block-start:171px} /* 47px announce + 108px nav + 16px gap */
+  body.no-announce main{padding-block-start:124px}
+  .container{max-width:1280px;margin-inline:auto;padding-inline:clamp(1rem,4vw,3rem)}
+  .divider{height:1px;background:var(--border)}
+  /* Sections transparent — body gradient shows through; individual cards keep their own white bg */
+  .section{padding-block:clamp(3rem,6vw,5.5rem)}
+  .section-eyebrow{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--orange);margin-block-end:12px;text-align:center}
+  .section-title{font-size:clamp(1.9rem,3.5vw,2.8rem);font-weight:300;letter-spacing:-1px;line-height:1.15;color:var(--navy);margin-block-end:10px;text-align:center}
+  .section-title strong{font-weight:700}
+  .section-sub{font-size:17px;color:var(--text-2);line-height:1.65;max-width:560px;margin-block-end:3rem;text-align:center;margin-inline:auto}
+
+  /* Hero transparent — body gradient shows through full viewport width */
+  .hero{display:grid;grid-template-columns:1.1fr .9fr;align-items:center;gap:64px;padding-block:clamp(3rem,7vw,5.5rem);background:transparent}
+  .hero h1{font-size:clamp(2.8rem,5vw,4.2rem);font-weight:700;line-height:1.06;letter-spacing:-1.5px;color:var(--navy);margin-block-end:18px}
+  .hero-sub{font-size:26px;font-weight:400;color:var(--text-2);line-height:1.45;margin-block-end:36px}
+  .hero-sub strong{color:var(--navy);font-weight:700}
+  .hero-btns{display:flex;gap:14px;flex-wrap:wrap}
+  .btn-primary{display:inline-flex;align-items:center;gap:8px;background:var(--blue);color:#fff;padding:15px 26px;border-radius:var(--r-md);text-decoration:none;font-weight:600;font-size:15px;border:none;cursor:pointer;font-family:var(--font);transition:background .2s,box-shadow .2s,transform .15s;white-space:nowrap}
+  .btn-primary:hover{background:var(--blue-dark);box-shadow:0 8px 24px var(--blue-glow);transform:translateY(-1px)}
+  .btn-ghost{display:inline-flex;align-items:center;gap:8px;background:#fff;color:var(--text-2);padding:14px 24px;border-radius:var(--r-md);text-decoration:none;font-weight:500;font-size:15px;border:1px solid var(--border-md);cursor:pointer;font-family:var(--font);transition:border-color .2s,color .2s,box-shadow .2s;white-space:nowrap}
+  .btn-ghost:hover{border-color:var(--blue);color:var(--blue);box-shadow:var(--sh-sm)}
+
+  /* ═══ TIMELINE PANEL — built from scratch ═══
+     Track: 4 flex steps, each step = 25% width.
+     Circle center in each step = at 12.5%, 37.5%, 62.5%, 87.5% of track.
+     Base line: left:12.5% → right:12.5% (between first and last circle centers).
+     Fill:      left:12.5%, width grows 0→75% (0%=Trial, 25%=Hire, 50%=Learns, 75%=Autonomous)
+  ═══════════════════════════════════════════════ */
+  .hero-panel{background:transparent;border:none;border-radius:0;padding:36px 32px 32px;box-shadow:none}
+  .panel-label{text-align:center;font-size:16px;font-weight:700;letter-spacing:0;text-transform:none;color:var(--navy);margin-bottom:20px}
+  .tl-frame{border:1px solid rgba(26,102,194,.20);border-radius:20px;padding:28px 24px 24px;background:transparent}
+  .tl-track{display:flex;align-items:flex-start;position:relative}
+  .tl-step{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;z-index:2}
+  /* Base line: spans between circle centers */
+  .tl-base{position:absolute;top:24px;left:12.5%;right:12.5%;height:4px;background:#dce8f5;border-radius:4px}
+  /* Fill line: grows from first center toward last */
+  .tl-fill{position:absolute;top:24px;left:12.5%;height:4px;width:0%;max-width:75%;background:linear-gradient(90deg,#1A66C2,#3DAD35,#F7941D);border-radius:4px;transition:width .9s cubic-bezier(.4,0,.2,1)}
+  /* Circles */
+  .tl-circle{width:56px;height:56px;border-radius:50%;border:2.5px solid #d0dcea;background:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#b8c8d8;transition:all .3s ease}
+  .tl-step.active .tl-circle{border-color:#1A66C2;background:rgba(26,102,194,.08);color:#1A66C2;box-shadow:0 0 0 5px rgba(26,102,194,.10);transform:scale(1.08)}
+  .tl-step.done .tl-circle{background:linear-gradient(135deg,#1A66C2,#3DAD35);border-color:transparent;color:#fff}
+  .tl-name{font-size:12px;font-weight:600;color:#4A5568;text-align:center;white-space:nowrap}
+  .tl-time{font-size:11px;color:#8A9BB0;margin-top:-4px}
+  .tl-status{text-align:center;margin-top:24px;font-size:20px;font-weight:600;color:#1B6B17;min-height:28px}
+  /* ── Autonomous 24×7: triggers on ACTIVE (s3 is never 'done' in the cycle) ── */
+  #s3 .tl-circle{position:relative;overflow:visible}
+  /* Override the generic active style for s3 only */
+  #s3.active .tl-circle{background:#fff;border-color:transparent;box-shadow:0 0 0 5px rgba(26,102,194,.10);transform:scale(1.08)}
+  /* 24×7 text: transparent until s3 becomes active */
+  .tl-val{font-size:13px;font-weight:800;letter-spacing:-.3px;color:transparent;transition:color .4s ease}
+  #s3.active .tl-val,#s3.done .tl-val{color:#3DAD35}
+  /* Static grey track ring — always present */
+  #s3 .tl-circle::before{content:'';position:absolute;top:-8px;left:-8px;right:-8px;bottom:-8px;border-radius:50%;border:4px solid #e4eef7}
+  /* Spinning arc — activates on active OR done */
+  #s3.active .tl-circle::after,#s3.done .tl-circle::after{content:'';position:absolute;top:-8px;left:-8px;right:-8px;bottom:-8px;border-radius:50%;border:4px solid transparent;border-top-color:#1A66C2;border-right-color:#3DAD35;border-bottom-color:#F7941D;animation:tl-spin 1s linear infinite}
+  @keyframes tl-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+  /* AGENT CARDS — light, brand-tinted (Azure AI Foundry / GCloud inspiration) */
+  .agent-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+  .agent-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--sh-sm);transition:transform .25s cubic-bezier(.4,0,.2,1),box-shadow .25s cubic-bezier(.4,0,.2,1)}
+  .agent-card:hover{transform:translateY(-4px);box-shadow:0 16px 48px rgba(0,0,0,.10)}
+  /* Top accent border per card — only brand colors */
+  .card-dma  {border-top:3px solid #1A66C2}.card-agri {border-top:3px solid #3DAD35}
+  .card-trade{border-top:3px solid #F7941D}.card-tutor{border-top:3px solid #1E3352}
+  /* Header: light tinted area, no decorative gradient (UX vocab §3.3) */
+  .card-header{height:110px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;border-bottom:1px solid rgba(0,0,0,.05)}
+  .card-dma  .card-header{background:rgba(26,102,194,.06)}
+  .card-agri .card-header{background:rgba(61,173,53,.06)}
+  .card-trade.card-header,.card-trade .card-header{background:rgba(247,148,29,.06)}
+  .card-tutor.card-header,.card-tutor .card-header{background:rgba(30,51,82,.06)}
+  /* Icon on light bg */
+  .card-icon{font-size:40px;line-height:1}
+  /* Category badge — styled for light background, brand-colored text */
+  .card-badge{background:#fff;border:1px solid rgba(0,0,0,.10);border-radius:100px;padding:3px 12px;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+  .card-dma  .card-badge{color:#1A66C2;border-color:rgba(26,102,194,.25)}
+  .card-agri .card-badge{color:#1B6B17;border-color:rgba(61,173,53,.25)}
+  .card-trade .card-badge{color:#A85B00;border-color:rgba(247,148,29,.25)}
+  .card-tutor .card-badge{color:#1E3352;border-color:rgba(30,51,82,.25)}
+  .card-body{padding:22px;flex:1;display:flex;flex-direction:column}
+  .card-name{font-size:16px;font-weight:700;color:var(--navy);margin-block-end:5px;letter-spacing:-.2px}
+  .card-tagline{font-size:13px;color:var(--text-2);line-height:1.5;margin-block-end:16px}
+  .card-tags{display:flex;flex-wrap:wrap;gap:7px;margin-block-end:20px}
+  .ctag{background:#f0f4f9;border:1px solid #dce5ef;border-radius:100px;padding:4px 11px;font-size:11px;font-weight:500;color:var(--text-2)}
+  .card-dma   .ctag:first-child{background:var(--blue-dim);border-color:rgba(26,102,194,.3);color:var(--blue)}
+  .card-agri  .ctag:first-child{background:rgba(61,173,53,.09);border-color:rgba(61,173,53,.3);color:var(--green-text)}
+  .card-trade .ctag:first-child{background:rgba(247,148,29,.09);border-color:rgba(247,148,29,.3);color:var(--orange-text)}
+  .card-tutor .ctag:first-child{background:rgba(30,51,82,.08);border-color:rgba(30,51,82,.22);color:#1E3352}
+  .card-divider{height:1px;background:var(--border);margin-block-end:18px}
+  .card-cta{display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border-radius:10px;text-decoration:none;font-size:13px;font-weight:600;color:#fff;width:fit-content;transition:filter .2s,transform .15s}
+  .card-cta:hover{filter:brightness(1.12);transform:translateX(2px)}
+  .cta-arrow{display:inline-block;transition:transform .2s}
+  .card-cta:hover .cta-arrow{transform:translateX(3px)}
+  .card-dma   .card-cta{background:var(--blue);       box-shadow:0 4px 14px rgba(26,102,194,.28)}
+  .card-agri  .card-cta{background:#2e8a26;           box-shadow:0 4px 14px rgba(46,138,38,.28)}
+  .card-trade .card-cta{background:var(--orange-text);box-shadow:0 4px 14px rgba(168,91,0,.28)}
+  .card-tutor .card-cta{background:#1E3352;           box-shadow:0 4px 14px rgba(30,51,82,.28)}
+  .agents-footer{margin-block-start:32px;text-align:center}
+  .agents-footer a{font-size:14px;color:var(--blue);text-decoration:none;font-weight:500;border-block-end:1px solid rgba(26,102,194,.25);padding-block-end:1px;transition:border-color .2s}
+  .agents-footer a:hover{border-color:var(--blue)}
+
+  /* TRUST JOURNEY */
+  .story-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+  .story-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:24px;display:flex;flex-direction:column;gap:16px;box-shadow:var(--sh-sm);position:relative;overflow:hidden;transition:border-color .3s,transform .3s,box-shadow .3s}
+  .story-card:hover{transform:translateY(-2px);box-shadow:var(--sh-lg);border-color:var(--border-md)}
+  .story-card::after{content:'';position:absolute;inset-block-end:0;inset-inline:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent,var(--blue)),transparent);opacity:0;transition:opacity .3s}
+  .story-card:hover::after{opacity:1}
+  .story-card.dma{--accent:var(--blue)}.story-card.agri{--accent:var(--green)}.story-card.trade{--accent:var(--orange)}
+  .story-persona{display:flex;align-items:center;gap:10px}
+  .persona-avatar{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px}
+  .persona-name{font-size:14px;font-weight:700;color:var(--navy)}.persona-role{font-size:12px;color:var(--text-3)}
+  .story-streak{display:flex;align-items:center;gap:8px;background:rgba(247,148,29,.07);border:1px solid rgba(247,148,29,.2);border-radius:10px;padding:8px 12px}
+  .streak-icon{font-size:18px}.streak-text{font-size:12px;color:var(--orange-text);font-weight:600}
+  .heatmap-strip{display:flex;gap:3px;flex-wrap:wrap}
+  .heatmap-cell{width:10px;height:10px;border-radius:2px;background:rgba(0,0,0,.05)}
+  .heatmap-cell.l1{background:rgba(61,173,53,.2)}.heatmap-cell.l2{background:rgba(61,173,53,.45)}.heatmap-cell.l3{background:rgba(61,173,53,.7)}.heatmap-cell.l4{background:rgba(61,173,53,.95)}
+  .story-quote{font-size:14px;color:var(--text-2);line-height:1.6;font-style:italic;border-inline-start:2px solid var(--accent,var(--blue));padding-inline-start:12px}
+  .story-outcome{display:flex;gap:10px;flex-wrap:wrap}
+  .outcome-pill{background:#f0f4f9;border:1px solid var(--border);border-radius:100px;padding:4px 12px;font-size:12px;color:var(--text-2);display:flex;align-items:center;gap:5px}
+  .outcome-pill .num{color:var(--navy);font-weight:700}
+
+  /* HOW IT WORKS */
+  /* ══ Steps progress tracker ══ */
+  .steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;background:transparent;border:none;border-radius:0;overflow:visible;position:relative}
+  /* Gradient line connecting circle centres */
+  .steps-grid::before{content:'';position:absolute;top:19px;left:calc(100%/6);right:calc(100%/6);height:3px;background:linear-gradient(90deg,#1A66C2,#3DAD35,#F7941D);border-radius:2px;z-index:0}
+  .step-item{background:transparent;padding:0 28px 0;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;transition:none}
+  .step-item:hover{background:transparent}
+  /* Numbered circles — one brand color each */
+  .step-num{width:38px;height:38px;border-radius:50%;background:#fff;border:2.5px solid #1A66C2;color:#1A66C2;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;position:relative;z-index:1;box-shadow:0 0 0 5px rgba(26,102,194,.10)}
+  .step-item:nth-child(2) .step-num{border-color:#1B6B17;color:#1B6B17;box-shadow:0 0 0 5px rgba(27,107,23,.10)}
+  .step-item:nth-child(3) .step-num{border-color:#A85B00;color:#A85B00;box-shadow:0 0 0 5px rgba(168,91,0,.10)}
+  /* Time pill */
+  .step-time{font-size:11px;font-weight:700;color:#fff;background:#1A66C2;padding:2px 12px;border-radius:100px;margin-top:-4px}
+  .step-item:nth-child(2) .step-time{background:#1B6B17}
+  .step-item:nth-child(3) .step-time{background:#A85B00}
+  .step-title{font-size:15px;font-weight:700;color:var(--navy);margin-top:4px}
+  .step-desc{font-size:13px;color:var(--text-2);line-height:1.6;max-width:260px}
+
+  /* CONSTITUTIONAL PROMISE */
+  .promise-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-block-start:2.5rem}
+  .promise-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:24px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--sh-sm);transition:transform .2s,box-shadow .2s}
+  .promise-item:hover{transform:translateY(-2px);box-shadow:var(--sh-md)}
+  .promise-item.p-stop{border-color:rgba(220,38,38,.18)}
+  .promise-icon{font-size:28px}.promise-title{font-size:15px;font-weight:700;color:var(--navy)}.promise-desc{font-size:13px;color:var(--text-2);line-height:1.6}
+
+  /* FINAL CTA */
+  .final-cta{text-align:center;padding:clamp(3rem,6vw,5rem) 2rem;background:linear-gradient(135deg,var(--blue-dim) 0%,rgba(61,173,53,.06) 100%);border-radius:var(--r-xl);border:1px solid rgba(26,102,194,.12)}
+
+  /* PLATFORM DNA STRIP */
+  .dna-strip{background:var(--navy);padding:36px clamp(1rem,4vw,3rem);display:flex;flex-direction:column;align-items:center;gap:24px}
+  .dna-label{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--green)}
+  .dna-items{display:flex;align-items:center;justify-content:center;gap:40px;flex-wrap:wrap}
+  .dna-item{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+  .dna-item img{height:24px;width:auto;opacity:.9;filter:brightness(0) invert(1)}
+  .dna-fallback-mark{font-size:20px;line-height:1}
+  .dna-item-role{font-size:11px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.06em;font-weight:500}
+  .dna-item-name{font-size:13px;font-weight:600;color:#F1F5F9}
+  .dna-item-name a{color:inherit;text-decoration:none;border-block-end:1px solid rgba(255,255,255,.25)}
+  .dna-item-name a:hover{border-color:rgba(255,255,255,.7)}
+  .dna-item:last-of-type .dna-item-name{color:var(--green);font-size:14px}
+  .dna-sep{width:1px;height:40px;background:rgba(255,255,255,.15)}
+
+  /* FOOTER */
+  footer{background:var(--surface);padding:3rem clamp(1rem,4vw,3rem) 0;display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr 1fr;gap:2rem;border-block-start:1px solid var(--border);font-size:13px;color:var(--text-3);line-height:1.7}
+  .footer-brand{display:flex;flex-direction:column;gap:12px}
+  .footer-brand img{height:28px;width:auto}
+  .footer-brand-fallback{display:none;align-items:center;gap:8px}
+  .footer-brand p{max-width:220px;font-size:13px;color:var(--text-3);line-height:1.6}
+  .footer-col h4{font-size:13px;font-weight:700;color:var(--text-2);margin-block-end:10px}
+  .footer-col a{display:block;color:var(--text-3);text-decoration:none;padding:2px 0;transition:color .2s}
+  .footer-col a:hover{color:var(--blue)}
+  .footer-bottom{grid-column:1/-1;border-block-start:1px solid var(--border);padding:1.25rem 0 1.5rem;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text-3);flex-wrap:wrap;gap:.5rem}
+
+  /* COMMAND PALETTE */
+  .cmd-overlay{position:fixed;inset:0;z-index:500;background:rgba(30,51,82,.55);backdrop-filter:blur(8px);display:none;align-items:flex-start;justify-content:center;padding-block-start:15vh}
+  .cmd-overlay.open{display:flex}
+  .cmd-palette{width:min(580px,90vw);background:var(--surface);border:1px solid var(--border-md);border-radius:var(--r-xl);box-shadow:0 40px 80px rgba(30,51,82,.25);overflow:hidden;animation:cmd-in .15s ease-out}
+  @keyframes cmd-in{from{opacity:0;transform:translateY(-8px) scale(.98)}to{opacity:1;transform:none}}
+  .cmd-input-row{display:flex;align-items:center;gap:10px;padding:16px 20px;border-block-end:1px solid var(--border)}
+  .cmd-icon{font-size:18px;color:var(--text-3)}
+  .cmd-input{flex:1;background:none;border:none;outline:none;color:var(--text);font-family:var(--font);font-size:16px}
+  .cmd-input::placeholder{color:var(--text-muted)}
+  .cmd-kbd{background:#f0f4f9;border:1px solid var(--border-md);border-radius:5px;padding:2px 7px;font-size:12px;color:var(--text-3);font-family:monospace}
+  .cmd-results{padding:8px 0;max-height:360px;overflow-y:auto}
+  .cmd-slabel{font-size:11px;font-weight:700;color:var(--text-3);letter-spacing:.08em;text-transform:uppercase;padding:10px 20px 4px}
+  .cmd-item{display:flex;align-items:center;gap:12px;padding:10px 20px;cursor:pointer;transition:background .1s}
+  .cmd-item:hover,.cmd-item.selected{background:var(--blue-dim)}
+  .cmd-iicon{width:32px;height:32px;border-radius:8px;background:#f0f4f9;display:flex;align-items:center;justify-content:center;font-size:16px}
+  .cmd-iname{font-size:14px;color:var(--navy);font-weight:500}
+  .cmd-isub{font-size:12px;color:var(--text-3)}
+  .cmd-footer{border-block-start:1px solid var(--border);padding:10px 20px;display:flex;gap:16px;font-size:11px;color:var(--text-3)}
+
+  @media(max-width:1100px){.agent-grid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:580px){.agent-grid{grid-template-columns:1fr}}
+  @media(max-width:900px){.nav-links{display:none}.dna-sep{display:none}.dna-items{gap:24px}footer{grid-template-columns:1fr 1fr}}
+  @media(max-width:500px){footer{grid-template-columns:1fr}}
+  /* ═══ AUTH MODAL ═══ */
+  .auth-overlay{position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center}
+  .auth-overlay.open{display:flex}
+  .auth-modal{background:#fff;border-radius:16px;padding:40px 36px 32px;width:min(400px,90vw);position:relative;box-shadow:0 24px 60px rgba(0,0,0,.22);animation:auth-in .18s ease-out}
+  @keyframes auth-in{from{opacity:0;transform:translateY(-10px) scale(.97)}to{opacity:1;transform:none}}
+  .auth-close{position:absolute;top:14px;right:14px;background:none;border:none;font-size:20px;cursor:pointer;color:#9ca3af;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px;transition:background .15s,color .15s}
+  .auth-close:hover{background:#f3f4f6;color:#1E3352}
+  .auth-logo-wrap{display:flex;justify-content:center;margin-bottom:20px}
+  .auth-logo-wrap img{height:28px}
+  .auth-title{font-size:20px;font-weight:700;color:#1E3352;margin-bottom:22px;text-align:center;letter-spacing:-.3px}
+  /* Social buttons */
+  .auth-soc{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:11px 16px;border-radius:10px;border:1px solid rgba(0,0,0,.15);background:#fff;font-size:14px;font-weight:500;color:#1E3352;cursor:pointer;transition:background .15s,border-color .15s;margin-bottom:10px;font-family:var(--font)}
+  .auth-soc:hover{background:#f8fafc;border-color:rgba(0,0,0,.28)}
+  .auth-soc svg{flex-shrink:0}
+  .auth-wa{border-color:rgba(37,211,102,.35);color:#1a7a52}
+  .auth-wa:hover{background:rgba(37,211,102,.05)}
+  /* Divider */
+  .auth-div{display:flex;align-items:center;gap:12px;margin:14px 0;color:#9ca3af;font-size:12px}
+  .auth-div::before,.auth-div::after{content:'';flex:1;height:1px;background:#e5e7eb}
+  /* Inputs */
+  .auth-inp{width:100%;padding:11px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;font-family:var(--font);color:#1E3352;outline:none;transition:border-color .2s,box-shadow .2s;margin-bottom:10px;background:#fff}
+  .auth-inp:focus{border-color:#1A66C2;box-shadow:0 0 0 3px rgba(26,102,194,.12)}
+  .auth-inp::placeholder{color:#9ca3af}
+  select.auth-inp{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239ca3af' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
+  /* Email chip */
+  .auth-email-chip{font-size:13px;color:#4A5568;background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:9px 14px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  /* Submit */
+  .auth-submit{width:100%;padding:12px;border-radius:10px;background:var(--blue);color:#fff;border:none;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--font);transition:background .15s}
+  .auth-submit:hover{background:var(--blue-dark)}
+  /* Back button */
+  .auth-back{display:flex;align-items:center;gap:5px;background:none;border:none;color:#6b7280;font-size:13px;cursor:pointer;margin-bottom:14px;font-family:var(--font);padding:0;transition:color .15s}
+  .auth-back:hover{color:#1E3352}
+  /* Bottom links */
+  .auth-foot{margin-top:14px;text-align:center;font-size:13px;color:#6b7280}
+  .auth-foot a{color:var(--blue);text-decoration:none;font-weight:500}
+  .auth-foot a:hover{text-decoration:underline}
+  .auth-note{font-size:11px;color:#9ca3af;text-align:center;margin-top:6px}
+  /* Panel management */
+  .auth-panel{display:none}.auth-panel.active{display:block}
+
+  @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}}
+</style>
+</head>
+<body>
+<a href="#content" class="skip-link">Skip to main content</a>
+
+<!-- ANNOUNCEMENT BAR -->
+<div class="announce-bar" id="announceBar" role="banner" aria-label="Announcement">
+  <b>Try WAOOAW AI Agents free for 7 days</b>
+  &mdash; no card required, no commitment.
+  <a href="#agents">Start your free trial &rarr;</a>
+  <button class="announce-dismiss" onclick="dismissAnnounce()" aria-label="Dismiss announcement">&times;</button>
+</div>
+
+<!-- NAV -->
+<nav role="navigation" aria-label="Main navigation">
+  <a href="/" class="nav-logo" aria-label="WAOOAW Home">
+    <img src="../architecture/reference/ux/brand/waooaw-stylized-logo.png" alt="WAOOAW"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />
+    <div class="nav-logo-fallback">
+      <div class="logo-mark">W</div>
+      <span class="logo-text">WAOOAW</span>
+    </div>
+  </a>
+  <ul class="nav-links" role="list">
+    <li><a href="/" aria-current="page">Home</a></li>
+    <li><a href="#agents">Agents</a></li>
+    <li><a href="/blog">Blogs</a></li>
+    <li><a href="/settings">Settings</a></li>
+  </ul>
+  <div class="nav-actions">
+    <button class="nav-ghost" onclick="openCmd()" aria-label="Search ⌘K">⌘K</button>
+    <button class="nav-ghost" onclick="openAuth()" aria-label="Log in">Log in</button>
+  </div>
+</nav>
+
+<main id="content">
+
+<!-- HERO -->
+<section class="container hero" aria-labelledby="hero-h">
+  <div>
+    <h1 id="hero-h">Hire WAOOAW<br>AI Agents</h1>
+    <p class="hero-sub">Turn Your Business<br><strong>from Good to Great.</strong></p>
+    <div class="hero-btns">
+      <a href="#agents" class="btn-primary">Meet &amp; Interview Your WAOOAW AI Agent</a>
+      <button type="button" class="btn-ghost">Watch Demo</button>
+    </div>
+  </div>
+  <div class="hero-panel" role="complementary">
+    <p class="panel-label">From trial to autonomous &mdash; in minutes</p>
+    <div class="tl-frame">
+    <div class="tl-track">
+      <div class="tl-base"></div><div class="tl-fill" id="fill"></div>
+      <div class="tl-step" id="s0"><div class="tl-circle"></div><div class="tl-name">Trial</div><div class="tl-time">2 min</div></div>
+      <div class="tl-step" id="s1"><div class="tl-circle"></div><div class="tl-name">Hire</div><div class="tl-time">2 min</div></div>
+      <div class="tl-step" id="s2"><div class="tl-circle"></div><div class="tl-name">Learns</div><div class="tl-time">5 min</div></div>
+      <div class="tl-step" id="s3"><div class="tl-circle"><span class="tl-val">24&times;7</span></div><div class="tl-name">Autonomous</div><div class="tl-time">24&times;7</div></div>
+    </div>
+    <div class="tl-status" id="tl-status" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="container section" id="how" aria-labelledby="how-h">
+  <p class="section-eyebrow">Getting started</p>
+  <h2 id="how-h" class="section-title">Three steps in 10 minutes. <strong>Then it just works.</strong></h2>
+  <p class="section-sub">The WaooaW Concierge configures your agent through conversation &mdash; no forms, no technical setup, no commitment before you see results.</p>
+  <div class="steps-grid" role="list">
+    <div class="step-item" role="listitem"><div class="step-num">1</div><div class="step-time">2 min</div><div class="step-title">Tell us about your business</div><p class="step-desc">The WaooaW Concierge learns your business in a 5-minute conversation. No form. No technical knowledge needed.</p></div>
+    <div class="step-item" role="listitem"><div class="step-num">2</div><div class="step-time">2 min</div><div class="step-title">Your AI Agent is configured</div><p class="step-desc">We define your Agent&apos;s Decision Space &mdash; exactly what it can and cannot do. You review and confirm before anything happens.</p></div>
+    <div class="step-item" role="listitem"><div class="step-num">3</div><div class="step-time">5 min</div><div class="step-title">Watch it work. You&apos;re always in control.</div><p class="step-desc">Your Agent starts delivering. Emergency Stop is always one tap away. See every action in real time.</p></div>
+  </div>
+</section>
+
+
+<!-- AGENTS -->
+<section class="container section" id="agents" aria-labelledby="agents-h">
+  <p class="section-eyebrow">WaooaW Expert Professionals</p>
+  <h2 id="agents-h" class="section-title"><strong>Meet &amp; Interview</strong> Your WAOOAW AI Agent</h2>
+  <p class="section-sub">Choose the professional built for your business.</p>
+  <div class="agent-grid">
+    <article class="agent-card card-dma">
+      <div class="card-header"><div class="card-icon">&#x1F4E3;</div><span class="card-badge">Digital Marketing</span></div>
+      <div class="card-body">
+        <div class="card-name">WaooaW Expert Digital Marketing</div>
+        <p class="card-tagline">Grow on Instagram, Google &amp; WhatsApp while you focus on your work.</p>
+        <div class="card-tags"><span class="ctag">Instagram &amp; Reels</span><span class="ctag">Google Ads</span><span class="ctag">WhatsApp Campaigns</span><span class="ctag">GBP Optimization</span></div>
+        <div class="card-divider"></div>
+        <a href="#" class="card-cta">Interview this Agent <span class="cta-arrow">&rarr;</span></a>
+      </div>
+    </article>
+    <article class="agent-card card-agri">
+      <div class="card-header"><div class="card-icon">&#x1F33E;</div><span class="card-badge">Agricultural</span></div>
+      <div class="card-body">
+        <div class="card-name">WaooaW Expert Agricultural Advisor</div>
+        <p class="card-tagline">Hail alerts, mandi prices &amp; crop advisory in Marathi and Hindi on WhatsApp.</p>
+        <div class="card-tags"><span class="ctag">Weather &amp; Hail Alerts</span><span class="ctag">Mandi Prices</span><span class="ctag">Hindi &middot; Marathi</span><span class="ctag">WhatsApp Native</span></div>
+        <div class="card-divider"></div>
+        <a href="#" class="card-cta">Interview this Agent <span class="cta-arrow">&rarr;</span></a>
+      </div>
+    </article>
+    <article class="agent-card card-trade">
+      <div class="card-header"><div class="card-icon">&#x1F4CA;</div><span class="card-badge">Share Trading</span></div>
+      <div class="card-body">
+        <div class="card-name">WaooaW Expert Trading Advisor</div>
+        <p class="card-tagline">Trade with discipline. Your risk manager monitors markets so you don&apos;t have to.</p>
+        <div class="card-tags"><span class="ctag">NIFTY F&amp;O Analysis</span><span class="ctag">Risk Enforcement</span><span class="ctag">SEBI Compliant</span><span class="ctag">Daily Brief</span></div>
+        <div class="card-divider"></div>
+        <a href="#" class="card-cta">Interview this Agent <span class="cta-arrow">&rarr;</span></a>
+      </div>
+    </article>
+    <article class="agent-card card-tutor">
+      <div class="card-header"><div class="card-icon">&#x1F393;</div><span class="card-badge">Education</span></div>
+      <div class="card-body">
+        <div class="card-name">WaooaW Expert Private Tutor</div>
+        <p class="card-tagline">A personal tutor that adapts to your child&apos;s learning style. Always patient.</p>
+        <div class="card-tags"><span class="ctag">CBSE &amp; ICSE</span><span class="ctag">Adaptive Lessons</span><span class="ctag">Progress Tracking</span><span class="ctag">Parent Reports</span></div>
+        <div class="card-divider"></div>
+        <a href="#" class="card-cta">Interview this Agent <span class="cta-arrow">&rarr;</span></a>
+      </div>
+    </article>
+  </div>
+  <div class="agents-footer"><a href="#">More coming soon &mdash; Legal, HR, Accounting &rarr;</a></div>
+</section>
+
+
+<!-- TRUST JOURNEY -->
+<section class="container section" aria-labelledby="trust-h">
+  <p class="section-eyebrow">Trust Journey</p>
+  <h2 id="trust-h" class="section-title">Not metrics.<br><strong>A shared story.</strong></h2>
+  <p class="section-sub">Every WaooaW Expert builds a relationship with your business &mdash; one evidence-backed action at a time.</p>
+  <div class="story-grid">
+    <article class="story-card dma">
+      <div class="story-persona"><div class="persona-avatar" aria-hidden="true" style="background:rgba(26,102,194,.10)">&#x1F9B7;</div><div><div class="persona-name">Dr. Mehta</div><div class="persona-role">Dental Clinic &middot; Viman Nagar, Pune</div></div></div>
+      <div class="story-streak"><span class="streak-icon">&#x1F525;</span><span class="streak-text">WaooaW Expert Dental Marketing &middot; 47-day streak</span></div>
+      <div class="heatmap-strip" role="img" aria-label="Activity heatmap">
+        <div class="heatmap-cell l0"></div><div class="heatmap-cell l1"></div><div class="heatmap-cell l3"></div><div class="heatmap-cell l4"></div><div class="heatmap-cell l2"></div><div class="heatmap-cell l0"></div><div class="heatmap-cell l1"></div>
+        <div class="heatmap-cell l2"></div><div class="heatmap-cell l4"></div><div class="heatmap-cell l3"></div><div class="heatmap-cell l3"></div><div class="heatmap-cell l2"></div><div class="heatmap-cell l1"></div><div class="heatmap-cell l2"></div>
+        <div class="heatmap-cell l3"></div><div class="heatmap-cell l4"></div><div class="heatmap-cell l4"></div><div class="heatmap-cell l3"></div><div class="heatmap-cell l4"></div><div class="heatmap-cell l2"></div><div class="heatmap-cell l3"></div>
+        <div class="heatmap-cell l1"></div><div class="heatmap-cell l2"></div><div class="heatmap-cell l3"></div><div class="heatmap-cell l4"></div><div class="heatmap-cell l4"></div><div class="heatmap-cell l3"></div><div class="heatmap-cell l4"></div>
+      </div>
+      <blockquote class="story-quote">&ldquo;The agent posted while I was with patients. Three new appointment enquiries by Tuesday &mdash; I didn&apos;t have to ask it to do anything.&rdquo;</blockquote>
+      <div class="story-outcome"><div class="outcome-pill"><span class="num">63</span> enquiries</div><div class="outcome-pill"><span class="num">14</span> campaigns</div><div class="outcome-pill"><span class="num">0</span> violations</div></div>
+    </article>
+    <article class="story-card agri">
+      <div class="story-persona"><div class="persona-avatar" aria-hidden="true" style="background:rgba(61,173,53,.10)">&#x1F33F;</div><div><div class="persona-name">Suresh</div><div class="persona-role">1.5 hectare cotton farm &middot; Katol, Nagpur</div></div></div>
+      <div class="story-streak"><span class="streak-icon">&#x1F33E;</span><span class="streak-text">WaooaW Expert Agricultural Advisor &middot; 1 full Kharif season</span></div>
+      <blockquote class="story-quote" lang="mr">&ldquo;Mala hail warning 3 din aadhi milali. Majha cotton cover kelela hota. Shejarypeksha &#x20B9;8 jast mila.&rdquo;</blockquote>
+      <p style="font-size:12px;color:var(--text-3);font-style:italic;padding-inline-start:12px;border-inline-start:2px solid var(--green);margin-block-start:-8px">(Received 3-day early warning. Got &#x20B9;8/kg more than neighbours.)</p>
+      <div class="story-outcome"><div class="outcome-pill"><span class="num">&#x20B9;8/kg</span> above market</div><div class="outcome-pill"><span class="num">3 days</span> early warning</div><div class="outcome-pill">Hindi &middot; Marathi</div></div>
+    </article>
+    <article class="story-card trade">
+      <div class="story-persona"><div class="persona-avatar" aria-hidden="true" style="background:rgba(247,148,29,.10)">&#x1F4CA;</div><div><div class="persona-name">Rahul</div><div class="persona-role">F&amp;O Trader &middot; Pune &middot; &#x20B9;10L capital</div></div></div>
+      <div class="story-streak"><span class="streak-icon">&#x26A1;</span><span class="streak-text">23 consecutive sessions &mdash; loss limit maintained</span></div>
+      <blockquote class="story-quote">&ldquo;It paused the session the moment VIX spiked. I didn&apos;t have to watch the screen. It knew before I did.&rdquo;</blockquote>
+      <div class="story-outcome"><div class="outcome-pill"><span class="num">&#x20B9;8,500</span> daily ceiling</div><div class="outcome-pill"><span class="num">23</span> sessions, 0 breaches</div><div class="outcome-pill">SEBI compliant</div></div>
+    </article>
+  </div>
+</section>
+
+
+<!-- CONSTITUTIONAL PROMISE -->
+<section class="container section" aria-labelledby="promise-h">
+  <p class="section-eyebrow">The constitutional promise</p>
+  <h2 id="promise-h" class="section-title">Governed by a written<br><strong>constitution. Not fine print.</strong></h2>
+  <p class="section-sub">Every WaooaW Expert operates under 75 ratified constitutional principles &mdash; the law governing every action your agent takes on your behalf.</p>
+  <div class="promise-grid" role="list">
+    <div class="promise-item p-stop" role="listitem"><div class="promise-icon" style="color:var(--c-stop)">&#x1F6D1;</div><div class="promise-title">Emergency Stop &mdash; always</div><p class="promise-desc">One tap. Your agent freezes in &le;250ms &mdash; constitutionally guaranteed. No delays. No exceptions.</p></div>
+    <div class="promise-item" role="listitem"><div class="promise-icon" style="color:var(--green)">&#x2705;</div><div class="promise-title">Evidence before action</div><p class="promise-desc">Every action recorded before it succeeds. Full audit in your language, in plain terms &mdash; always.</p></div>
+    <div class="promise-item" role="listitem"><div class="promise-icon" style="color:var(--orange)">&#x1F91D;</div><div class="promise-title">Honest about limits</div><p class="promise-desc">When your agent cannot deliver, it says so immediately. It never bills for a result it can&apos;t achieve.</p></div>
+    <div class="promise-item" role="listitem"><div class="promise-icon" style="color:var(--c-trial)">&#x1F193;</div><div class="promise-title">Try before you buy</div><p class="promise-desc">Full trial &mdash; no payment, no card, no commitment. See your Agent actually work before you hire.</p></div>
+    <div class="promise-item" role="listitem"><div class="promise-icon" style="color:var(--c-boundary)">&#x1F510;</div><div class="promise-title">Your data stays yours</div><p class="promise-desc">DPDPA 2023 compliant. Your agent&apos;s knowledge of your business is never shared with any other customer.</p></div>
+    <div class="promise-item" role="listitem"><div class="promise-icon" style="color:var(--blue)">&#x1F4C8;</div><div class="promise-title">Gets better over time</div><p class="promise-desc">After 30 sessions, your agent earns expanded autonomy within your approved boundaries.</p></div>
+  </div>
+</section>
+
+
+<!-- FINAL CTA -->
+<section class="container section">
+  <div class="final-cta" aria-labelledby="cta-h">
+    <h2 id="cta-h" class="section-title" style="margin-inline:auto;max-width:560px;text-align:center">Your AI Agent is<br><strong>ready when you are.</strong></h2>
+    <p style="text-align:center;font-size:17px;color:var(--text-2);margin:1rem auto 2rem;max-width:440px;line-height:1.6">No contract. No setup fee. No technical knowledge required.</p>
+    <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
+      <a href="#agents" class="btn-primary" style="padding:15px 32px;font-size:16px">Start free trial &rarr;</a>
+      <button class="btn-ghost" style="padding:15px 26px;font-size:15px">See all AI Agents</button>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- PLATFORM DNA STRIP -->
+<div class="dna-strip" aria-label="Platform heritage">
+  <p class="dna-label">Platform DNA</p>
+  <div class="dna-items">
+    <div class="dna-item">
+      <img src="../architecture/reference/ux/brand/yashus-logo-dark.png" alt="Yashus" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><div class="dna-fallback-mark" style="display:none">&#x1F4A1;</div>
+      <span class="dna-item-role">Inspired by</span>
+      <span class="dna-item-name"><a href="https://yashus.in" target="_blank" rel="noopener">Yashus.in</a></span>
+    </div>
+    <div class="dna-sep" aria-hidden="true"></div>
+    <div class="dna-item">
+      <img src="../architecture/reference/ux/brand/dlaisd-logo-dark.png" alt="DLAISD" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><div class="dna-fallback-mark" style="display:none">&#x1F9E0;</div>
+      <span class="dna-item-role">Designed by</span>
+      <span class="dna-item-name"><a href="https://dlaisd.com" target="_blank" rel="noopener">DLAISD.com</a></span>
+    </div>
+    <div class="dna-sep" aria-hidden="true"></div>
+    <div class="dna-item">
+      <img src="../architecture/reference/ux/brand/waooaw-logo-strip.png" alt="WAOOAW" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><div class="dna-fallback-mark" style="display:none">&#x26A1;</div>
+      <span class="dna-item-role">Developed by</span>
+      <span class="dna-item-name">WAOOAW AI Agents (only)</span>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer role="contentinfo">
+  <div class="footer-brand">
+    <a href="/"><img src="../architecture/reference/ux/brand/waooaw-stylized-logo.png" alt="WAOOAW" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="footer-brand-fallback"><div class="logo-mark" style="width:24px;height:24px;font-size:11px">W</div><span class="logo-text" style="font-size:14px">WAOOAW</span></div></a>
+    <p>Ways Of Working for the Autonomous World. Constitutional AI professionals for every business.</p>
+    <p style="font-size:11px;color:var(--text-muted)">Inspired by Yashus.in &middot; Designed by DLAISD.com &middot; Developed by WAOOAW AI Agents</p>
+  </div>
+  <div class="footer-col"><h4>Platform</h4><a href="#how">How it works</a><a href="#agents">Our AI Agents</a><a href="/blog">Blogs</a><a href="/constitution">The Constitution</a></div>
+  <div class="footer-col"><h4>Company</h4><a href="/about">About Us</a><a href="/careers">Careers &#x2699;</a><a href="/press">Press &amp; Media</a><a href="/contact">Contact Us</a></div>
+  <div class="footer-col"><h4>Legal</h4><a href="/privacy">Privacy Policy</a><a href="/terms">Terms of Service</a><a href="/cookies">Cookie Policy</a><a href="/refund">Refund Policy</a><a href="/grievance">Grievance Policy</a></div>
+  <div class="footer-col"><h4>Support</h4><a href="/contact">Contact Us</a><a href="https://wa.me/918888912344" target="_blank" rel="noopener">WhatsApp Support</a><a href="/grievance">Grievance Officer</a></div>
+  <div class="footer-bottom">
+    <span>&copy; 2026 DLAI Satellite Data (OPC) Pvt Ltd &middot; CIN: U62090PN2024OPC230499 &middot; Viman Nagar, Pune 411014</span>
+    <span>Grievance Officer: Yogesh Khandge &middot; yogesh.khandge@dlaisd.com</span>
+  </div>
+</footer>
+
+<!-- AUTH MODAL — Figma-style inline module (URL stays at /) -->
+<div class="auth-overlay" id="authOverlay" role="dialog" aria-modal="true" aria-label="Sign in to WAOOAW" onclick="handleAuthBg(event)">
+  <div class="auth-modal">
+    <button type="button" class="auth-close" onclick="closeAuth()" aria-label="Close">&times;</button>
+
+    <div class="auth-logo-wrap">
+      <img src="../architecture/reference/ux/brand/waooaw-stylized-logo.png" alt="WAOOAW"
+           onerror="this.style.display='none'" />
+    </div>
+
+    <!-- Panel 1: Welcome -->
+    <div class="auth-panel active" id="auth-welcome">
+      <h2 class="auth-title">Welcome back</h2>
+
+      <button type="button" class="auth-soc" onclick="authWith('google')">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M17.64 9.2045c0-.638-.0573-1.2518-.1636-1.8409H9v3.4814h4.8436c-.2086 1.1255-.8427 2.0791-1.7959 2.7191v2.2595h2.908c1.7018-1.5668 2.6836-3.873 2.6836-6.62Z" fill="#4285F4"/>
+          <path d="M9 18c2.43 0 4.4673-.8059 5.9564-2.1814l-2.908-2.2595c-.8059.54-1.8368.8591-3.0484.8591-2.3454 0-4.3309-1.5845-5.0382-3.7132H.9574v2.3318C2.4382 15.9832 5.4818 18 9 18Z" fill="#34A853"/>
+          <path d="M3.9618 10.71c-.18-.54-.2827-1.1168-.2827-1.71s.1027-1.17.2827-1.71V4.9582H.9574A8.9961 8.9961 0 0 0 0 9c0 1.4523.3477 2.8282.9574 4.0418L3.9618 10.71Z" fill="#FBBC05"/>
+          <path d="M9 3.5795c1.3214 0 2.5077.4545 3.4405 1.346l2.5818-2.5818C13.4632.8918 11.4259 0 9 0 5.4818 0 2.4382 2.0168.9574 4.9582L3.9618 7.29C4.6691 5.1613 6.6546 3.5795 9 3.5795Z" fill="#EA4335"/>
+        </svg>
+        Continue with Google
+      </button>
+
+      <button type="button" class="auth-soc auth-wa" onclick="authWith('whatsapp')">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M9 0C4.0294 0 0 4.0294 0 9c0 1.5882.4118 3.0706 1.1294 4.3647L0 18l4.7647-1.1294A8.9647 8.9647 0 0 0 9 18c4.9706 0 9-4.0294 9-9s-4.0294-9-9-9Zm4.3235 12.4412c-.1765.4941-.8824.9-1.4118.9706-.3706.0529-.8471.0941-2.4706-.5294-2.0706-.7941-3.4-2.8941-3.5059-3.0294-.1059-.1353-.8824-1.1647-.8824-2.2235 0-1.0588.5471-1.5706.7647-1.7941.1765-.1882.4706-.2824.7412-.2824.0882 0 .1765 0 .2471.0059.2176.0059.3294.0235.4706.3706.1765.4235.6.1.6882 1.5294.0529.1294.0176.2353-.0353.3353-.0529.1-.2118.2706-.3353.3706-.1176.1-.2412.2118-.1118.4235.1294.2118.5706.9412 1.2235 1.5235.8412.7588 1.5 1.0059 1.7353 1.1176.1765.0882.3882.0706.5235-.0647l.4941-.5647c.1235-.1412.3118-.2235.5-.2235.0471 0 .0941.0059.1353.0176l1.5353.7235c.2118.1059.35.2706.35.4706 0 .1176-.0353.5-.2118.9706Z" fill="#25D366"/>
+        </svg>
+        Continue with WhatsApp
+      </button>
+
+      <div class="auth-div">or</div>
+
+      <input type="email" class="auth-inp" id="auth-email-input"
+             placeholder="Email or phone number"
+             autocomplete="email"
+             onkeydown="if(event.key==='Enter')continueEmail()" />
+      <button type="button" class="auth-submit" onclick="continueEmail()">Continue &rarr;</button>
+
+      <div class="auth-foot">
+        New to WAOOAW? <a href="#" onclick="showPanel('register');return false">Start free trial &rarr;</a>
+      </div>
+    </div>
+
+    <!-- Panel 2: Login -->
+    <div class="auth-panel" id="auth-login">
+      <button type="button" class="auth-back" onclick="showPanel('welcome')">&larr; Back</button>
+      <h2 class="auth-title">Sign in</h2>
+
+      <div class="auth-email-chip">&#x2709; <span id="auth-email-display"></span></div>
+
+      <input type="password" class="auth-inp" id="auth-pwd"
+             placeholder="Password"
+             autocomplete="current-password"
+             onkeydown="if(event.key==='Enter')submitLogin()" />
+      <button type="button" class="auth-submit" onclick="submitLogin()">Log in</button>
+
+      <div class="auth-foot">
+        <a href="#" onclick="return false">Forgot password?</a>
+        &nbsp;&middot;&nbsp;
+        <a href="#" onclick="showPanel('register');return false">Create account</a>
+      </div>
+    </div>
+
+    <!-- Panel 3: Register -->
+    <div class="auth-panel" id="auth-register">
+      <button type="button" class="auth-back" onclick="showPanel('welcome')">&larr; Back</button>
+      <h2 class="auth-title">Create your account</h2>
+
+      <button type="button" class="auth-soc" onclick="authWith('google')">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M17.64 9.2045c0-.638-.0573-1.2518-.1636-1.8409H9v3.4814h4.8436c-.2086 1.1255-.8427 2.0791-1.7959 2.7191v2.2595h2.908c1.7018-1.5668 2.6836-3.873 2.6836-6.62Z" fill="#4285F4"/><path d="M9 18c2.43 0 4.4673-.8059 5.9564-2.1814l-2.908-2.2595c-.8059.54-1.8368.8591-3.0484.8591-2.3454 0-4.3309-1.5845-5.0382-3.7132H.9574v2.3318C2.4382 15.9832 5.4818 18 9 18Z" fill="#34A853"/><path d="M3.9618 10.71c-.18-.54-.2827-1.1168-.2827-1.71s.1027-1.17.2827-1.71V4.9582H.9574A8.9961 8.9961 0 0 0 0 9c0 1.4523.3477 2.8282.9574 4.0418L3.9618 10.71Z" fill="#FBBC05"/><path d="M9 3.5795c1.3214 0 2.5077.4545 3.4405 1.346l2.5818-2.5818C13.4632.8918 11.4259 0 9 0 5.4818 0 2.4382 2.0168.9574 4.9582L3.9618 7.29C4.6691 5.1613 6.6546 3.5795 9 3.5795Z" fill="#EA4335"/>
+        </svg>
+        Continue with Google
+      </button>
+      <button type="button" class="auth-soc auth-wa" onclick="authWith('whatsapp')">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M9 0C4.0294 0 0 4.0294 0 9c0 1.5882.4118 3.0706 1.1294 4.3647L0 18l4.7647-1.1294A8.9647 8.9647 0 0 0 9 18c4.9706 0 9-4.0294 9-9s-4.0294-9-9-9Zm4.3235 12.4412c-.1765.4941-.8824.9-1.4118.9706-.3706.0529-.8471.0941-2.4706-.5294-2.0706-.7941-3.4-2.8941-3.5059-3.0294-.1059-.1353-.8824-1.1647-.8824-2.2235 0-1.0588.5471-1.5706.7647-1.7941.1765-.1882.4706-.2824.7412-.2824.0882 0 .1765 0 .2471.0059.2176.0059.3294.0235.4706.3706.1765.4235.6.1.6882 1.5294.0529.1294.0176.2353-.0353.3353-.0529.1-.2118.2706-.3353.3706-.1176.1-.2412.2118-.1118.4235.1294.2118.5706.9412 1.2235 1.5235.8412.7588 1.5 1.0059 1.7353 1.1176.1765.0882.3882.0706.5235-.0647l.4941-.5647c.1235-.1412.3118-.2235.5-.2235.0471 0 .0941.0059.1353.0176l1.5353.7235c.2118.1059.35.2706.35.4706 0 .1176-.0353.5-.2118.9706Z" fill="#25D366"/></svg>
+        Continue with WhatsApp
+      </button>
+
+      <div class="auth-div">or</div>
+
+      <input type="text" class="auth-inp" placeholder="Your name" autocomplete="name" />
+      <input type="email" class="auth-inp" placeholder="Email or phone number" autocomplete="email" />
+      <select class="auth-inp" aria-label="Preferred language">
+        <option value="en">&#x1F1EE;&#x1F1F3; English</option>
+        <option value="hi">&#x1F1EE;&#x1F1F3; &#x939;&#x93F;&#x928;&#x94D;&#x926;&#x940;</option>
+        <option value="mr">&#x1F1EE;&#x1F1F3; &#x92E;&#x930;&#x93E;&#x920;&#x940;</option>
+        <option value="ta">&#x1F1EE;&#x1F1F3; &#xBA4;&#xBAE;&#xBBF;&#xBB4;&#xBCD;</option>
+        <option value="te">&#x1F1EE;&#x1F1F3; &#xC24;&#xC46;&#xC32;&#xC41;&#xC17;&#xC41;</option>
+      </select>
+      <button type="button" class="auth-submit" onclick="submitRegister()">Start free trial &rarr;</button>
+      <p class="auth-note">No credit card required &middot; 7 days free</p>
+
+      <div class="auth-foot">
+        Already have an account? <a href="#" onclick="showPanel('welcome');return false">Log in</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- COMMAND PALETTE -->
+<div class="cmd-overlay" id="cmdOverlay" role="dialog" aria-modal="true" aria-label="Command palette" onclick="closeCmd(event)">
+  <div class="cmd-palette" onclick="event.stopPropagation()">
+    <div class="cmd-input-row">
+      <span class="cmd-icon">&#x2318;</span>
+      <input class="cmd-input" type="text" id="cmdInput" placeholder="Search agents, actions, or ask anything&hellip;" autocomplete="off" aria-label="Command palette search">
+      <kbd class="cmd-kbd">esc</kbd>
+    </div>
+    <div class="cmd-results" role="listbox">
+      <div class="cmd-slabel">Quick actions</div>
+      <div class="cmd-item selected" role="option"><div class="cmd-iicon">&#x1F193;</div><div><div class="cmd-iname">Try AI Agent free &mdash; no card required</div><div class="cmd-isub">5 min setup &middot; Start immediately</div></div></div>
+      <div class="cmd-item" role="option"><div class="cmd-iicon">&#x1F4E3;</div><div><div class="cmd-iname">Hire WaooaW Expert Digital Marketing</div><div class="cmd-isub">Instagram, Facebook, WhatsApp, Google Business</div></div></div>
+      <div class="cmd-item" role="option"><div class="cmd-iicon">&#x1F33E;</div><div><div class="cmd-iname">Hire WaooaW Expert Agricultural Advisor</div><div class="cmd-isub">Weather signals, mandi prices, crop advisory</div></div></div>
+      <div class="cmd-item" role="option"><div class="cmd-iicon">&#x1F4CA;</div><div><div class="cmd-iname">Hire WaooaW Expert Trading Advisor</div><div class="cmd-isub">NIFTY F&amp;O, risk-managed, SEBI compliant</div></div></div>
+      <div class="cmd-slabel">Navigate</div>
+      <div class="cmd-item" role="option"><div class="cmd-iicon">&#x1F4DC;</div><div><div class="cmd-iname">View the WAOOAW Constitution</div><div class="cmd-isub">75 ratified constitutional principles</div></div></div>
+      <div class="cmd-item" role="option"><div class="cmd-iicon">&#x1F510;</div><div><div class="cmd-iname">Log in to your account</div><div class="cmd-isub">Google &middot; WhatsApp OTP &middot; Apple</div></div></div>
+    </div>
+    <div class="cmd-footer"><span>&uarr;&darr; navigate</span><span>&crarr; select</span><span>esc close</span></div>
+  </div>
+</div>
+
+<script>
+/* Timeline */
+const tlS=['s0','s1','s2','s3'],tlL=['Starting your free trial\u2026','Configuring your WaooaW Expert\u2026','Your Agent is learning your business\u2026','Working for you, autonomously 24\xd77'],tlW=['0%','25%','50%','75%'];let tlC=0;
+function tlTick(){
+  tlS.forEach((id,i)=>{
+    const e=document.getElementById(id);
+    e.className='tl-step';
+    if(i<3)e.querySelector('.tl-circle').textContent=''; // clear checkmarks on non-auto steps
+    // s3: never touch innerHTML — .tl-val span lives there
+  });
+  for(let j=0;j<tlC;j++){
+    const e=document.getElementById(tlS[j]);
+    e.classList.add('done');
+    if(j<3)e.querySelector('.tl-circle').textContent='\u2713';
+  }
+  document.getElementById(tlS[tlC]).classList.add('active');
+  document.getElementById('fill').style.width=tlW[tlC];
+  document.getElementById('tl-status').textContent=tlL[tlC];
+  tlC=(tlC+1)%4;
+}
+tlTick();setInterval(tlTick,1900);
+
+/* Announcement bar dismiss */
+function dismissAnnounce(){
+  document.body.classList.add('no-announce');
+  localStorage.setItem('waooaw_announce_dismissed','1');
+}
+if(localStorage.getItem('waooaw_announce_dismissed')==='1'){
+  document.body.classList.add('no-announce');
+}
+
+/* Nav scroll dissolve: transparent at top → white on scroll */
+(function(){
+  const nav=document.querySelector('nav');
+  function onScroll(){
+    if(window.scrollY>10)nav.classList.add('scrolled');
+    else nav.classList.remove('scrolled');
+  }
+  window.addEventListener('scroll',onScroll,{passive:true});
+  onScroll(); // run once on load
+})();
+/* Auth modal — Figma-style inline module */
+function openAuth(panel){
+  panel=panel||'welcome';
+  document.getElementById('authOverlay').classList.add('open');
+  showPanel(panel);
+  setTimeout(function(){
+    var el=panel==='welcome'?document.getElementById('auth-email-input')
+          :panel==='login'?document.getElementById('auth-pwd'):null;
+    if(el)el.focus();
+  },120);
+}
+function closeAuth(){document.getElementById('authOverlay').classList.remove('open');}
+function handleAuthBg(e){if(e.target===document.getElementById('authOverlay'))closeAuth();}
+function showPanel(p){
+  document.querySelectorAll('.auth-panel').forEach(function(el){el.classList.remove('active');});
+  document.getElementById('auth-'+p).classList.add('active');
+}
+function continueEmail(){
+  var v=document.getElementById('auth-email-input').value.trim();
+  if(!v)return;
+  document.getElementById('auth-email-display').textContent=v;
+  showPanel('login');
+  setTimeout(function(){document.getElementById('auth-pwd').focus();},80);
+}
+function submitLogin(){
+  closeAuth();
+  alert('Login — Keycloak integration in IB-009.');
+}
+function submitRegister(){
+  closeAuth();
+  alert('Registration — Keycloak integration in IB-009.');
+}
+function authWith(provider){
+  closeAuth();
+  alert(provider==='google'?'Google OAuth — IB-009':'WhatsApp OTP — IB-009 + FA-002');
+}
+
+function openCmd(){document.getElementById('cmdOverlay').classList.add('open');setTimeout(()=>document.getElementById('cmdInput').focus(),50);}
+function closeCmd(e){if(!e||e.target===document.getElementById('cmdOverlay'))document.getElementById('cmdOverlay').classList.remove('open');}
+document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();openCmd();}if(e.key==='Escape')closeCmd();});
+</script>
+</body>
+</html>
