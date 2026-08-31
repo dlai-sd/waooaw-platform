@@ -121,11 +121,11 @@ gap.
 
 | Gap | Required owner repair before ARA-00 can pass | Responsible institution | State |
 |---|---|---|---|
-| ARA-GAP-01 Transport and isolation | Accept or reject Section 5.3.1 in an ADR that fixes discovery, identity, protection, deadlines, streaming, version negotiation, deployment isolation, and failure behavior | Enterprise Architecture / Founder | OPEN - blocks implementation |
-| ARA-GAP-02 Contract semantics | Publish accepted OpenAPI, schemas, compatibility matrix, and Professional Runtime amendment that make field bounds/nullability, version formats, state-version ownership, HTTP/error mapping, idempotency/replay retention, Temporal acceptance/reconciliation, SSE reconnect ordering, and Stop/resume bindings deterministic | Solution Architecture | OPEN - blocks implementation |
-| ARA-GAP-03 Security and privacy | Publish the accepted workload-identity, tenant-binding, anti-replay, route-grant/egress, secret-reference/rotation/redaction, request-size, privacy-safe error, and isolation test contract | Security Architecture | OPEN - blocks implementation |
-| ARA-GAP-04 Data and evidence | Publish the accepted invocation/result/event ownership, evidence-reference resolution, retention/erasure, indexing/RLS, migration, reconciliation, and rollback contract | Data Architecture and Constitutional owner | OPEN - blocks implementation |
-| ARA-GAP-05 Fail-safe Stop | Bind ADR-031 behavior to durable or buffered Stop attribution, recovery/reconciliation limits, customer acknowledgement, adapter termination, and fresh-authority resume validation | Constitutional owner and Solution Architecture | OPEN - blocks implementation |
+| ARA-GAP-01 Transport and isolation | Accept or reject Section 5.3.1 in an ADR that fixes discovery, identity, protection, deadlines, streaming, version negotiation, deployment isolation, and failure behavior | Enterprise Architecture / Founder | OWNER REPAIR DRAFTED - ADR-049 requires Founder acceptance |
+| ARA-GAP-02 Contract semantics | Publish accepted OpenAPI, schemas, compatibility matrix, and Professional Runtime amendment that make field bounds/nullability, version formats, state-version ownership, HTTP/error mapping, idempotency/replay retention, Temporal acceptance/reconciliation, SSE reconnect ordering, and Stop/resume bindings deterministic | Solution Architecture | OWNER REPAIR DRAFTED - Sections 5.2-5.6 and component amendment require acceptance |
+| ARA-GAP-03 Security and privacy | Publish the accepted workload-identity, tenant-binding, anti-replay, route-grant/egress, secret-reference/rotation/redaction, request-size, privacy-safe error, and isolation test contract | Security Architecture | OWNER REPAIR DRAFTED - Section 6.1 requires acceptance |
+| ARA-GAP-04 Data and evidence | Publish the accepted invocation/result/event ownership, evidence-reference resolution, retention/erasure, indexing/RLS, migration, reconciliation, and rollback contract | Data Architecture and Constitutional owner | OWNER REPAIR DRAFTED - Sections 5.4.2-5.4.3 require acceptance and retention values |
+| ARA-GAP-05 Fail-safe Stop | Bind ADR-031 behavior to durable or buffered Stop attribution, recovery/reconciliation limits, customer acknowledgement, adapter termination, and fresh-authority resume validation | Constitutional owner and Solution Architecture | OWNER REPAIR DRAFTED - Section 5.4.3 requires Founder clarification of ADR-031 recovery |
 | ARA-GAP-06 Acceptance bindings | Record every accepted owner artifact and the Founder-accepted plan using exact commit IDs, then assign the implementation issue with tier, branch, paths, versions, CCTs, fixtures, environments, qualification command, and explicit session authorization | Founder / Work Contract owner | OPEN - blocks implementation |
 | ARA-GAP-07 Qualification sequencing | Keep qualification on finalized commits, push that exact HEAD, perform author review after the final push, validate metadata against the pushed HEAD, and only then open the PR | Platform IT Expert | REPAIRED in Sections 10 and 12 |
 | ARA-GAP-08 Reproducible image identity | Freeze pathspecs in the implementation issue and hash a sorted tracked-file manifest plus normalized Compose/configuration content | Platform IT Expert | REPAIRED in Section 10.2 |
@@ -211,6 +211,30 @@ Domain payloads are separate typed fields validated against the admitted schema 
 versions fail closed. Unknown optional fields within a supported minor may be ignored only where the
 compatibility policy explicitly permits it.
 
+### 5.2.1 Normative Scalar, Presence, And Version Rules
+
+The adapter uses JSON Schema 2020-12 and OpenAPI 3.1 null semantics. Omission and JSON `null` are
+distinct. A required field may be `null` only where its schema includes `"null"`; OpenAPI `nullable`
+is not used.
+
+| Value | Normative representation |
+|---|---|
+| Protocol/common schema version | Full SemVer `MAJOR.MINOR.PATCH`; v1 emits `1.0.0` |
+| Professional and Skill versions | Full SemVer without leading zeroes, prerelease, or build metadata |
+| UUID | RFC 4122 lowercase canonical string |
+| Digest | Lowercase `sha256:` plus exactly 64 lowercase hexadecimal characters |
+| Timestamp/deadline | RFC 3339 UTC with `Z`; fractional seconds limited to milliseconds |
+| `tenantRef` | 1-128 characters matching `^[A-Za-z0-9._~-]+$` |
+| Opaque platform reference | 1-256 printable ASCII characters without whitespace or URI credentials |
+| Revision/state/sequence | JSON integer from 1 through 9223372036854775807 |
+| Idempotency key and correlation ID | UUID; correlation never participates in idempotency identity |
+
+`configurationRevision` and `goalRevision` are present in mutation envelopes and are either a
+positive integer or `null`. Null is permitted only when the matching descriptor flag declares the
+record optional. `plan` and `execute` must use the effective platform-owned revision. Common arrays
+contain at most 256 unique entries; warning, reason, and completion-detail strings are at most 1,024
+characters. Section 6.1 fixes aggregate wire and runtime limits.
+
 ### 5.3 Operations
 
 | Operation | Input | Success meaning | Mandatory denial/failure behavior |
@@ -219,7 +243,7 @@ compatibility policy explicitly permits it.
 | `health` | Workload identity for readiness; container probe for liveness | Process/runtime readiness only | Must not claim admission, provider, CE, billing, or customer readiness |
 | `configure` | Envelope plus configuration/goal references and payload | Exact revisions validated/applied or prior outcome replayed | No relationship mutation, authority change, or unadmitted schema |
 | `plan` | Envelope plus admitted planning input | Non-consequential proposal returned | No external side effect or LIVE promotion |
-| `execute` | Envelope plus exact authorized skill input | Durable invocation accepted or terminal prior outcome replayed | No dispatch when Stop active, deadline expired, CE unavailable, scope stale, or binding mismatched |
+| `execute` | Envelope plus exact authorized skill input and existing PR workflow identity | Synchronous adapter observation or terminal prior outcome replayed | No dispatch when Stop active, deadline expired, CE unavailable, scope stale, binding mismatched, or PR workflow identity absent |
 | `status` | Envelope plus invocation identity | Current deterministic state returned | Cross-tenant/relationship lookup normalized and denied |
 | `cancel` | Envelope plus invocation identity and reason category | Cancellation accepted or terminal outcome replayed | Preserve partial facts and evidence; do not release Stop |
 | `emergencyStop` | Relationship-scoped stop envelope and stop evidence context | Affected work halted and attributable acknowledgement returned | Must remain available independently of ordinary execution dependencies |
@@ -240,7 +264,8 @@ for the required ADR to accept or return before source work:
   endpoint; no public ingress, browser CORS, customer token, or provider callback ingress;
 - short-lived audience-bound service JWT plus environment workload identity under ADR-046; production
   transport protection and mTLS behavior follow the accepted security contract;
-- synchronous control responses with `202` only after Temporal accepts durable responsibility;
+- synchronous adapter control responses; only the BP-to-PR operation returns `202`, after PR has
+  created the invocation and Temporal has accepted durable responsibility;
 - ordered Server-Sent Events for optional result streaming from adapter to Professional Runtime;
 - `Idempotency-Key`, `X-Correlation-ID`, W3C `traceparent`, absolute deadline, protocol version, and
   payload digest on every mutation;
@@ -255,13 +280,13 @@ The proposed private operations are:
 | `GET /internal/v1/health/ready` | `health` | `200 AdapterHealthV1`; `503` when adapter cannot accept work |
 | `POST /internal/v1/configurations:validate` | `configure` | `200 ConfigurationValidationV1`; validation does not become BP configuration truth |
 | `POST /internal/v1/plans` | `plan` | `200 AdapterPlanV1`; no external side effect |
-| `POST /internal/v1/invocations` | `execute` | `202 AdapterInvocationV1` or `200` replay |
+| `POST /internal/v1/invocations` | `execute` | `200 AdapterInvocationV1`, including replay state |
 | `GET /internal/v1/invocations/{invocationId}` | `status` | `200 AdapterInvocationV1` |
 | `GET /internal/v1/invocations/{invocationId}/events` | stream | `200 text/event-stream` with monotonic events |
-| `POST /internal/v1/invocations/{invocationId}:cancel` | `cancel` | `202` accepted or `200` terminal replay |
+| `POST /internal/v1/invocations/{invocationId}:cancel` | `cancel` | `200 AdapterInvocationV1` observation, including terminal replay |
 | `POST /internal/v1/relationships/{relationshipId}:emergency-stop` | `emergencyStop` | `200 AdapterStopAcknowledgementV1` after local halt |
 | `POST /internal/v1/relationships/{relationshipId}:resume` | `resume` | `200 AdapterResumeAcknowledgementV1` after fresh authority validation |
-| `GET /internal/v1/invocations/{invocationId}/result` | `result` | `200 AdapterResultV1`; `202` while non-terminal |
+| `GET /internal/v1/invocations/{invocationId}/result` | `result` | `200 AdapterResultV1` observation, including non-terminal state |
 
 The ADR may reject this profile, but Platform IT cannot substitute another transport. Rejection sends
 the package back to Enterprise and Solution Architecture for revision and Founder acceptance.
@@ -294,7 +319,7 @@ Rules:
 | Admission, professional/skill version, customer contract, configuration and goal revisions | Business Platform PostgreSQL | Adapter receives exact references and validated payloads; it never writes owner records |
 | Constitutional decision and evidence | Constitutional Engine ledger | CE record/decision reference exists before consequential dispatch or success projection |
 | Invocation workflow, retry, cancellation, Stop signal, and unknown-outcome reconciliation | Professional Runtime Temporal workflow | Workflow ID derives from immutable invocation identity; Temporal acceptance precedes `202` |
-| Queryable execution projection and idempotency outcome | Professional Runtime approved PostgreSQL schema | Additive, tenant-isolated, RLS-protected, optimistic state version; exact schema requires Data acceptance |
+| Queryable execution projection and idempotency outcome | Professional Runtime logical lifecycle through Business Platform-owned PostgreSQL persistence boundary | ADR-011-compliant additive schema, tenant RLS, optimistic version, and Data-accepted retention |
 | Adapter working state | Isolated adapter memory/ephemeral volume | Reconstructable from the PR envelope and workflow; never sole durable truth |
 | Customer-visible result and timeline | Business Platform projection | BP validates PR facts before customer projection; adapter output is never public truth directly |
 
@@ -310,35 +335,127 @@ halts/terminates the affected workflow and adapter workload locally, records or 
 ADR-031, and returns the existing Stop confirmation within the constitutional SLO. Adapter
 acknowledgement is reconciled as execution evidence and cannot delay or negate the platform Stop.
 
-### 5.5 Result And Event Contract
+### 5.4.2 Data Ownership, Persistence, Retention, And Recovery
 
-`AdapterResultV1` contains invocation identity, schema version, state, completion reason, typed output
-blocks, cost/usage facts, tool/provider facts, evidence references, warnings, timestamps, and output
-payload digest. It excludes customer bearer tokens, raw provider credentials, internal policy detail,
-prompt/reasoning traces, tenant identifiers, and claims of constitutional success.
+Professional Runtime owns invocation lifecycle semantics and Temporal workflow history. Under
+ADR-011, Business Platform's approved .NET persistence boundary physically owns the additive
+`business.adapter_*` schema and migrations; `runtime_app` receives no direct mutation grant. A
+different physical owner requires a Founder-accepted ADR-011 amendment.
 
-For streaming work, events are ordered by monotonic sequence and contain stable event ID, invocation
-ID, event schema version, event type, partial flag, timestamp, payload digest, and typed payload.
-Professional Runtime validates and persists/relays accepted facts. Unknown major event versions halt
-projection and produce `ADAPTER_SCHEMA_UNSUPPORTED`; they never become customer-visible truth.
+The persistence boundary provides tenant-keyed records for invocations, ordered events, one terminal
+result, opaque evidence-reference resolution, and an outbox. Every key and foreign key includes
+`tenant_id`. RLS is enabled and forced for read and mutation, using authenticated tenant context in
+both `USING` and `WITH CHECK`. Minimum unique identities are:
 
-### 5.6 Error Contract
+- invocation: `(tenant_id, invocation_id)`;
+- idempotency: `(tenant_id, relationship_id, operation, idempotency_key)`;
+- workflow: `(tenant_id, workflow_id)`;
+- event sequence and identity within one invocation; and
+- one terminal result per invocation.
 
-All errors have a stable code, correlation ID, retry classification, and privacy-safe detail. They do
-not echo payloads, tenant identity, credentials, prompts, policy internals, or another relationship's
-existence.
+Invocation state uses a positive `state_version`. An update compares expected state and version,
+increments by one, and succeeds only when exactly one row changes. Zero rows produces
+`ADAPTER_STATE_CONFLICT`. Terminal states and accepted event/result facts are immutable. Identical
+event/result replay returns the stored fact; a changed digest fails without mutation.
 
-| Class | Required stable codes |
-|---|---|
-| Request | `ADAPTER_REQUEST_INVALID`, `ADAPTER_SCHEMA_UNSUPPORTED`, `ADAPTER_DEADLINE_EXPIRED` |
-| Identity and scope | `ADAPTER_UNAUTHORIZED`, `ADAPTER_NOT_ACCESSIBLE`, `ADAPTER_BINDING_MISMATCH`, `ADAPTER_DECISION_SPACE_STALE` |
-| Replay and state | `ADAPTER_IDEMPOTENCY_CONFLICT`, `ADAPTER_STATE_CONFLICT`, `ADAPTER_RESULT_UNRESOLVED` |
-| Constitutional safety | `ADAPTER_CONSTITUTIONAL_UNAVAILABLE`, `ADAPTER_EXECUTION_DENIED`, `ADAPTER_STOPPED`, `ADAPTER_RESUME_DENIED` |
-| Runtime | `ADAPTER_UNAVAILABLE`, `ADAPTER_PROVIDER_UNAVAILABLE`, `ADAPTER_INTERNAL_FAILURE` |
+Invocation identity, canonical digest, initial projection, and outbox are committed atomically.
+Temporal workflow ID is `ara-v1/{invocationId}`. Crash before dispatch leaves one retryable outbox
+record; crash after Temporal acceptance reaches the same workflow identity. Unknown outcomes remain
+unknown until same-identity reconciliation and never create another invocation.
 
-Only explicitly classified transient infrastructure failures are retryable. Constitutional denial,
-binding mismatch, schema incompatibility, stale authority, idempotency conflict, and deterministic
-adapter failure are not retryable without a changed authorized input.
+Evidence references are opaque tenant-bound links resolved through CE. `RESOLVED` means only that CE
+recognized the referenced record; it is not constitutional sufficiency, success, or customer
+acceptance. There is no cross-schema foreign key to constitutional records.
+
+Each invocation freezes retention policy `ARA-RETENTION-v1` and its digest. The proposed v1 window is
+30 days after terminal state, or after the request deadline when no terminal state is known, for
+idempotency outcomes, event replay, unknown-outcome reconciliation, acknowledged/dead outbox records,
+and erasable execution payloads. Open workflow, pending/leased outbox, unresolved evidence reference,
+active investigation, and legal hold extend `retain_until`; they never shorten it. Customer payloads
+and typed event/result bodies are erased at eligibility, while minimum identity, digest, state,
+idempotency, lineage, and evidence-reference tombstones remain through `retain_until`. Runtime
+erasure never cascades to CE evidence, whose retention remains controlled by C-007 and CE policy.
+
+Migrations are additive and must pass empty/current-snapshot, RLS, concurrency, replay, crash-point,
+retention, erasure, index, grant, application rollback, and non-destructive forward-fix tests.
+Populated lineage tables are never removed by rollback.
+
+### 5.4.3 Constitutional Evidence, Fail-Safe Stop, And Fresh-Authority Resume
+
+Ordinary consequential dispatch follows this order: validate exact platform bindings; durably record
+the CE decision/evidence; resolve the returned references against the same invocation and authority;
+dispatch; then project customer-visible success only after required execution facts and evidence are
+resolvable. Timeout, unavailability, mismatch, or ambiguity fails closed. Adapter or workflow success
+cannot substitute for CE evidence.
+
+Emergency Stop is the sole ordering exception. When CE is unavailable, PR first establishes a
+relationship-scoped local Stop barrier. The barrier blocks new configuration, planning, execution,
+retry, continuation, result publication, and provider/tool dispatch; commands workflow and adapter
+termination; and remains latched across process, workflow, adapter, and CE recovery.
+
+If CE cannot record the Stop, PR preserves an integrity-protected attributable record binding the
+Stop request, authenticated requester, tenant/relationship, original receive/effective timestamps,
+affected invocation/workflow/artifact identities, prior state, outage cause, replay identity, and
+later CE/adapter reconciliation references. The record proves local halt only, not committed CE
+evidence.
+
+Customer acknowledgement occurs only after the local barrier is effective and distinguishes
+`RECORDED` from `LOCALLY_EFFECTIVE_EVIDENCE_PENDING`. Adapter acknowledgement is non-blocking and
+cannot delay or negate the platform Stop. Unresolved cessation remains stopped or partial, never
+successful.
+
+CE recovery restores connectivity and enters reconciliation; it does not restore execution
+eligibility. Stop records are reconciled before any enabling action, while the barrier stays latched.
+Reconciliation cannot replay ordinary writes, manufacture authority, release Stop, create a new
+invocation, or convert ambiguity to success.
+
+Resume requires an explicit post-Stop request and fresh CE decision bound to committed Stop evidence
+and current tenant, relationship, admission, artifact, contract, Decision Space, configuration, goal,
+deadline, and authority. It releases eligibility for future invocations only and never restarts a
+stopped invocation. This meaning requires Founder clarification of ADR-031's current automatic
+recovery language before ARA-GAP-05 can close.
+
+### 5.5 Idempotency, Result, And Event Contract
+
+The idempotency identity is authenticated caller, operation, relationship, and idempotency key. The
+durable record binds canonical request digest, invocation ID, first response, current adapter state
+version, terminal response, and expiry. Identical reuse returns the recorded response with zero new
+mutation; changed digest returns `ADAPTER_IDEMPOTENCY_CONFLICT`. Records survive workload restart.
+The protocol retention floor is 30 days after terminal transition and never earlier than 30 days
+after the request deadline; an accepted Data policy may extend but not shorten it.
+
+`AdapterResultV1` contains invocation ID, schema/state versions, completion reason, partial flag,
+typed outputs, cost/usage and provider facts, evidence references, warnings, timestamps, and output
+digest. Optional values are omitted rather than null. A result cannot assert BP or CE acceptance.
+
+Persisted event sequence starts at one and increments by one. SSE `id` is its decimal representation;
+heartbeats carry no ID. With cursor N, replay begins at N+1. A cursor above the latest sequence is a
+state conflict; a cursor below retained history is `ADAPTER_EVENT_CURSOR_EXPIRED`, after which PR
+reconciles through status/result. Unknown major versions stop projection.
+
+### 5.6 Deterministic Error Contract
+
+Every error is `application/problem+json` with `type`, `title`, `status`, stable `code`, correlation
+ID, retry classification, and optional retry delay. It never echoes protected data or existence.
+
+| HTTP | Stable codes | Retryable |
+|---|---|---|
+| 400 | `ADAPTER_REQUEST_INVALID` | No |
+| 401 | `ADAPTER_UNAUTHORIZED` | No |
+| 403 | `ADAPTER_EXECUTION_DENIED`, `ADAPTER_RESUME_DENIED` | No |
+| 404 | `ADAPTER_NOT_ACCESSIBLE` | No |
+| 408 | `ADAPTER_DEADLINE_EXPIRED` | No |
+| 409 | `ADAPTER_BINDING_MISMATCH`, `ADAPTER_DECISION_SPACE_STALE`, `ADAPTER_IDEMPOTENCY_CONFLICT`, `ADAPTER_STATE_CONFLICT` | No |
+| 410 | `ADAPTER_RESULT_UNRESOLVED`, `ADAPTER_EVENT_CURSOR_EXPIRED` | No |
+| 413 | `ADAPTER_REQUEST_INVALID` | No |
+| 422 | `ADAPTER_SCHEMA_UNSUPPORTED` | No |
+| 423 | `ADAPTER_STOPPED` | No |
+| 500 | `ADAPTER_INTERNAL_FAILURE` | No |
+| 503 | `ADAPTER_CONSTITUTIONAL_UNAVAILABLE` | No |
+| 503 | `ADAPTER_UNAVAILABLE`, `ADAPTER_PROVIDER_UNAVAILABLE` | Yes |
+
+PR preserves semantics internally but privacy-normalizes adapter topology and protected existence in
+its BP-facing mapping.
 
 ## 6. Security, Isolation, And Operability
 
@@ -363,6 +480,38 @@ adapter failure are not retryable without a changed authorized input.
 10. Rollback selects a prior still-supported ACTIVE professional version and exact artifact digest.
     It never edits an ACTIVE admission, rewrites evidence, or silently migrates relationships.
 
+### 6.1 Normative Security And Privacy Contract
+
+**State:** PROPOSED SECURITY ARCHITECTURE OUTPUT - FOUNDER ACCEPTANCE REQUIRED.
+
+- Every protected route uses environment-specific mTLS and an asymmetric PR-signed delegation bound
+  to issuer/subject, exact adapter audience, `jti`, time window, environment, operation, method/route,
+  contract major, adapter/artifact, tenant/relationship, invocation, purpose, Decision Space, payload
+  digest, and idempotency identity. Lifetime is at most 60 seconds with at most five seconds skew.
+- PR derives and revalidates tenant/relationship context from authenticated platform state. Equality
+  among signed claims, route, envelope, descriptor, and admission is required before protected lookup
+  or mutation. Wrong protected scope uses one normalized inaccessible response.
+- `jti` is single-use through expiry plus 60 seconds. A retry uses fresh delegation and the same
+  idempotency identity. Concurrent duplicates serialize to one mutation.
+- Ingress and egress are deny-by-default in Demo, UAT, and Production. Ingress permits only PR and the
+  local liveness probe. Egress permits environment DNS, approved OTLP, and explicitly admitted
+  governed destinations bound to protocol, port, purpose, artifact, and environment. Wildcard,
+  metadata, host, database, CE-ledger, Docker socket, and undeclared direct Internet access are denied.
+- Requests carry secret references only. Values are workload-bound, memory-backed, absent from source,
+  images, environment dumps, arguments, wire payloads, logs, traces, errors, events, evidence, SBOM,
+  scans, and qualification output. Non-workload credentials rotate within 90 days and immediately on
+  disclosure or scope/relationship change; failed rotation causes unavailability without fallback.
+- Header aggregate is at most 32 KiB; configure/plan/execute bodies 1 MiB; cancel/Stop/resume 64 KiB;
+  JSON depth 32; strings 256 KiB; arrays 10,000; SSE events 64 KiB; other responses 1 MiB. Excess
+  returns non-retryable `413 ADAPTER_REQUEST_INVALID` before domain parsing.
+- Each replica is capped at 2 vCPU, 2 GiB memory, 1 GiB ephemeral storage, 128 processes, 1,024 files,
+  32 in-flight HTTP requests, four executions, and queue depth 32. Stop has reserved capacity.
+- Runtime is non-root, read-only, capability-dropped, no-new-privileges, runtime-default seccomp, and
+  denied host namespaces, devices, executable writable mounts, and cross-invocation mutable state.
+- One parity suite runs against separately rendered Demo, UAT, and Production configurations and
+  proves identity/binding denial, replay, egress, rotation/redaction sentinels, every limit and
+  limit-plus-one, privacy normalization, isolation, cleanup, and Stop under saturation and outage.
+
 ## 7. Canonical Artifacts To Produce Or Amend
 
 The accepted implementation Work Contract must freeze exact filenames. The expected owning artifacts
@@ -370,7 +519,7 @@ are:
 
 | Artifact | Required change |
 |---|---|
-| `adr/ADR-NNN-agent-runtime-adapter-contract.md` | Transport, isolation, discovery, identity, invocation, streaming, and compatibility decision |
+| `adr/ADR-049-agent-runtime-adapter-transport-and-isolation.md` | Proposed transport, isolation, discovery, identity, invocation, streaming, and compatibility decision; Founder acceptance required |
 | `architecture/reference/components/professional-runtime.md` | Adapter gateway, resolver, lifecycle, Stop, reconciliation, and dependency responsibilities |
 | `architecture/reference/api-specs/professional-runtime.openapi.yaml` | BP-to-PR fields and results required to bind exact adapter execution; no public adapter exposure |
 | `architecture/reference/api-specs/agent-runtime-adapter-v1.openapi.yaml` | Private normative HTTP/JSON adapter wire contract after ADR acceptance |
@@ -787,9 +936,9 @@ Agent Runtime Adapter Contract v1 is complete only when:
 
 ## 17. Author Review
 
-**Result:** PASS - implementer gap review complete; implementation remains BLOCKED by ARA-GAP-01
-through ARA-GAP-06 until the responsible owners provide accepted, commit-bound inputs and the Founder
-grants explicit implementation authorization.
+**Result:** PASS - one-pass targeted institutional review and repair complete. Implementation remains
+BLOCKED until the Founder accepts or returns the proposed owner package, clarifies ADR-031 recovery,
+binds accepted commits in the implementation issue, and grants explicit implementation authorization.
 
 INST-005 reviewed this complete plan against Section 4.7, the WC-079 plan pattern, Agent Employment
 Experience boundaries, ADR-035/PAC separation, Professional Runtime universality, existing PAAS and
@@ -806,6 +955,12 @@ Founder approval and merge. Platform IT repaired the in-scope qualification sequ
 defects. It did not invent or mark closed any architecture, security, data, constitutional, or Founder
 decision listed in Section 3.3.
 
+The Founder-requested targeted pass then invoked Enterprise Architecture, Solution Architecture,
+Security Architecture, Data Architecture, and Constitutional Analysis once each. Their compatible
+repairs are integrated into ADR-049, Sections 5.2 through 6.1, and the Professional Runtime component
+amendment. No institution claimed Founder acceptance. The remaining decisions are recorded in
+Section 3.3 and ADR-049 rather than triggering another review cycle.
+
 | Author-review finding | Repair made in this revision |
 |---|---|
 | Transport selection was deferred to the implementation executor | Added one exact proposed HTTP/JSON/OpenAPI/SSE profile and route table; ADR rejection returns to architecture rather than Platform IT substitution |
@@ -818,3 +973,8 @@ decision listed in Section 3.3.
 | Required owner decisions were distributed across narrative entry gates | Added Section 3.3 with exact unresolved topics, responsible institutions, closure evidence, and blocking state |
 | Qualification required author-review validation before author review and the final push | Moved author review after the final push and before PR creation; qualification and review metadata now bind the same immutable HEAD |
 | Image hashes named broad categories without defining a reproducible manifest | Required frozen pathspecs, sorted tracked path/content manifests, normalized environment renderings, and failure on incomplete inventories |
+| Transport and isolation remained an owner placeholder | Added proposed ADR-049 with deterministic discovery, identity, protection, deadlines, negotiation, streaming, isolation, and failure behavior |
+| Scalar, replay, state, event, and error semantics remained implementer choices | Added normative representations, synchronous adapter execution observation, durable replay, ordered SSE, concurrency, reconciliation, and stable HTTP mappings |
+| Persistence ownership conflicted with ADR-011 | Assigned logical lifecycle to PR and physical additive schema/migration ownership to the Business Platform .NET persistence boundary |
+| Security requirements lacked exact controls and environment parity | Added delegation, tenant binding, replay, deny-by-default egress, secrets, limits, isolation, privacy, and Demo/UAT/Production parity rules |
+| CE outage Stop and recovery could be interpreted as automatic work resume | Added attributable local Stop, explicit acknowledgement states, latched reconciliation, and fresh-authority future-only resume; Founder clarification remains required |

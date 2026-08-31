@@ -94,6 +94,35 @@ contract is `architecture/reference/api-specs/professional-runtime.openapi.yaml`
 These operations are not browser-accessible. PR events become customer-visible only after BP
 validates and persists the canonical conversation projection.
 
+### 7. Generic Agent Runtime Adapter Gateway (WC-080 Proposed Amendment)
+
+**State:** PROPOSED - OWNER AND FOUNDER ACCEPTANCE REQUIRED. This amendment authorizes no source
+change until it is accepted and commit-bound in the WC-080 implementation issue.
+
+Professional Runtime is the sole platform caller of admitted Agent Runtime Adapters. The gateway:
+
+1. resolves the ACTIVE admission snapshot and immutable artifact without professional-type branching;
+2. verifies descriptor identity, protocol range, schema digests, professional and Skill versions,
+  execution model, artifact digest, and capabilities before configuration or execution;
+3. constructs every adapter envelope from authenticated platform state and never trusts request-body
+  tenant, relationship, authority, or lifecycle hints;
+4. creates the PR invocation, idempotency identity, projection, outbox, and Temporal workflow before
+  adapter dispatch; only the BP-to-PR operation may return `202` for durable responsibility;
+5. validates adapter state versions, transitions, results, events, digests, and replay responses;
+6. reconciles ambiguous outcomes by immutable invocation identity before any retry or new dispatch;
+7. persists and projects accepted adapter facts through the Data Architecture-approved Business
+  Platform persistence boundary required by ADR-011;
+8. maps private adapter errors into the existing BP-facing vocabulary without exposing adapter
+  topology, tenant existence, provider detail, or policy internals;
+9. propagates Emergency Stop independently of adapter health, keeps the local Stop barrier latched,
+  and reconciles adapter acknowledgement later; and
+10. permits resume only from fresh post-Stop authority and never restarts a stopped invocation.
+
+The gateway contains no professional-type switch, domain payload interpretation, admission mutation,
+customer projection, constitutional evidence acceptance, provider policy, or automatic recovery
+authorization. Domain variation is selected only through admitted schema coordinates and descriptor
+capabilities. Adapter operations remain absent from the public Professional Runtime OpenAPI.
+
 ## Runtime Universality Implementation
 
 The Professional Runtime contains **no professional-type-specific code**. The `executionModel` field of the Decision Space determines which engine handles the session:
