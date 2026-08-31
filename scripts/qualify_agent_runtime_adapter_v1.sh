@@ -99,7 +99,7 @@ docker compose --profile agent-runtime-adapter up --detach --wait --wait-timeout
 docker compose --profile agent-runtime-adapter ps --all > "$REPORT_DIR/compose-ps.txt"
 
 FAILURE_CLASSIFICATION="assertion"
-docker compose --profile test-python run --rm test-runner-python \
+docker compose --profile test-python run --rm -e COVERAGE_FILE=/tmp/ara-v1.coverage test-runner-python \
   pytest tests/contract/ tests/professional-runtime/test_agent_runtime_adapter.py tests/constitutional/test_agent_runtime_adapter_cct.py \
   --cov=adapter_gateway --cov=runtime_contract \
   --cov-fail-under=90 --cov-branch --cov-report=term --cov-report="xml:${REPORT_DIR}/coverage.xml" \
