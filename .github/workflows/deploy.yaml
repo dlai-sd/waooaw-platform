@@ -90,7 +90,7 @@ jobs:
 
   deploy:
     needs: authorize
-    uses: ./.github/workflows/deploy-environment.yaml
+    uses: ./.github/workflows/environment-deployment.yaml
     with:
       environment: ${{ inputs.environment }}
       release_run_id: ${{ fromJSON(needs.authorize.outputs.release_run_id) }}
@@ -103,7 +103,7 @@ jobs:
   verify:
     if: inputs.execution == 'apply'
     needs: [authorize, deploy]
-    uses: ./.github/workflows/post-deploy-verify.yaml
+    uses: ./.github/workflows/environment-deployment-verification.yaml
     with:
       environment: ${{ inputs.environment }}
       release_run_id: ${{ fromJSON(needs.authorize.outputs.release_run_id) }}

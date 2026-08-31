@@ -359,6 +359,63 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+  release-qualification:
+    name: Release qualification
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect release engineering changes
+        id: changes
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          if [[ "$EVENT_NAME" != "pull_request" ]]; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep -Eq \
+            '^(release/goal006/|scripts/goal006_|scripts/test-wc059-postgres\.sh|tests/test_wc012_dry_run\.py|tests/pipeline/test_goal006_|tests/pipeline/test_billing_ce_validator\.py|infrastructure/recovery/phase2/|\.github/workflows/ci\.yaml|docker-compose\.yml|architecture/reference/dockerfiles/Dockerfile\.test-runner|requirements-test\.txt)'; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "required=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build Docker test runner
+        if: steps.changes.outputs.required == 'true'
+        run: docker compose build test-runner
+
+      - name: Run release contracts
+        if: steps.changes.outputs.required == 'true'
+        run: >-
+          docker compose run --rm test-runner pytest -q
+          tests/test_wc012_dry_run.py
+          tests/pipeline/test_goal006_data_recovery.py
+          tests/pipeline/test_goal006_qualification.py
+          tests/pipeline/test_goal006_release_manifest.py
+          tests/pipeline/test_goal006_release_simulator.py
+          tests/pipeline/test_goal006_six_member_packaging.py
+          tests/pipeline/test_goal006_terraform_foundations.py
+          tests/pipeline/test_billing_ce_validator.py -rA
+
+      - name: Run delegated PostgreSQL contracts
+        if: steps.changes.outputs.required == 'true'
+        run: scripts/test-wc059-postgres.sh
+
+      - name: Verify successful release simulation
+        if: steps.changes.outputs.required == 'true'
+        run: >-
+          docker compose run --rm test-runner python
+          scripts/goal006_release_simulator.py
+          release/goal006/promotion-policy.json
+          release/goal006/release-manifest.json
+          infrastructure/recovery/phase2/fixtures/valid-recovery-bundle.json
+
   # ─── TypeScript tests ─────────────────────────────────────────────────────
   test-web:
     name: Web unit tests + type check
@@ -631,6 +688,7 @@ jobs:
       - trivy
       - dep-scan
       - license-check
+      - release-qualification
       - constitutional-commit-gate
       - author-review-gate
       - authorization-tier-check

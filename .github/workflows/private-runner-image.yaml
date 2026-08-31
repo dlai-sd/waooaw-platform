@@ -1,4 +1,4 @@
-name: GOAL-006 Private Runner Image
+name: Private Runner Image Supply Chain
 
 on:
   pull_request:
@@ -9,8 +9,7 @@ on:
       - scripts/goal006_runner_qualification.py
       - infrastructure/terraform/phase2/environments/demo/foundation/**
       - infrastructure/terraform/phase2/modules/foundation/**
-      - .github/workflows/goal006-private-runner-qualification.yaml
-      - .github/workflows/goal006-runner-image.yaml
+      - .github/workflows/private-runner-image.yaml
   push:
     branches: [main]
     paths:
@@ -19,8 +18,7 @@ on:
       - scripts/goal006_runner_qualification.py
       - infrastructure/terraform/phase2/environments/demo/foundation/**
       - infrastructure/terraform/phase2/modules/foundation/**
-      - .github/workflows/goal006-private-runner-qualification.yaml
-      - .github/workflows/goal006-runner-image.yaml
+      - .github/workflows/private-runner-image.yaml
 
 permissions:
   contents: read

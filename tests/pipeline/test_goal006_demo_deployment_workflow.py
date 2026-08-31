@@ -3,7 +3,7 @@
 from pathlib import Path
 
 
-WORKFLOW = Path(".github/workflows/deploy-environment.yaml").read_text(
+WORKFLOW = Path(".github/workflows/environment-deployment.yaml").read_text(
     encoding="utf-8"
 )
 DISPATCH_WORKFLOW = Path(".github/workflows/deploy.yaml").read_text(

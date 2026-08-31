@@ -2,12 +2,10 @@
 
 from pathlib import Path
 
-WORKFLOW = Path(".github/workflows/runner-environment-delivery.yaml").read_text(
+WORKFLOW = Path(".github/workflows/private-runner-infrastructure.yaml").read_text(
     encoding="utf-8"
 )
-QUALIFICATION_WORKFLOW = Path(
-    ".github/workflows/goal006-private-runner-qualification.yaml"
-).read_text(encoding="utf-8")
+QUALIFICATION_WORKFLOW = WORKFLOW.split("  resolve-environment:", 1)[1]
 
 
 def test_workflow_exposes_each_protected_environment() -> None:
@@ -45,6 +43,8 @@ def test_plan_and_deployment_evidence_are_retained() -> None:
 
 
 def test_private_qualification_uses_environment_scoped_brokers_and_runner() -> None:
+    assert "          - qualify" in WORKFLOW
+    assert "if: inputs.operation != 'qualify'" in WORKFLOW
     assert "goal006_environment_config.py" in QUALIFICATION_WORKFLOW
     assert "needs.resolve-environment.outputs.runner_broker_job" in QUALIFICATION_WORKFLOW
     assert "needs.resolve-environment.outputs.runner_cleanup_broker_job" in QUALIFICATION_WORKFLOW
@@ -76,6 +76,7 @@ def test_hosted_qualification_never_signs_or_handles_runner_tokens() -> None:
 def test_cleanup_is_ungated_and_uses_dedicated_identity() -> None:
     cleanup = QUALIFICATION_WORKFLOW.split("  cleanup-private:", 1)[1]
 
+    assert "if: always() && inputs.operation == 'qualify'" in cleanup
     assert "client-id: ${{ needs.resolve-environment.outputs.cleanup_client_id }}" in cleanup
     assert "client-id: ${{ env.ARM_CLIENT_ID }}" not in cleanup
 

@@ -13,7 +13,6 @@ from goal006_release_simulator import FAILURE_SEQUENCE, SUCCESS_SEQUENCE, simula
 RELEASE_ROOT = Path("release/goal006")
 RECOVERY_ROOT = Path("infrastructure/recovery/phase2/fixtures")
 CI_PATH = Path(".github/workflows/ci.yaml")
-OFFLINE_WORKFLOW_PATH = Path(".github/workflows/goal006-phase2-offline.yml")
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -194,10 +193,14 @@ def test_ci_build_and_scan_matrices_contain_exactly_six_release_members() -> Non
     assert scan_step["with"]["limit-severities-for-sarif"] is True
 
 
-def test_ci_audits_billing_dependencies_and_offline_workflow_has_no_provider_authority() -> None:
+def test_ci_audits_billing_dependencies_and_release_qualification_has_no_provider_authority() -> None:
     ci_text = CI_PATH.read_text(encoding="utf-8")
-    offline_text = OFFLINE_WORKFLOW_PATH.read_text(encoding="utf-8")
+    workflow = yaml.safe_load(ci_text)
+    release_job = workflow["jobs"]["release-qualification"]
+    release_job_text = json.dumps(release_job)
     assert "pip-audit -r src/billing-engine/requirements.txt --strict" in ci_text
-    assert "permissions:\n  contents: read" in offline_text
+    assert release_job["permissions"] == {"contents": "read"}
+    assert "scripts/test-wc059-postgres.sh" in release_job_text
+    assert "scripts/goal006_release_simulator.py" in release_job_text
     for prohibited in ("azure/login", "az login", "terraform apply", "secrets.", "continue-on-error"):
-        assert prohibited not in offline_text
+        assert prohibited not in release_job_text

@@ -5,7 +5,7 @@
 # ib_item: IB-009
 # spec: architecture/reference/engineering-standards.md §2 (CCT Framework)
 #
-# G-07 FIX: This script was referenced in post-deploy-verify.yaml but did not
+# G-07 FIX: This script was referenced in environment-deployment-verification.yaml but did not
 # exist, causing the post-deploy CCT gate to silently skip. An empty/skipped
 # CCT gate is constitutionally indistinguishable from a passing CCT gate.
 # This stub exists from Sprint 011; CCT implementations are added in Sprint 012+.

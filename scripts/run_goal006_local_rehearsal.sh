@@ -11,10 +11,10 @@ echo "[1/4] Linting GitHub Actions workflows"
 docker run --rm -v "$REPO_ROOT:/repo:ro" -w /repo rhysd/actionlint:1.7.7 \
   .github/workflows/ci.yaml \
   .github/workflows/deploy.yaml \
-  .github/workflows/deploy-environment.yaml \
-  .github/workflows/post-deploy-verify.yaml \
-  .github/workflows/reconcile-workload-leases.yaml \
-  .github/workflows/runner-environment-delivery.yaml
+  .github/workflows/environment-deployment.yaml \
+  .github/workflows/environment-deployment-verification.yaml \
+  .github/workflows/workload-lease-reconciliation.yaml \
+  .github/workflows/private-runner-infrastructure.yaml
 
 echo "[2/4] Validating all GOAL-006 Terraform roots with Terraform 1.9.8"
 docker run --rm \

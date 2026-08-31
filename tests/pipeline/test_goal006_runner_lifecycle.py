@@ -341,7 +341,7 @@ def test_runner_image_uses_immutable_inputs_and_ephemeral_registration() -> None
 def test_runner_image_ci_blocks_on_fixable_os_vulnerabilities() -> None:
     from pathlib import Path
 
-    workflow = Path(".github/workflows/goal006-runner-image.yaml").read_text(
+    workflow = Path(".github/workflows/private-runner-image.yaml").read_text(
         encoding="utf-8"
     )
     assert "vuln-type: os" in workflow
