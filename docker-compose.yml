@@ -1,5 +1,45 @@
 services:
 
+  agent-runtime-adapter-digital-marketing:
+    image: waooaw/agent-runtime-adapter-digital-marketing:${ARA_IMAGE_TAG:-ara-v1-dev}
+    build:
+      context: ./src/agent-adapters
+      dockerfile: digital_marketing/Dockerfile
+    environment:
+      WAOOAW_ENVIRONMENT: ${WAOOAW_ENVIRONMENT:-demo}
+      PR_WORKLOAD_URI: spiffe://${WAOOAW_ENVIRONMENT:-demo}.waooaw.internal/workload/professional-runtime
+    read_only: true
+    tmpfs: ["/tmp:size=16m,mode=1770"]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [agent-runtime-private]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8443/health/live', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    profiles: [agent-runtime-adapter]
+
+  agent-runtime-adapter-trading:
+    image: waooaw/agent-runtime-adapter-trading:${ARA_IMAGE_TAG:-ara-v1-dev}
+    build:
+      context: ./src/agent-adapters
+      dockerfile: trading/Dockerfile
+    environment:
+      WAOOAW_ENVIRONMENT: ${WAOOAW_ENVIRONMENT:-demo}
+      PR_WORKLOAD_URI: spiffe://${WAOOAW_ENVIRONMENT:-demo}.waooaw.internal/workload/professional-runtime
+    read_only: true
+    tmpfs: ["/tmp:size=16m,mode=1770"]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [agent-runtime-private]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8443/health/live', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    profiles: [agent-runtime-adapter]
+
   # ─── Test Runner — Python only (ADR-045 — per-stack lean images) ─────────────
   # Python services only: trust-layer, ai-runtime, business-platform, gateway.
   # ~350 MB. No .NET SDK. No Node.js. BuildKit pip cache mount.
@@ -1245,3 +1285,5 @@ volumes:
 networks:
   default:
     name: waooaw-dev
+  agent-runtime-private:
+    internal: true

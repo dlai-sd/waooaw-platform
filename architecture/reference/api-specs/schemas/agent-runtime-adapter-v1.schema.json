@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://waooaw.com/schemas/agent-runtime-adapter/1.0.0",
+  "title": "WAOOAW Agent Runtime Adapter Contract v1",
+  "description": "Private Professional Runtime execution-port types. Adapter output is execution fact, not constitutional or customer acceptance.",
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "semver": { "type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$" },
+    "opaqueRef": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "AdapterDescriptorV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "compatibleMinorVersions", "professionalTypeId", "professionalVersion", "artifactDigest", "admissionContentDigest", "pacVersion", "pacDigest", "skillVersions", "schemaDigests", "executionModels", "capabilities", "maximumRequestBytes", "deadlineLimitsSeconds", "healthContractVersion"],
+      "properties": {
+        "protocolVersion": { "const": "1.0.0" },
+        "compatibleMinorVersions": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "pattern": "^1\\.[0-9]+\\.[0-9]+$" } },
+        "professionalTypeId": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,99}$" },
+        "professionalVersion": { "$ref": "#/$defs/semver" },
+        "artifactDigest": { "$ref": "#/$defs/digest" },
+        "admissionContentDigest": { "$ref": "#/$defs/digest" },
+        "pacVersion": { "$ref": "#/$defs/semver" },
+        "pacDigest": { "$ref": "#/$defs/digest" },
+        "skillVersions": { "type": "object", "minProperties": 1, "additionalProperties": { "$ref": "#/$defs/semver" } },
+        "schemaDigests": { "type": "object", "minProperties": 1, "additionalProperties": { "$ref": "#/$defs/digest" } },
+        "executionModels": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["APPROVAL_GATE", "PRE_AUTHORIZED"] } },
+        "capabilities": { "type": "array", "uniqueItems": true, "items": { "enum": ["planning", "streaming", "cancellation", "stop", "resume", "result-replay"] } },
+        "maximumRequestBytes": { "type": "integer", "minimum": 1024, "maximum": 1048576 },
+        "deadlineLimitsSeconds": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["minimum", "maximum"],
+          "properties": { "minimum": { "type": "integer", "minimum": 1 }, "maximum": { "type": "integer", "maximum": 300 } }
+        },
+        "healthContractVersion": { "const": "1.0.0" }
+      }
+    },
+    "AdapterInvocationEnvelopeV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "tenantRef", "relationshipId", "professionalTypeId", "professionalVersion", "skillId", "skillVersion", "admissionContentDigest", "artifactDigest", "customerContractDigest", "decisionSpaceVersion", "invocationId", "idempotencyKey", "payloadDigest", "ceDecisionRef", "evidenceContextRef", "deadline", "correlationId", "mode"],
+      "properties": {
+        "schemaVersion": { "const": "1.0.0" },
+        "tenantRef": { "$ref": "#/$defs/opaqueRef" },
+        "relationshipId": { "type": "string", "format": "uuid" },
+        "professionalTypeId": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,99}$" },
+        "professionalVersion": { "$ref": "#/$defs/semver" },
+        "skillId": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,99}$" },
+        "skillVersion": { "$ref": "#/$defs/semver" },
+        "admissionContentDigest": { "$ref": "#/$defs/digest" },
+        "artifactDigest": { "$ref": "#/$defs/digest" },
+        "customerContractDigest": { "$ref": "#/$defs/digest" },
+        "decisionSpaceVersion": { "$ref": "#/$defs/opaqueRef" },
+        "configurationRevision": { "oneOf": [{ "$ref": "#/$defs/opaqueRef" }, { "type": "null" }] },
+        "goalRevision": { "oneOf": [{ "$ref": "#/$defs/opaqueRef" }, { "type": "null" }] },
+        "invocationId": { "type": "string", "format": "uuid" },
+        "idempotencyKey": { "$ref": "#/$defs/opaqueRef" },
+        "payloadDigest": { "$ref": "#/$defs/digest" },
+        "ceDecisionRef": { "$ref": "#/$defs/opaqueRef" },
+        "evidenceContextRef": { "$ref": "#/$defs/opaqueRef" },
+        "deadline": { "type": "string", "format": "date-time" },
+        "traceparent": { "type": ["string", "null"], "maxLength": 128 },
+        "correlationId": { "$ref": "#/$defs/opaqueRef" },
+        "mode": { "enum": ["TRIAL", "LIVE", "PLANNING"] },
+        "stopEvidenceRef": { "type": ["string", "null"], "maxLength": 256 }
+      }
+    },
+    "AdapterOperationRequestV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["envelope", "payload"],
+      "properties": {
+        "envelope": { "$ref": "#/$defs/AdapterInvocationEnvelopeV1" },
+        "payload": { "type": "object" }
+      }
+    },
+    "AdapterInvocationV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "invocationId", "state", "stateVersion", "replayed", "updatedAt"],
+      "properties": {
+        "schemaVersion": { "const": "1.0.0" },
+        "invocationId": { "type": "string", "format": "uuid" },
+        "state": { "enum": ["RECEIVED", "VALIDATING", "ACCEPTED", "RUNNING", "SUCCEEDED", "FAILED", "PARTIAL", "CANCEL_REQUESTED", "CANCELLED", "STOP_REQUESTED", "STOPPED"] },
+        "stateVersion": { "type": "integer", "minimum": 0 },
+        "replayed": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "AdapterEventV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "eventId", "invocationId", "sequence", "eventType", "state", "timestamp", "payloadDigest", "partial"],
+      "properties": {
+        "schemaVersion": { "const": "1.0.0" },
+        "eventId": { "type": "string", "format": "uuid" },
+        "invocationId": { "type": "string", "format": "uuid" },
+        "sequence": { "type": "integer", "minimum": 1 },
+        "eventType": { "const": "STATE_CHANGED" },
+        "state": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "payloadDigest": { "$ref": "#/$defs/digest" },
+        "partial": { "type": "boolean" }
+      }
+    },
+    "AdapterResultV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "invocationId", "state", "completionReason", "output", "outputPayloadDigest", "evidenceReferences", "warnings", "startedAt", "completedAt"],
+      "properties": {
+        "schemaVersion": { "const": "1.0.0" },
+        "invocationId": { "type": "string", "format": "uuid" },
+        "state": { "enum": ["SUCCEEDED", "FAILED", "PARTIAL", "CANCELLED", "STOPPED"] },
+        "completionReason": { "$ref": "#/$defs/opaqueRef" },
+        "output": { "type": "object" },
+        "outputPayloadDigest": { "$ref": "#/$defs/digest" },
+        "evidenceReferences": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/opaqueRef" } },
+        "warnings": { "type": "array", "items": { "type": "string", "maxLength": 256 } },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "completedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "ProblemDetail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "title", "status", "code", "correlationId", "retryable"],
+      "properties": {
+        "type": { "type": "string", "format": "uri" },
+        "title": { "type": "string", "maxLength": 128 },
+        "status": { "type": "integer", "minimum": 400, "maximum": 599 },
+        "code": { "type": "string", "pattern": "^ADAPTER_[A-Z_]+$" },
+        "correlationId": { "$ref": "#/$defs/opaqueRef" },
+        "retryable": { "type": "boolean" }
+      }
+    }
+  }
+}

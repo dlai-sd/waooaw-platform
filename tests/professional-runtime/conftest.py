@@ -9,7 +9,9 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 professional_runtime_path = Path(__file__).parent.parent.parent / "src" / "professional-runtime"
+agent_adapters_path = Path(__file__).parent.parent.parent / "src" / "agent-adapters"
 sys.path.insert(0, str(professional_runtime_path))
+sys.path.insert(0, str(agent_adapters_path))
 
 module_spec = importlib.util.spec_from_file_location(
     "professional_runtime_main",

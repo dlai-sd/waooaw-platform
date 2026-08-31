@@ -8,6 +8,15 @@ environments:
   ci:
     trust_domain: waooaw.ci
     leaf_lifetime_hours: 2
+  demo:
+    trust_domain: demo.waooaw.internal
+    leaf_lifetime_hours: 2
+  uat:
+    trust_domain: uat.waooaw.internal
+    leaf_lifetime_hours: 2
+  prod:
+    trust_domain: prod.waooaw.internal
+    leaf_lifetime_hours: 1
 
 workloads:
   business-platform:
@@ -24,14 +33,46 @@ workloads:
     identity_path: professional-runtime
     owner: INST-010
     audience: urn:waooaw:service:professional-runtime
-    tls_usages: [server_auth]
+    tls_usages: [client_auth, server_auth]
   domain-adapter-dma:
     identity_path: domain-adapter/dma
     owner: INST-010
     audience: urn:waooaw:service:domain-adapter:dma
     tls_usages: [server_auth]
+  agent-runtime-adapter-digital-marketing:
+    identity_path: agent-runtime-adapter/digital-marketing-local-service/3.1.0
+    owner: INST-010
+    audience: urn:waooaw:adapter:digital-marketing-local-service:3.1.0
+    tls_usages: [server_auth]
+  agent-runtime-adapter-trading:
+    identity_path: agent-runtime-adapter/trading-fo-crypto/1.8.0
+    owner: INST-010
+    audience: urn:waooaw:adapter:trading-fo-crypto:1.8.0
+    tls_usages: [server_auth]
 
 route_grants:
+  - { caller: professional-runtime, target: agent-runtime-adapter-digital-marketing, method: GET, route: "/internal/v1/descriptor", operation: describeAdapter, contract_major: 1 }
+  - { caller: professional-runtime, target: agent-runtime-adapter-digital-marketing, method: GET, route: "/internal/v1/health/ready", operation: getAdapterReadiness, contract_major: 1 }
+  - { caller: professional-runtime, target: agent-runtime-adapter-digital-marketing, method: POST, route: "/internal/v1/configurations:validate", operation: validateAdapterConfiguration, contract_major: 1 }
+  - { caller: professional-runtime, target: agent-runtime-adapter-digital-marketing, method: POST, route: "/internal/v1/plans", operation: createAdapterPlan, contract_major: 1 }
+  - { caller: professional-runtime, target: agent-runtime-adapter-digital-marketing, method: POST, route: "/internal/v1/invocations", operation: executeAdapterInvocation, contract_major: 1 }
+  - { caller: professional-runtime, target: agent-runtime-adapter-digital-marketing, method: GET, route: "/internal/v1/invocations/{invocationId}", operation: getAdapterInvocation, contract_major: 1 }
+  - { caller: professional-runtime, target: agent-runtime-adapter-digital-marketing, method: GET, route: "/internal/v1/invocations/{invocationId}/events", operation: streamAdapterEvents, contract_major: 1 }
+  - { caller: professional-runtime, target: agent-runtime-adapter-digital-marketing, method: POST, route: "/internal/v1/invocations/{invocationId}:cancel", operation: cancelAdapterInvocation, contract_major: 1 }
+  - { caller: professional-runtime, target: agent-runtime-adapter-digital-marketing, method: POST, route: "/internal/v1/relationships/{relationshipId}:emergency-stop", operation: emergencyStopAdapterRelationship, contract_major: 1 }
+  - { caller: professional-runtime, target: agent-runtime-adapter-digital-marketing, method: POST, route: "/internal/v1/relationships/{relationshipId}:resume", operation: resumeAdapterRelationship, contract_major: 1 }
+  - { caller: professional-runtime, target: agent-runtime-adapter-digital-marketing, method: GET, route: "/internal/v1/invocations/{invocationId}/result", operation: getAdapterResult, contract_major: 1 }
+  - { caller: professional-runtime, target: agent-runtime-adapter-trading, method: GET, route: "/internal/v1/descriptor", operation: describeAdapter, contract_major: 1 }
+  - { caller: professional-runtime, target: agent-runtime-adapter-trading, method: GET, route: "/internal/v1/health/ready", operation: getAdapterReadiness, contract_major: 1 }
+  - { caller: professional-runtime, target: agent-runtime-adapter-trading, method: POST, route: "/internal/v1/configurations:validate", operation: validateAdapterConfiguration, contract_major: 1 }
+  - { caller: professional-runtime, target: agent-runtime-adapter-trading, method: POST, route: "/internal/v1/plans", operation: createAdapterPlan, contract_major: 1 }
+  - { caller: professional-runtime, target: agent-runtime-adapter-trading, method: POST, route: "/internal/v1/invocations", operation: executeAdapterInvocation, contract_major: 1 }
+  - { caller: professional-runtime, target: agent-runtime-adapter-trading, method: GET, route: "/internal/v1/invocations/{invocationId}", operation: getAdapterInvocation, contract_major: 1 }
+  - { caller: professional-runtime, target: agent-runtime-adapter-trading, method: GET, route: "/internal/v1/invocations/{invocationId}/events", operation: streamAdapterEvents, contract_major: 1 }
+  - { caller: professional-runtime, target: agent-runtime-adapter-trading, method: POST, route: "/internal/v1/invocations/{invocationId}:cancel", operation: cancelAdapterInvocation, contract_major: 1 }
+  - { caller: professional-runtime, target: agent-runtime-adapter-trading, method: POST, route: "/internal/v1/relationships/{relationshipId}:emergency-stop", operation: emergencyStopAdapterRelationship, contract_major: 1 }
+  - { caller: professional-runtime, target: agent-runtime-adapter-trading, method: POST, route: "/internal/v1/relationships/{relationshipId}:resume", operation: resumeAdapterRelationship, contract_major: 1 }
+  - { caller: professional-runtime, target: agent-runtime-adapter-trading, method: GET, route: "/internal/v1/invocations/{invocationId}/result", operation: getAdapterResult, contract_major: 1 }
   - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/relationships/{relationshipId}/commercial-projection", operation: getRelationshipCommercialProjection, contract_major: 1 }
   - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/relationships/{relationshipId}/paid-activation", operation: activatePaidRelationship, contract_major: 1 }
   - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/relationships/{relationshipId}/offerability-validation", operation: validateRelationshipOfferability, contract_major: 1 }

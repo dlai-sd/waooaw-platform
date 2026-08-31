@@ -10,6 +10,7 @@
     "canonicalizationProfile",
     "professionalIdentity",
     "complianceDeclaration",
+    "runtimeAdapter",
     "skillManifest"
   ],
   "properties": {
@@ -17,6 +18,7 @@
     "canonicalizationProfile": { "const": "RFC8785" },
     "professionalIdentity": { "$ref": "#/$defs/professionalIdentity" },
     "complianceDeclaration": { "$ref": "#/$defs/complianceDeclaration" },
+    "runtimeAdapter": { "$ref": "#/$defs/runtimeAdapter" },
     "skillManifest": {
       "type": "array",
       "minItems": 1,
@@ -55,6 +57,29 @@
         "path": { "type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9_./-]+$" },
         "version": { "type": "string", "minLength": 1 },
         "digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "runtimeAdapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocolVersion",
+        "compatibleMinorVersions",
+        "artifactDigest",
+        "isolationProfile",
+        "conformanceEvidence"
+      ],
+      "properties": {
+        "protocolVersion": { "const": "1.0.0" },
+        "compatibleMinorVersions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^1\\.[0-9]+\\.[0-9]+$" }
+        },
+        "artifactDigest": { "$ref": "#/$defs/digest" },
+        "isolationProfile": { "const": "ONE_ARTIFACT_PER_DEPLOYMENT" },
+        "conformanceEvidence": { "$ref": "#/$defs/schemaReference" }
       }
     },
     "professionalIdentity": {

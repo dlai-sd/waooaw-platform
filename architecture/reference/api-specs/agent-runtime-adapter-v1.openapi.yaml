@@ -1,0 +1,137 @@
+openapi: "3.1.0"
+info:
+  title: WAOOAW Agent Runtime Adapter API
+  version: "1.0.0"
+  description: Private execution port invoked only by Professional Runtime. It is not a customer or channel API.
+servers:
+  - url: https://agent-runtime-adapter:8443
+    description: Environment-private workload endpoint
+security:
+  - WorkloadIdentity: []
+tags:
+  - name: Adapter
+  - name: Health
+paths:
+  /health/live:
+    get:
+      operationId: getAdapterLiveness
+      tags: [Health]
+      security: []
+      responses:
+        "200": { description: Process loop is alive }
+  /internal/v1/descriptor:
+    get:
+      operationId: describeAdapter
+      tags: [Adapter]
+      responses:
+        "200":
+          description: Immutable adapter descriptor
+          content: { application/json: { schema: { $ref: "./schemas/agent-runtime-adapter-v1.schema.json#/$defs/AdapterDescriptorV1" } } }
+        "401": { $ref: "#/components/responses/AdapterError" }
+  /internal/v1/health/ready:
+    get:
+      operationId: getAdapterReadiness
+      tags: [Health]
+      responses:
+        "200": { description: Adapter can accept private work }
+        "503": { $ref: "#/components/responses/AdapterError" }
+  /internal/v1/configurations:validate:
+    post:
+      operationId: validateAdapterConfiguration
+      tags: [Adapter]
+      requestBody: { $ref: "#/components/requestBodies/AdapterOperation" }
+      responses:
+        "200": { description: Exact configuration revision validated }
+        "400": { $ref: "#/components/responses/AdapterError" }
+  /internal/v1/plans:
+    post:
+      operationId: createAdapterPlan
+      tags: [Adapter]
+      requestBody: { $ref: "#/components/requestBodies/AdapterOperation" }
+      responses:
+        "200": { description: Non-consequential plan with no side effect }
+        "400": { $ref: "#/components/responses/AdapterError" }
+  /internal/v1/invocations:
+    post:
+      operationId: executeAdapterInvocation
+      tags: [Adapter]
+      parameters:
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+        - { $ref: "#/components/parameters/CorrelationId" }
+      requestBody: { $ref: "#/components/requestBodies/AdapterOperation" }
+      responses:
+        "200": { $ref: "#/components/responses/AdapterInvocation" }
+        "202": { $ref: "#/components/responses/AdapterInvocation" }
+        "409": { $ref: "#/components/responses/AdapterError" }
+  /internal/v1/invocations/{invocationId}:
+    get:
+      operationId: getAdapterInvocation
+      tags: [Adapter]
+      parameters: [{ $ref: "#/components/parameters/InvocationId" }]
+      responses:
+        "200": { $ref: "#/components/responses/AdapterInvocation" }
+        "404": { $ref: "#/components/responses/AdapterError" }
+  /internal/v1/invocations/{invocationId}/events:
+    get:
+      operationId: streamAdapterEvents
+      tags: [Adapter]
+      parameters: [{ $ref: "#/components/parameters/InvocationId" }]
+      responses:
+        "200": { description: Ordered SSE events, content: { text/event-stream: { schema: { type: string } } } }
+  /internal/v1/invocations/{invocationId}:cancel:
+    post:
+      operationId: cancelAdapterInvocation
+      tags: [Adapter]
+      parameters: [{ $ref: "#/components/parameters/InvocationId" }]
+      requestBody: { $ref: "#/components/requestBodies/AdapterOperation" }
+      responses:
+        "200": { $ref: "#/components/responses/AdapterInvocation" }
+        "202": { $ref: "#/components/responses/AdapterInvocation" }
+  /internal/v1/relationships/{relationshipId}:emergency-stop:
+    post:
+      operationId: emergencyStopAdapterRelationship
+      tags: [Adapter]
+      parameters: [{ $ref: "#/components/parameters/RelationshipId" }]
+      requestBody: { $ref: "#/components/requestBodies/AdapterOperation" }
+      responses:
+        "200": { description: Local halt acknowledged and attributable }
+  /internal/v1/relationships/{relationshipId}:resume:
+    post:
+      operationId: resumeAdapterRelationship
+      tags: [Adapter]
+      parameters: [{ $ref: "#/components/parameters/RelationshipId" }]
+      requestBody: { $ref: "#/components/requestBodies/AdapterOperation" }
+      responses:
+        "200": { description: Fresh-authority execution eligibility acknowledged }
+        "403": { $ref: "#/components/responses/AdapterError" }
+  /internal/v1/invocations/{invocationId}/result:
+    get:
+      operationId: getAdapterResult
+      tags: [Adapter]
+      parameters: [{ $ref: "#/components/parameters/InvocationId" }]
+      responses:
+        "200":
+          description: Terminal or partial execution facts
+          content: { application/json: { schema: { $ref: "./schemas/agent-runtime-adapter-v1.schema.json#/$defs/AdapterResultV1" } } }
+        "202": { description: Invocation remains non-terminal }
+components:
+  securitySchemes:
+    WorkloadIdentity:
+      type: mutualTLS
+      description: Environment-scoped workload identity plus audience-bound delegated context
+  parameters:
+    InvocationId: { name: invocationId, in: path, required: true, schema: { type: string, format: uuid } }
+    RelationshipId: { name: relationshipId, in: path, required: true, schema: { type: string, format: uuid } }
+    IdempotencyKey: { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 1, maxLength: 256 } }
+    CorrelationId: { name: X-Correlation-ID, in: header, required: true, schema: { type: string, minLength: 1, maxLength: 256 } }
+  requestBodies:
+    AdapterOperation:
+      required: true
+      content: { application/json: { schema: { $ref: "./schemas/agent-runtime-adapter-v1.schema.json#/$defs/AdapterOperationRequestV1" } } }
+  responses:
+    AdapterInvocation:
+      description: Deterministic invocation state
+      content: { application/json: { schema: { $ref: "./schemas/agent-runtime-adapter-v1.schema.json#/$defs/AdapterInvocationV1" } } }
+    AdapterError:
+      description: Privacy-safe RFC 9457 problem
+      content: { application/problem+json: { schema: { $ref: "./schemas/agent-runtime-adapter-v1.schema.json#/$defs/ProblemDetail" } } }

@@ -25,6 +25,16 @@
     "limitationBehavior": "Disclose unavailable providers and request customer action.",
     "degradationBehavior": "Pause consequential publication while preserving drafts."
   },
+  "runtimeAdapter": {
+    "protocolVersion": "1.0.0",
+    "compatibleMinorVersions": ["1.0.0"],
+    "artifactDigest": "sha256:1212121212121212121212121212121212121212121212121212121212121212",
+    "isolationProfile": "ONE_ARTIFACT_PER_DEPLOYMENT",
+    "conformanceEvidence": {
+      "schemaVersion": "1.0.0",
+      "schemaDigest": "sha256:1313131313131313131313131313131313131313131313131313131313131313"
+    }
+  },
   "skillManifest": [
     {
       "skillId": "LOCAL_CAMPAIGN_MANAGEMENT",
