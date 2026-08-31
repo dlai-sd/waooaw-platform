@@ -1,6 +1,7 @@
-FROM python:3.12.11-slim-bookworm
+FROM python:3.12-alpine
 
-RUN groupadd --system adapter && useradd --system --gid adapter --home-dir /app adapter \
+RUN apk upgrade --no-cache \
+    && addgroup -S adapter && adduser -S -G adapter -h /app adapter \
     && pip install --no-cache-dir fastapi==0.135.1 uvicorn==0.34.0
 
 WORKDIR /app
