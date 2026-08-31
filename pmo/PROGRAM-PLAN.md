@@ -8,6 +8,10 @@
 **Constitutional Basis:** C-064 (Three-Human Institution), C-065 (SDLC Separation), C-066 (Authorization Tiers), C-067 (Blue-Green Deployment), C-068 (Steward Access Isolation), C-071 (Quality Framework), C-073 (Constitutional Annotations)
 **Platform version:** v1.0.0 — Design & Specification Iteration 1 COMPLETE
 
+> Historical baseline: this document records the 2026-07-23 program design. Current delivery status
+> is owned by `constitution/PROJECT_STATE.md`; current cloud strategy is owned by
+> `architecture/reference/pipeline/azure-deployment-topology.md`.
+
 ---
 
 ## ✅ Design & Specification Iteration 1 — DECLARED COMPLETE (2026-07-23)

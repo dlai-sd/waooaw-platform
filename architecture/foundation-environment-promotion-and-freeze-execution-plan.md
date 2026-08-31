@@ -6,8 +6,8 @@
 EXECUTION REQUIRE SEPARATE CURRENT-SESSION AUTHORIZATION
 **Execution office:** Platform IT Expert (INST-010), Skills 1-9 and 11-17, with Skill 17 controlling
 cloud delivery
-**Delivery unit:** Qualified Demo, explicit Founder Demo acceptance, unchanged release-tuple promotion
-to qualified UAT, and dark Production readiness without activation
+**Delivery unit:** Preserve the accepted Demo/UAT cloud baseline, consolidate strategy and workflow
+references, and complete dark Production readiness without activation
 **Reference architecture:** `architecture/foundation-consolidated-assessment-2026-08-29.md` and
 `architecture/reference/pipeline/azure-deployment-topology.md`
 **Constitutional basis:** C-001, C-002, C-003, C-005, C-007, C-023, C-025, C-032, C-035, C-049,
@@ -16,16 +16,14 @@ C-059, C-063, C-065, C-067, C-071, C-076, C-077, C-080
 
 ## 1. Objective
 
-Complete the remaining Foundation environment-delivery capability as one controlled progression:
+Complete the Foundation environment freeze from the accepted PR #371 cloud-delivery baseline:
 
 ```text
-REPOSITORY-QUALIFIED EXACT-SIX RELEASE
-  -> DEMO PRIVATE-RUNNER QUALIFICATION
-  -> DEMO PLAN, APPLY, VERIFY, ROLLBACK, AND LEASE PROOF
-  -> EXPLICIT FOUNDER ACCEPTANCE OF THE EXACT DEMO TUPLE
-  -> UAT PROMOTION OF THE SAME SIX OCI DIGESTS
-  -> UAT ISOLATION, RECOVERY, BLUE-GREEN, AND ROLLBACK PROOF
-  -> DARK PRODUCTION READINESS PLAN WITH ZERO ACTIVATION
+PR #371 ACCEPTED BASELINE
+  -> DEMO PRIVATE DEPLOYMENT AND FOUNDER ACCEPTANCE [COMPLETE]
+  -> UAT SAME-RELEASE DEPLOYMENT AND INDEPENDENT VERIFICATION [COMPLETE]
+  -> ONE CANONICAL STRATEGY AND DEPLOYMENT ENTRY [DOCUMENTATION CONSOLIDATION]
+  -> DARK PRODUCTION READINESS PLAN WITH ZERO ACTIVATION [REMAINING]
 ```
 
 The same immutable application images must move from Demo to UAT and, under a later authority, to
@@ -34,10 +32,11 @@ and policy parameters must remain outside the images in reviewed environment con
 Vault references. Promotion changes environment configuration and deployment evidence, never image
 content or image identity.
 
-This plan is self-sufficient for a future Platform IT executor. It defines the required repository
-changes, stage sequence, validation economy, cloud proofs, evidence, rollback, and stops. It does not
-authorize implementation, provider access, expenditure, deployment, UAT, Production, acceptance,
-PR approval, or merge.
+This plan is self-sufficient for future Platform IT work. It defines the required repository changes,
+validation economy, Production-readiness proofs, evidence, rollback, and stops while treating the
+merged Demo/UAT evidence as immutable input rather than work to repeat. It does not authorize
+implementation, provider access, expenditure, deployment, Production, acceptance, PR approval, or
+merge.
 
 ## 2. Required Outcome
 
@@ -46,9 +45,9 @@ PR approval, or merge.
 | Release | One signed manifest with exactly six digest-pinned first-party images, attestations, SBOMs, source commit, dependency manifest, and schema compatibility | Per-environment rebuild, mutable tag authority, silent seventh member, or digest substitution |
 | Configuration | Versioned non-secret schema plus reviewed per-environment document digest and Key Vault/managed-identity references | Environment value, endpoint, credential, secret, or tenant data baked into an image |
 | Runner | Ephemeral environment-scoped ACA runner, private state/config path, independent cleanup, zero idle capacity | Long-lived runner, public state path, cross-environment identity, or public fallback |
-| Demo | Founder-only qualified deployment with synthetic data, bounded lease, rollback, and complete evidence | UAT inference from local tests or an unaccepted Demo |
-| Acceptance | Founder records the exact manifest, six image digests, configuration digest, schema digest, evidence digest, and Demo URL accepted | Acceptance by executor, workflow success alone, mutable reference, or undocumented verbal inference |
-| UAT | Production-shaped isolated environment using the exact Demo image digests and proving PITR, blue-green, rollback, and cross-environment denial | Rebuild, Demo state/identity/data reuse, or action before Founder Demo acceptance |
+| Demo | Preserve the Founder-accepted private deployment and evidence as an immutable regression baseline | Reconstruct acceptance from prose or overwrite failed-attempt evidence |
+| Acceptance | Preserve the Founder record and exact release/configuration/evidence binding established before UAT | Acceptance by executor, workflow success alone, mutable reference, or undocumented inference |
+| UAT | Preserve the independently verified private-runner and exact-six deployment as a Production-readiness input | Rebuild, Demo state/identity/data reuse, or claim unproven recovery/rollback evidence |
 | Production | Validated dark plan and readiness ledger with zero runner capacity, apply, DNS activation, secret seeding, or traffic | Production mutation or customer exposure under WC-081 |
 
 The promoted release tuple is:
@@ -71,7 +70,7 @@ non-contradictory.
 | Input or authority | Required state | Validation |
 |---|---|---|
 | WC-081 and this plan | Founder accepted | Exact path and accepted commit recorded |
-| WC-076 authority | Approved record restored, or accepted superseding authority names its replacement | File and acceptance reference exist; topology prose is not authority |
+| WC-076 authority | Present and accepted through the PR #371 execution baseline | Work Contract and finalization evidence resolve Demo/UAT chronology |
 | Current-session implementation authority | Explicitly granted | Founder names Platform IT session, issue, branch, paths, and stage |
 | Cloud/provider authority | Explicit and stage-specific | Allowed subscription, environment, query/plan/apply/deploy actions, time window, and spend bound recorded |
 | Project state | Current and compatible | GOAL-006 stage, blockers, acceptance history, and Production prohibition agree |
@@ -80,15 +79,16 @@ non-contradictory.
 | Implementation issue | Founder assigned | Exact files, tests, proof IDs, branch, estimate, rollback, stops, and acceptance actor named |
 | Toolchain | Repository pinned | Docker/BuildKit, Compose, Terraform 1.9.8 where current workflow requires it, Python test image, Syft 1.27.1, Trivy 0.65.0, Gitleaks 8.28.0, and Spectral 6.15.0 available |
 
-The current repository contains useful partial delivery assets but does not itself grant execution
-authority. In particular, UAT remains blocked and the absent WC-076 record must be restored or
-explicitly superseded before Skill 17 implementation or cloud execution.
+The current repository contains the accepted PR #371 implementation: `deploy.yaml` is the sole
+manual application deployment entry, Demo is Founder-accepted, UAT is deployed and independently
+verified, and Production remains code-prepared but plan-only. Repository state still does not grant
+new implementation or provider authority.
 
 ### 3.1 Owner Handoff Before Platform IT Execution
 
 | Owner | Required accepted output |
 |---|---|
-| Founder | WC-081 acceptance, implementation authority, exact provider authority, Demo acceptance when reached, and later UAT authority |
+| Founder | WC-081 acceptance and any future implementation, Production plan/provider, activation, DNS, traffic, or acceptance authority |
 | Platform Architect | Exact-six release membership, environment topology, service/dependency boundaries, environment configuration schema, and workload interface contract |
 | Solution Architect | This sequence, promotion tuple, workflow interfaces, failure behavior, rollback, acceptance matrix, and Production-dark boundary |
 | Security Architect | OIDC subjects, managed identities, runner App manifest, RBAC, NSG, DNS, Key Vault, egress, secret handling, denial tests, and incident holds |
@@ -115,20 +115,21 @@ choosing values in Terraform, workflows, scripts, or environment variables.
 
 ### 4.1 In Scope
 
-- restore or supersede the missing WC-076 execution authority record before implementation;
-- qualify and activate the ADR-047 Demo private-runner path without a public fallback;
-- parameterize the accepted reusable deployment workflow using reviewed environment manifests rather
-  than embedded Demo resource IDs, names, labels, configuration Blob paths, and caller checks;
-- retain separate environment workflows and GitHub Environment approvals for Demo, UAT, and
-  Production-dark plan entry;
-- extend exact-six verification, independent verification, cleanup, and evidence to UAT;
+- consolidate current cloud strategy in `architecture/reference/pipeline/azure-deployment-topology.md`;
+- keep README as operator routing, PROJECT_STATE as current status, WC-076 as execution closure, and
+  the finalization evidence as immutable run detail;
+- preserve `deploy.yaml` as the sole manual application deployment entry and the existing reusable
+  deployment, independent verification, runner delivery, qualification, and lease responsibilities;
+- identify historic or orphaned workflows without deleting unique governance controls; any future
+  workflow consolidation requires explicit implementation authorization and contract tests;
+- retain Demo/UAT exact-six, external configuration, private-runner, cleanup, and verification
+  evidence as regression inputs;
 - implement external non-secret configuration schemas and environment manifests whose digests bind to
   the release while all secret values remain in Key Vault;
 - complete additive migration, pre-traffic verification, blue-green switch, compatible rollback,
   failed-revision retention, and lease expiry automation;
 - implement one deterministic local/Docker qualification entry point that emits final JSON directly;
-- qualify Demo, record Founder acceptance, then promote the same image digests to UAT;
-- prove UAT PITR/restore and Production-shaped operations;
+- close only remaining UAT recovery/rollback evidence gaps required by the accepted Production gate;
 - produce a dark Production plan/readiness ledger without mutation or activation.
 
 ### 4.2 Out Of Scope
@@ -202,11 +203,12 @@ The implementation issue must bind exact paths. The expected owning surfaces are
 
 | Surface | Required result |
 |---|---|
-| `work-contracts/WC-076-goal006-phase3-execution.md` or accepted successor | Restored/superseding authority record before execution |
-| `.github/workflows/deploy-demo.yaml` | Protected Demo plan/apply entry using current-main signed release |
-| `.github/workflows/deploy-environment.yaml` | Environment-parameterized reusable workflow with no Demo constants in shared logic |
+| `work-contracts/WC-076-goal006-phase3-execution.md` | Demo/UAT execution closure and remaining P3-EX11 status |
+| `.github/workflows/deploy.yaml` | Sole manual application deployment entry using the current-main signed release |
+| `.github/workflows/deploy-environment.yaml` | Environment-parameterized reusable deployment engine |
 | `.github/workflows/post-deploy-verify.yaml` | Independent environment-parameterized verification and complete evidence output |
-| `.github/workflows/promote.yaml` | Founder-acceptance-bound UAT promotion; Production remains fail-closed |
+| `.github/workflows/runner-environment-delivery.yaml` | Reviewed private-runner preview/apply lifecycle, distinct from application deployment |
+| `.github/workflows/goal006-private-runner-qualification.yaml` | Private-path diagnostics, distinct from deployment and acceptance |
 | `.github/workflows/reconcile-workload-leases.yaml` | Idempotent scale-to-zero/server-stop lease reconciliation and evidence |
 | `infrastructure/deployment-stacks/goal006-runner/` | Versioned per-environment runner manifests/templates and activation proof inputs |
 | `infrastructure/terraform/phase2/environments/` | Isolated Demo/UAT roots and dark Production plan roots using accepted modules |
@@ -216,40 +218,40 @@ The implementation issue must bind exact paths. The expected owning surfaces are
 | `tests/pipeline/` and owning tests | Workflow, schema, denial, release, retry, rollback, lease, and evidence contracts |
 | `test-results/goal006/<stage>/` | SHA-256-addressed final evidence, author review, and PR metadata inputs |
 
+### 7.1 Workflow Housekeeping Disposition
+
+| Workflow | Classification | Disposition |
+|---|---|---|
+| `deploy.yaml` | Strategic operator entry | Retain as the only manual application deployment entry. |
+| `deploy-environment.yaml` | Reusable deployment engine | Retain; it owns private runner execution, Terraform, external configuration, cost and cleanup. |
+| `post-deploy-verify.yaml` | Independent confirmation | Retain; deployment and confirmation identities remain separate. |
+| `runner-environment-delivery.yaml` | Runner control-plane delivery | Retain; reviewed runner-stack preview/apply is distinct from application deployment. |
+| `goal006-private-runner-qualification.yaml` | Private-path diagnostic | Retain; it proves Storage/Terraform access and cleanup without deploying applications. |
+| `goal006-runner-image.yaml` | Runner supply chain | Retain; it builds and attests the immutable private-runner image. |
+| `reconcile-workload-leases.yaml` | Operational reconciler | Retain; lease expiry and zero-idle enforcement are not deployment entry behavior. |
+| `goal006-phase2-offline.yml` | Unique offline qualification with stale phase name | Do not delete until its release simulation and delegated PostgreSQL checks are moved into an active CI gate; then rename or remove under implementation authorization. |
+| `emergency-halt-check.yaml` | Orphaned governance control | Its comment names deleted callers and no workflow calls it. Under implementation authorization, move the fail-closed halt check into `deploy.yaml`, add contract tests, then delete the orphan. |
+| `deploy-demo.yaml` and `promote.yaml` | Removed transitional wrappers | Remain absent; PR #371 consolidated their responsibilities into the current path. |
+
+One stale `promote.yaml` comment remains in legacy `infrastructure/terraform/environments/dev/main.tf`.
+Correct it only in an implementation-authorized cleanup because the file is runnable Terraform.
+
 Do not create a parallel deployment workflow, second release format, or prose-only proof ledger.
 
 ## 8. Ordered Delivery Components
 
-1. **Authority and baseline:** restore/supersede WC-076, bind WC-081 issue/branch/stage, inventory
-   current resources only if provider-query authority exists, and preserve all pre-existing evidence.
-2. **Offline contracts:** define environment manifest/configuration/evidence schemas, exact-six and
-   promotion invariants, accepted CCT/probe sets, and negative fixtures.
-3. **Demo runner control plane:** reconcile the immutable Deployment Stack, implement broker/token
-   lifecycle and cleanup, then prove ten successful runs plus five forced cancellations including one
-   hard termination with no orphan beyond five minutes.
-4. **Demo runner activation:** in one reviewed change, switch deployment to the qualified private
-   label and assert removal of all temporary public Storage mutation. Disable public Storage access
-   only after exact private backend operations pass.
-5. **Reusable environment workflow:** replace Demo constants with allowlisted manifest-derived values;
-   keep per-environment caller, GitHub Environment, identity, state, and authorization checks.
-6. **Foundation and dependencies:** reconcile VNet, private DNS, Key Vault, PostgreSQL, identities,
-   logs, databases/roles, Keycloak, Demo Temporal, Redis, and secret references.
-7. **Application plane:** consume the signed exact-six manifest, create digest-pinned ACA revisions,
-   bind external configuration, and preserve private/public ingress boundaries.
-8. **Release mechanics:** run additive migration, internal/public probes and CCTs before traffic;
-   switch blue-green, retain the prior qualified revision, prove rollback, and reconcile lease expiry.
-9. **Demo qualification:** run the single final campaign, perform authorized Demo plan/apply,
-   independently verify live inventory and journeys, and publish the evidence-bound Founder URL.
-10. **Founder Demo acceptance:** record an explicit accept/reject decision against exact digests. A
-    rejection returns to Demo with retained evidence; it never unlocks UAT.
-11. **UAT activation and promotion:** after separate authority, instantiate the same runner blueprint,
-    prove reciprocal isolation, and deploy the exact Demo image digests with UAT configuration.
-12. **UAT qualification:** prove representative synthetic journeys, Temporal Cloud boundary,
-    PITR/restore, blue-green, rollback, lease, cost, telemetry, and independent evidence.
-13. **Dark Production readiness:** validate offline and authorized plan-only topology, tuple,
+1. **Accepted baseline:** bind PR #371, WC-076 and finalization evidence; record Demo acceptance, UAT
+  verification, canonical workflow graph, immutable release behavior, and unresolved Production gaps.
+2. **Documentation consolidation:** make the Azure topology the single strategy source; reduce README
+  to routing; update PROJECT_STATE and WC-076 in place; leave historical plans/evidence unchanged.
+3. **Workflow inventory:** classify each workflow as strategic entry, reusable engine, diagnostic,
+  operational reconciler, unique qualification, historic, or orphaned. Do not remove a unique control.
+4. **Authorized future cleanup:** when separately authorized, move orphaned governance behavior into
+  the canonical path with focused contract tests before deleting its standalone workflow.
+5. **Dark Production readiness:** validate offline and authorized plan-only topology, tuple,
     configuration schema, identity, isolation, recovery, cost, and rollback without runner start,
     apply, secret creation, DNS activation, or traffic.
-14. **Foundation freeze:** publish the accepted compatibility/evidence ledger, close only verified
+6. **Foundation freeze:** publish the accepted compatibility/evidence ledger, close only verified
     assessment gaps, and submit the final unmerged PR for Founder review.
 
 Each numbered component is a checkpoint, not an independently complete delivery. Do not open an
@@ -484,17 +486,14 @@ Stop immediately and retain evidence when:
 
 WC-081 is done only when:
 
-- WC-076 is restored or explicitly superseded and all current-session authorities are evidenced;
-- the Demo private runner passes the complete ADR-047 activation matrix and no public fallback remains;
+- WC-076 and PR #371 evidence are the accepted execution baseline and all new authorities are evidenced;
+- the accepted Demo/UAT private-runner and no-public-fallback results remain traceable and unchanged;
 - reusable environment workflows derive values from reviewed manifests while preserving separate
   identities, approvals, state, configuration, data, network, DNS, and evidence;
 - exact-six is built once and immutable digest equality is enforced through promotion and rollback;
 - all environment values and secret references remain external to images;
-- Demo passes migration, probes, CCTs, journeys, blue-green, rollback, lease, isolation, security,
-  observability, cost, and independent verification;
-- the Founder explicitly accepts the exact Demo tuple before UAT begins;
-- UAT promotes the same six digests and passes reciprocal isolation, PITR/restore, Production-shaped
-  blue-green, rollback, lease, and independent verification;
+- Demo acceptance and UAT exact-six deployment/independent verification remain bound to their
+  immutable evidence; unresolved recovery or rollback proofs are not overstated;
 - dark Production plan/readiness evidence passes with zero mutation, runner capacity, DNS, secrets, or
   customer traffic;
 - each stage uses focused development checks and one final hash-bound Docker qualification that writes
@@ -517,7 +516,7 @@ WC-081 is done only when:
 | Cost | PASS | Focused checks, one final campaign, image reuse, zero idle capacity, leases, bounded retry, and FA-052 gates constrain spend |
 | Environment sequence | PASS | Demo qualification and explicit acceptance precede UAT; Production remains dark and separately authorized |
 | Decision traceability | PASS | WC-081, restored/superseding WC-076, controlling topology, ADRs, owner outputs, final HEAD, digests, and acceptance rows bind every action |
-| Implementation specificity | PASS | Current Demo hardcoding, UAT placeholder, blue-green deficiencies, artifact paths, ordered components, commands, proof IDs, and stops are identified |
+| Implementation specificity | PASS | PR #371 baseline, canonical workflow roles, documentation ownership, future cleanup boundary, artifact paths, commands, proof IDs, and stops are identified |
 
 **Author review result:** PASS
 **Founder review:** PENDING

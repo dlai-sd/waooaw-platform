@@ -7,7 +7,7 @@
 | Implementation executor | INST-010 - Platform IT Expert, Skill 17 |
 | Authority | FA-052; GOA-GOAL-006-INST-010-03; ACC-GOAL-006-INST-010-03 |
 | Scope | P3-EX01 through P3-EX11 in dependency order |
-| Status | IN PROGRESS - P3-EX07 Demo deployment and independent verification passed; Founder Demo acceptance pending |
+| Status | IN PROGRESS - P3-EX07 through P3-EX10 Demo/UAT deployment and verification passed; P3-EX11 dark-Production handover remains |
 
 ## Outcome
 
@@ -42,6 +42,14 @@ per-task evidence documents, duplicate pass reports or narrative handoff records
 | P3-EX07 runner bootstrap | IMPLEMENTED - review pending | Inactive Demo Deployment Stack; digest-pinned runner image and lifecycle/private-path probes; Bicep compilation; no cloud mutation |
 | P3-EX07 private signing broker | IMPLEMENTED - review pending | Dedicated private ACA start/cleanup brokers reuse the zero-idle environment, subnet, Key Vault endpoint, DNS, logs and runner image; 75 focused tests, Ruff, Bicep, image smoke and zero HIGH/CRITICAL OS scan pass; existing organization-installed GitHub App and FA-052 ceilings remain unchanged |
 | P3-EX07 runner activation | VERIFIED | Run `33085991935`; private apply, exact-six inventory, functional verification, URL/ingress binding and cleanup passed; Founder acceptance remains separate |
+| P3-EX08 Demo acceptance | ACCEPTED | Founder accepted the corrected Demo browser path and exact release on 2026-08-28 |
+| P3-EX09 UAT runner and promotion | VERIFIED | Runner plan `33149859100`, apply `33150103583`, immutable release deployment, private cleanup and zero-idle evidence passed |
+| P3-EX10 UAT qualification | VERIFIED | Run `33177257822`; exact-six inventory, latest-ready revisions, internal verification, Web HTTP 200 and OIDC HTTP 200 passed |
+| P3-EX11 dark Production | PENDING | Code-prepared and runner blueprint `INACTIVE`; protected environments, authorized plan and handover evidence remain |
+
+Detailed execution evidence is retained in `goals/GOAL-006-cloud-platform-finalization-evidence.md`.
+The canonical operator entry is `.github/workflows/deploy.yaml`; reusable deployment and independent
+verification remain in their owning workflows.
 
 ## Definition Of Done
 

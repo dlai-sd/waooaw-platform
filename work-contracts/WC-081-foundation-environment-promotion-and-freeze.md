@@ -4,9 +4,8 @@
 **Office:** Chief Solution Architect (INST-005)
 **Execution office:** Platform IT Expert (INST-010), Skill 17
 **Status:** SOLUTION PLAN CANDIDATE - FOUNDER REVIEW
-**Delivery unit:** Demo implementation and qualification, explicit Founder Demo acceptance, unchanged
-release-tuple promotion to UAT and qualification, and dark Production readiness evidence without
-Production activation
+**Delivery unit:** Consolidated current cloud strategy and workflow references, preserved accepted
+Demo/UAT evidence, and dark Production readiness planning without Production activation
 **Controlling plan:** `architecture/foundation-environment-promotion-and-freeze-execution-plan.md`
 **Reference architecture:** `architecture/foundation-consolidated-assessment-2026-08-29.md` and
 `architecture/reference/pipeline/azure-deployment-topology.md`
@@ -20,24 +19,24 @@ This Work Contract authorizes Solution Architecture planning only. It does not a
 workflow implementation, provider queries, cloud mutation, expenditure, DNS changes, deployment,
 UAT, Production, customer traffic, acceptance, PR approval, or merge.
 
-After Founder acceptance of this plan, a future Platform IT Expert session may execute only when the
-Founder separately grants explicit current-session implementation authority and exact provider/cloud
-authority for the selected environment stage. Demo is the first executable stage. UAT remains
-prohibited until the Founder explicitly accepts the qualified Demo release. Production remains dark
-and plan-only until separately authorized.
+PR #371 is the accepted implementation baseline: Demo was Founder-accepted, UAT was deployed and
+independently verified, and `.github/workflows/deploy.yaml` became the sole manual application
+deployment entry. A future Platform IT Expert session may execute new work only when the Founder
+separately grants explicit current-session implementation authority and exact provider/cloud
+authority. Production remains dark and plan-only until separately authorized.
 
 In scope:
 
-- reconcile and qualify the Demo private-runner control plane defined by ADR-047;
-- remove the temporary public deployment path only after the private-runner activation matrix passes;
-- finish environment-parameterized deployment, external configuration, migration, blue-green,
-  rollback, lease, observability, cost, and evidence automation;
-- build the exact-six release once and retain its immutable OCI digests for every environment;
-- deploy and qualify Demo, then capture explicit Founder Demo acceptance;
-- promote the identical release tuple and image digests to UAT without rebuild or retag authority;
-- qualify UAT isolation, PITR/restore, blue-green, rollback, and release compatibility;
+- preserve PR #371, WC-076 and finalization evidence as the accepted Demo/UAT baseline;
+- keep the Azure topology as the single cloud strategy source, README as operator routing,
+  PROJECT_STATE as current status, and WC-076 as execution closure;
+- preserve `deploy.yaml` as the sole manual application deployment entry;
+- classify workflows before cleanup and retain every unique deployment, verification, runner,
+  qualification, lease, evidence, approval, and Emergency Halt responsibility;
+- require separate implementation authorization before moving a control or deleting a workflow;
+- retain the exact-six release and immutable OCI digest promotion rule for every environment;
 - produce dark Production plans and readiness evidence without apply, activation, or traffic;
-- create one Founder-ready, unmerged PR per authorized implementation stage after local gates pass.
+- create one Founder-ready, unmerged PR after documentation validation passes.
 
 Out of scope:
 
@@ -57,7 +56,7 @@ implementation issue before execution begins.
 | This Work Contract and controlling plan | Founder accepted at an exact commit |
 | Execution authority | Founder explicitly authorizes implementation for the current session and names the allowed repository paths |
 | Provider authority | Founder separately authorizes the exact environment query/plan/apply/deploy actions and cost boundary |
-| WC-076 execution record | Approved record restored, or an accepted superseding authority explicitly replaces it; architecture text alone cannot reconstruct authority |
+| WC-076 execution record | Present and aligned to PR #371 Demo/UAT evidence and remaining P3-EX11 status |
 | Current project state | Environment stage, GOAL-006 boundary, blockers, and acceptance chronology are non-contradictory |
 | ADR-047 and Azure topology | Accepted and unchanged for private runners, isolation, release, evidence, and environment sequencing |
 | Owner contracts | Platform, Security, Data, QA, and Solution inputs for the selected component are accepted and executable |
@@ -69,38 +68,29 @@ implementation issue before execution begins.
 
 ## Definition Of Done
 
-WC-081 delivery is complete only when all applicable statements are true:
+WC-081 documentation consolidation is complete only when all applicable statements are true:
 
-- the Demo private runner completes ten successful executions and five forced-cancellation
-  executions, including one hard termination, with no orphan beyond five minutes;
-- Demo deployment uses the environment-scoped private runner and contains no temporary public
-  Storage firewall mutation or public fallback;
-- one signed exact-six release tuple is built once, and its six immutable image digests are recorded;
+- the latest 15 merged PRs were inspected and PR #371 is recorded as the controlling cloud baseline;
+- Demo acceptance and UAT verification remain linked to immutable finalization evidence;
+- the Azure topology is the sole normative strategy source and contains the current baseline;
+- README contains only operator routing and names `deploy.yaml` as the sole deployment entry;
+- PROJECT_STATE and WC-076 agree that Demo is accepted, UAT is verified, and P3-EX11 remains;
+- no current document treats deleted `deploy-demo.yaml` or `promote.yaml` as active;
+- unique workflow responsibilities are classified before any future implementation cleanup;
+- the signed exact-six release rule and its immutable image digests remain unchanged;
 - environment values and secret references remain external, reviewed, and digest-bound;
-- Demo migration, private readiness, public Founder journey, CCT, blue-green, rollback, lease,
-  observability, isolation, security, cost, and evidence checks pass;
-- the final Demo qualification command writes one machine-readable evidence JSON result directly;
-- explicit Founder Demo acceptance is recorded against the exact release, configuration, schema, and
-  evidence digests before any UAT provider action;
-- UAT uses the identical six Demo image digests, with only reviewed UAT configuration and
-  environment-scoped identities, state, network, data, vault, DNS, and evidence differing;
-- UAT PITR/restore, cross-environment denial, blue-green, rollback, and Production-shaped checks pass;
 - dark Production Terraform/workflow plans pass offline and authorized plan-only checks without
   resource mutation, runner capacity, DNS activation, secrets, or customer traffic;
-- focused checks ran during development, while full coverage, build, SBOM, Trivy, Gitleaks, and
-  repository gates ran once in the final qualification campaign for each implementation stage;
 - final commits precede qualification and author-review binding; C-059 and C-065 validate against the
   exact final HEAD; the branch is pushed once and a Founder-ready PR remains unmerged;
-- every accepted artifact, command, digest, proof result, failed attempt, rollback tuple, cost record,
-  and acceptance event is retained with SHA-256-addressed evidence.
+- historical plans and evidence remain unchanged rather than being rewritten as current status.
 
 ## Stops
 
 Stop without fallback, mutation, or inferred approval when any of the following occurs:
 
-- WC-076 is absent and no accepted superseding execution authority exists;
+- WC-076, PR #371 or finalization evidence cannot establish the accepted baseline;
 - current-session implementation or exact provider authority is missing, expired, or ambiguous;
-- UAT is requested before explicit Founder acceptance of the exact qualified Demo tuple;
 - Production apply, activation, DNS, customer traffic, or spend is requested under WC-081;
 - a release member, digest, attestation, configuration digest, schema compatibility result, or
   previous rollback tuple is missing or mismatched;
