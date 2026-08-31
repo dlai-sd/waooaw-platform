@@ -7,7 +7,7 @@ set -eu
 readonly GENERATOR_IMAGE="openapitools/openapi-generator-cli:v7.17.0"
 readonly REPOSITORY_ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)"
 readonly OUTPUT_PATH="$REPOSITORY_ROOT/web/lib/api/generated"
-readonly SLICE_PATH="$(mktemp "$REPOSITORY_ROOT/sprint-context/.f3-web-openapi.XXXXXX.yaml")"
+readonly SLICE_PATH="$(mktemp "$REPOSITORY_ROOT/architecture/reference/api-specs/.web-openapi.XXXXXX.yaml")"
 readonly CONTAINER_SLICE_PATH="/local${SLICE_PATH#"$REPOSITORY_ROOT"}"
 
 chmod 0666 "$SLICE_PATH"
@@ -25,6 +25,7 @@ docker compose --profile test run --rm --no-deps test-runner \
   --tag Identity \
   --tag Conversation \
   --tag Employment \
+  --tag Professionals \
   --tag "Relationship Workspace" \
   --tag "Voice Contributions" \
   --schema EmploymentRelationship \
@@ -39,8 +40,8 @@ docker run --rm \
   --input-spec "$CONTAINER_SLICE_PATH" \
   --generator-name typescript-fetch \
   --output /local/web/lib/api/generated \
-  --global-property "apis=Identity:Conversation:Employment:RelationshipWorkspace:VoiceContributions,models,supportingFiles=runtime.ts:models/index.ts:index.ts" \
+  --global-property "apis=Identity:Conversation:Employment:Professionals:RelationshipWorkspace:VoiceContributions,models,supportingFiles=runtime.ts:models/index.ts:index.ts" \
   --additional-properties supportsES6=true,typescriptThreePlus=true,useSingleRequestParameter=true,hideGenerationTimestamp=true
 
 docker compose --profile test run --rm --no-deps test-runner \
-  sh -lc 'cd /workspace/web && pnpm exec prettier --write lib/api/generated'
+  sh -lc 'cd /workspace/web && pnpm install --frozen-lockfile --store-dir=/tmp/pnpm-store && pnpm exec prettier --write lib/api/generated'

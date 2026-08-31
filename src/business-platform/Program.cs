@@ -168,6 +168,8 @@ builder.Services.AddDbContextFactory<EmploymentRelationshipDbContext>((services,
         .UseNpgsql(employmentRelationshipConn)
         .AddInterceptors(services.GetRequiredService<TenantDbConnectionInterceptor>()));
 builder.Services.AddScoped<IRelationshipConstitutionalGateway, RelationshipConstitutionalGateway>();
+builder.Services.AddSingleton<AgentAdmissionValidator>();
+builder.Services.AddScoped<AgentAdmissionService>();
 builder.Services.AddScoped<EmploymentRelationshipService>();
 builder.Services.AddScoped<IRelationshipEmergencyStopGateway, GrpcRelationshipEmergencyStopGateway>();
 builder.Services.AddScoped<RelationshipEmergencyStopService>();

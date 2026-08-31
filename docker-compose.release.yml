@@ -155,6 +155,8 @@ services:
       CONSTITUTIONAL_ENGINE_ADDRESS: constitutional-engine:5002
       AI_RUNTIME_URL: http://ai-runtime:5004
       BUSINESS_PLATFORM_URL: http://business-platform:5001
+      PR_RUNTIME_VERSION: ${PR_RUNTIME_VERSION:?PR_RUNTIME_VERSION is required}
+      PR_ARTIFACT_DIGEST: ${PR_ARTIFACT_DIGEST:?PR_ARTIFACT_DIGEST is required}
       TEMPORAL_ADDRESS: temporal:7233
       KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/waooaw/protocol/openid-connect/certs
     depends_on:

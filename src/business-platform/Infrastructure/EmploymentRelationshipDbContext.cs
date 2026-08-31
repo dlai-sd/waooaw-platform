@@ -397,9 +397,19 @@ public sealed class EmploymentRelationshipDbContext : DbContext
     public DbSet<DeliveryAcknowledgement> DeliveryAcknowledgements => Set<DeliveryAcknowledgement>();
     public DbSet<ChannelMessageDeduplication> ChannelMessageDeduplications => Set<ChannelMessageDeduplication>();
     public DbSet<RelationshipEvidenceExport> RelationshipEvidenceExports => Set<RelationshipEvidenceExport>();
+    public DbSet<AgentAdmission> AgentAdmissions => Set<AgentAdmission>();
+    public DbSet<AgentAdmissionRevision> AgentAdmissionRevisions => Set<AgentAdmissionRevision>();
+    public DbSet<AgentAdmissionValidation> AgentAdmissionValidations => Set<AgentAdmissionValidation>();
+    public DbSet<AgentAdmissionFinding> AgentAdmissionFindings => Set<AgentAdmissionFinding>();
+    public DbSet<AgentAdmissionAssertion> AgentAdmissionAssertions => Set<AgentAdmissionAssertion>();
+    public DbSet<AgentAdmissionTransition> AgentAdmissionTransitions => Set<AgentAdmissionTransition>();
+    public DbSet<AgentAdmissionIdempotency> AgentAdmissionIdempotency => Set<AgentAdmissionIdempotency>();
+    public DbSet<AgentAdmissionOutbox> AgentAdmissionOutbox => Set<AgentAdmissionOutbox>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        AgentAdmissionModelConfiguration.Configure(modelBuilder);
+
         modelBuilder.Entity<EmploymentRelationship>(entity =>
         {
             entity.ToTable("employment_relationships", "business");

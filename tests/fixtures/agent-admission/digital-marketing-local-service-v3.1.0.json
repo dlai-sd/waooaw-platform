@@ -1,0 +1,68 @@
+{
+  "contractSchemaVersion": "1.0.0",
+  "canonicalizationProfile": "RFC8785",
+  "professionalIdentity": {
+    "professionalTypeId": "DIGITAL_MARKETING_LOCAL_SERVICE",
+    "professionalVersion": "3.1.0",
+    "ownerSubjectId": "11111111-1111-1111-1111-111111111111",
+    "supportedLanguages": ["en", "hi"],
+    "supportedChannels": ["WEB", "WHATSAPP"],
+    "agentSpecification": { "path": "architecture/reference/agents/digital-marketing-agent.md", "version": "3.1", "digest": "sha256:128b39b26346e5d09047e8cc835a3e3e6c7e627386d5ce9ad0df7e17c13a4ea2" },
+    "agentVerificationDocument": { "path": "avd/AVD-DMA-v3.1.md", "version": "3.1", "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111" }
+  },
+  "complianceDeclaration": {
+    "constitutionalDna": { "path": "architecture/reference/agents/CONSTITUTIONAL_DNA.md", "version": "1", "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222" },
+    "agentBaseSpec": { "path": "architecture/reference/agents/AGENT-BASE-SPEC.md", "version": "1", "digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333" },
+    "platformAgentContract": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444" },
+    "decisionSpaceSchema": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555" },
+    "decisionConsequenceMap": { "path": "architecture/reference/agents/dcm/digital-marketing.md", "version": "3.1", "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666" },
+    "evidenceFirstOperations": ["PUBLISH_CAMPAIGN", "CHANGE_BUDGET"],
+    "emergencyStop": { "supported": true, "signal": "EMERGENCY_STOP", "maximumResponseSeconds": 1 },
+    "constitutionalConformanceTests": ["CCT-EF-04", "CCT-HO-03"],
+    "dataClasses": ["BUSINESS_DATA", "CUSTOMER_CONTACT_DATA"],
+    "retentionPolicy": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:7777777777777777777777777777777777777777777777777777777777777777" },
+    "securityPosture": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:8888888888888888888888888888888888888888888888888888888888888888" },
+    "limitationBehavior": "Disclose unavailable providers and request customer action.",
+    "degradationBehavior": "Pause consequential publication while preserving drafts."
+  },
+  "skillManifest": [
+    {
+      "skillId": "LOCAL_CAMPAIGN_MANAGEMENT",
+      "skillVersion": "3.1.0",
+      "capability": "Plan and manage bounded local campaigns.",
+      "businessKpi": "qualified leads attributable to approved campaigns",
+      "inputs": ["business brief", "approved budget"],
+      "outputs": ["campaign plan", "performance evidence"],
+      "decisionSpaceSubset": ["propose campaign", "optimize within approved budget"],
+      "tools": [{ "toolId": "ADS_PLATFORM", "providerId": "CENTRAL_AD_ACCOUNT", "defaultDenied": true, "governedAction": "PUBLISH_CAMPAIGN" }],
+      "constitutionalActions": ["PUBLISH_CAMPAIGN", "CHANGE_BUDGET"],
+      "configurationSchema": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:9999999999999999999999999999999999999999999999999999999999999999" },
+      "goalSchema": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+      "schedulePolicy": { "mode": "SCHEDULED", "customerAdjustable": true, "minimumIntervalSeconds": 86400 },
+      "reviewPolicy": { "performanceReviewDays": 30, "customerContractReviewDays": 30 },
+      "costUnits": { "campaignPlan": 1, "optimizationCycle": 1 },
+      "trialBehavior": "Draft-only campaign plan; no publication.",
+      "degradationBehavior": "Retain evidence and stop provider writes.",
+      "compatibility": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+    },
+    {
+      "skillId": "LOCAL_CONTENT_PLANNING",
+      "skillVersion": "3.1.0",
+      "capability": "Create an evidence-linked local content calendar.",
+      "businessKpi": "approved content delivered on schedule",
+      "inputs": ["brand constraints", "local events"],
+      "outputs": ["content calendar"],
+      "decisionSpaceSubset": ["draft content"],
+      "tools": [],
+      "constitutionalActions": ["PRESENT_CONTENT_DRAFT"],
+      "configurationSchema": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" },
+      "goalSchema": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+      "schedulePolicy": { "mode": "BOUNDED", "customerAdjustable": true, "minimumIntervalSeconds": 86400 },
+      "reviewPolicy": { "performanceReviewDays": 30, "customerContractReviewDays": 30 },
+      "costUnits": { "contentCalendar": 1 },
+      "trialBehavior": "One bounded draft calendar.",
+      "degradationBehavior": "Return the latest approved draft without publishing.",
+      "compatibility": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" }
+    }
+  ]
+}

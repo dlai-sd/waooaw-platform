@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import uuid
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -10,6 +11,7 @@ import pytest
 from fastapi import HTTPException
 from temporalio.client import WorkflowExecutionStatus
 
+from admission_guard import AdmissionActivationGuard
 from routers.sessions import (
     SessionPauseRequest,
     SessionResumeRequest,
@@ -19,10 +21,12 @@ from routers.sessions import (
     get_session_status,
     get_temporal_client,
     pause_session,
+    require_session_workload_context,
     resume_session,
     start_session,
     terminate_session,
 )
+from workload_identity import ServiceAuthError
 from workflows.paas_workflow import (
     DecisionSpace,
     EmergencyStopSignalPayload,
@@ -76,6 +80,44 @@ async def test_temporal_dependency_fails_closed_and_returns_configured_client() 
     assert await get_temporal_client(request) is client
 
 
+async def test_session_start_requires_exact_bp_workload_context() -> None:
+    body = _admitted_session_request()
+    request = MagicMock()
+    context = MagicMock()
+    with patch("routers.sessions.authorize_paas_session_start", new=AsyncMock(return_value=context)) as authorize:
+        assert await require_session_workload_context(request, body) is context
+
+    authorize.assert_awaited_once_with(
+        request,
+        uuid.UUID(body.contract_id),
+        body.model_dump(mode="json"),
+        body.tenant_id,
+    )
+
+
+async def test_session_start_rejects_malformed_contract_id_before_authorization() -> None:
+    body = _admitted_session_request().model_copy(update={"contract_id": "not-a-uuid"})
+    with patch("routers.sessions.authorize_paas_session_start", new=AsyncMock()) as authorize:
+        with pytest.raises(HTTPException) as failure:
+            await require_session_workload_context(MagicMock(), body)
+
+    assert failure.value.status_code == 422
+    assert failure.value.detail == "INVALID_CONTRACT_ID"
+    authorize.assert_not_awaited()
+
+
+async def test_session_start_fails_closed_when_workload_authentication_fails() -> None:
+    with patch(
+        "routers.sessions.authorize_paas_session_start",
+        new=AsyncMock(side_effect=ServiceAuthError("SERVICE_AUTHENTICATION_FAILED")),
+    ):
+        with pytest.raises(HTTPException) as failure:
+            await require_session_workload_context(MagicMock(), _admitted_session_request())
+
+    assert failure.value.status_code == 401
+    assert failure.value.detail == "SERVICE_AUTHENTICATION_FAILED"
+
+
 def test_workflow_status_mapping_is_complete_and_unknown_safe() -> None:
     expected = {
         WorkflowExecutionStatus.RUNNING: "RUNNING",
@@ -93,15 +135,9 @@ def test_workflow_status_mapping_is_complete_and_unknown_safe() -> None:
 async def test_router_starts_and_describes_temporal_workflow() -> None:
     temporal = MagicMock()
     temporal.start_workflow = AsyncMock()
-    body = SessionStartRequest(
-        contract_id="contract-a",
-        professional_id="professional-a",
-        decision_space_version="v1",
-        organisation_id="organisation-a",
-        tenant_id="tenant-a",
-    )
+    body = _admitted_session_request()
 
-    started = await start_session(body, temporal)
+    started = await start_session(body, temporal, AdmissionActivationGuard("1.3.0", "sha256:" + "2" * 64))
 
     assert started.session_id == started.workflow_id
     workflow_input = temporal.start_workflow.await_args.args[1]
@@ -286,12 +322,23 @@ async def test_workflow_run_loads_decision_space_and_terminates_orderly() -> Non
 async def test_cancellation_is_never_swallowed_by_router_or_workflow() -> None:
     temporal = MagicMock()
     temporal.start_workflow = AsyncMock(side_effect=asyncio.CancelledError())
-    body = SessionStartRequest(
-        contract_id="contract-a",
+    body = _admitted_session_request()
+    with pytest.raises(asyncio.CancelledError):
+        await start_session(body, temporal, AdmissionActivationGuard("1.3.0", "sha256:" + "2" * 64))
+
+
+def _admitted_session_request() -> SessionStartRequest:
+    return SessionStartRequest(
+        contract_id="12345678-1234-1234-1234-123456789abc",
         professional_id="professional-a",
         decision_space_version="v1",
         organisation_id="organisation-a",
         tenant_id="tenant-a",
+        professional_type_id="DIGITAL_MARKETING_LOCAL_SERVICE",
+        professional_version="3.1.0",
+        admission_state="ACTIVE",
+        admission_content_digest="sha256:" + "1" * 64,
+        artifact_digest="sha256:" + "2" * 64,
+        runtime_version="1.3.0",
+        customer_contract_digest="sha256:" + "3" * 64,
     )
-    with pytest.raises(asyncio.CancelledError):
-        await start_session(body, temporal)

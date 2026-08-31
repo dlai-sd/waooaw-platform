@@ -360,6 +360,8 @@ services:
       BP_SERVICE_JWT_SECRET: ${BP_SERVICE_JWT_SECRET:-waooaw-bp-jwt-local-dev-only-32chars}
       AI_RUNTIME_URL: http://ai-runtime:5004
       BUSINESS_PLATFORM_URL: http://business-platform:5001
+      PR_RUNTIME_VERSION: ${PR_RUNTIME_VERSION:-1.3.0}
+      PR_ARTIFACT_DIGEST: ${PR_ARTIFACT_DIGEST:-sha256:0000000000000000000000000000000000000000000000000000000000000000}
       TEMPORAL_ADDRESS: temporal:7233
       KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/waooaw/protocol/openid-connect/certs
       OTLP_ENDPOINT: http://jaeger:4317
