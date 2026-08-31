@@ -1,6 +1,6 @@
 # ADR-049: Agent Runtime Adapter Transport and Isolation
 
-**Status:** PROPOSED - FOUNDER ACCEPTANCE REQUIRED
+**Status:** ACCEPTED - FOUNDER, 2026-08-31
 **Date:** 2026-08-31
 **Decision owner:** Enterprise Architecture (INST-004)
 **Work Contract:** WC-080 / ARA-GAP-01
@@ -17,7 +17,7 @@ callback target, Platform-Agent Contract signal consumer, or substitute for cons
 
 ## Decision
 
-Subject to Founder acceptance, Agent Runtime Adapter v1 uses OpenAPI 3.1, HTTP/1.1, UTF-8 JSON,
+Agent Runtime Adapter v1 uses OpenAPI 3.1, HTTP/1.1, UTF-8 JSON,
 RFC 9457 problem details, and optional Server-Sent Events. Professional Runtime is the sole ordinary
 caller.
 
@@ -131,6 +131,6 @@ Demo, UAT, and Production renderings must preserve the same semantics with envir
 
 ## Founder Decision
 
-Founder acceptance or rejection is required against an exact commit. Until acceptance, ADR-049 is
-proposed, ARA-GAP-01 remains open, and implementation remains blocked. Rejection returns the transport
-profile to Enterprise and Solution Architecture; Platform IT may not select an alternative.
+The Founder accepted ADR-049 on 2026-08-31. Acceptance fixes the transport and isolation decision but
+does not itself authorize implementation, deployment, provider access, expenditure, customer traffic,
+PR approval, or merge.

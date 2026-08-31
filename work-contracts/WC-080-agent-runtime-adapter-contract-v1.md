@@ -2,7 +2,7 @@
 
 **Office:** Solution Architect (INST-005), then Platform IT Expert (INST-010) after implementation authorization
 **Assigned by:** Founder instruction, 2026-08-31
-**Status:** PLAN COMPLETE - FOUNDER REVIEW
+**Status:** SPECIFICATION PACKAGE FOUNDER ACCEPTED - IMPLEMENTATION SESSION AUTHORIZED; PR MERGE AND EXACT ISSUE BINDING PENDING
 **Delivery unit:** Agent Runtime Adapter Contract v1 specification, implementation, conformance, qualification, and Founder-ready PR
 **Controlling plan:** `architecture/agent-runtime-adapter-contract-v1-execution-plan.md`
 **Constitutional basis:** C-001, C-002, C-003, C-005, C-007, C-023, C-025, C-026, C-032, C-035, C-036, C-037, C-049, C-059, C-063, C-065, C-071, C-076, C-079, C-080, C-094
@@ -14,6 +14,12 @@ This record does not authorize runnable implementation, deployment, provider acc
 customer traffic, UAT, Production, PR approval, or merge. A new session occupying Platform IT Expert
 must complete bootstrap, validate every entry gate in controlling-plan Section 3, and obtain explicit
 Founder implementation authorization before creating or modifying runnable source.
+
+On 2026-08-31 the Founder accepted ADR-049 and the combined Enterprise, Solution, Security, Data, and
+Constitutional owner package; clarified ADR-031 automatic recovery as CE-outage reconciliation and
+resume only, never automatic release of an explicit Emergency Stop; and authorized WC-080 runnable
+implementation for the current session under the exact implementation issue scope. Source work may
+start only after the accepted package is merged and that issue binds its exact commit and controls.
 
 After authorization, Platform IT executes the complete delivery unit in controlling-plan Sections
 4 through 16. The plan is normative for ownership, operations, envelopes, state, security, paths,

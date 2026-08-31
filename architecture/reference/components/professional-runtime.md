@@ -94,10 +94,10 @@ contract is `architecture/reference/api-specs/professional-runtime.openapi.yaml`
 These operations are not browser-accessible. PR events become customer-visible only after BP
 validates and persists the canonical conversation projection.
 
-### 7. Generic Agent Runtime Adapter Gateway (WC-080 Proposed Amendment)
+### 7. Generic Agent Runtime Adapter Gateway (WC-080 Founder-Accepted Amendment)
 
-**State:** PROPOSED - OWNER AND FOUNDER ACCEPTANCE REQUIRED. This amendment authorizes no source
-change until it is accepted and commit-bound in the WC-080 implementation issue.
+**State:** FOUNDER ACCEPTED - 2026-08-31. Implementation still requires the accepted commit to be
+merged and bound in the WC-080 implementation issue.
 
 Professional Runtime is the sole platform caller of admitted Agent Runtime Adapters. The gateway:
 
@@ -114,13 +114,14 @@ Professional Runtime is the sole platform caller of admitted Agent Runtime Adapt
   Platform persistence boundary required by ADR-011;
 8. maps private adapter errors into the existing BP-facing vocabulary without exposing adapter
   topology, tenant existence, provider detail, or policy internals;
-9. propagates Emergency Stop independently of adapter health, keeps the local Stop barrier latched,
-  and reconciles adapter acknowledgement later; and
+9. propagates Emergency Stop independently of adapter health, keeps an explicit Emergency Stop
+  barrier latched, and reconciles adapter acknowledgement later; and
 10. permits resume only from fresh post-Stop authority and never restarts a stopped invocation.
 
 The gateway contains no professional-type switch, domain payload interpretation, admission mutation,
 customer projection, constitutional evidence acceptance, provider policy, or automatic recovery
-authorization. Domain variation is selected only through admitted schema coordinates and descriptor
+from an explicit Emergency Stop. A CE-unavailability pause resumes automatically only after CE
+connectivity and constitutional reconciliation complete. Domain variation is selected only through admitted schema coordinates and descriptor
 capabilities. Adapter operations remain absent from the public Professional Runtime OpenAPI.
 
 ## Runtime Universality Implementation

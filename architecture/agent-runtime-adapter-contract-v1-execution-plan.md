@@ -121,12 +121,12 @@ gap.
 
 | Gap | Required owner repair before ARA-00 can pass | Responsible institution | State |
 |---|---|---|---|
-| ARA-GAP-01 Transport and isolation | Accept or reject Section 5.3.1 in an ADR that fixes discovery, identity, protection, deadlines, streaming, version negotiation, deployment isolation, and failure behavior | Enterprise Architecture / Founder | OWNER REPAIR DRAFTED - ADR-049 requires Founder acceptance |
-| ARA-GAP-02 Contract semantics | Publish accepted OpenAPI, schemas, compatibility matrix, and Professional Runtime amendment that make field bounds/nullability, version formats, state-version ownership, HTTP/error mapping, idempotency/replay retention, Temporal acceptance/reconciliation, SSE reconnect ordering, and Stop/resume bindings deterministic | Solution Architecture | OWNER REPAIR DRAFTED - Sections 5.2-5.6 and component amendment require acceptance |
-| ARA-GAP-03 Security and privacy | Publish the accepted workload-identity, tenant-binding, anti-replay, route-grant/egress, secret-reference/rotation/redaction, request-size, privacy-safe error, and isolation test contract | Security Architecture | OWNER REPAIR DRAFTED - Section 6.1 requires acceptance |
-| ARA-GAP-04 Data and evidence | Publish the accepted invocation/result/event ownership, evidence-reference resolution, retention/erasure, indexing/RLS, migration, reconciliation, and rollback contract | Data Architecture and Constitutional owner | OWNER REPAIR DRAFTED - Sections 5.4.2-5.4.3 require acceptance and retention values |
-| ARA-GAP-05 Fail-safe Stop | Bind ADR-031 behavior to durable or buffered Stop attribution, recovery/reconciliation limits, customer acknowledgement, adapter termination, and fresh-authority resume validation | Constitutional owner and Solution Architecture | OWNER REPAIR DRAFTED - Section 5.4.3 requires Founder clarification of ADR-031 recovery |
-| ARA-GAP-06 Acceptance bindings | Record every accepted owner artifact and the Founder-accepted plan using exact commit IDs, then assign the implementation issue with tier, branch, paths, versions, CCTs, fixtures, environments, qualification command, and explicit session authorization | Founder / Work Contract owner | OPEN - blocks implementation |
+| ARA-GAP-01 Transport and isolation | Accept or reject Section 5.3.1 in an ADR that fixes discovery, identity, protection, deadlines, streaming, version negotiation, deployment isolation, and failure behavior | Enterprise Architecture / Founder | FOUNDER ACCEPTED - ADR-049, 2026-08-31 |
+| ARA-GAP-02 Contract semantics | Publish accepted OpenAPI, schemas, compatibility matrix, and Professional Runtime amendment that make field bounds/nullability, version formats, state-version ownership, HTTP/error mapping, idempotency/replay retention, Temporal acceptance/reconciliation, SSE reconnect ordering, and Stop/resume bindings deterministic | Solution Architecture | FOUNDER ACCEPTED - 2026-08-31 |
+| ARA-GAP-03 Security and privacy | Publish the accepted workload-identity, tenant-binding, anti-replay, route-grant/egress, secret-reference/rotation/redaction, request-size, privacy-safe error, and isolation test contract | Security Architecture | FOUNDER ACCEPTED - 2026-08-31 |
+| ARA-GAP-04 Data and evidence | Publish the accepted invocation/result/event ownership, evidence-reference resolution, retention/erasure, indexing/RLS, migration, reconciliation, and rollback contract | Data Architecture and Constitutional owner | FOUNDER ACCEPTED - 2026-08-31 |
+| ARA-GAP-05 Fail-safe Stop | Bind ADR-031 behavior to durable or buffered Stop attribution, recovery/reconciliation limits, customer acknowledgement, adapter termination, and fresh-authority resume validation | Constitutional owner and Solution Architecture | FOUNDER CLARIFIED - CE-outage pause auto-resumes after reconciliation; explicit Emergency Stop requires authorized resume |
+| ARA-GAP-06 Acceptance bindings | Record every accepted owner artifact and the Founder-accepted plan using exact commit IDs, then assign the implementation issue with tier, branch, paths, versions, CCTs, fixtures, environments, qualification command, and explicit session authorization | Founder / Work Contract owner | AUTHORIZED 2026-08-31 - exact issue and merged commit binding still required |
 | ARA-GAP-07 Qualification sequencing | Keep qualification on finalized commits, push that exact HEAD, perform author review after the final push, validate metadata against the pushed HEAD, and only then open the PR | Platform IT Expert | REPAIRED in Sections 10 and 12 |
 | ARA-GAP-08 Reproducible image identity | Freeze pathspecs in the implementation issue and hash a sorted tracked-file manifest plus normalized Compose/configuration content | Platform IT Expert | REPAIRED in Section 10.2 |
 
@@ -404,16 +404,20 @@ Customer acknowledgement occurs only after the local barrier is effective and di
 cannot delay or negate the platform Stop. Unresolved cessation remains stopped or partial, never
 successful.
 
-CE recovery restores connectivity and enters reconciliation; it does not restore execution
-eligibility. Stop records are reconciled before any enabling action, while the barrier stays latched.
-Reconciliation cannot replay ordinary writes, manufacture authority, release Stop, create a new
-invocation, or convert ambiguity to success.
+CE recovery restores connectivity and enters reconciliation. Work paused solely by
+`HALTED_CE_UNAVAILABLE` resumes automatically after buffered records are committed, bindings and
+authority are revalidated, unknown outcomes are reconciled, and CE is confirmed available. It resumes
+the same valid workflow identity and may not replay stale queued writes, manufacture authority,
+create a new invocation, or convert ambiguity to success.
 
-Resume requires an explicit post-Stop request and fresh CE decision bound to committed Stop evidence
+An explicit customer or steward Emergency Stop is different: its relationship-scoped barrier remains
+latched through CE recovery and reconciliation and is never released automatically.
+
+Resume after an explicit Emergency Stop requires a post-Stop request and fresh CE decision bound to committed Stop evidence
 and current tenant, relationship, admission, artifact, contract, Decision Space, configuration, goal,
 deadline, and authority. It releases eligibility for future invocations only and never restarts a
-stopped invocation. This meaning requires Founder clarification of ADR-031's current automatic
-recovery language before ARA-GAP-05 can close.
+stopped invocation. The Founder clarified on 2026-08-31 that ADR-031 automatic recovery applies to
+CE-unavailability pauses after reconciliation, not to explicit Emergency Stop.
 
 ### 5.5 Idempotency, Result, And Event Contract
 
@@ -482,7 +486,7 @@ its BP-facing mapping.
 
 ### 6.1 Normative Security And Privacy Contract
 
-**State:** PROPOSED SECURITY ARCHITECTURE OUTPUT - FOUNDER ACCEPTANCE REQUIRED.
+**State:** FOUNDER ACCEPTED - 2026-08-31.
 
 - Every protected route uses environment-specific mTLS and an asymmetric PR-signed delegation bound
   to issuer/subject, exact adapter audience, `jti`, time window, environment, operation, method/route,
@@ -519,7 +523,7 @@ are:
 
 | Artifact | Required change |
 |---|---|
-| `adr/ADR-049-agent-runtime-adapter-transport-and-isolation.md` | Proposed transport, isolation, discovery, identity, invocation, streaming, and compatibility decision; Founder acceptance required |
+| `adr/ADR-049-agent-runtime-adapter-transport-and-isolation.md` | Founder-accepted transport, isolation, discovery, identity, invocation, streaming, and compatibility decision |
 | `architecture/reference/components/professional-runtime.md` | Adapter gateway, resolver, lifecycle, Stop, reconciliation, and dependency responsibilities |
 | `architecture/reference/api-specs/professional-runtime.openapi.yaml` | BP-to-PR fields and results required to bind exact adapter execution; no public adapter exposure |
 | `architecture/reference/api-specs/agent-runtime-adapter-v1.openapi.yaml` | Private normative HTTP/JSON adapter wire contract after ADR acceptance |
@@ -893,7 +897,8 @@ DOCKER PREFLIGHT -> CONSOLIDATED FOCUSED TESTS -> FINAL COMMIT HISTORY
 - Stop rather than create a public adapter API, a new standalone platform service, a shared arbitrary
   plug-in host, or a remote third-party execution path.
 - Stop rather than allow direct browser/channel access, agent self-admission, self-activation,
-  Decision Space expansion, evidence forgery, lifecycle control, or automatic resume.
+  Decision Space expansion, evidence forgery, lifecycle control, or automatic release of an explicit
+  Emergency Stop.
 - Stop rather than trust request-body tenant/authority fields, customer tokens, LLM output, fixture
   claims, health status, or transport success as authorization or evidence.
 - Stop when binding, schema, identity, admission, artifact, contract, scope, deadline, Stop, CE, or
@@ -936,9 +941,9 @@ Agent Runtime Adapter Contract v1 is complete only when:
 
 ## 17. Author Review
 
-**Result:** PASS - one-pass targeted institutional review and repair complete. Implementation remains
-BLOCKED until the Founder accepts or returns the proposed owner package, clarifies ADR-031 recovery,
-binds accepted commits in the implementation issue, and grants explicit implementation authorization.
+**Result:** PASS - one-pass targeted institutional review and repair complete and Founder accepted on
+2026-08-31. Implementation remains BLOCKED only until this accepted package is merged and its exact
+commit and implementation scope are bound in the WC-080 implementation issue.
 
 INST-005 reviewed this complete plan against Section 4.7, the WC-079 plan pattern, Agent Employment
 Experience boundaries, ADR-035/PAC separation, Professional Runtime universality, existing PAAS and
@@ -977,4 +982,4 @@ Section 3.3 and ADR-049 rather than triggering another review cycle.
 | Scalar, replay, state, event, and error semantics remained implementer choices | Added normative representations, synchronous adapter execution observation, durable replay, ordered SSE, concurrency, reconciliation, and stable HTTP mappings |
 | Persistence ownership conflicted with ADR-011 | Assigned logical lifecycle to PR and physical additive schema/migration ownership to the Business Platform .NET persistence boundary |
 | Security requirements lacked exact controls and environment parity | Added delegation, tenant binding, replay, deny-by-default egress, secrets, limits, isolation, privacy, and Demo/UAT/Production parity rules |
-| CE outage Stop and recovery could be interpreted as automatic work resume | Added attributable local Stop, explicit acknowledgement states, latched reconciliation, and fresh-authority future-only resume; Founder clarification remains required |
+| CE outage recovery and explicit Emergency Stop could be conflated | Founder clarified that CE-outage pauses auto-resume after reconciliation, while explicit Emergency Stop remains latched pending fresh-authority resume |

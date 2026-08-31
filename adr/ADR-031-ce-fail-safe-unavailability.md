@@ -140,6 +140,12 @@ The customer receives Emergency Stop confirmation within the standard ≤250ms S
 
 ## Recovery
 
+**Founder clarification - 2026-08-31:** Automatic recovery applies only to work paused in
+`HALTED_CE_UNAVAILABLE`. After CE connectivity returns, buffered records are flushed, bindings and
+authority are revalidated, and unknown outcomes are reconciled; then the same valid PAAS workflows
+resume without a new authorization. This does not release `EMERGENCY_STOPPED` work. An explicit
+Emergency Stop remains latched until a separate fresh-authority resume action succeeds.
+
 ```
 CE recovery detection:
   - grpc_health_probe returns SERVING → recovery confirmed
