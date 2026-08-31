@@ -172,6 +172,89 @@ Freeze this logical foundation only when:
 - skill configuration, goal, schedule, and review cardinalities are represented and versioned;
 - activation fails closed when compliance, provider, payment, evidence, or runtime compatibility is unresolved.
 
+### 4.7 Agent Runtime Adapter Contract After Admission
+
+PR 381 is merged and implements the WC-079 admission foundation as a cross-component capability
+rather than a new service. It adds the versioned admission package, deterministic validation,
+independent lifecycle
+transitions, ACTIVE-only catalogue projection, append-only evidence and persistence, and a
+Professional Runtime activation guard binding professional version, admission-content digest,
+artifact digest, runtime version, and customer-contract digest. This establishes whether an exact
+professional version may be offered and activated. It does not establish one executable interface
+through which Professional Runtime can invoke every admitted professional implementation.
+
+The missing boundary is a versioned **Agent Runtime Adapter Contract**, not another onboarding API.
+The four contracts remain separate and complementary:
+
+| Contract | Architectural responsibility |
+|---|---|
+| Agent Admission Contract | Certify an exact professional version and artifact as eligible for catalogue and activation |
+| Agent Runtime Adapter Contract | Invoke, control, stop, and observe an admitted implementation through Professional Runtime |
+| Platform-Agent Contract | Declare asynchronous platform signals consumed by the professional and its degradation behavior |
+| Agent Employment Experience Contract | Govern the customer-facing trial, hire, configuration, activation, operation, review, pause, stop, and termination relationship |
+
+The adapter is an internal execution port owned by Professional Runtime. Business Platform remains
+the admission, catalogue, and employment lifecycle owner; Constitutional Engine remains the
+authorization and Evidence First authority. Web, WhatsApp, mobile, and external API channels must
+continue through the same platform-owned employment relationship and must never invoke an agent
+adapter directly or implement channel-specific agent admission, hiring, or activation.
+
+The minimum version 1 operation set should provide these transport-neutral meanings:
+
+| Operation | Required meaning |
+|---|---|
+| `describe` | Return immutable professional, skill, adapter-protocol, and schema compatibility metadata |
+| `health` | Report runtime readiness without asserting admission, constitutional authority, or customer eligibility |
+| `configure` | Validate or apply an exact versioned customer skill configuration and goal context |
+| `plan` | Produce proposed work without consequential external execution |
+| `execute` | Start or replay one authorized skill invocation within an exact Decision Space |
+| `status` | Return deterministic invocation state using the platform correlation and idempotency identity |
+| `cancel` | Cancel one invocation without widening authority or losing attributable state |
+| `emergencyStop` | Halt all affected relationship work and return an attributable acknowledgement independently of ordinary execution availability |
+| `resume` | Resume only from a new platform-issued, scope-bound authorization linked to stop evidence |
+| `result` | Return typed outputs, cost/usage facts, and evidence references without claiming platform acceptance |
+
+Every adapter request must use a platform-constructed envelope binding tenant, employment
+relationship, professional type and version, skill ID and version, admission-content digest,
+artifact digest, customer-contract digest, Decision Space version, configuration and goal revisions,
+invocation ID, idempotency key, CE decision/evidence reference, deadline, and trace context. These
+values are platform-owned authority inputs, not agent-authored assertions. The adapter may propose
+work and return execution facts; it may not approve its own admission, expand Decision Space, alter
+the customer contract, manufacture evidence, activate itself, or decide that its output succeeded
+constitutionally.
+
+Adapter conformance should become an admission readiness assertion. The admission package should
+declare the supported adapter protocol version, immutable artifact coordinates, execution/isolation
+profile, and digest-bound conformance evidence. Deterministic admission checks should prove protocol
+compatibility, idempotency, cancellation, Emergency Stop, fail-closed behavior, result/evidence shape,
+and rejection of mismatched identity, version, artifact, contract, Decision Space, and tenant
+bindings. Domain-specific input and output schemas may vary by Skill Definition; lifecycle,
+envelope, errors, state semantics, evidence references, and compatibility negotiation may not.
+
+PR 381's process-level `PR_ARTIFACT_DIGEST` activation binding is suitable only when one
+Professional Runtime deployment is pinned to one admitted artifact. Initial delivery should
+therefore use one isolated WAOOAW-managed runtime deployment per admitted professional artifact.
+A multi-artifact host or remote third-party adapter requires a later accepted architecture decision
+covering trusted artifact resolution, workload identity, callback authentication, tenant and session
+isolation, network policy, data residency, availability, evidence integrity, rollback, and revocation.
+It must not be inferred from admission success.
+
+The post-admission execution path is therefore:
+
+```text
+AUTHOR PACKAGE -> VALIDATE -> INDEPENDENTLY APPROVE -> ACTIVATE ADMISSION
+-> PUBLISH OFFERABLE VERSION -> FORM CUSTOMER EMPLOYMENT RELATIONSHIP
+-> AUTHORIZE EXACT WORK -> PROFESSIONAL RUNTIME -> RUNTIME ADAPTER
+-> RESULT/EVIDENCE PROJECTION -> BUSINESS PLATFORM
+```
+
+Foundation freeze for executable multi-agent onboarding additionally requires an approved adapter
+contract and compatibility policy, a reference adapter and conformance kit, and end-to-end proof that
+the two materially different WC-079 professional fixtures execute through the same adapter semantics.
+The proof must show channel-invariant employment, exact artifact launch, configuration and goal
+revision binding, idempotent execution, cancellation, Emergency Stop, fail-closed CE/runtime
+unavailability, and suspension or revocation without agent-specific platform lifecycle logic.
+
 ## 5. Objective C: Shared Authentication and Authorization
 
 ### 5.1 Reuse decision
