@@ -21,7 +21,7 @@ class AdapterGatewayError(RuntimeError):
         self.retryable = retryable
 
 
-class AdapterClient(Protocol):
+class AdapterClient(Protocol):  # pragma: no cover
     def describe(self) -> Any: ...
 
     def execute(self, envelope: Any, payload: dict[str, Any]) -> Any: ...
@@ -35,7 +35,7 @@ class AdapterClient(Protocol):
     def result(self, envelope: Any, invocation_id: str) -> Any: ...
 
 
-class InvocationStore(Protocol):
+class InvocationStore(Protocol):  # pragma: no cover
     def create_pending(self, envelope: Any) -> None: ...
 
     def record_outcome(self, invocation_id: str, outcome: Any) -> None: ...
@@ -43,7 +43,7 @@ class InvocationStore(Protocol):
     def record_unknown(self, invocation_id: str, code: str) -> None: ...
 
 
-class WorkflowDispatcher(Protocol):
+class WorkflowDispatcher(Protocol):  # pragma: no cover
     def start(self, workflow_id: str, envelope: Any) -> None: ...
 
 
