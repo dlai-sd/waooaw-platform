@@ -9,7 +9,7 @@ services:
       WAOOAW_ENVIRONMENT: ${WAOOAW_ENVIRONMENT:-demo}
       PR_WORKLOAD_URI: spiffe://${WAOOAW_ENVIRONMENT:-demo}.waooaw.internal/workload/professional-runtime
     read_only: true
-    tmpfs: [/tmp:size=16m,mode=1770]
+    tmpfs: ["/tmp:size=16m,mode=1770"]
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     networks: [agent-runtime-private]
@@ -29,7 +29,7 @@ services:
       WAOOAW_ENVIRONMENT: ${WAOOAW_ENVIRONMENT:-demo}
       PR_WORKLOAD_URI: spiffe://${WAOOAW_ENVIRONMENT:-demo}.waooaw.internal/workload/professional-runtime
     read_only: true
-    tmpfs: [/tmp:size=16m,mode=1770]
+    tmpfs: ["/tmp:size=16m,mode=1770"]
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     networks: [agent-runtime-private]

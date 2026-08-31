@@ -80,6 +80,7 @@ docker system df -v > "$REPORT_DIR/docker-system-df-verbose-before.txt"
 docker ps --format '{{.ID}} {{.Image}} {{.Names}} {{.Status}}' > "$REPORT_DIR/docker-ps-before.txt"
 docker volume ls > "$REPORT_DIR/docker-volumes-before.txt"
 
+FAILURE_CLASSIFICATION="code/configuration"
 for environment in demo uat prod; do
   WAOOAW_ENVIRONMENT="$environment" docker compose --profile agent-runtime-adapter config --quiet
 done
@@ -97,6 +98,7 @@ TEST_IMAGE_ID=$(docker compose images -q test-runner-python)
 docker compose --profile agent-runtime-adapter up --detach --wait --wait-timeout 60 agent-runtime-adapter-digital-marketing agent-runtime-adapter-trading
 docker compose --profile agent-runtime-adapter ps --all > "$REPORT_DIR/compose-ps.txt"
 
+FAILURE_CLASSIFICATION="assertion"
 docker compose --profile test-python run --rm test-runner-python \
   pytest tests/contract/ tests/professional-runtime/test_agent_runtime_adapter.py tests/constitutional/test_agent_runtime_adapter_cct.py \
   --cov=adapter_gateway --cov=runtime_contract \
@@ -111,6 +113,7 @@ docker run --rm -v "$ROOT:/workspace:ro" -w /workspace node:20.19.4-bookworm-sli
   architecture/reference/api-specs/professional-runtime.openapi.yaml \
   architecture/reference/api-specs/agent-runtime-adapter-v1.openapi.yaml
 
+FAILURE_CLASSIFICATION="security"
 for image in \
   "waooaw/agent-runtime-adapter-digital-marketing:${IMAGE_TAG}" \
   "waooaw/agent-runtime-adapter-trading:${IMAGE_TAG}"; do
@@ -136,4 +139,5 @@ docker compose --profile agent-runtime-adapter logs --no-color --timestamps \
   agent-runtime-adapter-digital-marketing agent-runtime-adapter-trading > "$REPORT_DIR/adapter-logs.txt"
 docker stats --no-stream > "$REPORT_DIR/docker-stats.txt"
 docker system df > "$REPORT_DIR/docker-system-df-after.txt"
+FAILURE_CLASSIFICATION="none"
 RESULT=PASS
