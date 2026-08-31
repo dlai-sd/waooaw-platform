@@ -1,6 +1,7 @@
 // Implements: WC-079 AA-03, AA-05, AA-09
 // constitutional_basis: C-003, C-005, C-007, C-023, C-026, C-059, C-063, C-065
 
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
@@ -10,6 +11,31 @@ namespace Waooaw.BusinessPlatform.Tests;
 
 public sealed class AgentAdmissionServiceTests
 {
+    [Theory]
+    [InlineData(AgentAdmissionState.Draft, "DRAFT")]
+    [InlineData(AgentAdmissionState.Validating, "VALIDATING")]
+    [InlineData(AgentAdmissionState.RemediationRequired, "REMEDIATION_REQUIRED")]
+    [InlineData(AgentAdmissionState.Validated, "VALIDATED")]
+    [InlineData(AgentAdmissionState.ReadyForReview, "READY_FOR_REVIEW")]
+    [InlineData(AgentAdmissionState.Approved, "APPROVED")]
+    [InlineData(AgentAdmissionState.Active, "ACTIVE")]
+    [InlineData(AgentAdmissionState.Suspended, "SUSPENDED")]
+    [InlineData(AgentAdmissionState.Superseded, "SUPERSEDED")]
+    [InlineData(AgentAdmissionState.Retired, "RETIRED")]
+    [InlineData(AgentAdmissionState.Rejected, "REJECTED")]
+    public void AdmissionStateCodec_RoundTripsEveryPersistedState(AgentAdmissionState state, string stored)
+    {
+        Assert.Equal(stored, AgentAdmissionStateCodec.ToDatabase(state));
+        Assert.Equal(state, AgentAdmissionStateCodec.FromDatabase(stored));
+    }
+
+    [Fact]
+    public void AdmissionStateCodec_RejectsUnknownValues()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => AgentAdmissionStateCodec.ToDatabase((AgentAdmissionState)(-1)));
+        Assert.Throws<ArgumentOutOfRangeException>(() => AgentAdmissionStateCodec.FromDatabase("UNKNOWN"));
+    }
+
     [Fact]
     public async Task OwnerCanPrepareAndSubmitButCannotSelfApprove()
     {
@@ -84,6 +110,62 @@ public sealed class AgentAdmissionServiceTests
     }
 
     [Fact]
+    public async Task ExactCreateIdempotencyReplayReturnsExistingAdmission()
+    {
+        var context = Context();
+        var key = Guid.NewGuid();
+        var created = await context.Service.CreateDraftAsync(
+            context.TenantId, context.Type, context.Version, context.OwnerId, context.OwnerId, key, CancellationToken.None);
+
+        var replayed = await context.Service.CreateDraftAsync(
+            context.TenantId, context.Type, context.Version, context.OwnerId, context.OwnerId, key, CancellationToken.None);
+
+        Assert.True(replayed.Replayed);
+        Assert.Equal(created.Admission.AdmissionId, replayed.Admission.AdmissionId);
+    }
+
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("{}")]
+    [InlineData("{\"contractSchemaVersion\":1}")]
+    public async Task RevisionWithoutStringSchemaStoresEmptyVersion(string contentJson)
+    {
+        var context = Context();
+        var draft = await context.Service.CreateDraftAsync(
+            context.TenantId, context.Type, context.Version, context.OwnerId, context.OwnerId, Guid.NewGuid(), CancellationToken.None);
+        using var content = JsonDocument.Parse(contentJson);
+        var digest = AgentAdmissionCanonicalizer.Digest(content.RootElement);
+
+        await context.Service.PutRevisionAsync(
+            context.TenantId, context.Type, context.Version, draft.Admission.AdmissionId, 1, 0,
+            digest, content.RootElement, context.OwnerId, Guid.NewGuid(), CancellationToken.None);
+
+        await using var db = context.Factory.CreateDbContext();
+        Assert.Equal(string.Empty, (await db.AgentAdmissionRevisions.SingleAsync()).ContractSchemaVersion);
+    }
+
+    [Fact]
+    public async Task RevisionRejectsMismatchedCanonicalDigest()
+    {
+        var context = Context();
+        using var content = JsonDocument.Parse("{}");
+
+        await Assert.ThrowsAsync<ArgumentException>(() => context.Service.PutRevisionAsync(
+            context.TenantId, context.Type, context.Version, Guid.NewGuid(), 1, 0,
+            "sha256:" + new string('0', 64), content.RootElement, context.OwnerId, Guid.NewGuid(), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task ValidationRejectsUnsupportedProfile()
+    {
+        var context = Context();
+
+        await Assert.ThrowsAsync<ArgumentException>(() => context.Service.ValidateAsync(
+            context.TenantId, context.Type, context.Version, Guid.NewGuid(), 1,
+            "sha256:" + new string('0', 64), "unsupported", context.OwnerId, false, Guid.NewGuid(), CancellationToken.None));
+    }
+
+    [Fact]
     public async Task ApprovalCannotReplaceSubmittedEvidenceBindings()
     {
         var context = Context();
@@ -151,6 +233,87 @@ public sealed class AgentAdmissionServiceTests
         Assert.Equal(callsBeforeActivation, context.Gateway.CallCount);
     }
 
+    [Theory]
+    [InlineData("REJECT", AgentAdmissionState.Rejected)]
+    [InlineData("SUSPEND", AgentAdmissionState.Suspended)]
+    [InlineData("SUPERSEDE", AgentAdmissionState.Superseded)]
+    [InlineData("RETIRE", AgentAdmissionState.Retired)]
+    public async Task IndependentAuthorityCanCompleteTerminalLifecycleTransitions(
+        string operation,
+        AgentAdmissionState expectedState)
+    {
+        var context = Context();
+        var admission = operation == "REJECT"
+            ? (await PrepareSubmittedAsync(context)).Admission
+            : (await PrepareActiveAsync(context)).Admission;
+        var intent = Intent(admission) with
+        {
+            ReasonCategory = operation is "REJECT" or "SUSPEND" ? "POLICY" : null,
+            SuccessorVersion = operation == "SUPERSEDE" ? "3.2.0" : null,
+        };
+
+        var transitioned = await context.Service.TransitionAsync(
+            context.TenantId, context.Type, context.Version, operation, intent,
+            Guid.NewGuid(), "ADMISSION_APPROVER", Guid.NewGuid(), Guid.NewGuid(), "demo", CancellationToken.None);
+
+        Assert.Equal(expectedState, transitioned.Admission.State);
+    }
+
+    [Fact]
+    public async Task RejectionRequiresReasonCategory()
+    {
+        var context = Context();
+        var submitted = await PrepareSubmittedAsync(context);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => context.Service.TransitionAsync(
+            context.TenantId, context.Type, context.Version, "REJECT", Intent(submitted.Admission),
+            Guid.NewGuid(), "ADMISSION_APPROVER", Guid.NewGuid(), Guid.NewGuid(), "demo", CancellationToken.None));
+    }
+
+    [Theory]
+    [InlineData("assertionType")]
+    [InlineData("environment")]
+    [InlineData("status")]
+    [InlineData("validity")]
+    [InlineData("authority")]
+    [InlineData("evidence")]
+    public async Task MalformedReadinessObservationsFailClosed(string invalidField)
+    {
+        var context = Context();
+        var now = DateTimeOffset.UtcNow;
+        var observation = new AdmissionReadinessObservation(
+            "RUNTIME", "sha256:" + new string('a', 64), "demo", "PASS", "RUNTIME_OWNER",
+            now, now.AddHours(1), "WC-079-1.0", "evidence:runtime");
+        observation = invalidField switch
+        {
+            "assertionType" => observation with { AssertionType = "UNKNOWN" },
+            "environment" => observation with { Environment = "local" },
+            "status" => observation with { Status = "MAYBE" },
+            "validity" => observation with { ValidUntil = now },
+            "authority" => observation with { SourceAuthority = " " },
+            "evidence" => observation with { EvidenceRef = " " },
+            _ => observation,
+        };
+
+        await Assert.ThrowsAsync<ArgumentException>(() => context.Service.RecordReadinessAsync(
+            context.TenantId, context.Type, context.Version, observation, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task ReadinessCannotBindBeforeApproval()
+    {
+        var context = Context();
+        var draft = await context.Service.CreateDraftAsync(
+            context.TenantId, context.Type, context.Version, context.OwnerId, context.OwnerId, Guid.NewGuid(), CancellationToken.None);
+        var now = DateTimeOffset.UtcNow;
+        var observation = new AdmissionReadinessObservation(
+            "RUNTIME", draft.Admission.AdmissionContentDigest ?? string.Empty, "demo", "PASS", "RUNTIME_OWNER",
+            now, now.AddHours(1), "WC-079-1.0", "evidence:runtime");
+
+        await Assert.ThrowsAsync<AdmissionTransitionBlockedException>(() => context.Service.RecordReadinessAsync(
+            context.TenantId, context.Type, context.Version, observation, CancellationToken.None));
+    }
+
     private static async Task<AdmissionMutationResult> PrepareValidatedAsync(TestContext context)
     {
         var draft = await context.Service.CreateDraftAsync(
@@ -170,13 +333,27 @@ public sealed class AgentAdmissionServiceTests
 
     private static async Task<AdmissionMutationResult> PrepareApprovedAsync(TestContext context)
     {
-        var prepared = await PrepareValidatedAsync(context);
-        var submitted = await context.Service.TransitionAsync(
-            context.TenantId, context.Type, context.Version, "SUBMIT", Intent(prepared.Admission),
-            context.OwnerId, "OWNER_DELEGATE", Guid.NewGuid(), Guid.NewGuid(), "demo", CancellationToken.None);
+        var submitted = await PrepareSubmittedAsync(context);
         return await context.Service.TransitionAsync(
             context.TenantId, context.Type, context.Version, "APPROVE", Intent(submitted.Admission),
             Guid.NewGuid(), "ADMISSION_APPROVER", Guid.NewGuid(), Guid.NewGuid(), "demo", CancellationToken.None);
+    }
+
+    private static async Task<AdmissionMutationResult> PrepareSubmittedAsync(TestContext context)
+    {
+        var prepared = await PrepareValidatedAsync(context);
+        return await context.Service.TransitionAsync(
+            context.TenantId, context.Type, context.Version, "SUBMIT", Intent(prepared.Admission),
+            context.OwnerId, "OWNER_DELEGATE", Guid.NewGuid(), Guid.NewGuid(), "demo", CancellationToken.None);
+    }
+
+    private static async Task<AdmissionMutationResult> PrepareActiveAsync(TestContext context)
+    {
+        var approved = await PrepareApprovedAsync(context);
+        await AddReadinessAsync(context, approved.Admission, "PASS", DateTimeOffset.UtcNow.AddHours(1));
+        return await context.Service.TransitionAsync(
+            context.TenantId, context.Type, context.Version, "ACTIVATE", Intent(approved.Admission),
+            Guid.NewGuid(), "PLATFORM_ACTIVATION_AUTHORITY", Guid.NewGuid(), Guid.NewGuid(), "demo", CancellationToken.None);
     }
 
     private static async Task AddReadinessAsync(

@@ -84,23 +84,20 @@ async def test_session_start_requires_exact_bp_workload_context() -> None:
     body = _admitted_session_request()
     request = MagicMock()
     context = MagicMock()
-    with patch("routers.sessions._authorize", new=AsyncMock(return_value=context)) as authorize:
+    with patch("routers.sessions.authorize_paas_session_start", new=AsyncMock(return_value=context)) as authorize:
         assert await require_session_workload_context(request, body) is context
 
     authorize.assert_awaited_once_with(
         request,
-        "/api/v1/paas/sessions",
-        "startPAASSession",
         uuid.UUID(body.contract_id),
         body.model_dump(mode="json"),
-        None,
         body.tenant_id,
     )
 
 
 async def test_session_start_rejects_malformed_contract_id_before_authorization() -> None:
     body = _admitted_session_request().model_copy(update={"contract_id": "not-a-uuid"})
-    with patch("routers.sessions._authorize", new=AsyncMock()) as authorize:
+    with patch("routers.sessions.authorize_paas_session_start", new=AsyncMock()) as authorize:
         with pytest.raises(HTTPException) as failure:
             await require_session_workload_context(MagicMock(), body)
 
@@ -111,7 +108,7 @@ async def test_session_start_rejects_malformed_contract_id_before_authorization(
 
 async def test_session_start_fails_closed_when_workload_authentication_fails() -> None:
     with patch(
-        "routers.sessions._authorize",
+        "routers.sessions.authorize_paas_session_start",
         new=AsyncMock(side_effect=ServiceAuthError("SERVICE_AUTHENTICATION_FAILED")),
     ):
         with pytest.raises(HTTPException) as failure:

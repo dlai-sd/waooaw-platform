@@ -345,6 +345,22 @@ async def _authorize(
     )
 
 
+async def authorize_paas_session_start(
+    request: Request,
+    relationship_id: uuid.UUID,
+    body: object,
+    tenant_id: str,
+) -> DelegatedContext:
+    return await _authorize(
+        request,
+        "/api/v1/paas/sessions",
+        "startPAASSession",
+        relationship_id,
+        body,
+        expected_tenant_id=tenant_id,
+    )
+
+
 router = APIRouter(prefix="/api/v1/internal/relationships", tags=["Internal"])
 
 

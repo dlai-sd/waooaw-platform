@@ -94,7 +94,7 @@ public static class AgentAdmissionCanonicalizer
 
     private static string CanonicalizeNumber(double number)
     {
-        if (number == 0d) return "0";
+        if ((BitConverter.DoubleToInt64Bits(number) & long.MaxValue) == 0) return "0";
 
         var shortest = number.ToString("R", CultureInfo.InvariantCulture);
         var negative = shortest[0] == '-';

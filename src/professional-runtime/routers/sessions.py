@@ -15,7 +15,7 @@ from temporalio.client import WorkflowExecutionStatus
 from temporalio.service import RPCError
 
 from admission_guard import AdmissionActivationBinding, AdmissionActivationGuard, AdmissionGuardError
-from relationship_workspace import _authorize
+from relationship_workspace import authorize_paas_session_start
 from workload_identity import DelegatedContext, ServiceAuthError
 from workflows.paas_workflow import (
     PAASSessionInput,
@@ -130,13 +130,10 @@ async def require_session_workload_context(request: Request, body: SessionStartR
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="INVALID_CONTRACT_ID") from exc
 
     try:
-        return await _authorize(
+        return await authorize_paas_session_start(
             request,
-            "/api/v1/paas/sessions",
-            "startPAASSession",
             relationship_id,
             body.model_dump(mode="json"),
-            None,
             body.tenant_id,
         )
     except ServiceAuthError as exc:
