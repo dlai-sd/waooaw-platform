@@ -7,7 +7,7 @@
 | `record_id` | GEP-GOAL-006-INST-013-01 |
 | `record_type` | Execution Plan |
 | `produced_at` | 2026-08-13T12:03:00+00:00 |
-| Status | EXECUTION BASELINE — Phase 1 and Phase 2 complete; FA-052 active; WC-076 execution blocked pending INST-010 GOA/Acceptance |
+| Status | EXECUTION BASELINE - Phase 1 and Phase 2 complete; Demo/UAT accepted; WC-076 P3-EX11 plan-only closure remains |
 | Governing requirements | Founder Session Directive plus GOAL-006 FR-001 through FR-056 |
 
 ## Historical Approval Stop
@@ -61,7 +61,7 @@ data, implementation, QA, or operational verdict.
 | Phase | Objective | Entry gate | Exit gate | Prohibited during phase |
 |---|---|---|---|---|
 | 1 — Discovery, Architecture, Grooming | Produce the complete FR-019 through FR-045 package and authorized Phase 2/3 Work Components | Founder-approved classification/plan and valid phased GOAs | Owner reviews, independent CA clearance, protected decisions identified, Founder package approval, authorized Phase 2 WCs | Runnable infrastructure changes, source implementation, cloud spend, deployment, DNS, activation |
-| 2 — Implementation | Implement approved version-controlled IaC, workflows, controls, automation, tests, and operational artifacts | Phase 1 complete; explicit current-session Founder implementation authorization; approved Phase 2 WCs | Docker-based validation, security/cost review, independent implementation review, unmerged Founder PR | Azure creation, DNS change, production activation, self-review, self-merge |
+| 2 — Implementation | Implement approved version-controlled IaC, workflows, controls, automation, tests, and operational artifacts | Phase 1 complete; explicit current-session Founder implementation authorization; approved Phase 2 WCs | Docker-based validation, security/cost checks, author review, required status checks and unmerged Founder PR | Azure creation, DNS change, production activation, self-approval, self-merge |
 | 3 — Azure Deployment And Handover | Provision and qualify demo→UAT→production using immutable digests; activate accepted operations | Phase 2 merged; explicit Founder cloud/DNS/expenditure authorization | Production acceptance evidence, activated operations handover, supervised period, incident simulation, final Founder acceptance | Rebuild per environment, bypass gates, expose internal services, self-approve, self-merge |
 
 ## Phase 1 Work Components
@@ -154,7 +154,7 @@ Phase 1 owners must refine these into approved Work Components; no Azure action 
 | PLAN-05 Phase 2 authorization | Founder | M3 | Approved WCs plus session authorization | PLAN-04 | DONE | Explicit boundary |
 | PLAN-06 Phase 2 implementation | INST-010 and approved owners | M2 | Tested implementation and independent reviews | PLAN-05 | DONE — PR #284 and closure PR #285 merged | Docker-only reproducible validation |
 | PLAN-07 Phase 3 authorization | Founder | M3 | Cloud/DNS/expenditure authorization | PLAN-06 merged | DONE — FA-052 and Phase 3 GOA/Acceptance recorded | Exact protected decisions |
-| PLAN-08 Deployment/handover | Approved execution and operations owners | M2/M3 | WC-076 executable gates and independent acceptance | PLAN-07 | BLOCKED — INST-010 GOA/Acceptance required before implementation | Independent acceptance |
+| PLAN-08 Deployment/handover | INST-009 accountable; INST-010 implements accepted architecture | M2/M3 | WC-076 executable gates, immutable PR evidence and Founder approval | PLAN-07 | IN PROGRESS - P3-EX01 through P3-EX10 passed; P3-EX11 plan-only closure remains | Author checks, required status checks and Founder approval |
 
 ## Dependency And Budget Controls
 
@@ -180,7 +180,8 @@ or attempted Platform Operations activation before acceptance.
 
 ## Next Action
 
-INST-013 must amend the Phase 3 GO Authorization to name INST-010 for WC-076, followed by a later
-INST-010 Acceptance. Then execute the numbered backlog code-first under FA-052, using tests, CI and
-the PR as primary evidence. Production remains plan-only and all Founder-reserved decisions remain
-protected.
+Use `work-contracts/WC-076-goal006-phase3-execution.md` as the single remaining execution record.
+After this PR merges, INST-009 resolves the listed Production architecture inputs and INST-010 may
+produce offline readiness evidence under fresh implementation authority. Provider-backed planning
+requires exact current-session Founder authority; Production apply, DNS, customer traffic, Platform
+Operations activation, PR approval and merge remain Founder-reserved.
