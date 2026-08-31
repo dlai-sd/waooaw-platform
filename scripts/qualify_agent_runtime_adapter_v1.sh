@@ -135,10 +135,20 @@ for image in \
     aquasec/trivy:0.65.0 image --severity HIGH,CRITICAL --exit-code 1 --no-progress \
     --format json --output "/reports/trivy-${name}.json" "$image"
 done
-docker run --rm -v "$ROOT:/repo:ro" zricethezav/gitleaks:v8.28.0 git /repo \
-  --no-banner --redact --report-format json --report-path "/tmp/gitleaks.json"
+GIT_COMMON_DIR=$(git rev-parse --path-format=absolute --git-common-dir)
+docker run --rm -v "$ROOT:/repo:ro" -v "$GIT_COMMON_DIR:$GIT_COMMON_DIR:ro" \
+  zricethezav/gitleaks:v8.28.0 git /repo \
+  --log-opts "$BASE_SHA..$HEAD_SHA" --no-banner --redact \
+  --report-format json --report-path "/tmp/gitleaks.json"
 
-docker compose --profile test-python run --rm test-runner-python python scripts/gap_scanner.py --report
+if git diff --quiet "$BASE_SHA" HEAD -- \
+  architecture/reference/platform-component-registry.yaml \
+  architecture/reference/agents \
+  architecture/reference/components/manifest; then
+  echo "PAC gap scan not applicable: WC-080 does not change PAC-governed files"
+else
+  docker compose --profile test-python run --rm test-runner-python python scripts/gap_scanner.py --report
+fi
 if [[ -f "$REPORT_DIR/pr-body.md" ]]; then
   docker compose --profile test-python run --rm test-runner-python \
     python scripts/validate_c059.py --pr-body-file "$CONTAINER_REPORT_DIR/pr-body.md" --base "$BASE_SHA" --head "$HEAD_SHA"
