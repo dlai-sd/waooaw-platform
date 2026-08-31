@@ -45,7 +45,7 @@ def job(name: str, arguments: list[str], environment_name: str = "demo") -> dict
                     {
                         "name": name,
                         "image": IMAGE,
-                        "command": CLEANUP_COMMAND if arguments == CLEANUP_ARGS else COMMAND,
+                        "command": CLEANUP_COMMAND if name == "cleanup-broker" else COMMAND,
                         "args": arguments,
                         "resources": {"cpu": 0.25, "memory": "0.5Gi"},
                         "env": environment,
@@ -116,6 +116,46 @@ def test_cleanup_template_binds_terminal_conclusion() -> None:
     assert result["containers"][0]["command"] == CLEANUP_COMMAND
     assert "def write_cleanup_evidence(" in arguments[0]
     assert arguments[arguments.index("--private-job-conclusion") + 1] == "failure"
+
+
+def test_cleanup_template_replaces_stale_live_source_with_trusted_source() -> None:
+    stale_arguments = ["stale deployed lifecycle source", *CLEANUP_ARGS[1:]]
+
+    result = build_execution_template(
+        job("cleanup-broker", stale_arguments),
+        mode="cleanup",
+        expected_image=IMAGE,
+        run_id="33388459246",
+        run_attempt="1",
+        private_job_conclusion="success",
+    )
+
+    arguments = result["containers"][0]["args"]
+    assert arguments[0] == CLEANUP_ARGS[0]
+    assert arguments[1:] == [
+        "cleanup-correlated",
+        "--app-manifest",
+        "/opt/waooaw/github-runner-app-manifest.json",
+        "--private-job-conclusion",
+        "success",
+        "--output",
+        "/home/runner/cleanup-record.json",
+    ]
+
+
+def test_cleanup_template_rejects_live_argument_tail_drift() -> None:
+    drifted_arguments = ["stale deployed lifecycle source", *CLEANUP_ARGS[1:]]
+    drifted_arguments[-1] = "/tmp/unapproved-cleanup-record.json"
+
+    with pytest.raises(ExecutionTemplateError, match="arguments"):
+        build_execution_template(
+            job("cleanup-broker", drifted_arguments),
+            mode="cleanup",
+            expected_image=IMAGE,
+            run_id="33388459246",
+            run_attempt="1",
+            private_job_conclusion="success",
+        )
 
 
 def test_cleanup_evidence_is_correlation_bound_and_complete() -> None:

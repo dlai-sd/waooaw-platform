@@ -1154,7 +1154,7 @@ jobs:
           done
 
       - name: Retain hosted cleanup evidence
-        if: always()
+        if: always() && hashFiles('cleanup-record.json') != ''
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: goal006-private-runner-cleanup-${{ github.run_id }}-${{ github.run_attempt }}
