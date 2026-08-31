@@ -230,7 +230,7 @@ The implementation issue must bind exact paths. The expected owning surfaces are
 | `goal006-runner-image.yaml` | Runner supply chain | Retain; it builds and attests the immutable private-runner image. |
 | `reconcile-workload-leases.yaml` | Operational reconciler | Retain; lease expiry and zero-idle enforcement are not deployment entry behavior. |
 | `goal006-phase2-offline.yml` | Unique offline qualification with stale phase name | Do not delete until its release simulation and delegated PostgreSQL checks are moved into an active CI gate; then rename or remove under implementation authorization. |
-| `emergency-halt-check.yaml` | Orphaned governance control | Its comment names deleted callers and no workflow calls it. Under implementation authorization, move the fail-closed halt check into `deploy.yaml`, add contract tests, then delete the orphan. |
+| `emergency-halt-check.yaml` | Removed orphaned control | Deleted after Founder confirmation because no workflow called it. C-001 fail-closed halt integration in `deploy.yaml` remains separately authorized implementation work. |
 | `deploy-demo.yaml` and `promote.yaml` | Removed transitional wrappers | Remain absent; PR #371 consolidated their responsibilities into the current path. |
 
 One stale `promote.yaml` comment remains in legacy `infrastructure/terraform/environments/dev/main.tf`.

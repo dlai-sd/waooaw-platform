@@ -1126,19 +1126,12 @@ cost. Provider/live authority is never inferred from implementation authorizatio
     # TODO (IB-009): replace with actual CE API call when CE is deployed
 ```
 
-### B. `emergency-halt-check.yaml` (new — runs before every deploy stage)
-```yaml
-- name: Check emergency halt signal
-  run: |
-    HALT=$(gh issue list --label "emergency:halt-deployments" --state open --json number -q length)
-    if [ "$HALT" -gt "0" ]; then
-      echo "🔴 EMERGENCY HALT detected. Deployment stopped."
-      echo "Remove the 'emergency:halt-deployments' label to resume."
-      exit 1
-    fi
-  env:
-    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-```
+### B. Emergency deployment halt (pending integration)
+
+The orphaned `emergency-halt-check.yaml` reusable workflow was removed after
+Founder confirmation because no deployment workflow called it. C-001 still
+requires a fail-closed halt check in the canonical `deploy.yaml` path. Add that
+control and its contract tests only under separate implementation authorization.
 
 ### C. `post-deploy-verify.yaml` (new — runs after each environment deploy)
 ```yaml

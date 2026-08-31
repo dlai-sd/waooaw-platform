@@ -187,8 +187,8 @@ GitHub Operations
   Issue templates                       .github/ISSUE_TEMPLATE/
   PR template                           .github/pull_request_template.md
   CI pipeline                           .github/workflows/ci.yaml  (C-059 gate + CodeQL + OWASP)
-  Promote + deploy                      .github/workflows/promote.yaml  (blue-green + cost gate)
-  Emergency halt check                  .github/workflows/emergency-halt-check.yaml  (C-001 for pipelines)
+  Deploy application                    .github/workflows/deploy.yaml  (sole manual entry)
+  Emergency deployment halt             Pending integration in deploy.yaml  (C-001)
   Post-deploy verification              .github/workflows/post-deploy-verify.yaml  (C-065 + auto-rollback)
   CODEOWNERS                            .github/CODEOWNERS  (all paths require @dlai-sd)
 
