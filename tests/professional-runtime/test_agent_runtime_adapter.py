@@ -487,7 +487,9 @@ async def test_private_http_transport_requires_pr_identity_and_projects_strict_r
         assert (await client.post("/internal/v1/configurations:validate", headers=headers, json=body)).status_code == 200
         planning = dict(wire_envelope)
         planning.update({"mode": "PLANNING", "invocationId": str(uuid4()), "idempotencyKey": str(uuid4())})
-        assert (await client.post("/internal/v1/plans", headers=headers, json={"envelope": planning, "payload": {}})).status_code == 200
+        assert (
+            await client.post("/internal/v1/plans", headers=headers, json={"envelope": planning, "payload": {}})
+        ).status_code == 200
         status = await client.request(
             "GET",
             f"/internal/v1/invocations/{request.invocation_id}",

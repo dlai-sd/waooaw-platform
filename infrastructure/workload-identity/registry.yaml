@@ -34,6 +34,11 @@ workloads:
     owner: INST-010
     audience: urn:waooaw:service:professional-runtime
     tls_usages: [client_auth, server_auth]
+  domain-adapter-dma:
+    identity_path: domain-adapter/dma
+    owner: INST-010
+    audience: urn:waooaw:service:domain-adapter:dma
+    tls_usages: [server_auth]
   agent-runtime-adapter-digital-marketing:
     identity_path: agent-runtime-adapter/digital-marketing-local-service/3.1.0
     owner: INST-010
