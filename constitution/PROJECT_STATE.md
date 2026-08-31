@@ -57,9 +57,10 @@ progression.
 
 ## Current Blockers
 
-P3-EX11 remains blocked on protected Production GitHub environments, accepted Production plan
-prerequisites, durable IaC ownership for the existing shared Terraform state account, and separate
-Founder authority. Production runner activation, apply, DNS and customer traffic remain prohibited.
+P3-EX11 offline readiness remains blocked until PR #388 merges and INST-009 accepts the Production
+edge, data, runtime, recovery, cost and shared-state ownership inputs. Provider-backed planning also
+requires protected Production GitHub environments and exact current-session Founder authority.
+C-001 emergency-halt integration blocks Production apply and activation, which remain prohibited.
 
 ## Next Authorized Action
 
