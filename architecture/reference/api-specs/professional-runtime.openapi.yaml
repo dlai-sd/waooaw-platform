@@ -734,7 +734,7 @@ components:
     StartConversationExecutionRequestV1:
       type: object
       additionalProperties: false
-      required: [schemaVersion, messageId, decisionSpaceVersion, locale, content]
+      required: [schemaVersion, messageId, decisionSpaceVersion, locale, content, adapterBinding]
       properties:
         schemaVersion: { $ref: "#/components/schemas/ConversationExecutionSchemaVersion" }
         messageId: { type: string, format: uuid, description: BP canonical customer message ID }
@@ -742,6 +742,23 @@ components:
         locale: { type: string, minLength: 2, maxLength: 35 }
         content: { $ref: "#/components/schemas/ConversationExecutionTextV1" }
         activeGoalContextId: { type: string, format: uuid }
+        adapterBinding: { $ref: "#/components/schemas/AdapterExecutionBindingV1" }
+
+    AdapterExecutionBindingV1:
+      type: object
+      additionalProperties: false
+      required: [protocolVersion, professionalTypeId, professionalVersion, skillId, skillVersion, admissionContentDigest, artifactDigest, customerContractDigest, configurationRevision, goalRevision]
+      properties:
+        protocolVersion: { type: string, const: "1.0.0" }
+        professionalTypeId: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,99}$" }
+        professionalVersion: { type: string, pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$" }
+        skillId: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,99}$" }
+        skillVersion: { type: string, pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$" }
+        admissionContentDigest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+        artifactDigest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+        customerContractDigest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+        configurationRevision: { type: string, minLength: 1, maxLength: 256 }
+        goalRevision: { type: string, minLength: 1, maxLength: 256 }
 
     ProfessionalExecutionState:
       type: string

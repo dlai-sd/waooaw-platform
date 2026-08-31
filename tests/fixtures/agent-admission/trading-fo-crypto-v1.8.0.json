@@ -25,6 +25,16 @@
     "limitationBehavior": "Never infer customer risk authority or guarantee returns.",
     "degradationBehavior": "Cancel pending execution and preserve market evidence."
   },
+  "runtimeAdapter": {
+    "protocolVersion": "1.0.0",
+    "compatibleMinorVersions": ["1.0.0"],
+    "artifactDigest": "sha256:1414141414141414141414141414141414141414141414141414141414141414",
+    "isolationProfile": "ONE_ARTIFACT_PER_DEPLOYMENT",
+    "conformanceEvidence": {
+      "schemaVersion": "1.0.0",
+      "schemaDigest": "sha256:1515151515151515151515151515151515151515151515151515151515151515"
+    }
+  },
   "skillManifest": [
     {
       "skillId": "MARKET_SIGNAL_ANALYSIS",
