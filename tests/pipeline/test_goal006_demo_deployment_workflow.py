@@ -250,6 +250,7 @@ def test_environment_deployment_cleanup_is_independent_and_retains_evidence() ->
     assert '--cleanup-execution-name "$execution"' in cleanup
     assert 'cleanup/${{ inputs.environment }}/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT.json' in cleanup
     assert "goal006-private-runner-cleanup-${{ github.run_id }}-${{ github.run_attempt }}" in cleanup
+    assert "if: always() && hashFiles('cleanup-record.json') != ''" in cleanup
 
 
 def test_demo_deployment_binds_broker_and_cleanup_to_release_sha() -> None:

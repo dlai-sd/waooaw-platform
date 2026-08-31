@@ -182,9 +182,14 @@ def build_execution_template(
     expected_command = COMMAND if mode == "broker" else CLEANUP_COMMAND
     if container.get("command") != expected_command:
         raise ExecutionTemplateError("job command differs from blueprint")
-    expected_args = BROKER_ARGS if mode == "broker" else CLEANUP_ARGS
-    if container.get("args") != expected_args:
-        raise ExecutionTemplateError("job arguments differ from blueprint")
+    arguments = container.get("args")
+    if mode == "broker":
+        if arguments != BROKER_ARGS:
+            raise ExecutionTemplateError("job arguments differ from blueprint")
+    else:
+        if not isinstance(arguments, list) or arguments[1:] != CLEANUP_ARGS[1:]:
+            raise ExecutionTemplateError("job arguments differ from blueprint")
+        arguments[0] = CLEANUP_ARGS[0]
     resources = dict(container.get("resources", {}))
     if resources.get("ephemeralStorage") in {None, ""}:
         resources.pop("ephemeralStorage", None)
