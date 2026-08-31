@@ -24,6 +24,9 @@ fi
 
 ROOT=$(git rev-parse --show-toplevel)
 cd "$ROOT"
+if [[ "$OUTPUT" != /* ]]; then
+  OUTPUT="$ROOT/${OUTPUT#./}"
+fi
 HEAD_SHA=$(git rev-parse HEAD)
 BASE_SHA=$(git merge-base HEAD origin/main)
 STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
