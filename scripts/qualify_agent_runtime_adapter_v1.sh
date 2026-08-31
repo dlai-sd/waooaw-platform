@@ -150,7 +150,10 @@ else
   docker compose --profile test-python run --rm test-runner-python python scripts/gap_scanner.py --report
 fi
 if [[ -f "$REPORT_DIR/pr-body.md" ]]; then
-  docker compose --profile test-python run --rm test-runner-python \
+  docker compose --profile test-python run --rm \
+    -v "$GIT_COMMON_DIR:$GIT_COMMON_DIR:ro" \
+    -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory \
+    -e GIT_CONFIG_VALUE_0=/workspace test-runner-python \
     python scripts/validate_c059.py --pr-body-file "$CONTAINER_REPORT_DIR/pr-body.md" --base "$BASE_SHA" --head "$HEAD_SHA"
   docker compose --profile test-python run --rm test-runner-python \
     python scripts/validate_author_review.py --pr-body-file "$CONTAINER_REPORT_DIR/pr-body.md" --head "$HEAD_SHA"
