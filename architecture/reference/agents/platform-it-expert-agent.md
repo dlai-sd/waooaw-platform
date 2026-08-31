@@ -1101,56 +1101,17 @@ cost. Provider/live authority is never inferred from implementation authorizatio
 
 ---
 
-## Appendix: New GitHub Workflows Required
+## Appendix: Cloud Workflow Standard
 
-### A. `ci-constitutional-gate.yaml` (new — add to ci.yaml)
-```yaml
-- name: Validate constitutional commit format (C-059)
-  run: |
-    MSG=$(git log -1 --pretty=%B)
-    if ! echo "$MSG" | grep -qP "^(feat|fix|constitutional|cct|chore|refactor|security|docs|agent)\("; then
-      echo "ERROR: Commit message does not follow conventional commit format (C-059)"
-      exit 1
-    fi
-    if ! echo "$MSG" | grep -qP "IB:|FIX:|Constitutional:"; then
-      echo "ERROR: Commit message must reference IB item or Fix issue (C-059 traceability)"
-      exit 1
-    fi
+Cloud workflows are thin orchestration over versioned engineering artifacts. Add a workflow only
+when it owns a distinct trigger, privilege boundary or recovery schedule. Tests, scripts, immutable
+manifests, Terraform/Bicep plans and cloud diagnostics are the evidence sources; prose ledgers and
+Constitutional Audit Ledger writes are not CI/CD requirements.
 
-- name: Record CE Evidence — CI gate
-  if: success()
-  run: |
-    # CE evidence recording (requires CE to be deployed in target env)
-    # In dev: recorded to dev CAL
-    echo "CI_PASSED sha=${{ github.sha }}" >> .ci-evidence.log
-    # TODO (IB-009): replace with actual CE API call when CE is deployed
-```
-
-### B. Emergency deployment halt (pending integration)
-
-The orphaned `emergency-halt-check.yaml` reusable workflow was removed after
-Founder confirmation because no deployment workflow called it. C-001 still
-requires a fail-closed halt check in the canonical `deploy.yaml` path. Add that
-control and its contract tests only under separate implementation authorization.
-
-### C. `post-deploy-verify.yaml` (new — runs after each environment deploy)
-```yaml
-- name: Health check all services
-  run: ./scripts/health-check.sh ${{ env.ENVIRONMENT_URL }}
-
-- name: Run Constitutional Compliance Tests
-  run: ./scripts/run-ccts.sh --environment ${{ env.ENVIRONMENT }}
-
-- name: Emergency Stop latency test (C-024 — ≤250ms)
-  run: ./scripts/test-emergency-stop-latency.sh ${{ env.ENVIRONMENT_URL }}
-
-- name: Automatic rollback on failure
-  if: failure()
-  run: |
-    echo "Post-deploy verification FAILED. Initiating rollback."
-    # CE Evidence recorded before rollback
-    ./scripts/rollback.sh ${{ env.ENVIRONMENT }} ${{ env.PREVIOUS_SHA }}
-```
+The durable workflow set is `ci.yaml`, `deploy.yaml`, `environment-deployment.yaml`,
+`environment-deployment-verification.yaml`, `private-runner-infrastructure.yaml`,
+`private-runner-image.yaml` and `workload-lease-reconciliation.yaml`. C-001 deployment halt remains
+a required capability in the canonical deployment path, not a reason to create another wrapper.
 
 ---
 

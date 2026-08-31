@@ -32,7 +32,7 @@
 | Coding Standards | ✅ Complete | .NET/Python/TypeScript/SQL. ruff, mypy, biome, xUnit, pytest, Vitest. |
 | UX & Legal | ✅ Complete | Constitutional UX vocabulary. Portal walkthrough. 5 legal documents (DPDPA compliant). |
 | Infrastructure | ✅ Complete | Terraform (9 Container Apps). Docker Compose (23 services). DB migrations (01-09). |
-| CI/CD Pipelines | ✅ Complete | ci.yaml, promote.yaml, autonomous-sprint.yaml, code-quality.yaml, post-deploy-verify.yaml. |
+| CI/CD Pipelines | ✅ Complete | ci.yaml, promote.yaml, autonomous-sprint.yaml, code-quality.yaml, environment-deployment-verification.yaml. |
 | Sprint Execution System | ✅ Complete | autonomous-sprint.yaml hardened (G1-G7). Sprint Dashboard Issue #7 live. Key Vault OIDC. |
 | 12-Chapter Agent AI Audit | ✅ All chapters PASS | GAP-CH11-01 (PII masking), GAP-CH6-01 (CE fail-safe), GAP-CH10-01 (RAG chunking) fixed. |
 
@@ -339,7 +339,7 @@ The following must be completed by Yogesh/Sujay before the milestones that depen
 | **LLM inference — FRONTIER** | P99 | ≤10s | WAOOAW AI Agent — Platform Operations |
 | **Blue-green deployment** | Total duration | ≤30 min | CI/CD pipeline (C-067) |
 | **CCT suite run** | Duration | ≤20 min | GitHub Actions |
-| **Rollback execution** | Duration | ≤10 min | post-deploy-verify.yaml |
+| **Rollback execution** | Duration | ≤10 min | environment-deployment-verification.yaml |
 | **Terraform apply** (new env) | Duration | ≤15 min | GitHub Actions |
 | **DB query P99** | Latency | ≤50ms | Azure Monitor |
 

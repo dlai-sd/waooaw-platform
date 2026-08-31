@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 128
+**State Revision:** 129
 **Last Updated:** 2026-08-31
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-080 - Agent Runtime Adapter Contract v1 |
 | Latest merge | PR #386 merged to `main` as `86c5714` |
-| Active delivery | WC-076 Demo accepted and UAT verified; P3-EX11 dark-Production handover remains plan-only |
+| Active delivery | PR #388 lightweight cloud workflow consolidation under Founder review; P3-EX11 remains plan-only |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 
@@ -34,6 +34,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | UAT runner delivery | PASS - preview `33149859100` and apply `33150103583`; private runner stack ACTIVE with zero residual executions |
 | UAT deploy / verify | PASS - final run `33177257822`; exact-six, latest-ready revisions, functional checks, Web and OIDC endpoints passed |
 | Cloud delivery consolidation | MERGED - PR #371 as `7211eb8`; temporary wrappers and deny-only promotion workflow removed |
+| Lightweight workflow consolidation | PR #388 CANDIDATE - release qualification moved into CI; runner operations consolidated; durable workflows renamed by purpose |
 | Current application foundation | DONE - PRs #373, #381 and #386 added identity, admission and runtime adapter foundations after cloud qualification |
 | Production | PLAN ONLY - code-prepared; protected environments, authorized plan, traffic and final acceptance remain Founder-reserved |
 
@@ -62,9 +63,9 @@ Founder authority. Production runner activation, apply, DNS and customer traffic
 
 ## Next Authorized Action
 
-Consolidate active cloud documentation around the PR #371 implementation baseline, preserve Demo/UAT
-evidence, and prepare the P3-EX11 dark-Production handover plan. Do not activate the Production runner,
-run a Production plan/apply, change DNS, or accept customer traffic without separate Founder authority.
+Complete author review and executable validation for PR #388, then submit it for Founder review and
+merge. Do not activate the Production runner, run a Production plan/apply, change DNS, or accept
+customer traffic without separate Founder authority.
 
 ## History And Evidence
 

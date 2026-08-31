@@ -57,10 +57,10 @@ The component is complete only when all three capabilities work together against
 | Exact-six packaging | `scripts/goal006_registry_manifest.py`, CI release artifact | Digest-pinned six-member tuple with scan, SBOM, provenance, signature, source SHA, and run binding | Reuse as promotion payload; add environment acceptance/promotion lineage |
 | Release verification | `scripts/goal006_release_verification.py` | Verifies immutable CI tuple | Extend validation to accepted source and target promotion records |
 | Deployment entry | `.github/workflows/deploy.yaml` | Parameterized Demo/UAT/Prod plan/apply; selects successful CI artifact for latest `main` | Add explicit release-operation inputs or delegate to dedicated promote/rollout workflows; retain one canonical trusted entry boundary |
-| Environment deployment | `.github/workflows/deploy-environment.yaml` | Private runner, OIDC, Terraform, cost/lease gates, Demo-to-UAT configuration initialization | Separate Green creation from accepted-traffic movement; consume authorized promotion record |
-| Configuration promotion | Demo blob to UAT blob in `deploy-environment.yaml` | Create-only initialization with digest verification and new UAT lease | Bind reviewed configuration digest to the promoted image tuple and record lineage; generalize source/target rules without copying secrets |
+| Environment deployment | `.github/workflows/environment-deployment.yaml` | Private runner, OIDC, Terraform, cost/lease gates, Demo-to-UAT configuration initialization | Separate Green creation from accepted-traffic movement; consume authorized promotion record |
+| Configuration promotion | Demo blob to UAT blob in `environment-deployment.yaml` | Create-only initialization with digest verification and new UAT lease | Bind reviewed configuration digest to the promoted image tuple and record lineage; generalize source/target rules without copying secrets |
 | Container Apps revisions | `infrastructure/terraform/phase2/modules/workload/main.tf` | Exact-six apps use Multiple revision mode, but ingress sends 100% to latest revision | Create named Green at 0%; prevent Terraform from silently moving accepted traffic |
-| Independent verification | `.github/workflows/post-deploy-verify.yaml` | Validates live inventory, latest healthy revisions, internal probes, URL, and exact-six tuple after apply | Target the Green revision directly before accepted traffic; evaluate every traffic stage and final state |
+| Independent verification | `.github/workflows/environment-deployment-verification.yaml` | Validates live inventory, latest healthy revisions, internal probes, URL, and exact-six tuple after apply | Target the Green revision directly before accepted traffic; evaluate every traffic stage and final state |
 | Rollback | No canonical workflow/state record | No accepted-tuple rollback operation | Add last-compatible tuple, traffic restore, verification, and evidence workflow |
 | Blue-green helper | `scripts/blue-green-deploy.sh` | Legacy imperative prototype with generic app names, mutable external assumptions, placeholder error rate, direct CLI, and no canonical evidence trust | Do not adopt as-is; replace with tested state/decision tooling integrated into canonical workflows |
 | Production boundary | Prod runner is inactive; prior intent is plan-only | No Production live proof is in scope | Add explicit fail-closed Production mutation guard and test it |
@@ -72,7 +72,7 @@ The component is complete only when all three capabilities work together against
 | Critical | Current UAT data is revision-local | CE, BP, and Billing each embed a PostgreSQL sidecar; Billing embeds Redis; Keycloak uses `--db=dev-file` | Add WC-1A before release-control implementation: private PostgreSQL 16 consistency group, explicit migration job, persistent Keycloak DB, runtime roles, PITR proof; keep Redis explicitly transient |
 | Critical | Equal percentages across six apps do not create a coherent release cohort | Runtime configuration calls stable service hostnames, so each internal hop may independently select Blue or Green | Give every revision deterministic cohort-pinned dependency endpoints and bootstrap the current accepted tuple as a pinned Blue anchor before any canary |
 | High | Six Azure app updates cannot be transactionally atomic | Terraform/Azure may succeed for a subset before another app fails | Define acceptance as atomic in the operation ledger, implement cloud changes as a locked compensating saga, and restore the recorded pre-state on partial failure |
-| High | Proposed additional manual workflows conflict with the current trusted-caller contract | `deploy-environment.yaml` and `post-deploy-verify.yaml` accept only `deploy.yaml@refs/heads/main` | Keep `deploy.yaml` as the sole manual dispatcher; make promotion, Green deployment, observation, rollback, and retirement reusable `workflow_call` implementations |
+| High | Proposed additional manual workflows conflict with the current trusted-caller contract | `environment-deployment.yaml` and `environment-deployment-verification.yaml` accept only `deploy.yaml@refs/heads/main` | Keep `deploy.yaml` as the sole manual dispatcher; make promotion, Green deployment, observation, rollback, and retirement reusable `workflow_call` implementations |
 | High | Canary signals were named but not operationally sourced | UAT has Log Analytics; live Container Apps metrics expose `Requests`, status, restart, replica, CPU/memory dimensions; no evaluator exists | Add an explicit revision-metric collector/evaluator and authenticated synthetic-load job; use active-probe latency because platform `ResponseTime` lacks a revision dimension |
 | Medium | Demo and UAT already run the same six digests | Live inventory comparison on 2026-08-28 returned equality | Record the first promotion as `NO_CHANGE` lineage only; require a later Demo-accepted changed tuple for changed-image proof, or label the exercise strictly as a revision/process drill |
 | Medium | Inactive revision retention was unspecified | AzureRM 4.14.0 supports `max_inactive_revisions` | Set and test a retention floor sufficient for accepted Blue plus failed Green until terminal evidence and rollback expiry are complete |
@@ -188,9 +188,9 @@ Keep `.github/workflows/deploy.yaml` as the sole `workflow_dispatch` entrypoint.
 
 | Operation | Reusable implementation | Release authority | Mutating identity |
 |---|---|---|---|
-| `forward` | `deploy-environment.yaml` | Latest successful `main` exact-six artifact | Existing environment deployment identity |
+| `forward` | `environment-deployment.yaml` | Latest successful `main` exact-six artifact | Existing environment deployment identity |
 | `promote` | `promote-release.yaml` | Immutable source accepted record | Promotion/evidence writer; no workload mutation |
-| `deploy-green` | `deploy-environment.yaml` candidate path | Target promotion record | Existing deployment identity |
+| `deploy-green` | `environment-deployment.yaml` candidate path | Target promotion record | Existing deployment identity |
 | `advance` | `shift-traffic.yaml` | Prior stage plus approved next-stage record | Environment traffic identity |
 | `rollback` | `rollback-environment.yaml` | Last-compatible accepted record | Environment rollback identity |
 | `accept` | `accept-release.yaml` | Independent confirmer verdict plus final observation | Narrow release-state writer; no workload mutation |
@@ -312,7 +312,7 @@ This component precedes promotion and traffic work because the existing revision
 
 ### WC-5: Add candidate-specific independent verification
 
-1. Refactor `.github/workflows/post-deploy-verify.yaml` or add a narrowly scoped reusable verifier that accepts operation ID, manifest digest, and exact candidate revision map.
+1. Refactor `.github/workflows/environment-deployment-verification.yaml` or add a narrowly scoped reusable verifier that accepts operation ID, manifest digest, and exact candidate revision map.
 2. Verify Green by the exact revision FQDN map produced by WC-4 before public traffic. Do not equate `latestRevisionName`, a mutable label, or readiness alone with acceptance.
 3. Validate all six digest references, readiness/health, Keycloak OIDC discovery/session behavior, application authentication/RBAC, internal service connectivity, Constitutional Engine health, Evidence First, Emergency Stop, Temporal idempotency, Billing lineage, and approved customer journeys applicable to the release.
 4. Capture baseline and Green telemetry using revision dimensions. Telemetry absence is a failure.
@@ -421,8 +421,8 @@ Canonical live proof can run only after the implementation is merged to `main`; 
 Prefer extending these existing owners and add new files only where responsibility is genuinely new:
 
 - `.github/workflows/deploy.yaml`
-- `.github/workflows/deploy-environment.yaml`
-- `.github/workflows/post-deploy-verify.yaml`
+- `.github/workflows/environment-deployment.yaml`
+- `.github/workflows/environment-deployment-verification.yaml`
 - `.github/workflows/promote-release.yaml` (new reusable workflow, no manual dispatch)
 - `.github/workflows/shift-traffic.yaml` (new reusable workflow, no manual dispatch)
 - `.github/workflows/rollback-environment.yaml` (new reusable workflow, no manual dispatch)

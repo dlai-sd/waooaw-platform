@@ -205,11 +205,11 @@ The implementation issue must bind exact paths. The expected owning surfaces are
 |---|---|
 | `work-contracts/WC-076-goal006-phase3-execution.md` | Demo/UAT execution closure and remaining P3-EX11 status |
 | `.github/workflows/deploy.yaml` | Sole manual application deployment entry using the current-main signed release |
-| `.github/workflows/deploy-environment.yaml` | Environment-parameterized reusable deployment engine |
-| `.github/workflows/post-deploy-verify.yaml` | Independent environment-parameterized verification and complete evidence output |
-| `.github/workflows/runner-environment-delivery.yaml` | Reviewed private-runner preview/apply lifecycle, distinct from application deployment |
-| `.github/workflows/goal006-private-runner-qualification.yaml` | Private-path diagnostics, distinct from deployment and acceptance |
-| `.github/workflows/reconcile-workload-leases.yaml` | Idempotent scale-to-zero/server-stop lease reconciliation and evidence |
+| `.github/workflows/environment-deployment.yaml` | Environment-parameterized reusable deployment engine |
+| `.github/workflows/environment-deployment-verification.yaml` | Independent environment-parameterized verification and complete evidence output |
+| `.github/workflows/private-runner-infrastructure.yaml` | Private-runner preview/apply/qualify lifecycle, distinct from application deployment |
+| `.github/workflows/private-runner-image.yaml` | Immutable private-runner image build, scan and attestation |
+| `.github/workflows/workload-lease-reconciliation.yaml` | Idempotent scale-to-zero/server-stop lease reconciliation and evidence |
 | `infrastructure/deployment-stacks/goal006-runner/` | Versioned per-environment runner manifests/templates and activation proof inputs |
 | `infrastructure/terraform/phase2/environments/` | Isolated Demo/UAT roots and dark Production plan roots using accepted modules |
 | `scripts/blue-green-deploy.sh` | Digest-only, evidence-producing, probe-gated switch/rollback with no placeholder telemetry or issue side effect |
@@ -223,13 +223,13 @@ The implementation issue must bind exact paths. The expected owning surfaces are
 | Workflow | Classification | Disposition |
 |---|---|---|
 | `deploy.yaml` | Strategic operator entry | Retain as the only manual application deployment entry. |
-| `deploy-environment.yaml` | Reusable deployment engine | Retain; it owns private runner execution, Terraform, external configuration, cost and cleanup. |
-| `post-deploy-verify.yaml` | Independent confirmation | Retain; deployment and confirmation identities remain separate. |
-| `runner-environment-delivery.yaml` | Runner control-plane delivery | Retain; reviewed runner-stack preview/apply is distinct from application deployment. |
-| `goal006-private-runner-qualification.yaml` | Private-path diagnostic | Retain; it proves Storage/Terraform access and cleanup without deploying applications. |
-| `goal006-runner-image.yaml` | Runner supply chain | Retain; it builds and attests the immutable private-runner image. |
-| `reconcile-workload-leases.yaml` | Operational reconciler | Retain; lease expiry and zero-idle enforcement are not deployment entry behavior. |
-| `goal006-phase2-offline.yml` | Unique offline qualification with stale phase name | Do not delete until its release simulation and delegated PostgreSQL checks are moved into an active CI gate; then rename or remove under implementation authorization. |
+| `environment-deployment.yaml` | Reusable deployment engine | Retain; it owns private runner execution, Terraform, external configuration, cost and cleanup. |
+| `environment-deployment-verification.yaml` | Independent confirmation | Retain; deployment and confirmation identities remain separate. |
+| `private-runner-infrastructure.yaml` | Runner control plane | Retain; preview/apply/qualify operations share one entry while jobs preserve distinct identities. |
+| `private-runner-image.yaml` | Runner supply chain | Retain; it builds and attests the immutable private-runner image. |
+| `workload-lease-reconciliation.yaml` | Operational reconciler | Retain; lease expiry and zero-idle enforcement are not deployment entry behavior. |
+| `goal006-private-runner-qualification.yaml` | Removed duplicate entry | Its jobs moved unchanged into the `qualify` operation of `private-runner-infrastructure.yaml`. |
+| `goal006-phase2-offline.yml` | Removed phase wrapper | Its path-aware release, recovery, Terraform, billing and PostgreSQL gates moved into `ci.yaml`. |
 | `emergency-halt-check.yaml` | Removed orphaned control | Deleted after Founder confirmation because no workflow called it. C-001 fail-closed halt integration in `deploy.yaml` remains separately authorized implementation work. |
 | `deploy-demo.yaml` and `promote.yaml` | Removed transitional wrappers | Remain absent; PR #371 consolidated their responsibilities into the current path. |
 

@@ -189,7 +189,7 @@ GitHub Operations
   CI pipeline                           .github/workflows/ci.yaml  (C-059 gate + CodeQL + OWASP)
   Deploy application                    .github/workflows/deploy.yaml  (sole manual entry)
   Emergency deployment halt             Pending integration in deploy.yaml  (C-001)
-  Post-deploy verification              .github/workflows/post-deploy-verify.yaml  (C-065 + auto-rollback)
+  Post-deploy verification              .github/workflows/environment-deployment-verification.yaml  (C-065 + auto-rollback)
   CODEOWNERS                            .github/CODEOWNERS  (all paths require @dlai-sd)
 
 Security

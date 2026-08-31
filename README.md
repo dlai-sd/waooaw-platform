@@ -308,15 +308,16 @@ evidence.
 |---|---|
 | `.github/workflows/ci.yaml` | Test, scan, build, attest and publish the current-main exact-six release. |
 | `.github/workflows/deploy.yaml` | Sole manual application deployment entry for `demo`, `uat` and `prod`; selects the trusted current-main release and delegates execution. |
-| `.github/workflows/deploy-environment.yaml` | Reusable environment deployment engine using environment-derived private runners, OIDC, external configuration, Terraform policy, cost controls and always-run cleanup. |
-| `.github/workflows/post-deploy-verify.yaml` | Independent environment verification of the release, live inventory, revisions, functional probes and returned URL. |
-| `.github/workflows/runner-environment-delivery.yaml` | Separately reviewed preview/apply lifecycle for environment runner Deployment Stacks. |
-| `.github/workflows/goal006-private-runner-qualification.yaml` | Diagnostic qualification of private Storage/Terraform access and cleanup; it is not an application deployment entry. |
-| `.github/workflows/reconcile-workload-leases.yaml` | Environment lease expiry and zero-idle reconciliation. |
+| `.github/workflows/environment-deployment.yaml` | Reusable environment deployment engine using environment-derived private runners, OIDC, external configuration, Terraform policy, cost controls and always-run cleanup. |
+| `.github/workflows/environment-deployment-verification.yaml` | Independent environment verification of the release, live inventory, revisions, functional probes and returned URL. |
+| `.github/workflows/private-runner-infrastructure.yaml` | Preview, apply and qualify operations for private-runner Deployment Stacks and private Storage/Terraform access. |
+| `.github/workflows/private-runner-image.yaml` | Build, scan and attest the immutable private-runner image when image inputs change. |
+| `.github/workflows/workload-lease-reconciliation.yaml` | Environment lease expiry and zero-idle reconciliation. |
 
-PR #371 removed the temporary `deploy-demo.yaml` wrapper and deny-only `promote.yaml`. Do not recreate
-either path. Approval and environment boundaries belong in the canonical entry, protected GitHub
-Environments, reusable workflow contracts and current Work Contract.
+PR #371 removed the temporary `deploy-demo.yaml` wrapper and deny-only `promote.yaml`. PR #388 moved
+offline release qualification into CI and private-path qualification into the runner infrastructure
+workflow. Do not recreate project-phase or evidence-only wrappers. Approval and environment boundaries
+belong in the canonical entry, protected GitHub Environments and executable contracts.
 
 #### Current Posture
 

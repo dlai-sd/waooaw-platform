@@ -1,9 +1,29 @@
 # ADR-013: CI/CD Pipeline Structure
 
-**Status:** Accepted
+**Status:** Accepted — amended 2026-08-31
 **Date:** 2026-07-07
 **Roles Applied:** Platform Architect (pipeline design) + Enterprise Architect (quality gate sequence)
 **Constitutional Basis:** GENESIS Engineering Quality Mandate (zero manual testing; build once, image promotion; Constitutional Compliance Tests are a required gate); GENESIS Part 02 — "Every deployment is a formal act of institutional judgment"
+
+---
+
+## 2026-08-31 Controlling Amendment
+
+The implementation-specific pipeline topology below is historical. The durable decision is:
+
+- `ci.yaml` builds and qualifies one exact-six release from a source commit.
+- Images are promoted by immutable OCI digest without retagging or rebuilding.
+- `deploy.yaml` is the only manual application deployment entry for Demo, UAT and Production.
+- Environment configuration, identities, approvals and secrets remain external to images.
+- Deployment and verification may use reusable workflows, but workflow count and filenames are
+  engineering choices enforced by executable contracts, not governance requirements.
+- Release qualification belongs in CI. Project-phase, environment-specific and evidence-only
+  wrapper workflows are prohibited unless they own a distinct trigger or privilege boundary.
+- Demo and UAT must pass the applicable automated gates. Production remains separately authorized.
+
+This amendment supersedes the mutable `:dev`/`:qa` retagging model, automatic environment promotion,
+Dev/QA stage names and five-workflow example below. The normative current topology is
+`architecture/reference/pipeline/azure-deployment-topology.md`.
 
 ---
 

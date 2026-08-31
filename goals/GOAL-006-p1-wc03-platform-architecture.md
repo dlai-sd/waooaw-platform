@@ -128,7 +128,7 @@ The current `promote.yaml` design is superseded as follows:
 - Demo, UAT, and Production are explicit GitHub Environments with distinct OIDC identities;
 - UAT and Production stages exist and enforce their evidence/approval gates;
 - rollback selects a previously qualified digest and configuration pair;
-- `post-deploy-verify.yaml` must execute a real rollback path or fail closed, never report a pending
+- `environment-deployment-verification.yaml` must execute a real rollback path or fail closed, never report a pending
   TODO as completed rollback;
 - concurrency prevents overlapping environment mutations; bounded retries apply only to transient,
   idempotent steps; CCT, policy, authorization, security, and destructive-plan failures do not retry.

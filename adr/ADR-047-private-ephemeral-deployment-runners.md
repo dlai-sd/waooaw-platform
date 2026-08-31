@@ -1,6 +1,6 @@
 # ADR-047: Private Ephemeral Deployment Runners
 
-**Status:** Accepted - independent EA and Security review APPROVE, no blockers (commit `7e5bd4b`)
+**Status:** Accepted — amended 2026-08-31
 **Date:** 2026-08-20
 **Roles Applied:** Enterprise Architect, Security Architect, Platform Architect
 **Constitutional Basis:** C-023 Evidence First; C-059 Implementation Traceability; C-065 SDLC Separation; C-066 Authorization Tiers; C-067 Blue-Green and Cost Ceiling; ADR-013; ADR-014; FA-052; WC-076
@@ -12,6 +12,23 @@ GOAL-006 deployment uses GitHub Actions OIDC and an Azure Storage backend with d
 Terraform cannot create the network path required to read its own protected backend. The private runner control plane therefore needs a separate, deterministic bootstrap lifecycle that retains no always-on runner compute and does not introduce GitHub variables, client secrets, public ingress, or a second infrastructure orchestrator state file.
 
 ## Decision
+
+### 2026-08-31 Implementation-Neutral Amendment
+
+The binding decisions in this ADR are private network access, least-privilege identities, immutable
+runner inputs, bounded ephemeral execution, zero-idle cleanup, environment isolation and cost limits.
+Workflow filenames, GOAL-006 prefixes, individual run IDs, review-office choreography and artifact
+counts are historical implementation evidence, not permanent architecture requirements.
+
+Engineering may consolidate orchestration when executable tests prove the same identity and cleanup
+boundaries. Qualification is therefore an operation of the private-runner infrastructure workflow;
+it does not require a second manual workflow. GitHub run artifacts, Azure diagnostics and immutable
+manifests are sufficient operational evidence. C-023 does not require cloud operations to write to
+the Constitutional Audit Ledger because C-023 governs atomic application evidence recorded by the
+Constitutional Engine.
+
+The numbered decisions below remain binding at the capability level. Where they prescribe a specific
+workflow split or historical activation run, this amendment controls.
 
 WAOOAW will execute environment deployment jobs on ephemeral self-hosted GitHub runners implemented as Azure Container Apps manual Jobs inside environment-isolated runner subnets.
 

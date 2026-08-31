@@ -29,7 +29,7 @@ the single strategy source; current execution progress belongs in PROJECT_STATE 
 
 | Area | Verified state | Required next result |
 |---|---|---|
-| Canonical workflow | `.github/workflows/deploy.yaml` is the only manual application deployment entry and delegates to `deploy-environment.yaml` and `post-deploy-verify.yaml`. | Preserve one operator entry; reusable workflows remain implementation details with contract tests. |
+| Canonical workflow | `.github/workflows/deploy.yaml` is the only manual application deployment entry and delegates to `environment-deployment.yaml` and `environment-deployment-verification.yaml`. | Preserve one operator entry; reusable workflows remain implementation details with contract tests. |
 | Demo | Private runner, exact-six apply, independent verification, browser CIDR correction, cleanup, and Founder acceptance passed. | Preserve the accepted tuple and evidence as regression inputs; do not reconstruct or rerun acceptance from prose. |
 | UAT | Private runner preview/apply, exact-six deployment, Keycloak/output corrections, public endpoint checks, independent verification, and cleanup passed. | Complete only evidence gaps required for dark-Production readiness; never rebuild the accepted images. |
 | Runner lifecycle | Demo and UAT use environment-derived ephemeral ACA runners, private state/config access, correlation-checked cleanup, and zero active executions after qualification. | Keep Production runner blueprint inactive and retain no-public-fallback assertions. |

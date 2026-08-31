@@ -3,9 +3,9 @@
 **Work Contract ID:** WC-081
 **Office:** Chief Solution Architect (INST-005)
 **Execution office:** Platform IT Expert (INST-010), Skill 17
-**Status:** SOLUTION PLAN CANDIDATE - FOUNDER REVIEW
-**Delivery unit:** Consolidated current cloud strategy and workflow references, preserved accepted
-Demo/UAT evidence, and dark Production readiness planning without Production activation
+**Status:** IMPLEMENTATION COMPLETE - FOUNDER REVIEW
+**Delivery unit:** Lightweight cloud workflow consolidation, current strategy alignment, preserved
+Demo/UAT evidence, and dark Production readiness without Production activation
 **Controlling plan:** `architecture/foundation-environment-promotion-and-freeze-execution-plan.md`
 **Reference architecture:** `architecture/foundation-consolidated-assessment-2026-08-29.md` and
 `architecture/reference/pipeline/azure-deployment-topology.md`
@@ -15,9 +15,12 @@ C-059, C-063, C-065, C-067, C-071, C-076, C-077, C-080
 
 ## Authority And Scope
 
-This Work Contract authorizes Solution Architecture planning only. It does not authorize source or
-workflow implementation, provider queries, cloud mutation, expenditure, DNS changes, deployment,
-UAT, Production, customer traffic, acceptance, PR approval, or merge.
+The original Work Contract authorized Solution Architecture planning only. On 2026-08-31 the Founder
+explicitly authorized this session to implement the full lightweight workflow consolidation on PR
+#388: purpose-based workflow renames, migration of offline qualification into CI, consolidation of
+private-runner qualification, executable tests, and corresponding ADR/claim/guidance corrections.
+That amendment does not authorize provider queries, cloud mutation, expenditure, DNS changes,
+deployment, Production, customer traffic, PR approval, or merge.
 
 PR #371 is the accepted implementation baseline: Demo was Founder-accepted, UAT was deployed and
 independently verified, and `.github/workflows/deploy.yaml` became the sole manual application
@@ -31,9 +34,11 @@ In scope:
 - keep the Azure topology as the single cloud strategy source, README as operator routing,
   PROJECT_STATE as current status, and WC-076 as execution closure;
 - preserve `deploy.yaml` as the sole manual application deployment entry;
-- classify workflows before cleanup and retain every unique deployment, verification, runner,
-  qualification, lease, evidence, approval, and Emergency Halt responsibility;
-- require separate implementation authorization before moving a control or deleting a workflow;
+- retain workflows only for distinct triggers, privilege boundaries or recovery schedules;
+- move release qualification into CI and private-path qualification into the runner lifecycle without
+  removing tests, identities, cost controls, cleanup or immutable manifests;
+- rename durable workflows by engineering purpose rather than GOAL or project phase;
+- correct ADR-013, ADR-047, C-067 and active guidance without editing immutable constitutional text;
 - retain the exact-six release and immutable OCI digest promotion rule for every environment;
 - produce dark Production plans and readiness evidence without apply, activation, or traffic;
 - create one Founder-ready, unmerged PR after documentation validation passes.
@@ -68,7 +73,7 @@ implementation issue before execution begins.
 
 ## Definition Of Done
 
-WC-081 documentation consolidation is complete only when all applicable statements are true:
+WC-081 consolidation is complete only when all applicable statements are true:
 
 - the latest 15 merged PRs were inspected and PR #371 is recorded as the controlling cloud baseline;
 - Demo acceptance and UAT verification remain linked to immutable finalization evidence;
@@ -76,7 +81,11 @@ WC-081 documentation consolidation is complete only when all applicable statemen
 - README contains only operator routing and names `deploy.yaml` as the sole deployment entry;
 - PROJECT_STATE and WC-076 agree that Demo is accepted, UAT is verified, and P3-EX11 remains;
 - no current document treats deleted `deploy-demo.yaml` or `promote.yaml` as active;
-- unique workflow responsibilities are classified before any future implementation cleanup;
+- `deploy.yaml` remains the only manual application deployment entry;
+- release qualification is a path-aware CI job and remains part of QA synthesis;
+- private-runner preview, apply and qualification share one operator workflow while job-level identity
+  and always-run cleanup boundaries remain intact;
+- durable workflow names describe engineering purpose and deleted wrappers have no active callers;
 - the signed exact-six release rule and its immutable image digests remain unchanged;
 - environment values and secret references remain external, reviewed, and digest-bound;
 - dark Production Terraform/workflow plans pass offline and authorized plan-only checks without
@@ -115,4 +124,5 @@ Work Contract is marked `AUTHOR REVIEW: PASS` and submitted to the Founder.
 
 **Author review:** PASS - findings repaired in controlling-plan Section 17
 **Founder acceptance:** PENDING
-**Implementation authorization:** NOT GRANTED BY THIS DOCUMENT
+**Implementation authorization:** GRANTED BY FOUNDER IN CURRENT SESSION ON 2026-08-31 FOR THE SCOPED
+WORKFLOW CONSOLIDATION ABOVE; NO PROVIDER OR PRODUCTION AUTHORITY
