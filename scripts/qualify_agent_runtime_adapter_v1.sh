@@ -102,7 +102,11 @@ FAILURE_CLASSIFICATION="assertion"
 docker compose --profile test-python run --rm test-runner-python \
   pytest tests/contract/ tests/professional-runtime/test_agent_runtime_adapter.py tests/constitutional/test_agent_runtime_adapter_cct.py \
   --cov=adapter_gateway --cov=runtime_contract \
-  --cov-fail-under=90 --cov-branch --cov-report=term --cov-report="xml:${REPORT_DIR}/coverage.xml" -v
+  --cov-fail-under=90 --cov-branch --cov-report=term --cov-report="xml:${REPORT_DIR}/coverage.xml" \
+  --cov-report="json:${REPORT_DIR}/coverage.json" -v
+jq --exit-status \
+  '.totals.num_branches == 0 or ((.totals.covered_branches / .totals.num_branches) >= 0.80)' \
+  "${REPORT_DIR}/coverage.json" > /dev/null
 docker compose --profile test-python run --rm test-runner-python \
   ruff check src/professional-runtime/adapter_gateway.py src/agent-adapters tests/contract/test_agent_runtime_adapter_contract.py tests/professional-runtime/test_agent_runtime_adapter.py tests/constitutional/test_agent_runtime_adapter_cct.py
 docker compose --profile test-python run --rm test-runner-python \
