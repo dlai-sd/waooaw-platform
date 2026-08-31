@@ -23,7 +23,7 @@ def test_neutral_deploy_entry_is_the_only_manual_application_entry() -> None:
     assert "          - apply" in deploy
     assert not (WORKFLOWS / "deploy-demo.yaml").exists()
 
-    engine = _workflow("deploy-environment.yaml")
+    engine = _workflow("environment-deployment.yaml")
     assert "  workflow_call:" in engine
     assert "  workflow_dispatch:" not in engine
 
@@ -31,8 +31,8 @@ def test_neutral_deploy_entry_is_the_only_manual_application_entry() -> None:
 def test_neutral_entry_delegates_deployment_and_verification() -> None:
     deploy = _workflow("deploy.yaml")
 
-    assert "uses: ./.github/workflows/deploy-environment.yaml" in deploy
-    assert "uses: ./.github/workflows/post-deploy-verify.yaml" in deploy
+    assert "uses: ./.github/workflows/environment-deployment.yaml" in deploy
+    assert "uses: ./.github/workflows/environment-deployment-verification.yaml" in deploy
     assert "terraform " not in deploy
     assert "az " not in deploy
 
@@ -47,7 +47,7 @@ def test_demo_apply_accepts_and_bounds_current_public_ipv4() -> None:
 
 
 def test_runner_delivery_supports_each_protected_environment() -> None:
-    runner = _workflow("runner-environment-delivery.yaml")
+    runner = _workflow("private-runner-infrastructure.yaml")
 
     assert all(f"          - {environment}" in runner for environment in ("demo", "uat", "prod"))
     assert "case \"$TARGET_ENVIRONMENT\" in demo|uat|prod)" in runner
@@ -56,18 +56,21 @@ def test_runner_delivery_supports_each_protected_environment() -> None:
 
 
 def test_private_runner_qualification_is_parameterized_diagnostics_only() -> None:
-    qualification = _workflow("goal006-private-runner-qualification.yaml")
+    runner = _workflow("private-runner-infrastructure.yaml")
+    qualification = runner.split("  resolve-environment:", 1)[1]
 
-    assert "      environment:" in qualification
-    assert all(f"          - {environment}" in qualification for environment in ("demo", "uat", "prod"))
+    assert not (WORKFLOWS / "goal006-private-runner-qualification.yaml").exists()
+    assert "          - qualify" in runner
+    assert "      environment:" in runner
+    assert all(f"          - {environment}" in runner for environment in ("demo", "uat", "prod"))
     assert "goal006_environment_config.py" in qualification
     assert "environment: ${{ inputs.environment }}" in qualification
-    assert "deploy-environment.yaml" not in qualification
+    assert "environment-deployment.yaml" not in qualification
     assert "terraform apply" not in qualification
 
 
 def test_lease_reconciliation_is_environment_parameterized_and_deletion_only() -> None:
-    reconciliation = _workflow("reconcile-workload-leases.yaml")
+    reconciliation = _workflow("workload-lease-reconciliation.yaml")
 
     assert "      environment:" in reconciliation
     assert all(f"          - {environment}" in reconciliation for environment in ("demo", "uat", "prod"))

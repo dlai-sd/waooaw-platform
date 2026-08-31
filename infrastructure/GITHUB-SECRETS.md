@@ -33,10 +33,10 @@ Non-sensitive config values are GitHub Variables (not Secrets).
 | `GH-APP-INSTALLATION-ID` | `autonomous-sprint.yaml` review | GitHub App installation | ✅ DONE |
 | `GH-APP-PRIVATE-KEY` | `autonomous-sprint.yaml` review | GitHub App private key (.pem) | ✅ DONE |
 | `CODECOV-TOKEN` | `ci.yaml` coverage upload | codecov.io → repo settings | ✅ DONE |
-| `DEV_BASE_URL` | `post-deploy-verify.yaml` | Terraform output after M1 | ⬜ PENDING |
-| `DEV_CONSTITUTIONAL_DB_URL` | `promote.yaml` CCTs | Terraform output after M2 | ⬜ PENDING |
-| `DEV_TEST_JWT_TENANT_A` | `promote.yaml` CCTs | `scripts/get-dev-token.sh` after Keycloak live | ⬜ PENDING |
-| `DEV_TEST_JWT_TENANT_B` | `promote.yaml` CCTs | `scripts/get-dev-token.sh` after Keycloak live | ⬜ PENDING |
+| `DEV_BASE_URL` | Historical development verification | Terraform output after M1 | ⬜ PENDING |
+| `DEV_CONSTITUTIONAL_DB_URL` | Historical development CCT design | Terraform output after M2 | ⬜ PENDING |
+| `DEV_TEST_JWT_TENANT_A` | Historical development CCT design | `scripts/get-dev-token.sh` after Keycloak live | ⬜ PENDING |
+| `DEV_TEST_JWT_TENANT_B` | Historical development CCT design | `scripts/get-dev-token.sh` after Keycloak live | ⬜ PENDING |
 | `GOOGLE-VERTEX-SA-KEY` | AI Runtime (Gemini) | GCP SA key JSON (FA-021) | ⬜ PENDING |
 | `SARVAM-API-KEY` | AI Runtime (Agricultural) | sarvam.ai API key (FA-022) | ⬜ PENDING |
 | `AZURE-OPENAI-KEY` | AI Runtime (fallback LLM) | Azure OpenAI UAE North (FA-003) | ⬜ PENDING |
@@ -55,3 +55,6 @@ Non-sensitive config values are GitHub Variables (not Secrets).
 The following were in earlier designs but are replaced by OIDC:
 - `AZURE_CREDENTIALS_DEV/QA/PROD` — replaced by OIDC federated credential
 - `REVIEW_APP_TOKEN` — replaced by `GH-APP-PRIVATE-KEY` in Key Vault + JWT generation
+- `promote.yaml` development CCT secret wiring — the workflow was removed by PR #371; governed
+	environment deployment now enters through `deploy.yaml` and uses environment OIDC, managed
+	identities, external configuration, and Key Vault references.

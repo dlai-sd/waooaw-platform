@@ -5,7 +5,7 @@ from pathlib import Path
 
 def test_cleanup_evidence_uses_durable_blob_pointer_after_success() -> None:
     workflow = Path(
-        ".github/workflows/goal006-private-runner-qualification.yaml"
+        ".github/workflows/private-runner-infrastructure.yaml"
     ).read_text(encoding="utf-8")
 
     assert "scripts/goal006_runner_execution.py pointer" in workflow

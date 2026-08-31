@@ -454,7 +454,7 @@ def test_verification_emits_structured_probe_results() -> None:
 
 
 def test_post_deploy_verification_retains_each_container_log() -> None:
-    workflow = (REPO_ROOT / ".github/workflows/post-deploy-verify.yaml").read_text(
+    workflow = (REPO_ROOT / ".github/workflows/environment-deployment-verification.yaml").read_text(
         encoding="utf-8"
     )
 
@@ -468,7 +468,7 @@ def test_post_deploy_verification_retains_each_container_log() -> None:
 
 
 def test_post_deploy_verification_requires_the_exact_latest_revision() -> None:
-    workflow = (REPO_ROOT / ".github/workflows/post-deploy-verify.yaml").read_text(
+    workflow = (REPO_ROOT / ".github/workflows/environment-deployment-verification.yaml").read_text(
         encoding="utf-8"
     )
 
@@ -570,7 +570,7 @@ def test_lease_lifecycle_preserves_foundation_and_prohibits_production() -> None
 
 
 def test_lease_reconciliation_is_manual_private_plan_only_until_activation() -> None:
-    workflow = (REPO_ROOT / ".github/workflows/reconcile-workload-leases.yaml").read_text(encoding="utf-8")
+    workflow = (REPO_ROOT / ".github/workflows/workload-lease-reconciliation.yaml").read_text(encoding="utf-8")
     validator = (REPO_ROOT / "scripts/goal006_lease_reconciliation.py").read_text(encoding="utf-8")
 
     assert "schedule:" not in workflow
@@ -590,7 +590,7 @@ def test_lease_reconciliation_is_manual_private_plan_only_until_activation() -> 
 
 
 def test_demo_credential_seeder_passes_shell_flags_as_container_arguments() -> None:
-    workflow = (REPO_ROOT / ".github/workflows/deploy-environment.yaml").read_text(encoding="utf-8")
+    workflow = (REPO_ROOT / ".github/workflows/environment-deployment.yaml").read_text(encoding="utf-8")
 
     assert "--command /bin/sh -c" not in workflow
     assert "seeder_script='set -eu;" in workflow
@@ -645,7 +645,7 @@ def test_oidc_policy_requires_exact_governed_refs_and_workflows() -> None:
 
 
 def test_deployment_workflow_pins_accepted_terraform_version() -> None:
-    workflow = (REPO_ROOT / ".github/workflows/deploy-environment.yaml").read_text(encoding="utf-8")
+    workflow = (REPO_ROOT / ".github/workflows/environment-deployment.yaml").read_text(encoding="utf-8")
 
     assert "hashicorp/setup-terraform" not in workflow
     assert 'test "$(command -v terraform)" = "/usr/local/bin/terraform"' in workflow
@@ -781,7 +781,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
 
 
 def test_deployment_workflow_fails_closed_when_web_url_is_missing() -> None:
-    workflow = (REPO_ROOT / ".github/workflows/deploy-environment.yaml").read_text(encoding="utf-8")
+    workflow = (REPO_ROOT / ".github/workflows/environment-deployment.yaml").read_text(encoding="utf-8")
 
     assert "web_url=$(terraform output -raw web_url)" in workflow
     assert 'test -n "$web_url"' in workflow
@@ -790,8 +790,8 @@ def test_deployment_workflow_fails_closed_when_web_url_is_missing() -> None:
 
 
 def test_deployment_identities_verify_the_active_subscription() -> None:
-    deployment = (REPO_ROOT / ".github/workflows/deploy-environment.yaml").read_text(encoding="utf-8")
-    verification = (REPO_ROOT / ".github/workflows/post-deploy-verify.yaml").read_text(encoding="utf-8")
+    deployment = (REPO_ROOT / ".github/workflows/environment-deployment.yaml").read_text(encoding="utf-8")
+    verification = (REPO_ROOT / ".github/workflows/environment-deployment-verification.yaml").read_text(encoding="utf-8")
 
     subscription_check = 'test "$(az account show --query id -o tsv)" = "$ARM_SUBSCRIPTION_ID"'
     assert deployment.count(subscription_check) == 2
@@ -800,7 +800,7 @@ def test_deployment_identities_verify_the_active_subscription() -> None:
 
 def test_founder_web_url_uses_stable_app_ingress() -> None:
     workload = (PHASE2_ROOT / "modules/workload/main.tf").read_text(encoding="utf-8")
-    verification = (REPO_ROOT / ".github/workflows/post-deploy-verify.yaml").read_text(encoding="utf-8")
+    verification = (REPO_ROOT / ".github/workflows/environment-deployment-verification.yaml").read_text(encoding="utf-8")
 
     assert 'azurerm_container_app.member["web"].ingress[0].fqdn' in workload
     assert "latest_revision_fqdn" not in workload
@@ -829,9 +829,9 @@ def test_oidc_workflows_do_not_depend_on_github_platform_identifiers() -> None:
     workflows = "\n".join(
         (REPO_ROOT / path).read_text(encoding="utf-8")
         for path in (
-            ".github/workflows/deploy-environment.yaml",
-            ".github/workflows/post-deploy-verify.yaml",
-            ".github/workflows/reconcile-workload-leases.yaml",
+            ".github/workflows/environment-deployment.yaml",
+            ".github/workflows/environment-deployment-verification.yaml",
+            ".github/workflows/workload-lease-reconciliation.yaml",
         )
     )
     for variable in (
@@ -880,7 +880,7 @@ def test_environment_deployment_is_authorized_without_changing_promotion_state()
     assert "web_url: ${{ needs.deploy.outputs.web_url }}" in deploy
     assert not (REPO_ROOT / ".github/workflows/promote.yaml").exists()
 
-    verification = (REPO_ROOT / ".github/workflows/post-deploy-verify.yaml").read_text(encoding="utf-8")
+    verification = (REPO_ROOT / ".github/workflows/environment-deployment-verification.yaml").read_text(encoding="utf-8")
     assert "Reject stale release before independent verification" in verification
     assert 'test "$RELEASE_SHA" = "$latest_main_sha"' in verification
     assert verification.index("Reject stale release before independent verification") < verification.index(
@@ -897,9 +897,9 @@ def test_environment_deployment_is_authorized_without_changing_promotion_state()
 
     delivery_surfaces = [
         REPO_ROOT / ".github/workflows/deploy.yaml",
-        REPO_ROOT / ".github/workflows/deploy-environment.yaml",
-        REPO_ROOT / ".github/workflows/post-deploy-verify.yaml",
-        REPO_ROOT / ".github/workflows/reconcile-workload-leases.yaml",
+        REPO_ROOT / ".github/workflows/environment-deployment.yaml",
+        REPO_ROOT / ".github/workflows/environment-deployment-verification.yaml",
+        REPO_ROOT / ".github/workflows/workload-lease-reconciliation.yaml",
         REPO_ROOT / "scripts/build_goal006_release_images.sh",
     ]
     for path in delivery_surfaces:

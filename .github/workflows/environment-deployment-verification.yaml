@@ -1,4 +1,4 @@
-name: GOAL-006 Independent Deployment Verification
+name: Environment Deployment Verification
 
 on:
   workflow_call:

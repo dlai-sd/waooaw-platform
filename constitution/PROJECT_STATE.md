@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 127
-**Last Updated:** 2026-08-22
+**State Revision:** 129
+**Last Updated:** 2026-08-31
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -19,43 +19,32 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Gate | G5 CLEAR — prerequisites met; not session implementation authority |
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
-| Latest completed Work Contract | WC-074 - GOAL-006 Enterprise Delivery Addendum |
-| Latest merge | PR #327 merged to `main` as `e6dc699` |
-| Active delivery | WC-076 verified Demo deployment; Founder Demo acceptance pending; UAT prohibited |
+| Latest completed Work Contract | WC-080 - Agent Runtime Adapter Contract v1 |
+| Latest merge | PR #386 merged to `main` as `86c5714` |
+| Active delivery | PR #388 lightweight cloud workflow consolidation under Founder review; P3-EX11 remains plan-only |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 
 | Milestone | Status |
 |---|---|
-| Cloud-only PR #289 | DONE - independently approved by R-131 and merged by Founder as `d49dad1` |
-| Azure read-only preflight | DONE - tenant, subscription, budget, state and providers verified |
-| WC-076 P3-EX01 through P3-EX06 | DONE - issue #296 closed after protected environments, OIDC and signed exact-six release evidence |
-| INST-010 GOA / Acceptance | VALID - GOA-GOAL-006-INST-010-03 and later ACC-GOAL-006-INST-010-03 recorded on PR #294 |
-| Azure topology and CI prechecks | DONE - PR #307 merged as `7a74c14`; EA/SA review R-140 accepted the incremental deployment topology |
-| Incremental OIDC plan readiness | DONE - PR #308 merged as `3907906`; plan mode rejects state mutation and reconciliation is manual Demo-only plan |
-| Trusted-main exact-six release | DONE - run `32370596796`, commit `235c08a`, artifact `goal006-exact-six-release-235c08a4c5d67707cf12578d6b4f0a1b6b501a9d` |
-| Configuration readiness repair | DONE - PR #309 merged; second plan proved exact Blob retry and verified firewall cleanup |
-| Real Demo OIDC plan | BLOCKED - run `32371262629` reached Terraform init, then backend list received Storage `403 AuthorizationFailure`; no plan/apply occurred |
-| Private runner decision | ACCEPTED - independent EA and Security review of commit `7e5bd4b` returned APPROVE with no blockers |
-| Demo runner bootstrap | MERGED - PR #326 merged as `dee4ca6`; runner image published and attested as `ghcr.io/dlai-sd/goal006-private-runner@sha256:83811baf0d2a425d8f8c308daef3cf172bdca173d9f8d12c7d9a02838a227518` |
-| Private signing decision | AUTHORIZED - dedicated `waooaw-private-runner` App is installed only on `dlai-sd/waooaw-platform`; zero-idle ACA broker and existing FA-052 ceiling are unchanged |
-| Activation correction | MERGED - PR #327 implements repository runner APIs, `privatelink.vaultcore.azure.net`, and a permanent zero-idle Azure-only App-key importer without GitHub Secrets |
-| Runner image pin | DONE - trusted exact-six release run `33068493419` and source `4ae12b0fbde1507eb4dc52fa62d6bb43e06f98e5` passed deployment qualification |
-| Local validation | PASS - pipeline regression `1246/1246`, actionlint and Demo/UAT/Prod Terraform 1.9.8 validation |
-| Architecture review | PENDING - ADR-047 repository-installation amendment requires Founder review through the correction PR; no institutional reviewer invoked |
-| Demo deploy / verify | PASS - run `33085991935`; private apply, exact-six inventory, healthy revisions, functional probes, cleanup and URL publication passed; access restricted to `49.36.49.189/32` |
-| Founder Demo acceptance | PENDING - P3-EX08 remains a separate control point after the verified Azure URL is returned |
-| UAT deploy / verify / accept | PROHIBITED - no token, plan, apply or environment request before explicit Founder Demo acceptance |
-| Production | PLAN ONLY - deployment, traffic and final acceptance remain Founder-reserved |
+| WC-076 P3-EX01 through P3-EX07 | DONE - protected environments, OIDC, signed exact-six release, private runners, configuration and deployment controls merged |
+| Canonical deployment entry | DONE - PR #371 retains only `.github/workflows/deploy.yaml` as the manual application entry and delegates deployment and independent verification |
+| Demo deploy / verify | PASS - corrective run `33147562517`; exact-six inventory, healthy revisions, internal probes, Founder browser CIDR and cleanup passed |
+| Founder Demo acceptance | ACCEPTED - Founder approved the corrected Demo application on 2026-08-28 |
+| UAT runner delivery | PASS - preview `33149859100` and apply `33150103583`; private runner stack ACTIVE with zero residual executions |
+| UAT deploy / verify | PASS - final run `33177257822`; exact-six, latest-ready revisions, functional checks, Web and OIDC endpoints passed |
+| Cloud delivery consolidation | MERGED - PR #371 as `7211eb8`; temporary wrappers and deny-only promotion workflow removed |
+| Lightweight workflow consolidation | PR #388 CANDIDATE - release qualification moved into CI; runner operations consolidated; durable workflows renamed by purpose |
+| Current application foundation | DONE - PRs #373, #381 and #386 added identity, admission and runtime adapter foundations after cloud qualification |
+| Production | PLAN ONLY - code-prepared; protected environments, authorized plan, traffic and final acceptance remain Founder-reserved |
 
 ### Checkpoint Context
 
-- **Authority:** Founder authorization on issue #299 permits P3-EX07 Demo mutation and expenditure only; Founder-only Azure URL review is authorized.
+- **Authority:** WC-076 and FA-052 evidence authorized the completed Demo/UAT work recorded in PR #371. No current authority for Production apply, DNS activation or customer traffic is inferred.
 - **Execution contract:** `work-contracts/WC-076-goal006-phase3-execution.md`; backlog P3-EX01 through P3-EX11.
-- **Cloud state:** Demo is deployed and verified at `https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io`; UAT remains prohibited and Production remains plan-only.
-- **RCA boundary:** configuration access succeeded after one network-rule retry, while Terraform backend access failed moments later; discovered GitHub-hosted public egress is not an acceptable durable trust boundary.
-- **Architecture gate:** ADR-047 is Accepted through merged PR #310. PR #326 merged the private ACA signing broker, but activation proved `dlai-sd` is a personal account and the generated Key Vault private DNS zone was incorrect. The correction preserves the broker, private networking and cost boundary while using repository-scoped runner authority.
-- **Boundary:** no UAT, custom DNS, customer traffic, Production apply, Platform Operations activation, final Goal acceptance, self-approval or self-merge.
+- **Cloud state:** Demo is accepted; UAT is deployed and independently verified; both use private ephemeral runners and the signed exact-six release path. Production remains plan-only.
+- **Canonical route:** strategy is owned by `architecture/reference/pipeline/azure-deployment-topology.md`; operators enter through `.github/workflows/deploy.yaml`; detailed immutable evidence remains in `goals/GOAL-006-cloud-platform-finalization-evidence.md`.
+- **Boundary:** no Production plan/apply, DNS activation, customer traffic, Platform Operations activation, final Goal acceptance, self-approval or self-merge without separate current authority.
 
 ## Authorization Boundary
 
@@ -68,19 +57,15 @@ progression.
 
 ## Current Blockers
 
-P3-EX07 activation remains blocked until the repository-scoped runner and Key Vault private DNS
-correction merges, the reviewed Demo Deployment Stack preview is applied, private DNS resolves the
-vault endpoint inside ACA, the replacement App key is imported through the permanent zero-idle importer, and private
-qualification passes. The broker preserves `publicNetworkAccess=Disabled`, `defaultAction=Deny` and
-`bypass=None`, and introduces no public fallback. UAT remains constitutionally blocked until the
-Founder explicitly accepts the resulting Demo deployment.
+P3-EX11 remains blocked on protected Production GitHub environments, accepted Production plan
+prerequisites, durable IaC ownership for the existing shared Terraform state account, and separate
+Founder authority. Production runner activation, apply, DNS and customer traffic remain prohibited.
 
 ## Next Authorized Action
 
-Review and merge the repository-runner/DNS correction, run the existing Demo Deployment Stack preview
-and apply path, prove private Key Vault DNS from ACA, run `scripts/goal006_import_app_signing_material.sh demo`, and qualify the
-private path. Do not create UAT/Production runner resources, apply Demo workloads before qualification,
-disable Storage public access, or initiate UAT.
+Complete author review and executable validation for PR #388, then submit it for Founder review and
+merge. Do not activate the Production runner, run a Production plan/apply, change DNS, or accept
+customer traffic without separate Founder authority.
 
 ## History And Evidence
 

@@ -1,4 +1,4 @@
-name: GOAL-006 Deploy Environment
+name: Environment Deployment Engine
 
 on:
   workflow_call:

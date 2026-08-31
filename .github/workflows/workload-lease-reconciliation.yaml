@@ -1,4 +1,4 @@
-name: GOAL-006 Reconcile Workload Leases
+name: Workload Lease Reconciliation
 
 on:
   workflow_dispatch:

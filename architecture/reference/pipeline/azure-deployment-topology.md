@@ -21,21 +21,21 @@ is missing, inconsistent, or unapproved, execution stops rather than selecting a
 | Sequence | Qualify Demo first, obtain Founder Demo acceptance before UAT, and keep Production dark and plan-only until separately authorized. |
 | Operating posture | Prefer local deterministic validation for fast iteration, but use the protected workflow to prove OIDC identity, private DNS/data paths, environment approval, cleanup, and immutable evidence. |
 
-### Current Delivery State - 2026-08-22
+### Current Delivery State - 2026-08-28
 
 `constitution/PROJECT_STATE.md` remains authoritative for live authorization. This dated snapshot
-exists only to prevent implementation sessions from confusing deployed resource scaffolding with an
-operational private runner.
+records the implementation baseline accepted through PR #371. The normative topology below remains
+the single strategy source; current execution progress belongs in PROJECT_STATE and WC-076.
 
 | Area | Verified state | Required next result |
 |---|---|---|
-| Demo runner stack | Azure Deployment Stack succeeded with the VNet, ACA environment/jobs, managed identities, Key Vault, Storage/Key Vault private endpoints, private DNS zones, diagnostics, and deny-delete ownership. | Reconcile all live resources to the reviewed stack and retain a no-destructive-change preview. |
-| Runner lifecycle | The manual runner job has never executed. No JIT configuration or short-lived runner-token wiring is present. | Implement GitHub App signing/token exchange, bounded Key Vault handoff, ACA start, registration, and teardown. |
-| Cleanup | The reconciler is configured ACTIVE but its placeholder command exits nonzero every five minutes. | Return it to fail-closed inactive operation until correlation-checked cleanup is implemented and tested. |
-| Private path | Storage has an approved private endpoint and private A record. Key Vault has an approved endpoint but no private-zone A record. No runner-side DNS or Terraform backend operation has executed. | Prove private DNS plus exact Blob and Terraform list/read/write/lock operations from the ephemeral runner. |
-| Deployment workflow | Demo deployment still uses `ubuntu-latest` and temporary Storage public-IP firewall mutation. | Switch the runner label and remove public-IP mutation together only after the complete activation matrix passes. |
-| Higher environments | UAT and Production prerequisite resource groups exist, but their runner stacks do not. | Keep UAT blocked until Founder Demo acceptance and Production plan-only until separate authorization. |
-| Execution contract | PROJECT_STATE references WC-076, but its Work Contract file is absent from the current repository checkout. | Restore the approved contract before further Skill 17 execution; do not reconstruct its authority from architecture documents. |
+| Canonical workflow | `.github/workflows/deploy.yaml` is the only manual application deployment entry and delegates to `environment-deployment.yaml` and `environment-deployment-verification.yaml`. | Preserve one operator entry; reusable workflows remain implementation details with contract tests. |
+| Demo | Private runner, exact-six apply, independent verification, browser CIDR correction, cleanup, and Founder acceptance passed. | Preserve the accepted tuple and evidence as regression inputs; do not reconstruct or rerun acceptance from prose. |
+| UAT | Private runner preview/apply, exact-six deployment, Keycloak/output corrections, public endpoint checks, independent verification, and cleanup passed. | Complete only evidence gaps required for dark-Production readiness; never rebuild the accepted images. |
+| Runner lifecycle | Demo and UAT use environment-derived ephemeral ACA runners, private state/config access, correlation-checked cleanup, and zero active executions after qualification. | Keep Production runner blueprint inactive and retain no-public-fallback assertions. |
+| State path | Shared state-account public access is disabled with default deny and approved private endpoint access. Declarative ownership of the existing shared account remains debt. | Assign accepted IaC ownership before Production readiness; do not reopen public access. |
+| Production | Terraform and runner blueprints are code-prepared; protected Production environments and plan prerequisites remain incomplete. No Production plan/apply ran. | Keep Production plan-only and runner `INACTIVE` until a separate Founder authorization. |
+| Execution contract | `work-contracts/WC-076-goal006-phase3-execution.md` exists and owns execution closure. | Keep status there and in PROJECT_STATE; do not duplicate live status in strategy documents. |
 
 The detailed topology, controls, interface gates, and implementation order below are normative. This
 section is a routing summary and must not be copied into a separate implementation plan.
@@ -45,7 +45,7 @@ section is a routing summary and must not be copied into a separate implementati
 1. Build the exact-six application images once. Demo, UAT, Production, and rollback use the same immutable OCI digests.
 2. The promoted release tuple is `manifest + six image digests + reviewed configuration digest + data schema compatibility + evidence`.
 3. Images contain no environment configuration or secret values. Runtime configuration comes from reviewed environment configuration, managed identity, and Key Vault references.
-4. Demo precedes UAT. UAT remains prohibited until explicit Founder Demo acceptance. Production customer traffic remains Founder-reserved.
+4. Demo precedes UAT, and UAT action requires prior explicit Founder Demo acceptance. That prerequisite was satisfied for the accepted PR #371 UAT delivery. Production customer traffic remains Founder-reserved.
 5. Every environment has separate state, identity, VNet, data, Key Vault, DNS records, and evidence. Production data never moves down. "Dark Production" means the single Production environment before traffic activation, not a second environment.
 6. A failed authorization, cost, security, recovery, or evidence gate stops before mutation.
 7. First-party release membership remains exactly six. Pinned third-party runtime dependencies are recorded in a separately signed dependency manifest bound to the release tuple; they never become mutable or silently expand exact-six membership.

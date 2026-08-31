@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-WORKFLOW = Path(".github/workflows/goal006-runner-image.yaml").read_text(encoding="utf-8")
+WORKFLOW = Path(".github/workflows/private-runner-image.yaml").read_text(encoding="utf-8")
 
 
 def test_runner_image_is_separate_from_exact_six_release() -> None:

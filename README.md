@@ -291,134 +291,60 @@ AS-001 Dr. Mehta (DMA) · AS-003 Rahul (Trading) · AS-005 Suresh (Agricultural)
 
 ### 5.4 Cloud Deployment Strategy
 
-WAOOAW deploys immutable, evidence-bound releases to Azure Container Apps in Central India. A
-release is built once, identified by its Git commit and six OCI image digests, and promoted without
-rebuilding. Deployment is fail-closed: a missing approval, stale commit, unsigned artifact, failed
-plan, exceeded cost boundary, unhealthy revision, missing evidence, or failed independent check
-stops progression.
+WAOOAW builds one signed exact-six release and deploys its immutable OCI digests through
+environment-isolated Azure Container Apps infrastructure. Environment configuration, identities and
+Key Vault references remain external to images. Deployment fails closed on authorization, release,
+cost, plan, security, health, cleanup or evidence failure.
 
-The active cloud path is **Demo only**. UAT infrastructure definitions exist but activation is
-blocked until explicit Founder acceptance of Demo. Production remains dark and plan-only until its
-separate authorization and risk decision. Repository workflows enforce these boundaries; directory
-existence is not deployment authority.
+This section is an operator routing summary, not a second cloud specification. The normative design,
+environment invariants, private-runner topology, promotion and rollback contract are owned only by
+`architecture/reference/pipeline/azure-deployment-topology.md`. Current execution status is owned by
+`constitution/PROJECT_STATE.md` and WC-076; immutable run details remain in the GOAL-006 finalization
+evidence.
 
-#### Strategy And Guarantees
+#### Active Workflow Graph
 
-| Principle | Engineering mechanism |
+| Surface | Single responsibility |
 |---|---|
-| Build once, promote by digest | `ci.yaml` publishes and attests the exact six application images: Constitutional Engine, Business Platform, Professional Runtime, AI Runtime, Web, and Billing Engine. |
-| Deploy only current trusted code | `deploy-demo.yaml` requires `main`, selects a successful push CI run for the current `main` SHA, and requires its unexpired `goal006-exact-six-release-<sha>` artifact. |
-| Separate control, deployment, and confirmation | Hosted jobs authorize and start the broker; an ephemeral private runner executes Terraform; `post-deploy-verify.yaml` uses a separate environment verification identity. |
-| Infrastructure as code | `infrastructure/terraform/phase2/environments/<environment>/{foundation,workload}` composes shared foundation and workload modules with isolated remote-state keys. |
-| No ambient cloud credentials | GitHub environment-scoped OIDC identities provide short-lived Azure access. Managed identities provide runtime access to Key Vault and other dependencies. |
-| Evidence before success | Plans, cost records, signed manifests, execution records, live inventory, functional verification, and cleanup records are retained as GitHub artifacts for 90 days. |
-| Bounded cost and exposure | Cost/forecast gates run before apply; Demo public ingress is restricted to the configured Founder IPv4 `/32`; workloads scale within Terraform limits. |
-| Cleanup regardless of outcome | The hosted `cleanup-private` job runs with `if: always()`, invokes the cleanup broker, verifies zero active private executions, and retains cleanup evidence. |
+| `.github/workflows/ci.yaml` | Test, scan, build, attest and publish the current-main exact-six release. |
+| `.github/workflows/deploy.yaml` | Sole manual application deployment entry for `demo`, `uat` and `prod`; selects the trusted current-main release and delegates execution. |
+| `.github/workflows/environment-deployment.yaml` | Reusable environment deployment engine using environment-derived private runners, OIDC, external configuration, Terraform policy, cost controls and always-run cleanup. |
+| `.github/workflows/environment-deployment-verification.yaml` | Independent environment verification of the release, live inventory, revisions, functional probes and returned URL. |
+| `.github/workflows/private-runner-infrastructure.yaml` | Preview, apply and qualify operations for private-runner Deployment Stacks and private Storage/Terraform access. |
+| `.github/workflows/private-runner-image.yaml` | Build, scan and attest the immutable private-runner image when image inputs change. |
+| `.github/workflows/workload-lease-reconciliation.yaml` | Environment lease expiry and zero-idle reconciliation. |
 
-#### Components And Responsibilities
+PR #371 removed the temporary `deploy-demo.yaml` wrapper and deny-only `promote.yaml`. PR #388 moved
+offline release qualification into CI and private-path qualification into the runner infrastructure
+workflow. Do not recreate project-phase or evidence-only wrappers. Approval and environment boundaries
+belong in the canonical entry, protected GitHub Environments and executable contracts.
 
-| Component | Responsibility | Important inputs/outputs |
+#### Current Posture
+
+| Environment | Verified state | Authority boundary |
 |---|---|---|
-| `ci.yaml` | Test, scan, publish, digest-pin, and attest the exact-six release after merge to `main`. | Input: merge SHA. Output: signed `goal006-exact-six-release-<sha>` artifact and per-image scan/attestation evidence. |
-| `deploy-demo.yaml` | Founder-facing manual entry point and current-main release selector. Serializes Demo deployments. | Manual input: `execution=plan|apply`. Internal outputs: `release_run_id`, `release_sha`; apply returns the verified Founder URL. |
-| `deploy-environment.yaml` | Reusable environment deployment engine. Enforces Demo-only authorization, cost/RBAC/provider gates, private runner execution, Terraform plan/apply, evidence, rollback, and cleanup. | Inputs: `environment`, `release_run_id`, `release_sha`, `apply`. Outputs: `verification_client_id`, `web_url`. These internal inputs are supplied by the caller, not entered by an operator. |
-| Private runner broker and runner | Creates a short-lived, network-qualified execution path to private Terraform state and deployment configuration. | Fixed Demo runner label `goal006-demo-private`; immutable runner image and broker blueprints are verified before use. |
-| Terraform foundation | Creates or reconciles the resource group, networking, Container Apps environment, Key Vault/private endpoint, identities, DNS, and authorization boundaries. | Root: `phase2/environments/<environment>/foundation`. A policy checker rejects prohibited or destructive plan content. |
-| Credential seeder and Terraform workload | Seeds runtime credentials through a private digest-pinned Container Apps job, then deploys exact-digest applications, Keycloak, verification job, identities, ingress, and dependencies. | Root: `phase2/environments/<environment>/workload`; images and configuration are generated from the signed manifest and trusted configuration blob. |
-| `post-deploy-verify.yaml` | Independently confirms the live release after apply. | Verifies current SHA, signed tuple, live image inventory, healthy revisions, internal Web/BP/Keycloak/CE flow, and returned Web URL. |
-| `promote.yaml` | Current promotion boundary. | Deliberately fails: UAT and Production promotion are not yet authorized. It is a gate, not an active promotion implementation. |
-| `blue-green-deploy.sh` | Blue-green/canary reference implementation with health check, 10% canary, full shift, rollback, and old-revision deactivation. | Requires `--service`, `--image`, `--resource-group`, `--environment`, and `--sha`. It is **not wired into the active Demo workflow**. |
-
-#### Deployment Flow
-
-```mermaid
-flowchart TD
-   A[PR checks: tests, lint, SAST, CCTs] --> B[Founder merges to main]
-   B --> C[ci.yaml builds and attests exact-six release]
-   C --> D{Founder Demo Deployment}
-   D -->|execution=plan| E[Authorize current-main release]
-   D -->|execution=apply| E
-   E --> F[Cost gate and private runner broker]
-   F --> G[Private runner: RBAC, providers, config and cost checks]
-   G --> H[Terraform foundation plan and policy]
-   H -->|plan| I[Upload plan evidence and clean up runner]
-   H -->|apply| J[Apply foundation]
-   J --> K[Private credential seeder]
-   K --> L[Terraform workload plan and apply]
-   L -->|failure| M[Destroy disposable Demo workload]
-   L -->|success| N[Independent post-deploy verification]
-   M --> O[Always-run private cleanup and evidence]
-   N --> O
-   O -->|verified apply| P[Publish Founder-only Demo URL]
-   P --> Q{Explicit Founder Demo acceptance}
-   Q -->|not accepted| R[UAT and Production remain blocked]
-   Q -->|accepted and promotion implemented| S[Same tuple to UAT, then separately approved Production]
-```
-
-For `plan`, the engine performs release, identity, provider, state, configuration, cost, Terraform
-validation, and plan-policy checks but does not apply foundation or workload resources. For `apply`,
-the same plan gates run first; apply is never a shortcut around planning.
+| Demo | Private deployment, exact-six verification, browser CIDR correction, cleanup and Founder acceptance passed. | Further mutation requires current authority. |
+| UAT | Private runner delivery, exact-six deployment, functional/public endpoint verification and cleanup passed. | Evidence is a Production-readiness input, not Production authority. |
+| Production | Terraform and runner blueprints are code-prepared; runner remains inactive. | Plan, apply, DNS, customer traffic and acceptance require separate Founder authorization. |
 
 Operator entry point:
 
 ```bash
-# Safe readiness and change preview
-gh workflow run deploy-demo.yaml --ref main -f execution=plan
+# Read-only change preview for an authorized environment
+gh workflow run deploy.yaml --ref main -f environment=demo -f execution=plan
 
-# Full Demo deployment after plan/release readiness is established
-gh workflow run deploy-demo.yaml --ref main -f execution=apply
+# Apply only with exact current environment/provider authority
+gh workflow run deploy.yaml --ref main -f environment=demo -f execution=apply \
+  -f access_ipv4=<founder-browser-public-ipv4>
 ```
 
-The operator does not provide a release SHA or artifact ID. The workflow derives both from current
-`main`, preventing selection of an older successful build. Concurrent Founder Demo runs are queued,
-not cancelled.
+The operator never supplies a release SHA or artifact ID. `deploy.yaml` resolves the successful
+current-main CI artifact and reusable workflows verify the same release identity. Production remains
+dark and plan-only until its separately accepted prerequisites and authorization exist.
 
-#### Environment And Promotion Model
-
-| Environment | Current posture | Promotion and acceptance rule |
-|---|---|---|
-| Local/CI | Docker Compose and test containers; no cloud promotion authority. | PR and merge gates qualify source and produce the immutable release tuple. |
-| Demo | **Active deployment path.** Synthetic/founder-review workload in Central India; private deployment runner; Founder IPv4 `/32` access boundary. | `plan` or `apply` via `deploy-demo.yaml`. A successful apply still requires explicit Founder Demo acceptance before UAT. |
-| UAT | Terraform roots exist; deployment is currently **prohibited**. No active promotion workflow or runner activation is implied. | Future promotion must deploy the identical Demo-accepted manifest and digests, run UAT qualification/rollback evidence, and obtain UAT acceptance. |
-| Production | Terraform roots exist; **dark and plan-only** under the current authority boundary. | Future promotion must use the identical UAT-accepted tuple, protected Production identities/environment, progressive delivery, independent confirmation, and explicit Founder approval. |
-
-The intended promotion chain is `Demo accepted tuple -> UAT accepted tuple -> Production`. Promotion
-means retrieving and verifying the existing signed manifest and OCI digests; it does not rebuild or
-silently retag different content. Environment-specific configuration and identities may differ, but
-the application image tuple must not.
-
-#### Rollback, Blue-Green, And Recovery
-
-The **currently active Demo rollback** is intentionally conservative and disposable: if Terraform
-workload apply fails, `deploy-environment.yaml` runs `terraform destroy` for the Demo workload while
-retaining the foundation and evidence. The credential seeder is deleted after execution, and private
-runner cleanup runs regardless of success or failure. Independent verification failure prevents the
-workflow from publishing a successful Founder URL.
-
-Terraform configures application members in multiple-revision mode, but the current workload apply
-routes 100% to the latest revision. Therefore progressive blue-green traffic shifting is a
-**designed capability, not yet an active guarantee**. `scripts/blue-green-deploy.sh` demonstrates the
-mechanics, while the accepted target contract requires:
-
-1. Keep the last independently accepted revision as Blue.
-2. Deploy the same signed release tuple as Green with no accepted public traffic.
-3. Prove health, schema compatibility, identity, dependencies, telemetry, CCTs, journeys, and
-  Emergency Stop readiness.
-4. Shift through approved canary/expansion stages with measured observation windows.
-5. Automatically restore Blue on a blocking signal, retain failure evidence, and avoid destructive
-  database down-migration.
-6. Deactivate or scale Blue to zero only after independent confirmation and within the C-067 cost
-  window.
-
-Production promotion remains blocked until those progressive percentages, observation windows,
-automatic rollback thresholds, data recovery rules, and independent confirmation are implemented
-and proven in UAT. The repository does not represent the existing reference script as Production
-readiness.
-
-→ `.github/workflows/ci.yaml` · `.github/workflows/deploy-demo.yaml` ·
-`.github/workflows/deploy-environment.yaml` · `.github/workflows/post-deploy-verify.yaml` ·
-`.github/workflows/promote.yaml` · `infrastructure/terraform/phase2/` ·
-`architecture/reference/pipeline/azure-deployment-topology.md`
+→ `architecture/reference/pipeline/azure-deployment-topology.md` ·
+`constitution/PROJECT_STATE.md` · `work-contracts/WC-076-goal006-phase3-execution.md` ·
+`goals/GOAL-006-cloud-platform-finalization-evidence.md`
 
 ### 5.5 Database Architecture — Three Constitutional Schemas
 
@@ -792,8 +718,8 @@ gh issue list --repo dlai-sd/waooaw-platform --label "platform-status"
 # To manually trigger the PM report:
 gh workflow run pm-report.yaml
 
-# View latest CCT results
-gh run list --repo dlai-sd/waooaw-platform --workflow "promote.yaml" --limit 5
+# View latest build and constitutional gate results
+gh run list --repo dlai-sd/waooaw-platform --workflow "ci.yaml" --limit 5
 
 # View current image tags in GHCR
 gh api /orgs/dlai-sd/packages/container/constitutional-engine/versions --jq '.[0:3]'
