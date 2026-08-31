@@ -109,8 +109,11 @@ jq --exit-status \
   "${REPORT_DIR}/coverage.json" > /dev/null
 docker compose --profile test-python run --rm test-runner-python \
   ruff check src/professional-runtime/adapter_gateway.py src/agent-adapters tests/contract/test_agent_runtime_adapter_contract.py tests/professional-runtime/test_agent_runtime_adapter.py tests/constitutional/test_agent_runtime_adapter_cct.py
-docker compose --profile test-python run --rm test-runner-python \
-  mypy src/professional-runtime/adapter_gateway.py src/agent-adapters
+docker compose --profile test-python run --rm --workdir /tmp \
+  -e MYPYPATH=/workspace/src/professional-runtime test-runner-python mypy -m adapter_gateway
+docker compose --profile test-python run --rm --workdir /tmp \
+  -e MYPYPATH=/workspace/src/agent-adapters test-runner-python \
+  mypy -p runtime_contract -p digital_marketing -p trading
 
 docker run --rm -v "$ROOT:/workspace:ro" -w /workspace node:20.19.4-bookworm-slim \
   npx --yes @stoplight/spectral-cli@6.15.0 lint --fail-severity error \
