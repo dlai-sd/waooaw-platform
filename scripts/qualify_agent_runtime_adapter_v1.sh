@@ -40,6 +40,7 @@ TRADING_IMAGE_ID=""
 TEST_IMAGE_ID=""
 mkdir -p "$(dirname "$OUTPUT")"
 REPORT_DIR=$(dirname "$OUTPUT")
+CONTAINER_REPORT_DIR="/workspace/${REPORT_DIR#"$ROOT"/}"
 
 write_evidence() {
   local exit_code=$?
@@ -105,8 +106,8 @@ FAILURE_CLASSIFICATION="assertion"
 docker compose --profile test-python run --rm -e COVERAGE_FILE=/tmp/ara-v1.coverage test-runner-python \
   pytest tests/contract/ tests/professional-runtime/test_agent_runtime_adapter.py tests/constitutional/test_agent_runtime_adapter_cct.py \
   --cov=adapter_gateway --cov=runtime_contract \
-  --cov-fail-under=90 --cov-branch --cov-report=term --cov-report="xml:${REPORT_DIR}/coverage.xml" \
-  --cov-report="json:${REPORT_DIR}/coverage.json" -v
+  --cov-fail-under=90 --cov-branch --cov-report=term --cov-report="xml:${CONTAINER_REPORT_DIR}/coverage.xml" \
+  --cov-report="json:${CONTAINER_REPORT_DIR}/coverage.json" -v
 jq --exit-status \
   '.totals.num_branches == 0 or ((.totals.covered_branches / .totals.num_branches) >= 0.80)' \
   "${REPORT_DIR}/coverage.json" > /dev/null
@@ -140,9 +141,9 @@ docker run --rm -v "$ROOT:/repo:ro" zricethezav/gitleaks:v8.28.0 git /repo \
 docker compose --profile test-python run --rm test-runner-python python scripts/gap_scanner.py --report
 if [[ -f "$REPORT_DIR/pr-body.md" ]]; then
   docker compose --profile test-python run --rm test-runner-python \
-    python scripts/validate_c059.py --pr-body-file "/workspace/${REPORT_DIR#${ROOT}/}/pr-body.md" --base "$BASE_SHA" --head "$HEAD_SHA"
+    python scripts/validate_c059.py --pr-body-file "$CONTAINER_REPORT_DIR/pr-body.md" --base "$BASE_SHA" --head "$HEAD_SHA"
   docker compose --profile test-python run --rm test-runner-python \
-    python scripts/validate_author_review.py --pr-body-file "/workspace/${REPORT_DIR#${ROOT}/}/pr-body.md" --head "$HEAD_SHA"
+    python scripts/validate_author_review.py --pr-body-file "$CONTAINER_REPORT_DIR/pr-body.md" --head "$HEAD_SHA"
 fi
 
 docker compose --profile agent-runtime-adapter logs --no-color --timestamps \
