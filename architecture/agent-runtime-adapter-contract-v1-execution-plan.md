@@ -111,6 +111,29 @@ The implementation Work Contract must direct Platform IT Expert Skills 1-8 and 1
 | 16 | Apply repository observability practice if active in the accepted agent version; do not invent telemetry policy |
 | 17 | Execute governed Docker qualification and immutable evidence packaging without provider or environment mutation |
 
+### 3.3 Implementation Readiness Gap Register
+
+The implementer review after merged PR 382 found the following unresolved owner decisions. These are
+entry-gate requirements, not Platform IT design tasks. Each owner output must resolve the listed
+questions in a canonical artifact, carry an acceptance state, and be bound by exact path, version,
+and commit in the implementation issue. A prose assurance without those bindings does not close a
+gap.
+
+| Gap | Required owner repair before ARA-00 can pass | Responsible institution | State |
+|---|---|---|---|
+| ARA-GAP-01 Transport and isolation | Accept or reject Section 5.3.1 in an ADR that fixes discovery, identity, protection, deadlines, streaming, version negotiation, deployment isolation, and failure behavior | Enterprise Architecture / Founder | OPEN - blocks implementation |
+| ARA-GAP-02 Contract semantics | Publish accepted OpenAPI, schemas, compatibility matrix, and Professional Runtime amendment that make field bounds/nullability, version formats, state-version ownership, HTTP/error mapping, idempotency/replay retention, Temporal acceptance/reconciliation, SSE reconnect ordering, and Stop/resume bindings deterministic | Solution Architecture | OPEN - blocks implementation |
+| ARA-GAP-03 Security and privacy | Publish the accepted workload-identity, tenant-binding, anti-replay, route-grant/egress, secret-reference/rotation/redaction, request-size, privacy-safe error, and isolation test contract | Security Architecture | OPEN - blocks implementation |
+| ARA-GAP-04 Data and evidence | Publish the accepted invocation/result/event ownership, evidence-reference resolution, retention/erasure, indexing/RLS, migration, reconciliation, and rollback contract | Data Architecture and Constitutional owner | OPEN - blocks implementation |
+| ARA-GAP-05 Fail-safe Stop | Bind ADR-031 behavior to durable or buffered Stop attribution, recovery/reconciliation limits, customer acknowledgement, adapter termination, and fresh-authority resume validation | Constitutional owner and Solution Architecture | OPEN - blocks implementation |
+| ARA-GAP-06 Acceptance bindings | Record every accepted owner artifact and the Founder-accepted plan using exact commit IDs, then assign the implementation issue with tier, branch, paths, versions, CCTs, fixtures, environments, qualification command, and explicit session authorization | Founder / Work Contract owner | OPEN - blocks implementation |
+| ARA-GAP-07 Qualification sequencing | Keep qualification on finalized commits, push that exact HEAD, perform author review after the final push, validate metadata against the pushed HEAD, and only then open the PR | Platform IT Expert | REPAIRED in Sections 10 and 12 |
+| ARA-GAP-08 Reproducible image identity | Freeze pathspecs in the implementation issue and hash a sorted tracked-file manifest plus normalized Compose/configuration content | Platform IT Expert | REPAIRED in Section 10.2 |
+
+The current repository already contains the merged WC-079 foundation, admission schema,
+workload-identity registry, C-059 validator, author-review validator, and gap scanner. Their presence
+does not close ARA-GAP-01 through ARA-GAP-06 and does not authorize runnable implementation.
+
 ## 4. Scope
 
 ### 4.1 In Scope
@@ -471,7 +494,14 @@ cleanup is insufficient, stop with a capacity blocker.
 
 ### 10.2 Immutable Image Identity And Reuse
 
-The qualification command computes deterministic sorted input inventories:
+The implementation issue freezes separate source and configuration pathspecs. The qualification
+command rejects an empty inventory, an untracked required input, or a tracked relevant input outside
+those pathspecs. It computes each digest from a `LC_ALL=C` bytewise-sorted manifest of tracked file
+paths and their SHA-256 values; filename and content digest are both hash inputs. The configuration
+digest additionally includes the normalized output of every demo, uat, and prod Compose rendering.
+Generated outputs are inputs only when tracked or explicitly frozen by the implementation issue.
+
+The resulting identities are:
 
 ```text
 SOURCE_HASH = first 12 lowercase hex of SHA-256 over tracked adapter/PR source, tests, and schemas
@@ -533,10 +563,10 @@ In order, it performs:
 9. SBOM generation from every exact qualified image.
 10. Trivy HIGH/CRITICAL image and configuration scanning using repository-pinned policy/version.
 11. Gitleaks history/diff scanning using repository-pinned policy/version.
-12. Actual repository gates, including OpenAPI/proto/schema/YAML validation, generated drift,
-    `scripts/gap_scanner.py`, C-059 commit checks, C-066 authorization checks,
-    `scripts/validate_author_review.py`, and current workflow-defined authorization checks through
-    their approved execution paths.
+12. Actual pre-push repository gates, including OpenAPI/proto/schema/YAML validation, generated
+    drift, `scripts/gap_scanner.py`, C-059 commit checks, C-066 authorization checks, and current
+    workflow-defined authorization checks through their approved execution paths. Author-review
+    validation is intentionally post-push under Section 12 and must bind the same qualified HEAD.
 13. Evidence JSON assembly, schema validation, redaction check, and final PASS/FAIL derivation.
 
 Evidence JSON contains at minimum plan/WC/issue identity, result, exact 40-character HEAD and base,
@@ -573,13 +603,10 @@ docker run --rm -v "$PWD:/workspace" -w /workspace node:20 \
   architecture/reference/api-specs/professional-runtime.openapi.yaml \
   architecture/reference/api-specs/agent-runtime-adapter-v1.openapi.yaml
 
-# C-059 and C-065 body/HEAD validation in the repository Python test image
+# C-059 body/HEAD validation in the repository Python test image
 docker compose --profile test-python run --rm test-runner-python \
   python scripts/validate_c059.py --pr-body-file /workspace/test-results/agent-runtime-adapter-v1/pr-body.md \
   --base "$BASE_SHA" --head "$HEAD_SHA"
-docker compose --profile test-python run --rm test-runner-python \
-  python scripts/validate_author_review.py \
-  --pr-body-file /workspace/test-results/agent-runtime-adapter-v1/pr-body.md --head "$HEAD_SHA"
 ```
 
 The qualification script resolves `BASE_SHA` and `HEAD_SHA`, records every tool/image version, and
@@ -587,10 +614,11 @@ uses repository-pinned Trivy, Gitleaks, SBOM, language build, and coverage comma
 the current workflows. It fails if a required tool is unpinned; it does not silently install `latest`.
 
 At this plan revision, `scripts/pr_guard.py` is not present on `main` and is not a required gate.
-After qualification PASS and actual author review, write the four checked author-review statements,
-exact 40-character `Reviewed Commit`, and `Author Review Result: PASS` into the prepared PR body.
-Re-run `validate_c059.py` and `validate_author_review.py` in the Docker test image against the same
-base, HEAD, and body. The hosted C-059, C-065, and C-066 jobs remain authoritative after PR creation.
+After qualification PASS, push the immutable qualified HEAD. Perform actual author review against
+that pushed HEAD, then write the four checked author-review statements, exact 40-character `Reviewed
+Commit`, and `Author Review Result: PASS` into the prepared PR body. Run `validate_c059.py` and
+`validate_author_review.py` in the Docker test image against the same base, pushed HEAD, and body
+before PR creation. The hosted C-059, C-065, and C-066 jobs remain authoritative after PR creation.
 If a local PR guard is later merged, ARA-00 may add it only as an additional current repository gate;
 it cannot replace these validators or become an unpinned external dependency.
 
@@ -632,27 +660,32 @@ Use the branch and commit identity assigned by the implementation Work Contract.
    after PASS. Any such change invalidates the evidence.
 7. Prepare the PR body from `.github/pull_request_template.md` with objective, exact scope, acceptance
    matrix, spec-code traceability, qualification evidence path/hash, image IDs, tests, coverage, SBOM,
-   Trivy, Gitleaks, rollback, unresolved risks, and Founder-only merge statement.
-8. Perform mandatory author review of the complete diff and evidence against this plan, the accepted
+  Trivy, Gitleaks, rollback, unresolved risks, Founder-only merge statement, and author-review fields
+  left explicitly pending.
+8. Push the exact qualified HEAD once. Confirm the remote branch resolves to the same 40-character
+  commit; any later commit invalidates qualification and restarts from Step 3.
+9. Perform mandatory author review of the complete diff and evidence against this plan, the accepted
    Work Contract, all acceptance conditions, security, compatibility, failure handling, operability,
    and rollback. Repair every finding; unresolved findings block PASS.
-9. Bind the four completed author-review checks, exact 40-character `Reviewed Commit`, and PASS result
-  in `test-results/agent-runtime-adapter-v1/pr-body.md` to the qualified HEAD.
-10. Validate the prepared PR body and commit range with `scripts/validate_c059.py` and
+10. Bind the four completed author-review checks, exact 40-character `Reviewed Commit`, and PASS result
+    in `test-results/agent-runtime-adapter-v1/pr-body.md` to the qualified HEAD.
+11. Validate the prepared PR body and commit range with `scripts/validate_c059.py` and
    `scripts/validate_author_review.py` using the exact Docker forms in Section 10.5; run current
-   authorization and all other actual pinned pre-push gates. Qualification evidence and review
-   metadata must bind the same HEAD.
-11. Push once, open one unmerged PR, and verify one-time hosted status snapshots. Do not watch/retry
+    authorization metadata checks. Qualification evidence and review metadata must bind the pushed
+    HEAD. This metadata validation does not modify repository content.
+12. Open one unmerged PR and verify one-time hosted status snapshots. Do not watch/retry
     workflows blindly. If a hosted deterministic gate fails, diagnose, repair, refinalize commits,
-    rerun affected focused checks and complete qualification, rebind review metadata, and push once more.
-12. Mark the PR ready for Founder review only when every required hosted check succeeds and no review
+    rerun affected focused checks and complete qualification, push the new qualified HEAD, and repeat
+    author review and metadata validation before updating the PR.
+13. Mark the PR ready for Founder review only when every required hosted check succeeds and no review
     finding or blocker remains. Request Founder review and merge; do not approve or merge it.
 
 The controlling delivery sequence is:
 
 ```text
 DOCKER PREFLIGHT -> CONSOLIDATED FOCUSED TESTS -> FINAL COMMIT HISTORY
--> ONE COMPLETE QUALIFICATION -> PR METADATA VALIDATION -> PUSH ONCE
+-> ONE COMPLETE QUALIFICATION -> PUSH QUALIFIED HEAD -> AUTHOR REVIEW
+-> PR METADATA VALIDATION
 -> HOSTED PRE-CHECK SUCCESS -> FOUNDER REVIEW
 ```
 
@@ -680,7 +713,7 @@ DOCKER PREFLIGHT -> CONSOLIDATED FOCUSED TESTS -> FINAL COMMIT HISTORY
 | ARA-ACC-18 | Qualified images are hash-tagged, built once, and reused across tests, coverage, scans, and evidence capture |
 | ARA-ACC-19 | Failure handling captures logs/resource state first and permits one unchanged retry only for evidenced infrastructure failure |
 | ARA-ACC-20 | The Docker qualification command directly emits schema-valid evidence bound to exact HEAD and image IDs |
-| ARA-ACC-21 | Repository actual gate scripts and pinned tools pass before push; author review and PR body bind the qualified HEAD |
+| ARA-ACC-21 | Repository qualification gates pass before push; post-push author review and PR metadata validation bind the same qualified HEAD |
 | ARA-ACC-22 | One unmerged PR is opened and ready for Founder review; author neither approves nor merges it |
 
 ## 14. Rollback And Compatibility
@@ -747,14 +780,16 @@ Agent Runtime Adapter Contract v1 is complete only when:
   drift, constitutional checks, and actual repository gates pass against reused hash-tagged images.
 - The qualification command directly emits valid PASS evidence bound to the exact final HEAD and image IDs.
 - Mandatory author review has no unresolved finding and is bound to that same HEAD.
-- Commit, authorization, author-review, and prepared PR metadata gates pass before push.
+- Pre-push qualification gates pass before the final push; author-review and prepared PR metadata
+  gates pass afterward against the same pushed HEAD and before PR creation.
 - One unmerged PR is pushed once, all required hosted pre-checks pass, and it is ready for Founder
   review and merge without self-approval or self-merge.
 
 ## 17. Author Review
 
-**Result:** PASS - solution plan candidate; Founder acceptance and implementation authorization remain
-separate gates.
+**Result:** PASS - implementer gap review complete; implementation remains BLOCKED by ARA-GAP-01
+through ARA-GAP-06 until the responsible owners provide accepted, commit-bound inputs and the Founder
+grants explicit implementation authorization.
 
 INST-005 reviewed this complete plan against Section 4.7, the WC-079 plan pattern, Agent Employment
 Experience boundaries, ADR-035/PAC separation, Professional Runtime universality, existing PAAS and
@@ -767,7 +802,9 @@ service is introduced, customer channels remain outside the adapter, authority i
 domain variation is confined to admitted schemas, Stop and cancellation remain distinct, one-artifact
 isolation avoids premature shared-host architecture, validation is batched without weakening final
 evidence, actual repository gates are discovered before push, and PR readiness remains separate from
-Founder approval and merge. No unresolved in-scope plan finding remains.
+Founder approval and merge. Platform IT repaired the in-scope qualification sequencing and hash-input
+defects. It did not invent or mark closed any architecture, security, data, constitutional, or Founder
+decision listed in Section 3.3.
 
 | Author-review finding | Repair made in this revision |
 |---|---|
@@ -778,3 +815,6 @@ Founder approval and merge. No unresolved in-scope plan finding remains.
 | Platform IT skills were not mapped to plan responsibilities | Added Skills 1-8 and 11-17 binding with exact obligations and escalation boundaries |
 | Gate scripts were named without executable current-main commands | Added current Docker forms for `validate_c059.py` and `validate_author_review.py`; removed reliance on absent `pr_guard.py` |
 | Commit metadata text overclaimed a fixed `CCTs-added` enforcement rule | Bound commit metadata to the repository's current C-059 validator and Work Contract instead of inventing enforcement |
+| Required owner decisions were distributed across narrative entry gates | Added Section 3.3 with exact unresolved topics, responsible institutions, closure evidence, and blocking state |
+| Qualification required author-review validation before author review and the final push | Moved author review after the final push and before PR creation; qualification and review metadata now bind the same immutable HEAD |
+| Image hashes named broad categories without defining a reproducible manifest | Required frozen pathspecs, sorted tracked path/content manifests, normalized environment renderings, and failure on incomplete inventories |
