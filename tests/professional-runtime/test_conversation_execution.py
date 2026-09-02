@@ -743,8 +743,11 @@ async def test_health_degrades_for_missing_bp_auth_or_ce_and_is_unhealthy_withou
     missing_ce = await client.get("/health")
     app.state.temporal_worker_task.done.return_value = True
     missing_worker = await client.get("/health")
+    assert missing_auth.status_code == 503
     assert missing_auth.json()["status"] == "degraded"
+    assert missing_ce.status_code == 503
     assert missing_ce.json()["status"] == "degraded"
+    assert missing_worker.status_code == 503
     assert missing_worker.json()["status"] == "unhealthy"
 
 
@@ -1014,18 +1017,19 @@ async def test_grpc_gateway_proto_loading_and_close(monkeypatch: pytest.MonkeyPa
 
 
 @pytest.mark.parametrize(
-    ("ce_ready", "expected_status", "expected_reachable"),
-    [(True, "healthy", True), (False, "degraded", False)],
+    ("ce_ready", "expected_http_status", "expected_status", "expected_reachable"),
+    [(True, 200, "healthy", True), (False, 503, "degraded", False)],
 )
 async def test_health_uses_canonical_ce_readiness(
     client: Any,
     ce_ready: bool,
+    expected_http_status: int,
     expected_status: str,
     expected_reachable: bool,
 ) -> None:
     app.state.conversation_constitutional_gateway = FakeConstitutionalGateway(ready=ce_ready)
     response = await client.get("/health")
-    assert response.status_code == 200
+    assert response.status_code == expected_http_status
     assert response.json() == {
         "status": expected_status,
         "temporalConnected": True,

@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import httpx
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
@@ -468,7 +468,7 @@ async def validation_error(request: Request, _error: RequestValidationError) -> 
 
 
 @app.get("/health", operation_id="getPRHealth", response_model=HealthResponse, tags=["Health"])
-async def health(request: Request) -> HealthResponse:
+async def health(request: Request, response: Response) -> HealthResponse:
     """Report canonical runtime health without treating degraded dependencies as healthy."""
     worker_task = getattr(request.app.state, "temporal_worker_task", None)
     temporal_connected = (
@@ -487,6 +487,8 @@ async def health(request: Request) -> HealthResponse:
         health_status = "degraded"
     else:
         health_status = "healthy"
+    if health_status != "healthy":
+        response.status_code = 503
     return HealthResponse(
         status=health_status,
         temporalConnected=temporal_connected,

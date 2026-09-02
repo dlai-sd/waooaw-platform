@@ -181,16 +181,37 @@ def test_internal_verification_uses_the_identity_edge() -> None:
         'resource "azurerm_container_app_job" "verification"', 1
     )[1]
 
-    assert 'web               = "http://ca-${var.environment}-web"' in contract
-    assert (
-        'identity_edge     = "https://ca-${var.environment}-identity-edge.'
-        '${var.container_app_environment_default_domain}"'
-    ) in contract
+    assert re.search(r'web\s*=\s*"http://ca-\$\{var\.environment\}-web"', contract)
+    assert re.search(
+        r'identity_edge\s*=\s*"https://ca-\$\{var\.environment\}-identity-edge\.'
+        r'\$\{var\.container_app_environment_default_domain\}"',
+        contract,
+    )
     assert 'probe web "${local.verification_urls.web}/"' in verification_job
     assert 'probe business-platform "${local.verification_urls.business_platform}/health/ready"' in verification_job
+    assert 'probe professional-runtime "${local.verification_urls.professional_runtime}/health"' in verification_job
+    assert 'probe ai-runtime "${local.verification_urls.ai_runtime}/health"' in verification_job
+    assert 'probe billing-engine "${local.verification_urls.billing_engine}/health"' in verification_job
     assert 'probe identity-edge "${local.verification_urls.identity_edge}/realms/waooaw/.well-known/openid-configuration"' in verification_job
     assert "local.service_urls.web" not in verification_job
     assert "local.service_urls.keycloak" not in verification_job
+
+
+def test_demo_temporal_and_member_readiness_are_fail_closed() -> None:
+    contract = read_contract("modules/workload/main.tf")
+
+    assert 'resource "azurerm_container_app" "temporal"' in contract
+    assert "temporalio/auto-setup@sha256:98cdb6b5e02d64cb933864a9ba91cb66065eb320623a0dafdf44beba535bca88" in contract
+    assert 'name  = "DB"\n        value = "postgres12"' in contract
+    assert re.search(
+        r'TEMPORAL_ADDRESS\s*=\s*"ca-\$\{var\.environment\}-temporal:7233"',
+        contract,
+    )
+    assert re.search(r'TEMPORAL_NAMESPACE\s*=\s*"default"', contract)
+    assert 'var.environment == "demo" ? {' in contract
+    assert 'for_each = each.key == "constitutional-engine" ? [] : [1]' in contract
+    assert 'for_each = each.key == "constitutional-engine" ? [1] : []' in contract
+    assert 'count = var.workload_enabled && var.environment == "demo" ? 1 : 0' in contract
 
 
 def test_keycloak_realm_import_matches_the_web_oidc_contract() -> None:
