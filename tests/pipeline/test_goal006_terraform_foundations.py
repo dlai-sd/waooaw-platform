@@ -507,6 +507,16 @@ def test_post_deploy_verification_requires_the_exact_latest_revision() -> None:
     assert "az containerapp revision show" in workflow
     assert 'properties.provisioningState == "Provisioned"' in workflow
     assert 'properties.healthState == "Healthy"' in workflow
+    assert "GOAL006_REVISION_READY_ATTEMPTS" in workflow
+    assert "Revision not ready: app=$app_name" in workflow
+    assert "Revision readiness timed out: app=$app_name" in workflow
+    assert 'cat "revision-evidence/$app-revision.json" >&2' in workflow
+
+    rehearsal = (REPO_ROOT / "scripts/run_goal006_local_azure_verification.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "force-professional-runtime-unready" in rehearsal
+    assert "unhealthy_revision_failure_proved: true" in rehearsal
 
 
 def test_post_deploy_functional_verification_fails_fast_and_retains_job_contract() -> None:

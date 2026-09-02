@@ -8,6 +8,7 @@ import os
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import ClassVar
 from urllib.parse import urlparse
 
 from goal006_live_inventory import DEMO_TEMPORAL_IMAGE, IDENTITY_EDGE_IMAGE, KEYCLOAK_IMAGE
@@ -23,8 +24,7 @@ RUNNER_IMAGE = "ghcr.io/dlai-sd/goal006-private-runner@sha256:" + "f" * 64
 
 def release_manifest() -> dict[str, object]:
     images = {
-        member: f"ghcr.io/dlai-sd/{member}@sha256:{index:064x}"
-        for index, member in enumerate(sorted(RELEASE_MEMBERS), start=1)
+        member: f"ghcr.io/dlai-sd/{member}@sha256:{index:064x}" for index, member in enumerate(sorted(RELEASE_MEMBERS), start=1)
     }
     return {
         "schema": "waooaw.registry-release/v1",
@@ -36,9 +36,7 @@ def release_manifest() -> dict[str, object]:
         "evidence": {
             member: {
                 kind: {
-                    "artifact": (
-                        f"goal006-scan-{member}" if kind == "scan" else f"goal006-attestation-{member}"
-                    ),
+                    "artifact": (f"goal006-scan-{member}" if kind == "scan" else f"goal006-attestation-{member}"),
                     "sha256": {"scan": "b", "sbom": "c", "provenance": "d", "signature": "e"}[kind] * 64,
                     **(
                         {"policy": "fixable-high-critical"}
@@ -79,8 +77,7 @@ def container_apps(manifest: dict[str, object]) -> list[dict[str, object]]:
 
 def cleanup_job() -> dict[str, object]:
     environment = [
-        {"name": name, "value": f"local-{name.lower()}"}
-        for name in sorted(REQUIRED_ENVIRONMENT | CLEANUP_REQUIRED_ENVIRONMENT)
+        {"name": name, "value": f"local-{name.lower()}"} for name in sorted(REQUIRED_ENVIRONMENT | CLEANUP_REQUIRED_ENVIRONMENT)
     ]
     values = {item["name"]: item for item in environment}
     values["RUNNER_ACTIVATION_STATE"]["value"] = "ACTIVE"
@@ -116,6 +113,7 @@ def cleanup_job() -> dict[str, object]:
 class AzureHandler(BaseHTTPRequestHandler):
     manifest = release_manifest()
     apps = container_apps(manifest)
+    revision_show_counts: ClassVar[dict[str, int]] = {}
 
     def log_message(self, message: str, *args: object) -> None:
         record = {"method": self.command, "path": self.path, "message": message % args}
@@ -160,15 +158,16 @@ class AzureHandler(BaseHTTPRequestHandler):
             return
         if "/providers/Microsoft.App/containerApps/" in path and "/revisions/" in path:
             revision = path.rsplit("/", 1)[-1]
+            unhealthy = "ca-demo-professional-runtime" in path and (EVIDENCE_DIR / "force-professional-runtime-unready").exists()
             self.send_json(
                 200,
                 {
                     "name": revision,
                     "properties": {
                         "active": True,
-                        "provisioningState": "Provisioned",
-                        "healthState": "Healthy",
-                        "runningState": "RunningAtMaxScale",
+                        "provisioningState": "Provisioning" if unhealthy else "Provisioned",
+                        "healthState": "Unhealthy" if unhealthy else "Healthy",
+                        "runningState": "ActivationFailed" if unhealthy else "RunningAtMaxScale",
                     },
                 },
             )
@@ -180,16 +179,21 @@ class AzureHandler(BaseHTTPRequestHandler):
                 self.send_json(404, {"error": {"code": "ContainerAppNotFound", "message": name}})
                 return
             properties = dict(app["properties"])
+            show_count = self.revision_show_counts.get(name, 0) + 1
+            self.revision_show_counts[name] = show_count
+            latest_revision = f"{name}--0000002"
+            latest_ready_revision = latest_revision
+            force_unready = (EVIDENCE_DIR / "force-professional-runtime-unready").exists()
+            if name == "ca-demo-professional-runtime" and (show_count <= 2 or force_unready):
+                latest_ready_revision = f"{name}--0000001"
             properties.update(
                 {
-                    "latestRevisionName": f"{name}--0000001",
-                    "latestReadyRevisionName": f"{name}--0000001",
+                    "latestRevisionName": latest_revision,
+                    "latestReadyRevisionName": latest_ready_revision,
                     "configuration": {
                         "ingress": {
                             "fqdn": f"{name}.local.waooaw.test",
-                            "ipSecurityRestrictions": [
-                                {"name": "founder-review", "ipAddressRange": "203.0.113.10/32"}
-                            ],
+                            "ipSecurityRestrictions": [{"name": "founder-review", "ipAddressRange": "203.0.113.10/32"}],
                         }
                     },
                 }

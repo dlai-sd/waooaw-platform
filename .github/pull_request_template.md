@@ -66,7 +66,11 @@ Coverage:         NN% (threshold: NN%)
 
 ## Author Review
 
-<!-- Complete after the final push. Any new commit makes this review stale and CI will fail. -->
+<!--
+After the final push, run:
+python scripts/prepare_pr_body.py --body-file /tmp/pr-body.md --base origin/main
+Submit that exact prepared file when creating the PR. Any new commit makes this review stale.
+-->
 - [ ] Reviewed the complete diff against the authorized scope
 - [ ] Reviewed test and quality-gate results
 - [ ] Reviewed security, constitutional, and rollback impact

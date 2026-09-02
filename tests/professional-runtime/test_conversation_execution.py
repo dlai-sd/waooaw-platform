@@ -831,9 +831,37 @@ async def test_lifespan_registers_conversation_worker(monkeypatch: pytest.Monkey
 
 async def test_lifespan_connection_failure_is_fail_safe(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(main_module, "connect_temporal_client", AsyncMock(side_effect=ValueError("unavailable")))
+    monkeypatch.setenv("TEMPORAL_STARTUP_ATTEMPTS", "1")
     async with lifespan(app):
         assert app.state.temporal_client is None
         assert app.state.temporal_worker is None
+
+
+async def test_lifespan_retries_transient_temporal_startup_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    temporal = MagicMock()
+    connected = AsyncMock(side_effect=[ValueError("starting"), temporal])
+    worker_stopped = asyncio.Event()
+    worker = MagicMock()
+
+    async def run_worker() -> None:
+        await worker_stopped.wait()
+
+    async def stop_worker() -> None:
+        worker_stopped.set()
+
+    worker.run = run_worker
+    worker.shutdown = stop_worker
+    monkeypatch.setattr(main_module, "connect_temporal_client", connected)
+    monkeypatch.setattr(main_module, "Worker", MagicMock(return_value=worker))
+    monkeypatch.setattr(main_module.asyncio, "sleep", AsyncMock())
+    monkeypatch.setenv("TEMPORAL_STARTUP_ATTEMPTS", "2")
+    monkeypatch.setenv("TEMPORAL_STARTUP_INTERVAL_SECONDS", "0")
+
+    async with lifespan(app):
+        assert app.state.temporal_client is temporal
+        assert app.state.temporal_worker is worker
+
+    assert connected.await_count == 2
 
 
 async def test_temporal_cloud_configuration_names_are_supported(

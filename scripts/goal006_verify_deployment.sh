@@ -13,6 +13,8 @@ RELEASE_SHA=$3
 EXPECTED_WEB_URL=$4
 EXPECTED_ACCESS_CIDR=${5:-}
 RESOURCE_GROUP="waooaw-$TARGET_ENVIRONMENT-rg"
+REVISION_READY_ATTEMPTS=${GOAL006_REVISION_READY_ATTEMPTS:-30}
+REVISION_READY_INTERVAL_SECONDS=${GOAL006_REVISION_READY_INTERVAL_SECONDS:-10}
 
 case "$TARGET_ENVIRONMENT" in demo|uat|prod) ;; *) usage ;; esac
 
@@ -28,26 +30,38 @@ mkdir -p revision-evidence
 jq -er '.[].name' live-inventory.json | while IFS= read -r app_name; do
   app=${app_name#"ca-$TARGET_ENVIRONMENT-"}
   test "$app" != "$app_name"
-  az containerapp show \
-    --resource-group "$RESOURCE_GROUP" \
-    --name "$app_name" \
-    --query '{latestRevision:properties.latestRevisionName,latestReadyRevision:properties.latestReadyRevisionName}' \
-    -o json > "revision-evidence/$app-app.json"
-  latest_revision=$(jq -r '.latestRevision // empty' "revision-evidence/$app-app.json")
-  latest_ready_revision=$(jq -r '.latestReadyRevision // empty' "revision-evidence/$app-app.json")
-  test -n "$latest_revision"
-  test "$latest_revision" = "$latest_ready_revision"
-  az containerapp revision show \
-    --resource-group "$RESOURCE_GROUP" \
-    --name "$app_name" \
-    --revision "$latest_revision" \
-    -o json > "revision-evidence/$app-revision.json"
-  jq -e '
-    .properties.active == true and
-    .properties.provisioningState == "Provisioned" and
-    .properties.healthState == "Healthy" and
-    ((.properties.runningState | startswith("Running")) or .properties.runningState == "ScaledToZero")
-  ' "revision-evidence/$app-revision.json" >/dev/null
+  for attempt in $(seq 1 "$REVISION_READY_ATTEMPTS"); do
+    az containerapp show \
+      --resource-group "$RESOURCE_GROUP" \
+      --name "$app_name" \
+      --query '{latestRevision:properties.latestRevisionName,latestReadyRevision:properties.latestReadyRevisionName}' \
+      -o json > "revision-evidence/$app-app.json"
+    latest_revision=$(jq -r '.latestRevision // empty' "revision-evidence/$app-app.json")
+    latest_ready_revision=$(jq -r '.latestReadyRevision // empty' "revision-evidence/$app-app.json")
+    if test -n "$latest_revision"; then
+      az containerapp revision show \
+        --resource-group "$RESOURCE_GROUP" \
+        --name "$app_name" \
+        --revision "$latest_revision" \
+        -o json > "revision-evidence/$app-revision.json"
+    fi
+    if test "$latest_revision" = "$latest_ready_revision" && jq -e '
+      .properties.active == true and
+      .properties.provisioningState == "Provisioned" and
+      .properties.healthState == "Healthy" and
+      ((.properties.runningState | startswith("Running")) or .properties.runningState == "ScaledToZero")
+    ' "revision-evidence/$app-revision.json" >/dev/null; then
+      break
+    fi
+    echo "Revision not ready: app=$app_name attempt=$attempt/$REVISION_READY_ATTEMPTS latest=$latest_revision latest_ready=$latest_ready_revision" >&2
+    if test "$attempt" = "$REVISION_READY_ATTEMPTS"; then
+      cat "revision-evidence/$app-app.json" >&2
+      test ! -f "revision-evidence/$app-revision.json" || cat "revision-evidence/$app-revision.json" >&2
+      echo "Revision readiness timed out: app=$app_name" >&2
+      exit 1
+    fi
+    sleep "$REVISION_READY_INTERVAL_SECONDS"
+  done
 done
 
 job_name="job-$TARGET_ENVIRONMENT-deployment-verification"
