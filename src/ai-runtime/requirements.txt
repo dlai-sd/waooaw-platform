@@ -33,7 +33,7 @@ anthropic==0.34.2
 # DO NOT 'pip install ai4bharat' or 'import ai4bharat' — no such PyPI package.
 # Implementation: transformers.pipeline('ner', model='ai4bharat/IndicNER')
 # The model downloads automatically on first run from HuggingFace Hub.
-transformers==5.5.0
+transformers==5.10.0
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch==2.13.0+cpu     # CPU-only for dev; GPU images use a separate accepted lock
 
