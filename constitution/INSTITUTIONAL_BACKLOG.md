@@ -1065,7 +1065,7 @@ When this IB is authorized and completed:
 
 ## IB-031 — QA Promotion and Continuous Quality Maturity
 
-**Proposed from:** Founder-directed QA maturity review — 2026-09-02
+**Proposed from:** Founder-directed QA maturity review — 2026-09-02; grooming authority WC-082
 **Status:** WAITING — fully groomed for Solution Architect planning; implementation and environment execution are not authorized
 **Priority:** P0 — blocks credible product-quality qualification for Production activation
 **Gate:** Gate 2 deployed acceptance and Gate 3 product-quality promotion
