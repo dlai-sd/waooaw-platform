@@ -214,7 +214,7 @@ def test_demo_temporal_lifecycle_and_member_readiness_are_fail_closed() -> None:
     assert "temporalio/auto-setup@sha256:98cdb6b5e02d64cb933864a9ba91cb66065eb320623a0dafdf44beba535bca88" in contract
     assert 'name  = "DB"\n        value = "postgres12"' in contract
     assert re.search(
-        r'TEMPORAL_ADDRESS\s*=\s*"ca-\$\{var\.environment\}-temporal:7233"',
+        r'TEMPORAL_ADDRESS\s*=\s*"ca-\$\{var\.environment\}-temporal:80"',
         contract,
     )
     assert re.search(r'TEMPORAL_NAMESPACE\s*=\s*"default"', contract)

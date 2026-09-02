@@ -207,7 +207,7 @@ locals {
       KEYCLOAK_ISSUER               = "${local.service_urls.identity_edge}/realms/waooaw"
       KEYCLOAK_JWKS_URL             = "${local.service_urls.identity_edge}/realms/waooaw/protocol/openid-connect/certs"
       }, var.environment == "demo" ? {
-      TEMPORAL_ADDRESS   = "ca-${var.environment}-temporal:7233"
+      TEMPORAL_ADDRESS   = "ca-${var.environment}-temporal:80"
       TEMPORAL_NAMESPACE = "default"
     } : {})
     "ai-runtime" = {
