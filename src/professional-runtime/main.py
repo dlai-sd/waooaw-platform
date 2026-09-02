@@ -109,19 +109,33 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
             audience,
             keycloak_client,
         )
-    try:
-        temporal = await connect_temporal_client()
-        worker = Worker(
-            temporal,
-            task_queue=TEMPORAL_TASK_QUEUE,
-            workflows=[ConversationExecutionWorkflow],
-        )
-        worker_task = asyncio.create_task(worker.run(), name="conversation-execution-worker")
-        application.state.temporal_client = temporal
-        application.state.temporal_worker = worker
-        application.state.temporal_worker_task = worker_task
-    except (OSError, RPCError, RuntimeError, ValueError):
-        logger.error("Temporal startup failed; Professional Runtime remains fail-safe unavailable", exc_info=True)
+    startup_attempts = int(os.getenv("TEMPORAL_STARTUP_ATTEMPTS", "20"))
+    startup_interval = float(os.getenv("TEMPORAL_STARTUP_INTERVAL_SECONDS", "5"))
+    for attempt in range(1, startup_attempts + 1):
+        try:
+            temporal = await connect_temporal_client()
+            worker = Worker(
+                temporal,
+                task_queue=TEMPORAL_TASK_QUEUE,
+                workflows=[ConversationExecutionWorkflow],
+            )
+            worker_task = asyncio.create_task(worker.run(), name="conversation-execution-worker")
+            application.state.temporal_client = temporal
+            application.state.temporal_worker = worker
+            application.state.temporal_worker_task = worker_task
+            break
+        except (OSError, RPCError, RuntimeError, ValueError):
+            if attempt == startup_attempts:
+                logger.error(
+                    "Temporal startup retries exhausted; Professional Runtime remains fail-safe unavailable",
+                    exc_info=True,
+                )
+                break
+            logger.warning(
+                "Temporal startup unavailable; retrying",
+                extra={"attempt": attempt, "max_attempts": startup_attempts},
+            )
+            await asyncio.sleep(startup_interval)
 
     yield
 

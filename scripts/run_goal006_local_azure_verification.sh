@@ -106,6 +106,8 @@ docker run --rm \
   -e AZURE_CONFIG_DIR=/azure-config \
   -e AZURE_POD_IDENTITY_AUTHORITY_HOST=http://goal006-azure-emulator:8080 \
   -e PYTHONPATH=/repo/scripts \
+  -e GOAL006_REVISION_READY_ATTEMPTS=4 \
+  -e GOAL006_REVISION_READY_INTERVAL_SECONDS=0 \
   -v "$AZURE_CONFIG_DIR:/azure-config" \
   -v "$REPO_ROOT:/repo:ro" \
   -v "$EVIDENCE_DIR:/evidence" \
@@ -122,6 +124,40 @@ test "$(find "$EVIDENCE_DIR/revision-evidence" -name '*-revision.json' | wc -l)"
 grep -F 'http-probes: all required runtime probes passed' "$EVIDENCE_DIR/functional-http-probes.log" >/dev/null
 grep -F 'constitutional-health: all required runtime probes passed' \
   "$EVIDENCE_DIR/functional-constitutional-health.log" >/dev/null
+
+mkdir -p "$EVIDENCE_DIR/unhealthy-revision"
+cp "$EVIDENCE_DIR/registry-release-manifest.json" \
+  "$EVIDENCE_DIR/unhealthy-revision/registry-release-manifest.json"
+touch "$EVIDENCE_DIR/force-professional-runtime-unready"
+set +e
+docker run --rm \
+  --user "$(id -u):$(id -g)" \
+  --network "$NETWORK" \
+  -w /evidence/unhealthy-revision \
+  -e HOME=/tmp \
+  -e AZURE_CONFIG_DIR=/azure-config \
+  -e AZURE_POD_IDENTITY_AUTHORITY_HOST=http://goal006-azure-emulator:8080 \
+  -e PYTHONPATH=/repo/scripts \
+  -e GOAL006_REVISION_READY_ATTEMPTS=1 \
+  -e GOAL006_REVISION_READY_INTERVAL_SECONDS=0 \
+  -v "$AZURE_CONFIG_DIR:/azure-config" \
+  -v "$REPO_ROOT:/repo:ro" \
+  -v "$EVIDENCE_DIR:/evidence" \
+  "$AZURE_CLI_IMAGE" \
+  /bin/bash /repo/scripts/goal006_verify_deployment.sh \
+    demo \
+    /evidence/unhealthy-revision/registry-release-manifest.json \
+    aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
+    https://ca-demo-web.local.waooaw.test \
+    203.0.113.10/32 > "$EVIDENCE_DIR/unhealthy-revision/verifier.log" 2>&1
+unhealthy_status=$?
+set -e
+rm "$EVIDENCE_DIR/force-professional-runtime-unready"
+test "$unhealthy_status" -ne 0
+grep -F 'Revision readiness timed out: app=ca-demo-professional-runtime' \
+  "$EVIDENCE_DIR/unhealthy-revision/verifier.log" >/dev/null
+test "$(jq -r '.properties.healthState' \
+  "$EVIDENCE_DIR/unhealthy-revision/revision-evidence/professional-runtime-revision.json")" = Unhealthy
 
 RUNNER_IMAGE="ghcr.io/dlai-sd/goal006-private-runner@sha256:$(printf 'f%.0s' $(seq 1 64))"
 run_az containerapp job show \
@@ -190,6 +226,7 @@ jq -n \
     azure_requests: $azure_requests,
     revision_evidence: $revision_evidence,
     functional_verification: true,
+    unhealthy_revision_failure_proved: true,
     cleanup_stale_source_replaced: true,
     cleanup_request_sha256: $cleanup_request_sha256,
     zero_active_private_executions: true
