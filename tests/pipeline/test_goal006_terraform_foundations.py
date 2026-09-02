@@ -204,7 +204,7 @@ def test_internal_verification_uses_the_identity_edge() -> None:
     assert "local.service_urls.keycloak" not in verification_job
 
 
-def test_demo_temporal_and_member_readiness_are_fail_closed() -> None:
+def test_demo_temporal_lifecycle_and_member_readiness_are_fail_closed() -> None:
     contract = read_contract("modules/workload/main.tf")
     temporal = contract.split('resource "azurerm_container_app" "temporal"', 1)[1].split(
         'resource "azurerm_container_app" "keycloak"', 1
@@ -214,7 +214,7 @@ def test_demo_temporal_and_member_readiness_are_fail_closed() -> None:
     assert "temporalio/auto-setup@sha256:98cdb6b5e02d64cb933864a9ba91cb66065eb320623a0dafdf44beba535bca88" in contract
     assert 'name  = "DB"\n        value = "postgres12"' in contract
     assert re.search(
-        r'TEMPORAL_ADDRESS\s*=\s*"ca-\$\{var\.environment\}-temporal:7233"',
+        r'TEMPORAL_ADDRESS\s*=\s*"ca-\$\{var\.environment\}-temporal:80"',
         contract,
     )
     assert re.search(r'TEMPORAL_NAMESPACE\s*=\s*"default"', contract)
@@ -223,9 +223,7 @@ def test_demo_temporal_and_member_readiness_are_fail_closed() -> None:
     assert 'for_each = each.key == "constitutional-engine" ? [1] : []' in contract
     assert 'count = var.workload_enabled && var.environment == "demo" ? 1 : 0' in contract
     assert "startup_probe" not in temporal
-    assert "readiness_probe" in temporal
-    assert 'transport               = "TCP"' in temporal
-    assert "port                    = 7233" in temporal
+    assert "readiness_probe" not in temporal
 
 
 def test_keycloak_realm_import_matches_the_web_oidc_contract() -> None:

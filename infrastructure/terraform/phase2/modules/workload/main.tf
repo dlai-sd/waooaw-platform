@@ -207,7 +207,7 @@ locals {
       KEYCLOAK_ISSUER               = "${local.service_urls.identity_edge}/realms/waooaw"
       KEYCLOAK_JWKS_URL             = "${local.service_urls.identity_edge}/realms/waooaw/protocol/openid-connect/certs"
       }, var.environment == "demo" ? {
-      TEMPORAL_ADDRESS   = "ca-${var.environment}-temporal:7233"
+      TEMPORAL_ADDRESS   = "ca-${var.environment}-temporal:80"
       TEMPORAL_NAMESPACE = "default"
     } : {})
     "ai-runtime" = {
@@ -492,15 +492,6 @@ resource "azurerm_container_app" "temporal" {
       env {
         name  = "POSTGRES_SEEDS"
         value = "localhost"
-      }
-
-      readiness_probe {
-        transport               = "TCP"
-        port                    = 7233
-        interval_seconds        = 10
-        timeout                 = 3
-        failure_count_threshold = 3
-        success_count_threshold = 1
       }
     }
 

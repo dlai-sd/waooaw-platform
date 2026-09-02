@@ -47,7 +47,7 @@ def enforce_plan(plan: dict[str, Any], scope: str) -> None:
 
 
 def enforce_temporal_contract(plan: dict[str, Any]) -> None:
-    """Require the Demo Temporal plan to preserve its non-destructive readiness contract."""
+    """Require the Demo Temporal plan to preserve its non-destructive lifecycle contract."""
     changes = plan["resource_changes"]
     temporal_changes = [change for change in changes if change.get("address") == TEMPORAL_ADDRESS]
     if not temporal_changes:
@@ -58,7 +58,6 @@ def enforce_temporal_contract(plan: dict[str, Any]) -> None:
         containers = {container["name"]: container for container in template["container"]}
         temporal = containers["temporal"]
         postgres = containers["postgres"]
-        readiness = temporal["readiness_probe"]
     except (KeyError, IndexError, TypeError) as error:
         raise ValueError("Workload plan has an incomplete Demo Temporal contract") from error
     violations: list[str] = []
@@ -66,8 +65,8 @@ def enforce_temporal_contract(plan: dict[str, Any]) -> None:
         violations.append("Temporal must run exactly one replica")
     if temporal.get("startup_probe"):
         violations.append("Temporal startup probe must be absent")
-    if len(readiness) != 1 or readiness[0].get("transport") != "TCP" or readiness[0].get("port") != 7233:
-        violations.append("Temporal readiness must use TCP port 7233")
+    if temporal.get("readiness_probe"):
+        violations.append("Temporal readiness probe must be absent")
     for name, container in (("Temporal", temporal), ("PostgreSQL", postgres)):
         if "@sha256:" not in str(container.get("image", "")):
             violations.append(f"{name} image must be digest-pinned")
