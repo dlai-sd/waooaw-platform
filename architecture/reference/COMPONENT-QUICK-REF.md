@@ -1,6 +1,11 @@
 # Component Quick Reference
 
-**For agents: read this instead of all 4 component spec files. Fetch a specific spec only if you need implementation detail for that service.**
+**For agents:** Read this instead of loading all component specifications. Fetch one owning spec only
+when the task needs implementation detail. For delivery provenance, search the exact WC or PR in
+`SPRINT-REGISTRY.md`; do not scan all Work Contracts.
+
+**Baseline:** 2026-09-02 · Backend services WC-011→043 · Web/identity/admission/runtime foundations
+WC-077→080 · Environment deployment state remains governed by `constitution/PROJECT_STATE.md`.
 
 ---
 
@@ -13,6 +18,7 @@
 | **Professional Runtime** | Python 3.12 FastAPI | 5003 (public WSS) | REST internal: /api/v1/paas/sessions, /api/v1/internal/approvals/{id}/signal; WSS: /ws/emergency-stop | BP (REST), Customer (WSS) | Act without CE confirmation, expose gRPC, store persistent state outside DB |
 | **AI Runtime** | Python 3.12 FastAPI | 5004 (internal) | REST: /api/v1/inference, /api/v1/tools/execute | PR only | Write to any ledger, make authority decisions, call BP or CE, know customer identity |
 | **Billing Engine (WBE)** | Python 3.12 FastAPI | 8140 (internal) | REST: /buckets/\*, /pricing/\*, /subscriptions/\*, /topups, /meter/\*, /platform/procurement/\*, /reconciliation/\* | AIR (balance check + reserve), BP (subscription events), Platform Ops (reports) | Expose to internet, make CE calls, hold customer PII, send customer-visible messages (agent does that) |
+| **Web Application** | Next.js App Router, TypeScript | 3000 (public) | Public acquisition, identity entry, and authenticated customer routes | Browser; generated BP clients; Keycloak broker | Read protected data on public routes, bypass BP/Keycloak authority, expose secrets, or load optional acquisition tags without consent |
 
 ---
 

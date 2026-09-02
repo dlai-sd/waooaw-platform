@@ -1,6 +1,6 @@
 # WAOOAW Platform — Architecture Overview
 
-**Platform Baseline:** 1.44.0 | **Architecture Record:** reconciled 2026-08-08 | **Gate:** G5 CLEAR | **Phase:** IMPLEMENTATION
+**Platform Baseline:** 1.45.0 | **Architecture Record:** reconciled 2026-09-02 | **Gate:** G5 CLEAR | **Phase:** IMPLEMENTATION
 
 This file is the entry point for understanding the platform architecture.
 For detailed views, use the altitude map below.

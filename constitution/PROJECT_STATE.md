@@ -2,7 +2,7 @@
 
 **State Schema:** 2.0.0
 **State Revision:** 129
-**Last Updated:** 2026-08-31
+**Last Updated:** 2026-09-02 (WC-079 Agent Admission Contract IMPLEMENTED)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -20,8 +20,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-080 - Agent Runtime Adapter Contract v1 |
-| Latest merge | PR #386 merged to `main` as `86c5714` |
-| Active delivery | PR #388 lightweight cloud workflow consolidation under Founder review; P3-EX11 remains plan-only |
+| Latest merge | PR #398 merged to `main` as `b084363` |
+| Active delivery | GOAL-006 Demo/runtime readiness repairs merged through PR #398; P3-EX11 remains plan-only |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 
@@ -34,8 +34,9 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | UAT runner delivery | PASS - preview `33149859100` and apply `33150103583`; private runner stack ACTIVE with zero residual executions |
 | UAT deploy / verify | PASS - final run `33177257822`; exact-six, latest-ready revisions, functional checks, Web and OIDC endpoints passed |
 | Cloud delivery consolidation | MERGED - PR #371 as `7211eb8`; temporary wrappers and deny-only promotion workflow removed |
-| Lightweight workflow consolidation | PR #388 CANDIDATE - release qualification moved into CI; runner operations consolidated; durable workflows renamed by purpose |
-| Current application foundation | DONE - PRs #373, #381 and #386 added identity, admission and runtime adapter foundations after cloud qualification |
+| Lightweight workflow consolidation | MERGED - PR #388 as `72123e5`; release qualification moved into CI, runner operations consolidated, and durable workflows renamed by purpose |
+| Current application foundation | DONE - PRs #373, #376, #381 and #386 added identity, public acquisition, admission and runtime adapter foundations after cloud qualification |
+| Demo/runtime readiness repairs | MERGED - PRs #389 through #398 repaired cleanup provenance, cloud authority, dependency recovery, service startup, Temporal readiness and deployment verification |
 | Production | PLAN ONLY - code-prepared; protected environments, authorized plan, traffic and final acceptance remain Founder-reserved |
 
 ### Checkpoint Context
@@ -57,16 +58,16 @@ progression.
 
 ## Current Blockers
 
-P3-EX11 offline readiness remains blocked until PR #388 merges and INST-009 accepts the Production
-edge, data, runtime, recovery, cost and shared-state ownership inputs. Provider-backed planning also
-requires protected Production GitHub environments and exact current-session Founder authority.
+P3-EX11 offline readiness remains blocked until INST-009 accepts the Production edge, data, runtime,
+recovery, cost and shared-state ownership inputs. Provider-backed planning also requires protected
+Production GitHub environments and exact current-session Founder authority.
 C-001 emergency-halt integration blocks Production apply and activation, which remain prohibited.
 
 ## Next Authorized Action
 
-Complete author review and executable validation for PR #388, then submit it for Founder review and
-merge. Do not activate the Production runner, run a Production plan/apply, change DNS, or accept
-customer traffic without separate Founder authority.
+Obtain INST-009 acceptance of the Production edge, data, runtime, recovery, cost and shared-state
+ownership inputs required for P3-EX11 offline readiness. Do not activate the Production runner, run
+a Production plan/apply, change DNS, or accept customer traffic without separate Founder authority.
 
 ## History And Evidence
 
