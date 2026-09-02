@@ -24,6 +24,10 @@ EVIDENCE = {
     "initial_health": {"temporalConnected": False, "constitutionalEngineReachable": True},
     "recovered_http_status": 200,
     "recovered_health": {"temporalConnected": True, "constitutionalEngineReachable": True},
+    "interrupted_http_status": 503,
+    "interrupted_health": {"temporalConnected": False, "constitutionalEngineReachable": True},
+    "restart_recovered_http_status": 200,
+    "restart_recovered_health": {"temporalConnected": True, "constitutionalEngineReachable": True},
     "professional_runtime_log_sha256": "d" * 64,
 }
 
@@ -60,3 +64,16 @@ def test_runtime_evidence_rejects_missing_dependency_and_log_proof() -> None:
 
     assert "RUNTIME_EVIDENCE_INVALID: initial_health must report CE reachable" in violations
     assert "RUNTIME_EVIDENCE_INVALID: runtime log SHA-256 is required" in violations
+
+
+def test_runtime_evidence_rejects_missing_restart_recovery() -> None:
+    incomplete = {
+        **EVIDENCE,
+        "interrupted_health": {"temporalConnected": True, "constitutionalEngineReachable": True},
+        "restart_recovered_http_status": 503,
+    }
+
+    violations = validate_runtime_evidence(body(incomplete), HEAD, True)
+
+    assert "RUNTIME_EVIDENCE_INVALID: interrupted Temporal state must be disconnected" in violations
+    assert "RUNTIME_EVIDENCE_INVALID: restart_recovered_http_status must equal 200" in violations

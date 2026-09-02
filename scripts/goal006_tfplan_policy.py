@@ -9,6 +9,7 @@ from typing import Any
 
 
 KNOWN_ACTIONS = frozenset({"no-op", "create", "read", "update", "delete"})
+TEMPORAL_ADDRESS = "module.workload.azurerm_container_app.temporal[0]"
 
 
 def destructive_changes(plan: dict[str, Any]) -> list[str]:
@@ -26,16 +27,11 @@ def destructive_changes(plan: dict[str, Any]) -> list[str]:
         actions = change.get("actions") if isinstance(change, dict) else None
         if not isinstance(address, str) or not address:
             raise ValueError("Terraform resource change must have an address")
-        if not isinstance(actions, list) or not actions or not all(
-            isinstance(action, str) for action in actions
-        ):
+        if not isinstance(actions, list) or not actions or not all(isinstance(action, str) for action in actions):
             raise ValueError(f"Terraform resource change {address} has invalid actions")
         unknown_actions = set(actions) - KNOWN_ACTIONS
         if unknown_actions:
-            raise ValueError(
-                f"Terraform resource change {address} has unknown actions: "
-                f"{', '.join(sorted(unknown_actions))}"
-            )
+            raise ValueError(f"Terraform resource change {address} has unknown actions: {', '.join(sorted(unknown_actions))}")
         if "delete" in actions:
             destructive.append(address)
     return destructive
@@ -45,10 +41,38 @@ def enforce_plan(plan: dict[str, Any], scope: str) -> None:
     """Reject deletion and replacement in an application plan."""
     destructive = destructive_changes(plan)
     if destructive:
-        raise ValueError(
-            f"{scope.capitalize()} plan contains delete or replacement actions: "
-            + ", ".join(destructive)
-        )
+        raise ValueError(f"{scope.capitalize()} plan contains delete or replacement actions: " + ", ".join(destructive))
+    if scope == "workload":
+        enforce_temporal_contract(plan)
+
+
+def enforce_temporal_contract(plan: dict[str, Any]) -> None:
+    """Require the Demo Temporal plan to preserve its non-destructive readiness contract."""
+    changes = plan["resource_changes"]
+    temporal_changes = [change for change in changes if change.get("address") == TEMPORAL_ADDRESS]
+    if not temporal_changes:
+        return
+    after = temporal_changes[0].get("change", {}).get("after")
+    try:
+        template = after["template"][0]
+        containers = {container["name"]: container for container in template["container"]}
+        temporal = containers["temporal"]
+        postgres = containers["postgres"]
+        readiness = temporal["readiness_probe"]
+    except (KeyError, IndexError, TypeError) as error:
+        raise ValueError("Workload plan has an incomplete Demo Temporal contract") from error
+    violations: list[str] = []
+    if template.get("min_replicas") != 1 or template.get("max_replicas") != 1:
+        violations.append("Temporal must run exactly one replica")
+    if temporal.get("startup_probe"):
+        violations.append("Temporal startup probe must be absent")
+    if len(readiness) != 1 or readiness[0].get("transport") != "TCP" or readiness[0].get("port") != 7233:
+        violations.append("Temporal readiness must use TCP port 7233")
+    for name, container in (("Temporal", temporal), ("PostgreSQL", postgres)):
+        if "@sha256:" not in str(container.get("image", "")):
+            violations.append(f"{name} image must be digest-pinned")
+    if violations:
+        raise ValueError("Workload plan violates Demo Temporal contract: " + "; ".join(violations))
 
 
 def enforce_foundation_plan(plan: dict[str, Any]) -> None:
