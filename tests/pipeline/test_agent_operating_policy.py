@@ -26,7 +26,34 @@ def test_platform_it_expert_compact_inventory_maps_all_active_skills() -> None:
     assert headings == list(range(1, 18))
     assert "Skills 1–17 ACTIVE" in entry
     assert "Skill 17 Governed Cloud Delivery Engineering activated by FA-049" in entry
+    assert "Platform IT Expert v1.3.1" in entry
+    assert "deterministic-first token efficiency" in entry
     assert "read only that skill section" in card
+
+
+def test_platform_it_expert_skill17_requires_runtime_proof_and_token_efficiency() -> None:
+    card = IT_EXPERT_CARD.read_text(encoding="utf-8")
+    spec = IT_EXPERT_SPEC.read_text(encoding="utf-8")
+
+    for requirement in (
+        "remove stale dangling images",
+        "scripts/run_goal006_local_azure_verification.sh",
+        "scripts/run_goal006_local_rehearsal.sh",
+        "goal006-local-azure-runtime-<run-id>",
+        "C-059, C-065",
+        "State explicitly whether Azure was emulated",
+    ):
+        assert requirement in card
+    for requirement in (
+        "parser-boundary checks and unit tests alone are",
+        "insufficient runtime evidence",
+        "follow failures through",
+        "bind C-065 to the authoritative remote SHA",
+        "only a separately authorized authenticated Azure run proves",
+        "make no LLM, evaluator or provider call",
+        "lowest sufficient approved tier",
+    ):
+        assert requirement in spec
 
 
 def test_bootstrap_is_permissioned_compact_and_engineering_first() -> None:
