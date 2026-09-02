@@ -482,23 +482,20 @@ def test_verification_emits_structured_probe_results() -> None:
 
 
 def test_post_deploy_verification_retains_each_container_log() -> None:
-    workflow = (REPO_ROOT / ".github/workflows/environment-deployment-verification.yaml").read_text(
-        encoding="utf-8"
-    )
+    workflow = (REPO_ROOT / "scripts/goal006_verify_deployment.sh").read_text(encoding="utf-8")
 
     assert "capture_functional_evidence()" in workflow
     assert "for container in http-probes constitutional-health" in workflow
     assert 'functional-$container.log' in workflow
     assert "functional-http-probes.log" in workflow
     assert "functional-constitutional-health.log" in workflow
+    assert 'functional-$container.log" 2>&1 || true' not in workflow
     assert "Failed|Stopped)" in workflow
     assert "verification timed out with status" in workflow
 
 
 def test_post_deploy_verification_requires_the_exact_latest_revision() -> None:
-    workflow = (REPO_ROOT / ".github/workflows/environment-deployment-verification.yaml").read_text(
-        encoding="utf-8"
-    )
+    workflow = (REPO_ROOT / "scripts/goal006_verify_deployment.sh").read_text(encoding="utf-8")
 
     assert "jq -er '.[].name' live-inventory.json" in workflow
     assert 'app=${app_name#"ca-$TARGET_ENVIRONMENT-"}' in workflow
@@ -516,14 +513,13 @@ def test_post_deploy_functional_verification_fails_fast_and_retains_job_contract
     workflow = (REPO_ROOT / ".github/workflows/environment-deployment-verification.yaml").read_text(
         encoding="utf-8"
     )
+    verifier = (REPO_ROOT / "scripts/goal006_verify_deployment.sh").read_text(encoding="utf-8")
 
-    functional = workflow.split("- name: Run internal functional verification", 1)[1].split(
-        "- name: Verify returned Web URL", 1
-    )[0]
-    assert "az containerapp job show" in functional
-    assert "functional-job.json" in functional
-    assert ".properties.provisioningState == \"Succeeded\"" in functional
-    assert "2>/dev/null" not in functional
+    assert "bash scripts/goal006_verify_deployment.sh" in workflow
+    assert "az containerapp job show" in verifier
+    assert "functional-job.json" in verifier
+    assert '.properties.provisioningState == "Succeeded"' in verifier
+    assert "2>/dev/null" not in verifier
     artifact_paths = workflow.split("- name: Upload independent evidence", 1)[1]
     assert "functional-job.json" in artifact_paths
 
@@ -653,6 +649,7 @@ def test_local_rehearsal_is_offline_pinned_and_covers_the_full_goal006_path() ->
     assert "az login --" not in rehearsal
     assert "az containerapp job create" in rehearsal
     assert "Please run 'az login'" in rehearsal
+    assert "run_goal006_local_azure_verification.sh" in rehearsal
     assert "hashicorp/terraform:1.9.8" in rehearsal
     assert "for environment in demo uat prod" in rehearsal
     assert "for root in foundation workload" in rehearsal
@@ -660,6 +657,16 @@ def test_local_rehearsal_is_offline_pinned_and_covers_the_full_goal006_path() ->
     assert "for_each = module.lease.workload_enabled" in rehearsal
     assert "rhysd/actionlint:1.7.7" in rehearsal
     assert "pytest tests/pipeline/test_goal006_*.py" in rehearsal
+
+
+def test_release_qualification_retains_docker_azure_cli_runtime_evidence() -> None:
+    workflow = (REPO_ROOT / ".github/workflows/ci.yaml").read_text(encoding="utf-8")
+
+    assert "Run Docker Azure CLI deployment verification" in workflow
+    assert "bash scripts/run_goal006_local_azure_verification.sh" in workflow
+    assert "GOAL006_EVIDENCE_DIR: goal006-local-azure-runtime" in workflow
+    assert "goal006-local-azure-runtime-${{ github.run_id }}" in workflow
+    assert "if-no-files-found: error" in workflow
 
 
 def test_oidc_policy_requires_exact_governed_refs_and_workflows() -> None:
@@ -848,13 +855,14 @@ def test_deployment_identities_verify_the_active_subscription() -> None:
 def test_founder_web_url_uses_stable_app_ingress() -> None:
     workload = (PHASE2_ROOT / "modules/workload/main.tf").read_text(encoding="utf-8")
     verification = (REPO_ROOT / ".github/workflows/environment-deployment-verification.yaml").read_text(encoding="utf-8")
+    verifier = (REPO_ROOT / "scripts/goal006_verify_deployment.sh").read_text(encoding="utf-8")
 
     assert 'azurerm_container_app.member["web"].ingress[0].fqdn' in workload
     assert "latest_revision_fqdn" not in workload
-    assert "properties.configuration.ingress.fqdn" in verification
-    assert "properties.latestRevisionFqdn" not in verification
-    assert "Verify returned Web URL binds to the deployed app ingress" in verification
-    assert '.properties.runningState == "ScaledToZero"' in verification
+    assert "bash scripts/goal006_verify_deployment.sh" in verification
+    assert "properties.configuration.ingress.fqdn" in verifier
+    assert "properties.latestRevisionFqdn" not in verifier
+    assert '.properties.runningState == "ScaledToZero"' in verifier
 
 
 def test_release_attestation_has_one_bounded_fail_closed_retry() -> None:
@@ -937,9 +945,8 @@ def test_environment_deployment_is_authorized_without_changing_promotion_state()
     assert "WAOOAW_PLATFORM_VERIFICATION_CLIENT_ID" not in verification
     assert 'case "$TARGET_ENVIRONMENT" in demo|uat|prod)' in verification
     assert "Verify reusable release evidence" in verification
-    assert "Verify returned Web URL binds to the deployed app ingress" in verification
-    assert "Verify active healthy revisions" in verification
-    assert "Run internal functional verification" in verification
+    assert "Run independent deployment verification" in verification
+    assert "bash scripts/goal006_verify_deployment.sh" in verification
     assert "functional-verification.json" in verification
 
     delivery_surfaces = [

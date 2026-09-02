@@ -7,7 +7,7 @@ TERRAFORM_IMAGE="hashicorp/terraform:1.9.8"
 
 cd "$REPO_ROOT"
 
-echo "[1/4] Linting GitHub Actions workflows"
+echo "[1/5] Linting GitHub Actions workflows"
 docker run --rm -v "$REPO_ROOT:/repo:ro" -w /repo rhysd/actionlint:1.7.7 \
   .github/workflows/ci.yaml \
   .github/workflows/deploy.yaml \
@@ -16,7 +16,7 @@ docker run --rm -v "$REPO_ROOT:/repo:ro" -w /repo rhysd/actionlint:1.7.7 \
   .github/workflows/workload-lease-reconciliation.yaml \
   .github/workflows/private-runner-infrastructure.yaml
 
-echo "[2/4] Validating all GOAL-006 Terraform roots with Terraform 1.9.8"
+echo "[2/5] Validating all GOAL-006 Terraform roots with Terraform 1.9.8"
 docker run --rm \
   -v "$REPO_ROOT:/repo:ro" \
   --entrypoint /bin/sh \
@@ -58,7 +58,7 @@ EOF
     terraform -chdir=/tmp/lease-plan plan -input=false -no-color -out=/tmp/lease-plan/lease.tfplan >/dev/null
   '
 
-echo "[3/4] Probing the pinned Azure CLI seeder argument parser"
+echo "[3/5] Probing the pinned Azure CLI seeder argument parser"
 set +e
 parser_output=$(docker run --rm "$AZURE_CLI_IMAGE" az containerapp job create \
   --name rehearsal \
@@ -85,7 +85,10 @@ if [[ $parser_status -eq 0 ]] || [[ "$parser_output" != *"Please run 'az login'"
   exit 1
 fi
 
-echo "[4/4] Running the complete GOAL-006 pipeline suite"
+echo "[4/5] Running the Docker Azure CLI end-to-end deployment verification"
+bash scripts/run_goal006_local_azure_verification.sh
+
+echo "[5/5] Running the complete GOAL-006 pipeline suite"
 docker compose --profile test-python run --rm test-runner-python \
   pytest tests/pipeline/test_goal006_*.py -q
 

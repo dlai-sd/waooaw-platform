@@ -416,6 +416,21 @@ jobs:
           release/goal006/release-manifest.json
           infrastructure/recovery/phase2/fixtures/valid-recovery-bundle.json
 
+      - name: Run Docker Azure CLI deployment verification
+        if: steps.changes.outputs.required == 'true'
+        env:
+          GOAL006_EVIDENCE_DIR: goal006-local-azure-runtime
+        run: bash scripts/run_goal006_local_azure_verification.sh
+
+      - name: Retain Docker Azure CLI runtime evidence
+        if: always() && steps.changes.outputs.required == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: goal006-local-azure-runtime-${{ github.run_id }}
+          path: goal006-local-azure-runtime/
+          if-no-files-found: error
+          retention-days: 90
+
   # ─── TypeScript tests ─────────────────────────────────────────────────────
   test-web:
     name: Web unit tests + type check
