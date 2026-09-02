@@ -9,18 +9,19 @@
 ## Platform Status
 
 ```
-Version:              v1.44.0 — 2026-08-07: WC-043 DONE (361/361 tests, 94% coverage)
+Version:              v1.45.0 — 2026-08-31: WC-080 DONE (PR #386 merged as 86c5714)
 Constitutional Claims: 97 ratified (gaps at C-087/C-092/C-093) | ADRs: 44
 Customer Agents:      DMA v3.1 gate-pass (Founder-approved through v3.0) · Trading v1.8 / Agri v2.8 / Tutor v1.1 gate-pass records without current-version Founder approval · none customer-proven
 Internal Agents:      5 — Platform IT Expert (16 active + 1 proposed skill, §2.4 Pipeline-First Rule) · Steward Assistant · Self-Improvement Analyst ·
                           Platform Operations · RepoNav (AVD-001 v1.0 RATIFIED — INST-014)
 Gates:                G5 CLEAR
-Phase:                IMPLEMENTATION — WC-043 DONE
+Phase:                IMPLEMENTATION — WC-080 DONE
 Infrastructure:       Azure live — waooaw-dev-kv (Key Vault) · OIDC auth · Sprint Dashboard: Issue #7
 Monitoring:           Sprint Dashboard: github.com/dlai-sd/waooaw-platform/issues/7
-Web:                  web/WAOOAWHome.html — Landing page v1.0 + Auth modal
-CCT inventory:        72 institutionally declared · 72 centrally catalogued · no unified 72/72 run
-Sprint Registry:      SPRINT-REGISTRY.md — 53 recorded (48 closed · 4 active · 1 blocked)
+Web:                  Next.js App Router — WC-078 public acquisition + WC-077 identity foundations merged
+CCT inventory:        82 institutionally declared · 82 centrally catalogued · no unified 72/72 run
+Sprint Registry:      SPRINT-REGISTRY.md — 75 recorded (67 closed · 8 active · 0 blocked)
+Agent references:     Current state=PROJECT_STATE.md · WC/PR coverage=SPRINT-REGISTRY.md · services=COMPONENT-QUICK-REF.md · decisions=ADR-INDEX.md
 Company:              DLAI Satellite Data (OPC) Pvt Ltd · CIN: U62090PN2024OPC230499 · Pune, India
 Stewards:             Yogesh Khandge (Founder) · Sujay Khandge (Business Growth) · Ojal Khandge (Ethics Officer)
 ```
@@ -31,9 +32,9 @@ The platform has entered full autonomous implementation. The Autonomous Sprint A
 generates production-grade code, reviews its own PR, merges, and advances to the next sprint — without human intervention.
 
 ```
-Last sprint:     WC-043 — WBE-S8 Reconciliation CCT Suite + Coverage Gate
-Sprint status:   DONE — 2026-08-07 · 361/361 tests, 94% coverage
-Next work:       WC-044→048 customer-first roadmap reserved; Work Contracts not yet created · WC-034 remains BLOCKED pending revalidation
+Last sprint:     WC-080 — Agent Runtime Adapter Contract v1
+Sprint status:   DONE — 2026-08-31 · PR #386 merged as 86c5714
+Next work:       WC-076 P3-EX11 offline readiness and owner inputs · Production apply/activation prohibited
 Sprint registry: SPRINT-REGISTRY.md
 ```
 

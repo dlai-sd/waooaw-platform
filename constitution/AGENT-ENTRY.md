@@ -19,15 +19,15 @@ AUTONOMOUS_HALT: false
 ## Current Platform State (updated each session)
 
 ```
-Version:    1.44.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Employment  |  Phase: IMPLEMENTATION
-Last update: 2026-08-08 — WC-056 GOAL-005 Specification Orchestration DONE
-Latest completed sprint: WC-043 — WBE-S8 Reconciliation CCT Suite + Coverage Gate
-Latest EA work: WC-056 — GOAL-005 Specification Orchestration DONE
+Version:    1.45.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Foundation  |  Phase: IMPLEMENTATION
+Last update: 2026-09-02 — WC-079 Agent Admission Contract IMPLEMENTED
+Latest completed sprint: WC-080 — Agent Runtime Adapter Contract v1
+Latest EA work: WC-079 — Agent Admission Contract IMPLEMENTED
 Constitutional Claims: 97 RATIFIED (gaps C-087/C-092/C-093) | ADRs: 44 recorded
 Agents (customer): DMA v3.1 gate-pass (Founder-approved through v3.0); Trading v1.8, Agri v2.8, Tutor v1.1 gate-pass records without current-version Founder approval; none customer-proven
 Agents (internal): Platform IT Expert · Steward Assistant · Self-Improvement Analyst · Platform Operations · RepoNav (INST-014)
-CCTs: 72 institutionally declared and 72 centrally catalogued; no unified 72/72 run | WBE: 361/361 passing
-Web: web/WAOOAWHome.html — Landing page v1.0 + Auth modal
+CCTs: 82 institutionally declared and 82 centrally catalogued; no unified 72/72 run | WBE: 361/361 passing
+Web: Next.js App Router — WC-078 public acquisition + WC-077 identity foundations merged
 Three Humans: Yogesh Khandge (Founder) · Sujay Khandge (Business Growth) · Ojal Khandge (Ethics Officer)
 Company: DLAI Satellite Data (OPC) Pvt Ltd | CIN: U62090PN2024OPC230499 | GSTIN: 27AAKCD8188R1ZH
 ```
@@ -94,6 +94,10 @@ Azure infrastructure:
 
 ## Office Routing — Read ONLY what your office needs
 
+**Conditional delivery lookup for every office:** When a task asks what a WC or PR delivered, search
+only that identifier in `SPRINT-REGISTRY.md`, then open the exact Work Contract if scope or acceptance
+detail is required. Do not read the full registry or scan `work-contracts/` during bootstrap.
+
 | Office / Agent | Read | Skip entirely |
 |---|---|---|
 | **Runtime Professional** | This file + Work Contract + [COMPONENT-QUICK-REF.md](../architecture/reference/COMPONENT-QUICK-REF.md) + [ADR-INDEX.md](ADR-INDEX.md) + engineering-standards.md | Full ORGANIZATION.md, full ADRs, knowledge/claims/, simulation/ |
@@ -120,7 +124,7 @@ Azure infrastructure:
 ```
 Architecture
   Context / Containers / Domain model   architecture/reference/{context,containers,domain-model}.md
-  Component specs (4 services)          architecture/reference/components/{service-name}.md
+  Component specs                       architecture/reference/components/{service-name}.md
   Agent specs (customer + internal)     architecture/reference/agents/{agent-name}-agent.md
   API contracts (REST)                  architecture/reference/api-specs/{service}.openapi.yaml
   API contract (gRPC)                   architecture/reference/proto/constitutional_service.proto
@@ -130,7 +134,7 @@ Architecture
   Skill dependency register             architecture/reference/skill-dependency-register.md
   Component quick-reference             architecture/reference/COMPONENT-QUICK-REF.md
   ADR quick reference                   adr/ADR-INDEX.md  ← read this before individual ADRs
-  Individual ADRs                       adr/ADR-NNN-*.md  (ADR-001 to ADR-029)
+  Individual ADRs                       adr/ADR-NNN-*.md  (ADR-001 to ADR-049)
   Engineering standards                 architecture/reference/engineering-standards.md
 
 UX & Brand
@@ -149,12 +153,13 @@ Legal
 Constitutional
   Backlog + gate status                 constitution/INSTITUTIONAL_BACKLOG.md
   Session state                         constitution/PROJECT_STATE.md  ← read for full briefing
+  Work Contract + PR delivery index     SPRINT-REGISTRY.md  ← search exact WC/PR only; do not read in full
   Bootstrap protocol                    constitution/BOOTSTRAP.md
   Office charters + C-064 naming        constitution/ORGANIZATION.md
   Quick-start cards (per office)        .github/agent-context/office-{name}.md
 
 Knowledge
-  All constitutional claims (75)        knowledge/claims/C-001.md through C-075.md
+  Constitutional claims (97 ratified)   knowledge/claims/C-001.md through C-100.md
   Claim index + summary                 knowledge/index.md
   Architectural drivers (AD-001–028)    knowledge/architectural-drivers.md
   Design principles (DP-001–025)        knowledge/design-principles.md

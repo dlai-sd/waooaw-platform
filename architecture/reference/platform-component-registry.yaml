@@ -5,42 +5,42 @@
 # Updated: when a new component is added (EA session, PR required)
 
 registry_version: "2.0"
-platform_baseline: "1.44.0"
-last_updated: "2026-08-08"
+platform_baseline: "1.45.0"
+last_updated: "2026-09-02"
 total_components: 5
 
 # Canonical current state. Current-facing summaries are derived by
 # scripts/sync_platform_state.py and checked by tests/platform/test_platform_state_sync.py.
 institutional_state:
-  as_of: "2026-08-08"
-  version: "1.44.0"
-  release_date: "2026-08-07"
-  epoch: { number: 1, name: Employment }
+  as_of: "2026-09-02"
+  version: "1.45.0"
+  release_date: "2026-08-31"
+  epoch: { number: 1, name: Foundation }
   gate: "G5 CLEAR"
   phase: IMPLEMENTATION
   autonomous_halt: false
   latest_completed_implementation:
-    work_contract: WC-043
-    title: WBE-S8 Reconciliation CCT Suite + Coverage Gate
-    evidence: "361/361 tests, 94% coverage"
+    work_contract: WC-080
+    title: Agent Runtime Adapter Contract v1
+    evidence: "PR #386 merged as 86c5714"
   latest_enterprise_architecture:
-    work_contract: WC-056
-    title: GOAL-005 Specification Orchestration
-    status: DONE
+    work_contract: WC-079
+    title: Agent Admission Contract
+    status: IMPLEMENTED
   constitutional_claims: { ratified: 97, gaps: [C-087, C-092, C-093] }
   architecture_decisions: { recorded: 44 }
 
 cct_inventory:
-  institutional: 72
-  centrally_catalogued: 72
+  institutional: 82
+  centrally_catalogued: 82
   unified_execution_proven: false
   wbe_tests: { passed: 361, total: 361 }
 
 sprint_inventory:
-  recorded: 53
-  closed: 48
-  active: 4
-  blocked: 1
+  recorded: 75
+  closed: 67
+  active: 8
+  blocked: 0
 
 # `LIVE` means implemented and executable in repository scope. It does not prove
 # environment deployment or customer operation; use each manifest's maturity block.
