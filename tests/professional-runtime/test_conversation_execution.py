@@ -200,6 +200,7 @@ class FakeTemporalClient:
     def __init__(self) -> None:
         self.started: list[dict[str, Any]] = []
         self.handles: dict[str, FakeWorkflowHandle] = {}
+        self.service_client = SimpleNamespace(check_health=AsyncMock(return_value=True))
 
     async def start_workflow(
         self,
@@ -743,12 +744,17 @@ async def test_health_degrades_for_missing_bp_auth_or_ce_and_is_unhealthy_withou
     missing_ce = await client.get("/health")
     app.state.temporal_worker_task.done.return_value = True
     missing_worker = await client.get("/health")
+    app.state.temporal_worker_task.done.return_value = False
+    app.state.temporal_client.service_client.check_health.return_value = False
+    disconnected_temporal = await client.get("/health")
     assert missing_auth.status_code == 503
     assert missing_auth.json()["status"] == "degraded"
     assert missing_ce.status_code == 503
     assert missing_ce.json()["status"] == "degraded"
     assert missing_worker.status_code == 503
     assert missing_worker.json()["status"] == "unhealthy"
+    assert disconnected_temporal.status_code == 503
+    assert disconnected_temporal.json()["status"] == "unhealthy"
 
 
 @pytest.mark.parametrize(
