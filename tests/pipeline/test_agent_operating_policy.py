@@ -26,7 +26,7 @@ def test_platform_it_expert_compact_inventory_maps_all_active_skills() -> None:
     assert headings == list(range(1, 18))
     assert "Skills 1–17 ACTIVE" in entry
     assert "Skill 17 Governed Cloud Delivery Engineering activated by FA-049" in entry
-    assert "Platform IT Expert v1.3.1" in entry
+    assert "Platform IT Expert v1.3.2" in entry
     assert "deterministic-first token efficiency" in entry
     assert "read only that skill section" in card
 
@@ -129,12 +129,15 @@ def test_founder_gate_replaces_automatic_institutional_review() -> None:
 def test_author_review_is_required_and_machine_enforced() -> None:
     template = PR_TEMPLATE.read_text(encoding="utf-8")
     workflow = CI_WORKFLOW.read_text(encoding="utf-8")
+    instructions = COPILOT_INSTRUCTIONS.read_text(encoding="utf-8")
 
     assert "## Author Review" in template
     assert "**Reviewed Commit:** FULL_40_CHARACTER_HEAD_SHA" in template
     assert "**Author Review Result:** PENDING" in template
     assert "Any new commit makes this review stale" in template
+    assert "python scripts/prepare_pr_body.py" in template
     assert "@copilot review this PR as" not in template
+    assert "Do not open the PR before this C-059/C-065 precheck passes" in instructions
 
     assert "author-review-gate:" in workflow
     assert "name: C-065 Author Review Gate" in workflow

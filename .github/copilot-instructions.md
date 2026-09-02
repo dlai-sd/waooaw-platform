@@ -83,6 +83,8 @@ The GitHub Issue body IS additional Work Contract context. After completing BOOT
    - `agent(spec): description` — agent spec change (new agent or update)
 5. **Update `constitution/PROJECT_STATE.md`** IN-PROGRESS CHECKPOINT after each milestone commit (BOOTSTRAP SESSION CHECKPOINTING rule).
 6. **Open a PR** using the `.github/pull_request_template.md` format when all Work Contract tasks are DONE.
+  After the final push, run `python scripts/prepare_pr_body.py --body-file /tmp/pr-body.md --base origin/main`
+  and submit that exact prepared file. Do not open the PR before this C-059/C-065 precheck passes.
    For agent PRs: complete the **Agent Lifecycle Gate** section in the PR template.
 7. **Do not merge your own PR.** Comment: `@dlai-sd Ready for Founder review and merge. PR is complete.`
 
