@@ -493,15 +493,6 @@ resource "azurerm_container_app" "temporal" {
         name  = "POSTGRES_SEEDS"
         value = "localhost"
       }
-
-      readiness_probe {
-        transport               = "TCP"
-        port                    = 7233
-        interval_seconds        = 10
-        timeout                 = 3
-        failure_count_threshold = 3
-        success_count_threshold = 1
-      }
     }
 
     container {

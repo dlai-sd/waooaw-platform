@@ -16,7 +16,11 @@ def destructive_plan() -> dict[str, object]:
     }
 
 
-def temporal_plan(*, startup_probe: list[object] | None = None) -> dict[str, object]:
+def temporal_plan(
+    *,
+    startup_probe: list[object] | None = None,
+    readiness_probe: list[object] | None = None,
+) -> dict[str, object]:
     return {
         "resource_changes": [
             {
@@ -33,7 +37,7 @@ def temporal_plan(*, startup_probe: list[object] | None = None) -> dict[str, obj
                                         "name": "temporal",
                                         "image": f"temporalio/auto-setup@sha256:{'a' * 64}",
                                         "startup_probe": startup_probe or [],
-                                        "readiness_probe": [{"transport": "TCP", "port": 7233}],
+                                        "readiness_probe": readiness_probe or [],
                                     },
                                     {
                                         "name": "postgres",
@@ -62,3 +66,8 @@ def test_workload_plan_accepts_safe_temporal_contract() -> None:
 def test_workload_plan_rejects_destructive_temporal_startup_probe() -> None:
     with pytest.raises(ValueError, match="Temporal startup probe must be absent"):
         enforce_plan(temporal_plan(startup_probe=[{"transport": "TCP", "port": 7233}]), "workload")
+
+
+def test_workload_plan_rejects_temporal_readiness_probe() -> None:
+    with pytest.raises(ValueError, match="Temporal readiness probe must be absent"):
+        enforce_plan(temporal_plan(readiness_probe=[{"transport": "TCP", "port": 7233}]), "workload")
