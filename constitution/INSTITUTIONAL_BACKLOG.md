@@ -931,7 +931,7 @@ When this IB is authorized and completed:
 
 ---
 
-## Backlog Summary Table (updated 2026-07-22)
+## Backlog Summary Table (updated 2026-09-02)
 
 | ID | Title | Office | Priority | Gate | Status |
 |---|---|---|---|---|---|
@@ -956,6 +956,7 @@ When this IB is authorized and completed:
 | **IB-024** | **Trust Layer & Open Platform Integration** | **PIT Expert** | **P0** | **Post-WC-036** | **AUTHORIZED — 2026-08-06** |
 | **IB-025** | **Skill Architecture (Layer 4)** | **PIT Expert** | **P0** | **Post-WC-039** | **AUTHORIZED — 2026-08-06** |
 | **IB-030** | **Efficient Image Promotion, Blue-Green Deployment, and Rollback** | **Platform IT Expert** | **P1** | **Release delivery** | **WAITING — Founder prioritization required** |
+| **IB-031** | **QA Promotion and Continuous Quality Maturity** | **Solution Architect** | **P0** | **Gate 2 / Gate 3 quality qualification** | **WAITING — groomed for SA planning** |
 
 
 
@@ -1059,4 +1060,178 @@ When this IB is authorized and completed:
 - Immutable image promotion workflow across Demo, UAT, and Production
 - Blue-green deployment and automatic/manual rollback workflow
 - Focused and full-path verification evidence with release and revision correlation
+
+---
+
+## IB-031 — QA Promotion and Continuous Quality Maturity
+
+**Proposed from:** Founder-directed QA maturity review — 2026-09-02; grooming authority WC-082
+**Status:** WAITING — fully groomed for Solution Architect planning; implementation and environment execution are not authorized
+**Priority:** P0 — blocks credible product-quality qualification for Production activation
+**Gate:** Gate 2 deployed acceptance and Gate 3 product-quality promotion
+**Office:** Solution Architect (INST-005)
+**Future executor:** Platform IT Expert (INST-010), after an approved Work Contract and explicit current-session implementation authorization
+**Required reviewers:** Test Champion (INST-015) for quality coverage; Platform Architect (INST-009) for environment and runner feasibility
+**Depends On:** IB-011
+**Coordinates With:** IB-030 for immutable promotion, blue-green deployment, and rollback; coordination must not merge the two scopes
+
+**Constitutional basis:** C-001 (Emergency Stop), C-023 (Evidence First), C-065 (SDLC separation), C-071 (Quality Obligation), C-076 (90% coverage), C-080 (Docker test isolation), C-096 (dependency integrity), C-097 (property-based testing), C-098 (architectural fitness)
+
+### Problem Statement And Current Evidence
+
+WAOOAW has a strong documented QA model, but implementation maturity is uneven across four connected
+capabilities. Gate 1 and release integrity are substantial; deployed product-quality qualification and
+the autonomous improvement loop are not yet trustworthy promotion controls.
+
+| Capability | Current maturity | Repository evidence | Required maturity |
+|---|---|---|---|
+| Web component and E2E test assets | Moderate | Executable Playwright suites exist under `web/tests/e2e/`, but the Gate 2 workflow targets absent paths and does not establish one canonical deployed-environment browser and accessibility suite | Strong: canonical ownership, coverage map, browser and accessibility matrix, deterministic fixtures, and deployed execution are specified and enforced |
+| Gate 2 deployed acceptance | Not operational | The E2E workflow references absent Python acceptance files; `tests/integration/` has no executable suite; only `tests/performance/smoke.js` exists; several jobs claim C-080 while invoking host tools; target endpoint and trigger sequencing are unresolved | Strong: deployed qualification executes every required blocking suite in Docker against a declared target and retains release-bound evidence |
+| Gate 3 product-quality qualification | Partially connected | Deployment selects a successful current-main CI release and verifies deployment integrity, but does not require complete Gate 2 acceptance, accessibility, security, isolation, or performance evidence | Strong: UAT and Production progression immutably consumes the required quality verdict for the exact release and environment |
+| Autonomous quality improvement | Mostly aspirational | `institutional.quality_metrics` exists, but metric publication and consumption are not wired; mutation jobs lack a schedule trigger; automated flaky and dead-test handling is not evident | Strong: scheduled and event-driven metrics, mutation, flakiness, dead-test, and proposal signals operate with retained evidence and bounded authority |
+
+The Solution Architect must resolve these governing contradictions rather than carrying them into
+implementation:
+
+- Gate 2 is described both as occurring before promotion to QA and as running against an already deployed QA environment.
+- Runtime environments are Demo, UAT, and Production, while the QA documents assume a separate QA environment.
+- C-076 establishes a 90% floor, while the strategy metrics table contains an 85% overall target and CCT-QA-02 uses a greater-than-2% regression formulation.
+- `QA-STRATEGY.md` presents the deprecated multi-stack test runner as canonical while current CI prefers stack-specific runners.
+- Gate documents declare checks blocking while some current contract checks are advisory or disconnected from promotion.
+
+### Institutional Outcome
+
+Produce an implementation-ready Solution Architecture package and ordered sprint plan that moves all
+four capabilities to strong maturity without requiring the executor to invent environment, workflow,
+evidence, ownership, security, test-selection, LLM-cost, or rollback decisions.
+
+The target quality chain must be explicit and machine-enforceable:
+
+`source commit -> Gate 1 verdict -> immutable release manifest -> deployed target -> Gate 2 verdict -> UAT qualification -> Gate 3 verdict -> authorized promotion`
+
+Every verdict must bind to the exact source SHA, immutable image digests, target environment, workflow
+run, test inventory version, timestamps, and retained artifacts. A verdict for one release or environment
+must not authorize another.
+
+### Scope To Be Planned
+
+1. **Web component and E2E consolidation**
+  - Establish canonical locations and ownership for component, browser E2E, visual, and axe accessibility tests.
+  - Map existing F1-F6 and WC-078 Playwright suites to required customer journeys and identify genuine missing coverage.
+  - Separate local deterministic fixture mode from deployed mode; deployed qualification must not silently fall back to localhost or local fixtures.
+  - Define browser, viewport, language, accessibility, screenshot, trace, retry, quarantine, and artifact policies.
+
+2. **Operational Gate 2 deployed acceptance**
+  - Resolve whether Demo is the first deployed QA qualification environment or whether a distinct QA environment is required.
+  - Define sequencing so qualification starts only after the exact release is deployed and independently healthy.
+  - Specify blocking integration, REST and gRPC contract, CCT, core acceptance, performance, accessibility, prompt-injection, tenant-isolation, and prompt-seed checks.
+  - Replace nonexistent references and false Docker-compliance comments with executable stack-specific Docker runner contracts.
+  - Define endpoint discovery, short-lived test identity, secret boundaries, synthetic data lifecycle, cleanup, timeout, retry, failure, and evidence retention.
+
+3. **Gate 3 product-quality connection**
+  - Define how UAT and Production promotion verifies a successful Gate 2 verdict for the same immutable release.
+  - Define which suites rerun in UAT, which evidence may be promoted without rerun, and why each choice is safe.
+  - Include full acceptance grading, DAST, load and Emergency Stop performance, CCTs, cost ceiling, Founder output-quality approval, and rollback proof.
+  - Preserve signed exact-six release provenance, independent deployment verification, Founder-reserved Production authority, and build-once promotion.
+  - Fail closed for missing, stale, partial, cancelled, advisory, or mismatched evidence.
+
+4. **Autonomous quality improvement loop**
+  - Define producers, schema contract, idempotency, retention, and consumers for `institutional.quality_metrics`.
+  - Define executable weekly mutation testing for each supported stack with policy-aligned thresholds.
+  - Define flakiness detection, quarantine entry and exit, maximum duration, ownership, and restoration of blocking status.
+  - Define dead-test detection using mutation or fault-seeding evidence rather than pass counts alone.
+  - Define proposal signals for coverage, mutation, acceptance grade, performance, security, isolation, accessibility, and provider fallback without automated approval or merge authority.
+
+5. **AI quality and token-cost control**
+  - Separate deterministic constitutional assertions from non-deterministic semantic grading.
+  - Specify replayable fixtures and cached evaluator inputs where they preserve validity.
+  - Bound live LLM scenarios, evaluator models, retries, token ceilings, cadence, and cost evidence per gate.
+  - Ensure a skipped, budget-exhausted, or unavailable required evaluator fails closed and cannot produce Grade A.
+
+### Required Inputs
+
+- `tests/QA-POLICY.md`, `tests/QA-CHECKLIST.md`, and `tests/QA-STRATEGY.md`
+- `architecture/reference/engineering-standards.md`
+- `architecture/reference/pipeline/azure-deployment-topology.md`
+- `adr/ADR-013-cicd-pipeline-structure.md` and `adr/ADR-037-sprint-environment-contract-validation.md`
+- `.github/workflows/ci.yaml`, `.github/workflows/code-quality.yaml`, and `.github/workflows/integration-tests.yaml`
+- `.github/workflows/e2e-acceptance-tests.yaml` and `.github/workflows/performance-baseline.yaml`
+- `.github/workflows/deploy.yaml`, `.github/workflows/environment-deployment.yaml`, and `.github/workflows/environment-deployment-verification.yaml`
+- `docker-compose.yml`, test-runner Dockerfiles, and current executable tests under `tests/` and `web/tests/`
+- Current release manifest, deployment verification, and retained-evidence contracts
+- IB-030 boundaries for promotion, rollback, and changed-service optimization
+
+### Architecture Decisions The Plan Must Close
+
+The Solution Architect must make or route every decision below before declaring implementation readiness:
+
+- Canonical Gate 2 environment and exact Demo, QA, UAT, and Production terminology.
+- Authoritative workflow orchestration and promotion state machine, including rerun and cancellation semantics.
+- Gate verdict schema, attestation, immutable storage, retention, lookup, and release and environment binding.
+- Test inventory manifest and the owner, runner, trigger, threshold, timeout, retry, and artifact contract for every check.
+- Network route and identity by which Dockerized tests reach private deployed services without public exposure.
+- Synthetic data provisioning, tenant isolation, idempotent cleanup, and evidence sanitization.
+- Deterministic versus live-LLM boundaries and enforceable token and cost ceilings.
+- Quality metric write path, reader authority, scheduler, proposal path, and metrics-store failure behavior.
+- Migration sequence that keeps current Gate 1 and deployment verification blocking throughout transition.
+
+Any decision outside INST-005 authority must have a named owning office and blocking prerequisite. It
+must not be deferred implicitly to implementation.
+
+### Required Solution Architecture Outputs
+
+- `architecture/reference/quality/qa-promotion-and-evidence.md` — target components, interfaces, state machine, evidence contracts, security boundaries, and failure semantics.
+- `work-contracts/WC-NNN-qa-promotion-maturity-plan.md` — ordered, dependency-aware Work Components and sprint plan.
+- Amendments to the three QA documents that remove contradictions and distinguish current mandatory behavior from future evolution.
+- An ADR amendment or new ADR proposal only where an unresolved architectural decision cannot be recorded safely in an existing accepted decision.
+- A traceability matrix mapping every Gate 1, Gate 2, and Gate 3 check to workflow and job, executable test or probe, threshold, owner, evidence artifact, retention, and consuming decision.
+- A test asset disposition inventory that marks every current reference as retain, relocate, complete, replace, or remove.
+- An estimate and sequencing table showing parallel work, critical path, external prerequisites, required offices, review gates, and independently mergeable milestones.
+
+### Work Component Planning Standard
+
+Each Work Component must state exact inputs, owned files or interfaces, preconditions, implementation
+owner, dependencies, behavioral acceptance criteria, Docker-only commands, evidence, rollback, stop
+conditions, estimate, and whether live LLM or cloud execution is required. Decomposition must cover:
+
+- QA document and environment-model reconciliation.
+- Canonical test inventory and web and E2E consolidation.
+- Docker runner and private endpoint and identity readiness.
+- Gate 2 orchestration and release-bound verdict production.
+- Missing integration, contract, acceptance, security, accessibility, and performance assets.
+- Gate 3 verdict consumption and fail-closed promotion.
+- Metrics publication and autonomous quality health workflows.
+- Migration, shadow evaluation, enforcement activation, and rollback.
+
+The plan must identify the smallest safe enforcement order. It must not switch a gate to blocking until
+its assets, environment, identities, thresholds, evidence, and rollback path pass in shadow or
+non-promoting mode against the same topology.
+
+### Success Criteria
+
+- [ ] The Solution Architecture package resolves every decision above or records an explicit blocking owner and prerequisite.
+- [ ] A traceability matrix accounts for every mandatory check in all three QA documents; no check exists only as prose or a placeholder command.
+- [ ] Gate terminology and sequencing are consistent across QA documents, deployment topology, workflows, and environment names.
+- [ ] Every planned test path exists or belongs to a Work Component that creates it before a consuming workflow becomes blocking.
+- [ ] Every test executes through an identified stack-specific Docker image; exceptions require constitutional amendment, not a workflow comment.
+- [ ] Gate 2 qualifies the exact deployed release with no localhost fallback, implicit target, long-lived credential, or unbounded LLM call.
+- [ ] Gate 3 fails closed unless the exact release has complete, current, environment-valid evidence and all UAT-only checks pass.
+- [ ] The design preserves signed exact-six provenance, independent verification, immutable promotion, rollback, and Founder-reserved Production authority.
+- [ ] The autonomous loop has executable schedules, metric producers and consumers, bounded quarantine, threshold enforcement, retained evidence, and no self-approval authority.
+- [ ] The plan contains ordered, estimated, independently mergeable Work Components with tests, evidence, rollback, and stop conditions.
+- [ ] Test Champion confirms quality-obligation coverage and Platform Architect confirms runner, network, environment, and deployment feasibility.
+- [ ] Platform IT Expert declares: "I can implement this plan without inventing an architecture, quality threshold, environment contract, or promotion decision."
+- [ ] Founder accepts the planning package before any implementation Work Component begins.
+
+### Explicit Non-Goals And Stops
+
+- This item does not authorize source, test, workflow, Docker image, infrastructure, database, cloud, or environment changes.
+- Do not weaken Gate 1, release signing, exact-six provenance, independent deployment verification, environment protection, or rollback to make Gate 2 pass.
+- Do not treat skipped, advisory, missing, cancelled, or `continue-on-error` checks as successful evidence.
+- Do not create a public test bypass or retain secrets, tokens, PII, prompts, or customer output in artifacts.
+- Do not make deterministic checks call a live LLM or reuse cached evidence after a relevant model, prompt, policy, persona, or implementation change.
+- Do not activate Production, customer traffic, DNS, provider credentials, or paid external services through this planning item.
+- Stop before implementation until the Founder explicitly authorizes it for that session under an approved Work Contract.
+
+**Status:** WAITING — groomed for Solution Architect planning and Founder prioritization
 
