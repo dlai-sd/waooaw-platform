@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from goal006_live_inventory import IDENTITY_EDGE_IMAGE, KEYCLOAK_IMAGE, validate_inventory
+from goal006_live_inventory import (
+    DEMO_TEMPORAL_IMAGE,
+    IDENTITY_EDGE_IMAGE,
+    KEYCLOAK_IMAGE,
+    validate_inventory,
+)
 from goal006_registry_manifest import RELEASE_MEMBERS
 
 
@@ -65,12 +70,34 @@ def inventory(environment: str, release: dict[str, Any]) -> list[dict[str, str]]
             "provisioningState": "Succeeded",
         }
     )
+    if environment == "demo":
+        live.append(
+            {
+                "name": f"ca-{environment}-temporal",
+                "image": DEMO_TEMPORAL_IMAGE,
+                "provisioningState": "Succeeded",
+            }
+        )
     return live
 
 
-def test_exact_six_live_inventory_passes() -> None:
+def test_exact_six_and_pinned_environment_dependencies_pass() -> None:
     release = manifest()
     assert validate_inventory("demo", release, inventory("demo", release)) == []
+    assert validate_inventory("uat", release, inventory("uat", release)) == []
+    assert validate_inventory("prod", release, inventory("prod", release)) == []
+
+
+def test_demo_temporal_is_required_and_digest_pinned() -> None:
+    release = manifest()
+    live = inventory("demo", release)
+    temporal = next(item for item in live if item["name"] == "ca-demo-temporal")
+    temporal["image"] = "temporalio/auto-setup:latest"
+    violations = validate_inventory("demo", release, live)
+    assert "ca-demo-temporal:DIGEST_MISMATCH" in violations
+
+    live.pop()
+    assert "LIVE_MEMBERSHIP_INVALID" in validate_inventory("demo", release, live)
 
 
 def test_missing_extra_or_digest_mismatched_member_fails() -> None:
