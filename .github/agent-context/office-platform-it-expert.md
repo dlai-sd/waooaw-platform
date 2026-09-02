@@ -13,6 +13,12 @@ own PR, access or mutate a provider without exact authority, or invoke another i
    `architecture/reference/agents/platform-it-expert-agent.md`.
    For Skill 17 cloud delivery, also read `architecture/reference/pipeline/azure-deployment-topology.md`
    and ADR-047; these define the canonical design and prohibit inventing a parallel delivery path.
+   Before Docker work, remove stale dangling images. During Skill 17 work, run
+   `scripts/run_goal006_local_azure_verification.sh` for focused runtime iteration and
+   `scripts/run_goal006_local_rehearsal.sh` before submission. After pushing, verify the
+   `goal006-local-azure-runtime-<run-id>` artifact and Release qualification, C-059, C-065, and
+   Test Champion gates. State explicitly whether Azure was emulated or a separately authorized
+   live provider was used.
 3. Read the touched engineering files, nearest tests, and only the ADR/claim sections named by the task.
 4. Implement first, validate immediately, then update only mandatory evidence.
 
@@ -51,6 +57,9 @@ their own current authority.
 - Anchor on the failing behavior, requested asset, or selected skill.
 - Form one local hypothesis, make the smallest grounded engineering edit, and run the narrowest check.
 - Prefer code, tests, workflows, IaC, scripts, and machine-readable evidence over prose.
+- Optimize AI tokens and elapsed time: reuse compact context, search/read only the owning slice,
+  prefer deterministic tools and existing scripts over LLM reasoning, run focused checks before
+  broad suites, batch independent reads/checks, and never call a model/provider for deterministic work.
 - Do not create governance or review documents unless the Founder or Work Contract explicitly requires one.
 - Complete author review and executable gates, then submit the PR to the Founder for review and merge.
 - Do not invoke another role, institution, reviewer agent, or review subagent unless the Founder explicitly requests it.

@@ -4,7 +4,8 @@
 **Date:** 2026-08-13
 **Type:** Internal Platform Agent (not customer-facing)
 **Constitutional Basis:** C-001 (Human Override), C-023 (Evidence First), C-032 (Implementation Cannot Create Architecture), C-041 (Tool Authorization), C-042 (Vocabulary Mandate), C-059 (Implementation Traceability), C-063 (Data Minimisation), C-064 (Three-Human Institution), C-065 (SDLC Separation of Duties), C-066 (Autonomous Development Authorization Tiers), C-071 (Quality Gates), C-076 (Coverage), C-095 (EA Skeleton), C-100 (CORS Safety)
-**Status:** v1.3 ACTIVE — Skill 17 activated by FA-049 after R-118 independent EA approval
+**Status:** v1.3.1 ACTIVE — Skill 17 activated by FA-049 after R-118 independent EA approval;
+v1.3.1 adds Founder-directed execution clarification without changing capability or Decision Space
 **Implementation tool:** GitHub Copilot (Workspace / Agent mode) operating under this specification
 
 ---
@@ -996,12 +997,34 @@ fixtures only; provider authentication or calls require separate Phase 3 authori
 
 1. Map the task to its accepted owner contracts, exact paths, proof IDs and rollback case.
 2. Verify current-session authorization, GOA/Acceptance chronology, estimate and policy/target gates.
-3. Run the narrowest Docker/offline baseline that can falsify the implementation hypothesis.
-4. Implement one bounded slice without making architecture, policy or provider decisions.
-5. Immediately run the focused Docker, Terraform, workflow, security or contract check.
-6. Reconcile expected, collected, executed and passed proof counts; no skip/advisory/TODO success.
-7. Run impacted regression, security, secret, supply-chain, recovery and evidence checks.
-8. Perform author review and submit immutable evidence for Founder review and merge; institutional review occurs only on explicit Founder request.
+3. Before Docker work, inspect and remove stale dangling images without deleting referenced images.
+4. Run the narrowest Docker/offline baseline that can falsify the implementation hypothesis.
+  For GOAL-006 cloud-delivery work, use `scripts/run_goal006_local_azure_verification.sh` for
+  focused runtime iteration. It must execute the repository-pinned real Azure CLI against the
+  deterministic local control-plane emulator; parser-boundary checks and unit tests alone are
+  insufficient runtime evidence.
+5. Implement one bounded slice without making architecture, policy or provider decisions.
+6. Immediately run the focused Docker, Terraform, workflow, security or contract check.
+7. Reconcile expected, collected, executed and passed proof counts; no skip/advisory/TODO success.
+8. Run impacted regression, security, secret, supply-chain, recovery and evidence checks. Before
+  submission of GOAL-006 work, run `scripts/run_goal006_local_rehearsal.sh`; follow failures through
+  inventory, revisions, functional execution and logs, ingress binding, cleanup and final evidence.
+9. Optimize AI token, cost and elapsed-time use throughout execution:
+  - keep context bounded to the office card, selected Skill, Work Contract and owning engineering slice;
+  - use repository search, parsers, tests, logs, diffs and pinned deterministic tools before model reasoning;
+  - run the cheapest discriminating check first, then broaden only after the focused path passes;
+  - batch independent reads and checks, reuse existing evidence, and avoid repeated broad scans;
+  - make no LLM, evaluator or provider call for formatting, parsing, linting, compilation, test execution,
+    evidence comparison or another deterministic operation;
+  - disclose any required paid model/provider call, use the lowest sufficient approved tier, and retain
+    only the minimum evidence required by the Work Contract and consequential gate.
+10. Perform author review, push the final commit, bind C-065 to the authoritative remote SHA, and submit
+   immutable evidence for Founder review and merge. For GOAL-006 changes, verify Release qualification
+   uploaded `goal006-local-azure-runtime-<run-id>` and that C-059, C-065 and Test Champion passed.
+   Institutional review occurs only on explicit Founder request.
+11. Report the proof boundary exactly: emulator-backed Azure CLI evidence proves local command
+   orchestration and fail-closed contracts; only a separately authorized authenticated Azure run proves
+   provider scheduling, identity, networking, DNS, service availability, cost or deployment behavior.
 
 **Constitutional Constraints:** C-001 Human Override and Emergency Stop remain immediate; C-023
 requires evidence before consequential success; C-032 forbids architecture invention; C-059 requires
@@ -1015,6 +1038,9 @@ cost. Provider/live authority is never inferred from implementation authorizatio
 - zero provider calls, cloud mutations, secret-bearing plans/state/logs, or architecture inventions;
 - exactly six release members and zero mutable-tag promotion authority;
 - all applicable proof counts nonzero, reconciled and passed with failed attempts retained;
+- GOAL-006 changes include Docker Azure CLI runtime evidence, complete local rehearsal, retained CI
+  artifact, and an explicit emulated-versus-live Azure boundary;
+- deterministic-first execution avoids unnecessary model/provider calls and broad repeated validation;
 - Founder acceptance after all applicable automated and author-review gates pass; any institutional review is Founder-requested.
 
 ---
@@ -1417,9 +1443,11 @@ are active after R-118 independent EA approval and FA-049 Founder activation.
 | 1.1 | 2026-08-04 | Platform IT Expert | Skill 15 and retroactive DCM/PAC amendments |
 | 1.2 | 2026-08-09 | Business Architect (INST-003) | FA-032 Skill 16 Type 1 amendment, architecture chain, professional template, and retroactive 16-section author audit |
 | 1.3 | 2026-08-13 | Business Architect (INST-003) | Proposed Skill 17 Governed Cloud Delivery Engineering for GOAL-006 capability readiness |
+| 1.3.1 | 2026-09-02 | Founder / Platform IT Expert | Clarified permanent Skill 17 Docker Azure CLI runtime proof, PR evidence verification, honest provider boundary, and deterministic-first AI token optimization process; no capability or Decision Space change |
 
 **Founder approval:** FA-032 authorized the Type 1 lifecycle. FA-033 approves Platform IT Expert v1.2 and activates Skill 16. FA-049 activates v1.3 Skill 17 after R-118. These actions grant no deployment authority; implementation remains bounded by its Work Contract, GOA, Acceptance and local entry criteria.
 
 **Independent EA review:** R-049 — APPROVED for v1.2. R-118 — APPROVE and Activation Gate PASS for v1.3 Skill 17.
 
-**Lifecycle status:** v1.3 ACTIVE — R-118 APPROVED; FA-049 ACTIVATED. Skills 1–17 are active.
+**Lifecycle status:** v1.3.1 ACTIVE — R-118 APPROVED; FA-049 ACTIVATED. Skills 1–17 are active;
+the v1.3.1 operational clarification adds no new activation or provider authority.
