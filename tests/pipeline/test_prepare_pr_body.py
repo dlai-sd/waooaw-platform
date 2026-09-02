@@ -5,7 +5,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from prepare_pr_body import prepare_body  # noqa: E402
+from prepare_pr_body import add_runtime_evidence, prepare_body  # noqa: E402
 from validate_author_review import validate_author_review  # noqa: E402
 
 
@@ -42,3 +42,29 @@ def test_prepare_body_requires_template_section() -> None:
         assert "Author Review" in str(error)
     else:
         raise AssertionError("missing Author Review section was accepted")
+
+
+def test_runtime_evidence_is_inserted_before_author_review() -> None:
+    source = "## Summary\n\nReady.\n\n## Author Review\n\nPending.\n"
+    evidence = {
+        "schema": "waooaw.goal006-runtime-lifecycle/v1",
+        "passed": True,
+        "commit_sha": HEAD,
+        "initial_http_status": 503,
+        "recovered_http_status": 200,
+    }
+
+    prepared = add_runtime_evidence(source, evidence)
+
+    assert prepared.index("## Pre-PR Runtime Evidence") < prepared.index("## Author Review")
+    assert '"initial_http_status": 503' in prepared
+    assert '"recovered_http_status": 200' in prepared
+
+
+def test_runtime_evidence_rejects_failed_gate() -> None:
+    try:
+        add_runtime_evidence("## Author Review\n", {"passed": False})
+    except ValueError as error:
+        assert "passed=true" in str(error)
+    else:
+        raise AssertionError("failed runtime evidence was accepted")

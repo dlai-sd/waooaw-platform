@@ -74,6 +74,42 @@ async def connect_temporal_client() -> TemporalClient:
     return await TemporalClient.connect(address, namespace=namespace, tls=tls)
 
 
+async def recover_temporal_worker(application: FastAPI, stop: asyncio.Event) -> None:
+    """Connect Temporal in the background so dependency recovery never blocks HTTP startup."""
+    startup_attempts = int(os.getenv("TEMPORAL_STARTUP_ATTEMPTS", "20"))
+    startup_interval = float(os.getenv("TEMPORAL_STARTUP_INTERVAL_SECONDS", "5"))
+    for attempt in range(1, startup_attempts + 1):
+        if stop.is_set():
+            return
+        try:
+            temporal = await connect_temporal_client()
+            worker = Worker(
+                temporal,
+                task_queue=TEMPORAL_TASK_QUEUE,
+                workflows=[ConversationExecutionWorkflow],
+            )
+            worker_task = asyncio.create_task(worker.run(), name="conversation-execution-worker")
+            application.state.temporal_client = temporal
+            application.state.temporal_worker = worker
+            application.state.temporal_worker_task = worker_task
+            return
+        except (OSError, RPCError, RuntimeError, ValueError):
+            if attempt == startup_attempts:
+                logger.error(
+                    "Temporal startup retries exhausted; Professional Runtime remains fail-safe unavailable",
+                    exc_info=True,
+                )
+                return
+            logger.warning(
+                "Temporal startup unavailable; retrying",
+                extra={"attempt": attempt, "max_attempts": startup_attempts},
+            )
+            try:
+                await asyncio.wait_for(stop.wait(), timeout=startup_interval)
+            except TimeoutError:
+                pass
+
+
 @asynccontextmanager
 async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     """Own production auth, CE, Temporal, and conversation worker composition."""
@@ -83,8 +119,6 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     application.state.bp_service_jwt_secret = os.getenv("BP_SERVICE_JWT_SECRET")
     application.state.conversation_constitutional_gateway = None
     application.state.emergency_stop_jwt_validator = None
-    worker: Worker | None = None
-    worker_task: asyncio.Task[None] | None = None
     gateway: GrpcConversationConstitutionalGateway | None = None
     keycloak_client: httpx.AsyncClient | None = None
     air_client: httpx.AsyncClient | None = None
@@ -109,36 +143,19 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
             audience,
             keycloak_client,
         )
-    startup_attempts = int(os.getenv("TEMPORAL_STARTUP_ATTEMPTS", "20"))
-    startup_interval = float(os.getenv("TEMPORAL_STARTUP_INTERVAL_SECONDS", "5"))
-    for attempt in range(1, startup_attempts + 1):
-        try:
-            temporal = await connect_temporal_client()
-            worker = Worker(
-                temporal,
-                task_queue=TEMPORAL_TASK_QUEUE,
-                workflows=[ConversationExecutionWorkflow],
-            )
-            worker_task = asyncio.create_task(worker.run(), name="conversation-execution-worker")
-            application.state.temporal_client = temporal
-            application.state.temporal_worker = worker
-            application.state.temporal_worker_task = worker_task
-            break
-        except (OSError, RPCError, RuntimeError, ValueError):
-            if attempt == startup_attempts:
-                logger.error(
-                    "Temporal startup retries exhausted; Professional Runtime remains fail-safe unavailable",
-                    exc_info=True,
-                )
-                break
-            logger.warning(
-                "Temporal startup unavailable; retrying",
-                extra={"attempt": attempt, "max_attempts": startup_attempts},
-            )
-            await asyncio.sleep(startup_interval)
+    temporal_stop = asyncio.Event()
+    temporal_recovery_task = asyncio.create_task(
+        recover_temporal_worker(application, temporal_stop),
+        name="temporal-worker-recovery",
+    )
+    await asyncio.sleep(0)
 
     yield
 
+    temporal_stop.set()
+    await temporal_recovery_task
+    worker = getattr(application.state, "temporal_worker", None)
+    worker_task = getattr(application.state, "temporal_worker_task", None)
     if worker is not None:
         await worker.shutdown()
     if worker_task is not None:
