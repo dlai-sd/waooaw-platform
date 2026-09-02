@@ -68,6 +68,7 @@ docker run -d --rm \
   --name "$POSTGRES" \
   --network "$NETWORK" \
   --network-alias postgres \
+  --network-alias temporal \
   -e POSTGRES_DB=temporal \
   -e POSTGRES_USER=postgres \
   -e POSTGRES_HOST_AUTH_METHOD=trust \
@@ -78,16 +79,19 @@ for attempt in $(seq 1 30); do
   fi
   test "$attempt" != 30
 done
-docker run -d --rm \
-  --name "$TEMPORAL" \
-  --network "$NETWORK" \
-  --network-alias temporal \
-  -e DB=postgres12 \
-  -e DB_PORT=5432 \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PWD=unused \
-  -e POSTGRES_SEEDS=postgres \
-  "$TEMPORAL_IMAGE" >/dev/null
+start_temporal() {
+  docker run -d --rm \
+    --name "$TEMPORAL" \
+    --network "container:$POSTGRES" \
+    -e DB=postgres12 \
+    -e DB_PORT=5432 \
+    -e POSTGRES_USER=postgres \
+    -e POSTGRES_PWD=unused \
+    -e POSTGRES_SEEDS=localhost \
+    "$TEMPORAL_IMAGE" >/dev/null
+}
+
+start_temporal
 
 ready_status=""
 ready_body=""
@@ -107,6 +111,42 @@ if test "$ready_status" != 200; then
   exit 1
 fi
 test "$(jq -r '.temporalConnected' <<< "$ready_body")" = true
+
+docker rm -f "$TEMPORAL" >/dev/null
+interrupted_status=""
+interrupted_body=""
+for attempt in $(seq 1 30); do
+  interrupted_status=$(docker run --rm --network "$NETWORK" "$CURL_IMAGE" \
+    --silent --output /dev/null --write-out '%{http_code}' \
+    http://professional-runtime:5003/health || true)
+  if test "$interrupted_status" = 503; then
+    interrupted_body=$(docker run --rm --network "$NETWORK" "$CURL_IMAGE" \
+      --silent http://professional-runtime:5003/health)
+    break
+  fi
+done
+test "$interrupted_status" = 503
+test "$(jq -r '.temporalConnected' <<< "$interrupted_body")" = false
+
+start_temporal
+restart_status=""
+restart_body=""
+for attempt in $(seq 1 90); do
+  restart_status=$(docker run --rm --network "$NETWORK" "$CURL_IMAGE" \
+    --silent --output /dev/null --write-out '%{http_code}' \
+    http://professional-runtime:5003/health || true)
+  if test "$restart_status" = 200; then
+    restart_body=$(docker run --rm --network "$NETWORK" "$CURL_IMAGE" \
+      --silent http://professional-runtime:5003/health)
+    break
+  fi
+done
+if test "$restart_status" != 200; then
+  docker logs "$RUNTIME" >&2
+  docker logs "$TEMPORAL" >&2
+  exit 1
+fi
+test "$(jq -r '.temporalConnected' <<< "$restart_body")" = true
 docker logs "$RUNTIME" > "$WORK_DIR/professional-runtime.log" 2>&1
 
 jq -n \
@@ -117,6 +157,8 @@ jq -n \
   --arg postgres_image "$POSTGRES_IMAGE" \
   --argjson initial_health "$initial_body" \
   --argjson recovered_health "$ready_body" \
+  --argjson interrupted_health "$interrupted_body" \
+  --argjson restart_recovered_health "$restart_body" \
   --arg log_sha256 "$(sha256sum "$WORK_DIR/professional-runtime.log" | cut -d' ' -f1)" \
   '{
     schema: $schema,
@@ -129,7 +171,11 @@ jq -n \
     initial_health: $initial_health,
     recovered_http_status: 200,
     recovered_health: $recovered_health,
+    interrupted_http_status: 503,
+    interrupted_health: $interrupted_health,
+    restart_recovered_http_status: 200,
+    restart_recovered_health: $restart_recovered_health,
     professional_runtime_log_sha256: $log_sha256
   }' > "$EVIDENCE_JSON"
 
-echo "GOAL-006 real-container runtime lifecycle gate passed: 503 -> 200"
+echo "GOAL-006 real-container runtime lifecycle gate passed: 503 -> 200 -> 503 -> 200"

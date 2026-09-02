@@ -206,6 +206,9 @@ def test_internal_verification_uses_the_identity_edge() -> None:
 
 def test_demo_temporal_and_member_readiness_are_fail_closed() -> None:
     contract = read_contract("modules/workload/main.tf")
+    temporal = contract.split('resource "azurerm_container_app" "temporal"', 1)[1].split(
+        'resource "azurerm_container_app" "keycloak"', 1
+    )[0]
 
     assert 'resource "azurerm_container_app" "temporal"' in contract
     assert "temporalio/auto-setup@sha256:98cdb6b5e02d64cb933864a9ba91cb66065eb320623a0dafdf44beba535bca88" in contract
@@ -219,6 +222,10 @@ def test_demo_temporal_and_member_readiness_are_fail_closed() -> None:
     assert 'for_each = each.key == "constitutional-engine" ? [] : [1]' in contract
     assert 'for_each = each.key == "constitutional-engine" ? [1] : []' in contract
     assert 'count = var.workload_enabled && var.environment == "demo" ? 1 : 0' in contract
+    assert "startup_probe" not in temporal
+    assert "readiness_probe" in temporal
+    assert 'transport               = "TCP"' in temporal
+    assert "port                    = 7233" in temporal
 
 
 def test_keycloak_realm_import_matches_the_web_oidc_contract() -> None:
@@ -497,7 +504,8 @@ def test_post_deploy_verification_retains_each_container_log() -> None:
 def test_post_deploy_verification_requires_the_exact_latest_revision() -> None:
     workflow = (REPO_ROOT / "scripts/goal006_verify_deployment.sh").read_text(encoding="utf-8")
 
-    assert "jq -er '.[].name' live-inventory.json" in workflow
+    assert 'temporal_app="ca-$TARGET_ENVIRONMENT-temporal"' in workflow
+    assert "sort_by(if .name == $temporal then 0 else 1 end)" in workflow
     assert 'app=${app_name#"ca-$TARGET_ENVIRONMENT-"}' in workflow
     assert 'test "$app" != "$app_name"' in workflow
     assert '--name "$app_name"' in workflow
@@ -507,6 +515,7 @@ def test_post_deploy_verification_requires_the_exact_latest_revision() -> None:
     assert "az containerapp revision show" in workflow
     assert 'properties.provisioningState == "Provisioned"' in workflow
     assert 'properties.healthState == "Healthy"' in workflow
+    assert ".properties.replicas >= 1" in workflow
     assert "GOAL006_REVISION_READY_ATTEMPTS" in workflow
     assert "Revision not ready: app=$app_name" in workflow
     assert "Revision readiness timed out: app=$app_name" in workflow

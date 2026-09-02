@@ -45,6 +45,8 @@ def validate_runtime_evidence(body: str, head: str, required: bool) -> list[str]
         "commit_sha": head,
         "initial_http_status": 503,
         "recovered_http_status": 200,
+        "interrupted_http_status": 503,
+        "restart_recovered_http_status": 200,
     }
     for field, value in expected.items():
         if evidence.get(field) != value:
@@ -53,7 +55,11 @@ def validate_runtime_evidence(body: str, head: str, required: bool) -> list[str]
         violations.append("RUNTIME_EVIDENCE_INVALID: initial Temporal state must be disconnected")
     if evidence.get("recovered_health", {}).get("temporalConnected") is not True:
         violations.append("RUNTIME_EVIDENCE_INVALID: recovered Temporal state must be connected")
-    for field in ("initial_health", "recovered_health"):
+    if evidence.get("interrupted_health", {}).get("temporalConnected") is not False:
+        violations.append("RUNTIME_EVIDENCE_INVALID: interrupted Temporal state must be disconnected")
+    if evidence.get("restart_recovered_health", {}).get("temporalConnected") is not True:
+        violations.append("RUNTIME_EVIDENCE_INVALID: restart-recovered Temporal state must be connected")
+    for field in ("initial_health", "recovered_health", "interrupted_health", "restart_recovered_health"):
         if evidence.get(field, {}).get("constitutionalEngineReachable") is not True:
             violations.append(f"RUNTIME_EVIDENCE_INVALID: {field} must report CE reachable")
     for field in ("temporal_image", "postgres_image"):

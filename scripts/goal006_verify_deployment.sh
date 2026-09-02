@@ -27,7 +27,10 @@ python3 "$(dirname "$0")/goal006_live_inventory.py" \
   --inventory live-inventory.json
 
 mkdir -p revision-evidence
-jq -er '.[].name' live-inventory.json | while IFS= read -r app_name; do
+temporal_app="ca-$TARGET_ENVIRONMENT-temporal"
+jq -er --arg temporal "$temporal_app" \
+  'sort_by(if .name == $temporal then 0 else 1 end) | .[].name' live-inventory.json |
+  while IFS= read -r app_name; do
   app=${app_name#"ca-$TARGET_ENVIRONMENT-"}
   test "$app" != "$app_name"
   for attempt in $(seq 1 "$REVISION_READY_ATTEMPTS"); do
@@ -45,11 +48,16 @@ jq -er '.[].name' live-inventory.json | while IFS= read -r app_name; do
         --revision "$latest_revision" \
         -o json > "revision-evidence/$app-revision.json"
     fi
-    if test "$latest_revision" = "$latest_ready_revision" && jq -e '
+    if test "$latest_revision" = "$latest_ready_revision" && jq -e \
+      --arg app "$app_name" --arg temporal "$temporal_app" '
       .properties.active == true and
       .properties.provisioningState == "Provisioned" and
       .properties.healthState == "Healthy" and
-      ((.properties.runningState | startswith("Running")) or .properties.runningState == "ScaledToZero")
+      (if $app == $temporal then
+        (.properties.replicas >= 1 and (.properties.runningState | startswith("Running")))
+      else
+        ((.properties.runningState | startswith("Running")) or .properties.runningState == "ScaledToZero")
+      end)
     ' "revision-evidence/$app-revision.json" >/dev/null; then
       break
     fi

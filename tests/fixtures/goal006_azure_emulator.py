@@ -168,6 +168,7 @@ class AzureHandler(BaseHTTPRequestHandler):
                         "provisioningState": "Provisioning" if unhealthy else "Provisioned",
                         "healthState": "Unhealthy" if unhealthy else "Healthy",
                         "runningState": "ActivationFailed" if unhealthy else "RunningAtMaxScale",
+                        "replicas": 0 if unhealthy else 1,
                     },
                 },
             )

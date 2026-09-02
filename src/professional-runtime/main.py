@@ -501,10 +501,17 @@ async def validation_error(request: Request, _error: RequestValidationError) -> 
 @app.get("/health", operation_id="getPRHealth", response_model=HealthResponse, tags=["Health"])
 async def health(request: Request, response: Response) -> HealthResponse:
     """Report canonical runtime health without treating degraded dependencies as healthy."""
+    temporal = getattr(request.app.state, "temporal_client", None)
     worker_task = getattr(request.app.state, "temporal_worker_task", None)
-    temporal_connected = (
-        getattr(request.app.state, "temporal_client", None) is not None and worker_task is not None and not worker_task.done()
-    )
+    temporal_connected = False
+    if temporal is not None and worker_task is not None and not worker_task.done():
+        try:
+            temporal_connected = await asyncio.wait_for(
+                temporal.service_client.check_health(),
+                timeout=float(os.getenv("TEMPORAL_HEALTH_TIMEOUT_SECONDS", "2")),
+            )
+        except (OSError, RPCError, RuntimeError, TimeoutError):
+            temporal_connected = False
     gateway = getattr(request.app.state, "conversation_constitutional_gateway", None)
     try:
         ce_reachable = gateway is not None and await gateway.is_ready()
