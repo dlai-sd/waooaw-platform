@@ -69,7 +69,8 @@ Coverage:         NN% (threshold: NN%)
 <!--
 After the final push, run:
 python scripts/prepare_pr_body.py --body-file /tmp/pr-body.md --base origin/main
-Submit that exact prepared file when creating the PR. Any new commit makes this review stale.
+Applicable runtime/deployment diffs automatically run the real-container lifecycle gate and add its
+evidence to this body. Submit that exact prepared file. Any new commit makes this review stale.
 -->
 - [ ] Reviewed the complete diff against the authorized scope
 - [ ] Reviewed test and quality-gate results

@@ -23,7 +23,8 @@ own PR, access or mutate a provider without exact authority, or invoke another i
 4. Implement first, validate immediately, then update only mandatory evidence.
 5. After the final push, prepare the exact PR body with
    `python scripts/prepare_pr_body.py --body-file /tmp/pr-body.md --base origin/main`; create the PR
-   from that file without rewriting it so C-059 and C-065 pass on the first CI run.
+   from that file without rewriting it. Applicable runtime/deployment changes automatically run the
+   real-container lifecycle gate and embed its evidence before C-059 and C-065 validation.
 
 Do not load the full agent specification, GEOM, ORGANIZATION, ADR index, workflow directory, or
 constitutional corpus. Expand context only when a concrete authority or engineering decision cannot

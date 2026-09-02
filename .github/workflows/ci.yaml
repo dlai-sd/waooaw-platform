@@ -652,17 +652,24 @@ jobs:
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Validate author review evidence
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPOSITORY: ${{ github.repository }}
         run: |
           gh pr view "$PR_NUMBER" --json body --jq .body --repo "$REPOSITORY" > /tmp/pr-body.md
           python scripts/validate_author_review.py \
             --pr-body-file /tmp/pr-body.md \
+            --head "$HEAD_SHA"
+          python scripts/validate_runtime_lifecycle_evidence.py \
+            --pr-body-file /tmp/pr-body.md \
+            --base "$BASE_SHA" \
             --head "$HEAD_SHA"
 
   # ─── Authorization boundary check (C-066) ─────────────────────────────────

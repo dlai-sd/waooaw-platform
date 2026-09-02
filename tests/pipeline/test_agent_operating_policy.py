@@ -26,7 +26,7 @@ def test_platform_it_expert_compact_inventory_maps_all_active_skills() -> None:
     assert headings == list(range(1, 18))
     assert "Skills 1–17 ACTIVE" in entry
     assert "Skill 17 Governed Cloud Delivery Engineering activated by FA-049" in entry
-    assert "Platform IT Expert v1.3.2" in entry
+    assert "Platform IT Expert v1.3.3" in entry
     assert "deterministic-first token efficiency" in entry
     assert "read only that skill section" in card
 
@@ -136,11 +136,13 @@ def test_author_review_is_required_and_machine_enforced() -> None:
     assert "**Author Review Result:** PENDING" in template
     assert "Any new commit makes this review stale" in template
     assert "python scripts/prepare_pr_body.py" in template
+    assert "real-container lifecycle gate" in template
     assert "@copilot review this PR as" not in template
     assert "Do not open the PR before this C-059/C-065 precheck passes" in instructions
 
     assert "author-review-gate:" in workflow
     assert "name: C-065 Author Review Gate" in workflow
     assert "python scripts/validate_author_review.py" in workflow
+    assert "python scripts/validate_runtime_lifecycle_evidence.py" in workflow
     assert "HEAD_SHA: ${{ github.event.pull_request.head.sha }}" in workflow
     assert "- author-review-gate" in workflow

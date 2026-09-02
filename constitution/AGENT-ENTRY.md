@@ -62,7 +62,7 @@ Azure infrastructure:
 - **Trading v1.8** — Activation Gate PASS recorded; FA-005 authorized the escalation protocol only, not v1.8; no current-version Founder approval or customer proof.
 - **Agricultural Advisor v2.8** — Activation Gate PASS recorded; no current-version Founder approval or customer proof.
 - **Private Tutor v1.1** — Activation Gate PASS recorded; standalone review and Founder approval not recorded; NOT ACTIVATED.
-- **Platform IT Expert v1.3.2** — Skills 1–17 ACTIVE; Skill 17 Governed Cloud Delivery Engineering activated by FA-049. Operational clarifications require Docker Azure CLI runtime proof, deterministic-first token efficiency, and commit-bound C-059/C-065 preparation before PR creation without changing Decision Space. Skill activation does not itself grant cloud, deployment, spend, DNS, Production, or Work Contract authority.
+- **Platform IT Expert v1.3.3** — Skills 1–17 ACTIVE; Skill 17 Governed Cloud Delivery Engineering activated by FA-049. Operational clarifications require Docker Azure CLI proof, real-container lifecycle evidence for applicable PRs, deterministic-first token efficiency, and commit-bound C-059/C-065 preparation without changing Decision Space. Skill activation does not itself grant cloud, deployment, spend, DNS, Production, or Work Contract authority.
 - **Steward Assistant v1.0** — APPROVED. ops.waooaw.ai entry (C-068). Always FRONTIER (ADR-028).
 - **Self-Improvement Analyst v1.0** — APPROVED. C-069. Prompt improvement pipeline.
 - **Platform Operations v1.0** — DRAFT; EA review and Founder approval pending; NOT ACTIVATED.

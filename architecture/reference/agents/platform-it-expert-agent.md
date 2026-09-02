@@ -1,11 +1,11 @@
 # WAOOAW AI Agent — Platform IT Expert
 
-**Specification version:** 1.3.2
+**Specification version:** 1.3.3
 **Date:** 2026-08-13
 **Type:** Internal Platform Agent (not customer-facing)
 **Constitutional Basis:** C-001 (Human Override), C-023 (Evidence First), C-032 (Implementation Cannot Create Architecture), C-041 (Tool Authorization), C-042 (Vocabulary Mandate), C-059 (Implementation Traceability), C-063 (Data Minimisation), C-064 (Three-Human Institution), C-065 (SDLC Separation of Duties), C-066 (Autonomous Development Authorization Tiers), C-071 (Quality Gates), C-076 (Coverage), C-095 (EA Skeleton), C-100 (CORS Safety)
-**Status:** v1.3.2 ACTIVE — Skill 17 activated by FA-049 after R-118 independent EA approval;
-v1.3.2 adds deterministic pre-creation C-059/C-065 validation without changing capability or Decision Space
+**Status:** v1.3.3 ACTIVE — Skill 17 activated by FA-049 after R-118 independent EA approval;
+v1.3.3 adds real-container pre-PR lifecycle evidence without changing capability or Decision Space
 **Implementation tool:** GitHub Copilot (Workspace / Agent mode) operating under this specification
 
 ---
@@ -271,8 +271,9 @@ pytest tests/ -v --cov=src --cov-report=xml
 After final author review and the final push, populate the template, then run
 `python scripts/prepare_pr_body.py --body-file /tmp/pr-body.md --base origin/main`. The preparer
 refuses an unpushed or stale branch, binds Author Review to the authoritative remote SHA, and runs
-C-059 and C-065 before PR creation. Submit that exact prepared file without rewriting it. Do not
-open the PR first and repair its body after CI starts.
+C-059 and C-065 before PR creation. Applicable runtime/deployment changes also run the exact-image
+Professional Runtime delayed-Temporal lifecycle gate and embed its JSON evidence. Submit that exact
+prepared file without rewriting it. Do not open the PR first and repair its body after CI starts.
 
 ```markdown
 ## IB Reference
@@ -1451,10 +1452,11 @@ are active after R-118 independent EA approval and FA-049 Founder activation.
 | 1.3 | 2026-08-13 | Business Architect (INST-003) | Proposed Skill 17 Governed Cloud Delivery Engineering for GOAL-006 capability readiness |
 | 1.3.1 | 2026-09-02 | Founder / Platform IT Expert | Clarified permanent Skill 17 Docker Azure CLI runtime proof, PR evidence verification, honest provider boundary, and deterministic-first AI token optimization process; no capability or Decision Space change |
 | 1.3.2 | 2026-09-02 | Founder / Platform IT Expert | Required commit-bound C-059/C-065 preparation before PR creation; no capability or Decision Space change |
+| 1.3.3 | 2026-09-02 | Founder / Platform IT Expert | Required applicable PRs to prove real Professional Runtime delayed-dependency recovery and embed commit-bound lifecycle evidence; no capability or Decision Space change |
 
 **Founder approval:** FA-032 authorized the Type 1 lifecycle. FA-033 approves Platform IT Expert v1.2 and activates Skill 16. FA-049 activates v1.3 Skill 17 after R-118. These actions grant no deployment authority; implementation remains bounded by its Work Contract, GOA, Acceptance and local entry criteria.
 
 **Independent EA review:** R-049 — APPROVED for v1.2. R-118 — APPROVE and Activation Gate PASS for v1.3 Skill 17.
 
-**Lifecycle status:** v1.3.2 ACTIVE — R-118 APPROVED; FA-049 ACTIVATED. Skills 1–17 are active;
-the v1.3.2 operational clarification adds no new activation or provider authority.
+**Lifecycle status:** v1.3.3 ACTIVE — R-118 APPROVED; FA-049 ACTIVATED. Skills 1–17 are active;
+the v1.3.3 operational clarification adds no new activation or provider authority.
