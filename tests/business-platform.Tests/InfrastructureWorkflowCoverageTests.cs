@@ -2,7 +2,9 @@
 // constitutional_basis: C-005, C-023, C-049, C-059, C-076
 using System.Net;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Waooaw.BusinessPlatform.Controllers;
@@ -90,6 +92,27 @@ public sealed class InfrastructureWorkflowCoverageTests
 
         Assert.True(called);
         Assert.Equal(tenantId.ToString("D"), context.Items[TenantIsolationMiddleware.TenantIdItemKey]);
+    }
+
+    [Fact]
+    public async Task ProductionReadiness_DeploymentAuthorityOverridesPackagedLocalIssuer()
+    {
+        await using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment("Production");
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["IdentityEnvironment:Keycloak:Issuer"] = "http://keycloak:8080/realms/waooaw",
+                    ["Keycloak:Authority"] = "https://identity.example.test/realms/waooaw",
+                    ["Keycloak:RequireHttpsMetadata"] = "true",
+                }));
+        });
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/health/ready");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]

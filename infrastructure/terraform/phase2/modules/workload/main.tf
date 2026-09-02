@@ -54,9 +54,19 @@ locals {
     web                   = "https://ca-${var.environment}-web.${var.container_app_environment_default_domain}"
   }
   verification_urls = {
-    business_platform = "http://ca-${var.environment}-business-platform"
-    identity_edge     = "https://ca-${var.environment}-identity-edge.${var.container_app_environment_default_domain}"
-    web               = "http://ca-${var.environment}-web"
+    business_platform    = "http://ca-${var.environment}-business-platform"
+    professional_runtime = "http://ca-${var.environment}-professional-runtime"
+    ai_runtime           = "http://ca-${var.environment}-ai-runtime"
+    billing_engine       = "http://ca-${var.environment}-billing-engine"
+    identity_edge        = "https://ca-${var.environment}-identity-edge.${var.container_app_environment_default_domain}"
+    web                  = "http://ca-${var.environment}-web"
+  }
+  readiness_paths = {
+    business-platform    = "/health/ready"
+    professional-runtime = "/health"
+    ai-runtime           = "/health"
+    web                  = "/"
+    billing-engine       = "/health"
   }
   keycloak_realm = {
     realm                  = "waooaw"
@@ -190,13 +200,16 @@ locals {
       Keycloak__Authority                  = "${local.service_urls.identity_edge}/realms/waooaw"
       Keycloak__RequireHttpsMetadata       = "true"
     }
-    "professional-runtime" = {
+    "professional-runtime" = merge({
       AIR_TRANSCRIPTION_BASE_URL    = local.service_urls.ai_runtime
       CONSTITUTIONAL_ENGINE_ADDRESS = "ca-${var.environment}-constitutional-engine:80"
       KEYCLOAK_AUDIENCE             = "waooaw-platform"
       KEYCLOAK_ISSUER               = "${local.service_urls.identity_edge}/realms/waooaw"
       KEYCLOAK_JWKS_URL             = "${local.service_urls.identity_edge}/realms/waooaw/protocol/openid-connect/certs"
-    }
+      }, var.environment == "demo" ? {
+      TEMPORAL_ADDRESS   = "ca-${var.environment}-temporal:7233"
+      TEMPORAL_NAMESPACE = "default"
+    } : {})
     "ai-runtime" = {
       BP_BASE_URL                   = local.service_urls.business_platform
       CONSTITUTIONAL_ENGINE_ADDRESS = "ca-${var.environment}-constitutional-engine:80"
@@ -337,6 +350,39 @@ resource "azurerm_container_app" "member" {
           value = env.value
         }
       }
+
+      startup_probe {
+        transport               = "TCP"
+        port                    = local.target_ports[each.key]
+        interval_seconds        = 5
+        timeout                 = 3
+        failure_count_threshold = 30
+      }
+
+      dynamic "readiness_probe" {
+        for_each = each.key == "constitutional-engine" ? [] : [1]
+        content {
+          transport               = "HTTP"
+          port                    = local.target_ports[each.key]
+          path                    = local.readiness_paths[each.key]
+          interval_seconds        = 10
+          timeout                 = 3
+          failure_count_threshold = 3
+          success_count_threshold = 1
+        }
+      }
+
+      dynamic "readiness_probe" {
+        for_each = each.key == "constitutional-engine" ? [1] : []
+        content {
+          transport               = "TCP"
+          port                    = local.target_ports[each.key]
+          interval_seconds        = 10
+          timeout                 = 3
+          failure_count_threshold = 3
+          success_count_threshold = 1
+        }
+      }
     }
 
     dynamic "container" {
@@ -405,7 +451,94 @@ resource "azurerm_container_app" "member" {
   depends_on = [
     azurerm_role_assignment.member_secret,
     azurerm_role_assignment.professional_runtime_bp_secret,
+    azurerm_container_app.temporal,
   ]
+}
+
+resource "azurerm_container_app" "temporal" {
+  count = var.workload_enabled && var.environment == "demo" ? 1 : 0
+
+  name                         = "ca-${var.environment}-temporal"
+  container_app_environment_id = var.container_app_environment_id
+  resource_group_name          = var.resource_group_name
+  revision_mode                = "Single"
+
+  template {
+    min_replicas = 1
+    max_replicas = 1
+
+    container {
+      name   = "temporal"
+      image  = "temporalio/auto-setup@sha256:98cdb6b5e02d64cb933864a9ba91cb66065eb320623a0dafdf44beba535bca88"
+      cpu    = 1
+      memory = "2Gi"
+
+      env {
+        name  = "DB"
+        value = "postgres12"
+      }
+      env {
+        name  = "DB_PORT"
+        value = "5432"
+      }
+      env {
+        name  = "POSTGRES_USER"
+        value = "postgres"
+      }
+      env {
+        name  = "POSTGRES_PWD"
+        value = "demo-local-only"
+      }
+      env {
+        name  = "POSTGRES_SEEDS"
+        value = "localhost"
+      }
+
+      startup_probe {
+        transport               = "TCP"
+        port                    = 7233
+        interval_seconds        = 10
+        timeout                 = 3
+        failure_count_threshold = 30
+      }
+
+      readiness_probe {
+        transport               = "TCP"
+        port                    = 7233
+        interval_seconds        = 10
+        timeout                 = 3
+        failure_count_threshold = 3
+        success_count_threshold = 1
+      }
+    }
+
+    container {
+      name   = "postgres"
+      image  = "postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685"
+      cpu    = 0.25
+      memory = "0.5Gi"
+
+      env {
+        name  = "POSTGRES_DB"
+        value = "temporal"
+      }
+      env {
+        name  = "POSTGRES_HOST_AUTH_METHOD"
+        value = "trust"
+      }
+    }
+  }
+
+  ingress {
+    external_enabled = false
+    target_port      = 7233
+    transport        = "http2"
+
+    traffic_weight {
+      latest_revision = true
+      percentage      = 100
+    }
+  }
 }
 
 resource "azurerm_container_app" "keycloak" {
@@ -586,9 +719,12 @@ resource "azurerm_container_app_job" "verification" {
         }
         probe web "${local.verification_urls.web}/" & web_pid=$!
         probe business-platform "${local.verification_urls.business_platform}/health/ready" & business_platform_pid=$!
+        probe professional-runtime "${local.verification_urls.professional_runtime}/health" & professional_runtime_pid=$!
+        probe ai-runtime "${local.verification_urls.ai_runtime}/health" & ai_runtime_pid=$!
+        probe billing-engine "${local.verification_urls.billing_engine}/health" & billing_engine_pid=$!
         probe identity-edge "${local.verification_urls.identity_edge}/realms/waooaw/.well-known/openid-configuration" & identity_edge_pid=$!
         probe_status=0
-        for probe_pid in "$web_pid" "$business_platform_pid" "$identity_edge_pid"; do
+        for probe_pid in "$web_pid" "$business_platform_pid" "$professional_runtime_pid" "$ai_runtime_pid" "$billing_engine_pid" "$identity_edge_pid"; do
           wait "$probe_pid" || probe_status=1
         done
         exit "$probe_status"
@@ -606,7 +742,7 @@ resource "azurerm_container_app_job" "verification" {
     }
   }
 
-  depends_on = [azurerm_container_app.member, azurerm_container_app.keycloak, azurerm_container_app.identity_edge]
+  depends_on = [azurerm_container_app.member, azurerm_container_app.temporal, azurerm_container_app.keycloak, azurerm_container_app.identity_edge]
 }
 
 resource "azurerm_role_assignment" "verification_job_operator" {

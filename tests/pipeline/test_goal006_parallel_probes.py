@@ -14,7 +14,14 @@ def _probe_script() -> str:
     match = re.search(r"args = \[<<-EOT\n(?P<script>.*?)\n      EOT", source[container:], re.DOTALL)
     assert match is not None
     script = textwrap.dedent(match.group("script"))
-    for name in ("web", "business_platform", "identity_edge"):
+    for name in (
+        "web",
+        "business_platform",
+        "professional_runtime",
+        "ai_runtime",
+        "billing_engine",
+        "identity_edge",
+    ):
         script = script.replace(f"${{local.verification_urls.{name}}}", f"http://{name}")
     return script
 
@@ -60,6 +67,9 @@ def test_parallel_probes_succeed_only_when_all_probes_succeed(tmp_path: Path) ->
     assert result.returncode == 0
     assert "http://web" in probe_log
     assert "http://business_platform" in probe_log
+    assert "http://professional_runtime" in probe_log
+    assert "http://ai_runtime" in probe_log
+    assert "http://billing_engine" in probe_log
     assert "http://identity_edge" in probe_log
 
 

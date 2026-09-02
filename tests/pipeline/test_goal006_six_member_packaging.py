@@ -91,6 +91,18 @@ def test_release_images_are_non_root_and_expose_accepted_ports() -> None:
         assert f"EXPOSE {port}" in content
 
 
+def test_release_images_pin_fixed_security_dependencies() -> None:
+    constitutional_engine = (
+        REPO_ROOT / "src/constitutional-engine/Dockerfile"
+    ).read_text(encoding="utf-8")
+    ai_requirements = (REPO_ROOT / "src/ai-runtime/requirements.txt").read_text(
+        encoding="utf-8"
+    )
+
+    assert "GRPC_GO_VERSION=v1.83.1" in constitutional_engine
+    assert "transformers==5.10.0" in ai_requirements
+
+
 def test_web_configuration_is_runtime_external() -> None:
     content = (REPO_ROOT / "web/Dockerfile").read_text(encoding="utf-8")
     assert "ARG NEXT_PUBLIC_" not in content

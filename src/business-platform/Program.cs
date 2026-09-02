@@ -25,8 +25,8 @@ builder.Services.AddHealthChecks();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.Authority = builder.Configuration["IdentityEnvironment:Keycloak:Issuer"]
-            ?? builder.Configuration["Keycloak:Authority"]
+        options.Authority = builder.Configuration["Keycloak:Authority"]
+            ?? builder.Configuration["IdentityEnvironment:Keycloak:Issuer"]
             ?? throw new InvalidOperationException(
                 "Keycloak:Authority is required (C-026 — tenant isolation cannot function without JWT issuer).");
         options.Audience = builder.Configuration["IdentityEnvironment:Keycloak:Audience"]
