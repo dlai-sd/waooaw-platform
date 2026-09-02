@@ -51,6 +51,13 @@ def test_live_inventory_requires_pinned_identity_dependencies(monkeypatch: pytes
             "provisioningState": "Succeeded",
         }
     )
+    inventory.append(
+        {
+            "name": "ca-demo-temporal",
+            "image": goal006_live_inventory.DEMO_TEMPORAL_IMAGE,
+            "provisioningState": "Succeeded",
+        }
+    )
 
     assert goal006_live_inventory.validate_inventory("demo", {"images": images}, inventory) == []
     assert "LIVE_MEMBERSHIP_INVALID" in goal006_live_inventory.validate_inventory(
@@ -493,13 +500,32 @@ def test_post_deploy_verification_requires_the_exact_latest_revision() -> None:
         encoding="utf-8"
     )
 
-    assert "identity-edge" in workflow
+    assert "jq -er '.[].name' live-inventory.json" in workflow
+    assert 'app=${app_name#"ca-$TARGET_ENVIRONMENT-"}' in workflow
+    assert 'test "$app" != "$app_name"' in workflow
+    assert '--name "$app_name"' in workflow
     assert "properties.latestRevisionName" in workflow
     assert "properties.latestReadyRevisionName" in workflow
     assert 'test "$latest_revision" = "$latest_ready_revision"' in workflow
     assert "az containerapp revision show" in workflow
     assert 'properties.provisioningState == "Provisioned"' in workflow
     assert 'properties.healthState == "Healthy"' in workflow
+
+
+def test_post_deploy_functional_verification_fails_fast_and_retains_job_contract() -> None:
+    workflow = (REPO_ROOT / ".github/workflows/environment-deployment-verification.yaml").read_text(
+        encoding="utf-8"
+    )
+
+    functional = workflow.split("- name: Run internal functional verification", 1)[1].split(
+        "- name: Verify returned Web URL", 1
+    )[0]
+    assert "az containerapp job show" in functional
+    assert "functional-job.json" in functional
+    assert ".properties.provisioningState == \"Succeeded\"" in functional
+    assert "2>/dev/null" not in functional
+    artifact_paths = workflow.split("- name: Upload independent evidence", 1)[1]
+    assert "functional-job.json" in artifact_paths
 
 
 def test_all_environments_are_public_but_only_demo_is_founder_restricted() -> None:
