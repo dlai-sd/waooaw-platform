@@ -7,7 +7,7 @@ import Link from 'next/link';
 export function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <Link className="brand-link" href="/" aria-label="WAOOAW home">
-      <Image alt="" height={32} priority src="/waooaw-platform-logo.png" width={compact ? 34 : 152} />
+      <Image alt="" height={compact ? 44 : 72} priority src="/waooaw-platform-logo.png" width={compact ? 132 : 216} />
       {compact ? <span className="visually-hidden">WAOOAW</span> : null}
     </Link>
   );

@@ -8,7 +8,7 @@ export const siteConfig = {
   contactEmail: 'customersupport@dlaisd.com',
   environment: process.env.NEXT_PUBLIC_WAOOAW_ENVIRONMENT ?? 'demo',
   locales: ['en', 'hi', 'mr', 'ta', 'te', 'kn', 'gu', 'bn', 'ml', 'pa', 'ur'],
-  announcement: { enabled: false, message: '', href: '' },
+  announcement: { enabled: false, message: '', href: '', revision: 'wc078-2026-09-03' },
   sectionSwitches: { professionalPreview: true, trustJourney: true, finalAction: true, platformDna: true },
   socialLinks: [],
   publicNavigation: [
