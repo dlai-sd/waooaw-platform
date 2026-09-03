@@ -16,7 +16,7 @@ docker compose config --quiet
 
 STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 HEAD_SHA="$(git rev-parse HEAD)"
-COMMON_GIT_DIR="$(git rev-parse --git-common-dir)"
+COMMON_GIT_DIR="$(cd "$(git rev-parse --git-common-dir)" && pwd -P)"
 BASE_SHA="$(git merge-base HEAD origin/main)"
 test -z "$(git status --porcelain --untracked-files=all)" || { echo "qualification requires a clean finalized HEAD" >&2; exit 1; }
 
@@ -83,8 +83,8 @@ SCREENSHOT_INDEX_SHA="$(sha256sum "$EVIDENCE_DIR/screenshots/index.json" | cut -
 
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/$EVIDENCE_DIR:/out" anchore/syft:v1.27.1 "docker:${WEB_IMAGE}" -o cyclonedx-json=/out/sbom.json
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/$EVIDENCE_DIR:/out" aquasec/trivy:0.66.0 image --severity HIGH,CRITICAL --exit-code 1 --format json --output /out/trivy.json "$WEB_IMAGE"
-docker run --rm -v "$PWD:/repo:ro" -v "$COMMON_GIT_DIR:$COMMON_GIT_DIR:ro" -v "$PWD/$EVIDENCE_DIR:/out" zricethezav/gitleaks:v8.28.0 detect --source=/repo --no-banner --redact --exit-code=0 --report-format=json --report-path=/out/gitleaks-history.json
-docker run --rm -v "$PWD:/repo:ro" -v "$COMMON_GIT_DIR:$COMMON_GIT_DIR:ro" -v "$PWD/$EVIDENCE_DIR:/out" zricethezav/gitleaks:v8.28.0 detect --source=/repo --no-banner --redact --exit-code=1 --log-opts="$BASE_SHA..$HEAD_SHA" --report-format=json --report-path=/out/gitleaks-diff.json
+docker run --rm -v "$PWD:/repo:ro" -v "$COMMON_GIT_DIR:/repo/.git:ro" -v "$PWD/$EVIDENCE_DIR:/out" zricethezav/gitleaks:v8.28.0 detect --source=/repo --no-banner --redact --exit-code=0 --report-format=json --report-path=/out/gitleaks-history.json
+docker run --rm -v "$PWD:/repo:ro" -v "$COMMON_GIT_DIR:/repo/.git:ro" -v "$PWD/$EVIDENCE_DIR:/out" zricethezav/gitleaks:v8.28.0 detect --source=/repo --no-banner --redact --exit-code=1 --log-opts="$BASE_SHA..$HEAD_SHA" --report-format=json --report-path=/out/gitleaks-diff.json
 git diff --check "$HEAD_SHA^" "$HEAD_SHA"
 
 SBOM_SHA="$(sha256sum "$EVIDENCE_DIR/sbom.json" | cut -d' ' -f1)"
