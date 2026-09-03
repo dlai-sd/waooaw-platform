@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 132
-**Last Updated:** 2026-09-03 (WC-078 scanner qualification repair checkpoint)
+**State Revision:** 133
+**Last Updated:** 2026-09-03 (WC-078 author-review repair checkpoint)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -37,7 +37,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Lightweight workflow consolidation | MERGED - PR #388 as `72123e5`; release qualification moved into CI, runner operations consolidated, and durable workflows renamed by purpose |
 | Current application foundation | DONE - PRs #373, #376, #381 and #386 added identity, public acquisition, admission and runtime adapter foundations after cloud qualification |
 | Demo/runtime readiness repairs | MERGED - PRs #389 through #398 repaired cleanup provenance, cloud authority, dependency recovery, service startup, Temporal readiness and deployment verification |
-| WC-078 public visual experience | IN PROGRESS - implementation `c079344a`, WebKit repair `1ed459cd`, scanner repair `8bcfb0a2`; WC-01 through WC-08 focus-validated, new clean WC-09 campaign and Founder review pending |
+| WC-078 public visual experience | IN PROGRESS - implementation `c079344a`, WebKit/scanner repairs `1ed459cd`/`8bcfb0a2`, author-review consent evidence repair `a1465d9b`; new clean WC-09 campaign and Founder review pending |
 | Production | PLAN ONLY - code-prepared; protected environments, authorized plan, traffic and final acceptance remain Founder-reserved |
 
 ### Checkpoint Context
