@@ -216,6 +216,11 @@ for (const kase of wc078ScreenshotManifest) {
 
 test.afterAll(async () => {
   if (collectedCases.length === 0) return;
+  for (const viewport of ['360x800', '768x1024', '1440x900']) {
+    const banner = collectedCases.find((record) => record.id === `G8-${viewport}-banner`);
+    const preferences = collectedCases.find((record) => record.id === `G8-${viewport}-preferences-open`);
+    if (banner && preferences) expect(preferences.sha256, `${viewport} consent states must be visually distinct`).not.toBe(banner.sha256);
+  }
   const index = {
     schema_version: '1.0',
     work_contract: 'WC-078',

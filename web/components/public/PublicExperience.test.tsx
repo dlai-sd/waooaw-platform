@@ -140,6 +140,8 @@ describe('public acquisition components', () => {
     expect(screen.queryByRole('complementary', { name: 'Cookie preferences' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Cookie preferences' }));
     await waitFor(() => expect(screen.getByRole('complementary', { name: 'Cookie preferences' })).toBeVisible());
+    expect(screen.getByText('Review cookie preferences')).toBeVisible();
+    expect(screen.getByText('Update your optional categories. Necessary preferences remain on.')).toBeVisible();
   });
 
   it('names Yashus, DLAI Satellite Data, and WAOOAW with their roles in Platform DNA', () => {
