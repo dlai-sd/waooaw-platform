@@ -37,6 +37,7 @@ jsonschema>=4.23                 # JSON Schema validation for versioned agent ad
 schemathesis>=3.0                # OpenAPI fuzzing — auto-generates adversarial tests from spec (WC-013)
 httpx>=0.27                     # async HTTP client for E2E API tests
 httpx2                          # starlette TestClient requires httpx2 (httpx deprecated)
+anyio<4.15                      # Starlette TestClient uses an alias deprecated in AnyIO 4.15
 requests>=2.31                  # sync HTTP (reviewer script, reporter)
 
 # ── AI/LLM evaluation ────────────────────────────────────────────────────────
