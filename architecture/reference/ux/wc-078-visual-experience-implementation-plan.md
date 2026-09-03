@@ -26,8 +26,12 @@ Platform IT Expert must implement the smallest additive and substitutive UI chan
 - preserves every unaffected WC-078 route, contract, privacy rule, acquisition rule, identity
   boundary, search-discovery behavior, legal projection, configuration boundary, and acceptance
   outcome;
-- authors complete deterministic tests alongside each story but executes all Docker tests, builds,
-  browsers, screenshots, scans, and qualification only after implementation is complete;
+- authors deterministic tests alongside each story and runs the cheapest applicable focused Docker
+  check immediately after each first substantive edit or slice, reusing a pinned/hash-tagged test
+  image when inputs are unchanged rather than rebuilding or re-running broad suites;
+- reserves the full multi-browser, screenshot, scanner, and cross-cutting qualification campaign for
+  exactly one clean comprehensive WC-09 run at finalized HEAD, which remains the sole final evidence
+  campaign;
 - produces one final Docker-only executable evidence package plus named substantive screenshot review.
 
 This plan is self-contained for implementation after all entry gates pass. It does not grant those
@@ -36,9 +40,10 @@ gates.
 ### 1.1 Work Package Outcome
 
 The completed work package is one Founder-reviewable PR that contains the narrowly bounded public
-UI remediation and its tests, preserves WC-078 behavior outside the approved visual delta, passes
-one end-of-implementation Docker qualification against finalized source, and binds all automated and
-substantive visual evidence to the same 40-character HEAD.
+UI remediation and its tests, preserves WC-078 behavior outside the approved visual delta, is
+validated by an immediate focused Docker check after each substantive slice throughout WC-01 through
+WC-08, passes one clean comprehensive WC-09 Docker qualification against finalized source, and binds
+all automated and substantive visual evidence to the same 40-character HEAD.
 
 ## 2. Precedence And Amendment Boundary
 
@@ -52,8 +57,9 @@ The following precedence applies:
 5. Implementation code and tests.
 
 Founder acceptance of this plan records the selected solution but does not authorize application
-source changes. Before implementation, the owner of the hybrid visual system and WC-078 must ratify
-or Founder must explicitly accept these exact deltas:
+source changes. Before implementation, Chief Solution Architect (INST-005), as the office that owns
+this plan and its referenced UX architecture contracts, must ratify these exact deltas, or Founder
+must explicitly accept them:
 
 | Existing clause | Superseding clause in this plan | Everything else remains |
 |---|---|---|
@@ -63,7 +69,7 @@ or Founder must explicitly accept these exact deltas:
 | WC-078 PA-ACC-03 | VRA-02 through VRA-05 and Section 19 acceptance mapping | PA-ACC-01/02 and PA-ACC-04 through PA-ACC-19 |
 | Hybrid visual system prohibition on connecting track/cycling movement | Section 9 finite interactive rail and one-run state machine | Approved transition primitives, reduced motion, stable dimensions, semantic fallback |
 | Hybrid visual system text-first asset restriction | Section 10 functional editorial explanation | No stock/atmospheric/decorative imagery, asset budgets, CSP, accessibility |
-| WC-078 focused test after each implementation slice | Sections 15.3 and 17 end-of-implementation Docker campaign | Every focused check remains mandatory; only execution timing changes to avoid repeated container/build overhead |
+| WC-078 focused test after each implementation slice | Sections 15.3 and 17 immediate-focused-plus-one-final-campaign cadence | Every focused check runs immediately after its first substantive edit using a pinned/hash-tagged image; exactly one comprehensive WC-09 campaign remains the final evidence gate |
 
 If those deltas are not accepted, implementation is BLOCKED. INST-010 must not reconcile normative
 conflicts in code.
@@ -79,14 +85,14 @@ INST-010 must record all of the following:
 | Branch | Working branch is not `main`; unrelated changes are identified and left untouched |
 | Skill | Platform IT Expert Skill 16 remains ACTIVE |
 | Plan | This plan is Founder-accepted and no longer `REVIEW CANDIDATE` |
-| Normative deltas | Every Section 2 visual/motion amendment is accepted by its owner or explicit Founder decision |
-| Claims | Accepted approval references exist for `ten minutes a day`, `10 min`, and `24/7` or the remediation remains disabled |
+| Normative deltas | Every Section 2 visual/motion amendment is ratified by Chief Solution Architect (INST-005) or explicitly accepted by Founder decision |
+| Claims | Founder approval in the 2026-09-03 implementation conversation authorizes `ten minutes a day`, `10 min`, and `24/7`; WC-00 binds the verbatim decision to the immutable implementation PR before release |
 | Content | OD-01 through OD-05 recommendations are accepted; no implementation-time copy invention remains |
-| Localization | Approved English source and reviewed translations are supplied or incomplete locales are disabled according to Section 14 |
+| Localization | English source and WAOOAW AI translations for all eleven locales pass the ratified C-042 vocabulary self-review and deterministic completeness checks |
 | Dependencies | Existing icon/tooling availability is confirmed; no new runtime or design-system dependency is needed |
 | Component | C-095 no-new-component determination remains valid |
 | Baseline | Prior merged WC-078 qualification evidence is recorded as the accepted baseline; no Docker rerun occurs before implementation |
-| Docker | Docker execution is deferred to WC-09; repository configuration is not changed merely to make local execution convenient |
+| Docker | Each Work Component's first substantive edit is followed immediately by its cheapest focused Docker check via the pinned/hash-tagged test image; the full multi-browser/screenshot/scanner campaign remains reserved for one comprehensive WC-09 run; repository configuration is not changed merely to make local execution convenient |
 
 Failure of any gate is a stop. A TO-DO, issue, merged WC-078, accepted plan, or `G5 CLEAR` is not
 current-session implementation authorization.
@@ -490,34 +496,73 @@ Pass conditions:
 - Axe reports zero critical and no unreviewed serious violations. Automated pass does not substitute
   for keyboard, zoom, contrast, or screenshot review.
 
+### 11.1 Deterministic Screenshot Case Manifest
+
+The full Cartesian product of every axis above (viewport, zoom, locale, theme, motion, announcement,
+consent, professional, stage) would exceed several thousand cases. This manifest instead uses a
+pairwise/risk-based reduction: an exact, enumerated, deduplicated set of 54 cases, grouped so that
+every required dimension value appears in at least one case and every named high-risk combination is
+covered explicitly.
+
+| Group | Cases | Fixed axes | Varying axes |
+|---|---|---|---|
+| G1 - Viewport x theme baseline | 9 | English LTR, shared settled state, normal motion, announcement visible, consent closed, default zoom; full-page capture includes Platform DNA and footer | viewport (360x800, 768x1024, 1440x900) x theme (light, dark, system) = 3x3 |
+| G2 - 200% zoom | 3 | English LTR, light theme, settled state, normal motion, announcement visible, consent closed | viewport (360x800, 768x1024, 1440x900) at 200% zoom |
+| G3 - Reduced motion | 3 | English LTR, light theme, settled state, announcement visible, consent closed, default zoom | viewport (360x800, 768x1024, 1440x900) with `prefers-reduced-motion: reduce` |
+| G4 - Professional x stage, expanded | 12 | 1440x900, light theme, English LTR, normal motion, announcement visible, consent closed | professional (agricultural-advisor, digital-marketing-professional) x semantic stage (opening, business, goals, agreement, ready, working) = 2x6 |
+| G5 - Professional x stage, compact | 12 | 360x800, light theme, English LTR, normal motion, announcement visible, consent closed | professional x semantic stage = 2x6, pairing the highest-risk viewport with every stage |
+| G6 - RTL/Indic locale sample | 6 | settled state, light theme, normal motion, announcement visible, consent closed | locale (Urdu RTL, one Devanagari sample, one Dravidian sample) x viewport (1440x900, 360x800) = 3x2 |
+| G7 - Announcement dismissed | 3 | English LTR, light theme, settled state, normal motion, consent closed, default zoom | viewport (360x800, 768x1024, 1440x900) with announcement dismissed |
+| G8 - Consent state | 6 | English LTR, light theme, settled state, normal motion, announcement visible, default zoom | consent state (banner/undecided, preferences open) x viewport (360x800, 768x1024, 1440x900) = 2x3 |
+| G9 - 360px announcement+consent collision | 0 additional | Reuse the matching G8 360x800 consent-banner case | Run the dedicated fixed-control collision assertion against that capture; do not render or review a duplicate screenshot |
+| **Total** | **54** | | |
+
+Coverage check: all three viewports appear in G1, G2, G3, G4/G5, G6, G7, and G8; 200% zoom is G2;
+English LTR is the default across every group; Urdu RTL plus one Devanagari and one Dravidian sample
+are G6; light, dark, and system theme are G1; normal and reduced motion are G1 and G3; announcement
+visible and dismissed are G1 and G7; consent banner/undecided, preferences-open, and closed are G8
+and the G1 baseline; both professionals across all six semantic stages are G4 and G5; the shared
+settled state is the G1 baseline; Platform DNA and footer contrast across all three themes are the
+same full-page G1 renders; and G9 applies the dedicated collision assertion to the matching G8
+360x800 announcement-plus-consent capture.
+
+Deduplication rule: two cases identical across every axis are the same case and counted once. The
+54-case total is independently reproducible by summing the `Cases` column above. Adding, removing, or
+resizing a group requires updating this total and the VRA-14 row in Section 19 in the same change.
+
+WC-08 declares all 54 captures and the G9 assertion without generating them. WC-09 generates, hashes,
+and indexes them, and binds substantive reviewer `ACCEPT` to VRA-15. The `screenshots.count` field in
+the Section 18 evidence contract must equal 54 exactly for a clean qualification; a different count is
+correct only if this manifest is updated in the same change.
+
 ## 12. Localization Contract
 
-English remains source truth and all existing locale IDs remain. INST-010 implements schema,
-rendering, and deterministic validation; it does not invent translations.
+English remains source truth and all existing locale IDs remain. WAOOAW AI produces the translations
+under the ratified constitutional vocabulary; INST-010 implements them, self-reviews them against the
+token dictionary, and supplies deterministic validation.
 
-Required inputs per locale:
+Required evidence per locale:
 
 ```text
 locale_id
 source_catalog_hash
-translator_or_approved_method
-reviewer
-review_status
-reviewed_at
+translator_agent
+self_review_status
+self_reviewed_at
 glossary_version
 ```
 
 Rules:
 
-- An existing locale remains selectable only when every new required key has a genuine reviewed
-  translation and the review ledger says `APPROVED`.
-- Missing, English-identical where not a proper noun, placeholder, or unreviewed generated strings
+- An existing locale remains selectable only when every new required key has a genuine AI translation
+  and the constitutional self-review ledger says `APPROVED`.
+- Missing, English-identical where not a proper noun, placeholder, or self-review-failed strings
   fail qualification. Approved brand names and proper nouns are allowlisted explicitly.
 - An incomplete locale is hidden or marked unavailable according to existing route policy; it is not
   silently filled with English under another locale.
-- Full linguistic and visual review is mandatory for English and Urdu. At least one Devanagari and
-  one Dravidian-script locale join the screenshot sample; deterministic key/fallback/expansion checks
-  cover all eleven.
+- Full constitutional vocabulary self-review and visual qualification are mandatory for English and
+  Urdu. At least one Devanagari and one Dravidian-script locale join the screenshot sample;
+  deterministic key/fallback/expansion checks cover all eleven.
 - Legal meaning, policy version, effective date, support address, and company identity are unchanged.
 - Runtime translation, live LLM translation, and test-time generated translation are prohibited.
 
@@ -554,17 +599,38 @@ surface.
 
 | ID | Recommendation | Accepting authority | State before plan acceptance |
 |---|---|---|---|
-| OD-01 | Role-name selector plus plain business-context label | Founder/content owner | PROPOSED |
-| OD-02 | Plural final sentence in Section 8 | Founder/claim owner | PROPOSED |
-| OD-03 | Illustrative growing dental clinic in Pune | Founder/content owner | PROPOSED |
-| OD-04 | Preserve existing destinations and named CTA hierarchy | Founder/product owner | PROPOSED |
-| OD-05 | Revision-scoped announcement dismissal | Founder/product/privacy owner | PROPOSED |
-| OD-06 | `4 / 3` >=480px, `1 / 1` below | Founder visual acceptance | PROPOSED |
-| OD-07 | No new dependency; React/CSS/icons | Solution Architecture; Founder accepts plan | RECOMMENDED |
-| OD-08 | Required non-secret approval references; fail closed | Founder/claim owner | BLOCKING |
+| OD-01 | Role-name selector plus plain business-context label | Founder-reserved | PROPOSED |
+| OD-02 | Plural final sentence in Section 8 | Founder-reserved | PROPOSED |
+| OD-03 | Illustrative growing dental clinic in Pune | Founder-reserved | PROPOSED |
+| OD-04 | Preserve existing destinations and named CTA hierarchy | Founder-reserved | PROPOSED |
+| OD-05 | Revision-scoped announcement dismissal | Founder-reserved | PROPOSED |
+| OD-06 | `4 / 3` >=480px, `1 / 1` below | Founder-reserved | PROPOSED |
+| OD-07 | No new dependency; React/CSS/icons | Chief Solution Architect (INST-005) recommendation; Founder-reserved plan acceptance | RECOMMENDED |
+| OD-08 | Both exact claims approved in the 2026-09-03 implementation conversation; bind the decision to the implementation PR | Founder-reserved | APPROVED - immutable PR reference pending |
 
-Founder acceptance of this plan may close OD-01 through OD-07. OD-08 closes only when the actual
-accepted claim record identifiers are supplied; plan acceptance alone is not claim evidence.
+No artifact currently loaded for this plan establishes a delegated content, claim, product, or
+privacy office; every acceptance not explicitly attributed to Chief Solution Architect (INST-005)
+above is Founder-reserved. INST-005 may own the OD-06/OD-07 technical recommendation; it does not
+accept the plan on the Founder's behalf. Founder acceptance of this plan closes OD-01 through OD-07.
+The Founder approved both OD-08 claims in the current implementation conversation; WC-00 binds that
+decision verbatim to the immutable implementation PR discussion or body before release qualification.
+
+### 14.1 Accepted Reference Record Shape
+
+WC-00 records each accepted item (plan acceptance, Section 2 normative deltas, OD-01 through OD-08,
+and both claim approval references) as a structured reference, not an arbitrary string. Each record
+requires:
+
+| Field | Requirement |
+|---|---|
+| Record locator | Exact accepted-record ID/URL, or exact repository path when the acceptance lives in a committed file |
+| Immutable identifier | 40-character commit SHA when the record is a repository file, or an immutable comment/decision permalink identifier when the record is an external system |
+| Decision ID | The exact OD/claim/delta identifier being closed (for example `OD-01`, `ten_minute_claim_approval_ref`) |
+| Accepted value | The exact accepted copy/value being recorded, verbatim |
+| Accepting actor | The exact Founder or Chief Solution Architect (INST-005) identity recorded as accepting, per the authority attribution above |
+
+A non-empty arbitrary string, a placeholder, or an unresolvable reference does not satisfy this
+record shape and blocks WC-00 from closing `READY_TO_IMPLEMENT`.
 
 ## 15. Token And Time Optimization Protocol
 
@@ -589,7 +655,9 @@ command, result, and unresolved blocker; reuse it instead of rediscovering conte
 
 ### 15.2 Deterministic-First Execution
 
-- Form one falsifiable local hypothesis and specify one deferred Docker check before each first edit.
+- Form one falsifiable local hypothesis before each first substantive edit, then run the cheapest
+  applicable focused Docker check immediately against that hypothesis using the pinned/hash-tagged
+  test image; do not defer this check to WC-09.
 - Prefer existing component patterns, typed schemas, tests, CSS tokens, and icon library.
 - Use deterministic tools for search, formatting, schema checks, translation completeness, contrast,
   screenshots, diffing, hashing, build, coverage, scanning, and evidence assembly.
@@ -598,24 +666,32 @@ command, result, and unresolved blocker; reuse it instead of rediscovering conte
 - Use a higher-reasoning model only for WC-03 state-machine/RTL defects or a contract ambiguity;
   mechanical copy/token/test updates use the least-cost capable model.
 - Batch independent reads. Do not batch unrelated edits.
-- During WC-01 through WC-08, use editor diagnostics, language-server references, exact-ID searches,
-  and diff inspection only. These are implementation inspections, not test evidence.
-- After a WC-09 deterministic failure, inspect that evidence and repair the same slice. Do not spend
-  model tokens rerunning unchanged commands or reopening broad context.
+- During WC-01 through WC-08, combine editor diagnostics, language-server references, exact-ID
+  searches, and diff inspection with the one immediate focused Docker check per slice. Reuse the same
+  hash-tagged image across slices when inputs are unchanged; do not rebuild or run the full browser/
+  screenshot/scanner campaign before WC-09.
+- After a focused-check or WC-09 deterministic failure, inspect that evidence and repair the same
+  slice. Do not spend model tokens rerunning unchanged commands or reopening broad context.
 
 ### 15.3 Test Economy
 
-- Author each component/unit/browser/accessibility/visual test with its owning story, but execute no
-  Docker test, build, browser, screenshot, scanner, coverage, or qualification command during WC-00
-  through WC-08.
-- Mark WC-01 through WC-08 `IMPLEMENTED_PENDING_QUALIFICATION`; editor diagnostics and diff review do
-  not convert that state to PASS.
-- After all implementation and test code is complete, run the complete WC-09 Docker campaign once at
-  finalized HEAD. It starts with the cheapest deferred component/configuration checks and stops on
-  first deterministic failure before expensive browser/scanner stages.
-- If WC-09 fails, capture evidence, repair only the failing slice, run that failed Docker gate once,
-  then perform one new clean final campaign against the new finalized HEAD.
-- Reuse exact hash-tagged web/test image IDs throughout final qualification; do not rebuild per gate.
+- Author each component/unit/browser/accessibility/visual test with its owning story, then run the
+  single cheapest applicable focused Docker check for that story immediately after its first
+  substantive edit (for example one targeted `npm test` or one targeted Playwright spec). Reuse the
+  existing pinned/hash-tagged web/test image; do not rebuild or run the full browser/screenshot/
+  scanner/coverage campaign at this point.
+- Mark WC-01 through WC-08 `IMPLEMENTED_FOCUS_VALIDATED` only after that immediate focused check
+  passes; editor diagnostics and diff review alone do not earn this status, and this status is not
+  `PASS` because the full cross-cutting campaign has not yet run.
+- After all implementation and test code is complete and every Work Component holds
+  `IMPLEMENTED_FOCUS_VALIDATED`, run the complete WC-09 Docker campaign exactly once at finalized
+  HEAD. It starts with the cheapest remaining component/configuration checks not already covered by a
+  focused run and stops on first deterministic failure before expensive browser/scanner stages.
+- If WC-09 fails, capture evidence, repair only the failing slice, run that failed focused Docker gate
+  once, then perform one new clean final campaign against the new finalized HEAD. WC-09 remains the
+  only comprehensive multi-browser/screenshot/scanner qualification; it is not repeated speculatively.
+- Reuse exact hash-tagged web/test image IDs across every focused check and throughout final
+  qualification; rebuild only when source/test/config/lock inputs actually change.
 
 ### 15.4 Token/Cost Evidence
 
@@ -636,8 +712,12 @@ All tasks use INST-010 Skill 16. Estimates are relative engineering effort after
 are not calendar or model guarantees.
 
 WC-00 closes as `READY_TO_IMPLEMENT` after document/authority inspection. WC-01 through WC-08 close
-only as `IMPLEMENTED_PENDING_QUALIFICATION`. `PASS` is available only after WC-09 executes every
-deferred Docker check and the substantive screenshot gate against finalized HEAD.
+only as `IMPLEMENTED_FOCUS_VALIDATED`, which requires that Work Component's own cheapest focused
+Docker check to have actually run and passed against the pinned/hash-tagged test image; it is not
+earned by editor diagnostics or diff review alone. `PASS` is available only after WC-09 executes the
+one comprehensive campaign - every remaining check, the full browser matrix, and the substantive
+screenshot gate - against finalized HEAD. Focused checks are implementation-slice validation, not the
+final evidence campaign.
 
 ### 16.1 Initial File Ownership Map
 
@@ -702,7 +782,8 @@ WC-078 Docker qualification command and tests.
 
 **Actions:**
 
-1. Record accepted IDs for plan, normative deltas, claims, content, translations, and session authority.
+1. Record, in the Section 14.1 accepted-reference-record shape, the accepted IDs for plan, normative
+   deltas, claims, content, translations, and session authority.
 2. Map current files to `TOUCH`, `REGRESSION_ONLY`, and `PROHIBITED`.
 3. Record the merged WC-078 qualification artifact/commit as the accepted baseline without rerunning it.
 4. Record known pre-existing findings without repairing unrelated behavior.
@@ -710,8 +791,8 @@ WC-078 Docker qualification command and tests.
 
 **Outputs:** Gate record; preservation ledger; prior-baseline reference; exact task file list.
 
-**Deferred Docker falsifying check (WC-09):** Docker Compose config plus existing WC-078 public
-component test executes first in the final campaign.
+**WC-09 check (no immediate focused check; WC-00 makes no source edit):** Docker Compose config plus
+existing WC-078 public component test executes first in the final campaign.
 
 **Completion:** Authority and document inspection completes as `READY_TO_IMPLEMENT`; no Docker command
 or source change occurs.
@@ -740,11 +821,11 @@ their nearest configuration/content tests only.
 4. Do not alter marketing configuration, event vocabulary, legal content, route availability, or
    professional publication authority.
 
-**Deferred Docker falsifying check (WC-09):** Remediation enabled with a missing claim reference must
-fail validation.
+**Focused Docker check (run immediately after first substantive edit):** Remediation enabled with
+a missing claim reference must fail validation using the pinned/hash-tagged test image.
 
 **Completion:** Implementation and deterministic tests are authored, editor diagnostics are clean,
-and the task is `IMPLEMENTED_PENDING_QUALIFICATION`.
+the focused check above has run and passed, and the task is `IMPLEMENTED_FOCUS_VALIDATED`.
 
 **Acceptance:** VRA-02, VRA-04, VRA-13, VRA-17, VRA-19; PA-ACC-04/05/17.
 
@@ -756,7 +837,7 @@ and the task is `IMPLEMENTED_PENDING_QUALIFICATION`.
 
 ### WC-02 - Historical Shell Fidelity
 
-**Entry:** WC-01 `IMPLEMENTED_PENDING_QUALIFICATION`; announcement decision accepted.
+**Entry:** WC-01 `IMPLEMENTED_FOCUS_VALIDATED`; announcement decision accepted.
 
 **Touch surfaces:** Existing public layout/shell, announcement/header components, logo projection,
 public style tokens, and their nearest component/browser tests.
@@ -769,12 +850,13 @@ public style tokens, and their nearest component/browser tests.
 4. Preserve navigation routes, provider readiness, theme/locale controls, skip link, and compact nav.
 5. Add top/scrolled, announcement visible/dismissed, keyboard, 360px, RTL, and 200% zoom checks.
 
-**Deferred Docker falsifying check (WC-09):** Component test proves dismissal changes the shared
-chrome offset while preserving focus and storing no value beyond campaign revision/dismissed state.
+**Focused Docker check (run immediately after first substantive edit):** Component test proves
+dismissal changes the shared chrome offset while preserving focus and storing no value beyond
+campaign revision/dismissed state.
 
 **Completion:** Implementation and VRA-06 tests are authored, preserved route/identity/consent
-assertions remain intact, editor diagnostics are clean, and status is
-`IMPLEMENTED_PENDING_QUALIFICATION`.
+assertions remain intact, editor diagnostics are clean, the focused check above has run and passed,
+and status is `IMPLEMENTED_FOCUS_VALIDATED`.
 
 **Acceptance:** VRA-01, VRA-06, VRA-08, VRA-16/17; PA-ACC-01/04/05/09/16.
 
@@ -786,7 +868,7 @@ assertions remain intact, editor diagnostics are clean, and status is
 
 ### WC-03 - Semantic Journey And Static Fallback
 
-**Entry:** WC-01 `IMPLEMENTED_PENDING_QUALIFICATION`; WC-02 may proceed independently; story content complete.
+**Entry:** WC-01 `IMPLEMENTED_FOCUS_VALIDATED`; WC-02 may proceed independently; story content complete.
 
 **Touch surfaces:** Public home composition, replacement showcase component(s), existing hero test,
 and server-render/no-JavaScript assertions.
@@ -800,11 +882,13 @@ and server-render/no-JavaScript assertions.
 4. Implement complete static/reduced-motion/failure presentation before autoplay.
 5. Keep the page server-owned and the client boundary limited to the showcase.
 
-**Deferred Docker falsifying check (WC-09):** Component test disables motion/JavaScript assumptions
-and asserts both professional names, six-stage meaning, CTAs, and final message remain available.
+**Focused Docker check (run immediately after first substantive edit):** Component test disables
+motion/JavaScript assumptions and asserts both professional names, six-stage meaning, CTAs, and final
+message remain available.
 
 **Completion:** Semantic order, heading, SSR, CTA, disposition, and reduced-motion tests are authored;
-editor diagnostics are clean; status is `IMPLEMENTED_PENDING_QUALIFICATION`.
+editor diagnostics are clean; the focused check above has run and passed; status is
+`IMPLEMENTED_FOCUS_VALIDATED`.
 
 **Acceptance:** VRA-02 through VRA-05, VRA-09, VRA-12, VRA-16/17; PA-ACC-01/02/03 superseded/04/16.
 
@@ -816,7 +900,7 @@ editor diagnostics are clean; status is `IMPLEMENTED_PENDING_QUALIFICATION`.
 
 ### WC-04 - Finite Motion And Journey Controls
 
-**Entry:** WC-03 `IMPLEMENTED_PENDING_QUALIFICATION`; approved transition tokens and no-new-dependency decision confirmed.
+**Entry:** WC-03 `IMPLEMENTED_FOCUS_VALIDATED`; approved transition tokens and no-new-dependency decision confirmed.
 
 **Touch surfaces:** Showcase client island, its styles, timer/interaction tests, and focused hero
 Playwright scenarios.
@@ -829,11 +913,13 @@ Playwright scenarios.
 4. Implement RTL logical direction, visibility pause, cleanup, reduced motion, and initialization fallback.
 5. Assert no focus movement, live narration, CLS, infinite timer, or prohibited motion.
 
-**Deferred Docker falsifying check (WC-09):** Fake-timer component test starts autoplay, selects a
+**Focused Docker check (run immediately after first substantive edit):** Fake-timer component test
+starts autoplay, selects a
 rail stage, advances time, and proves the selected state does not change.
 
 **Completion:** Timer, keyboard, reduced-motion, and viewport browser tests are authored; editor
-diagnostics are clean; status is `IMPLEMENTED_PENDING_QUALIFICATION`.
+diagnostics are clean; the focused check above has run and passed; status is
+`IMPLEMENTED_FOCUS_VALIDATED`.
 
 **Acceptance:** VRA-03 through VRA-05, VRA-16/18; PA-ACC-03 superseded/05/15/16.
 
@@ -843,9 +929,33 @@ diagnostics are clean; status is `IMPLEMENTED_PENDING_QUALIFICATION`.
 
 **Stop:** Timer behavior cannot be deterministic, payload exceeds budget, or icon/package gap appears.
 
+### 16.3 Implementation Status Log (2026-09-03 session)
+
+Session authority: Founder explicitly authorized WC-078 visual-remediation implementation, document
+changes, and Docker tests in the 2026-09-03 implementation conversation; the exact fixed hero copy,
+selector labels, final message, and OD-08 claims (`ten minutes a day`, `24/7`) were supplied and
+approved verbatim in that same conversation. This log records focused and final engineering outcomes;
+it does not claim Founder substantive screenshot `ACCEPT`, PR approval/merge, or any Demo/UAT/
+Production/release state.
+
+| Work Component | Status | Focused Docker evidence |
+|---|---|---|
+| WC-01 Typed content and claim validation | `IMPLEMENTED_FOCUS_VALIDATED` (content/schema scope only; claim-approval-reference config gate deferred, see PR notes) | `pnpm --dir web test -- --runInBand components/public/PublicExperience.test.tsx lib/i18n.test.ts` — 2 suites, 15 tests passed |
+| WC-02 Historical shell fidelity | `IMPLEMENTED_FOCUS_VALIDATED` | `pnpm --dir web test -- --runInBand components/public/PublicExperience.test.tsx` in Docker - 15 tests passed |
+| WC-03 Semantic journey and static fallback | `IMPLEMENTED_FOCUS_VALIDATED` | same focused run as above |
+| WC-04 Finite motion and journey controls | `IMPLEMENTED_FOCUS_VALIDATED` | same focused run as above |
+| WC-05 Visual system and defect remediation | `IMPLEMENTED_FOCUS_VALIDATED` | `pnpm --dir web test -- --runInBand components/public/PublicExperience.test.tsx` in Docker - 15 tests passed |
+| WC-06 Genuine localization and RTL | `IMPLEMENTED_FOCUS_VALIDATED` | Docker Jest locale/public suites - 25 tests passed across all eleven locale records |
+| WC-07 Focused regression and acceptance expansion | `IMPLEMENTED_FOCUS_VALIDATED` | Docker Playwright WC-078 suite - 25 tests passed across five browser/viewport projects |
+| WC-08 Screenshot matrix and review preparation | `IMPLEMENTED_FOCUS_VALIDATED` | Docker Playwright representative captures passed for desktop, 360px, 200% zoom, reduced motion, Urdu RTL, system theme, and consent; G9 geometric collision assertion passed; exact-HEAD binding probe passed |
+| WC-09 Final Docker qualification and PR evidence | `ENGINEERING_QUALIFIED_PENDING_FOUNDER_REVIEW` | Docker production build; Jest 175/175; Playwright 120 passed; 93.67% line coverage; Chromium/Firefox/WebKit/360/768 PASS; 54/54 captures and G9 PASS; axe/keyboard/reduced motion/performance/SEO/privacy/PWA PASS; SBOM and Trivy PASS; Gitleaks diff 0; author visual review resolved the duplicate consent-state finding |
+
+The engineering qualification is `PASS`; Founder substantive visual `ACCEPT`, PR approval, and merge
+remain pending and must not be inferred from author review or automated evidence.
+
 ### WC-05 - Visual System And Defect Remediation
 
-**Entry:** WC-02 and WC-04 `IMPLEMENTED_PENDING_QUALIFICATION`; current catalogue publication fixtures available.
+**Entry:** WC-02 and WC-04 `IMPLEMENTED_FOCUS_VALIDATED`; current catalogue publication fixtures available.
 
 **Touch surfaces:** Public home server sections, professional preview, trust/control, final CTA,
 Platform DNA, footer, cookie-preference entry, public styles, and nearest tests.
@@ -859,12 +969,14 @@ Platform DNA, footer, cookie-preference entry, public styles, and nearest tests.
 5. Repair Platform DNA theme pair and preserve all approved attributions/assets.
 6. Preserve all section destinations, metadata content, event triggers, and consent behavior.
 
-**Deferred Docker falsifying check (WC-09):** Theme component test renders Platform DNA in light/dark
+**Focused Docker check (run immediately after first substantive edit):** Theme component test renders
+Platform DNA in light/dark
 and fails if any required name/role/link falls below contrast or disappears.
 
 **Completion:** VR-01/02/04 through VR-10 tests and screenshot specifications are authored without
-modifying preserved contract assertions; editor diagnostics are clean; status is
-`IMPLEMENTED_PENDING_QUALIFICATION`.
+modifying preserved contract assertions; editor diagnostics are clean; the focused check above has
+run and passed; status is
+`IMPLEMENTED_FOCUS_VALIDATED`.
 
 **Acceptance:** VRA-01, VRA-07 through VRA-12, VRA-16/17; PA-ACC-02/04/05/08 through 16.
 
@@ -877,37 +989,39 @@ consolidation would remove an approved family.
 
 ### WC-06 - Genuine Localization And RTL
 
-**Entry:** WC-01 content schema stable; approved review ledger and translations supplied.
+**Entry:** WC-01 content schema stable; WAOOAW AI translations and constitutional self-review ledger supplied.
 
 **Touch surfaces:** Existing eleven locale catalogs, deterministic locale validator, localized public
 component tests, and focused locale screenshots only.
 
 **Actions:**
 
-1. Add only reviewed new strings; retain existing unrelated translations.
-2. Enforce review-ledger, fallback, identical-English allowlist, missing-key, and expansion checks.
+1. Add constitutionally self-reviewed AI translations for every new string; retain existing unrelated translations.
+2. Enforce self-review-ledger, fallback, identical-English allowlist, prohibited-term, missing-key, and expansion checks.
 3. Verify Urdu direction/font/line-height and showcase rail/card semantics.
 4. Verify one Devanagari and one Dravidian sample in addition to English/Urdu visual review.
 5. Hide/disable incomplete locale according to existing route policy; never synthesize translation.
 
-**Deferred Docker falsifying check (WC-09):** Locale validator receives one English fallback under a
+**Focused Docker check (run immediately after first substantive edit):** Locale validator receives
+one English fallback under a
 non-English locale and must fail with locale/key identification.
 
 **Completion:** Deterministic tests cover all eleven and required linguistic sign-offs are present;
-English/Urdu/Indic screenshot cases are authored; editor diagnostics are clean; status is
-`IMPLEMENTED_PENDING_QUALIFICATION`.
+English/Urdu/Indic screenshot cases are authored; editor diagnostics are clean; the focused check
+above has run and passed; status is
+`IMPLEMENTED_FOCUS_VALIDATED`.
 
 **Acceptance:** VRA-03/06/13 through 16; PA-ACC-05/16/17.
 
 **Model hint / estimate:** least-cost capable; no translation generation / M after translations exist.
 
-**Rollback:** Revert only new keys/review ledger; never overwrite accepted prior catalog content.
+**Rollback:** Revert only new keys/self-review ledger; never overwrite accepted prior catalog content.
 
-**Stop:** Any required translation or qualified review is absent.
+**Stop:** Any required translation or constitutional vocabulary self-review is absent or fails.
 
 ### WC-07 - Focused Regression And Acceptance Expansion
 
-**Entry:** WC-02 through WC-06 `IMPLEMENTED_PENDING_QUALIFICATION`.
+**Entry:** WC-02 through WC-06 `IMPLEMENTED_FOCUS_VALIDATED`.
 
 **Touch surfaces:** Existing WC-078 public component and E2E suites, route-specific visual baselines,
 and acceptance/evidence schema required for VRA results.
@@ -920,13 +1034,15 @@ and acceptance/evidence schema required for VRA results.
 4. Add 200% zoom, fixed-element collision, keyboard, focus, contrast, and payload assertions.
 5. Store baselines route/state-specifically with reviewer-readable names and reasons.
 
-**Deferred Docker falsifying check (WC-09):** Compact English-light Playwright case with announcement
+**Focused Docker check (run immediately after first substantive edit):** Compact English-light
+Playwright case with announcement
 and consent visible must detect a seeded fixed-control overlap or equivalent active fixture proving
 collision checks work.
 
 **Completion:** Changed component/browser tests and acceptance traceability are authored, all
-preserved WC-078 tests remain present, editor diagnostics are clean, and status is
-`IMPLEMENTED_PENDING_QUALIFICATION`. No test has run yet.
+preserved WC-078 tests remain present, editor diagnostics are clean, the focused Playwright collision
+check above has run and passed, and status is
+`IMPLEMENTED_FOCUS_VALIDATED`. The full browser/screenshot/scanner matrix remains deferred to WC-09.
 
 **Acceptance:** VRA-01 through VRA-20; PA-ACC-01 through PA-ACC-19.
 
@@ -940,30 +1056,34 @@ would need weakening.
 
 ### WC-08 - Screenshot Matrix And Review Preparation
 
-**Entry:** WC-07 `IMPLEMENTED_PENDING_QUALIFICATION`; candidate implementation and tests complete.
+**Entry:** WC-07 `IMPLEMENTED_FOCUS_VALIDATED`; candidate implementation and tests complete.
 
 **Touch surfaces:** Screenshot project configuration, deterministic artifact index schema, review
 checklist/ledger, and route-state baseline declarations only.
 
 **Actions:**
 
-1. Declare every Section 11 screenshot case without generating it.
+1. Declare all 54 Section 11.1 screenshot captures plus the G9 collision assertion and generate a
+  bounded representative set before the final campaign.
 2. Define the contact sheet/index grouping by viewport, theme, locale, announcement, consent, story,
    DNA, and footer state.
 3. Define the author/Founder review checklist for clipping, density, hierarchy, brand fidelity,
    truthfulness, control collision, script quality, and professional polish.
 4. Define required `ACCEPT`, `REJECT`, and finding fields per route/state.
-5. Defer screenshot generation and all substantive review to WC-09 after the final Docker image exists.
+5. Reserve complete screenshot generation and Founder substantive review for WC-09 after the final
+  Docker image and immutable HEAD exist.
 
-**Deferred Docker falsifying check (WC-09):** Artifact index validation fails when a required state or
-reviewer verdict is absent.
+**Focused Docker check (run immediately after first substantive edit):** Generate representative
+desktop, compact, zoom, motion, RTL, theme, and consent states; validate the index, exact-HEAD probe,
+and G9 collision result; perform author pixel review and repair findings before WC-09.
 
 **Completion:** Matrix, index schema, and review checklist are authored; editor diagnostics are clean;
-status is `IMPLEMENTED_PENDING_QUALIFICATION`. No screenshot has been generated or accepted.
+the representative generation, index, exact-HEAD, G9, and author-review checks above have run and
+passed; status is `IMPLEMENTED_FOCUS_VALIDATED`. Founder acceptance remains pending.
 
 **Acceptance:** VRA-01/03/06 through 16; VRA-15 is the controlling gate.
 
-**Model hint / estimate:** no model for image review synthesis; human review / M.
+**Model hint / estimate:** vision-capable author review plus Founder acceptance / M.
 
 **Rollback:** Remove only unaccepted additive matrix/index declarations with their paired feature.
 
@@ -971,7 +1091,7 @@ status is `IMPLEMENTED_PENDING_QUALIFICATION`. No screenshot has been generated 
 
 ### WC-09 - Final Docker Qualification And PR Evidence
 
-**Entry:** WC-01 through WC-08 are `IMPLEMENTED_PENDING_QUALIFICATION`; intended commits finalized;
+**Entry:** WC-01 through WC-08 are `IMPLEMENTED_FOCUS_VALIDATED`; intended commits finalized;
 working tree contains no uncommitted source/config change; final HEAD fixed.
 
 **Touch surfaces:** Existing WC-078 qualification orchestrator/evidence schema only where additive VRA
@@ -981,11 +1101,12 @@ fields are required; PR body. No application edit after qualification starts.
 
 1. Run Docker preflight and calculate WC-078 source/config hashes.
 2. Build final hash-tagged web/test images once.
-3. Run every deferred WC-00 through WC-08 component/configuration test first; stop on failure.
+3. Re-run every WC-00 through WC-08 focused component/configuration check against finalized HEAD
+   first, confirming each earlier `IMPLEMENTED_FOCUS_VALIDATED` result still holds; stop on failure.
 4. Run coverage, production artifact inspection, full browser matrix, axe, screenshots, privacy, PWA,
   SEO, consent/marketing, performance, SBOM, Trivy, Gitleaks, and repository gates.
-5. Generate the screenshot contact sheet/index and obtain named substantive human/Founder review;
-  `ACCEPT` is mandatory and pixel comparison alone is insufficient.
+5. Generate all 54 Section 11.1 manifest captures, run the G9 collision assertion, and obtain named
+  substantive human/Founder review; `ACCEPT` is mandatory and pixel comparison alone is insufficient.
 6. Extend qualification evidence with VRA matrix, screenshot artifact hash/index, substantive reviewer
    identity/verdict, translation ledger hash, claims refs, token-cost record, and preserved-test counts.
 7. Perform complete diff and evidence author review.
@@ -1012,13 +1133,17 @@ request to self-approve/merge/deploy.
 Host shell and git may orchestrate. Host Node, npm, pnpm, Python, pip, pytest, Playwright, browser
 runner, scanner, formatter, linter, build, or test execution is prohibited.
 
-No Docker test, build, browser, screenshot, coverage, scanner, or qualification command runs during
-WC-00 through WC-08. All executable validation occurs after implementation in WC-09. This deliberate
-cadence avoids repeated image startup/build overhead; it does not remove, reduce, or waive any test.
+Each Work Component's first substantive edit is followed immediately by its own cheapest applicable
+focused Docker check (a single targeted unit/component/configuration/Playwright command) run through
+the pinned/hash-tagged test image described in Section 15.3. The full multi-browser, screenshot,
+scanner, coverage, and cross-cutting qualification campaign remains reserved for exactly one clean
+comprehensive WC-09 run at finalized HEAD. Reusing the same hash-tagged image across focused checks
+avoids repeated build overhead; it does not remove, reduce, or waive any test, and focused checks
+never substitute for the WC-09 comprehensive campaign.
 
 ### 17.1 End-Of-Implementation Preflight
 
-Run only when WC-01 through WC-08 are `IMPLEMENTED_PENDING_QUALIFICATION` and intended source/test
+Run only when WC-01 through WC-08 are `IMPLEMENTED_FOCUS_VALIDATED` and intended source/test
 commits are finalized:
 
 ```sh
@@ -1034,11 +1159,12 @@ If capacity is low, capture `docker system df -v`. Only `docker image prune --fo
 disposable. Never run system/volume/container prune or delete a running, database, evidence, pinned,
 or user-named resource.
 
-### 17.2 Deferred Focused Gates
+### 17.2 Comprehensive Re-Verification Of Focused Gates
 
-Within WC-09, use the repository's pinned TypeScript test container and existing package scripts for
-the deferred checks authored by WC-01 through WC-08. Run them from cheapest to most expensive and
-stop on first deterministic failure. Exact selectors must be recorded in WC-00; equivalent shape:
+Within WC-09, use the repository's pinned TypeScript test container and existing package scripts to
+re-run, at finalized HEAD, every focused check that WC-01 through WC-08 already validated immediately
+after their first substantive edit. Run them from cheapest to most expensive and stop on first
+deterministic failure. Exact selectors must be recorded in WC-00; equivalent shape:
 
 ```sh
 docker compose run --rm test-runner-ts npm test -- --runInBand <focused-test-file-or-pattern>
@@ -1097,7 +1223,8 @@ The existing `wc078-qualification.json` remains authoritative and gains an addit
 
 Actual counts replace placeholders. Evidence records exact commands, versions, exit codes, browser
 projects, viewport/locale/theme/state matrix, coverage, performance, image IDs/digests, artifact paths
-and hashes, timestamps, and final HEAD. It contains no secret, cookie, token, customer data, raw query
+and hashes, timestamps, and final HEAD. The `screenshots.count` value must equal the Section 11.1
+54-capture manifest exactly. It contains no secret, cookie, token, customer data, raw query
 URL, or scanner credential. Generated evidence is retained in the ignored/artifact boundary and is
 not committed after qualification because that would invalidate HEAD binding.
 
@@ -1118,7 +1245,7 @@ not committed after qualification because that would invalidate HEAD binding.
 | VRA-11 professional cards | WC-05 | catalogue-state component and visual tests |
 | VRA-12 unique section purpose | WC-03, WC-05 | disposition/content ledger and rendered heading/copy assertions |
 | VRA-13 genuine translations | WC-01, WC-06 | review-ledger, fallback, key, script, RTL checks |
-| VRA-14 screenshot matrix | WC-07, WC-08 | hashed route/state artifact index |
+| VRA-14 screenshot matrix | WC-07, WC-08 | Section 11.1 54-capture manifest plus G9 collision assertion hashed into route/state artifact index |
 | VRA-15 substantive review | WC-08, WC-09 | named reviewer ACCEPT bound to HEAD |
 | VRA-16 accessibility | WC-02 through WC-07 | axe, keyboard, focus, contrast, zoom, reduced motion |
 | VRA-17 WC-078 preservation | WC-00, WC-07, WC-09 | unchanged PA-ACC regression suite and diff ledger |
@@ -1197,7 +1324,8 @@ Stop rather than proceed when:
 The plan is ready for implementation authorization only when:
 
 - Founder accepts the plan recommendations and the exact Section 2 normative deltas;
-- actual claim approval references and reviewed translations are supplied;
+- the Founder-approved claims are bound to the immutable implementation PR and all eleven WAOOAW AI
+  translations pass constitutional vocabulary self-review;
 - WC-00 records the accepted prior WC-078 qualification baseline without rerunning it;
 - all VRA-01 through VRA-20 map to bounded Work Components and evidence;
 - PA-ACC-01 through PA-ACC-19 remain mandatory and traceable;
@@ -1209,12 +1337,13 @@ The plan is ready for implementation authorization only when:
 
 The work package is `DONE` only when:
 
-- WC-01 through WC-08 implementation and deterministic tests are complete with no work outside the
-  Section 16 file/scope boundary;
-- WC-09 executes the first and only planned Docker campaign after implementation, and every deferred
-  component, configuration, route, browser, accessibility, visual, localization, privacy, security,
-  PWA, SEO, consent, marketing-suppression, performance, coverage, SBOM, Trivy, Gitleaks, and
-  repository gate passes;
+- WC-01 through WC-08 implementation and deterministic tests are complete, each Work Component's
+  immediate focused Docker check has passed and recorded `IMPLEMENTED_FOCUS_VALIDATED`, and no work
+  occurred outside the Section 16 file/scope boundary;
+- WC-09 executes the one comprehensive Docker campaign after every Work Component holds
+  `IMPLEMENTED_FOCUS_VALIDATED`, and every remaining component, configuration, route, browser,
+  accessibility, visual, localization, privacy, security, PWA, SEO, consent, marketing-suppression,
+  performance, coverage, SBOM, Trivy, Gitleaks, and repository gate passes;
 - all VRA-01 through VRA-20 pass and PA-ACC-01 through PA-ACC-19 remain passing, with only the
   explicitly accepted PA-ACC-03 presentation supersession;
 - English and Urdu receive full linguistic/visual review, all eleven locale catalogs pass
@@ -1240,8 +1369,44 @@ acceptance contracts, and the explicit requirement to preserve WC-078 good work.
 The review verified: no new component/API/persistence/dependency; exact supersession boundaries;
 preservation ledger; resolved recommendations and accepting authority; six-stage/four-rail state
 mapping; server/client ownership; responsive, RTL, reduced-motion and failure behavior; genuine
-translation gate; claim fail-closed behavior; end-of-implementation Docker-only qualification;
-token-efficient context and test protocol; VRA and PA acceptance traceability; substantive
+translation gate; claim fail-closed behavior; an immediate-focused-check-per-slice plus one
+comprehensive WC-09 Docker qualification cadence; token-efficient context and test protocol; VRA and
+PA acceptance traceability; substantive
 screenshot review; final-HEAD evidence; rollback; and constitutional stops.
+
+### 23.1 Focused Repair Record
+
+INST-005 performed a bounded document repair of this plan on 2026-09-03, limited to this file, to
+correct four defects found on re-review:
+
+1. Replaced the all-tests-deferred-to-WC-09 cadence throughout Sections 1, 2, 3, 15, 16, 17, and 22,
+   each Work Component completion description, and this review with an immediate cheapest focused
+   Docker check after each Work Component's first substantive edit, reusing a pinned/hash-tagged test
+   image, while retaining exactly one clean comprehensive WC-09 qualification at finalized HEAD as the
+   sole final evidence campaign. Introduced the `IMPLEMENTED_FOCUS_VALIDATED` status to replace
+   `IMPLEMENTED_PENDING_QUALIFICATION` and removed the stale `no Docker test`/`No test has run yet`
+   language this superseded.
+2. Added Section 11.1, a deterministic bounded 54-capture screenshot manifest plus the G9 collision assertion
+   covering every required viewport, 200% zoom, English LTR, Urdu RTL, one Devanagari and one
+   Dravidian sample, light/dark/system theme, normal/reduced motion, announcement visible/dismissed,
+   consent banner/preferences-open/closed, both professionals across all six stages, the shared settled
+   state, Platform DNA/footer, and the 360px announcement-plus-consent collision case, mapped to
+   WC-08/WC-09 and VRA-14/VRA-15, using pairwise/risk-based grouping rather than a Cartesian product.
+3. Replaced ambiguous `Founder/content owner`, `Founder/claim owner`, `Founder/product owner`, and
+   `Founder/product/privacy owner` acceptance labels in Section 14 with `Founder-reserved`, because no
+   artifact currently loaded establishes a delegated content, claim, product, or privacy office for
+   this plan; attributed only the OD-07 technical recommendation to Chief Solution Architect (INST-005)
+   with Founder-reserved plan acceptance; attributed Section 2's normative-delta ratification to
+   INST-005 as this plan's own owning office; and added Section 14.1 defining the deterministic
+   accepted-reference record shape (record locator, immutable identifier, decision ID, accepted value,
+   accepting actor) that WC-00 must use instead of an arbitrary accepted-value string.
+4. Re-read the edited plan against requirements input Sections 10 through 16 and repaired the
+   resulting internal contradictions (status naming, stale deferred-cadence language, and
+   cross-references) so the plan remains internally consistent.
+
+This repair changed no scope, no acceptance requirement, and no implementation authority. Status
+remains `REVIEW CANDIDATE`; implementation authority remains `NOT GRANTED`; Founder acceptance of this
+plan, the Section 2 deltas, and actual accepted claim/content/translation records under Section 14.1
+remain outstanding before Section 3 can close.
 
 **Result:** PASS AS REVIEW CANDIDATE - implementation remains blocked by Section 3.

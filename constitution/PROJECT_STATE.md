@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 129
-**Last Updated:** 2026-09-02 (WC-079 Agent Admission Contract IMPLEMENTED)
+**State Revision:** 134
+**Last Updated:** 2026-09-03 (WC-078 engineering qualification checkpoint)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -37,6 +37,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Lightweight workflow consolidation | MERGED - PR #388 as `72123e5`; release qualification moved into CI, runner operations consolidated, and durable workflows renamed by purpose |
 | Current application foundation | DONE - PRs #373, #376, #381 and #386 added identity, public acquisition, admission and runtime adapter foundations after cloud qualification |
 | Demo/runtime readiness repairs | MERGED - PRs #389 through #398 repaired cleanup provenance, cloud authority, dependency recovery, service startup, Temporal readiness and deployment verification |
+| WC-078 public visual experience | ENGINEERING QUALIFIED - WC-01 through WC-08 complete; WC-09 Docker build/tests/browser matrix/54 captures/scanners and author review PASS; Founder visual acceptance, PR approval and merge pending |
 | Production | PLAN ONLY - code-prepared; protected environments, authorized plan, traffic and final acceptance remain Founder-reserved |
 
 ### Checkpoint Context
