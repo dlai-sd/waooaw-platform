@@ -187,7 +187,7 @@ test('PA-ACC-16: keyboard and axe checks pass across the public acquisition surf
     await expect(skipLink).toBeFocused();
     await skipLink.press('Enter');
     await expect(page.locator('#main-content')).toBeFocused();
-    await page.locator('body').evaluate(async () => { await Promise.all(document.getAnimations().map((animation) => animation.finished)); });
+    await page.locator('body').evaluate(async () => { await Promise.allSettled(document.getAnimations().map((animation) => animation.finished)); });
     const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations.filter((finding) => finding.impact === 'critical' || finding.impact === 'serious'), path).toEqual([]);
   }
