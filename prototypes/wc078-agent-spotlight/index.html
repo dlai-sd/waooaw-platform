@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WAOOAW Agent Spotlight Prototype</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #f7f9fc;
+      --surface: #fff;
+      --surface-soft: #f1f6fc;
+      --ink: #183253;
+      --muted: #60748d;
+      --line: #d6e0ec;
+      --navy: #183557;
+      --blue: #1769d2;
+      --orange: #c66217;
+      --active: #2a8c56;
+      --active-rgb: 42 140 86;
+      --shadow: 0 18px 45px rgb(24 53 87 / 12%);
+    }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --page: #0f1b2b;
+      --surface: #14243a;
+      --surface-soft: #1a2d46;
+      --ink: #f3f7fc;
+      --muted: #afc0d4;
+      --line: #334b67;
+      --navy: #0b1726;
+      --blue: #62a7ff;
+      --orange: #ff9b55;
+      --shadow: 0 22px 52px rgb(0 0 0 / 32%);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; font-size: 16px; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    body { margin: 0; color: var(--ink); background: var(--page); font-family: "Aptos", "Segoe UI", sans-serif; }
+    button, a { font: inherit; color: inherit; }
+    a { text-underline-offset: .2em; }
+    button { cursor: pointer; }
+
+    .topbar {
+      min-height: 86px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 2rem;
+      padding: .75rem clamp(2rem, 5vw, 5rem);
+      border-bottom: 1px solid var(--line);
+      background: var(--surface);
+    }
+    .brand img { display: block; width: 58px; height: 58px; object-fit: contain; }
+    .main-nav, .actions { display: flex; align-items: center; gap: 1.4rem; }
+    .actions { justify-content: flex-end; }
+    .control, .button {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .45rem;
+      padding: .65rem 1rem;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface);
+    }
+    .button-primary { color: #fff; border-color: #1769d2; background: #1769d2; text-decoration: none; }
+
+    .hero {
+      min-height: 590px;
+      display: grid;
+      grid-template-columns: minmax(0, .88fr) minmax(460px, 1.12fr);
+      align-items: center;
+      background: radial-gradient(circle at 14% 22%, rgb(23 105 210 / 11%), transparent 35%), var(--surface);
+    }
+    .hero-copy { padding: clamp(3rem, 6vw, 5rem) clamp(2rem, 7vw, 6rem); }
+    .eyebrow { margin: 0 0 1.25rem; color: var(--orange); font-size: .9rem; font-weight: 800; }
+    .hero h1 { max-width: 15ch; margin: 0; font-size: clamp(2.7rem, 4vw, 3.65rem); line-height: 1.08; }
+    .lede { max-width: 32rem; margin: 1.7rem 0; color: var(--muted); font-size: 1.2rem; line-height: 1.55; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: .75rem; }
+    .hero-stage { padding: 2rem clamp(1.25rem, 3vw, 3rem) 2rem 1rem; }
+
+    .spotlight {
+      position: relative;
+      width: min(100%, 720px);
+      min-width: 320px;
+      aspect-ratio: 8 / 5;
+      overflow: hidden;
+      isolation: isolate;
+      border: 0;
+      border-radius: 8px;
+      background: linear-gradient(100deg, #ff9e18 0%, #bc523d 20%, #713a4d 52%, #40283e 78%, #251b2e 100%);
+      box-shadow: var(--shadow);
+    }
+    .spotlight::before, .spotlight::after {
+      content: "";
+      position: absolute;
+      z-index: -2;
+      border-radius: 50%;
+      transition: background 450ms ease, transform 650ms cubic-bezier(.2,.8,.2,1);
+    }
+    .spotlight::before {
+      width: 330px;
+      height: 330px;
+      top: -190px;
+      right: -80px;
+      border: 38px solid rgb(var(--active-rgb) / 10%);
+      transform: rotate(18deg);
+    }
+    .spotlight::after {
+      width: 230px;
+      height: 230px;
+      bottom: -150px;
+      left: -80px;
+      border: 28px solid rgb(var(--active-rgb) / 8%);
+    }
+    .watermark { display: none; }
+
+    .spotlight-inner { position: absolute; inset: 0; }
+    .icon-button { position: absolute; z-index: 8; width: 38px; height: 38px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: color-mix(in srgb, var(--surface) 90%, transparent); backdrop-filter: blur(8px); }
+    .replay-button { top: 1rem; right: 1rem; }
+    .reel-control {
+      top: 50%;
+      border-color: rgb(255 255 255 / 44%);
+      color: #fff;
+      background: rgb(9 8 11 / 76%);
+      box-shadow: 0 4px 14px rgb(0 0 0 / 28%);
+      font-size: 25px;
+      line-height: 1;
+      transform: translateY(-50%);
+    }
+    .reel-control-previous { left: .55rem; }
+    .reel-control-next { right: .55rem; }
+    .reel-control:disabled { cursor: default; opacity: .42; }
+
+    .stage {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      contain: layout paint;
+      border-radius: inherit;
+      background: linear-gradient(100deg, #ff9e18 0%, #bc523d 20%, #713a4d 52%, #40283e 78%, #251b2e 100%);
+    }
+    .stage::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      pointer-events: none;
+      background: linear-gradient(90deg, rgb(255 199 93 / 34%), rgb(255 161 81 / 16%) 28%, rgb(196 111 133 / 10%) 62%, rgb(104 76 117 / 8%));
+      mix-blend-mode: screen;
+      opacity: .72;
+      transform: translateX(0);
+    }
+    .film-track {
+      position: absolute;
+      top: 35px;
+      bottom: 35px;
+      left: 50%;
+      z-index: 1;
+      display: flex;
+      width: calc(var(--frame-width) * 5);
+      padding-block: 30px;
+      background: #09080b;
+      box-shadow: 0 14px 34px rgb(0 0 0 / 38%);
+      -webkit-mask:
+        linear-gradient(#000 0 0),
+        repeating-linear-gradient(90deg, #000 0 calc(var(--hole-pitch) * .53), transparent calc(var(--hole-pitch) * .53) var(--hole-pitch)) 0 9px / 100% 8px no-repeat,
+        repeating-linear-gradient(90deg, #000 0 calc(var(--hole-pitch) * .53), transparent calc(var(--hole-pitch) * .53) var(--hole-pitch)) 0 calc(100% - 9px) / 100% 8px no-repeat;
+      -webkit-mask-composite: xor;
+      mask:
+        linear-gradient(#000 0 0),
+        repeating-linear-gradient(90deg, #000 0 calc(var(--hole-pitch) * .53), transparent calc(var(--hole-pitch) * .53) var(--hole-pitch)) 0 9px / 100% 8px no-repeat,
+        repeating-linear-gradient(90deg, #000 0 calc(var(--hole-pitch) * .53), transparent calc(var(--hole-pitch) * .53) var(--hole-pitch)) 0 calc(100% - 9px) / 100% 8px no-repeat;
+      mask-composite: exclude;
+      transform: translateX(calc(var(--frame-width) * -2.5));
+      will-change: transform;
+    }
+    .film-track::before, .film-track::after {
+      content: none;
+    }
+    .film-track.is-moving-forward { transform: translateX(calc(var(--frame-width) * -3.5)); transition: transform 1250ms cubic-bezier(.45, .02, .16, 1); }
+    .film-track.is-moving-backward { transform: translateX(calc(var(--frame-width) * -1.5)); transition: transform 1250ms cubic-bezier(.45, .02, .16, 1); }
+    .film-cell {
+      position: relative;
+      flex: 0 0 var(--frame-width);
+      min-width: 0;
+      padding: 0;
+      background: #09080b;
+    }
+    .film-cell + .film-cell { border-left: 18px solid #09080b; }
+    .film-cell:nth-child(-n + 3) { box-shadow: inset 1px 0 rgb(210 104 65 / 72%); }
+    .film-cell:nth-child(n + 4) { box-shadow: inset 1px 0 rgb(109 62 79 / 46%); }
+    .film-code {
+      position: absolute;
+      z-index: 6;
+      left: 1.2rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: #d4a841;
+      font: 700 10px/1 Georgia, serif;
+      letter-spacing: .08em;
+      opacity: .72;
+    }
+    .film-code::after {
+      content: "";
+      width: 0;
+      height: 0;
+      border-block: 4px solid transparent;
+      border-left: 7px solid #d4a841;
+    }
+    .film-code-top { top: -24px; }
+    .film-code-bottom { bottom: -24px; }
+    .film-cell:not(.is-current) { cursor: pointer; }
+    .film-cell:not(.is-current)::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      background: rgb(7 8 12 / 34%);
+    }
+    .stage.is-transporting::before { animation: exposure-pass 1250ms ease-in-out both; }
+    .message-card {
+      position: relative;
+      z-index: 3;
+      width: 100%;
+      height: 100%;
+      align-self: stretch;
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr);
+      gap: .65rem;
+      padding: 1rem 1.1rem;
+      overflow: hidden;
+      border: 0;
+      border-radius: 0;
+      background: color-mix(in srgb, var(--surface) 94%, var(--active) 6%);
+      box-shadow: none;
+    }
+    .scene-media {
+      position: absolute;
+      z-index: -1;
+      inset: 0 0 0 auto;
+      width: 48%;
+      overflow: hidden;
+      opacity: .82;
+      background: #edf4fb;
+    }
+    .scene-media::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background-image: radial-gradient(circle at center, rgb(var(--active-rgb) / 18%) 0 1px, transparent 1.5px);
+      background-size: 12px 12px;
+      mix-blend-mode: multiply;
+      opacity: .65;
+    }
+    .scene-media::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      background: linear-gradient(90deg, var(--surface) 0%, color-mix(in srgb, var(--surface) 78%, transparent) 24%, transparent 58%), linear-gradient(0deg, color-mix(in srgb, var(--surface) 88%, transparent), transparent 46%);
+    }
+    .scene-media img { width: 100%; height: 100%; display: block; object-fit: cover; filter: saturate(.8) contrast(.94) brightness(1.08); }
+    .film-cell[data-index="0"] .scene-media img { object-position: 58% center; }
+    .film-cell[data-index="1"] .scene-media img { object-position: 55% 34%; }
+    .film-cell[data-index="2"] .scene-media img { object-position: 62% center; }
+    .film-cell[data-index="3"] .scene-media img { object-position: 64% center; }
+    .identity, .capability, .signals { position: relative; z-index: 2; }
+    .identity, .capability { width: 62%; }
+    .identity { display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: center; gap: .75rem; min-width: 0; }
+    .identity > div { min-width: 0; }
+    .identity-icon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 7px; color: var(--active); background: rgb(var(--active-rgb) / 12%); font-size: 1.35rem; font-weight: 900; }
+    .identity h2 { margin: 0; overflow-wrap: anywhere; font-size: 19px; line-height: 22px; }
+    .identity small { display: block; margin-top: 3px; color: var(--muted); font-size: 13px; line-height: 17px; }
+    .capability { margin: 0; color: var(--ink); font-size: 16px; font-weight: 700; line-height: 22px; }
+
+    .signals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; align-self: end; }
+    .signal {
+      min-width: 0;
+      min-height: 67px;
+      display: grid;
+      align-content: center;
+      gap: .25rem;
+      padding: .6rem;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      opacity: 1;
+      transform: none;
+    }
+    .signal small { overflow: hidden; color: var(--muted); font-size: 10px; line-height: 13px; text-overflow: ellipsis; white-space: nowrap; }
+    .signal strong { overflow: hidden; font-size: 12px; line-height: 15px; text-overflow: ellipsis; white-space: nowrap; }
+    .signal-state { display: flex; align-items: center; gap: .25rem; min-width: 0; color: var(--active); font-size: 10px; line-height: 15px; font-weight: 800; white-space: nowrap; }
+    .signal-state::before { content: "✓"; width: 15px; height: 15px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: var(--active); }
+    .signal:last-child .signal-state::before { content: "●"; color: var(--active); background: rgb(var(--active-rgb) / 14%); }
+
+    @keyframes exposure-pass {
+      0%, 100% { opacity: .72; }
+      48% { opacity: 1; }
+    }
+
+    .trust-band { min-height: 112px; display: grid; place-items: center; padding: 2rem; color: #fff; background: var(--navy); }
+    .trust-band strong { display: block; margin-bottom: .35rem; }
+    .section { padding: 4.5rem max(2rem, calc((100% - 1120px) / 2)); }
+    .section h2 { max-width: 18ch; margin: 0; font-size: 2.35rem; }
+    .section > p { max-width: 48rem; color: var(--muted); line-height: 1.6; }
+    .catalogue { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-top: 2.5rem; }
+    .catalogue article { min-height: 210px; padding: 1.5rem; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+    .catalogue p { color: var(--muted); line-height: 1.5; }
+    .dna { color: #fff; background: var(--navy); }
+    .dna > p { color: #d9e5f2; }
+    .footer { padding: 3rem 5vw; color: #dce6ef; background: #102743; }
+
+    @media (max-width: 900px) {
+      .topbar { grid-template-columns: auto 1fr; }
+      .main-nav { display: none; }
+      .hero { grid-template-columns: 1fr; }
+      .hero-stage { padding: 0 1.25rem 2.5rem; }
+      .spotlight { margin: auto; min-width: 0; }
+      .catalogue { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 520px) {
+      .actions a:not(.button-primary) { display: none; }
+      .topbar { padding-inline: 1rem; }
+      .hero-copy { padding: 2.8rem 1.25rem; }
+      .spotlight { min-height: 460px; aspect-ratio: auto; }
+      .spotlight-inner { padding-inline: .85rem; }
+      .film-cell + .film-cell { border-left-width: 14px; }
+      .film-code { left: .65rem; gap: 3px; font-size: 8px; }
+      .film-code::after { border-block-width: 3px; border-left-width: 6px; }
+      .message-card { gap: .5rem; padding: .75rem; }
+      .identity { grid-template-columns: 36px minmax(0, 1fr); gap: .5rem; }
+      .identity-icon { width: 36px; height: 36px; font-size: 1rem; }
+      .identity h2 { font-size: 15px; line-height: 18px; }
+      .identity small { font-size: 11px; line-height: 14px; }
+      .capability { font-size: 13px; line-height: 18px; }
+      .identity, .capability { width: 80%; }
+      .scene-media { width: 38%; opacity: .68; }
+      .signals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .signal { min-height: 58px; padding: .45rem; }
+      .signal:nth-child(3) { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="WAOOAW home"><img src="/web/public/waooaw-platform-logo.png" alt="WAOOAW"></a>
+    <nav class="main-nav" aria-label="Main navigation"><a href="#">Home</a><a href="#professionals">Professionals</a><a href="#insights">Insights</a><a href="#about">About</a></nav>
+    <div class="actions"><button class="control" id="themeButton" type="button">☾ Theme</button><a href="#">Log in</a><a class="button button-primary" href="#">Register</a></div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Constitutionally governed digital professionals</p>
+        <h1>Grow your business with WAOOAW AI professionals</h1>
+        <p class="lede">Guide the work in just ten minutes a day. Spend more time growing your business.</p>
+        <div class="hero-actions"><a class="button button-primary" href="#professionals">Meet a professional →</a><a class="button" href="#">Start with a trial</a></div>
+      </div>
+
+      <div class="hero-stage">
+        <section class="spotlight" aria-label="WAOOAW professional spotlight" aria-live="polite">
+          <img class="watermark" src="/web/public/waooaw-platform-logo.png" alt="" aria-hidden="true">
+          <div class="spotlight-inner">
+            <div class="stage" id="stage"><button class="icon-button reel-control reel-control-previous" id="previousButton" type="button" title="Previous professional" aria-label="Previous professional">‹</button><button class="icon-button reel-control reel-control-next" id="nextButton" type="button" title="Next professional" aria-label="Next professional">›</button><button class="icon-button replay-button" id="replayButton" type="button" title="Replay" aria-label="Replay professional sequence">↻</button></div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section class="trust-band"><div><strong>Control remains yours.</strong><span>Clear scope, evidence-backed states, and persistent Emergency Stop.</span></div></section>
+    <section class="section" id="professionals"><p class="eyebrow">Professional catalogue</p><h2>Specialists for work that matters</h2><p>Explore professional categories being prepared for WAOOAW employment.</p><div class="catalogue"><article><small>Audience growth</small><h3>Digital Marketing Professional</h3><p>Campaign planning, content preparation, and enquiry tracking.</p></article><article><small>Farm planning</small><h3>Agricultural Advisor</h3><p>Crop, irrigation, weather, and market guidance.</p></article><article><small>Research-led analysis</small><h3>Trading Advisory Professional</h3><p>Market briefings, risk signals, and evidence for review.</p></article></div></section>
+    <section class="section dna" id="about"><p class="eyebrow">Platform DNA</p><h2>Autonomy with accountable control</h2><p>Every professional works within agreed scope, visible evidence, and reviewable decisions.</p></section>
+    <section class="section" id="insights"><p class="eyebrow">Insights</p><h2>Practical thinking for governed AI work</h2><p>Guidance for organizations preparing to employ autonomous digital professionals.</p></section>
+  </main>
+  <footer class="footer">WAOOAW · Governed digital professionals</footer>
+
+  <script>
+    const professionals = [
+      { id: 'agriculture', tab: 'Agriculture', name: 'Agricultural Advisor', context: 'Farm business', icon: '♧', image: 'agriculture.jpg', color: '#2a8c56', rgb: '42 140 86', capability: 'Monitors crops, weather, irrigation, and market conditions.', signals: [['Context', '2-acre farm', 'Understood'], ['Active work', 'Crop and weather', 'Monitoring'], ['Outcome', 'Irrigation window', 'Review']] },
+      { id: 'marketing', tab: 'Marketing', name: 'Digital Marketing Professional', context: 'Growing business', icon: '▥', image: 'marketing.jpg', color: '#1769d2', rgb: '23 105 210', capability: 'Plans campaigns, prepares content, and tracks enquiries.', signals: [['Context', 'Dental clinic', 'Understood'], ['Active work', 'Four-post plan', 'Prepared'], ['Outcome', 'Responses ready', 'Review']] },
+      { id: 'tutor', tab: 'Tutor', name: 'Private Tutor', context: 'Individual learning', icon: 'Aa', image: 'tutor.jpg', color: '#d99b16', rgb: '217 155 22', capability: 'Adapts lessons, practice, and feedback to each learner.', signals: [['Context', 'Learning level', 'Understood'], ['Active work', 'Adaptive lesson', 'Prepared'], ['Outcome', 'Next topic', 'Review']] },
+      { id: 'trading', tab: 'Trading', name: 'Trading Advisory Professional', context: 'Research-led analysis', icon: '↗', image: 'trading.jpg', color: '#087d84', rgb: '8 125 132', capability: 'Researches markets and prepares evidence-backed analysis.', signals: [['Context', 'Risk limits', 'Understood'], ['Active work', 'Signals compared', 'Analyzed'], ['Outcome', 'Briefing ready', 'Review']] }
+    ];
+
+    const spotlight = document.querySelector('.spotlight');
+    const stage = document.querySelector('#stage');
+    let activeIndex = 0;
+    let autoplay = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let timer;
+    let isMoving = false;
+
+    function makeWatermarkTransparent() {
+      const watermark = document.querySelector('.watermark');
+      const source = new Image();
+      source.addEventListener('load', () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = source.naturalWidth;
+        canvas.height = source.naturalHeight;
+        const context = canvas.getContext('2d');
+        context.drawImage(source, 0, 0);
+        const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+        for (let index = 0; index < pixels.data.length; index += 4) {
+          const neutral = Math.min(pixels.data[index], pixels.data[index + 1], pixels.data[index + 2]);
+          if (neutral > 220) pixels.data[index + 3] *= (255 - neutral) / 35;
+        }
+        context.putImageData(pixels, 0, 0);
+        watermark.src = canvas.toDataURL('image/png');
+      }, { once: true });
+      source.src = watermark.src;
+    }
+
+    function renderFrame(professional, index, isCurrent, isInteractive = false) {
+      const frameCode = index % 2 === 0 ? '12' : '11A';
+      return `<article class="film-cell${isCurrent ? ' is-current' : ''}${isInteractive ? ' is-interactive' : ''}" data-index="${index}" ${isInteractive ? `role="button" tabindex="0" aria-label="Show ${professional.name}"` : ''} style="--active: ${professional.color}; --active-rgb: ${professional.rgb}"><span class="film-code film-code-top" aria-hidden="true">${frameCode}</span><span class="film-code film-code-bottom" aria-hidden="true">${frameCode}</span><div class="message-card"><div class="scene-media" aria-hidden="true"><img src="${professional.image}" alt=""></div>
+        <header class="identity"><span class="identity-icon" aria-hidden="true">${professional.icon}</span><div><h2>${professional.name}</h2><small>${professional.context}</small></div></header>
+        <p class="capability">${professional.capability}</p>
+        <div class="signals">${professional.signals.map((signal) => `<div class="signal"><small>${signal[0]}</small><strong>${signal[1]}</strong><span class="signal-state">${signal[2]}</span></div>`).join('')}</div>
+      </div></article>`;
+    }
+
+    function renderStrip(index) {
+      activeIndex = index;
+      const professional = professionals[index];
+      spotlight.style.setProperty('--active', professional.color);
+      spotlight.style.setProperty('--active-rgb', professional.rgb);
+      spotlight.dataset.professional = professional.id;
+      const previousIndex = (index - 1 + professionals.length) % professionals.length;
+      const previousBufferIndex = (index - 2 + professionals.length) % professionals.length;
+      const nextIndex = (index + 1) % professionals.length;
+      const nextBufferIndex = (index + 2) % professionals.length;
+      stage.querySelector('.film-track')?.remove();
+      stage.insertAdjacentHTML('beforeend', `<div class="film-track">${renderFrame(professionals[previousBufferIndex], previousBufferIndex, false)}${renderFrame(professionals[previousIndex], previousIndex, false, true)}${renderFrame(professional, index, true)}${renderFrame(professionals[nextIndex], nextIndex, false, true)}${renderFrame(professionals[nextBufferIndex], nextBufferIndex, false)}</div>`);
+      const frameWidth = Math.max(250, stage.clientWidth - (stage.clientWidth < 420 ? 40 : 104));
+      const track = stage.querySelector('.film-track');
+      track.style.setProperty('--frame-width', `${frameWidth}px`);
+      track.style.setProperty('--hole-pitch', `${frameWidth / 17}px`);
+      track.querySelectorAll('.film-cell.is-interactive').forEach((frame) => {
+        const selectFrame = () => {
+          const selectedIndex = Number(frame.dataset.index);
+          moveStrip(selectedIndex === nextIndex ? 1 : -1);
+          startAutoplay();
+        };
+        frame.addEventListener('click', selectFrame);
+        frame.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectFrame(); }
+        });
+      });
+    }
+
+    function moveStrip(direction = 1) {
+      if (isMoving) return;
+      const track = stage.querySelector('.film-track');
+      if (!track) return;
+      isMoving = true;
+      const frames = track.querySelectorAll('.film-cell');
+      frames[direction > 0 ? 3 : 1]?.classList.add('is-current');
+      document.querySelectorAll('.reel-control').forEach((control) => { control.disabled = true; });
+      stage.classList.add('is-transporting');
+      track.classList.add(direction > 0 ? 'is-moving-forward' : 'is-moving-backward');
+      track.addEventListener('transitionend', (event) => {
+        if (event.propertyName !== 'transform') return;
+        renderStrip((activeIndex + direction + professionals.length) % professionals.length);
+        stage.classList.remove('is-transporting');
+        document.querySelectorAll('.reel-control').forEach((control) => { control.disabled = false; });
+        isMoving = false;
+      }, { once: true });
+    }
+
+    function startAutoplay() {
+      clearTimeout(timer);
+      if (!autoplay) return;
+      timer = setTimeout(() => {
+        moveStrip(1);
+        startAutoplay();
+      }, 3820);
+    }
+
+    document.querySelector('#previousButton').addEventListener('click', () => { moveStrip(-1); startAutoplay(); });
+    document.querySelector('#nextButton').addEventListener('click', () => { moveStrip(1); startAutoplay(); });
+    document.querySelector('#replayButton').addEventListener('click', () => { autoplay = true; isMoving = false; renderStrip(0); stage.classList.remove('is-transporting'); document.querySelectorAll('.reel-control').forEach((control) => { control.disabled = false; }); startAutoplay(); });
+    document.querySelector('#themeButton').addEventListener('click', () => { const root = document.documentElement; root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark'; });
+    document.addEventListener('visibilitychange', () => document.hidden ? clearTimeout(timer) : startAutoplay());
+    window.addEventListener('resize', () => renderStrip(activeIndex));
+    makeWatermarkTransparent();
+    renderStrip(0);
+    startAutoplay();
+  </script>
+</body>
+</html>
