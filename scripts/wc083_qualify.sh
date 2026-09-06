@@ -29,6 +29,7 @@ FIXTURE_CONTAINER="wc083-fixture-${SOURCE_HASH}"
 NODE_MODULES_VOLUME="wc083-node-modules-${SOURCE_HASH}"
 EVIDENCE_DIR="$(dirname "$OUTPUT")"
 PINNED_PNPM="/root/.cache/node/corepack/v1/pnpm/9.15.9/bin/pnpm.cjs"
+PROVIDER_RESULTS="$EVIDENCE_DIR/provider-tests.trx"
 
 cleanup() {
   docker rm -f "$WEB_CONTAINER" "$FIXTURE_CONTAINER" >/dev/null 2>&1 || true
@@ -56,6 +57,10 @@ docker run --rm -d --name "$WEB_CONTAINER" --network "$NETWORK" \
 docker run --rm --network "$NETWORK" curlimages/curl:8.12.1 --retry 10 --retry-connrefused --fail --silent "http://${WEB_CONTAINER}:3000/" >/dev/null
 
 docker run --rm "$TEST_IMAGE" node "$PINNED_PNPM" --dir web exec tsc --noEmit
+docker compose --profile test-dotnet run --rm -v "$PWD/$EVIDENCE_DIR:/evidence" test-runner-dotnet \
+  dotnet test tests/business-platform.Tests/business-platform.Tests.csproj \
+  --filter 'FullyQualifiedName~IdentityProviderProjectionTests' \
+  --logger 'trx;LogFileName=/evidence/provider-tests.trx' --logger 'console;verbosity=minimal'
 docker run --rm --user "$(id -u):$(id -g)" -v "$PWD/$EVIDENCE_DIR:/out" "$TEST_IMAGE" \
   node "$PINNED_PNPM" --dir web exec jest --runInBand --coverage --coverageReporters=text --coverageReporters=json-summary \
   --coverageDirectory=/out/coverage --json --outputFile=/out/jest.json
@@ -82,15 +87,21 @@ PLAYWRIGHT_PASSED="$(jq '[.suites[].specs[].tests[] | select(.status == "expecte
 PLAYWRIGHT_SKIPPED="$(jq '[.suites[].specs[].tests[] | select(.status == "skipped")] | length' "$EVIDENCE_DIR/playwright.json")"
 TRIVY_FINDINGS="$(jq '[.Results[]?.Vulnerabilities[]?] | length' "$EVIDENCE_DIR/trivy.json")"
 GITLEAKS_DIFF_FINDINGS="$(jq 'length' "$EVIDENCE_DIR/gitleaks-diff.json")"
+provider_counter() { sed -n "s/.* $1=\"\([0-9][0-9]*\)\".*/\1/p" "$PROVIDER_RESULTS"; }
+PROVIDER_TOTAL="$(provider_counter total)"
+PROVIDER_EXECUTED="$(provider_counter executed)"
+PROVIDER_PASSED="$(provider_counter passed)"
+PROVIDER_FAILED="$(provider_counter failed)"
+test "$PROVIDER_TOTAL" -gt 0 && test "$PROVIDER_TOTAL" -eq "$PROVIDER_EXECUTED" && test "$PROVIDER_EXECUTED" -eq "$PROVIDER_PASSED" && test "$PROVIDER_FAILED" -eq 0
 COMPLETED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 jq -n \
   --arg head "$HEAD_SHA" --arg base "$BASE_SHA" --arg source "$SOURCE_HASH" --arg web_image "$WEB_ID" --arg test_image "$TEST_ID" \
   --arg started "$STARTED_AT" --arg completed "$COMPLETED_AT" \
-  --argjson jest_tests "$JEST_TESTS" --argjson coverage "$COVERAGE_LINES" --argjson playwright_passed "$PLAYWRIGHT_PASSED" \
+  --argjson provider_tests "$PROVIDER_TOTAL" --argjson jest_tests "$JEST_TESTS" --argjson coverage "$COVERAGE_LINES" --argjson playwright_passed "$PLAYWRIGHT_PASSED" \
   --argjson playwright_skipped "$PLAYWRIGHT_SKIPPED" --argjson screenshots "$SCREENSHOT_COUNT" --argjson trivy_findings "$TRIVY_FINDINGS" --argjson gitleaks_diff_findings "$GITLEAKS_DIFF_FINDINGS" \
-  '{schema_version:"1.0",work_contract:"WC-083",result:"PASS",head_sha:$head,base_sha:$base,source_hash:$source,started_at:$started,completed_at:$completed,images:{web:$web_image,test:$test_image},build:{production:"PASS",typecheck:"PASS"},unit:{result:"PASS",tests:$jest_tests,lines_pct:$coverage},browser:{result:"PASS",passed:$playwright_passed,skipped:$playwright_skipped,browsers:["chromium","firefox","webkit"],viewports:["1440x900","768x1024","360x800"]},accessibility:{axe:"PASS",keyboard:"PASS",reduced_motion:"PASS",rtl:"PASS"},screenshots:{result:"CAPTURED_FOR_REVIEW",count:$screenshots,hashes:"screenshots.sha256"},security:{sbom:"sbom.json",trivy:{result:"PASS",findings:$trivy_findings,report:"trivy.json"},gitleaks:{result:"PASS",diff_findings:$gitleaks_diff_findings,history_report:"gitleaks-history.json",diff_report:"gitleaks-diff.json"}}}' > "$OUTPUT"
+  '{schema_version:"1.0",work_contract:"WC-083",result:"PASS",head_sha:$head,base_sha:$base,source_hash:$source,started_at:$started,completed_at:$completed,images:{web:$web_image,test:$test_image},build:{production:"PASS",typecheck:"PASS"},contracts:{identity_provider_projection:{result:"PASS",tests:$provider_tests,report:"provider-tests.trx"}},unit:{result:"PASS",tests:$jest_tests,lines_pct:$coverage},browser:{result:"PASS",passed:$playwright_passed,skipped:$playwright_skipped,browsers:["chromium","firefox","webkit"],viewports:["1440x900","768x1024","360x800"]},accessibility:{axe:"PASS",keyboard:"PASS",reduced_motion:"PASS",rtl:"PASS"},screenshots:{result:"CAPTURED_FOR_REVIEW",count:$screenshots,hashes:"screenshots.sha256"},security:{sbom:"sbom.json",trivy:{result:"PASS",findings:$trivy_findings,report:"trivy.json"},gitleaks:{result:"PASS",diff_findings:$gitleaks_diff_findings,history_report:"gitleaks-history.json",diff_report:"gitleaks-diff.json"}}}' > "$OUTPUT"
 
-jq -e 'select(.result == "PASS" and .work_contract == "WC-083" and .unit.result == "PASS" and .unit.lines_pct >= 90 and .browser.result == "PASS" and .browser.passed >= 20 and .screenshots.count == 4 and .security.trivy.result == "PASS" and .security.gitleaks.diff_findings == 0)' "$OUTPUT" >/dev/null
+jq -e 'select(.result == "PASS" and .work_contract == "WC-083" and .contracts.identity_provider_projection.tests >= 1 and .unit.result == "PASS" and .unit.lines_pct >= 90 and .browser.result == "PASS" and .browser.passed >= 20 and .screenshots.count == 4 and .security.trivy.result == "PASS" and .security.gitleaks.diff_findings == 0)' "$OUTPUT" >/dev/null
 docker system df --format '{{json .}}' > "$EVIDENCE_DIR/docker-after.jsonl"
 echo "WC-083 qualification PASS: $OUTPUT"

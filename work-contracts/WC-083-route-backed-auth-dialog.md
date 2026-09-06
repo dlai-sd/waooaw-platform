@@ -2,7 +2,7 @@
 
 **Office:** Platform IT Expert (Office 10)
 **Authorization:** Founder-authorized in the 2026-09-06 working session
-**Status:** IN PROGRESS
+**Status:** IMPLEMENTED - PR validation pending
 **Constitutional basis:** C-049, C-059, C-063, C-071, C-076
 **Controlling identity contract:** `architecture/reference/components/identity-boundary.md`
 **Depends on:** WC-077 shared identity foundation
@@ -63,42 +63,42 @@ code, or treat a WhatsApp session as a Keycloak session.
 
 ## Definition Of Done
 
-- [ ] `/login` and `/register` remain functional canonical routes when opened directly or refreshed.
-- [ ] Public login and registration entry points open route-backed dialogs without changing public
+- [x] `/login` and `/register` remain functional canonical routes when opened directly or refreshed.
+- [x] Public login and registration entry points open route-backed dialogs without changing public
       navigation labels or landing-page content.
-- [ ] Dialog has an accessible name, modal semantics, focus containment, Escape/backdrop dismissal,
+- [x] Dialog has an accessible name, modal semantics, focus containment, Escape/backdrop dismissal,
       focus restoration, scroll containment, and responsive mobile behavior.
-- [ ] Return destinations are same-origin and allowlisted; external and protocol-relative targets are
+- [x] Return destinations are same-origin and allowlisted; external and protocol-relative targets are
       rejected.
-- [ ] Google and Facebook start only when projected `AVAILABLE` and always use NextAuth to Keycloak.
-- [ ] Provider IDs are translated to broker aliases server-side; aliases, secrets, and provider tokens
+- [x] Google and Facebook start only when projected `AVAILABLE` and always use NextAuth to Keycloak.
+- [x] Provider IDs are translated to broker aliases server-side; aliases, secrets, and provider tokens
       are not projected to or stored by browser code.
-- [ ] Apple remains non-authenticating and displays an honest coming-soon message with available
+- [x] Apple remains non-authenticating and displays an honest coming-soon message with available
       alternatives.
-- [ ] Email remains a Keycloak-owned fallback. WhatsApp is presented only as an approved registration
+- [x] Email remains a Keycloak-owned fallback. WhatsApp is presented only as an approved registration
       path and never upgraded locally into a web session.
-- [ ] Registration keeps the current idempotent, data-minimizing workflow and gains state-driven,
+- [x] Registration keeps the current idempotent, data-minimizing workflow and gains state-driven,
       reduced-motion-safe WAOOAW progress.
-- [ ] Focused tests, full unit coverage gate, Playwright/axe, Docker build, SBOM, Trivy, Gitleaks, and
+- [x] Focused tests, full unit coverage gate, Playwright/axe, Docker build, SBOM, Trivy, Gitleaks, and
       applicable repository prechecks pass on final HEAD.
-- [ ] Evidence is recorded against the final commit and attached or linked in the PR body.
+- [x] Evidence is recorded against the final commit and attached or linked in the PR body.
 - [ ] All required PR checks pass before the PR is handed to the Founder for review and merge.
 
 ## Evidence Ledger
 
 | Evidence | Required result | Final reference |
 |---|---|---|
-| Focused auth unit tests | PASS | Pending |
-| Business Platform provider tests | PASS | Pending |
-| Generated API consistency | No diff | Pending |
-| Web production build | PASS | Pending |
-| Jest coverage | Repository threshold PASS | Pending |
-| Playwright auth/public matrix | PASS; zero unexpected failures | Pending |
-| Axe accessibility | Zero serious or critical violations | Pending |
-| Desktop/mobile/RTL/dark screenshots | Reviewed against final HEAD | Pending |
-| Docker image build and runtime smoke | PASS | Pending |
-| SBOM and Trivy | Generated; zero blocking vulnerabilities | Pending |
-| Gitleaks history and applicable diff | Recorded; diff has zero findings | Pending |
+| Focused auth unit tests | PASS | `jest.json`: included in 185/185 passing tests |
+| Business Platform provider tests | PASS | `provider-tests.trx`: 9/9 passing tests |
+| Generated API consistency | No applicable branch diff | WC-083 changes neither API specs nor generated client output |
+| Web production build | PASS | `wc083-qualification.json`: production build and typecheck PASS |
+| Jest coverage | Repository threshold PASS | `coverage/coverage-summary.json`: 92.52% lines |
+| Playwright auth/public matrix | PASS; zero unexpected failures | `playwright.json`: 20 passed, 0 skipped |
+| Axe accessibility | Zero serious or critical violations | `wc083-qualification.json`: axe PASS |
+| Desktop/mobile/RTL/dark screenshots | Reviewed against final HEAD | `screenshots.sha256`: four reviewed captures |
+| Docker image build and runtime smoke | PASS | `wc083-qualification.json`: image digests and runtime probes recorded |
+| SBOM and Trivy | Generated; zero blocking vulnerabilities | `sbom.json`; `trivy.json`: 0 findings |
+| Gitleaks history and applicable diff | Recorded; diff has zero findings | `gitleaks-history.json`; `gitleaks-diff.json`: 0 diff findings |
 | PR body precheck | PASS against `origin/main` | Pending |
 | GitHub PR status checks | All required checks PASS | Pending |
 
