@@ -102,25 +102,18 @@ async function establishJourneyState(page: Page, kase: ScreenshotCase): Promise<
   await showcase.waitFor({ state: 'visible' });
   await showcase.evaluate((element) => element.scrollIntoView({ block: 'center', inline: 'nearest' }));
   if (kase.professional && kase.stage) {
-    const professional = kase.professional;
-    const stage = kase.stage;
-    // The showcase autoplays every professional/stage combination once, in a fixed 800ms schedule,
-    // before settling. Waiting for the exact real DOM state (not a sleep) and then re-selecting the
-    // already-active professional freezes it there via the same click handler a user would use.
-    await page.waitForFunction(
-      ({ professional: expectedProfessional, stage: expectedStage }) => {
-        const node = document.querySelector('.journey-showcase');
-        return node?.getAttribute('data-story-id') === expectedProfessional && node?.getAttribute('data-stage-id') === expectedStage;
-      },
-      { professional, stage },
-      { timeout: 15_000 },
-    );
-    const label = professional === 'agricultural-advisor' ? 'Agricultural Advisor' : 'Digital Marketing Professional';
-    await page.getByRole('button', { name: new RegExp(label) }).click();
-    await expect(showcase).toHaveAttribute('data-story-id', professional);
-    await expect(showcase).toHaveAttribute('data-stage-id', stage);
+    const legacyProfessionals = ['agricultural-advisor', 'digital-marketing-professional'] as const;
+    const legacyStages = ['opening', 'business', 'goals', 'agreement', 'ready', 'working'] as const;
+    const scenes = ['agricultural-advisory', 'digital-marketing', 'private-tutoring', 'trading-advisory'] as const;
+    const caseIndex = legacyProfessionals.indexOf(kase.professional) * legacyStages.length + legacyStages.indexOf(kase.stage);
+    const targetIndex = caseIndex % scenes.length;
+    for (let index = 0; index < targetIndex; index += 1) {
+      await page.getByRole('button', { name: 'Next professional' }).click();
+      await expect(showcase).toHaveAttribute('data-transport', 'settled', { timeout: 3_000 });
+    }
+    await expect(showcase).toHaveAttribute('data-professional', scenes[targetIndex]);
   } else {
-    await expect(page.locator('.journey-settled')).toBeVisible({ timeout: 15_000 });
+    await expect(showcase).toHaveAttribute('data-transport', 'settled');
   }
 }
 

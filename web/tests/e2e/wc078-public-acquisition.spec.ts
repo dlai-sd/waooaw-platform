@@ -16,36 +16,58 @@ test.beforeEach(async ({ context }) => {
   await context.addCookies([{ name: 'waooaw-locale', value: 'en', url: baseURL }]);
 });
 
-test('VRA-02 VRA-03 VRA-05 (PA-ACC-03 superseded per plan §2 — old hero-console heading/`.handoff-console` replaced by the journey showcase): hero heading, journey showcase, four rails, reduced-motion settle, 360px overflow, and Urdu RTL', async ({ context, page }) => {
+test('VRA-02 VRA-03 VRA-05: hero film reel renders five native exposures with reduced motion, responsive controls, and RTL safety', async ({ context, page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.setViewportSize({ width: 360, height: 800 });
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Grow your business with WAOOAW AI professionals' })).toBeVisible();
-  await expect(page.locator('.journey-showcase')).toBeVisible();
-  const journeyRail = page.getByRole('navigation', { name: 'Journey stages' });
-  for (const label of ['Business', 'Goals', 'Ways of working', 'Working 24/7']) {
-    await expect(journeyRail.getByRole('button', { name: label, exact: true })).toBeVisible();
-  }
-  await expect(page.locator('.journey-settled')).toBeVisible();
+  const spotlight = page.locator('.agent-spotlight');
+  await expect(spotlight).toBeVisible();
+  await expect(spotlight.locator('.spotlight-film-cell')).toHaveCount(5);
+  await expect(spotlight.locator('.spotlight-film-cell.is-current')).toHaveCount(1);
+  await expect(spotlight.locator('img')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Previous professional' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Next professional' })).toBeVisible();
+  await page.getByRole('button', { name: 'Next professional' }).press('Enter');
+  await expect(spotlight).toHaveAttribute('data-professional', 'digital-marketing');
+  await expect(spotlight).toHaveAttribute('data-transport', 'settled');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await expect(page.getByRole('button', { name: 'Previous professional' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Next professional' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
   await context.addCookies([{ name: 'waooaw-locale', value: 'ur', url: baseURL }]);
   await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  await expect(page.locator('.spotlight-film-cell.is-current')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
 });
 
-test('VRA-04: both professional stories expose all six semantic stages through the four rail controls', async ({ page }) => {
+test('VRA-04: transport covers both stage edges and controls recover after forward and backward settlement', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
   await page.getByRole('button', { name: 'Reject optional' }).click();
-  await expect(page.getByRole('button', { name: /Agricultural Advisor/ })).toHaveAttribute('aria-pressed', 'true');
-  await page.getByRole('button', { name: /Digital Marketing Professional/ }).click();
-  await expect(page.getByRole('button', { name: /Digital Marketing Professional/ })).toHaveAttribute('aria-pressed', 'true');
-  const journeyRail = page.getByRole('navigation', { name: 'Journey stages' });
-  for (const label of ['Business', 'Goals', 'Ways of working', 'Working 24/7']) {
-    const railButton = journeyRail.getByRole('button', { name: label, exact: true });
-    await railButton.click();
-    await expect(railButton).toHaveAttribute('aria-pressed', 'true');
+  const spotlight = page.locator('.agent-spotlight');
+  const previous = page.getByRole('button', { name: 'Previous professional' });
+  const next = page.getByRole('button', { name: 'Next professional' });
+  async function assertTransportCoverage(control: typeof next, direction: 'forward' | 'backward') {
+    await control.click();
+    await expect(spotlight).toHaveAttribute('data-transport', direction);
+    await expect(previous).toBeDisabled();
+    await expect(next).toBeDisabled();
+    const coverage = await spotlight.evaluate((node) => {
+      const stage = node.querySelector('.spotlight-stage')!.getBoundingClientRect();
+      const track = node.querySelector('.spotlight-film-track')!.getBoundingClientRect();
+      return { left: track.left <= stage.left + 1, right: track.right >= stage.right - 1 };
+    });
+    expect(coverage).toEqual({ left: true, right: true });
+    await expect(spotlight).toHaveAttribute('data-transport', 'settled', { timeout: 3_000 });
+    await expect(previous).toBeEnabled();
+    await expect(next).toBeEnabled();
   }
+  await assertTransportCoverage(next, 'forward');
+  await assertTransportCoverage(previous, 'backward');
 });
 
 test('VRA-09: hero and final CTAs share one truthful primary/secondary command hierarchy', async ({ page }) => {
