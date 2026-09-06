@@ -40,7 +40,9 @@ test('WC083-AUTH-02: backdrop dismissal returns to the originating public route'
   const dialog = page.getByRole('dialog', { name: 'Create your WAOOAW account' });
   await expect(dialog).toBeVisible();
 
-  await dialog.click({ position: { x: 2, y: (await dialog.boundingBox())!.height - 2 } });
+  const bounds = await dialog.boundingBox();
+  expect(bounds?.x).toBeGreaterThan(8);
+  await page.mouse.click((bounds?.x ?? 8) - 8, bounds?.y ?? 8);
 
   await expect(page).toHaveURL(/\/$/);
   await expect(dialog).toHaveCount(0);
