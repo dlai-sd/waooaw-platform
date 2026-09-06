@@ -1,3 +1,5 @@
+# Implements: architecture/reference/components/business-platform.md §Runtime Requirements (for Dockerfile + startup)
+# Constitutional basis: C-059 (Implementation Traceability), C-071 (Quality Gates), C-080 (Docker Test Isolation)
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 COPY src/business-platform/business-platform.csproj .
@@ -8,6 +10,7 @@ RUN dotnet publish --configuration Release --runtime linux-musl-x64 \
 
 FROM mcr.microsoft.com/dotnet/aspnet:9.0
 RUN apt-get update \
+    && apt-get upgrade --yes \
     && apt-get install --yes --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system waooaw \

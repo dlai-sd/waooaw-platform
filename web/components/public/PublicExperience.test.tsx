@@ -1,7 +1,7 @@
 // Implements: work-contracts/WC-078-public-acquisition-experience-plan.md §Approved Landing Composition
 // Implements: architecture/reference/ux/wc-078-visual-experience-implementation-plan.md §7, §9, §10 (WC-03, WC-04, WC-02, WC-05)
 // Constitutional basis: C-002 (Evidence Integrity), C-059 (Implementation Traceability), C-063 (Data Minimisation)
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AnnouncementBar } from './AnnouncementBar';
 import { ConsentController, cookiePreferencesReopenEvent } from './ConsentController';
 import { CookiePreferencesTrigger } from './CookiePreferencesTrigger';
@@ -36,6 +36,12 @@ function stubMatchMedia(reduced: boolean) {
   })) as typeof window.matchMedia;
 }
 
+function finishTransformTransition(track: HTMLElement) {
+  const event = new Event('transitionend', { bubbles: true });
+  Object.defineProperty(event, 'propertyName', { value: 'transform' });
+  fireEvent(track, event);
+}
+
 describe('public acquisition components', () => {
   beforeEach(() => {
     document.cookie = 'waooaw_consent=; Max-Age=0; Path=/';
@@ -46,45 +52,56 @@ describe('public acquisition components', () => {
     stubMatchMedia(false);
   });
 
-  it('renders the exact approved hero journey copy and both professional stories', () => {
+  it('renders the exact approved hero copy and five film exposures from four professional scenes', () => {
     const content = getProfessionalJourneyContent('en');
     expect(content.heroTitle).toBe('Grow your business with WAOOAW AI professionals');
     expect(content.heroSubtitle).toBe('Guide the work in just ten minutes a day. Spend more time growing your business.');
-    render(<ProfessionalJourneyShowcase content={content} />);
-    expect(screen.getByRole('button', { name: /Agricultural Advisor/ })).toBeVisible();
-    expect(screen.getByRole('button', { name: /Digital Marketing Professional/ })).toBeVisible();
+    const { container } = render(<ProfessionalJourneyShowcase content={content} />);
+    const frames = container.querySelectorAll('.spotlight-film-cell');
+    expect(frames).toHaveLength(5);
+    expect(new Set(Array.from(frames, (frame) => frame.getAttribute('data-scene')))).toEqual(new Set(['agricultural-advisory', 'digital-marketing', 'private-tutoring', 'trading-advisory']));
+    expect(container.querySelectorAll('.spotlight-artwork img')).toHaveLength(0);
   });
 
-  it('exposes all four rail controls grouping the six semantic stages', () => {
+  it('exposes fixed previous, next, and replay controls', () => {
     render(<ProfessionalJourneyShowcase content={getProfessionalJourneyContent('en')} />);
-    for (const label of ['Business', 'Goals', 'Ways of working', 'Working 24/7']) {
-      expect(screen.getByRole('button', { name: label })).toBeVisible();
-    }
+    expect(screen.getByRole('button', { name: 'Previous professional' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Next professional' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Replay professional sequence' })).toBeVisible();
   });
 
-  it('switches between both professional stories on selection', () => {
-    render(<ProfessionalJourneyShowcase content={getProfessionalJourneyContent('en')} />);
-    fireEvent.click(screen.getByRole('button', { name: /Digital Marketing Professional/ }));
-    expect(screen.getByRole('button', { name: /Digital Marketing Professional/ })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: /Agricultural Advisor/ })).toHaveAttribute('aria-pressed', 'false');
+  it('undims the destination, disables controls during transport, and normalizes on transition end', () => {
+    const { container } = render(<ProfessionalJourneyShowcase content={getProfessionalJourneyContent('en')} />);
+    const next = screen.getByRole('button', { name: 'Next professional' });
+    const previous = screen.getByRole('button', { name: 'Previous professional' });
+    const track = screen.getByTestId('spotlight-film-track');
+    fireEvent.click(next);
+    expect(next).toBeDisabled();
+    expect(previous).toBeDisabled();
+    expect(track).toHaveClass('is-moving-forward');
+    expect(container.querySelector('.spotlight-film-cell.is-current')).toHaveAttribute('data-position', '1');
+    finishTransformTransition(track);
+    expect(container.querySelector('.agent-spotlight')).toHaveAttribute('data-professional', 'digital-marketing');
+    expect(next).toBeEnabled();
+    expect(previous).toBeEnabled();
   });
 
-  it('permanently cancels automatic progress once the visitor makes a manual rail selection', () => {
-    jest.useFakeTimers();
-    render(<ProfessionalJourneyShowcase content={getProfessionalJourneyContent('en')} />);
-    act(() => { jest.advanceTimersByTime(1600); });
-    fireEvent.click(screen.getByRole('button', { name: 'Goals' }));
-    expect(screen.getByRole('button', { name: 'Goals' })).toHaveAttribute('aria-pressed', 'true');
-    act(() => { jest.advanceTimersByTime(9600); });
-    expect(screen.getByRole('button', { name: 'Goals' })).toHaveAttribute('aria-pressed', 'true');
-    jest.useRealTimers();
-  });
-
-  it('settles immediately with the final message when reduced motion is requested', () => {
+  it('changes exposure without transport animation when reduced motion is requested', () => {
     stubMatchMedia(true);
-    const content = getProfessionalJourneyContent('en');
-    render(<ProfessionalJourneyShowcase content={content} />);
-    expect(screen.getByText(content.finalMessage)).toBeVisible();
+    const { container } = render(<ProfessionalJourneyShowcase content={getProfessionalJourneyContent('en')} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Previous professional' }));
+    expect(container.querySelector('.agent-spotlight')).toHaveAttribute('data-professional', 'trading-advisory');
+    expect(screen.getByTestId('spotlight-film-track')).not.toHaveClass('is-moving-backward');
+    expect(screen.getByRole('button', { name: 'Next professional' })).toBeEnabled();
+  });
+
+  it('replays from the first exposure after manual navigation settles', () => {
+    const { container } = render(<ProfessionalJourneyShowcase content={getProfessionalJourneyContent('en')} />);
+    const track = screen.getByTestId('spotlight-film-track');
+    fireEvent.click(screen.getByRole('button', { name: 'Next professional' }));
+    finishTransformTransition(track);
+    fireEvent.click(screen.getByRole('button', { name: 'Replay professional sequence' }));
+    expect(container.querySelector('.agent-spotlight')).toHaveAttribute('data-professional', 'agricultural-advisory');
   });
 
   it('links every admitted professional to a public detail page', () => {
