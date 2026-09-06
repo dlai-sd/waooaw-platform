@@ -30,6 +30,8 @@ describe('ProviderCommands', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue with Apple' }));
 
     expect(screen.getByRole('alert')).toHaveTextContent('Apple is coming soon');
+    expect(screen.getByRole('alert')).toHaveTextContent('Google or Email');
+    expect(screen.getByRole('alert')).not.toHaveTextContent('Facebook or email');
     expect(screen.getByRole('alert')).toHaveTextContent('WhatsApp registration');
     expect(signIn).not.toHaveBeenCalled();
   });

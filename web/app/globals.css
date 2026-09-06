@@ -342,6 +342,9 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 .auth-dialog-close:hover { border-color: var(--blue); }
 .auth-dialog .auth-view { width: 100%; padding: clamp(2rem, 7vw, 3.5rem); padding-block-start: 4.5rem; }
 .auth-dialog .auth-view h1 { font-size: clamp(2rem, 8vw, 3.2rem); }
+[dir="rtl"] .auth-dialog .auth-view h1 { line-height: 1.55; }
+[dir="rtl"] .auth-dialog .provider-command { grid-template-columns: 24px minmax(0, 1fr); }
+[dir="rtl"] .auth-dialog .provider-command small { grid-column: 2; }
 .identity-view { width: min(100% - 2rem, 760px); }
 .registration-flow { margin-block-start: 2rem; }
 .registration-progress { display: grid; gap: .55rem; margin-block: 1.25rem 2rem; color: var(--muted); font-size: .85rem; }
@@ -466,6 +469,11 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
   .offerability-price { grid-column: auto; }
   .offerability-form .primary-command { width: 100%; justify-content: center; }
   .offerability-decision dl { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 480px) {
+  [dir="rtl"] .auth-dialog .auth-view h1 { font-size: 1.75rem; }
+  .auth-dialog .provider-command { grid-template-columns: 24px minmax(0, 1fr); }
+  .auth-dialog .provider-command small { grid-column: 2; }
 }
 
 @media (max-width: 899px) {

@@ -31,6 +31,12 @@ const icons = {
 export function ProviderCommands({ callbackUrl, providers }: { callbackUrl: string; providers: IdentityProvider[] }) {
   const [pendingProvider, setPendingProvider] = useState<string>();
   const [appleMessage, setAppleMessage] = useState(false);
+  const availableAlternatives = providers
+    .filter((provider) => provider.id !== 'APPLE' && provider.availability === 'AVAILABLE')
+    .map((provider) => provider.displayName);
+  const alternativeText = availableAlternatives.length > 0
+    ? availableAlternatives.join(', ').replace(/, ([^,]*)$/, ' or $1')
+    : 'email registration when it becomes available';
 
   function begin(provider: IdentityProvider) {
     if (provider.id === 'APPLE') {
@@ -64,7 +70,7 @@ export function ProviderCommands({ callbackUrl, providers }: { callbackUrl: stri
       })}
       {appleMessage ? (
         <p className="provider-status" id="apple-integration-status" role="alert">
-          <strong>Apple is coming soon.</strong> Meanwhile, use an available Google, Facebook, or email option. WhatsApp registration remains available only through its approved identity flow.
+          <strong>Apple is coming soon.</strong> Meanwhile, use {alternativeText}. WhatsApp registration remains available only through its approved identity flow.
           <FaWhatsapp aria-hidden="true" size={18} />
         </p>
       ) : null}
