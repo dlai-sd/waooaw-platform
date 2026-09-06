@@ -8,6 +8,7 @@ import { CookiePreferencesTrigger } from './CookiePreferencesTrigger';
 import { InformationPage } from './InformationPage';
 import { ProfessionalJourneyShowcase } from './ProfessionalJourneyShowcase';
 import { PublicCatalogue } from './PublicCatalogue';
+import { PublicFooter } from './PublicFooter';
 import { listPublicProfessionals } from '@/config/professionals';
 import { getProfessionalJourneyContent } from '@/lib/professional-journey-content';
 
@@ -122,7 +123,7 @@ describe('public acquisition components', () => {
 
   it('reserves a header offset that reflects the announcement bar and clears it on dismissal', () => {
     jest.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ height: 48 } as DOMRect);
-    render(<AnnouncementBar announcement={{ enabled: true, message: 'Planned maintenance this weekend', href: '', revision: 'r1' }} />);
+    render(<AnnouncementBar announcement={{ enabled: true, headline: 'Planned maintenance', detail: 'this weekend.', ctaLabel: '', href: '', revision: 'r1' }} />);
     expect(screen.getByRole('region', { name: 'Announcement' })).toBeVisible();
     expect(document.documentElement.style.getPropertyValue('--announcement-offset')).toBe('48px');
     const dismissButton = screen.getByRole('button', { name: 'Dismiss announcement' });
@@ -136,18 +137,32 @@ describe('public acquisition components', () => {
 
   it('keeps the announcement dismissed only for the stored campaign revision', () => {
     jest.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ height: 48 } as DOMRect);
-    const { rerender } = render(<AnnouncementBar announcement={{ enabled: true, message: 'Notice', href: '', revision: 'r1' }} />);
+    const { rerender } = render(<AnnouncementBar announcement={{ enabled: true, headline: 'Notice', detail: '', ctaLabel: '', href: '', revision: 'r1' }} />);
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss announcement' }));
-    rerender(<AnnouncementBar announcement={{ enabled: true, message: 'Notice', href: '', revision: 'r1' }} />);
+    rerender(<AnnouncementBar announcement={{ enabled: true, headline: 'Notice', detail: '', ctaLabel: '', href: '', revision: 'r1' }} />);
     expect(screen.queryByRole('region', { name: 'Announcement' })).not.toBeInTheDocument();
-    rerender(<AnnouncementBar announcement={{ enabled: true, message: 'New notice', href: '', revision: 'r2' }} />);
+    rerender(<AnnouncementBar announcement={{ enabled: true, headline: 'New notice', detail: '', ctaLabel: '', href: '', revision: 'r2' }} />);
     expect(screen.getByRole('region', { name: 'Announcement' })).toBeVisible();
   });
 
   it('renders no announcement and no stored offset when the campaign is disabled', () => {
-    render(<AnnouncementBar announcement={{ enabled: false, message: '', href: '', revision: 'r1' }} />);
+    render(<AnnouncementBar announcement={{ enabled: false, headline: '', detail: '', ctaLabel: '', href: '', revision: 'r1' }} />);
     expect(screen.queryByRole('region', { name: 'Announcement' })).not.toBeInTheDocument();
     expect(document.documentElement.style.getPropertyValue('--announcement-offset')).toBe('0px');
+  });
+
+  it('renders distinct announcement copy and a trial CTA', () => {
+    render(<AnnouncementBar announcement={{ enabled: true, headline: 'Try WAOOAW AI Agents free for 7 days', detail: 'no card required, no commitment.', ctaLabel: 'Start your free trial', href: '/register', revision: 'r1' }} />);
+    expect(screen.getByText('Try WAOOAW AI Agents free for 7 days').tagName).toBe('STRONG');
+    expect(screen.getByText(/no card required, no commitment/)).toBeVisible();
+    expect(screen.getByRole('link', { name: /Start your free trial/ })).toHaveAttribute('href', '/register');
+  });
+
+  it('renders the company identity and grievance contact in the public footer', () => {
+    render(<PublicFooter />);
+    expect(screen.getByText('\u00a9 2026 DLAI Satellite Data (OPC) Pvt Ltd \u00b7 CIN: U62090PN2024OPC230499 \u00b7 Viman Nagar, Pune 411014')).toBeVisible();
+    expect(screen.getByText(/Grievance Officer: Yogesh Khandge/)).toBeVisible();
+    expect(screen.getAllByRole('link', { name: 'customersupport@dlaisd.com' })).not.toHaveLength(0);
   });
 
   it('reaches cookie preferences through a normal footer control after a decision is saved', async () => {
