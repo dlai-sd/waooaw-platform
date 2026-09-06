@@ -28,6 +28,7 @@ WEB_CONTAINER="wc083-web-${SOURCE_HASH}"
 FIXTURE_CONTAINER="wc083-fixture-${SOURCE_HASH}"
 NODE_MODULES_VOLUME="wc083-node-modules-${SOURCE_HASH}"
 EVIDENCE_DIR="$(dirname "$OUTPUT")"
+PINNED_PNPM="/root/.cache/node/corepack/v1/pnpm/9.15.9/bin/pnpm.cjs"
 
 cleanup() {
   docker rm -f "$WEB_CONTAINER" "$FIXTURE_CONTAINER" >/dev/null 2>&1 || true
@@ -53,9 +54,9 @@ docker run --rm -d --name "$WEB_CONTAINER" --network "$NETWORK" \
   "$WEB_IMAGE" >/dev/null
 docker run --rm --network "$NETWORK" curlimages/curl:8.12.1 --retry 10 --retry-connrefused --fail --silent "http://${WEB_CONTAINER}:3000/" >/dev/null
 
-docker run --rm "$TEST_IMAGE" pnpm --dir web exec tsc --noEmit
+docker run --rm "$TEST_IMAGE" node "$PINNED_PNPM" --dir web exec tsc --noEmit
 docker run --rm --user "$(id -u):$(id -g)" -v "$PWD/$EVIDENCE_DIR:/out" "$TEST_IMAGE" \
-  pnpm --dir web exec jest --runInBand --coverage --coverageReporters=text --coverageReporters=json-summary \
+  node "$PINNED_PNPM" --dir web exec jest --runInBand --coverage --coverageReporters=text --coverageReporters=json-summary \
   --coverageDirectory=/out/coverage --json --outputFile=/out/jest.json
 
 docker run --rm --user root --network "$NETWORK" \
