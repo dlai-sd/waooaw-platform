@@ -8,7 +8,14 @@ import { useEffect, useRef, useState } from 'react';
 
 const storageKey = 'waooaw-announcement';
 
-export type PublicAnnouncement = Readonly<{ enabled: boolean; message: string; href: string; revision: string }>;
+export type PublicAnnouncement = Readonly<{
+  enabled: boolean;
+  headline: string;
+  detail: string;
+  ctaLabel: string;
+  href: string;
+  revision: string;
+}>;
 
 type Dismissal = Readonly<{ campaignRevision: string; dismissed: true }>;
 
@@ -24,7 +31,7 @@ function readDismissal(): Dismissal | null {
 }
 
 export function AnnouncementBar({ announcement }: { announcement: PublicAnnouncement }) {
-  const active = announcement.enabled && announcement.message.length > 0;
+  const active = announcement.enabled && announcement.headline.length > 0;
   const [dismissed, setDismissed] = useState(false);
   const barRef = useRef<HTMLDivElement>(null);
   const visible = active && !dismissed;
@@ -53,7 +60,7 @@ export function AnnouncementBar({ announcement }: { announcement: PublicAnnounce
 
   return (
     <div className="announcement-bar" ref={barRef} role="region" aria-label="Announcement">
-      <p>{announcement.href ? <a href={announcement.href}>{announcement.message}</a> : announcement.message}</p>
+      <p><strong>{announcement.headline}</strong><span> &mdash; {announcement.detail}</span>{announcement.href && announcement.ctaLabel ? <a href={announcement.href}>{announcement.ctaLabel} <span aria-hidden="true">&rarr;</span></a> : null}</p>
       <button aria-label="Dismiss announcement" className="announcement-dismiss" onClick={dismiss} type="button"><X aria-hidden="true" size={18} /></button>
     </div>
   );

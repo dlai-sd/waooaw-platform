@@ -8,7 +8,7 @@ import { themeConfig } from './theme';
 type PublicConfiguration = { site: Record<string, unknown>; theme: Record<string, unknown>; marketing: Record<string, unknown>; messages: Record<string, Record<string, string>> };
 const supportedLocales = ['en', 'hi', 'mr', 'ta', 'te', 'kn', 'gu', 'bn', 'ml', 'pa', 'ur'];
 const expectedKeys = {
-  site: ['name', 'company', 'canonicalOrigin', 'contactEmail', 'environment', 'locales', 'announcement', 'sectionSwitches', 'socialLinks', 'publicNavigation', 'footerGroups'],
+  site: ['name', 'company', 'canonicalOrigin', 'contactEmail', 'environment', 'locales', 'announcement', 'legalIdentity', 'sectionSwitches', 'socialLinks', 'publicNavigation', 'footerGroups'],
   theme: ['brandBlue', 'brandGreen', 'brandOrange', 'brandNavy', 'radius', 'duration'],
   marketing: ['policyVersion', 'attributionWindowMinutes', 'ga4', 'serverGtm', 'meta'],
 };

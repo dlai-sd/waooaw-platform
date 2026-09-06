@@ -8,7 +8,21 @@ export const siteConfig = {
   contactEmail: 'customersupport@dlaisd.com',
   environment: process.env.NEXT_PUBLIC_WAOOAW_ENVIRONMENT ?? 'demo',
   locales: ['en', 'hi', 'mr', 'ta', 'te', 'kn', 'gu', 'bn', 'ml', 'pa', 'ur'],
-  announcement: { enabled: false, message: '', href: '', revision: 'wc078-2026-09-03' },
+  announcement: {
+    enabled: true,
+    headline: 'Try WAOOAW AI Agents free for 7 days',
+    detail: 'no card required, no commitment.',
+    ctaLabel: 'Start your free trial',
+    href: '/register',
+    revision: 'free-trial-2026-09',
+  },
+  legalIdentity: {
+    copyrightYear: 2026,
+    cin: 'U62090PN2024OPC230499',
+    registeredLocality: 'Viman Nagar, Pune 411014',
+    registeredAddress: 'C8, Everest Heights, Park Road, Viman Nagar, Pune 411014, Maharashtra, India',
+    grievanceOfficer: 'Yogesh Khandge',
+  },
   sectionSwitches: { professionalPreview: true, trustJourney: true, finalAction: true, platformDna: true },
   socialLinks: [],
   publicNavigation: [

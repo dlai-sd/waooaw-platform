@@ -18,6 +18,7 @@ import path from 'node:path';
 import type { Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import { marketingConfig } from '../../config/marketing';
+import { siteConfig } from '../../config/site';
 import { consentCookieName } from '../../lib/consent';
 import type { ScreenshotCase, ScreenshotConsent } from './wc078-screenshot-manifest';
 import { wc078CollisionCaseId, wc078ScreenshotManifest } from './wc078-screenshot-manifest';
@@ -26,11 +27,6 @@ const baseURL = process.env.BASE_URL ?? 'http://127.0.0.1:3000';
 const repoRoot = path.resolve(__dirname, '..', '..', '..');
 const evidenceDir = process.env.WC078_EVIDENCE_DIR ? path.resolve(process.env.WC078_EVIDENCE_DIR) : path.join(repoRoot, 'test-results', 'wc078');
 const screenshotDir = path.join(evidenceDir, 'screenshots');
-
-// Test-only fixture text. The real announcement is configuration-disabled in production
-// (web/config/site.ts `announcement.enabled: false`); this label is rendered so no reviewer can
-// mistake it for real production content, and it renders no source/config change.
-const fixtureAnnouncementMessage = 'Illustrative announcement — WC-08 screenshot fixture (production announcement is configuration-disabled)';
 
 type CaseRecord = Readonly<{
   id: string;
@@ -66,24 +62,11 @@ function resolveHeadSha(): string {
   }
 }
 
-async function injectAnnouncementFixture(page: Page): Promise<void> {
-  await page.evaluate((message) => {
-    const bar = document.createElement('div');
-    bar.className = 'announcement-bar';
-    bar.setAttribute('role', 'region');
-    bar.setAttribute('aria-label', 'Announcement');
-    bar.setAttribute('data-wc078-fixture', 'announcement');
-    const paragraph = document.createElement('p');
-    paragraph.textContent = message;
-    const dismiss = document.createElement('button');
-    dismiss.type = 'button';
-    dismiss.className = 'announcement-dismiss';
-    dismiss.setAttribute('aria-label', 'Dismiss announcement');
-    dismiss.textContent = '\u00d7';
-    bar.append(paragraph, dismiss);
-    document.body.insertBefore(bar, document.body.firstChild);
-    document.documentElement.style.setProperty('--announcement-offset', `${bar.getBoundingClientRect().height}px`);
-  }, fixtureAnnouncementMessage);
+async function configureAnnouncementState(page: Page, announcement: ScreenshotCase['announcement']): Promise<void> {
+  await page.addInitScript(({ dismissed, revision }) => {
+    if (dismissed) localStorage.setItem('waooaw-announcement', JSON.stringify({ campaignRevision: revision, dismissed: true }));
+    else localStorage.removeItem('waooaw-announcement');
+  }, { dismissed: announcement === 'dismissed', revision: siteConfig.announcement.revision });
 }
 
 async function applyConsentCookie(page: Page, consent: ScreenshotConsent): Promise<void> {
@@ -148,6 +131,7 @@ for (const kase of wc078ScreenshotManifest) {
       { name: 'waooaw-locale', value: kase.locale, url: baseURL },
       { name: 'waooaw-theme', value: kase.theme === 'system' ? 'system' : kase.theme, url: baseURL },
     ]);
+    await configureAnnouncementState(page, kase.announcement);
     await applyConsentCookie(page, kase.consent);
     await page.emulateMedia({
       reducedMotion: kase.motion === 'reduced' ? 'reduce' : 'no-preference',
@@ -157,10 +141,7 @@ for (const kase of wc078ScreenshotManifest) {
     await page.goto('/');
 
     const notes: string[] = [];
-    if (kase.announcement === 'visible') {
-      await injectAnnouncementFixture(page);
-      notes.push('announcement rendered via approved test-only fixture; production announcement remains configuration-disabled (web/config/site.ts)');
-    }
+    notes.push(`production announcement ${kase.announcement} through revision-aware localStorage state`);
     if (kase.consent === 'preferences-open') {
       await reopenConsentPreferences(page);
     }

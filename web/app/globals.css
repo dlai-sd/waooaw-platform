@@ -456,16 +456,19 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 
 /* WC-078 public acquisition experience */
 /* Implements: architecture/reference/ux/wc-078-visual-experience-implementation-plan.md §10 (WC-04, WC-05) */
-.app-shell-public { grid-template-rows: auto minmax(0, 1fr) auto; }
+.app-shell-public { --public-header-height: 88px; grid-template-rows: auto minmax(0, 1fr) auto; }
 .app-shell-public .public-footer { grid-column: 1 / -1; }
-.app-shell-public .top-bar { position: sticky; inset-block-start: var(--announcement-offset, 0px); z-index: 40; min-block-size: 88px; padding-block: .75rem; background: transparent; border-block-end-color: transparent; box-shadow: none; transition: background-color .25s ease, box-shadow .25s ease, backdrop-filter .25s ease, border-color .25s ease; }
+.app-shell-public .top-bar { position: sticky; inset-block-start: var(--announcement-offset, 0px); z-index: 40; min-block-size: var(--public-header-height); padding-block: .75rem; background: transparent; border-block-end-color: transparent; box-shadow: none; transition: background-color .25s ease, box-shadow .25s ease, backdrop-filter .25s ease, border-color .25s ease; }
 html[data-header-scrolled="true"] .app-shell-public .top-bar { background: var(--color-surface-translucent); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border-block-end-color: var(--line); box-shadow: 0 1px 16px rgb(0 0 0 / 7%); }
-.announcement-bar { position: sticky; inset-block-start: 0; z-index: 45; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: .35rem 1rem; min-block-size: 47px; padding-block: .6rem; padding-inline: clamp(1rem, 4vw, 3rem) 3.25rem; color: #fff; background: var(--color-brand-navy); }
-.announcement-bar p { margin: 0; font-size: .85rem; text-align: center; }
-.announcement-bar a { color: #fff; font-weight: 700; }
+.app-shell-public .top-bar nav a, .app-shell-public .top-actions > a:not(.primary-link), .public-footer nav a, .footer-contact a, .footer-bottom a { text-decoration: none; }
+.app-shell-public .top-bar nav a:hover, .app-shell-public .top-bar nav a:focus-visible, .app-shell-public .top-actions > a:not(.primary-link):hover, .app-shell-public .top-actions > a:not(.primary-link):focus-visible, .public-footer nav a:hover, .public-footer nav a:focus-visible, .footer-contact a:hover, .footer-contact a:focus-visible, .footer-bottom a:hover, .footer-bottom a:focus-visible { color: var(--orange); }
+.announcement-bar { position: sticky; inset-block-start: 0; z-index: 45; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: .35rem 1rem; min-block-size: 47px; padding-block: .6rem; padding-inline: clamp(1rem, 4vw, 3rem) 3.25rem; color: #fff; background: linear-gradient(90deg, #1a66c2 0%, #2e9e3a 48%, #b36010 100%); }
+.announcement-bar p { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: .2rem .65rem; margin: 0; font-size: .85rem; text-align: center; }
+.announcement-bar a { color: #fff; font-weight: 700; text-decoration: none; border-block-end: 1px solid rgb(255 255 255 / 55%); }
+.announcement-bar a:hover, .announcement-bar a:focus-visible { border-block-end-color: #fff; }
 .announcement-dismiss { position: absolute; inset-inline-end: .5rem; min-width: 44px; min-height: 44px; display: inline-grid; place-items: center; border: 0; border-radius: 6px; color: #fff; background: transparent; cursor: pointer; }
 .announcement-dismiss:hover, .announcement-dismiss:focus-visible { background: rgb(255 255 255 / 14%); }
-.public-intro-wc078 { grid-template-columns: minmax(0, 1.05fr) minmax(360px, .95fr); background: radial-gradient(circle at 15% 20%, rgb(26 102 194 / 12%), transparent 36%), var(--surface); }
+.public-intro-wc078 { grid-template-columns: minmax(0, 1.05fr) minmax(360px, .95fr); margin-block-start: calc(var(--public-header-height) * -1); padding-block-start: var(--public-header-height); background: radial-gradient(circle at 15% 20%, rgb(26 102 194 / 12%), transparent 36%), var(--surface); }
 .public-intro-wc078 .public-hero { padding: clamp(3rem, 6vw, 5rem) clamp(2rem, 7vw, 6rem); }
 .public-intro-wc078 .public-hero h1 { max-inline-size: 15ch; margin-block: 0; font-size: 3rem; line-height: 1.12; letter-spacing: 0; overflow-wrap: anywhere; }
 .journey-showcase { --spotlight-frame-width: max(250px, calc(100cqi - 104px)); align-self: center; container-type: inline-size; position: relative; margin-inline-end: clamp(1.25rem, 6vw, 6rem); inline-size: min(100%, 720px); min-inline-size: 320px; aspect-ratio: 8 / 5; overflow: hidden; isolation: isolate; border-radius: 8px; background: linear-gradient(100deg, #ff9e18 0%, #bc523d 20%, #713a4d 52%, #40283e 78%, #251b2e 100%); box-shadow: var(--shadow); }
@@ -529,6 +532,7 @@ html[data-header-scrolled="true"] .app-shell-public .top-bar { background: var(-
 .public-footer { display: grid; grid-template-columns: 2fr repeat(3, 1fr) 1.5fr; gap: 2rem; padding: 3rem clamp(1.25rem, 5vw, 5rem); color: #fff; background: var(--color-brand-navy); }
 .public-footer nav, .footer-contact { display: flex; flex-direction: column; align-items: flex-start; gap: .65rem; }
 .public-footer p, .public-footer small { color: #dce6ef; line-height: 1.55; }
+.footer-bottom { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem 2rem; padding-block-start: 1.25rem; border-block-start: 1px solid rgb(255 255 255 / 22%); color: #dce6ef; font-size: .75rem; line-height: 1.55; }
 .footer-cookie-trigger { padding: 0; border: 0; min-height: 24px; color: inherit; background: none; font: inherit; text-align: start; text-decoration-thickness: .08em; text-underline-offset: .2em; cursor: pointer; }
 .footer-cookie-trigger:hover, .footer-cookie-trigger:focus-visible { text-decoration: underline; }
 .footer-contact a { max-inline-size: 100%; overflow-wrap: anywhere; }
@@ -550,6 +554,7 @@ html[data-header-scrolled="true"] .app-shell-public .top-bar { background: var(-
 }
 
 @media (max-width: 599px) {
+  .app-shell-public { --public-header-height: 64px; }
   .public-intro-wc078 .public-hero { padding: 2.5rem 1.25rem; }
   .public-intro-wc078 .public-hero h1 { font-size: 2.25rem; }
   .catalog-header h1 { font-size: 3rem; }
