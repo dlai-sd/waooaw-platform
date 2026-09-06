@@ -413,5 +413,5 @@ const server = createServer(async (request, response) => {
   json(response, { error: 'NOT_FOUND', path: url.pathname }, 404);
 });
 
-server.listen(5001, '127.0.0.1');
+server.listen(5001, '0.0.0.0');
 process.on('SIGTERM', () => server.close());

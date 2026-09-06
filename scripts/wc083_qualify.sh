@@ -47,6 +47,7 @@ TEST_ID="$(docker image inspect --format '{{.Id}}' "$TEST_IMAGE")"
 
 docker network create "$NETWORK" >/dev/null
 docker run --rm -d --name "$FIXTURE_CONTAINER" --network "$NETWORK" "$TEST_IMAGE" node web/tests/e2e/fixtures/f1-services.mjs >/dev/null
+docker run --rm --network "$NETWORK" curlimages/curl:8.12.1 --retry 5 --retry-connrefused --fail --silent "http://${FIXTURE_CONTAINER}:5001/api/v1/identity/providers" >/dev/null
 docker run --rm -d --name "$WEB_CONTAINER" --network "$NETWORK" \
   -e BUSINESS_PLATFORM_URL="http://${FIXTURE_CONTAINER}:5001" \
   -e NEXTAUTH_SECRET="wc083-qualification-not-runtime-secret" \
