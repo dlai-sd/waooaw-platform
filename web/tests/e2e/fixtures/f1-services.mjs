@@ -140,6 +140,16 @@ const server = createServer(async (request, response) => {
   const voiceSendMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions\/([^/]+)\/send$/);
   const voiceCancelMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions\/([^/]+)\/cancel$/);
 
+  if (request.method === 'GET' && url.pathname === '/api/v1/identity/providers') {
+    json(response, { providers: [
+      { id: 'GOOGLE', displayName: 'Google', authenticationPath: 'GOOGLE', availability: 'AVAILABLE' },
+      { id: 'FACEBOOK', displayName: 'Facebook', authenticationPath: 'META', availability: 'UNAVAILABLE', unavailableReason: 'NOT_CONFIGURED' },
+      { id: 'APPLE', displayName: 'Apple', authenticationPath: 'APPLE', availability: 'UNAVAILABLE', unavailableReason: 'NOT_CONFIGURED' },
+      { id: 'EMAIL', displayName: 'Email', authenticationPath: 'CREDENTIAL', availability: 'AVAILABLE' },
+    ] });
+    return;
+  }
+
   if (request.method === 'POST' && voiceCreateMatch) {
     const relationshipId = decodeURIComponent(voiceCreateMatch[1]);
     const body = await readBody(request);

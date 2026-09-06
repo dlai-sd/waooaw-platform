@@ -2,6 +2,7 @@
 // Constitutional basis: C-001 (Human Override), C-059 (Implementation Traceability)
 
 import type { ReactNode } from 'react';
+import Link from 'next/link';
 import { AnnouncementBar } from '@/components/public/AnnouncementBar';
 import { PublicFooter } from '@/components/public/PublicFooter';
 import { siteConfig } from '@/config/site';
@@ -33,7 +34,7 @@ export function AppShell({ bottomNavigation, children, headerStatus, messages, s
           {variant === 'public' ? <nav aria-label={messages.publicNavigation}>{publicLinks.map((link) => <a key={link.href} href={link.href}>{link.label}</a>)}</nav> : null}
           <div className="top-actions">
             <ExperienceControls messages={messages} />
-            {variant === 'public' ? <><a href="/login">{messages.login}</a><a className="primary-link" href="/register">{messages.register}</a></> : null}
+            {variant === 'public' ? <><Link href="/login">{messages.login}</Link><Link className="primary-link" href="/register">{messages.register}</Link></> : null}
             {headerStatus}
           </div>
         </header>

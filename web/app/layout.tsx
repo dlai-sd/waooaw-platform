@@ -48,7 +48,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { themeColor: '#1e3352', width: 'device-width', initialScale: 1 };
 
-export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+export default async function RootLayout({ authModal, children }: Readonly<{ authModal: ReactNode; children: ReactNode }>) {
   const cookieStore = await cookies();
   const locale = resolveLocale(cookieStore.get('waooaw-locale')?.value);
   const theme = resolveTheme(cookieStore.get('waooaw-theme')?.value);
@@ -64,6 +64,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       <body>
         <OfflineNotice />
         {children}
+        {authModal}
       </body>
     </html>
   );

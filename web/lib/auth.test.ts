@@ -2,7 +2,7 @@
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
 import type { Session } from 'next-auth';
-import { hasFounderClaim, projectSession } from './auth';
+import { authOptions, hasFounderClaim, projectSession } from './auth';
 
 describe('Founder claim parsing', () => {
   it('accepts only an explicit Founder claim or realm role', () => {
@@ -20,5 +20,14 @@ describe('Browser session projection', () => {
     expect(session.authenticated).toBe(true);
     expect(session).not.toHaveProperty('accessToken');
     expect(JSON.stringify(session)).not.toContain('secret-bearer-token');
+  });
+});
+
+describe('Keycloak broker configuration', () => {
+  it('keeps broker aliases in server-owned provider configuration', () => {
+    const providers = authOptions.providers as Array<{ id: string; authorization?: { params?: Record<string, string> } }>;
+
+    expect(providers.find((provider) => provider.id === 'keycloak-google')?.authorization?.params).toEqual({ kc_idp_hint: 'google' });
+    expect(providers.find((provider) => provider.id === 'keycloak-facebook')?.authorization?.params).toEqual({ kc_idp_hint: 'facebook' });
   });
 });

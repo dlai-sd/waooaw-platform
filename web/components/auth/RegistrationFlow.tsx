@@ -5,6 +5,7 @@
 
 import { ArrowRight, CheckCircle2, LoaderCircle, Mail, Smartphone } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { RegistrationProgress } from '@/components/auth/RegistrationProgress';
 import type { IdentityRegistration, IdentityVerificationChallenge } from '@/lib/api/generated';
 import type { IdentityMessages } from '@/lib/identity-messages';
 import type { SupportedLocale } from '@/lib/preferences';
@@ -89,6 +90,7 @@ export function RegistrationFlow({ locale, messages }: { locale: SupportedLocale
 
   const action = voluntaryMobile ? 'VERIFY_MOBILE' : registration.nextAction;
   return <div className="registration-flow">
+    <RegistrationProgress action={action} pending={pending} />
     {error ? <p className="identity-error" role="alert">{error}</p> : null}
     {action === 'COMPLETE_PROFILE' ? <form className="identity-form" onSubmit={(event) => { event.preventDefault(); void registrationCommand('profile', { ...draft, languagePreference: locale }); }}>
       <label>{messages.displayName}<input autoComplete="name" maxLength={120} onChange={(event) => updateDraft('displayName', event.target.value)} required value={draft.displayName} /></label>
