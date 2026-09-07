@@ -88,11 +88,11 @@ code, or treat a WhatsApp session as a Keycloak session.
 
 | Evidence | Required result | Final reference |
 |---|---|---|
-| Focused auth unit tests | PASS | `jest.json`: included in 185/185 passing tests |
+| Focused auth unit tests | PASS | `jest.json`: included in 188/188 passing tests |
 | Business Platform provider tests | PASS | `provider-tests.trx`: 9/9 passing tests |
 | Generated API consistency | No applicable branch diff | WC-083 changes neither API specs nor generated client output |
 | Web production build | PASS | `wc083-qualification.json`: production build and typecheck PASS |
-| Jest coverage | Repository threshold PASS | `coverage/coverage-summary.json`: 92.52% lines |
+| Jest coverage | Repository thresholds PASS | `coverage/coverage-summary.json`: 94.77% lines, 82.59% branches, 91.87% functions, 91.89% statements |
 | Playwright auth/public matrix | PASS; zero unexpected failures | `playwright.json`: 20 passed, 0 skipped |
 | Axe accessibility | Zero serious or critical violations | `wc083-qualification.json`: axe PASS |
 | Desktop/mobile/RTL/dark screenshots | Reviewed against final HEAD | `screenshots.sha256`: four reviewed captures |

@@ -63,6 +63,7 @@ docker compose --profile test-dotnet run --rm -v "$PWD/$EVIDENCE_DIR:/evidence" 
   --logger 'trx;LogFileName=/evidence/provider-tests.trx' --logger 'console;verbosity=minimal'
 docker run --rm --user "$(id -u):$(id -g)" -v "$PWD/$EVIDENCE_DIR:/out" "$TEST_IMAGE" \
   node "$PINNED_PNPM" --dir web exec jest --runInBand --coverage --coverageReporters=text --coverageReporters=json-summary \
+  --coverageThreshold='{"global":{"lines":90,"branches":80,"functions":90,"statements":90}}' \
   --coverageDirectory=/out/coverage --json --outputFile=/out/jest.json
 
 docker run --rm --user root --network "$NETWORK" \
@@ -82,6 +83,9 @@ docker run --rm -v "$PWD:/repo:ro" -v "$COMMON_GIT_DIR:/repo/.git:ro" -v "$PWD/$
 git diff --check "$BASE_SHA" "$HEAD_SHA"
 
 COVERAGE_LINES="$(jq '.total.lines.pct' "$EVIDENCE_DIR/coverage/coverage-summary.json")"
+COVERAGE_BRANCHES="$(jq '.total.branches.pct' "$EVIDENCE_DIR/coverage/coverage-summary.json")"
+COVERAGE_FUNCTIONS="$(jq '.total.functions.pct' "$EVIDENCE_DIR/coverage/coverage-summary.json")"
+COVERAGE_STATEMENTS="$(jq '.total.statements.pct' "$EVIDENCE_DIR/coverage/coverage-summary.json")"
 JEST_TESTS="$(jq '.numTotalTests' "$EVIDENCE_DIR/jest.json")"
 PLAYWRIGHT_PASSED="$(jq '[.suites[].specs[].tests[] | select(.status == "expected")] | length' "$EVIDENCE_DIR/playwright.json")"
 PLAYWRIGHT_SKIPPED="$(jq '[.suites[].specs[].tests[] | select(.status == "skipped")] | length' "$EVIDENCE_DIR/playwright.json")"
@@ -98,10 +102,11 @@ COMPLETED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 jq -n \
   --arg head "$HEAD_SHA" --arg base "$BASE_SHA" --arg source "$SOURCE_HASH" --arg web_image "$WEB_ID" --arg test_image "$TEST_ID" \
   --arg started "$STARTED_AT" --arg completed "$COMPLETED_AT" \
-  --argjson provider_tests "$PROVIDER_TOTAL" --argjson jest_tests "$JEST_TESTS" --argjson coverage "$COVERAGE_LINES" --argjson playwright_passed "$PLAYWRIGHT_PASSED" \
+  --argjson provider_tests "$PROVIDER_TOTAL" --argjson jest_tests "$JEST_TESTS" --argjson lines "$COVERAGE_LINES" \
+  --argjson branches "$COVERAGE_BRANCHES" --argjson functions "$COVERAGE_FUNCTIONS" --argjson statements "$COVERAGE_STATEMENTS" --argjson playwright_passed "$PLAYWRIGHT_PASSED" \
   --argjson playwright_skipped "$PLAYWRIGHT_SKIPPED" --argjson screenshots "$SCREENSHOT_COUNT" --argjson trivy_findings "$TRIVY_FINDINGS" --argjson gitleaks_diff_findings "$GITLEAKS_DIFF_FINDINGS" \
-  '{schema_version:"1.0",work_contract:"WC-083",result:"PASS",head_sha:$head,base_sha:$base,source_hash:$source,started_at:$started,completed_at:$completed,images:{web:$web_image,test:$test_image},build:{production:"PASS",typecheck:"PASS"},contracts:{identity_provider_projection:{result:"PASS",tests:$provider_tests,report:"provider-tests.trx"}},unit:{result:"PASS",tests:$jest_tests,lines_pct:$coverage},browser:{result:"PASS",passed:$playwright_passed,skipped:$playwright_skipped,browsers:["chromium","firefox","webkit"],viewports:["1440x900","768x1024","360x800"]},accessibility:{axe:"PASS",keyboard:"PASS",reduced_motion:"PASS",rtl:"PASS"},screenshots:{result:"CAPTURED_FOR_REVIEW",count:$screenshots,hashes:"screenshots.sha256"},security:{sbom:"sbom.json",trivy:{result:"PASS",findings:$trivy_findings,report:"trivy.json"},gitleaks:{result:"PASS",diff_findings:$gitleaks_diff_findings,history_report:"gitleaks-history.json",diff_report:"gitleaks-diff.json"}}}' > "$OUTPUT"
+  '{schema_version:"1.0",work_contract:"WC-083",result:"PASS",head_sha:$head,base_sha:$base,source_hash:$source,started_at:$started,completed_at:$completed,images:{web:$web_image,test:$test_image},build:{production:"PASS",typecheck:"PASS"},contracts:{identity_provider_projection:{result:"PASS",tests:$provider_tests,report:"provider-tests.trx"}},unit:{result:"PASS",tests:$jest_tests,coverage_pct:{lines:$lines,branches:$branches,functions:$functions,statements:$statements}},browser:{result:"PASS",passed:$playwright_passed,skipped:$playwright_skipped,browsers:["chromium","firefox","webkit"],viewports:["1440x900","768x1024","360x800"]},accessibility:{axe:"PASS",keyboard:"PASS",reduced_motion:"PASS",rtl:"PASS"},screenshots:{result:"CAPTURED_FOR_REVIEW",count:$screenshots,hashes:"screenshots.sha256"},security:{sbom:"sbom.json",trivy:{result:"PASS",findings:$trivy_findings,report:"trivy.json"},gitleaks:{result:"PASS",diff_findings:$gitleaks_diff_findings,history_report:"gitleaks-history.json",diff_report:"gitleaks-diff.json"}}}' > "$OUTPUT"
 
-jq -e 'select(.result == "PASS" and .work_contract == "WC-083" and .contracts.identity_provider_projection.tests >= 1 and .unit.result == "PASS" and .unit.lines_pct >= 90 and .browser.result == "PASS" and .browser.passed >= 20 and .screenshots.count == 4 and .security.trivy.result == "PASS" and .security.gitleaks.diff_findings == 0)' "$OUTPUT" >/dev/null
+jq -e 'select(.result == "PASS" and .work_contract == "WC-083" and .contracts.identity_provider_projection.tests >= 1 and .unit.result == "PASS" and .unit.coverage_pct.lines >= 90 and .unit.coverage_pct.branches >= 80 and .unit.coverage_pct.functions >= 90 and .unit.coverage_pct.statements >= 90 and .browser.result == "PASS" and .browser.passed >= 20 and .screenshots.count == 4 and .security.trivy.result == "PASS" and .security.gitleaks.diff_findings == 0)' "$OUTPUT" >/dev/null
 docker system df --format '{{json .}}' > "$EVIDENCE_DIR/docker-after.jsonl"
 echo "WC-083 qualification PASS: $OUTPUT"
