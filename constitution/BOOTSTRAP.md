@@ -543,7 +543,7 @@ Run full test suite (per GENESIS Engineering Quality Mandate):
   - Security scan, performance tests as applicable
 
 ⛔ C-080 TEST EXECUTION MANDATE — ALWAYS ENFORCED:
-  Virtual environments (.venv, venv/, pip install on host) are CONSTITUTIONALLY PROHIBITED.
+  Host-managed language environments and host package installation are CONSTITUTIONALLY PROHIBITED.
   Every test run — in any session, in any sprint, for any office — MUST use the Docker test-runner.
 
   CORRECT:
@@ -551,16 +551,15 @@ Run full test suite (per GENESIS Engineering Quality Mandate):
     docker compose run --rm test-runner pytest tests/<service>/ -v          # scoped
     docker compose run --rm test-runner pytest tests/<service>/ --cov=<pkg> # with coverage
     docker compose run --rm test-runner ruff check src/ tests/              # linting
-    dotnet test tests/<project>.Tests/                                       # .NET (host devcontainer SDK — correct)
+    docker compose --profile test-dotnet run --rm test-runner-dotnet \
+      dotnet test tests/<project>.Tests/                                    # .NET
 
   PROHIBITED (constitutional violation):
-    source .venv/bin/activate
-    python -m pytest
-    pip install <anything>
-    Any direct host Python invocation for test execution
+    Any host-managed Python or Node environment
+    Any direct host language test runner or package installation
 
   The test-runner image IS the test execution environment. Volume-mounted at .:/workspace —
-  code changes reflect immediately without rebuild. No venv needed, none permitted.
+  code changes reflect immediately without rebuild. No host language environment is permitted.
 
 Branch strategy:
   - Work on a feature branch (never directly on main)
