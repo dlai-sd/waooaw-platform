@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>WAOOAW Customer Portal Prototype</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="prototype-banner" role="status">
+    <span class="prototype-dot" aria-hidden="true"></span>
+    Prototype - fictional data, no live actions
+  </div>
+
+  <div class="portal-shell">
+    <header class="app-header">
+      <button class="icon-button menu-button" id="menu-button" type="button" aria-label="Open account menu" aria-controls="account-drawer" aria-expanded="false">
+        <span aria-hidden="true">☰</span>
+      </button>
+      <a class="brand" href="#my-agents" data-view-link="my-agents" aria-label="WAOOAW My Agents">
+        <img src="../../web/public/waooaw-platform-logo.png" alt="WAOOAW">
+      </a>
+      <div class="relationship-title">
+        <strong id="header-title">My Agents</strong>
+        <span id="header-subtitle">2 professional relationships</span>
+      </div>
+      <div class="header-actions">
+        <button class="icon-button" id="theme-button" type="button" aria-label="Switch to dark theme" title="Change theme">
+          <span id="theme-icon" aria-hidden="true">☾</span>
+        </button>
+        <button class="stop-button" type="button" data-demo="Emergency Stop is visual only in this prototype">
+          <span aria-hidden="true">■</span><span>Emergency Stop</span>
+        </button>
+      </div>
+    </header>
+
+    <aside class="global-navigation" aria-label="Customer portal">
+      <nav>
+        <button class="nav-command is-active" type="button" data-view="my-agents" aria-current="page">
+          <span class="nav-icon" aria-hidden="true">◉</span><span>My Agents</span><small>2</small>
+        </button>
+        <button class="nav-command" type="button" data-view="marketplace">
+          <span class="nav-icon" aria-hidden="true">◇</span><span>Marketplace</span>
+        </button>
+        <button class="nav-command" type="button" data-view="alerts">
+          <span class="nav-icon" aria-hidden="true">!</span><span>Alerts</span><small>3</small>
+        </button>
+      </nav>
+      <button class="account-summary" id="desktop-account-button" type="button" aria-controls="account-drawer" aria-expanded="false">
+        <span class="customer-avatar" aria-hidden="true">SK</span>
+        <span><strong>Suresh Kulkarni</strong><small>Shivneri Farms</small></span>
+        <span aria-hidden="true">›</span>
+      </button>
+    </aside>
+
+    <main class="workspace" id="main-content">
+      <section class="view is-active" id="my-agents" data-view-panel="my-agents" aria-labelledby="my-agents-title">
+        <h1 class="visually-hidden" id="my-agents-title">My Agents</h1>
+        <aside class="agent-list" aria-label="Your agents">
+          <div class="pane-heading">
+            <div><p class="eyebrow">Your team</p><h2>My Agents</h2></div>
+            <button class="small-icon-button" type="button" data-view="marketplace" aria-label="Find an agent" title="Find an agent">+</button>
+          </div>
+          <button class="agent-row is-selected" type="button" data-agent="asha">
+            <span class="agent-avatar agriculture" aria-hidden="true">A</span>
+            <span class="agent-row-copy"><strong>Asha</strong><span>Agricultural Advisor</span><small>Crop plan ready for review</small></span>
+            <span class="unread-badge">2</span>
+          </button>
+          <button class="agent-row" type="button" data-agent="maya">
+            <span class="agent-avatar marketing" aria-hidden="true">M</span>
+            <span class="agent-row-copy"><strong>Maya</strong><span>Digital Marketing Professional</span><small>Campaign is on schedule</small></span>
+            <span class="presence-dot" aria-label="Available"></span>
+          </button>
+          <div class="agent-list-footer">
+            <p>Each professional has a separate scope, plan, budget, and activity record.</p>
+            <button class="text-button" type="button" data-view="marketplace">Explore Marketplace <span aria-hidden="true">→</span></button>
+          </div>
+        </aside>
+
+        <article class="conversation" aria-label="Conversation with Asha">
+          <header class="conversation-header">
+            <button class="back-button" type="button" id="agent-list-button" aria-label="Show agent list"><span aria-hidden="true">‹</span></button>
+            <span class="agent-avatar agriculture" id="active-avatar" aria-hidden="true">A</span>
+            <div><h2 id="agent-name">Asha</h2><p><span class="presence-dot"></span> <span id="agent-status">Available · Agricultural Advisor</span></p></div>
+            <button class="context-button" id="context-button" type="button" aria-controls="context-panel" aria-expanded="true">Plan</button>
+          </header>
+
+          <div class="channel-divider"><span>Continued from WhatsApp · today, 9:12 AM</span></div>
+          <div class="message-stream" id="message-stream" aria-live="polite">
+            <div class="message message-agent">
+              <p>Good morning, Suresh. Rain is expected late Thursday. I moved the cotton spray recommendation to Wednesday morning.</p>
+              <span>9:14 AM · Recorded in your plan</span>
+            </div>
+            <section class="work-card" aria-label="Plan update">
+              <div class="work-card-heading"><span class="work-icon" aria-hidden="true">✓</span><div><small>PLAN UPDATE</small><h3>Prepare field before Thursday rain</h3></div></div>
+              <dl><div><dt>Owner</dt><dd>You</dd></div><div><dt>Due</dt><dd>Wed, 7:00 AM</dd></div><div><dt>Status</dt><dd>Needs review</dd></div></dl>
+              <button type="button" data-demo="Plan details would open in the context panel">Review plan</button>
+            </section>
+            <div class="message message-customer"><p>Will the change affect this week's budget?</p><span>9:18 AM · Accepted</span></div>
+            <div class="message message-agent"><p>No. It changes timing only. Your approved weekly allowance remains the same.</p><span>9:19 AM · Evidence pending</span></div>
+          </div>
+
+          <form class="composer" id="composer">
+            <div class="voice-review" id="voice-review" hidden>
+              <div class="voice-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+              <div><strong id="voice-title">Recording voice note</strong><span id="voice-timer">0:00</span></div>
+              <button class="text-button danger-text" id="cancel-voice" type="button">Cancel</button>
+            </div>
+            <label class="visually-hidden" for="message-input">Message Asha</label>
+            <textarea id="message-input" rows="1" placeholder="Message Asha"></textarea>
+            <button class="composer-icon" id="voice-button" type="button" aria-label="Record voice note" title="Record voice note">●</button>
+            <button class="send-button" type="submit" aria-label="Send message"><span aria-hidden="true">↑</span></button>
+            <small>Messages may propose work. Consequential actions still require your explicit approval.</small>
+          </form>
+        </article>
+
+        <aside class="context-panel" id="context-panel" aria-label="Current plan">
+          <div class="context-heading"><div><p class="eyebrow">Current focus</p><h2>Monsoon crop plan</h2></div><button class="small-icon-button" id="close-context" type="button" aria-label="Close plan">×</button></div>
+          <div class="progress-block"><div><span>Season progress</span><strong>4 of 7 steps</strong></div><progress value="4" max="7">4 of 7</progress></div>
+          <section class="context-section"><h3>Next work</h3><ul class="task-list"><li class="is-done"><span>✓</span><div><strong>Review soil report</strong><small>Completed yesterday</small></div></li><li><span>2</span><div><strong>Prepare north field</strong><small>Due Wednesday</small></div></li><li><span>3</span><div><strong>Confirm spray window</strong><small>Waiting for forecast</small></div></li></ul></section>
+          <section class="context-section"><h3>Usage & budget</h3><div class="budget-row"><span>This period</span><strong>62% used</strong></div><progress value="62" max="100">62%</progress><p>Within your approved allowance. Forecast last updated 12 minutes ago.</p></section>
+          <button class="secondary-button full-width" type="button" data-demo="The complete plan route is not live in this prototype">Open complete plan</button>
+        </aside>
+      </section>
+
+      <section class="view catalogue-view" id="marketplace" data-view-panel="marketplace" aria-labelledby="marketplace-title" hidden>
+        <header class="view-heading"><div><p class="eyebrow">Find your next professional</p><h1 id="marketplace-title">Marketplace</h1><p>Compare published scope, limits, and trial terms before making a decision.</p></div><label class="search-control"><span aria-hidden="true">⌕</span><input id="market-search" type="search" placeholder="Search professionals"></label></header>
+        <div class="filter-row" role="group" aria-label="Filter Marketplace"><button class="filter is-active" type="button" data-filter="all">All</button><button class="filter" type="button" data-filter="growth">Growth</button><button class="filter" type="button" data-filter="agriculture">Agriculture</button><button class="filter" type="button" data-filter="research">Research</button></div>
+        <div class="market-grid" id="market-grid">
+          <article class="market-card" data-category="growth" data-search="digital marketing audience campaign growth"><div class="market-card-top"><span class="agent-avatar marketing">M</span><span class="availability">Available for trial</span></div><p class="eyebrow">Audience growth</p><h2>Digital Marketing Professional</h2><p>Plans campaigns, prepares customer-safe content, and reports outcomes within an approved budget.</p><ul><li>Campaign planning</li><li>Content review</li><li>Weekly outcome summary</li></ul><div class="market-footer"><strong>7-day trial</strong><button type="button" data-trial="Digital Marketing Professional">View scope</button></div></article>
+          <article class="market-card" data-category="agriculture" data-search="agriculture farm crop seasonal planning"><div class="market-card-top"><span class="agent-avatar agriculture">A</span><span class="availability">Available for trial</span></div><p class="eyebrow">Farm planning</p><h2>Agricultural Advisory Professional</h2><p>Turns farm context, weather, and research into practical seasonal guidance in your language.</p><ul><li>Season planning</li><li>Weather-aware guidance</li><li>Research-backed advice</li></ul><div class="market-footer"><strong>7-day trial</strong><button type="button" data-trial="Agricultural Advisory Professional">View scope</button></div></article>
+          <article class="market-card" data-category="research" data-search="trading market research analysis briefs"><div class="market-card-top"><span class="agent-avatar trading">T</span><span class="availability muted-status">Waitlist</span></div><p class="eyebrow">Market research</p><h2>Trading Advisory Professional</h2><p>Produces research-led market briefings with explicit risk limits and no autonomous trade execution.</p><ul><li>Market briefings</li><li>Risk scenarios</li><li>Evidence-backed watchlists</li></ul><div class="market-footer"><strong>No live trial</strong><button type="button" data-trial="Trading Advisory Professional">View limits</button></div></article>
+        </div>
+        <div class="empty-state" id="market-empty" hidden><strong>No matching professionals</strong><p>Try another search or clear the selected filter.</p></div>
+      </section>
+
+      <section class="view alerts-view" id="alerts" data-view-panel="alerts" aria-labelledby="alerts-title" hidden>
+        <header class="view-heading"><div><p class="eyebrow">Needs your attention</p><h1 id="alerts-title">Alerts</h1><p>Decisions and updates remain distinct. Reading an alert never approves an action.</p></div><button class="secondary-button" id="mark-all-read" type="button">Mark updates read</button></header>
+        <div class="alert-layout">
+          <div class="alert-list" id="alert-list">
+            <article class="alert-item urgent" data-alert-kind="action"><span class="alert-symbol" aria-hidden="true">!</span><div><div class="alert-meta"><strong>Decision required</strong><time>Due today</time></div><h2>Approve revised crop schedule</h2><p>Asha adjusted one task because of expected rain. Budget and authority are unchanged.</p><span class="alert-source">Asha · Shivneri Farms</span></div><button type="button" data-demo="Approval details would open without approving">Review</button></article>
+            <article class="alert-item" data-alert-kind="update"><span class="alert-symbol info" aria-hidden="true">i</span><div><div class="alert-meta"><strong>Work completed</strong><time>10:40 AM</time></div><h2>Weekly campaign summary is ready</h2><p>Maya completed the scheduled summary. No action is required.</p><span class="alert-source">Maya · Digital Marketing</span></div><button type="button" data-read="true">Read</button></article>
+            <article class="alert-item" data-alert-kind="update"><span class="alert-symbol billing" aria-hidden="true">₹</span><div><div class="alert-meta"><strong>Allowance update</strong><time>Yesterday</time></div><h2>62% of this period is used</h2><p>Your forecast remains within the current plan. This is not a payment request.</p><span class="alert-source">Billing · Shivneri Farms</span></div><button type="button" data-drawer-view="billing">View billing</button></article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="mobile-navigation" aria-label="Primary customer navigation">
+      <button class="is-active" type="button" data-view="my-agents" aria-current="page"><span aria-hidden="true">◉</span><span>My Agents</span></button>
+      <button type="button" data-view="marketplace"><span aria-hidden="true">◇</span><span>Marketplace</span></button>
+      <button type="button" data-view="alerts"><span aria-hidden="true">!</span><span>Alerts</span><small>3</small></button>
+    </nav>
+  </div>
+
+  <div class="drawer-scrim" id="drawer-scrim" hidden></div>
+  <aside class="account-drawer" id="account-drawer" aria-labelledby="drawer-title" aria-hidden="true">
+    <header><div class="customer-avatar" aria-hidden="true">SK</div><div><h2 id="drawer-title">Suresh Kulkarni</h2><p>Shivneri Farms</p></div><button class="small-icon-button" id="close-drawer" type="button" aria-label="Close account menu">×</button></header>
+    <nav aria-label="Account">
+      <button type="button" data-drawer-view="profile"><span aria-hidden="true">◎</span><span><strong>Profile</strong><small>Identity and organization</small></span></button>
+      <button type="button" data-drawer-view="billing"><span aria-hidden="true">₹</span><span><strong>Billing</strong><small>Plan, allowance, and invoices</small></span></button>
+      <button type="button" data-drawer-view="settings"><span aria-hidden="true">⚙</span><span><strong>Settings</strong><small>Language, theme, and channels</small></span></button>
+    </nav>
+    <section class="drawer-panel" id="drawer-panel" hidden></section>
+    <div class="drawer-foot"><button class="signout-button" type="button" data-demo="Sign out would clear protected state and end the session">Sign out <span aria-hidden="true">→</span></button><small>Customer ID and protected data are never stored in this prototype.</small></div>
+  </aside>
+
+  <dialog class="detail-dialog" id="detail-dialog" aria-labelledby="detail-title">
+    <button class="small-icon-button dialog-close" type="button" data-close-dialog aria-label="Close">×</button>
+    <p class="eyebrow">Prototype preview</p><h2 id="detail-title">Professional scope</h2><div id="detail-content"></div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <script src="app.js"></script>
+</body>
+</html>
