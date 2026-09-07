@@ -27,7 +27,7 @@ export default async function HomePage() {
           <p className="eyebrow">{messages.publicEyebrow}</p>
           <h1>{journeyContent.heroTitle}</h1>
           <p className="hero-copy">{journeyContent.heroSubtitle}</p>
-          <div className="command-row"><Link className="primary-link" href="/professionals">Meet a professional <ArrowRight aria-hidden="true" size={18} /></Link><a className="secondary-link" href="/register">Start with a trial</a></div>
+          <div className="command-row"><Link className="primary-link" href="/professionals">Meet a professional <ArrowRight aria-hidden="true" size={18} /></Link><Link className="secondary-link" href="/register">Start with a trial</Link></div>
         </section>
         <ProfessionalJourneyShowcase content={journeyContent} />
       </div>
@@ -45,7 +45,7 @@ export default async function HomePage() {
         <div><Scale aria-hidden="true" size={32} /><p className="eyebrow">Illustrative governance journey</p><h2>{messages.constitutionalPromise}</h2><p>{messages.constitutionalDescription}</p></div>
       </section>
 
-      <section className="public-section final-action"><p className="eyebrow">A professional relationship you can inspect</p><h2>Begin with visible scope, honest limits, and control that stays with you.</h2><div className="command-row"><Link className="primary-link" href="/professionals">Meet a professional <ArrowRight aria-hidden="true" size={18} /></Link><a className="secondary-link" href="/register">Start with a trial</a></div></section>
+      <section className="public-section final-action"><p className="eyebrow">A professional relationship you can inspect</p><h2>Begin with visible scope, honest limits, and control that stays with you.</h2><div className="command-row"><Link className="primary-link" href="/professionals">Meet a professional <ArrowRight aria-hidden="true" size={18} /></Link><Link className="secondary-link" href="/register">Start with a trial</Link></div></section>
       <section className="platform-dna" aria-labelledby="platform-dna-title"><p className="eyebrow">Platform DNA</p><h2 id="platform-dna-title">Built through a connected institutional lineage.</h2><dl><div><dt>Yashus</dt><dd>Product and experience foundation</dd></div><div><dt>DLAI Satellite Data</dt><dd>Technology and operating company</dd></div><div><dt>WAOOAW</dt><dd>Constitutionally governed digital professionals</dd></div></dl></section>
     </div>
   );

@@ -323,14 +323,37 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 .auth-view h1, .content-page h1, .state-view h1 { font-size: 3.2rem; }
 .auth-view p, .content-page p, .state-view p { color: var(--muted); line-height: 1.65; }
 .auth-view .primary-command { margin-block: 1rem; }
-.provider-commands { display: grid; align-items: start; justify-items: start; gap: .75rem; margin-block: 1rem; }
+.provider-commands { display: grid; align-items: start; gap: .75rem; margin-block: 1rem; }
 .provider-commands .primary-command { margin-block: 0; }
-.provider-command { min-height: 46px; padding: .75rem 1.15rem; border: 1px solid var(--border); border-radius: 6px; color: var(--ink); background: var(--surface); cursor: pointer; }
+.provider-command { min-height: 48px; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: .75rem; padding: .75rem 1.15rem; border: 1px solid var(--border); border-radius: 6px; color: var(--ink); background: var(--surface); cursor: pointer; text-align: start; }
 .provider-command:hover { border-color: var(--blue); }
+.provider-command:disabled { cursor: not-allowed; opacity: .62; }
+.provider-command-google:not(:disabled) { border-color: var(--color-brand-blue); }
+.provider-command-facebook:not(:disabled) svg { color: #1877f2; }
+.provider-command-apple svg { color: var(--ink); }
+.provider-command small { color: var(--muted); }
+.provider-status { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 0; padding: .85rem 1rem; border-inline-start: 4px solid var(--orange); background: var(--paper); }
 .apple-sign-in { display: grid; gap: .5rem; }
 .apple-sign-in p { max-width: 52ch; margin: 0; color: var(--ink); }
+.auth-dialog { width: min(calc(100% - 2rem), 620px); max-height: calc(100dvh - 2rem); padding: 0; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); box-shadow: 0 24px 72px rgb(15 31 48 / 30%); overflow: auto; }
+.auth-dialog::backdrop { background: rgb(15 31 48 / 68%); backdrop-filter: blur(3px); }
+.auth-dialog-panel { position: relative; border-block-start: 5px solid transparent; border-image: linear-gradient(90deg, var(--color-brand-blue), var(--color-brand-green), var(--color-brand-orange)) 1; }
+.auth-dialog-close { position: absolute; inset-block-start: 1rem; inset-inline-end: 1rem; z-index: 1; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 50%; color: var(--ink); background: var(--surface); cursor: pointer; }
+.auth-dialog-close:hover { border-color: var(--blue); }
+.auth-dialog .auth-view { width: 100%; padding: clamp(2rem, 7vw, 3.5rem); padding-block-start: 4.5rem; }
+.auth-dialog .auth-view h1 { font-size: clamp(2rem, 8vw, 3.2rem); }
+[dir="rtl"] .auth-dialog .auth-view h1 { line-height: 1.55; }
+[dir="rtl"] .auth-dialog .provider-command { grid-template-columns: 24px minmax(0, 1fr); }
+[dir="rtl"] .auth-dialog .provider-command small { grid-column: 2; }
 .identity-view { width: min(100% - 2rem, 760px); }
 .registration-flow { margin-block-start: 2rem; }
+.registration-progress { display: grid; gap: .55rem; margin-block: 1.25rem 2rem; color: var(--muted); font-size: .85rem; }
+.registration-progress ol { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .5rem; margin: 0; padding: 0; list-style: none; }
+.registration-progress li { aspect-ratio: 1; min-width: 0; display: grid; place-items: center; border: 2px solid var(--line); border-radius: 50%; color: var(--muted); background: var(--surface); font-weight: 800; }
+.registration-progress li[data-state="complete"] { border-color: var(--color-brand-green); color: #fff; background: var(--color-brand-green); }
+.registration-progress li[data-state="active"] { border-color: var(--color-brand-blue); color: var(--color-brand-navy); background: color-mix(in srgb, var(--color-brand-orange) 22%, var(--surface)); box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-brand-blue) 18%, transparent); }
+.registration-progress[data-pending="true"] li[data-state="active"] { animation: registration-wave 1.4s ease-in-out infinite; }
+@keyframes registration-wave { 50% { box-shadow: 0 0 0 9px color-mix(in srgb, var(--color-brand-blue) 5%, transparent); transform: scale(.94); } }
 .identity-form { display: grid; gap: 1rem; }
 .identity-form label { display: grid; gap: .45rem; color: var(--ink); font-weight: 700; }
 .identity-form input { width: 100%; min-height: 48px; padding: .75rem; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: var(--surface); font: inherit; }
@@ -446,6 +469,11 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
   .offerability-price { grid-column: auto; }
   .offerability-form .primary-command { width: 100%; justify-content: center; }
   .offerability-decision dl { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 480px) {
+  [dir="rtl"] .auth-dialog .auth-view h1 { font-size: 1.75rem; }
+  .auth-dialog .provider-command { grid-template-columns: 24px minmax(0, 1fr); }
+  .auth-dialog .provider-command small { grid-column: 2; }
 }
 
 @media (max-width: 899px) {
@@ -576,6 +604,7 @@ html[data-header-scrolled="true"] .app-shell-public .top-bar { background: var(-
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .registration-progress[data-pending="true"] li[data-state="active"] { animation: none; }
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   .spotlight-film-track { transition: none !important; }
 }

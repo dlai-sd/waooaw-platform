@@ -33,6 +33,7 @@ web/public/workbox-*.js
 web/playwright-report/
 web/test-results/
 test-results/wc079/
+test-results/wc083/
 
 # ─── OS / editor ─────────────────────────────────────────────────────────────
 .DS_Store
