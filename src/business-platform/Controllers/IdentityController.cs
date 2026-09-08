@@ -31,6 +31,24 @@ public sealed record ConfirmVerificationRequest(Guid ChallengeId, string Code);
 
 public sealed record StartAccountLinkRequest(Guid VerifiedMobileProofId);
 
+public sealed record UpdateCustomerProfileRequest(
+    string SchemaVersion,
+    string DisplayName,
+    string OrganizationDisplayName);
+
+public sealed record NotificationPreferencesRequest(
+    IReadOnlyList<string> ApprovalRequests,
+    IReadOnlyList<string> MaturityReports,
+    IReadOnlyList<string> MonthlyNarratives,
+    IReadOnlyList<string> SelfGovernanceAlerts);
+
+public sealed record UpdateCustomerSettingsRequest(
+    string SchemaVersion,
+    string Locale,
+    string Theme,
+    string TimestampVisibility,
+    NotificationPreferencesRequest NotificationPreferences);
+
 // ── Response models (exactly matching OpenAPI schemas) ───────────────────────
 
 public sealed record IdentityRegistrationResponse(
@@ -95,6 +113,41 @@ public sealed record IdentitySessionResponse(
     DateTimeOffset ExpiresAt,
     string NextAction);
 
+public sealed record CustomerProfileResponse(
+    string SchemaVersion,
+    string DisplayName,
+    string OrganizationDisplayName,
+    string Email,
+    bool EmailVerified,
+    bool MobileVerified,
+    string ActiveRole,
+    IReadOnlyList<object> SwitchableAccounts,
+    DateTimeOffset UpdatedAt);
+
+public sealed record NotificationPreferencesResponse(
+    IReadOnlyList<string> ApprovalRequests,
+    IReadOnlyList<string> MaturityReports,
+    IReadOnlyList<string> MonthlyNarratives,
+    IReadOnlyList<string> SelfGovernanceAlerts);
+
+public sealed record CustomerSettingsResponse(
+    string SchemaVersion,
+    string Locale,
+    string Theme,
+    string TimestampVisibility,
+    NotificationPreferencesResponse NotificationPreferences,
+    IReadOnlyList<string> AvailableSecurityActions,
+    DateTimeOffset UpdatedAt);
+
+public sealed record CustomerLoginMethodResponse(
+    string Provider,
+    string State,
+    string? MaskedIdentifier);
+
+public sealed record CustomerLoginMethodCollectionResponse(
+    string SchemaVersion,
+    IReadOnlyList<CustomerLoginMethodResponse> Items);
+
 [ApiController]
 [Route("api/v1/identity")]
 [Authorize]
@@ -121,6 +174,10 @@ public sealed class IdentityController(
         "^\\+[1-9][0-9]{7,14}$", RegexOptions.CultureInvariant);
     private static readonly Regex VerificationCodePattern = new(
         "^[0-9]{6}$", RegexOptions.CultureInvariant);
+    private static readonly Regex LocalePattern = new(
+        "^[a-z]{2}(-[A-Z]{2})?$", RegexOptions.CultureInvariant);
+
+    private const string CustomerPortalSchemaVersion = "1.0.0";
 
     private Guid? TenantIdFromContext =>
         HttpContext.Items.TryGetValue(TenantIsolationMiddleware.TenantIdItemKey, out var v)
@@ -248,6 +305,37 @@ public sealed class IdentityController(
     private static IdentityAccountLinkResponse ToResponse(IdentityAccountLinkRecord l) =>
         new(l.LinkId, ToScreamingSnakeCase(l.State.ToString()), "AAL3_FRESH", l.MaskedMobile, l.ExpiresAt, l.UpdatedAt);
 
+    private string? EmailClaim => User.FindFirstValue("email");
+
+    private IActionResult? ValidatePortalSession(out Guid tenantId)
+    {
+        var candidate = TenantIdFromContext;
+        if (candidate is null || CustomerRoles.Count == 0)
+        {
+            tenantId = default;
+            return IdentityProblem(401, "IDENTITY_SESSION_REQUIRED", "A complete customer session is required.");
+        }
+        tenantId = candidate.Value;
+        return null;
+    }
+
+    private CustomerProfileResponse ToProfileResponse(CustomerPortalProfileState state) =>
+        new(CustomerPortalSchemaVersion, state.DisplayName, state.OrganizationDisplayName,
+            EmailClaim ?? string.Empty, state.EmailVerified, state.MobileVerified,
+            ActiveCustomerRole, [], state.UpdatedAt);
+
+    private string ActiveCustomerRole =>
+        CustomerRoles.Contains("OWNER", StringComparer.Ordinal) ? "OWNER"
+        : CustomerRoles.Contains("MANAGER", StringComparer.Ordinal) ? "MANAGER"
+        : "VIEWER";
+
+    private static CustomerSettingsResponse ToSettingsResponse(CustomerPortalSettingsState state) =>
+        new(CustomerPortalSchemaVersion, state.Locale, state.Theme, state.TimestampVisibility,
+            new NotificationPreferencesResponse(state.ApprovalRequests, state.MaturityReports,
+                state.MonthlyNarratives, state.SelfGovernanceAlerts),
+            ["STEP_UP", "CHANGE_PASSWORDLESS_METHODS", "LINK_WHATSAPP", "REMOVE_LOGIN_METHOD"],
+            state.UpdatedAt);
+
     [AllowAnonymous]
     [HttpGet("providers")]
     public IActionResult GetProviders() =>
@@ -295,6 +383,128 @@ public sealed class IdentityController(
             return IdentityProblem(404, "IDENTITY_RESOURCE_NOT_ACCESSIBLE",
                 "Account session not found or not accessible.");
         }
+    }
+
+    [HttpGet("profile")]
+    public async Task<IActionResult> GetCustomerProfileAsync(CancellationToken ct)
+    {
+        if (ValidatePortalSession(out var tenantId) is { } error) return error;
+        try
+        {
+            var profile = await identityService.GetCustomerProfileAsync(ActorSubject, tenantId, ct);
+            return Ok(ToProfileResponse(profile));
+        }
+        catch (IdentityResourceNotFoundException)
+        {
+            return IdentityProblem(404, "IDENTITY_RESOURCE_NOT_ACCESSIBLE", "Account profile not found or not accessible.");
+        }
+    }
+
+    [HttpPut("profile")]
+    public async Task<IActionResult> UpdateCustomerProfileAsync(
+        [FromBody] UpdateCustomerProfileRequest req, CancellationToken ct)
+    {
+        if (ValidatePortalSession(out var tenantId) is { } error) return error;
+        if (!IsOwner) return IdentityProblem(403, "IDENTITY_ACTION_DENIED", "Owner authorization is required.");
+        if (req.SchemaVersion != CustomerPortalSchemaVersion
+            || string.IsNullOrWhiteSpace(req.DisplayName) || req.DisplayName.Length > 200
+            || string.IsNullOrWhiteSpace(req.OrganizationDisplayName) || req.OrganizationDisplayName.Length > 200)
+            return IdentityProblem(400, "IDENTITY_REQUEST_INVALID", "Profile fields are invalid.");
+        try
+        {
+            var profile = await identityService.UpdateCustomerProfileAsync(
+                ActorSubject, tenantId, IdempotencyKey, ComputeHash(req),
+                req.DisplayName.Trim(), req.OrganizationDisplayName.Trim(), ct);
+            return Ok(ToProfileResponse(profile));
+        }
+        catch (IdentityIdempotencyConflict)
+        {
+            return IdentityProblem(409, "IDENTITY_IDEMPOTENCY_CONFLICT", "The idempotency key was already used with a different request.");
+        }
+        catch (IdentityResourceNotFoundException)
+        {
+            return IdentityProblem(404, "IDENTITY_RESOURCE_NOT_ACCESSIBLE", "Account profile not found or not accessible.");
+        }
+        catch (ArgumentException)
+        {
+            return IdentityProblem(400, "IDENTITY_REQUEST_INVALID", "Invalid or missing Idempotency-Key header.");
+        }
+    }
+
+    [HttpGet("settings")]
+    public async Task<IActionResult> GetCustomerSettingsAsync(CancellationToken ct)
+    {
+        if (ValidatePortalSession(out var tenantId) is { } error) return error;
+        try
+        {
+            return Ok(ToSettingsResponse(await identityService.GetCustomerSettingsAsync(ActorSubject, tenantId, ct)));
+        }
+        catch (IdentityResourceNotFoundException)
+        {
+            return IdentityProblem(404, "IDENTITY_RESOURCE_NOT_ACCESSIBLE", "Account settings not found or not accessible.");
+        }
+    }
+
+    [HttpPut("settings")]
+    public async Task<IActionResult> UpdateCustomerSettingsAsync(
+        [FromBody] UpdateCustomerSettingsRequest req, CancellationToken ct)
+    {
+        if (ValidatePortalSession(out var tenantId) is { } error) return error;
+        if (req.SchemaVersion != CustomerPortalSchemaVersion || !LocalePattern.IsMatch(req.Locale)
+            || req.Theme is not ("SYSTEM" or "LIGHT" or "DARK")
+            || req.TimestampVisibility is not ("RELATIVE" or "ABSOLUTE")
+            || !ValidChannels(req.NotificationPreferences))
+            return IdentityProblem(400, "IDENTITY_REQUEST_INVALID", "Settings fields are invalid.");
+        try
+        {
+            var preferences = req.NotificationPreferences;
+            var settings = await identityService.UpdateCustomerSettingsAsync(
+                ActorSubject, tenantId, IdempotencyKey, ComputeHash(req), req.Locale, req.Theme,
+                req.TimestampVisibility, preferences.ApprovalRequests, preferences.MaturityReports,
+                preferences.MonthlyNarratives, preferences.SelfGovernanceAlerts, ct);
+            return Ok(ToSettingsResponse(settings));
+        }
+        catch (IdentityIdempotencyConflict)
+        {
+            return IdentityProblem(409, "IDENTITY_IDEMPOTENCY_CONFLICT", "The idempotency key was already used with a different request.");
+        }
+        catch (IdentityResourceNotFoundException)
+        {
+            return IdentityProblem(404, "IDENTITY_RESOURCE_NOT_ACCESSIBLE", "Account settings not found or not accessible.");
+        }
+        catch (ArgumentException)
+        {
+            return IdentityProblem(400, "IDENTITY_REQUEST_INVALID", "Invalid or missing Idempotency-Key header.");
+        }
+    }
+
+    [HttpGet("login-methods")]
+    public IActionResult ListCustomerLoginMethods()
+    {
+        if (ValidatePortalSession(out _) is { } error) return error;
+        var activeProvider = User.FindFirstValue("identity_provider")?.ToUpperInvariant() switch
+        {
+            "META" => "FACEBOOK",
+            "GOOGLE" => "GOOGLE",
+            "APPLE" => "APPLE",
+            _ => "EMAIL",
+        };
+        var maskedEmail = EmailClaim is { Length: > 0 } email ? IdentityService.MaskEmail(email) : null;
+        var methods = providerProjectionService.GetProviders().Select(provider =>
+            new CustomerLoginMethodResponse(
+                provider.Id,
+                provider.Id == activeProvider ? "ACTIVE" : provider.Availability == "AVAILABLE" ? "AVAILABLE_TO_LINK" : "BLOCKED",
+                provider.Id == activeProvider ? maskedEmail : null)).ToArray();
+        return Ok(new CustomerLoginMethodCollectionResponse(CustomerPortalSchemaVersion, methods));
+    }
+
+    private static bool ValidChannels(NotificationPreferencesRequest preferences)
+    {
+        var allowed = new HashSet<string>(["IN_APP", "EMAIL", "WHATSAPP"], StringComparer.Ordinal);
+        return preferences is not null
+            && new[] { preferences.ApprovalRequests, preferences.MaturityReports,
+                preferences.MonthlyNarratives, preferences.SelfGovernanceAlerts }
+                .All(channels => channels is not null && channels.All(allowed.Contains));
     }
 
     private static IReadOnlyList<string> CapabilitiesFor(IReadOnlyList<string> roles)

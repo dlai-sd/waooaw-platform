@@ -9,7 +9,7 @@ import { listPublicProfessionals } from '@/config/professionals';
 const protectedMiddleware = withAuth({});
 const professionalSlugs = new Set(listPublicProfessionals().map(({ slug }) => slug));
 const articleSlugs = new Set(listPublishedArticles().map(({ slug }) => slug));
-const protectedFamilies = new Set(['home', 'relationships', 'settings', 'profile', 'founder']);
+const protectedFamilies = new Set(['home', 'relationships', 'marketplace', 'alerts', 'settings', 'profile', 'founder']);
 
 function contentSecurityPolicy(nonce: string): string {
 	return `default-src 'self'; script-src 'self' 'nonce-${nonce}' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`;
@@ -38,7 +38,10 @@ export default async function middleware(request: NextRequest, event: NextFetchE
 		if (extra || (slug && !articleSlugs.has(slug))) return secure(new NextResponse('Not found', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Robots-Tag': 'noindex, nofollow' } }), nonce);
 		return secure(publicResponse(request, nonce), nonce);
 	}
-	if (protectedFamilies.has(family)) return secure(await protectedMiddleware(request as NextRequestWithAuth, event) as NextResponse, nonce);
+	if (protectedFamilies.has(family)) {
+		const authResponse = await protectedMiddleware(request as NextRequestWithAuth, event);
+		return secure(authResponse instanceof NextResponse ? authResponse : publicResponse(request, nonce), nonce);
+	}
 	return secure(publicResponse(request, nonce), nonce);
 }
 

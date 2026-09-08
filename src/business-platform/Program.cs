@@ -174,6 +174,7 @@ builder.Services.AddScoped<EmploymentRelationshipService>();
 builder.Services.AddScoped<IRelationshipEmergencyStopGateway, GrpcRelationshipEmergencyStopGateway>();
 builder.Services.AddScoped<RelationshipEmergencyStopService>();
 builder.Services.AddScoped<RelationshipConfigurationService>();
+builder.Services.AddScoped<CustomerAlertService>();
 builder.Services.AddScoped<EmploymentContractService>();
 builder.Services.AddScoped<EmploymentContractAcceptanceService>();
 builder.Services.AddScoped<IRelationshipPaymentGateway, HttpRelationshipPaymentGateway>();

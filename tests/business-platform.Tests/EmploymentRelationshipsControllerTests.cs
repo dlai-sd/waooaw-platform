@@ -18,6 +18,62 @@ namespace Waooaw.BusinessPlatform.Tests;
 public sealed class EmploymentRelationshipsControllerTests
 {
     [Fact]
+    public async Task List_ReturnsOnlyParticipantAuthorizedRelationshipsWithServerResumeTarget()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var service = new EmploymentRelationshipService(
+            factory, new RecordingRelationshipConstitutionalGateway(), NullLogger<EmploymentRelationshipService>.Instance);
+        var tenantId = Guid.NewGuid();
+        var participantId = Guid.NewGuid();
+        var authorized = await service.AdmitAsync(
+            tenantId, participantId, Guid.NewGuid(), "DMA", Guid.NewGuid(), CancellationToken.None);
+        await service.AdmitAsync(
+            tenantId, Guid.NewGuid(), Guid.NewGuid(), "SALES", Guid.NewGuid(), CancellationToken.None);
+        await service.AdmitAsync(
+            Guid.NewGuid(), participantId, Guid.NewGuid(), "HR", Guid.NewGuid(), CancellationToken.None);
+        var controller = new EmploymentRelationshipsController(service)
+        {
+            ControllerContext = CreateControllerContext(tenantId, participantId),
+        };
+
+        var result = Assert.IsType<OkObjectResult>(
+            await controller.ListAsync(null, 20, CancellationToken.None));
+        var json = JsonSerializer.SerializeToElement(result.Value);
+        var item = Assert.Single(json.GetProperty("Items").EnumerateArray());
+
+        Assert.Equal(authorized.Relationship.RelationshipId, item.GetProperty("RelationshipId").GetGuid());
+        Assert.Equal("CONVERSATION", item.GetProperty("ResumeTarget").GetProperty("Surface").GetString());
+        Assert.Equal("UNKNOWN", item.GetProperty("CurrencyState").GetString());
+    }
+
+    [Fact]
+    public async Task List_UsesOpaqueCursorAndRejectsUnknownCursor()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var service = new EmploymentRelationshipService(
+            factory, new RecordingRelationshipConstitutionalGateway(), NullLogger<EmploymentRelationshipService>.Instance);
+        var tenantId = Guid.NewGuid();
+        var participantId = Guid.NewGuid();
+        await service.AdmitAsync(tenantId, participantId, Guid.NewGuid(), "DMA", Guid.NewGuid(), CancellationToken.None);
+        await service.AdmitAsync(tenantId, participantId, Guid.NewGuid(), "SALES", Guid.NewGuid(), CancellationToken.None);
+        var controller = new EmploymentRelationshipsController(service)
+        {
+            ControllerContext = CreateControllerContext(tenantId, participantId),
+        };
+
+        var first = Assert.IsType<OkObjectResult>(await controller.ListAsync(null, 1, CancellationToken.None));
+        var firstJson = JsonSerializer.SerializeToElement(first.Value);
+        var cursor = firstJson.GetProperty("NextCursor").GetString();
+        Assert.NotNull(cursor);
+        var second = Assert.IsType<OkObjectResult>(await controller.ListAsync(cursor, 1, CancellationToken.None));
+        Assert.Single(JsonSerializer.SerializeToElement(second.Value).GetProperty("Items").EnumerateArray());
+
+        var invalid = Assert.IsType<ObjectResult>(
+            await controller.ListAsync(Convert.ToBase64String(Guid.NewGuid().ToByteArray()), 1, CancellationToken.None));
+        Assert.Equal(400, invalid.StatusCode);
+    }
+
+    [Fact]
     public async Task LegacyHireReplaysCanonicalRelationshipWithDeprecationHeaders()
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));

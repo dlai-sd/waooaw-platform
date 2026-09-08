@@ -140,6 +140,47 @@ public sealed class RelationshipGoal
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class RelationshipOnboardPreference
+{
+    public Guid PreferenceId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public string? PreferredAgentDisplayName { get; set; }
+    public string? ChatAppearance { get; set; }
+    public string? TimestampVisibility { get; set; }
+    public string? ThemePreference { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class CustomerAlert
+{
+    public Guid AlertId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public int Version { get; set; } = 1;
+    public string AlertType { get; init; } = "INFORMATIONAL";
+    public string Severity { get; init; } = "LOW";
+    public string Source { get; init; } = "SYSTEM";
+    public Guid? RelationshipId { get; init; }
+    public DateTimeOffset OccurredAt { get; init; } = DateTimeOffset.UtcNow;
+    public string? DueMeaning { get; init; }
+    public string ReadState { get; set; } = "UNREAD";
+    public string DestinationSurface { get; init; } = "ALERTS";
+    public string? DestinationSubjectId { get; init; }
+    public string AvailableAction { get; init; } = "NONE";
+}
+
+public sealed class CustomerAlertIdempotency
+{
+    public Guid EntryId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid AlertId { get; init; }
+    public string ActorSubject { get; init; } = string.Empty;
+    public Guid IdempotencyKey { get; init; }
+    public string Operation { get; init; } = string.Empty;
+    public string RequestHash { get; init; } = string.Empty;
+    public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class RelationshipSkillConfiguration
 {
     public Guid ConfigurationId { get; init; } = Guid.NewGuid();
@@ -383,6 +424,9 @@ public sealed class EmploymentRelationshipDbContext : DbContext
     public DbSet<RelationshipContextPayload> RelationshipContextPayloads => Set<RelationshipContextPayload>();
     public DbSet<ContextConfirmationEvent> ContextConfirmationEvents => Set<ContextConfirmationEvent>();
     public DbSet<RelationshipGoal> RelationshipGoals => Set<RelationshipGoal>();
+    public DbSet<RelationshipOnboardPreference> RelationshipOnboardPreferences => Set<RelationshipOnboardPreference>();
+    public DbSet<CustomerAlert> CustomerAlerts => Set<CustomerAlert>();
+    public DbSet<CustomerAlertIdempotency> CustomerAlertIdempotency => Set<CustomerAlertIdempotency>();
     public DbSet<RelationshipSkillConfiguration> RelationshipSkillConfigurations => Set<RelationshipSkillConfiguration>();
     public DbSet<DecisionSpaceSnapshot> DecisionSpaceSnapshots => Set<DecisionSpaceSnapshot>();
     public DbSet<EmploymentContractVersion> EmploymentContractVersions => Set<EmploymentContractVersion>();
@@ -511,6 +555,60 @@ public sealed class EmploymentRelationshipDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+        });
+
+        modelBuilder.Entity<RelationshipOnboardPreference>(entity =>
+        {
+            entity.ToTable("relationship_onboard_preferences", "business");
+            entity.HasKey(value => value.PreferenceId);
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId }).IsUnique();
+            entity.Property(value => value.PreferenceId).HasColumnName("preference_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.PreferredAgentDisplayName).HasColumnName("preferred_agent_display_name").HasMaxLength(80);
+            entity.Property(value => value.ChatAppearance).HasColumnName("chat_appearance").HasMaxLength(24);
+            entity.Property(value => value.TimestampVisibility).HasColumnName("timestamp_visibility").HasMaxLength(16);
+            entity.Property(value => value.ThemePreference).HasColumnName("theme_preference").HasMaxLength(16);
+            entity.Property(value => value.UpdatedAt).HasColumnName("updated_at");
+            entity.HasOne<EmploymentRelationship>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+        });
+
+        modelBuilder.Entity<CustomerAlert>(entity =>
+        {
+            entity.ToTable("customer_alerts", "business");
+            entity.HasKey(value => value.AlertId);
+            entity.HasIndex(value => new { value.TenantId, value.OccurredAt, value.AlertId });
+            entity.Property(value => value.AlertId).HasColumnName("alert_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.Version).HasColumnName("version").IsConcurrencyToken();
+            entity.Property(value => value.AlertType).HasColumnName("alert_type").HasMaxLength(24);
+            entity.Property(value => value.Severity).HasColumnName("severity").HasMaxLength(16);
+            entity.Property(value => value.Source).HasColumnName("source").HasMaxLength(32);
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.OccurredAt).HasColumnName("occurred_at");
+            entity.Property(value => value.DueMeaning).HasColumnName("due_meaning").HasMaxLength(240);
+            entity.Property(value => value.ReadState).HasColumnName("read_state").HasMaxLength(16);
+            entity.Property(value => value.DestinationSurface).HasColumnName("destination_surface").HasMaxLength(32);
+            entity.Property(value => value.DestinationSubjectId).HasColumnName("destination_subject_id").HasMaxLength(120);
+            entity.Property(value => value.AvailableAction).HasColumnName("available_action").HasMaxLength(16);
+        });
+
+        modelBuilder.Entity<CustomerAlertIdempotency>(entity =>
+        {
+            entity.ToTable("customer_alert_idempotency", "business");
+            entity.HasKey(value => value.EntryId);
+            entity.HasIndex(value => new { value.TenantId, value.ActorSubject, value.IdempotencyKey, value.Operation }).IsUnique();
+            entity.Property(value => value.EntryId).HasColumnName("entry_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.AlertId).HasColumnName("alert_id");
+            entity.Property(value => value.ActorSubject).HasColumnName("actor_subject").HasMaxLength(256);
+            entity.Property(value => value.IdempotencyKey).HasColumnName("idempotency_key");
+            entity.Property(value => value.Operation).HasColumnName("operation").HasMaxLength(32);
+            entity.Property(value => value.RequestHash).HasColumnName("request_hash").HasMaxLength(64);
+            entity.Property(value => value.CreatedAt).HasColumnName("created_at");
         });
 
         modelBuilder.Entity<OfferabilityDecisionRecord>(entity =>

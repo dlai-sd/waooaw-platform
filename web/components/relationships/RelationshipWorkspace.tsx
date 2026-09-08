@@ -4,6 +4,7 @@ import { ConversationExperience } from '@/components/conversation/ConversationEx
 import { RelationshipEvaluation } from './RelationshipEvaluation';
 import { ContractJourney } from './ContractJourney';
 import { EvidenceWindow } from './EvidenceWindow';
+import { OnboardForm } from './OnboardForm';
 
 interface RelationshipWorkspaceProps {
   relationship: EmploymentRelationship;
@@ -44,6 +45,27 @@ export function RelationshipWorkspace({ relationship, timeline, views, evaluatio
       <RelationshipEvaluation evaluation={evaluation} />
 
       <ContractJourney relationshipId={relationship.relationshipId} journey={contractJourney} />
+
+      <section className="lifecycle-panel" aria-labelledby="lifecycle-title">
+        <div className="lifecycle-heading">
+          <div><p className="section-label">Customer lifecycle</p><h2 id="lifecycle-title">From configuration to operations</h2></div>
+          <span className="currency-state">{stateLabel(views.configuration.currencyState)}</span>
+        </div>
+        <ol className="lifecycle-steps">
+          {views.configuration.items.map((item) => (
+            <li key={item.stepKey} data-state={item.state.toLowerCase()}><span>{item.stepKey === 'ONBOARD' ? '1' : '2'}</span><div><strong>{item.label}</strong><small>{item.summary ?? stateLabel(item.state)}</small></div></li>
+          ))}
+          <li data-state={views.goals.activeGoals.every((goal) => goal.verificationStatus === 'VERIFIED') && views.goals.activeGoals.length ? 'complete' : 'locked'}><span>3</span><div><strong>Goal Verification</strong><small>{views.goals.activeGoals.length ? `${views.goals.activeGoals.filter((goal) => goal.verificationStatus === 'VERIFIED').length} of ${views.goals.activeGoals.length} verified` : 'No active goals'}</small></div></li>
+          <li data-state={views.businessOutcomes.currencyState.toLowerCase()}><span>4</span><div><strong>Business Outcomes</strong><small>{views.businessOutcomes.items.length ? `${views.businessOutcomes.items.length} traced outcomes` : 'No supported outcomes available'}</small></div></li>
+          <li data-state={views.operations.eligibilityState.toLowerCase()}><span>5</span><div><strong>Operations</strong><small>{stateLabel(views.operations.eligibilityState)}</small></div></li>
+        </ol>
+        <div className="lifecycle-details">
+          <section><h3>Onboard</h3><OnboardForm relationshipId={relationship.relationshipId} summary={views.configuration.items.find((item) => item.stepKey === 'ONBOARD')?.summary} /></section>
+          <section><h3>Induct</h3><p>Continue the agent-led induction in the conversation below. The confirmed context remains server-owned and shared across supported channels.</p><a className="secondary-link" href="#relationship-conversation">Continue induction</a></section>
+          <section><h3>Goals</h3>{views.goals.activeGoals.length ? <ul className="decision-list">{views.goals.activeGoals.map((goal) => <li key={goal.goalId}><span><strong>{goal.skillLabel}</strong><small>{goal.measure} · {goal.frequency}</small></span><b>{stateLabel(goal.verificationStatus)}</b></li>)}</ul> : <p>No active goals are available.</p>}<p className="truth-note">Goal verification cannot be changed here because no canonical verification command exists.</p></section>
+          <section><h3>Operations eligibility</h3><p><strong>{stateLabel(views.operations.eligibilityState)}</strong></p>{views.operations.blockedReasons?.length ? <ul>{views.operations.blockedReasons.map((reason) => <li key={reason}>{reason}</li>)}</ul> : <p>No server-reported blockers.</p>}</section>
+        </div>
+      </section>
 
       <nav className="workspace-nav" aria-label="Relationship workspace views">
         {['Plan', 'Needs your attention', 'Work', 'Results', 'Usage & budget', 'Rights & control'].map((label) => (

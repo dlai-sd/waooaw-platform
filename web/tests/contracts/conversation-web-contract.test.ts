@@ -15,11 +15,14 @@ function sourceFiles(directory: string): string[] {
 describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
   it('dependency-closes approved public APIs with the pinned generator', () => {
     const script = readFileSync(join(root, 'scripts/generate-api.sh'), 'utf8');
+    const billing = readFileSync(join(root, 'lib/api/generated/apis/BillingApi.ts'), 'utf8');
+    const configuration = readFileSync(join(root, 'lib/api/generated/apis/ConfigurationApi.ts'), 'utf8');
     const generated = readFileSync(join(root, 'lib/api/generated/apis/ConversationApi.ts'), 'utf8');
     const identity = readFileSync(join(root, 'lib/api/generated/apis/IdentityApi.ts'), 'utf8');
     const employment = readFileSync(join(root, 'lib/api/generated/apis/EmploymentApi.ts'), 'utf8');
     const workspace = readFileSync(join(root, 'lib/api/generated/apis/RelationshipWorkspaceApi.ts'), 'utf8');
     const voice = readFileSync(join(root, 'lib/api/generated/apis/VoiceContributionsApi.ts'), 'utf8');
+    const notifications = readFileSync(join(root, 'lib/api/generated/apis/NotificationsApi.ts'), 'utf8');
     const professionals = readFileSync(join(root, 'lib/api/generated/apis/ProfessionalsApi.ts'), 'utf8');
     const version = readFileSync(join(root, 'lib/api/generated/.openapi-generator/VERSION'), 'utf8').trim();
     const generatedApis = readdirSync(join(root, 'lib/api/generated/apis')).sort();
@@ -27,9 +30,12 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
     expect(script).toContain('openapitools/openapi-generator-cli:v7.17.0');
     expect(script).toContain('--generator-name typescript-fetch');
     expect(script).toContain('scripts/openapi_slice.py');
+    expect(script).toContain('--tag Billing');
+    expect(script).toContain('--tag Configuration');
     expect(script).toContain('--tag Identity');
     expect(script).toContain('--tag Conversation');
     expect(script).toContain('--tag Employment');
+    expect(script).toContain('--tag Notifications');
     expect(script).toContain('--tag Professionals');
     expect(script).toContain('--tag "Relationship Workspace"');
     expect(script).toContain('--tag "Voice Contributions"');
@@ -39,7 +45,7 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
     expect(script).toContain('hideGenerationTimestamp=true');
     expect(script).toContain('pnpm exec prettier --write lib/api/generated');
     expect(script).not.toContain('--skip-validate-spec');
-    expect(generatedApis).toEqual(['ConversationApi.ts', 'EmploymentApi.ts', 'IdentityApi.ts', 'ProfessionalsApi.ts', 'RelationshipWorkspaceApi.ts', 'VoiceContributionsApi.ts', 'index.ts']);
+    expect(generatedApis).toEqual(['BillingApi.ts', 'ConfigurationApi.ts', 'ConversationApi.ts', 'EmploymentApi.ts', 'IdentityApi.ts', 'NotificationsApi.ts', 'ProfessionalsApi.ts', 'RelationshipWorkspaceApi.ts', 'VoiceContributionsApi.ts', 'index.ts']);
     expect(version).toBe('7.17.0');
     for (const operation of [
       'listConversationMessages',
@@ -52,7 +58,14 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
     expect(generated.match(/token\("BearerAuth", \[\]\)/g)).toHaveLength(6);
     expect(identity).toContain('token("BearerAuth", [])');
     expect(identity).toContain('token("PreAccountBearerAuth", [])');
-    expect(generated).toContain('The version of the OpenAPI document: 1.8.0');
+    expect(generated).toContain('The version of the OpenAPI document: 1.9.0');
+    expect(billing).toContain('async getBillingPortalSummary(');
+    for (const operation of ['getRelationshipConfiguration', 'updateRelationshipOnboard']) {
+      expect(configuration).toContain(`async ${operation}(`);
+    }
+    for (const operation of ['listCustomerAlerts', 'markCustomerAlertRead', 'acknowledgeCustomerAlert']) {
+      expect(notifications).toContain(`async ${operation}(`);
+    }
     for (const operation of [
       'prepareRelationshipHandoff',
       'activateRelationshipHandoff',
@@ -67,7 +80,7 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
       'getRelationshipCommand', 'listRelationshipEvidence', 'getRelationshipEvidence',
       'requestRelationshipEvidenceExport', 'getRelationshipEvidenceExport',
     ]) expect(workspace).toContain(`async ${operation}(`);
-    expect(workspace).toContain('The version of the OpenAPI document: 1.8.0');
+    expect(workspace).toContain('The version of the OpenAPI document: 1.9.0');
     for (const operation of [
       'createVoiceContributionSession', 'getVoiceContributionSession',
       'uploadVoiceContributionAudio', 'getVoiceContributionTranscript',
@@ -75,13 +88,13 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
       'cancelVoiceContributionSession', 'requestVoicePayloadErasure',
     ]) expect(voice).toContain(`async ${operation}(`);
     for (const operation of [
-      'getOfferableProfessionalVersions', 'createAgentAdmissionDraft',
+      'getOfferableProfessionalVersions', 'browseMarketplaceProfessionals', 'createAgentAdmissionDraft',
       'putAgentAdmissionRevision', 'validateAgentAdmission', 'getAgentAdmissionFindings',
       'submitAgentAdmission', 'approveAgentAdmission', 'rejectAgentAdmission',
       'activateAgentAdmission', 'suspendAgentAdmission', 'supersedeAgentAdmission',
       'retireAgentAdmission',
     ]) expect(professionals).toContain(`async ${operation}(`);
-    expect(professionals.match(/token\("BearerAuth", \[\]\)/g)).toHaveLength(13);
+    expect(professionals.match(/token\("BearerAuth", \[\]\)/g)).toHaveLength(14);
 
     for (const model of [
       'ConversationMessageV1',
@@ -112,7 +125,7 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
       .join('\n');
 
     expect(generated).not.toMatch(/ProfessionalRuntimeApi|ProviderApi|localhost:5003|localhost:5004/);
-    expect(generated).not.toMatch(/\/api\/v1\/(professional-runtime|providers|health|billing|approvals)/);
+    expect(generated).not.toMatch(/\/api\/v1\/(professional-runtime|providers|health|approvals)/);
   });
 
   it('keeps browser source free of prohibited AI SDK and private runtime/provider locations', () => {

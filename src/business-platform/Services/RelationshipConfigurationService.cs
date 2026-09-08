@@ -19,6 +19,19 @@ public sealed record ContextValue(
 
 public sealed record ContextQuestion(string FieldType, string Prompt);
 
+public sealed record RelationshipConfigurationState(
+    RelationshipOnboardPreference? Onboard,
+    int ConfirmedContextCount,
+    bool InductComplete,
+    DateTimeOffset ProducedAt);
+
+public sealed record RelationshipPortalGoal(
+    RelationshipGoal Goal,
+    string SkillId,
+    string SkillLabel);
+
+public sealed class RelationshipConfigurationConflictException : Exception;
+
 public sealed class RelationshipConfigurationService(
     IDbContextFactory<EmploymentRelationshipDbContext> dbFactory,
     IRelationshipConstitutionalGateway constitutionalGateway)
@@ -118,6 +131,106 @@ public sealed class RelationshipConfigurationService(
         });
         await db.SaveChangesAsync(cancellationToken);
         return ToContextValue(payload);
+    }
+
+    public async Task<RelationshipConfigurationState> GetPortalConfigurationAsync(
+        Guid tenantId,
+        Guid relationshipId,
+        CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var relationship = await EnsureRelationshipAsync(db, tenantId, relationshipId, cancellationToken);
+        var onboard = await db.RelationshipOnboardPreferences.AsNoTracking().SingleOrDefaultAsync(
+            item => item.TenantId == tenantId && item.RelationshipId == relationshipId, cancellationToken);
+        var activeContext = await db.RelationshipContextPayloads.AsNoTracking()
+            .Where(item => item.TenantId == tenantId && item.RelationshipId == relationshipId
+                && item.InvalidatedAt == null && item.ErasedAt == null
+                && item.ConfirmationStatus == "CONFIRMED")
+            .Select(item => item.FieldType)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var inductComplete = MinimumContextQuestions.All(question => activeContext.Contains(question.FieldType));
+        return new RelationshipConfigurationState(
+            onboard, activeContext.Count, inductComplete,
+            onboard?.UpdatedAt ?? relationship.UpdatedAt);
+    }
+
+    public async Task<RelationshipConfigurationState> UpdateOnboardAsync(
+        Guid tenantId,
+        Guid relationshipId,
+        Guid idempotencyKey,
+        string requestHash,
+        string? preferredAgentDisplayName,
+        string? chatAppearance,
+        string? timestampVisibility,
+        string? themePreference,
+        CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var relationship = await EnsureRelationshipAsync(db, tenantId, relationshipId, cancellationToken);
+        if (relationship.State == EmploymentRelationshipState.StoppedEmergency)
+            throw new ConstitutionalActionDeniedException("Relationship configuration is blocked by Emergency Stop.");
+        var key = idempotencyKey.ToString();
+        const string purpose = "UPDATE_RELATIONSHIP_ONBOARD";
+        var existing = await db.RelationshipIdempotency.SingleOrDefaultAsync(
+            item => item.TenantId == tenantId && item.RelationshipId == relationshipId
+                && item.Purpose == purpose && item.IdempotencyKey == key, cancellationToken);
+        if (existing is not null && existing.MaterialRequestHash != requestHash)
+            throw new RelationshipConfigurationConflictException();
+
+        var preference = await db.RelationshipOnboardPreferences.SingleOrDefaultAsync(
+            item => item.TenantId == tenantId && item.RelationshipId == relationshipId, cancellationToken);
+        if (existing is null)
+        {
+            preference ??= new RelationshipOnboardPreference { TenantId = tenantId, RelationshipId = relationshipId };
+            if (db.Entry(preference).State == EntityState.Detached) db.RelationshipOnboardPreferences.Add(preference);
+            preference.PreferredAgentDisplayName = preferredAgentDisplayName;
+            preference.ChatAppearance = chatAppearance;
+            preference.TimestampVisibility = timestampVisibility;
+            preference.ThemePreference = themePreference;
+            preference.UpdatedAt = DateTimeOffset.UtcNow;
+            db.RelationshipIdempotency.Add(new RelationshipIdempotency
+            {
+                TenantId = tenantId,
+                RelationshipId = relationshipId,
+                Purpose = purpose,
+                IdempotencyKey = key,
+                MaterialRequestHash = requestHash,
+                OutcomeReference = preference.PreferenceId,
+                Status = "COMPLETED",
+                CompletedAt = DateTimeOffset.UtcNow,
+            });
+            await db.SaveChangesAsync(cancellationToken);
+        }
+
+        var confirmedContextCount = await db.RelationshipContextPayloads.AsNoTracking().CountAsync(
+            item => item.TenantId == tenantId && item.RelationshipId == relationshipId
+                && item.InvalidatedAt == null && item.ErasedAt == null
+                && item.ConfirmationStatus == "CONFIRMED", cancellationToken);
+        return new RelationshipConfigurationState(preference, confirmedContextCount,
+            confirmedContextCount >= MinimumContextQuestions.Length, preference!.UpdatedAt);
+    }
+
+    public async Task<IReadOnlyList<RelationshipPortalGoal>> GetPortalGoalsAsync(
+        Guid tenantId,
+        Guid relationshipId,
+        CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        await EnsureRelationshipAsync(db, tenantId, relationshipId, cancellationToken);
+        var goals = await db.RelationshipGoals.AsNoTracking()
+            .Where(item => item.TenantId == tenantId && item.RelationshipId == relationshipId)
+            .OrderBy(item => item.CreatedAt)
+            .ToListAsync(cancellationToken);
+        var skills = await db.RelationshipSkillConfigurations.AsNoTracking()
+            .Where(item => item.TenantId == tenantId && item.RelationshipId == relationshipId)
+            .OrderByDescending(item => item.UpdatedAt)
+            .ToListAsync(cancellationToken);
+        return goals.Select(goal =>
+        {
+            var skill = skills.FirstOrDefault(item => item.GoalId == goal.GoalId);
+            return new RelationshipPortalGoal(goal, skill?.SkillId ?? "UNASSIGNED", skill?.SkillId ?? "Unassigned skill");
+        }).ToArray();
     }
 
     public async Task<IReadOnlyList<ContextValue>> GetActiveContextAsync(

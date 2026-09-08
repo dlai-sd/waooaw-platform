@@ -10,6 +10,7 @@ Submitter-controlled immutable content for professional-version admission. Activ
 | `canonicalizationProfile` | any                                                                                                              |
 | `professionalIdentity`    | [WAOOAWAgentAdmissionContractProfessionalIdentity](WAOOAWAgentAdmissionContractProfessionalIdentity.md)          |
 | `complianceDeclaration`   | [WAOOAWAgentAdmissionContractComplianceDeclaration](WAOOAWAgentAdmissionContractComplianceDeclaration.md)        |
+| `runtimeAdapter`          | [WAOOAWAgentAdmissionContractRuntimeAdapter](WAOOAWAgentAdmissionContractRuntimeAdapter.md)                      |
 | `skillManifest`           | [Array&lt;WAOOAWAgentAdmissionContractSkillManifestInner&gt;](WAOOAWAgentAdmissionContractSkillManifestInner.md) |
 
 ## Example
@@ -23,6 +24,7 @@ const example = {
   canonicalizationProfile: null,
   professionalIdentity: null,
   complianceDeclaration: null,
+  runtimeAdapter: null,
   skillManifest: null,
 } satisfies WAOOAWAgentAdmissionContract;
 

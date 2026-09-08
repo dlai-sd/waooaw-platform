@@ -289,10 +289,86 @@ public sealed class IdentityProviderProjectionTests
         Assert.Contains(result.Failures, failure => failure.Contains("scopes must be exactly", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void F2_IdentityEnvironmentValidator_RejectsUnsafeConfigurationVariants()
+    {
+        Action<IdentityEnvironmentOptions>[] mutations =
+        [
+            options => options.SchemaVersion = "2.0",
+            options => options.Environment = "unknown",
+            options => options.Origins.Web = "relative",
+            options => options.Origins.Api = "http://api.waooaw.com",
+            options => options.Keycloak.Audience = "other",
+            options => options.Keycloak.Realm = "other",
+            options => options.Keycloak.AccessTokenMinutes = 16,
+            options => options.Keycloak.RefreshSessionHours = 9,
+            options => options.Keycloak.ClockSkewSeconds = -1,
+            options => options.Keycloak.ClockSkewSeconds = 61,
+            options => options.Keycloak.Issuer = "relative",
+            options => options.Keycloak.JwksUri = "relative",
+            options => options.Keycloak.JwksUri = "http://identity.waooaw.com/realms/waooaw/protocol/openid-connect/certs",
+            options => options.Keycloak.JwksUri = "https://other.waooaw.com/realms/waooaw/protocol/openid-connect/certs",
+            options => options.Keycloak.JwksUri = "https://identity.waooaw.com/not-the-issuer/certs",
+            options => options.Clients.RemoveAt(0),
+            options => options.Clients[0].Channel = "OTHER",
+            options => options.Clients[0].Id = "",
+            options => options.Clients[0].PkceRequired = false,
+            options => options.Clients[0].Scopes.Remove("openid"),
+            options => options.Clients[0].RedirectUris = [],
+            options => options.Clients[0].PostLogoutRedirectUris = [],
+            options => options.Clients[0].AllowedOrigins = ["relative"],
+            options => options.Clients[0].AllowedOrigins = ["https://app.demo.waooaw.com"],
+            options => options.Channels.Web = false,
+            options => options.Channels.WhatsApp = false,
+            options => options.Cookie.Name = "",
+            options => options.Cookie.SameSite = "None",
+            options => options.Cookie.Secure = false,
+            options => options.IdentityEdge.Image = "",
+            options => options.IdentityEdge.RoutePolicy = "",
+            options => options.PhoneIdentity.InternalAudience = "",
+            options => options.Providers.Reverse(),
+            options => options.Providers[0].DisplayName = "",
+            options => options.Providers[0].DisplayName = new string('x', 41),
+            options => options.Providers[0].AuthenticationPath = "OTHER",
+            options => options.Providers[0].Scopes.Add(options.Providers[0].Scopes[0]),
+            options => options.Providers[3].UnavailableReason = "NOT_CONFIGURED",
+            options => EnableGoogle(options, brokerAlias: ""),
+            options => EnableGoogle(options, secretReference: ""),
+            options => EnableGoogle(options, readinessEvidenceReference: ""),
+            options => options.Providers[1].UnavailableReason = "",
+            options => options.Providers[1].UnavailableReason = "INTERNAL_DETAIL",
+            options => options.Providers[0].SecretReference = "secret-material",
+            options => options.Providers[0].SecretReference = "kv://secret=value",
+        ];
+
+        for (var mutationIndex = 0; mutationIndex < mutations.Length; mutationIndex++)
+        {
+            var options = ReadManifest("prod");
+            mutations[mutationIndex](options);
+
+            Assert.True(new IdentityEnvironmentOptionsValidator().Validate(null, options).Failed,
+                $"Mutation {mutationIndex} must fail validation.");
+        }
+    }
+
     private static IdentityEnvironmentOptions ReadManifest(string environment) =>
         JsonSerializer.Deserialize<IdentityEnvironmentOptions>(
             File.ReadAllText(EnvironmentManifestPath(environment)),
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+
+    private static void EnableGoogle(
+        IdentityEnvironmentOptions options,
+        string brokerAlias = "google",
+        string secretReference = "kv://google-client",
+        string readinessEvidenceReference = "TEST-GOOGLE")
+    {
+        var provider = options.Providers[0];
+        provider.Enabled = true;
+        provider.UnavailableReason = null;
+        provider.BrokerAlias = brokerAlias;
+        provider.SecretReference = secretReference;
+        provider.ReadinessEvidenceReference = readinessEvidenceReference;
+    }
 }
 
 public sealed class IdentitySessionProjectionTests
@@ -348,10 +424,224 @@ public sealed class IdentitySessionProjectionTests
     }
 }
 
+public sealed class CustomerPortalIdentityTests
+{
+    private static async Task<IdentityController> CompletedControllerAsync(
+        InMemoryIdentityDbContextFactory factory,
+        string subject = "portal-owner",
+        string? tenantId = null,
+        string[]? roles = null)
+    {
+        var controller = IdentityTestHelpers.CreateController(factory, subject,
+            tenantId ?? Guid.NewGuid().ToString(), "google", email: "owner@example.com",
+            emailVerified: true, customerRoles: roles ?? ["OWNER"]);
+        var created = Assert.IsType<ObjectResult>(await controller.StartRegistrationAsync(
+            new StartRegistrationRequest("en"), CancellationToken.None));
+        var registrationId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+        IdentityTestHelpers.RefreshIdempotencyKey(controller);
+        await controller.UpdateProfileAsync(registrationId,
+            new UpdateRegistrationProfileRequest("Original", "Original Org", "Retail", "en"), CancellationToken.None);
+        IdentityTestHelpers.RefreshIdempotencyKey(controller);
+        await controller.CompleteRegistrationAsync(registrationId, CancellationToken.None);
+        IdentityTestHelpers.RefreshIdempotencyKey(controller);
+        return controller;
+    }
+
+    [Fact]
+    public async Task Profile_UpdatePersistsAndSameKeyDifferentBodyConflicts()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var controller = await CompletedControllerAsync(factory);
+        var request = new UpdateCustomerProfileRequest("1.0.0", "Ada", "Analytical Engines");
+
+        var updated = Assert.IsType<OkObjectResult>(
+            await controller.UpdateCustomerProfileAsync(request, CancellationToken.None));
+        Assert.Equal("Ada", JsonSerializer.SerializeToElement(updated.Value).GetProperty("DisplayName").GetString());
+
+        var replay = await controller.UpdateCustomerProfileAsync(request, CancellationToken.None);
+        Assert.IsType<OkObjectResult>(replay);
+        var conflict = Assert.IsType<ObjectResult>(await controller.UpdateCustomerProfileAsync(
+            request with { DisplayName = "Grace" }, CancellationToken.None));
+        Assert.Equal(409, conflict.StatusCode);
+    }
+
+    [Fact]
+    public async Task Profile_IsTenantBoundAndViewerCannotMutate()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var tenantA = Guid.NewGuid().ToString();
+        var controller = await CompletedControllerAsync(factory, tenantId: tenantA);
+        await controller.UpdateCustomerProfileAsync(
+            new UpdateCustomerProfileRequest("1.0.0", "Tenant A", "Org A"), CancellationToken.None);
+
+        var tenantB = IdentityTestHelpers.CreateController(factory, "portal-owner", Guid.NewGuid().ToString(),
+            "google", email: "owner@example.com", emailVerified: true, customerRoles: ["OWNER"]);
+        var other = Assert.IsType<OkObjectResult>(await tenantB.GetCustomerProfileAsync(CancellationToken.None));
+        Assert.Equal("Original", JsonSerializer.SerializeToElement(other.Value).GetProperty("DisplayName").GetString());
+
+        var viewer = IdentityTestHelpers.CreateController(factory, "portal-owner", tenantA,
+            "google", email: "owner@example.com", emailVerified: true, customerRoles: ["VIEWER"]);
+        var denied = Assert.IsType<ObjectResult>(await viewer.UpdateCustomerProfileAsync(
+            new UpdateCustomerProfileRequest("1.0.0", "No", "No"), CancellationToken.None));
+        Assert.Equal(403, denied.StatusCode);
+    }
+
+    [Fact]
+    public async Task Settings_UpdateRoundTripsValidatedPreferences()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var controller = await CompletedControllerAsync(factory);
+        var request = new UpdateCustomerSettingsRequest("1.0.0", "fr-FR", "DARK", "ABSOLUTE",
+            new NotificationPreferencesRequest(["IN_APP", "EMAIL"], ["EMAIL"], ["IN_APP"], ["WHATSAPP"]));
+
+        var result = Assert.IsType<OkObjectResult>(
+            await controller.UpdateCustomerSettingsAsync(request, CancellationToken.None));
+        var json = JsonSerializer.SerializeToElement(result.Value);
+        Assert.Equal("fr-FR", json.GetProperty("Locale").GetString());
+        Assert.Equal("DARK", json.GetProperty("Theme").GetString());
+
+        var read = Assert.IsType<OkObjectResult>(await controller.GetCustomerSettingsAsync(CancellationToken.None));
+        Assert.Equal("ABSOLUTE", JsonSerializer.SerializeToElement(read.Value).GetProperty("TimestampVisibility").GetString());
+    }
+
+    [Fact]
+    public async Task LoginMethods_ExposeOnlyAliasesStateAndMaskedIdentifier()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var controller = await CompletedControllerAsync(factory);
+
+        var result = Assert.IsType<OkObjectResult>(controller.ListCustomerLoginMethods());
+        var json = JsonSerializer.SerializeToElement(result.Value);
+        var google = json.GetProperty("Items").EnumerateArray().Single(item => item.GetProperty("Provider").GetString() == "GOOGLE");
+        Assert.Equal("ACTIVE", google.GetProperty("State").GetString());
+        Assert.Equal("o***@example.com", google.GetProperty("MaskedIdentifier").GetString());
+        Assert.DoesNotContain("subject", json.ToString(), StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("token", json.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Profile_ReportsHighestAuthorityRole()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var controller = await CompletedControllerAsync(factory, roles: ["VIEWER", "OWNER", "MANAGER"]);
+
+        var result = Assert.IsType<OkObjectResult>(await controller.GetCustomerProfileAsync(CancellationToken.None));
+
+        Assert.Equal("OWNER", JsonSerializer.SerializeToElement(result.Value).GetProperty("ActiveRole").GetString());
+    }
+
+    [Fact]
+    public async Task PortalEndpoints_RejectIncompleteSessions()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var missingTenant = IdentityTestHelpers.CreateController(factory, customerRoles: ["OWNER"]);
+        var missingRoles = IdentityTestHelpers.CreateController(
+            factory, tenantId: Guid.NewGuid().ToString("D"), customerRoles: []);
+        var invalidExpiry = IdentityTestHelpers.CreateController(
+            factory, tenantId: Guid.NewGuid().ToString("D"), customerRoles: ["OWNER"]);
+        var expiryIdentity = (ClaimsIdentity)invalidExpiry.User.Identity!;
+        expiryIdentity.RemoveClaim(expiryIdentity.FindFirst("exp")!);
+        expiryIdentity.AddClaim(new Claim("exp", "invalid"));
+
+        Assert.Equal(401, Assert.IsType<ObjectResult>(
+            await missingTenant.GetSessionAsync(CancellationToken.None)).StatusCode);
+        Assert.Equal(401, Assert.IsType<ObjectResult>(
+            await missingRoles.GetSessionAsync(CancellationToken.None)).StatusCode);
+        Assert.Equal(401, Assert.IsType<ObjectResult>(
+            await invalidExpiry.GetSessionAsync(CancellationToken.None)).StatusCode);
+        Assert.Equal(401, Assert.IsType<ObjectResult>(
+            await missingTenant.GetCustomerProfileAsync(CancellationToken.None)).StatusCode);
+        Assert.Equal(401, Assert.IsType<ObjectResult>(
+            await missingRoles.GetCustomerSettingsAsync(CancellationToken.None)).StatusCode);
+        Assert.Equal(401, Assert.IsType<ObjectResult>(missingTenant.ListCustomerLoginMethods()).StatusCode);
+    }
+
+    [Fact]
+    public async Task ProfileAndSettings_RejectInvalidPortalPayloads()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var controller = await CompletedControllerAsync(factory);
+        UpdateCustomerProfileRequest[] invalidProfiles =
+        [
+            new("2.0.0", "Ada", "Analytical Engines"),
+            new("1.0.0", "", "Analytical Engines"),
+            new("1.0.0", new string('x', 201), "Analytical Engines"),
+            new("1.0.0", "Ada", ""),
+            new("1.0.0", "Ada", new string('x', 201)),
+        ];
+        var validPreferences = new NotificationPreferencesRequest(
+            ["IN_APP"], ["EMAIL"], ["IN_APP"], ["WHATSAPP"]);
+        UpdateCustomerSettingsRequest[] invalidSettings =
+        [
+            new("2.0.0", "en", "SYSTEM", "RELATIVE", validPreferences),
+            new("1.0.0", "invalid", "SYSTEM", "RELATIVE", validPreferences),
+            new("1.0.0", "en", "OTHER", "RELATIVE", validPreferences),
+            new("1.0.0", "en", "SYSTEM", "OTHER", validPreferences),
+            new("1.0.0", "en", "SYSTEM", "RELATIVE", null!),
+            new("1.0.0", "en", "SYSTEM", "RELATIVE", validPreferences with { ApprovalRequests = null! }),
+            new("1.0.0", "en", "SYSTEM", "RELATIVE", validPreferences with { MaturityReports = ["SMS"] }),
+            new("1.0.0", "en", "SYSTEM", "RELATIVE", validPreferences with { MonthlyNarratives = null! }),
+            new("1.0.0", "en", "SYSTEM", "RELATIVE", validPreferences with { SelfGovernanceAlerts = ["SMS"] }),
+        ];
+
+        foreach (var request in invalidProfiles)
+            Assert.Equal(400, Assert.IsType<ObjectResult>(
+                await controller.UpdateCustomerProfileAsync(request, CancellationToken.None)).StatusCode);
+        foreach (var request in invalidSettings)
+            Assert.Equal(400, Assert.IsType<ObjectResult>(
+                await controller.UpdateCustomerSettingsAsync(request, CancellationToken.None)).StatusCode);
+    }
+
+    [Fact]
+    public async Task PortalProjectsFallbackRolesAndLoginProviders()
+    {
+        foreach (var (roles, expectedRole) in new[]
+        {
+            (new[] { "MANAGER" }, "MANAGER"),
+            (new[] { "VIEWER" }, "VIEWER"),
+        })
+        {
+            var controller = await CompletedControllerAsync(
+                new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N")), roles: roles);
+            var result = Assert.IsType<OkObjectResult>(
+                await controller.GetCustomerProfileAsync(CancellationToken.None));
+            Assert.Equal(expectedRole,
+                JsonSerializer.SerializeToElement(result.Value).GetProperty("ActiveRole").GetString());
+        }
+
+        foreach (var provider in new[] { "meta", "apple", "credential" })
+        {
+            var controller = IdentityTestHelpers.CreateController(
+                new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N")),
+                tenantId: Guid.NewGuid().ToString("D"), identityProvider: provider,
+                customerRoles: ["OWNER"]);
+            Assert.IsType<OkObjectResult>(controller.ListCustomerLoginMethods());
+        }
+    }
+}
+
 // ── Registration Tests ────────────────────────────────────────────────────────
 
 public sealed class IdentityRegistrationTests
 {
+    [Fact]
+    public async Task F2_SubjectClaim_FallsBackToSubAndRejectsMissingSubject()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var controller = IdentityTestHelpers.CreateController(factory, identityProvider: "google");
+        var identity = (ClaimsIdentity)controller.User.Identity!;
+        identity.RemoveClaim(identity.FindFirst(ClaimTypes.NameIdentifier)!);
+        identity.AddClaim(new Claim("sub", "fallback-subject"));
+
+        Assert.IsType<ObjectResult>(await controller.StartRegistrationAsync(
+            new StartRegistrationRequest("en"), CancellationToken.None));
+
+        identity.RemoveClaim(identity.FindFirst("sub")!);
+        IdentityTestHelpers.RefreshIdempotencyKey(controller);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => controller.StartRegistrationAsync(
+            new StartRegistrationRequest("en"), CancellationToken.None));
+    }
+
     [Fact]
     public async Task F2_StartRegistration_Google_Returns201WithRegistrationId()
     {

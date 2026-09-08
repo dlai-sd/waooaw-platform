@@ -2,35 +2,36 @@
 
 All URIs are relative to _http://localhost:5001_
 
-| Method                                                                                               | HTTP request                                                                                             | Description                                                               |
-| ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| [**acceptEmploymentContract**](EmploymentApi.md#acceptemploymentcontractoperation)                   | **POST** /api/v1/employment/relationships/{relationshipId}/contracts/{version}/accept                    | Explicitly accept one exact employment contract version                   |
-| [**activateEmploymentContract**](EmploymentApi.md#activateemploymentcontract)                        | **PUT** /api/v1/employment/contracts/{contractId}/activate                                               | Activate an employment contract                                           |
-| [**activateRelationshipHandoff**](EmploymentApi.md#activaterelationshiphandoffoperation)             | **POST** /api/v1/employment/relationships/{relationshipId}/handoffs/{handoffId}/activate                 | Authenticate the target channel and activate a prepared handoff           |
-| [**admitEmploymentRelationship**](EmploymentApi.md#admitemploymentrelationshipoperation)             | **POST** /api/v1/employment/relationships                                                                | Admit or replay an employment relationship                                |
-| [**convertTrialToPaid**](EmploymentApi.md#converttrialtopaid)                                        | **POST** /api/v1/employment/contracts/{contractId}/convert-trial                                         | Convert a trial contract to paid subscription (FR-002)                    |
-| [**createRelationshipOnboardingOrder**](EmploymentApi.md#createrelationshiponboardingorder)          | **POST** /api/v1/employment/relationships/{relationshipId}/contracts/{version}/payments/onboarding-order | Record explicit payment consent and create a contract-linked hosted order |
-| [**evaluateRelationshipOfferability**](EmploymentApi.md#evaluaterelationshipofferabilityoperation)   | **POST** /api/v1/employment/relationships/{relationshipId}/offerability/evaluations                      | Evaluate and evidence one Founder offering decision                       |
-| [**formEmploymentContract**](EmploymentApi.md#formemploymentcontract)                                | **POST** /api/v1/employment/contracts                                                                    | Compatibility adapter for relationship admission                          |
-| [**getEmploymentContract**](EmploymentApi.md#getemploymentcontract)                                  | **GET** /api/v1/employment/contracts/{contractId}                                                        | Compatibility projection of an employment relationship                    |
-| [**getEmploymentRelationship**](EmploymentApi.md#getemploymentrelationship)                          | **GET** /api/v1/employment/relationships/{relationshipId}                                                | Get an employment relationship                                            |
-| [**getEmploymentRelationshipTimeline**](EmploymentApi.md#getemploymentrelationshiptimeline)          | **GET** /api/v1/employment/relationships/{relationshipId}/timeline                                       | Get the evidence-linked relationship state timeline                       |
-| [**getPhaseBundle**](EmploymentApi.md#getphasebundle)                                                | **GET** /api/v1/employment/contracts/{contractId}/phase-bundle                                           | Get active phase bundle                                                   |
-| [**getRelationshipContractJourney**](EmploymentApi.md#getrelationshipcontractjourney)                | **GET** /api/v1/employment/relationships/{relationshipId}/contract-journey                               | Read the latest exact contract and activation journey                     |
-| [**hireAgentCompatibilityUnversioned**](EmploymentApi.md#hireagentcompatibilityunversioned)          | **POST** /api/agents/hire                                                                                | Deprecated unversioned hire compatibility adapter                         |
-| [**hireAgentCompatibilityV1**](EmploymentApi.md#hireagentcompatibilityv1)                            | **POST** /api/v1/agents/hire                                                                             | Deprecated v1 hire compatibility adapter                                  |
-| [**listEmploymentContracts**](EmploymentApi.md#listemploymentcontracts)                              | **GET** /api/v1/employment/contracts                                                                     | List employment contracts for the authenticated customer                  |
-| [**prepareRelationshipHandoff**](EmploymentApi.md#preparerelationshiphandoffoperation)               | **POST** /api/v1/employment/relationships/{relationshipId}/handoffs                                      | Prepare a channel handoff for the same employment relationship            |
-| [**proposeEmploymentContract**](EmploymentApi.md#proposeemploymentcontractoperation)                 | **POST** /api/v1/employment/relationships/{relationshipId}/contracts                                     | Compose or replay the presented employment contract                       |
-| [**releaseEmploymentRelationshipStop**](EmploymentApi.md#releaseemploymentrelationshipstopoperation) | **POST** /api/v1/employment/relationships/{relationshipId}/emergency-stop/release                        | Release the active relationship Stop with fresh Tier-4 employer proof     |
-| [**renewEmploymentContract**](EmploymentApi.md#renewemploymentcontract)                              | **POST** /api/v1/employment/contracts/{contractId}/renew                                                 | Renew an employment contract                                              |
-| [**startEmploymentRelationshipTrial**](EmploymentApi.md#startemploymentrelationshiptrial)            | **POST** /api/v1/employment/relationships/{relationshipId}/trial                                         | Start the relationship evaluation trial                                   |
-| [**startPaidRelationshipActivation**](EmploymentApi.md#startpaidrelationshipactivationoperation)     | **POST** /api/v1/employment/relationships/{relationshipId}/activation                                    | Start or join durable paid relationship activation                        |
-| [**stopEmploymentRelationship**](EmploymentApi.md#stopemploymentrelationshipoperation)               | **POST** /api/v1/employment/relationships/{relationshipId}/emergency-stop                                | Stop the complete AE-01 Employment Relationship                           |
-| [**suspendEmploymentContract**](EmploymentApi.md#suspendemploymentcontract)                          | **PUT** /api/v1/employment/contracts/{contractId}/suspend                                                | Suspend an employment contract                                            |
-| [**terminateEmploymentContract**](EmploymentApi.md#terminateemploymentcontract)                      | **DELETE** /api/v1/employment/contracts/{contractId}                                                     | Terminate an employment contract                                          |
-| [**transitionEmploymentRelationship**](EmploymentApi.md#transitionemploymentrelationshipoperation)   | **POST** /api/v1/employment/relationships/{relationshipId}/transitions                                   | Transition relationship state from an authorized internal service         |
-| [**updatePhaseBundle**](EmploymentApi.md#updatephasebundleoperation)                                 | **PUT** /api/v1/employment/contracts/{contractId}/phase-bundle                                           | Upgrade or change phase bundle                                            |
+| Method                                                                                               | HTTP request                                                                                             | Description                                                                |
+| ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| [**acceptEmploymentContract**](EmploymentApi.md#acceptemploymentcontractoperation)                   | **POST** /api/v1/employment/relationships/{relationshipId}/contracts/{version}/accept                    | Explicitly accept one exact employment contract version                    |
+| [**activateEmploymentContract**](EmploymentApi.md#activateemploymentcontract)                        | **PUT** /api/v1/employment/contracts/{contractId}/activate                                               | Activate an employment contract                                            |
+| [**activateRelationshipHandoff**](EmploymentApi.md#activaterelationshiphandoffoperation)             | **POST** /api/v1/employment/relationships/{relationshipId}/handoffs/{handoffId}/activate                 | Authenticate the target channel and activate a prepared handoff            |
+| [**admitEmploymentRelationship**](EmploymentApi.md#admitemploymentrelationshipoperation)             | **POST** /api/v1/employment/relationships                                                                | Admit or replay an employment relationship                                 |
+| [**convertTrialToPaid**](EmploymentApi.md#converttrialtopaid)                                        | **POST** /api/v1/employment/contracts/{contractId}/convert-trial                                         | Convert a trial contract to paid subscription (FR-002)                     |
+| [**createRelationshipOnboardingOrder**](EmploymentApi.md#createrelationshiponboardingorder)          | **POST** /api/v1/employment/relationships/{relationshipId}/contracts/{version}/payments/onboarding-order | Record explicit payment consent and create a contract-linked hosted order  |
+| [**evaluateRelationshipOfferability**](EmploymentApi.md#evaluaterelationshipofferabilityoperation)   | **POST** /api/v1/employment/relationships/{relationshipId}/offerability/evaluations                      | Evaluate and evidence one Founder offering decision                        |
+| [**formEmploymentContract**](EmploymentApi.md#formemploymentcontract)                                | **POST** /api/v1/employment/contracts                                                                    | Compatibility adapter for relationship admission                           |
+| [**getEmploymentContract**](EmploymentApi.md#getemploymentcontract)                                  | **GET** /api/v1/employment/contracts/{contractId}                                                        | Compatibility projection of an employment relationship                     |
+| [**getEmploymentRelationship**](EmploymentApi.md#getemploymentrelationship)                          | **GET** /api/v1/employment/relationships/{relationshipId}                                                | Get an employment relationship                                             |
+| [**getEmploymentRelationshipTimeline**](EmploymentApi.md#getemploymentrelationshiptimeline)          | **GET** /api/v1/employment/relationships/{relationshipId}/timeline                                       | Get the evidence-linked relationship state timeline                        |
+| [**getPhaseBundle**](EmploymentApi.md#getphasebundle)                                                | **GET** /api/v1/employment/contracts/{contractId}/phase-bundle                                           | Get active phase bundle                                                    |
+| [**getRelationshipContractJourney**](EmploymentApi.md#getrelationshipcontractjourney)                | **GET** /api/v1/employment/relationships/{relationshipId}/contract-journey                               | Read the latest exact contract and activation journey                      |
+| [**hireAgentCompatibilityUnversioned**](EmploymentApi.md#hireagentcompatibilityunversioned)          | **POST** /api/agents/hire                                                                                | Deprecated unversioned hire compatibility adapter                          |
+| [**hireAgentCompatibilityV1**](EmploymentApi.md#hireagentcompatibilityv1)                            | **POST** /api/v1/agents/hire                                                                             | Deprecated v1 hire compatibility adapter                                   |
+| [**listEmploymentContracts**](EmploymentApi.md#listemploymentcontracts)                              | **GET** /api/v1/employment/contracts                                                                     | List employment contracts for the authenticated customer                   |
+| [**listEmploymentRelationships**](EmploymentApi.md#listemploymentrelationships)                      | **GET** /api/v1/employment/relationships                                                                 | List the authenticated customer\&#39;s authorized employment relationships |
+| [**prepareRelationshipHandoff**](EmploymentApi.md#preparerelationshiphandoffoperation)               | **POST** /api/v1/employment/relationships/{relationshipId}/handoffs                                      | Prepare a channel handoff for the same employment relationship             |
+| [**proposeEmploymentContract**](EmploymentApi.md#proposeemploymentcontractoperation)                 | **POST** /api/v1/employment/relationships/{relationshipId}/contracts                                     | Compose or replay the presented employment contract                        |
+| [**releaseEmploymentRelationshipStop**](EmploymentApi.md#releaseemploymentrelationshipstopoperation) | **POST** /api/v1/employment/relationships/{relationshipId}/emergency-stop/release                        | Release the active relationship Stop with fresh Tier-4 employer proof      |
+| [**renewEmploymentContract**](EmploymentApi.md#renewemploymentcontract)                              | **POST** /api/v1/employment/contracts/{contractId}/renew                                                 | Renew an employment contract                                               |
+| [**startEmploymentRelationshipTrial**](EmploymentApi.md#startemploymentrelationshiptrial)            | **POST** /api/v1/employment/relationships/{relationshipId}/trial                                         | Start the relationship evaluation trial                                    |
+| [**startPaidRelationshipActivation**](EmploymentApi.md#startpaidrelationshipactivationoperation)     | **POST** /api/v1/employment/relationships/{relationshipId}/activation                                    | Start or join durable paid relationship activation                         |
+| [**stopEmploymentRelationship**](EmploymentApi.md#stopemploymentrelationshipoperation)               | **POST** /api/v1/employment/relationships/{relationshipId}/emergency-stop                                | Stop the complete AE-01 Employment Relationship                            |
+| [**suspendEmploymentContract**](EmploymentApi.md#suspendemploymentcontract)                          | **PUT** /api/v1/employment/contracts/{contractId}/suspend                                                | Suspend an employment contract                                             |
+| [**terminateEmploymentContract**](EmploymentApi.md#terminateemploymentcontract)                      | **DELETE** /api/v1/employment/contracts/{contractId}                                                     | Terminate an employment contract                                           |
+| [**transitionEmploymentRelationship**](EmploymentApi.md#transitionemploymentrelationshipoperation)   | **POST** /api/v1/employment/relationships/{relationshipId}/transitions                                   | Transition relationship state from an authorized internal service          |
+| [**updatePhaseBundle**](EmploymentApi.md#updatephasebundleoperation)                                 | **PUT** /api/v1/employment/contracts/{contractId}/phase-bundle                                           | Upgrade or change phase bundle                                             |
 
 ## acceptEmploymentContract
 
@@ -1212,6 +1213,77 @@ example().catch(console.error);
 | ----------- | -------------------------------- | ---------------- |
 | **200**     | List of employment contracts     | -                |
 | **401**     | JWT missing, expired, or invalid | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## listEmploymentRelationships
+
+> EmploymentRelationshipCollectionV1 listEmploymentRelationships(cursor, limit)
+
+List the authenticated customer\&#39;s authorized employment relationships
+
+Returns a tenant-derived, cursor-paginated relationship summary collection for the My Agents portal surface. The response includes one server-selected resume target and never relies on browser-local recency or cross-relationship aggregation.
+
+### Example
+
+```ts
+import { Configuration, EmploymentApi } from "";
+import type { ListEmploymentRelationshipsRequest } from "";
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new EmploymentApi(config);
+
+  const body = {
+    // string (optional)
+    cursor: cursor_example,
+    // number (optional)
+    limit: 56,
+  } satisfies ListEmploymentRelationshipsRequest;
+
+  try {
+    const data = await api.listEmploymentRelationships(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name       | Type     | Description | Notes                                |
+| ---------- | -------- | ----------- | ------------------------------------ |
+| **cursor** | `string` |             | [Optional] [Defaults to `undefined`] |
+| **limit**  | `number` |             | [Optional] [Defaults to `20`]        |
+
+### Return type
+
+[**EmploymentRelationshipCollectionV1**](EmploymentRelationshipCollectionV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                             | Response headers |
+| ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **200**     | Authorized relationship summaries                                       | -                |
+| **401**     | JWT missing, expired, or invalid                                        | -                |
+| **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 

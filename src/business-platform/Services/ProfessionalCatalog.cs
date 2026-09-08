@@ -51,6 +51,8 @@ public interface IProfessionalCatalog
     IReadOnlyList<ProfessionalDiscoveryResult> Discover(string outcome);
 
     ProfessionalDisclosure? GetDisclosure(string professionalType);
+
+    IReadOnlyList<ProfessionalDisclosure> Browse(string? professionalType, string? query) => [];
 }
 
 public sealed class ProfessionalCatalog : IProfessionalCatalog
@@ -115,6 +117,23 @@ public sealed class ProfessionalCatalog : IProfessionalCatalog
                 manifest.EvidencePosture,
                 manifest.IndicativePrice,
                 new ProfessionalEligibility(true, manifest.EligibilityExplanation));
+    }
+
+    public IReadOnlyList<ProfessionalDisclosure> Browse(string? professionalType, string? query)
+    {
+        var normalizedType = professionalType?.Trim();
+        var normalizedQuery = query?.Trim();
+        return _manifests
+            .Where(manifest => manifest.Active)
+            .Where(manifest => string.IsNullOrEmpty(normalizedType)
+                || string.Equals(manifest.ProfessionalType, normalizedType, StringComparison.OrdinalIgnoreCase))
+            .Where(manifest => string.IsNullOrEmpty(normalizedQuery)
+                || ContainsTerm(Normalize(manifest.DisplayName), normalizedQuery)
+                || ContainsTerm(Normalize(manifest.ProfessionalType), normalizedQuery)
+                || manifest.Suitability.Any(value => ContainsTerm(Normalize(value), normalizedQuery)))
+            .OrderBy(manifest => manifest.DisplayName, StringComparer.Ordinal)
+            .Select(manifest => GetDisclosure(manifest.ProfessionalType)!)
+            .ToArray();
     }
 
     private static ProfessionalCatalogManifest LoadManifest(string path)

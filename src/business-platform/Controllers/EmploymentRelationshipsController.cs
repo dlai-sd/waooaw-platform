@@ -144,6 +144,30 @@ public sealed record EmploymentRelationshipResponse(
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
 
+public sealed record CustomerPortalDestinationResponse(
+    string Surface,
+    Guid? RelationshipId = null,
+    string? SubjectId = null);
+
+public sealed record EmploymentRelationshipSummaryResponse(
+    Guid RelationshipId,
+    string ProfessionalType,
+    string ProfessionalDisplayName,
+    string LifecycleState,
+    string? CurrentGoalSummary,
+    string UnreadState,
+    string AvailabilityState,
+    string CurrencyState,
+    DateTimeOffset LastAuthoritativelyConfirmedAt,
+    CustomerPortalDestinationResponse ResumeTarget);
+
+public sealed record EmploymentRelationshipCollectionResponse(
+    string SchemaVersion,
+    DateTimeOffset ProducedAt,
+    string? NextCursor,
+    CustomerPortalDestinationResponse? DefaultResumeTarget,
+    IReadOnlyList<EmploymentRelationshipSummaryResponse> Items);
+
 public sealed record RelationshipTimelineEntryResponse(
     int StateVersion,
     string? FromState,
@@ -186,6 +210,37 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         _activationDispatch = activationDispatch;
         _continuity = continuity;
         _emergencyStops = emergencyStops;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> ListAsync(
+        [FromQuery] string? cursor,
+        [FromQuery] int limit = 20,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryGetTenantId(out var tenantId) || !TryGetParticipantId(out var participantId))
+            return Unauthorized();
+        if (limit is < 1 or > 100)
+            return Problem(statusCode: StatusCodes.Status400BadRequest,
+                title: "Invalid pagination", detail: "limit must be between 1 and 100.");
+
+        try
+        {
+            var page = await _service.ListAuthorizedAsync(
+                tenantId, participantId, cursor, limit, cancellationToken);
+            var items = page.Items.Select(item => ToPortalSummary(item.Relationship, item.CurrentGoalSummary)).ToArray();
+            return Ok(new EmploymentRelationshipCollectionResponse(
+                "1.0.0",
+                DateTimeOffset.UtcNow,
+                page.NextCursor,
+                items.FirstOrDefault()?.ResumeTarget,
+                items));
+        }
+        catch (ArgumentException exception)
+        {
+            return Problem(statusCode: StatusCodes.Status400BadRequest,
+                title: "Invalid pagination", detail: exception.Message);
+        }
     }
 
     [HttpPost]
@@ -853,4 +908,43 @@ public sealed class EmploymentRelationshipsController : ControllerBase
             relationship.StateVersion,
             relationship.CreatedAt,
             relationship.UpdatedAt);
+
+    private static EmploymentRelationshipSummaryResponse ToPortalSummary(
+        EmploymentRelationship relationship,
+        string? currentGoalSummary)
+    {
+        var availability = relationship.State switch
+        {
+            EmploymentRelationshipState.Paused => "PAUSED",
+            EmploymentRelationshipState.StoppedEmergency => "STOPPED",
+            EmploymentRelationshipState.Terminated => "UNAVAILABLE",
+            _ => "AVAILABLE",
+        };
+        var resumeSurface = relationship.State switch
+        {
+            EmploymentRelationshipState.Discovered or EmploymentRelationshipState.Interviewing
+                or EmploymentRelationshipState.TrialActive => "CONVERSATION",
+            EmploymentRelationshipState.Configuring => "CONFIGURATION",
+            EmploymentRelationshipState.Active or EmploymentRelationshipState.Paused
+                or EmploymentRelationshipState.StoppedEmergency => "WORK",
+            _ => "CONFIGURATION",
+        };
+        var unreadState = relationship.State is EmploymentRelationshipState.StoppedEmergency
+            or EmploymentRelationshipState.ContractPendingAcceptance
+            or EmploymentRelationshipState.ContractAcceptedPendingPayment
+            or EmploymentRelationshipState.ActivationPending
+            ? "ACTION_REQUIRED"
+            : "NONE";
+        return new EmploymentRelationshipSummaryResponse(
+            relationship.RelationshipId,
+            relationship.ProfessionalType,
+            relationship.ProfessionalType,
+            RelationshipStateCodec.ToDatabase(relationship.State),
+            currentGoalSummary,
+            unreadState,
+            availability,
+            "UNKNOWN",
+            relationship.UpdatedAt,
+            new CustomerPortalDestinationResponse(resumeSurface, relationship.RelationshipId));
+    }
 }

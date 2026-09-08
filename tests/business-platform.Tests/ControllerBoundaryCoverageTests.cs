@@ -66,32 +66,72 @@ public sealed class ControllerBoundaryCoverageTests
         Assert.Contains(sections, value => value.GetProperty("sectionType").GetString() == "USAGE_BUDGET"
             && value.GetProperty("currencyState").GetString() == "INR");
 
-        foreach (var (claimType, claimValue, expectedActor) in new[]
+        var participantId = fixture.Relationship.InitiatingParticipantId.ToString("D");
+        foreach (var claimType in new[]
         {
-            (ClaimTypes.NameIdentifier, "name-actor", "name-actor"),
-            ("sub", "subject-actor", "subject-actor"),
+            ClaimTypes.NameIdentifier,
+            "sub",
         })
         {
-            var context = Context(fixture.Relationship.TenantId, Guid.NewGuid());
+            var context = Context(fixture.Relationship.TenantId, fixture.Relationship.InitiatingParticipantId);
             var identity = (ClaimsIdentity)context.HttpContext.User.Identity!;
             foreach (var claim in identity.FindAll("participant_id").ToList()) identity.RemoveClaim(claim);
-            identity.AddClaim(new Claim(claimType, claimValue));
+            identity.AddClaim(new Claim(claimType, participantId));
             fixture.Controller.ControllerContext = context;
-            await fixture.Controller.GetWorkAsync(fixture.Relationship.RelationshipId, CancellationToken.None);
-            Assert.Equal(expectedActor, fixture.Gateway.LastContext?.ActorSubject);
+            Assert.IsType<OkObjectResult>(await fixture.Controller.GetWorkAsync(
+                fixture.Relationship.RelationshipId, CancellationToken.None));
+            Assert.Equal(participantId, fixture.Gateway.LastContext?.ActorSubject);
         }
 
-        var unknownContext = Context(fixture.Relationship.TenantId, Guid.NewGuid());
-        var unknownIdentity = (ClaimsIdentity)unknownContext.HttpContext.User.Identity!;
-        foreach (var claim in unknownIdentity.FindAll("participant_id").ToList()) unknownIdentity.RemoveClaim(claim);
-        foreach (var claim in unknownIdentity.FindAll("participant_role").ToList()) unknownIdentity.RemoveClaim(claim);
-        foreach (var claim in unknownIdentity.FindAll("correlation_id").ToList()) unknownIdentity.RemoveClaim(claim);
-        unknownContext.HttpContext.TraceIdentifier = "trace-correlation";
-        fixture.Controller.ControllerContext = unknownContext;
-        await fixture.Controller.GetWorkAsync(fixture.Relationship.RelationshipId, CancellationToken.None);
-        Assert.Equal("unknown", fixture.Gateway.LastContext?.ActorSubject);
+        var defaultContext = Context(fixture.Relationship.TenantId, fixture.Relationship.InitiatingParticipantId);
+        var defaultIdentity = (ClaimsIdentity)defaultContext.HttpContext.User.Identity!;
+        foreach (var claim in defaultIdentity.FindAll("participant_role").ToList()) defaultIdentity.RemoveClaim(claim);
+        foreach (var claim in defaultIdentity.FindAll("correlation_id").ToList()) defaultIdentity.RemoveClaim(claim);
+        defaultContext.HttpContext.TraceIdentifier = "trace-correlation";
+        fixture.Controller.ControllerContext = defaultContext;
+        Assert.IsType<OkObjectResult>(await fixture.Controller.GetWorkAsync(
+            fixture.Relationship.RelationshipId, CancellationToken.None));
+        Assert.Equal(participantId, fixture.Gateway.LastContext?.ActorSubject);
         Assert.Equal("EMPLOYER", fixture.Gateway.LastContext?.EffectiveRole);
         Assert.Equal("trace-correlation", fixture.Gateway.LastContext?.CorrelationId);
+    }
+
+    [Fact]
+    public async Task WorkspaceEndpoints_FailClosedForUnboundParticipant()
+    {
+        var fixture = await CreateWorkspaceAsync();
+        fixture.Controller.ControllerContext = Context(fixture.Relationship.TenantId, Guid.NewGuid());
+        using var command = JsonDocument.Parse("{\"type\":\"CHANGE_PLAN\"}");
+        var relationshipId = fixture.Relationship.RelationshipId;
+        var cancellationToken = CancellationToken.None;
+
+        Func<Task<IActionResult>>[] requests =
+        [
+            () => fixture.Controller.GetWorkspaceAsync(relationshipId, cancellationToken),
+            () => fixture.Controller.GetChangesAsync(relationshipId, null, cancellationToken),
+            () => fixture.Controller.GetPlanAsync(relationshipId, cancellationToken),
+            () => fixture.Controller.GetConfigurationAsync(relationshipId, cancellationToken),
+            () => fixture.Controller.UpdateOnboardAsync(relationshipId,
+                new RelationshipOnboardRequest("1.0.0", null, null, null, null),
+                Guid.NewGuid().ToString("D"), cancellationToken),
+            () => fixture.Controller.GetAttentionAsync(relationshipId, cancellationToken),
+            () => fixture.Controller.GetGoalsAsync(relationshipId, cancellationToken),
+            () => fixture.Controller.GetBusinessOutcomesAsync(relationshipId, cancellationToken),
+            () => fixture.Controller.GetOperationsAsync(relationshipId, cancellationToken),
+            () => fixture.Controller.GetWorkAsync(relationshipId, cancellationToken),
+            () => fixture.Controller.GetResultsAsync(relationshipId, cancellationToken),
+            () => fixture.Controller.GetUsageBudgetAsync(relationshipId, cancellationToken),
+            () => fixture.Controller.GetRightsControlsAsync(relationshipId, cancellationToken),
+            () => fixture.Controller.SubmitCommandAsync(
+                relationshipId, command.RootElement, Guid.NewGuid().ToString("D"), cancellationToken),
+            () => fixture.Controller.GetCommandAsync(relationshipId, Guid.NewGuid(), cancellationToken),
+        ];
+
+        foreach (var request in requests)
+        {
+            var result = Assert.IsType<ObjectResult>(await request());
+            Assert.Equal(404, result.StatusCode);
+        }
     }
 
     [Fact]

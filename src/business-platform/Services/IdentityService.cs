@@ -52,6 +52,24 @@ public sealed record IdentitySessionState(
     bool EmailVerified,
     bool MobileVerified);
 
+public sealed record CustomerPortalProfileState(
+    Guid AccountReference,
+    string DisplayName,
+    string OrganizationDisplayName,
+    bool EmailVerified,
+    bool MobileVerified,
+    DateTimeOffset UpdatedAt);
+
+public sealed record CustomerPortalSettingsState(
+    string Locale,
+    string Theme,
+    string TimestampVisibility,
+    IReadOnlyList<string> ApprovalRequests,
+    IReadOnlyList<string> MaturityReports,
+    IReadOnlyList<string> MonthlyNarratives,
+    IReadOnlyList<string> SelfGovernanceAlerts,
+    DateTimeOffset UpdatedAt);
+
 public sealed class IdentityIdempotencyConflict(string idempotencyKey)
     : Exception($"Idempotency-Key {idempotencyKey} was reused with a different canonical request hash.");
 
@@ -542,6 +560,158 @@ public sealed class IdentityService
             registration.EmailVerified,
             registration.MobileVerified || progressiveMobileVerified);
     }
+
+    public async Task<CustomerPortalProfileState> GetCustomerProfileAsync(
+        string actorSubject,
+        Guid tenantId,
+        CancellationToken ct)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(ct);
+        var registration = await GetCompletedRegistrationAsync(db, actorSubject, ct);
+        var preference = await db.CustomerPortalPreferences.SingleOrDefaultAsync(
+            value => value.ActorSubject == actorSubject && value.TenantId == tenantId, ct);
+
+        return new CustomerPortalProfileState(
+            registration.AccountId!.Value,
+            preference?.DisplayName ?? registration.DisplayName!,
+            preference?.OrganizationDisplayName ?? registration.BusinessName!,
+            registration.EmailVerified,
+            registration.MobileVerified || await HasVerifiedMobileAsync(db, actorSubject, ct),
+            preference?.UpdatedAt ?? registration.UpdatedAt);
+    }
+
+    public async Task<CustomerPortalProfileState> UpdateCustomerProfileAsync(
+        string actorSubject,
+        Guid tenantId,
+        Guid idempotencyKey,
+        string canonicalHash,
+        string displayName,
+        string organizationDisplayName,
+        CancellationToken ct)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(ct);
+        var registration = await GetCompletedRegistrationAsync(db, actorSubject, ct);
+        var (replay, conflict) = await CheckIdempotencyAsync(
+            db, actorSubject, idempotencyKey, $"UpdateCustomerProfile:{tenantId}", canonicalHash, ct);
+        if (conflict) throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
+
+        var preference = await GetOrCreatePortalPreferenceAsync(db, actorSubject, tenantId, ct);
+        if (replay is null)
+        {
+            preference.DisplayName = displayName;
+            preference.OrganizationDisplayName = organizationDisplayName;
+            preference.UpdatedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync(ct);
+            await RecordIdempotencyAsync(db, actorSubject, idempotencyKey,
+                $"UpdateCustomerProfile:{tenantId}", canonicalHash, 200, preference.PreferenceId.ToString(), ct);
+        }
+
+        return new CustomerPortalProfileState(
+            registration.AccountId!.Value,
+            preference.DisplayName ?? registration.DisplayName!,
+            preference.OrganizationDisplayName ?? registration.BusinessName!,
+            registration.EmailVerified,
+            registration.MobileVerified || await HasVerifiedMobileAsync(db, actorSubject, ct),
+            preference.UpdatedAt);
+    }
+
+    public async Task<CustomerPortalSettingsState> GetCustomerSettingsAsync(
+        string actorSubject,
+        Guid tenantId,
+        CancellationToken ct)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(ct);
+        var registration = await GetCompletedRegistrationAsync(db, actorSubject, ct);
+        var preference = await db.CustomerPortalPreferences.SingleOrDefaultAsync(
+            value => value.ActorSubject == actorSubject && value.TenantId == tenantId, ct);
+        return ToSettings(preference, registration.LanguagePreference ?? "en", registration.UpdatedAt);
+    }
+
+    public async Task<CustomerPortalSettingsState> UpdateCustomerSettingsAsync(
+        string actorSubject,
+        Guid tenantId,
+        Guid idempotencyKey,
+        string canonicalHash,
+        string locale,
+        string theme,
+        string timestampVisibility,
+        IReadOnlyList<string> approvalRequests,
+        IReadOnlyList<string> maturityReports,
+        IReadOnlyList<string> monthlyNarratives,
+        IReadOnlyList<string> selfGovernanceAlerts,
+        CancellationToken ct)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(ct);
+        await GetCompletedRegistrationAsync(db, actorSubject, ct);
+        var operation = $"UpdateCustomerSettings:{tenantId}";
+        var (replay, conflict) = await CheckIdempotencyAsync(
+            db, actorSubject, idempotencyKey, operation, canonicalHash, ct);
+        if (conflict) throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
+
+        var preference = await GetOrCreatePortalPreferenceAsync(db, actorSubject, tenantId, ct);
+        if (replay is null)
+        {
+            preference.Locale = locale;
+            preference.Theme = theme;
+            preference.TimestampVisibility = timestampVisibility;
+            preference.ApprovalRequestChannels = SerializeChannels(approvalRequests);
+            preference.MaturityReportChannels = SerializeChannels(maturityReports);
+            preference.MonthlyNarrativeChannels = SerializeChannels(monthlyNarratives);
+            preference.SelfGovernanceAlertChannels = SerializeChannels(selfGovernanceAlerts);
+            preference.UpdatedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync(ct);
+            await RecordIdempotencyAsync(db, actorSubject, idempotencyKey,
+                operation, canonicalHash, 200, preference.PreferenceId.ToString(), ct);
+        }
+        return ToSettings(preference, locale, preference.UpdatedAt);
+    }
+
+    private static async Task<IdentityRegistrationRecord> GetCompletedRegistrationAsync(
+        IdentityDbContext db, string actorSubject, CancellationToken ct)
+    {
+        var registration = await db.Registrations
+            .Where(value => value.ActorSubject == actorSubject
+                && value.State == IdentityRegistrationState.Completed
+                && value.AccountId != null)
+            .OrderByDescending(value => value.UpdatedAt)
+            .FirstOrDefaultAsync(ct);
+        return registration ?? throw new IdentityResourceNotFoundException("Completed account not found.");
+    }
+
+    private static Task<bool> HasVerifiedMobileAsync(
+        IdentityDbContext db, string actorSubject, CancellationToken ct) =>
+        db.VerificationChallenges.AnyAsync(value => value.ActorSubject == actorSubject
+            && value.Purpose == IdentityVerificationPurpose.Mobile
+            && value.VerifiedAt != null, ct);
+
+    private static async Task<CustomerPortalPreferenceRecord> GetOrCreatePortalPreferenceAsync(
+        IdentityDbContext db, string actorSubject, Guid tenantId, CancellationToken ct)
+    {
+        var preference = await db.CustomerPortalPreferences.SingleOrDefaultAsync(
+            value => value.ActorSubject == actorSubject && value.TenantId == tenantId, ct);
+        if (preference is not null) return preference;
+        preference = new CustomerPortalPreferenceRecord { ActorSubject = actorSubject, TenantId = tenantId };
+        db.CustomerPortalPreferences.Add(preference);
+        return preference;
+    }
+
+    private static string SerializeChannels(IReadOnlyList<string> channels) =>
+        System.Text.Json.JsonSerializer.Serialize(channels);
+
+    private static IReadOnlyList<string> DeserializeChannels(string channels) =>
+        System.Text.Json.JsonSerializer.Deserialize<string[]>(channels) ?? [];
+
+    private static CustomerPortalSettingsState ToSettings(
+        CustomerPortalPreferenceRecord? preference, string defaultLocale, DateTimeOffset defaultUpdatedAt) =>
+        new(
+            preference?.Locale ?? defaultLocale,
+            preference?.Theme ?? "SYSTEM",
+            preference?.TimestampVisibility ?? "RELATIVE",
+            DeserializeChannels(preference?.ApprovalRequestChannels ?? "[\"IN_APP\"]"),
+            DeserializeChannels(preference?.MaturityReportChannels ?? "[\"IN_APP\"]"),
+            DeserializeChannels(preference?.MonthlyNarrativeChannels ?? "[\"IN_APP\"]"),
+            DeserializeChannels(preference?.SelfGovernanceAlertChannels ?? "[\"IN_APP\"]"),
+            preference?.UpdatedAt ?? defaultUpdatedAt);
 
     // ── Account Links (WhatsApp-to-web) ──────────────────────────────────────
 
