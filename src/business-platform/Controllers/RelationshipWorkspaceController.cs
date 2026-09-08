@@ -11,6 +11,12 @@ using Waooaw.BusinessPlatform.Services;
 namespace Waooaw.BusinessPlatform.Controllers;
 
 public sealed record RequestRelationshipEvidenceExport(string SchemaVersion, string Purpose);
+public sealed record RelationshipOnboardRequest(
+    string SchemaVersion,
+    string? PreferredAgentDisplayName,
+    string? ChatAppearance,
+    string? TimestampVisibility,
+    string? ThemePreference);
 
 [ApiController]
 [Authorize]
@@ -18,7 +24,8 @@ public sealed record RequestRelationshipEvidenceExport(string SchemaVersion, str
 public sealed class RelationshipWorkspaceController(
     EmploymentRelationshipService relationships,
     IRelationshipWorkspaceOwnerGateway owners,
-    RelationshipEvidenceService? evidence = null) : ControllerBase
+    RelationshipEvidenceService? evidence = null,
+    RelationshipConfigurationService? configuration = null) : ControllerBase
 {
     private static readonly string[] SectionTypes =
         ["PLAN", "ATTENTION", "WORK", "RESULTS", "USAGE_BUDGET", "RIGHTS_CONTROLS"];
@@ -86,6 +93,53 @@ public sealed class RelationshipWorkspaceController(
             availableCommands = Array.Empty<object>(), planId = relationshipId, goals = Array.Empty<string>() });
     }
 
+    [HttpGet("configuration")]
+    public async Task<IActionResult> GetConfigurationAsync(Guid relationshipId, CancellationToken cancellationToken)
+    {
+        var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
+        if (relationship is null) return NotFoundProblem();
+        if (configuration is null) return WorkspaceProblem(503, "RELATIONSHIP_WORKSPACE_DEPENDENCY_UNAVAILABLE");
+        var state = await configuration.GetPortalConfigurationAsync(
+            relationship.TenantId, relationshipId, cancellationToken);
+        return Ok(ConfigurationResponse(relationship, state));
+    }
+
+    [HttpPut("configuration/onboard")]
+    public async Task<IActionResult> UpdateOnboardAsync(
+        Guid relationshipId,
+        [FromBody] RelationshipOnboardRequest request,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
+        CancellationToken cancellationToken)
+    {
+        var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
+        if (relationship is null) return NotFoundProblem();
+        if (configuration is null) return WorkspaceProblem(503, "RELATIONSHIP_WORKSPACE_DEPENDENCY_UNAVAILABLE");
+        if (request.SchemaVersion != "1.0.0" || !Guid.TryParse(idempotencyKey, out var parsedKey)
+            || request.PreferredAgentDisplayName is { Length: > 80 }
+            || request.ChatAppearance is not (null or "CONSTITUTIONAL" or "COMPACT")
+            || request.TimestampVisibility is not (null or "RELATIVE" or "ABSOLUTE")
+            || request.ThemePreference is not (null or "SYSTEM" or "LIGHT" or "DARK"))
+            return WorkspaceProblem(400, "RELATIONSHIP_WORKSPACE_REQUEST_INVALID");
+        var requestHash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(request))));
+        try
+        {
+            var state = await configuration.UpdateOnboardAsync(
+                relationship.TenantId, relationshipId, parsedKey, requestHash,
+                request.PreferredAgentDisplayName?.Trim(), request.ChatAppearance,
+                request.TimestampVisibility, request.ThemePreference, cancellationToken);
+            return Ok(ConfigurationResponse(relationship, state));
+        }
+        catch (RelationshipConfigurationConflictException)
+        {
+            return WorkspaceProblem(409, "RELATIONSHIP_IDEMPOTENCY_CONFLICT");
+        }
+        catch (ConstitutionalActionDeniedException)
+        {
+            return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_BLOCKED");
+        }
+    }
+
     [HttpGet("attention")]
     public async Task<IActionResult> GetAttentionAsync(Guid relationshipId, CancellationToken cancellationToken)
     {
@@ -94,6 +148,85 @@ public sealed class RelationshipWorkspaceController(
         return Ok(new { sectionType = "ATTENTION", currencyState = "CURRENT",
             provenance = Provenance("BP", $"relationship-{relationship.StateVersion}", DateTimeOffset.UtcNow),
             availableCommands = Array.Empty<object>(), items = Array.Empty<object>() });
+    }
+
+    [HttpGet("goals")]
+    public async Task<IActionResult> GetGoalsAsync(Guid relationshipId, CancellationToken cancellationToken)
+    {
+        var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
+        if (relationship is null) return NotFoundProblem();
+        if (configuration is null) return WorkspaceProblem(503, "RELATIONSHIP_WORKSPACE_DEPENDENCY_UNAVAILABLE");
+        var goals = await configuration.GetPortalGoalsAsync(relationship.TenantId, relationshipId, cancellationToken);
+        var activeGoals = goals.Where(item => NormalizeGoalStatus(item.Goal.Status) == "ACTIVE")
+            .Select(GoalResponse).ToArray();
+        var history = goals.Where(item => NormalizeGoalStatus(item.Goal.Status) != "ACTIVE")
+            .Select(item => new
+            {
+                goalId = item.Goal.GoalId,
+                goalVersion = GoalVersion(item.Goal),
+                skillId = item.SkillId,
+                skillLabel = item.SkillLabel,
+                measure = item.Goal.Measure,
+                frequency = $"EVERY_{item.Goal.ReviewCadenceMonths}_MONTHS",
+                baseline = item.Goal.Baseline,
+                attributionBoundary = item.Goal.DecisionThreshold,
+                verificationStatus = "PENDING_CUSTOMER",
+                status = NormalizeGoalStatus(item.Goal.Status),
+                evidenceState = "PENDING",
+                changedAt = item.Goal.UpdatedAt,
+                changeReason = "Goal state changed in the relationship configuration.",
+            }).ToArray();
+        return Ok(new
+        {
+            sectionType = "GOALS",
+            currencyState = "CURRENT",
+            provenance = Provenance("BP", $"relationship-{relationship.StateVersion}", DateTimeOffset.UtcNow),
+            availableCommands = Array.Empty<object>(),
+            activeGoals,
+            history,
+        });
+    }
+
+    [HttpGet("business-outcomes")]
+    public async Task<IActionResult> GetBusinessOutcomesAsync(Guid relationshipId, CancellationToken cancellationToken)
+    {
+        var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
+        if (relationship is null) return NotFoundProblem();
+        return Ok(new
+        {
+            sectionType = "BUSINESS_OUTCOMES",
+            currencyState = "UNAVAILABLE",
+            provenance = Provenance("BP", $"relationship-{relationship.StateVersion}", DateTimeOffset.UtcNow),
+            availableCommands = Array.Empty<object>(),
+            items = Array.Empty<object>(),
+        });
+    }
+
+    [HttpGet("operations")]
+    public async Task<IActionResult> GetOperationsAsync(Guid relationshipId, CancellationToken cancellationToken)
+    {
+        var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
+        if (relationship is null) return NotFoundProblem();
+        if (configuration is null) return WorkspaceProblem(503, "RELATIONSHIP_WORKSPACE_DEPENDENCY_UNAVAILABLE");
+        var goals = await configuration.GetPortalGoalsAsync(relationship.TenantId, relationshipId, cancellationToken);
+        var requiredGoalIds = goals.Where(item => NormalizeGoalStatus(item.Goal.Status) == "ACTIVE")
+            .Select(item => item.Goal.GoalId).ToArray();
+        var blockedReasons = requiredGoalIds.Length == 0
+            ? new[] { "At least one active goal must be customer-verified before Operations is available." }
+            : new[] { "Customer verification is required for every active goal before Operations is available." };
+        return Ok(new
+        {
+            sectionType = "OPERATIONS",
+            currencyState = "CURRENT",
+            provenance = Provenance("BP", $"relationship-{relationship.StateVersion}", DateTimeOffset.UtcNow),
+            availableCommands = Array.Empty<object>(),
+            eligibilityState = "LOCKED",
+            requiredGoalIds,
+            verifiedGoalIds = Array.Empty<Guid>(),
+            blockedReasons,
+            reassessmentRequired = false,
+            dependentOutcomeIds = Array.Empty<Guid>(),
+        });
     }
 
     [HttpGet("work")]
@@ -275,6 +408,10 @@ public sealed class RelationshipWorkspaceController(
     {
         if (!HttpContext.Items.TryGetValue(TenantIsolationMiddleware.TenantIdItemKey, out var value)
             || value is not string text || !Guid.TryParse(text, out var tenantId)) return null;
+        var participant = User.FindFirstValue("participant_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(participant, out var participantId)
+            || !await relationships.IsActiveParticipantAsync(tenantId, relationshipId, participantId, cancellationToken))
+            return null;
         return await relationships.GetAsync(tenantId, relationshipId, cancellationToken);
     }
 
@@ -325,4 +462,59 @@ public sealed class RelationshipWorkspaceController(
         new { owner, sourceProjectionVersion = version, producedAt };
 
     private static string Cursor(Guid relationshipId, int version) => $"workspace:{relationshipId:N}:{version:D8}";
+
+    private static object ConfigurationResponse(
+        EmploymentRelationship relationship,
+        RelationshipConfigurationState state)
+    {
+        var onboardState = state.Onboard is null ? "NOT_STARTED" : "VERIFIED";
+        var inductState = state.InductComplete ? "VERIFIED"
+            : state.ConfirmedContextCount > 0 ? "IN_PROGRESS" : "NOT_STARTED";
+        var lifecyclePhase = state.InductComplete ? "GOAL_VERIFICATION"
+            : state.Onboard is null ? "ONBOARD" : "INDUCT";
+        return new
+        {
+            sectionType = "CONFIGURATION",
+            currencyState = "CURRENT",
+            provenance = Provenance("BP", $"relationship-{relationship.StateVersion}", state.ProducedAt),
+            availableCommands = Array.Empty<object>(),
+            lifecyclePhase,
+            items = new object[]
+            {
+                new { stepKey = "ONBOARD", label = "Onboard", state = onboardState,
+                    summary = state.Onboard is null ? "Choose relationship presentation preferences." : "Presentation preferences saved.",
+                    continuationTarget = new { surface = "CONFIGURATION", relationshipId = relationship.RelationshipId } },
+                new { stepKey = "INDUCT", label = "Induct", state = inductState,
+                    summary = state.InductComplete ? "Required business context confirmed." : "Continue the consultative induction conversation.",
+                    confirmedContextVersion = state.ConfirmedContextCount > 0 ? $"context-{state.ConfirmedContextCount}" : null,
+                    continuationTarget = new { surface = "CONVERSATION", relationshipId = relationship.RelationshipId } },
+            },
+        };
+    }
+
+    private static object GoalResponse(RelationshipPortalGoal item) => new
+    {
+        goalId = item.Goal.GoalId,
+        goalVersion = GoalVersion(item.Goal),
+        skillId = item.SkillId,
+        skillLabel = item.SkillLabel,
+        measure = item.Goal.Measure,
+        frequency = $"EVERY_{item.Goal.ReviewCadenceMonths}_MONTHS",
+        baseline = item.Goal.Baseline,
+        attributionBoundary = item.Goal.DecisionThreshold,
+        verificationStatus = "PENDING_CUSTOMER",
+        status = NormalizeGoalStatus(item.Goal.Status),
+        evidenceState = "PENDING",
+    };
+
+    private static string GoalVersion(RelationshipGoal goal) =>
+        $"goal-{goal.UpdatedAt.UtcTicks}";
+
+    private static string NormalizeGoalStatus(string status) => status.ToUpperInvariant() switch
+    {
+        "SUPERSEDED" => "SUPERSEDED",
+        "RETIRED" => "RETIRED",
+        "BLOCKED" => "BLOCKED",
+        _ => "ACTIVE",
+    };
 }

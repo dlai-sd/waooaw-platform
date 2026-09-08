@@ -10,6 +10,14 @@ namespace Waooaw.BusinessPlatform.Services;
 
 public sealed record AdmitRelationshipResult(EmploymentRelationship Relationship, bool Created);
 
+public sealed record EmploymentRelationshipListItem(
+    EmploymentRelationship Relationship,
+    string? CurrentGoalSummary);
+
+public sealed record EmploymentRelationshipListPage(
+    IReadOnlyList<EmploymentRelationshipListItem> Items,
+    string? NextCursor);
+
 public sealed record EmergencyStopReleaseAuthorization(
     bool IsPortalContext,
     string AuthenticationAssurance,
@@ -185,6 +193,64 @@ public sealed class EmploymentRelationshipService
             .SingleOrDefaultAsync(
                 value => value.TenantId == tenantId && value.RelationshipId == relationshipId,
                 cancellationToken);
+    }
+
+    public async Task<EmploymentRelationshipListPage> ListAuthorizedAsync(
+        Guid tenantId,
+        Guid participantId,
+        string? cursor,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        Guid? afterRelationshipId = null;
+        if (!string.IsNullOrWhiteSpace(cursor))
+        {
+            try
+            {
+                var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(cursor));
+                afterRelationshipId = Guid.Parse(decoded);
+            }
+            catch (FormatException)
+            {
+                throw new ArgumentException("Cursor is invalid.", nameof(cursor));
+            }
+        }
+
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var authorizedIds = db.RelationshipParticipants.AsNoTracking()
+            .Where(value => value.TenantId == tenantId
+                && value.ParticipantId == participantId
+                && value.Status == "ACTIVE")
+            .Select(value => value.RelationshipId);
+        var relationships = await db.EmploymentRelationships.AsNoTracking()
+            .Where(value => value.TenantId == tenantId && authorizedIds.Contains(value.RelationshipId))
+            .OrderByDescending(value => value.UpdatedAt)
+            .ThenBy(value => value.RelationshipId)
+            .ToListAsync(cancellationToken);
+
+        var start = 0;
+        if (afterRelationshipId.HasValue)
+        {
+            var cursorIndex = relationships.FindIndex(value => value.RelationshipId == afterRelationshipId.Value);
+            if (cursorIndex < 0) throw new ArgumentException("Cursor is invalid.", nameof(cursor));
+            start = cursorIndex + 1;
+        }
+
+        var page = relationships.Skip(start).Take(limit + 1).ToArray();
+        var selected = page.Take(limit).ToArray();
+        var selectedIds = selected.Select(value => value.RelationshipId).ToArray();
+        var goals = await db.RelationshipGoals.AsNoTracking()
+            .Where(value => value.TenantId == tenantId && selectedIds.Contains(value.RelationshipId))
+            .OrderByDescending(value => value.UpdatedAt)
+            .ToListAsync(cancellationToken);
+        var items = selected.Select(relationship => new EmploymentRelationshipListItem(
+            relationship,
+            goals.FirstOrDefault(goal => goal.RelationshipId == relationship.RelationshipId
+                && goal.Status is not ("RETIRED" or "SUPERSEDED"))?.Goal)).ToArray();
+        var nextCursor = page.Length > limit
+            ? Convert.ToBase64String(Encoding.UTF8.GetBytes(selected[^1].RelationshipId.ToString()))
+            : null;
+        return new EmploymentRelationshipListPage(items, nextCursor);
     }
 
     public async Task<bool> IsActiveParticipantAsync(

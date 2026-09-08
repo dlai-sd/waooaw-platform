@@ -140,6 +140,18 @@ public sealed class RelationshipGoal
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class RelationshipOnboardPreference
+{
+    public Guid PreferenceId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public string? PreferredAgentDisplayName { get; set; }
+    public string? ChatAppearance { get; set; }
+    public string? TimestampVisibility { get; set; }
+    public string? ThemePreference { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class RelationshipSkillConfiguration
 {
     public Guid ConfigurationId { get; init; } = Guid.NewGuid();
@@ -383,6 +395,7 @@ public sealed class EmploymentRelationshipDbContext : DbContext
     public DbSet<RelationshipContextPayload> RelationshipContextPayloads => Set<RelationshipContextPayload>();
     public DbSet<ContextConfirmationEvent> ContextConfirmationEvents => Set<ContextConfirmationEvent>();
     public DbSet<RelationshipGoal> RelationshipGoals => Set<RelationshipGoal>();
+    public DbSet<RelationshipOnboardPreference> RelationshipOnboardPreferences => Set<RelationshipOnboardPreference>();
     public DbSet<RelationshipSkillConfiguration> RelationshipSkillConfigurations => Set<RelationshipSkillConfiguration>();
     public DbSet<DecisionSpaceSnapshot> DecisionSpaceSnapshots => Set<DecisionSpaceSnapshot>();
     public DbSet<EmploymentContractVersion> EmploymentContractVersions => Set<EmploymentContractVersion>();
@@ -507,6 +520,25 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.Status).HasColumnName("status");
             entity.Property(value => value.CreatedAt).HasColumnName("created_at");
             entity.Property(value => value.CompletedAt).HasColumnName("completed_at");
+            entity.HasOne<EmploymentRelationship>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+        });
+
+        modelBuilder.Entity<RelationshipOnboardPreference>(entity =>
+        {
+            entity.ToTable("relationship_onboard_preferences", "business");
+            entity.HasKey(value => value.PreferenceId);
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId }).IsUnique();
+            entity.Property(value => value.PreferenceId).HasColumnName("preference_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.PreferredAgentDisplayName).HasColumnName("preferred_agent_display_name").HasMaxLength(80);
+            entity.Property(value => value.ChatAppearance).HasColumnName("chat_appearance").HasMaxLength(24);
+            entity.Property(value => value.TimestampVisibility).HasColumnName("timestamp_visibility").HasMaxLength(16);
+            entity.Property(value => value.ThemePreference).HasColumnName("theme_preference").HasMaxLength(16);
+            entity.Property(value => value.UpdatedAt).HasColumnName("updated_at");
             entity.HasOne<EmploymentRelationship>()
                 .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
