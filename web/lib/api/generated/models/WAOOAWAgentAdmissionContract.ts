@@ -27,6 +27,13 @@ import {
   WAOOAWAgentAdmissionContractSkillManifestInnerToJSON,
   WAOOAWAgentAdmissionContractSkillManifestInnerToJSONTyped,
 } from "./WAOOAWAgentAdmissionContractSkillManifestInner";
+import type { WAOOAWAgentAdmissionContractRuntimeAdapter } from "./WAOOAWAgentAdmissionContractRuntimeAdapter";
+import {
+  WAOOAWAgentAdmissionContractRuntimeAdapterFromJSON,
+  WAOOAWAgentAdmissionContractRuntimeAdapterFromJSONTyped,
+  WAOOAWAgentAdmissionContractRuntimeAdapterToJSON,
+  WAOOAWAgentAdmissionContractRuntimeAdapterToJSONTyped,
+} from "./WAOOAWAgentAdmissionContractRuntimeAdapter";
 import type { WAOOAWAgentAdmissionContractProfessionalIdentity } from "./WAOOAWAgentAdmissionContractProfessionalIdentity";
 import {
   WAOOAWAgentAdmissionContractProfessionalIdentityFromJSON,
@@ -67,6 +74,12 @@ export interface WAOOAWAgentAdmissionContract {
   complianceDeclaration: WAOOAWAgentAdmissionContractComplianceDeclaration;
   /**
    *
+   * @type {WAOOAWAgentAdmissionContractRuntimeAdapter}
+   * @memberof WAOOAWAgentAdmissionContract
+   */
+  runtimeAdapter: WAOOAWAgentAdmissionContractRuntimeAdapter;
+  /**
+   *
    * @type {Array<WAOOAWAgentAdmissionContractSkillManifestInner>}
    * @memberof WAOOAWAgentAdmissionContract
    */
@@ -99,6 +112,8 @@ export function instanceOfWAOOAWAgentAdmissionContract(
     value["complianceDeclaration"] === undefined
   )
     return false;
+  if (!("runtimeAdapter" in value) || value["runtimeAdapter"] === undefined)
+    return false;
   if (!("skillManifest" in value) || value["skillManifest"] === undefined)
     return false;
   return true;
@@ -128,6 +143,9 @@ export function WAOOAWAgentAdmissionContractFromJSONTyped(
       WAOOAWAgentAdmissionContractComplianceDeclarationFromJSON(
         json["complianceDeclaration"],
       ),
+    runtimeAdapter: WAOOAWAgentAdmissionContractRuntimeAdapterFromJSON(
+      json["runtimeAdapter"],
+    ),
     skillManifest: (json["skillManifest"] as Array<any>).map(
       WAOOAWAgentAdmissionContractSkillManifestInnerFromJSON,
     ),
@@ -159,6 +177,9 @@ export function WAOOAWAgentAdmissionContractToJSONTyped(
       WAOOAWAgentAdmissionContractComplianceDeclarationToJSON(
         value["complianceDeclaration"],
       ),
+    runtimeAdapter: WAOOAWAgentAdmissionContractRuntimeAdapterToJSON(
+      value["runtimeAdapter"],
+    ),
     skillManifest: (value["skillManifest"] as Array<any>).map(
       WAOOAWAgentAdmissionContractSkillManifestInnerToJSON,
     ),

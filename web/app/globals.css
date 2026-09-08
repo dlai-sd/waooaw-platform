@@ -296,6 +296,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 .side-navigation nav { display: grid; gap: .35rem; }
 .side-navigation a { min-height: 48px; display: flex; align-items: center; gap: .75rem; padding-inline: .85rem; border-radius: 8px; text-decoration: none; }
 .side-navigation a:hover { background: var(--color-surface-strong); }
+.portal-assurance { min-height: 32px; display: inline-flex; align-items: center; gap: .4rem; padding-inline: .65rem; border: 1px solid color-mix(in srgb, var(--green) 45%, var(--line)); border-radius: 999px; color: var(--green); font-size: .75rem; font-weight: 800; white-space: nowrap; }
 .main-content { min-width: 0; }
 .app-shell-public .main-content, .app-shell-auth .main-content { grid-column: 1 / -1; }
 .public-home { min-height: 0; }
@@ -443,7 +444,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
   .public-section { padding-block: 3.5rem; padding-inline: max(1rem, calc((100% - 1280px) / 2)); }
   .section-heading h2, .trust-journey h2 { font-size: 2rem; }
   .professional-grid, .trust-journey { grid-template-columns: minmax(0, 1fr); }
-  .bottom-navigation { position: fixed; inset-inline: 0; inset-block-end: 0; z-index: 30; height: 72px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-block-start: 1px solid var(--line); background: var(--surface); }
+  .bottom-navigation { position: fixed; inset-inline: 0; inset-block-end: 0; z-index: 30; height: 72px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-block-start: 1px solid var(--line); background: var(--surface); }
   .bottom-navigation-founder { grid-template-columns: minmax(0, 1fr); }
   .bottom-navigation a { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .2rem; padding: .25rem; font-size: .7rem; text-align: center; text-decoration: none; }
   .stop-control { inset-block-end: 80px; }

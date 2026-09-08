@@ -201,6 +201,7 @@ export * from "./WAOOAWAgentAdmissionContractComplianceDeclarationEmergencyStop"
 export * from "./WAOOAWAgentAdmissionContractComplianceDeclarationPlatformAgentContract";
 export * from "./WAOOAWAgentAdmissionContractProfessionalIdentity";
 export * from "./WAOOAWAgentAdmissionContractProfessionalIdentityAgentSpecification";
+export * from "./WAOOAWAgentAdmissionContractRuntimeAdapter";
 export * from "./WAOOAWAgentAdmissionContractSkillManifestInner";
 export * from "./WAOOAWAgentAdmissionContractSkillManifestInnerNonGoalExemption";
 export * from "./WAOOAWAgentAdmissionContractSkillManifestInnerReviewPolicy";

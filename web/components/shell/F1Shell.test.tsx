@@ -36,6 +36,11 @@ describe('F1 shell primitives', () => {
     render(<ProtectedAppShell messages={messages.en} variant="customer"><p>Customer content</p></ProtectedAppShell>);
     expect(screen.getByRole('navigation', { name: messages.en.customerNavigation })).toBeVisible();
     expect(screen.getByRole('navigation', { name: messages.en.customerMobileNavigation })).toBeVisible();
+    expect(screen.getAllByRole('link', { name: 'My Agents' })).toHaveLength(2);
+    expect(screen.getAllByRole('link', { name: 'Marketplace' })).toHaveLength(2);
+    expect(screen.getAllByRole('link', { name: 'Marketplace' })[0]).toHaveAttribute('href', '/marketplace');
+    expect(screen.getAllByRole('link', { name: 'Alerts' })).toHaveLength(2);
+    expect(screen.getAllByRole('link', { name: 'Alerts' })[0]).toHaveAttribute('href', '/alerts');
     expect(screen.getByRole('button', { name: 'No active work to stop' })).toBeDisabled();
   });
 

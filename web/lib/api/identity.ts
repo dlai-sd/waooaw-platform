@@ -5,12 +5,35 @@ import 'server-only';
 
 import { IdentityApi } from '@/lib/api/generated/apis/IdentityApi';
 import type { IdentityProvider } from '@/lib/api/generated/models/IdentityProvider';
+import type { IdentitySession } from '@/lib/api/generated/models/IdentitySession';
 import { Configuration, ResponseError } from '@/lib/api/generated/runtime';
 
 const businessPlatformUrl = process.env.BUSINESS_PLATFORM_URL ?? 'http://localhost:5001';
 
 export function createIdentityApi(accessToken: string): IdentityApi {
   return new IdentityApi(new Configuration({ basePath: businessPlatformUrl, accessToken }));
+}
+
+export type IdentitySessionResult =
+  | { kind: 'ready'; session: IdentitySession }
+  | { kind: 'expired' }
+  | { kind: 'step-up' }
+  | { kind: 'unauthorized' }
+  | { kind: 'unavailable' };
+
+export async function getIdentitySession(accessToken: string): Promise<IdentitySessionResult> {
+  try {
+    const session = await createIdentityApi(accessToken).getIdentitySession({ cache: 'no-store' });
+    return session.expiresAt.getTime() > Date.now()
+      ? { kind: 'ready', session }
+      : { kind: 'expired' };
+  } catch (error) {
+    if (error instanceof ResponseError) {
+      if (error.response.status === 401) return { kind: 'unauthorized' };
+      if (error.response.status === 403) return { kind: 'step-up' };
+    }
+    return { kind: 'unavailable' };
+  }
 }
 
 const unavailableProviders: IdentityProvider[] = [
