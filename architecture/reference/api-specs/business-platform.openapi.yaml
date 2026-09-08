@@ -2,7 +2,7 @@ openapi: "3.1.0"
 
 info:
   title: WAOOAW Business Platform API
-  version: "1.8.0"
+  version: "1.9.0"
   description: |
     External customer-facing API for the WAOOAW Business Platform.
     Manages the employment lifecycle, approval workflows, evidence reading,
@@ -122,6 +122,113 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IdentitySession"
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
+        "503": { $ref: "#/components/responses/IdentityUnavailable" }
+
+  /api/v1/identity/profile:
+    get:
+      tags: [Identity]
+      summary: Get the current customer profile projection for the portal
+      description: |
+        Returns the current identity-owned customer and organization profile projection.
+        Tenant and role are derived only from the authenticated session. No provider
+        subject, token, or private identity topology is exposed.
+      operationId: getCustomerProfile
+      responses:
+        "200":
+          description: Current customer profile projection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerProfileV1"
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
+        "503": { $ref: "#/components/responses/IdentityUnavailable" }
+    put:
+      tags: [Identity]
+      summary: Update customer profile fields allowed within the portal
+      operationId: updateCustomerProfile
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCustomerProfileRequestV1"
+      responses:
+        "200":
+          description: Profile updated or replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerProfileV1"
+        "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
+        "409": { $ref: "#/components/responses/IdentityConflict" }
+        "503": { $ref: "#/components/responses/IdentityUnavailable" }
+
+  /api/v1/identity/settings:
+    get:
+      tags: [Identity]
+      summary: Get customer portal settings
+      description: |
+        Returns locale, theme, timestamp visibility, and channel preferences that are
+        safe to project through Business Platform. Sensitive security operations remain
+        separate step-up governed actions.
+      operationId: getCustomerSettings
+      responses:
+        "200":
+          description: Current customer settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerSettingsV1"
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
+        "503": { $ref: "#/components/responses/IdentityUnavailable" }
+    put:
+      tags: [Identity]
+      summary: Update customer portal settings
+      operationId: updateCustomerSettings
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCustomerSettingsRequestV1"
+      responses:
+        "200":
+          description: Settings updated or replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerSettingsV1"
+        "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
+        "409": { $ref: "#/components/responses/IdentityConflict" }
+        "503": { $ref: "#/components/responses/IdentityUnavailable" }
+
+  /api/v1/identity/login-methods:
+    get:
+      tags: [Identity]
+      summary: List minimised login-method summaries for the authenticated customer
+      description: |
+        Returns provider aliases, usability state, and masked identifiers only.
+        Business Platform never exposes provider subjects, tokens, or another account's existence.
+      operationId: listCustomerLoginMethods
+      responses:
+        "200":
+          description: Customer login methods
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerLoginMethodCollectionV1"
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
         "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
         "503": { $ref: "#/components/responses/IdentityUnavailable" }
@@ -565,6 +672,41 @@ paths:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/OfferableProfessionalVersion" } }
 
+  /api/v1/professionals/marketplace:
+    get:
+      tags: [Professionals]
+      summary: Browse the customer portal marketplace
+      description: |
+        Returns a paginated marketplace projection for published and currently offerable
+        professionals. Suitability, offerability, pricing source, and next action are server-owned.
+        The browser may filter presentation only; it must not invent eligibility or price.
+      operationId: browseMarketplaceProfessionals
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string, minLength: 16, maxLength: 2048 }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: professionalType
+          in: query
+          required: false
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - name: q
+          in: query
+          required: false
+          schema: { type: string, minLength: 1, maxLength: 120 }
+      responses:
+        "200":
+          description: Portal marketplace page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfessionalMarketplacePageV1"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
   /api/v1/professionals/{type}/versions/{version}/admission/drafts:
     post:
       tags: [Professionals]
@@ -747,6 +889,32 @@ paths:
   # ─── Employment ───────────────────────────────────────────────────────────
 
   /api/v1/employment/relationships:
+    get:
+      tags: [Employment]
+      summary: List the authenticated customer's authorized employment relationships
+      description: |
+        Returns a tenant-derived, cursor-paginated relationship summary collection for
+        the My Agents portal surface. The response includes one server-selected resume target
+        and never relies on browser-local recency or cross-relationship aggregation.
+      operationId: listEmploymentRelationships
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string, minLength: 16, maxLength: 2048 }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        "200":
+          description: Authorized relationship summaries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmploymentRelationshipCollectionV1"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
     post:
       tags: [Employment]
       summary: Admit or replay an employment relationship
@@ -1759,6 +1927,24 @@ paths:
                 items:
                   $ref: "#/components/schemas/GstInvoiceSummary"
 
+  /api/v1/billing/summary:
+    get:
+      tags: [Billing]
+      summary: Get the customer portal billing summary
+      description: |
+        Returns BP-mediated WBE billing truth for the authenticated customer portal,
+        including allowance, forecast, assumptions, payment state, invoices, and typed
+        commercial consequence. The browser performs no monetary calculation.
+      operationId: getBillingPortalSummary
+      responses:
+        "200":
+          description: Portal billing summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingPortalSummaryV1"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
   /api/v1/billing/subscription-tiers:
     get:
       tags: [Billing]
@@ -2759,6 +2945,131 @@ paths:
         "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
         "503": { $ref: "#/components/responses/RelationshipWorkspaceUnavailable" }
 
+  /api/v1/employment/relationships/{relationshipId}/workspace/configuration:
+    get:
+      tags: [Configuration]
+      summary: Read the universal relationship configuration state
+      description: |
+        Returns exactly two configuration items: Onboard and Induct. Induct is a
+        customer-facing continuation surface over accepted relationship and conversation truth,
+        not a new lifecycle service state.
+      operationId: getRelationshipConfiguration
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      responses:
+        "200":
+          description: Relationship configuration state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelationshipConfigurationV1"
+        "401": { $ref: "#/components/responses/RelationshipWorkspaceUnauthorized" }
+        "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
+        "409": { $ref: "#/components/responses/RelationshipWorkspaceConflict" }
+        "423": { $ref: "#/components/responses/RelationshipWorkspaceBlocked" }
+        "503": { $ref: "#/components/responses/RelationshipWorkspaceUnavailable" }
+
+  /api/v1/employment/relationships/{relationshipId}/workspace/configuration/onboard:
+    put:
+      tags: [Configuration]
+      summary: Update lightweight Onboard presentation preferences
+      description: |
+        Persists only accepted Onboard preferences for the relationship. Induct progression,
+        employment lifecycle, authority, and conversation truth are not mutated by this operation.
+      operationId: updateRelationshipOnboard
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RelationshipOnboardRequestV1"
+      responses:
+        "200":
+          description: Onboard preferences updated or replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelationshipConfigurationV1"
+        "400": { $ref: "#/components/responses/RelationshipWorkspaceInvalidRequest" }
+        "401": { $ref: "#/components/responses/RelationshipWorkspaceUnauthorized" }
+        "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
+        "409": { $ref: "#/components/responses/RelationshipWorkspaceConflict" }
+        "423": { $ref: "#/components/responses/RelationshipWorkspaceBlocked" }
+        "503": { $ref: "#/components/responses/RelationshipWorkspaceUnavailable" }
+
+  /api/v1/employment/relationships/{relationshipId}/workspace/goals:
+    get:
+      tags: [Relationship Workspace]
+      summary: Read active and historical relationship goals
+      description: |
+        Returns every active goal with its declared skill, measure, review frequency,
+        explicit customer verification, amendment lineage, and history. Goal mutation
+        continues through the existing typed workspace command contract.
+      operationId: getRelationshipGoals
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      responses:
+        "200":
+          description: Relationship goals and history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelationshipGoalsV1"
+        "401": { $ref: "#/components/responses/RelationshipWorkspaceUnauthorized" }
+        "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
+        "409": { $ref: "#/components/responses/RelationshipWorkspaceConflict" }
+        "423": { $ref: "#/components/responses/RelationshipWorkspaceBlocked" }
+        "503": { $ref: "#/components/responses/RelationshipWorkspaceUnavailable" }
+
+  /api/v1/employment/relationships/{relationshipId}/workspace/business-outcomes:
+    get:
+      tags: [Relationship Workspace]
+      summary: Read relationship business outcomes with explicit traceability
+      description: |
+        Returns customer-facing business outcomes traced to skill, goal, measure, review
+        frequency, status, and evidence while separating agent performance from external outcome.
+      operationId: getRelationshipBusinessOutcomes
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      responses:
+        "200":
+          description: Relationship business outcomes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelationshipBusinessOutcomesV1"
+        "401": { $ref: "#/components/responses/RelationshipWorkspaceUnauthorized" }
+        "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
+        "409": { $ref: "#/components/responses/RelationshipWorkspaceConflict" }
+        "423": { $ref: "#/components/responses/RelationshipWorkspaceBlocked" }
+        "503": { $ref: "#/components/responses/RelationshipWorkspaceUnavailable" }
+
+  /api/v1/employment/relationships/{relationshipId}/workspace/operations:
+    get:
+      tags: [Relationship Workspace]
+      summary: Read Operations eligibility and reassessment state
+      description: |
+        Returns whether Operations is locked, eligible, active, paused, or blocked based on
+        server-verified goals and dependent work or outcome reassessment state.
+      operationId: getRelationshipOperations
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      responses:
+        "200":
+          description: Relationship Operations state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelationshipOperationsV1"
+        "401": { $ref: "#/components/responses/RelationshipWorkspaceUnauthorized" }
+        "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
+        "409": { $ref: "#/components/responses/RelationshipWorkspaceConflict" }
+        "423": { $ref: "#/components/responses/RelationshipWorkspaceBlocked" }
+        "503": { $ref: "#/components/responses/RelationshipWorkspaceUnavailable" }
+
   /api/v1/employment/relationships/{relationshipId}/workspace/changes:
     get:
       tags: [Relationship Workspace]
@@ -3268,6 +3579,90 @@ paths:
         "200":
           description: Preferences updated
 
+  /api/v1/notifications/alerts:
+    get:
+      tags: [Notifications]
+      summary: Read the customer portal alerts feed
+      description: |
+        Returns a cursor-paginated cross-relationship alerts feed that preserves server-owned
+        order, type, destination, and read versus acknowledge semantics.
+      operationId: listCustomerAlerts
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string, minLength: 16, maxLength: 2048 }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        "200":
+          description: Customer alerts page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerAlertPageV1"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/notifications/alerts/{alertId}/read:
+    post:
+      tags: [Notifications]
+      summary: Mark an alert as read
+      description: |
+        Marks an alert as read for the authenticated actor. Read is not approval,
+        evidence, or completion.
+      operationId: markCustomerAlertRead
+      parameters:
+        - $ref: "#/components/parameters/CustomerAlertId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerAlertMutationRequestV1"
+      responses:
+        "200":
+          description: Alert marked read or replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerAlertV1"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/notifications/alerts/{alertId}/acknowledge:
+    post:
+      tags: [Notifications]
+      summary: Acknowledge an alert without approving underlying work
+      description: |
+        Records that the authenticated actor acknowledged the alert itself. This does not
+        execute or approve the underlying relationship, billing, or authority action.
+      operationId: acknowledgeCustomerAlert
+      parameters:
+        - $ref: "#/components/parameters/CustomerAlertId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerAlertMutationRequestV1"
+      responses:
+        "200":
+          description: Alert acknowledged or replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerAlertV1"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
 # ─── Components ─────────────────────────────────────────────────────────────
 
 components:
@@ -3359,6 +3754,13 @@ components:
       in: path
       required: true
       schema: { type: string, format: uuid }
+
+    CustomerAlertId:
+      name: alertId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+      description: Opaque customer alert identifier bound to the authenticated tenant and actor
 
     RelationshipWorkspaceAfterCursor:
       name: afterCursor
@@ -5038,6 +5440,445 @@ components:
       type: string
       enum: [IN_APP, EMAIL, WHATSAPP]
 
+    CustomerPortalSchemaVersion:
+      type: string
+      const: "1.0.0"
+
+    CustomerPortalDestinationV1:
+      type: object
+      additionalProperties: false
+      required: [surface]
+      properties:
+        surface:
+          type: string
+          enum: [CONVERSATION, CONFIGURATION, GOALS, RESULTS, WORK, MARKETPLACE, ALERTS, BILLING, PROFILE, SETTINGS]
+        relationshipId:
+          type: string
+          format: uuid
+        subjectId:
+          type: string
+          minLength: 1
+          maxLength: 120
+
+    CustomerProfileV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, displayName, organizationDisplayName, email, emailVerified, mobileVerified, activeRole, updatedAt]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/CustomerPortalSchemaVersion" }
+        displayName: { type: string, minLength: 1, maxLength: 200 }
+        organizationDisplayName: { type: string, minLength: 1, maxLength: 200 }
+        email: { type: string, format: email }
+        emailVerified: { type: boolean }
+        mobileVerified: { type: boolean }
+        activeRole:
+          type: string
+          enum: [OWNER, MANAGER, VIEWER]
+        switchableAccounts:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [accountReference, label]
+            properties:
+              accountReference: { type: string, format: uuid }
+              label: { type: string, minLength: 1, maxLength: 200 }
+        updatedAt: { type: string, format: date-time }
+
+    UpdateCustomerProfileRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, displayName, organizationDisplayName]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/CustomerPortalSchemaVersion" }
+        displayName: { type: string, minLength: 1, maxLength: 200 }
+        organizationDisplayName: { type: string, minLength: 1, maxLength: 200 }
+
+    CustomerSettingsV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, locale, theme, timestampVisibility, notificationPreferences, updatedAt]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/CustomerPortalSchemaVersion" }
+        locale: { type: string, minLength: 2, maxLength: 16 }
+        theme:
+          type: string
+          enum: [SYSTEM, LIGHT, DARK]
+        timestampVisibility:
+          type: string
+          enum: [RELATIVE, ABSOLUTE]
+        notificationPreferences:
+          $ref: "#/components/schemas/NotificationPreferences"
+        availableSecurityActions:
+          type: array
+          items:
+            type: string
+            enum: [STEP_UP, CHANGE_PASSWORDLESS_METHODS, LINK_WHATSAPP, REMOVE_LOGIN_METHOD]
+        updatedAt: { type: string, format: date-time }
+
+    UpdateCustomerSettingsRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, locale, theme, timestampVisibility, notificationPreferences]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/CustomerPortalSchemaVersion" }
+        locale: { type: string, minLength: 2, maxLength: 16 }
+        theme:
+          type: string
+          enum: [SYSTEM, LIGHT, DARK]
+        timestampVisibility:
+          type: string
+          enum: [RELATIVE, ABSOLUTE]
+        notificationPreferences:
+          $ref: "#/components/schemas/NotificationPreferences"
+
+    CustomerLoginMethodV1:
+      type: object
+      additionalProperties: false
+      required: [provider, state]
+      properties:
+        provider:
+          type: string
+          enum: [GOOGLE, FACEBOOK, APPLE, EMAIL]
+        state:
+          type: string
+          enum: [ACTIVE, AVAILABLE_TO_LINK, REQUIRES_STEP_UP, BLOCKED]
+        maskedIdentifier: { type: string, minLength: 1, maxLength: 254 }
+
+    CustomerLoginMethodCollectionV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, items]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/CustomerPortalSchemaVersion" }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/CustomerLoginMethodV1" }
+
+    EmploymentRelationshipAvailabilityStateV1:
+      type: string
+      enum: [AVAILABLE, DEGRADED, PAUSED, STOPPED, UNAVAILABLE]
+
+    EmploymentRelationshipSummaryV1:
+      type: object
+      additionalProperties: false
+      required: [relationshipId, professionalType, professionalDisplayName, lifecycleState, unreadState, availabilityState, currencyState, lastAuthoritativelyConfirmedAt, resumeTarget]
+      properties:
+        relationshipId: { type: string, format: uuid }
+        professionalType: { type: string, minLength: 1, maxLength: 100 }
+        professionalDisplayName: { type: string, minLength: 1, maxLength: 200 }
+        lifecycleState: { $ref: "#/components/schemas/EmploymentRelationshipState" }
+        currentGoalSummary: { type: string, minLength: 1, maxLength: 240 }
+        unreadState:
+          type: string
+          enum: [NONE, UNREAD, ACTION_REQUIRED]
+        availabilityState: { $ref: "#/components/schemas/EmploymentRelationshipAvailabilityStateV1" }
+        currencyState: { $ref: "#/components/schemas/RelationshipWorkspaceCurrencyState" }
+        lastAuthoritativelyConfirmedAt: { type: string, format: date-time }
+        resumeTarget: { $ref: "#/components/schemas/CustomerPortalDestinationV1" }
+
+    EmploymentRelationshipCollectionV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, producedAt, items]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/CustomerPortalSchemaVersion" }
+        producedAt: { type: string, format: date-time }
+        nextCursor: { type: string, minLength: 16, maxLength: 2048 }
+        defaultResumeTarget: { $ref: "#/components/schemas/CustomerPortalDestinationV1" }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/EmploymentRelationshipSummaryV1" }
+
+    RelationshipConfigurationStepStateV1:
+      type: string
+      enum: [NOT_STARTED, IN_PROGRESS, VERIFIED, BLOCKED, UNAVAILABLE]
+
+    RelationshipConfigurationStepV1:
+      type: object
+      additionalProperties: false
+      required: [stepKey, label, state]
+      properties:
+        stepKey:
+          type: string
+          enum: [ONBOARD, INDUCT]
+        label: { type: string, minLength: 1, maxLength: 32 }
+        state: { $ref: "#/components/schemas/RelationshipConfigurationStepStateV1" }
+        summary: { type: string, minLength: 1, maxLength: 500 }
+        confirmedContextVersion: { type: string, minLength: 1, maxLength: 64 }
+        continuationTarget: { $ref: "#/components/schemas/CustomerPortalDestinationV1" }
+
+    RelationshipConfigurationV1:
+      allOf:
+        - $ref: "#/components/schemas/RelationshipWorkspaceSectionV1"
+        - type: object
+          additionalProperties: false
+          required: [lifecyclePhase, items]
+          properties:
+            lifecyclePhase:
+              type: string
+              enum: [ONBOARD, INDUCT, GOAL_VERIFICATION, BUSINESS_OUTCOMES, OPERATIONS]
+            items:
+              type: array
+              minItems: 2
+              maxItems: 2
+              items: { $ref: "#/components/schemas/RelationshipConfigurationStepV1" }
+
+    RelationshipOnboardRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/CustomerPortalSchemaVersion" }
+        preferredAgentDisplayName: { type: string, minLength: 1, maxLength: 80 }
+        chatAppearance:
+          type: string
+          enum: [CONSTITUTIONAL, COMPACT]
+        timestampVisibility:
+          type: string
+          enum: [RELATIVE, ABSOLUTE]
+        themePreference:
+          type: string
+          enum: [SYSTEM, LIGHT, DARK]
+
+    RelationshipGoalVerificationStatusV1:
+      type: string
+      enum: [PENDING_CUSTOMER, VERIFIED, REQUIRES_RENEWAL]
+
+    RelationshipGoalStatusV1:
+      type: string
+      enum: [ACTIVE, SUPERSEDED, RETIRED, BLOCKED]
+
+    RelationshipGoalV1:
+      type: object
+      additionalProperties: false
+      required: [goalId, goalVersion, skillId, skillLabel, measure, frequency, verificationStatus, status]
+      properties:
+        goalId: { type: string, format: uuid }
+        goalVersion: { type: string, minLength: 1, maxLength: 64 }
+        skillId: { type: string, minLength: 1, maxLength: 100 }
+        skillLabel: { type: string, minLength: 1, maxLength: 200 }
+        measure: { type: string, minLength: 1, maxLength: 240 }
+        frequency: { type: string, minLength: 1, maxLength: 64 }
+        baseline: { type: string, minLength: 1, maxLength: 240 }
+        attributionBoundary: { type: string, minLength: 1, maxLength: 240 }
+        verificationStatus: { $ref: "#/components/schemas/RelationshipGoalVerificationStatusV1" }
+        customerVerifiedAt: { type: string, format: date-time }
+        status: { $ref: "#/components/schemas/RelationshipGoalStatusV1" }
+        amendedFromGoalId: { type: string, format: uuid }
+        supersededByGoalId: { type: string, format: uuid }
+        evidenceState: { $ref: "#/components/schemas/RelationshipEvidenceState" }
+
+    RelationshipGoalHistoryEntryV1:
+      allOf:
+        - $ref: "#/components/schemas/RelationshipGoalV1"
+        - type: object
+          additionalProperties: false
+          required: [changedAt, changeReason]
+          properties:
+            changedAt: { type: string, format: date-time }
+            changeReason: { type: string, minLength: 1, maxLength: 240 }
+
+    RelationshipGoalsV1:
+      allOf:
+        - $ref: "#/components/schemas/RelationshipWorkspaceSectionV1"
+        - type: object
+          additionalProperties: false
+          required: [activeGoals, history]
+          properties:
+            activeGoals:
+              type: array
+              items: { $ref: "#/components/schemas/RelationshipGoalV1" }
+            history:
+              type: array
+              items: { $ref: "#/components/schemas/RelationshipGoalHistoryEntryV1" }
+
+    RelationshipOutcomeStatusV1:
+      type: string
+      enum: [ON_TRACK, AT_RISK, OFF_TRACK, PENDING_EVIDENCE, UNKNOWN, UNAVAILABLE]
+
+    OutcomeInterpretationV1:
+      type: object
+      additionalProperties: false
+      required: [status, summary]
+      properties:
+        status: { type: string, minLength: 1, maxLength: 64 }
+        summary: { type: string, minLength: 1, maxLength: 500 }
+
+    RelationshipBusinessOutcomeV1:
+      type: object
+      additionalProperties: false
+      required: [outcomeId, label, skillId, goalId, measure, frequency, status, evidenceState, attributionBasis, agentPerformance, externalOutcome]
+      properties:
+        outcomeId: { type: string, format: uuid }
+        label: { type: string, minLength: 1, maxLength: 240 }
+        skillId: { type: string, minLength: 1, maxLength: 100 }
+        goalId: { type: string, format: uuid }
+        measure: { type: string, minLength: 1, maxLength: 240 }
+        frequency: { type: string, minLength: 1, maxLength: 64 }
+        reviewPeriod: { type: string, minLength: 1, maxLength: 120 }
+        status: { $ref: "#/components/schemas/RelationshipOutcomeStatusV1" }
+        evidenceState: { $ref: "#/components/schemas/RelationshipEvidenceState" }
+        attributionBasis: { type: string, minLength: 1, maxLength: 240 }
+        attributionLimits: { type: string, minLength: 1, maxLength: 500 }
+        uncertainty: { type: string, minLength: 1, maxLength: 240 }
+        agentPerformance: { $ref: "#/components/schemas/OutcomeInterpretationV1" }
+        externalOutcome: { $ref: "#/components/schemas/OutcomeInterpretationV1" }
+
+    RelationshipBusinessOutcomesV1:
+      allOf:
+        - $ref: "#/components/schemas/RelationshipWorkspaceSectionV1"
+        - type: object
+          additionalProperties: false
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/RelationshipBusinessOutcomeV1" }
+
+    RelationshipOperationsEligibilityStateV1:
+      type: string
+      enum: [LOCKED, ELIGIBLE, ACTIVE, PAUSED, BLOCKED, UNAVAILABLE]
+
+    RelationshipOperationsV1:
+      allOf:
+        - $ref: "#/components/schemas/RelationshipWorkspaceSectionV1"
+        - type: object
+          additionalProperties: false
+          required: [eligibilityState, requiredGoalIds, verifiedGoalIds]
+          properties:
+            eligibilityState: { $ref: "#/components/schemas/RelationshipOperationsEligibilityStateV1" }
+            requiredGoalIds:
+              type: array
+              items: { type: string, format: uuid }
+            verifiedGoalIds:
+              type: array
+              items: { type: string, format: uuid }
+            blockedReasons:
+              type: array
+              items: { type: string, minLength: 1, maxLength: 240 }
+            reassessmentRequired: { type: boolean }
+            activeWorkSummary: { type: string, minLength: 1, maxLength: 500 }
+            dependentOutcomeIds:
+              type: array
+              items: { type: string, format: uuid }
+
+    ProfessionalMarketplaceListingV1:
+      type: object
+      additionalProperties: false
+      required: [professionalType, version, displayName, offerabilityState, eligibility, nextAction]
+      properties:
+        professionalType: { type: string, minLength: 1, maxLength: 100 }
+        version: { type: string, minLength: 1, maxLength: 32 }
+        displayName: { type: string, minLength: 1, maxLength: 200 }
+        suitability:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 500 }
+        eligibility: { $ref: "#/components/schemas/ProfessionalEligibility" }
+        indicativePrice: { $ref: "#/components/schemas/IndicativePriceDisclosure" }
+        offerabilityState:
+          type: string
+          enum: [OFFERABLE, TRIAL_ONLY, NOT_OFFERABLE, UNKNOWN]
+        trialTerms: { type: string, minLength: 1, maxLength: 500 }
+        nextAction:
+          type: string
+          enum: [VIEW_DISCLOSURE, START_TRIAL, START_HIRE, NONE]
+
+    ProfessionalMarketplacePageV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, producedAt, items]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/CustomerPortalSchemaVersion" }
+        producedAt: { type: string, format: date-time }
+        nextCursor: { type: string, minLength: 16, maxLength: 2048 }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ProfessionalMarketplaceListingV1" }
+
+    CustomerAlertReadStateV1:
+      type: string
+      enum: [UNREAD, READ, ACKNOWLEDGED]
+
+    CustomerAlertV1:
+      type: object
+      additionalProperties: false
+      required: [alertId, version, alertType, severity, source, occurredAt, readState, destination]
+      properties:
+        alertId: { type: string, format: uuid }
+        version: { type: string, minLength: 1, maxLength: 64 }
+        alertType:
+          type: string
+          enum: [ACTIONABLE, INFORMATIONAL]
+        severity:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+        source:
+          type: string
+          enum: [RELATIONSHIP_ATTENTION, BILLING, RESULT, PROFILE, MARKETPLACE, SYSTEM]
+        relationshipId: { type: string, format: uuid }
+        occurredAt: { type: string, format: date-time }
+        dueMeaning: { type: string, minLength: 1, maxLength: 240 }
+        readState: { $ref: "#/components/schemas/CustomerAlertReadStateV1" }
+        destination: { $ref: "#/components/schemas/CustomerPortalDestinationV1" }
+        availableAction:
+          type: string
+          enum: [OPEN, ACKNOWLEDGE, NONE]
+
+    CustomerAlertPageV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, producedAt, items]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/CustomerPortalSchemaVersion" }
+        producedAt: { type: string, format: date-time }
+        nextCursor: { type: string, minLength: 16, maxLength: 2048 }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/CustomerAlertV1" }
+
+    CustomerAlertMutationRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, expectedAlertVersion]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/CustomerPortalSchemaVersion" }
+        expectedAlertVersion: { type: string, minLength: 1, maxLength: 64 }
+
+    BillingAllowanceSummaryV1:
+      type: object
+      additionalProperties: false
+      required: [label, consumed, remaining]
+      properties:
+        label: { type: string, minLength: 1, maxLength: 120 }
+        consumed: { type: string, minLength: 1, maxLength: 120 }
+        remaining: { type: string, minLength: 1, maxLength: 120 }
+        renewalMeaning: { type: string, minLength: 1, maxLength: 240 }
+
+    BillingPortalSummaryV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, producedAt, currencyState, paymentState, billingPreference, invoiceSummary]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/CustomerPortalSchemaVersion" }
+        producedAt: { type: string, format: date-time }
+        currencyState: { $ref: "#/components/schemas/RelationshipWorkspaceCurrencyState" }
+        paymentState: { type: string, minLength: 1, maxLength: 64 }
+        billingPreference:
+          type: string
+          enum: [SEPARATE, COMBINED]
+        allowanceSummary:
+          type: array
+          items: { $ref: "#/components/schemas/BillingAllowanceSummaryV1" }
+        forecastRange: { type: string, minLength: 1, maxLength: 120 }
+        assumptions:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 240 }
+        commercialConsequence: { type: string, minLength: 1, maxLength: 500 }
+        invoiceSummary:
+          type: array
+          items: { $ref: "#/components/schemas/GstInvoiceSummary" }
+
     LegacyEmploymentRelationshipAdapterResponse:
       type: object
       additionalProperties: false
@@ -6105,7 +6946,7 @@ components:
 
     RelationshipWorkspaceSectionType:
       type: string
-      enum: [PLAN, ATTENTION, WORK, RESULTS, USAGE_BUDGET, RIGHTS_CONTROLS]
+      enum: [PLAN, ATTENTION, WORK, RESULTS, USAGE_BUDGET, RIGHTS_CONTROLS, CONFIGURATION, GOALS, BUSINESS_OUTCOMES, OPERATIONS]
 
     RelationshipWorkspaceCommandAvailability:
       type: string

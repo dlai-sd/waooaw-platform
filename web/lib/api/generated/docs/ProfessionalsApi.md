@@ -6,6 +6,7 @@ All URIs are relative to _http://localhost:5001_
 | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
 | [**activateAgentAdmission**](ProfessionalsApi.md#activateagentadmission)                     | **POST** /api/v1/professionals/{type}/versions/{version}/admission/activations                                         | Activate an approved and currently ready professional version       |
 | [**approveAgentAdmission**](ProfessionalsApi.md#approveagentadmission)                       | **POST** /api/v1/professionals/{type}/versions/{version}/admission/approvals                                           | Independently approve an exact admission revision                   |
+| [**browseMarketplaceProfessionals**](ProfessionalsApi.md#browsemarketplaceprofessionals)     | **GET** /api/v1/professionals/marketplace                                                                              | Browse the customer portal marketplace                              |
 | [**createAgentAdmissionDraft**](ProfessionalsApi.md#createagentadmissiondraftoperation)      | **POST** /api/v1/professionals/{type}/versions/{version}/admission/drafts                                              | Create or replay an admission draft                                 |
 | [**discoverProfessionals**](ProfessionalsApi.md#discoverprofessionals)                       | **GET** /api/v1/professionals                                                                                          | Discover suitable professionals for a business outcome              |
 | [**getAgentAdmissionFindings**](ProfessionalsApi.md#getagentadmissionfindings)               | **GET** /api/v1/professionals/{type}/versions/{version}/admission/drafts/{draftId}/validations/{validationId}/findings | Read safe deterministic admission findings                          |
@@ -180,6 +181,82 @@ example().catch(console.error);
 | **409**     | Idempotency or aggregate state conflict                      | -                |
 | **423**     | Admission transition is blocked by policy or readiness       | -                |
 | **503**     | A mandatory admission dependency is unavailable              | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## browseMarketplaceProfessionals
+
+> ProfessionalMarketplacePageV1 browseMarketplaceProfessionals(cursor, limit, professionalType, q)
+
+Browse the customer portal marketplace
+
+Returns a paginated marketplace projection for published and currently offerable professionals. Suitability, offerability, pricing source, and next action are server-owned. The browser may filter presentation only; it must not invent eligibility or price.
+
+### Example
+
+```ts
+import { Configuration, ProfessionalsApi } from "";
+import type { BrowseMarketplaceProfessionalsRequest } from "";
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new ProfessionalsApi(config);
+
+  const body = {
+    // string (optional)
+    cursor: cursor_example,
+    // number (optional)
+    limit: 56,
+    // string (optional)
+    professionalType: professionalType_example,
+    // string (optional)
+    q: q_example,
+  } satisfies BrowseMarketplaceProfessionalsRequest;
+
+  try {
+    const data = await api.browseMarketplaceProfessionals(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name                 | Type     | Description | Notes                                |
+| -------------------- | -------- | ----------- | ------------------------------------ |
+| **cursor**           | `string` |             | [Optional] [Defaults to `undefined`] |
+| **limit**            | `number` |             | [Optional] [Defaults to `20`]        |
+| **professionalType** | `string` |             | [Optional] [Defaults to `undefined`] |
+| **q**                | `string` |             | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+[**ProfessionalMarketplacePageV1**](ProfessionalMarketplacePageV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                      | Response headers |
+| ----------- | -------------------------------- | ---------------- |
+| **200**     | Portal marketplace page          | -                |
+| **401**     | JWT missing, expired, or invalid | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 

@@ -5,9 +5,12 @@ All URIs are relative to _http://localhost:5001_
 | Method                                                                                                 | HTTP request                                                                                    | Description                                                        |
 | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | [**getRelationshipAttention**](RelationshipWorkspaceApi.md#getrelationshipattention)                   | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/attention                   | Read authoritative needs-your-attention items in BP-owned order    |
+| [**getRelationshipBusinessOutcomes**](RelationshipWorkspaceApi.md#getrelationshipbusinessoutcomes)     | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/business-outcomes           | Read relationship business outcomes with explicit traceability     |
 | [**getRelationshipCommand**](RelationshipWorkspaceApi.md#getrelationshipcommand)                       | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/commands/{commandId}        | Reconcile one command to an authoritative outcome                  |
 | [**getRelationshipEvidence**](RelationshipWorkspaceApi.md#getrelationshipevidence)                     | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/evidence/{evidenceId}       | Read one relationship-authorized evidence detail projection        |
 | [**getRelationshipEvidenceExport**](RelationshipWorkspaceApi.md#getrelationshipevidenceexport)         | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/evidence-exports/{exportId} | Reconcile one relationship evidence export request                 |
+| [**getRelationshipGoals**](RelationshipWorkspaceApi.md#getrelationshipgoals)                           | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/goals                       | Read active and historical relationship goals                      |
+| [**getRelationshipOperations**](RelationshipWorkspaceApi.md#getrelationshipoperations)                 | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/operations                  | Read Operations eligibility and reassessment state                 |
 | [**getRelationshipPlan**](RelationshipWorkspaceApi.md#getrelationshipplan)                             | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/plan                        | Read relationship plan, goals, and available typed commands        |
 | [**getRelationshipResults**](RelationshipWorkspaceApi.md#getrelationshipresults)                       | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/results                     | Read relationship business outcomes and attribution context        |
 | [**getRelationshipRightsControls**](RelationshipWorkspaceApi.md#getrelationshiprightscontrols)         | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/rights-controls             | Read relationship rights, scope, authority, and lifecycle controls |
@@ -89,6 +92,80 @@ example().catch(console.error);
 | **400**     | Workspace request is malformed or unsupported                           | -                |
 | **401**     | Workspace session is missing, invalid, or expired                       | -                |
 | **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant | -                |
+| **503**     | Required owner projection or constitutional dependency is unavailable   | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## getRelationshipBusinessOutcomes
+
+> RelationshipBusinessOutcomesV1 getRelationshipBusinessOutcomes(relationshipId)
+
+Read relationship business outcomes with explicit traceability
+
+Returns customer-facing business outcomes traced to skill, goal, measure, review frequency, status, and evidence while separating agent performance from external outcome.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  RelationshipWorkspaceApi,
+} from '';
+import type { GetRelationshipBusinessOutcomesRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new RelationshipWorkspaceApi(config);
+
+  const body = {
+    // string | Tenant-scoped durable employment relationship UUID
+    relationshipId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetRelationshipBusinessOutcomesRequest;
+
+  try {
+    const data = await api.getRelationshipBusinessOutcomes(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name               | Type     | Description                                        | Notes                     |
+| ------------------ | -------- | -------------------------------------------------- | ------------------------- |
+| **relationshipId** | `string` | Tenant-scoped durable employment relationship UUID | [Defaults to `undefined`] |
+
+### Return type
+
+[**RelationshipBusinessOutcomesV1**](RelationshipBusinessOutcomesV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                             | Response headers |
+| ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **200**     | Relationship business outcomes                                          | -                |
+| **401**     | Workspace session is missing, invalid, or expired                       | -                |
+| **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant | -                |
+| **409**     | Idempotency or expected-version conflict requires reconciliation        | -                |
+| **423**     | Command is blocked by policy, assurance, authority, or owner dependency | -                |
 | **503**     | Required owner projection or constitutional dependency is unavailable   | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
@@ -315,6 +392,154 @@ example().catch(console.error);
 | **400**     | Workspace request is malformed or unsupported                           | -                |
 | **401**     | Workspace session is missing, invalid, or expired                       | -                |
 | **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant | -                |
+| **503**     | Required owner projection or constitutional dependency is unavailable   | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## getRelationshipGoals
+
+> RelationshipGoalsV1 getRelationshipGoals(relationshipId)
+
+Read active and historical relationship goals
+
+Returns every active goal with its declared skill, measure, review frequency, explicit customer verification, amendment lineage, and history. Goal mutation continues through the existing typed workspace command contract.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  RelationshipWorkspaceApi,
+} from '';
+import type { GetRelationshipGoalsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new RelationshipWorkspaceApi(config);
+
+  const body = {
+    // string | Tenant-scoped durable employment relationship UUID
+    relationshipId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetRelationshipGoalsRequest;
+
+  try {
+    const data = await api.getRelationshipGoals(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name               | Type     | Description                                        | Notes                     |
+| ------------------ | -------- | -------------------------------------------------- | ------------------------- |
+| **relationshipId** | `string` | Tenant-scoped durable employment relationship UUID | [Defaults to `undefined`] |
+
+### Return type
+
+[**RelationshipGoalsV1**](RelationshipGoalsV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                             | Response headers |
+| ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **200**     | Relationship goals and history                                          | -                |
+| **401**     | Workspace session is missing, invalid, or expired                       | -                |
+| **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant | -                |
+| **409**     | Idempotency or expected-version conflict requires reconciliation        | -                |
+| **423**     | Command is blocked by policy, assurance, authority, or owner dependency | -                |
+| **503**     | Required owner projection or constitutional dependency is unavailable   | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## getRelationshipOperations
+
+> RelationshipOperationsV1 getRelationshipOperations(relationshipId)
+
+Read Operations eligibility and reassessment state
+
+Returns whether Operations is locked, eligible, active, paused, or blocked based on server-verified goals and dependent work or outcome reassessment state.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  RelationshipWorkspaceApi,
+} from '';
+import type { GetRelationshipOperationsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new RelationshipWorkspaceApi(config);
+
+  const body = {
+    // string | Tenant-scoped durable employment relationship UUID
+    relationshipId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetRelationshipOperationsRequest;
+
+  try {
+    const data = await api.getRelationshipOperations(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name               | Type     | Description                                        | Notes                     |
+| ------------------ | -------- | -------------------------------------------------- | ------------------------- |
+| **relationshipId** | `string` | Tenant-scoped durable employment relationship UUID | [Defaults to `undefined`] |
+
+### Return type
+
+[**RelationshipOperationsV1**](RelationshipOperationsV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                             | Response headers |
+| ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **200**     | Relationship Operations state                                           | -                |
+| **401**     | Workspace session is missing, invalid, or expired                       | -                |
+| **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant | -                |
+| **409**     | Idempotency or expected-version conflict requires reconciliation        | -                |
+| **423**     | Command is blocked by policy, assurance, authority, or owner dependency | -                |
 | **503**     | Required owner projection or constitutional dependency is unavailable   | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

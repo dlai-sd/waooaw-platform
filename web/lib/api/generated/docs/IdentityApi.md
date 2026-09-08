@@ -2,23 +2,28 @@
 
 All URIs are relative to _http://localhost:5001_
 
-| Method                                                                                    | HTTP request                                                                          | Description                                                        |
-| ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| [**approveIdentityAccountLink**](IdentityApi.md#approveidentityaccountlink)               | **POST** /api/v1/identity/account-links/{linkId}/approve                              | Explicitly approve a WhatsApp-to-web account link                  |
-| [**completeIdentityRegistration**](IdentityApi.md#completeidentityregistration)           | **POST** /api/v1/identity/registrations/{registrationId}/complete                     | Complete registration by minting or reusing one account            |
-| [**confirmAccountMobileVerification**](IdentityApi.md#confirmaccountmobileverification)   | **POST** /api/v1/identity/mobile-verifications/confirm                                | Confirm progressive mobile verification                            |
-| [**confirmIdentityEmailVerification**](IdentityApi.md#confirmidentityemailverification)   | **POST** /api/v1/identity/registrations/{registrationId}/email-verifications/confirm  | Confirm mandatory email verification                               |
-| [**confirmIdentityMobileVerification**](IdentityApi.md#confirmidentitymobileverification) | **POST** /api/v1/identity/registrations/{registrationId}/mobile-verifications/confirm | Confirm optional mobile verification during registration           |
-| [**getIdentityAccountLink**](IdentityApi.md#getidentityaccountlink)                       | **GET** /api/v1/identity/account-links/{linkId}                                       | Get caller-bound account-link status                               |
-| [**getIdentityRegistration**](IdentityApi.md#getidentityregistration)                     | **GET** /api/v1/identity/registrations/{registrationId}                               | Get the caller-bound registration state                            |
-| [**getIdentitySession**](IdentityApi.md#getidentitysession)                               | **GET** /api/v1/identity/session                                                      | Get the current customer identity session projection               |
-| [**listIdentityProviders**](IdentityApi.md#listidentityproviders)                         | **GET** /api/v1/identity/providers                                                    | List customer authentication choices for this environment          |
-| [**startAccountMobileVerification**](IdentityApi.md#startaccountmobileverification)       | **POST** /api/v1/identity/mobile-verifications                                        | Start or replay progressive mobile verification                    |
-| [**startIdentityAccountLink**](IdentityApi.md#startidentityaccountlinkoperation)          | **POST** /api/v1/identity/account-links                                               | Start or replay a WhatsApp-to-web account link                     |
-| [**startIdentityEmailVerification**](IdentityApi.md#startidentityemailverification)       | **POST** /api/v1/identity/registrations/{registrationId}/email-verifications          | Start or replay mandatory email verification                       |
-| [**startIdentityMobileVerification**](IdentityApi.md#startidentitymobileverification)     | **POST** /api/v1/identity/registrations/{registrationId}/mobile-verifications         | Optionally start or replay mobile verification during registration |
-| [**startIdentityRegistration**](IdentityApi.md#startidentityregistrationoperation)        | **POST** /api/v1/identity/registrations                                               | Start or replay a customer registration                            |
-| [**updateIdentityRegistrationProfile**](IdentityApi.md#updateidentityregistrationprofile) | **PUT** /api/v1/identity/registrations/{registrationId}/profile                       | Set the minimum registration profile                               |
+| Method                                                                                    | HTTP request                                                                          | Description                                                          |
+| ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| [**approveIdentityAccountLink**](IdentityApi.md#approveidentityaccountlink)               | **POST** /api/v1/identity/account-links/{linkId}/approve                              | Explicitly approve a WhatsApp-to-web account link                    |
+| [**completeIdentityRegistration**](IdentityApi.md#completeidentityregistration)           | **POST** /api/v1/identity/registrations/{registrationId}/complete                     | Complete registration by minting or reusing one account              |
+| [**confirmAccountMobileVerification**](IdentityApi.md#confirmaccountmobileverification)   | **POST** /api/v1/identity/mobile-verifications/confirm                                | Confirm progressive mobile verification                              |
+| [**confirmIdentityEmailVerification**](IdentityApi.md#confirmidentityemailverification)   | **POST** /api/v1/identity/registrations/{registrationId}/email-verifications/confirm  | Confirm mandatory email verification                                 |
+| [**confirmIdentityMobileVerification**](IdentityApi.md#confirmidentitymobileverification) | **POST** /api/v1/identity/registrations/{registrationId}/mobile-verifications/confirm | Confirm optional mobile verification during registration             |
+| [**getCustomerProfile**](IdentityApi.md#getcustomerprofile)                               | **GET** /api/v1/identity/profile                                                      | Get the current customer profile projection for the portal           |
+| [**getCustomerSettings**](IdentityApi.md#getcustomersettings)                             | **GET** /api/v1/identity/settings                                                     | Get customer portal settings                                         |
+| [**getIdentityAccountLink**](IdentityApi.md#getidentityaccountlink)                       | **GET** /api/v1/identity/account-links/{linkId}                                       | Get caller-bound account-link status                                 |
+| [**getIdentityRegistration**](IdentityApi.md#getidentityregistration)                     | **GET** /api/v1/identity/registrations/{registrationId}                               | Get the caller-bound registration state                              |
+| [**getIdentitySession**](IdentityApi.md#getidentitysession)                               | **GET** /api/v1/identity/session                                                      | Get the current customer identity session projection                 |
+| [**listCustomerLoginMethods**](IdentityApi.md#listcustomerloginmethods)                   | **GET** /api/v1/identity/login-methods                                                | List minimised login-method summaries for the authenticated customer |
+| [**listIdentityProviders**](IdentityApi.md#listidentityproviders)                         | **GET** /api/v1/identity/providers                                                    | List customer authentication choices for this environment            |
+| [**startAccountMobileVerification**](IdentityApi.md#startaccountmobileverification)       | **POST** /api/v1/identity/mobile-verifications                                        | Start or replay progressive mobile verification                      |
+| [**startIdentityAccountLink**](IdentityApi.md#startidentityaccountlinkoperation)          | **POST** /api/v1/identity/account-links                                               | Start or replay a WhatsApp-to-web account link                       |
+| [**startIdentityEmailVerification**](IdentityApi.md#startidentityemailverification)       | **POST** /api/v1/identity/registrations/{registrationId}/email-verifications          | Start or replay mandatory email verification                         |
+| [**startIdentityMobileVerification**](IdentityApi.md#startidentitymobileverification)     | **POST** /api/v1/identity/registrations/{registrationId}/mobile-verifications         | Optionally start or replay mobile verification during registration   |
+| [**startIdentityRegistration**](IdentityApi.md#startidentityregistrationoperation)        | **POST** /api/v1/identity/registrations                                               | Start or replay a customer registration                              |
+| [**updateCustomerProfile**](IdentityApi.md#updatecustomerprofile)                         | **PUT** /api/v1/identity/profile                                                      | Update customer profile fields allowed within the portal             |
+| [**updateCustomerSettings**](IdentityApi.md#updatecustomersettings)                       | **PUT** /api/v1/identity/settings                                                     | Update customer portal settings                                      |
+| [**updateIdentityRegistrationProfile**](IdentityApi.md#updateidentityregistrationprofile) | **PUT** /api/v1/identity/registrations/{registrationId}/profile                       | Set the minimum registration profile                                 |
 
 ## approveIdentityAccountLink
 
@@ -407,6 +412,130 @@ example().catch(console.error);
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
+## getCustomerProfile
+
+> CustomerProfileV1 getCustomerProfile()
+
+Get the current customer profile projection for the portal
+
+Returns the current identity-owned customer and organization profile projection. Tenant and role are derived only from the authenticated session. No provider subject, token, or private identity topology is exposed.
+
+### Example
+
+```ts
+import { Configuration, IdentityApi } from "";
+import type { GetCustomerProfileRequest } from "";
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new IdentityApi(config);
+
+  try {
+    const data = await api.getCustomerProfile();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**CustomerProfileV1**](CustomerProfileV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                                 | Response headers |
+| ----------- | --------------------------------------------------------------------------- | ---------------- |
+| **200**     | Current customer profile projection                                         | -                |
+| **401**     | Identity session is missing, invalid, or expired                            | -                |
+| **403**     | Fresh or stronger Keycloak assurance is required before the command can run | -                |
+| **503**     | Identity dependency is unavailable and the outcome remains unresolved       | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## getCustomerSettings
+
+> CustomerSettingsV1 getCustomerSettings()
+
+Get customer portal settings
+
+Returns locale, theme, timestamp visibility, and channel preferences that are safe to project through Business Platform. Sensitive security operations remain separate step-up governed actions.
+
+### Example
+
+```ts
+import { Configuration, IdentityApi } from "";
+import type { GetCustomerSettingsRequest } from "";
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new IdentityApi(config);
+
+  try {
+    const data = await api.getCustomerSettings();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**CustomerSettingsV1**](CustomerSettingsV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                                 | Response headers |
+| ----------- | --------------------------------------------------------------------------- | ---------------- |
+| **200**     | Current customer settings                                                   | -                |
+| **401**     | Identity session is missing, invalid, or expired                            | -                |
+| **403**     | Fresh or stronger Keycloak assurance is required before the command can run | -                |
+| **503**     | Identity dependency is unavailable and the outcome remains unresolved       | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
 ## getIdentityAccountLink
 
 > IdentityAccountLink getIdentityAccountLink(linkId)
@@ -603,6 +732,68 @@ This endpoint does not need any parameter.
 | Status code | Description                                                                 | Response headers |
 | ----------- | --------------------------------------------------------------------------- | ---------------- |
 | **200**     | Current privacy-safe customer session projection                            | -                |
+| **401**     | Identity session is missing, invalid, or expired                            | -                |
+| **403**     | Fresh or stronger Keycloak assurance is required before the command can run | -                |
+| **503**     | Identity dependency is unavailable and the outcome remains unresolved       | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## listCustomerLoginMethods
+
+> CustomerLoginMethodCollectionV1 listCustomerLoginMethods()
+
+List minimised login-method summaries for the authenticated customer
+
+Returns provider aliases, usability state, and masked identifiers only. Business Platform never exposes provider subjects, tokens, or another account\&#39;s existence.
+
+### Example
+
+```ts
+import { Configuration, IdentityApi } from "";
+import type { ListCustomerLoginMethodsRequest } from "";
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new IdentityApi(config);
+
+  try {
+    const data = await api.listCustomerLoginMethods();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**CustomerLoginMethodCollectionV1**](CustomerLoginMethodCollectionV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                                 | Response headers |
+| ----------- | --------------------------------------------------------------------------- | ---------------- |
+| **200**     | Customer login methods                                                      | -                |
 | **401**     | Identity session is missing, invalid, or expired                            | -                |
 | **403**     | Fresh or stronger Keycloak assurance is required before the command can run | -                |
 | **503**     | Identity dependency is unavailable and the outcome remains unresolved       | -                |
@@ -1057,6 +1248,156 @@ example().catch(console.error);
 | **409**     | Idempotency conflict or duplicate resolution requires a safe recovery path  | -                     |
 | **429**     | Identity operation is rate limited without disclosing account existence     | \* Retry-After - <br> |
 | **503**     | Identity dependency is unavailable and the outcome remains unresolved       | -                     |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## updateCustomerProfile
+
+> CustomerProfileV1 updateCustomerProfile(idempotencyKey, updateCustomerProfileRequestV1)
+
+Update customer profile fields allowed within the portal
+
+### Example
+
+```ts
+import {
+  Configuration,
+  IdentityApi,
+} from '';
+import type { UpdateCustomerProfileRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new IdentityApi(config);
+
+  const body = {
+    // string | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts.
+    idempotencyKey: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // UpdateCustomerProfileRequestV1
+    updateCustomerProfileRequestV1: ...,
+  } satisfies UpdateCustomerProfileRequest;
+
+  try {
+    const data = await api.updateCustomerProfile(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name                               | Type                                                                | Description                                                                              | Notes                     |
+| ---------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------- |
+| **idempotencyKey**                 | `string`                                                            | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts. | [Defaults to `undefined`] |
+| **updateCustomerProfileRequestV1** | [UpdateCustomerProfileRequestV1](UpdateCustomerProfileRequestV1.md) |                                                                                          |                           |
+
+### Return type
+
+[**CustomerProfileV1**](CustomerProfileV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                                 | Response headers |
+| ----------- | --------------------------------------------------------------------------- | ---------------- |
+| **200**     | Profile updated or replayed                                                 | -                |
+| **400**     | Identity request is malformed or unsupported; no submitted secret is echoed | -                |
+| **401**     | Identity session is missing, invalid, or expired                            | -                |
+| **403**     | Fresh or stronger Keycloak assurance is required before the command can run | -                |
+| **409**     | Idempotency conflict or duplicate resolution requires a safe recovery path  | -                |
+| **503**     | Identity dependency is unavailable and the outcome remains unresolved       | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## updateCustomerSettings
+
+> CustomerSettingsV1 updateCustomerSettings(idempotencyKey, updateCustomerSettingsRequestV1)
+
+Update customer portal settings
+
+### Example
+
+```ts
+import {
+  Configuration,
+  IdentityApi,
+} from '';
+import type { UpdateCustomerSettingsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new IdentityApi(config);
+
+  const body = {
+    // string | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts.
+    idempotencyKey: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // UpdateCustomerSettingsRequestV1
+    updateCustomerSettingsRequestV1: ...,
+  } satisfies UpdateCustomerSettingsRequest;
+
+  try {
+    const data = await api.updateCustomerSettings(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name                                | Type                                                                  | Description                                                                              | Notes                     |
+| ----------------------------------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------- |
+| **idempotencyKey**                  | `string`                                                              | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts. | [Defaults to `undefined`] |
+| **updateCustomerSettingsRequestV1** | [UpdateCustomerSettingsRequestV1](UpdateCustomerSettingsRequestV1.md) |                                                                                          |                           |
+
+### Return type
+
+[**CustomerSettingsV1**](CustomerSettingsV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                                 | Response headers |
+| ----------- | --------------------------------------------------------------------------- | ---------------- |
+| **200**     | Settings updated or replayed                                                | -                |
+| **400**     | Identity request is malformed or unsupported; no submitted secret is echoed | -                |
+| **401**     | Identity session is missing, invalid, or expired                            | -                |
+| **403**     | Fresh or stronger Keycloak assurance is required before the command can run | -                |
+| **409**     | Idempotency conflict or duplicate resolution requires a safe recovery path  | -                |
+| **503**     | Identity dependency is unavailable and the outcome remains unresolved       | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
