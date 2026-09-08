@@ -38,7 +38,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Current application foundation | DONE - PRs #373, #376, #381 and #386 added identity, public acquisition, admission and runtime adapter foundations after cloud qualification |
 | Demo/runtime readiness repairs | MERGED - PRs #389 through #398 repaired cleanup provenance, cloud authority, dependency recovery, service startup, Temporal readiness and deployment verification |
 | WC-078 public visual experience | ENGINEERING QUALIFIED - WC-01 through WC-08 complete; WC-09 Docker build/tests/browser matrix/54 captures/scanners and author review PASS; Founder visual acceptance, PR approval and merge pending |
-| WC-084 Customer Portal | IMPLEMENTED, QUALIFICATION IN PROGRESS - generated-client-backed My Agents, Marketplace, Alerts, Profile, Settings, account drawer, Onboard/Induct and lifecycle views are complete; Docker TypeScript, 193 Jest tests and WC084 browser matrix 18/18 applicable checks pass; final build and repository qualification remain |
+| WC-084 Customer Portal | ENGINEERING QUALIFIED - generated-client-backed My Agents, Marketplace, Alerts, Profile, Settings, account drawer, Onboard/Induct and lifecycle views complete; Docker build/typecheck, 209 Jest tests, 96.33% changed-interaction line coverage, 40 focused BP tests and 238 Playwright tests pass; Founder visual acceptance, PR approval and merge remain |
 | Production | PLAN ONLY - code-prepared; protected environments, authorized plan, traffic and final acceptance remain Founder-reserved |
 
 ### Checkpoint Context
