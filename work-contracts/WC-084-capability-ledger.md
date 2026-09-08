@@ -1,8 +1,8 @@
 # WC-084 Capability Discovery And Reuse Ledger
 
-**Implements:** `work-contracts/WC-084-auth-readiness-and-customer-portal-plan.md` Section 9.4  
-**Executor:** Platform IT Expert (INST-010)  
-**Baseline:** PR #406 merge `ee84c11fdcde1b7a2d8afe062c64b1fc52dee76e`  
+**Implements:** `work-contracts/WC-084-auth-readiness-and-customer-portal-plan.md` Section 9.4
+**Executor:** Platform IT Expert (INST-010)
+**Baseline:** PR #406 merge `ee84c11fdcde1b7a2d8afe062c64b1fc52dee76e`
 **Closure update:** INST-005 consolidated owner-contract closure, 2026-09-08
 **Authority boundary:** This ledger now records the accepted WC-084 Customer Portal solution closure. It does not authorize runnable implementation, provider activation, deployment, or Founder visual acceptance.
 

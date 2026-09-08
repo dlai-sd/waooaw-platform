@@ -1,9 +1,9 @@
 # WC-084 Customer Portal Solution Contract
 
-**Office:** INST-005 Chief Solution Architect  
-**Work Contract:** WC-084  
-**Status:** COMPLETE - canonical solution/API closure only  
-**Canonical API:** `architecture/reference/api-specs/business-platform.openapi.yaml`  
+**Office:** INST-005 Chief Solution Architect
+**Work Contract:** WC-084
+**Status:** COMPLETE - canonical solution/API closure only
+**Canonical API:** `architecture/reference/api-specs/business-platform.openapi.yaml`
 **Normative parents:** `work-contracts/WC-084-auth-readiness-and-customer-portal-plan.md`, `architecture/reference/components/identity-boundary.md`, `architecture/reference/product/agent-employment-experience-contract.md`, `architecture/reference/product/f4-relationship-workspace-release-contract.md`, `architecture/reference/components/relationship-workspace-solution-contract.md`, `architecture/reference/components/relationship-workspace-bp-owner-contract.md`, `architecture/reference/billing/relationship-workspace-wbe-owner-contract.md`, `architecture/reference/data/relationship-workspace-data-contract.md`, `architecture/reference/security/relationship-workspace-security-contract.md`, `architecture/reference/components/conversation-core.md`, `architecture/reference/components/wc062-voice-solution-contract.md`
 
 ## 1. Decision Summary
