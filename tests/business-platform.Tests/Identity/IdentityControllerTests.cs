@@ -348,6 +348,113 @@ public sealed class IdentitySessionProjectionTests
     }
 }
 
+public sealed class CustomerPortalIdentityTests
+{
+    private static async Task<IdentityController> CompletedControllerAsync(
+        InMemoryIdentityDbContextFactory factory,
+        string subject = "portal-owner",
+        string? tenantId = null,
+        string[]? roles = null)
+    {
+        var controller = IdentityTestHelpers.CreateController(factory, subject,
+            tenantId ?? Guid.NewGuid().ToString(), "google", email: "owner@example.com",
+            emailVerified: true, customerRoles: roles ?? ["OWNER"]);
+        var created = Assert.IsType<ObjectResult>(await controller.StartRegistrationAsync(
+            new StartRegistrationRequest("en"), CancellationToken.None));
+        var registrationId = JsonSerializer.SerializeToElement(created.Value).GetProperty("RegistrationId").GetGuid();
+        IdentityTestHelpers.RefreshIdempotencyKey(controller);
+        await controller.UpdateProfileAsync(registrationId,
+            new UpdateRegistrationProfileRequest("Original", "Original Org", "Retail", "en"), CancellationToken.None);
+        IdentityTestHelpers.RefreshIdempotencyKey(controller);
+        await controller.CompleteRegistrationAsync(registrationId, CancellationToken.None);
+        IdentityTestHelpers.RefreshIdempotencyKey(controller);
+        return controller;
+    }
+
+    [Fact]
+    public async Task Profile_UpdatePersistsAndSameKeyDifferentBodyConflicts()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var controller = await CompletedControllerAsync(factory);
+        var request = new UpdateCustomerProfileRequest("1.0.0", "Ada", "Analytical Engines");
+
+        var updated = Assert.IsType<OkObjectResult>(
+            await controller.UpdateCustomerProfileAsync(request, CancellationToken.None));
+        Assert.Equal("Ada", JsonSerializer.SerializeToElement(updated.Value).GetProperty("DisplayName").GetString());
+
+        var replay = await controller.UpdateCustomerProfileAsync(request, CancellationToken.None);
+        Assert.IsType<OkObjectResult>(replay);
+        var conflict = Assert.IsType<ObjectResult>(await controller.UpdateCustomerProfileAsync(
+            request with { DisplayName = "Grace" }, CancellationToken.None));
+        Assert.Equal(409, conflict.StatusCode);
+    }
+
+    [Fact]
+    public async Task Profile_IsTenantBoundAndViewerCannotMutate()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var tenantA = Guid.NewGuid().ToString();
+        var controller = await CompletedControllerAsync(factory, tenantId: tenantA);
+        await controller.UpdateCustomerProfileAsync(
+            new UpdateCustomerProfileRequest("1.0.0", "Tenant A", "Org A"), CancellationToken.None);
+
+        var tenantB = IdentityTestHelpers.CreateController(factory, "portal-owner", Guid.NewGuid().ToString(),
+            "google", email: "owner@example.com", emailVerified: true, customerRoles: ["OWNER"]);
+        var other = Assert.IsType<OkObjectResult>(await tenantB.GetCustomerProfileAsync(CancellationToken.None));
+        Assert.Equal("Original", JsonSerializer.SerializeToElement(other.Value).GetProperty("DisplayName").GetString());
+
+        var viewer = IdentityTestHelpers.CreateController(factory, "portal-owner", tenantA,
+            "google", email: "owner@example.com", emailVerified: true, customerRoles: ["VIEWER"]);
+        var denied = Assert.IsType<ObjectResult>(await viewer.UpdateCustomerProfileAsync(
+            new UpdateCustomerProfileRequest("1.0.0", "No", "No"), CancellationToken.None));
+        Assert.Equal(403, denied.StatusCode);
+    }
+
+    [Fact]
+    public async Task Settings_UpdateRoundTripsValidatedPreferences()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var controller = await CompletedControllerAsync(factory);
+        var request = new UpdateCustomerSettingsRequest("1.0.0", "fr-FR", "DARK", "ABSOLUTE",
+            new NotificationPreferencesRequest(["IN_APP", "EMAIL"], ["EMAIL"], ["IN_APP"], ["WHATSAPP"]));
+
+        var result = Assert.IsType<OkObjectResult>(
+            await controller.UpdateCustomerSettingsAsync(request, CancellationToken.None));
+        var json = JsonSerializer.SerializeToElement(result.Value);
+        Assert.Equal("fr-FR", json.GetProperty("Locale").GetString());
+        Assert.Equal("DARK", json.GetProperty("Theme").GetString());
+
+        var read = Assert.IsType<OkObjectResult>(await controller.GetCustomerSettingsAsync(CancellationToken.None));
+        Assert.Equal("ABSOLUTE", JsonSerializer.SerializeToElement(read.Value).GetProperty("TimestampVisibility").GetString());
+    }
+
+    [Fact]
+    public async Task LoginMethods_ExposeOnlyAliasesStateAndMaskedIdentifier()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var controller = await CompletedControllerAsync(factory);
+
+        var result = Assert.IsType<OkObjectResult>(controller.ListCustomerLoginMethods());
+        var json = JsonSerializer.SerializeToElement(result.Value);
+        var google = json.GetProperty("Items").EnumerateArray().Single(item => item.GetProperty("Provider").GetString() == "GOOGLE");
+        Assert.Equal("ACTIVE", google.GetProperty("State").GetString());
+        Assert.Equal("o***@example.com", google.GetProperty("MaskedIdentifier").GetString());
+        Assert.DoesNotContain("subject", json.ToString(), StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("token", json.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Profile_ReportsHighestAuthorityRole()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var controller = await CompletedControllerAsync(factory, roles: ["VIEWER", "OWNER", "MANAGER"]);
+
+        var result = Assert.IsType<OkObjectResult>(await controller.GetCustomerProfileAsync(CancellationToken.None));
+
+        Assert.Equal("OWNER", JsonSerializer.SerializeToElement(result.Value).GetProperty("ActiveRole").GetString());
+    }
+}
+
 // ── Registration Tests ────────────────────────────────────────────────────────
 
 public sealed class IdentityRegistrationTests

@@ -121,12 +121,30 @@ public sealed class IdentityIdempotencyEntry
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class CustomerPortalPreferenceRecord
+{
+    public Guid PreferenceId { get; init; } = Guid.NewGuid();
+    public string ActorSubject { get; init; } = string.Empty;
+    public Guid TenantId { get; init; }
+    public string? DisplayName { get; set; }
+    public string? OrganizationDisplayName { get; set; }
+    public string Locale { get; set; } = "en";
+    public string Theme { get; set; } = "SYSTEM";
+    public string TimestampVisibility { get; set; } = "RELATIVE";
+    public string ApprovalRequestChannels { get; set; } = "[\"IN_APP\"]";
+    public string MaturityReportChannels { get; set; } = "[\"IN_APP\"]";
+    public string MonthlyNarrativeChannels { get; set; } = "[\"IN_APP\"]";
+    public string SelfGovernanceAlertChannels { get; set; } = "[\"IN_APP\"]";
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class IdentityDbContext : DbContext
 {
     public DbSet<IdentityRegistrationRecord> Registrations => Set<IdentityRegistrationRecord>();
     public DbSet<IdentityVerificationChallengeRecord> VerificationChallenges => Set<IdentityVerificationChallengeRecord>();
     public DbSet<IdentityAccountLinkRecord> AccountLinks => Set<IdentityAccountLinkRecord>();
     public DbSet<IdentityIdempotencyEntry> IdempotencyLedger => Set<IdentityIdempotencyEntry>();
+    public DbSet<CustomerPortalPreferenceRecord> CustomerPortalPreferences => Set<CustomerPortalPreferenceRecord>();
 
     public IdentityDbContext(DbContextOptions<IdentityDbContext> options) : base(options) { }
 
@@ -208,6 +226,26 @@ public sealed class IdentityDbContext : DbContext
             e.Property(i => i.ExpiresAt).HasColumnName("expires_at");
             e.Property(i => i.CreatedAt).HasColumnName("created_at");
             e.HasIndex(i => new { i.ActorSubject, i.IdempotencyKey, i.OperationFamily }).IsUnique();
+        });
+
+        modelBuilder.Entity<CustomerPortalPreferenceRecord>(e =>
+        {
+            e.ToTable("customer_portal_preferences");
+            e.HasKey(p => p.PreferenceId);
+            e.Property(p => p.PreferenceId).HasColumnName("preference_id");
+            e.Property(p => p.ActorSubject).HasColumnName("actor_subject").HasMaxLength(256);
+            e.Property(p => p.TenantId).HasColumnName("tenant_id");
+            e.Property(p => p.DisplayName).HasColumnName("display_name").HasMaxLength(200);
+            e.Property(p => p.OrganizationDisplayName).HasColumnName("organization_display_name").HasMaxLength(200);
+            e.Property(p => p.Locale).HasColumnName("locale").HasMaxLength(16);
+            e.Property(p => p.Theme).HasColumnName("theme").HasMaxLength(16);
+            e.Property(p => p.TimestampVisibility).HasColumnName("timestamp_visibility").HasMaxLength(16);
+            e.Property(p => p.ApprovalRequestChannels).HasColumnName("approval_request_channels").HasColumnType("jsonb");
+            e.Property(p => p.MaturityReportChannels).HasColumnName("maturity_report_channels").HasColumnType("jsonb");
+            e.Property(p => p.MonthlyNarrativeChannels).HasColumnName("monthly_narrative_channels").HasColumnType("jsonb");
+            e.Property(p => p.SelfGovernanceAlertChannels).HasColumnName("self_governance_alert_channels").HasColumnType("jsonb");
+            e.Property(p => p.UpdatedAt).HasColumnName("updated_at");
+            e.HasIndex(p => new { p.ActorSubject, p.TenantId }).IsUnique();
         });
     }
 }
