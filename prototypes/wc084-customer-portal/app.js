@@ -6,17 +6,20 @@ const drawerScrim = document.querySelector('#drawer-scrim');
 const drawerPanel = document.querySelector('#drawer-panel');
 const detailDialog = document.querySelector('#detail-dialog');
 const toast = document.querySelector('#toast');
-const agentList = document.querySelector('.agent-list');
+const globalNavigation = document.querySelector('#global-navigation');
+const agentsOverview = document.querySelector('#agents-overview');
+const agentWorkspace = document.querySelector('#agent-workspace');
 const contextPanel = document.querySelector('#context-panel');
 const myAgentsView = document.querySelector('#my-agents');
 const messageInput = document.querySelector('#message-input');
 const voiceReview = document.querySelector('#voice-review');
+const chatContext = document.querySelector('#chat-context');
 let toastTimer;
 let voiceTimer;
 let voiceSeconds = 0;
 
 const viewMeta = {
-  'my-agents': ['My Agents', '2 professional relationships'],
+  'my-agents': ['Customer Portal', 'Shivneri Farms'],
   marketplace: ['Marketplace', 'Browse published professionals'],
   alerts: ['Alerts', '3 items · 1 decision required'],
 };
@@ -39,7 +42,10 @@ function setView(viewName) {
   const [title, subtitle] = viewMeta[viewName];
   document.querySelector('#header-title').textContent = title;
   document.querySelector('#header-subtitle').textContent = subtitle;
-  if (viewName === 'my-agents' && window.matchMedia('(max-width: 820px)').matches) agentList.classList.remove('is-hidden-mobile');
+  if (viewName === 'my-agents') {
+    agentsOverview.hidden = false;
+    agentWorkspace.hidden = true;
+  }
 }
 
 function openDrawer(viewName) {
@@ -79,7 +85,7 @@ function setTheme() {
 }
 
 function syncContextPanel() {
-  const overlay = window.matchMedia('(max-width: 1120px)').matches;
+  const overlay = window.matchMedia('(max-width: 1240px)').matches;
   if (overlay) {
     contextPanel.classList.remove('is-dismissed');
     contextPanel.classList.remove('is-open');
@@ -89,15 +95,58 @@ function syncContextPanel() {
 }
 
 function selectAgent(agentName) {
-  document.querySelectorAll('[data-agent]').forEach((row) => row.classList.toggle('is-selected', row.dataset.agent === agentName));
-  const maya = agentName === 'maya';
-  document.querySelector('#agent-name').textContent = maya ? 'Maya' : 'Asha';
-  document.querySelector('#agent-status').textContent = maya ? 'Available · Digital Marketing Professional' : 'Available · Agricultural Advisor';
-  document.querySelector('#active-avatar').textContent = maya ? 'M' : 'A';
-  document.querySelector('#active-avatar').className = `agent-avatar ${maya ? 'marketing' : 'agriculture'}`;
-  messageInput.placeholder = `Message ${maya ? 'Maya' : 'Asha'}`;
-  document.querySelector('.conversation').setAttribute('aria-label', `Conversation with ${maya ? 'Maya' : 'Asha'}`);
-  agentList.classList.add('is-hidden-mobile');
+  const profiles = {
+    asha: { name: 'Asha', status: 'Employed · In operation', theme: 'agriculture', configuration: 'Complete · 2 of 2', induction: ['Shivneri Farms context tuned through conversation', 'Verified'], goal: 'Verified · 3 goals', skills: ['3 skills available for goal setting', '3'], goals: ['Precise targets linked to each skill', '3'], verification: ['Weekly cadence confirmed by customer', 'Verified'], outcomes: '2 outcomes · On track', outcomeItems: [['Crop readiness', 'Linked to seasonal planning · Weekly', 'On track'], ['Input efficiency', 'Linked to resource guidance · Monthly', 'Measuring']], operation: 'Available · Goals verified', opening: 'Good morning, Suresh. Rain is expected late Thursday. I moved the cotton spray recommendation to Wednesday morning.', action: 'Prepare field before Thursday rain', customer: "Will the change affect this week's budget?", response: 'No. It changes timing only. Your approved weekly allowance remains the same.', context: 'Goal Setting / Goals and measures' },
+    maya: { name: 'Maya', status: 'Trial · Pending goal setting', theme: 'marketing', configuration: 'Induction underway · 1 of 2', induction: ['Learning your audience, offer and growth priorities', 'In progress'], goal: 'Setting goals · 1 of 3', skills: ['4 skills declared for goal setting', '4'], goals: ['One campaign goal drafted for review', '1 draft'], verification: ['Measures and cadence need confirmation', 'Pending'], outcomes: 'Available after goals', outcomeItems: [['Audience growth', 'Available after goal verification', 'Locked'], ['Campaign efficiency', 'Available after goal verification', 'Locked']], operation: 'Locked · Verify goals first', opening: 'I understand you want to grow direct enquiries for Shivneri Farms. I will ask three short questions so we can set a measurable first goal.', action: 'Confirm the primary customer audience', customer: 'Can we focus first on wholesale buyers near Pune?', response: 'Yes. I will tune the proposed goal, measure and weekly review around qualified wholesale enquiries.', context: 'Goal Setting / Goals and measures' },
+    tara: { name: 'Tara', status: 'Trial expired · Not in operation', theme: 'trading', configuration: 'Incomplete · 1 of 2', induction: ['Business induction was not completed', 'Incomplete'], goal: 'Not verified', skills: ['3 skills were declared during trial', '3'], goals: ['No goals were customer-verified', '0'], verification: ['No active frequency or verification', 'Not set'], outcomes: 'No active outcomes', outcomeItems: [['Research discipline', 'No verified goal was linked', 'Inactive'], ['Risk awareness', 'No verified measure was linked', 'Inactive']], operation: 'Relationship ended', opening: 'This trial relationship has ended. Previous conversation remains available for review.', action: 'Review the expired trial relationship', customer: 'Can I still see the research topics we discussed?', response: 'Yes. This workspace is read-only, and no new work or consequential action can be started.', context: 'Goal Setting / Goals and measures' }
+  };
+  const profile = profiles[agentName] || profiles.asha;
+  const { name, status, theme } = profile;
+  const tara = agentName === 'tara';
+  document.querySelector('#agent-name').textContent = name;
+  document.querySelector('#agent-status').textContent = status;
+  document.querySelector('#active-avatar').textContent = name.charAt(0);
+  document.querySelector('#active-avatar').className = `agent-avatar ${theme}`;
+  messageInput.placeholder = `Message ${name}`;
+  messageInput.disabled = tara;
+  document.querySelector('#voice-button').disabled = tara;
+  document.querySelector('.send-button').disabled = tara;
+  document.querySelector('.conversation').setAttribute('aria-label', `Conversation with ${name}`);
+  document.querySelector('#configuration-summary').textContent = profile.configuration;
+  document.querySelector('#induct-detail').textContent = profile.induction[0];
+  document.querySelector('#induct-state').textContent = profile.induction[1];
+  document.querySelector('#goal-summary').textContent = profile.goal;
+  [['skills', profile.skills], ['goals', profile.goals], ['verification', profile.verification]].forEach(([id, content]) => {
+    document.querySelector(`#${id}-detail`).textContent = content[0];
+    document.querySelector(`#${id}-state`).textContent = content[1];
+  });
+  document.querySelector('#outcomes-summary').textContent = profile.outcomes;
+  profile.outcomeItems.forEach((outcome, index) => {
+    const id = index === 0 ? 'one' : 'two';
+    document.querySelector(`#outcome-${id}-title`).textContent = outcome[0];
+    document.querySelector(`#outcome-${id}-detail`).textContent = outcome[1];
+    document.querySelector(`#outcome-${id}-state`).textContent = outcome[2];
+  });
+  document.querySelector('#operation-summary').textContent = profile.operation;
+  document.querySelector('#agent-opening-message').textContent = profile.opening;
+  document.querySelector('#agent-action-title').textContent = profile.action;
+  document.querySelector('.work-card').setAttribute('aria-label', `Action required: ${profile.action}`);
+  document.querySelector('#customer-message').textContent = profile.customer;
+  document.querySelector('#agent-response-message').textContent = profile.response;
+  chatContext.textContent = `Discussing: ${profile.context}`;
+  const operationGroup = document.querySelector('#operation-group');
+  const goalsVerified = agentName === 'asha';
+  operationGroup.classList.toggle('is-locked', !goalsVerified);
+  operationGroup.querySelectorAll('.accordion-items button').forEach((button) => { button.disabled = !goalsVerified; });
+  const outcomesGroup = document.querySelector('#outcomes-group');
+  outcomesGroup.classList.toggle('is-locked', !goalsVerified);
+  outcomesGroup.querySelectorAll('.accordion-items button').forEach((button) => { button.disabled = !goalsVerified; });
+  agentsOverview.hidden = true;
+  agentWorkspace.hidden = false;
+  document.querySelector('#header-title').textContent = name;
+  document.querySelector('#header-subtitle').textContent = status;
+  if (tara) showToast('This trial has expired. The workspace is read-only.');
+  syncContextPanel();
 }
 
 function formatVoiceTime() {
@@ -115,14 +164,24 @@ function stopVoice(cancelled = false) {
 }
 
 viewCommands.forEach((command) => command.addEventListener('click', () => setView(command.dataset.view)));
+document.querySelector('#rail-toggle').addEventListener('click', () => {
+  const collapsed = globalNavigation.classList.toggle('is-collapsed');
+  document.querySelector('#rail-toggle').setAttribute('aria-expanded', String(!collapsed));
+  document.querySelector('#rail-toggle').setAttribute('aria-label', collapsed ? 'Expand navigation' : 'Collapse navigation');
+});
 document.querySelector('#menu-button').addEventListener('click', () => openDrawer());
 document.querySelector('#desktop-account-button').addEventListener('click', () => openDrawer());
 document.querySelector('#close-drawer').addEventListener('click', closeDrawer);
 drawerScrim.addEventListener('click', closeDrawer);
 document.querySelector('#theme-button').addEventListener('click', setTheme);
 document.querySelectorAll('[data-drawer-view]').forEach((button) => button.addEventListener('click', () => openDrawer(button.dataset.drawerView)));
-document.querySelectorAll('[data-agent]').forEach((button) => button.addEventListener('click', () => selectAgent(button.dataset.agent)));
-document.querySelector('#agent-list-button').addEventListener('click', () => agentList.classList.remove('is-hidden-mobile'));
+document.querySelectorAll('[data-open-agent]').forEach((button) => button.addEventListener('click', () => selectAgent(button.dataset.openAgent)));
+document.querySelector('#agent-list-button').addEventListener('click', () => {
+  agentWorkspace.hidden = true;
+  agentsOverview.hidden = false;
+  document.querySelector('#header-title').textContent = 'Customer Portal';
+  document.querySelector('#header-subtitle').textContent = 'Shivneri Farms';
+});
 document.querySelector('#context-button').addEventListener('click', () => {
   contextPanel.classList.remove('is-dismissed');
   myAgentsView.classList.remove('context-collapsed');
@@ -131,12 +190,37 @@ document.querySelector('#context-button').addEventListener('click', () => {
 });
 document.querySelector('#close-context').addEventListener('click', () => {
   contextPanel.classList.remove('is-open');
-  if (!window.matchMedia('(max-width: 1120px)').matches) {
+  if (!window.matchMedia('(max-width: 1240px)').matches) {
     contextPanel.classList.add('is-dismissed');
     myAgentsView.classList.add('context-collapsed');
   }
   document.querySelector('#context-button').setAttribute('aria-expanded', 'false');
 });
+document.querySelectorAll('.accordion-trigger').forEach((trigger) => trigger.addEventListener('click', () => {
+  const group = trigger.closest('.accordion-group');
+  const opening = !group.classList.contains('is-open');
+  document.querySelectorAll('.accordion-group').forEach((item) => {
+    item.classList.remove('is-open');
+    item.querySelector('.accordion-trigger').setAttribute('aria-expanded', 'false');
+    item.querySelector('.accordion-trigger > span:last-child').textContent = '⌄';
+    item.querySelector('.accordion-items').hidden = true;
+  });
+  if (opening) {
+    group.classList.add('is-open');
+    trigger.setAttribute('aria-expanded', 'true');
+    trigger.querySelector('span:last-child').textContent = '⌃';
+    group.querySelector('.accordion-items').hidden = false;
+  }
+}));
+document.querySelectorAll('[data-chat-context]').forEach((button) => button.addEventListener('click', () => {
+  document.querySelectorAll('[data-chat-context]').forEach((item) => item.classList.toggle('is-selected', item === button));
+  chatContext.textContent = `Discussing: ${button.dataset.chatContext}`;
+}));
+document.querySelectorAll('[data-context-target]').forEach((button) => button.addEventListener('click', () => {
+  const target = document.querySelector(`[data-context-id="${button.dataset.contextTarget}"]`);
+  target?.click();
+  contextPanel.classList.add('is-open');
+}));
 
 document.querySelector('#composer').addEventListener('submit', (event) => {
   event.preventDefault();

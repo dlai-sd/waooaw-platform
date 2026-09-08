@@ -22,20 +22,21 @@
         <img src="../../web/public/waooaw-platform-logo.png" alt="WAOOAW">
       </a>
       <div class="relationship-title">
-        <strong id="header-title">My Agents</strong>
-        <span id="header-subtitle">2 professional relationships</span>
+        <strong id="header-title">Customer Portal</strong>
+        <span id="header-subtitle">Shivneri Farms</span>
       </div>
       <div class="header-actions">
         <button class="icon-button" id="theme-button" type="button" aria-label="Switch to dark theme" title="Change theme">
           <span id="theme-icon" aria-hidden="true">☾</span>
         </button>
         <button class="stop-button" type="button" data-demo="Emergency Stop is visual only in this prototype">
-          <span aria-hidden="true">■</span><span>Emergency Stop</span>
+          <span class="stop-symbol" aria-hidden="true">■</span><span>Emergency Stop</span>
         </button>
       </div>
     </header>
 
-    <aside class="global-navigation" aria-label="Customer portal">
+    <aside class="global-navigation is-collapsed" id="global-navigation" aria-label="Customer portal">
+      <button class="rail-toggle" id="rail-toggle" type="button" aria-label="Expand navigation" aria-expanded="false"><span aria-hidden="true">›</span></button>
       <nav>
         <button class="nav-command is-active" type="button" data-view="my-agents" aria-current="page">
           <span class="nav-icon" aria-hidden="true">◉</span><span>My Agents</span><small>2</small>
@@ -56,49 +57,58 @@
 
     <main class="workspace" id="main-content">
       <section class="view is-active" id="my-agents" data-view-panel="my-agents" aria-labelledby="my-agents-title">
-        <h1 class="visually-hidden" id="my-agents-title">My Agents</h1>
-        <aside class="agent-list" aria-label="Your agents">
-          <div class="pane-heading">
-            <div><p class="eyebrow">Your team</p><h2>My Agents</h2></div>
-            <button class="small-icon-button" type="button" data-view="marketplace" aria-label="Find an agent" title="Find an agent">+</button>
+        <section class="agents-overview" id="agents-overview">
+          <header class="overview-heading">
+            <div><p class="eyebrow">Professional relationships</p><h1 id="my-agents-title">My Agents</h1><p>Continue work, complete setup, or review previous relationships.</p></div>
+            <button class="secondary-button" type="button" data-view="marketplace">Explore Marketplace</button>
+          </header>
+          <div class="agent-summary-grid">
+            <button class="agent-summary-card" type="button" data-open-agent="asha">
+              <span class="agent-card-heading"><span class="agent-avatar agriculture" aria-hidden="true">A</span><span><strong>Asha</strong><small>Agricultural Advisor</small></span><span class="lifecycle-badge employed">Employed</span></span>
+              <span class="agent-operation"><strong>In operation</strong><small>Crop plan ready for review · 2 unread</small></span>
+              <span class="setup-progress"><span><small>Configuration</small><strong>2 of 2</strong></span><progress value="2" max="2">2 of 2</progress></span>
+              <span class="setup-progress"><span><small>Goal setting</small><strong>4 of 5</strong></span><progress value="4" max="5">4 of 5</progress></span>
+              <span class="card-open">Open workspace <span aria-hidden="true">→</span></span>
+            </button>
+            <button class="agent-summary-card" type="button" data-open-agent="maya">
+              <span class="agent-card-heading"><span class="agent-avatar marketing" aria-hidden="true">M</span><span><strong>Maya</strong><small>Digital Marketing Professional</small></span><span class="lifecycle-badge trial">Trial</span></span>
+              <span class="agent-operation pending"><strong>Pending goal setting</strong><small>Trial day 3 of 7</small></span>
+              <span class="setup-progress"><span><small>Configuration</small><strong>1 of 2</strong></span><progress value="1" max="2">1 of 2</progress></span>
+              <span class="setup-progress"><span><small>Goal setting</small><strong>1 of 4</strong></span><progress value="1" max="4">1 of 4</progress></span>
+              <span class="card-open">Continue setup <span aria-hidden="true">→</span></span>
+            </button>
+            <button class="agent-summary-card historical" type="button" data-open-agent="tara">
+              <span class="agent-card-heading"><span class="agent-avatar trading" aria-hidden="true">T</span><span><strong>Tara</strong><small>Trading Advisory Professional</small></span><span class="lifecycle-badge expired">Trial expired</span></span>
+              <span class="agent-operation"><strong>Not in operation</strong><small>Trial ended 28 August 2026</small></span>
+              <span class="setup-progress"><span><small>Configuration</small><strong>1 of 2</strong></span><progress value="1" max="2">1 of 2</progress></span>
+              <span class="setup-progress"><span><small>Goal setting</small><strong>Not started</strong></span><progress value="0" max="4">0 of 4</progress></span>
+              <span class="card-open">Review relationship <span aria-hidden="true">→</span></span>
+            </button>
           </div>
-          <button class="agent-row is-selected" type="button" data-agent="asha">
-            <span class="agent-avatar agriculture" aria-hidden="true">A</span>
-            <span class="agent-row-copy"><strong>Asha</strong><span>Agricultural Advisor</span><small>Crop plan ready for review</small></span>
-            <span class="unread-badge">2</span>
-          </button>
-          <button class="agent-row" type="button" data-agent="maya">
-            <span class="agent-avatar marketing" aria-hidden="true">M</span>
-            <span class="agent-row-copy"><strong>Maya</strong><span>Digital Marketing Professional</span><small>Campaign is on schedule</small></span>
-            <span class="presence-dot" aria-label="Available"></span>
-          </button>
-          <div class="agent-list-footer">
-            <p>Each professional has a separate scope, plan, budget, and activity record.</p>
-            <button class="text-button" type="button" data-view="marketplace">Explore Marketplace <span aria-hidden="true">→</span></button>
-          </div>
-        </aside>
+        </section>
 
+        <section class="agent-workspace" id="agent-workspace" hidden>
         <article class="conversation" aria-label="Conversation with Asha">
           <header class="conversation-header">
-            <button class="back-button" type="button" id="agent-list-button" aria-label="Show agent list"><span aria-hidden="true">‹</span></button>
+            <button class="back-button" type="button" id="agent-list-button" aria-label="Back to My Agents"><span aria-hidden="true">‹</span></button>
             <span class="agent-avatar agriculture" id="active-avatar" aria-hidden="true">A</span>
-            <div><h2 id="agent-name">Asha</h2><p><span class="presence-dot"></span> <span id="agent-status">Available · Agricultural Advisor</span></p></div>
-            <button class="context-button" id="context-button" type="button" aria-controls="context-panel" aria-expanded="true">Plan</button>
+            <div><h2 id="agent-name">Asha</h2><p><span class="presence-dot"></span> <span id="agent-status">Employed · In operation</span></p></div>
+            <button class="context-button" id="context-button" type="button" aria-controls="context-panel" aria-expanded="true">Context</button>
           </header>
 
           <div class="channel-divider"><span>Continued from WhatsApp · today, 9:12 AM</span></div>
           <div class="message-stream" id="message-stream" aria-live="polite">
             <div class="message message-agent">
-              <p>Good morning, Suresh. Rain is expected late Thursday. I moved the cotton spray recommendation to Wednesday morning.</p>
+              <p id="agent-opening-message">Good morning, Suresh. Rain is expected late Thursday. I moved the cotton spray recommendation to Wednesday morning.</p>
               <span>9:14 AM · Recorded in your plan</span>
             </div>
-            <section class="work-card" aria-label="Plan update">
-              <div class="work-card-heading"><span class="work-icon" aria-hidden="true">✓</span><div><small>PLAN UPDATE</small><h3>Prepare field before Thursday rain</h3></div></div>
+            <section class="work-card action-callout" aria-label="Action required: Prepare field before Thursday rain">
+              <div class="work-card-heading"><span class="work-icon" aria-hidden="true">!</span><div><small>Action required</small><h3 id="agent-action-title">Prepare field before Thursday rain</h3></div></div>
               <dl><div><dt>Owner</dt><dd>You</dd></div><div><dt>Due</dt><dd>Wed, 7:00 AM</dd></div><div><dt>Status</dt><dd>Needs review</dd></div></dl>
-              <button type="button" data-demo="Plan details would open in the context panel">Review plan</button>
+              <button class="quiet-command" type="button" data-context-target="goal-plan">View in context <span aria-hidden="true">→</span></button>
             </section>
-            <div class="message message-customer"><p>Will the change affect this week's budget?</p><span>9:18 AM · Accepted</span></div>
-            <div class="message message-agent"><p>No. It changes timing only. Your approved weekly allowance remains the same.</p><span>9:19 AM · Evidence pending</span></div>
+            <div class="message message-customer"><p id="customer-message">Will the change affect this week's budget?</p><span>9:18 AM · Accepted</span></div>
+            <div class="message message-agent"><p id="agent-response-message">No. It changes timing only. Your approved weekly allowance remains the same.</p><span>9:19 AM · Evidence pending</span></div>
           </div>
 
           <form class="composer" id="composer">
@@ -108,20 +118,46 @@
               <button class="text-button danger-text" id="cancel-voice" type="button">Cancel</button>
             </div>
             <label class="visually-hidden" for="message-input">Message Asha</label>
+            <div class="chat-context" id="chat-context">Discussing: Goal Setting / Monsoon crop plan</div>
             <textarea id="message-input" rows="1" placeholder="Message Asha"></textarea>
-            <button class="composer-icon" id="voice-button" type="button" aria-label="Record voice note" title="Record voice note">●</button>
+            <button class="composer-icon" id="voice-button" type="button" aria-label="Record voice note" title="Record voice note"><span aria-hidden="true">🎙</span></button>
             <button class="send-button" type="submit" aria-label="Send message"><span aria-hidden="true">↑</span></button>
             <small>Messages may propose work. Consequential actions still require your explicit approval.</small>
           </form>
         </article>
 
-        <aside class="context-panel" id="context-panel" aria-label="Current plan">
-          <div class="context-heading"><div><p class="eyebrow">Current focus</p><h2>Monsoon crop plan</h2></div><button class="small-icon-button" id="close-context" type="button" aria-label="Close plan">×</button></div>
-          <div class="progress-block"><div><span>Season progress</span><strong>4 of 7 steps</strong></div><progress value="4" max="7">4 of 7</progress></div>
-          <section class="context-section"><h3>Next work</h3><ul class="task-list"><li class="is-done"><span>✓</span><div><strong>Review soil report</strong><small>Completed yesterday</small></div></li><li><span>2</span><div><strong>Prepare north field</strong><small>Due Wednesday</small></div></li><li><span>3</span><div><strong>Confirm spray window</strong><small>Waiting for forecast</small></div></li></ul></section>
-          <section class="context-section"><h3>Usage & budget</h3><div class="budget-row"><span>This period</span><strong>62% used</strong></div><progress value="62" max="100">62%</progress><p>Within your approved allowance. Forecast last updated 12 minutes ago.</p></section>
-          <button class="secondary-button full-width" type="button" data-demo="The complete plan route is not live in this prototype">Open complete plan</button>
+        <aside class="context-panel" id="context-panel" aria-label="Agent context">
+          <div class="context-heading"><div><p class="eyebrow">Chat context</p><h2>Agent workspace</h2></div><button class="small-icon-button" id="close-context" type="button" aria-label="Close context">×</button></div>
+          <div class="context-accordion">
+            <section class="accordion-group">
+              <button class="accordion-trigger" type="button" aria-expanded="false"><span><strong>Configuration</strong><small id="configuration-summary">Complete · 2 of 2</small></span><span aria-hidden="true">⌄</span></button>
+              <div class="accordion-items" hidden>
+                <button type="button" data-chat-context="Configuration / Onboard"><span><strong>Onboard</strong><small>Name, chat appearance and timestamps</small></span><span class="item-state" id="onboard-state">Done</span></button>
+                <button type="button" data-chat-context="Configuration / Induct"><span><strong>Induct</strong><small id="induct-detail">Shivneri Farms context tuned through conversation</small></span><span class="item-state" id="induct-state">Verified</span></button>
+              </div>
+            </section>
+            <section class="accordion-group is-open">
+              <button class="accordion-trigger" type="button" aria-expanded="true"><span><strong>Goal Setting</strong><small id="goal-summary">Verified · 3 goals</small></span><span aria-hidden="true">⌃</span></button>
+              <div class="accordion-items">
+                <button type="button" data-chat-context="Goal Setting / Declared skills"><span><strong>Declared skills</strong><small id="skills-detail">3 skills available for goal setting</small></span><span class="item-state" id="skills-state">3</span></button>
+                <button class="is-selected" type="button" data-context-id="goal-plan" data-chat-context="Goal Setting / Goals and measures"><span><strong>Goals and measures</strong><small id="goals-detail">Precise targets linked to each skill</small></span><span class="item-state" id="goals-state">3</span></button>
+                <button type="button" data-chat-context="Goal Setting / Frequency and verification"><span><strong>Frequency and verification</strong><small id="verification-detail">Weekly cadence confirmed by customer</small></span><span class="item-state" id="verification-state">Verified</span></button>
+              </div>
+            </section>
+            <section class="accordion-group" id="outcomes-group">
+              <button class="accordion-trigger" type="button" aria-expanded="false"><span><strong>Business Outcomes</strong><small id="outcomes-summary">2 outcomes · On track</small></span><span aria-hidden="true">⌄</span></button>
+              <div class="accordion-items" hidden>
+                <button type="button" data-chat-context="Business Outcomes / Primary outcome"><span><strong id="outcome-one-title">Crop readiness</strong><small id="outcome-one-detail">Linked to seasonal planning · Weekly</small></span><span class="item-state outcome-state" id="outcome-one-state">On track</span></button>
+                <button type="button" data-chat-context="Business Outcomes / Secondary outcome"><span><strong id="outcome-two-title">Input efficiency</strong><small id="outcome-two-detail">Linked to resource guidance · Monthly</small></span><span class="item-state outcome-state" id="outcome-two-state">Measuring</span></button>
+              </div>
+            </section>
+            <section class="accordion-group" id="operation-group">
+              <button class="accordion-trigger" type="button" aria-expanded="false"><span><strong>Operations</strong><small id="operation-summary">Available · Goals verified</small></span><span aria-hidden="true">⌄</span></button>
+              <div class="accordion-items" hidden><button type="button" data-chat-context="Operations / Current work"><span><strong>Current work</strong><small>Work underway against verified goals</small></span></button><button type="button" data-chat-context="Operations / Pending decisions"><span><strong>Pending decisions</strong><small>Items waiting for customer confirmation</small></span></button><button type="button" data-chat-context="Operations / Results"><span><strong>Results and evidence</strong><small>Performance against measures</small></span></button><button type="button" data-chat-context="Operations / Usage and controls"><span><strong>Usage and controls</strong><small>Allowance, schedule and authority</small></span></button></div>
+            </section>
+          </div>
         </aside>
+        </section>
       </section>
 
       <section class="view catalogue-view" id="marketplace" data-view-panel="marketplace" aria-labelledby="marketplace-title" hidden>
