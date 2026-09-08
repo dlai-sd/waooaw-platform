@@ -1,4 +1,5 @@
 apis/BillingApi.ts
+apis/ConfigurationApi.ts
 apis/ConversationApi.ts
 apis/EmploymentApi.ts
 apis/IdentityApi.ts
@@ -30,6 +31,7 @@ docs/CancelPlanPayloadV1.md
 docs/CancelVoiceContributionRequestV1.md
 docs/ChangeBudgetCeilingPayloadV1.md
 docs/ChangePacingPayloadV1.md
+docs/ConfigurationApi.md
 docs/ConfirmBaselinePayloadV1.md
 docs/ConfirmIdentityVerificationRequest.md
 docs/ConfirmScopeBoundaryPayloadV1.md
@@ -60,6 +62,8 @@ docs/ConversationStreamEventV1Data.md
 docs/ConversationSubmissionV1.md
 docs/ConversationTextBlockV1.md
 docs/ConversationTimelinePageV1.md
+docs/ConversationalConfigRequest.md
+docs/ConversationalConfigResponse.md
 docs/CreateAgentAdmissionDraftRequest.md
 docs/CreateSubscriptionRequest.md
 docs/CreateVoiceContributionSessionRequestV1.md
@@ -165,6 +169,9 @@ docs/RelationshipCommandOutcomeStepV1.md
 docs/RelationshipCommandOutcomeV1.md
 docs/RelationshipCommandReceiptV1.md
 docs/RelationshipCommandStatus.md
+docs/RelationshipConfigurationStepStateV1.md
+docs/RelationshipConfigurationStepV1.md
+docs/RelationshipConfigurationV1.md
 docs/RelationshipContextV1.md
 docs/RelationshipContractJourney.md
 docs/RelationshipEvidenceDetailV1.md
@@ -183,6 +190,7 @@ docs/RelationshipHandoff.md
 docs/RelationshipHandoffStatus.md
 docs/RelationshipHostedOnboardingOrder.md
 docs/RelationshipOfferabilityDecision.md
+docs/RelationshipOnboardRequestV1.md
 docs/RelationshipOperationsEligibilityStateV1.md
 docs/RelationshipOperationsV1.md
 docs/RelationshipOutcomeStatusV1.md
@@ -317,6 +325,8 @@ models/ConversationStreamEventV1Data.ts
 models/ConversationSubmissionV1.ts
 models/ConversationTextBlockV1.ts
 models/ConversationTimelinePageV1.ts
+models/ConversationalConfigRequest.ts
+models/ConversationalConfigResponse.ts
 models/CreateAgentAdmissionDraftRequest.ts
 models/CreateSubscriptionRequest.ts
 models/CreateVoiceContributionSessionRequestV1.ts
@@ -418,6 +428,9 @@ models/RelationshipCommandOutcomeStepV1.ts
 models/RelationshipCommandOutcomeV1.ts
 models/RelationshipCommandReceiptV1.ts
 models/RelationshipCommandStatus.ts
+models/RelationshipConfigurationStepStateV1.ts
+models/RelationshipConfigurationStepV1.ts
+models/RelationshipConfigurationV1.ts
 models/RelationshipContextV1.ts
 models/RelationshipContractJourney.ts
 models/RelationshipEvidenceDetailV1.ts
@@ -436,6 +449,7 @@ models/RelationshipHandoff.ts
 models/RelationshipHandoffStatus.ts
 models/RelationshipHostedOnboardingOrder.ts
 models/RelationshipOfferabilityDecision.ts
+models/RelationshipOnboardRequestV1.ts
 models/RelationshipOperationsEligibilityStateV1.ts
 models/RelationshipOperationsV1.ts
 models/RelationshipOutcomeStatusV1.ts

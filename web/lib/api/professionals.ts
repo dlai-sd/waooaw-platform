@@ -1,3 +1,7 @@
+import { ProfessionalsApi } from '@/lib/api/generated/apis/ProfessionalsApi';
+import type { ProfessionalMarketplacePageV1 } from '@/lib/api/generated/models/ProfessionalMarketplacePageV1';
+import { Configuration } from '@/lib/api/generated/runtime';
+
 export interface ProfessionalDiscoveryResult {
   professionalType: string;
   projectionVersion: string;
@@ -17,6 +21,17 @@ export interface ProfessionalDisclosure extends ProfessionalDiscoveryResult {
 }
 
 const businessPlatformUrl = process.env.BUSINESS_PLATFORM_URL ?? 'http://localhost:5001';
+
+export async function browseMarketplaceProfessionals(
+  accessToken: string,
+  filters: { cursor?: string; professionalType?: string; q?: string } = {},
+): Promise<ProfessionalMarketplacePageV1> {
+  const api = new ProfessionalsApi(new Configuration({ basePath: businessPlatformUrl, accessToken }));
+  return api.browseMarketplaceProfessionals(
+    { ...filters, limit: 24 },
+    { cache: 'no-store' },
+  );
+}
 
 async function getJson(path: string): Promise<unknown> {
   const response = await fetch(`${businessPlatformUrl}${path}`, { cache: 'no-store' });

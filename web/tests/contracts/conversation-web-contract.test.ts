@@ -16,6 +16,7 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
   it('dependency-closes approved public APIs with the pinned generator', () => {
     const script = readFileSync(join(root, 'scripts/generate-api.sh'), 'utf8');
     const billing = readFileSync(join(root, 'lib/api/generated/apis/BillingApi.ts'), 'utf8');
+    const configuration = readFileSync(join(root, 'lib/api/generated/apis/ConfigurationApi.ts'), 'utf8');
     const generated = readFileSync(join(root, 'lib/api/generated/apis/ConversationApi.ts'), 'utf8');
     const identity = readFileSync(join(root, 'lib/api/generated/apis/IdentityApi.ts'), 'utf8');
     const employment = readFileSync(join(root, 'lib/api/generated/apis/EmploymentApi.ts'), 'utf8');
@@ -30,6 +31,7 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
     expect(script).toContain('--generator-name typescript-fetch');
     expect(script).toContain('scripts/openapi_slice.py');
     expect(script).toContain('--tag Billing');
+    expect(script).toContain('--tag Configuration');
     expect(script).toContain('--tag Identity');
     expect(script).toContain('--tag Conversation');
     expect(script).toContain('--tag Employment');
@@ -43,7 +45,7 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
     expect(script).toContain('hideGenerationTimestamp=true');
     expect(script).toContain('pnpm exec prettier --write lib/api/generated');
     expect(script).not.toContain('--skip-validate-spec');
-    expect(generatedApis).toEqual(['BillingApi.ts', 'ConversationApi.ts', 'EmploymentApi.ts', 'IdentityApi.ts', 'NotificationsApi.ts', 'ProfessionalsApi.ts', 'RelationshipWorkspaceApi.ts', 'VoiceContributionsApi.ts', 'index.ts']);
+    expect(generatedApis).toEqual(['BillingApi.ts', 'ConfigurationApi.ts', 'ConversationApi.ts', 'EmploymentApi.ts', 'IdentityApi.ts', 'NotificationsApi.ts', 'ProfessionalsApi.ts', 'RelationshipWorkspaceApi.ts', 'VoiceContributionsApi.ts', 'index.ts']);
     expect(version).toBe('7.17.0');
     for (const operation of [
       'listConversationMessages',
@@ -58,6 +60,9 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
     expect(identity).toContain('token("PreAccountBearerAuth", [])');
     expect(generated).toContain('The version of the OpenAPI document: 1.9.0');
     expect(billing).toContain('async getBillingPortalSummary(');
+    for (const operation of ['getRelationshipConfiguration', 'updateRelationshipOnboard']) {
+      expect(configuration).toContain(`async ${operation}(`);
+    }
     for (const operation of ['listCustomerAlerts', 'markCustomerAlertRead', 'acknowledgeCustomerAlert']) {
       expect(notifications).toContain(`async ${operation}(`);
     }

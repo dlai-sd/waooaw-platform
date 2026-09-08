@@ -24,6 +24,7 @@ docker compose --profile test run --rm --no-deps test-runner \
   --output "${SLICE_PATH#"$REPOSITORY_ROOT/"}" \
   --tag Identity \
   --tag Billing \
+  --tag Configuration \
   --tag Conversation \
   --tag Employment \
   --tag Notifications \
@@ -42,7 +43,7 @@ docker run --rm \
   --input-spec "$CONTAINER_SLICE_PATH" \
   --generator-name typescript-fetch \
   --output /local/web/lib/api/generated \
-  --global-property "apis=Billing:Conversation:Employment:Identity:Notifications:Professionals:RelationshipWorkspace:VoiceContributions,models,supportingFiles=runtime.ts:models/index.ts:index.ts" \
+  --global-property "apis=Billing:Configuration:Conversation:Employment:Identity:Notifications:Professionals:RelationshipWorkspace:VoiceContributions,models,supportingFiles=runtime.ts:models/index.ts:index.ts" \
   --additional-properties supportsES6=true,typescriptThreePlus=true,useSingleRequestParameter=true,hideGenerationTimestamp=true
 
 docker compose --profile test run --rm --no-deps test-runner \

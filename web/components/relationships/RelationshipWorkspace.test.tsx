@@ -33,6 +33,24 @@ const views: RelationshipWorkspaceViews = {
     context: { relationshipId: relationship.relationshipId, lifecycleState: 'TRIAL_ACTIVE', policySelection: { f4Pol01: 'A', f4Pol02: 'A', f4Pol03: 'B', f4Pol04: 'A', f4Pol05: 'B', f4Pol06: 'A' } },
     sections: [],
   },
+  configuration: {
+    ...section, sectionType: 'CONFIGURATION', lifecyclePhase: 'GOAL_VERIFICATION',
+    items: [
+      { stepKey: 'ONBOARD', label: 'Onboard', state: 'VERIFIED', summary: 'Preferences confirmed' },
+      { stepKey: 'INDUCT', label: 'Induct', state: 'VERIFIED', summary: 'Context confirmed' },
+    ],
+  },
+  goals: {
+    ...section, sectionType: 'GOALS', activeGoals: [{
+      goalId: 'goal-1', goalVersion: '1', skillId: 'MARKET_RESEARCH', skillLabel: 'Market research',
+      measure: 'Qualified enquiries', frequency: 'MONTHLY', verificationStatus: 'PENDING_CUSTOMER', status: 'ACTIVE',
+    }], history: [],
+  },
+  businessOutcomes: { ...section, sectionType: 'BUSINESS_OUTCOMES', items: [] },
+  operations: {
+    ...section, sectionType: 'OPERATIONS', eligibilityState: 'LOCKED', requiredGoalIds: ['goal-1'],
+    verifiedGoalIds: [], blockedReasons: ['Customer goal verification is required.'],
+  },
   plan: { ...section, sectionType: 'PLAN', planId: relationship.relationshipId, goals: [] },
   attention: { ...section, sectionType: 'ATTENTION', currencyState: 'CURRENT', items: [] },
   work: { ...section, sectionType: 'WORK', items: [] },

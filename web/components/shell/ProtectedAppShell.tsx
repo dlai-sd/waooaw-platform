@@ -1,7 +1,7 @@
 // Implements: architecture/reference/ux/hybrid-application-shell.md §Route and Layout Ownership
 // Constitutional basis: C-001 (Human Override), C-059 (Implementation Traceability)
 
-import { Bell, Bot, Settings, ShieldCheck, Store } from 'lucide-react';
+import { Bell, Bot, CircleUserRound, CreditCard, Settings, ShieldCheck, Store, UserRound } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { AccountSwitchCommand, SignOutCommand } from '@/components/auth/SignOutCommand';
@@ -37,6 +37,7 @@ export function ProtectedAppShell({ children, identitySession, locale = 'en', me
   const links = variant === 'founder'
     ? [{ href: '/founder', label: messages.founderHome, icon: ShieldCheck }]
     : customerLinks;
+  const accountDrawer = variant === 'customer' ? <details className="account-drawer"><summary className="icon-command" aria-label="Account"><CircleUserRound aria-hidden="true" size={20} /></summary><div><p className="section-label">Account</p><Link href="/profile"><UserRound aria-hidden="true" size={18} />Profile</Link><Link href="/profile#billing"><CreditCard aria-hidden="true" size={18} />Billing</Link><Link href="/settings"><Settings aria-hidden="true" size={18} />Settings</Link><AccountSwitchCommand label="Switch account" /><SignOutCommand label="Sign out" /></div></details> : null;
 
   const sideNavigation = (
     <aside className="side-navigation">
@@ -64,7 +65,7 @@ export function ProtectedAppShell({ children, identitySession, locale = 'en', me
   return (
     <AppShell
       bottomNavigation={bottomNavigation}
-      headerStatus={<>{variant === 'founder' ? <span className="role-label"><ShieldCheck aria-hidden="true" size={17} /> {messages.founder}</span> : null}{identitySession ? <span className="portal-assurance"><ShieldCheck aria-hidden="true" size={16} />{portal.verified} · {identitySession.assuranceLevel}</span> : null}<AccountSwitchCommand label="Switch account" /><SignOutCommand label="Sign out" /></>}
+      headerStatus={<>{variant === 'founder' ? <span className="role-label"><ShieldCheck aria-hidden="true" size={17} /> {messages.founder}</span> : null}{identitySession ? <span className="portal-assurance"><ShieldCheck aria-hidden="true" size={16} />{portal.verified} · {identitySession.assuranceLevel}</span> : null}{accountDrawer}</>}
       messages={messages}
       sideNavigation={sideNavigation}
       stopControl={<RouteAwareEmergencyStop stopContext={stopContext} />}

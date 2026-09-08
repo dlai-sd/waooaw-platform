@@ -1,3 +1,7 @@
+import 'server-only';
+
+import { EmploymentApi } from '@/lib/api/generated/apis/EmploymentApi';
+import type { EmploymentRelationshipCollectionV1 } from '@/lib/api/generated/models/EmploymentRelationshipCollectionV1';
 import {
   EmploymentRelationshipFromJSON,
   type EmploymentRelationship,
@@ -6,6 +10,7 @@ import {
   RelationshipTimelineEntryFromJSON,
   type RelationshipTimelineEntry,
 } from '@/lib/api/generated/models/RelationshipTimelineEntry';
+import { Configuration } from '@/lib/api/generated/runtime';
 
 export type { EmploymentRelationship, RelationshipTimelineEntry };
 
@@ -41,6 +46,17 @@ export interface ContractJourneyProjection {
 }
 
 const businessPlatformUrl = process.env.BUSINESS_PLATFORM_URL ?? 'http://localhost:5001';
+
+export async function listEmploymentRelationships(
+  accessToken: string,
+  cursor?: string,
+): Promise<EmploymentRelationshipCollectionV1> {
+  const api = new EmploymentApi(new Configuration({ basePath: businessPlatformUrl, accessToken }));
+  return api.listEmploymentRelationships(
+    { cursor, limit: 24 },
+    { cache: 'no-store' },
+  );
+}
 
 async function authorizedGet(path: string, accessToken: string): Promise<unknown> {
   const response = await fetch(`${businessPlatformUrl}${path}`, {

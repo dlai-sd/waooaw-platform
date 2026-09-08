@@ -127,6 +127,12 @@ const server = createServer(async (request, response) => {
   const streamMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/conversation\/stream$/);
   const cancelMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/conversation\/executions\/([^/]+)$/);
   const workspaceMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace(?:\/(plan|attention|work|results|usage-budget|rights-controls|evidence))?$/);
+  const configurationMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/configuration$/);
+  const goalsMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/goals$/);
+  const outcomesMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/business-outcomes$/);
+  const operationsMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/operations$/);
+  const onboardMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/configuration\/onboard$/);
+  const alertMutationMatch = url.pathname.match(/^\/api\/v1\/notifications\/alerts\/([^/]+)\/(read|acknowledge)$/);
   const evaluationMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/evaluation$/);
   const contractJourneyMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/contract-journey$/);
   const prepareHandoffMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/handoffs$/);
@@ -147,6 +153,65 @@ const server = createServer(async (request, response) => {
       { id: 'APPLE', displayName: 'Apple', authenticationPath: 'APPLE', availability: 'UNAVAILABLE', unavailableReason: 'NOT_CONFIGURED' },
       { id: 'EMAIL', displayName: 'Email', authenticationPath: 'CREDENTIAL', availability: 'AVAILABLE' },
     ] });
+    return;
+  }
+
+  if (request.method === 'GET' && url.pathname === '/api/v1/identity/session') {
+    json(response, { accountReference: 'account-fixture', roles: ['OWNER'], capabilities: ['READ_ACCOUNT', 'MANAGE_ROUTINE_ACTIONS', 'HIRE_PROFESSIONAL'], assuranceLevel: 'AAL2_ACCOUNT', authenticationPath: 'PORTAL', emailVerified: true, mobileVerified: false, authenticatedAt: '2026-08-12T09:00:00Z', expiresAt: '2099-08-12T10:00:00Z', nextAction: 'NONE' });
+    return;
+  }
+
+  if (request.method === 'GET' && url.pathname === '/api/v1/identity/profile') {
+    json(response, { schemaVersion: '1.0.0', displayName: 'Asha Rao', organizationDisplayName: 'Acme Clinic', email: 'as***@example.test', emailVerified: true, mobileVerified: false, activeRole: 'OWNER', switchableAccounts: [], updatedAt: '2026-08-12T10:00:00Z' });
+    return;
+  }
+
+  if (request.method === 'PUT' && url.pathname === '/api/v1/identity/profile') {
+    const body = await readBody(request);
+    json(response, { schemaVersion: '1.0.0', displayName: body.displayName, organizationDisplayName: body.organizationDisplayName, email: 'as***@example.test', emailVerified: true, mobileVerified: false, activeRole: 'OWNER', switchableAccounts: [], updatedAt: '2026-08-12T10:05:00Z' });
+    return;
+  }
+
+  if (request.method === 'GET' && url.pathname === '/api/v1/identity/settings') {
+    json(response, { schemaVersion: '1.0.0', locale: 'en-IN', theme: 'SYSTEM', timestampVisibility: 'RELATIVE', notificationPreferences: { approvalRequests: ['WEB'], maturityReports: ['EMAIL'], monthlyNarratives: ['EMAIL'], selfGovernanceAlerts: ['WEB', 'EMAIL'] }, availableSecurityActions: ['STEP_UP', 'CHANGE_PASSWORDLESS_METHODS'], updatedAt: '2026-08-12T10:00:00Z' });
+    return;
+  }
+
+  if (request.method === 'PUT' && url.pathname === '/api/v1/identity/settings') {
+    const body = await readBody(request);
+    json(response, { ...body, availableSecurityActions: ['STEP_UP', 'CHANGE_PASSWORDLESS_METHODS'], updatedAt: '2026-08-12T10:05:00Z' });
+    return;
+  }
+
+  if (request.method === 'GET' && url.pathname === '/api/v1/identity/login-methods') {
+    json(response, { schemaVersion: '1.0.0', items: [{ provider: 'GOOGLE', state: 'ACTIVE', maskedIdentifier: 'as***@example.test' }, { provider: 'EMAIL', state: 'AVAILABLE_TO_LINK' }] });
+    return;
+  }
+
+  if (request.method === 'GET' && url.pathname === '/api/v1/employment/relationships') {
+    json(response, { schemaVersion: '1.0.0', producedAt: '2026-08-12T10:00:00Z', items: [{ relationshipId: primaryRelationshipId, professionalType: 'DIGITAL_MARKETING', professionalDisplayName: 'Mira', lifecycleState: 'ACTIVE', currentGoalSummary: 'Increase qualified enquiries', unreadState: 'ACTION_REQUIRED', availabilityState: 'AVAILABLE', currencyState: 'CURRENT', lastAuthoritativelyConfirmedAt: '2026-08-12T09:55:00Z', resumeTarget: { surface: 'CONVERSATION', relationshipId: primaryRelationshipId } }] });
+    return;
+  }
+
+  if (request.method === 'GET' && url.pathname === '/api/v1/professionals/marketplace') {
+    json(response, { schemaVersion: '1.0.0', producedAt: '2026-08-12T10:00:00Z', items: [{ professionalType: 'DIGITAL_MARKETING', version: '2.1.0', displayName: 'Digital Marketing Professional', suitability: ['Campaign planning', 'Performance review'], eligibility: { eligible: true, explanation: 'Available to this organization.' }, indicativePrice: { currency: 'INR', amountInrPaise: 118000, cadence: 'MONTHLY', qualification: 'Final terms follow configuration.' }, offerabilityState: 'OFFERABLE', trialTerms: '14-day governed trial', nextAction: 'START_TRIAL' }] });
+    return;
+  }
+
+  if (request.method === 'GET' && url.pathname === '/api/v1/notifications/alerts') {
+    json(response, { schemaVersion: '1.0.0', producedAt: '2026-08-12T10:00:00Z', items: [{ alertId: 'alert-action-1', version: '1', alertType: 'ACTIONABLE', severity: 'HIGH', source: 'RELATIONSHIP_ATTENTION', relationshipId: primaryRelationshipId, occurredAt: '2026-08-12T09:30:00Z', dueMeaning: 'Review the pending relationship decision.', readState: 'UNREAD', destination: { surface: 'WORK', relationshipId: primaryRelationshipId }, availableAction: 'ACKNOWLEDGE' }, { alertId: 'alert-info-1', version: '1', alertType: 'INFORMATIONAL', severity: 'LOW', source: 'RESULT', relationshipId: primaryRelationshipId, occurredAt: '2026-08-11T09:30:00Z', readState: 'READ', destination: { surface: 'RESULTS', relationshipId: primaryRelationshipId }, availableAction: 'NONE' }] });
+    return;
+  }
+
+  if (request.method === 'POST' && alertMutationMatch) {
+    const body = await readBody(request);
+    json(response, { alertId: decodeURIComponent(alertMutationMatch[1]), version: String(Number(body.expectedAlertVersion) + 1), alertType: 'ACTIONABLE', severity: 'HIGH', source: 'RELATIONSHIP_ATTENTION', relationshipId: primaryRelationshipId, occurredAt: '2026-08-12T09:30:00Z', dueMeaning: 'Review the pending relationship decision.', readState: alertMutationMatch[2] === 'acknowledge' ? 'ACKNOWLEDGED' : 'READ', destination: { surface: 'WORK', relationshipId: primaryRelationshipId }, availableAction: alertMutationMatch[2] === 'acknowledge' ? 'NONE' : 'ACKNOWLEDGE' });
+    return;
+  }
+
+  if (request.method === 'PUT' && onboardMatch) {
+    await readBody(request);
+    json(response, { sectionType: 'CONFIGURATION', currencyState: 'CURRENT', provenance: { source: 'BUSINESS_PLATFORM', producedAt: '2026-08-12T10:05:00Z' }, lifecyclePhase: 'INDUCT', items: [{ stepKey: 'ONBOARD', label: 'Onboard', state: 'COMPLETE', summary: 'Presentation preferences saved.' }, { stepKey: 'INDUCT', label: 'Induct', state: 'CURRENT', summary: 'Continue in conversation.' }] });
     return;
   }
 
@@ -287,6 +352,27 @@ const server = createServer(async (request, response) => {
         priceTax: { currency: 'INR', grossAmountInrPaise: 118000, gstAmountInrPaise: 18000, cadence: 'MONTHLY', subscriptionTerms: 'Monthly subscription', adSpendTreatment: 'Ad spend is separate', cancellationAndRefundTerms: 'Cancel before renewal; captured charges follow the stated refund policy' },
       },
     });
+    return;
+  }
+
+  if (request.method === 'GET' && configurationMatch) {
+    const relationshipId = decodeURIComponent(configurationMatch[1]);
+    json(response, { sectionType: 'CONFIGURATION', currencyState: 'CURRENT', provenance: { owner: 'BP', sourceProjectionVersion: 'fixture-1', producedAt: '2026-08-12T10:00:00Z' }, availableCommands: [], lifecyclePhase: 'GOAL_VERIFICATION', items: [{ stepKey: 'ONBOARD', label: 'Onboard', state: 'VERIFIED', summary: 'Presentation preferences confirmed.' }, { stepKey: 'INDUCT', label: 'Induct', state: 'VERIFIED', summary: 'Business context confirmed.', continuationTarget: { surface: 'CONVERSATION', relationshipId } }] });
+    return;
+  }
+
+  if (request.method === 'GET' && goalsMatch) {
+    json(response, { sectionType: 'GOALS', currencyState: 'CURRENT', provenance: { owner: 'BP', sourceProjectionVersion: 'fixture-1', producedAt: '2026-08-12T10:00:00Z' }, availableCommands: [], activeGoals: [{ goalId: 'goal-1', goalVersion: '1', skillId: 'CAMPAIGN_PLANNING', skillLabel: 'Campaign planning', measure: 'Qualified enquiries', frequency: 'MONTHLY', verificationStatus: 'PENDING_CUSTOMER', status: 'ACTIVE' }], history: [] });
+    return;
+  }
+
+  if (request.method === 'GET' && outcomesMatch) {
+    json(response, { sectionType: 'BUSINESS_OUTCOMES', currencyState: 'UNAVAILABLE', provenance: { owner: 'BP', sourceProjectionVersion: 'unavailable-1', producedAt: '2026-08-12T10:00:00Z' }, availableCommands: [], items: [] });
+    return;
+  }
+
+  if (request.method === 'GET' && operationsMatch) {
+    json(response, { sectionType: 'OPERATIONS', currencyState: 'CURRENT', provenance: { owner: 'BP', sourceProjectionVersion: 'fixture-1', producedAt: '2026-08-12T10:00:00Z' }, availableCommands: [], eligibilityState: 'LOCKED', requiredGoalIds: ['goal-1'], verifiedGoalIds: [], blockedReasons: ['Customer goal verification is required.'], reassessmentRequired: false });
     return;
   }
 
