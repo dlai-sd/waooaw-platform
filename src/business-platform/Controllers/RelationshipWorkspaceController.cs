@@ -408,7 +408,9 @@ public sealed class RelationshipWorkspaceController(
     {
         if (!HttpContext.Items.TryGetValue(TenantIsolationMiddleware.TenantIdItemKey, out var value)
             || value is not string text || !Guid.TryParse(text, out var tenantId)) return null;
-        var participant = User.FindFirstValue("participant_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var participant = User.FindFirstValue("participant_id")
+            ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
         if (!Guid.TryParse(participant, out var participantId)
             || !await relationships.IsActiveParticipantAsync(tenantId, relationshipId, participantId, cancellationToken))
             return null;
@@ -437,7 +439,8 @@ public sealed class RelationshipWorkspaceController(
         tenantId = default;
         participantId = default;
         var participant = User.FindFirstValue("participant_id")
-            ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+            ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
         return HttpContext.Items.TryGetValue(TenantIsolationMiddleware.TenantIdItemKey, out var value)
             && value is string tenant
             && Guid.TryParse(tenant, out tenantId)
