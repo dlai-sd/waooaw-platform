@@ -1,8 +1,10 @@
 # WC-084 - Authentication Readiness And Customer Portal Delivery Plan
 
 **Office:** Chief Solution Architect (INST-005)
+**Future implementation executor:** Platform IT Expert (INST-010), Skills 4 and 16 for application
+code and Skill 17 only for authorized delivery configuration and qualification
 **Assigned by:** Founder instruction, 2026-09-07
-**Status:** PLAN CANDIDATE AND REVIEW PROTOTYPE AUTHORIZED; RUNNABLE IMPLEMENTATION NOT AUTHORIZED
+**Status:** PLAN AND PROTOTYPE HANDOFF CANDIDATE; RUNNABLE IMPLEMENTATION NOT AUTHORIZED
 **Predecessor:** WC-083 route-backed authentication dialog
 **Normative parents:** `architecture/reference/ux/hybrid-application-shell.md`,
 `architecture/reference/ux/hybrid-ui-acceptance-contract.md`,
@@ -19,6 +21,11 @@ Repair the customer-visible defects left by WC-083, complete truthful Demo readi
 Facebook, and email authentication, and define a reusable API-first Customer Portal that behaves like
 an installed conversation application after login. Produce one standalone HTML/CSS/JavaScript review
 prototype before any portal implementation begins.
+
+The Customer Portal is a disruptive flagship WAOOAW deliverable. Acceptance requires a distinctive,
+world-class professional AI workforce experience; functional completeness alone is insufficient.
+Visual quality, interaction quality, accessibility, responsiveness, conversational coherence, and
+truthful constitutional state are first-class delivery outcomes.
 
 The delivery has two distinct outcomes:
 
@@ -74,8 +81,32 @@ supersede WC-083. All unaffected WC-083 behavior remains mandatory.
 - **SP-20 - Safe degradation:** As a customer, I see explicit loading, empty, offline, unavailable, stale, conflict, and error states that never manufacture success or conceal an uncertain outcome.
 - **SP-21 - Human override:** As a customer working with any professional, I can always reach Emergency Stop independently of navigation, loading, chat, voice, or service degradation.
 - **SP-22 - Frozen public experience:** As the Founder, I can approve these repairs and the new Customer Portal without permitting unrelated changes to the frozen public portal aesthetics.
+- **SP-23 - Two-minute onboarding:** As a customer, I can complete lightweight agent onboarding within a two-minute target and continue into an agent-led, domain-adaptive induction conversation.
+- **SP-24 - Universal goals:** As a customer, I can turn every agent's declared skills into goals with measures, frequency, and explicit verification through one consistent WAOOAW experience.
+- **SP-25 - Outcome traceability:** As a customer, I can see how each verified goal contributes to a business outcome and how agent performance and outcome evidence are measured without implying guaranteed results.
+- **SP-26 - Goal-gated operations:** As a customer, I enter Operations only after required goals are verified, while retaining the ability to amend goals and reassess affected outcomes at any time.
 
-## 3. Frozen Visual Boundary
+### 2.2 Founder Handoff Mandate Trace
+
+This trace is a drift gate. Removing or weakening a listed controlling section requires explicit
+Founder review and corresponding Section 14 acceptance updates.
+
+| # | Binding mandate | Controlling sections | Acceptance gate |
+|---|---|---|---|
+| 1 | Flagship, world-class disruptive Customer Portal | 1, 8.9 | WC084-PORTAL-15 |
+| 2 | Prototype is boundary guidance; production has bounded creative liberty | 3, 10 | WC084-PORTAL-16 |
+| 3 | Standardized names, styling, font, color, themes, and language-ready layout | 3, 8.2, 8.9 | WC084-PORTAL-16 |
+| 4 | Universal Onboard, Induct, goals, outcomes, and Operations lifecycle | 8.5 | WC084-PORTAL-17 through 21 |
+| 5 | Distinct WAOOAW experience informed by ChatGPT and WhatsApp ergonomics | 3, 8.3, 8.9 | WC084-PORTAL-22 |
+| 6 | Reuse accepted Agent Broker and existing capability contracts before creation | 8.9, 9.2 | WC084-API-03 |
+| 7 | Explicit `REUSE`, `AMEND`, `CREATE`, or `DEFER` API discovery | 9.2, 9.4 | WC084-API-03 |
+| 8 | Channel-neutral contracts reusable by web, WhatsApp, and future mobile | 9.1, 9.3, 9.4 | WC084-API-01, WC084-API-03 |
+| 9 | AI-token, time, and cost optimization without weaker evidence | 13 | WC084-QUAL-01 |
+| 10 | Docker-only executable testing and no host virtual environment | 12, 13 | WC084-QUAL-02 |
+| 11 | Bounded vertical implementation slices | 11 | WC084-QUAL-01 |
+| 12 | Independent, executable acceptance and substantive Founder visual review | 12, 14, 17 | WC084-PORTAL-15, WC084-QUAL-01 |
+
+## 3. Visual Authority And Creative Boundary
 
 The public portal's approved aesthetics are frozen. Implementation must not change unrelated fonts,
 font loading, colors, brand tokens, logo treatment, public navigation, landing composition, content,
@@ -88,8 +119,21 @@ Authorized visual changes are limited to:
 - CSS repairs strictly necessary to fix reproduced clipping, overflow, overlap, or destructive
   wrapping in supported browsers;
 - the new authenticated Customer Portal shell and its owned routes;
-- a review prototype that explores the new Customer Portal while using the established WAOOAW font,
-  brand palette, icon grammar, and maximum 8px corner radius.
+- a review prototype that explores the new Customer Portal boundary, lifecycle, and interaction
+  direction while using a recognizable WAOOAW visual vocabulary.
+
+The prototype controls required sections, lifecycle relationships, representative states, and
+customer journeys. It is guidance and boundary evidence, not production markup or a pixel-perfect
+specification. The implementer has creative liberty to improve composition, typography, color,
+themes, motion, navigation, density, and responsive behavior inside the authenticated Customer
+Portal, provided all required lifecycle states, constitutional controls, customer verification,
+evidence visibility, API traceability, and Section 14 acceptance conditions remain intact.
+
+Production implementation must establish standardized Customer Portal names, design tokens,
+typography, color, spacing, elevation, motion, breakpoints, themes, iconography, and language-ready
+layout. It may take interaction inspiration from ChatGPT's conversational workspace and navigation
+ergonomics and WhatsApp's compact, familiar messaging continuity, but must not visually imitate
+either product, use their proprietary assets, or weaken WAOOAW's distinct professional identity.
 
 Any aesthetic change outside this list requires a Founder-visible before/after proposal and explicit
 authorization before implementation.
@@ -248,6 +292,10 @@ logo, font, colors, terminology, constitutional status semantics, and profession
 | Area | Customer outcome | Initial release behavior |
 |---|---|---|
 | My Agents | Resume work with employed or trial professionals | Default entry; relationship list and selected conversation |
+| Configuration | Complete universal agent setup | Exactly two items: Onboard and Induct |
+| Goal Setting | Convert declared skills into verified goals | Agent-led goals, measures, frequency, and customer verification |
+| Business Outcomes | Understand customer-visible value and performance | Outcomes linked to skills, goals, measures, frequency, and evidence |
+| Operations | Conduct governed work against verified goals | Locked until required goals are customer-verified; goals remain amendable |
 | Marketplace | Discover, compare, trial, and hire professionals | Browse and inspect offers; trial/hire only through approved lifecycle APIs |
 | Alerts | See decisions and events requiring attention | Server-ordered actionable and informational items; no browser ranking |
 | Billing | Understand plan, allowance, invoices, payment state, and forecast | BP projection of WBE truth; no browser calculations |
@@ -280,21 +328,47 @@ never squeezed beside an unreadable conversation.
 - Preserve a complete text path when microphone permission, language, upload, or transcription fails.
 - Keep Emergency Stop visible and operational throughout chat and voice states.
 
-### 8.5 Marketplace
+### 8.5 Universal Agent Lifecycle
+
+Every WAOOAW professional uses the same customer lifecycle:
+
+`Onboard -> Induct -> Goal Verification -> Business Outcomes -> Operations`
+
+- Configuration contains exactly `Onboard` and `Induct` for every agent.
+- Onboard covers lightweight presentation choices such as agent name, chat appearance, and timestamp
+  visibility and targets completion within two minutes.
+- Induct is an agent-led conversation, not a long form. The agent introduces itself and its declared
+  skills, learns the customer's profession, organization, terminology, priorities, and constraints,
+  adapts its language to that domain, and confirms its understanding in a consultative tone.
+- Goal Setting is consistent across all agents. Every declared skill is available to become a goal;
+  every active goal records a measure, frequency, and explicit customer verification.
+- The agent proposes precise goals and asks only the minimum questions required to verify them.
+- Operations remains locked until the required goals are customer-verified.
+- Customers may amend goals at any time. Material changes require renewed verification and
+  reassessment of dependent outcomes and operational work without erasing historical evidence.
+- Every Business Outcome traces to a declared skill, verified goal, performance measure, review
+  frequency, current status, and evidence. Agent performance and customer business outcome remain
+  distinct; the portal must not imply that an agent guarantees an externally influenced result.
+
+The right panel provides lifecycle status and navigation while the agent conducts induction and goal
+setting in the main conversation. Each agent adapts content to its profession, but the lifecycle,
+verification semantics, and information grammar remain universal.
+
+### 8.6 Marketplace
 
 Marketplace lists only published and currently offerable professionals from a Business Platform
 projection. Search and filters may affect presentation but cannot invent suitability, availability,
 price, or trial eligibility. Detail views expose scope, limits, pricing source, trial terms, and the
 next authorized command. Trial and hire are distinct, idempotent server-owned lifecycle operations.
 
-### 8.6 Alerts
+### 8.7 Alerts
 
 Alerts combine server-owned attention items and informational notifications while preserving their
 type. Each item includes source, relationship when applicable, occurred/due time, severity vocabulary,
 read state, available action, and stable destination. The browser may group for display but cannot
 re-rank authoritative attention order. Read/acknowledge is not approval, evidence, or completion.
 
-### 8.7 Billing And Profile
+### 8.8 Billing And Profile
 
 Billing displays BP-mediated WBE actuals, invoices, allowance, forecast range, assumptions, payment
 state, and commercial consequences. It never derives monetary truth from tokens or local arithmetic.
@@ -304,12 +378,18 @@ preferences, login methods, assurance needs, and account controls. Sensitive cha
 server-declared step-up flow. Sign-out clears protected state and relationship drafts according to
 the accepted retention policy.
 
-### 8.8 Themes, Accessibility, And Motion
+### 8.9 Production Experience Standard
 
-Light and dark themes use existing semantic tokens and the current portal font family. The portal
-supports keyboard operation, visible focus, screen-reader state announcements, logical properties,
-RTL, all approved locales, 200% zoom, safe-area insets, and reduced motion. Fixed-format navigation,
+Production establishes accepted semantic tokens and standardized components by reusing existing
+WAOOAW elements where suitable, including Agent Broker onboarding and employment contracts,
+configuration, goals, performance/outcomes, and operation patterns. Light and dark themes support
+keyboard operation, visible focus, screen-reader state announcements, logical properties, RTL, all
+approved locales, 200% zoom, safe-area insets, and reduced motion. Fixed-format navigation,
 composer, voice controls, counters, and loading shells use stable dimensions.
+
+Visual acceptance includes substantive review at agreed desktop and mobile viewports. Automated
+screenshots, geometry assertions, and accessibility checks are necessary evidence but do not replace
+Founder review of hierarchy, clarity, coherence, responsiveness, and WAOOAW identity.
 
 ## 9. Channel-Neutral API Contract
 
@@ -330,18 +410,22 @@ Every new public REST or SSE operation follows ADR-002:
 
 ### 9.2 Required Capability Surfaces
 
-The implementation readiness review must classify each operation as `REUSE`, `AMEND`, or `CREATE`:
+The implementation-readiness classification is:
 
-| Capability surface | Required reusable contract |
-|---|---|
-| Session and profile | Current customer, roles/capabilities, preferences, login methods, sign-out consequence |
-| My Agents | Paginated Employment Relationship summaries and authorized resume target |
-| Conversation | Timeline cursor, send/retry/cancel, stream/reconnect, structured cards, read position |
-| Voice | Contribution create/upload/review/correct/send and truthful failure states |
-| Marketplace | Published offers, filters, detail, scope/limits, offerability, trial/hire intent |
-| Alerts | Server-ordered attention plus notifications, cursor, read/acknowledge, action destination |
-| Billing | Summary, allowance, forecast, invoices, payment state, and owner-supplied consequences |
-| Profile/settings | Identity, organization, locale/theme/channel preferences, security and step-up intents |
+| Capability surface | Classification | Current canonical operations | Contract work before implementation |
+|---|---|---|---|
+| Session and sign-out | `REUSE` + `AMEND` | `GET /api/v1/identity/session` | Reuse the session projection. INST-005 and the identity owner must define the Keycloak/NextAuth sign-out closure, protected-draft cleanup, and login-method management boundary; no BP sign-out endpoint is inferred. |
+| My Agents | `AMEND` | `GET /api/v1/employment/relationships/{relationshipId}` and relationship workspace reads | Add an owner-approved paginated, tenant-derived relationship-summary collection and authorized resume-target semantics. The existing `POST /api/v1/employment/relationships` does not supply this read model. Endpoint path and wire schema remain INST-005 decisions. |
+| Conversation | `REUSE` | `GET/POST /api/v1/employment/relationships/{relationshipId}/conversation/messages`, message retry, read position, SSE stream, and execution cancellation | Reuse the completed WC-060 contracts and generated clients without a parallel portal conversation API. |
+| Voice | `REUSE` | Voice session create/read, audio upload, transcript read, correction, explicit send, cancel, and erasure operations under `/api/v1/employment/relationships/{relationshipId}/voice-contributions` | Reuse the completed WC-062 contract and generated clients without changing consent, retention, or Evidence First semantics. |
+| Onboard and Induct | `REUSE` + `AMEND` | Agent Broker professional disclosure, relationship offer/trial/contract/activation, customer configuration, and conversation capabilities | Reuse accepted onboarding and relationship lifecycle truth. INST-005 and Product, BP, professional, Data, and Security owners must classify presentation preferences, induction progress, confirmed business context, correction, retention, and cross-channel continuation before implementation. |
+| Goal Setting | `REUSE` + `AMEND` | Agent skill declarations and relationship goal/workspace capabilities | Reuse accepted skill and goal truth where complete. Owners must define the universal skill-to-goal projection, measure, frequency, verification, amendment, history, and Operations eligibility semantics without web-only state. |
+| Business Outcomes | `CREATE` | No accepted customer-facing aggregate is assumed by this plan | Product, BP, professional, Data, Security, and INST-005 must define outcome-to-skill/goal traceability, agent performance versus external business result, measures, cadence, evidence, trend, correction, and unavailable behavior. No guarantee or browser-derived outcome is permitted. |
+| Operations | `REUSE` + `AMEND` | Relationship workspace reads, attention, conversation, execution, cancellation, and Evidence First records | Reuse governed operational capabilities. Owners must bind Operations eligibility to verified goals and define how goal amendments affect active work, outcomes, pending decisions, and historical evidence. |
+| Marketplace | `REUSE` + `AMEND` | `GET /api/v1/professionals`, professional disclosure, offerable versions, relationship offerability evaluation, trial, contract, and activation operations | Reuse discovery and lifecycle operations. INST-005 and Product/BP owners must bind browse pagination/filter semantics and the exact trial/hire journey to existing operations; the browser cannot infer offerability. |
+| Alerts | `REUSE` + `CREATE` | Relationship-scoped `GET .../workspace/attention`; notification preference `GET/PUT /api/v1/notifications/preferences` | Keep relationship attention as-is. A cross-relationship server-ordered alerts feed, cursor, read/acknowledge behavior, and stable action destination require Product, BP, Data, Security, and INST-005 contracts. No endpoint path or schema is selected by this plan. |
+| Billing | `REUSE` + `AMEND` | `GET /api/v1/billing`, `GET/PUT /api/v1/billing/preference`, `GET /api/v1/billing/invoices`, and subscription-tier reads | Reuse current billing truth. WBE/BP owners and INST-005 must confirm whether allowance forecast, payment state, assumptions, and consequences are complete for the initial portal release; the web performs no calculation. |
+| Profile/settings | `REUSE` + `CREATE` | Identity session projection and notification preference `GET/PUT` | Channel preferences are reusable. Customer/organization profile, locale/theme persistence, login methods, security actions, assurance requirements, and account switching need owner-approved Product, Identity, Data, Security, BP, and INST-005 contracts. No browser-local profile truth is permitted. |
 
 Contracts must not expose provider secrets, tenant IDs as customer authority, private runtime URLs,
 raw constitutional records, or internal billing/AI cost structures. Unknown or unavailable owner
@@ -349,9 +433,32 @@ truth remains explicit and never becomes an empty success response.
 
 ### 9.3 Cross-Channel Continuity
 
-Web, mobile, and WhatsApp may display the same BP-owned history, but committed handoff, delivery
-deduplication, and exactly-once consequential continuity remain governed by WC-060. Until those
-contracts are accepted and implemented, WC084 must not claim seamless transactional handoff.
+WC-060 is DONE with R-087, R-088, and R-089 approved, and WC-062 is DELIVERY COMPLETE with
+R-096, R-097, and R-098 approved and PR #273 merged as `1a624d6`. WC-084 therefore classifies their
+channel-continuity and voice-contribution contracts as `REUSE`; it does not redesign or defer them.
+Web, mobile, and WhatsApp may display the same BP-owned history only through those accepted
+contracts. New WC-084 aggregation, profile, settings, marketplace, or sign-out semantics remain
+blocked until the owner contracts in Section 9.2 are accepted.
+
+### 9.4 API Discovery And Reuse Ledger
+
+Milestone 5 produces one reviewed capability ledger before dependent UI integration. For every
+Customer Portal capability it records:
+
+| Required field | Purpose |
+|---|---|
+| UI capability and lifecycle state | Binds the customer need to a specific portal surface |
+| Existing accepted contract and owner | Prevents duplicate or browser-local domain behavior |
+| `REUSE`, `AMEND`, `CREATE`, or `DEFER` | Makes the implementation disposition explicit |
+| Request, response, and generated-client impact | Defines the public integration boundary |
+| Authorization, assurance, tenant, evidence, and audit rules | Preserves constitutional semantics |
+| Loading, empty, locked, expired, stale, conflict, partial, and unavailable states | Prevents manufactured success |
+| Web, WhatsApp, and future mobile mapping | Proves channel-neutral reuse or records an approved exception |
+| Required Product, API, Data, Security, BP, or professional-owner approval | Keeps decisions with their accountable owner |
+
+The ledger is updated as discovery resolves facts. An unclassified or unapproved capability blocks
+only its dependent slice. UI code must not invent an endpoint, schema, eligibility rule, outcome,
+verification state, or browser-local workaround.
 
 ## 10. Prototype Deliverable
 
@@ -362,6 +469,9 @@ Create `prototypes/wc084-customer-portal/index.html` as a dependency-free review
 - functional My Agents, Marketplace, and Alerts navigation;
 - functional account drawer with Billing, Profile, Settings, and Sign out;
 - selected-agent conversation with text send and representative structured work;
+- universal two-item Configuration with Onboard and conversational Induct;
+- agent-led Goal Setting from declared skills through measures, frequency, and verification;
+- goal-linked Business Outcomes and Operations eligibility states;
 - voice recording/review state simulation with no microphone or network access;
 - Marketplace browse/detail/trial-review states without executing a hire;
 - alert read/action simulation;
@@ -369,18 +479,38 @@ Create `prototypes/wc084-customer-portal/index.html` as a dependency-free review
 - persistent visible Emergency Stop control as a non-operational visual state;
 - fictional data and a visible `Prototype - no live actions` status.
 
-The prototype is reviewed for information architecture, visual direction, density, one-hand reach,
-theme behavior, state clarity, and responsive composition. It is not evidence that APIs or production
-features exist. Founder acceptance may authorize its direction, reject it, or request changes before
-implementation planning proceeds.
+The prototype is reviewed for information architecture, lifecycle boundaries, visual direction,
+density, one-hand reach, theme behavior, state clarity, and responsive composition. It is not
+production markup, a pixel-perfect specification, or evidence that APIs or production features
+exist. Founder acceptance authorizes its boundary and guidance, not automatic implementation,
+provider activation, deployment, or final visual acceptance.
 
 ## 11. Ordered Delivery Milestones
+
+### 11.1 Executor And Authority Matrix
+
+| Work boundary | Accountable owner/executor | Authority limit |
+|---|---|---|
+| Product release composition and customer semantics | Product Owner (INST-011) and named capability owners | Select first-release behavior and labels; no endpoint, schema, or implementation authority |
+| Public BP operations, schemas, errors, and generated-client boundary | Chief Solution Architect (INST-005) with BP/WBE/Identity/professional owners | Design accepted API contracts; no runnable implementation or provider activation |
+| Provenance, ordering, freshness, retention, and correction semantics | Data Architect (INST-006) | Supply accepted data contract; no public API or implementation authority |
+| Assurance, authorization, anti-enumeration, cache, telemetry, and direct-service denial | Security Architect (INST-007) | Supply accepted security contract; no product or implementation authority |
+| Application and web implementation | Platform IT Expert (INST-010), Skills 4 and 16 | Implement accepted contracts in source and tests after explicit current-session authorization |
+| Docker, workflow, environment configuration, and delivery qualification | Platform IT Expert (INST-010), Skill 17 | Implement accepted delivery contracts only; Skill 17 grants no API-design, provider, deployment, spend, DNS, or Production authority |
+| Provider enablement and environment deployment | Named environment/provider authority under a separate Founder authorization | Activate only the named provider and environment after its complete gate passes |
+| Visual acceptance, implementation authorization, PR approval, and merge | Founder | These decisions remain separate and are never inferred from plan or test completion |
+
+No milestone may transfer a decision to a downstream executor. Missing Product, API, Data, Security,
+BP, WBE, Identity, or professional-owner input blocks only the dependent release slice and must not
+be replaced by browser logic, mock success, or an implementation assumption.
 
 ### Milestone 0 - Founder Prototype Review
 
 - Complete and review the standalone prototype.
-- Record accepted navigation, layout, terminology, responsive behavior, and requested revisions.
-- Freeze the approved prototype revision as visual intent, not production markup.
+- Record accepted lifecycle boundary, navigation, terminology, responsive behavior, and requested
+  revisions.
+- Preserve the approved prototype revision as guidance, not production markup or a ceiling on
+  production visual quality.
 
 ### Milestone 1 - WC-083 Defect Reproduction And Baseline
 
@@ -391,6 +521,8 @@ implementation planning proceeds.
 
 ### Milestone 2 - Provider Readiness
 
+- Obtain separate current authority for provider configuration, Demo deployment, and authenticated
+  provider proof before any live action.
 - Complete Google, Facebook, and email entry gates independently.
 - Validate manifests before deployment and reconcile them against actual Keycloak broker state.
 - Prove provider endpoint reachability from the deployed web container.
@@ -412,24 +544,47 @@ implementation planning proceeds.
 
 ### Milestone 5 - API Contract Closure
 
-- Produce the `REUSE/AMEND/CREATE` capability ledger from Section 9.2.
-- Amend component contracts and OpenAPI before implementation code.
+- Complete the Section 9.4 discovery ledger against the selected first-release composition by
+  inspecting accepted Agent Broker, onboarding, configuration, skills, goals, performance/outcomes,
+  operation, relationship, conversation, billing, identity, and notification contracts.
+- INST-005 and the named owners close every selected `AMEND`/`CREATE` component and OpenAPI contract
+  before INST-010 writes dependent implementation code.
 - Generate clients and prove consistency for all changed public operations.
 - Stop portal implementation for any capability without accepted owner semantics.
 
-### Milestone 6 - Customer Portal Shell And Read Models
+### Milestone 6 - Production Experience Foundation
 
-- Implement authenticated shell, responsive navigation, account drawer, themes, loading/error/offline
-  states, route protection, My Agents, Marketplace, Alerts, Billing, and Profile projections.
+- Establish standardized names, semantic design tokens, typography, color, spacing, iconography,
+  motion, themes, breakpoints, locale/RTL behavior, and reusable production components.
+- Implement the authenticated shell, responsive navigation, account drawer, route protection,
+  loading/error/offline states, and My Agents relationship overview.
 - Preserve Emergency Stop and protected caching boundaries.
 
-### Milestone 7 - Conversation And Voice
+### Milestone 7 - Universal Agent Lifecycle
+
+- Implement two-item Configuration: two-minute-target Onboard and agent-led conversational Induct.
+- Implement declared-skill Goal Setting with measures, frequency, customer verification, amendment,
+  and history.
+- Implement goal-linked Business Outcomes while distinguishing agent performance from external
+  customer results.
+- Prove that Operations is locked until required goals are verified and safely reassessed after a
+  material goal amendment.
+
+### Milestone 8 - Conversation, Voice, And Operations
 
 - Integrate generated conversation and voice contracts.
 - Implement streaming/reconciliation, text draft/send/retry, structured objects, and voice review/send.
+- Integrate current work, pending decisions, evidence, results, usage, and controls against verified
+  goals and outcomes.
 - Validate uncertainty, partial response, permission denial, offline, and Stop behavior.
 
-### Milestone 8 - Final Qualification And Founder Handoff
+### Milestone 9 - Marketplace And Supporting Customer Surfaces
+
+- Implement Marketplace, Alerts, Billing, Profile, Settings, sign-out, and their owner-approved
+  lifecycle commands and projections.
+- Verify trial, hire, expired relationship, read/acknowledge, step-up, and protected-state cleanup.
+
+### Milestone 10 - Final Qualification And Founder Handoff
 
 - Run one clean final Docker campaign against finalized HEAD.
 - Review screenshots route by route and theme/locale/viewport state by state.
@@ -441,18 +596,22 @@ implementation planning proceeds.
 ### 12.1 Focused Checks
 
 After the first substantive edit in each implementation milestone, run the cheapest behavior-scoped
-host/editor check that can falsify that change, such as diagnostics, a targeted static check, schema
-validation, or a narrow test that does not build or start Docker. Do not build images, start Compose,
-or run Docker integration/browser/scanner campaigns after small edits.
+check that can falsify that change. Host/editor activity is limited to non-executable inspection such
+as language-server diagnostics, diff review, and static file comparison; those inspections are not
+substitutes for executable evidence. Every executable test, lint, typecheck, schema validator,
+generator, build, browser check, and qualification command runs in the repository-approved Docker
+test runner or service under C-080. Do not create or use Python, Node, or other host virtual
+environments. Reuse an existing applicable container when economical; do not rebuild images or run
+the broad integration/browser/scanner campaigns after small edits.
 
 ### 12.2 Major-Milestone Docker Campaigns
 
 Run Docker integration campaigns only after these assembled boundaries:
 
 1. Milestones 2-4: complete authentication/provider/browser repair;
-2. Milestones 5-6: accepted API contracts plus complete portal shell/read paths;
-3. Milestone 7: complete chat/voice behavior;
-4. Milestone 8: one final clean qualification on finalized HEAD.
+2. Milestones 5-7: accepted API contracts plus experience foundation and universal lifecycle;
+3. Milestones 8-9: complete conversation, voice, Operations, and supporting surfaces;
+4. Milestone 10: one final clean qualification on finalized HEAD.
 
 Each campaign stops on the first deterministic failure. Repair the owning slice, run its focused
 check once, then rerun the affected milestone campaign. Do not rebuild unchanged images or rerun
@@ -469,6 +628,8 @@ passing expensive stages speculatively.
   checks for owned routes and states;
 - geometry assertions for overflow, clipping, overlap, card width, modal fit, fixed navigation,
   software keyboard, and safe areas;
+- interaction evidence for Onboard, Induct, goal verification/amendment, outcome traceability,
+  Operations locking/unlocking, expired relationships, and cross-channel continuation;
 - offline/cache/privacy inspection, authorization negatives, idempotency/replay/conflict tests, and
   no private endpoint leakage;
 - Docker image/runtime smoke, SBOM, vulnerability scan, secret scan, and final-HEAD evidence ledger.
@@ -486,8 +647,9 @@ passing expensive stages speculatively.
 - Reuse existing components, generated clients, semantic tokens, icon library, fixtures, and pinned
   Docker images. Add no framework, design system, state store, or animation dependency without a
   separately accepted need.
-- Use non-Docker focused checks after local edits. Build and run Docker only for the major milestone
-  campaigns in Section 12.2 and final qualification.
+- Run focused executable checks in the smallest applicable Docker runner after local edits. Reserve
+  image rebuilds and broad Docker campaigns for Section 12.2 boundaries and final qualification.
+- Create no host virtual environment and install no host dependency for implementation or evidence.
 - On deterministic failure, inspect the first causal evidence and repair that slice. Do not retry
   unchanged code, regenerate all screenshots, or reopen broad context.
 - Record development model calls, focused Docker runs, full campaigns, reused image IDs, retries,
@@ -517,9 +679,26 @@ mock success, bulk screenshot approval, or incomplete author review.
 | WC084-PORTAL-05 | Marketplace trial/hire uses owner-approved idempotent BP operations | Milestone 5/6 contract tests |
 | WC084-PORTAL-06 | Alerts preserve server order and distinguish read from action/approval | Milestone 5/6 contract tests |
 | WC084-PORTAL-07 | Billing displays WBE truth only through BP | Milestone 5/6 network/contract tests |
+| WC084-PORTAL-08 | Profile/settings persist only owner-approved identity, organization, locale, theme, channel, login-method, and security state with required step-up | Milestone 5/6 contract and browser tests |
+| WC084-PORTAL-09 | Sign-out terminates the Keycloak/NextAuth session and clears protected drafts, caches, and selected relationship context without deleting server-owned customer data | Milestone 5/6 auth and storage tests |
+| WC084-PORTAL-10 | Loading, empty, offline, unavailable, stale, and conflict states remain distinguishable and never manufacture success | Milestone 6/7 fault and browser tests |
+| WC084-PORTAL-11 | Every authenticated route denies an absent, expired, or insufficient session without rendering protected data | Milestone 6 route and authorization tests |
+| WC084-PORTAL-12 | Authenticated HTML, RSC, API, conversation, and voice responses remain `no-store` and protected content is absent from service-worker caches | Milestone 6/7 cache and network inspection |
+| WC084-PORTAL-13 | Emergency Stop remains visible, keyboard reachable, and operational during navigation, loading, conversation, voice, modal, offline, and degraded states | Milestone 6-8 interaction and failure tests |
+| WC084-PORTAL-14 | Portal code uses generated BP clients and contains zero hand-written private PR, WBE, CE, ledger, or provider calls | Milestone 5/8 generated-client and bundle/network inspection |
+| WC084-PORTAL-15 | Founder substantive review accepts the production portal as a coherent, distinctive, world-class WAOOAW experience; functional checks alone cannot pass this row | Milestone 10 visual acceptance record |
+| WC084-PORTAL-16 | Production preserves the prototype's required sections and lifecycle boundaries while using standardized production names, tokens, typography, color, themes, and language-ready layout rather than copying prototype markup | Milestone 6/10 design-system and visual review |
+| WC084-PORTAL-17 | Configuration contains exactly Onboard and Induct; lightweight Onboard meets the accepted two-minute usability target | Milestone 7 timed interaction and usability evidence |
+| WC084-PORTAL-18 | Induct is agent-led, consultative, confirmation-seeking, concise, and adapted to the customer's profession or business domain | Milestone 7 conversation/component tests and review |
+| WC084-PORTAL-19 | Every active goal traces to a declared skill, measure, frequency, and explicit customer verification through the universal Goal Setting experience | Milestone 7 contract and interaction tests |
+| WC084-PORTAL-20 | Operations remains locked before required goal verification; customers can amend goals and dependent work/outcomes are reassessed without losing history | Milestone 7/8 state-transition and history tests |
+| WC084-PORTAL-21 | Every Business Outcome traces to a skill, verified goal, performance measure, review frequency, status, and evidence while distinguishing agent performance from externally influenced results | Milestone 7/8 contract and evidence tests |
+| WC084-PORTAL-22 | Navigation and conversation may draw ergonomic inspiration from ChatGPT and WhatsApp but use no proprietary assets, visual imitation, divergent business rules, or non-WAOOAW identity | Milestone 6/10 design and dependency review |
 | WC084-API-01 | Web uses generated BP clients; mobile/WhatsApp mappings share semantics | Milestone 5 conformance ledger |
 | WC084-API-02 | Browser contains no private PR/WBE/CE endpoint | Milestone 8 bundle/network inspection |
-| WC084-QUAL-01 | Final Docker qualification and author review bind one final HEAD | Milestone 8 evidence ledger |
+| WC084-API-03 | Every released capability has an owner-reviewed `REUSE`, `AMEND`, `CREATE`, or `DEFER` classification and web, WhatsApp, and future-mobile mapping before dependent implementation | Milestone 5 discovery ledger |
+| WC084-QUAL-01 | Final Docker qualification and author review bind one final HEAD | Milestone 10 evidence ledger |
+| WC084-QUAL-02 | All executable development and acceptance evidence runs in approved Docker services with no host virtual environment or host-installed dependency workflow | Milestone 1-10 command/evidence ledger |
 
 ## 15. Rollback And Release Boundary
 
@@ -535,6 +714,16 @@ mock success, bulk screenshot approval, or incomplete author review.
 - Plan/prototype completion, Founder prototype acceptance, implementation authorization, PR approval,
   merge, Demo deployment, UAT, Production, provider activation, and customer traffic are distinct.
 
+Provider slices are independent only while unavailable: a provider missing credentials, external
+approval, broker configuration, callback registration, or readiness evidence remains disabled with
+an accountable gate reference while other fully qualified providers may proceed. Once a provider is
+enabled in an environment, its redirect, callback, registration continuation, returning login,
+sign-out, repeat-login, failure, and rollback paths must all pass; partial activation blocks that
+provider and it must be disabled rather than released as partly working. At least one fully qualified
+provider path, including the Keycloak-owned email flow when selected, is required for an authenticated
+portal release. UAT, Production, and customer traffic remain separately authorized regardless of
+Demo proof.
+
 ## 16. Stops
 
 Stop rather than proceed when:
@@ -544,14 +733,19 @@ Stop rather than proceed when:
 - a proposed change alters frozen public aesthetics beyond Section 3;
 - provider credentials, external approval, callback registration, Key Vault binding, or readiness
   evidence is absent;
+- an enabled provider has only a partially passing login, registration, callback, sign-out,
+  repeat-login, failure, or rollback path;
 - Demo email remains unavailable and deployed network/configuration evidence cannot identify why;
 - a portal feature lacks an owner-approved Business Platform contract;
+- a portal capability lacks a Section 9.4 classification, accountable owner, or cross-channel mapping;
 - web, mobile, or WhatsApp would implement divergent business rules or call private services;
 - transactional cross-channel continuity is claimed before WC-060 permits it;
 - tests use live customer data, committed secrets, production fallback mocks, or runtime LLM calls;
 - a deterministic failure is retried, hidden by baseline replacement, or bypassed by weakening a gate;
 - visual screenshots are treated as sufficient without geometry, interaction, accessibility, and
   substantive review;
+- prototype markup is treated as production code, a pixel-perfect mandate, or a ceiling on quality;
+- an executable check runs on the host or a host virtual environment or dependency install is used;
 - cloud mutation, spend, Production, customer traffic, self-approval, self-merge, or direct `main`
   push is proposed without exact authority.
 
@@ -562,7 +756,8 @@ Stop rather than proceed when:
 This planning activity is complete when:
 
 - this plan covers every Founder requirement, separates WC-083 defects from new scope, defines
-  interfaces and ownership, preserves frozen aesthetics, and records milestone/test/cost controls;
+  interfaces and ownership, preserves the public-site boundary, grants bounded Customer Portal
+  creative liberty, and records lifecycle, API-discovery, milestone, test, and cost controls;
 - the standalone prototype demonstrates the Section 10 states and interactions on desktop and mobile,
   in light and dark themes, without network or production behavior;
 - the Solution Architect completes author review and records unresolved Founder decisions;
@@ -572,13 +767,15 @@ This planning activity is complete when:
 
 WC-084 implementation is done only when all Section 14 acceptance rows pass, each provider's real
 Demo path is proven or remains truthfully blocked by an accepted external gate, all released portal
-capabilities use approved generated BP contracts, major-milestone and final Docker campaigns pass,
-frozen public visuals show no unauthorized changes, substantive visual review accepts every changed
-route, and one unmerged final-HEAD-bound PR is ready for Founder review.
+capabilities use approved generated BP contracts, the Section 9.4 ledger is complete, major-milestone
+and final Docker campaigns pass without a host virtual environment, frozen public visuals show no
+unauthorized changes, substantive visual review accepts every changed route, and one unmerged
+final-HEAD-bound PR is ready for Founder review.
 
 ## 18. Solution Architect Author Review
 
-**Status:** PASS - author self-review complete, 2026-09-07. Founder acceptance remains required.
+**Status:** PASS - initial author review complete 2026-09-07; bounded institutional repair review
+complete 2026-09-08. Founder acceptance remains required.
 
 The review covered requirements completeness, predecessor defect classification, frozen visual
 boundary, component ownership, API reuse across channels, provider entry gates, interaction states,
@@ -587,8 +784,8 @@ token optimization, acceptance traceability, and authorization stops.
 
 Findings repaired during author review:
 
-1. Replaced language that allowed focused Docker checks after small edits with non-Docker focused
-  checks and milestone-only Docker campaigns, matching the Founder requirement.
+1. Replaced language that required broad Docker campaigns after small edits with focused executable
+  checks in the smallest applicable Docker runner and milestone-only broad campaigns, matching C-080.
 2. Corrected the prototype Plan panel so desktop close/reopen and intermediate/mobile overlay
   behavior are coherent and expose accurate `aria-expanded` state.
 3. Added directly reviewable loading, empty, offline, and error states to the prototype Settings
@@ -596,11 +793,25 @@ Findings repaired during author review:
 4. Added Section 2.1 as a one-sentence-per-item story-point summary spanning authentication defects,
   provider readiness, browser integrity, Customer Portal capabilities, shared APIs, degradation,
   Emergency Stop, and the frozen public-experience boundary.
+5. On 2026-09-08, completed the API `REUSE/AMEND/CREATE` ledger, separated design, implementation,
+  Skill 17 delivery, provider, and Founder authorities, corrected C-080 focused-check language,
+  recorded WC-060/WC-062 as accepted reuse baselines, added missing acceptance rows, and reconciled
+  independent provider deferral with complete activated-provider behavior.
+6. On 2026-09-08, integrated the Founder-requested handoff mandate across the controlling objective,
+  visual authority, universal agent lifecycle, channel-neutral discovery ledger, vertical slices,
+  Docker-only/no-virtual-environment policy, stops, and executable acceptance rows. The prototype is
+  explicitly guidance rather than production markup, and production retains bounded creative liberty
+  subject to substantive Founder visual acceptance.
 
 Deterministic checks passed: JavaScript syntax, required local asset presence, editor diagnostics,
 diff whitespace, and headless Chromium at 1440x900, 768x1024, and 360x800. The browser checks verified
 zero document overflow, the compact agent-list-first hierarchy, Plan close/open, account drawer,
 Billing panel, theme switching, mobile voice draft/cancel, and all four system-state previews.
+
+The 2026-09-08 repair pass additionally verified each cited reusable operation against the canonical
+Business Platform OpenAPI, reconciled WC-060 and WC-062 against their completion records, reviewed
+the complete plan for authority and acceptance consistency, and passed editor diagnostics. It made
+no claim that owner-blocked `AMEND` or `CREATE` contracts are accepted or implementation-ready.
 
 No runnable `src/` or `web/` application code, provider configuration, infrastructure, deployment,
 or frozen public-site styling was changed. The prototype uses fictional local data and performs no
