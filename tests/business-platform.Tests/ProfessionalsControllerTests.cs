@@ -79,6 +79,38 @@ public sealed class ProfessionalsControllerTests
             .Which.Title.Should().Be("Professional not found");
     }
 
+    [Fact]
+    public void Marketplace_MapsActiveCatalogToServerOwnedOfferabilityAndPrice()
+    {
+        var result = _controller.BrowseMarketplace(null, 20);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        var json = System.Text.Json.JsonSerializer.SerializeToElement(ok.Value);
+        var listing = json.GetProperty("items").EnumerateArray().Should().ContainSingle().Subject;
+        listing.GetProperty("professionalType").GetString().Should().Be("DIGITAL_MARKETING_LOCAL_SERVICE");
+        listing.GetProperty("offerabilityState").GetString().Should().Be("OFFERABLE");
+        listing.GetProperty("nextAction").GetString().Should().Be("VIEW_DISCLOSURE");
+        listing.GetProperty("indicativePrice").GetProperty("Currency").GetString().Should().Be("INR");
+    }
+
+    [Fact]
+    public void Marketplace_FilterBoundCursorRejectsReuseAgainstDifferentQuery()
+    {
+        var catalog = new Mock<IProfessionalCatalog>();
+        catalog.Setup(value => value.Browse(null, null)).Returns(
+        [
+            Disclosure("A"), Disclosure("B"),
+        ]);
+        var controller = new ProfessionalsController(catalog.Object);
+        var first = controller.BrowseMarketplace(null, 1).Should().BeOfType<OkObjectResult>().Subject;
+        var cursor = System.Text.Json.JsonSerializer.SerializeToElement(first.Value).GetProperty("nextCursor").GetString();
+
+        var invalid = controller.BrowseMarketplace(cursor, 1, query: "different")
+            .Should().BeOfType<ObjectResult>().Subject;
+
+        invalid.StatusCode.Should().Be(400);
+    }
+
     [Theory]
     [InlineData(nameof(ProfessionalsController.Discover))]
     [InlineData(nameof(ProfessionalsController.GetDisclosure))]
@@ -114,4 +146,10 @@ public sealed class ProfessionalsControllerTests
 
         throw new DirectoryNotFoundException("Could not locate src/business-platform.");
     }
+
+    private static ProfessionalDisclosure Disclosure(string type) => new(
+        type, "1.0.0", type, ["Suitable"], [], [], [], [],
+        new ProfessionalTrialDisclosure(true, 14, false, false), "RECORDED",
+        new IndicativePriceDisclosure("INR", 100, "MONTHLY", "Indicative"),
+        new ProfessionalEligibility(true, "Eligible"));
 }

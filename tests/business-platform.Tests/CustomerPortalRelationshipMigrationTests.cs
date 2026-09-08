@@ -34,3 +34,32 @@ public sealed class CustomerPortalRelationshipMigrationTests
         sql.Should().Contain("'SYSTEM', 'LIGHT', 'DARK'");
     }
 }
+
+public sealed class CustomerPortalAlertMigrationTests
+{
+    private static readonly string Migration = RepositoryPaths.Resolve(
+        "infrastructure/postgres/init/28-customer-portal-alerts.sql");
+
+    [Fact]
+    public void MigrationDefinesTenantBoundFeedAndIdempotencyWithForcedRls()
+    {
+        var sql = File.ReadAllText(Migration);
+
+        sql.Should().Contain("business.customer_alerts");
+        sql.Should().Contain("business.customer_alert_idempotency");
+        sql.Should().Contain("UNIQUE (tenant_id, actor_subject, idempotency_key, operation)");
+        sql.Should().Contain("FORCE ROW LEVEL SECURITY");
+        sql.Should().Contain("app.current_tenant_id");
+        sql.Should().NotContain("BYPASSRLS");
+    }
+
+    [Fact]
+    public void MigrationConstrainsAlertAndFeedStates()
+    {
+        var sql = File.ReadAllText(Migration);
+
+        sql.Should().Contain("'UNREAD', 'READ', 'ACKNOWLEDGED'");
+        sql.Should().Contain("'ACTIONABLE', 'INFORMATIONAL'");
+        sql.Should().Contain("'OPEN', 'ACKNOWLEDGE', 'NONE'");
+    }
+}
