@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { OnboardForm } from '@/components/relationships/OnboardForm';
+import { NotificationChannel } from '@/lib/api/generated/models/NotificationChannel';
 import { AlertFeed, type PortalAlert } from './AlertFeed';
 import { ProfileEditor } from './ProfileEditor';
 import { SettingsEditor } from './SettingsEditor';
@@ -46,7 +47,7 @@ describe('WC084 portal editors', () => {
 
   it('persists settings before updating presentation cookies', async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: true });
-    render(<SettingsEditor locale="en-IN" notificationPreferences={{ approvalRequests: ['WEB'], maturityReports: ['EMAIL'], monthlyNarratives: ['EMAIL'], selfGovernanceAlerts: ['WEB'] }} theme="SYSTEM" timestampVisibility="RELATIVE" />);
+    render(<SettingsEditor locale="en-IN" notificationPreferences={{ approvalRequests: [NotificationChannel.InApp], maturityReports: [NotificationChannel.Email], monthlyNarratives: [NotificationChannel.Email], selfGovernanceAlerts: [NotificationChannel.InApp] }} theme="SYSTEM" timestampVisibility="RELATIVE" />);
     fireEvent.change(screen.getByLabelText('Theme'), { target: { value: 'DARK' } });
     fireEvent.submit(screen.getByRole('button', { name: 'Save settings' }).closest('form')!);
     expect(await screen.findByText('Settings saved.')).toBeVisible();
@@ -55,7 +56,7 @@ describe('WC084 portal editors', () => {
 
   it('does not update presentation cookies after a failed settings save', async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: false });
-    render(<SettingsEditor locale="ur" notificationPreferences={{ approvalRequests: ['WEB'], maturityReports: ['EMAIL'], monthlyNarratives: ['EMAIL'], selfGovernanceAlerts: ['WEB'] }} theme="LIGHT" timestampVisibility="ABSOLUTE" />);
+    render(<SettingsEditor locale="ur" notificationPreferences={{ approvalRequests: [NotificationChannel.InApp], maturityReports: [NotificationChannel.Email], monthlyNarratives: [NotificationChannel.Email], selfGovernanceAlerts: [NotificationChannel.InApp] }} theme="LIGHT" timestampVisibility="ABSOLUTE" />);
     fireEvent.submit(screen.getByRole('button', { name: 'Save settings' }).closest('form')!);
     expect(await screen.findByText('Settings could not be saved.')).toBeVisible();
     expect(document.cookie).not.toContain('waooaw-theme=light');
