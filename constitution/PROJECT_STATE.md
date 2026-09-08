@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 135
-**Last Updated:** 2026-09-08 (WC-084 Identity portal implementation checkpoint)
+**State Revision:** 136
+**Last Updated:** 2026-09-08 (WC-084 relationship portal implementation checkpoint)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -38,7 +38,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Current application foundation | DONE - PRs #373, #376, #381 and #386 added identity, public acquisition, admission and runtime adapter foundations after cloud qualification |
 | Demo/runtime readiness repairs | MERGED - PRs #389 through #398 repaired cleanup provenance, cloud authority, dependency recovery, service startup, Temporal readiness and deployment verification |
 | WC-078 public visual experience | ENGINEERING QUALIFIED - WC-01 through WC-08 complete; WC-09 Docker build/tests/browser matrix/54 captures/scanners and author review PASS; Founder visual acceptance, PR approval and merge pending |
-| WC-084 Customer Portal | IN PROGRESS - foundation and canonical API closure committed; Identity profile, settings and login-method runtime milestone `acf5eedf` passes 111/111 Dockerized Identity tests |
+| WC-084 Customer Portal | IN PROGRESS - Identity milestone `acf5eedf`; relationship collection/configuration/read milestone `efd18400`; focused Docker tests pass; Operations unlock is blocked because the accepted typed-command union has no customer goal-verification mutation |
 | Production | PLAN ONLY - code-prepared; protected environments, authorized plan, traffic and final acceptance remain Founder-reserved |
 
 ### Checkpoint Context
