@@ -97,6 +97,44 @@ public sealed class ControllerBoundaryCoverageTests
     }
 
     [Fact]
+    public async Task WorkspaceEndpoints_FailClosedForUnboundParticipant()
+    {
+        var fixture = await CreateWorkspaceAsync();
+        fixture.Controller.ControllerContext = Context(fixture.Relationship.TenantId, Guid.NewGuid());
+        using var command = JsonDocument.Parse("{\"type\":\"CHANGE_PLAN\"}");
+        var relationshipId = fixture.Relationship.RelationshipId;
+        var cancellationToken = CancellationToken.None;
+
+        Func<Task<IActionResult>>[] requests =
+        [
+            () => fixture.Controller.GetWorkspaceAsync(relationshipId, cancellationToken),
+            () => fixture.Controller.GetChangesAsync(relationshipId, null, cancellationToken),
+            () => fixture.Controller.GetPlanAsync(relationshipId, cancellationToken),
+            () => fixture.Controller.GetConfigurationAsync(relationshipId, cancellationToken),
+            () => fixture.Controller.UpdateOnboardAsync(relationshipId,
+                new RelationshipOnboardRequest("1.0.0", null, null, null, null),
+                Guid.NewGuid().ToString("D"), cancellationToken),
+            () => fixture.Controller.GetAttentionAsync(relationshipId, cancellationToken),
+            () => fixture.Controller.GetGoalsAsync(relationshipId, cancellationToken),
+            () => fixture.Controller.GetBusinessOutcomesAsync(relationshipId, cancellationToken),
+            () => fixture.Controller.GetOperationsAsync(relationshipId, cancellationToken),
+            () => fixture.Controller.GetWorkAsync(relationshipId, cancellationToken),
+            () => fixture.Controller.GetResultsAsync(relationshipId, cancellationToken),
+            () => fixture.Controller.GetUsageBudgetAsync(relationshipId, cancellationToken),
+            () => fixture.Controller.GetRightsControlsAsync(relationshipId, cancellationToken),
+            () => fixture.Controller.SubmitCommandAsync(
+                relationshipId, command.RootElement, Guid.NewGuid().ToString("D"), cancellationToken),
+            () => fixture.Controller.GetCommandAsync(relationshipId, Guid.NewGuid(), cancellationToken),
+        ];
+
+        foreach (var request in requests)
+        {
+            var result = Assert.IsType<ObjectResult>(await request());
+            Assert.Equal(404, result.StatusCode);
+        }
+    }
+
+    [Fact]
     public async Task WorkspaceCommandEndpoints_EnforceIdempotencyAndBlockedPosture()
     {
         var fixture = await CreateWorkspaceAsync();
