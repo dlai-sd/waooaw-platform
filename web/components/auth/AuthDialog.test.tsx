@@ -21,7 +21,7 @@ describe('AuthDialog', () => {
   });
 
   beforeEach(() => {
-    back.mockClear();
+    jest.clearAllMocks();
     jest.mocked(useRouter).mockReturnValue(router);
   });
 
@@ -35,7 +35,8 @@ describe('AuthDialog', () => {
     expect(dialog).toHaveAttribute('open');
 
     fireEvent(dialog, new Event('cancel', { bubbles: true, cancelable: true }));
-    expect(back).toHaveBeenCalledTimes(1);
+    expect(router.replace).toHaveBeenCalledWith('/', { scroll: false });
+    expect(back).not.toHaveBeenCalled();
 
     unmount();
     expect(trigger).toHaveFocus();
@@ -45,9 +46,9 @@ describe('AuthDialog', () => {
   it('dismisses only when the backdrop itself is clicked', () => {
     render(<AuthDialog><h1 id="auth-dialog-title">Register</h1><button type="button">Inside</button></AuthDialog>);
     fireEvent.click(screen.getByRole('button', { name: 'Inside' }));
-    expect(back).not.toHaveBeenCalled();
+    expect(router.replace).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('dialog', { name: 'Register' }));
-    expect(back).toHaveBeenCalledTimes(1);
+    expect(router.replace).toHaveBeenCalledWith('/', { scroll: false });
   });
 });

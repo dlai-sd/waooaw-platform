@@ -4,7 +4,8 @@
 **Implementation executor:** Platform IT Expert (INST-010), Skills 4 and 16 for application code;
 Skill 17 only for separately authorized environment configuration, deployment, and qualification
 **Assigned by:** Founder instruction, 2026-09-09
-**Status:** PLAN CANDIDATE; RUNNABLE IMPLEMENTATION, PROVIDER ACTIVATION, AND DEPLOYMENT NOT AUTHORIZED
+**Status:** IMPLEMENTATION AUTHORIZED by the Founder in the current conversation on 2026-09-09;
+external provider inputs, named-owner acceptance, real journey evidence, and Founder merge remain gates.
 **Predecessor:** WC-084 Authentication Readiness And Customer Portal Delivery Plan
 **Delivery baseline:** PR #407 merge `3496d11d9aff53cb86ab9730d36f9c9f6c2c8907`, deployed by
 workflow run `34257700855` on 2026-09-08
@@ -20,6 +21,27 @@ workflow run `34257700855` on 2026-09-08
 C-065, C-071, C-076, C-080
 
 ## 1. Objective And Correction
+
+### Current-Session Execution Amendment
+
+The Founder authorized WC-085 implementation and the following additional Demo requirement on
+2026-09-09. Execute independently with deterministic, token-efficient tooling; do not dispatch
+additional institutional reviewers without a Founder request. Use Docker for all application,
+infrastructure, and test execution. Virtual environments are prohibited. Batch Docker qualification
+at complete story milestones, with focused editor/static checks between small edits.
+
+Demo users may be discarded when Keycloak is replaced. Every fresh Demo deployment must nevertheless
+recreate the realm, application client, Google provider, and default customer role; load Google
+credentials through environment-specific Key Vault references; and configure the stable public issuer
+and registered OAuth callback automatically. Verify a redirect to Google after deployment. A returning
+Google user must be able to recreate their local account without administrator changes. Persistent
+Keycloak storage and a custom secret importer are outside this amendment. Credentials must not be
+embedded in images, Git, Terraform values, or evidence. This requirement supplements SP-03 and SP-06;
+it does not replace real provider-journey acceptance or authorize unrelated environments.
+
+Creative UI decisions remain within the accepted WAOOAW visual contracts and frozen public-route
+boundary. Final delivery is an unmerged PR with all story statuses and attributable test evidence;
+blocked or unexecuted gates must never be reported as passing.
 
 Close every unproven, partial, blocked, or omitted WC-084 outcome without treating merged code,
 passing CI, deployment success, provider fixtures, or truthful unavailability as proof of customer

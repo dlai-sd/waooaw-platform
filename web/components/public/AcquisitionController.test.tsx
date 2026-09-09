@@ -1,6 +1,7 @@
 // Implements: work-contracts/WC-078-public-acquisition-experience-plan.md §Attribution, Retention, And Failure
 // Constitutional basis: C-023 (Evidence First), C-059 (Implementation Traceability), C-063 (Data Minimisation)
 import { fireEvent, render, waitFor } from '@testing-library/react';
+import Link from 'next/link';
 import { AcquisitionController, recordAcquisitionEvent } from './AcquisitionController';
 import { consentCookieName, createConsentPreference } from '@/lib/consent';
 
@@ -42,7 +43,7 @@ describe('public acquisition controller', () => {
   it('distinguishes registration from a professional hire journey', async () => {
     const preference = createConsentPreference(true, false);
     document.cookie = `${consentCookieName}=${encodeURIComponent(JSON.stringify(preference))}; Path=/`;
-    render(<><AcquisitionController /><a href="/register">Register</a><a href="/register?professional=digital-marketing">Hire</a></>);
+    render(<><AcquisitionController /><Link href="/register">Register</Link><Link href="/register?professional=digital-marketing">Hire</Link></>);
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
     fireEvent.click(document.querySelector('a[href="/register"]') as HTMLAnchorElement);
     fireEvent.click(document.querySelector('a[href*="professional="]') as HTMLAnchorElement);

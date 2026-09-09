@@ -338,12 +338,16 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 .apple-sign-in p { max-width: 52ch; margin: 0; color: var(--ink); }
 .auth-dialog { width: min(calc(100% - 2rem), 620px); max-height: calc(100dvh - 2rem); padding: 0; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); box-shadow: 0 24px 72px rgb(15 31 48 / 30%); overflow: auto; }
 .auth-dialog::backdrop { background: rgb(15 31 48 / 68%); backdrop-filter: blur(3px); }
-.auth-dialog-panel { position: relative; border-block-start: 5px solid transparent; border-image: linear-gradient(90deg, var(--color-brand-blue), var(--color-brand-green), var(--color-brand-orange)) 1; }
+.auth-dialog-panel { position: relative; min-height: min(580px, calc(100dvh - 2rem)); border-block-start: 5px solid transparent; border-image: linear-gradient(90deg, var(--color-brand-blue), var(--color-brand-green), var(--color-brand-orange)) 1; }
 .auth-dialog-close { position: absolute; inset-block-start: 1rem; inset-inline-end: 1rem; z-index: 1; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 50%; color: var(--ink); background: var(--surface); cursor: pointer; }
 .auth-dialog-close:hover { border-color: var(--blue); }
-.auth-dialog .auth-view { width: 100%; padding: clamp(2rem, 7vw, 3.5rem); padding-block-start: 4.5rem; }
-.auth-dialog .auth-view h1 { font-size: clamp(2rem, 8vw, 3.2rem); }
-[dir="rtl"] .auth-dialog .auth-view h1 { line-height: 1.55; }
+.auth-dialog .auth-view { width: 100%; padding: 2rem; padding-block-start: 4.5rem; }
+.auth-dialog .auth-view h1 { font-size: 2rem; line-height: 1.2; overflow-wrap: break-word; }
+[dir="rtl"] .auth-dialog .auth-view h1 { line-height: 2; }
+.auth-boundary { min-height: min(575px, calc(100dvh - 2.5rem)); }
+.auth-loading-icon { animation: auth-loading 1s linear infinite; }
+@keyframes auth-loading { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .auth-loading-icon { animation: none; } }
 [dir="rtl"] .auth-dialog .provider-command { grid-template-columns: 24px minmax(0, 1fr); }
 [dir="rtl"] .auth-dialog .provider-command small { grid-column: 2; }
 .identity-view { width: min(100% - 2rem, 760px); }

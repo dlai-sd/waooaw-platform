@@ -7,22 +7,37 @@ import { X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { MouseEvent, ReactNode } from 'react';
 import { useEffect, useRef } from 'react';
+import { useAuthJourney } from './AuthJourney';
+import { safePublicReturnTarget } from '@/lib/safe-return';
 
 export function AuthDialog({ children }: { children: ReactNode }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const router = useRouter();
+  const journey = useAuthJourney();
+  const originRef = useRef('/');
 
   useEffect(() => {
-    returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    originRef.current = safePublicReturnTarget(journey?.current.origin);
+    returnFocusRef.current = journey?.current.trigger ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     const dialog = dialogRef.current;
     if (dialog && !dialog.open) dialog.showModal();
-    return () => returnFocusRef.current?.focus();
-  }, []);
+    return () => {
+      if (returnFocusRef.current?.isConnected) {
+        returnFocusRef.current.focus();
+        return;
+      }
+      const fallback = document.querySelector<HTMLElement>('main');
+      if (fallback) {
+        fallback.setAttribute('tabindex', '-1');
+        fallback.focus();
+      }
+    };
+  }, [journey]);
 
   function dismiss() {
     dialogRef.current?.close();
-    router.back();
+    router.replace(originRef.current, { scroll: false });
   }
 
   function dismissBackdrop(event: MouseEvent<HTMLDialogElement>) {

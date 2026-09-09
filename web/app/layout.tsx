@@ -16,6 +16,7 @@ import type { ReactNode } from 'react';
 import '@/config/public-config';
 import { siteConfig } from '@/config/site';
 import { OfflineNotice } from '@/components/shell/OfflineNotice';
+import { AuthJourney } from '@/components/auth/AuthJourney';
 import { directionForLocale, resolveLocale, resolveTheme } from '@/lib/preferences';
 import './globals.css';
 
@@ -63,8 +64,10 @@ export default async function RootLayout({ authModal, children }: Readonly<{ aut
     >
       <body>
         <OfflineNotice />
-        {children}
-        {authModal}
+        <AuthJourney>
+          {children}
+          {authModal}
+        </AuthJourney>
       </body>
     </html>
   );
