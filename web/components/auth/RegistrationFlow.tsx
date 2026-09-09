@@ -7,6 +7,7 @@ import { ArrowRight, CheckCircle2, LoaderCircle, Mail, Smartphone } from 'lucide
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { RegistrationProgress } from '@/components/auth/RegistrationProgress';
+import { identitySessionChangeKey } from '@/components/auth/SignOutCommand';
 import type { IdentityRegistration, IdentityVerificationChallenge } from '@/lib/api/generated';
 import type { IdentityMessages } from '@/lib/identity-messages';
 import type { SupportedLocale } from '@/lib/preferences';
@@ -74,12 +75,24 @@ export function RegistrationFlow({ locale, messages }: { locale: SupportedLocale
   }
 
   useEffect(() => {
+    function handleSessionChange(event: StorageEvent) {
+      if (event.key !== identitySessionChangeKey || event.storageArea !== localStorage) return;
+      activeRequest.current?.abort();
+      activeRequest.current = undefined;
+      sessionStorage.removeItem(draftKey);
+      setChallenge(undefined);
+      setRegistration(undefined);
+      router.replace('/');
+      router.refresh();
+    }
     const saved = sessionStorage.getItem(draftKey);
     if (saved) {
       try { setDraft(JSON.parse(saved) as Draft); } catch { sessionStorage.removeItem(draftKey); }
     }
+    window.addEventListener('storage', handleSessionChange);
     void command({ action: 'start', languagePreference: locale });
     return () => {
+      window.removeEventListener('storage', handleSessionChange);
       activeRequest.current?.abort();
       activeRequest.current = undefined;
     };

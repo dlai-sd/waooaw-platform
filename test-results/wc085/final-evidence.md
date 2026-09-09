@@ -76,6 +76,27 @@ relationship method still lacks `CustomerIdentityRoute` and is denied for custom
 controller execution. Unadopted downstream service, job, callback and streaming paths remain
 disabled and are not represented as tested or passing.
 
+### H4 Returning Identity And Browser Cleanup - 2026-09-09
+
+Status: PARTIAL; the bounded local returning-identity and cross-tab cleanup checks PASS. SP-03,
+SP-16, SP-17 and SP-20 retain their accepted-contract, real-provider, deployed-browser and
+full-degradation gates, so H4 is not complete acceptance.
+
+| Docker check | Result |
+|---|---|
+| Focused PostgreSQL continuity filters | 7 PASS, 0 failed/skipped in 23 seconds; same subject keeps the original account/tenant/profile through same/different key, registration and expiry; a different actor sharing the stable Google key has one winner and one unresolved recovery; inactive/retired cohorts cannot resolve, replay or remint |
+| Registration route/flow and sign-out Jest slice | 3 suites, 58 PASS, 0 failed, no console warnings/errors; covers confirmed returning session, expired/mismatched session denial, bounded cancellation, same-key retry, switch/unmount cancellation, protected-state cleanup and late cross-tab sign-out denial |
+| Docker TypeScript and editor diagnostics | PASS with no diagnostics in the four changed web files |
+
+Sign-out and account switch first remove WAOOAW-prefixed session/local storage, then publish a
+privacy-safe cross-tab change containing only an action and random nonce. A registration tab aborts
+its pending request, clears its local draft/state and returns to the public origin before any late
+reply can navigate to `/home`. Unrelated browser storage is preserved. The database remains the
+identity authority: email is not used to match or relink an actor. Recreated-actor recovery remains
+blocked because retirement/rebinding and old-session denial rules are not formally accepted; H4 adds
+no silent reset, persistent Keycloak storage or recovery mutation. No real Google or deployed browser
+journey was performed.
+
 | Command / Scope | Result |
 |---|---|
 | `pnpm test -- --runInBand --json --outputFile=/evidence/jest.json` | 41 suites, 229 tests PASS; `jest.json` |

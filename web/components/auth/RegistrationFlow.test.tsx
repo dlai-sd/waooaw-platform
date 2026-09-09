@@ -165,6 +165,29 @@ describe('F2 registration flow', () => {
     expect(sessionStorage.getItem(draftKey)).toContain('Asha');
   });
 
+  it('aborts a pending handoff when another tab signs out', async () => {
+    sessionStorage.setItem(draftKey, '{"displayName":"Asha"}');
+    let resolveStart!: (response: Response) => void;
+    global.fetch = jest.fn(() => new Promise<Response>((resolve) => { resolveStart = resolve; }));
+    render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} />);
+    const signal = jest.mocked(fetch).mock.calls[0][1]?.signal;
+
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'waooaw:identity:session-change',
+        newValue: '{"action":"SIGN_OUT","nonce":"other-tab"}',
+        storageArea: localStorage,
+      }));
+    });
+
+    expect(signal?.aborted).toBe(true);
+    expect(sessionStorage.getItem(draftKey)).toBeNull();
+    expect(replace).toHaveBeenCalledWith('/');
+    expect(refresh).toHaveBeenCalledTimes(1);
+    await act(async () => resolveStart(await jsonResponse({ handoffConfirmed: true })));
+    expect(replace).not.toHaveBeenCalledWith('/home');
+  });
+
   it('discards a superseded start reply', async () => {
     let resolveStart!: (response: Response) => void;
     global.fetch = jest.fn()
