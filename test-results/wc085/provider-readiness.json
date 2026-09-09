@@ -1,0 +1,45 @@
+{
+  "work_contract": "WC-085",
+  "code_freeze": "14a28c18aa8774d8b2f956c475e2e60a245f4ddd",
+  "environment": "demo",
+  "candidate_deployed_revision": null,
+  "candidate_deployed_images": null,
+  "authorization": "Current-session Founder approval of WC-085 and reproducible Demo Google configuration",
+  "overall_result": "BLOCKED",
+  "providers": [
+    {
+      "id": "GOOGLE",
+      "decision": "DISABLED_PENDING_FULL_ACCEPTANCE",
+      "candidate_desired_runtime_enabled": true,
+      "historical_live_broker_enabled": true,
+      "external_prerequisites": {"credentials_previously_stored": "PASS", "real_test_account_journeys": "BLOCKED"},
+      "registered_callback": "https://ca-demo-identity-edge.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io/realms/waooaw/broker/google/endpoint",
+      "observed_candidate_callback_host": null,
+      "secret_references": ["kv://kv-waooaw-demo/google-client-id", "kv://kv-waooaw-demo/google-client-secret"],
+      "secret_versions": "NOT_READ; versionless deployment references",
+      "scopes": ["openid", "email", "profile"],
+      "reconciliation": "BLOCKED: checked-in legacy manifest differs from Terraform runtime origins/client/provider state; private endpoint/UI checks not executed",
+      "journeys": {"registration": "NOT_RUN", "login": "NOT_RUN", "return": "NOT_RUN", "sign_out": "NOT_RUN", "repeat_login": "NOT_RUN", "denial": "NOT_RUN", "failure": "NOT_RUN", "rollback": "NOT_RUN"},
+      "local_reconstruction": "PASS: two fresh pinned Keycloak instances, synthetic credentials, TLS redirect verification, customer default role and no founder role",
+      "privacy_security": "No real credentials/tokens/PII captured; live subject mapping, non-enumeration and complete no-leakage journey not qualified",
+      "blocker": "Candidate configuration is not provider acceptance; do not activate via merge until reconciliation and real-account gates pass"
+    },
+    {
+      "id": "FACEBOOK", "decision": "DISABLED", "candidate_desired_runtime_enabled": false,
+      "external_prerequisites": "BLOCKED: FA-002, FA-018 and isolated Facebook login app inputs",
+      "registered_callback": null, "observed_candidate_callback_host": null,
+      "secret_references": [], "secret_versions": "NOT_READ", "scopes": ["email", "public_profile"],
+      "reconciliation": "NOT_RUN", "journeys": "ALL_NOT_RUN", "privacy_security": "NOT_RUN",
+      "blocker": "Founder external provider inputs and real journeys required; DMA OAuth unchanged"
+    },
+    {
+      "id": "EMAIL", "decision": "DISABLED_PENDING_FULL_ACCEPTANCE",
+      "historical_manifest_enabled": true,
+      "external_prerequisites": "BLOCKED: sender/domain/test-mailbox and delivery inputs",
+      "registered_callback": null, "observed_candidate_callback_host": null,
+      "secret_references": [], "secret_versions": "NOT_READ", "scopes": [],
+      "reconciliation": "NOT_RUN", "journeys": "ALL_NOT_RUN", "privacy_security": "NOT_RUN",
+      "blocker": "Existing enabled metadata is not email delivery or login acceptance; no new email activation performed"
+    }
+  ]
+}
