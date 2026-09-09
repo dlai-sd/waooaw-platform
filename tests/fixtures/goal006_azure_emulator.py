@@ -144,7 +144,7 @@ class AzureHandler(BaseHTTPRequestHandler):
         if path == "/realms/waooaw/protocol/openid-connect/auth":
             query = parse_qs(urlparse(self.path).query)
             assert query["client_id"] == ["waooaw-web"]
-            assert query["redirect_uri"] == ["https://ca-demo-web.local.waooaw.test/api/auth/callback/keycloak"]
+            assert query["redirect_uri"] == ["https://ca-demo-web.local.waooaw.test/api/auth/callback/keycloak-google"]
             assert query["kc_idp_hint"] == ["google"]
             assert query["code_challenge_method"] == ["S256"]
             assert query["state"] and query["nonce"] and query["code_challenge"]

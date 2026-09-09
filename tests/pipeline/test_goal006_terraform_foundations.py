@@ -318,7 +318,8 @@ def test_runtime_uses_public_identity_edge_while_keycloak_stays_internal() -> No
         "KC_HOSTNAME",
     ):
         assert setting in contract
-    assert contract.count("local.service_urls.identity_edge") == 5
+    assert contract.count("local.service_urls.identity_edge") == 6
+    assert "local.demo_identity_manifest.origins.identity == local.service_urls.identity_edge" in contract
     assert 'KEYCLOAK_ISSUER       = "${local.service_urls.keycloak}' not in contract
 
 

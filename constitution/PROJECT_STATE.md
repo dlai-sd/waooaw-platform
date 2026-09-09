@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 139
-**Last Updated:** 2026-09-09 (WC-085 partial implementation checkpoint)
+**State Revision:** 140
+**Last Updated:** 2026-09-09 (WC-085 handover and safe-parking checkpoint)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -39,7 +39,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Demo/runtime readiness repairs | MERGED - PRs #389 through #398 repaired cleanup provenance, cloud authority, dependency recovery, service startup, Temporal readiness and deployment verification |
 | WC-078 public visual experience | ENGINEERING QUALIFIED - WC-01 through WC-08 complete; WC-09 Docker build/tests/browser matrix/54 captures/scanners and author review PASS; Founder visual acceptance, PR approval and merge pending |
 | WC-084 Customer Portal | ENGINEERING QUALIFIED - generated-client-backed My Agents, Marketplace, Alerts, Profile, Settings, account drawer, Onboard/Induct and lifecycle views complete; Docker build/typecheck, 209 Jest tests, 96.33% changed-interaction line coverage, 40 focused BP tests and 238 Playwright tests pass; Founder visual acceptance, PR approval and merge remain |
-| WC-085 remediation | PARTIAL - current-session Founder implementation and Demo Google reconstruction authority recorded in WC-085; 229 web tests, 98.5% changed-auth line coverage, 30 browser cases, 513 pipeline/identity tests, Terraform validation, local Azure rehearsal and two fresh pinned Keycloak reconstructions pass. Web build/scans pass. Required local lifecycle gate passes after PostgreSQL TCP readiness-probe repair. Branch ib/085/remediation pushed; final draft PR preparation in progress. No WC-085 deployment or real-account acceptance claimed. |
+| WC-085 remediation | PARTIAL / HANDOVER - Founder narrowed work to handover, Java deletion and parking on ib/085/remediation / draft PR #409. Existing-stack local milestone: 203 backend tests plus 11 Program-host tests separately, 81 web tests and TypeScript pass; not final-release evidence. Stock Keycloak + C# database-backed membership replaces Java; unsupported customer routes deny. See WC-085 Section 18 and work-contracts/WC-085-handover.md for exact packages and gates. No real Google, deployment or full story acceptance; new-session implementation requires explicit authorization. |
 | Production | PLAN ONLY - code-prepared; protected environments, authorized plan, traffic and final acceptance remain Founder-reserved |
 
 ### Checkpoint Context
@@ -71,8 +71,13 @@ do not block qualification of the implemented portal scope.
 WC-085 S1 formal owner acceptance, Google full manifest/runtime/UI reconciliation and real-account
 journeys, Facebook inputs, email delivery inputs, reported Chrome reproduction and Founder visual
 acceptance remain open. Local reconstruction is not provider acceptance or full WC-085 completion.
+WC-085 full-schema rehearsal, stock reader/private TLS, recreated identity continuity, independent
+downstream membership and browser account-switch qualification remain open; CB-009 tracks delivery.
 
 ## Next Authorized Action
+
+For WC-085: finish authorized handover/parking only on draft PR #409; no new feature implementation.
+The next executor follows WC-085 Section 18 after current-session Founder authorization.
 
 Obtain INST-009 acceptance of the Production edge, data, runtime, recovery, cost and shared-state
 ownership inputs required for P3-EX11 offline readiness. Do not activate the Production runner, run

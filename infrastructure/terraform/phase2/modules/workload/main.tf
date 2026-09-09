@@ -80,7 +80,7 @@ locals {
     editUsernameAllowed    = false
     bruteForceProtected    = true
     accessTokenLifespan    = 900
-    ssoSessionMaxLifespan  = 86400
+    ssoSessionMaxLifespan  = var.environment == "demo" ? 28800 : 86400
     refreshTokenMaxReuse   = 0
     revokeRefreshToken     = true
     passwordPolicy         = "length(12) and upperCase(1) and digits(1) and specialChars(1) and notUsername"
@@ -95,9 +95,9 @@ locals {
         standardFlowEnabled       = true
         implicitFlowEnabled       = false
         directAccessGrantsEnabled = false
-        redirectUris = [
+        redirectUris = concat([
           "${local.service_urls.web}/api/auth/callback/keycloak",
-        ]
+        ], var.google_login_enabled ? ["${local.service_urls.web}/api/auth/callback/keycloak-google"] : [])
         webOrigins = [local.service_urls.web]
         attributes = {
           "pkce.code.challenge.method" = "S256"
@@ -199,12 +199,7 @@ locals {
       Keycloak__Audience                   = "waooaw-platform"
       Keycloak__Authority                  = "${local.service_urls.identity_edge}/realms/waooaw"
       Keycloak__RequireHttpsMetadata       = "true"
-      }, var.google_login_enabled ? {
-      IdentityEnvironment__Providers__0__Enabled                    = "true"
-      IdentityEnvironment__Providers__0__UnavailableReason          = ""
-      IdentityEnvironment__Providers__0__SecretReference            = "kv://kv-waooaw-demo/google-client-secret"
-      IdentityEnvironment__Providers__0__ReadinessEvidenceReference = "WC-085-SP-03:google-deployment-verification.json"
-    } : {})
+    }, var.environment == "demo" ? local.demo_identity_runtime : {})
     "professional-runtime" = merge({
       AIR_TRANSCRIPTION_BASE_URL    = local.service_urls.ai_runtime
       CONSTITUTIONAL_ENGINE_ADDRESS = "ca-${var.environment}-constitutional-engine:80"
@@ -442,6 +437,14 @@ resource "azurerm_container_app" "member" {
   }
 
   lifecycle {
+    precondition {
+      condition = var.environment != "demo" || (
+        local.demo_identity_manifest.origins.web == local.service_urls.web &&
+        local.demo_identity_manifest.origins.identity == local.service_urls.identity_edge &&
+        local.demo_identity_manifest.origins.api == "https://ca-demo-business-platform.${var.container_app_environment_default_domain}"
+      )
+      error_message = "Demo deployment origins must match the reviewed identity manifest; domain changes require manifest and callback approval."
+    }
     precondition {
       condition     = toset(keys(var.image_digests)) == local.release_members
       error_message = "Release membership must be exactly CE, BP, PR, AIR, Web, and Billing."

@@ -16,6 +16,24 @@ ISSUER = BASE + "/realms/waooaw"
 
 
 def test_fresh_import_recreates_google_client_flow_and_default_role() -> None:
+    runtime = json.loads(json.loads(Path("/fixture/identity-runtime.json").read_text()))
+    manifest = json.loads((Path(__file__).resolve().parents[2] /
+        "infrastructure/identity-config/environments/demo.json").read_text())
+
+    def check_environment(value: object, prefix: str) -> None:
+        if isinstance(value, dict):
+            for name, child in value.items():
+                check_environment(child, prefix + "__" + name)
+        elif isinstance(value, list):
+            for position, child in enumerate(value):
+                check_environment(child, prefix + "__" + str(position))
+        else:
+            expected = str(value).lower() if isinstance(value, bool) else str(value)
+            assert runtime[prefix.lower()] == expected
+
+    runtime = {name.lower(): value for name, value in runtime.items()}
+    check_environment(manifest, "IdentityEnvironment")
+    assert runtime["identityenvironment__providers__3__readinessevidencereference"] == ""
     deadline = time.monotonic() + 120
     while True:
         try:
@@ -47,8 +65,12 @@ def test_fresh_import_recreates_google_client_flow_and_default_role() -> None:
     assert provider["config"]["clientSecret"] != "${GOOGLE_CLIENT_SECRET}"
     assert provider["firstBrokerLoginFlowAlias"] == "first broker login"
     clients = admin("clients?clientId=waooaw-web")
-    assert clients[0]["redirectUris"] == ["https://ca-demo-web.local.waooaw.test/api/auth/callback/keycloak"]
+    assert clients[0]["redirectUris"] == [
+        "https://ca-demo-web.local.waooaw.test/api/auth/callback/keycloak",
+        "https://ca-demo-web.local.waooaw.test/api/auth/callback/keycloak-google",
+    ]
     assert clients[0]["attributes"]["pkce.code.challenge.method"] == "S256"
+    assert admin("")["ssoSessionMaxLifespan"] == 28800
     admin("users", {"username": "synthetic-new-customer", "enabled": True})
     customer = admin("users?username=synthetic-new-customer&exact=true")[0]
     roles = admin("users/" + customer["id"] + "/role-mappings/realm/composite")

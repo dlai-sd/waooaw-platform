@@ -72,6 +72,31 @@ INTERNET
 
 ## 2. Identity and Authentication
 
+### WC-085 Controlling Customer Amendment (2026-09-09)
+
+EA INST-004 authors this bounded C-032 Solution-boundary amendment under current Founder authority;
+it is not an INST-007 review. For WC-085 Google customer requests, ADR-003's controlling amendment
+and ADR-008 Amendment 3 supersede step 7 below, claim-derived gRPC tenant selection, and the A01
+claim-only statement in Section 5. Independently validate raw Keycloak identity at EVERY receiving
+service; derive tenant/roles ONLY through current actor-keyed BP membership, not any JWT tenant,
+browser input or BP header. A signed tenant claim is neither necessary nor sufficient.
+
+BP/CE/PR/WBE/AI use their own restricted DB principals to execute only the read-only
+`identity.resolve_customer_membership()` interface fixed in ADR-003, then enforce local resource,
+participant and action authority. Internal customer calls require both original caller bearer and
+authenticated allowlisted peer/operation via existing mTLS identities; encrypted/internal networking
+alone is insufficient. This overrides the PR-to-AI TLS-only and development plain-gRPC allowances
+for this customer slice. Unsupported transports/surfaces stay disabled until adopted. No new service
+or cross-ledger identity read is introduced; C-026 ENABLE/FORCE RLS remains mandatory.
+
+BP has only stock `view-users` broker-read credentials, no runtime Keycloak writer or custom Java.
+Completion is one BP transaction; current membership permits same-token session entry. Detailed
+proof/credential boundaries and preserved historical evidence are in the
+[WC-085 security amendment](wc085-identity-publication-security-contract.md). Its eight-hour refresh
+maximum specializes the general 24-hour value below. Institutional and other authentication paths
+retain their separate contracts; this amendment grants no customer institutional authority.
+Documentation does not establish executable security or deployment acceptance.
+
 ### JWT Validation Specification
 
 Every request to Business Platform and Professional Runtime must pass JWT validation before reaching any controller. This is not optional and is not feature-flagged.

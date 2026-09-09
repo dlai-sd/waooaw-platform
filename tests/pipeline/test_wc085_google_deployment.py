@@ -1,10 +1,13 @@
 from pathlib import Path
-from urllib.parse import urlencode
+from unittest.mock import Mock
+from urllib.error import HTTPError
+from urllib.parse import parse_qs, urlencode, urlsplit
 
 import hcl2
 import pytest
 
 from scripts.verify_google_deployment import validate_redirect
+from scripts import verify_google_deployment
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -32,6 +35,29 @@ def test_google_recreated_only_in_demo_with_external_credentials() -> None:
     for environment in ("uat", "prod"):
         environment_root = ROOT / f"infrastructure/terraform/phase2/environments/{environment}/workload/main.tf"
         assert "google_login_enabled" not in environment_root.read_text()
+
+
+def test_verifier_exercises_nextauth_google_callback(monkeypatch: pytest.MonkeyPatch) -> None:
+    issuer = "https://identity.demo.waooaw.com/realms/waooaw"
+    web_url = "https://app.demo.waooaw.com"
+    location = "https://accounts.google.com/o/oauth2/auth?" + urlencode({
+        "client_id": "synthetic.apps.googleusercontent.com",
+        "redirect_uri": issuer + "/broker/google/endpoint",
+        "scope": "openid email profile", "response_type": "code", "state": "synthetic-state",
+    })
+    opener = Mock()
+    opener.open.side_effect = HTTPError(issuer, 302, "Found", {"Location": location}, None)
+    monkeypatch.setattr(verify_google_deployment, "build_opener", lambda *handlers: opener)
+
+    evidence = verify_google_deployment.verify(issuer, web_url)
+
+    request = parse_qs(urlsplit(opener.open.call_args.args[0]).query)
+    assert request["redirect_uri"] == [web_url + "/api/auth/callback/keycloak-google"]
+    assert request["kc_idp_hint"] == ["google"]
+    assert request["code_challenge_method"] == ["S256"]
+    assert request["code_challenge"] and request["state"] and request["nonce"]
+    assert evidence["web_callback"] == request["redirect_uri"][0]
+    assert evidence["real_user_sign_in_verified"] is False
 
 
 def test_google_access_is_separate_and_secret_scoped() -> None:

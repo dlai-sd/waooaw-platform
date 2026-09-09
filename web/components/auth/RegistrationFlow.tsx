@@ -4,6 +4,7 @@
 // Constitutional basis: C-049 (Honest Limitation), C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
 import { ArrowRight, CheckCircle2, LoaderCircle, Mail, Smartphone } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { RegistrationProgress } from '@/components/auth/RegistrationProgress';
 import type { IdentityRegistration, IdentityVerificationChallenge } from '@/lib/api/generated';
@@ -15,6 +16,7 @@ type Command = Record<string, string> & { action: string };
 const draftKey = 'waooaw:identity:registration-draft';
 
 export function RegistrationFlow({ locale, messages }: { locale: SupportedLocale; messages: IdentityMessages }) {
+  const router = useRouter();
   const [registration, setRegistration] = useState<IdentityRegistration>();
   const [challenge, setChallenge] = useState<IdentityVerificationChallenge>();
   const [draft, setDraft] = useState<Draft>({ displayName: '', businessName: '', businessDomain: '' });
@@ -22,22 +24,37 @@ export function RegistrationFlow({ locale, messages }: { locale: SupportedLocale
   const [error, setError] = useState('');
   const [voluntaryMobile, setVoluntaryMobile] = useState(false);
   const keys = useRef(new Map<string, string>());
+  const activeRequest = useRef<AbortController>();
 
   async function command(commandBody: Command) {
+    activeRequest.current?.abort();
+    const controller = new AbortController();
+    activeRequest.current = controller;
+    const timeout = setTimeout(() => controller.abort(), 20_000);
     setPending(true);
     setError('');
     const key = keys.current.get(commandBody.action) ?? crypto.randomUUID();
     keys.current.set(commandBody.action, key);
     try {
-      const response = await fetch('/api/identity/registration', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...commandBody, idempotencyKey: key }) });
+      const response = await fetch('/api/identity/registration', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...commandBody, idempotencyKey: key }), signal: controller.signal });
       const body = await response.json();
+      if (activeRequest.current !== controller) return;
+      if (controller.signal.aborted) throw new Error();
       if (!response.ok) {
         if (response.status === 401) {
           setChallenge(undefined);
           setRegistration(undefined);
         }
-        throw new Error(typeof body.title === 'string' ? body.title : messages.unavailable);
+        throw new Error();
       }
+      if ((commandBody.action === 'start' || commandBody.action === 'complete') && body?.handoffConfirmed === true) {
+        keys.current.delete(commandBody.action);
+        sessionStorage.removeItem(draftKey);
+        router.replace('/home');
+        router.refresh();
+        return;
+      }
+      if (commandBody.action === 'complete') throw new Error();
       keys.current.delete(commandBody.action);
       if ('challengeId' in body) setChallenge(body as IdentityVerificationChallenge);
       else {
@@ -45,10 +62,14 @@ export function RegistrationFlow({ locale, messages }: { locale: SupportedLocale
         setRegistration(body as IdentityRegistration);
       }
       return body;
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : messages.unavailable);
+    } catch {
+      if (activeRequest.current === controller) setError(messages.unavailable);
     } finally {
-      setPending(false);
+      clearTimeout(timeout);
+      if (activeRequest.current === controller) {
+        activeRequest.current = undefined;
+        setPending(false);
+      }
     }
   }
 
@@ -58,6 +79,10 @@ export function RegistrationFlow({ locale, messages }: { locale: SupportedLocale
       try { setDraft(JSON.parse(saved) as Draft); } catch { sessionStorage.removeItem(draftKey); }
     }
     void command({ action: 'start', languagePreference: locale });
+    return () => {
+      activeRequest.current?.abort();
+      activeRequest.current = undefined;
+    };
     // Registration bootstrap is keyed only to locale; retries reuse the retained command key.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locale]);
@@ -100,9 +125,9 @@ export function RegistrationFlow({ locale, messages }: { locale: SupportedLocale
     </form> : null}
     {action === 'VERIFY_EMAIL' ? verificationForm('email') : null}
     {action === 'VERIFY_MOBILE' ? verificationForm('mobile') : null}
-    {action === 'COMPLETE_REGISTRATION' ? <div className="identity-choice"><Smartphone aria-hidden="true" size={28} /><p>{messages.optionalMobile}</p><div className="command-row"><button className="primary-command" disabled={pending} type="button" onClick={() => setVoluntaryMobile(true)}>{messages.optionalMobile}</button><button className="text-command" disabled={pending} type="button" onClick={() => void registrationCommand('complete').then((body) => { if (body) { sessionStorage.removeItem(draftKey); window.location.assign('/home'); } })}>{messages.complete}</button></div></div> : null}
+    {action === 'COMPLETE_REGISTRATION' ? <div className="identity-choice"><Smartphone aria-hidden="true" size={28} /><p>{messages.optionalMobile}</p><div className="command-row"><button className="primary-command" disabled={pending} type="button" onClick={() => setVoluntaryMobile(true)}>{messages.optionalMobile}</button><button className="text-command" disabled={pending} type="button" onClick={() => void registrationCommand('complete')}>{messages.complete}</button></div></div> : null}
     {action === 'RESOLVE_DUPLICATE' ? <p role="status">{messages.duplicate}</p> : null}
-    {(action === 'CONTINUE_TO_DEFAULT_TARGET' || action === 'NONE') ? <button className="primary-command" type="button" onClick={() => { sessionStorage.removeItem(draftKey); window.location.assign('/home'); }}>{messages.complete}</button> : null}
+    {(action === 'CONTINUE_TO_DEFAULT_TARGET' || action === 'NONE') ? <button className="primary-command" disabled={pending} type="button" onClick={() => void registrationCommand('complete')}>{messages.complete}</button> : null}
     {pending ? <span aria-live="polite" className="identity-pending"><LoaderCircle aria-hidden="true" className="spin" size={18} /> {messages.working}</span> : null}
   </div>;
 }

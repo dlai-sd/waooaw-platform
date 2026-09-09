@@ -21,10 +21,14 @@ trap cleanup EXIT
 docker run --rm -v "$REPO_ROOT:/repo:ro" -v "$WORK_DIR:/fixture" \
   --entrypoint /bin/sh hashicorp/terraform:1.9.8 -c '
     set -eu
-    cp -R /repo/infrastructure/terraform/phase2/modules/workload /fixture/workload
-    terraform -chdir=/fixture/workload init -backend=false -input=false -no-color >/dev/null
-    printf "%s\n" "local.keycloak_realm_base64" | terraform -chdir=/fixture/workload console \
+    mkdir -p /fixture/infrastructure/terraform/phase2/modules
+    cp -R /repo/infrastructure/terraform/phase2/modules/workload /fixture/infrastructure/terraform/phase2/modules/workload
+    cp -R /repo/infrastructure/identity-config /fixture/infrastructure/identity-config
+    terraform -chdir=/fixture/infrastructure/terraform/phase2/modules/workload init -backend=false -input=false -no-color >/dev/null
+    printf "%s\n" "local.keycloak_realm_base64" | terraform -chdir=/fixture/infrastructure/terraform/phase2/modules/workload console \
       -var-file=/repo/tests/fixtures/wc085-google.tfvars > /fixture/realm-base64.json
+    printf "%s\n" "jsonencode(local.runtime_environment[\"business-platform\"])" | terraform -chdir=/fixture/infrastructure/terraform/phase2/modules/workload console \
+      -var-file=/repo/tests/fixtures/wc085-google.tfvars > /fixture/identity-runtime.json
   '
 docker run --rm -v "$WORK_DIR:/fixture" "$AZURE_CLI_IMAGE" /bin/sh -c '
   set -eu
@@ -35,7 +39,7 @@ docker run --rm -v "$WORK_DIR:/fixture" "$AZURE_CLI_IMAGE" /bin/sh -c '
     -keyout /fixture/fixture.key -out /fixture/fixture.crt >/dev/null 2>&1
   chmod 644 /fixture/fixture.key
   chmod 755 /fixture
-  rm -rf /fixture/workload
+  rm -rf /fixture/infrastructure
   '
 docker network create "$NETWORK" >/dev/null
 for generation in 1 2; do
