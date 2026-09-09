@@ -48,7 +48,7 @@ CREATE TYPE llm_dispatch_outcome AS ENUM (
 -- One row per LLM call. High-volume table — partitioned by month.
 
 CREATE TABLE IF NOT EXISTS institutional.provider_dispatch_events (
-    id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    id                  UUID        NOT NULL DEFAULT gen_random_uuid(),
 
     -- Request context (anonymised — no customer PII)
     session_id          UUID        NOT NULL,           -- Temporal workflow ID
@@ -83,7 +83,8 @@ CREATE TABLE IF NOT EXISTS institutional.provider_dispatch_events (
     data_region         VARCHAR(30) NOT NULL,          -- 'india', 'uae', 'on-premise'
     pii_in_request      BOOLEAN     NOT NULL DEFAULT FALSE,  -- Was PII present in request?
 
-    dispatched_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    dispatched_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (id, dispatched_at)
 ) PARTITION BY RANGE (dispatched_at);
 
 -- Monthly partitions (created by migration at deploy time; add new partitions monthly)
@@ -104,8 +105,7 @@ CREATE INDEX IF NOT EXISTS idx_pde_agent_skill_recent
     ON institutional.provider_dispatch_events (agent_type, skill_id, dispatched_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_pde_language_provider
-    ON institutional.provider_dispatch_events (message_language, provider, tier_requested)
-    WHERE dispatched_at > NOW() - INTERVAL '7 days';
+    ON institutional.provider_dispatch_events (message_language, provider, tier_requested, dispatched_at DESC);
 
 COMMENT ON TABLE institutional.provider_dispatch_events IS
     'Raw LLM dispatch events. One row per call. Partitioned monthly. '
@@ -135,12 +135,12 @@ SELECT
     MAX(dispatched_at)                                 AS last_call_at,
     -- PSE composite score (ADR-029 Decision 2)
     -- Refreshed during materialized view refresh
-    ROUND(
+    ROUND((
         (SUM(CASE WHEN outcome = 'SUCCESS' THEN 1.0 ELSE 0 END) / NULLIF(COUNT(*), 0)) * 0.50
         + (1.0 - LEAST(PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY latency_ms) / 5000.0, 1.0)) * 0.25
         + (1.0 - LEAST(AVG(cost_inr) / 1.0, 1.0)) * 0.15
         + (1.0 - SUM(CASE WHEN c049_escalated THEN 1.0 ELSE 0 END) / NULLIF(COUNT(*), 0)) * 0.10
-    , 4) AS composite_score
+    )::NUMERIC, 4) AS composite_score
 FROM institutional.provider_dispatch_events
 WHERE dispatched_at > NOW() - INTERVAL '1 hour'
 GROUP BY provider, tier_requested, message_language

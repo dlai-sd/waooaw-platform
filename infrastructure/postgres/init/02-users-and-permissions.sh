@@ -26,6 +26,9 @@ CREATE USER business_app WITH PASSWORD '${POSTGRES_PASSWORD}';
 -- Professional Runtime + AI Runtime: SELECT on business
 CREATE USER runtime_app WITH PASSWORD '${POSTGRES_PASSWORD}';
 
+-- AI Runtime: scoped grants are applied by the schema migrations
+CREATE USER ai_runtime_app WITH PASSWORD '${POSTGRES_PASSWORD}';
+
 -- Temporal workflow server
 CREATE USER temporal WITH PASSWORD '${TEMPORAL_PASS}';
 

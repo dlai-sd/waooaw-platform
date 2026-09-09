@@ -13,6 +13,25 @@ revision or immutable exact-six deployment tuple. No full story PASS or provider
 
 All executable application/test/build/scanner work ran in Docker. No virtual environment was created.
 
+### H1 Full-Schema Compatibility - 2026-09-09
+
+Status: PASS for package H1 local engineering scope; SP-03, SP-06, SP-19 and SP-20 retain their
+separate provider, channel and deployed-acceptance gates.
+
+| Docker check | Result |
+|---|---|
+| Exact `pgvector/pgvector:pg16` entrypoint initialization with `infrastructure/postgres/init` mounted at `/docker-entrypoint-initdb.d` | PASS through migrations `01`-`29`; migration 29 installs accounts, login methods, actor bindings, memberships and `resolve_customer_membership()` |
+| `dotnet test tests/business-platform.Tests/business-platform.Tests.csproj -p:RestoreForce=true -p:IsTestProject=true --filter 'FullyQualifiedName~Waooaw.BusinessPlatform.Tests.Identity'` | 215 PASS, 0 failed, 0 skipped; includes the exact full-chain test plus retained legacy row, two-customer isolation, retry/concurrency, commit failure rollback, inactive/legacy denial, restricted BP/CE/PR/WBE roles and pooled-context isolation |
+
+H1 repaired deterministic fresh-install defects in the existing migration chain: shared enum and
+pgvector schema visibility, an immutable UTC eligibility expression, stale duplicated campaign and
+trading declarations, an invalid pre-owner-table alteration, missing `ai_runtime_app` creation,
+stale WhatsApp grants, a historical RLS conflict fragment, retired index targets, partitioned keys,
+time-dependent index predicates, numeric aggregate typing, alphanumeric skill IDs, append-only seed
+upserts, canonical customer foreign keys and additive payment-coupon compatibility. No provider,
+cloud, deployment, Production or customer-data action occurred. Raw focused output is retained at
+`/tmp/wc085-h1.log`; the final passing commands are represented by their counts above.
+
 | Command / Scope | Result |
 |---|---|
 | `pnpm test -- --runInBand --json --outputFile=/evidence/jest.json` | 41 suites, 229 tests PASS; `jest.json` |

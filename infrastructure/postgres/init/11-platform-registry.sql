@@ -73,8 +73,7 @@ VALUES
 
     ('subscription-renewed', 'billing-engine', '1.0',
      '{"type":"object","required":["tenant_id","plan_id","renewed_at","next_renewal_at","signal_ts"],"properties":{"tenant_id":{"type":"string"},"plan_id":{"type":"string"},"renewed_at":{"type":"string","format":"date-time"},"next_renewal_at":{"type":"string","format":"date-time"},"signal_ts":{"type":"string","format":"date-time"}}}',
-     '2026-07-30', TRUE)
-ON CONFLICT (signal_name, schema_version) DO NOTHING;
+    '2026-07-30', TRUE);
 
 -- --------------------------------------------------------------------------
 -- Seed: platform component registry (mirrors platform-component-registry.yaml)
@@ -99,12 +98,8 @@ VALUES
      'architecture/reference/components/manifest/air.yaml', FALSE),
 
     ('billing-engine', 'Wallet & Billing Engine (WBE)', 'python', 'SPEC_APPROVED',
-     'src/billing-engine/skeleton',
-     'architecture/reference/components/manifest/wbe.yaml', TRUE)
-ON CONFLICT (component_id) DO UPDATE SET
-    status       = EXCLUDED.status,
-    emits_signals= EXCLUDED.emits_signals,
-    updated_at   = NOW();
+    'src/billing-engine/skeleton',
+    'architecture/reference/components/manifest/wbe.yaml', TRUE);
 
 -- --------------------------------------------------------------------------
 -- Index: fast lookup by component and by is_latest

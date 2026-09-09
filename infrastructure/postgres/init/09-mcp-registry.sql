@@ -191,7 +191,7 @@ CREATE TABLE IF NOT EXISTS institutional.domain_capability_map (
     mcp_id              VARCHAR(50)     NOT NULL REFERENCES institutional.mcp_registry(mcp_id),
     priority            VARCHAR(10)     NOT NULL CHECK (priority IN ('P0', 'P1', 'P2')),
     -- P0: required for core value prop; P1: significantly improves results; P2: enhancement
-    skill_requires      INTEGER[],      -- Skill numbers that use this MCP
+    skill_requires      TEXT[],         -- Stable skill IDs, including alphanumeric IDs such as 7b
     is_blocking         BOOLEAN         NOT NULL DEFAULT FALSE,
     -- TRUE: agent cannot meaningfully serve this domain without this MCP
     
@@ -303,7 +303,7 @@ ALTER TABLE institutional.customer_mcp_status
 --          Reconciliation workflow (checks last_N_failures to decide re-provision threshold)
 
 CREATE TABLE IF NOT EXISTS institutional.mcp_health_check_log (
-    id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    id                  UUID        NOT NULL DEFAULT gen_random_uuid(),
     customer_id         UUID        NOT NULL,
     mcp_id              VARCHAR(50) NOT NULL,
     status              VARCHAR(10) NOT NULL CHECK (status IN ('OK', 'FAIL', 'TIMEOUT', 'NO_RESPONSE')),
@@ -311,7 +311,8 @@ CREATE TABLE IF NOT EXISTS institutional.mcp_health_check_log (
     latency_ms          INTEGER,            -- Response latency in ms
     error_reason        TEXT,               -- e.g., 'connection_refused', 'health_check_timeout'
     checked_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    was_reprovisioned   BOOLEAN     NOT NULL DEFAULT FALSE  -- Did this FAIL trigger re-provision?
+    was_reprovisioned   BOOLEAN     NOT NULL DEFAULT FALSE, -- Did this FAIL trigger re-provision?
+    PRIMARY KEY (id, checked_at)
 ) PARTITION BY RANGE (checked_at);
 
 CREATE TABLE IF NOT EXISTS institutional.mcp_health_check_log_2026_07
