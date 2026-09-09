@@ -18,6 +18,12 @@ locals {
     google-client-id     = "${trimsuffix(var.key_vault_secret_resource_ids["web"], "/web")}/google-client-id"
     google-client-secret = "${trimsuffix(var.key_vault_secret_resource_ids["web"], "/web")}/google-client-secret"
   } : {}
+  identity_reader_secret_uris = var.google_login_enabled ? {
+    bp-identity-reader-client-secret = "${trimsuffix(var.key_vault_secret_uris["business-platform"], "/business-platform")}/bp-identity-reader-client-secret"
+  } : {}
+  identity_reader_secret_resource_ids = var.google_login_enabled ? {
+    bp-identity-reader-client-secret = "${trimsuffix(var.key_vault_secret_resource_ids["business-platform"], "/business-platform")}/bp-identity-reader-client-secret"
+  } : {}
   google_identity_providers = var.google_login_enabled ? [{
     alias                     = "google"
     providerId                = "google"
@@ -61,4 +67,11 @@ resource "azurerm_role_assignment" "google_broker_secret" {
   scope                = each.value
   role_definition_name = "Key Vault Secrets User"
   principal_id         = azurerm_user_assigned_identity.google_broker[0].principal_id
+}
+
+resource "azurerm_role_assignment" "identity_reader_secret" {
+  for_each             = var.workload_enabled ? local.identity_reader_secret_resource_ids : {}
+  scope                = each.value
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.member["business-platform"].principal_id
 }

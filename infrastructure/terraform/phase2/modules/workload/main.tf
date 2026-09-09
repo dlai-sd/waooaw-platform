@@ -51,6 +51,7 @@ locals {
     billing_engine        = "http://ca-${var.environment}-billing-engine"
     identity_edge         = "https://ca-${var.environment}-identity-edge.${var.container_app_environment_default_domain}"
     keycloak              = "http://ca-${var.environment}-keycloak"
+    keycloak_private      = "https://ca-${var.environment}-keycloak.internal.${var.container_app_environment_default_domain}"
     web                   = "https://ca-${var.environment}-web.${var.container_app_environment_default_domain}"
   }
   verification_urls = {
@@ -85,7 +86,7 @@ locals {
     revokeRefreshToken     = true
     passwordPolicy         = "length(12) and upperCase(1) and digits(1) and specialChars(1) and notUsername"
     identityProviders      = local.google_identity_providers
-    clients = [
+    clients = concat([
       {
         clientId                  = "waooaw-web"
         name                      = "WAOOAW Web Application"
@@ -142,6 +143,19 @@ locals {
               "userinfo.token.claim" = "true"
             }
           },
+          {
+            name           = "google_identity_provider_session"
+            protocol       = "openid-connect"
+            protocolMapper = "oidc-usersessionmodel-note-mapper"
+            config = {
+              "user.session.note"    = "identity_provider"
+              "claim.name"           = "idp"
+              "jsonType.label"       = "String"
+              "id.token.claim"       = "true"
+              "access.token.claim"   = "true"
+              "userinfo.token.claim" = "false"
+            }
+          },
         ]
       },
       {
@@ -153,7 +167,34 @@ locals {
         standardFlowEnabled       = false
         directAccessGrantsEnabled = false
       },
-    ]
+      ], var.google_login_enabled ? [
+      {
+        clientId                  = "waooaw-bp-identity-reader"
+        name                      = "WAOOAW Business Platform Identity Reader"
+        enabled                   = true
+        publicClient              = false
+        serviceAccountsEnabled    = true
+        standardFlowEnabled       = false
+        implicitFlowEnabled       = false
+        directAccessGrantsEnabled = false
+        fullScopeAllowed          = false
+        clientAuthenticatorType   = "client-secret"
+        secret                    = "$${BP_IDENTITY_READER_CLIENT_SECRET}"
+        defaultClientScopes       = ["roles"]
+        optionalClientScopes      = []
+        attributes = {
+          "access.token.lifespan" = "60"
+        }
+        protocolMappers = [{
+          name           = "realm-management-view-users"
+          protocol       = "openid-connect"
+          protocolMapper = "oidc-hardcoded-role-mapper"
+          config = {
+            "role" = "realm-management.view-users"
+          }
+        }]
+      },
+    ] : [])
     roles = {
       realm = [
         { name = "customer" },
@@ -161,7 +202,7 @@ locals {
       ]
     }
     defaultRoles = ["customer"]
-    users = var.environment == "demo" ? [
+    users = concat(var.environment == "demo" ? [
       {
         username      = "founder@waooaw.local"
         email         = "founder@waooaw.local"
@@ -178,7 +219,14 @@ locals {
         ]
         realmRoles = ["customer", "founder"]
       },
-    ] : []
+      ] : [], var.environment == "demo" && var.google_login_enabled ? [{
+        username               = "service-account-waooaw-bp-identity-reader"
+        enabled                = true
+        serviceAccountClientId = "waooaw-bp-identity-reader"
+        clientRoles = {
+          realm-management = ["view-users"]
+        }
+    }] : [])
   }
   keycloak_realm_base64 = base64encode(jsonencode(local.keycloak_realm))
   identity_edge_config = templatefile("${path.module}/identity-edge.conf.tftpl", {
@@ -192,13 +240,24 @@ locals {
       ConnectionStrings__DefaultConnection = "Host=localhost;Port=5432;Database=waooaw;Username=postgres"
     }
     "business-platform" = merge({
-      ASPNETCORE_ENVIRONMENT               = "Production"
-      ASPNETCORE_URLS                      = "http://+:5001"
-      ConnectionStrings__DefaultConnection = "Host=localhost;Port=5432;Database=waooaw;Username=postgres"
-      ConstitutionalEngine__Address        = local.service_urls.constitutional_engine
-      Keycloak__Audience                   = "waooaw-platform"
-      Keycloak__Authority                  = "${local.service_urls.identity_edge}/realms/waooaw"
-      Keycloak__RequireHttpsMetadata       = "true"
+      ASPNETCORE_ENVIRONMENT                     = "Production"
+      ASPNETCORE_URLS                            = "http://+:5001"
+      ConnectionStrings__DefaultConnection       = "Host=localhost;Port=5432;Database=waooaw;Username=postgres"
+      ConstitutionalEngine__Address              = local.service_urls.constitutional_engine
+      Keycloak__Audience                         = "waooaw-platform"
+      Keycloak__Authority                        = "${local.service_urls.identity_edge}/realms/waooaw"
+      Keycloak__RequireHttpsMetadata             = "true"
+      IdentityBrokerRead__Enabled                = tostring(var.google_login_enabled)
+      IdentityBrokerRead__ActorIssuer            = "${local.service_urls.identity_edge}/realms/waooaw"
+      IdentityBrokerRead__PrivateOrigin          = local.service_urls.keycloak_private
+      IdentityBrokerRead__AllowedPrivateHosts__0 = "ca-${var.environment}-keycloak.internal.${var.container_app_environment_default_domain}"
+      IdentityBrokerRead__ClientId               = "waooaw-bp-identity-reader"
+      IdentityBrokerRead__ProviderNamespace      = "urn:waooaw:identity:${var.environment}:google:customer-login:v1"
+      IdentityBrokerRead__TrustConfigDigest = sha256(jsonencode({
+        issuer             = "${local.service_urls.identity_edge}/realms/waooaw"
+        provider_alias     = "google"
+        provider_namespace = "urn:waooaw:identity:${var.environment}:google:customer-login:v1"
+      }))
     }, var.environment == "demo" ? local.demo_identity_runtime : {})
     "professional-runtime" = merge({
       AIR_TRANSCRIPTION_BASE_URL    = local.service_urls.ai_runtime
@@ -304,6 +363,15 @@ resource "azurerm_container_app" "member" {
   }
 
   dynamic "secret" {
+    for_each = each.key == "business-platform" ? local.identity_reader_secret_uris : {}
+    content {
+      name                = secret.key
+      identity            = azurerm_user_assigned_identity.member[each.key].id
+      key_vault_secret_id = secret.value
+    }
+  }
+
+  dynamic "secret" {
     for_each = each.key == "professional-runtime" ? [1] : []
     content {
       name                = "bp-service-credential"
@@ -340,6 +408,14 @@ resource "azurerm_container_app" "member" {
         content {
           name        = "NEXTAUTH_SECRET"
           secret_name = "runtime-reference"
+        }
+      }
+
+      dynamic "env" {
+        for_each = each.key == "business-platform" ? local.identity_reader_secret_uris : {}
+        content {
+          name        = "IdentityBrokerRead__ClientSecret"
+          secret_name = env.key
         }
       }
 
@@ -459,6 +535,7 @@ resource "azurerm_container_app" "member" {
   depends_on = [
     azurerm_role_assignment.member_secret,
     azurerm_role_assignment.professional_runtime_bp_secret,
+    azurerm_role_assignment.identity_reader_secret,
     azurerm_container_app.temporal,
   ]
 }
@@ -541,8 +618,12 @@ resource "azurerm_container_app" "keycloak" {
   revision_mode                = "Single"
 
   identity {
-    type         = "UserAssigned"
-    identity_ids = concat([azurerm_user_assigned_identity.member["web"].id], azurerm_user_assigned_identity.google_broker[*].id)
+    type = "UserAssigned"
+    identity_ids = concat(
+      [azurerm_user_assigned_identity.member["web"].id],
+      azurerm_user_assigned_identity.google_broker[*].id,
+      var.google_login_enabled ? [azurerm_user_assigned_identity.member["business-platform"].id] : [],
+    )
   }
 
   secret {
@@ -560,6 +641,15 @@ resource "azurerm_container_app" "keycloak" {
     }
   }
 
+  dynamic "secret" {
+    for_each = local.identity_reader_secret_uris
+    content {
+      name                = secret.key
+      identity            = azurerm_user_assigned_identity.member["business-platform"].id
+      key_vault_secret_id = secret.value
+    }
+  }
+
   template {
     min_replicas = 1
     max_replicas = 1
@@ -573,6 +663,7 @@ resource "azurerm_container_app" "keycloak" {
       args = [<<-EOT
         set -eu
         ${var.google_login_enabled ? ": \"$${GOOGLE_CLIENT_ID:?Google client ID is required}\" \"$${GOOGLE_CLIENT_SECRET:?Google client secret is required}\"" : ""}
+        ${var.google_login_enabled ? ": \"$${BP_IDENTITY_READER_CLIENT_SECRET:?BP identity reader client secret is required}\"" : ""}
         mkdir -p /opt/keycloak/data/import
         printf '%s' '${local.keycloak_realm_base64}' | base64 --decode > /opt/keycloak/data/import/waooaw-realm.json
         exec /opt/keycloak/bin/kc.sh start-dev --db=dev-file --http-enabled=true --hostname-strict=false --import-realm
@@ -630,6 +721,14 @@ resource "azurerm_container_app" "keycloak" {
           secret_name = env.key
         }
       }
+
+      dynamic "env" {
+        for_each = local.identity_reader_secret_uris
+        content {
+          name        = "BP_IDENTITY_READER_CLIENT_SECRET"
+          secret_name = env.key
+        }
+      }
     }
   }
 
@@ -644,7 +743,11 @@ resource "azurerm_container_app" "keycloak" {
 
   }
 
-  depends_on = [azurerm_role_assignment.member_secret, azurerm_role_assignment.google_broker_secret]
+  depends_on = [
+    azurerm_role_assignment.member_secret,
+    azurerm_role_assignment.google_broker_secret,
+    azurerm_role_assignment.identity_reader_secret,
+  ]
 }
 
 resource "azurerm_container_app" "identity_edge" {

@@ -9,10 +9,10 @@ Executor: Platform IT Expert, INST-010. See `final-evidence.md` for commands and
 |---|---|---|---|
 | SP-01 | PARTIAL | 1366x768 login/register geometry and 360px RTL checks pass; complete zoom/reflow and Founder visual matrix pending | INST-010 / Founder |
 | SP-02 | PARTIAL | Existing provider component tests and auth axe subset pass; all provider mark/state/theme/zoom combinations not qualified | INST-010 / Founder |
-| SP-03 | PARTIAL | H1 exact PostgreSQL init chain and identity namespace pass; two fresh pinned Keycloak imports reconstruct Google, PKCE client, callback and default customer role; real Demo registration/login/return/sign-out/repeat/denial/failure/rollback NOT_RUN | Founder / Identity |
+| SP-03 | PARTIAL | H1 schema/identity chain passes; H2 twice reconstructs pinned stock Keycloak and runs the real C# adapter over private HTTPS with signed-session configuration, exact Google binding reads, 60-second reader tokens and denied writes; real Demo registration/login/return/sign-out/repeat/denial/failure/rollback NOT_RUN | Founder / Identity |
 | SP-04 | BLOCKED | FA-002, FA-018 and isolated Facebook login app inputs absent; no provider mutation | Founder |
 | SP-05 | BLOCKED | Sender/domain, delivery and test-mailbox inputs absent; no real email journey | Founder / Identity |
-| SP-06 | BLOCKED | H1 exact PostgreSQL init chain and restricted-role identity tests pass; secret-reference wiring and public redirect verifier implemented; legacy manifest/runtime origin/client/readiness disagreement and live outage/projection proof remain | Identity / INST-010 |
+| SP-06 | BLOCKED | H1 schema/role proof and H2 stock reader/runtime configuration pass locally; dedicated BP-only vault reference, private HTTPS host, signed `idp` mapper, exact `view-users` scope, no-refresh 60-second token and write denials are proven; actual Demo secret reference, deployment, projection agreement and outage/telemetry proof remain | Identity / INST-010 |
 | SP-07 | PARTIAL | Route-local loading/error shells, bounded timeout/retry, reduced-motion CSS and component tests pass; delayed/error streaming browser matrix pending | INST-010 |
 | SP-08 | PARTIAL | Origin capture, focus fallback, Close/Escape/backdrop and login-to-register dismissal tests pass; exhaustive switch/state matrix pending | INST-010 |
 | SP-09 | BLOCKED | No deterministic reproduction of the reported Chrome distortion; no speculative public CSS change | Founder / INST-010 |

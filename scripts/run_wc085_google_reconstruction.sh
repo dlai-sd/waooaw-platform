@@ -10,6 +10,7 @@ NETWORK="wc085-google-$$"
 KEYCLOAK="wc085-keycloak-$$"
 KEYCLOAK_IMAGE="quay.io/keycloak/keycloak@sha256:82c5b7a110456dbd42b86ea572e728878549954cc8bd03cd65410d75328095d2"
 AZURE_CLI_IMAGE="mcr.microsoft.com/azure-cli@sha256:4faeb3c955086c3842d4f8cf0ff1d900ce3a1c68c6e6c6430c5e8a3cb882c5aa"
+DOTNET_TEST_IMAGE="sha256:31b4fc3008a0df7285cf42e177b7fe652cb208c0b4ae9902171e0753bacfa598"
 
 cleanup() {
   docker rm -f "$KEYCLOAK" >/dev/null 2>&1 || true
@@ -49,6 +50,7 @@ for generation in 1 2; do
     -v "$WORK_DIR/waooaw-realm.json:/opt/keycloak/data/import/waooaw-realm.json:ro" \
     -e KEYCLOAK_ADMIN=fixture-admin -e KEYCLOAK_ADMIN_PASSWORD=Synthetic-Admin-Only-123 \
     -e KEYCLOAK_CLIENT_SECRET=Synthetic-Web-Only-123 \
+    -e BP_IDENTITY_READER_CLIENT_SECRET=Synthetic-Reader-Only-123 \
     -e DEMO_FOUNDER_PASSWORD=Synthetic-Founder-Only-123 \
     -e GOOGLE_CLIENT_ID=synthetic.apps.googleusercontent.com \
     -e GOOGLE_CLIENT_SECRET=Synthetic-Google-Only-123 \
@@ -61,6 +63,18 @@ for generation in 1 2; do
     -w /repo pr408-test-runner-python:latest \
     pytest tests/identity-foundation/test_wc085_google_reconstruction.py -q -o cache_dir=/tmp/pytest-cache \
     --junitxml="/evidence/generation-$generation.xml"
+  docker run --rm --network "$NETWORK" \
+    -e SSL_CERT_FILE=/fixture/fixture.crt \
+    -e WC085_STOCK_READER=true \
+    -e WC085_READER_ORIGIN=https://ca-demo-identity-edge.local.waooaw.test \
+    -e WC085_READER_ACTOR="$(cat "$OUTPUT_DIR/reader-actor-id")" \
+    -e WC085_READER_SECRET=Synthetic-Reader-Only-123 \
+    -v "$REPO_ROOT:$REPO_ROOT" -v "$WORK_DIR:/fixture:ro" -w "$REPO_ROOT" \
+    --entrypoint dotnet "$DOTNET_TEST_IMAGE" \
+    test tests/business-platform.Tests/business-platform.Tests.csproj \
+    -p:RestoreForce=true -p:IsTestProject=true \
+    --filter 'FullyQualifiedName~GoogleWorkspaceProofAdapterTests.Read_PinnedStockKeycloakOverPrivateHttps_PreservesOpaqueProviderSubject' \
+    --logger 'console;verbosity=minimal'
   docker rm -f "$KEYCLOAK" >/dev/null
 done
 printf '%s\n' 'Two fresh Keycloak imports passed with synthetic credentials; real Google sign-in remains unverified.'

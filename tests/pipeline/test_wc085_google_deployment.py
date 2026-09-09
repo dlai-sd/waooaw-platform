@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 from unittest.mock import Mock
 from urllib.error import HTTPError
 from urllib.parse import parse_qs, urlencode, urlsplit
@@ -72,7 +73,32 @@ def test_google_access_is_separate_and_secret_scoped() -> None:
     assert 'identity            = azurerm_user_assigned_identity.google_broker[0].id' in workload
     assert 'secret_name = env.key' in workload
     assert 'data "azurerm_key_vault_secret"' not in google + workload
-    assert 'depends_on = [azurerm_role_assignment.member_secret, azurerm_role_assignment.google_broker_secret]' in workload
+    assert 'azurerm_role_assignment.google_broker_secret' in workload
+    assert 'azurerm_role_assignment.identity_reader_secret' in workload
+
+
+def test_business_platform_uses_dedicated_stock_identity_reader() -> None:
+    google = (MODULE / "google.tf").read_text()
+    workload = (MODULE / "main.tf").read_text()
+
+    assert 'clientId                  = "waooaw-bp-identity-reader"' in workload
+    assert 'serviceAccountsEnabled    = true' in workload
+    assert 'fullScopeAllowed          = false' in workload
+    assert '"access.token.lifespan" = "60"' in workload
+    assert 'protocolMapper = "oidc-hardcoded-role-mapper"' in workload
+    assert '"role" = "realm-management.view-users"' in workload
+    assert 'realm-management = ["view-users"]' in workload
+    assert 'protocolMapper = "oidc-usersessionmodel-note-mapper"' in workload
+    assert re.search(r'"user[.]session[.]note"\s*=\s*"identity_provider"', workload)
+    assert re.search(r'"claim[.]name"\s*=\s*"idp"', workload)
+    assert 'bp-identity-reader-client-secret' in google
+    assert 'principal_id         = azurerm_user_assigned_identity.member["business-platform"].principal_id' in google
+    assert 'IdentityBrokerRead__ClientId' in workload
+    assert 'IdentityBrokerRead__ClientSecret' in workload
+    assert 'IdentityBrokerRead__PrivateOrigin' in workload
+    assert 'IdentityBrokerRead__AllowedPrivateHosts__0' in workload
+    assert 'IdentityBrokerRead__ProviderNamespace' in workload
+    assert 'IdentityBrokerRead__TrustConfigDigest' in workload
 
 
 @pytest.mark.parametrize("replacement", [None, "host", "callback", "client", "scope", "state"])
@@ -93,4 +119,6 @@ def test_redirect_verification_rejects_untrusted_or_incomplete_results(replaceme
         query["scope"] = "email"
     elif replacement == "state":
         query["state"] = ""
-    assert validate_redirect("https://" + host + "/o/oauth2/auth?" + urlencode(query), issuer) is (replacement is None)
+    assert validate_redirect(
+        "https://" + host + "/o/oauth2/auth?" + urlencode(query), issuer
+    ) is (replacement is None)

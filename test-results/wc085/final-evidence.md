@@ -32,6 +32,29 @@ upserts, canonical customer foreign keys and additive payment-coupon compatibili
 cloud, deployment, Production or customer-data action occurred. Raw focused output is retained at
 `/tmp/wc085-h1.log`; the final passing commands are represented by their counts above.
 
+### H2 Stock Reader And Demo Configuration - 2026-09-09
+
+Status: PASS for package H2 local engineering scope. SP-03 and SP-06 remain incomplete because no
+real Google identity, deployed Demo revision, actual secret reference, provider activation, customer
+journey, projection agreement or runtime outage/telemetry proof was authorized or exercised.
+
+| Docker check | Result |
+|---|---|
+| `bash scripts/run_wc085_google_reconstruction.sh test-results/wc085/h2-reconstruction-local` | PASS in two fresh generations using pinned Keycloak 25.0.6; Terraform-rendered realm import, private TLS, dedicated confidential reader, exact user and Google binding GETs, 60-second token with no refresh token, and four HTTP 403 write denials |
+| Live `GoogleWorkspaceProofAdapter` against each stock fixture generation | 1/1 PASS twice; validated private HTTPS certificate/host, exact actor subject, opaque case-sensitive Google provider subject and configured trust namespace |
+| Docker `.NET` filter `GoogleWorkspaceProofAdapterTests|CustomerIdentityProgramHostTests` | 40 PASS, 0 failed, 0 skipped |
+| Docker pytest `test_goal006_terraform_foundations.py test_wc085_google_deployment.py test_identity_artifacts.py` | 69 PASS |
+| H2 author review, editor diagnostics and `git diff --check` | PASS; no real credential value or generated artifact selected for commit |
+
+H2 adds the dedicated `waooaw-bp-identity-reader` with service-account/client-credentials only,
+`fullScopeAllowed=false`, exact effective `realm-management.view-users`, maximum 60-second token,
+no interactive/direct/offline grants, and a distinct `bp-identity-reader-client-secret` Key Vault
+reference accessible only to BP. The customer web client receives the stock signed
+`identity_provider` to `idp` session mapper. BP binds the reviewed public issuer and exact private
+HTTPS Keycloak origin/host, stable Demo Google namespace and deterministic trust digest. The public
+manifest remains Google-disabled. Raw synthetic generation JSON/XML is retained locally under
+`test-results/wc085/h2-reconstruction-local/` and intentionally excluded from Git.
+
 | Command / Scope | Result |
 |---|---|
 | `pnpm test -- --runInBand --json --outputFile=/evidence/jest.json` | 41 suites, 229 tests PASS; `jest.json` |

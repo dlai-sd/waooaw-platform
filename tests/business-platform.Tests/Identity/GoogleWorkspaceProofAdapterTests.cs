@@ -23,12 +23,12 @@ public sealed class GoogleWorkspaceProofAdapterTests
         ProviderNamespace = "urn:waooaw:identity:synthetic:google:customer-login:v1", TrustConfigDigest = new string('a', 64),
     };
 
-    internal static ClaimsPrincipal Principal(string subject = "synthetic-actor")
+    internal static ClaimsPrincipal Principal(string subject = "synthetic-actor", string? issuer = null)
     {
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         return new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
-            new Claim("iss", Configuration().ActorIssuer), new Claim("sub", subject),
+            new Claim("iss", issuer ?? Configuration().ActorIssuer), new Claim("sub", subject),
             new Claim("aud", "waooaw-platform"), new Claim("azp", "waooaw-web"),
             new Claim("idp", "google"), new Claim("email_verified", "true"),
             new Claim("realm_access", "{\"roles\":[\"customer\"]}"),
@@ -48,6 +48,33 @@ public sealed class GoogleWorkspaceProofAdapterTests
         Assert.Equal(new[] { "POST /realms/waooaw/protocol/openid-connect/token",
             "GET /admin/realms/waooaw/users/synthetic-actor",
             "GET /admin/realms/waooaw/users/synthetic-actor/federated-identity" }, handler.Requests);
+    }
+
+    [Fact]
+    public async Task Read_PinnedStockKeycloakOverPrivateHttps_PreservesOpaqueProviderSubject()
+    {
+        if (Environment.GetEnvironmentVariable("WC085_STOCK_READER") != "true") return;
+
+        var origin = Environment.GetEnvironmentVariable("WC085_READER_ORIGIN")!;
+        var actorSubject = Environment.GetEnvironmentVariable("WC085_READER_ACTOR")!;
+        var configuration = new IdentityBrokerReadOptions
+        {
+            Enabled = true,
+            ActorIssuer = origin + "/realms/waooaw",
+            PrivateOrigin = origin,
+            AllowedPrivateHosts = [new Uri(origin).Host],
+            ClientId = "waooaw-bp-identity-reader",
+            ClientSecret = Environment.GetEnvironmentVariable("WC085_READER_SECRET")!,
+            ProviderNamespace = "urn:waooaw:identity:demo:google:customer-login:v1",
+            TrustConfigDigest = new string('b', 64),
+        };
+        var adapter = new GoogleWorkspaceProofAdapter(new HttpClient(), Options.Create(configuration));
+
+        var proof = await adapter.ReadAsync(Principal(actorSubject, configuration.ActorIssuer), default);
+
+        Assert.Equal(actorSubject, proof.Actor.Subject);
+        Assert.Equal("Google-Opaque-" + actorSubject, proof.ProviderSubject);
+        Assert.Equal(configuration.ProviderNamespace, proof.ProviderIssuer);
     }
 
     [Theory]
