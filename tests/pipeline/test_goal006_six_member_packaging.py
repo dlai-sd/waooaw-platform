@@ -99,7 +99,7 @@ def test_release_images_pin_fixed_security_dependencies() -> None:
         encoding="utf-8"
     )
 
-    assert "GRPC_GO_VERSION=v1.83.1" in constitutional_engine
+    assert "GRPC_GO_VERSION=v1.83.2" in constitutional_engine
     assert "transformers==5.10.0" in ai_requirements
 
 
