@@ -16,7 +16,7 @@ Executor: Platform IT Expert, INST-010. See `final-evidence.md` for commands and
 | SP-07 | PARTIAL | Route-local loading/error shells, bounded timeout/retry, reduced-motion CSS and component tests pass; delayed/error streaming browser matrix pending | INST-010 |
 | SP-08 | PARTIAL | Origin capture, focus fallback, Close/Escape/backdrop and login-to-register dismissal tests pass; exhaustive switch/state matrix pending | INST-010 |
 | SP-09 | BLOCKED | No deterministic reproduction of the reported Chrome distortion; no speculative public CSS change | Founder / INST-010 |
-| SP-10 | NOT_RUN | Existing portal unit suite passes; exact candidate Demo relationship/authorization browser acceptance absent | BP / INST-010 |
+| SP-10 | PARTIAL | H3 enables only `GET /api/v1/employment/relationships`: two independently provisioned tenantless actors resolve current DB membership and receive only their own participant-bound PostgreSQL/RLS result; forged tenant input denies. Exact candidate Demo relationship/browser acceptance remains absent | BP / INST-010 |
 | SP-11 | NOT_RUN | Existing conversation unit suite passes; deployed text/failure/evidence journey absent | BP / Professional Runtime |
 | SP-12 | NOT_RUN | Existing voice unit suite passes; full deployed permission/offline/Stop matrix absent | Professional Runtime / INST-010 |
 | SP-13 | BLOCKED | S7 depends on S1; accepted Marketplace continuation and deployed idempotency/negative evidence not assembled | BP / Product |
@@ -25,8 +25,8 @@ Executor: Platform IT Expert, INST-010. See `final-evidence.md` for commands and
 | SP-16 | BLOCKED | Three new Identity operations await formal owner acceptance; no identity mutation invented | Identity / Security / INST-005 |
 | SP-17 | NOT_RUN | No final candidate mobile navigation/sign-out/storage-cleanup acceptance | INST-010 |
 | SP-18 | PARTIAL | Auth 360px Urdu RTL dark reduced-motion axe subset passes; full portal/language/zoom/safe-area matrix absent | INST-010 / Founder |
-| SP-19 | BLOCKED | H1 validates resolver access for BP/CE/PR/WBE restricted roles; no new private browser endpoint or API contract; S1 amendments/generated-client and three-channel equivalence ledger incomplete | Component Owners / INST-005 |
-| SP-20 | PARTIAL | H1 validates rollback, inactive/legacy denial, empty context and pooled-context isolation; auth timeout/error component tests pass; deployed multi-service degradation matrix absent | Component Owners / INST-010 |
+| SP-19 | BLOCKED | H1 validates resolver access for restricted roles; H3 adopts the existing generated-client-backed BP collection only and adds no private browser endpoint; CE/PR/WBE/AI operation adoption, S1 amendments and three-channel equivalence ledger remain incomplete | Component Owners / INST-005 |
+| SP-20 | PARTIAL | H1 validates rollback, inactive/legacy denial, empty/pooled context; H3 forged tenant mismatch denies before result and the restricted pool is clean after two actors; deployed multi-service degradation matrix absent | Component Owners / INST-010 |
 | SP-21 | NOT_RUN | Existing Emergency Stop unit tests pass in full Jest run; deployed cross-state SLA qualification absent | CE / INST-010 |
 | SP-22 | BLOCKED | Only auth-specific public CSS changed; no full frozen-route comparison or substantive Founder visual acceptance | Founder |
 | SP-23 | NOT_RUN | No candidate deployed two-minute onboarding and induction qualification | Product / BP / INST-010 |

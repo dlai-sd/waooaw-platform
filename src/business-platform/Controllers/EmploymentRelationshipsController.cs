@@ -213,6 +213,7 @@ public sealed class EmploymentRelationshipsController : ControllerBase
     }
 
     [HttpGet]
+    [CustomerIdentityRoute(requiresMembership: true)]
     public async Task<IActionResult> ListAsync(
         [FromQuery] string? cursor,
         [FromQuery] int limit = 20,
@@ -786,6 +787,12 @@ public sealed class EmploymentRelationshipsController : ControllerBase
 
     private bool TryGetParticipantId(out Guid participantId)
     {
+        if (HttpContext.Items.TryGetValue(CustomerMembershipMiddleware.MembershipItem, out var membership)
+            && membership is CustomerWorkspaceMembership workspaceMembership)
+        {
+            participantId = workspaceMembership.AccountId;
+            return true;
+        }
         var value = User.FindFirstValue("participant_id")
             ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
         return Guid.TryParse(value, out participantId);

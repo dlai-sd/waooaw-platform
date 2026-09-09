@@ -55,6 +55,27 @@ HTTPS Keycloak origin/host, stable Demo Google namespace and deterministic trust
 manifest remains Google-disabled. Raw synthetic generation JSON/XML is retained locally under
 `test-results/wc085/h2-reconstruction-local/` and intentionally excluded from Git.
 
+### H3 Membership Adoption And Usable Portal Read - 2026-09-09
+
+Status: PASS for the single locally enabled BP operation. This does not enable consequential
+relationship commands or imply CE, PR, WBE or AI receiver adoption. SP-10 remains PARTIAL pending
+the exact deployed Demo portal/browser journey.
+
+| Docker check | Result |
+|---|---|
+| Focused `Program_TwoMembershipResolvedActors_ListOnlyOwnRelationships` | 1 PASS against real PostgreSQL with restricted `business_app`; two separately completed tenantless actors resolved current membership, received only their own participant-bound relationship through actual HTTP and RLS, rejected a forged tenant header, and left pooled tenant/identity GUCs empty |
+| `EmploymentRelationshipsControllerTests` | 12 PASS, 0 failed/skipped; membership-derived account overrides forged participant claim and only the collection method carries customer-membership route metadata |
+| `CustomerIdentityProgramHostTests` | 12 PASS, 0 failed/skipped; retained signup/session, invalid bearer/header, missing readiness and unsupported-route denials plus the new collection proof |
+| H3 author review, editor diagnostics and `git diff --check` | PASS; no consequential route or additional service operation enabled |
+
+H3 places the resolver-derived tenant into the existing request-local RLS context and uses the
+resolver-derived account as the initial OWNER workspace participant for the accepted collection
+read. Caller tenant/account headers can only match resolved values; JWT participant/tenant claims
+cannot override them. Middleware removes membership and tenant context in `finally`. Every other
+relationship method still lacks `CustomerIdentityRoute` and is denied for customer tokens before
+controller execution. Unadopted downstream service, job, callback and streaming paths remain
+disabled and are not represented as tested or passing.
+
 | Command / Scope | Result |
 |---|---|
 | `pnpm test -- --runInBand --json --outputFile=/evidence/jest.json` | 41 suites, 229 tests PASS; `jest.json` |

@@ -47,6 +47,43 @@ public sealed class EmploymentRelationshipsControllerTests
     }
 
     [Fact]
+    public async Task List_MembershipContextOverridesForgedParticipantClaim()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var service = new EmploymentRelationshipService(
+            factory, new RecordingRelationshipConstitutionalGateway(), NullLogger<EmploymentRelationshipService>.Instance);
+        var tenantId = Guid.NewGuid();
+        var accountId = Guid.NewGuid();
+        var otherAccountId = Guid.NewGuid();
+        var authorized = await service.AdmitAsync(
+            tenantId, accountId, Guid.NewGuid(), "DMA", Guid.NewGuid(), CancellationToken.None);
+        await service.AdmitAsync(
+            tenantId, otherAccountId, Guid.NewGuid(), "SALES", Guid.NewGuid(), CancellationToken.None);
+        var context = CreateControllerContext(tenantId, otherAccountId);
+        context.HttpContext.Items[CustomerMembershipMiddleware.MembershipItem] =
+            new CustomerWorkspaceMembership(accountId, tenantId, Guid.NewGuid(), ["OWNER"]);
+        var controller = new EmploymentRelationshipsController(service) { ControllerContext = context };
+
+        var result = Assert.IsType<OkObjectResult>(
+            await controller.ListAsync(null, 20, CancellationToken.None));
+        var item = Assert.Single(JsonSerializer.SerializeToElement(result.Value)
+            .GetProperty("Items").EnumerateArray());
+
+        Assert.Equal(authorized.Relationship.RelationshipId, item.GetProperty("RelationshipId").GetGuid());
+    }
+
+    [Fact]
+    public void OnlyRelationshipCollectionOptsIntoCustomerMembership()
+    {
+        var adapted = typeof(EmploymentRelationshipsController).GetMethods()
+            .Where(method => method.GetCustomAttributes(typeof(CustomerIdentityRouteAttribute), true).Length != 0)
+            .Select(method => method.Name)
+            .ToArray();
+
+        Assert.Equal([nameof(EmploymentRelationshipsController.ListAsync)], adapted);
+    }
+
+    [Fact]
     public async Task List_UsesOpaqueCursorAndRejectsUnknownCursor()
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));

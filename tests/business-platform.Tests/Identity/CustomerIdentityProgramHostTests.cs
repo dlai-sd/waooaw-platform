@@ -63,6 +63,21 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
             CREATE POLICY tenant_isolation ON business.organisations USING (tenant_id = current_setting('app.tenant_id', true)::uuid);
             """);
         await OwnerAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/29-customer-workspace-provisioning.sql")));
+        await OwnerAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/19-ae01-employment-relationship.sql")));
+        var contextConfiguration = await File.ReadAllTextAsync(
+            RepositoryPaths.Resolve("infrastructure/postgres/init/20b-ae01-context-configuration.sql"));
+        var goalsStart = contextConfiguration.IndexOf(
+            "CREATE TABLE IF NOT EXISTS business.relationship_goals (", StringComparison.Ordinal);
+        var goalsEnd = contextConfiguration.IndexOf(");", goalsStart, StringComparison.Ordinal) + 2;
+        await OwnerAsync(contextConfiguration[goalsStart..goalsEnd]);
+        await OwnerAsync("""
+            ALTER TABLE business.relationship_goals ENABLE ROW LEVEL SECURITY;
+            ALTER TABLE business.relationship_goals FORCE ROW LEVEL SECURITY;
+            CREATE POLICY relationship_goals_tenant_isolation ON business.relationship_goals
+                USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
+                WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+            GRANT SELECT, INSERT, UPDATE ON business.relationship_goals TO business_app;
+            """);
     }
 
     public async Task DisposeAsync()
@@ -87,6 +102,7 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
             ["IdentityEnvironment:Keycloak:Issuer"] = _configuration.ActorIssuer,
             ["IdentityEnvironment:Keycloak:JwksUri"] = _configuration.ActorIssuer + "/protocol/openid-connect/certs",
             ["Identity:Hmac:Key"] = "synthetic-program-test-hmac-key-at-least-32-characters",
+            ["ChannelContinuity:EnvelopeHmacKey"] = Convert.ToBase64String(new byte[32]),
         };
         if (brokerEnabled)
         {
@@ -160,6 +176,38 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
         await AssertRestrictedPoolAsync();
     }
 
+    [Fact]
+    public async Task Program_TwoMembershipResolvedActors_ListOnlyOwnRelationships()
+    {
+        StartHost();
+        var firstToken = Token(subject: "synthetic-actor-one");
+        var secondToken = Token(subject: "synthetic-actor-two");
+        var firstAccount = await CompleteAsync(firstToken, "First");
+        var secondAccount = await CompleteAsync(secondToken, "Second");
+        var firstTenant = await OwnerGuidAsync(
+            "SELECT initial_tenant_id FROM identity.accounts WHERE account_id = @id", firstAccount);
+        var secondTenant = await OwnerGuidAsync(
+            "SELECT initial_tenant_id FROM identity.accounts WHERE account_id = @id", secondAccount);
+        var firstRelationship = await SeedRelationshipAsync(firstTenant, firstAccount, "DMA");
+        var secondRelationship = await SeedRelationshipAsync(secondTenant, secondAccount, "SALES");
+
+        using var firstResponse = await SendAsync(HttpMethod.Get, "/api/v1/employment/relationships", firstToken);
+        using var secondResponse = await SendAsync(HttpMethod.Get, "/api/v1/employment/relationships", secondToken);
+        var firstItems = (await ExpectAsync(firstResponse, HttpStatusCode.OK)).GetProperty("items");
+        var secondItems = (await ExpectAsync(secondResponse, HttpStatusCode.OK)).GetProperty("items");
+
+        Assert.Equal(firstRelationship, Assert.Single(firstItems.EnumerateArray()).GetProperty("relationshipId").GetGuid());
+        Assert.Equal(secondRelationship, Assert.Single(secondItems.EnumerateArray()).GetProperty("relationshipId").GetGuid());
+        Assert.True(firstResponse.Headers.CacheControl!.NoStore);
+        Assert.True(secondResponse.Headers.CacheControl!.NoStore);
+
+        using var forged = await SendAsync(
+            HttpMethod.Get, "/api/v1/employment/relationships", firstToken, header: "x-tenant-id");
+        Assert.Equal("IDENTITY_ACTION_DENIED",
+            (await ExpectAsync(forged, HttpStatusCode.Forbidden)).GetProperty("code").GetString());
+        await AssertRestrictedPoolAsync();
+    }
+
     [Theory]
     [InlineData("issuer")]
     [InlineData("audience")]
@@ -227,9 +275,10 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
         Assert.Equal(0L, await OwnerScalarAsync("SELECT count(*) FROM identity.accounts"));
     }
 
-    private string Token(string? issuer = null, string audience = "waooaw-platform", RSA? signer = null, Claim[]? extra = null)
+    private string Token(string? issuer = null, string audience = "waooaw-platform", RSA? signer = null,
+        Claim[]? extra = null, string subject = "synthetic-actor")
     {
-        var claims = GoogleWorkspaceProofAdapterTests.Principal().Claims
+        var claims = GoogleWorkspaceProofAdapterTests.Principal(subject).Claims
             .Where(claim => claim.Type is not ("iss" or "aud" or "iat" or "exp")).Concat(extra ?? []);
         var now = DateTime.UtcNow;
         var token = new JwtSecurityToken(issuer ?? _configuration.ActorIssuer, audience, claims,
@@ -270,6 +319,52 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
         await connection.OpenAsync();
         await using var command = new NpgsqlCommand(sql, connection);
         return (long)(await command.ExecuteScalarAsync())!;
+    }
+
+    private async Task<Guid> CompleteAsync(string token, string name)
+    {
+        using var started = await SendAsync(
+            HttpMethod.Post, "/api/v1/identity/registrations", token, new { languagePreference = "en" });
+        var registration = (await ExpectAsync(started, HttpStatusCode.Created)).GetProperty("registrationId").GetGuid();
+        using var profile = await SendAsync(
+            HttpMethod.Put, $"/api/v1/identity/registrations/{registration}/profile", token,
+            new { displayName = name, businessName = name + " Business", businessDomain = "Synthetic testing", languagePreference = "en" });
+        await ExpectAsync(profile, HttpStatusCode.OK);
+        using var completed = await SendAsync(
+            HttpMethod.Post, $"/api/v1/identity/registrations/{registration}/complete", token);
+        return (await ExpectAsync(completed, HttpStatusCode.OK)).GetProperty("accountReference").GetGuid();
+    }
+
+    private async Task<Guid> OwnerGuidAsync(string sql, Guid id)
+    {
+        await using var connection = new NpgsqlConnection(_postgres.GetConnectionString());
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.Parameters.AddWithValue("id", id);
+        return (Guid)(await command.ExecuteScalarAsync())!;
+    }
+
+    private async Task<Guid> SeedRelationshipAsync(Guid tenantId, Guid accountId, string professionalType)
+    {
+        var relationshipId = Guid.NewGuid();
+        await using var connection = new NpgsqlConnection(_postgres.GetConnectionString());
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand("""
+            INSERT INTO business.employment_relationships
+                (relationship_id, tenant_id, professional_type, evaluation_intent_id, initiating_participant_id)
+            VALUES (@relationship, @tenant, @professional, @evaluation, @account);
+            INSERT INTO business.relationship_participants
+                (tenant_id, relationship_id, participant_id, role, bound_evidence_id)
+            VALUES (@tenant, @relationship, @account, 'EMPLOYER', @evidence);
+            """, connection);
+        command.Parameters.AddWithValue("relationship", relationshipId);
+        command.Parameters.AddWithValue("tenant", tenantId);
+        command.Parameters.AddWithValue("professional", professionalType);
+        command.Parameters.AddWithValue("evaluation", Guid.NewGuid());
+        command.Parameters.AddWithValue("account", accountId);
+        command.Parameters.AddWithValue("evidence", Guid.NewGuid());
+        await command.ExecuteNonQueryAsync();
+        return relationshipId;
     }
 
     private async Task AssertRestrictedPoolAsync()

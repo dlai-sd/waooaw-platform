@@ -52,6 +52,7 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
                 CheckHeader(context, "x-tenant-id", membership.TenantId);
                 CheckHeader(context, "x-account-id", membership.AccountId);
                 context.Items[MembershipItem] = membership;
+                context.Items[TenantIsolationMiddleware.TenantIdItemKey] = membership.TenantId.ToString();
             }
             else if (context.Request.Headers.ContainsKey("x-tenant-id") || context.Request.Headers.ContainsKey("x-account-id"))
                 throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
