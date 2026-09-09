@@ -4,7 +4,7 @@ Status: PARTIAL baseline, not deployment acceptance. Office: INST-010.
 
 - Authorized work: current-session Founder approval of WC-085 plus reproducible Demo Google configuration; Docker only, no virtual environments, no custom importer, no persistent identity database, no self-merge.
 - Implementation base: `79ec8065ad448cb418551034366091693b7b316c`, main after PR #408.
-- Code freeze: `14a28c18aa8774d8b2f956c475e2e60a245f4ddd`; later evidence-only commits do not change the tested code. The PR records its exact pushed HEAD separately.
+- Application/configuration freeze: `14a28c18aa8774d8b2f956c475e2e60a245f4ddd`; later changes add evidence and repair the mandatory lifecycle test's PostgreSQL network-readiness probe, not application behavior. The PR records its exact pushed HEAD separately.
 - Original dirty worktree `/workspaces/waooaw-platform` was not modified by this implementation. Work was isolated in `/workspaces/waooaw-wc085`, branch `ib/085/remediation`.
 - Reported auth defects: excessive initial dialog height, global loading ownership, and history-depth-dependent dismissal after switching login/register.
 - Reported public Chrome distortion has not been deterministically reproduced; no public layout repair is claimed.

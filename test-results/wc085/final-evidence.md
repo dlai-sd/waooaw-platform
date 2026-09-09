@@ -1,7 +1,8 @@
 # WC-085 Partial Candidate Evidence
 
 This is a PARTIAL implementation bundle, not the complete WC-085 final release bundle.
-Code freeze: `14a28c18aa8774d8b2f956c475e2e60a245f4ddd`.
+Application/configuration freeze: `14a28c18aa8774d8b2f956c475e2e60a245f4ddd`.
+Subsequent changes add evidence and repair the mandatory lifecycle gate's PostgreSQL readiness probe.
 Base: `79ec8065ad448cb418551034366091693b7b316c`. Office: INST-010.
 The final draft PR records the pushed HEAD; these local results do not contain a candidate Demo
 revision or immutable exact-six deployment tuple. No full story PASS or provider acceptance is claimed.
@@ -27,6 +28,7 @@ All executable application/test/build/scanner work ran in Docker. No virtual env
 | Gitleaks v8.28.0, redacted, candidate commit range | PASS, zero leaks; `gitleaks-diff.json` |
 | actionlint 1.7.7 on changed deployment-verification workflow | PASS |
 | Author diff and editor diagnostics | Checked scope, secret handling, default-role isolation, callback guard, rollback and no private browser endpoint; no diagnostics in checked changed files |
+| Mandatory real-container lifecycle gate | Initial local-socket probes exhausted during PostgreSQL initialization; repaired to probe the TCP endpoint from the Docker network. Same pinned images and 503/200/503/200 assertions then PASS. Final pushed-HEAD result is bound in the prepared PR body. |
 
 Web candidate image ID: `sha256:a9dc8fbc4d2575c29c9dbc21635d7b76d8e34635bee93905a10e96727635940d`.
 

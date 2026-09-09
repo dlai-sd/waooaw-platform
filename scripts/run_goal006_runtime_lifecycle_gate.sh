@@ -74,7 +74,8 @@ docker run -d --rm \
   -e POSTGRES_HOST_AUTH_METHOD=trust \
   "$POSTGRES_IMAGE" >/dev/null
 for attempt in $(seq 1 30); do
-  if docker exec "$POSTGRES" pg_isready -U postgres -d temporal >/dev/null 2>&1; then
+  if docker run --rm --network "$NETWORK" "$POSTGRES_IMAGE" \
+    pg_isready -h postgres -U postgres -d temporal >/dev/null 2>&1; then
     break
   fi
   test "$attempt" != 30
