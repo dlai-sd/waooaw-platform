@@ -20,11 +20,18 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "$EVIDENCE_DIR" "$AZURE_CONFIG_DIR"
+docker run --rm --user "$(id -u):$(id -g)" -v "$EVIDENCE_DIR:/evidence" \
+  "$AZURE_CLI_IMAGE" openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+  -subj /CN=ca-demo-identity-edge.local.waooaw.test \
+  -addext subjectAltName=DNS:ca-demo-identity-edge.local.waooaw.test \
+  -keyout /evidence/fixture.key -out /evidence/fixture.crt >/dev/null 2>&1
 docker network create "$NETWORK" >/dev/null
 docker run -d --rm \
   --name "$EMULATOR" \
   --network "$NETWORK" \
   --network-alias goal006-azure-emulator \
+  --network-alias ca-demo-identity-edge.local.waooaw.test \
+  -e GOOGLE_FIXTURE_TLS=true \
   -e PYTHONPATH=/repo/scripts \
   -e EVIDENCE_DIR=/evidence \
   -v "$REPO_ROOT:/repo:ro" \
@@ -107,6 +114,7 @@ docker run --rm \
   -e AZURE_POD_IDENTITY_AUTHORITY_HOST=http://goal006-azure-emulator:8080 \
   -e PYTHONPATH=/repo/scripts \
   -e GOAL006_REVISION_READY_ATTEMPTS=4 \
+  -e SSL_CERT_FILE=/evidence/fixture.crt \
   -e GOAL006_REVISION_READY_INTERVAL_SECONDS=0 \
   -v "$AZURE_CONFIG_DIR:/azure-config" \
   -v "$REPO_ROOT:/repo:ro" \
@@ -120,6 +128,9 @@ docker run --rm \
     203.0.113.10/32
 
 test "$(jq -r '.functional_verification' "$EVIDENCE_DIR/deployment-verification.json")" = true
+jq -e '.redirect_verified == true and .real_user_sign_in_verified == false and
+  .keycloak_revision == "ca-demo-keycloak--0000002" and .release_sha == "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"' \
+  "$EVIDENCE_DIR/google-deployment-verification.json" >/dev/null
 test "$(find "$EVIDENCE_DIR/revision-evidence" -name '*-revision.json' | wc -l)" = 9
 grep -F 'http-probes: all required runtime probes passed' "$EVIDENCE_DIR/functional-http-probes.log" >/dev/null
 grep -F 'constitutional-health: all required runtime probes passed' \

@@ -84,7 +84,7 @@ locals {
     refreshTokenMaxReuse   = 0
     revokeRefreshToken     = true
     passwordPolicy         = "length(12) and upperCase(1) and digits(1) and specialChars(1) and notUsername"
-    identityProviders      = []
+    identityProviders      = local.google_identity_providers
     clients = [
       {
         clientId                  = "waooaw-web"
@@ -191,7 +191,7 @@ locals {
       ASPNETCORE_URLS                      = "http://+:5002"
       ConnectionStrings__DefaultConnection = "Host=localhost;Port=5432;Database=waooaw;Username=postgres"
     }
-    "business-platform" = {
+    "business-platform" = merge({
       ASPNETCORE_ENVIRONMENT               = "Production"
       ASPNETCORE_URLS                      = "http://+:5001"
       ConnectionStrings__DefaultConnection = "Host=localhost;Port=5432;Database=waooaw;Username=postgres"
@@ -199,7 +199,12 @@ locals {
       Keycloak__Audience                   = "waooaw-platform"
       Keycloak__Authority                  = "${local.service_urls.identity_edge}/realms/waooaw"
       Keycloak__RequireHttpsMetadata       = "true"
-    }
+      }, var.google_login_enabled ? {
+      IdentityEnvironment__Providers__0__Enabled                    = "true"
+      IdentityEnvironment__Providers__0__UnavailableReason          = ""
+      IdentityEnvironment__Providers__0__SecretReference            = "kv://kv-waooaw-demo/google-client-secret"
+      IdentityEnvironment__Providers__0__ReadinessEvidenceReference = "WC-085-SP-03:google-deployment-verification.json"
+    } : {})
     "professional-runtime" = merge({
       AIR_TRANSCRIPTION_BASE_URL    = local.service_urls.ai_runtime
       CONSTITUTIONAL_ENGINE_ADDRESS = "ca-${var.environment}-constitutional-engine:80"
@@ -534,13 +539,22 @@ resource "azurerm_container_app" "keycloak" {
 
   identity {
     type         = "UserAssigned"
-    identity_ids = [azurerm_user_assigned_identity.member["web"].id]
+    identity_ids = concat([azurerm_user_assigned_identity.member["web"].id], azurerm_user_assigned_identity.google_broker[*].id)
   }
 
   secret {
     name                = "keycloak-credential"
     identity            = azurerm_user_assigned_identity.member["web"].id
     key_vault_secret_id = var.key_vault_secret_uris["web"]
+  }
+
+  dynamic "secret" {
+    for_each = local.google_secret_uris
+    content {
+      name                = secret.key
+      identity            = azurerm_user_assigned_identity.google_broker[0].id
+      key_vault_secret_id = secret.value
+    }
   }
 
   template {
@@ -555,6 +569,7 @@ resource "azurerm_container_app" "keycloak" {
       command = ["/bin/sh", "-c"]
       args = [<<-EOT
         set -eu
+        ${var.google_login_enabled ? ": \"$${GOOGLE_CLIENT_ID:?Google client ID is required}\" \"$${GOOGLE_CLIENT_SECRET:?Google client secret is required}\"" : ""}
         mkdir -p /opt/keycloak/data/import
         printf '%s' '${local.keycloak_realm_base64}' | base64 --decode > /opt/keycloak/data/import/waooaw-realm.json
         exec /opt/keycloak/bin/kc.sh start-dev --db=dev-file --http-enabled=true --hostname-strict=false --import-realm
@@ -604,6 +619,14 @@ resource "azurerm_container_app" "keycloak" {
         name  = "KC_PROXY_HEADERS"
         value = "xforwarded"
       }
+
+      dynamic "env" {
+        for_each = local.google_secret_uris
+        content {
+          name        = upper(replace(env.key, "-", "_"))
+          secret_name = env.key
+        }
+      }
     }
   }
 
@@ -618,7 +641,7 @@ resource "azurerm_container_app" "keycloak" {
 
   }
 
-  depends_on = [azurerm_role_assignment.member_secret]
+  depends_on = [azurerm_role_assignment.member_secret, azurerm_role_assignment.google_broker_secret]
 }
 
 resource "azurerm_container_app" "identity_edge" {

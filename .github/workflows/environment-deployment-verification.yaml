@@ -108,5 +108,6 @@ jobs:
             functional-constitutional-health.log
             revision-evidence/
             deployment-verification.json
+            google-deployment-verification.json
           if-no-files-found: warn
           retention-days: 90

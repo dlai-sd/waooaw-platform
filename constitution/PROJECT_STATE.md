@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 138
-**Last Updated:** 2026-09-08 (WC-084 Customer Portal implementation qualification checkpoint)
+**State Revision:** 139
+**Last Updated:** 2026-09-09 (WC-085 partial implementation checkpoint)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -39,6 +39,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Demo/runtime readiness repairs | MERGED - PRs #389 through #398 repaired cleanup provenance, cloud authority, dependency recovery, service startup, Temporal readiness and deployment verification |
 | WC-078 public visual experience | ENGINEERING QUALIFIED - WC-01 through WC-08 complete; WC-09 Docker build/tests/browser matrix/54 captures/scanners and author review PASS; Founder visual acceptance, PR approval and merge pending |
 | WC-084 Customer Portal | ENGINEERING QUALIFIED - generated-client-backed My Agents, Marketplace, Alerts, Profile, Settings, account drawer, Onboard/Induct and lifecycle views complete; Docker build/typecheck, 209 Jest tests, 96.33% changed-interaction line coverage, 40 focused BP tests and 238 Playwright tests pass; Founder visual acceptance, PR approval and merge remain |
+| WC-085 remediation | PARTIAL - current-session Founder implementation and Demo Google reconstruction authority recorded in WC-085; auth loading/dismissal repaired; 44 auth tests, 98.5% changed-auth line coverage, 30 browser cases, 513 pipeline/identity tests, Terraform validation, local Azure rehearsal and two fresh pinned Keycloak reconstructions pass. No WC-085 cloud deployment or real-account acceptance claimed; draft PR preparation in progress. |
 | Production | PLAN ONLY - code-prepared; protected environments, authorized plan, traffic and final acceptance remain Founder-reserved |
 
 ### Checkpoint Context
@@ -67,6 +68,9 @@ C-001 emergency-halt integration blocks Production apply and activation, which r
 WC-084 Operations eligibility remains blocked by the absent typed customer goal-verification command;
 Billing remains blocked by the absent customer-global WBE projection. Both surfaces fail honestly and
 do not block qualification of the implemented portal scope.
+WC-085 S1 formal owner acceptance, Google full manifest/runtime/UI reconciliation and real-account
+journeys, Facebook inputs, email delivery inputs, reported Chrome reproduction and Founder visual
+acceptance remain open. Local reconstruction is not provider acceptance or full WC-085 completion.
 
 ## Next Authorized Action
 

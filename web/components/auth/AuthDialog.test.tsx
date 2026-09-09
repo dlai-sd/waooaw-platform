@@ -51,4 +51,18 @@ describe('AuthDialog', () => {
     fireEvent.click(screen.getByRole('dialog', { name: 'Register' }));
     expect(router.replace).toHaveBeenCalledWith('/', { scroll: false });
   });
+
+  it('restores focus to main when the invoking element has disappeared', () => {
+    const main = document.createElement('main');
+    const trigger = document.createElement('button');
+    document.body.append(main, trigger);
+    trigger.focus();
+    const { unmount } = render(<AuthDialog><h1 id="auth-dialog-title">Log in</h1></AuthDialog>);
+    trigger.remove();
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(router.replace).toHaveBeenCalledWith('/', { scroll: false });
+    unmount();
+    expect(main).toHaveFocus();
+    main.remove();
+  });
 });

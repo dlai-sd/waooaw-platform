@@ -148,6 +148,16 @@ if test -n "$EXPECTED_ACCESS_CIDR"; then
     -o tsv)
   test "$live_access_cidr" = "$EXPECTED_ACCESS_CIDR"
 fi
+if [[ "$TARGET_ENVIRONMENT" == "demo" ]]; then
+  identity_fqdn=$(az containerapp show --resource-group "$RESOURCE_GROUP" \
+    --name "ca-demo-identity-edge" --query properties.configuration.ingress.fqdn -o tsv)
+  keycloak_revision=$(jq -r '.latestReadyRevision' revision-evidence/keycloak-app.json)
+  python3 "$(dirname "$0")/verify_google_deployment.py" \
+    --issuer "https://$identity_fqdn/realms/waooaw" \
+    --web-url "$EXPECTED_WEB_URL" \
+    --release-sha "$RELEASE_SHA" --keycloak-revision "$keycloak_revision" \
+    --output google-deployment-verification.json
+fi
 jq -n \
   --arg environment "$TARGET_ENVIRONMENT" \
   --arg release_sha "$RELEASE_SHA" \
