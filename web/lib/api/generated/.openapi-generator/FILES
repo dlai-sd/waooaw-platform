@@ -9,6 +9,7 @@ apis/RelationshipWorkspaceApi.ts
 apis/VoiceContributionsApi.ts
 apis/index.ts
 docs/AcceptEmploymentContractRequest.md
+docs/AcceptSkillPayloadV1.md
 docs/ActionCardV1.md
 docs/ActionDefinition.md
 docs/ActivateRelationshipHandoffRequest.md
@@ -82,6 +83,7 @@ docs/CustomerSettingsV1.md
 docs/DecisionAlternativeV1.md
 docs/DecisionCardV1.md
 docs/DecisionSpaceInput.md
+docs/DeferSkillPayloadV1.md
 docs/DeliverableCardV1.md
 docs/DigitalMarketingPhaseBundle.md
 docs/DisputeResultPayloadV1.md
@@ -174,6 +176,8 @@ docs/RelationshipConfigurationStepV1.md
 docs/RelationshipConfigurationV1.md
 docs/RelationshipContextV1.md
 docs/RelationshipContractJourney.md
+docs/RelationshipEvaluationSkillV1.md
+docs/RelationshipEvaluationV1.md
 docs/RelationshipEvidenceDetailV1.md
 docs/RelationshipEvidenceExportDocumentV1.md
 docs/RelationshipEvidenceExportOutcomeV1.md
@@ -228,6 +232,7 @@ docs/RequestAllowanceAdditionPayloadV1.md
 docs/RequestRelationshipEvidenceExportV1.md
 docs/ResumeRelationshipPayloadV1.md
 docs/ReviewCadence.md
+docs/SelectSkillPayloadV1.md
 docs/SendConversationMessageRequestV1.md
 docs/SendVoiceContributionRequestV1.md
 docs/StartEmailVerificationRequest.md
@@ -249,6 +254,7 @@ docs/UpdateConversationReadPositionRequestV1.md
 docs/UpdateCustomerProfileRequestV1.md
 docs/UpdateCustomerSettingsRequestV1.md
 docs/UpdatePhaseBundleRequest.md
+docs/UpdateSkillPayloadV1.md
 docs/ValidateAgentAdmissionRequest.md
 docs/VerifyGoalPayloadV1.md
 docs/VoiceConfidenceBandV1.md
@@ -276,6 +282,7 @@ docs/WAOOAWAgentAdmissionContractSkillManifestInnerSchedulePolicy.md
 docs/WAOOAWAgentAdmissionContractSkillManifestInnerToolsInner.md
 index.ts
 models/AcceptEmploymentContractRequest.ts
+models/AcceptSkillPayloadV1.ts
 models/ActionCardV1.ts
 models/ActionDefinition.ts
 models/ActivateRelationshipHandoffRequest.ts
@@ -346,6 +353,7 @@ models/CustomerSettingsV1.ts
 models/DecisionAlternativeV1.ts
 models/DecisionCardV1.ts
 models/DecisionSpaceInput.ts
+models/DeferSkillPayloadV1.ts
 models/DeliverableCardV1.ts
 models/DigitalMarketingPhaseBundle.ts
 models/DisputeResultPayloadV1.ts
@@ -434,6 +442,8 @@ models/RelationshipConfigurationStepV1.ts
 models/RelationshipConfigurationV1.ts
 models/RelationshipContextV1.ts
 models/RelationshipContractJourney.ts
+models/RelationshipEvaluationSkillV1.ts
+models/RelationshipEvaluationV1.ts
 models/RelationshipEvidenceDetailV1.ts
 models/RelationshipEvidenceExportDocumentV1.ts
 models/RelationshipEvidenceExportOutcomeV1.ts
@@ -487,6 +497,7 @@ models/RequestAllowanceAdditionPayloadV1.ts
 models/RequestRelationshipEvidenceExportV1.ts
 models/ResumeRelationshipPayloadV1.ts
 models/ReviewCadence.ts
+models/SelectSkillPayloadV1.ts
 models/SendConversationMessageRequestV1.ts
 models/SendVoiceContributionRequestV1.ts
 models/StartEmailVerificationRequest.ts
@@ -508,6 +519,7 @@ models/UpdateConversationReadPositionRequestV1.ts
 models/UpdateCustomerProfileRequestV1.ts
 models/UpdateCustomerSettingsRequestV1.ts
 models/UpdatePhaseBundleRequest.ts
+models/UpdateSkillPayloadV1.ts
 models/ValidateAgentAdmissionRequest.ts
 models/VerifyGoalPayloadV1.ts
 models/VoiceConfidenceBandV1.ts

@@ -14,6 +14,9 @@
 | `goalVersion`          | string |
 | `verificationDecision` | string |
 | `correctionReason`     | string |
+| `configurationId`      | string |
+| `skillId`              | string |
+| `skillVersion`         | string |
 | `boundaryId`           | string |
 | `acknowledgmentText`   | string |
 | `amountInrPaise`       | number |
@@ -36,6 +39,9 @@ const example = {
   goalVersion: null,
   verificationDecision: null,
   correctionReason: null,
+  configurationId: null,
+  skillId: null,
+  skillVersion: null,
   boundaryId: null,
   acknowledgmentText: null,
   amountInrPaise: null,

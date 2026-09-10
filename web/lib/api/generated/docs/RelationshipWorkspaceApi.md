@@ -2,25 +2,26 @@
 
 All URIs are relative to _http://localhost:5001_
 
-| Method                                                                                                 | HTTP request                                                                                    | Description                                                        |
-| ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| [**getRelationshipAttention**](RelationshipWorkspaceApi.md#getrelationshipattention)                   | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/attention                   | Read authoritative needs-your-attention items in BP-owned order    |
-| [**getRelationshipBusinessOutcomes**](RelationshipWorkspaceApi.md#getrelationshipbusinessoutcomes)     | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/business-outcomes           | Read relationship business outcomes with explicit traceability     |
-| [**getRelationshipCommand**](RelationshipWorkspaceApi.md#getrelationshipcommand)                       | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/commands/{commandId}        | Reconcile one command to an authoritative outcome                  |
-| [**getRelationshipEvidence**](RelationshipWorkspaceApi.md#getrelationshipevidence)                     | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/evidence/{evidenceId}       | Read one relationship-authorized evidence detail projection        |
-| [**getRelationshipEvidenceExport**](RelationshipWorkspaceApi.md#getrelationshipevidenceexport)         | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/evidence-exports/{exportId} | Reconcile one relationship evidence export request                 |
-| [**getRelationshipGoals**](RelationshipWorkspaceApi.md#getrelationshipgoals)                           | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/goals                       | Read active and historical relationship goals                      |
-| [**getRelationshipOperations**](RelationshipWorkspaceApi.md#getrelationshipoperations)                 | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/operations                  | Read Operations eligibility and reassessment state                 |
-| [**getRelationshipPlan**](RelationshipWorkspaceApi.md#getrelationshipplan)                             | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/plan                        | Read relationship plan, goals, and available typed commands        |
-| [**getRelationshipResults**](RelationshipWorkspaceApi.md#getrelationshipresults)                       | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/results                     | Read relationship business outcomes and attribution context        |
-| [**getRelationshipRightsControls**](RelationshipWorkspaceApi.md#getrelationshiprightscontrols)         | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/rights-controls             | Read relationship rights, scope, authority, and lifecycle controls |
-| [**getRelationshipUsageBudget**](RelationshipWorkspaceApi.md#getrelationshipusagebudget)               | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/usage-budget                | Read WBE-authoritative usage and budget projection relayed by BP   |
-| [**getRelationshipWork**](RelationshipWorkspaceApi.md#getrelationshipwork)                             | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/work                        | Read relationship work and deliverable status                      |
-| [**getRelationshipWorkspace**](RelationshipWorkspaceApi.md#getrelationshipworkspace)                   | **GET** /api/v1/employment/relationships/{relationshipId}/workspace                             | Read the complete relationship workspace projection                |
-| [**getRelationshipWorkspaceChanges**](RelationshipWorkspaceApi.md#getrelationshipworkspacechanges)     | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/changes                     | Read incremental workspace changes after an authoritative cursor   |
-| [**listRelationshipEvidence**](RelationshipWorkspaceApi.md#listrelationshipevidence)                   | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/evidence                    | List relationship-authorized evidence summaries                    |
-| [**requestRelationshipEvidenceExport**](RelationshipWorkspaceApi.md#requestrelationshipevidenceexport) | **POST** /api/v1/employment/relationships/{relationshipId}/workspace/evidence-exports           | Request or replay one relationship evidence export                 |
-| [**submitRelationshipCommand**](RelationshipWorkspaceApi.md#submitrelationshipcommand)                 | **POST** /api/v1/employment/relationships/{relationshipId}/workspace/commands                   | Submit or replay a typed relationship command                      |
+| Method                                                                                                 | HTTP request                                                                                    | Description                                                            |
+| ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| [**getRelationshipAttention**](RelationshipWorkspaceApi.md#getrelationshipattention)                   | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/attention                   | Read authoritative needs-your-attention items in BP-owned order        |
+| [**getRelationshipBusinessOutcomes**](RelationshipWorkspaceApi.md#getrelationshipbusinessoutcomes)     | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/business-outcomes           | Read relationship business outcomes with explicit traceability         |
+| [**getRelationshipCommand**](RelationshipWorkspaceApi.md#getrelationshipcommand)                       | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/commands/{commandId}        | Reconcile one command to an authoritative outcome                      |
+| [**getRelationshipEvaluation**](RelationshipWorkspaceApi.md#getrelationshipevaluation)                 | **GET** /api/v1/employment/relationships/{relationshipId}/evaluation                            | Read the authoritative relationship evaluation and skill configuration |
+| [**getRelationshipEvidence**](RelationshipWorkspaceApi.md#getrelationshipevidence)                     | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/evidence/{evidenceId}       | Read one relationship-authorized evidence detail projection            |
+| [**getRelationshipEvidenceExport**](RelationshipWorkspaceApi.md#getrelationshipevidenceexport)         | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/evidence-exports/{exportId} | Reconcile one relationship evidence export request                     |
+| [**getRelationshipGoals**](RelationshipWorkspaceApi.md#getrelationshipgoals)                           | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/goals                       | Read active and historical relationship goals                          |
+| [**getRelationshipOperations**](RelationshipWorkspaceApi.md#getrelationshipoperations)                 | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/operations                  | Read Operations eligibility and reassessment state                     |
+| [**getRelationshipPlan**](RelationshipWorkspaceApi.md#getrelationshipplan)                             | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/plan                        | Read relationship plan, goals, and available typed commands            |
+| [**getRelationshipResults**](RelationshipWorkspaceApi.md#getrelationshipresults)                       | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/results                     | Read relationship business outcomes and attribution context            |
+| [**getRelationshipRightsControls**](RelationshipWorkspaceApi.md#getrelationshiprightscontrols)         | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/rights-controls             | Read relationship rights, scope, authority, and lifecycle controls     |
+| [**getRelationshipUsageBudget**](RelationshipWorkspaceApi.md#getrelationshipusagebudget)               | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/usage-budget                | Read WBE-authoritative usage and budget projection relayed by BP       |
+| [**getRelationshipWork**](RelationshipWorkspaceApi.md#getrelationshipwork)                             | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/work                        | Read relationship work and deliverable status                          |
+| [**getRelationshipWorkspace**](RelationshipWorkspaceApi.md#getrelationshipworkspace)                   | **GET** /api/v1/employment/relationships/{relationshipId}/workspace                             | Read the complete relationship workspace projection                    |
+| [**getRelationshipWorkspaceChanges**](RelationshipWorkspaceApi.md#getrelationshipworkspacechanges)     | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/changes                     | Read incremental workspace changes after an authoritative cursor       |
+| [**listRelationshipEvidence**](RelationshipWorkspaceApi.md#listrelationshipevidence)                   | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/evidence                    | List relationship-authorized evidence summaries                        |
+| [**requestRelationshipEvidenceExport**](RelationshipWorkspaceApi.md#requestrelationshipevidenceexport) | **POST** /api/v1/employment/relationships/{relationshipId}/workspace/evidence-exports           | Request or replay one relationship evidence export                     |
+| [**submitRelationshipCommand**](RelationshipWorkspaceApi.md#submitrelationshipcommand)                 | **POST** /api/v1/employment/relationships/{relationshipId}/workspace/commands                   | Submit or replay a typed relationship command                          |
 
 ## getRelationshipAttention
 
@@ -241,6 +242,75 @@ example().catch(console.error);
 | **401**     | Workspace session is missing, invalid, or expired                       | -                |
 | **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant | -                |
 | **503**     | Required owner projection or constitutional dependency is unavailable   | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## getRelationshipEvaluation
+
+> RelationshipEvaluationV1 getRelationshipEvaluation(relationshipId)
+
+Read the authoritative relationship evaluation and skill configuration
+
+### Example
+
+```ts
+import {
+  Configuration,
+  RelationshipWorkspaceApi,
+} from '';
+import type { GetRelationshipEvaluationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new RelationshipWorkspaceApi(config);
+
+  const body = {
+    // string | Tenant-scoped durable employment relationship UUID
+    relationshipId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetRelationshipEvaluationRequest;
+
+  try {
+    const data = await api.getRelationshipEvaluation(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name               | Type     | Description                                        | Notes                     |
+| ------------------ | -------- | -------------------------------------------------- | ------------------------- |
+| **relationshipId** | `string` | Tenant-scoped durable employment relationship UUID | [Defaults to `undefined`] |
+
+### Return type
+
+[**RelationshipEvaluationV1**](RelationshipEvaluationV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                             | Response headers |
+| ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **200**     | Relationship-local evaluation projection                                | -                |
+| **401**     | Workspace session is missing, invalid, or expired                       | -                |
+| **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
