@@ -6,6 +6,8 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Waooaw.BusinessPlatform.Controllers;
@@ -17,12 +19,13 @@ namespace Waooaw.BusinessPlatform.Tests.Identity;
 
 // ── In-memory factory for IdentityDbContext (tests only) ─────────────────────
 
-internal sealed class InMemoryIdentityDbContextFactory(string dbName)
+internal sealed class InMemoryIdentityDbContextFactory(string dbName, params IInterceptor[] interceptors)
     : IDbContextFactory<IdentityDbContext>
 {
     public IdentityDbContext CreateDbContext() =>
         new(new DbContextOptionsBuilder<IdentityDbContext>()
             .UseInMemoryDatabase(dbName)
+            .AddInterceptors(interceptors)
             .Options);
 }
 
@@ -251,6 +254,61 @@ public sealed class IdentityProviderProjectionTests
 
         Assert.True(result.Failed);
         Assert.Contains(result.Failures, failure => failure.Contains("wildcard", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("ca-uat-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io")]
+    [InlineData("ca-demo-web.other.centralindia.azurecontainerapps.io")]
+    [InlineData("ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io.example.com")]
+    public void F2_IdentityEnvironmentValidator_RejectsUnapprovedDemoCloudHost(string host)
+    {
+        var options = ReadManifest("demo");
+        options.Clients[0].RedirectUris = [$"https://{host}/api/auth/callback/keycloak-google"];
+
+        var result = new IdentityEnvironmentOptionsValidator().Validate(null, options);
+
+        Assert.True(result.Failed);
+        Assert.Contains(result.Failures, failure => failure.Contains("does not belong to demo", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void F2_IdentityEnvironment_DemoOverlayClearsLocalProviderReadiness()
+    {
+        var manifestPath = Path.GetFullPath(EnvironmentManifestPath("demo"));
+        var root = Path.GetFullPath("../../..", Path.GetDirectoryName(manifestPath)!);
+        var configuration = new ConfigurationBuilder()
+            .AddJsonFile(Path.GetFullPath("src/business-platform/appsettings.json", root))
+            .Build();
+        using var manifest = JsonDocument.Parse(File.ReadAllText(manifestPath));
+
+        void Overlay(JsonElement element, string prefix)
+        {
+            if (element.ValueKind == JsonValueKind.Object)
+                foreach (var property in element.EnumerateObject())
+                    Overlay(property.Value, prefix + ":" + property.Name);
+            else if (element.ValueKind == JsonValueKind.Array)
+            {
+                var index = 0;
+                foreach (var child in element.EnumerateArray())
+                    Overlay(child, prefix + ":" + index++);
+            }
+            else
+                configuration[prefix] = element.ToString();
+        }
+
+        Overlay(manifest.RootElement, IdentityEnvironmentOptions.SectionName);
+        for (var index = 0; index < 4; index++)
+            configuration[$"IdentityEnvironment:providers:{index}:readinessEvidenceReference"] = "";
+        var options = configuration.GetSection(IdentityEnvironmentOptions.SectionName)
+            .Get<IdentityEnvironmentOptions>()!;
+
+        var result = new IdentityEnvironmentOptionsValidator().Validate(null, options);
+
+        Assert.True(result.Succeeded, result.Failed ? string.Join("; ", result.Failures) : "");
+        Assert.Equal("demo", options.Environment);
+        Assert.All(new IdentityProviderProjectionService(Options.Create(options)).GetProviders(),
+            provider => Assert.Equal("UNAVAILABLE", provider.Availability));
+        Assert.Equal("", options.Providers[3].ReadinessEvidenceReference);
     }
 
     [Fact]
@@ -836,6 +894,83 @@ public sealed class IdentityRegistrationTests
         var replayRef = JsonSerializer.SerializeToElement(replay.Value).GetProperty("AccountReference").GetGuid();
 
         Assert.Equal(firstRef, replayRef);
+    }
+
+    [Fact]
+    public async Task F2_CompleteRegistration_SaveFailure_PreservesIncompleteStateAndAllowsRetry()
+    {
+        var interceptor = new FailCompletionSaveOnceInterceptor();
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"), interceptor);
+        var registration = new IdentityRegistrationRecord
+        {
+            ActorSubject = "completion-save-failure",
+            State = IdentityRegistrationState.ReadyToComplete,
+            EmailVerified = true,
+            DisplayName = "Test Customer",
+            BusinessName = "Test Business",
+            BusinessDomain = "Consulting",
+        };
+        await using (var seed = factory.CreateDbContext())
+        {
+            seed.Registrations.Add(registration);
+            await seed.SaveChangesAsync();
+        }
+
+        var service = IdentityTestHelpers.CreateService(factory);
+        var idempotencyKey = Guid.NewGuid();
+        const string canonicalHash = "completion-save-failure-hash";
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => service.CompleteRegistrationAsync(
+            registration.RegistrationId, registration.ActorSubject, idempotencyKey,
+            canonicalHash, CancellationToken.None));
+
+        await using (var persisted = factory.CreateDbContext())
+        {
+            var unchanged = await persisted.Registrations.SingleAsync();
+            Assert.Null(unchanged.AccountId);
+            Assert.Equal(IdentityRegistrationState.ReadyToComplete, unchanged.State);
+            Assert.Equal(registration.UpdatedAt, unchanged.UpdatedAt);
+            Assert.Empty(await persisted.IdempotencyLedger.ToListAsync());
+        }
+
+        var (completed, isNew) = await service.CompleteRegistrationAsync(
+            registration.RegistrationId, registration.ActorSubject, idempotencyKey,
+            canonicalHash, CancellationToken.None);
+        var (replayed, replayIsNew) = await service.CompleteRegistrationAsync(
+            registration.RegistrationId, registration.ActorSubject, idempotencyKey,
+            canonicalHash, CancellationToken.None);
+
+        Assert.True(isNew);
+        Assert.Equal("ACCOUNT_CREATED", completed.Outcome);
+        Assert.NotEqual(Guid.Empty, completed.AccountReference);
+        Assert.False(replayIsNew);
+        Assert.Equal(completed, replayed);
+        await using var saved = factory.CreateDbContext();
+        var committed = await saved.Registrations.SingleAsync();
+        Assert.Equal(completed.AccountReference, committed.AccountId);
+        Assert.Equal(IdentityRegistrationState.Completed, committed.State);
+        Assert.Single(await saved.IdempotencyLedger.ToListAsync());
+    }
+
+    private sealed class FailCompletionSaveOnceInterceptor : SaveChangesInterceptor
+    {
+        private bool _failed;
+
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (!_failed && eventData.Context!.ChangeTracker.Entries<IdentityIdempotencyEntry>()
+                .Any(entry => entry.State == EntityState.Added
+                    && entry.Entity.OperationFamily == "CompleteRegistration"))
+            {
+                _failed = true;
+                throw new DbUpdateException("Synthetic completion persistence failure.");
+            }
+
+            return ValueTask.FromResult(result);
+        }
     }
 }
 

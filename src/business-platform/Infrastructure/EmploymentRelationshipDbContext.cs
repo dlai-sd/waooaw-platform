@@ -140,6 +140,29 @@ public sealed class RelationshipGoal
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class RelationshipGoalDecision
+{
+    public Guid DecisionId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public Guid GoalId { get; init; }
+    public string GoalVersion { get; init; } = string.Empty;
+    public string SkillId { get; init; } = string.Empty;
+    public string SkillVersion { get; init; } = string.Empty;
+    public string Measure { get; init; } = string.Empty;
+    public int ReviewCadenceMonths { get; init; }
+    public string Decision { get; init; } = string.Empty;
+    public string? CorrectionReason { get; init; }
+    public Guid? PriorDecisionId { get; init; }
+    public Guid ActorParticipantId { get; init; }
+    public string ExpectedWorkspaceVersion { get; init; } = string.Empty;
+    public string ExpectedSubjectVersion { get; init; } = string.Empty;
+    public Guid IdempotencyKey { get; init; }
+    public string MaterialRequestHash { get; init; } = string.Empty;
+    public Guid EvidenceId { get; init; }
+    public DateTimeOffset OccurredAt { get; init; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class RelationshipOnboardPreference
 {
     public Guid PreferenceId { get; init; } = Guid.NewGuid();
@@ -424,6 +447,7 @@ public sealed class EmploymentRelationshipDbContext : DbContext
     public DbSet<RelationshipContextPayload> RelationshipContextPayloads => Set<RelationshipContextPayload>();
     public DbSet<ContextConfirmationEvent> ContextConfirmationEvents => Set<ContextConfirmationEvent>();
     public DbSet<RelationshipGoal> RelationshipGoals => Set<RelationshipGoal>();
+    public DbSet<RelationshipGoalDecision> RelationshipGoalDecisions => Set<RelationshipGoalDecision>();
     public DbSet<RelationshipOnboardPreference> RelationshipOnboardPreferences => Set<RelationshipOnboardPreference>();
     public DbSet<CustomerAlert> CustomerAlerts => Set<CustomerAlert>();
     public DbSet<CustomerAlertIdempotency> CustomerAlertIdempotency => Set<CustomerAlertIdempotency>();
@@ -701,6 +725,40 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.HasOne<EmploymentRelationship>().WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+        });
+
+        modelBuilder.Entity<RelationshipGoalDecision>(entity =>
+        {
+            entity.ToTable("relationship_goal_decisions", "business");
+            entity.HasKey(value => value.DecisionId);
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.GoalId, value.OccurredAt });
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.GoalId, value.DecisionId }).IsUnique();
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.IdempotencyKey }).IsUnique();
+            entity.Property(value => value.DecisionId).HasColumnName("decision_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.GoalId).HasColumnName("goal_id");
+            entity.Property(value => value.GoalVersion).HasColumnName("goal_version").HasMaxLength(64);
+            entity.Property(value => value.SkillId).HasColumnName("skill_id").HasMaxLength(128);
+            entity.Property(value => value.SkillVersion).HasColumnName("skill_version").HasMaxLength(32);
+            entity.Property(value => value.Measure).HasColumnName("measure");
+            entity.Property(value => value.ReviewCadenceMonths).HasColumnName("review_cadence_months");
+            entity.Property(value => value.Decision).HasColumnName("decision").HasMaxLength(24);
+            entity.Property(value => value.CorrectionReason).HasColumnName("correction_reason").HasMaxLength(500);
+            entity.Property(value => value.PriorDecisionId).HasColumnName("prior_decision_id");
+            entity.Property(value => value.ActorParticipantId).HasColumnName("actor_participant_id");
+            entity.Property(value => value.ExpectedWorkspaceVersion).HasColumnName("expected_workspace_version").HasMaxLength(64);
+            entity.Property(value => value.ExpectedSubjectVersion).HasColumnName("expected_subject_version").HasMaxLength(64);
+            entity.Property(value => value.IdempotencyKey).HasColumnName("idempotency_key");
+            entity.Property(value => value.MaterialRequestHash).HasColumnName("material_request_hash").HasMaxLength(64);
+            entity.Property(value => value.EvidenceId).HasColumnName("evidence_id");
+            entity.Property(value => value.OccurredAt).HasColumnName("occurred_at");
+            entity.HasOne<EmploymentRelationship>().WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+            entity.HasOne<RelationshipGoal>().WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId, value.GoalId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId, value.GoalId });
         });
 
         modelBuilder.Entity<RelationshipSkillConfiguration>(entity =>

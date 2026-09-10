@@ -185,6 +185,85 @@ public sealed class RelationshipConfigurationServiceTests
         Assert.Empty(await verificationDb.ContextConfirmationEvents.ToListAsync());
     }
 
+    [Fact]
+    public async Task GoalDecision_AppendsHistoryReplaysAndRelocksAfterVersionChange()
+    {
+        var (service, relationship, tenantId, actorId, factory) = await CreateServiceAsync();
+        var goal = await service.SaveGoalAsync(
+            tenantId, relationship.RelationshipId, "Increase bookings", "10 monthly",
+            "Confirmed bookings", "15 monthly", "customer records", "ACCEPTED", CancellationToken.None);
+        await service.SaveSkillAsync(
+            tenantId, relationship.RelationshipId, "local-seo", "1.0.0", goal.GoalId,
+            "NOT_GRANTED", "APPLICABLE", null, "ACCEPTED", CancellationToken.None);
+        var goalVersion = RelationshipConfigurationService.GetGoalVersion(goal);
+        var workspaceVersion = $"relationship-{relationship.StateVersion}";
+        var key = Guid.NewGuid();
+
+        var first = await service.VerifyGoalAsync(
+            tenantId, relationship.RelationshipId, actorId, key, new string('a', 64),
+            workspaceVersion, goalVersion, goal.GoalId, goalVersion, "VERIFIED", null,
+            Guid.NewGuid(), CancellationToken.None);
+        var replay = await service.VerifyGoalAsync(
+            tenantId, relationship.RelationshipId, actorId, key, new string('a', 64),
+            workspaceVersion, goalVersion, goal.GoalId, goalVersion, "VERIFIED", null,
+            Guid.NewGuid(), CancellationToken.None);
+
+        Assert.False(first.Replayed);
+        Assert.True(replay.Replayed);
+        Assert.Equal(first.Decision.DecisionId, replay.Decision.DecisionId);
+        await Assert.ThrowsAsync<RelationshipConfigurationConflictException>(() => service.VerifyGoalAsync(
+            tenantId, relationship.RelationshipId, actorId, key, new string('b', 64),
+            workspaceVersion, goalVersion, goal.GoalId, goalVersion, "VERIFIED", null,
+            Guid.NewGuid(), CancellationToken.None));
+
+        var changed = await service.VerifyGoalAsync(
+            tenantId, relationship.RelationshipId, actorId, Guid.NewGuid(), new string('c', 64),
+            workspaceVersion, goalVersion, goal.GoalId, goalVersion, "CHANGES_REQUESTED", "Clarify attribution.",
+            Guid.NewGuid(), CancellationToken.None);
+        Assert.Equal(first.Decision.DecisionId, changed.Decision.PriorDecisionId);
+
+        await using (var db = factory.CreateDbContext())
+        {
+            var storedGoal = await db.RelationshipGoals.SingleAsync(item => item.GoalId == goal.GoalId);
+            storedGoal.Measure = "Qualified confirmed bookings";
+            storedGoal.UpdatedAt = storedGoal.UpdatedAt.AddTicks(1);
+            await db.SaveChangesAsync();
+        }
+
+        var projection = Assert.Single(await service.GetPortalGoalsAsync(
+            tenantId, relationship.RelationshipId, CancellationToken.None));
+        Assert.Null(projection.CurrentDecision);
+        Assert.True(projection.HasPriorDecision);
+        await using var verificationDb = factory.CreateDbContext();
+        Assert.Equal(2, await verificationDb.RelationshipGoalDecisions.CountAsync());
+    }
+
+    [Fact]
+    public async Task GoalDecision_RejectsStaleVersionAndInvalidReasonWithoutMutation()
+    {
+        var (service, relationship, tenantId, actorId, factory) = await CreateServiceAsync();
+        var goal = await service.SaveGoalAsync(
+            tenantId, relationship.RelationshipId, "Increase bookings", null,
+            "Confirmed bookings", null, null, "ACCEPTED", CancellationToken.None);
+        await service.SaveSkillAsync(
+            tenantId, relationship.RelationshipId, "local-seo", "1.0.0", goal.GoalId,
+            "NOT_GRANTED", "APPLICABLE", null, "ACCEPTED", CancellationToken.None);
+
+        await Assert.ThrowsAsync<RelationshipGoalVersionConflictException>(() => service.VerifyGoalAsync(
+            tenantId, relationship.RelationshipId, actorId, Guid.NewGuid(), new string('a', 64),
+            $"relationship-{relationship.StateVersion}", "goal-stale", goal.GoalId, "goal-stale",
+            "VERIFIED", null, Guid.NewGuid(), CancellationToken.None));
+        await Assert.ThrowsAsync<ArgumentException>(() => service.VerifyGoalAsync(
+            tenantId, relationship.RelationshipId, actorId, Guid.NewGuid(), new string('b', 64),
+            $"relationship-{relationship.StateVersion}", RelationshipConfigurationService.GetGoalVersion(goal),
+            goal.GoalId, RelationshipConfigurationService.GetGoalVersion(goal),
+            "CHANGES_REQUESTED", null, Guid.NewGuid(), CancellationToken.None));
+
+        await using var db = factory.CreateDbContext();
+        Assert.Empty(await db.RelationshipGoalDecisions.ToListAsync());
+        Assert.Empty(await db.RelationshipIdempotency.ToListAsync());
+    }
+
     private static async Task<(RelationshipConfigurationService Service, EmploymentRelationship Relationship, Guid TenantId, Guid ActorId, InMemoryEmploymentRelationshipFactory Factory)> CreateServiceAsync()
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));

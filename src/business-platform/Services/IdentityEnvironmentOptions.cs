@@ -91,6 +91,12 @@ public sealed class IdentityProviderOptions
 public sealed class IdentityEnvironmentOptionsValidator : IValidateOptions<IdentityEnvironmentOptions>
 {
     private static readonly string[] RequiredProviderIds = ["GOOGLE", "FACEBOOK", "APPLE", "EMAIL"];
+    private static readonly HashSet<string> ApprovedDemoHosts = new(StringComparer.Ordinal)
+    {
+        "ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io",
+        "ca-demo-business-platform.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io",
+        "ca-demo-identity-edge.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io",
+    };
     private static readonly HashSet<string> AuthenticationPaths =
         new(["GOOGLE", "META", "APPLE", "CREDENTIAL"], StringComparer.Ordinal);
     private static readonly HashSet<string> UnavailableReasons =
@@ -246,7 +252,7 @@ public sealed class IdentityEnvironmentOptionsValidator : IValidateOptions<Ident
     {
         "local" => host is "localhost" or "127.0.0.1" || host.Contains(".local.", StringComparison.Ordinal)
             || host.EndsWith(".local", StringComparison.Ordinal),
-        "demo" => host.EndsWith(".demo.waooaw.com", StringComparison.Ordinal),
+        "demo" => host.EndsWith(".demo.waooaw.com", StringComparison.Ordinal) || ApprovedDemoHosts.Contains(host),
         "uat" => host.EndsWith(".uat.waooaw.com", StringComparison.Ordinal),
         "prod" => (host == "waooaw.com" || host.EndsWith(".waooaw.com", StringComparison.Ordinal))
             && !host.EndsWith(".demo.waooaw.com", StringComparison.Ordinal)

@@ -22,6 +22,7 @@ it('clears WAOOAW protected state before ending the session', () => {
   expect(sessionStorage.getItem('waooaw:identity:registration-draft')).toBeNull();
   expect(Object.keys(localStorage).filter((key) => key.startsWith('waooaw:conversation:'))).toEqual([]);
   expect(localStorage.getItem('waooaw:preference:theme')).toBeNull();
+  expect(JSON.parse(String(localStorage.getItem('waooaw:identity:session-change')))).toMatchObject({ action: 'SIGN_OUT' });
   expect(sessionStorage.getItem('other-app')).toBe('preserve');
   expect(localStorage.getItem('other-app-preference')).toBe('preserve');
   expect(signOut).toHaveBeenCalledWith({ callbackUrl: '/' });
@@ -35,6 +36,7 @@ it('clears protected state before requesting a different Keycloak account', () =
   fireEvent.click(screen.getByRole('button', { name: 'Switch account' }));
   expect(sessionStorage.getItem('waooaw:relationship:draft')).toBeNull();
   expect(localStorage.getItem('waooaw:conversation:relationship-b:draft')).toBeNull();
+  expect(JSON.parse(String(localStorage.getItem('waooaw:identity:session-change')))).toMatchObject({ action: 'ACCOUNT_SWITCH' });
   expect(localStorage.getItem('unrelated-preference')).toBe('retain');
   expect(signIn).toHaveBeenCalledWith('keycloak', { callbackUrl: '/home' }, { prompt: 'select_account' });
 });

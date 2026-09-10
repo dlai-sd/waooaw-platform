@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Logging;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
@@ -154,8 +155,26 @@ public sealed record CustomerLoginMethodCollectionResponse(
 public sealed class IdentityController(
     IdentityService identityService,
     IdentityProviderProjectionService providerProjectionService,
-    ILogger<IdentityController> logger) : ControllerBase
+    ILogger<IdentityController> logger,
+    CustomerIdentityJourneyService? customerJourney = null) : ControllerBase, IAsyncActionFilter
 {
+    [NonAction]
+    public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
+    {
+        if (context.ActionDescriptor.EndpointMetadata.OfType<IAllowAnonymous>().Any())
+        {
+            await next();
+            return;
+        }
+        if (customerJourney is null || !HttpContext.Items.ContainsKey(CustomerMembershipMiddleware.JourneyItem))
+        {
+            context.Result = IdentityProblem(503, "IDENTITY_DEPENDENCY_UNAVAILABLE",
+                "The customer identity boundary is unavailable.");
+            return;
+        }
+        await next();
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private string SubjectClaim =>
@@ -338,12 +357,28 @@ public sealed class IdentityController(
 
     [AllowAnonymous]
     [HttpGet("providers")]
-    public IActionResult GetProviders() =>
-        Ok(new IdentityProviderCollectionResponse(providerProjectionService.GetProviders()));
+    public IActionResult GetProviders()
+    {
+        Response.Headers.CacheControl = "no-store";
+        var providers = providerProjectionService.GetProviders();
+        if (customerJourney is not null)
+            providers = providers.Select(provider => provider.Id == "GOOGLE" && customerJourney.IsAvailable
+                ? provider : provider with { Availability = "UNAVAILABLE", UnavailableReason = "NOT_CONFIGURED" }).ToArray();
+        return Ok(new IdentityProviderCollectionResponse(providers));
+    }
 
     [HttpGet("session")]
+    [CustomerIdentityRoute(requiresMembership: true)]
     public async Task<IActionResult> GetSessionAsync(CancellationToken ct)
     {
+        if (customerJourney is not null)
+        {
+            var membership = HttpContext.Items[CustomerMembershipMiddleware.MembershipItem] as CustomerWorkspaceMembership
+                ?? await customerJourney.ResolveAsync(User, ct);
+            return Ok(new IdentitySessionResponse(membership.AccountId, membership.Roles, [], "AAL2_ACCOUNT", "PORTAL",
+                true, false, DateTimeOffset.FromUnixTimeSeconds(long.Parse(GoogleWorkspaceProofAdapter.SingleClaim(User, "auth_time")!)),
+                DateTimeOffset.FromUnixTimeSeconds(long.Parse(GoogleWorkspaceProofAdapter.SingleClaim(User, "exp")!)), "CONTINUE_TO_DEFAULT_TARGET"));
+        }
         var tenantId = TenantIdFromContext;
         var roles = CustomerRoles;
         var expiresAtValue = User.FindFirstValue("exp");
@@ -544,6 +579,7 @@ public sealed class IdentityController(
     // ── POST /api/v1/identity/registrations ──────────────────────────────────
 
     [HttpPost("registrations")]
+    [CustomerIdentityRoute]
     public async Task<IActionResult> StartRegistrationAsync(
         [FromBody] StartRegistrationRequest req,
         CancellationToken ct)
@@ -553,6 +589,11 @@ public sealed class IdentityController(
             if (!LanguagePattern.IsMatch(req.LanguagePreference))
                 return IdentityProblem(400, "IDENTITY_REQUEST_INVALID", "languagePreference is invalid.");
 
+            if (customerJourney is not null)
+            {
+                var started = await customerJourney.StartAsync(User, IdempotencyKey, req.LanguagePreference, ct);
+                return started.isNew ? StatusCode(201, ToResponse(started.reg)) : Ok(ToResponse(started.reg));
+            }
             var authPath = DeriveAuthPath(User);
             var providerId = authPath switch
             {
@@ -601,11 +642,14 @@ public sealed class IdentityController(
     // ── GET /api/v1/identity/registrations/{registrationId} ──────────────────
 
     [HttpGet("registrations/{registrationId:guid}")]
+    [CustomerIdentityRoute]
     public async Task<IActionResult> GetRegistrationAsync(Guid registrationId, CancellationToken ct)
     {
         try
         {
-            var reg = await identityService.GetRegistrationAsync(registrationId, ActorSubject, ct);
+            var reg = customerJourney is not null
+                ? await customerJourney.GetAsync(User, registrationId, ct)
+                : await identityService.GetRegistrationAsync(registrationId, ActorSubject, ct);
             return Ok(ToResponse(reg));
         }
         catch (IdentityResourceNotFoundException)
@@ -618,6 +662,7 @@ public sealed class IdentityController(
     // ── PUT /api/v1/identity/registrations/{registrationId}/profile ───────────
 
     [HttpPut("registrations/{registrationId:guid}/profile")]
+    [CustomerIdentityRoute]
     public async Task<IActionResult> UpdateProfileAsync(
         Guid registrationId,
         [FromBody] UpdateRegistrationProfileRequest req,
@@ -634,6 +679,12 @@ public sealed class IdentityController(
 
         try
         {
+            if (customerJourney is not null)
+            {
+                var updated = await customerJourney.UpdateAsync(User, registrationId, IdempotencyKey,
+                    req.DisplayName, req.BusinessName, req.BusinessDomain, req.LanguagePreference, ct);
+                return Ok(ToResponse(updated.reg));
+            }
             var idempotencyKey = IdempotencyKey;
             var hash = ComputeHash(req);
 
@@ -841,12 +892,19 @@ public sealed class IdentityController(
     // ── POST /registrations/{id}/complete ─────────────────────────────────────
 
     [HttpPost("registrations/{registrationId:guid}/complete")]
+    [CustomerIdentityRoute]
     public async Task<IActionResult> CompleteRegistrationAsync(
         Guid registrationId,
         CancellationToken ct)
     {
         try
         {
+            if (customerJourney is not null)
+            {
+                var completed = await customerJourney.CompleteAsync(User, registrationId, IdempotencyKey, ct);
+                return new ContentResult { StatusCode = completed.StatusCode, ContentType = "application/json",
+                    Content = completed.ResponseBody };
+            }
             var idempotencyKey = IdempotencyKey;
             var hash = ComputeHash(new { registrationId });
 

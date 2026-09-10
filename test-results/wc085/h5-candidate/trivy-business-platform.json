@@ -1,0 +1,221 @@
+{
+  "SchemaVersion": 2,
+  "CreatedAt": "2026-09-10T01:14:15.068846836Z",
+  "ArtifactName": "wc085-business-platform:h5-local",
+  "ArtifactType": "container_image",
+  "Metadata": {
+    "Size": 309189120,
+    "OS": {
+      "Family": "debian",
+      "Name": "12.15"
+    },
+    "ImageID": "sha256:90327740e3709792348a4c5b6cd4e03a5862eda9bc38556cb5b9a3a5f9521124",
+    "DiffIDs": [
+      "sha256:1d69a5fd31932841d7825ef4780c06f008eea65aaa9f3110fe09d5832ed5c7d8",
+      "sha256:c5d4cdcb536f1e85f73d762e8c47b4d76219996c8a2e10cf26cb44556032d2ab",
+      "sha256:9432f79ba4aa607dd2fc185b1131d19423fd3f0ce1c8ab508afa2f746cb843c2",
+      "sha256:be60d44664d4581551099fd82e8ad0fe696f23958606532b61d79f969add96db",
+      "sha256:48fb336f3961ef0a67a5b6be7df244c7f07965012cad18c2cae7125fed9d4c4f",
+      "sha256:0e0f242ed77f3aea1ef1ac8ce0ff38825d065cbf5437face783131f90001495c",
+      "sha256:86d2706f65b186a5aa3f6fe324123466e9bf07687feed18e993e93f2b283fe30",
+      "sha256:152264fa0f3b448cc8e7b08c08555e4fb35195e5c41c06e4bdafa38c453f630d",
+      "sha256:50ad40b5fcb1044f4aa62bb394f858dbc26822c13c15d56d5e14230ac6de0e9e"
+    ],
+    "RepoTags": [
+      "wc085-business-platform:h5-local"
+    ],
+    "RepoDigests": [
+      "wc085-business-platform@sha256:90327740e3709792348a4c5b6cd4e03a5862eda9bc38556cb5b9a3a5f9521124"
+    ],
+    "ImageConfig": {
+      "architecture": "amd64",
+      "created": "2026-09-10T01:13:50.906515584Z",
+      "history": [
+        {
+          "created": "2026-08-24T00:00:00Z",
+          "created_by": "# debian.sh --arch 'amd64' out/ 'bookworm' '@1787529600'",
+          "comment": "debuerreotype 0.17"
+        },
+        {
+          "created": "2026-09-04T19:46:52Z",
+          "created_by": "ENV APP_UID=1654 ASPNETCORE_HTTP_PORTS=8080 DOTNET_RUNNING_IN_CONTAINER=true",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-09-04T19:46:52Z",
+          "created_by": "RUN /bin/sh -c apt-get update     \u0026\u0026 apt-get install -y --no-install-recommends         ca-certificates                 libc6         libgcc-s1         libicu72         libssl3         libstdc++6         tzdata     \u0026\u0026 rm -rf /var/lib/apt/lists/* # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-09-04T19:46:53Z",
+          "created_by": "RUN /bin/sh -c groupadd         --gid=$APP_UID         app     \u0026\u0026 useradd --no-log-init         --uid=$APP_UID         --gid=$APP_UID         --create-home         app # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-09-04T19:47:01Z",
+          "created_by": "ENV DOTNET_VERSION=9.0.20",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-09-04T19:47:01Z",
+          "created_by": "COPY /dotnet /usr/share/dotnet # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-09-04T19:47:02Z",
+          "created_by": "RUN /bin/sh -c ln -s /usr/share/dotnet/dotnet /usr/bin/dotnet # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-09-04T19:47:07Z",
+          "created_by": "ENV ASPNET_VERSION=9.0.20",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-09-04T19:47:07Z",
+          "created_by": "COPY /dotnet /usr/share/dotnet # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-09-10T00:40:20Z",
+          "created_by": "RUN /bin/sh -c apt-get update     \u0026\u0026 apt-get upgrade --yes     \u0026\u0026 apt-get install --yes --no-install-recommends curl     \u0026\u0026 rm -rf /var/lib/apt/lists/*     \u0026\u0026 groupadd --system waooaw     \u0026\u0026 useradd --system --gid waooaw waooaw # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-09-10T00:40:20Z",
+          "created_by": "WORKDIR /app",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-09-10T01:13:50Z",
+          "created_by": "COPY --chown=waooaw:waooaw /app/publish . # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-09-10T01:13:50Z",
+          "created_by": "USER waooaw",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-09-10T01:13:50Z",
+          "created_by": "EXPOSE [5001/tcp]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-09-10T01:13:50Z",
+          "created_by": "ENTRYPOINT [\"dotnet\" \"BusinessPlatform.dll\"]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        }
+      ],
+      "os": "linux",
+      "rootfs": {
+        "type": "layers",
+        "diff_ids": [
+          "sha256:1d69a5fd31932841d7825ef4780c06f008eea65aaa9f3110fe09d5832ed5c7d8",
+          "sha256:c5d4cdcb536f1e85f73d762e8c47b4d76219996c8a2e10cf26cb44556032d2ab",
+          "sha256:9432f79ba4aa607dd2fc185b1131d19423fd3f0ce1c8ab508afa2f746cb843c2",
+          "sha256:be60d44664d4581551099fd82e8ad0fe696f23958606532b61d79f969add96db",
+          "sha256:48fb336f3961ef0a67a5b6be7df244c7f07965012cad18c2cae7125fed9d4c4f",
+          "sha256:0e0f242ed77f3aea1ef1ac8ce0ff38825d065cbf5437face783131f90001495c",
+          "sha256:86d2706f65b186a5aa3f6fe324123466e9bf07687feed18e993e93f2b283fe30",
+          "sha256:152264fa0f3b448cc8e7b08c08555e4fb35195e5c41c06e4bdafa38c453f630d",
+          "sha256:50ad40b5fcb1044f4aa62bb394f858dbc26822c13c15d56d5e14230ac6de0e9e"
+        ]
+      },
+      "config": {
+        "Entrypoint": [
+          "dotnet",
+          "BusinessPlatform.dll"
+        ],
+        "Env": [
+          "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+          "APP_UID=1654",
+          "ASPNETCORE_HTTP_PORTS=8080",
+          "DOTNET_RUNNING_IN_CONTAINER=true",
+          "DOTNET_VERSION=9.0.20",
+          "ASPNET_VERSION=9.0.20"
+        ],
+        "User": "waooaw",
+        "WorkingDir": "/app",
+        "ExposedPorts": {
+          "5001/tcp": {}
+        }
+      }
+    },
+    "Layers": [
+      {
+        "Size": 77895680,
+        "Digest": "sha256:a8ac7f6c67abc236e4c745052c404112b8fab6fe8ac3a329d1ef3b867ad67c71",
+        "DiffID": "sha256:1d69a5fd31932841d7825ef4780c06f008eea65aaa9f3110fe09d5832ed5c7d8"
+      },
+      {
+        "Size": 46605824,
+        "Digest": "sha256:726148a4dd3bd82cf5e416b211e767e8e59c619484c2c64995f4dae51c84a0ab",
+        "DiffID": "sha256:c5d4cdcb536f1e85f73d762e8c47b4d76219996c8a2e10cf26cb44556032d2ab"
+      },
+      {
+        "Size": 22016,
+        "Digest": "sha256:8e185cf4a6faea127156721160ba51f172f1df4ce073402b3198379581653623",
+        "DiffID": "sha256:9432f79ba4aa607dd2fc185b1131d19423fd3f0ce1c8ab508afa2f746cb843c2"
+      },
+      {
+        "Size": 78115840,
+        "Digest": "sha256:40bf7c125e4ba82cfd854bc15942e6eaeed178eba7bcd1bd348b3a21a5c88f50",
+        "DiffID": "sha256:be60d44664d4581551099fd82e8ad0fe696f23958606532b61d79f969add96db"
+      },
+      {
+        "Size": 3072,
+        "Digest": "sha256:5ed613cc0a40ead1d614c51853dc248148d07f388778136d014d676c82260c5b",
+        "DiffID": "sha256:48fb336f3961ef0a67a5b6be7df244c7f07965012cad18c2cae7125fed9d4c4f"
+      },
+      {
+        "Size": 24817664,
+        "Digest": "sha256:d371210d5858e2160fd821a7ecbd032cb6a2212c07b8f4fc608b859af89e85b4",
+        "DiffID": "sha256:0e0f242ed77f3aea1ef1ac8ce0ff38825d065cbf5437face783131f90001495c"
+      },
+      {
+        "Size": 6160384,
+        "Digest": "sha256:86f7cb448b98184be1e825c2119ca68a3607baf5eed0f75d578dd3219da8c3e6",
+        "DiffID": "sha256:86d2706f65b186a5aa3f6fe324123466e9bf07687feed18e993e93f2b283fe30"
+      },
+      {
+        "Size": 1536,
+        "Digest": "sha256:741888c2c99606837bab1a70ed51a8899ba8a49e2fee47a40f0da2222bce3a7e",
+        "DiffID": "sha256:152264fa0f3b448cc8e7b08c08555e4fb35195e5c41c06e4bdafa38c453f630d"
+      },
+      {
+        "Size": 75567104,
+        "Digest": "sha256:c0104b6a4b8a1dd2cf0d3f88e586e6dc432608855a332b21c826b2fded47ce8a",
+        "DiffID": "sha256:50ad40b5fcb1044f4aa62bb394f858dbc26822c13c15d56d5e14230ac6de0e9e"
+      }
+    ]
+  },
+  "Results": [
+    {
+      "Target": "wc085-business-platform:h5-local (debian 12.15)",
+      "Class": "os-pkgs",
+      "Type": "debian"
+    },
+    {
+      "Target": "app/BusinessPlatform.deps.json",
+      "Class": "lang-pkgs",
+      "Type": "dotnet-core"
+    },
+    {
+      "Target": "usr/share/dotnet/shared/Microsoft.AspNetCore.App/9.0.20/Microsoft.AspNetCore.App.deps.json",
+      "Class": "lang-pkgs",
+      "Type": "dotnet-core"
+    },
+    {
+      "Target": "usr/share/dotnet/shared/Microsoft.NETCore.App/9.0.20/Microsoft.NETCore.App.deps.json",
+      "Class": "lang-pkgs",
+      "Type": "dotnet-core"
+    }
+  ]
+}

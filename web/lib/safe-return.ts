@@ -7,3 +7,11 @@ export function safeReturnTarget(value: string | string[] | undefined, fallback 
   if (typeof value !== 'string' || !allowedTargets.test(value)) return fallback;
   return value;
 }
+
+export function safePublicReturnTarget(value: string | undefined): string {
+  if (!value || /[\\%\s]/.test(value)) return '/';
+  const publicPath = /^\/(?:professionals(?:\/(?!mine(?:[/?#]|$))[a-z0-9-]+)?|blogs(?:\/[a-z0-9-]+)?|about|contact|careers|press|constitution|privacy|terms|cookies|refund|grievance)?$/;
+  const [path, fragment] = value.split('#');
+  if (!publicPath.test(path)) return '/';
+  return fragment && /^[a-zA-Z][a-zA-Z0-9_-]{0,99}$/.test(fragment) ? `${path}#${fragment}` : path;
+}

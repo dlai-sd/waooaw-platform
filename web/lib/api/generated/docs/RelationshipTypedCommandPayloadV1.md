@@ -2,19 +2,22 @@
 
 ## Properties
 
-| Name                 | Type   |
-| -------------------- | ------ |
-| `commandKind`        | string |
-| `planId`             | string |
-| `resultId`           | string |
-| `reason`             | string |
-| `goalId`             | string |
-| `amendment`          | string |
-| `replacement`        | string |
-| `boundaryId`         | string |
-| `acknowledgmentText` | string |
-| `amountInrPaise`     | number |
-| `pacingChoice`       | string |
+| Name                   | Type   |
+| ---------------------- | ------ |
+| `commandKind`          | string |
+| `planId`               | string |
+| `resultId`             | string |
+| `reason`               | string |
+| `goalId`               | string |
+| `amendment`            | string |
+| `replacement`          | string |
+| `goalVersion`          | string |
+| `verificationDecision` | string |
+| `correctionReason`     | string |
+| `boundaryId`           | string |
+| `acknowledgmentText`   | string |
+| `amountInrPaise`       | number |
+| `pacingChoice`         | string |
 
 ## Example
 
@@ -30,6 +33,9 @@ const example = {
   goalId: null,
   amendment: null,
   replacement: null,
+  goalVersion: null,
+  verificationDecision: null,
+  correctionReason: null,
   boundaryId: null,
   acknowledgmentText: null,
   amountInrPaise: null,

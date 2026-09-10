@@ -106,6 +106,193 @@ public sealed class RelationshipWorkspaceControllerTests
     }
 
     [Fact]
+    public async Task VerifyGoal_CompletesReplaysAndUnlocksOperations()
+    {
+        var (controller, relationship, _, configuration) = await CreateControllerAsync();
+        var goal = await configuration.SaveGoalAsync(
+            relationship.TenantId, relationship.RelationshipId, "Increase bookings", "10 monthly",
+            "Confirmed bookings", "15 monthly", "Customer records", "ACCEPTED", CancellationToken.None);
+        await configuration.SaveSkillAsync(
+            relationship.TenantId, relationship.RelationshipId, "local-seo", "1.0.0", goal.GoalId,
+            "NOT_GRANTED", "APPLICABLE", null, "ACCEPTED", CancellationToken.None);
+        var key = Guid.NewGuid().ToString("D");
+        var version = RelationshipConfigurationService.GetGoalVersion(goal);
+        var command = JsonSerializer.SerializeToElement(new
+        {
+            schemaVersion = "1.0",
+            expectedWorkspaceVersion = $"relationship-{relationship.StateVersion}",
+            expectedSubjectVersion = version,
+            payload = new
+            {
+                commandKind = "VERIFY_GOAL",
+                goalId = goal.GoalId,
+                goalVersion = version,
+                verificationDecision = "VERIFIED",
+            },
+        });
+
+        var accepted = Assert.IsType<ObjectResult>(await controller.SubmitCommandAsync(
+            relationship.RelationshipId, command, key, CancellationToken.None));
+        var replay = Assert.IsType<OkObjectResult>(await controller.SubmitCommandAsync(
+            relationship.RelationshipId, command, key, CancellationToken.None));
+        var receipt = JsonSerializer.SerializeToElement(accepted.Value);
+        var goals = Json(await controller.GetGoalsAsync(relationship.RelationshipId, CancellationToken.None));
+        var operations = Json(await controller.GetOperationsAsync(relationship.RelationshipId, CancellationToken.None));
+        var outcome = Json(await controller.GetCommandAsync(
+            relationship.RelationshipId, receipt.GetProperty("commandId").GetGuid(), CancellationToken.None));
+
+        Assert.Equal(202, accepted.StatusCode);
+        Assert.True(JsonSerializer.SerializeToElement(replay.Value).GetProperty("replayed").GetBoolean());
+        Assert.Equal("VERIFIED", Assert.Single(goals.GetProperty("activeGoals").EnumerateArray())
+            .GetProperty("verificationStatus").GetString());
+        Assert.Equal("ELIGIBLE", operations.GetProperty("eligibilityState").GetString());
+        Assert.Equal(goal.GoalId, Assert.Single(operations.GetProperty("verifiedGoalIds").EnumerateArray()).GetGuid());
+        Assert.Equal("COMPLETED", outcome.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task VerifyGoal_RequiresFreshAal3AndPreservesLockedStateForChangeRequest()
+    {
+        var (controller, relationship, _, configuration) = await CreateControllerAsync();
+        var goal = await configuration.SaveGoalAsync(
+            relationship.TenantId, relationship.RelationshipId, "Increase bookings", null,
+            "Confirmed bookings", null, null, "ACCEPTED", CancellationToken.None);
+        await configuration.SaveSkillAsync(
+            relationship.TenantId, relationship.RelationshipId, "local-seo", "1.0.0", goal.GoalId,
+            "NOT_GRANTED", "APPLICABLE", null, "ACCEPTED", CancellationToken.None);
+        var version = RelationshipConfigurationService.GetGoalVersion(goal);
+        var command = JsonSerializer.SerializeToElement(new
+        {
+            schemaVersion = "1.0",
+            expectedWorkspaceVersion = $"relationship-{relationship.StateVersion}",
+            expectedSubjectVersion = version,
+            payload = new
+            {
+                commandKind = "VERIFY_GOAL",
+                goalId = goal.GoalId,
+                goalVersion = version,
+                verificationDecision = "CHANGES_REQUESTED",
+                correctionReason = "Clarify attribution.",
+            },
+        });
+        ((ClaimsIdentity)controller.User.Identity!).RemoveClaim(controller.User.FindFirst("auth_time")!);
+        ((ClaimsIdentity)controller.User.Identity!).AddClaim(new Claim(
+            "auth_time", DateTimeOffset.UtcNow.AddMinutes(-6).ToUnixTimeSeconds().ToString()));
+
+        var stale = Assert.IsType<ObjectResult>(await controller.SubmitCommandAsync(
+            relationship.RelationshipId, command, Guid.NewGuid().ToString("D"), CancellationToken.None));
+        Assert.Equal(423, stale.StatusCode);
+
+        ((ClaimsIdentity)controller.User.Identity!).RemoveClaim(controller.User.FindFirst("auth_time")!);
+        ((ClaimsIdentity)controller.User.Identity!).AddClaim(new Claim(
+            "auth_time", DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()));
+        var accepted = Assert.IsType<ObjectResult>(await controller.SubmitCommandAsync(
+            relationship.RelationshipId, command, Guid.NewGuid().ToString("D"), CancellationToken.None));
+        var operations = Json(await controller.GetOperationsAsync(relationship.RelationshipId, CancellationToken.None));
+
+        Assert.Equal(202, accepted.StatusCode);
+        Assert.Equal("LOCKED", operations.GetProperty("eligibilityState").GetString());
+        Assert.Empty(operations.GetProperty("verifiedGoalIds").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task VerifyGoal_RejectsMalformedAndGoalChangePayloadsWithoutMutation()
+    {
+        var (controller, relationship, _, configuration) = await CreateControllerAsync();
+        var goal = await configuration.SaveGoalAsync(
+            relationship.TenantId, relationship.RelationshipId, "Increase bookings", null,
+            "Confirmed bookings", null, null, "ACCEPTED", CancellationToken.None);
+        await configuration.SaveSkillAsync(
+            relationship.TenantId, relationship.RelationshipId, "local-seo", "1.0.0", goal.GoalId,
+            "NOT_GRANTED", "APPLICABLE", null, "ACCEPTED", CancellationToken.None);
+        var version = RelationshipConfigurationService.GetGoalVersion(goal);
+        var envelope = new
+        {
+            schemaVersion = "1.0",
+            expectedWorkspaceVersion = $"relationship-{relationship.StateVersion}",
+            expectedSubjectVersion = version,
+        };
+        var invalidPayloads = new[]
+        {
+            JsonSerializer.SerializeToElement(new { envelope.schemaVersion, envelope.expectedWorkspaceVersion,
+                envelope.expectedSubjectVersion, payload = new { commandKind = "VERIFY_GOAL", goalId = "invalid",
+                    goalVersion = version, verificationDecision = "VERIFIED" } }),
+            JsonSerializer.SerializeToElement(new { envelope.schemaVersion, envelope.expectedWorkspaceVersion,
+                envelope.expectedSubjectVersion, payload = new { commandKind = "VERIFY_GOAL", goalId = goal.GoalId,
+                    goalVersion = version, verificationDecision = "CHANGES_REQUESTED" } }),
+            JsonSerializer.SerializeToElement(new { envelope.schemaVersion, envelope.expectedWorkspaceVersion,
+                envelope.expectedSubjectVersion, payload = new { commandKind = "VERIFY_GOAL", goalId = goal.GoalId,
+                    goalVersion = version, verificationDecision = "VERIFIED", correctionReason = "Not allowed" } }),
+        };
+
+        foreach (var invalid in invalidPayloads.Select(async payload => Assert.IsType<ObjectResult>(
+                     await controller.SubmitCommandAsync(relationship.RelationshipId, payload,
+                         Guid.NewGuid().ToString("D"), CancellationToken.None))))
+        {
+            Assert.Equal(400, (await invalid).StatusCode);
+        }
+        foreach (var commandKind in new[] { "AMEND_GOAL", "REPLACE_GOAL" })
+        {
+            var unsupported = JsonSerializer.SerializeToElement(new
+            {
+                envelope.schemaVersion,
+                envelope.expectedWorkspaceVersion,
+                envelope.expectedSubjectVersion,
+                payload = new { commandKind },
+            });
+            var blocked = Assert.IsType<ObjectResult>(await controller.SubmitCommandAsync(
+                relationship.RelationshipId, unsupported, Guid.NewGuid().ToString("D"), CancellationToken.None));
+            Assert.Equal(423, blocked.StatusCode);
+        }
+
+        var operations = Json(await controller.GetOperationsAsync(relationship.RelationshipId, CancellationToken.None));
+        Assert.Equal("LOCKED", operations.GetProperty("eligibilityState").GetString());
+    }
+
+    [Fact]
+    public async Task VerifyGoal_MapsVersionAndIdempotencyConflicts()
+    {
+        var (controller, relationship, _, configuration) = await CreateControllerAsync();
+        var goal = await configuration.SaveGoalAsync(
+            relationship.TenantId, relationship.RelationshipId, "Increase bookings", null,
+            "Confirmed bookings", null, null, "ACCEPTED", CancellationToken.None);
+        await configuration.SaveSkillAsync(
+            relationship.TenantId, relationship.RelationshipId, "local-seo", "1.0.0", goal.GoalId,
+            "NOT_GRANTED", "APPLICABLE", null, "ACCEPTED", CancellationToken.None);
+        var version = RelationshipConfigurationService.GetGoalVersion(goal);
+        JsonElement Command(string subjectVersion, string decision)
+        {
+            var payload = new Dictionary<string, object?>
+            {
+                ["commandKind"] = "VERIFY_GOAL",
+                ["goalId"] = goal.GoalId,
+                ["goalVersion"] = subjectVersion,
+                ["verificationDecision"] = decision,
+            };
+            if (decision == "CHANGES_REQUESTED") payload["correctionReason"] = "Clarify attribution.";
+            return JsonSerializer.SerializeToElement(new
+            {
+                schemaVersion = "1.0",
+                expectedWorkspaceVersion = $"relationship-{relationship.StateVersion}",
+                expectedSubjectVersion = subjectVersion,
+                payload,
+            });
+        }
+
+        var stale = Assert.IsType<ObjectResult>(await controller.SubmitCommandAsync(
+            relationship.RelationshipId, Command("goal-stale", "VERIFIED"),
+            Guid.NewGuid().ToString("D"), CancellationToken.None));
+        Assert.Equal(409, stale.StatusCode);
+
+        var key = Guid.NewGuid().ToString("D");
+        Assert.Equal(202, Assert.IsType<ObjectResult>(await controller.SubmitCommandAsync(
+            relationship.RelationshipId, Command(version, "VERIFIED"), key, CancellationToken.None)).StatusCode);
+        var conflict = Assert.IsType<ObjectResult>(await controller.SubmitCommandAsync(
+            relationship.RelationshipId, Command(version, "CHANGES_REQUESTED"), key, CancellationToken.None));
+        Assert.Equal(409, conflict.StatusCode);
+    }
+
+    [Fact]
     public async Task BusinessOutcomesAreExplicitlyUnavailableWithoutOwnerEvidence()
     {
         var (controller, relationship, _, _) = await CreateControllerAsync();
@@ -185,7 +372,12 @@ public sealed class RelationshipWorkspaceControllerTests
         var httpContext = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
-                [new Claim("participant_id", participantId.ToString()), new Claim("participant_role", "EMPLOYER")],
+                [
+                    new Claim("participant_id", participantId.ToString()),
+                    new Claim("participant_role", "EMPLOYER"),
+                    new Claim("authentication_assurance", "AAL3_FRESH"),
+                    new Claim("auth_time", DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()),
+                ],
                 "Test")),
             TraceIdentifier = Guid.NewGuid().ToString(),
         };

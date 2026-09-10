@@ -2,7 +2,8 @@
 // Constitutional basis: C-026 (Tenant Isolation), C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createIdentityApi, identityProblem } from '@/lib/api/identity';
+import { createIdentityApi } from '@/lib/api/identity';
+import { ResponseError } from '@/lib/api/generated/runtime';
 import { accessTokenFromRequest } from '@/lib/server-auth';
 
 type CommandBody = Record<string, unknown> & { action?: unknown };
@@ -29,11 +30,27 @@ export async function POST(request: NextRequest) {
     const registrationId = action === 'start' ? undefined : requiredString(body, 'registrationId');
 
     switch (action) {
-      case 'start':
+      case 'start': {
+        const init = { cache: 'no-store' as const, signal: AbortSignal.any([request.signal, AbortSignal.timeout(15_000)]) };
+        try {
+          const session = await api.getIdentitySession(init);
+          if (init.signal.aborted || typeof session?.accountReference !== 'string' || !session.accountReference.trim()
+            || !(session.expiresAt instanceof Date) || !(session.expiresAt.getTime() > Date.now())) {
+            throw new Error();
+          }
+          return NextResponse.json({ handoffConfirmed: true }, { headers: { 'Cache-Control': 'no-store' } });
+        } catch (error) {
+          if (init.signal.aborted || !(error instanceof ResponseError) || error.response.status !== 403) {
+            return NextResponse.json({ code: 'IDENTITY_DEPENDENCY_UNAVAILABLE', title: 'Identity request could not be completed.' }, {
+              status: 503, headers: { 'Cache-Control': 'no-store' },
+            });
+          }
+        }
         return NextResponse.json(await api.startIdentityRegistration({
           idempotencyKey,
           startIdentityRegistrationRequest: { languagePreference: requiredString(body, 'languagePreference') },
-        }));
+        }, init));
+      }
       case 'profile':
         return NextResponse.json(await api.updateIdentityRegistrationProfile({
           registrationId: registrationId!,
@@ -75,8 +92,26 @@ export async function POST(request: NextRequest) {
             code: requiredString(body, 'code'),
           },
         }));
-      case 'complete':
-        return NextResponse.json(await api.completeIdentityRegistration({ registrationId: registrationId!, idempotencyKey }));
+      case 'complete': {
+        const init = { cache: 'no-store' as const, signal: AbortSignal.any([request.signal, AbortSignal.timeout(15_000)]) };
+        try {
+          const completion = await api.completeIdentityRegistration({ registrationId: registrationId!, idempotencyKey }, init);
+          if (!completion || !['ACCOUNT_CREATED', 'ACCOUNT_REUSED'].includes(completion.outcome)
+            || typeof completion.accountReference !== 'string' || !completion.accountReference.trim()) {
+            throw new Error();
+          }
+          const session = await api.getIdentitySession(init);
+          if (init.signal.aborted || !session || session.accountReference !== completion.accountReference
+            || !(session.expiresAt instanceof Date) || !(session.expiresAt.getTime() > Date.now())) {
+            throw new Error();
+          }
+          return NextResponse.json({ handoffConfirmed: true }, { headers: { 'Cache-Control': 'no-store' } });
+        } catch {
+          return NextResponse.json({ code: 'IDENTITY_DEPENDENCY_UNAVAILABLE', title: 'Identity request could not be completed.' }, {
+            status: 503, headers: { 'Cache-Control': 'no-store' },
+          });
+        }
+      }
       default:
         return NextResponse.json({ code: 'IDENTITY_REQUEST_INVALID', title: 'Identity request is invalid.' }, { status: 400 });
     }
@@ -84,7 +119,10 @@ export async function POST(request: NextRequest) {
     if (error instanceof InvalidRequestError || error instanceof SyntaxError) {
       return NextResponse.json({ code: 'IDENTITY_REQUEST_INVALID', title: 'Identity request is invalid.' }, { status: 400 });
     }
-    const problem = await identityProblem(error);
-    return NextResponse.json(problem.body, { status: problem.status });
+    const status = error instanceof ResponseError && [400, 401, 403, 404, 409, 422, 429].includes(error.response.status)
+      ? error.response.status : 503;
+    return NextResponse.json({ code: 'IDENTITY_DEPENDENCY_UNAVAILABLE', title: 'Identity request could not be completed.' }, {
+      status, headers: { 'Cache-Control': 'no-store' },
+    });
   }
 }

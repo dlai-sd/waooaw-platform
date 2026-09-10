@@ -318,7 +318,16 @@ def test_runtime_uses_public_identity_edge_while_keycloak_stays_internal() -> No
         "KC_HOSTNAME",
     ):
         assert setting in contract
-    assert contract.count("local.service_urls.identity_edge") == 5
+    assert re.search(
+        r'IdentityBrokerRead__ActorIssuer\s*=\s*"\$\{local[.]service_urls[.]identity_edge\}/realms/waooaw"',
+        contract,
+    )
+    assert re.search(
+        r"IdentityBrokerRead__PrivateOrigin\s*=\s*local[.]service_urls[.]keycloak_private",
+        contract,
+    )
+    assert 'keycloak_private      = "https://ca-${var.environment}-keycloak.internal.' in contract
+    assert "local.demo_identity_manifest.origins.identity == local.service_urls.identity_edge" in contract
     assert 'KEYCLOAK_ISSUER       = "${local.service_urls.keycloak}' not in contract
 
 

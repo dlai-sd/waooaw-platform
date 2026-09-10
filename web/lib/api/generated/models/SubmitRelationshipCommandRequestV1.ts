@@ -51,7 +51,7 @@ export interface SubmitRelationshipCommandRequestV1 {
    * @type {string}
    * @memberof SubmitRelationshipCommandRequestV1
    */
-  expectedSubjectVersion?: string;
+  expectedSubjectVersion: string;
   /**
    *
    * @type {RelationshipTypedCommandPayloadV1}
@@ -71,6 +71,11 @@ export function instanceOfSubmitRelationshipCommandRequestV1(
   if (
     !("expectedWorkspaceVersion" in value) ||
     value["expectedWorkspaceVersion"] === undefined
+  )
+    return false;
+  if (
+    !("expectedSubjectVersion" in value) ||
+    value["expectedSubjectVersion"] === undefined
   )
     return false;
   if (!("payload" in value) || value["payload"] === undefined) return false;
@@ -95,10 +100,7 @@ export function SubmitRelationshipCommandRequestV1FromJSONTyped(
       json["schemaVersion"],
     ),
     expectedWorkspaceVersion: json["expectedWorkspaceVersion"],
-    expectedSubjectVersion:
-      json["expectedSubjectVersion"] == null
-        ? undefined
-        : json["expectedSubjectVersion"],
+    expectedSubjectVersion: json["expectedSubjectVersion"],
     payload: RelationshipTypedCommandPayloadV1FromJSON(json["payload"]),
   };
 }

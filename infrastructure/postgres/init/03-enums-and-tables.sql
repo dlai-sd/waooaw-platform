@@ -143,7 +143,7 @@ CREATE TABLE constitutional.authority_licenses (
 
 -- ─── Business Schema Tables ───────────────────────────────────────────────────
 
-SET search_path TO business;
+SET search_path TO business, constitutional, public;
 
 -- Customer organisations
 CREATE TABLE business.organisations (
@@ -348,7 +348,7 @@ CREATE RULE no_delete_billing_events AS
 
 -- ─── Professional Schema Tables ───────────────────────────────────────────────
 
-SET search_path TO professional;
+SET search_path TO professional, constitutional, public;
 
 -- Professional identities (platform-owned, not tenant-scoped)
 CREATE TABLE professional.identities (
@@ -371,7 +371,7 @@ CREATE TABLE professional.experience_records (
 
 -- Creative Standard Profile embeddings (pgvector — for AI Runtime, IB-015 + GAP-005)
 -- Requires pgvector extension
-CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
 
 CREATE TABLE professional.creative_standard_embeddings (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -391,9 +391,9 @@ CREATE INDEX idx_creative_embeddings_cosine
 -- ─── Institutional Schema (ADR-019, FR-003 — WAOOAW IP) ──────────────────────
 -- Domain learning patterns. NOT customer data. No RLS needed — no customer access.
 
-SET search_path TO institutional;
+SET search_path TO institutional, constitutional, public;
 
-CREATE EXTENSION IF NOT EXISTS vector;  -- may already exist from professional schema
+CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
 
 -- Domain knowledge chunks (Tier 1 RAG — WAOOAW IP)
 -- Indexed knowledge about industry, regulations, best practices per professional type
@@ -1221,6 +1221,7 @@ CREATE TABLE IF NOT EXISTS business.trading_profiles (
 
 CREATE INDEX idx_trading_profile_org ON business.trading_profiles(organisation_id);
 
+/* Superseded by the Simulation Gap Bridge definition below.
 -- GAP-T006: Trading session records for slippage tracking
 CREATE TABLE business.trading_session_records (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1242,6 +1243,7 @@ CREATE TABLE business.trading_session_records (
 
 CREATE INDEX idx_trading_session_contract ON business.trading_session_records(employment_contract_id);
 CREATE INDEX idx_trading_session_date ON business.trading_session_records(organisation_id, session_date DESC);
+*/
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Strategic Cognition Layer (v0.31.0 — C-050, AD-021, DP-019)
@@ -1318,7 +1320,9 @@ CREATE TABLE institutional.tier3_eligibility_log (
     session_id                  UUID NOT NULL,                     -- The session whose data is being tracked
     session_closed_at           TIMESTAMPTZ NOT NULL,
     anonymized_at               TIMESTAMPTZ,
-    eligible_for_tier3_at       TIMESTAMPTZ GENERATED ALWAYS AS (session_closed_at + INTERVAL '24 hours') STORED,
+    eligible_for_tier3_at       TIMESTAMPTZ GENERATED ALWAYS AS (
+        (session_closed_at AT TIME ZONE 'UTC' + INTERVAL '24 hours') AT TIME ZONE 'UTC'
+    ) STORED,
     tier3_written_at            TIMESTAMPTZ,                      -- When data was actually written to Tier 3
     data_categories             TEXT[],                           -- e.g., ['performance_pattern', 'strategy_effectiveness']
     is_trading_session          BOOLEAN NOT NULL DEFAULT FALSE,    -- Trading sessions: position data NEVER written to Tier 3
@@ -1659,6 +1663,7 @@ CREATE INDEX idx_scr_records_item ON business.scr_review_records(content_item_id
 CREATE INDEX idx_scr_records_org  ON business.scr_review_records(organisation_id, reviewed_at DESC);
 -- ============================================================
 
+/* Historical duplicate retained for traceability; the canonical definitions above control.
 -- Campaign approval mode enum
 CREATE TYPE campaign_approval_mode AS ENUM (
     'POST_APPROVAL',       -- customer approves every piece individually
@@ -1784,6 +1789,7 @@ CREATE TABLE business.scr_review_records (
 );
 CREATE INDEX idx_scr_records_item ON business.scr_review_records(content_item_id);
 CREATE INDEX idx_scr_records_org  ON business.scr_review_records(organisation_id, reviewed_at DESC);
+*/
 
 -- Prompt seeds: Campaign Theme Engine (C-055) + Platform Intelligence (DP-024) — v0.39.0
 INSERT INTO institutional.agent_prompt_versions
@@ -1848,13 +1854,6 @@ ALTER TABLE business.weather_alert_log
     ADD COLUMN IF NOT EXISTS imd_warning_fetched_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS imd_warning_confirmed BOOLEAN NOT NULL DEFAULT FALSE;
 CREATE INDEX IF NOT EXISTS idx_weather_alert_imd ON business.weather_alert_log(imd_warning_id) WHERE imd_warning_id IS NOT NULL;
-
--- agent_evidence_records: add parent_request_id for SIR multi-skill attribution (GAP-D006)
--- Groups all evidence records from a single customer request that triggered SIR multi-skill orchestration
-ALTER TABLE institutional.agent_evidence_records
-    ADD COLUMN IF NOT EXISTS parent_request_id UUID,
-    ADD COLUMN IF NOT EXISTS sir_skill_position SMALLINT;  -- position in SIR execution sequence (1, 2, 3...)
-CREATE INDEX IF NOT EXISTS idx_evidence_parent_request ON institutional.agent_evidence_records(parent_request_id) WHERE parent_request_id IS NOT NULL;
 
 -- signal_bundling_log: tracks multi-signal bundling decisions (GAP-A010)
 CREATE TABLE institutional.signal_bundling_log (

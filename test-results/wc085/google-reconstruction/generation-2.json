@@ -1,0 +1,11 @@
+{
+  "provider": "GOOGLE",
+  "issuer": "https://ca-demo-identity-edge.local.waooaw.test/realms/waooaw",
+  "callback": "https://ca-demo-identity-edge.local.waooaw.test/realms/waooaw/broker/google/endpoint",
+  "redirect_verified": true,
+  "projection_verified": false,
+  "real_user_sign_in_verified": false,
+  "fresh_import": true,
+  "default_customer_role_verified": true,
+  "credentials": "synthetic"
+}

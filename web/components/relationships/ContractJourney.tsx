@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import Link from 'next/link';
 
 export interface ContractJourneyProjection {
   contractId: string;
@@ -92,7 +93,7 @@ export function ContractJourney({ relationshipId, journey }: Props) {
         {accepted && journey.activationState !== 'ACTIVE' && <button type="button" disabled={busy} onClick={() => command('pay')}>Proceed to Razorpay</button>}
         <button type="button" disabled={busy} onClick={() => setStatus('Not now selected. No contract or payment state changed.')}>Not now</button>
         <button type="button" disabled={busy} onClick={() => setStatus('Cancelled. No contract or payment state changed.')}>Cancel</button>
-        <a href="/home">Exit</a>
+        <Link href="/home">Exit</Link>
       </div>
       <p className="decision-status" role="status">{status}</p>
       <p className="provider-boundary">Payment details are entered only on Razorpay. WhatsApp and WAOOAW never collect card, UPI, or banking secrets.</p>

@@ -21,7 +21,7 @@ describe('AuthDialog', () => {
   });
 
   beforeEach(() => {
-    back.mockClear();
+    jest.clearAllMocks();
     jest.mocked(useRouter).mockReturnValue(router);
   });
 
@@ -35,7 +35,8 @@ describe('AuthDialog', () => {
     expect(dialog).toHaveAttribute('open');
 
     fireEvent(dialog, new Event('cancel', { bubbles: true, cancelable: true }));
-    expect(back).toHaveBeenCalledTimes(1);
+    expect(router.replace).toHaveBeenCalledWith('/', { scroll: false });
+    expect(back).not.toHaveBeenCalled();
 
     unmount();
     expect(trigger).toHaveFocus();
@@ -45,9 +46,23 @@ describe('AuthDialog', () => {
   it('dismisses only when the backdrop itself is clicked', () => {
     render(<AuthDialog><h1 id="auth-dialog-title">Register</h1><button type="button">Inside</button></AuthDialog>);
     fireEvent.click(screen.getByRole('button', { name: 'Inside' }));
-    expect(back).not.toHaveBeenCalled();
+    expect(router.replace).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('dialog', { name: 'Register' }));
-    expect(back).toHaveBeenCalledTimes(1);
+    expect(router.replace).toHaveBeenCalledWith('/', { scroll: false });
+  });
+
+  it('restores focus to main when the invoking element has disappeared', () => {
+    const main = document.createElement('main');
+    const trigger = document.createElement('button');
+    document.body.append(main, trigger);
+    trigger.focus();
+    const { unmount } = render(<AuthDialog><h1 id="auth-dialog-title">Log in</h1></AuthDialog>);
+    trigger.remove();
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(router.replace).toHaveBeenCalledWith('/', { scroll: false });
+    unmount();
+    expect(main).toHaveFocus();
+    main.remove();
   });
 });

@@ -1,6 +1,7 @@
 import json
 import re
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import yaml
 
@@ -41,7 +42,23 @@ def test_environment_manifests_are_isolated_strict_and_secret_free() -> None:
         uri_values = list(manifest["origins"].values())
         uri_values += [value for client in manifest["clients"] for key in (
             "redirectUris", "postLogoutRedirectUris", "allowedOrigins") for value in client[key]]
-        assert all(expected_host_marker in value for value in uri_values)
+        demo_hosts = {
+            "ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io",
+            "ca-demo-business-platform.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io",
+            "ca-demo-identity-edge.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io",
+        }
+        assert all(expected_host_marker in value or (
+            environment == "demo" and urlsplit(value).hostname in demo_hosts
+        ) for value in uri_values)
+
+
+def test_demo_deferred_providers_remain_disabled() -> None:
+    manifest = load_json("infrastructure/identity-config/environments/demo.json")
+    providers = {provider["id"]: provider for provider in manifest["providers"]}
+    for provider_id in ("FACEBOOK", "APPLE", "EMAIL"):
+        assert providers[provider_id]["enabled"] is False
+        assert providers[provider_id]["unavailableReason"] == "NOT_CONFIGURED"
+        assert not providers[provider_id].get("readinessEvidenceReference")
 
 
 def test_provider_runtime_configuration_is_minimal_and_deferred_providers_are_hidden() -> None:

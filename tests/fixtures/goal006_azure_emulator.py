@@ -5,11 +5,13 @@ from __future__ import annotations
 
 import json
 import os
+import ssl
+import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import ClassVar
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlencode, urlparse
 
 from goal006_live_inventory import DEMO_TEMPORAL_IMAGE, IDENTITY_EDGE_IMAGE, KEYCLOAK_IMAGE
 from goal006_registry_manifest import RELEASE_MEMBERS
@@ -139,6 +141,21 @@ class AzureHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         path = urlparse(self.path).path.rstrip("/")
+        if path == "/realms/waooaw/protocol/openid-connect/auth":
+            query = parse_qs(urlparse(self.path).query)
+            assert query["client_id"] == ["waooaw-web"]
+            assert query["redirect_uri"] == ["https://ca-demo-web.local.waooaw.test/api/auth/callback/keycloak-google"]
+            assert query["kc_idp_hint"] == ["google"]
+            assert query["code_challenge_method"] == ["S256"]
+            assert query["state"] and query["nonce"] and query["code_challenge"]
+            self.send_response(302)
+            self.send_header("Location", "https://accounts.google.com/o/oauth2/auth?" + urlencode({
+                "client_id": "synthetic.apps.googleusercontent.com",
+                "redirect_uri": "https://ca-demo-identity-edge.local.waooaw.test/realms/waooaw/broker/google/endpoint",
+                "scope": "openid email profile", "response_type": "code", "state": "synthetic-state",
+            }))
+            self.end_headers()
+            return
         if path == "/healthz":
             self.send_json(200, {"status": "ready"})
             return
@@ -262,6 +279,13 @@ def main() -> None:
         encoding="utf-8",
     )
     server = ThreadingHTTPServer(("0.0.0.0", 8080), AzureHandler)
+    if os.environ.get("GOOGLE_FIXTURE_TLS") == "true":
+        broker = ThreadingHTTPServer(("0.0.0.0", 443), AzureHandler)
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
+        context.load_cert_chain(EVIDENCE_DIR / "fixture.crt", EVIDENCE_DIR / "fixture.key")
+        broker.socket = context.wrap_socket(broker.socket, server_side=True)
+        threading.Thread(target=broker.serve_forever, daemon=True).start()
     print(json.dumps({"event": "ready", "port": 8080, "time": int(time.time())}), flush=True)
     server.serve_forever()
 

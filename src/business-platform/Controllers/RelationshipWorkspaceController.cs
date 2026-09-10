@@ -138,6 +138,10 @@ public sealed class RelationshipWorkspaceController(
         {
             return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_BLOCKED");
         }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return WorkspaceProblem(503, "CONSTITUTIONAL_ENGINE_UNAVAILABLE");
+        }
     }
 
     [HttpGet("attention")]
@@ -163,7 +167,7 @@ public sealed class RelationshipWorkspaceController(
             .Select(item => new
             {
                 goalId = item.Goal.GoalId,
-                goalVersion = GoalVersion(item.Goal),
+                goalVersion = RelationshipConfigurationService.GetGoalVersion(item.Goal),
                 skillId = item.SkillId,
                 skillLabel = item.SkillLabel,
                 measure = item.Goal.Measure,
@@ -211,7 +215,11 @@ public sealed class RelationshipWorkspaceController(
         var goals = await configuration.GetPortalGoalsAsync(relationship.TenantId, relationshipId, cancellationToken);
         var requiredGoalIds = goals.Where(item => NormalizeGoalStatus(item.Goal.Status) == "ACTIVE")
             .Select(item => item.Goal.GoalId).ToArray();
-        var blockedReasons = requiredGoalIds.Length == 0
+        var activeGoals = goals.Where(item => NormalizeGoalStatus(item.Goal.Status) == "ACTIVE").ToArray();
+        var verifiedGoalIds = activeGoals.Where(item => item.CurrentDecision?.Decision == "VERIFIED")
+            .Select(item => item.Goal.GoalId).ToArray();
+        var eligible = requiredGoalIds.Length > 0 && verifiedGoalIds.Length == requiredGoalIds.Length;
+        var blockedReasons = eligible ? Array.Empty<string>() : requiredGoalIds.Length == 0
             ? new[] { "At least one active goal must be customer-verified before Operations is available." }
             : new[] { "Customer verification is required for every active goal before Operations is available." };
         return Ok(new
@@ -220,11 +228,11 @@ public sealed class RelationshipWorkspaceController(
             currencyState = "CURRENT",
             provenance = Provenance("BP", $"relationship-{relationship.StateVersion}", DateTimeOffset.UtcNow),
             availableCommands = Array.Empty<object>(),
-            eligibilityState = "LOCKED",
+            eligibilityState = eligible ? "ELIGIBLE" : "LOCKED",
             requiredGoalIds,
-            verifiedGoalIds = Array.Empty<Guid>(),
+            verifiedGoalIds,
             blockedReasons,
-            reassessmentRequired = false,
+            reassessmentRequired = activeGoals.Any(item => item.HasPriorDecision && item.CurrentDecision is null),
             dependentOutcomeIds = Array.Empty<Guid>(),
         });
     }
@@ -281,15 +289,114 @@ public sealed class RelationshipWorkspaceController(
     public async Task<IActionResult> SubmitCommandAsync(Guid relationshipId, [FromBody] JsonElement command,
         [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey, CancellationToken cancellationToken)
     {
-        if (await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken) is null) return NotFoundProblem();
-        if (string.IsNullOrWhiteSpace(idempotencyKey)) return WorkspaceProblem(400, "RELATIONSHIP_WORKSPACE_REQUEST_INVALID");
-        return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_BLOCKED");
+        var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
+        if (relationship is null) return NotFoundProblem();
+        if (!Guid.TryParse(idempotencyKey, out var parsedKey))
+            return WorkspaceProblem(400, "RELATIONSHIP_WORKSPACE_REQUEST_INVALID");
+        if (command.ValueKind == JsonValueKind.Object
+            && command.TryGetProperty("type", out _)
+            && !command.TryGetProperty("payload", out _))
+            return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_BLOCKED");
+        if (command.ValueKind != JsonValueKind.Object
+            || !command.TryGetProperty("payload", out var payload)
+            || payload.ValueKind != JsonValueKind.Object
+            || !TryGetString(payload, "commandKind", out var commandKind))
+            return WorkspaceProblem(400, "RELATIONSHIP_WORKSPACE_REQUEST_INVALID");
+        if (commandKind != "VERIFY_GOAL") return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_BLOCKED");
+        if (configuration is null) return WorkspaceProblem(503, "RELATIONSHIP_WORKSPACE_DEPENDENCY_UNAVAILABLE");
+        if (!TryGetString(command, "schemaVersion", out var schemaVersion) || schemaVersion != "1.0"
+            || !TryGetString(command, "expectedWorkspaceVersion", out var expectedWorkspaceVersion)
+            || !TryGetString(command, "expectedSubjectVersion", out var expectedSubjectVersion)
+            || !TryGetGuid(payload, "goalId", out var goalId)
+            || !TryGetString(payload, "goalVersion", out var goalVersion)
+            || !TryGetString(payload, "verificationDecision", out var verificationDecision)
+            || !TryGetOptionalString(payload, "correctionReason", out var correctionReason)
+            || verificationDecision is not ("VERIFIED" or "CHANGES_REQUESTED")
+            || correctionReason is { Length: > 500 }
+            || (verificationDecision == "VERIFIED" && correctionReason is not null)
+            || (verificationDecision == "CHANGES_REQUESTED" && string.IsNullOrWhiteSpace(correctionReason)))
+            return WorkspaceProblem(400, "RELATIONSHIP_WORKSPACE_REQUEST_INVALID");
+        if (!TryGetParticipantId(out var actorParticipantId)) return NotFoundProblem();
+        var actorRole = await relationships.GetActiveRoleAsync(
+            relationship.TenantId, relationshipId, actorParticipantId, cancellationToken);
+        if (actorRole is not (RelationshipParticipantRole.Evaluator or RelationshipParticipantRole.Employer))
+            return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_BLOCKED");
+        if (!HasFreshAal3()) return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_ASSURANCE_REQUIRED");
+
+        var materialRequestHash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
+            {
+                schemaVersion,
+                expectedWorkspaceVersion,
+                expectedSubjectVersion,
+                commandKind,
+                goalId,
+                goalVersion,
+                verificationDecision,
+                correctionReason = correctionReason?.Trim(),
+            }))));
+        try
+        {
+            var result = await configuration.VerifyGoalAsync(
+                relationship.TenantId,
+                relationshipId,
+                actorParticipantId,
+                parsedKey,
+                materialRequestHash,
+                expectedWorkspaceVersion,
+                expectedSubjectVersion,
+                goalId,
+                goalVersion,
+                verificationDecision,
+                correctionReason,
+                Guid.TryParse(User.FindFirstValue("correlation_id"), out var correlationId)
+                    ? correlationId : Guid.NewGuid(),
+                cancellationToken);
+            var receipt = new
+            {
+                schemaVersion = "1.0",
+                commandId = result.Decision.DecisionId,
+                commandKind = "VERIFY_GOAL",
+                status = "COMPLETED",
+                acceptedAt = result.Decision.OccurredAt,
+                replayed = result.Replayed,
+            };
+            return result.Replayed ? Ok(receipt) : StatusCode(202, receipt);
+        }
+        catch (ArgumentException) { return WorkspaceProblem(400, "RELATIONSHIP_WORKSPACE_REQUEST_INVALID"); }
+        catch (KeyNotFoundException) { return NotFoundProblem(); }
+        catch (RelationshipConfigurationConflictException)
+        {
+            return WorkspaceProblem(409, "RELATIONSHIP_IDEMPOTENCY_CONFLICT");
+        }
+        catch (RelationshipGoalVersionConflictException)
+        {
+            return WorkspaceProblem(409, "RELATIONSHIP_STATE_CONFLICT");
+        }
+        catch (ConstitutionalActionDeniedException)
+        {
+            return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_BLOCKED");
+        }
     }
 
     [HttpGet("commands/{commandId:guid}")]
-    public async Task<IActionResult> GetCommandAsync(Guid relationshipId, Guid commandId, CancellationToken cancellationToken) =>
-        await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken) is null
-            ? NotFoundProblem() : WorkspaceProblem(404, "RELATIONSHIP_WORKSPACE_NOT_ACCESSIBLE");
+    public async Task<IActionResult> GetCommandAsync(Guid relationshipId, Guid commandId, CancellationToken cancellationToken)
+    {
+        var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
+        if (relationship is null || configuration is null) return NotFoundProblem();
+        var decision = await configuration.GetGoalDecisionAsync(
+            relationship.TenantId, relationshipId, commandId, cancellationToken);
+        return decision is null ? NotFoundProblem() : Ok(new
+        {
+            schemaVersion = "1.0",
+            commandId = decision.DecisionId,
+            commandKind = "VERIFY_GOAL",
+            status = "COMPLETED",
+            relationshipId,
+            steps = new[] { new { owner = "BP", status = "COMPLETED" } },
+            resolvedAt = decision.OccurredAt,
+        });
+    }
 
     [HttpGet("evidence")]
     public async Task<IActionResult> ListEvidenceAsync(Guid relationshipId, CancellationToken cancellationToken)
@@ -447,6 +554,47 @@ public sealed class RelationshipWorkspaceController(
             && Guid.TryParse(participant, out participantId);
     }
 
+    private bool TryGetParticipantId(out Guid participantId)
+    {
+        var participant = User.FindFirstValue("participant_id")
+            ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
+        return Guid.TryParse(participant, out participantId);
+    }
+
+    private bool HasFreshAal3()
+    {
+        if (!string.Equals(User.FindFirstValue("authentication_assurance"), "AAL3_FRESH", StringComparison.Ordinal)
+            || !long.TryParse(User.FindFirstValue("auth_time"), out var unixTime)) return false;
+        var age = DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeSeconds(unixTime);
+        return age >= TimeSpan.FromSeconds(-30) && age <= TimeSpan.FromMinutes(5);
+    }
+
+    private static bool TryGetString(JsonElement value, string propertyName, out string result)
+    {
+        result = string.Empty;
+        return value.TryGetProperty(propertyName, out var property)
+            && property.ValueKind == JsonValueKind.String
+            && !string.IsNullOrWhiteSpace(result = property.GetString()!);
+    }
+
+    private static bool TryGetOptionalString(JsonElement value, string propertyName, out string? result)
+    {
+        result = null;
+        if (!value.TryGetProperty(propertyName, out var property)) return true;
+        if (property.ValueKind != JsonValueKind.String) return false;
+        result = property.GetString();
+        return true;
+    }
+
+    private static bool TryGetGuid(JsonElement value, string propertyName, out Guid result)
+    {
+        result = default;
+        return value.TryGetProperty(propertyName, out var property)
+            && property.ValueKind == JsonValueKind.String
+            && Guid.TryParse(property.GetString(), out result);
+    }
+
     private IActionResult NotFoundProblem() => WorkspaceProblem(404, "RELATIONSHIP_WORKSPACE_NOT_ACCESSIBLE");
 
     private ObjectResult WorkspaceProblem(int status, string code) => StatusCode(status, new
@@ -498,20 +646,19 @@ public sealed class RelationshipWorkspaceController(
     private static object GoalResponse(RelationshipPortalGoal item) => new
     {
         goalId = item.Goal.GoalId,
-        goalVersion = GoalVersion(item.Goal),
+        goalVersion = RelationshipConfigurationService.GetGoalVersion(item.Goal),
         skillId = item.SkillId,
         skillLabel = item.SkillLabel,
         measure = item.Goal.Measure,
         frequency = $"EVERY_{item.Goal.ReviewCadenceMonths}_MONTHS",
         baseline = item.Goal.Baseline,
         attributionBoundary = item.Goal.DecisionThreshold,
-        verificationStatus = "PENDING_CUSTOMER",
+        verificationStatus = item.CurrentDecision?.Decision ?? "PENDING_CUSTOMER",
+        customerVerifiedAt = item.CurrentDecision?.Decision == "VERIFIED"
+            ? item.CurrentDecision.OccurredAt : (DateTimeOffset?)null,
         status = NormalizeGoalStatus(item.Goal.Status),
-        evidenceState = "PENDING",
+        evidenceState = item.CurrentDecision is null ? "PENDING" : "RECORDED",
     };
-
-    private static string GoalVersion(RelationshipGoal goal) =>
-        $"goal-{goal.UpdatedAt.UtcTicks}";
 
     private static string NormalizeGoalStatus(string status) => status.ToUpperInvariant() switch
     {

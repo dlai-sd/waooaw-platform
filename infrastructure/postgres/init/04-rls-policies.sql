@@ -175,19 +175,6 @@ GRANT SELECT, INSERT, UPDATE ON institutional.agent_health_scores      TO busine
 -- ai_runtime_app: AI Runtime service account
 -- Both must be created in 02-users-and-roles.sql (or equivalent init script)
 
--- ─── WhatsApp Phone Identity tables (ADR-023) ────────────────────────────────
--- phone_identity_sessions: NOT tenant-scoped (pre-tenant identity) — no RLS
--- Access controlled by DB role grants only (phone-identity-service has its own role)
-
-ALTER TABLE business.whatsapp_trai_optins ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY tenant_isolation ON business.whatsapp_trai_optins
-    USING (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
-
--- phone_identity_sessions: no RLS (pre-tenant, phone-identity-service-only access)
-GRANT SELECT, INSERT, UPDATE ON business.phone_identity_sessions   TO business_app;
-GRANT SELECT, INSERT          ON business.whatsapp_trai_optins      TO business_app;
-
 -- agent_strategic_state: tenant-scoped RLS (v0.31.0 — C-050 Strategic Cognition Layer)
 ALTER TABLE business.agent_strategic_state ENABLE ROW LEVEL SECURITY;
 CREATE POLICY agent_strategic_state_tenant_isolation ON business.agent_strategic_state
@@ -295,6 +282,7 @@ GRANT SELECT, INSERT ON business.scr_review_records TO ai_runtime_app;
 GRANT SELECT         ON business.scr_review_records TO business_app;
 -- SCR records are constitutional audit artifacts — INSERT only, never UPDATE or DELETE
 
+/* Historical merge-conflict duplicate; the canonical policies above control.
 -- signal_materiality_events: no RLS — institutional, no customer PII; platform-level log
 GRANT SELECT, INSERT ON institutional.signal_materiality_events TO ai_runtime_app;
 GRANT SELECT         ON institutional.signal_materiality_events TO business_app;
@@ -353,6 +341,7 @@ GRANT SELECT, INSERT ON business.scr_review_records TO ai_runtime_app;
 GRANT SELECT         ON business.scr_review_records TO business_app;
 -- Note: SCR records are constitutional audit artifacts — INSERT only after creation, never UPDATE or DELETE
 >>>>>>> 699f049 (constitutional(dma): C-055 Campaign Theme Engine + SCR + Platform Intelligence (DMA v2.5, v0.39.0))
+*/
 
 -- Simulation gap bridge RLS (v0.40.0)
 

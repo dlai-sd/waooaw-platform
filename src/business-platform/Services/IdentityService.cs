@@ -108,6 +108,90 @@ public sealed class IdentityService
 
     // ── Registration ────────────────────────────────────────────────────────
 
+    public Task<(IdentityRegistrationRecord reg, bool isNew)> StartRegistrationAsync(
+        VerifiedCustomerActor actor, Guid idempotencyKey, string canonicalHash,
+        string languagePreference, CancellationToken ct) =>
+        MutateGoogleRegistrationAsync(actor, null, idempotencyKey, canonicalHash,
+            "StartRegistration", languagePreference, null, null, null, ct);
+
+    public Task<(IdentityRegistrationRecord reg, bool isNew)> UpdateProfileAsync(
+        Guid registrationId, VerifiedCustomerActor actor, Guid idempotencyKey, string canonicalHash,
+        string displayName, string businessName, string businessDomain, string languagePreference,
+        CancellationToken ct) =>
+        MutateGoogleRegistrationAsync(actor, registrationId, idempotencyKey, canonicalHash,
+            "UpdateProfile", languagePreference, displayName, businessName, businessDomain, ct);
+
+    private async Task<(IdentityRegistrationRecord reg, bool isNew)> MutateGoogleRegistrationAsync(
+        VerifiedCustomerActor actor, Guid? registrationId, Guid idempotencyKey, string canonicalHash,
+        string operation, string languagePreference, string? displayName, string? businessName,
+        string? businessDomain, CancellationToken ct)
+    {
+        if (idempotencyKey == Guid.Empty)
+            throw new ArgumentException("An idempotency key is required.");
+        await using var db = await _dbFactory.CreateDbContextAsync(ct);
+        db.Database.SetCommandTimeout(15);
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        await SetActorContextAsync(db, actor, ct);
+        var lockIdentity = System.Text.Json.JsonSerializer.Serialize(new[] { actor.Issuer, actor.Subject });
+        await db.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended({lockIdentity}, 0))", ct);
+        var key = idempotencyKey.ToString("D");
+        var replay = await db.IdempotencyLedger.SingleOrDefaultAsync(entry => entry.ActorIssuer == actor.Issuer
+            && entry.ActorSubject == actor.Subject && entry.OperationFamily == operation && entry.IdempotencyKey == key, ct);
+        if (replay is not null && (replay.CanonicalHash != canonicalHash
+            || registrationId.HasValue && replay.RegistrationId != registrationId))
+            throw new IdentityIdempotencyConflict(key);
+        var targetId = registrationId ?? replay?.RegistrationId;
+        IdentityRegistrationRecord registration;
+        if (targetId.HasValue)
+        {
+            registration = (await db.Registrations.FromSqlInterpolated($"""
+                SELECT * FROM identity.registrations WHERE registration_id = {targetId.Value}
+                    AND actor_issuer = {actor.Issuer} COLLATE "C" AND actor_subject = {actor.Subject} COLLATE "C" FOR UPDATE
+                """).ToListAsync(ct)).SingleOrDefault()
+                ?? throw new IdentityResourceNotFoundException("Registration not found or not accessible.");
+            if (registration.ExpiresAt < DateTimeOffset.UtcNow && registration.State != IdentityRegistrationState.Completed)
+                throw new IdentityResourceNotFoundException("Registration not found or not accessible.");
+        }
+        else
+        {
+            registration = new IdentityRegistrationRecord
+            {
+                ActorIssuer = actor.Issuer, ActorSubject = actor.Subject,
+                AuthenticationPath = IdentityAuthenticationPath.Google, ProviderLabel = "google",
+                ProviderIssuer = actor.Issuer, EmailVerified = true, LanguagePreference = languagePreference,
+                State = IdentityRegistrationState.FederatedIdentityAccepted,
+            };
+            db.Registrations.Add(registration);
+        }
+        if (replay is not null)
+        {
+            await transaction.CommitAsync(ct);
+            return (registration, false);
+        }
+        if (registrationId.HasValue)
+        {
+            if (registration.State == IdentityRegistrationState.Completed
+                || registration.AuthenticationPath != IdentityAuthenticationPath.Google)
+                throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
+            registration.DisplayName = displayName;
+            registration.BusinessName = businessName;
+            registration.BusinessDomain = businessDomain;
+            registration.LanguagePreference = languagePreference;
+            registration.State = ComputeRegistrationState(registration);
+            registration.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+        db.IdempotencyLedger.Add(new IdentityIdempotencyEntry
+        {
+            ActorIssuer = actor.Issuer, ActorSubject = actor.Subject, RegistrationId = registration.RegistrationId,
+            IdempotencyKey = key, OperationFamily = operation, CanonicalHash = canonicalHash,
+            StatusCode = registrationId.HasValue ? 200 : 201, ResponseBody = registration.RegistrationId.ToString("D"),
+        });
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+        return (registration, !registrationId.HasValue);
+    }
+
     public async Task<(IdentityRegistrationRecord reg, bool isNew)> StartRegistrationAsync(
         string actorSubject,
         Guid idempotencyKey,
@@ -165,6 +249,31 @@ public sealed class IdentityService
 
         return (reg, true);
     }
+
+    public async Task<IdentityRegistrationRecord> GetRegistrationAsync(
+        Guid registrationId,
+        VerifiedCustomerActor actor,
+        CancellationToken ct)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(ct);
+        db.Database.SetCommandTimeout(15);
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        await SetActorContextAsync(db, actor, ct);
+        var registration = await db.Registrations.SingleOrDefaultAsync(record =>
+            record.RegistrationId == registrationId && record.ActorIssuer == actor.Issuer
+            && record.ActorSubject == actor.Subject, ct)
+            ?? throw new IdentityResourceNotFoundException("Registration not found or not accessible.");
+        await transaction.CommitAsync(ct);
+        return registration;
+    }
+
+    private static Task SetActorContextAsync(IdentityDbContext db, VerifiedCustomerActor actor, CancellationToken ct) =>
+        db.Database.ExecuteSqlInterpolatedAsync($"""
+            SELECT pg_catalog.set_config('app.identity_issuer', {actor.Issuer}, true),
+                   pg_catalog.set_config('app.identity_subject', {actor.Subject}, true),
+                   pg_catalog.set_config('app.tenant_id', '', true),
+                   pg_catalog.set_config('app.current_tenant_id', '', true)
+            """, ct);
 
     public async Task<IdentityRegistrationRecord> GetRegistrationAsync(
         Guid registrationId,
@@ -525,7 +634,6 @@ public sealed class IdentityService
         reg.AccountId   = accountId;
         reg.State       = IdentityRegistrationState.Completed;
         reg.UpdatedAt   = DateTimeOffset.UtcNow;
-        await db.SaveChangesAsync(ct);
 
         var result = new IdentityCompletionResult(outcome, accountId, "AAL2_ACCOUNT", "APPLICATION_HOME");
         await RecordIdempotencyAsync(db, actorSubject, idempotencyKey, "CompleteRegistration",

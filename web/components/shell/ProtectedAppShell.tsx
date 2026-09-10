@@ -51,7 +51,7 @@ export function ProtectedAppShell({ children, identitySession, locale = 'en', me
   const bottomNavigation = (
     <nav className={`bottom-navigation bottom-navigation-${variant}`} aria-label={variant === 'founder' ? messages.founderNavigation : messages.customerMobileNavigation}>
       {variant === 'founder' ? (
-        <a href="/founder"><ShieldCheck aria-hidden="true" size={21} /><span>{messages.founderHome}</span></a>
+        <Link href="/founder"><ShieldCheck aria-hidden="true" size={21} /><span>{messages.founderHome}</span></Link>
       ) : (
         <>
           <Link href="/home"><Bot aria-hidden="true" size={21} /><span>{portal.myAgents}</span></Link>

@@ -1,7 +1,7 @@
 # ADR-008: Identity — Keycloak as OAuth Federation Broker
 
-**Status:** Accepted — v3 (2026-08-09: FA-035 customer identity policy reconciliation; see Amendment 1)
-**Date:** 2026-07-07 | **Last Updated:** 2026-08-09
+**Status:** Accepted - v5 (2026-09-09: stock Keycloak and BP membership; Amendment 3 controls WC-085)
+**Date:** 2026-07-07 | **Last Updated:** 2026-09-09
 **Roles Applied:** Security Architect (identity management) + Solution Architect (integration patterns)
 **Constitutional Basis:** GENESIS Design Principles — Configuration over Code; Constitution Article IX (Customer Rights — right to identity continuity)
 
@@ -217,4 +217,197 @@ Facebook activation remains gated on FA-002 and FA-018. Apple activation remains
 ### Authorization Boundary
 
 This amendment records the Founder-approved customer identity policy (FA-035). It does not authorize implementation of any F2 or F3–F8 component; activate any identity provider; authorize deployment to any environment; authorize merge of any pull request; or constitute an independent architecture review of the WC-034 F2 identity and registration contract package. The independent architecture re-review (gate `G-F2-12`) must be performed in a separate context under C-065 before F2 implementation begins.
+
+---
+
+## Amendment 2 - WC-085 Unattended Tenant Publication (v4 - 2026-09-09; SUPERSEDED)
+
+**Historical only:** Amendment 3 supersedes this entire Java/publication selection, its dependency
+approval and its assertion that ADR-003 remains unchanged. Retained source/Java is not deleted or
+authorized for use by this record. Do not implement, build or deploy Amendment 2.
+
+**Decision author:** INST-004 Enterprise Architect, bounded EDIT authority, not a review.
+**Authority:** Founder explicitly approved changing how signup connects to login so signup stays
+automatic without granting extra credential powers. This supersedes the stock-Keycloak-only
+constraint for WC-085, not credential separation. No deployment, provider activation, cloud
+operation, spending, merge or general office review is authorized by this amendment.
+**Traceability:** Customer Account Completion and Provider Issuer/Subject Binding in Amendment 1;
+C-032 office/authority separation, C-026 database enforcement, C-059 evidence and ADR-003 signed
+tenant isolation. Existing parent implementation authority remains distinct from this docs-only call.
+
+### Selected Design And SaaS Boundary
+
+Add one narrow Java `RealmResourceProvider` extension to the existing Keycloak process and build
+a derived Keycloak image. BP publishes only committed initial tenant/membership attributes through
+this endpoint. Keycloak retains credentials, Google broker links, sessions, signing keys and token
+issuance. Stock attribute mappers and OIDC renewal remain. No new service, BP-issued customer JWT,
+custom token grant, direct Google API, shared tenant, browser-selected tenant or approval per signup.
+
+This follows the conventional SaaS separation: external identity proof through Keycloak, application-
+owned accounts/organisations/membership, a trusted signed tenant claim, and independent current
+actor/membership/resource authorization within that tenant. A JWT is not current membership truth.
+ADR-003 is unchanged: current authorization may restrict the signed anchor, never replace it with
+a tenant found by lookup or supplied by the browser. This is not a regulatory compliance certification.
+
+For WC-085, `waooaw_roles` is the BP-owned protected membership attribute, not grants of Keycloak
+realm roles. It grants no institutional, employment, payment or consequential authority. This
+specializes the v2 organisation-role description; other authentication paths remain unchanged.
+
+### Credential And Mutation Contract
+
+The [WC-085 decision note](../architecture/reference/product/wc085-identity-architecture-decision.md)
+specifies the normative private wire contract. Register `waooaw-identity-publication` in realm
+`waooaw`, with exact-subject broker-proof GET, publication GET and initial-publication POST only.
+No generic user representation, search/list, credential, broker mutation or role API is exposed.
+Mutate only `tenant_id`, `waooaw_roles`, `org_name` and provider-private replay metadata.
+
+Use reserved confidential client `waooaw-bp-identity-publisher`, its separate environment secret,
+and standard `client_credentials`. On every route require native Keycloak RS256 token validation,
+exact configured issuer, audience exactly `waooaw-identity-publication`, authorized party exactly
+that client, scope `wc085:identity-publication`, and subject equal to its enabled service account.
+Validate times, revocation/not-before state and maximum 60-second lifetime. Attach the dedicated
+audience/scope only to that client. Disable interactive/direct grants, offline access and unneeded
+scopes; do not attach customer claim mappers or a customer API audience. No new JWT grant is invented.
+
+Assign ZERO realm-management roles, including no `view-users`, `manage-users`, fine-grained group
+management, impersonation or inherited admin composites. Proof reads move to the extension; ALL
+stock Admin REST APIs, including user reads/listing, must deny this same credential. Never inject
+bootstrap/operator credentials into BP or the provider. Retain Security's TLS, secret rotation,
+token custody and private-origin rules. The public ingress must not expose extension routes.
+The privileged in-process provider enforces authentication and field limits, not BP code alone.
+
+BP submits only the exact immutable payload loaded through its actor-scoped Data routine after
+commit. Keycloak receives no BP database credentials or callback endpoint. The publication credential
+can assert these business attributes across eligible customers; it does not independently attest
+a database commit. It must not control identity proof, credentials or institutional roles. Current
+DB authorization denies forged tenant/membership access. This limited publication-compromise risk
+is explicit, not a claim of per-customer machine credentials or independent transaction verification.
+
+### Identity, Replay And Concurrency
+
+Compare the exact realm issuer/subject and eligible local customer with the configured Google
+association and committed proof. Preserve opaque upstream subjects; email cannot establish identity.
+BP separately requires the signed current broker-session claim and fresh reconstruction proof.
+
+Permit one immutable initial payload per nonrecycled actor key. Store replay metadata and the three
+fields in one Keycloak transaction. Serialize using a database pessimistic lock on the local user
+row, read fresh storage under the lock, and invalidate caches correctly on commit. Exact replay
+returns `ALREADY_APPLIED`; differing intent/revision/proof/digest/payload conflicts without mutation.
+Unmarked preexisting owned attributes also conflict. No last-writer-wins or mutable sync is approved.
+
+Retain Data's BP publication lock and current eligibility/revision checks. BP must read back actual
+fields AND broker proof before acknowledgement. Reconstruction binds a different nonrecycled actor
+to the same proven Google identity and durable BP account/tenant. A late write to a retired actor
+cannot authorize it; DB checks deny it. Revocation never waits for publication. No distributed
+transaction or guarantee of zero stale claims is claimed.
+
+### Explicit Dependency And Build Approval
+
+Approve Java **21** solely for this in-process extension; ADR-016's .NET/Python service choices
+remain. Pin Keycloak **25.0.6**, runtime base
+`quay.io/keycloak/keycloak@sha256:82c5b7a110456dbd42b86ea572e728878549954cc8bd03cd65410d75328095d2`.
+Compile against `org.keycloak:keycloak-core`, `keycloak-server-spi`, `keycloak-server-spi-private`,
+`keycloak-services` and `keycloak-model-jpa`, all **25.0.6**, provided scope. Private/JPA dependencies
+are explicitly approved for native bearer authentication and local-user locking. They are pinned
+internal dependencies, not promises of stable public APIs.
+
+Use Maven **3.9.9**, compiler plugin **3.13.0** with release 21, JAR plugin **3.4.2**, Surefire
+**3.5.2**. Parent must resolve/record an immutable Java 21 builder-image digest and exact JDK patch
+before qualification; none is invented here. Pin remaining plugins/test dependencies and artifact
+checksums; prohibit snapshots/ranges. Build entirely in Docker; register the provider factory through
+`META-INF/services`, copy the thin JAR into `/opt/keycloak/providers/`, and run `kc.sh build` on the
+pinned server with explicit database/feature settings. Do not bundle Keycloak/Jakarta libraries.
+Use a fixed source-derived output timestamp and two clean builds to verify identical JAR checksums;
+record final image digest/provenance rather than assume identical OCI bytes.
+
+Target `RealmResourceProvider`/`RealmResourceProviderFactory`, native
+`AppAuthManager.BearerTokenAuthenticator` and `JpaConnectionProvider`/`UserEntity` pessimistic locking
+from 25.0.6. This design is for local JPA users only. Verify transaction lock lifetime, rollback and
+cache coherence against the selected database, including concurrent server instances. No custom
+table, distributed lock service or preview fine-grained feature is selected. Unsupported storage
+must fail closed. The existing process avoids another service but adds trusted Java code, image
+supply-chain work and exact-version upgrade/permission regression tests.
+
+### Authoring And Qualification Status
+
+Repository image pins and ADR-016 establish the baseline; prior Security Docker evidence rejects
+the stock writers. This authorship did not fetch upstream source, compile a provider or test its
+security. API/build/locking compatibility is required executable evidence, not a reported PASS.
+The 25.0.6 compatibility pin is not an assertion of current vendor security support or lack of CVEs.
+
+**Architecture AUTHORED and SELECTED.** The stock-only scope obstacle is superseded. Parent can
+implement under standing authority, incorporating the exact contract deltas in the decision note.
+Implementation and qualification remain pending; CB-009 is not closed. No deployment or real Google
+acceptance is claimed. No further Founder technical selection or general review loop is required
+for this covered decision. Historical authority limits in Amendment 1 do not negate this new scope.
+
+---
+
+## Amendment 3 - Stock Broker And BP Membership (v5 - 2026-09-09)
+
+**Author/authority:** EA INST-004, bounded Solution repair under the current Founder C#/Python/JS-only
+direction and standing edit authority. This C-032 author amendment supersedes Amendment 2 in full
+and v2 customer tenant/organisation-role claim requirements for WC-085. It explicitly depends on
+the changed per-request lookup rule in ADR-003's controlling amendment, not the original rule.
+No new language, dependency, auth framework, service or JWT issuer is approved. Reuse stock pinned
+Keycloak, ASP.NET authentication, existing EF/Npgsql and JS server-session code. No custom Java,
+SPI, derived provider image, runtime Keycloak writer or publication endpoint is part of this slice.
+
+Stock Keycloak verifies Google and signs customer identity. BP commits account, organisation,
+initial OWNER membership, actor/provider binding, proof provenance and existing registration/retry
+result in ONE PostgreSQL transaction. Completion is final at that commit: no publication intent,
+outbox, revision, acknowledgement or post-commit remote mutation. Current actor-keyed membership,
+not token tenant/role attributes, supplies authorization under ADR-003 and C-026 RLS.
+
+### Proven Stock Broker Read
+
+Select the stock exact-user and federated-identity GETs already recorded in
+[Security Section 8](../architecture/reference/security/wc085-identity-publication-security-contract.md).
+Use a dedicated confidential client `waooaw-bp-identity-reader`, `client_credentials`, only the
+`realm-management` role `view-users` explicitly assigned and scoped, maximum 60-second token,
+no interactive/direct/offline grants. The environment-local
+`IdentityBrokerRead__ClientSecret` references `bp-identity-reader-client-secret`, injected ONLY
+into BP per ADR-014; `IdentityBrokerRead__ClientId` is the literal reader ID. No administrator,
+publisher, web or broker credential reuse. No `manage-users`, `query-users`, write grant or
+administrative composite. `view-users` DOES permit realm-wide user metadata/list reads: this
+bounded read exposure is explicitly accepted, not described as per-user Keycloak enforcement.
+BP provides no listing/search or arbitrary-subject proxy and retains no generic user representation.
+
+From the exact validated caller subject, over configured private TLS with no redirects, read only
+`GET /admin/realms/waooaw/users/{subject}` (enabled, non-service-account eligibility) and
+`GET /admin/realms/waooaw/users/{subject}/federated-identity`. Encode subject as one path segment;
+no browser subject/host/realm selector. Require exactly one configured `google` record and retain
+its exact opaque `userId` with configured trust namespace/alias as stable broker identity.
+No email match, upstream-token retrieval or invented stable-subject session note. Require the
+stock signed `idp` session claim using `oidc-usersessionmodel-note-mapper` and note
+`identity_provider=google` to distinguish current broker login from an old linked record; this
+is the ALIAS, not the upstream subject. Missing current-session alias, verified email, `auth_time`
+or broker proof fails closed. Existing local evidence covers reads/denied writes, not a real Google
+session or that mapper's issuance in the configured web flow; those remain executable gates.
+
+Ordinary return with the SAME validated issuer/subject reuses the membership without broker GET
+on each protected request. First completion requires the two reads, fresh authentication at most
+five minutes old, and unchanged reviewed trust configuration. Disable automatic email-only linking
+and self-service broker relinking for this bounded Google path; do not enable other login paths.
+The role `customer` permits only customer-scheme eligibility; it never grants institutional roles.
+
+### Continuity And Delivery Limits
+
+Retain stable Google proof now, but a new Keycloak subject matching that proof does NOT silently
+rebind or mint a second account. Return the existing non-enumerating recovery/duplicate outcome.
+Recreated-realm recovery is a FUTURE gate: accepted proof of current Google authentication, historical
+binding, nonrecycled actor IDs, atomic retirement/rebinding, old-session denial and retained IDs
+under concurrent recovery must be qualified before enabling it. No reset, persistent-Keycloak
+change or migration of identity namespaces is authorized here. Stable local fixtures can qualify
+the initial slice, but cannot prove Google consent or preserved-data reconstruction.
+
+Tenant claim mappers/shared constants are unnecessary for this path and must not supply authority.
+Completion can use the SAME still-valid Keycloak token for `getIdentitySession`; no refresh solely
+to obtain tenant claims. Normal expiry/PKCE and account-switch protections remain. Initial OWNER
+grants entry/exploration only, no automatic employment, payment, trial, subscription or entitlement.
+
+**Current recommendation: ready for bounded parent implementation under standing authority.**
+Physical Data translation is the one small follow-on authorship item specified in the decision
+note; no new general review or Founder option selection. Implementation/real-PG/Google evidence
+remains pending; CB-009 is not closed. This call is docs-only and does not authorize deployment.
 

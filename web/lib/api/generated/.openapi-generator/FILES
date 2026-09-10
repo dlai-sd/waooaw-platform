@@ -250,6 +250,7 @@ docs/UpdateCustomerProfileRequestV1.md
 docs/UpdateCustomerSettingsRequestV1.md
 docs/UpdatePhaseBundleRequest.md
 docs/ValidateAgentAdmissionRequest.md
+docs/VerifyGoalPayloadV1.md
 docs/VoiceConfidenceBandV1.md
 docs/VoiceContributionOutcomeV1.md
 docs/VoiceContributionSessionV1.md
@@ -508,6 +509,7 @@ models/UpdateCustomerProfileRequestV1.ts
 models/UpdateCustomerSettingsRequestV1.ts
 models/UpdatePhaseBundleRequest.ts
 models/ValidateAgentAdmissionRequest.ts
+models/VerifyGoalPayloadV1.ts
 models/VoiceConfidenceBandV1.ts
 models/VoiceContributionOutcomeV1.ts
 models/VoiceContributionSessionV1.ts

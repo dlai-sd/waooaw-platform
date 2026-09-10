@@ -46,7 +46,7 @@ CREATE INDEX idx_domain_knowledge_hnsw
 -- Platform Intelligence (Tier 3 RAG — aggregate cross-customer patterns)
 -- NOTE: Tier 3 is read-heavy and large → HNSW is critical here
 CREATE INDEX idx_platform_intelligence_hnsw
-    ON institutional.platform_intelligence_patterns
+    ON institutional.platform_intelligence
     USING hnsw (pattern_embedding vector_cosine_ops)
     WITH (m = 16, ef_construction = 64)
     WHERE pattern_embedding IS NOT NULL;
@@ -86,24 +86,15 @@ CREATE INDEX idx_skill_graph_hnsw
 
 -- Audit Ledger: most common query pattern = by organisation + time range
 CREATE INDEX IF NOT EXISTS idx_evidence_org_time
-    ON constitutional.evidence_records (organisation_id, created_at DESC);
+    ON constitutional.evidence_records (tenant_id, created_at DESC);
 
 -- PAAS sessions: active session lookup (trading agent — latency critical)
 CREATE INDEX IF NOT EXISTS idx_paas_active
-    ON business.paas_sessions (organisation_id, state)
+    ON business.paas_sessions (tenant_id, state)
     WHERE state = 'ACTIVE';
-
--- Signal materiality events: SIL polling query
-CREATE INDEX IF NOT EXISTS idx_signal_events_org_time
-    ON business.signal_materiality_events (organisation_id, detected_at DESC)
-    WHERE processed = FALSE;
 
 -- Campaign content items: SCR gate query
 CREATE INDEX IF NOT EXISTS idx_content_scr_pending
     ON business.campaign_content_items (organisation_id, scr_status)
     WHERE scr_status = 'PENDING';
-
--- Customer NPS scores: monthly report query
-CREATE INDEX IF NOT EXISTS idx_nps_org_date
-    ON business.customer_nps_scores (organisation_id, scored_at DESC);
 -- Validated: WC-011 Sprint 011 (infrastructure check only)

@@ -7163,6 +7163,7 @@ components:
         DISPUTE_RESULT,
         AMEND_GOAL,
         REPLACE_GOAL,
+        VERIFY_GOAL,
         CONFIRM_SCOPE_BOUNDARY,
         PAUSE_RELATIONSHIP,
         RESUME_RELATIONSHIP,
@@ -7215,6 +7216,29 @@ components:
         commandKind: { type: string, const: REPLACE_GOAL }
         goalId: { type: string, format: uuid }
         replacement: { type: string, minLength: 1, maxLength: 500 }
+
+    VerifyGoalPayloadV1:
+      type: object
+      additionalProperties: false
+      required: [commandKind, goalId, goalVersion, verificationDecision]
+      allOf:
+        - if:
+            properties:
+              verificationDecision: { const: CHANGES_REQUESTED }
+          then:
+            required: [correctionReason]
+        - if:
+            properties:
+              verificationDecision: { const: VERIFIED }
+          then:
+            not:
+              required: [correctionReason]
+      properties:
+        commandKind: { type: string, const: VERIFY_GOAL }
+        goalId: { type: string, format: uuid }
+        goalVersion: { type: string, minLength: 1, maxLength: 64 }
+        verificationDecision: { type: string, enum: [VERIFIED, CHANGES_REQUESTED] }
+        correctionReason: { type: string, minLength: 1, maxLength: 500 }
 
     ConfirmScopeBoundaryPayloadV1:
       type: object
@@ -7286,6 +7310,7 @@ components:
         - $ref: "#/components/schemas/DisputeResultPayloadV1"
         - $ref: "#/components/schemas/AmendGoalPayloadV1"
         - $ref: "#/components/schemas/ReplaceGoalPayloadV1"
+        - $ref: "#/components/schemas/VerifyGoalPayloadV1"
         - $ref: "#/components/schemas/ConfirmScopeBoundaryPayloadV1"
         - $ref: "#/components/schemas/PauseRelationshipPayloadV1"
         - $ref: "#/components/schemas/ResumeRelationshipPayloadV1"
@@ -7302,6 +7327,7 @@ components:
           DISPUTE_RESULT: "#/components/schemas/DisputeResultPayloadV1"
           AMEND_GOAL: "#/components/schemas/AmendGoalPayloadV1"
           REPLACE_GOAL: "#/components/schemas/ReplaceGoalPayloadV1"
+          VERIFY_GOAL: "#/components/schemas/VerifyGoalPayloadV1"
           CONFIRM_SCOPE_BOUNDARY: "#/components/schemas/ConfirmScopeBoundaryPayloadV1"
           PAUSE_RELATIONSHIP: "#/components/schemas/PauseRelationshipPayloadV1"
           RESUME_RELATIONSHIP: "#/components/schemas/ResumeRelationshipPayloadV1"
@@ -7314,7 +7340,7 @@ components:
     SubmitRelationshipCommandRequestV1:
       type: object
       additionalProperties: false
-      required: [schemaVersion, expectedWorkspaceVersion, payload]
+      required: [schemaVersion, expectedWorkspaceVersion, expectedSubjectVersion, payload]
       properties:
         schemaVersion: { $ref: "#/components/schemas/RelationshipWorkspaceSchemaVersion" }
         expectedWorkspaceVersion: { type: string, minLength: 1, maxLength: 64 }

@@ -42,6 +42,13 @@ def test_runtime_gate_applies_to_runtime_and_deployment_changes() -> None:
     assert not runtime_gate_required(["docs/README.md"])
 
 
+def test_database_readiness_uses_the_temporal_network_endpoint() -> None:
+    script = (ROOT / "scripts/run_goal006_runtime_lifecycle_gate.sh").read_text()
+    assert 'docker run --rm --network "$NETWORK" "$POSTGRES_IMAGE"' in script
+    assert "pg_isready -h postgres -U postgres -d temporal" in script
+    assert 'docker exec "$POSTGRES" pg_isready' not in script
+
+
 def test_runtime_evidence_accepts_commit_bound_transition() -> None:
     assert validate_runtime_evidence(body(), HEAD, True) == []
 

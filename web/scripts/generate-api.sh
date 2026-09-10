@@ -47,4 +47,4 @@ docker run --rm \
   --additional-properties supportsES6=true,typescriptThreePlus=true,useSingleRequestParameter=true,hideGenerationTimestamp=true
 
 docker compose --profile test run --rm --no-deps test-runner \
-  sh -lc 'cd /workspace/web && pnpm install --frozen-lockfile --store-dir=/tmp/pnpm-store && pnpm exec prettier --write lib/api/generated'
+  sh -lc 'cd /workspace/web && pnpm install --frozen-lockfile --store-dir=/tmp/pnpm-store && node scripts/normalize-generated-api.mjs && pnpm exec prettier --write lib/api/generated'

@@ -41,6 +41,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience          = true,
             ValidateLifetime          = true,
             ValidateIssuerSigningKey  = true,
+            ValidAlgorithms           = [SecurityAlgorithms.RsaSha256],
             // Clock skew: tight on purpose — stale tokens violate tenant contract guarantees
             ClockSkew                 = TimeSpan.FromSeconds(30),
         };
@@ -53,8 +54,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 var logger = ctx.HttpContext.RequestServices
                     .GetRequiredService<ILogger<Program>>();
                 logger.LogWarning(
-                    "JWT challenge fired: {ErrorDescription} — path={Path} (C-026 enforcement)",
-                    ctx.ErrorDescription,
+                    "JWT challenge fired: path={Path} (C-026 enforcement)",
                     ctx.Request.Path);
 
                 ctx.HandleResponse();
@@ -227,10 +227,20 @@ else
 var identityConn = builder.Configuration.GetConnectionString("Identity")
     ?? builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Host=localhost;Database=waooaw_bp;Username=business_app;";
-builder.Services.AddDbContextFactory<Waooaw.BusinessPlatform.Infrastructure.IdentityDbContext>((services, options) =>
-    options
-        .UseNpgsql(identityConn)
-        .AddInterceptors(services.GetRequiredService<TenantDbConnectionInterceptor>()));
+if (new Npgsql.NpgsqlConnectionStringBuilder(identityConn).NoResetOnClose)
+    throw new InvalidOperationException("Identity connections require pool reset on close.");
+builder.Services.AddDbContextFactory<Waooaw.BusinessPlatform.Infrastructure.IdentityDbContext>(options =>
+    options.UseNpgsql(identityConn));
+builder.Services.AddOptions<IdentityBrokerReadOptions>()
+    .Bind(builder.Configuration.GetSection(IdentityBrokerReadOptions.SectionName), options =>
+        options.ErrorOnUnknownConfiguration = true)
+    .Validate(options => !options.Enabled || options.IsConfigured,
+        "Enabled customer identity requires explicit approved private broker-read configuration.")
+    .ValidateOnStart();
+builder.Services.AddHttpClient<GoogleWorkspaceProofAdapter>(client => client.Timeout = TimeSpan.FromSeconds(10))
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false })
+    .RemoveAllLoggers();
+builder.Services.AddScoped<CustomerIdentityJourneyService>();
 builder.Services.Configure<Waooaw.BusinessPlatform.Services.IdentityHmacOptions>(
     builder.Configuration.GetSection("Identity:Hmac"));
 builder.Services.AddSingleton<IValidateOptions<IdentityEnvironmentOptions>, IdentityEnvironmentOptionsValidator>();
@@ -308,7 +318,9 @@ app.UseAuthorization();
 
 // C-005 / C-026: sets PostgreSQL session variable from JWT tenant_id claim.
 // Returns 403 if tenant_id claim is absent from a successfully authenticated token.
-app.UseTenantIsolation();
+app.UseMiddleware<CustomerMembershipMiddleware>();
+app.UseWhen(context => !context.Items.ContainsKey(CustomerMembershipMiddleware.JourneyItem),
+    branch => branch.UseTenantIsolation());
 
 app.MapControllers();
 app.MapHealthChecks("/health");

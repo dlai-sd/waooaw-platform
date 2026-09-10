@@ -14,7 +14,7 @@ GRANT USAGE ON SCHEMA business TO wbe_app;
 -- --------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS business.trial_allocations (
     trial_id            UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
-    customer_id         UUID            NOT NULL REFERENCES institutional.billing_profiles(customer_id),
+    customer_id         UUID            NOT NULL REFERENCES business.organisations(id),
     agent_type          VARCHAR(20)     NOT NULL CHECK (agent_type IN ('DMA','DPA','DCA','DSA')),
     started_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
     expires_at          TIMESTAMPTZ     NOT NULL,
@@ -50,14 +50,17 @@ CREATE TABLE IF NOT EXISTS business.coupon_codes (
     code            VARCHAR(20)     NOT NULL UNIQUE,
     discount_pct    SMALLINT        NOT NULL DEFAULT 0 CHECK (discount_pct BETWEEN 0 AND 100),
     bonus_credits   JSONB           NOT NULL DEFAULT '{}',
+    bonus_credits_paise INTEGER     NOT NULL DEFAULT 0 CHECK (bonus_credits_paise >= 0),
     agent_type      VARCHAR(20),                                     -- NULL = all agents
     min_tier        VARCHAR(20),                                     -- NULL = all tiers
+    min_bundle_tier VARCHAR(20),
     max_uses        INTEGER         CHECK (max_uses > 0),            -- NULL = unlimited
     uses_count      INTEGER         NOT NULL DEFAULT 0 CHECK (uses_count >= 0),
     valid_from      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
     valid_until     TIMESTAMPTZ,
     created_by      TEXT            NOT NULL DEFAULT 'founder',
-    active          BOOLEAN         NOT NULL DEFAULT TRUE
+    active          BOOLEAN         NOT NULL DEFAULT TRUE,
+    is_active       BOOLEAN         NOT NULL DEFAULT TRUE
 );
 
 CREATE INDEX IF NOT EXISTS idx_coupon_active_code
@@ -68,8 +71,8 @@ CREATE INDEX IF NOT EXISTS idx_coupon_active_code
 -- --------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS business.referral_records (
     referral_id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    referrer_customer_id    UUID        NOT NULL REFERENCES institutional.billing_profiles(customer_id),
-    referee_customer_id     UUID        NOT NULL REFERENCES institutional.billing_profiles(customer_id),
+    referrer_customer_id    UUID        NOT NULL REFERENCES business.organisations(id),
+    referee_customer_id     UUID        NOT NULL REFERENCES business.organisations(id),
     coupon_id               UUID        REFERENCES business.coupon_codes(coupon_id),
     referred_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     credit_status           VARCHAR(10) NOT NULL DEFAULT 'PENDING'
