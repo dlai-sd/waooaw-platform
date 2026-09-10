@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 142
+**State Revision:** 143
 **Last Updated:** 2026-09-10 (WC-085 PR CodeQL remediation checkpoint)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -39,7 +39,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Demo/runtime readiness repairs | MERGED - PRs #389 through #398 repaired cleanup provenance, cloud authority, dependency recovery, service startup, Temporal readiness and deployment verification |
 | WC-078 public visual experience | ENGINEERING QUALIFIED - WC-01 through WC-08 complete; WC-09 Docker build/tests/browser matrix/54 captures/scanners and author review PASS; Founder visual acceptance, PR approval and merge pending |
 | WC-084 Customer Portal | ENGINEERING QUALIFIED - generated-client-backed My Agents, Marketplace, Alerts, Profile, Settings, account drawer, Onboard/Induct and lifecycle views complete; Docker build/typecheck, 209 Jest tests, 96.33% changed-interaction line coverage, 40 focused BP tests and 238 Playwright tests pass; Founder visual acceptance, PR approval and merge remain |
-| WC-085 remediation | PARTIAL / D-GOAL LOCAL PASS - Draft PR #409 on `ib/085/remediation`. Founder-accepted D-GOAL is implemented through the existing relationship command: append-only RLS decisions, exact versions, fresh assurance, idempotency, generated client and Operations relock. Full BP Docker suite passes 641/641 at 91.59% line / 80.17% branch; exact candidate image and scans are recorded in WC-085 evidence. The PR's 19-alert CodeQL precheck finding set is repaired locally with focused Docker validation; pushed-head CodeQL closure remains required. D-BILLING, D-IDENTITY, real Google, deployment and full story acceptance remain open. |
+| WC-085 remediation | PARTIAL / D-GOAL LOCAL PASS - Draft PR #409 on `ib/085/remediation`. Founder-accepted D-GOAL is implemented through the existing relationship command: append-only RLS decisions, exact versions, fresh assurance, idempotency, generated client and Operations relock. Full BP Docker suite passes 641/641 at 91.59% line / 80.17% branch; exact candidate image and scans are recorded in WC-085 evidence. The PR's original 19-alert CodeQL set is repaired; the first pushed scan closed 18 and its sole remaining StorageEvent warning has a constructor-free follow-up awaiting pushed-head closure. D-BILLING, D-IDENTITY, real Google, deployment and full story acceptance remain open. |
 | Production | PLAN ONLY - code-prepared; protected environments, authorized plan, traffic and final acceptance remain Founder-reserved |
 
 ### Checkpoint Context

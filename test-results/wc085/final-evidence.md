@@ -298,15 +298,17 @@ identifier was removed from the log event while tenant and evaluation-intent cor
 
 The remaining findings were repaired without public-contract or persistence changes: test-owned HTTP
 clients/factories now have explicit lifetimes, the synthetic handler transfers response ownership
-through a returning helper, the storage-event fixture preserves jsdom semantics without an invalid
-constructor shape, path resolution uses rooted `GetFullPath` overloads, and immediate mappings use
+through a returning helper, the storage-event fixture defines the consumed readonly fields on a
+plain event without invoking CodeQL's misclassified constructor, path resolution uses rooted `GetFullPath` overloads, and immediate mappings use
 LINQ. OpenAPI Generator's two unused D-GOAL imports are removed by a fail-closed normalization step
 that aborts if generator usage changes; regeneration changed only those two expected model files.
 
 Docker validation after repair: Business Platform build passed with warnings as errors; 77 focused
 relationship/identity tests passed with zero failures/skips; generated-client and registration Jest
 suites passed 21/21; TypeScript passed. GitHub CodeQL remains the authoritative closure check after
-the repair commit is pushed. D-BILLING and D-IDENTITY remain pending; H9 remains Founder-deferred.
+the repair commit is pushed. The first pushed repair scan closed 18 findings and confirmed the high
+finding absent; this constructor-free follow-up addresses its sole remaining warning. D-BILLING and
+D-IDENTITY remain pending; H9 remains Founder-deferred.
 
 Parking validation: Docker handover consistency check passed (31 exact path anchors, all 26 stories,
 H1-H9, checkpoint below 200 lines and Java removal); editor diagnostics and `git diff --check` passed.
