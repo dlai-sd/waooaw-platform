@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-09-10 · **Version:** 1.45.0 · **Work Contracts:** 77 recorded (68 closed · 9 active · 0 blocked)
+**Last Updated:** 2026-09-10 · **Version:** 1.45.0 · **Work Contracts:** 82 recorded (73 closed · 9 active · 1 blocked)
 
 **Reference hierarchy:** This file is the canonical compact Work Contract and delivery index. `README.md`
 is the operator entry and routing summary; `constitution/PROJECT_STATE.md` records only the current
@@ -25,7 +25,7 @@ constitutional-repair record. Agents must select the record by title and Goal, n
 | **WC-068** | Portfolio Economics And Institutional Learning | Iteration 4 | PLANNED CANDIDATE — IMPLEMENTATION UNAUTHORIZED | Settled WC-065→WC-067 cohort evidence | Portfolio economics, resilience, commercial policy, offering, provider, and governed learning proposals |
 | **WC-069** | Helpdesk And Support Administration | Iteration 5 | DEFERRED — GROOMING/IMPLEMENTATION UNAUTHORIZED | Real customer-case evidence · WC-065→WC-068 | Support administration only if evidence proves a separate capability is necessary |
 | **WC-076** | GOAL-006 Phase 3 Execution | Cloud delivery and environment promotion | IN PROGRESS · P3-EX01→10 PASSED · P3-EX11 OFFLINE READINESS PENDING · PRODUCTION PROHIBITED | WC-071→074 · FA-052 · PR #371 · PR #388 | Demo accepted and UAT verified from one exact-six release; recent readiness repairs are merged, while dark-Production handover and owner inputs remain open |
-| **WC-088** | Customer Multi-Agent And Skill Journey | Customer employment experience | ENGINEERING QUALIFIED · PR PENDING | WC-087 · PR #411 | Canonical My Experts list, relationship switching, governed skill decisions, and same-type multi-agent isolation proof |
+| **WC-089** | DMA Thin Vertical Slice And Agent Image Proof | Agent productization planning | OWNER-REVIEWED PLAN · SECURITY PASS · IMPLEMENTATION INPUTS OPEN · IMPLEMENTATION UNAUTHORIZED | WC-079 · WC-080 · WC-087 · WC-088 · ADR-035 · ADR-049 | Type-image/customer-instance concept and Profile → Research → Strategy plan complete; canonical ADR-049 audiences are fixed and Security passed, while implementation bindings remain open |
 
 ### Superseded Work Contracts
 
@@ -37,18 +37,24 @@ constitutional-repair record. Agents must select the record by title and Goal, n
 
 ---
 
-## Recent PR Reconciliation — 2026-08-23 Through 2026-09-02
+## Recent PR Reconciliation — 2026-08-23 Through 2026-09-10
 
 | Work Contract | Merged PRs in period | Reconciled delivery state |
 |---|---|---|
 | WC-071 | #367→#369 | Post-intake deployment automation, scoped RBAC preflight, and Web OpenSSL/scan repair; PR metadata cites WC-071, but these do not change its intake-and-planning completion boundary |
-| WC-076 | #339→#366, #370→#372, #389→#391, #393→#398 | GOAL-006 Demo/UAT delivery, workflow consolidation follow-up, dependency recovery, runtime readiness, and verification repairs; PR #371 (`7211eb8`) remains the accepted Demo/UAT baseline and Production remains unauthorized |
+| WC-076 | #339→#366, #370→#372, #389→#391, #393→#398 | GOAL-006 Demo/UAT delivery, workflow consolidation follow-up, dependency recovery, runtime readiness, and verification repairs; PR #371 (`7211eb8`) remains the accepted Demo/UAT baseline, P3-EX11 handover remains pending, and Production remains unauthorized |
 | WC-077 | #373 (`9b3163d`) | Shared Identity Foundation implementation merged; provider activation and cloud execution remain separately gated |
-| WC-078 | #374, #375, #376 (`e20539b`) | Public Acquisition Experience plan, architecture repair, and implementation merged, including public routes, configurable content/theme, localization/RTL, SEO, consent-governed acquisition, and qualification assets |
+| WC-078 | #374→#376, #399→#403 (`0b82611`) | Public Acquisition Experience plan, architecture repair, implementation, visual requirements, agent spotlight, and public-shell polish merged, including public routes, configurable content/theme, localization/RTL, SEO, consent-governed acquisition, and qualification assets |
 | WC-079 | #377→#379, #381 (`4e2f73e`) | Agent Admission Contract plan repairs, AEEC foundation acceptance, and implementation merged |
 | WC-080 | #382→#384, #386 (`86c5714`) | Agent Runtime Adapter plan, owner-contract repairs, and implementation merged |
 | WC-081 | #388 (`72123e5`) | Lightweight cloud workflow consolidation merged; exact-six promotion remains preserved and Production activation remains out of scope |
 | WC-082 | #392 (`15bef3f`) | IB-031 QA Promotion and Continuous Quality Maturity backlog grooming merged; implementation remains unauthorized |
+| WC-083 | #404 (`99d42da`) | Route-backed authentication dialog merged with return-to preservation, accessible dialog behavior, and fail-closed authentication entry points |
+| WC-084 | #405→#407 (`3496d11`) | Auth readiness plan, customer-portal handoff, and implementation merged, establishing the authenticated customer portal and canonical relationship-backed workspace |
+| WC-085 | #408→#409 (`44afa9f`) | WC-084 remediation and evidence closure merged, repairing qualification, integration, and CI-readiness gaps |
+| WC-086 | #410 (`7c52238`) | Demo RBAC propagation retry merged, making bounded role-assignment propagation reliable without weakening authorization checks |
+| WC-087 | #411→#412 (`0883d21`) | Immutable agent-instance and multi-agent foundation merged with exact admission/version binding, same-type instance isolation, and Demo identity-reader secret seeding |
+| WC-088 | #413 (`9228c09`) | Customer Multi-Agent and Skill Journey merged with canonical My Experts, relationship switching, governed Skill decisions, and cross-agent isolation proof |
 
 PRs are grouped by the Work Contract references in their bodies. A merged planning PR proves delivery
 of the plan, not completion of future implementation tasks; rows above call implementation complete
@@ -126,7 +132,12 @@ only where an implementation PR merged.
 | WC-080 | Agent Runtime Adapter Contract v1 | Platform IT Expert | 1.45.0 | Runtime adapter contract, two-professional conformance path, qualification, and implementation delivered; PR #386 merged as `86c5714` |
 | WC-081 | Foundation Environment Promotion And Freeze | Platform IT Expert | 1.45.0 | Lightweight workflow consolidation and strategy alignment merged in PR #388 as `72123e5`; preserved Demo/UAT evidence and dark-Production boundary |
 | WC-082 | QA Maturity Backlog Grooming | Platform IT Expert | 1.45.0 | IB-031 groomed for Web/E2E assets, operational Gate 2, Gate 3 product qualification, and continuous quality improvement; PR #392 merged as `15bef3f`; implementation unauthorized |
+| WC-083 | Route-Backed Authentication Dialog | Platform IT Expert | 1.45.0 | Route-backed sign-in dialog, return-to preservation, accessible interaction, and fail-closed auth entry points; PR #404 merged as `99d42da` |
+| WC-084 | Auth Readiness And Customer Portal | Platform IT Expert | 1.45.0 | Auth-readiness plan, customer-portal handoff, and authenticated relationship workspace implementation; PRs #405→#407 merged through `3496d11` |
+| WC-085 | WC-084 Remediation And Evidence Closure | Platform IT Expert | 1.45.0 | Customer-portal qualification, integration, and CI-readiness gaps remediated; PRs #408→#409 merged through `44afa9f` |
+| WC-086 | Demo RBAC Propagation Retry | Platform IT Expert | 1.45.0 | Bounded Demo role-assignment propagation retry with authorization integrity preserved; PR #410 merged as `7c52238` |
 | WC-087 | Agent Instance And Multi-Agent Foundation | Platform IT Expert | 1.45.0 | Immutable agent-instance identity, active admission/version binding, same-type multi-instance proof and PR trial binding merged through PR #411 as `28f3e5e4` |
+| WC-088 | Customer Multi-Agent And Skill Journey | Platform IT Expert | 1.45.0 | Canonical My Experts, relationship navigation, governed Skill decisions, and distinct same-type agent state; PR #413 merged as `9228c09` |
 
 ---
 
@@ -148,7 +159,7 @@ only where an implementation PR merged.
 | L2 Trust | Provider Registry, oauth-vault, CTG, Token Refresh | ✅ 100% DONE | WC-037→039 |
 | L3 Business | WBE S1–S8 implemented and tested; AIR/BP end-to-end integration remains partial | ~90% repository evidence | WC-025→033, WC-042→043 |
 | L4 Skill Architecture | Skill Catalog, Skill Runtime, Intent Crystallizer | ✅ 100% DONE | WC-040→041 |
-| L5 Interface | Hybrid application, employment journey, shared identity, and public acquisition | Released customer scope and public acquisition implemented; provider/cloud activation remains gated | WC-034 and WC-057→062; WC-077 shared identity; WC-078 public acquisition; WC-064→069 commercial governance remains separately gated |
-| L6 Agent Admission And Runtime | Versioned admission contract and professional runtime adapters | Admission and adapter v1 implementations merged; activation and environment readiness remain independent gates | WC-079→080 |
+| L5 Interface | Hybrid application, employment journey, shared identity, public acquisition, authentication, and customer portal | Public and authenticated customer journeys now reach canonical relationship workspaces; provider/cloud activation and commercial governance remain separately gated | WC-034 and WC-057→062; WC-077→078; WC-083→085; WC-064→069 commercial governance remains separately gated |
+| L6 Agent Admission And Runtime | Versioned admission, runtime adapters, immutable instances, multi-agent navigation, governed Skill decisions, and DMA productization planning | Admission, adapter, agent-instance, and customer multi-agent foundations are merged; WC-089 is owner-reviewed but blocked before implementation | WC-079→080; WC-087→089 |
 | L7 Cloud Delivery | Offline release foundation, Demo/UAT promotion, workflow consolidation, dark-Production handover | Phase 2, Demo, and UAT complete; P3-EX11 handover pending; Production apply and activation prohibited | WC-071→074; active WC-076; WC-081 consolidation |
 | L8 Quality Evolution | QA institution planning and promotion maturity backlog | Goal intake and groomed backlog complete; QA institution activation and IB-031 implementation unauthorized | WC-075; WC-082 |
