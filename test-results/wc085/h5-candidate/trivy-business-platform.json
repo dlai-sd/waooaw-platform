@@ -1,6 +1,6 @@
 {
   "SchemaVersion": 2,
-  "CreatedAt": "2026-09-10T00:44:00.697919459Z",
+  "CreatedAt": "2026-09-10T01:14:15.068846836Z",
   "ArtifactName": "wc085-business-platform:h5-local",
   "ArtifactType": "container_image",
   "Metadata": {
@@ -9,7 +9,7 @@
       "Family": "debian",
       "Name": "12.15"
     },
-    "ImageID": "sha256:14fe700d36f610dba1e7041a16c52ace17b99bca5e4ebe052fac4b6166a99f30",
+    "ImageID": "sha256:90327740e3709792348a4c5b6cd4e03a5862eda9bc38556cb5b9a3a5f9521124",
     "DiffIDs": [
       "sha256:1d69a5fd31932841d7825ef4780c06f008eea65aaa9f3110fe09d5832ed5c7d8",
       "sha256:c5d4cdcb536f1e85f73d762e8c47b4d76219996c8a2e10cf26cb44556032d2ab",
@@ -19,17 +19,17 @@
       "sha256:0e0f242ed77f3aea1ef1ac8ce0ff38825d065cbf5437face783131f90001495c",
       "sha256:86d2706f65b186a5aa3f6fe324123466e9bf07687feed18e993e93f2b283fe30",
       "sha256:152264fa0f3b448cc8e7b08c08555e4fb35195e5c41c06e4bdafa38c453f630d",
-      "sha256:5fed6b596237c31f8bf00a5c48ad786c737de563efdbaa9866384bf2e9680767"
+      "sha256:50ad40b5fcb1044f4aa62bb394f858dbc26822c13c15d56d5e14230ac6de0e9e"
     ],
     "RepoTags": [
       "wc085-business-platform:h5-local"
     ],
     "RepoDigests": [
-      "wc085-business-platform@sha256:14fe700d36f610dba1e7041a16c52ace17b99bca5e4ebe052fac4b6166a99f30"
+      "wc085-business-platform@sha256:90327740e3709792348a4c5b6cd4e03a5862eda9bc38556cb5b9a3a5f9521124"
     ],
     "ImageConfig": {
       "architecture": "amd64",
-      "created": "2026-09-10T00:40:54.604223083Z",
+      "created": "2026-09-10T01:13:50.906515584Z",
       "history": [
         {
           "created": "2026-08-24T00:00:00Z",
@@ -90,24 +90,24 @@
           "comment": "buildkit.dockerfile.v0"
         },
         {
-          "created": "2026-09-10T00:40:54Z",
+          "created": "2026-09-10T01:13:50Z",
           "created_by": "COPY --chown=waooaw:waooaw /app/publish . # buildkit",
           "comment": "buildkit.dockerfile.v0"
         },
         {
-          "created": "2026-09-10T00:40:54Z",
+          "created": "2026-09-10T01:13:50Z",
           "created_by": "USER waooaw",
           "comment": "buildkit.dockerfile.v0",
           "empty_layer": true
         },
         {
-          "created": "2026-09-10T00:40:54Z",
+          "created": "2026-09-10T01:13:50Z",
           "created_by": "EXPOSE [5001/tcp]",
           "comment": "buildkit.dockerfile.v0",
           "empty_layer": true
         },
         {
-          "created": "2026-09-10T00:40:54Z",
+          "created": "2026-09-10T01:13:50Z",
           "created_by": "ENTRYPOINT [\"dotnet\" \"BusinessPlatform.dll\"]",
           "comment": "buildkit.dockerfile.v0",
           "empty_layer": true
@@ -125,7 +125,7 @@
           "sha256:0e0f242ed77f3aea1ef1ac8ce0ff38825d065cbf5437face783131f90001495c",
           "sha256:86d2706f65b186a5aa3f6fe324123466e9bf07687feed18e993e93f2b283fe30",
           "sha256:152264fa0f3b448cc8e7b08c08555e4fb35195e5c41c06e4bdafa38c453f630d",
-          "sha256:5fed6b596237c31f8bf00a5c48ad786c737de563efdbaa9866384bf2e9680767"
+          "sha256:50ad40b5fcb1044f4aa62bb394f858dbc26822c13c15d56d5e14230ac6de0e9e"
         ]
       },
       "config": {
@@ -191,8 +191,8 @@
       },
       {
         "Size": 75567104,
-        "Digest": "sha256:39542011a10135e4e7b1007f1b86a0616215274b50f728ec92032c60f1933017",
-        "DiffID": "sha256:5fed6b596237c31f8bf00a5c48ad786c737de563efdbaa9866384bf2e9680767"
+        "Digest": "sha256:c0104b6a4b8a1dd2cf0d3f88e586e6dc432608855a332b21c826b2fded47ce8a",
+        "DiffID": "sha256:50ad40b5fcb1044f4aa62bb394f858dbc26822c13c15d56d5e14230ac6de0e9e"
       }
     ]
   },

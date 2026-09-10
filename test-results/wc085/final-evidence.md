@@ -316,7 +316,7 @@ resolution and fail-closed exception boundary.
 | Web TypeScript and lint | `tsc --noEmit --incremental false` PASS; Next lint PASS with no warnings/errors |
 | Python identity-foundation and pipeline suites | 1,312 PASS, 1 expected Docker-reconstruction-only skip |
 | Generated API client | Pinned generator completed in an isolated worktree; zero diff under `web/lib/api/generated` |
-| Fresh candidate image builds | BP `sha256:14fe700d36f610dba1e7041a16c52ace17b99bca5e4ebe052fac4b6166a99f30`; web `sha256:87a78760c18fab8ecea27e1cfe47872421c5fc0405a39ff92b2f13ddbaa0c442`; both run as `waooaw` |
+| Fresh candidate image builds | BP `sha256:90327740e3709792348a4c5b6cd4e03a5862eda9bc38556cb5b9a3a5f9521124`; web `sha256:87a78760c18fab8ecea27e1cfe47872421c5fc0405a39ff92b2f13ddbaa0c442`; both run as `waooaw` |
 | Syft v1.27.1 CycloneDX SBOM | PASS for both candidate images; reports under `h5-candidate/` |
 | Trivy 0.66.0 | PASS for both images with zero fixed HIGH/CRITICAL findings using `--ignore-unfixed` |
 | Gitleaks v8.28.0 | PASS, zero redacted findings in the candidate commit range from merge-base `79ec8065ad448cb418551034366091693b7b316c` |
@@ -324,11 +324,32 @@ resolution and fail-closed exception boundary.
 Evidence SHA-256:
 
 - `gitleaks-diff.json`: `37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570`
-- `sbom-business-platform.json`: `1c888b55c2011068b86148e3100e68efb6e8247eeb2801d327066b6c2e4f82dc`
+- `sbom-business-platform.json`: `169b95d75465c53610fbd2849318795399d82a3eccc997d7391a8880bba18292`
 - `sbom-web.json`: `f60d4d9e13eb64acc6f946694adc27a51ba0bc868f6519127aba7cc1d654d89c`
-- `trivy-business-platform.json`: `f23205741f21f9952c293606d910297aab29931b2c73e9109d7a463cf7a4b77f`
+- `trivy-business-platform.json`: `db76beb7c7c757c7bfdd02809c37ee7014e4212997c193046fa7c3fba85572f8`
 - `trivy-web.json`: `d0e10f60ff992b5ec59ce2ac93b219f7f28e2ec0b3f971008070623bfdfd8ba6`
 
 The local test runner was rebuilt after requested stale-image cleanup as
 `sha256:e2dab704f4a9c0a89dcc9c02f0ddf0863c9c10d61118d08a955b4d00209d3dfb`.
 No cloud operation, provider interaction, deployment, merge or activation occurred.
+
+### Post-H5 Precheck Repairs And Founder Directions - 2026-09-10
+
+- The exact clean-clone Business Platform CI matrix passes 633/633 tests, 91.47% line coverage and
+	80.17% branch coverage. The full-schema fixture now copies the init directory through the
+	Testcontainers API instead of asking the host daemon to bind the runner-local `/workspace` path.
+- The synthetic Azure/Google TLS fixture requires TLS 1.2 or newer. Its full local Azure verification
+	harness passes, including the expected Google redirect; this remains synthetic evidence.
+- The relationship service retains the accepted opaque account GUID as the participant key under
+	tenant RLS. A method-scoped CodeQL annotation documents why this required relational identifier is
+	not secret material and must not be transformed into a different key.
+- The Founder authorized H6 Google-only Demo qualification. Execution remains ordered after Founder
+	merge and successful exact-current-`main` release; this authorization does not permit a branch
+	deployment, DNS/UAT/Production change, or bypass of the two-identity isolation checks.
+- The Founder authorized H7 auth/browser regression. The reported Chrome defect still needs its URL,
+	Chrome/OS version, viewport/zoom, exact reproduction steps and screenshot or recording before a
+	CSS repair or visual acceptance can be claimed.
+- H8 remains pending one explicit owner-contract decision at a time: D-GOAL, D-BILLING or D-IDENTITY
+	must be recorded as `ACCEPTED`, `CHANGES_REQUIRED` or `DEFERRED` before dependent implementation.
+- The Founder directed H9 Facebook/email work to remain deferred. Neither provider is activated or
+	represented as accepted.

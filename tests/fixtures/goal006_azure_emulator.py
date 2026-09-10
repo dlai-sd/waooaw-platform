@@ -282,6 +282,7 @@ def main() -> None:
     if os.environ.get("GOOGLE_FIXTURE_TLS") == "true":
         broker = ThreadingHTTPServer(("0.0.0.0", 443), AzureHandler)
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
         context.load_cert_chain(EVIDENCE_DIR / "fixture.crt", EVIDENCE_DIR / "fixture.key")
         broker.socket = context.wrap_socket(broker.socket, server_side=True)
         threading.Thread(target=broker.serve_forever, daemon=True).start()

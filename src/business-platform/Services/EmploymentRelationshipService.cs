@@ -64,6 +64,10 @@ public sealed class EmploymentRelationshipService
         _logger = logger;
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Security",
+        "cs/cleartext-storage-sensitive-data",
+        Justification = "Opaque account GUIDs are required relationship participant keys and are protected by tenant RLS.")]
     public async Task<AdmitRelationshipResult> AdmitAsync(
         Guid tenantId,
         Guid participantId,
