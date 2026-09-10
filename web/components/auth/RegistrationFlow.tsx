@@ -16,7 +16,7 @@ type Draft = { displayName: string; businessName: string; businessDomain: string
 type Command = Record<string, string> & { action: string };
 const draftKey = 'waooaw:identity:registration-draft';
 
-export function RegistrationFlow({ locale, messages }: { locale: SupportedLocale; messages: IdentityMessages }) {
+export function RegistrationFlow({ locale, messages, returnTo = '/home' }: { locale: SupportedLocale; messages: IdentityMessages; returnTo?: string }) {
   const router = useRouter();
   const [registration, setRegistration] = useState<IdentityRegistration>();
   const [challenge, setChallenge] = useState<IdentityVerificationChallenge>();
@@ -51,7 +51,7 @@ export function RegistrationFlow({ locale, messages }: { locale: SupportedLocale
       if ((commandBody.action === 'start' || commandBody.action === 'complete') && body?.handoffConfirmed === true) {
         keys.current.delete(commandBody.action);
         sessionStorage.removeItem(draftKey);
-        router.replace('/home');
+        router.replace(returnTo);
         router.refresh();
         return;
       }

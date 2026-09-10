@@ -112,8 +112,8 @@ describe('F2 registration flow', () => {
   it('dispatches a server-confirmed returning session', async () => {
     sessionStorage.setItem(draftKey, '{"displayName":"Asha"}');
     global.fetch = jest.fn(() => jsonResponse({ handoffConfirmed: true }));
-    render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} />);
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('/home'));
+    render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} returnTo="/settings" />);
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/settings'));
     expect(sessionStorage.getItem(draftKey)).toBeNull();
     expect(fetch).toHaveBeenCalledTimes(1);
   });

@@ -202,6 +202,39 @@ public sealed class IdentityProviderProjectionTests
     }
 
     [Fact]
+    public void F2_GetProviders_UnconfiguredGoogleJourneyDoesNotDisableOtherProviders()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var projection = new IdentityProviderProjectionService(Options.Create(new IdentityEnvironmentOptions
+        {
+            Providers =
+            [
+                new() { Id = "GOOGLE", DisplayName = "Google", AuthenticationPath = "GOOGLE", Enabled = true },
+                new() { Id = "EMAIL", DisplayName = "Email", AuthenticationPath = "CREDENTIAL", Enabled = true },
+            ],
+        }));
+        var journey = new CustomerIdentityJourneyService(
+            IdentityTestHelpers.CreateService(factory),
+            factory,
+            new GoogleWorkspaceProofAdapter(new HttpClient(), Options.Create(new IdentityBrokerReadOptions())),
+            projection);
+        var controller = new IdentityController(
+            IdentityTestHelpers.CreateService(factory),
+            projection,
+            NullLogger<IdentityController>.Instance,
+            journey)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() },
+        };
+
+        var result = Assert.IsType<OkObjectResult>(controller.GetProviders());
+        var providers = Assert.IsType<IdentityProviderCollectionResponse>(result.Value).Providers;
+
+        Assert.Equal("UNAVAILABLE", providers.Single(provider => provider.Id == "GOOGLE").Availability);
+        Assert.Equal("AVAILABLE", providers.Single(provider => provider.Id == "EMAIL").Availability);
+    }
+
+    [Fact]
     public void F2_IdentityEnvironmentValidator_RejectsEnabledProviderWithoutReadinessEvidence()
     {
         var options = new IdentityEnvironmentOptions

@@ -362,7 +362,7 @@ public sealed class IdentityController(
         Response.Headers.CacheControl = "no-store";
         var providers = providerProjectionService.GetProviders();
         if (customerJourney is not null)
-            providers = providers.Select(provider => provider.Id == "GOOGLE" && customerJourney.IsAvailable
+            providers = providers.Select(provider => provider.Id != "GOOGLE" || customerJourney.IsAvailable
                 ? provider : provider with { Availability = "UNAVAILABLE", UnavailableReason = "NOT_CONFIGURED" }).ToArray();
         return Ok(new IdentityProviderCollectionResponse(providers));
     }

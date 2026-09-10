@@ -204,6 +204,13 @@ def test_internal_verification_uses_the_identity_edge() -> None:
     assert "local.service_urls.keycloak" not in verification_job
 
 
+def test_web_uses_canonical_https_business_platform_origin() -> None:
+    contract = read_contract("modules/workload/main.tf")
+
+    assert 'business_platform_web = "https://ca-${var.environment}-business-platform.' in contract
+    assert "BUSINESS_PLATFORM_URL = local.service_urls.business_platform_web" in contract
+
+
 def test_demo_temporal_lifecycle_and_member_readiness_are_fail_closed() -> None:
     contract = read_contract("modules/workload/main.tf")
     temporal = contract.split('resource "azurerm_container_app" "temporal"', 1)[1].split(
