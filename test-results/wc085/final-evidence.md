@@ -289,6 +289,25 @@ pre-PR lifecycle result are bound in draft #409's prepared Author Review and run
 No new feature-test counts are claimed by parking. Generated web logs/TypeScript build cache are not
 release evidence and are excluded from the commit. No real Google, cloud, deployment or merge action.
 
+## PR #409 CodeQL Precheck Remediation - 2026-09-10
+
+The separate GitHub CodeQL gate reported 19 new alerts at D-GOAL head `d4716f91727c10cf322f7d85ed7989e9945b9ce3`:
+one high-severity cleartext-storage path, 12 warnings and six notes. The high finding was rooted in an
+account-derived participant identifier included in the concurrent-admission structured log; that
+identifier was removed from the log event while tenant and evaluation-intent correlation remain.
+
+The remaining findings were repaired without public-contract or persistence changes: test-owned HTTP
+clients/factories now have explicit lifetimes, the synthetic handler transfers response ownership
+through a returning helper, the storage-event fixture preserves jsdom semantics without an invalid
+constructor shape, path resolution uses rooted `GetFullPath` overloads, and immediate mappings use
+LINQ. OpenAPI Generator's two unused D-GOAL imports are removed by a fail-closed normalization step
+that aborts if generator usage changes; regeneration changed only those two expected model files.
+
+Docker validation after repair: Business Platform build passed with warnings as errors; 77 focused
+relationship/identity tests passed with zero failures/skips; generated-client and registration Jest
+suites passed 21/21; TypeScript passed. GitHub CodeQL remains the authoritative closure check after
+the repair commit is pushed. D-BILLING and D-IDENTITY remain pending; H9 remains Founder-deferred.
+
 Parking validation: Docker handover consistency check passed (31 exact path anchors, all 26 stories,
 H1-H9, checkpoint below 200 lines and Java removal); editor diagnostics and `git diff --check` passed.
 Docker Gitleaks v8.28.0 scanned the candidate diff against `origin/main` (approximately 1.26 MB) with

@@ -41,7 +41,8 @@ public sealed class GoogleWorkspaceProofAdapterTests
     public async Task Read_ExactStockRequests_PreservesOpaqueProviderSubject()
     {
         var handler = new SyntheticKeycloakHandler();
-        var adapter = new GoogleWorkspaceProofAdapter(new HttpClient(handler), Options.Create(Configuration()));
+        using var client = new HttpClient(handler);
+        var adapter = new GoogleWorkspaceProofAdapter(client, Options.Create(Configuration()));
         var proof = await adapter.ReadAsync(Principal(), default);
         Assert.Equal("Google-Opaque-synthetic-actor", proof.ProviderSubject);
         Assert.Equal(Configuration().ProviderNamespace, proof.ProviderIssuer);
@@ -68,7 +69,8 @@ public sealed class GoogleWorkspaceProofAdapterTests
             ProviderNamespace = "urn:waooaw:identity:demo:google:customer-login:v1",
             TrustConfigDigest = new string('b', 64),
         };
-        var adapter = new GoogleWorkspaceProofAdapter(new HttpClient(), Options.Create(configuration));
+        using var client = new HttpClient();
+        var adapter = new GoogleWorkspaceProofAdapter(client, Options.Create(configuration));
 
         var proof = await adapter.ReadAsync(Principal(actorSubject, configuration.ActorIssuer), default);
 
@@ -93,7 +95,8 @@ public sealed class GoogleWorkspaceProofAdapterTests
         identity.RemoveClaim(identity.FindFirst(claimType));
         identity.AddClaim(new Claim(claimType, value));
         var handler = new SyntheticKeycloakHandler();
-        var adapter = new GoogleWorkspaceProofAdapter(new HttpClient(handler), Options.Create(Configuration()));
+        using var client = new HttpClient(handler);
+        var adapter = new GoogleWorkspaceProofAdapter(client, Options.Create(Configuration()));
         await Assert.ThrowsAnyAsync<Exception>(() => adapter.ReadAsync(principal, default));
         Assert.Empty(handler.Requests);
     }
@@ -106,7 +109,8 @@ public sealed class GoogleWorkspaceProofAdapterTests
     public async Task Read_DependencyFailure_IsUnavailableWithoutEscalation(int status)
     {
         var handler = new SyntheticKeycloakHandler { Status = (HttpStatusCode)status };
-        var adapter = new GoogleWorkspaceProofAdapter(new HttpClient(handler), Options.Create(Configuration()));
+        using var client = new HttpClient(handler);
+        var adapter = new GoogleWorkspaceProofAdapter(client, Options.Create(Configuration()));
         var failure = await Assert.ThrowsAsync<CustomerWorkspaceException>(() => adapter.ReadAsync(Principal(), default));
         Assert.Equal(503, failure.StatusCode);
         Assert.Single(handler.Requests);
@@ -115,8 +119,8 @@ public sealed class GoogleWorkspaceProofAdapterTests
     [Fact]
     public void AbsentConfiguration_IsUnavailable()
     {
-        var adapter = new GoogleWorkspaceProofAdapter(new HttpClient(new SyntheticKeycloakHandler()),
-            Options.Create(new IdentityBrokerReadOptions()));
+        using var client = new HttpClient(new SyntheticKeycloakHandler());
+        var adapter = new GoogleWorkspaceProofAdapter(client, Options.Create(new IdentityBrokerReadOptions()));
         Assert.Equal(503, Assert.Throws<CustomerWorkspaceException>(() => adapter.ValidateActor(Principal())).StatusCode);
     }
 
@@ -130,7 +134,8 @@ public sealed class GoogleWorkspaceProofAdapterTests
     public async Task Read_MissingAmbiguousOrMalformedBinding_Denies(string body)
     {
         var handler = new SyntheticKeycloakHandler { BindingResponse = body };
-        var adapter = new GoogleWorkspaceProofAdapter(new HttpClient(handler), Options.Create(Configuration()));
+        using var client = new HttpClient(handler);
+        var adapter = new GoogleWorkspaceProofAdapter(client, Options.Create(Configuration()));
         var failure = await Record.ExceptionAsync(() => adapter.ReadAsync(Principal(), default));
         Assert.True(failure is IdentityActionDeniedException or CustomerWorkspaceException);
         Assert.Equal(3, handler.Requests.Count);
@@ -140,7 +145,8 @@ public sealed class GoogleWorkspaceProofAdapterTests
     public async Task Read_OversizedBody_IsBoundedUnavailable()
     {
         var handler = new SyntheticKeycloakHandler { BindingResponse = new string(' ', 16385) };
-        var adapter = new GoogleWorkspaceProofAdapter(new HttpClient(handler), Options.Create(Configuration()));
+        using var client = new HttpClient(handler);
+        var adapter = new GoogleWorkspaceProofAdapter(client, Options.Create(Configuration()));
         Assert.Equal(503, (await Assert.ThrowsAsync<CustomerWorkspaceException>(() => adapter.ReadAsync(Principal(), default))).StatusCode);
     }
 
@@ -150,7 +156,8 @@ public sealed class GoogleWorkspaceProofAdapterTests
         var principal = Principal();
         ((ClaimsIdentity)principal.Identity!).AddClaim(new Claim("sub", "other-actor"));
         var handler = new SyntheticKeycloakHandler();
-        var adapter = new GoogleWorkspaceProofAdapter(new HttpClient(handler), Options.Create(Configuration()));
+        using var client = new HttpClient(handler);
+        var adapter = new GoogleWorkspaceProofAdapter(client, Options.Create(Configuration()));
         await Assert.ThrowsAsync<IdentityActionDeniedException>(() => adapter.ReadAsync(principal, default));
         Assert.Empty(handler.Requests);
     }

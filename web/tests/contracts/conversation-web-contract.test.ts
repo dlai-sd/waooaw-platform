@@ -21,6 +21,8 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
     const identity = readFileSync(join(root, 'lib/api/generated/apis/IdentityApi.ts'), 'utf8');
     const employment = readFileSync(join(root, 'lib/api/generated/apis/EmploymentApi.ts'), 'utf8');
     const workspace = readFileSync(join(root, 'lib/api/generated/apis/RelationshipWorkspaceApi.ts'), 'utf8');
+    const relationshipPayload = readFileSync(join(root, 'lib/api/generated/models/RelationshipTypedCommandPayloadV1.ts'), 'utf8');
+    const verifyGoalPayload = readFileSync(join(root, 'lib/api/generated/models/VerifyGoalPayloadV1.ts'), 'utf8');
     const voice = readFileSync(join(root, 'lib/api/generated/apis/VoiceContributionsApi.ts'), 'utf8');
     const notifications = readFileSync(join(root, 'lib/api/generated/apis/NotificationsApi.ts'), 'utf8');
     const professionals = readFileSync(join(root, 'lib/api/generated/apis/ProfessionalsApi.ts'), 'utf8');
@@ -43,6 +45,7 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
     expect(script).toContain('--schema RelationshipTimelineEntry');
     expect(script).toContain('--input-spec "$CONTAINER_SLICE_PATH"');
     expect(script).toContain('hideGenerationTimestamp=true');
+    expect(script).toContain('node scripts/normalize-generated-api.mjs');
     expect(script).toContain('pnpm exec prettier --write lib/api/generated');
     expect(script).not.toContain('--skip-validate-spec');
     expect(generatedApis).toEqual(['BillingApi.ts', 'ConfigurationApi.ts', 'ConversationApi.ts', 'EmploymentApi.ts', 'IdentityApi.ts', 'NotificationsApi.ts', 'ProfessionalsApi.ts', 'RelationshipWorkspaceApi.ts', 'VoiceContributionsApi.ts', 'index.ts']);
@@ -81,6 +84,8 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
       'requestRelationshipEvidenceExport', 'getRelationshipEvidenceExport',
     ]) expect(workspace).toContain(`async ${operation}(`);
     expect(workspace).toContain('The version of the OpenAPI document: 1.9.0');
+    expect(relationshipPayload).not.toMatch(/\b(instanceOfVerifyGoalPayloadV1|VerifyGoalPayloadV1FromJSON),/);
+    expect(verifyGoalPayload).not.toContain('import { mapValues } from "../runtime";');
     for (const operation of [
       'createVoiceContributionSession', 'getVoiceContributionSession',
       'uploadVoiceContributionAudio', 'getVoiceContributionTranscript',

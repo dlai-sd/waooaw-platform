@@ -30,6 +30,7 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
     private readonly RSA _signer = RSA.Create(2048);
     private readonly GoogleWorkspaceProofAdapterTests.SyntheticKeycloakHandler _broker = new();
     private readonly IdentityBrokerReadOptions _configuration = GoogleWorkspaceProofAdapterTests.Configuration();
+    private WebApplicationFactory<Program>? _baseFactory;
     private WebApplicationFactory<Program>? _factory;
     private HttpClient _client = null!;
     private SyntheticOidcHandler _oidc = null!;
@@ -84,6 +85,7 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
     {
         _client?.Dispose();
         if (_factory is not null) await _factory.DisposeAsync();
+        if (_baseFactory is not null) await _baseFactory.DisposeAsync();
         _signer.Dispose();
         await _postgres.DisposeAsync();
     }
@@ -122,7 +124,8 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
             settings["IdentityEnvironment:Providers:0:SecretReference"] = "kv://synthetic/google";
             settings["IdentityEnvironment:Providers:0:ReadinessEvidenceReference"] = "SYNTHETIC-PROGRAM-HOST-ONLY";
         }
-        _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        _baseFactory = new WebApplicationFactory<Program>();
+        _factory = _baseFactory.WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Production");
             foreach (var setting in settings) builder.UseSetting(setting.Key, setting.Value);
@@ -406,7 +409,10 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
                 body = new { keys = new[] { new { kty = "RSA", use = "sig", kid = "synthetic-program-key", alg = "RS256",
                     n = Base64UrlEncoder.Encode(key.Modulus!), e = Base64UrlEncoder.Encode(key.Exponent!) } } };
             }
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(body) });
+            return Task.FromResult(CreateResponse(body));
         }
+
+        private static HttpResponseMessage CreateResponse(object body) =>
+            new(HttpStatusCode.OK) { Content = JsonContent.Create(body) };
     }
 }

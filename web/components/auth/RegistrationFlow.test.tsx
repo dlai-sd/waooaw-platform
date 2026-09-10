@@ -173,11 +173,12 @@ describe('F2 registration flow', () => {
     const signal = jest.mocked(fetch).mock.calls[0][1]?.signal;
 
     act(() => {
-      window.dispatchEvent(new StorageEvent('storage', {
+      const event = new StorageEvent('storage', {
         key: 'waooaw:identity:session-change',
         newValue: '{"action":"SIGN_OUT","nonce":"other-tab"}',
-        storageArea: localStorage,
-      }));
+      });
+      Object.defineProperty(event, 'storageArea', { value: localStorage });
+      window.dispatchEvent(event);
     });
 
     expect(signal?.aborted).toBe(true);

@@ -36,6 +36,7 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests : IAsyncLifetime
     private readonly IdentityBrokerReadOptions _configuration = GoogleWorkspaceProofAdapterTests.Configuration();
     private WebApplication _app = null!;
     private HttpClient _client = null!;
+    private HttpClient _brokerClient = null!;
     private string AppConnection => new NpgsqlConnectionStringBuilder(_postgres.GetConnectionString())
     {
         Username = "business_app", Password = "synthetic-app-password", MaxPoolSize = 1,
@@ -92,7 +93,8 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests : IAsyncLifetime
                 Enabled = true, ReadinessEvidenceReference = "SYNTHETIC-TEST-ONLY" }],
         }));
         builder.Services.AddSingleton<IdentityProviderProjectionService>();
-        builder.Services.AddSingleton(new GoogleWorkspaceProofAdapter(new HttpClient(_broker), Options.Create(_configuration)));
+        _brokerClient = new HttpClient(_broker);
+        builder.Services.AddSingleton(new GoogleWorkspaceProofAdapter(_brokerClient, Options.Create(_configuration)));
         builder.Services.AddScoped<CustomerIdentityJourneyService>();
         _app = builder.Build();
         _app.UseRouting();
@@ -110,6 +112,7 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests : IAsyncLifetime
     {
         _client?.Dispose();
         if (_app is not null) await _app.DisposeAsync();
+        _brokerClient?.Dispose();
         _signer.Dispose();
         await _postgres.DisposeAsync();
     }

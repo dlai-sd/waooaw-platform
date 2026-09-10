@@ -64,10 +64,6 @@ public sealed class EmploymentRelationshipService
         _logger = logger;
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage(
-        "Security",
-        "cs/cleartext-storage-sensitive-data",
-        Justification = "Opaque account GUIDs are required relationship participant keys and are protected by tenant RLS.")]
     public async Task<AdmitRelationshipResult> AdmitAsync(
         Guid tenantId,
         Guid participantId,
@@ -149,9 +145,8 @@ public sealed class EmploymentRelationshipService
         {
             _logger.LogInformation(
                 exception,
-                "Concurrent first admission detected for tenant {TenantId}, participant {ParticipantId}, intent {EvaluationIntentId}",
+                "Concurrent first admission detected for tenant {TenantId}, intent {EvaluationIntentId}",
                 tenantId,
-                participantId,
                 evaluationIntentId);
 
             await using var replayDb = await _dbFactory.CreateDbContextAsync(cancellationToken);

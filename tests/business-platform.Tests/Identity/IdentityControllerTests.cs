@@ -275,9 +275,9 @@ public sealed class IdentityProviderProjectionTests
     public void F2_IdentityEnvironment_DemoOverlayClearsLocalProviderReadiness()
     {
         var manifestPath = Path.GetFullPath(EnvironmentManifestPath("demo"));
-        var root = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(manifestPath)!, "../../.."));
+        var root = Path.GetFullPath("../../..", Path.GetDirectoryName(manifestPath)!);
         var configuration = new ConfigurationBuilder()
-            .AddJsonFile(Path.Combine(root, "src/business-platform/appsettings.json"))
+            .AddJsonFile(Path.GetFullPath("src/business-platform/appsettings.json", root))
             .Build();
         using var manifest = JsonDocument.Parse(File.ReadAllText(manifestPath));
 

@@ -105,8 +105,6 @@ import {
 } from "./TerminateRelationshipPayloadV1";
 import type { VerifyGoalPayloadV1 } from "./VerifyGoalPayloadV1";
 import {
-  instanceOfVerifyGoalPayloadV1,
-  VerifyGoalPayloadV1FromJSON,
   VerifyGoalPayloadV1FromJSONTyped,
   VerifyGoalPayloadV1ToJSON,
 } from "./VerifyGoalPayloadV1";

@@ -225,11 +225,11 @@ public sealed class RelationshipWorkspaceControllerTests
                     goalVersion = version, verificationDecision = "VERIFIED", correctionReason = "Not allowed" } }),
         };
 
-        foreach (var payload in invalidPayloads)
+        foreach (var invalid in invalidPayloads.Select(async payload => Assert.IsType<ObjectResult>(
+                     await controller.SubmitCommandAsync(relationship.RelationshipId, payload,
+                         Guid.NewGuid().ToString("D"), CancellationToken.None))))
         {
-            var invalid = Assert.IsType<ObjectResult>(await controller.SubmitCommandAsync(
-                relationship.RelationshipId, payload, Guid.NewGuid().ToString("D"), CancellationToken.None));
-            Assert.Equal(400, invalid.StatusCode);
+            Assert.Equal(400, (await invalid).StatusCode);
         }
         foreach (var commandKind in new[] { "AMEND_GOAL", "REPLACE_GOAL" })
         {

@@ -105,13 +105,12 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
             || principal.HasClaim("idp", "google") || principal.IsInRole("customer")) return true;
         try
         {
-            foreach (var claim in principal.FindAll("realm_access"))
+            return principal.FindAll("realm_access").Select(claim =>
             {
                 using var realm = JsonDocument.Parse(claim.Value);
-                if (realm.RootElement.GetProperty("roles").EnumerateArray().Any(role => role.GetString() == "customer"))
-                    return true;
-            }
-            return false;
+                return realm.RootElement.GetProperty("roles").EnumerateArray()
+                    .Any(role => role.GetString() == "customer");
+            }).Any(isCustomer => isCustomer);
         }
         catch (Exception exception) when (exception is JsonException or KeyNotFoundException or InvalidOperationException)
         {
