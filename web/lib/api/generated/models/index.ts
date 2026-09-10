@@ -234,6 +234,7 @@ export * from "./UpdateCustomerProfileRequestV1";
 export * from "./UpdateCustomerSettingsRequestV1";
 export * from "./UpdatePhaseBundleRequest";
 export * from "./ValidateAgentAdmissionRequest";
+export * from "./VerifyGoalPayloadV1";
 export * from "./VoiceConfidenceBandV1";
 export * from "./VoiceContributionOutcomeV1";
 export * from "./VoiceContributionSessionV1";

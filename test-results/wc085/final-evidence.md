@@ -349,7 +349,45 @@ No cloud operation, provider interaction, deployment, merge or activation occurr
 - The Founder authorized H7 auth/browser regression. The reported Chrome defect still needs its URL,
 	Chrome/OS version, viewport/zoom, exact reproduction steps and screenshot or recording before a
 	CSS repair or visual acceptance can be claimed.
-- H8 remains pending one explicit owner-contract decision at a time: D-GOAL, D-BILLING or D-IDENTITY
-	must be recorded as `ACCEPTED`, `CHANGES_REQUIRED` or `DEFERRED` before dependent implementation.
+- H8 D-GOAL was Founder-accepted on 2026-09-10 and is locally implemented as recorded below.
+	D-BILLING and D-IDENTITY remain pending explicit decisions; neither dependent mutation was added.
 - The Founder directed H9 Facebook/email work to remain deferred. Neither provider is activated or
 	represented as accepted.
+
+### H8 D-GOAL Local Engineering Evidence - 2026-09-10
+
+Status: PASS for the accepted D-GOAL local engineering slice; SP-24 through SP-26 remain PARTIAL
+until immutable deployed-candidate and Founder acceptance gates run. No Billing or Identity command
+family, provider activation, cloud deployment, merge, or customer traffic is claimed.
+
+- Canonical `submitRelationshipCommand` now includes generated `VerifyGoalPayloadV1` with exact goal,
+	workspace and subject versions; conditional correction reason; actor-bound idempotency; and
+	database-authoritative Evaluator/Employer role plus `AAL3_FRESH` authentication age no greater
+	than five minutes.
+- `business.relationship_goal_decisions` stores append-only goal, skill, measure, cadence, actor,
+	version, command, evidence and predecessor lineage under forced tenant RLS. PostgreSQL advisory
+	locking ensures concurrent identical requests append one decision and call constitutional evidence
+	once. Divergent replay and stale versions fail closed.
+- Goal reads expose the current immutable version's decision. Operations becomes `ELIGIBLE` only
+	when every active goal's current version is verified; a changed goal version relocks it and marks
+	reassessment while preserving prior decision rows. `AMEND_GOAL` and `REPLACE_GOAL` remain blocked
+	and cannot verify.
+
+| Docker check | Result |
+|---|---|
+| Focused controller/configuration boundary | 29 PASS, then 21/21 and 18/18 after response/role refinements |
+| Migration 30 PostgreSQL | 2 PASS: append-only/RLS/decision constraint and concurrent idempotent single evidence call |
+| F4 canonical contract | 17 PASS, including exact 17-operation inventory and D-GOAL discriminator/version rules |
+| Full `business-platform.Tests` CI-equivalent suite | 641 PASS, 0 failed/skipped; 91.59% line and 80.17% branch coverage |
+| Generated API client | Pinned OpenAPI Generator 7.17.0 rerun produced identical tree hash `b63a8691bcf46823b3bddab3a682044d98dd5d5a0b0fb85515bb57729ab8828a` |
+| Web TypeScript | `tsc --noEmit --incremental false --pretty false` PASS |
+| BP candidate image | `sha256:3c7869532d69a17b602798ec93f509a4b272b78ff04e8cba8a80c70de57b886a`; runtime user `waooaw` |
+| Syft v1.27.1 CycloneDX SBOM | PASS; 3,848 components; `h8-dgoal/sbom-business-platform.json` |
+| Trivy v0.73.0 | PASS; zero fixed HIGH/CRITICAL findings with `--ignore-unfixed`; `h8-dgoal/trivy-business-platform.json` |
+| Gitleaks v8.28.0 | PASS; zero redacted findings from merge-base `79ec8065ad448cb418551034366091693b7b316c`; `h8-dgoal/gitleaks-diff.json` |
+
+Evidence SHA-256:
+
+- `gitleaks-diff.json`: `37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570`
+- `sbom-business-platform.json`: `febacec8910b8b74e0712eff42504a4f5da4058d3719fc45b2192bf3141de673`
+- `trivy-business-platform.json`: `a382a7de7467533660b7d52bd42fe9c6b8698476d8e40cd4f9024253e9a64332`

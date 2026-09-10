@@ -21,6 +21,9 @@ EXPECTED_OPS = {
     ("get", f"{REL_ROOT}/changes"): "getRelationshipWorkspaceChanges",
     ("get", f"{REL_ROOT}/plan"): "getRelationshipPlan",
     ("get", f"{REL_ROOT}/attention"): "getRelationshipAttention",
+    ("get", f"{REL_ROOT}/goals"): "getRelationshipGoals",
+    ("get", f"{REL_ROOT}/business-outcomes"): "getRelationshipBusinessOutcomes",
+    ("get", f"{REL_ROOT}/operations"): "getRelationshipOperations",
     ("get", f"{REL_ROOT}/work"): "getRelationshipWork",
     ("get", f"{REL_ROOT}/results"): "getRelationshipResults",
     ("get", f"{REL_ROOT}/usage-budget"): "getRelationshipUsageBudget",
@@ -179,7 +182,7 @@ def f4_slice(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
     return _load_yaml(out)
 
 
-def test_exact_fourteen_operation_inventory(f4_slice: dict[str, Any]) -> None:
+def test_exact_seventeen_operation_inventory(f4_slice: dict[str, Any]) -> None:
     found = {}
     for path, path_item in f4_slice["paths"].items():
         for method, op in path_item.items():
@@ -244,6 +247,36 @@ def test_discriminated_command_mapping_is_complete(f4_slice: dict[str, Any]) -> 
 
     submit = f4_slice["components"]["schemas"]["SubmitRelationshipCommandRequestV1"]
     assert submit.get("additionalProperties") is False
+
+
+def test_verify_goal_contract_is_version_bound_and_separate_from_goal_changes(
+    f4_slice: dict[str, Any],
+) -> None:
+    schemas = f4_slice["components"]["schemas"]
+    verify = schemas["VerifyGoalPayloadV1"]
+    assert verify["properties"]["commandKind"]["const"] == "VERIFY_GOAL"
+    assert verify["properties"]["verificationDecision"]["enum"] == [
+        "VERIFIED",
+        "CHANGES_REQUESTED",
+    ]
+    assert verify["required"] == [
+        "commandKind",
+        "goalId",
+        "goalVersion",
+        "verificationDecision",
+    ]
+    assert verify["allOf"][0]["then"]["required"] == ["correctionReason"]
+    assert verify["allOf"][1]["then"]["not"]["required"] == ["correctionReason"]
+
+    submit = schemas["SubmitRelationshipCommandRequestV1"]
+    assert set(submit["required"]) == {
+        "schemaVersion",
+        "expectedWorkspaceVersion",
+        "expectedSubjectVersion",
+        "payload",
+    }
+    for change_payload in ("AmendGoalPayloadV1", "ReplaceGoalPayloadV1"):
+        assert "verificationDecision" not in schemas[change_payload]["properties"]
 
 
 def test_forbidden_public_surface_absent_in_slice(f4_slice: dict[str, Any]) -> None:

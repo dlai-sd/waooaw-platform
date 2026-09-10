@@ -22,6 +22,7 @@ export const RelationshipCommandKindV1 = {
   DisputeResult: "DISPUTE_RESULT",
   AmendGoal: "AMEND_GOAL",
   ReplaceGoal: "REPLACE_GOAL",
+  VerifyGoal: "VERIFY_GOAL",
   ConfirmScopeBoundary: "CONFIRM_SCOPE_BOUNDARY",
   PauseRelationship: "PAUSE_RELATIONSHIP",
   ResumeRelationship: "RESUME_RELATIONSHIP",

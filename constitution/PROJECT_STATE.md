@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 140
-**Last Updated:** 2026-09-09 (WC-085 handover and safe-parking checkpoint)
+**State Revision:** 141
+**Last Updated:** 2026-09-10 (WC-085 D-GOAL local engineering checkpoint)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -39,7 +39,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Demo/runtime readiness repairs | MERGED - PRs #389 through #398 repaired cleanup provenance, cloud authority, dependency recovery, service startup, Temporal readiness and deployment verification |
 | WC-078 public visual experience | ENGINEERING QUALIFIED - WC-01 through WC-08 complete; WC-09 Docker build/tests/browser matrix/54 captures/scanners and author review PASS; Founder visual acceptance, PR approval and merge pending |
 | WC-084 Customer Portal | ENGINEERING QUALIFIED - generated-client-backed My Agents, Marketplace, Alerts, Profile, Settings, account drawer, Onboard/Induct and lifecycle views complete; Docker build/typecheck, 209 Jest tests, 96.33% changed-interaction line coverage, 40 focused BP tests and 238 Playwright tests pass; Founder visual acceptance, PR approval and merge remain |
-| WC-085 remediation | PARTIAL / HANDOVER - Founder narrowed work to handover, Java deletion and parking on ib/085/remediation / draft PR #409. Existing-stack local milestone: 203 backend tests plus 11 Program-host tests separately, 81 web tests and TypeScript pass; not final-release evidence. Stock Keycloak + C# database-backed membership replaces Java; unsupported customer routes deny. See WC-085 Section 18 and work-contracts/WC-085-handover.md for exact packages and gates. No real Google, deployment or full story acceptance; new-session implementation requires explicit authorization. |
+| WC-085 remediation | PARTIAL / D-GOAL LOCAL PASS - Draft PR #409 on `ib/085/remediation`. Founder-accepted D-GOAL is implemented through the existing relationship command: append-only RLS decisions, exact versions, fresh assurance, idempotency, generated client and Operations relock. Full BP Docker suite passes 641/641 at 91.59% line / 80.17% branch; exact candidate image and scans are recorded in WC-085 evidence. D-BILLING, D-IDENTITY, real Google, deployment and full story acceptance remain open. |
 | Production | PLAN ONLY - code-prepared; protected environments, authorized plan, traffic and final acceptance remain Founder-reserved |
 
 ### Checkpoint Context
@@ -65,10 +65,10 @@ P3-EX11 offline readiness remains blocked until INST-009 accepts the Production 
 recovery, cost and shared-state ownership inputs. Provider-backed planning also requires protected
 Production GitHub environments and exact current-session Founder authority.
 C-001 emergency-halt integration blocks Production apply and activation, which remain prohibited.
-WC-084 Operations eligibility remains blocked by the absent typed customer goal-verification command;
-Billing remains blocked by the absent customer-global WBE projection. Both surfaces fail honestly and
-do not block qualification of the implemented portal scope.
-WC-085 S1 formal owner acceptance, Google full manifest/runtime/UI reconciliation and real-account
+WC-084 Goal verification and Operations reassessment now pass local D-GOAL engineering gates; immutable
+deployed-candidate and Founder acceptance remain. Billing remains blocked by the absent accepted
+customer-global WBE projection, and D-IDENTITY remains undecided.
+WC-085 remaining owner acceptance, Google full manifest/runtime/UI reconciliation and real-account
 journeys, Facebook inputs, email delivery inputs, reported Chrome reproduction and Founder visual
 acceptance remain open. Local reconstruction is not provider acceptance or full WC-085 completion.
 WC-085 full-schema rehearsal, stock reader/private TLS, recreated identity continuity, independent
@@ -76,8 +76,8 @@ downstream membership and browser account-switch qualification remain open; CB-0
 
 ## Next Authorized Action
 
-For WC-085: finish authorized handover/parking only on draft PR #409; no new feature implementation.
-The next executor follows WC-085 Section 18 after current-session Founder authorization.
+For WC-085: finish the authorized D-GOAL PR #409 evidence/prechecks. D-BILLING and D-IDENTITY require
+separate explicit Founder decisions before implementation. H9 Facebook/email remains deferred.
 
 Obtain INST-009 acceptance of the Production edge, data, runtime, recovery, cost and shared-state
 ownership inputs required for P3-EX11 offline readiness. Do not activate the Production runner, run

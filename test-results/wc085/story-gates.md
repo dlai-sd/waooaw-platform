@@ -31,8 +31,8 @@ Executor: Platform IT Expert, INST-010. See `final-evidence.md` for commands and
 | SP-21 | NOT_RUN | Existing Emergency Stop unit tests pass in full Jest run; deployed cross-state SLA qualification absent | CE / INST-010 |
 | SP-22 | BLOCKED | Only auth-specific public CSS changed; no full frozen-route comparison or substantive Founder visual acceptance | Founder |
 | SP-23 | NOT_RUN | No candidate deployed two-minute onboarding and induction qualification | Product / BP / INST-010 |
-| SP-24 | BLOCKED | Typed Goal verification amendment awaits formal owner acceptance under S1 | BP / Professional Owners / INST-005 |
-| SP-25 | BLOCKED | Deployed outcome lineage depends on verified-goal contract and owner acceptance | Professional Owners / BP |
-| SP-26 | BLOCKED | Operations reassessment/unlock contract awaits S1 formal acceptance; no client inference added | BP / Professional Owners / INST-005 |
+| SP-24 | PARTIAL | D-GOAL Founder acceptance recorded; typed `VERIFY_GOAL`, exact versions, fresh assurance, idempotency, generated client and negative PostgreSQL/controller tests pass locally. Immutable deployed-candidate and Founder acceptance remain | BP / Professional Owners / INST-005 |
+| SP-25 | PARTIAL | Goal decision events preserve immutable goal/skill/measure/cadence, actor, evidence and predecessor lineage under forced tenant RLS. Deployed professional-outcome lineage and browser qualification remain | Professional Owners / BP |
+| SP-26 | PARTIAL | Operations locally unlocks only when every current active goal version is verified and relocks with reassessment after a version change; prior decisions remain append-only. Deployed affected-work/outcome and browser qualification remain | BP / Professional Owners / INST-005 |
 
 PARTIAL and NOT_RUN are not completion. The draft must not be merged or used as provider/release activation approval while these gates remain open.

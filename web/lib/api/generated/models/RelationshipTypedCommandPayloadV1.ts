@@ -103,6 +103,13 @@ import {
   TerminateRelationshipPayloadV1FromJSONTyped,
   TerminateRelationshipPayloadV1ToJSON,
 } from "./TerminateRelationshipPayloadV1";
+import type { VerifyGoalPayloadV1 } from "./VerifyGoalPayloadV1";
+import {
+  instanceOfVerifyGoalPayloadV1,
+  VerifyGoalPayloadV1FromJSON,
+  VerifyGoalPayloadV1FromJSONTyped,
+  VerifyGoalPayloadV1ToJSON,
+} from "./VerifyGoalPayloadV1";
 
 /**
  * @type RelationshipTypedCommandPayloadV1
@@ -124,9 +131,8 @@ export type RelationshipTypedCommandPayloadV1 =
       commandKind: "REQUEST_ALLOWANCE_ADDITION";
     } & RequestAllowanceAdditionPayloadV1)
   | ({ commandKind: "RESUME_RELATIONSHIP" } & ResumeRelationshipPayloadV1)
-  | ({
-      commandKind: "TERMINATE_RELATIONSHIP";
-    } & TerminateRelationshipPayloadV1);
+  | ({ commandKind: "TERMINATE_RELATIONSHIP" } & TerminateRelationshipPayloadV1)
+  | ({ commandKind: "VERIFY_GOAL" } & VerifyGoalPayloadV1);
 
 export function RelationshipTypedCommandPayloadV1FromJSON(
   json: any,
@@ -212,6 +218,10 @@ export function RelationshipTypedCommandPayloadV1FromJSONTyped(
         TerminateRelationshipPayloadV1FromJSONTyped(json, true),
         { commandKind: "TERMINATE_RELATIONSHIP" } as const,
       );
+    case "VERIFY_GOAL":
+      return Object.assign({}, VerifyGoalPayloadV1FromJSONTyped(json, true), {
+        commandKind: "VERIFY_GOAL",
+      } as const);
     default:
       return json;
   }
@@ -280,6 +290,10 @@ export function RelationshipTypedCommandPayloadV1ToJSONTyped(
     case "TERMINATE_RELATIONSHIP":
       return Object.assign({}, TerminateRelationshipPayloadV1ToJSON(value), {
         commandKind: "TERMINATE_RELATIONSHIP",
+      } as const);
+    case "VERIFY_GOAL":
+      return Object.assign({}, VerifyGoalPayloadV1ToJSON(value), {
+        commandKind: "VERIFY_GOAL",
       } as const);
     default:
       return value;

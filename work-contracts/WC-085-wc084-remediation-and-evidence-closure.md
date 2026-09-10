@@ -781,7 +781,8 @@ whose non-secret bindings are already recorded. Secrets never pass through chat 
 
 ## 17. Consolidated Outstanding Owner-Decision Packet
 
-**Status:** D-GOAL, D-BILLING, and D-IDENTITY remain PREPARED FOR DECISION, NOT ACCEPTED;
+**Status:** D-GOAL was ACCEPTED by the Founder on 2026-09-10; D-BILLING and D-IDENTITY remain
+PREPARED FOR DECISION, NOT ACCEPTED;
 D-TENANT has Founder-authorized scope as recorded in Sections 17.1-17.2, not completed enforcement
 or acceptance of an unspecified interface. No additional reviewer was invoked. Sections 6.1
 and 15 supply the proposed semantics and existing concurrences; this packet identifies only the
@@ -789,7 +790,7 @@ remaining formal owner acceptances. Approval to prepare it is not approval of th
 
 | Decision | Proposed contract to accept without reopening settled design | Required acceptance and closing check | Affected stories |
 |---|---|---|---|
-| D-GOAL | Section 6.1 `VerifyGoalPayloadV1` on `submitRelationshipCommand`, exact immutable goal version, both expected versions, idempotency, `AAL3_FRESH`, append-only decisions, and server-owned Operations reassessment after material amendment. `AMEND_GOAL` and `REPLACE_GOAL` do not verify. | BP/professional owners and INST-005 formally accept the component/OpenAPI amendment, with Product/Data/Security concurrence bound to that revision. Then generated-client and negative/state-transition fixtures must prove change-request, stale/conflicting verification, relock, and preserved history. | SP-24, SP-25, SP-26 |
+| D-GOAL | **ACCEPTED — Founder, 2026-09-10.** Section 6.1 `VerifyGoalPayloadV1` on `submitRelationshipCommand`, exact immutable goal version, both expected versions, idempotency, `AAL3_FRESH`, append-only decisions, and server-owned Operations reassessment after material amendment. The payload uses the existing canonical `commandKind` discriminator; this is the established wire name described as `kind` in the proposal. `AMEND_GOAL` and `REPLACE_GOAL` do not verify. | Founder acceptance binds the BP/professional owner and INST-005 decision to this Section 6.1 revision with its recorded Product/Data/Security concurrence. Generated-client and negative/state-transition fixtures must prove change-request, stale/conflicting verification, relock, and preserved history. | SP-24, SP-25, SP-26 |
 | D-BILLING | Section 6.1 private WBE `getCustomerBillingPortalProjection` with all mandatory allowance, forecast, invoice, payment, consequence, and per-family provenance/freshness fields; BP relays through existing `getBillingPortalSummary`. No relationship substitute or browser-derived money. | WBE/BP owners and INST-005 formally accept the private/public contract revisions with recorded Product/Data/Security concurrence. Missing owner families must produce typed partial/unavailable results rather than zero or complete success. | SP-15 and its SP-17 destination |
 | D-IDENTITY | Section 6.1 link-intent, remove-method, and security-action-intent operations with exact methods, headers, response types, Keycloak proof, fresh assurance, single-use expiry, safe-target binding, and last-usable-method protection. | Identity/BP owners and INST-005 formally accept the component/OpenAPI revisions with recorded Product/Data/Security concurrence. Negative fixtures must prove no mutation for stale assurance/version, cross-account access, replay, or removal of the last usable path. | SP-16 and account-switch/sign-out dependencies in SP-17 |
 

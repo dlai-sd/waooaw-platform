@@ -2,6 +2,7 @@
 // constitutional_basis: C-023, C-026, C-059, C-063, C-078
 
 using System.Security.Cryptography;
+using System.Buffers.Binary;
 using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -28,9 +29,16 @@ public sealed record RelationshipConfigurationState(
 public sealed record RelationshipPortalGoal(
     RelationshipGoal Goal,
     string SkillId,
-    string SkillLabel);
+    string SkillLabel,
+    RelationshipGoalDecision? CurrentDecision,
+    bool HasPriorDecision);
+
+public sealed record RelationshipGoalDecisionResult(
+    RelationshipGoalDecision Decision,
+    bool Replayed);
 
 public sealed class RelationshipConfigurationConflictException : Exception;
+public sealed class RelationshipGoalVersionConflictException : Exception;
 
 public sealed class RelationshipConfigurationService(
     IDbContextFactory<EmploymentRelationshipDbContext> dbFactory,
@@ -226,11 +234,188 @@ public sealed class RelationshipConfigurationService(
             .Where(item => item.TenantId == tenantId && item.RelationshipId == relationshipId)
             .OrderByDescending(item => item.UpdatedAt)
             .ToListAsync(cancellationToken);
+        var decisions = await db.RelationshipGoalDecisions.AsNoTracking()
+            .Where(item => item.TenantId == tenantId && item.RelationshipId == relationshipId)
+            .OrderByDescending(item => item.OccurredAt)
+            .ThenByDescending(item => item.DecisionId)
+            .ToListAsync(cancellationToken);
         return goals.Select(goal =>
         {
             var skill = skills.FirstOrDefault(item => item.GoalId == goal.GoalId);
-            return new RelationshipPortalGoal(goal, skill?.SkillId ?? "UNASSIGNED", skill?.SkillId ?? "Unassigned skill");
+            var goalVersion = GetGoalVersion(goal);
+            var decision = decisions.FirstOrDefault(item =>
+                item.GoalId == goal.GoalId && item.GoalVersion == goalVersion);
+            return new RelationshipPortalGoal(
+                goal,
+                skill?.SkillId ?? "UNASSIGNED",
+                skill?.SkillId ?? "Unassigned skill",
+                decision,
+                decisions.Any(item => item.GoalId == goal.GoalId && item.GoalVersion != goalVersion));
         }).ToArray();
+    }
+
+    public async Task<RelationshipGoalDecision?> GetGoalDecisionAsync(
+        Guid tenantId,
+        Guid relationshipId,
+        Guid decisionId,
+        CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        await EnsureRelationshipAsync(db, tenantId, relationshipId, cancellationToken);
+        return await db.RelationshipGoalDecisions.AsNoTracking().SingleOrDefaultAsync(
+            item => item.TenantId == tenantId
+                && item.RelationshipId == relationshipId
+                && item.DecisionId == decisionId,
+            cancellationToken);
+    }
+
+    public async Task<RelationshipGoalDecisionResult> VerifyGoalAsync(
+        Guid tenantId,
+        Guid relationshipId,
+        Guid actorParticipantId,
+        Guid idempotencyKey,
+        string materialRequestHash,
+        string expectedWorkspaceVersion,
+        string expectedSubjectVersion,
+        Guid goalId,
+        string goalVersion,
+        string decision,
+        string? correctionReason,
+        Guid correlationId,
+        CancellationToken cancellationToken)
+    {
+        var normalizedDecision = Required(decision, nameof(decision)).ToUpperInvariant();
+        var normalizedReason = correctionReason?.Trim();
+        if (normalizedDecision is not ("VERIFIED" or "CHANGES_REQUESTED")
+            || normalizedReason is { Length: > 500 }
+            || (normalizedDecision == "VERIFIED" && normalizedReason is not null)
+            || (normalizedDecision == "CHANGES_REQUESTED" && string.IsNullOrWhiteSpace(normalizedReason)))
+            throw new ArgumentException("Goal verification decision is invalid.", nameof(decision));
+
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var purpose = $"VERIFY_GOAL:{actorParticipantId:N}";
+        var key = idempotencyKey.ToString("D");
+        long? lockKey = null;
+        var connectionOpened = false;
+        var lockAcquired = false;
+        if (db.Database.ProviderName?.Contains("Npgsql", StringComparison.Ordinal) == true)
+        {
+            var lockMaterial = Encoding.UTF8.GetBytes($"{tenantId:D}:{purpose}:{key}");
+            lockKey = BinaryPrimitives.ReadInt64BigEndian(SHA256.HashData(lockMaterial));
+            await db.Database.OpenConnectionAsync(cancellationToken);
+            connectionOpened = true;
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_lock({lockKey.Value})", cancellationToken);
+            lockAcquired = true;
+        }
+        try
+        {
+            var relationship = await EnsureRelationshipAsync(db, tenantId, relationshipId, cancellationToken);
+            if (relationship.State == EmploymentRelationshipState.StoppedEmergency)
+                throw new ConstitutionalActionDeniedException("Goal verification is blocked by Emergency Stop.");
+            var reservation = await db.RelationshipIdempotency.AsNoTracking().SingleOrDefaultAsync(
+                item => item.TenantId == tenantId
+                    && item.Purpose == purpose
+                    && item.IdempotencyKey == key,
+                cancellationToken);
+            if (reservation is not null)
+            {
+                if (reservation.RelationshipId != relationshipId
+                    || reservation.MaterialRequestHash != materialRequestHash
+                    || reservation.OutcomeReference is null)
+                    throw new RelationshipConfigurationConflictException();
+                var replay = await db.RelationshipGoalDecisions.AsNoTracking().SingleOrDefaultAsync(
+                    item => item.TenantId == tenantId
+                        && item.RelationshipId == relationshipId
+                        && item.DecisionId == reservation.OutcomeReference,
+                    cancellationToken) ?? throw new RelationshipConfigurationConflictException();
+                return new RelationshipGoalDecisionResult(replay, true);
+            }
+
+            var currentWorkspaceVersion = $"relationship-{relationship.StateVersion}";
+            var goal = await db.RelationshipGoals.SingleOrDefaultAsync(
+                item => item.TenantId == tenantId
+                    && item.RelationshipId == relationshipId
+                    && item.GoalId == goalId,
+                cancellationToken) ?? throw new KeyNotFoundException("Goal not found.");
+            var currentGoalVersion = GetGoalVersion(goal);
+            if (expectedWorkspaceVersion != currentWorkspaceVersion
+                || expectedSubjectVersion != currentGoalVersion
+                || goalVersion != currentGoalVersion)
+                throw new RelationshipGoalVersionConflictException();
+
+            var skill = await db.RelationshipSkillConfigurations.AsNoTracking()
+                .Where(item => item.TenantId == tenantId
+                    && item.RelationshipId == relationshipId
+                    && item.GoalId == goalId)
+                .OrderByDescending(item => item.UpdatedAt)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (skill is null || string.IsNullOrWhiteSpace(skill.SkillId)
+                || string.IsNullOrWhiteSpace(skill.SkillVersion)
+                || string.IsNullOrWhiteSpace(goal.Measure)
+                || goal.ReviewCadenceMonths <= 0)
+                throw new ConstitutionalActionDeniedException("The goal is not eligible for verification.");
+
+            var priorDecisionId = await db.RelationshipGoalDecisions.AsNoTracking()
+                .Where(item => item.TenantId == tenantId
+                    && item.RelationshipId == relationshipId
+                    && item.GoalId == goalId)
+                .OrderByDescending(item => item.OccurredAt)
+                .ThenByDescending(item => item.DecisionId)
+                .Select(item => (Guid?)item.DecisionId)
+                .FirstOrDefaultAsync(cancellationToken);
+            var evidenceId = await constitutionalGateway.AuthorizeAndRecordAsync(
+                tenantId,
+                relationshipId,
+                relationship.ProfessionalType,
+                "RELATIONSHIP_GOAL_VERIFICATION_DECIDED",
+                correlationId,
+                new { goalId, goalVersion, decision = normalizedDecision, priorDecisionId, materialRequestHash },
+                cancellationToken);
+            var occurredAt = DateTimeOffset.UtcNow;
+            var goalDecision = new RelationshipGoalDecision
+            {
+                TenantId = tenantId,
+                RelationshipId = relationshipId,
+                GoalId = goalId,
+                GoalVersion = goalVersion,
+                SkillId = skill.SkillId,
+                SkillVersion = skill.SkillVersion,
+                Measure = goal.Measure,
+                ReviewCadenceMonths = goal.ReviewCadenceMonths,
+                Decision = normalizedDecision,
+                CorrectionReason = normalizedReason,
+                PriorDecisionId = priorDecisionId,
+                ActorParticipantId = actorParticipantId,
+                ExpectedWorkspaceVersion = expectedWorkspaceVersion,
+                ExpectedSubjectVersion = expectedSubjectVersion,
+                IdempotencyKey = idempotencyKey,
+                MaterialRequestHash = materialRequestHash,
+                EvidenceId = evidenceId,
+                OccurredAt = occurredAt,
+            };
+            db.RelationshipGoalDecisions.Add(goalDecision);
+            db.RelationshipIdempotency.Add(new RelationshipIdempotency
+            {
+                TenantId = tenantId,
+                RelationshipId = relationshipId,
+                Purpose = purpose,
+                IdempotencyKey = key,
+                MaterialRequestHash = materialRequestHash,
+                OutcomeReference = goalDecision.DecisionId,
+                Status = "SUCCEEDED",
+                CompletedAt = occurredAt,
+            });
+            await db.SaveChangesAsync(cancellationToken);
+            return new RelationshipGoalDecisionResult(goalDecision, false);
+        }
+        finally
+        {
+            if (lockAcquired)
+                await db.Database.ExecuteSqlInterpolatedAsync(
+                    $"SELECT pg_advisory_unlock({lockKey!.Value})", cancellationToken);
+            if (connectionOpened) await db.Database.CloseConnectionAsync();
+        }
     }
 
     public async Task<IReadOnlyList<ContextValue>> GetActiveContextAsync(
@@ -405,6 +590,9 @@ public sealed class RelationshipConfigurationService(
         string.IsNullOrWhiteSpace(value)
             ? throw new ArgumentException("Value is required.", parameterName)
             : value.Trim();
+
+    public static string GetGoalVersion(RelationshipGoal goal) =>
+        $"goal-{goal.UpdatedAt.UtcTicks}";
 
     private static ContextValue ToContextValue(RelationshipContextPayload payload) => new(
         payload.PayloadReference,
