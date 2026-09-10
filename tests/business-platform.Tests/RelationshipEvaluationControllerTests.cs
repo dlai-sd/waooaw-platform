@@ -3,6 +3,7 @@
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Waooaw.BusinessPlatform.Controllers;
 using Waooaw.BusinessPlatform.Infrastructure;
@@ -80,6 +81,78 @@ public sealed class RelationshipEvaluationControllerTests
         Assert.Equal(TimeSpan.FromDays(14), projection.Trial!.ExpiresAt - projection.Trial.StartsAt);
         Assert.Equal("ACCEPTED", Assert.Single(projection.Goals).Status);
         Assert.Equal("DEFERRED", Assert.Single(projection.Skills).Status);
+    }
+
+    [Fact]
+    public async Task SameTypeAgentsRetainSeparateIdentityConfigurationTrialContractAndProjection()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var gateway = new RecordingRelationshipConstitutionalGateway();
+        var service = new RelationshipConfigurationService(factory, gateway);
+        var tenantId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var firstRelationshipId = Guid.NewGuid();
+        var secondRelationshipId = Guid.NewGuid();
+        var firstAgentInstanceId = Guid.NewGuid();
+        var secondAgentInstanceId = Guid.NewGuid();
+        var firstTrialId = Guid.NewGuid();
+        var secondTrialId = Guid.NewGuid();
+        await using (var db = factory.CreateDbContext())
+        {
+            db.EmploymentRelationships.AddRange(
+                new EmploymentRelationship
+                {
+                    TenantId = tenantId, RelationshipId = firstRelationshipId,
+                    AgentInstanceId = firstAgentInstanceId, ProfessionalType = "DMA",
+                    EvaluationIntentId = Guid.NewGuid(), InitiatingParticipantId = actorId,
+                    State = EmploymentRelationshipState.TrialActive,
+                },
+                new EmploymentRelationship
+                {
+                    TenantId = tenantId, RelationshipId = secondRelationshipId,
+                    AgentInstanceId = secondAgentInstanceId, ProfessionalType = "DMA",
+                    EvaluationIntentId = Guid.NewGuid(), InitiatingParticipantId = actorId,
+                    State = EmploymentRelationshipState.TrialActive,
+                });
+            db.RelationshipGoals.AddRange(
+                new RelationshipGoal { TenantId = tenantId, RelationshipId = firstRelationshipId, Goal = "Grow local leads", Measure = "Leads", Status = "ACCEPTED" },
+                new RelationshipGoal { TenantId = tenantId, RelationshipId = secondRelationshipId, Goal = "Improve retention", Measure = "Renewals", Status = "ACCEPTED" });
+            db.RelationshipTrialBindings.AddRange(
+                new RelationshipTrialBinding { TenantId = tenantId, RelationshipId = firstRelationshipId, CustomerId = tenantId, CorrelationId = Guid.NewGuid(), TrialId = firstTrialId, StartsAt = DateTimeOffset.UtcNow, ExpiresAt = DateTimeOffset.UtcNow.AddDays(14), Status = "ACTIVE" },
+                new RelationshipTrialBinding { TenantId = tenantId, RelationshipId = secondRelationshipId, CustomerId = tenantId, CorrelationId = Guid.NewGuid(), TrialId = secondTrialId, StartsAt = DateTimeOffset.UtcNow, ExpiresAt = DateTimeOffset.UtcNow.AddDays(14), Status = "ACTIVE" });
+            db.EmploymentContractVersions.AddRange(
+                new EmploymentContractVersion { TenantId = tenantId, RelationshipId = firstRelationshipId, Version = 2, ContractHash = new string('a', 64), AeecVersion = "1", DomainScheduleHash = new string('b', 64), CreatedByParticipantId = actorId },
+                new EmploymentContractVersion { TenantId = tenantId, RelationshipId = secondRelationshipId, Version = 5, ContractHash = new string('c', 64), AeecVersion = "1", DomainScheduleHash = new string('d', 64), CreatedByParticipantId = actorId });
+            await db.SaveChangesAsync();
+        }
+        var firstSkill = await service.SaveSkillAsync(tenantId, firstRelationshipId, "local-seo", "1.0.0", null,
+            "NOT_GRANTED", "APPLICABLE", null, "PROPOSED", CancellationToken.None);
+        await service.SaveSkillAsync(tenantId, secondRelationshipId, "email-retention", "2.0.0", null,
+            "NOT_GRANTED", "APPLICABLE", null, "DEFERRED", CancellationToken.None);
+
+        await service.DecideSkillAsync(tenantId, firstRelationshipId, actorId, Guid.NewGuid(), new string('e', 64),
+            "relationship-0", RelationshipConfigurationService.GetSkillVersion(firstSkill), firstSkill.ConfigurationId,
+            firstSkill.SkillId, firstSkill.SkillVersion, "ACCEPT_SKILL", Guid.NewGuid(), CancellationToken.None);
+
+        var first = Assert.IsType<RelationshipEvaluationProjection>(Assert.IsType<OkObjectResult>(
+            await Controller(factory, tenantId).GetAsync(firstRelationshipId, CancellationToken.None)).Value);
+        var second = Assert.IsType<RelationshipEvaluationProjection>(Assert.IsType<OkObjectResult>(
+            await Controller(factory, tenantId).GetAsync(secondRelationshipId, CancellationToken.None)).Value);
+        await using var verificationDb = factory.CreateDbContext();
+
+        Assert.NotEqual(firstAgentInstanceId, secondAgentInstanceId);
+        Assert.Equal(firstTrialId, first.Trial!.TrialId);
+        Assert.Equal(secondTrialId, second.Trial!.TrialId);
+        Assert.Equal("Grow local leads", Assert.Single(first.Goals).Goal);
+        Assert.Equal("Improve retention", Assert.Single(second.Goals).Goal);
+        Assert.Equal("ACCEPTED", Assert.Single(first.Skills).Status);
+        Assert.Equal("local-seo", Assert.Single(first.Skills).SkillId);
+        Assert.Equal("DEFERRED", Assert.Single(second.Skills).Status);
+        Assert.Equal("email-retention", Assert.Single(second.Skills).SkillId);
+        Assert.Equal(2, (await verificationDb.EmploymentContractVersions.SingleAsync(
+            item => item.RelationshipId == firstRelationshipId)).Version);
+        Assert.Equal(5, (await verificationDb.EmploymentContractVersions.SingleAsync(
+            item => item.RelationshipId == secondRelationshipId)).Version);
     }
 
     [Fact]

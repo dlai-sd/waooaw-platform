@@ -293,6 +293,140 @@ public sealed class RelationshipWorkspaceControllerTests
     }
 
     [Fact]
+    public async Task AcceptSkill_CompletesReplaysAndRemainsRelationshipScoped()
+    {
+        var (controller, relationship, _, configuration) = await CreateControllerAsync();
+        var skill = await configuration.SaveSkillAsync(
+            relationship.TenantId, relationship.RelationshipId, "local-seo", "1.0.0", null,
+            "NOT_GRANTED", "APPLICABLE", null, "PROPOSED", CancellationToken.None);
+        var key = Guid.NewGuid().ToString("D");
+        var command = JsonSerializer.SerializeToElement(new
+        {
+            schemaVersion = "1.0",
+            expectedWorkspaceVersion = $"relationship-{relationship.StateVersion}",
+            expectedSubjectVersion = $"skill-{skill.UpdatedAt.UtcTicks}",
+            payload = new
+            {
+                commandKind = "ACCEPT_SKILL",
+                configurationId = skill.ConfigurationId,
+                skillId = skill.SkillId,
+                skillVersion = skill.SkillVersion,
+            },
+        });
+
+        var accepted = Assert.IsType<ObjectResult>(await controller.SubmitCommandAsync(
+            relationship.RelationshipId, command, key, CancellationToken.None));
+        var replay = Assert.IsType<OkObjectResult>(await controller.SubmitCommandAsync(
+            relationship.RelationshipId, command, key, CancellationToken.None));
+        var receipt = JsonSerializer.SerializeToElement(accepted.Value);
+        var outcome = Json(await controller.GetCommandAsync(
+            relationship.RelationshipId, receipt.GetProperty("commandId").GetGuid(), CancellationToken.None));
+        var skills = await configuration.GetPortalSkillsAsync(
+            relationship.TenantId, relationship.RelationshipId, CancellationToken.None);
+
+        Assert.Equal(202, accepted.StatusCode);
+        Assert.True(JsonSerializer.SerializeToElement(replay.Value).GetProperty("replayed").GetBoolean());
+        Assert.Equal("ACCEPT_SKILL", outcome.GetProperty("commandKind").GetString());
+        Assert.Equal("COMPLETED", outcome.GetProperty("status").GetString());
+        Assert.Equal("ACCEPTED", Assert.Single(skills).Status);
+    }
+
+    [Theory]
+    [InlineData("SELECT_SKILL", "SELECTED")]
+    [InlineData("UPDATE_SKILL", "SELECTED")]
+    [InlineData("DEFER_SKILL", "DEFERRED")]
+    public async Task SkillDecisions_MapToRelationshipLocalState(string commandKind, string expectedStatus)
+    {
+        var (controller, relationship, _, configuration) = await CreateControllerAsync();
+        var skill = await configuration.SaveSkillAsync(
+            relationship.TenantId, relationship.RelationshipId, "market-research", "1.0.0", null,
+            "NOT_GRANTED", "APPLICABLE", null, "PROPOSED", CancellationToken.None);
+        var command = JsonSerializer.SerializeToElement(new
+        {
+            schemaVersion = "1.0", expectedWorkspaceVersion = $"relationship-{relationship.StateVersion}",
+            expectedSubjectVersion = RelationshipConfigurationService.GetSkillVersion(skill),
+            payload = new { commandKind, configurationId = skill.ConfigurationId,
+                skillId = skill.SkillId, skillVersion = skill.SkillVersion },
+        });
+
+        var accepted = Assert.IsType<ObjectResult>(await controller.SubmitCommandAsync(
+            relationship.RelationshipId, command, Guid.NewGuid().ToString("D"), CancellationToken.None));
+        var state = Assert.Single(await configuration.GetPortalSkillsAsync(
+            relationship.TenantId, relationship.RelationshipId, CancellationToken.None));
+
+        Assert.Equal(202, accepted.StatusCode);
+        Assert.Equal(expectedStatus, state.Status);
+    }
+
+    [Fact]
+    public async Task SkillDecision_RejectsStaleVersionAndChangedIdempotencyReuse()
+    {
+        var (controller, relationship, _, configuration) = await CreateControllerAsync();
+        var skill = await configuration.SaveSkillAsync(
+            relationship.TenantId, relationship.RelationshipId, "market-research", "1.0.0", null,
+            "NOT_GRANTED", "APPLICABLE", null, "PROPOSED", CancellationToken.None);
+        JsonElement Command(string version, string commandKind) => JsonSerializer.SerializeToElement(new
+        {
+            schemaVersion = "1.0", expectedWorkspaceVersion = $"relationship-{relationship.StateVersion}",
+            expectedSubjectVersion = version,
+            payload = new { commandKind, configurationId = skill.ConfigurationId,
+                skillId = skill.SkillId, skillVersion = skill.SkillVersion },
+        });
+
+        var stale = Assert.IsType<ObjectResult>(await controller.SubmitCommandAsync(
+            relationship.RelationshipId, Command("skill-stale", "ACCEPT_SKILL"),
+            Guid.NewGuid().ToString("D"), CancellationToken.None));
+        Assert.Equal(409, stale.StatusCode);
+
+        var key = Guid.NewGuid().ToString("D");
+        var version = RelationshipConfigurationService.GetSkillVersion(skill);
+        Assert.Equal(202, Assert.IsType<ObjectResult>(await controller.SubmitCommandAsync(
+            relationship.RelationshipId, Command(version, "ACCEPT_SKILL"), key, CancellationToken.None)).StatusCode);
+        var conflict = Assert.IsType<ObjectResult>(await controller.SubmitCommandAsync(
+            relationship.RelationshipId, Command(version, "DEFER_SKILL"), key, CancellationToken.None));
+        Assert.Equal(409, conflict.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateSkill_MovesSelectionAndAcceptedSkillCannotBeReselected()
+    {
+        var (controller, relationship, _, configuration) = await CreateControllerAsync();
+        var first = await configuration.SaveSkillAsync(
+            relationship.TenantId, relationship.RelationshipId, "market-research", "1.0.0", null,
+            "NOT_GRANTED", "APPLICABLE", null, "SELECTED", CancellationToken.None);
+        var second = await configuration.SaveSkillAsync(
+            relationship.TenantId, relationship.RelationshipId, "local-seo", "1.0.0", null,
+            "NOT_GRANTED", "APPLICABLE", null, "PROPOSED", CancellationToken.None);
+        JsonElement Command(RelationshipSkillConfiguration skill, string commandKind) => JsonSerializer.SerializeToElement(new
+        {
+            schemaVersion = "1.0", expectedWorkspaceVersion = $"relationship-{relationship.StateVersion}",
+            expectedSubjectVersion = RelationshipConfigurationService.GetSkillVersion(skill),
+            payload = new { commandKind, configurationId = skill.ConfigurationId,
+                skillId = skill.SkillId, skillVersion = skill.SkillVersion },
+        });
+
+        Assert.Equal(202, Assert.IsType<ObjectResult>(await controller.SubmitCommandAsync(
+            relationship.RelationshipId, Command(second, "UPDATE_SKILL"),
+            Guid.NewGuid().ToString("D"), CancellationToken.None)).StatusCode);
+        var moved = await configuration.GetPortalSkillsAsync(
+            relationship.TenantId, relationship.RelationshipId, CancellationToken.None);
+        Assert.Equal("PROPOSED", moved.Single(item => item.ConfigurationId == first.ConfigurationId).Status);
+        Assert.Equal("SELECTED", moved.Single(item => item.ConfigurationId == second.ConfigurationId).Status);
+
+        var selected = moved.Single(item => item.ConfigurationId == second.ConfigurationId);
+        Assert.Equal(202, Assert.IsType<ObjectResult>(await controller.SubmitCommandAsync(
+            relationship.RelationshipId, Command(selected, "ACCEPT_SKILL"),
+            Guid.NewGuid().ToString("D"), CancellationToken.None)).StatusCode);
+        var accepted = Assert.Single(await configuration.GetPortalSkillsAsync(
+            relationship.TenantId, relationship.RelationshipId, CancellationToken.None),
+            item => item.ConfigurationId == second.ConfigurationId);
+        var illegal = Assert.IsType<ObjectResult>(await controller.SubmitCommandAsync(
+            relationship.RelationshipId, Command(accepted, "SELECT_SKILL"),
+            Guid.NewGuid().ToString("D"), CancellationToken.None));
+        Assert.Equal(409, illegal.StatusCode);
+    }
+
+    [Fact]
     public async Task BusinessOutcomesAreExplicitlyUnavailableWithoutOwnerEvidence()
     {
         var (controller, relationship, _, _) = await CreateControllerAsync();

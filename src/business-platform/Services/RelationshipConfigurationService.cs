@@ -36,9 +36,11 @@ public sealed record RelationshipPortalGoal(
 public sealed record RelationshipGoalDecisionResult(
     RelationshipGoalDecision Decision,
     bool Replayed);
+public sealed record RelationshipSkillDecisionResult(RelationshipSkillDecision Decision, bool Replayed);
 
 public sealed class RelationshipConfigurationConflictException : Exception;
 public sealed class RelationshipGoalVersionConflictException : Exception;
+public sealed class RelationshipSkillVersionConflictException : Exception;
 
 public sealed class RelationshipConfigurationService(
     IDbContextFactory<EmploymentRelationshipDbContext> dbFactory,
@@ -252,6 +254,127 @@ public sealed class RelationshipConfigurationService(
                 decision,
                 decisions.Any(item => item.GoalId == goal.GoalId && item.GoalVersion != goalVersion));
         }).ToArray();
+    }
+
+    public async Task<IReadOnlyList<RelationshipSkillConfiguration>> GetPortalSkillsAsync(
+        Guid tenantId,
+        Guid relationshipId,
+        CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        await EnsureRelationshipAsync(db, tenantId, relationshipId, cancellationToken);
+        return await db.RelationshipSkillConfigurations.AsNoTracking()
+            .Where(item => item.TenantId == tenantId && item.RelationshipId == relationshipId)
+            .OrderBy(item => item.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<RelationshipSkillDecisionResult> DecideSkillAsync(
+        Guid tenantId, Guid relationshipId, Guid actorParticipantId, Guid idempotencyKey,
+        string materialRequestHash, string expectedWorkspaceVersion, string expectedSubjectVersion,
+        Guid configurationId, string skillId, string skillVersion, string decision,
+        Guid correlationId, CancellationToken cancellationToken)
+    {
+        var normalizedDecision = Required(decision, nameof(decision)).ToUpperInvariant();
+        if (normalizedDecision is not ("SELECT_SKILL" or "UPDATE_SKILL" or "ACCEPT_SKILL" or "DEFER_SKILL"))
+            throw new ArgumentException("Skill decision is invalid.", nameof(decision));
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        long? lockKey = null;
+        var connectionOpened = false;
+        var lockAcquired = false;
+        if (db.Database.ProviderName?.Contains("Npgsql", StringComparison.Ordinal) == true)
+        {
+            var lockMaterial = Encoding.UTF8.GetBytes($"{tenantId:D}:{relationshipId:D}:SKILL");
+            lockKey = BinaryPrimitives.ReadInt64BigEndian(SHA256.HashData(lockMaterial));
+            await db.Database.OpenConnectionAsync(cancellationToken);
+            connectionOpened = true;
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_lock({lockKey.Value})", cancellationToken);
+            lockAcquired = true;
+        }
+        try
+        {
+            var relationship = await EnsureRelationshipAsync(db, tenantId, relationshipId, cancellationToken);
+            if (relationship.State == EmploymentRelationshipState.StoppedEmergency)
+                throw new ConstitutionalActionDeniedException("Skill decisions are blocked by Emergency Stop.");
+            var existing = await db.RelationshipSkillDecisions.AsNoTracking().SingleOrDefaultAsync(
+                item => item.TenantId == tenantId && item.RelationshipId == relationshipId
+                    && item.IdempotencyKey == idempotencyKey, cancellationToken);
+            if (existing is not null)
+            {
+                if (existing.MaterialRequestHash != materialRequestHash) throw new RelationshipConfigurationConflictException();
+                return new RelationshipSkillDecisionResult(existing, true);
+            }
+            var skill = await db.RelationshipSkillConfigurations.SingleOrDefaultAsync(
+                item => item.TenantId == tenantId && item.RelationshipId == relationshipId
+                    && item.ConfigurationId == configurationId, cancellationToken)
+                ?? throw new KeyNotFoundException("Skill configuration not found.");
+            var currentWorkspaceVersion = $"relationship-{relationship.StateVersion}";
+            var currentSkillVersion = GetSkillVersion(skill);
+            if (expectedWorkspaceVersion != currentWorkspaceVersion || expectedSubjectVersion != currentSkillVersion
+                || skill.SkillId != skillId || skill.SkillVersion != skillVersion || skill.Applicability != "APPLICABLE")
+                throw new RelationshipSkillVersionConflictException();
+            var sourceStateAllowed = normalizedDecision switch
+            {
+                "SELECT_SKILL" or "UPDATE_SKILL" => skill.Status is "PROPOSED" or "DEFERRED",
+                "ACCEPT_SKILL" or "DEFER_SKILL" => skill.Status is "PROPOSED" or "SELECTED",
+                _ => false,
+            };
+            if (!sourceStateAllowed) throw new RelationshipSkillVersionConflictException();
+            var targetStatus = normalizedDecision switch
+            {
+                "SELECT_SKILL" or "UPDATE_SKILL" => "SELECTED",
+                "ACCEPT_SKILL" => "ACCEPTED",
+                _ => "DEFERRED",
+            };
+            var evidenceId = await constitutionalGateway.AuthorizeAndRecordAsync(
+                tenantId, relationshipId, relationship.ProfessionalType, "RELATIONSHIP_SKILL_DECIDED",
+                correlationId, new { configurationId, skillId, skillVersion, decision = normalizedDecision, targetStatus },
+                cancellationToken);
+            var occurredAt = DateTimeOffset.UtcNow;
+            var outcome = new RelationshipSkillDecision
+            {
+                TenantId = tenantId, RelationshipId = relationshipId, ConfigurationId = configurationId,
+                SkillId = skillId, SkillVersion = skillVersion, Decision = normalizedDecision,
+                ActorParticipantId = actorParticipantId, ExpectedWorkspaceVersion = expectedWorkspaceVersion,
+                ExpectedSubjectVersion = expectedSubjectVersion, IdempotencyKey = idempotencyKey,
+                MaterialRequestHash = materialRequestHash, EvidenceId = evidenceId, OccurredAt = occurredAt,
+            };
+            skill.Status = targetStatus;
+            skill.UpdatedAt = occurredAt;
+            if (targetStatus == "SELECTED")
+            {
+                var priorSelections = await db.RelationshipSkillConfigurations
+                    .Where(item => item.TenantId == tenantId && item.RelationshipId == relationshipId
+                        && item.ConfigurationId != configurationId && item.Status == "SELECTED")
+                    .ToListAsync(cancellationToken);
+                foreach (var priorSelection in priorSelections)
+                {
+                    priorSelection.Status = "PROPOSED";
+                    priorSelection.UpdatedAt = occurredAt;
+                }
+            }
+            db.RelationshipSkillDecisions.Add(outcome);
+            await db.SaveChangesAsync(cancellationToken);
+            return new RelationshipSkillDecisionResult(outcome, false);
+        }
+        finally
+        {
+            if (lockAcquired)
+                await db.Database.ExecuteSqlInterpolatedAsync(
+                    $"SELECT pg_advisory_unlock({lockKey!.Value})", cancellationToken);
+            if (connectionOpened) await db.Database.CloseConnectionAsync();
+        }
+    }
+
+    public async Task<RelationshipSkillDecision?> GetSkillDecisionAsync(
+        Guid tenantId, Guid relationshipId, Guid decisionId, CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        await EnsureRelationshipAsync(db, tenantId, relationshipId, cancellationToken);
+        return await db.RelationshipSkillDecisions.AsNoTracking().SingleOrDefaultAsync(
+            item => item.TenantId == tenantId && item.RelationshipId == relationshipId
+                && item.DecisionId == decisionId, cancellationToken);
     }
 
     public async Task<RelationshipGoalDecision?> GetGoalDecisionAsync(
@@ -593,6 +716,9 @@ public sealed class RelationshipConfigurationService(
 
     public static string GetGoalVersion(RelationshipGoal goal) =>
         $"goal-{goal.UpdatedAt.UtcTicks}";
+
+    public static string GetSkillVersion(RelationshipSkillConfiguration skill) =>
+        $"skill-{skill.UpdatedAt.UtcTicks}";
 
     private static ContextValue ToContextValue(RelationshipContextPayload payload) => new(
         payload.PayloadReference,
