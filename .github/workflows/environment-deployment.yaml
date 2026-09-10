@@ -1002,7 +1002,32 @@ jobs:
             --header 'Accept: application/vnd.github+json' \
             "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" | jq -er '.object.sha')
           test '${{ inputs.release_sha }}' = "$latest_main_sha"
-          terraform apply -input=false -auto-approve workload.tfplan
+          attempt=1
+          max_attempts=3
+          while true; do
+            apply_log="workload-apply-attempt-${attempt}.log"
+            if terraform apply -input=false -auto-approve workload.tfplan 2>&1 | tee "$apply_log"; then
+              break
+            fi
+            if ! grep -Fq 'Unable to get value using Managed identity' "$apply_log" || \
+              ! grep -Fq 'bp-identity-reader-client-secret' "$apply_log"; then
+              echo "Workload apply failed outside the bounded Key Vault propagation retry" >&2
+              exit 1
+            fi
+            if [ "$attempt" -ge "$max_attempts" ]; then
+              echo "Key Vault managed-identity propagation did not converge after $max_attempts attempts" >&2
+              exit 1
+            fi
+            delay=$((15 * 2 ** (attempt - 1)))
+            echo "Known Key Vault propagation failure; waiting ${delay}s before replanning attempt $((attempt + 1))"
+            sleep "$delay"
+            terraform plan -input=false -lock-timeout=5m -out=workload.tfplan
+            terraform show -json workload.tfplan > workload-plan.json
+            python3 "$GITHUB_WORKSPACE/scripts/goal006_tfplan_policy.py" \
+              --scope workload \
+              --plan workload-plan.json
+            attempt=$((attempt + 1))
+          done
           web_url=$(terraform output -raw web_url)
           test -n "$web_url"
           echo "web_url=$web_url" >> "$GITHUB_OUTPUT"
@@ -1059,6 +1084,7 @@ jobs:
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-state-before-plan.txt
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-state-after-apply-failure.txt
             infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload.tfplan
+            infrastructure/terraform/phase2/environments/${{ inputs.environment }}/workload/workload-apply-attempt-*.log
           if-no-files-found: warn
           retention-days: 90
 
