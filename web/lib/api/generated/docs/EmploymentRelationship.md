@@ -2,14 +2,18 @@
 
 ## Properties
 
-| Name               | Type                                                          |
-| ------------------ | ------------------------------------------------------------- |
-| `relationshipId`   | string                                                        |
-| `professionalType` | string                                                        |
-| `state`            | [EmploymentRelationshipState](EmploymentRelationshipState.md) |
-| `stateVersion`     | number                                                        |
-| `createdAt`        | Date                                                          |
-| `updatedAt`        | Date                                                          |
+| Name                      | Type                                                          |
+| ------------------------- | ------------------------------------------------------------- |
+| `relationshipId`          | string                                                        |
+| `agentInstanceId`         | string                                                        |
+| `professionalAdmissionId` | string                                                        |
+| `professionalType`        | string                                                        |
+| `professionalVersion`     | string                                                        |
+| `agentInstanceMintedAt`   | Date                                                          |
+| `state`                   | [EmploymentRelationshipState](EmploymentRelationshipState.md) |
+| `stateVersion`            | number                                                        |
+| `createdAt`               | Date                                                          |
+| `updatedAt`               | Date                                                          |
 
 ## Example
 
@@ -19,7 +23,11 @@ import type { EmploymentRelationship } from "";
 // TODO: Update the object below with actual values
 const example = {
   relationshipId: null,
+  agentInstanceId: null,
+  professionalAdmissionId: null,
   professionalType: null,
+  professionalVersion: null,
+  agentInstanceMintedAt: null,
   state: null,
   stateVersion: null,
   createdAt: null,

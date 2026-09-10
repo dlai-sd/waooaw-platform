@@ -5,7 +5,10 @@
 | Name                             | Type                                                                                      |
 | -------------------------------- | ----------------------------------------------------------------------------------------- |
 | `relationshipId`                 | string                                                                                    |
+| `agentInstanceId`                | string                                                                                    |
+| `professionalAdmissionId`        | string                                                                                    |
 | `professionalType`               | string                                                                                    |
+| `professionalVersion`            | string                                                                                    |
 | `professionalDisplayName`        | string                                                                                    |
 | `lifecycleState`                 | [EmploymentRelationshipState](EmploymentRelationshipState.md)                             |
 | `currentGoalSummary`             | string                                                                                    |
@@ -23,7 +26,10 @@ import type { EmploymentRelationshipSummaryV1 } from "";
 // TODO: Update the object below with actual values
 const example = {
   relationshipId: null,
+  agentInstanceId: null,
+  professionalAdmissionId: null,
   professionalType: null,
+  professionalVersion: null,
   professionalDisplayName: null,
   lifecycleState: null,
   currentGoalSummary: null,

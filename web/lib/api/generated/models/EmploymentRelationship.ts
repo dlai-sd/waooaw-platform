@@ -38,7 +38,31 @@ export interface EmploymentRelationship {
    * @type {string}
    * @memberof EmploymentRelationship
    */
+  agentInstanceId: string;
+  /**
+   *
+   * @type {string}
+   * @memberof EmploymentRelationship
+   */
+  professionalAdmissionId?: string;
+  /**
+   *
+   * @type {string}
+   * @memberof EmploymentRelationship
+   */
   professionalType: string;
+  /**
+   *
+   * @type {string}
+   * @memberof EmploymentRelationship
+   */
+  professionalVersion?: string;
+  /**
+   *
+   * @type {Date}
+   * @memberof EmploymentRelationship
+   */
+  agentInstanceMintedAt: Date;
   /**
    *
    * @type {EmploymentRelationshipState}
@@ -73,7 +97,14 @@ export function instanceOfEmploymentRelationship(
 ): value is EmploymentRelationship {
   if (!("relationshipId" in value) || value["relationshipId"] === undefined)
     return false;
+  if (!("agentInstanceId" in value) || value["agentInstanceId"] === undefined)
+    return false;
   if (!("professionalType" in value) || value["professionalType"] === undefined)
+    return false;
+  if (
+    !("agentInstanceMintedAt" in value) ||
+    value["agentInstanceMintedAt"] === undefined
+  )
     return false;
   if (!("state" in value) || value["state"] === undefined) return false;
   if (!("stateVersion" in value) || value["stateVersion"] === undefined)
@@ -98,7 +129,17 @@ export function EmploymentRelationshipFromJSONTyped(
   }
   return {
     relationshipId: json["relationshipId"],
+    agentInstanceId: json["agentInstanceId"],
+    professionalAdmissionId:
+      json["professionalAdmissionId"] == null
+        ? undefined
+        : json["professionalAdmissionId"],
     professionalType: json["professionalType"],
+    professionalVersion:
+      json["professionalVersion"] == null
+        ? undefined
+        : json["professionalVersion"],
+    agentInstanceMintedAt: new Date(json["agentInstanceMintedAt"]),
     state: EmploymentRelationshipStateFromJSON(json["state"]),
     stateVersion: json["stateVersion"],
     createdAt: new Date(json["createdAt"]),
@@ -122,7 +163,11 @@ export function EmploymentRelationshipToJSONTyped(
 
   return {
     relationshipId: value["relationshipId"],
+    agentInstanceId: value["agentInstanceId"],
+    professionalAdmissionId: value["professionalAdmissionId"],
     professionalType: value["professionalType"],
+    professionalVersion: value["professionalVersion"],
+    agentInstanceMintedAt: value["agentInstanceMintedAt"].toISOString(),
     state: EmploymentRelationshipStateToJSON(value["state"]),
     stateVersion: value["stateVersion"],
     createdAt: value["createdAt"].toISOString(),

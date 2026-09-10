@@ -21,7 +21,8 @@ public interface IRelationshipTrialOwnerGateway
         Guid customerId, string professionalType, Guid relationshipId, Guid correlationId,
         CancellationToken cancellationToken);
     Task<PrTrialWorkflow?> StartPrTrialAsync(
-        Guid tenantId, Guid relationshipId, Guid trialId, DateTimeOffset startsAt,
+        Guid tenantId, Guid relationshipId, Guid agentInstanceId, Guid professionalAdmissionId,
+        string professionalType, string professionalVersion, Guid trialId, DateTimeOffset startsAt,
         DateTimeOffset expiresAt, Guid correlationId, CancellationToken cancellationToken);
 }
 
@@ -32,7 +33,8 @@ public sealed class UnconfiguredRelationshipTrialOwnerGateway : IRelationshipTri
         CancellationToken cancellationToken) => Task.FromResult<WbeTrialEntitlement?>(null);
 
     public Task<PrTrialWorkflow?> StartPrTrialAsync(
-        Guid tenantId, Guid relationshipId, Guid trialId, DateTimeOffset startsAt,
+        Guid tenantId, Guid relationshipId, Guid agentInstanceId, Guid professionalAdmissionId,
+        string professionalType, string professionalVersion, Guid trialId, DateTimeOffset startsAt,
         DateTimeOffset expiresAt, Guid correlationId, CancellationToken cancellationToken) =>
         Task.FromResult<PrTrialWorkflow?>(null);
 }
@@ -94,17 +96,22 @@ public sealed class HttpRelationshipTrialOwnerGateway : IRelationshipTrialOwnerG
         root.GetProperty("expires_at").GetDateTimeOffset());
 
     public async Task<PrTrialWorkflow?> StartPrTrialAsync(
-        Guid tenantId, Guid relationshipId, Guid trialId, DateTimeOffset startsAt,
+        Guid tenantId, Guid relationshipId, Guid agentInstanceId, Guid professionalAdmissionId,
+        string professionalType, string professionalVersion, Guid trialId, DateTimeOffset startsAt,
         DateTimeOffset expiresAt, Guid correlationId, CancellationToken cancellationToken)
     {
         var route = PrRoute.Replace("{relationshipId}", relationshipId.ToString());
         var body = new SortedDictionary<string, object?>
         {
+            ["agentInstanceId"] = agentInstanceId,
             ["credentialUseAllowed"] = false,
             ["expiresAt"] = expiresAt,
             ["externalActionsAllowed"] = false,
             ["inferenceTier"] = "LOCAL",
             ["paidProviderFallback"] = false,
+            ["professionalAdmissionId"] = professionalAdmissionId,
+            ["professionalType"] = professionalType,
+            ["professionalVersion"] = professionalVersion,
             ["schemaVersion"] = "1.0",
             ["startsAt"] = startsAt,
             ["trialId"] = trialId,
@@ -210,7 +217,14 @@ public sealed class RelationshipTrialService(
         await db.SaveChangesAsync(cancellationToken);
 
         var pr = await owners.StartPrTrialAsync(
-            tenantId, relationshipId, wbe.TrialId, wbe.StartsAt, wbe.ExpiresAt,
+            tenantId, relationshipId,
+            relationship.AgentInstanceId,
+            relationship.ProfessionalAdmissionId
+                ?? throw new InvalidOperationException("Relationship has no admitted professional binding."),
+            relationship.ProfessionalType,
+            relationship.ProfessionalVersion
+                ?? throw new InvalidOperationException("Relationship has no admitted professional version."),
+            wbe.TrialId, wbe.StartsAt, wbe.ExpiresAt,
             binding.CorrelationId, cancellationToken);
         if (pr is null || pr.TrialId != wbe.TrialId || pr.ExpiresAt != wbe.ExpiresAt
             || pr.WorkflowState != "TRIAL_DEMONSTRATING")

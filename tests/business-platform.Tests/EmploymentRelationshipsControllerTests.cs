@@ -73,6 +73,48 @@ public sealed class EmploymentRelationshipsControllerTests
     }
 
     [Fact]
+    public async Task List_ReturnsDistinctInstancesForSameCustomerAndProfessionalType()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var service = new EmploymentRelationshipService(
+            factory, new RecordingRelationshipConstitutionalGateway(), NullLogger<EmploymentRelationshipService>.Instance);
+        var tenantId = Guid.NewGuid();
+        var participantId = Guid.NewGuid();
+        var admission = new AgentAdmission
+        {
+            TenantId = Guid.NewGuid(),
+            ProfessionalTypeId = "DMA",
+            ProfessionalVersion = "1.0.0",
+            OwnerSubjectId = Guid.NewGuid(),
+            State = AgentAdmissionState.Active,
+        };
+        await using (var seed = factory.CreateDbContext())
+        {
+            seed.AgentAdmissions.Add(admission);
+            await seed.SaveChangesAsync();
+        }
+        await service.AdmitAsync(
+            tenantId, participantId, Guid.NewGuid(), "DMA", admission.AdmissionId,
+            admission.ProfessionalVersion, Guid.NewGuid(), CancellationToken.None);
+        await service.AdmitAsync(
+            tenantId, participantId, Guid.NewGuid(), "DMA", admission.AdmissionId,
+            admission.ProfessionalVersion, Guid.NewGuid(), CancellationToken.None);
+        var context = CreateControllerContext(tenantId, participantId);
+        context.HttpContext.Items[CustomerMembershipMiddleware.MembershipItem] =
+            new CustomerWorkspaceMembership(participantId, tenantId, Guid.NewGuid(), ["OWNER"]);
+        var controller = new EmploymentRelationshipsController(service) { ControllerContext = context };
+
+        var result = Assert.IsType<OkObjectResult>(
+            await controller.ListAsync(null, 20, CancellationToken.None));
+        var items = JsonSerializer.SerializeToElement(result.Value)
+            .GetProperty("Items").EnumerateArray().ToArray();
+
+        Assert.Equal(2, items.Length);
+        Assert.All(items, item => Assert.Equal("DMA", item.GetProperty("ProfessionalType").GetString()));
+        Assert.Equal(2, items.Select(item => item.GetProperty("AgentInstanceId").GetGuid()).Distinct().Count());
+    }
+
+    [Fact]
     public void OnlyRelationshipCollectionOptsIntoCustomerMembership()
     {
         var adapted = typeof(EmploymentRelationshipsController).GetMethods()
@@ -167,9 +209,23 @@ public sealed class EmploymentRelationshipsControllerTests
             },
         };
         controller.HttpContext.Items[TenantIsolationMiddleware.TenantIdItemKey] = tenantId.ToString();
+        var admission = new AgentAdmission
+        {
+            TenantId = tenantId,
+            ProfessionalTypeId = "DMA",
+            ProfessionalVersion = "1.0.0",
+            OwnerSubjectId = Guid.NewGuid(),
+            State = AgentAdmissionState.Active,
+        };
+        await using (var seed = factory.CreateDbContext())
+        {
+            seed.AgentAdmissions.Add(admission);
+            await seed.SaveChangesAsync();
+        }
 
         var result = await controller.AdmitAsync(
-            new AdmitEmploymentRelationshipRequest(Guid.NewGuid(), "DMA"),
+            new AdmitEmploymentRelationshipRequest(
+                Guid.NewGuid(), "DMA", admission.AdmissionId, admission.ProfessionalVersion),
             CancellationToken.None);
 
         var created = Assert.IsType<CreatedAtActionResult>(result);
@@ -178,6 +234,8 @@ public sealed class EmploymentRelationshipsControllerTests
         var relationship = await db.EmploymentRelationships.FindAsync(response.RelationshipId);
         Assert.NotNull(relationship);
         Assert.Equal(tenantId, relationship.TenantId);
+        Assert.Equal(admission.AdmissionId, relationship.ProfessionalAdmissionId);
+        Assert.Equal(response.AgentInstanceId, relationship.AgentInstanceId);
         Assert.Equal(participantId, relationship.InitiatingParticipantId);
     }
 
@@ -225,8 +283,22 @@ public sealed class EmploymentRelationshipsControllerTests
             NullLogger<EmploymentRelationshipService>.Instance);
         var tenantId = Guid.NewGuid();
         var participantId = Guid.NewGuid();
+        var admission = new AgentAdmission
+        {
+            TenantId = tenantId,
+            ProfessionalTypeId = "DMA",
+            ProfessionalVersion = "1.0.0",
+            OwnerSubjectId = Guid.NewGuid(),
+            State = AgentAdmissionState.Active,
+        };
+        await using (var seed = factory.CreateDbContext())
+        {
+            seed.AgentAdmissions.Add(admission);
+            await seed.SaveChangesAsync();
+        }
         var admitted = await relationships.AdmitAsync(
-            tenantId, participantId, Guid.NewGuid(), "DMA", Guid.NewGuid(), CancellationToken.None);
+            tenantId, participantId, Guid.NewGuid(), "DMA", admission.AdmissionId,
+            admission.ProfessionalVersion, Guid.NewGuid(), CancellationToken.None);
         await relationships.TransitionAsync(
             tenantId, admitted.Relationship.RelationshipId, participantId, RelationshipParticipantRole.Evaluator,
             EmploymentRelationshipState.Interviewing, Guid.NewGuid(), false, CancellationToken.None);

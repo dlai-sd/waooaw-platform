@@ -65,6 +65,8 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
             """);
         await OwnerAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/29-customer-workspace-provisioning.sql")));
         await OwnerAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/19-ae01-employment-relationship.sql")));
+        await OwnerAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/25-agent-admission.sql")));
+        await OwnerAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/31-agent-instance-binding.sql")));
         var contextConfiguration = await File.ReadAllTextAsync(
             RepositoryPaths.Resolve("infrastructure/postgres/init/20b-ae01-context-configuration.sql"));
         var goalsStart = contextConfiguration.IndexOf(

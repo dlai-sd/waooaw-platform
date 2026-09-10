@@ -65,12 +65,118 @@ public sealed class EmploymentRelationshipServiceTests
         Assert.True(first.Created);
         Assert.False(replay.Created);
         Assert.Equal(first.Relationship.RelationshipId, replay.Relationship.RelationshipId);
+        Assert.Equal(first.Relationship.AgentInstanceId, replay.Relationship.AgentInstanceId);
         Assert.Equal(1, gateway.CallCount);
 
         await using var db = factory.CreateDbContext();
         Assert.Equal(1, await db.EmploymentRelationships.CountAsync());
         Assert.Equal(1, await db.RelationshipParticipants.CountAsync());
         Assert.Equal(1, await db.RelationshipStateHistory.CountAsync());
+    }
+
+    [Fact]
+    public async Task DistinctEvaluationIntentsMintDistinctInstancesForSameCustomerAndType()
+    {
+        var (service, factory, gateway) = CreateService();
+        var tenantId = Guid.NewGuid();
+        var participantId = Guid.NewGuid();
+        var firstAdmissionId = await AddActiveAdmissionAsync(factory, tenantId, "DMA", "1.0.0");
+        var secondAdmissionId = await AddActiveAdmissionAsync(factory, tenantId, "DMA", "1.1.0");
+
+        var first = await service.AdmitAsync(
+            tenantId, participantId, Guid.NewGuid(), "DMA", firstAdmissionId, "1.0.0",
+            Guid.NewGuid(), CancellationToken.None);
+        var second = await service.AdmitAsync(
+            tenantId, participantId, Guid.NewGuid(), "DMA", secondAdmissionId, "1.1.0",
+            Guid.NewGuid(), CancellationToken.None);
+
+        Assert.NotEqual(first.Relationship.RelationshipId, second.Relationship.RelationshipId);
+        Assert.NotEqual(first.Relationship.AgentInstanceId, second.Relationship.AgentInstanceId);
+        Assert.NotEqual(Guid.Empty, first.Relationship.AgentInstanceId);
+        Assert.NotEqual(Guid.Empty, second.Relationship.AgentInstanceId);
+        Assert.Equal(firstAdmissionId, first.Relationship.ProfessionalAdmissionId);
+        Assert.Equal("1.0.0", first.Relationship.ProfessionalVersion);
+        Assert.Equal(secondAdmissionId, second.Relationship.ProfessionalAdmissionId);
+        Assert.Equal("1.1.0", second.Relationship.ProfessionalVersion);
+        Assert.Equal(2, gateway.CallCount);
+
+        await using var db = factory.CreateDbContext();
+        Assert.Equal(2, await db.EmploymentRelationships.CountAsync());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InactiveOrMismatchedAdmissionCannotBindAgentInstance(bool mismatchedType)
+    {
+        var (service, factory, gateway) = CreateService();
+        var tenantId = Guid.NewGuid();
+        var admission = new AgentAdmission
+        {
+            TenantId = Guid.NewGuid(),
+            ProfessionalTypeId = mismatchedType ? "SALES" : "DMA",
+            ProfessionalVersion = "1.0.0",
+            OwnerSubjectId = Guid.NewGuid(),
+            State = mismatchedType ? AgentAdmissionState.Active : AgentAdmissionState.Approved,
+        };
+        await using (var seed = factory.CreateDbContext())
+        {
+            seed.AgentAdmissions.Add(admission);
+            await seed.SaveChangesAsync();
+        }
+
+        await Assert.ThrowsAsync<ProfessionalAdmissionBindingException>(() => service.AdmitAsync(
+            tenantId, Guid.NewGuid(), Guid.NewGuid(), "DMA", admission.AdmissionId,
+            admission.ProfessionalVersion, Guid.NewGuid(), CancellationToken.None));
+
+        Assert.Equal(0, gateway.CallCount);
+        await using var db = factory.CreateDbContext();
+        Assert.Empty(db.EmploymentRelationships);
+    }
+
+    [Fact]
+    public async Task BoundAdmissionReplayPreservesInstanceAndRejectsChangedVersion()
+    {
+        var (service, factory, gateway) = CreateService();
+        var tenantId = Guid.NewGuid();
+        var participantId = Guid.NewGuid();
+        var evaluationIntentId = Guid.NewGuid();
+        var admissionId = await AddActiveAdmissionAsync(factory, tenantId, "DMA", "1.0.0");
+        var changedAdmissionId = await AddActiveAdmissionAsync(factory, tenantId, "DMA", "1.1.0");
+
+        var first = await service.AdmitAsync(
+            tenantId, participantId, evaluationIntentId, "DMA", admissionId, "1.0.0",
+            Guid.NewGuid(), CancellationToken.None);
+        var replay = await service.AdmitAsync(
+            tenantId, participantId, evaluationIntentId, "DMA", admissionId, "1.0.0",
+            Guid.NewGuid(), CancellationToken.None);
+
+        Assert.False(replay.Created);
+        Assert.Equal(first.Relationship.AgentInstanceId, replay.Relationship.AgentInstanceId);
+        await Assert.ThrowsAsync<ProfessionalAdmissionBindingException>(() => service.AdmitAsync(
+            tenantId, participantId, evaluationIntentId, "DMA", changedAdmissionId, "1.1.0",
+            Guid.NewGuid(), CancellationToken.None));
+        Assert.Equal(1, gateway.CallCount);
+    }
+
+    private static async Task<Guid> AddActiveAdmissionAsync(
+        InMemoryEmploymentRelationshipFactory factory,
+        Guid tenantId,
+        string professionalType,
+        string professionalVersion)
+    {
+        var admission = new AgentAdmission
+        {
+            TenantId = tenantId,
+            ProfessionalTypeId = professionalType,
+            ProfessionalVersion = professionalVersion,
+            OwnerSubjectId = Guid.NewGuid(),
+            State = AgentAdmissionState.Active,
+        };
+        await using var db = factory.CreateDbContext();
+        db.AgentAdmissions.Add(admission);
+        await db.SaveChangesAsync();
+        return admission.AdmissionId;
     }
 
     [Fact]

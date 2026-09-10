@@ -32,6 +32,9 @@ public sealed class IllegalRelationshipTransitionException(
     EmploymentRelationshipState target)
     : Exception($"Transition from {current} to {target} is not permitted.");
 
+public sealed class ProfessionalAdmissionBindingException()
+    : Exception("The selected professional admission is not active or does not match the requested type and version.");
+
 public sealed class EmploymentRelationshipService
 {
     private static readonly IReadOnlyDictionary<EmploymentRelationshipState, ISet<EmploymentRelationshipState>> LegalTransitions =
@@ -70,6 +73,32 @@ public sealed class EmploymentRelationshipService
         Guid evaluationIntentId,
         string professionalType,
         Guid correlationId,
+        CancellationToken cancellationToken) =>
+        await AdmitCoreAsync(
+            tenantId, participantId, evaluationIntentId, professionalType,
+            null, null, correlationId, cancellationToken);
+
+    public async Task<AdmitRelationshipResult> AdmitAsync(
+        Guid tenantId,
+        Guid participantId,
+        Guid evaluationIntentId,
+        string professionalType,
+        Guid professionalAdmissionId,
+        string professionalVersion,
+        Guid correlationId,
+        CancellationToken cancellationToken) =>
+        await AdmitCoreAsync(
+            tenantId, participantId, evaluationIntentId, professionalType,
+            professionalAdmissionId, professionalVersion, correlationId, cancellationToken);
+
+    private async Task<AdmitRelationshipResult> AdmitCoreAsync(
+        Guid tenantId,
+        Guid participantId,
+        Guid evaluationIntentId,
+        string professionalType,
+        Guid? professionalAdmissionId,
+        string? professionalVersion,
+        Guid correlationId,
         CancellationToken cancellationToken)
     {
         var normalizedProfessionalType = professionalType.Trim().ToUpperInvariant();
@@ -88,10 +117,29 @@ public sealed class EmploymentRelationshipService
             cancellationToken);
         if (existing is not null)
         {
+            EnsureBindingMatches(existing, professionalAdmissionId, professionalVersion);
             return new AdmitRelationshipResult(existing, false);
         }
 
+        var normalizedProfessionalVersion = professionalVersion?.Trim();
+        if (professionalAdmissionId.HasValue)
+        {
+            if (professionalAdmissionId == Guid.Empty || string.IsNullOrWhiteSpace(normalizedProfessionalVersion)
+                || normalizedProfessionalVersion.Length > 64
+                || !await IsActiveProfessionalAdmissionAsync(
+                    db, professionalAdmissionId.Value, normalizedProfessionalType,
+                    normalizedProfessionalVersion, cancellationToken))
+            {
+                throw new ProfessionalAdmissionBindingException();
+            }
+        }
+        else if (normalizedProfessionalVersion is not null)
+        {
+            throw new ProfessionalAdmissionBindingException();
+        }
+
         var relationshipId = Guid.NewGuid();
+        var agentInstanceId = Guid.NewGuid();
         var evidenceId = await _constitutionalGateway.AuthorizeAndRecordAsync(
             tenantId,
             relationshipId,
@@ -102,7 +150,10 @@ public sealed class EmploymentRelationshipService
             {
                 evaluation_intent_id = evaluationIntentId,
                 initiating_participant_id = participantId,
+                agent_instance_id = agentInstanceId,
+                professional_admission_id = professionalAdmissionId,
                 professional_type = normalizedProfessionalType,
+                professional_version = normalizedProfessionalVersion,
                 target_state = "DISCOVERED",
             },
             cancellationToken);
@@ -111,7 +162,10 @@ public sealed class EmploymentRelationshipService
         {
             RelationshipId = relationshipId,
             TenantId = tenantId,
+            AgentInstanceId = agentInstanceId,
+            ProfessionalAdmissionId = professionalAdmissionId,
             ProfessionalType = normalizedProfessionalType,
+            ProfessionalVersion = normalizedProfessionalVersion,
             EvaluationIntentId = evaluationIntentId,
             InitiatingParticipantId = participantId,
         };
@@ -162,8 +216,60 @@ public sealed class EmploymentRelationshipService
                 throw;
             }
 
+            EnsureBindingMatches(replay, professionalAdmissionId, normalizedProfessionalVersion);
             return new AdmitRelationshipResult(replay, false);
         }
+    }
+
+    private static void EnsureBindingMatches(
+        EmploymentRelationship relationship,
+        Guid? professionalAdmissionId,
+        string? professionalVersion)
+    {
+        if (professionalAdmissionId.HasValue
+            && (relationship.ProfessionalAdmissionId != professionalAdmissionId
+                || !string.Equals(
+                    relationship.ProfessionalVersion, professionalVersion?.Trim(), StringComparison.Ordinal)))
+        {
+            throw new ProfessionalAdmissionBindingException();
+        }
+    }
+
+    private static async Task<bool> IsActiveProfessionalAdmissionAsync(
+        EmploymentRelationshipDbContext db,
+        Guid admissionId,
+        string professionalType,
+        string professionalVersion,
+        CancellationToken cancellationToken)
+    {
+        if (!db.Database.IsRelational())
+        {
+            return await db.AgentAdmissions.AsNoTracking().AnyAsync(
+                value => value.AdmissionId == admissionId
+                    && value.ProfessionalTypeId == professionalType
+                    && value.ProfessionalVersion == professionalVersion
+                    && value.State == AgentAdmissionState.Active,
+                cancellationToken);
+        }
+
+        var connection = db.Database.GetDbConnection();
+        if (connection.State != System.Data.ConnectionState.Open)
+            await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT business.is_active_professional_admission(@admission_id, @professional_type, @professional_version)";
+        foreach (var (name, value) in new[]
+        {
+            ("admission_id", (object)admissionId),
+            ("professional_type", professionalType),
+            ("professional_version", professionalVersion),
+        })
+        {
+            var parameter = command.CreateParameter();
+            parameter.ParameterName = name;
+            parameter.Value = value;
+            command.Parameters.Add(parameter);
+        }
+        return await command.ExecuteScalarAsync(cancellationToken) is true;
     }
 
     public Task<AdmitRelationshipResult> AdmitLegacyAsync(

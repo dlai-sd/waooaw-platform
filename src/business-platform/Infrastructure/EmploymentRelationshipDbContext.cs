@@ -33,7 +33,11 @@ public sealed class EmploymentRelationship
 {
     public Guid RelationshipId { get; set; } = Guid.NewGuid();
     public Guid TenantId { get; init; }
+    public Guid AgentInstanceId { get; init; } = Guid.NewGuid();
+    public Guid? ProfessionalAdmissionId { get; init; }
     public string ProfessionalType { get; init; } = string.Empty;
+    public string? ProfessionalVersion { get; init; }
+    public DateTimeOffset AgentInstanceMintedAt { get; init; } = DateTimeOffset.UtcNow;
     public Guid EvaluationIntentId { get; init; }
     public Guid InitiatingParticipantId { get; init; }
     public Guid? SourceRelationshipId { get; init; }
@@ -492,7 +496,12 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             }).IsUnique();
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.HasIndex(value => value.AgentInstanceId).IsUnique();
+            entity.Property(value => value.AgentInstanceId).HasColumnName("agent_instance_id");
+            entity.Property(value => value.ProfessionalAdmissionId).HasColumnName("professional_admission_id");
             entity.Property(value => value.ProfessionalType).HasColumnName("professional_type");
+            entity.Property(value => value.ProfessionalVersion).HasColumnName("professional_version");
+            entity.Property(value => value.AgentInstanceMintedAt).HasColumnName("agent_instance_minted_at");
             entity.Property(value => value.EvaluationIntentId).HasColumnName("evaluation_intent_id");
             entity.Property(value => value.InitiatingParticipantId).HasColumnName("initiating_participant_id");
             entity.Property(value => value.SourceRelationshipId).HasColumnName("source_relationship_id");

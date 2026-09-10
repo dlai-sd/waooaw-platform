@@ -109,6 +109,10 @@ class ExecutionControlOutcome(StrictModel):
 
 class RelationshipTrialStartRequest(StrictModel):
     schema_version: Literal["1.0"] = Field(alias="schemaVersion")
+    agent_instance_id: uuid.UUID = Field(alias="agentInstanceId")
+    professional_admission_id: uuid.UUID = Field(alias="professionalAdmissionId")
+    professional_type: str = Field(alias="professionalType", min_length=1, max_length=64)
+    professional_version: str = Field(alias="professionalVersion", min_length=1, max_length=64)
     trial_id: uuid.UUID = Field(alias="trialId")
     starts_at: datetime = Field(alias="startsAt")
     expires_at: datetime = Field(alias="expiresAt")
@@ -121,6 +125,10 @@ class RelationshipTrialStartRequest(StrictModel):
 class RelationshipTrialStartResult(StrictModel):
     schema_version: Literal["1.0"] = Field(alias="schemaVersion")
     relationship_id: uuid.UUID = Field(alias="relationshipId")
+    agent_instance_id: uuid.UUID = Field(alias="agentInstanceId")
+    professional_admission_id: uuid.UUID = Field(alias="professionalAdmissionId")
+    professional_type: str = Field(alias="professionalType")
+    professional_version: str = Field(alias="professionalVersion")
     trial_id: uuid.UUID = Field(alias="trialId")
     workflow_state: Literal["TRIAL_DEMONSTRATING"] = Field(alias="workflowState")
     expires_at: datetime = Field(alias="expiresAt")
@@ -232,12 +240,23 @@ class RelationshipExecutionStore:
         with self._lock:
             existing = self._trials.get(key)
             if existing is not None:
-                if existing.trial_id != trial.trial_id or existing.expires_at != trial.expires_at:
+                if (
+                    existing.trial_id != trial.trial_id
+                    or existing.expires_at != trial.expires_at
+                    or existing.agent_instance_id != trial.agent_instance_id
+                    or existing.professional_admission_id != trial.professional_admission_id
+                    or existing.professional_type != trial.professional_type
+                    or existing.professional_version != trial.professional_version
+                ):
                     raise ServiceAuthError("TRIAL_BINDING_CONFLICT")
                 return existing.model_copy(update={"replayed": True})
             result = RelationshipTrialStartResult(
                 schemaVersion=SCHEMA_VERSION,
                 relationshipId=relationship_id,
+                agentInstanceId=trial.agent_instance_id,
+                professionalAdmissionId=trial.professional_admission_id,
+                professionalType=trial.professional_type,
+                professionalVersion=trial.professional_version,
                 trialId=trial.trial_id,
                 workflowState="TRIAL_DEMONSTRATING",
                 expiresAt=trial.expires_at,

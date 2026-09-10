@@ -889,9 +889,13 @@ components:
     PrRelationshipTrialStartRequestV1:
       type: object
       additionalProperties: false
-      required: [schemaVersion, trialId, startsAt, expiresAt, inferenceTier, paidProviderFallback, credentialUseAllowed, externalActionsAllowed]
+      required: [schemaVersion, agentInstanceId, professionalAdmissionId, professionalType, professionalVersion, trialId, startsAt, expiresAt, inferenceTier, paidProviderFallback, credentialUseAllowed, externalActionsAllowed]
       properties:
         schemaVersion: { $ref: "#/components/schemas/PrRelationshipExecutionSchemaVersion" }
+        agentInstanceId: { type: string, format: uuid }
+        professionalAdmissionId: { type: string, format: uuid }
+        professionalType: { type: string, minLength: 1, maxLength: 64 }
+        professionalVersion: { type: string, minLength: 1, maxLength: 64 }
         trialId: { type: string, format: uuid }
         startsAt: { type: string, format: date-time }
         expiresAt: { type: string, format: date-time }
@@ -903,10 +907,14 @@ components:
     PrRelationshipTrialStartResultV1:
       type: object
       additionalProperties: false
-      required: [schemaVersion, relationshipId, trialId, workflowState, expiresAt, replayed]
+      required: [schemaVersion, relationshipId, agentInstanceId, professionalAdmissionId, professionalType, professionalVersion, trialId, workflowState, expiresAt, replayed]
       properties:
         schemaVersion: { $ref: "#/components/schemas/PrRelationshipExecutionSchemaVersion" }
         relationshipId: { type: string, format: uuid }
+        agentInstanceId: { type: string, format: uuid }
+        professionalAdmissionId: { type: string, format: uuid }
+        professionalType: { type: string, minLength: 1, maxLength: 64 }
+        professionalVersion: { type: string, minLength: 1, maxLength: 64 }
         trialId: { type: string, format: uuid }
         workflowState: { type: string, const: TRIAL_DEMONSTRATING }
         expiresAt: { type: string, format: date-time }

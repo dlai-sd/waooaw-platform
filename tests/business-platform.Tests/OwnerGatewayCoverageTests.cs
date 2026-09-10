@@ -225,7 +225,8 @@ public sealed class OwnerGatewayCoverageTests(OwnerGatewayIdentityFixture fixtur
         var wbe = await gateway.StartWbeTrialAsync(
             Guid.NewGuid(), "DMA", relationshipId, Guid.NewGuid(), CancellationToken.None);
         var runtime = await gateway.StartPrTrialAsync(
-            Guid.NewGuid(), relationshipId, trialId, startsAt, startsAt.AddDays(14),
+            Guid.NewGuid(), relationshipId, Guid.NewGuid(), Guid.NewGuid(), "DMA", "1.0.0",
+            trialId, startsAt, startsAt.AddDays(14),
             Guid.NewGuid(), CancellationToken.None);
 
         Assert.Equal(trialId, wbe?.TrialId);
@@ -268,7 +269,8 @@ public sealed class OwnerGatewayCoverageTests(OwnerGatewayIdentityFixture fixtur
         Assert.Null(await gateway.StartWbeTrialAsync(
             Guid.NewGuid(), "DMA", Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None));
         Assert.Null(await gateway.StartPrTrialAsync(
-            Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), DateTimeOffset.UtcNow,
+            Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "DMA", "1.0.0",
+            Guid.NewGuid(), DateTimeOffset.UtcNow,
             DateTimeOffset.UtcNow.AddDays(14), Guid.NewGuid(), CancellationToken.None));
     }
 

@@ -278,7 +278,7 @@ example().catch(console.error);
 
 Admit or replay an employment relationship
 
-Mints the tenant\&#39;s durable employment relationship for the authenticated participant and canonical evaluation intent. Replaying the same participant, professional type, and evaluation intent returns the existing relationship. Constitutional validation and evidence commitment complete before persistence.
+Mints the tenant\&#39;s durable employment relationship for the authenticated participant, canonical evaluation intent, and exact active professional admission. Replaying the same participant, professional type, version, and evaluation intent returns the existing relationship and immutable agent instance. Constitutional validation and evidence commitment complete before persistence.
 
 ### Example
 
@@ -335,14 +335,15 @@ example().catch(console.error);
 
 ### HTTP response details
 
-| Status code | Description                                                     | Response headers |
-| ----------- | --------------------------------------------------------------- | ---------------- |
-| **201**     | Relationship admitted                                           | -                |
-| **200**     | Existing relationship returned for an idempotent replay         | -                |
-| **400**     | Request body failed validation                                  | -                |
-| **401**     | JWT missing, expired, or invalid                                | -                |
-| **403**     | Authenticated identity lacks tenant or participant authority    | -                |
-| **503**     | Constitutional validation or evidence commitment is unavailable | -                |
+| Status code | Description                                                                                         | Response headers |
+| ----------- | --------------------------------------------------------------------------------------------------- | ---------------- |
+| **201**     | Relationship admitted                                                                               | -                |
+| **200**     | Existing relationship returned for an idempotent replay                                             | -                |
+| **400**     | Request body failed validation                                                                      | -                |
+| **401**     | JWT missing, expired, or invalid                                                                    | -                |
+| **403**     | Authenticated identity lacks tenant or participant authority                                        | -                |
+| **409**     | Professional admission is inactive, mismatched, or conflicts with the existing relationship binding | -                |
+| **503**     | Constitutional validation or evidence commitment is unavailable                                     | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
