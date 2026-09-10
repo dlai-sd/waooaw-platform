@@ -298,7 +298,11 @@ public sealed class IdentityProviderProjectionTests
 
         Overlay(manifest.RootElement, IdentityEnvironmentOptions.SectionName);
         for (var index = 0; index < 4; index++)
+        {
+            configuration[$"IdentityEnvironment:providers:{index}:enabled"] = "false";
+            configuration[$"IdentityEnvironment:providers:{index}:unavailableReason"] = "NOT_CONFIGURED";
             configuration[$"IdentityEnvironment:providers:{index}:readinessEvidenceReference"] = "";
+        }
         var options = configuration.GetSection(IdentityEnvironmentOptions.SectionName)
             .Get<IdentityEnvironmentOptions>()!;
 
