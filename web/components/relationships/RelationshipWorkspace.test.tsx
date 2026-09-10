@@ -69,7 +69,7 @@ const evaluation: RelationshipEvaluationProjection = {
   nextContextQuestion: 'Where does your business serve customers?',
   trial: { trialId: 'trial-1', startsAt: '2026-08-08T10:00:00Z', expiresAt: '2026-08-22T10:00:00Z', status: 'ACTIVE' },
   goals: [{ goalId: 'goal-1', goal: 'Increase enquiries', measure: 'Qualified enquiries', status: 'ACCEPTED', reviewCadenceMonths: 2 }],
-  skills: [{ configurationId: 'skill-1', skillId: 'MARKET_RESEARCH', applicability: 'APPLICABLE', authorityState: 'NOT_GRANTED', status: 'DEFERRED' }],
+  skills: [{ configurationId: 'skill-1', skillId: 'MARKET_RESEARCH', skillVersion: '1.0.0', subjectVersion: 'skill-4', applicability: 'APPLICABLE', authorityState: 'NOT_GRANTED', status: 'DEFERRED' }],
   decisionSpace: { version: 1, budgetCeilingInrPaise: 100000, authorityBoundaries: ['No publishing'], stopConditions: ['Customer stop'], reviewCadenceMonths: 2 },
 };
 const contractJourney: ContractJourneyProjection = {
@@ -120,6 +120,46 @@ describe('RelationshipWorkspace', () => {
 
     expect(screen.getByText('Live · ACTIVE')).toBeVisible();
     expect(await screen.findByText('No messages yet. Start with a clear outcome for your professional.')).toBeVisible();
+  });
+
+  it('switches experts by relationship without mutating either relationship', () => {
+    const otherRelationshipId = 'b9baf6eb-0800-4482-8879-e23c124ed410';
+    render(<RelationshipWorkspace relationship={relationship} relationships={[
+      {
+        relationshipId: relationship.relationshipId, agentInstanceId: relationship.agentInstanceId,
+        professionalType: relationship.professionalType, professionalDisplayName: 'Digital marketing expert',
+        lifecycleState: 'TRIAL_ACTIVE', unreadState: 'NONE', availabilityState: 'AVAILABLE', currencyState: 'CURRENT',
+        lastAuthoritativelyConfirmedAt: relationship.updatedAt,
+        resumeTarget: { surface: 'CONVERSATION', relationshipId: relationship.relationshipId },
+      },
+      {
+        relationshipId: otherRelationshipId, agentInstanceId: 'a1a81eb7-6258-45d4-8cc1-c947e029042c',
+        professionalType: 'DIGITAL_MARKETING', professionalDisplayName: 'Campaign expert',
+        lifecycleState: 'ACTIVE', unreadState: 'ACTION_REQUIRED', availabilityState: 'AVAILABLE', currencyState: 'CURRENT',
+        lastAuthoritativelyConfirmedAt: relationship.updatedAt,
+        resumeTarget: { surface: 'CONVERSATION', relationshipId: otherRelationshipId },
+      },
+    ]} timeline={timeline} views={views} evaluation={evaluation} />);
+
+    const switcher = screen.getByRole('navigation', { name: 'Switch expert' });
+    expect(within(switcher).getByRole('link', { name: 'Digital marketing expert' })).toHaveAttribute('aria-current', 'page');
+    expect(within(switcher).getByRole('link', { name: 'Campaign expert' })).toHaveAttribute('href', `/relationships/${otherRelationshipId}`);
+  });
+
+  it('submits an exact-version skill decision for only the current relationship', async () => {
+    render(<RelationshipWorkspace relationship={relationship} timeline={timeline} views={views} evaluation={evaluation} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'accept' }));
+
+    expect(await screen.findByText('Skill decision recorded.')).toBeVisible();
+    const skillCall = (global.fetch as jest.Mock).mock.calls.find(([url]) => String(url).endsWith('/skill-decisions'));
+    expect(skillCall?.[0]).toBe(`/api/relationships/${relationship.relationshipId}/skill-decisions`);
+    expect(JSON.parse(skillCall?.[1].body)).toMatchObject({
+      command: {
+        expectedWorkspaceVersion: 'relationship-1', expectedSubjectVersion: 'skill-4',
+        payload: { commandKind: 'ACCEPT_SKILL', configurationId: 'skill-1', skillId: 'MARKET_RESEARCH', skillVersion: '1.0.0' },
+      },
+    });
   });
 
   it('projects authoritative relationship Stop into the conversation controls', async () => {

@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 145
-**Last Updated:** 2026-09-10 (WC-087 agent-instance foundation identifier correction)
+**State Revision:** 146
+**Last Updated:** 2026-09-10 (WC-088 customer multi-agent and skill journey engineering qualification)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -20,8 +20,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-080 - Agent Runtime Adapter Contract v1 |
-| Latest merge | PR #409 merged to `main` as `44afa9f` |
-| Active delivery | WC-087 Agent Instance And Multi-Agent Foundation on `ib/087/agent-instance`; P3-EX11 remains plan-only |
+| Latest merge | PR #411 merged to `main` as `28f3e5e4` |
+| Active delivery | WC-088 Customer Multi-Agent And Skill Journey on `ib/088/customer-multi-agent-skill-journey`; P3-EX11 remains plan-only |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 
@@ -40,7 +40,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | WC-078 public visual experience | ENGINEERING QUALIFIED - WC-01 through WC-08 complete; WC-09 Docker build/tests/browser matrix/54 captures/scanners and author review PASS; Founder visual acceptance, PR approval and merge pending |
 | WC-084 Customer Portal | ENGINEERING QUALIFIED - generated-client-backed My Agents, Marketplace, Alerts, Profile, Settings, account drawer, Onboard/Induct and lifecycle views complete; Docker build/typecheck, 209 Jest tests, 96.33% changed-interaction line coverage, 40 focused BP tests and 238 Playwright tests pass; Founder visual acceptance, PR approval and merge remain |
 | WC-085 remediation | PARTIAL / D-GOAL LOCAL PASS - Draft PR #409 on `ib/085/remediation`. Founder-accepted D-GOAL is implemented through the existing relationship command: append-only RLS decisions, exact versions, fresh assurance, idempotency, generated client and Operations relock. Full BP Docker suite passes 641/641 at 91.59% line / 80.17% branch; exact candidate image and scans are recorded in WC-085 evidence. The PR's original 19-alert CodeQL set is repaired; the first pushed scan closed 18 and its sole remaining StorageEvent warning has a constructor-free follow-up awaiting pushed-head closure. D-BILLING, D-IDENTITY, real Google, deployment and full story acceptance remain open. |
-| WC-087 agent-instance foundation | IN PROGRESS - Founder authorized Delivery 1 on 2026-09-10. The bounded implementation adds immutable per-relationship agent-instance identity, exact active professional-admission/version binding, same-customer same-type multi-instance proof, and Professional Runtime trial binding. Delivery 2 customer multi-agent/skill UX and the separately accepted D-BILLING and D-IDENTITY implementations remain queued. |
+| WC-087 agent-instance foundation | MERGED - PR #411 as `28f3e5e4`; immutable per-relationship agent identity, exact admission/version binding, same-type multi-instance proof and PR trial binding are on `main`. |
+| WC-088 customer multi-agent/skill journey | ENGINEERING QUALIFIED - canonical My Experts, relationship switching, four governed skill decisions, append-only/RLS persistence, generated OpenAPI client and two-agent isolation proof pass local Docker and web qualification; PR submission and Founder review/merge remain. |
 | Production | PLAN ONLY - code-prepared; protected environments, authorized plan, traffic and final acceptance remain Founder-reserved |
 
 ### Checkpoint Context
@@ -77,9 +78,9 @@ downstream membership and browser account-switch qualification remain open; CB-0
 
 ## Next Authorized Action
 
-For WC-087: complete the authorized Agent Instance And Multi-Agent Foundation, qualify it in Docker,
-and submit a bounded PR. Follow with the customer multi-agent/skill journey, then implement the
-accepted D-BILLING and D-IDENTITY contracts as separate deliveries. H9 Facebook/email remains deferred.
+For WC-088: submit the engineering-qualified Customer Multi-Agent And Skill Journey as a bounded PR
+for Founder review and merge. D-BILLING and D-IDENTITY remain separate queued deliveries. H9
+Facebook/email remains deferred.
 
 Obtain INST-009 acceptance of the Production edge, data, runtime, recovery, cost and shared-state
 ownership inputs required for P3-EX11 offline readiness. Do not activate the Production runner, run

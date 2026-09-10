@@ -224,6 +224,24 @@ public sealed class RelationshipSkillConfiguration
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class RelationshipSkillDecision
+{
+    public Guid DecisionId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public Guid ConfigurationId { get; init; }
+    public string SkillId { get; init; } = string.Empty;
+    public string SkillVersion { get; init; } = string.Empty;
+    public string Decision { get; init; } = string.Empty;
+    public Guid ActorParticipantId { get; init; }
+    public string ExpectedWorkspaceVersion { get; init; } = string.Empty;
+    public string ExpectedSubjectVersion { get; init; } = string.Empty;
+    public Guid IdempotencyKey { get; init; }
+    public string MaterialRequestHash { get; init; } = string.Empty;
+    public Guid EvidenceId { get; init; }
+    public DateTimeOffset OccurredAt { get; init; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class DecisionSpaceSnapshot
 {
     public Guid SnapshotId { get; init; } = Guid.NewGuid();
@@ -456,6 +474,7 @@ public sealed class EmploymentRelationshipDbContext : DbContext
     public DbSet<CustomerAlert> CustomerAlerts => Set<CustomerAlert>();
     public DbSet<CustomerAlertIdempotency> CustomerAlertIdempotency => Set<CustomerAlertIdempotency>();
     public DbSet<RelationshipSkillConfiguration> RelationshipSkillConfigurations => Set<RelationshipSkillConfiguration>();
+    public DbSet<RelationshipSkillDecision> RelationshipSkillDecisions => Set<RelationshipSkillDecision>();
     public DbSet<DecisionSpaceSnapshot> DecisionSpaceSnapshots => Set<DecisionSpaceSnapshot>();
     public DbSet<EmploymentContractVersion> EmploymentContractVersions => Set<EmploymentContractVersion>();
     public DbSet<ContractAcceptance> ContractAcceptances => Set<ContractAcceptance>();
@@ -774,6 +793,7 @@ public sealed class EmploymentRelationshipDbContext : DbContext
         {
             entity.ToTable("relationship_skill_configuration", "business");
             entity.HasKey(value => value.ConfigurationId);
+            entity.HasAlternateKey(value => new { value.TenantId, value.RelationshipId, value.ConfigurationId });
             entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.SkillId, value.SkillVersion }).IsUnique();
             entity.Property(value => value.ConfigurationId).HasColumnName("configuration_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
@@ -790,6 +810,33 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.HasOne<EmploymentRelationship>().WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+        });
+
+        modelBuilder.Entity<RelationshipSkillDecision>(entity =>
+        {
+            entity.ToTable("relationship_skill_decisions", "business");
+            entity.HasKey(value => value.DecisionId);
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.IdempotencyKey }).IsUnique();
+            entity.Property(value => value.DecisionId).HasColumnName("decision_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.ConfigurationId).HasColumnName("configuration_id");
+            entity.Property(value => value.SkillId).HasColumnName("skill_id");
+            entity.Property(value => value.SkillVersion).HasColumnName("skill_version");
+            entity.Property(value => value.Decision).HasColumnName("decision");
+            entity.Property(value => value.ActorParticipantId).HasColumnName("actor_participant_id");
+            entity.Property(value => value.ExpectedWorkspaceVersion).HasColumnName("expected_workspace_version");
+            entity.Property(value => value.ExpectedSubjectVersion).HasColumnName("expected_subject_version");
+            entity.Property(value => value.IdempotencyKey).HasColumnName("idempotency_key");
+            entity.Property(value => value.MaterialRequestHash).HasColumnName("material_request_hash");
+            entity.Property(value => value.EvidenceId).HasColumnName("evidence_id");
+            entity.Property(value => value.OccurredAt).HasColumnName("occurred_at");
+            entity.HasOne<EmploymentRelationship>().WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+            entity.HasOne<RelationshipSkillConfiguration>().WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId, value.ConfigurationId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId, value.ConfigurationId });
         });
 
         modelBuilder.Entity<DecisionSpaceSnapshot>(entity =>

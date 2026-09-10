@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { EmploymentApi } from '@/lib/api/generated/apis/EmploymentApi';
+import { RelationshipWorkspaceApi } from '@/lib/api/generated/apis/RelationshipWorkspaceApi';
 import type { EmploymentRelationshipCollectionV1 } from '@/lib/api/generated/models/EmploymentRelationshipCollectionV1';
 import {
   EmploymentRelationshipFromJSON,
@@ -22,7 +23,7 @@ export interface RelationshipEvaluationProjection {
   nextContextQuestion?: string | null;
   trial?: { trialId: string; startsAt: string; expiresAt: string; status: string } | null;
   goals: Array<{ goalId: string; goal: string; measure: string; status: string; reviewCadenceMonths: number }>;
-  skills: Array<{ configurationId: string; skillId: string; applicability: string; applicabilityReason?: string | null; authorityState: string; status: string }>;
+  skills: Array<{ configurationId: string; skillId: string; skillVersion: string; subjectVersion: string; applicability: string; applicabilityReason?: string | null; authorityState: string; status: string }>;
   decisionSpace?: { version: number; budgetCeilingInrPaise: number; authorityBoundaries: unknown[]; stopConditions: unknown[]; reviewCadenceMonths: number } | null;
 }
 
@@ -88,10 +89,11 @@ export async function getRelationshipEvaluation(
   relationshipId: string,
   accessToken: string,
 ): Promise<RelationshipEvaluationProjection> {
-  return authorizedGet(
-    `/api/v1/employment/relationships/${encodeURIComponent(relationshipId)}/evaluation`,
-    accessToken,
-  ) as Promise<RelationshipEvaluationProjection>;
+  const api = new RelationshipWorkspaceApi(new Configuration({ basePath: businessPlatformUrl, accessToken }));
+  return api.getRelationshipEvaluation(
+    { relationshipId },
+    { cache: 'no-store' },
+  ) as unknown as Promise<RelationshipEvaluationProjection>;
 }
 
 export async function getContractJourney(

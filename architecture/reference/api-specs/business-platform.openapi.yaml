@@ -2,7 +2,7 @@ openapi: "3.1.0"
 
 info:
   title: WAOOAW Business Platform API
-  version: "1.9.0"
+  version: "1.10.0"
   description: |
     External customer-facing API for the WAOOAW Business Platform.
     Manages the employment lifecycle, approval workflows, evidence reading,
@@ -3209,6 +3209,23 @@ paths:
         "401": { $ref: "#/components/responses/RelationshipWorkspaceUnauthorized" }
         "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
         "503": { $ref: "#/components/responses/RelationshipWorkspaceUnavailable" }
+
+  /api/v1/employment/relationships/{relationshipId}/evaluation:
+    get:
+      tags: [Relationship Workspace]
+      summary: Read the authoritative relationship evaluation and skill configuration
+      operationId: getRelationshipEvaluation
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      responses:
+        "200":
+          description: Relationship-local evaluation projection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelationshipEvaluationV1"
+        "401": { $ref: "#/components/responses/RelationshipWorkspaceUnauthorized" }
+        "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
 
   /api/v1/employment/relationships/{relationshipId}/workspace/commands:
     post:
@@ -7181,6 +7198,37 @@ components:
             lifecycleState: { $ref: "#/components/schemas/EmploymentRelationshipState" }
             emergencyStopReachable: { type: boolean }
 
+    RelationshipEvaluationSkillV1:
+      type: object
+      additionalProperties: false
+      required: [configurationId, skillId, skillVersion, subjectVersion, applicability, authorityState, status]
+      properties:
+        configurationId: { type: string, format: uuid }
+        skillId: { type: string, minLength: 1, maxLength: 128 }
+        skillVersion: { type: string, minLength: 1, maxLength: 32 }
+        subjectVersion: { type: string, minLength: 1, maxLength: 64 }
+        applicability: { type: string, enum: [APPLICABLE, NOT_APPLICABLE, CONDITIONAL] }
+        applicabilityReason: { type: string, nullable: true }
+        authorityState: { type: string, enum: [NOT_GRANTED, PROPOSED, GRANTED, CONSTRAINED, REVOKED] }
+        status: { type: string, enum: [PROPOSED, SELECTED, ACCEPTED, EDITED, REJECTED, DEFERRED, RETIRED] }
+
+    RelationshipEvaluationV1:
+      type: object
+      additionalProperties: true
+      required: [relationshipId, lifecycleState, interviewState, context, goals, skills]
+      properties:
+        relationshipId: { type: string, format: uuid }
+        lifecycleState: { $ref: "#/components/schemas/EmploymentRelationshipState" }
+        interviewState: { type: string, minLength: 1, maxLength: 32 }
+        context: { type: array, items: { type: object } }
+        nextContextQuestion: { type: string, nullable: true }
+        trial: { type: object, nullable: true }
+        goals: { type: array, items: { type: object } }
+        skills:
+          type: array
+          items: { $ref: "#/components/schemas/RelationshipEvaluationSkillV1" }
+        decisionSpace: { type: object, nullable: true }
+
     RelationshipCommandKindV1:
       type: string
       enum: [
@@ -7190,6 +7238,10 @@ components:
         AMEND_GOAL,
         REPLACE_GOAL,
         VERIFY_GOAL,
+        SELECT_SKILL,
+        UPDATE_SKILL,
+        ACCEPT_SKILL,
+        DEFER_SKILL,
         CONFIRM_SCOPE_BOUNDARY,
         PAUSE_RELATIONSHIP,
         RESUME_RELATIONSHIP,
@@ -7266,6 +7318,46 @@ components:
         verificationDecision: { type: string, enum: [VERIFIED, CHANGES_REQUESTED] }
         correctionReason: { type: string, minLength: 1, maxLength: 500 }
 
+    SelectSkillPayloadV1:
+      type: object
+      additionalProperties: false
+      required: [commandKind, configurationId, skillId, skillVersion]
+      properties:
+        commandKind: { type: string, const: SELECT_SKILL }
+        configurationId: { type: string, format: uuid }
+        skillId: { type: string, minLength: 1, maxLength: 128 }
+        skillVersion: { type: string, minLength: 1, maxLength: 32 }
+
+    UpdateSkillPayloadV1:
+      type: object
+      additionalProperties: false
+      required: [commandKind, configurationId, skillId, skillVersion]
+      properties:
+        commandKind: { type: string, const: UPDATE_SKILL }
+        configurationId: { type: string, format: uuid }
+        skillId: { type: string, minLength: 1, maxLength: 128 }
+        skillVersion: { type: string, minLength: 1, maxLength: 32 }
+
+    AcceptSkillPayloadV1:
+      type: object
+      additionalProperties: false
+      required: [commandKind, configurationId, skillId, skillVersion]
+      properties:
+        commandKind: { type: string, const: ACCEPT_SKILL }
+        configurationId: { type: string, format: uuid }
+        skillId: { type: string, minLength: 1, maxLength: 128 }
+        skillVersion: { type: string, minLength: 1, maxLength: 32 }
+
+    DeferSkillPayloadV1:
+      type: object
+      additionalProperties: false
+      required: [commandKind, configurationId, skillId, skillVersion]
+      properties:
+        commandKind: { type: string, const: DEFER_SKILL }
+        configurationId: { type: string, format: uuid }
+        skillId: { type: string, minLength: 1, maxLength: 128 }
+        skillVersion: { type: string, minLength: 1, maxLength: 32 }
+
     ConfirmScopeBoundaryPayloadV1:
       type: object
       additionalProperties: false
@@ -7337,6 +7429,10 @@ components:
         - $ref: "#/components/schemas/AmendGoalPayloadV1"
         - $ref: "#/components/schemas/ReplaceGoalPayloadV1"
         - $ref: "#/components/schemas/VerifyGoalPayloadV1"
+        - $ref: "#/components/schemas/SelectSkillPayloadV1"
+        - $ref: "#/components/schemas/UpdateSkillPayloadV1"
+        - $ref: "#/components/schemas/AcceptSkillPayloadV1"
+        - $ref: "#/components/schemas/DeferSkillPayloadV1"
         - $ref: "#/components/schemas/ConfirmScopeBoundaryPayloadV1"
         - $ref: "#/components/schemas/PauseRelationshipPayloadV1"
         - $ref: "#/components/schemas/ResumeRelationshipPayloadV1"
@@ -7354,6 +7450,10 @@ components:
           AMEND_GOAL: "#/components/schemas/AmendGoalPayloadV1"
           REPLACE_GOAL: "#/components/schemas/ReplaceGoalPayloadV1"
           VERIFY_GOAL: "#/components/schemas/VerifyGoalPayloadV1"
+          SELECT_SKILL: "#/components/schemas/SelectSkillPayloadV1"
+          UPDATE_SKILL: "#/components/schemas/UpdateSkillPayloadV1"
+          ACCEPT_SKILL: "#/components/schemas/AcceptSkillPayloadV1"
+          DEFER_SKILL: "#/components/schemas/DeferSkillPayloadV1"
           CONFIRM_SCOPE_BOUNDARY: "#/components/schemas/ConfirmScopeBoundaryPayloadV1"
           PAUSE_RELATIONSHIP: "#/components/schemas/PauseRelationshipPayloadV1"
           RESUME_RELATIONSHIP: "#/components/schemas/ResumeRelationshipPayloadV1"

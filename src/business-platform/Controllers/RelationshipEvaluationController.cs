@@ -11,7 +11,7 @@ namespace Waooaw.BusinessPlatform.Controllers;
 
 public sealed record EvaluationContextItem(Guid PayloadReference, string FieldType, JsonElement Value, string Status);
 public sealed record EvaluationGoalItem(Guid GoalId, string Goal, string Measure, string Status, int ReviewCadenceMonths);
-public sealed record EvaluationSkillItem(Guid ConfigurationId, string SkillId, string Applicability, string? ApplicabilityReason, string AuthorityState, string Status);
+public sealed record EvaluationSkillItem(Guid ConfigurationId, string SkillId, string SkillVersion, string SubjectVersion, string Applicability, string? ApplicabilityReason, string AuthorityState, string Status);
 public sealed record EvaluationDecisionSpace(int Version, long BudgetCeilingInrPaise, JsonElement AuthorityBoundaries, JsonElement StopConditions, int ReviewCadenceMonths);
 public sealed record EvaluationTrial(Guid TrialId, DateTimeOffset StartsAt, DateTimeOffset ExpiresAt, string Status);
 public sealed record RelationshipEvaluationProjection(
@@ -68,7 +68,8 @@ public sealed class RelationshipEvaluationController(
         var skills = await db.RelationshipSkillConfigurations.AsNoTracking()
             .Where(item => item.TenantId == tenantId && item.RelationshipId == relationshipId)
             .OrderBy(item => item.CreatedAt)
-            .Select(item => new EvaluationSkillItem(item.ConfigurationId, item.SkillId, item.Applicability, item.ApplicabilityReason, item.AuthorityState, item.Status))
+            .Select(item => new EvaluationSkillItem(item.ConfigurationId, item.SkillId, item.SkillVersion,
+                $"skill-{item.UpdatedAt.UtcTicks}", item.Applicability, item.ApplicabilityReason, item.AuthorityState, item.Status))
             .ToListAsync(cancellationToken);
         var decisionRow = await db.DecisionSpaceSnapshots.AsNoTracking()
             .Where(item => item.TenantId == tenantId && item.RelationshipId == relationshipId)

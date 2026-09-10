@@ -5,9 +5,12 @@ import { RelationshipEvaluation } from './RelationshipEvaluation';
 import { ContractJourney } from './ContractJourney';
 import { EvidenceWindow } from './EvidenceWindow';
 import { OnboardForm } from './OnboardForm';
+import { SkillDecisionControls } from './SkillDecisionControls';
+import type { EmploymentRelationshipSummaryV1 } from '@/lib/api/generated/models/EmploymentRelationshipSummaryV1';
 
 interface RelationshipWorkspaceProps {
   relationship: EmploymentRelationship;
+  relationships?: EmploymentRelationshipSummaryV1[];
   timeline: RelationshipTimelineEntry[];
   views: RelationshipWorkspaceViews;
   evaluation: RelationshipEvaluationProjection;
@@ -16,7 +19,7 @@ interface RelationshipWorkspaceProps {
 
 const stateLabel = (state: string) => state.replaceAll('_', ' ').toLowerCase();
 
-export function RelationshipWorkspace({ relationship, timeline, views, evaluation, contractJourney = null }: RelationshipWorkspaceProps) {
+export function RelationshipWorkspace({ relationship, relationships = [], timeline, views, evaluation, contractJourney = null }: RelationshipWorkspaceProps) {
   const live = relationship.state === 'ACTIVE';
 
   return (
@@ -28,6 +31,8 @@ export function RelationshipWorkspace({ relationship, timeline, views, evaluatio
         </div>
         <span className={`state-banner ${live ? 'live' : 'trial'}`}>{live ? 'Live' : 'Evaluation'} · {relationship.state}</span>
       </header>
+
+      {relationships.length > 1 ? <nav className="workspace-nav" aria-label="Switch expert">{relationships.map((item) => <a aria-current={item.relationshipId === relationship.relationshipId ? 'page' : undefined} key={item.relationshipId} href={`/relationships/${item.relationshipId}`}>{item.professionalDisplayName}</a>)}</nav> : null}
 
       <section className="relationship-summary" aria-labelledby="relationship-summary-title">
         <div>
@@ -43,6 +48,7 @@ export function RelationshipWorkspace({ relationship, timeline, views, evaluatio
       </section>
 
       <RelationshipEvaluation evaluation={evaluation} />
+      <SkillDecisionControls relationshipId={relationship.relationshipId} workspaceVersion={views.workspace.workspaceVersion} skills={evaluation.skills} />
 
       <ContractJourney relationshipId={relationship.relationshipId} journey={contractJourney} />
 
