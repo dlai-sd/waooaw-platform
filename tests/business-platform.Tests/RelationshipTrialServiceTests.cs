@@ -15,6 +15,9 @@ internal sealed class TrialOwnerGatewayStub : IRelationshipTrialOwnerGateway
     public PrTrialWorkflow? Pr { get; set; }
     public int WbeCalls { get; private set; }
     public int PrCalls { get; private set; }
+    public Guid? AgentInstanceId { get; private set; }
+    public Guid? ProfessionalAdmissionId { get; private set; }
+    public string? ProfessionalVersion { get; private set; }
 
     public Task<WbeTrialEntitlement?> StartWbeTrialAsync(
         Guid customerId, string professionalType, Guid relationshipId, Guid correlationId,
@@ -25,10 +28,14 @@ internal sealed class TrialOwnerGatewayStub : IRelationshipTrialOwnerGateway
     }
 
     public Task<PrTrialWorkflow?> StartPrTrialAsync(
-        Guid tenantId, Guid relationshipId, Guid trialId, DateTimeOffset startsAt,
+        Guid tenantId, Guid relationshipId, Guid agentInstanceId, Guid professionalAdmissionId,
+        string professionalType, string professionalVersion, Guid trialId, DateTimeOffset startsAt,
         DateTimeOffset expiresAt, Guid correlationId, CancellationToken cancellationToken)
     {
         PrCalls++;
+        AgentInstanceId = agentInstanceId;
+        ProfessionalAdmissionId = professionalAdmissionId;
+        ProfessionalVersion = professionalVersion;
         return Task.FromResult(Pr);
     }
 }
@@ -48,6 +55,9 @@ public sealed class RelationshipTrialServiceTests
             tenantId, relationship.RelationshipId, actorId, Guid.NewGuid(), CancellationToken.None);
 
         Assert.Equal("ACTIVE", result.Status);
+        Assert.Equal(relationship.AgentInstanceId, gateway.AgentInstanceId);
+        Assert.Equal(relationship.ProfessionalAdmissionId, gateway.ProfessionalAdmissionId);
+        Assert.Equal(relationship.ProfessionalVersion, gateway.ProfessionalVersion);
         Assert.Equal(EmploymentRelationshipState.TrialActive,
             (await relationships.GetAsync(tenantId, relationship.RelationshipId, CancellationToken.None))?.State);
         await using var db = factory.CreateDbContext();
@@ -128,8 +138,22 @@ public sealed class RelationshipTrialServiceTests
             factory, constitutionalGateway, NullLogger<EmploymentRelationshipService>.Instance);
         var tenantId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
+        var admission = new AgentAdmission
+        {
+            TenantId = tenantId,
+            ProfessionalTypeId = "DMA",
+            ProfessionalVersion = "1.0.0",
+            OwnerSubjectId = Guid.NewGuid(),
+            State = AgentAdmissionState.Active,
+        };
+        await using (var seed = factory.CreateDbContext())
+        {
+            seed.AgentAdmissions.Add(admission);
+            await seed.SaveChangesAsync();
+        }
         var admitted = await relationships.AdmitAsync(
-            tenantId, actorId, Guid.NewGuid(), "DMA", Guid.NewGuid(), CancellationToken.None);
+            tenantId, actorId, Guid.NewGuid(), "DMA", admission.AdmissionId,
+            admission.ProfessionalVersion, Guid.NewGuid(), CancellationToken.None);
         var relationship = await relationships.TransitionAsync(
             tenantId, admitted.Relationship.RelationshipId, actorId, RelationshipParticipantRole.Evaluator,
             EmploymentRelationshipState.Interviewing, Guid.NewGuid(), false, CancellationToken.None);

@@ -920,8 +920,9 @@ paths:
       summary: Admit or replay an employment relationship
       description: |
         Mints the tenant's durable employment relationship for the authenticated
-        participant and canonical evaluation intent. Replaying the same participant,
-        professional type, and evaluation intent returns the existing relationship.
+        participant, canonical evaluation intent, and exact active professional admission.
+        Replaying the same participant, professional type, version, and evaluation intent
+        returns the existing relationship and immutable agent instance.
         Constitutional validation and evidence commitment complete before persistence.
       operationId: admitEmploymentRelationship
       requestBody:
@@ -949,6 +950,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           description: Authenticated identity lacks tenant or participant authority
+        "409":
+          description: Professional admission is inactive, mismatched, or conflicts with the existing relationship binding
         "503":
           description: Constitutional validation or evidence commitment is unavailable
 
@@ -4927,12 +4930,19 @@ components:
     AdmitEmploymentRelationshipRequest:
       type: object
       additionalProperties: false
-      required: [evaluationIntentId, professionalType]
+      required: [evaluationIntentId, professionalType, professionalAdmissionId, professionalVersion]
       properties:
         evaluationIntentId:
           type: string
           format: uuid
         professionalType:
+          type: string
+          minLength: 1
+          maxLength: 64
+        professionalAdmissionId:
+          type: string
+          format: uuid
+        professionalVersion:
           type: string
           minLength: 1
           maxLength: 64
@@ -5100,13 +5110,26 @@ components:
     EmploymentRelationship:
       type: object
       additionalProperties: false
-      required: [relationshipId, professionalType, state, stateVersion, createdAt, updatedAt]
+      required: [relationshipId, agentInstanceId, professionalType, state, stateVersion, agentInstanceMintedAt, createdAt, updatedAt]
       properties:
         relationshipId:
           type: string
           format: uuid
+        agentInstanceId:
+          type: string
+          format: uuid
+        professionalAdmissionId:
+          type: string
+          format: uuid
+          nullable: true
         professionalType:
           type: string
+        professionalVersion:
+          type: string
+          nullable: true
+        agentInstanceMintedAt:
+          type: string
+          format: date-time
         state:
           $ref: "#/components/schemas/EmploymentRelationshipState"
         stateVersion:
@@ -5562,10 +5585,13 @@ components:
     EmploymentRelationshipSummaryV1:
       type: object
       additionalProperties: false
-      required: [relationshipId, professionalType, professionalDisplayName, lifecycleState, unreadState, availabilityState, currencyState, lastAuthoritativelyConfirmedAt, resumeTarget]
+      required: [relationshipId, agentInstanceId, professionalType, professionalDisplayName, lifecycleState, unreadState, availabilityState, currencyState, lastAuthoritativelyConfirmedAt, resumeTarget]
       properties:
         relationshipId: { type: string, format: uuid }
+        agentInstanceId: { type: string, format: uuid }
+        professionalAdmissionId: { type: string, format: uuid, nullable: true }
         professionalType: { type: string, minLength: 1, maxLength: 100 }
+        professionalVersion: { type: string, minLength: 1, maxLength: 64, nullable: true }
         professionalDisplayName: { type: string, minLength: 1, maxLength: 200 }
         lifecycleState: { $ref: "#/components/schemas/EmploymentRelationshipState" }
         currentGoalSummary: { type: string, minLength: 1, maxLength: 240 }

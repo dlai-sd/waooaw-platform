@@ -130,6 +130,10 @@ def _trial_request(days: int = 14) -> RelationshipTrialStartRequest:
     return RelationshipTrialStartRequest.model_validate(
         {
             "schemaVersion": "1.0",
+            "agentInstanceId": str(uuid.uuid4()),
+            "professionalAdmissionId": str(uuid.uuid4()),
+            "professionalType": "DMA",
+            "professionalVersion": "1.0.0",
             "trialId": str(uuid.uuid4()),
             "startsAt": starts_at.isoformat(),
             "expiresAt": (starts_at + timedelta(days=days)).isoformat(),
@@ -161,3 +165,22 @@ def test_trial_start_rejects_invalid_duration_and_conflicting_binding() -> None:
     store.start_trial(_context(), RELATIONSHIP_ID, _trial_request())
     with pytest.raises(ServiceAuthError, match="TRIAL_BINDING_CONFLICT"):
         store.start_trial(_context(), RELATIONSHIP_ID, _trial_request())
+
+
+def test_trial_replay_rejects_changed_agent_instance() -> None:
+    store = RelationshipExecutionStore()
+    trial = _trial_request()
+    store.start_trial(_context(), RELATIONSHIP_ID, trial)
+
+    changed_instance = trial.model_copy(update={"agent_instance_id": uuid.uuid4()})
+    with pytest.raises(ServiceAuthError, match="TRIAL_BINDING_CONFLICT"):
+        store.start_trial(_context(), RELATIONSHIP_ID, changed_instance)
+
+    def test_trial_replay_rejects_changed_agent_instance() -> None:
+        store = RelationshipExecutionStore()
+        trial = _trial_request()
+        store.start_trial(_context(), RELATIONSHIP_ID, trial)
+
+        changed_instance = trial.model_copy(update={"agent_instance_id": uuid.uuid4()})
+        with pytest.raises(ServiceAuthError, match="TRIAL_BINDING_CONFLICT"):
+            store.start_trial(_context(), RELATIONSHIP_ID, changed_instance)

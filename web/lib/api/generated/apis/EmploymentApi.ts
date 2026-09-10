@@ -522,7 +522,7 @@ export class EmploymentApi extends runtime.BaseAPI {
   }
 
   /**
-   * Mints the tenant\'s durable employment relationship for the authenticated participant and canonical evaluation intent. Replaying the same participant, professional type, and evaluation intent returns the existing relationship. Constitutional validation and evidence commitment complete before persistence.
+   * Mints the tenant\'s durable employment relationship for the authenticated participant, canonical evaluation intent, and exact active professional admission. Replaying the same participant, professional type, version, and evaluation intent returns the existing relationship and immutable agent instance. Constitutional validation and evidence commitment complete before persistence.
    * Admit or replay an employment relationship
    */
   async admitEmploymentRelationshipRaw(
@@ -572,7 +572,7 @@ export class EmploymentApi extends runtime.BaseAPI {
   }
 
   /**
-   * Mints the tenant\'s durable employment relationship for the authenticated participant and canonical evaluation intent. Replaying the same participant, professional type, and evaluation intent returns the existing relationship. Constitutional validation and evidence commitment complete before persistence.
+   * Mints the tenant\'s durable employment relationship for the authenticated participant, canonical evaluation intent, and exact active professional admission. Replaying the same participant, professional type, version, and evaluation intent returns the existing relationship and immutable agent instance. Constitutional validation and evidence commitment complete before persistence.
    * Admit or replay an employment relationship
    */
   async admitEmploymentRelationship(

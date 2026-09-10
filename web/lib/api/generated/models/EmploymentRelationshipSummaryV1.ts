@@ -59,7 +59,25 @@ export interface EmploymentRelationshipSummaryV1 {
    * @type {string}
    * @memberof EmploymentRelationshipSummaryV1
    */
+  agentInstanceId: string;
+  /**
+   *
+   * @type {string}
+   * @memberof EmploymentRelationshipSummaryV1
+   */
+  professionalAdmissionId?: string;
+  /**
+   *
+   * @type {string}
+   * @memberof EmploymentRelationshipSummaryV1
+   */
   professionalType: string;
+  /**
+   *
+   * @type {string}
+   * @memberof EmploymentRelationshipSummaryV1
+   */
+  professionalVersion?: string;
   /**
    *
    * @type {string}
@@ -129,6 +147,8 @@ export function instanceOfEmploymentRelationshipSummaryV1(
 ): value is EmploymentRelationshipSummaryV1 {
   if (!("relationshipId" in value) || value["relationshipId"] === undefined)
     return false;
+  if (!("agentInstanceId" in value) || value["agentInstanceId"] === undefined)
+    return false;
   if (!("professionalType" in value) || value["professionalType"] === undefined)
     return false;
   if (
@@ -172,7 +192,16 @@ export function EmploymentRelationshipSummaryV1FromJSONTyped(
   }
   return {
     relationshipId: json["relationshipId"],
+    agentInstanceId: json["agentInstanceId"],
+    professionalAdmissionId:
+      json["professionalAdmissionId"] == null
+        ? undefined
+        : json["professionalAdmissionId"],
     professionalType: json["professionalType"],
+    professionalVersion:
+      json["professionalVersion"] == null
+        ? undefined
+        : json["professionalVersion"],
     professionalDisplayName: json["professionalDisplayName"],
     lifecycleState: EmploymentRelationshipStateFromJSON(json["lifecycleState"]),
     currentGoalSummary:
@@ -209,7 +238,10 @@ export function EmploymentRelationshipSummaryV1ToJSONTyped(
 
   return {
     relationshipId: value["relationshipId"],
+    agentInstanceId: value["agentInstanceId"],
+    professionalAdmissionId: value["professionalAdmissionId"],
     professionalType: value["professionalType"],
+    professionalVersion: value["professionalVersion"],
     professionalDisplayName: value["professionalDisplayName"],
     lifecycleState: EmploymentRelationshipStateToJSON(value["lifecycleState"]),
     currentGoalSummary: value["currentGoalSummary"],

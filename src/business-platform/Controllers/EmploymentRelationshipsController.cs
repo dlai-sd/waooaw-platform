@@ -15,6 +15,8 @@ namespace Waooaw.BusinessPlatform.Controllers;
 public sealed record AdmitEmploymentRelationshipRequest(
     Guid EvaluationIntentId,
     string ProfessionalType,
+    Guid ProfessionalAdmissionId,
+    string ProfessionalVersion,
     Guid? CorrelationId = null);
 
 public sealed record TransitionEmploymentRelationshipRequest(
@@ -138,7 +140,11 @@ public sealed class RelationshipRoleJsonConverter : JsonConverter<RelationshipPa
 
 public sealed record EmploymentRelationshipResponse(
     Guid RelationshipId,
+    Guid AgentInstanceId,
+    Guid? ProfessionalAdmissionId,
     string ProfessionalType,
+    string? ProfessionalVersion,
+    DateTimeOffset AgentInstanceMintedAt,
     string State,
     int StateVersion,
     DateTimeOffset CreatedAt,
@@ -151,7 +157,10 @@ public sealed record CustomerPortalDestinationResponse(
 
 public sealed record EmploymentRelationshipSummaryResponse(
     Guid RelationshipId,
+    Guid AgentInstanceId,
+    Guid? ProfessionalAdmissionId,
     string ProfessionalType,
+    string? ProfessionalVersion,
     string ProfessionalDisplayName,
     string LifecycleState,
     string? CurrentGoalSummary,
@@ -261,6 +270,8 @@ public sealed class EmploymentRelationshipsController : ControllerBase
                 participantId,
                 request.EvaluationIntentId,
                 request.ProfessionalType,
+                request.ProfessionalAdmissionId,
+                request.ProfessionalVersion,
                 request.CorrelationId ?? Guid.NewGuid(),
                 cancellationToken);
             var response = ToResponse(result.Relationship);
@@ -271,6 +282,10 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         catch (ArgumentException exception)
         {
             return ValidationProblem(exception.Message);
+        }
+        catch (ProfessionalAdmissionBindingException exception)
+        {
+            return Conflict(new { error = "PROFESSIONAL_ADMISSION_BINDING_INVALID", detail = exception.Message });
         }
         catch (ConstitutionalActionDeniedException exception)
         {
@@ -910,7 +925,11 @@ public sealed class EmploymentRelationshipsController : ControllerBase
     private static EmploymentRelationshipResponse ToResponse(EmploymentRelationship relationship) =>
         new(
             relationship.RelationshipId,
+            relationship.AgentInstanceId,
+            relationship.ProfessionalAdmissionId,
             relationship.ProfessionalType,
+            relationship.ProfessionalVersion,
+            relationship.AgentInstanceMintedAt,
             RelationshipStateCodec.ToDatabase(relationship.State),
             relationship.StateVersion,
             relationship.CreatedAt,
@@ -944,7 +963,10 @@ public sealed class EmploymentRelationshipsController : ControllerBase
             : "NONE";
         return new EmploymentRelationshipSummaryResponse(
             relationship.RelationshipId,
+            relationship.AgentInstanceId,
+            relationship.ProfessionalAdmissionId,
             relationship.ProfessionalType,
+            relationship.ProfessionalVersion,
             relationship.ProfessionalType,
             RelationshipStateCodec.ToDatabase(relationship.State),
             currentGoalSummary,

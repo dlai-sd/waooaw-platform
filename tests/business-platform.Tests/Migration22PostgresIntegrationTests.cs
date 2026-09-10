@@ -62,6 +62,8 @@ public sealed class Migration22PostgresFixture : IAsyncLifetime
 
         // Apply migration 22 under test
         await ExecFileAsync(conn, RepositoryPaths.Resolve("infrastructure/postgres/init/22-ae01-continuity-evidence.sql"));
+        await ExecFileAsync(conn, RepositoryPaths.Resolve("infrastructure/postgres/init/25-agent-admission.sql"));
+        await ExecFileAsync(conn, RepositoryPaths.Resolve("infrastructure/postgres/init/31-agent-instance-binding.sql"));
 
         // business_continuity_maintenance gets LOGIN for role-switch test only
         await ExecAsync(conn, $"""

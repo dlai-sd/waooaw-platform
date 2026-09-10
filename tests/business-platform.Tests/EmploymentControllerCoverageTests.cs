@@ -126,7 +126,8 @@ public sealed class EmploymentControllerCoverageTests
         fixture.Controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
 
         Assert.IsType<ForbidResult>(await fixture.Controller.AdmitAsync(
-            new AdmitEmploymentRelationshipRequest(Guid.NewGuid(), "DMA"), CancellationToken.None));
+            new AdmitEmploymentRelationshipRequest(
+                Guid.NewGuid(), "DMA", Guid.NewGuid(), "1.0.0"), CancellationToken.None));
         Assert.IsType<ForbidResult>(await fixture.Controller.GetAsync(
             fixture.RelationshipId, CancellationToken.None));
         Assert.IsType<ForbidResult>(await fixture.Controller.GetTimelineAsync(

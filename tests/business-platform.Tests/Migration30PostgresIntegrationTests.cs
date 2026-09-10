@@ -41,7 +41,9 @@ public sealed class Migration30PostgresFixture : IAsyncLifetime
             """);
         await ExecuteFileAsync(connection, RepositoryPaths.Resolve("infrastructure/postgres/init/19-ae01-employment-relationship.sql"));
         await ExecuteFileAsync(connection, RepositoryPaths.Resolve("infrastructure/postgres/init/20b-ae01-context-configuration.sql"));
+        await ExecuteFileAsync(connection, RepositoryPaths.Resolve("infrastructure/postgres/init/25-agent-admission.sql"));
         await ExecuteFileAsync(connection, RepositoryPaths.Resolve("infrastructure/postgres/init/30-relationship-goal-decisions.sql"));
+        await ExecuteFileAsync(connection, RepositoryPaths.Resolve("infrastructure/postgres/init/31-agent-instance-binding.sql"));
         BusinessConnectionString = new NpgsqlConnectionStringBuilder(OwnerConnectionString)
         {
             Username = "business_app",

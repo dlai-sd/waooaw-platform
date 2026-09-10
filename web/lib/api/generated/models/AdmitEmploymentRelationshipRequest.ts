@@ -36,6 +36,18 @@ export interface AdmitEmploymentRelationshipRequest {
    * @type {string}
    * @memberof AdmitEmploymentRelationshipRequest
    */
+  professionalAdmissionId: string;
+  /**
+   *
+   * @type {string}
+   * @memberof AdmitEmploymentRelationshipRequest
+   */
+  professionalVersion: string;
+  /**
+   *
+   * @type {string}
+   * @memberof AdmitEmploymentRelationshipRequest
+   */
   correlationId?: string;
 }
 
@@ -51,6 +63,16 @@ export function instanceOfAdmitEmploymentRelationshipRequest(
   )
     return false;
   if (!("professionalType" in value) || value["professionalType"] === undefined)
+    return false;
+  if (
+    !("professionalAdmissionId" in value) ||
+    value["professionalAdmissionId"] === undefined
+  )
+    return false;
+  if (
+    !("professionalVersion" in value) ||
+    value["professionalVersion"] === undefined
+  )
     return false;
   return true;
 }
@@ -71,6 +93,8 @@ export function AdmitEmploymentRelationshipRequestFromJSONTyped(
   return {
     evaluationIntentId: json["evaluationIntentId"],
     professionalType: json["professionalType"],
+    professionalAdmissionId: json["professionalAdmissionId"],
+    professionalVersion: json["professionalVersion"],
     correlationId:
       json["correlationId"] == null ? undefined : json["correlationId"],
   };
@@ -93,6 +117,8 @@ export function AdmitEmploymentRelationshipRequestToJSONTyped(
   return {
     evaluationIntentId: value["evaluationIntentId"],
     professionalType: value["professionalType"],
+    professionalAdmissionId: value["professionalAdmissionId"],
+    professionalVersion: value["professionalVersion"],
     correlationId: value["correlationId"],
   };
 }

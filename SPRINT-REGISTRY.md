@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-09-02 · **Version:** 1.45.0 · **Work Contracts:** 75 recorded (67 closed · 8 active · 0 blocked)
+**Last Updated:** 2026-09-10 · **Version:** 1.45.0 · **Work Contracts:** 76 recorded (67 closed · 9 active · 0 blocked)
 
 **Reference hierarchy:** This file is the canonical compact Work Contract and delivery index. `README.md`
 is the operator entry and routing summary; `constitution/PROJECT_STATE.md` records only the current
@@ -25,6 +25,7 @@ constitutional-repair record. Agents must select the record by title and Goal, n
 | **WC-068** | Portfolio Economics And Institutional Learning | Iteration 4 | PLANNED CANDIDATE — IMPLEMENTATION UNAUTHORIZED | Settled WC-065→WC-067 cohort evidence | Portfolio economics, resilience, commercial policy, offering, provider, and governed learning proposals |
 | **WC-069** | Helpdesk And Support Administration | Iteration 5 | DEFERRED — GROOMING/IMPLEMENTATION UNAUTHORIZED | Real customer-case evidence · WC-065→WC-068 | Support administration only if evidence proves a separate capability is necessary |
 | **WC-076** | GOAL-006 Phase 3 Execution | Cloud delivery and environment promotion | IN PROGRESS · P3-EX01→10 PASSED · P3-EX11 OFFLINE READINESS PENDING · PRODUCTION PROHIBITED | WC-071→074 · FA-052 · PR #371 · PR #388 | Demo accepted and UAT verified from one exact-six release; recent readiness repairs are merged, while dark-Production handover and owner inputs remain open |
+| **WC-087** | Agent Instance And Multi-Agent Foundation | Customer employment foundation | IN PROGRESS · FOUNDER AUTHORIZED | WC-079 · WC-085 · PR #409 | Immutable agent-instance identity bound to an exact active professional admission; same-customer same-type multi-instance proof and PR trial binding |
 
 ### Superseded Work Contracts
 

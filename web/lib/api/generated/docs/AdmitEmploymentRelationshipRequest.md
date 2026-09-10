@@ -2,11 +2,13 @@
 
 ## Properties
 
-| Name                 | Type   |
-| -------------------- | ------ |
-| `evaluationIntentId` | string |
-| `professionalType`   | string |
-| `correlationId`      | string |
+| Name                      | Type   |
+| ------------------------- | ------ |
+| `evaluationIntentId`      | string |
+| `professionalType`        | string |
+| `professionalAdmissionId` | string |
+| `professionalVersion`     | string |
+| `correlationId`           | string |
 
 ## Example
 
@@ -17,6 +19,8 @@ import type { AdmitEmploymentRelationshipRequest } from "";
 const example = {
   evaluationIntentId: null,
   professionalType: null,
+  professionalAdmissionId: null,
+  professionalVersion: null,
   correlationId: null,
 } satisfies AdmitEmploymentRelationshipRequest;
 

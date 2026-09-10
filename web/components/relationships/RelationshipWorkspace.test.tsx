@@ -5,7 +5,9 @@ import type { RelationshipWorkspaceViews } from '@/lib/api/relationship-workspac
 
 const relationship: EmploymentRelationship = {
   relationshipId: '5f33925b-fb0c-4366-8414-7f85309639b9',
+  agentInstanceId: '19382d51-0124-43c1-a732-777fe0b00d63',
   professionalType: 'DIGITAL_MARKETING',
+  agentInstanceMintedAt: new Date('2026-08-08T10:00:00Z'),
   state: 'TRIAL_ACTIVE',
   stateVersion: 1,
   createdAt: new Date('2026-08-08T10:00:00Z'),
