@@ -61,6 +61,19 @@ def test_demo_deferred_providers_remain_disabled() -> None:
         assert not providers[provider_id].get("readinessEvidenceReference")
 
 
+def test_demo_google_activation_is_authorized_and_secret_free() -> None:
+    manifest = load_json("infrastructure/identity-config/environments/demo.json")
+    providers = {provider["id"]: provider for provider in manifest["providers"]}
+    google = providers["GOOGLE"]
+
+    assert google["enabled"] is True
+    assert google["secretReference"] == "kv://kv-waooaw-demo/secrets/bp-identity-reader-client-secret"
+    assert google["readinessEvidenceReference"] == "WC-088-DEMO-GOOGLE-ACTIVATION-AUTHORIZED-2026-09-10"
+    assert google["brokerAlias"] == "google"
+    assert google["scopes"] == ["openid", "profile", "email"]
+    assert "clientSecret" not in json.dumps(google)
+
+
 def test_provider_runtime_configuration_is_minimal_and_deferred_providers_are_hidden() -> None:
     realm = load_json("infrastructure/keycloak/waooaw-realm.json")
     providers = {provider["alias"]: provider for provider in realm["identityProviders"]}

@@ -46,7 +46,7 @@
   },
   "phoneIdentity": { "internalAudience": "waooaw-phone-identity-demo" },
   "providers": [
-    { "id": "GOOGLE", "displayName": "Google", "authenticationPath": "GOOGLE", "enabled": false, "unavailableReason": "NOT_CONFIGURED", "brokerAlias": "google", "scopes": ["openid", "profile", "email"] },
+    { "id": "GOOGLE", "displayName": "Google", "authenticationPath": "GOOGLE", "enabled": true, "secretReference": "kv://kv-waooaw-demo/secrets/bp-identity-reader-client-secret", "readinessEvidenceReference": "WC-088-DEMO-GOOGLE-ACTIVATION-AUTHORIZED-2026-09-10", "brokerAlias": "google", "scopes": ["openid", "profile", "email"] },
     { "id": "FACEBOOK", "displayName": "Facebook", "authenticationPath": "META", "enabled": false, "unavailableReason": "NOT_CONFIGURED", "brokerAlias": "facebook", "scopes": ["email", "public_profile"] },
     { "id": "APPLE", "displayName": "Apple", "authenticationPath": "APPLE", "enabled": false, "unavailableReason": "NOT_CONFIGURED", "brokerAlias": "apple", "scopes": ["openid", "name", "email"] },
     { "id": "EMAIL", "displayName": "Email", "authenticationPath": "CREDENTIAL", "enabled": false, "unavailableReason": "NOT_CONFIGURED", "scopes": [] }
