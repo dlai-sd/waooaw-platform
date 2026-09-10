@@ -101,6 +101,15 @@ def test_business_platform_uses_dedicated_stock_identity_reader() -> None:
     assert 'IdentityBrokerRead__TrustConfigDigest' in workload
 
 
+def test_demo_seeder_provisions_dedicated_identity_reader_secret_at_runtime() -> None:
+    workflow = (ROOT / ".github/workflows/environment-deployment.yaml").read_text()
+
+    assert 'credential_names="constitutional-engine business-platform professional-runtime ai-runtime web billing-engine bp-identity-reader-client-secret"' in workflow
+    assert "for name in constitutional-engine business-platform professional-runtime ai-runtime web billing-engine bp-identity-reader-client-secret; do" in workflow
+    assert 'credential=$(head -c 48 /dev/urandom | base64 | tr -d "\\n")' in workflow
+    assert 'bp-identity-reader-client-secret' not in (ROOT / "docker-compose.yml").read_text()
+
+
 @pytest.mark.parametrize("replacement", [None, "host", "callback", "client", "scope", "state"])
 def test_redirect_verification_rejects_untrusted_or_incomplete_results(replacement: str | None) -> None:
     issuer = "https://identity.demo.waooaw.com/realms/waooaw"
