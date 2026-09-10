@@ -18,7 +18,7 @@ public sealed class CustomerWorkspaceFullSchemaPostgresTests
             .WithDatabase("waooaw")
             .WithUsername("waooaw")
             .WithPassword("synthetic-full-schema-password")
-            .WithBindMount(initDirectory, "/docker-entrypoint-initdb.d")
+            .WithResourceMapping(new DirectoryInfo(initDirectory), "/docker-entrypoint-initdb.d")
             .Build();
 
         await postgres.StartAsync();

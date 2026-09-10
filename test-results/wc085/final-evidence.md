@@ -311,6 +311,7 @@ resolution and fail-closed exception boundary.
 |---|---|
 | Focused BP regression: subscriptions, employment relationships and real Program-host identity | 31 PASS, 0 failed/skipped |
 | Full `business-platform.Tests` suite | 633 PASS, 0 failed/skipped in 4 minutes |
+| CI nested-Docker full-schema fixture | Exact formerly failing test PASS after replacing the runner-local bind mount with Testcontainers resource copy |
 | Full web Jest coverage | 41 suites, 273 PASS; 93.2% statements, 84% branches, 93.39% functions, 95.56% lines |
 | Web TypeScript and lint | `tsc --noEmit --incremental false` PASS; Next lint PASS with no warnings/errors |
 | Python identity-foundation and pipeline suites | 1,312 PASS, 1 expected Docker-reconstruction-only skip |
