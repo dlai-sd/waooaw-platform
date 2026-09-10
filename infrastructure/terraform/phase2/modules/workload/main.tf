@@ -46,6 +46,7 @@ locals {
   service_urls = {
     constitutional_engine = "http://ca-${var.environment}-constitutional-engine"
     business_platform     = "http://ca-${var.environment}-business-platform"
+    business_platform_web = "https://ca-${var.environment}-business-platform.${var.container_app_environment_default_domain}"
     professional_runtime  = "http://ca-${var.environment}-professional-runtime"
     ai_runtime            = "http://ca-${var.environment}-ai-runtime"
     billing_engine        = "http://ca-${var.environment}-billing-engine"
@@ -275,7 +276,7 @@ locals {
       PLATFORM_PHASE                = "IMPLEMENTATION"
     }
     "web" = {
-      BUSINESS_PLATFORM_URL = local.service_urls.business_platform
+      BUSINESS_PLATFORM_URL = local.service_urls.business_platform_web
       KEYCLOAK_CLIENT_ID    = "waooaw-web"
       KEYCLOAK_ISSUER       = "${local.service_urls.identity_edge}/realms/waooaw"
       NEXTAUTH_URL          = local.service_urls.web

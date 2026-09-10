@@ -15,7 +15,9 @@ jest.mock('./ProviderCommands', () => ({
   ),
 }));
 jest.mock('./RegistrationFlow', () => ({
-  RegistrationFlow: ({ locale }: { locale: string }) => <div data-testid="registration-flow">{locale}</div>,
+  RegistrationFlow: ({ locale, returnTo }: { locale: string; returnTo: string }) => (
+    <div data-testid="registration-flow" data-return-to={returnTo}>{locale}</div>
+  ),
 }));
 
 const providers: IdentityProvider[] = [
@@ -43,24 +45,31 @@ describe('authentication views', () => {
     render(await LoginView({ searchParams: Promise.resolve({ returnTo: 'https://example.com' }) }));
 
     expect(screen.getByRole('heading', { name: 'Welcome back' })).toBeInTheDocument();
-    expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-callback-url', '/home');
+    expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-callback-url', '/register?returnTo=%2Fhome');
     expect(screen.getByRole('link', { name: 'Create account' })).toHaveAttribute('href', '/register');
+  });
+
+  it('preserves a safe protected target through registration', async () => {
+    render(await LoginView({ searchParams: Promise.resolve({ returnTo: '/settings' }) }));
+
+    expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-callback-url', '/register?returnTo=%2Fsettings');
   });
 
   it('offers projected providers before registration authentication', async () => {
     render(await RegisterView());
 
     expect(screen.getByRole('heading', { name: 'Create your WAOOAW account' })).toBeInTheDocument();
-    expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-callback-url', '/register');
+    expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-callback-url', '/register?returnTo=%2Fhome');
     expect(listIdentityProviders).toHaveBeenCalledTimes(1);
   });
 
   it('reuses the registration flow for an authenticated session', async () => {
     jest.mocked(getServerSession).mockResolvedValue({ authenticated: true } as never);
 
-    render(await RegisterView());
+    render(await RegisterView({ searchParams: Promise.resolve({ returnTo: '/settings' }) }));
 
     expect(screen.getByTestId('registration-flow')).toHaveTextContent('en');
+    expect(screen.getByTestId('registration-flow')).toHaveAttribute('data-return-to', '/settings');
     expect(screen.queryByTestId('provider-commands')).not.toBeInTheDocument();
     expect(listIdentityProviders).not.toHaveBeenCalled();
   });

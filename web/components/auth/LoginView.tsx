@@ -10,7 +10,8 @@ import { safeReturnTarget } from '@/lib/safe-return';
 export async function LoginView({ searchParams }: { searchParams?: Promise<{ returnTo?: string | string[] }> }) {
   const { messages } = await getRequestI18n();
   const resolvedSearchParams = await searchParams;
-  const callbackUrl = safeReturnTarget(resolvedSearchParams?.returnTo);
+  const returnTo = safeReturnTarget(resolvedSearchParams?.returnTo);
+  const callbackUrl = `/register?returnTo=${encodeURIComponent(returnTo)}`;
   const providers = await listIdentityProviders();
   return (
     <section className="auth-view">

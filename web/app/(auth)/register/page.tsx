@@ -3,6 +3,6 @@
 
 import { RegisterView } from '@/components/auth/RegisterView';
 
-export default function RegisterPage() {
-	return <RegisterView />;
+export default function RegisterPage({ searchParams }: { searchParams?: Promise<{ returnTo?: string | string[] }> }) {
+	return <RegisterView searchParams={searchParams} />;
 }

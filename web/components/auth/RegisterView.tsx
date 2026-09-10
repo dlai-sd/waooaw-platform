@@ -8,11 +8,14 @@ import { listIdentityProviders } from '@/lib/api/identity';
 import { authOptions } from '@/lib/auth';
 import { getIdentityMessages } from '@/lib/identity-messages';
 import { getRequestI18n } from '@/lib/i18n-server';
+import { safeReturnTarget } from '@/lib/safe-return';
 
-export async function RegisterView() {
+export async function RegisterView({ searchParams }: { searchParams?: Promise<{ returnTo?: string | string[] }> } = {}) {
   const session = await getServerSession(authOptions);
+  const resolvedSearchParams = await searchParams;
   const { locale } = await getRequestI18n();
   const messages = getIdentityMessages(locale);
+  const returnTo = safeReturnTarget(resolvedSearchParams?.returnTo);
   const providers = session?.authenticated ? [] : await listIdentityProviders();
   return (
     <section className="auth-view identity-view">
@@ -20,8 +23,8 @@ export async function RegisterView() {
       <h1 id="auth-dialog-title">{messages.title}</h1>
       <p>{session?.authenticated ? messages.description : messages.signInDescription}</p>
       {session?.authenticated
-        ? <RegistrationFlow locale={locale} messages={messages} />
-        : <ProviderCommands callbackUrl="/register" providers={providers} />}
+        ? <RegistrationFlow locale={locale} messages={messages} returnTo={returnTo} />
+        : <ProviderCommands callbackUrl={`/register?returnTo=${encodeURIComponent(returnTo)}`} providers={providers} />}
     </section>
   );
 }
