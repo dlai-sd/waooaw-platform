@@ -23,7 +23,7 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
     public const string JourneyItem = "waooaw:customer-identity-journey";
     public const string MembershipItem = "waooaw:customer-membership";
 
-    public async Task InvokeAsync(HttpContext context, CustomerIdentityJourneyService journey)
+    public async Task InvokeAsync(HttpContext context)
     {
         var endpoint = context.GetEndpoint();
         if (endpoint?.Metadata.GetMetadata<IAllowAnonymous>() is not null)
@@ -45,6 +45,7 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
         try
         {
             if (route is null) throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
+            var journey = context.RequestServices.GetRequiredService<CustomerIdentityJourneyService>();
             journey.ValidateActor(context.User);
             if (route.RequiresMembership)
             {

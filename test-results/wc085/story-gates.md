@@ -1,8 +1,9 @@
 # WC-085 Story Gates
 
 Overall: PARTIAL / BLOCKED. None of the 26 full completion gates is claimed PASS.
-Implementation evidence is bound to code freeze `14a28c18aa8774d8b2f956c475e2e60a245f4ddd`.
-The final draft PR binds its pushed HEAD; no candidate Demo revision/image tuple exists.
+Implementation evidence is bound milestone-by-milestone in `final-evidence.md`.
+H1-H5 local engineering gates pass; the final draft PR binds its pushed HEAD. No candidate Demo
+revision or immutable deployed service tuple exists.
 Executor: Platform IT Expert, INST-010. See `final-evidence.md` for commands and `browser-matrix.md` for the tested subset.
 
 | Story | Result | Evidence / Remaining Gate | Accountable Boundary |

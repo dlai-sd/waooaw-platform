@@ -294,3 +294,40 @@ H1-H9, checkpoint below 200 lines and Java removal); editor diagnostics and `git
 Docker Gitleaks v8.28.0 scanned the candidate diff against `origin/main` (approximately 1.26 MB) with
 zero leaks. The unused `wc085-identity-publication:local` image and empty source directories were
 removed. Historical permission-probe findings remain evidence, not an executable Java path.
+
+## H5 Assembled Local Candidate Qualification - 2026-09-10
+
+Status: PASS for H5 local engineering scope. This does not promote any WC-085 story to complete,
+authorize deployment, or satisfy the real-provider, Founder-acceptance, or deployed-browser gates in
+H6-H9. The story matrix remains PARTIAL / BLOCKED.
+
+The full Business Platform run initially exposed a global middleware construction regression:
+unrelated routes constructed the identity journey before endpoint opt-in and returned 500 when
+`Identity:HmacKey` was intentionally absent. Resolution now occurs only inside an opted-in customer
+identity route. Identity routes retain the same scoped service, actor validation, membership
+resolution and fail-closed exception boundary.
+
+| Docker check | Result |
+|---|---|
+| Focused BP regression: subscriptions, employment relationships and real Program-host identity | 31 PASS, 0 failed/skipped |
+| Full `business-platform.Tests` suite | 633 PASS, 0 failed/skipped in 4 minutes |
+| Full web Jest coverage | 41 suites, 273 PASS; 93.2% statements, 84% branches, 93.39% functions, 95.56% lines |
+| Web TypeScript and lint | `tsc --noEmit --incremental false` PASS; Next lint PASS with no warnings/errors |
+| Python identity-foundation and pipeline suites | 1,312 PASS, 1 expected Docker-reconstruction-only skip |
+| Generated API client | Pinned generator completed in an isolated worktree; zero diff under `web/lib/api/generated` |
+| Fresh candidate image builds | BP `sha256:14fe700d36f610dba1e7041a16c52ace17b99bca5e4ebe052fac4b6166a99f30`; web `sha256:87a78760c18fab8ecea27e1cfe47872421c5fc0405a39ff92b2f13ddbaa0c442`; both run as `waooaw` |
+| Syft v1.27.1 CycloneDX SBOM | PASS for both candidate images; reports under `h5-candidate/` |
+| Trivy 0.66.0 | PASS for both images with zero fixed HIGH/CRITICAL findings using `--ignore-unfixed` |
+| Gitleaks v8.28.0 | PASS, zero redacted findings in the candidate commit range from merge-base `79ec8065ad448cb418551034366091693b7b316c` |
+
+Evidence SHA-256:
+
+- `gitleaks-diff.json`: `37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570`
+- `sbom-business-platform.json`: `1c888b55c2011068b86148e3100e68efb6e8247eeb2801d327066b6c2e4f82dc`
+- `sbom-web.json`: `f60d4d9e13eb64acc6f946694adc27a51ba0bc868f6519127aba7cc1d654d89c`
+- `trivy-business-platform.json`: `f23205741f21f9952c293606d910297aab29931b2c73e9109d7a463cf7a4b77f`
+- `trivy-web.json`: `d0e10f60ff992b5ec59ce2ac93b219f7f28e2ec0b3f971008070623bfdfd8ba6`
+
+The local test runner was rebuilt after requested stale-image cleanup as
+`sha256:e2dab704f4a9c0a89dcc9c02f0ddf0863c9c10d61118d08a955b4d00209d3dfb`.
+No cloud operation, provider interaction, deployment, merge or activation occurred.
