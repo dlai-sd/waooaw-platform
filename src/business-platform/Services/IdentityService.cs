@@ -111,18 +111,32 @@ public sealed class IdentityService
     public Task<(IdentityRegistrationRecord reg, bool isNew)> StartRegistrationAsync(
         VerifiedCustomerActor actor, Guid idempotencyKey, string canonicalHash,
         string languagePreference, CancellationToken ct) =>
-        MutateGoogleRegistrationAsync(actor, null, idempotencyKey, canonicalHash,
+        MutateBrokerRegistrationAsync(actor, IdentityAuthenticationPath.Google, null, idempotencyKey, canonicalHash,
+            "StartRegistration", languagePreference, null, null, null, ct);
+
+    public Task<(IdentityRegistrationRecord reg, bool isNew)> StartRegistrationAsync(
+        VerifiedCustomerActor actor, IdentityAuthenticationPath authenticationPath, Guid idempotencyKey,
+        string canonicalHash, string languagePreference, CancellationToken ct) =>
+        MutateBrokerRegistrationAsync(actor, authenticationPath, null, idempotencyKey, canonicalHash,
             "StartRegistration", languagePreference, null, null, null, ct);
 
     public Task<(IdentityRegistrationRecord reg, bool isNew)> UpdateProfileAsync(
         Guid registrationId, VerifiedCustomerActor actor, Guid idempotencyKey, string canonicalHash,
         string displayName, string businessName, string businessDomain, string languagePreference,
         CancellationToken ct) =>
-        MutateGoogleRegistrationAsync(actor, registrationId, idempotencyKey, canonicalHash,
+        MutateBrokerRegistrationAsync(actor, IdentityAuthenticationPath.Google, registrationId, idempotencyKey, canonicalHash,
             "UpdateProfile", languagePreference, displayName, businessName, businessDomain, ct);
 
-    private async Task<(IdentityRegistrationRecord reg, bool isNew)> MutateGoogleRegistrationAsync(
-        VerifiedCustomerActor actor, Guid? registrationId, Guid idempotencyKey, string canonicalHash,
+    public Task<(IdentityRegistrationRecord reg, bool isNew)> UpdateProfileAsync(
+        Guid registrationId, VerifiedCustomerActor actor, IdentityAuthenticationPath authenticationPath,
+        Guid idempotencyKey, string canonicalHash, string displayName, string businessName,
+        string businessDomain, string languagePreference, CancellationToken ct) =>
+        MutateBrokerRegistrationAsync(actor, authenticationPath, registrationId, idempotencyKey, canonicalHash,
+            "UpdateProfile", languagePreference, displayName, businessName, businessDomain, ct);
+
+    private async Task<(IdentityRegistrationRecord reg, bool isNew)> MutateBrokerRegistrationAsync(
+        VerifiedCustomerActor actor, IdentityAuthenticationPath authenticationPath, Guid? registrationId,
+        Guid idempotencyKey, string canonicalHash,
         string operation, string languagePreference, string? displayName, string? businessName,
         string? businessDomain, CancellationToken ct)
     {
@@ -158,7 +172,12 @@ public sealed class IdentityService
             registration = new IdentityRegistrationRecord
             {
                 ActorIssuer = actor.Issuer, ActorSubject = actor.Subject,
-                AuthenticationPath = IdentityAuthenticationPath.Google, ProviderLabel = "google",
+                AuthenticationPath = authenticationPath, ProviderLabel = authenticationPath switch
+                {
+                    IdentityAuthenticationPath.Google => "google",
+                    IdentityAuthenticationPath.Meta => "facebook",
+                    _ => throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED"),
+                },
                 ProviderIssuer = actor.Issuer, EmailVerified = true, LanguagePreference = languagePreference,
                 State = IdentityRegistrationState.FederatedIdentityAccepted,
             };
@@ -172,7 +191,8 @@ public sealed class IdentityService
         if (registrationId.HasValue)
         {
             if (registration.State == IdentityRegistrationState.Completed
-                || registration.AuthenticationPath != IdentityAuthenticationPath.Google)
+                || registration.AuthenticationPath != authenticationPath
+                || authenticationPath is not (IdentityAuthenticationPath.Google or IdentityAuthenticationPath.Meta))
                 throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
             registration.DisplayName = displayName;
             registration.BusinessName = businessName;

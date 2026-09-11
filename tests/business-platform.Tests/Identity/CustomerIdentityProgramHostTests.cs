@@ -116,8 +116,10 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
             settings["IdentityBrokerRead:AllowedPrivateHosts:0"] = _configuration.AllowedPrivateHosts[0];
             settings["IdentityBrokerRead:ClientId"] = _configuration.ClientId;
             settings["IdentityBrokerRead:ClientSecret"] = _configuration.ClientSecret;
-            settings["IdentityBrokerRead:ProviderNamespace"] = _configuration.ProviderNamespace;
-            settings["IdentityBrokerRead:TrustConfigDigest"] = _configuration.TrustConfigDigest;
+            settings["IdentityBrokerRead:Providers:google:ProviderNamespace"] =
+                _configuration.Providers["google"].ProviderNamespace;
+            settings["IdentityBrokerRead:Providers:google:TrustConfigDigest"] =
+                _configuration.Providers["google"].TrustConfigDigest;
         }
         if (googleEnabled)
         {

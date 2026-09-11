@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
+using Waooaw.BusinessPlatform.Infrastructure;
 
 namespace Waooaw.BusinessPlatform.Services;
 
@@ -20,8 +21,7 @@ public sealed class IdentityBrokerReadOptions
     public string[] AllowedPrivateHosts { get; set; } = [];
     public string ClientId { get; set; } = "";
     public string ClientSecret { get; set; } = "";
-    public string ProviderNamespace { get; set; } = "";
-    public string TrustConfigDigest { get; set; } = "";
+    public Dictionary<string, IdentityBrokerProviderOptions> Providers { get; set; } = new(StringComparer.Ordinal);
 
     public bool IsConfigured => Enabled
         && Uri.TryCreate(ActorIssuer, UriKind.Absolute, out var issuer)
@@ -32,8 +32,16 @@ public sealed class IdentityBrokerReadOptions
         && origin.UserInfo == "" && origin.Query == "" && origin.Fragment == ""
         && AllowedPrivateHosts.Contains(origin.Host, StringComparer.Ordinal)
         && ClientId == "waooaw-bp-identity-reader" && !string.IsNullOrWhiteSpace(ClientSecret)
-        && GoogleWorkspaceProofAdapter.ValidKey(ProviderNamespace)
-        && Regex.IsMatch(TrustConfigDigest, "\\A[0-9a-f]{64}\\z", RegexOptions.CultureInvariant);
+        && Providers.Count > 0 && Providers.All(provider => provider.Key is "google" or "facebook"
+            && GoogleWorkspaceProofAdapter.ValidKey(provider.Value.ProviderNamespace)
+            && Regex.IsMatch(provider.Value.TrustConfigDigest, "\\A[0-9a-f]{64}\\z", RegexOptions.CultureInvariant))
+        && Providers.Values.Select(provider => provider.ProviderNamespace).Distinct(StringComparer.Ordinal).Count() == Providers.Count;
+}
+
+public sealed class IdentityBrokerProviderOptions
+{
+    public string ProviderNamespace { get; set; } = "";
+    public string TrustConfigDigest { get; set; } = "";
 }
 
 public sealed class GoogleWorkspaceProofAdapter(HttpClient client, IOptions<IdentityBrokerReadOptions> options)
@@ -42,18 +50,23 @@ public sealed class GoogleWorkspaceProofAdapter(HttpClient client, IOptions<Iden
 
     public bool IsConfigured => _options.IsConfigured;
 
-    public CustomerWorkspaceTrust Trust
+    public CustomerWorkspaceTrust TrustFor(ClaimsPrincipal principal)
     {
-        get
-        {
-            RequireConfiguration();
-            return new(_options.ActorIssuer, _options.ProviderNamespace, "google", _options.TrustConfigDigest);
-        }
+        var (alias, provider) = ConfiguredProvider(principal);
+        return new(_options.ActorIssuer, provider.ProviderNamespace, alias, provider.TrustConfigDigest);
     }
+
+    public IdentityAuthenticationPath AuthenticationPath(ClaimsPrincipal principal) => ConfiguredProvider(principal).alias switch
+    {
+        "google" => IdentityAuthenticationPath.Google,
+        "facebook" => IdentityAuthenticationPath.Meta,
+        _ => throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED"),
+    };
 
     public VerifiedCustomerActor ValidateActor(ClaimsPrincipal principal, bool requireFresh = false)
     {
         RequireConfiguration();
+        ConfiguredProvider(principal);
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var subject = principal.HasClaim(claim => claim.Type == "sub")
             ? SingleClaim(principal, "sub") : SingleClaim(principal, ClaimTypes.NameIdentifier);
@@ -62,7 +75,7 @@ public sealed class GoogleWorkspaceProofAdapter(HttpClient client, IOptions<Iden
             || !ValidKey(subject) || subject is "." or ".." || subject!.StartsWith("service-account-", StringComparison.Ordinal)
             || SingleClaim(principal, "azp") != "waooaw-web"
             || !principal.FindAll("aud").Any(claim => claim.Value == "waooaw-platform")
-            || SingleClaim(principal, "idp") != "google" || SingleClaim(principal, "email_verified") != "true"
+            || SingleClaim(principal, "email_verified") != "true"
             || principal.HasClaim("client_type", "service") || !CustomerRolesOnly(principal)
             || !Timestamp(principal, "iat", out var issued) || issued > now + 30
             || !Timestamp(principal, "exp", out var expires) || expires <= now - 30
@@ -79,6 +92,7 @@ public sealed class GoogleWorkspaceProofAdapter(HttpClient client, IOptions<Iden
 
     public async Task<VerifiedGoogleWorkspaceProof> ReadAsync(ClaimsPrincipal principal, CancellationToken ct)
     {
+        var (brokerAlias, provider) = ConfiguredProvider(principal);
         var actor = ValidateActor(principal, requireFresh: true);
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(TimeSpan.FromSeconds(10));
@@ -118,12 +132,12 @@ public sealed class GoogleWorkspaceProofAdapter(HttpClient client, IOptions<Iden
                 throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
             var binding = bindings.RootElement[0];
             var providerSubject = binding.GetProperty("userId").GetString();
-            if (binding.GetProperty("identityProvider").GetString() != "google" || !ValidKey(providerSubject))
+            if (binding.GetProperty("identityProvider").GetString() != brokerAlias || !ValidKey(providerSubject))
                 throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
             ValidateActor(principal, requireFresh: true);
-            return new VerifiedGoogleWorkspaceProof(actor, _options.ProviderNamespace, "google", providerSubject!,
+            return new VerifiedGoogleWorkspaceProof(actor, provider.ProviderNamespace, brokerAlias, providerSubject!,
                 DateTimeOffset.UtcNow, DateTimeOffset.FromUnixTimeSeconds(long.Parse(SingleClaim(principal, "auth_time")!)),
-                _options.TrustConfigDigest, Guid.NewGuid());
+                provider.TrustConfigDigest, Guid.NewGuid());
         }
         catch (Exception exception) when (exception is HttpRequestException or JsonException or InvalidOperationException
             or KeyNotFoundException or FormatException || exception is OperationCanceledException && !ct.IsCancellationRequested)
@@ -179,6 +193,15 @@ public sealed class GoogleWorkspaceProofAdapter(HttpClient client, IOptions<Iden
     {
         if (!_options.IsConfigured)
             throw new CustomerWorkspaceException(CustomerWorkspaceError.DependencyUnavailable);
+    }
+
+    private (string alias, IdentityBrokerProviderOptions provider) ConfiguredProvider(ClaimsPrincipal principal)
+    {
+        RequireConfiguration();
+        var alias = SingleClaim(principal, "idp");
+        if (alias is null || !_options.Providers.TryGetValue(alias, out var provider))
+            throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
+        return (alias, provider);
     }
 
     internal static bool ValidKey(string? value) => !string.IsNullOrWhiteSpace(value)

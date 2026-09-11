@@ -20,17 +20,30 @@ public sealed class GoogleWorkspaceProofAdapterTests
         Enabled = true, ActorIssuer = "https://synthetic.invalid/realms/waooaw",
         PrivateOrigin = "https://keycloak.private.invalid", AllowedPrivateHosts = ["keycloak.private.invalid"],
         ClientId = "waooaw-bp-identity-reader", ClientSecret = "synthetic-reader-secret",
-        ProviderNamespace = "urn:waooaw:identity:synthetic:google:customer-login:v1", TrustConfigDigest = new string('a', 64),
+        Providers = new()
+        {
+            ["google"] = new()
+            {
+                ProviderNamespace = "urn:waooaw:identity:synthetic:google:customer-login:v1",
+                TrustConfigDigest = new string('a', 64),
+            },
+            ["facebook"] = new()
+            {
+                ProviderNamespace = "urn:waooaw:identity:synthetic:facebook:customer-login:v1",
+                TrustConfigDigest = new string('b', 64),
+            },
+        },
     };
 
-    internal static ClaimsPrincipal Principal(string subject = "synthetic-actor", string? issuer = null)
+    internal static ClaimsPrincipal Principal(string subject = "synthetic-actor", string? issuer = null,
+        string provider = "google")
     {
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         return new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
             new Claim("iss", issuer ?? Configuration().ActorIssuer), new Claim("sub", subject),
             new Claim("aud", "waooaw-platform"), new Claim("azp", "waooaw-web"),
-            new Claim("idp", "google"), new Claim("email_verified", "true"),
+            new Claim("idp", provider), new Claim("email_verified", "true"),
             new Claim("realm_access", "{\"roles\":[\"customer\"]}"),
             new Claim("iat", now.ToString()), new Claim("exp", (now + 600).ToString()),
             new Claim("auth_time", now.ToString()),
@@ -45,10 +58,38 @@ public sealed class GoogleWorkspaceProofAdapterTests
         var adapter = new GoogleWorkspaceProofAdapter(client, Options.Create(Configuration()));
         var proof = await adapter.ReadAsync(Principal(), default);
         Assert.Equal("Google-Opaque-synthetic-actor", proof.ProviderSubject);
-        Assert.Equal(Configuration().ProviderNamespace, proof.ProviderIssuer);
+        Assert.Equal(Configuration().Providers["google"].ProviderNamespace, proof.ProviderIssuer);
         Assert.Equal(new[] { "POST /realms/waooaw/protocol/openid-connect/token",
             "GET /admin/realms/waooaw/users/synthetic-actor",
             "GET /admin/realms/waooaw/users/synthetic-actor/federated-identity" }, handler.Requests);
+    }
+
+    [Fact]
+    public async Task Read_FacebookBinding_UsesFacebookTrustConfiguration()
+    {
+        var handler = new SyntheticKeycloakHandler { Provider = "facebook" };
+        using var client = new HttpClient(handler);
+        var adapter = new GoogleWorkspaceProofAdapter(client, Options.Create(Configuration()));
+
+        var proof = await adapter.ReadAsync(Principal(provider: "facebook"), default);
+
+        Assert.Equal("Facebook-Opaque-synthetic-actor", proof.ProviderSubject);
+        Assert.Equal("facebook", proof.BrokerAlias);
+        Assert.Equal(Configuration().Providers["facebook"].ProviderNamespace, proof.ProviderIssuer);
+        Assert.Equal(Configuration().Providers["facebook"].TrustConfigDigest, proof.TrustConfigDigest);
+    }
+
+    [Fact]
+    public async Task Read_UnsupportedProvider_DeniesBeforeNetwork()
+    {
+        var handler = new SyntheticKeycloakHandler();
+        using var client = new HttpClient(handler);
+        var adapter = new GoogleWorkspaceProofAdapter(client, Options.Create(Configuration()));
+
+        await Assert.ThrowsAsync<IdentityActionDeniedException>(
+            () => adapter.ReadAsync(Principal(provider: "apple"), default));
+
+        Assert.Empty(handler.Requests);
     }
 
     [Fact]
@@ -66,8 +107,14 @@ public sealed class GoogleWorkspaceProofAdapterTests
             AllowedPrivateHosts = [new Uri(origin).Host],
             ClientId = "waooaw-bp-identity-reader",
             ClientSecret = Environment.GetEnvironmentVariable("WC085_READER_SECRET")!,
-            ProviderNamespace = "urn:waooaw:identity:demo:google:customer-login:v1",
-            TrustConfigDigest = new string('b', 64),
+            Providers = new()
+            {
+                ["google"] = new()
+                {
+                    ProviderNamespace = "urn:waooaw:identity:demo:google:customer-login:v1",
+                    TrustConfigDigest = new string('b', 64),
+                },
+            },
         };
         using var client = new HttpClient();
         var adapter = new GoogleWorkspaceProofAdapter(client, Options.Create(configuration));
@@ -76,7 +123,7 @@ public sealed class GoogleWorkspaceProofAdapterTests
 
         Assert.Equal(actorSubject, proof.Actor.Subject);
         Assert.Equal("Google-Opaque-" + actorSubject, proof.ProviderSubject);
-        Assert.Equal(configuration.ProviderNamespace, proof.ProviderIssuer);
+        Assert.Equal(configuration.Providers["google"].ProviderNamespace, proof.ProviderIssuer);
     }
 
     [Theory]
@@ -202,11 +249,21 @@ public sealed class GoogleWorkspaceProofAdapterTests
         Assert.False(configuration.IsConfigured);
     }
 
+    [Fact]
+    public void SharedProviderNamespace_IsNotConfigured()
+    {
+        var configuration = Configuration();
+        configuration.Providers["facebook"].ProviderNamespace = configuration.Providers["google"].ProviderNamespace;
+
+        Assert.False(configuration.IsConfigured);
+    }
+
     internal sealed class SyntheticKeycloakHandler : HttpMessageHandler
     {
         public List<string> Requests { get; } = [];
         public HttpStatusCode Status { get; set; } = HttpStatusCode.OK;
         public string? BindingResponse { get; set; }
+        public string Provider { get; set; } = "google";
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             var path = request.RequestUri!.AbsolutePath;
@@ -226,7 +283,8 @@ public sealed class GoogleWorkspaceProofAdapterTests
                 Assert.Equal("synthetic-machine-token", request.Headers.Authorization!.Parameter);
                 var subject = Uri.UnescapeDataString(path.Split('/')[5]);
                 body = path.EndsWith("/federated-identity", StringComparison.Ordinal)
-                    ? BindingResponse ?? System.Text.Json.JsonSerializer.Serialize(new[] { new { identityProvider = "google", userId = "Google-Opaque-" + subject } })
+                    ? BindingResponse ?? System.Text.Json.JsonSerializer.Serialize(new[] { new
+                        { identityProvider = Provider, userId = char.ToUpperInvariant(Provider[0]) + Provider[1..] + "-Opaque-" + subject } })
                     : System.Text.Json.JsonSerializer.Serialize(new { id = subject, enabled = true, emailVerified = true });
             }
             return new HttpResponseMessage(Status) { Content = new StringContent(body) };

@@ -89,8 +89,12 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests : IAsyncLifetime
         builder.Services.AddScoped<IdentityService>();
         builder.Services.AddSingleton(Options.Create(new IdentityEnvironmentOptions
         {
-            Providers = [new() { Id = "GOOGLE", DisplayName = "Google", AuthenticationPath = "GOOGLE",
-                Enabled = true, ReadinessEvidenceReference = "SYNTHETIC-TEST-ONLY" }],
+            Providers = [
+                new() { Id = "GOOGLE", DisplayName = "Google", AuthenticationPath = "GOOGLE",
+                    Enabled = true, ReadinessEvidenceReference = "SYNTHETIC-TEST-ONLY" },
+                new() { Id = "FACEBOOK", DisplayName = "Facebook", AuthenticationPath = "META",
+                    Enabled = true, ReadinessEvidenceReference = "SYNTHETIC-TEST-ONLY" },
+            ],
         }));
         builder.Services.AddSingleton<IdentityProviderProjectionService>();
         _brokerClient = new HttpClient(_broker);
@@ -148,6 +152,43 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests : IAsyncLifetime
             $"/api/v1/identity/registrations/{firstRegistration}/complete", second)).StatusCode);
         Assert.Equal(2L, await OwnerScalarAsync("SELECT count(*) FROM business.organisations WHERE identity_managed AND id = tenant_id"));
         Assert.Equal(2L, await OwnerScalarAsync("SELECT count(DISTINCT tenant_id) FROM identity.memberships WHERE roles = ARRAY['OWNER']::text[]"));
+        await AssertEmptyPoolAsync();
+    }
+
+    [Fact]
+    public async Task Http_FacebookActor_CompletesRegistrationAndResolvesMembership()
+    {
+        _broker.Provider = "facebook";
+        var token = Token("facebook-actor", provider: "facebook");
+
+        var registration = await RegisterAsync(token);
+        var completion = await CompleteAsync(token, registration);
+        var session = await SendAsync(HttpMethod.Get, "/api/v1/identity/session", token);
+
+        Assert.Equal(HttpStatusCode.OK, session.StatusCode);
+        Assert.Equal(completion.GetProperty("accountReference").GetGuid(),
+            (await JsonAsync(session)).GetProperty("accountReference").GetGuid());
+        Assert.Equal(1L, await OwnerScalarAsync(
+            "SELECT count(*) FROM identity.login_methods WHERE broker_alias = 'facebook'"));
+        Assert.Equal(1L, await OwnerScalarAsync(
+            "SELECT count(*) FROM identity.registrations WHERE provider_label = 'facebook'"));
+        await AssertEmptyPoolAsync();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("false")]
+    public async Task Http_FacebookWithoutVerifiedEmail_DeniesBeforeRegistration(string? emailVerified)
+    {
+        _broker.Provider = "facebook";
+        var token = Token("facebook-incomplete", provider: "facebook", emailVerified: emailVerified);
+
+        var response = await SendAsync(HttpMethod.Post, "/api/v1/identity/registrations", token,
+            new { languagePreference = "en" });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Empty(_broker.Requests);
+        Assert.Equal(0L, await OwnerScalarAsync("SELECT count(*) FROM identity.registrations"));
         await AssertEmptyPoolAsync();
     }
 
@@ -322,10 +363,13 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests : IAsyncLifetime
         await AssertEmptyPoolAsync();
     }
 
-    private string Token(string subject, string? issuer = null, RSA? signer = null, Claim[]? extra = null)
+    private string Token(string subject, string? issuer = null, RSA? signer = null, Claim[]? extra = null,
+        string provider = "google", string? emailVerified = "true")
     {
-        var claims = GoogleWorkspaceProofAdapterTests.Principal(subject).Claims
-            .Where(claim => claim.Type is not ("iss" or "aud" or "iat" or "exp")).Concat(extra ?? []);
+        var claims = GoogleWorkspaceProofAdapterTests.Principal(subject, provider: provider).Claims
+            .Where(claim => claim.Type is not ("iss" or "aud" or "iat" or "exp" or "email_verified"))
+            .Concat(emailVerified is null ? [] : [new Claim("email_verified", emailVerified)])
+            .Concat(extra ?? []);
         var now = DateTime.UtcNow;
         var token = new JwtSecurityToken(issuer ?? _configuration.ActorIssuer, "waooaw-platform", claims,
             now.AddSeconds(-1), now.AddMinutes(10), new SigningCredentials(new RsaSecurityKey(signer ?? _signer), SecurityAlgorithms.RsaSha256));

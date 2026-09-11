@@ -14,20 +14,24 @@ public sealed class CustomerIdentityJourneyService(IdentityService identity,
     IDbContextFactory<IdentityDbContext> factory, GoogleWorkspaceProofAdapter proofAdapter,
     IdentityProviderProjectionService providers)
 {
-    public bool IsAvailable => proofAdapter.IsConfigured && providers.IsAvailable("GOOGLE");
+    public bool IsAvailable => proofAdapter.IsConfigured;
 
     public VerifiedCustomerActor ValidateActor(ClaimsPrincipal principal)
     {
-        if (!IsAvailable) throw new CustomerWorkspaceException(CustomerWorkspaceError.DependencyUnavailable);
-        return proofAdapter.ValidateActor(principal);
+        if (!proofAdapter.IsConfigured) throw new CustomerWorkspaceException(CustomerWorkspaceError.DependencyUnavailable);
+        var actor = proofAdapter.ValidateActor(principal);
+        if (!providers.IsAvailable(ProviderId(proofAdapter.AuthenticationPath(principal))))
+            throw new CustomerWorkspaceException(CustomerWorkspaceError.DependencyUnavailable);
+        return actor;
     }
 
     public Task<(IdentityRegistrationRecord reg, bool isNew)> StartAsync(ClaimsPrincipal principal,
         Guid key, string language, CancellationToken ct)
     {
         ValidateActor(principal);
+        var authenticationPath = proofAdapter.AuthenticationPath(principal);
         return identity.StartRegistrationAsync(
-            proofAdapter.ValidateActor(principal, requireFresh: true), key,
+            proofAdapter.ValidateActor(principal, requireFresh: true), authenticationPath, key,
             CanonicalHash("StartRegistration", null, new { languagePreference = language }), language, ct);
     }
 
@@ -37,7 +41,7 @@ public sealed class CustomerIdentityJourneyService(IdentityService identity,
     public Task<(IdentityRegistrationRecord reg, bool isNew)> UpdateAsync(ClaimsPrincipal principal,
         Guid registrationId, Guid key, string displayName, string businessName, string businessDomain,
         string languagePreference, CancellationToken ct) => identity.UpdateProfileAsync(registrationId,
-            ValidateActor(principal), key, CanonicalHash("UpdateProfile", registrationId,
+            ValidateActor(principal), proofAdapter.AuthenticationPath(principal), key, CanonicalHash("UpdateProfile", registrationId,
                 new { displayName, businessName, businessDomain, languagePreference }),
             displayName, businessName, businessDomain, languagePreference, ct);
 
@@ -46,14 +50,21 @@ public sealed class CustomerIdentityJourneyService(IdentityService identity,
     {
         await GetAsync(principal, registrationId, ct);
         var proof = await proofAdapter.ReadAsync(principal, ct);
-        return await Provisioning().CompleteAsync(proof, registrationId, key,
+        return await Provisioning(proofAdapter.TrustFor(principal)).CompleteAsync(proof, registrationId, key,
             CanonicalHash("CompleteRegistration", registrationId, new { }), ct);
     }
 
     public Task<CustomerWorkspaceMembership> ResolveAsync(ClaimsPrincipal principal, CancellationToken ct) =>
-        Provisioning().ResolveAsync(ValidateActor(principal), ct);
+        Provisioning(proofAdapter.TrustFor(principal)).ResolveAsync(ValidateActor(principal), ct);
 
-    private CustomerWorkspaceProvisioningService Provisioning() => new(factory, proofAdapter.Trust);
+    private CustomerWorkspaceProvisioningService Provisioning(CustomerWorkspaceTrust trust) => new(factory, trust);
+
+    private static string ProviderId(IdentityAuthenticationPath authenticationPath) => authenticationPath switch
+    {
+        IdentityAuthenticationPath.Google => "GOOGLE",
+        IdentityAuthenticationPath.Meta => "FACEBOOK",
+        _ => throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED"),
+    };
 
     public static string CanonicalHash(string operation, Guid? registrationId, object input) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(

@@ -1,6 +1,6 @@
 # WC-085 Identity Architecture Decision
 
-**Current decision (2026-09-09): STOCK KEYCLOAK + BP MEMBERSHIP, ready for bounded implementation.**
+**Current decision (amended by WC-090 on 2026-09-10): STOCK KEYCLOAK + BP MEMBERSHIP, ready for bounded implementation.**
 **Author:** EA INST-004 under standing required-office edit authority, bounded Solution repair;
 not Security/Data concurrence or an independent institutional review. Bootstrap remains completed.
 The latest Founder C#/Python/JS-only constraint supersedes the earlier custom-Java selection.
@@ -10,16 +10,17 @@ amendments under C-032. C-026 RLS and institutional/ledger separation remain man
 
 ## Current Implementable Contract
 
-1. Stock Keycloak verifies Google; the existing ASP.NET bearer scheme validates RS256/JWKS, exact
+1. Stock Keycloak verifies an explicitly configured broker; the existing ASP.NET bearer scheme validates RS256/JWKS, exact
    environment issuer, audience containing `waooaw-platform`, allowlisted customer web/mobile `azp`,
-   subject, expiry/not-before/issued-at (30-second skew), `auth_time`, signed Google `idp` and base
-   customer eligibility. Service accounts, institutional roles/clients and other provider paths do
-   not qualify. Web `azp` is the existing `waooaw-web` client; mobile is disabled for the first slice.
+   subject, expiry/not-before/issued-at (30-second skew), `auth_time`, signed allowlisted `idp` and base
+   customer eligibility. WC-090 adds `facebook` beside `google` in Demo only, with a fixed
+   provider-specific namespace and trust digest. Service accounts, institutional roles/clients and other provider
+   paths do not qualify. Web `azp` is the existing `waooaw-web` client; mobile is disabled for the first slice.
    A configured client not explicitly enabled cannot qualify via a permissive audience match.
 2. BP alone holds `waooaw-bp-identity-reader` credentials with stock `view-users`, never writes
    Keycloak. The exact two Admin GETs, field minimization, secret references and stock alias mapper
    are fixed in ADR-008 Amendment 3. Preserve exact broker `userId`; no invented stable note, raw
-   Google token, email-only linking or browser proof. Read scope is realm-wide metadata, not a
+   provider token, email-only linking or browser proof. Read scope is realm-wide metadata, not a
    per-user ACL; no BP listing/search endpoint. Read/permission failure is unavailable, not escalation.
 3. Completion validates verified email, minimum stored profile/language, five-minute authentication
    age and fresh exact broker proof BEFORE opening its DB transaction. Proof must still be at most
@@ -76,7 +77,8 @@ controls remain additional. Unadopted services/operations are disabled, not perm
 
 ### First Slice Defaults And Continuity Gate
 
-Enable only Google web registration start/read/profile/complete, provider readiness, session
+Enable only configured Google and, under WC-090 in Demo, Facebook web registration
+start/read/profile/complete, provider readiness, session
 projection and the non-consequential shell needed for entry. Confirmed email and profile/language
 are mandatory; mobile is not. Persist only initial OWNER membership, no multi-workspace selection,
 MANAGER/VIEWER creation, payment/trial/subscription/employment or inferred commercial capabilities.
@@ -85,9 +87,9 @@ effects at server entry, not only UI. Existing separately authorized institution
 activation paths are not reclassified or disabled. Consequential commands remain denied until their
 own authority, mobile/freshness and resource controls are implemented; API hints cannot enable them.
 
-Same issuer/subject returns to the same IDs. A different actor with a matching stable Google key
+Same issuer/subject returns to the same IDs. A different actor with a matching stable provider key
 returns non-enumerating unresolved recovery, never automatic rebinding or a new account. Preserve
-proof now. Future recovery must demonstrate current Google session proof plus historical broker key,
+proof now. Future recovery must demonstrate current configured-provider session proof plus historical broker key,
 nonrecycled actors, locked retirement/rebinding, old-session denial and unchanged durable IDs under
 concurrency. No implicit reset or persistent-Keycloak change. Initial fixtures keep the realm and
 subjects stable; fixture identities must be labelled synthetic, not real Google or reconstruction proof.
