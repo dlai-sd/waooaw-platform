@@ -6,13 +6,13 @@
 
 registry_version: "2.0"
 platform_baseline: "1.45.0"
-last_updated: "2026-09-02"
+last_updated: "2026-09-11"
 total_components: 5
 
 # Canonical current state. Current-facing summaries are derived by
 # scripts/sync_platform_state.py and checked by tests/platform/test_platform_state_sync.py.
 institutional_state:
-  as_of: "2026-09-02"
+  as_of: "2026-09-11"
   version: "1.45.0"
   release_date: "2026-08-31"
   epoch: { number: 1, name: Foundation }
@@ -37,10 +37,10 @@ cct_inventory:
   wbe_tests: { passed: 361, total: 361 }
 
 sprint_inventory:
-  recorded: 75
-  closed: 67
-  active: 8
-  blocked: 0
+  recorded: 83
+  closed: 73
+  active: 10
+  blocked: 1
 
 # `LIVE` means implemented and executable in repository scope. It does not prove
 # environment deployment or customer operation; use each manifest's maturity block.
