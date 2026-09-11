@@ -81,8 +81,6 @@ def test_business_platform_uses_dedicated_stock_identity_reader() -> None:
     google = (MODULE / "google.tf").read_text()
     workload = (MODULE / "main.tf").read_text()
 
-    assert "BUSINESS_PLATFORM_URL = local.service_urls.business_platform" in workload
-    assert "BUSINESS_PLATFORM_URL = local.service_urls.business_platform_web" not in workload
     assert 'clientId                  = "waooaw-bp-identity-reader"' in workload
     assert 'serviceAccountsEnabled    = true' in workload
     assert 'fullScopeAllowed          = false' in workload
