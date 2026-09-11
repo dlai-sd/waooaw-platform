@@ -215,11 +215,19 @@ def test_verification_url_consumers_have_defined_keys() -> None:
     assert referenced_keys <= defined_keys
 
 
-def test_web_uses_canonical_https_business_platform_origin() -> None:
+def test_internal_verification_bypasses_public_business_platform_restriction() -> None:
     contract = read_contract("modules/workload/main.tf")
+    parsed_contract = hcl2.loads(contract)
+    locals_contract = parsed_contract["locals"][0]
 
-    assert 'business_platform_web = "https://ca-${var.environment}-business-platform.' in contract
-    assert "business_platform     = local.service_urls.business_platform_web" in contract
+    assert locals_contract["public_ingress"]['"business-platform"'] is True
+    assert 'name             = "founder-review"' in contract
+    assert locals_contract["verification_urls"]["business_platform"] == (
+        "${local.service_urls.business_platform}"
+    )
+    assert locals_contract["service_urls"]["business_platform"] == (
+        '"http://ca-${var.environment}-business-platform"'
+    )
 
 
 def test_demo_temporal_lifecycle_and_member_readiness_are_fail_closed() -> None:
