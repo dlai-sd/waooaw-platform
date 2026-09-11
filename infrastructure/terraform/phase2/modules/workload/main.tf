@@ -56,7 +56,7 @@ locals {
     web                   = "https://ca-${var.environment}-web.${var.container_app_environment_default_domain}"
   }
   verification_urls = {
-      BUSINESS_PLATFORM_URL = local.service_urls.business_platform_web
+    business_platform     = local.service_urls.business_platform_web
     professional_runtime = "http://ca-${var.environment}-professional-runtime"
     ai_runtime           = "http://ca-${var.environment}-ai-runtime"
     billing_engine       = "http://ca-${var.environment}-billing-engine"

@@ -467,6 +467,9 @@ Before beginning any task:
 
 During execution:
   Follow the compact office card and selected skill.
+  Shared terminal safety: never run top-level `exit`, `set -e`, or `set -u` in a reusable shell.
+  Isolate strict-mode commands in a script/subprocess, and report expected nonzero status without
+  terminating or changing options in the parent shell.
   Record only material decisions that the Work Contract requires as durable evidence.
   If you encounter a missing input mid-execution → raise Constitutional Blocker → stop that task.
   Do not produce artifacts outside your Work Contract scope.
