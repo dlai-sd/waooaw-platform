@@ -1648,6 +1648,22 @@ public sealed class IdentityInputAndConfigurationTests
             new CapturingVerificationDispatcher()));
     }
 
+    [Fact]
+    public void WC091_HmacKeyRing_AcceptsStableVersionSeparators()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var service = new IdentityService(
+            factory,
+            Options.Create(new IdentityHmacOptions
+            {
+                Key = "synthetic-active-key-material-at-least-32-characters",
+                ActiveVersion = "release-2_stable",
+            }),
+            new CapturingVerificationDispatcher());
+
+        Assert.Contains("release-2_stable", service.ComputeMatchCandidates("email", "person@example.com"));
+    }
+
     [Theory]
     [InlineData("", "synthetic-retained-key-material-at-least-32-characters")]
     [InlineData("v1", "short")]

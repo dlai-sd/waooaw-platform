@@ -20,10 +20,12 @@ trap cleanup EXIT INT TERM
 wait_ready() {
   attempt=0
   while [ "$attempt" -lt 60 ]; do
-    if docker exec "$CONTAINER" psql -U postgres -d waooaw -Atc "SELECT 1" >/dev/null 2>&1; then
+    if docker logs "$CONTAINER" 2>&1 | grep -q "PostgreSQL init process complete; ready for start up." \
+      && docker exec "$CONTAINER" psql -U postgres -d waooaw -Atc "SELECT 1" >/dev/null 2>&1; then
       return 0
     fi
     attempt=$((attempt + 1))
+    sleep 1
   done
   echo "Demo PostgreSQL did not become ready" >&2
   return 1
