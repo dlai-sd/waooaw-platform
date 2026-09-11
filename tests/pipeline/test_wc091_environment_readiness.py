@@ -323,6 +323,7 @@ def test_az_secret_body_is_read_from_stdin(monkeypatch: pytest.MonkeyPatch) -> N
 def test_demo_reset_script_and_runtime_verifier_match_terraform_contract() -> None:
     reset = (wc091_environment.ROOT / "infrastructure/postgres/demo/reset-and-seed.sh").read_text()
     verifier = (wc091_environment.ROOT / "scripts/run_wc091_demo_data_verification.sh").read_text()
+    delegated_postgres = (wc091_environment.ROOT / "scripts/test-wc059-postgres.sh").read_text()
     module = (wc091_environment.ROOT / "infrastructure/terraform/phase2/modules/workload/main.tf").read_text()
 
     for marker in ("WC091_GENERATION_ID", "WC091_FIXTURE_DIGEST", "wc091_demo_generation"):
@@ -332,3 +333,5 @@ def test_demo_reset_script_and_runtime_verifier_match_terraform_contract() -> No
     assert 'rm -rf "${PGDATA:?}"/*' in reset
     assert "docker restart" in verifier
     assert '"priorGenerationReachable": false' in verifier
+    assert "postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685" in delegated_postgres
+    assert "postgres:16-alpine" not in delegated_postgres
