@@ -46,7 +46,6 @@ locals {
   service_urls = {
     constitutional_engine = "http://ca-${var.environment}-constitutional-engine"
     business_platform     = "http://ca-${var.environment}-business-platform"
-    business_platform_web = "https://ca-${var.environment}-business-platform.${var.container_app_environment_default_domain}"
     professional_runtime  = "http://ca-${var.environment}-professional-runtime"
     ai_runtime            = "http://ca-${var.environment}-ai-runtime"
     billing_engine        = "http://ca-${var.environment}-billing-engine"
@@ -86,7 +85,7 @@ locals {
     refreshTokenMaxReuse   = 0
     revokeRefreshToken     = true
     passwordPolicy         = "length(12) and upperCase(1) and digits(1) and specialChars(1) and notUsername"
-    identityProviders      = local.google_identity_providers
+    identityProviders      = concat(local.google_identity_providers, local.facebook_identity_providers)
     clients = concat([
       {
         clientId                  = "waooaw-web"
@@ -97,9 +96,11 @@ locals {
         standardFlowEnabled       = true
         implicitFlowEnabled       = false
         directAccessGrantsEnabled = false
-        redirectUris = concat([
-          "${local.service_urls.web}/api/auth/callback/keycloak",
-        ], var.google_login_enabled ? ["${local.service_urls.web}/api/auth/callback/keycloak-google"] : [])
+        redirectUris = concat(
+          ["${local.service_urls.web}/api/auth/callback/keycloak"],
+          var.google_login_enabled ? ["${local.service_urls.web}/api/auth/callback/keycloak-google"] : [],
+          var.facebook_login_enabled ? ["${local.service_urls.web}/api/auth/callback/keycloak-facebook"] : [],
+        )
         webOrigins = [local.service_urls.web]
         attributes = {
           "pkce.code.challenge.method" = "S256"
@@ -168,7 +169,7 @@ locals {
         standardFlowEnabled       = false
         directAccessGrantsEnabled = false
       },
-      ], var.google_login_enabled ? [
+      ], var.google_login_enabled || var.facebook_login_enabled ? [
       {
         clientId                  = "waooaw-bp-identity-reader"
         name                      = "WAOOAW Business Platform Identity Reader"
@@ -220,7 +221,7 @@ locals {
         ]
         realmRoles = ["customer", "founder"]
       },
-      ] : [], var.environment == "demo" && var.google_login_enabled ? [{
+      ] : [], var.environment == "demo" && (var.google_login_enabled || var.facebook_login_enabled) ? [{
         username               = "service-account-waooaw-bp-identity-reader"
         enabled                = true
         serviceAccountClientId = "waooaw-bp-identity-reader"
@@ -248,18 +249,26 @@ locals {
       Keycloak__Audience                         = "waooaw-platform"
       Keycloak__Authority                        = "${local.service_urls.identity_edge}/realms/waooaw"
       Keycloak__RequireHttpsMetadata             = "true"
-      IdentityBrokerRead__Enabled                = tostring(var.google_login_enabled)
+      IdentityBrokerRead__Enabled                = tostring(var.google_login_enabled || var.facebook_login_enabled)
       IdentityBrokerRead__ActorIssuer            = "${local.service_urls.identity_edge}/realms/waooaw"
       IdentityBrokerRead__PrivateOrigin          = local.service_urls.keycloak_private
       IdentityBrokerRead__AllowedPrivateHosts__0 = "ca-${var.environment}-keycloak.internal.${var.container_app_environment_default_domain}"
       IdentityBrokerRead__ClientId               = "waooaw-bp-identity-reader"
-      IdentityBrokerRead__ProviderNamespace      = "urn:waooaw:identity:${var.environment}:google:customer-login:v1"
-      IdentityBrokerRead__TrustConfigDigest = sha256(jsonencode({
+      }, var.google_login_enabled ? {
+      IdentityBrokerRead__Providers__google__ProviderNamespace = "urn:waooaw:identity:${var.environment}:google:customer-login:v1"
+      IdentityBrokerRead__Providers__google__TrustConfigDigest = sha256(jsonencode({
         issuer             = "${local.service_urls.identity_edge}/realms/waooaw"
         provider_alias     = "google"
         provider_namespace = "urn:waooaw:identity:${var.environment}:google:customer-login:v1"
       }))
-    }, var.environment == "demo" ? local.demo_identity_runtime : {})
+      } : {}, var.facebook_login_enabled ? {
+      IdentityBrokerRead__Providers__facebook__ProviderNamespace = "urn:waooaw:identity:${var.environment}:facebook:customer-login:v1"
+      IdentityBrokerRead__Providers__facebook__TrustConfigDigest = sha256(jsonencode({
+        issuer             = "${local.service_urls.identity_edge}/realms/waooaw"
+        provider_alias     = "facebook"
+        provider_namespace = "urn:waooaw:identity:${var.environment}:facebook:customer-login:v1"
+      }))
+    } : {}, var.environment == "demo" ? local.demo_identity_runtime : {})
     "professional-runtime" = merge({
       AIR_TRANSCRIPTION_BASE_URL    = local.service_urls.ai_runtime
       CONSTITUTIONAL_ENGINE_ADDRESS = "ca-${var.environment}-constitutional-engine:80"
@@ -276,7 +285,7 @@ locals {
       PLATFORM_PHASE                = "IMPLEMENTATION"
     }
     "web" = {
-      BUSINESS_PLATFORM_URL = local.service_urls.business_platform_web
+      BUSINESS_PLATFORM_URL = local.service_urls.business_platform
       KEYCLOAK_CLIENT_ID    = "waooaw-web"
       KEYCLOAK_ISSUER       = "${local.service_urls.identity_edge}/realms/waooaw"
       NEXTAUTH_URL          = local.service_urls.web
@@ -623,6 +632,7 @@ resource "azurerm_container_app" "keycloak" {
     identity_ids = concat(
       [azurerm_user_assigned_identity.member["web"].id],
       azurerm_user_assigned_identity.google_broker[*].id,
+      azurerm_user_assigned_identity.facebook_broker[*].id,
       var.google_login_enabled ? [azurerm_user_assigned_identity.member["business-platform"].id] : [],
     )
   }
@@ -638,6 +648,15 @@ resource "azurerm_container_app" "keycloak" {
     content {
       name                = secret.key
       identity            = azurerm_user_assigned_identity.google_broker[0].id
+      key_vault_secret_id = secret.value
+    }
+  }
+
+  dynamic "secret" {
+    for_each = local.facebook_secret_uris
+    content {
+      name                = secret.key
+      identity            = azurerm_user_assigned_identity.facebook_broker[0].id
       key_vault_secret_id = secret.value
     }
   }
@@ -664,6 +683,7 @@ resource "azurerm_container_app" "keycloak" {
       args = [<<-EOT
         set -eu
         ${var.google_login_enabled ? ": \"$${GOOGLE_CLIENT_ID:?Google client ID is required}\" \"$${GOOGLE_CLIENT_SECRET:?Google client secret is required}\"" : ""}
+        ${var.facebook_login_enabled ? ": \"$${META_LOGIN_CLIENT_ID:?Meta login client ID is required}\" \"$${META_LOGIN_CLIENT_SECRET:?Meta login client secret is required}\"" : ""}
         ${var.google_login_enabled ? ": \"$${BP_IDENTITY_READER_CLIENT_SECRET:?BP identity reader client secret is required}\"" : ""}
         mkdir -p /opt/keycloak/data/import
         printf '%s' '${local.keycloak_realm_base64}' | base64 --decode > /opt/keycloak/data/import/waooaw-realm.json
@@ -724,6 +744,14 @@ resource "azurerm_container_app" "keycloak" {
       }
 
       dynamic "env" {
+        for_each = local.facebook_secret_uris
+        content {
+          name        = upper(replace(env.key, "-", "_"))
+          secret_name = env.key
+        }
+      }
+
+      dynamic "env" {
         for_each = local.identity_reader_secret_uris
         content {
           name        = "BP_IDENTITY_READER_CLIENT_SECRET"
@@ -747,6 +775,7 @@ resource "azurerm_container_app" "keycloak" {
   depends_on = [
     azurerm_role_assignment.member_secret,
     azurerm_role_assignment.google_broker_secret,
+    azurerm_role_assignment.facebook_broker_secret,
     azurerm_role_assignment.identity_reader_secret,
   ]
 }
@@ -830,6 +859,25 @@ resource "azurerm_container_app_job" "verification" {
           echo "probe_result name=$name status=failed url=$url" >&2
           return 1
         }
+        probe_identity_provider() {
+          provider="$1"
+          url="${local.verification_urls.business_platform}/api/v1/identity/providers"
+          response=$(mktemp)
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            http_code=$(curl --silent --show-error --max-time 15 --output "$response" --write-out '%%{http_code}' "$url") && curl_exit=0 || curl_exit=$?
+            if [ "$curl_exit" -eq 0 ] && [ "$http_code" -eq 200 ] \
+              && jq -e --arg provider "$provider" '.providers[] | select(.id == $provider and .availability == "AVAILABLE")' "$response" >/dev/null; then
+              echo "provider_probe_result provider=$provider status=succeeded http_code=$http_code attempt=$attempt url=$url"
+              rm -f "$response"
+              return 0
+            fi
+            echo "provider_probe_attempt provider=$provider status=failed curl_exit=$curl_exit http_code=$http_code attempt=$attempt url=$url" >&2
+            sleep 6
+          done
+          rm -f "$response"
+          echo "provider_probe_result provider=$provider status=failed url=$url" >&2
+          return 1
+        }
         probe web "${local.verification_urls.web}/" & web_pid=$!
         probe business-platform "${local.verification_urls.business_platform}/health/ready" & business_platform_pid=$!
         probe professional-runtime "${local.verification_urls.professional_runtime}/health" & professional_runtime_pid=$!
@@ -840,6 +888,10 @@ resource "azurerm_container_app_job" "verification" {
         for probe_pid in "$web_pid" "$business_platform_pid" "$professional_runtime_pid" "$ai_runtime_pid" "$billing_engine_pid" "$identity_edge_pid"; do
           wait "$probe_pid" || probe_status=1
         done
+        if [ "${var.environment}" = "demo" ]; then
+          probe_identity_provider "GOOGLE" || probe_status=1
+          probe_identity_provider "FACEBOOK" || probe_status=1
+        fi
         exit "$probe_status"
       EOT
       ]

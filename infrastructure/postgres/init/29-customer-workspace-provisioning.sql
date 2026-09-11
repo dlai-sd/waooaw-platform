@@ -341,7 +341,7 @@ BEGIN
           IS DISTINCT FROM ROW(root_row.actor_issuer, root_row.actor_subject, root_row.actor_binding_id,
             root_row.account_id, root_row.completion_outcome, root_row.completion_status_code,
             root_row.completion_response_body, root_row.completion_profile_snapshot)
-       OR root_row.email_verified IS DISTINCT FROM true OR root_row.authentication_path <> 'Google'
+    OR root_row.email_verified IS DISTINCT FROM true OR root_row.authentication_path NOT IN ('Google', 'Meta')
        OR NULLIF(btrim(root_row.display_name), '') IS NULL OR NULLIF(btrim(root_row.business_name), '') IS NULL
        OR NULLIF(btrim(root_row.business_domain), '') IS NULL OR NULLIF(btrim(root_row.language_preference), '') IS NULL
        OR root_row.completion_profile_snapshot IS DISTINCT FROM jsonb_build_object(

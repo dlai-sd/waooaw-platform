@@ -78,7 +78,7 @@ under its controlling contract and must not be delayed by ordinary role or step-
 | Path | Contract | F2 disposition |
 |---|---|---|
 | Google | Keycloak-brokered OIDC; request `openid profile email`; accept email only when the brokered claim is verified | READY subject to environment configuration evidence |
-| Meta/Facebook | Keycloak-brokered OIDC; login app limited to basic login information (`email` and `public_profile`); separate app and credentials from DMA Business OAuth | POLICY APPROVED by FA-035; ACTIVATION BLOCKED by G-F2-03 |
+| Meta/Facebook | Keycloak-brokered OIDC; login app limited to basic login information (`email` and `public_profile`); separate app and credentials from DMA Business OAuth | DEMO ACTIVATION AUTHORIZED by WC-090; other environments remain blocked |
 | Apple | Keycloak-brokered Sign in with Apple; stable provider subject is the binding key; accept a confirmed Apple private-relay email without requiring disclosure of the underlying mailbox | POLICY APPROVED by FA-035; ACTIVATION BLOCKED by G-F2-14 |
 | Email fallback | Keycloak-owned email flow with confirmed email; no password or email proof enters BP or Next.js application code | READY subject to Keycloak flow evidence |
 | WhatsApp native | ADR-023 Meta webhook identity; complete account remains pending until email is confirmed; mobile proof is already satisfied for later consequential actions while possession remains current | READY for contract; environment proof separately gated |
@@ -262,7 +262,7 @@ infrastructure, realm-admin credential reuse, or direct Google call is authorize
 
 | Operation | Input | Output / failure semantics |
 |---|---|---|
-| `readBrokerBinding` | Validated customer issuer, Keycloak subject, configured Google broker alias, correlation ID; no browser-selected user or email search | Read stock `GET /admin/realms/{realm}/users/{subject}/federated-identity` for that exact authenticated subject. Match the configured alias and return its stable upstream subject and configured provider trust namespace. Missing/ambiguous/conflicting proof is unresolved; do not bind, mint or relink. This server-verified broker record may supply the normalized broker identity required by Section 3.1 when stock token mappers cannot expose it; it does not supply tenant authority to protected requests. |
+| `readBrokerBinding` | Validated customer issuer, Keycloak subject, signed allowlisted broker alias, correlation ID; no browser-selected user or email search | Read stock `GET /admin/realms/{realm}/users/{subject}/federated-identity` for that exact authenticated subject. Match exactly one configured alias and return its stable upstream subject and alias-specific provider trust namespace. WC-090 permits `google` and `facebook` in Demo only; unconfigured aliases and cross-alias bindings fail closed. Missing/ambiguous/conflicting proof is unresolved; do not bind, mint or relink. This server-verified broker record may supply the normalized broker identity required by Section 3.1 when stock token mappers cannot expose it; it does not supply tenant authority to protected requests. |
 | `publishCommittedBinding` | Durable provisioning intent ID, expected revision, correlation ID. Reload committed BP data; caller does not supply attributes. | Target exact bound customer-realm user via stock `GET` / `PUT /admin/realms/{realm}/users/{subject}`. Publish only BP-owned `tenant_id`, `waooaw_roles`, and `org_name` user attributes from the committed tenant/membership/profile. Existing reviewed mappers emit like-named JWT claims; any emitted `organisation_id` must equal `tenant_id`. Read back the exact values before returning `APPLIED` or `ALREADY_APPLIED`. |
 | `reconcileCommittedBinding` | Intent ID, expected revision, correlation ID from completion retry or BP's existing execution lifecycle | Read current BP binding/eligibility and actual Keycloak values first. Equal values acknowledge; missing or older BP-owned values on the same proven user are idempotently repaired. Return `RETRYABLE_UNAVAILABLE`, `BINDING_CONFLICT`, or `INELIGIBLE` otherwise. No tenant minting, credential changes, or browser-selected target. |
 
@@ -293,7 +293,7 @@ reuses its account/tenant; absent claims require the existing registration conti
 and renewal, not a protected-request tenant lookup. If a token has a wrong/nonmatching tenant,
 deny protected entry; never silently substitute one from BP.
 
-When Keycloak is recreated but BP survives, a newly validated Google login may recover the same
+When Keycloak is recreated but BP survives, a newly validated configured-provider login may recover the same
 login-method binding only after `readBrokerBinding` proves exactly the stored provider namespace,
 alias and upstream subject. Require fresh Keycloak authentication under the five-minute window
 without treating that alone as `AAL3_FRESH`. Atomically retire the old actor binding, bind the new

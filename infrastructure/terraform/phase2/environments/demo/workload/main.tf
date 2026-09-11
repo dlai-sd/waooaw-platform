@@ -49,6 +49,7 @@ module "lease" {
 module "workload" {
   source = "../../../modules/workload"
 
+  facebook_login_enabled                   = true
   google_login_enabled                     = true
   environment                              = "demo"
   location                                 = data.terraform_remote_state.foundation.outputs.location

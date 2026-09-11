@@ -107,7 +107,7 @@ public sealed class CustomerWorkspaceProvisioningService
         _time = timeProvider ?? TimeProvider.System;
         if (!ValidKey(trust.ActorIssuer, 256) || !ValidKey(trust.ProviderIssuer, 256)
             || !ValidKey(trust.BrokerAlias, 40) || !HashPattern.IsMatch(trust.TrustConfigDigest))
-            throw new ArgumentException("Explicit verified Google trust configuration is required.", nameof(trust));
+            throw new ArgumentException("Explicit verified broker trust configuration is required.", nameof(trust));
     }
 
     public async Task<CustomerWorkspaceCompletion> CompleteAsync(VerifiedGoogleWorkspaceProof proof,
@@ -226,7 +226,7 @@ public sealed class CustomerWorkspaceProvisioningService
             && entry.ActorSubject == proof.Actor.Subject && entry.OperationFamily == OperationFamily && entry.IdempotencyKey == keyText, ct);
         if (replay is not null && (replay.CanonicalHash != canonicalHash || replay.RegistrationId != registrationId))
             throw new CustomerWorkspaceException(CustomerWorkspaceError.IdempotencyConflict);
-        ValidateRegistration(registration);
+        ValidateRegistration(registration, proof.BrokerAlias);
         var binding = await db.ActorBindings.SingleOrDefaultAsync(actor => actor.ActorIssuer == proof.Actor.Issuer
             && actor.ActorSubject == proof.Actor.Subject, ct);
         IdentityRegistrationRecord root;
@@ -403,9 +403,15 @@ public sealed class CustomerWorkspaceProvisioningService
             throw new CustomerWorkspaceException(CustomerWorkspaceError.FreshAuthenticationRequired);
     }
 
-    private void ValidateRegistration(IdentityRegistrationRecord registration)
+    private void ValidateRegistration(IdentityRegistrationRecord registration, string brokerAlias)
     {
-        if (registration.AuthenticationPath != IdentityAuthenticationPath.Google || !registration.EmailVerified
+        var expectedPath = brokerAlias switch
+        {
+            "google" => IdentityAuthenticationPath.Google,
+            "facebook" => IdentityAuthenticationPath.Meta,
+            _ => throw new CustomerWorkspaceException(CustomerWorkspaceError.ProofRequired),
+        };
+        if (registration.AuthenticationPath != expectedPath || !registration.EmailVerified
             || !ValidProfile(registration.DisplayName, 120) || !ValidProfile(registration.BusinessName, 160)
             || !ValidProfile(registration.BusinessDomain, 100) || registration.LanguagePreference is null
             || !LanguagePattern.IsMatch(registration.LanguagePreference)

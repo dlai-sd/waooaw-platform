@@ -22,7 +22,8 @@
       "pkceRequired": true,
       "redirectUris": [
         "https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io/api/auth/callback/keycloak",
-        "https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io/api/auth/callback/keycloak-google"
+        "https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io/api/auth/callback/keycloak-google",
+        "https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io/api/auth/callback/keycloak-facebook"
       ],
       "postLogoutRedirectUris": ["https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io/login"],
       "allowedOrigins": ["https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io"],
@@ -47,7 +48,7 @@
   "phoneIdentity": { "internalAudience": "waooaw-phone-identity-demo" },
   "providers": [
     { "id": "GOOGLE", "displayName": "Google", "authenticationPath": "GOOGLE", "enabled": true, "secretReference": "kv://kv-waooaw-demo/secrets/bp-identity-reader-client-secret", "readinessEvidenceReference": "WC-088-DEMO-GOOGLE-ACTIVATION-AUTHORIZED-2026-09-10", "brokerAlias": "google", "scopes": ["openid", "profile", "email"] },
-    { "id": "FACEBOOK", "displayName": "Facebook", "authenticationPath": "META", "enabled": false, "unavailableReason": "NOT_CONFIGURED", "brokerAlias": "facebook", "scopes": ["email", "public_profile"] },
+    { "id": "FACEBOOK", "displayName": "Facebook", "authenticationPath": "META", "enabled": true, "secretReference": "kv://kv-waooaw-demo/secrets/meta-login-client-secret", "readinessEvidenceReference": "WC-090-DEMO-FACEBOOK-ACTIVATION-AUTHORIZED-2026-09-10", "brokerAlias": "facebook", "scopes": ["email", "public_profile"] },
     { "id": "APPLE", "displayName": "Apple", "authenticationPath": "APPLE", "enabled": false, "unavailableReason": "NOT_CONFIGURED", "brokerAlias": "apple", "scopes": ["openid", "name", "email"] },
     { "id": "EMAIL", "displayName": "Email", "authenticationPath": "CREDENTIAL", "enabled": false, "unavailableReason": "NOT_CONFIGURED", "scopes": [] }
   ]

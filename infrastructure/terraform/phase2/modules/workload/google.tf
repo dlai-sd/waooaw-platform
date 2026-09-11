@@ -18,10 +18,10 @@ locals {
     google-client-id     = "${trimsuffix(var.key_vault_secret_resource_ids["web"], "/web")}/google-client-id"
     google-client-secret = "${trimsuffix(var.key_vault_secret_resource_ids["web"], "/web")}/google-client-secret"
   } : {}
-  identity_reader_secret_uris = var.google_login_enabled ? {
+  identity_reader_secret_uris = var.google_login_enabled || var.facebook_login_enabled ? {
     bp-identity-reader-client-secret = "${trimsuffix(var.key_vault_secret_uris["business-platform"], "/business-platform")}/bp-identity-reader-client-secret"
   } : {}
-  identity_reader_secret_resource_ids = var.google_login_enabled ? {
+  identity_reader_secret_resource_ids = var.google_login_enabled || var.facebook_login_enabled ? {
     bp-identity-reader-client-secret = "${trimsuffix(var.key_vault_secret_resource_ids["business-platform"], "/business-platform")}/bp-identity-reader-client-secret"
   } : {}
   google_identity_providers = var.google_login_enabled ? [{

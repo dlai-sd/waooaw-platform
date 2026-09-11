@@ -23,7 +23,7 @@ def test_google_recreated_only_in_demo_with_external_credentials() -> None:
         assert hcl2.loads(content)
     assert 'google_login_enabled                     = true' in demo
     assert 'var.environment == "demo"' in google
-    assert 'identityProviders      = local.google_identity_providers' in workload
+    assert 'identityProviders      = concat(local.google_identity_providers, local.facebook_identity_providers)' in workload
     assert 'clientId     = "$${GOOGLE_CLIENT_ID}"' in google
     assert 'clientSecret = "$${GOOGLE_CLIENT_SECRET}"' in google
     assert 'trustEmail                = false' in google
@@ -81,6 +81,8 @@ def test_business_platform_uses_dedicated_stock_identity_reader() -> None:
     google = (MODULE / "google.tf").read_text()
     workload = (MODULE / "main.tf").read_text()
 
+    assert "BUSINESS_PLATFORM_URL = local.service_urls.business_platform" in workload
+    assert "BUSINESS_PLATFORM_URL = local.service_urls.business_platform_web" not in workload
     assert 'clientId                  = "waooaw-bp-identity-reader"' in workload
     assert 'serviceAccountsEnabled    = true' in workload
     assert 'fullScopeAllowed          = false' in workload
@@ -97,8 +99,8 @@ def test_business_platform_uses_dedicated_stock_identity_reader() -> None:
     assert 'IdentityBrokerRead__ClientSecret' in workload
     assert 'IdentityBrokerRead__PrivateOrigin' in workload
     assert 'IdentityBrokerRead__AllowedPrivateHosts__0' in workload
-    assert 'IdentityBrokerRead__ProviderNamespace' in workload
-    assert 'IdentityBrokerRead__TrustConfigDigest' in workload
+    assert 'IdentityBrokerRead__Providers__google__ProviderNamespace' in workload
+    assert 'IdentityBrokerRead__Providers__google__TrustConfigDigest' in workload
 
 
 def test_demo_seeder_provisions_dedicated_identity_reader_secret_at_runtime() -> None:

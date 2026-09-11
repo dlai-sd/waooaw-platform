@@ -759,6 +759,31 @@ jobs:
         if: inputs.apply
         run: test "$(az account show --query id -o tsv)" = "$ARM_SUBSCRIPTION_ID"
 
+      - name: Synchronize approved Demo Meta login credentials
+        if: inputs.apply && inputs.environment == 'demo'
+        env:
+          KEY_VAULT_NAME: ${{ steps.foundation.outputs.key_vault_name }}
+          META_LOGIN_CLIENT_ID: ${{ secrets.META_LOGIN_CLIENT_ID }}
+          META_LOGIN_CLIENT_SECRET: ${{ secrets.META_LOGIN_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+          test "$KEY_VAULT_NAME" = "kv-waooaw-demo"
+          test "$META_LOGIN_CLIENT_ID" = "2590813568086235"
+          test -n "$META_LOGIN_CLIENT_SECRET"
+          umask 077
+          secret_dir=$(mktemp -d)
+          trap 'rm -rf "$secret_dir"' EXIT
+          client_id_file="$secret_dir/client-id"
+          client_secret_file="$secret_dir/client-secret"
+          printf '%s' "$META_LOGIN_CLIENT_ID" > "$client_id_file"
+          printf '%s' "$META_LOGIN_CLIENT_SECRET" > "$client_secret_file"
+          az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name meta-login-client-id \
+            --file "$client_id_file" --content-type text/plain \
+            --tags work-contract=WC-090 provider=facebook --output none
+          az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name meta-login-client-secret \
+            --file "$client_secret_file" --content-type text/plain \
+            --tags work-contract=WC-090 provider=facebook --output none
+
       - name: Check credential inventory
         if: inputs.apply
         id: credential-inventory
