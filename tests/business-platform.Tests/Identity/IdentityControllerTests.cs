@@ -1576,13 +1576,15 @@ public sealed class IdentityInputAndConfigurationTests
             regId, new("12345"), CancellationToken.None)).StatusCode);
     }
 
-    [Fact]
-    public void F2_MissingOrShortHmacSecret_FailsClosed()
+    [Theory]
+    [InlineData("")]
+    [InlineData("short")]
+    public void F2_MissingOrShortHmacSecret_FailsClosed(string key)
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         Assert.Throws<InvalidOperationException>(() => new IdentityService(
             factory,
-            Options.Create(new IdentityHmacOptions { Key = "short" }),
+            Options.Create(new IdentityHmacOptions { Key = key }),
             new CapturingVerificationDispatcher()));
     }
 
@@ -1625,6 +1627,40 @@ public sealed class IdentityInputAndConfigurationTests
                 {
                     ["v1"] = "synthetic-retained-key-material-at-least-32-characters",
                 },
+            }),
+            new CapturingVerificationDispatcher()));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("bad version")]
+    [InlineData("v2!")]
+    public void WC091_HmacKeyRing_RejectsInvalidActiveVersion(string activeVersion)
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        Assert.Throws<InvalidOperationException>(() => new IdentityService(
+            factory,
+            Options.Create(new IdentityHmacOptions
+            {
+                Key = "synthetic-active-key-material-at-least-32-characters",
+                ActiveVersion = activeVersion,
+            }),
+            new CapturingVerificationDispatcher()));
+    }
+
+    [Theory]
+    [InlineData("", "synthetic-retained-key-material-at-least-32-characters")]
+    [InlineData("v1", "short")]
+    public void WC091_HmacKeyRing_RejectsInvalidReadVersion(string version, string key)
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        Assert.Throws<InvalidOperationException>(() => new IdentityService(
+            factory,
+            Options.Create(new IdentityHmacOptions
+            {
+                Key = "synthetic-active-key-material-at-least-32-characters",
+                ActiveVersion = "v2",
+                ReadOnlyVersions = new Dictionary<string, string> { [version] = key },
             }),
             new CapturingVerificationDispatcher()));
     }
