@@ -57,26 +57,18 @@ def test_demo_projection_enables_only_approved_login_scopes() -> None:
     assert "whatsapp_business" not in manifest
 
 
-def test_demo_workflow_syncs_meta_credentials_after_oidc_without_echoing_values() -> None:
+def test_demo_deployment_uses_preprovisioned_meta_key_vault_secrets() -> None:
     workflow = (ROOT / ".github/workflows/environment-deployment.yaml").read_text()
+    facebook = (MODULE / "facebook.tf").read_text()
 
-    login = workflow.index("Azure login with environment deployment OIDC identity")
-    sync = workflow.index("Synchronize approved Demo Meta login credentials")
-    inventory = workflow.index("Check credential inventory")
-
-    assert login < sync < inventory
-    assert "if: inputs.apply && inputs.environment == 'demo'" in workflow
-    assert "META_LOGIN_CLIENT_ID: ${{ secrets.META_LOGIN_CLIENT_ID }}" in workflow
-    assert "META_LOGIN_CLIENT_SECRET: ${{ secrets.META_LOGIN_CLIENT_SECRET }}" in workflow
-    assert 'test "$META_LOGIN_CLIENT_ID" = "2590813568086235"' in workflow
-    assert "--name meta-login-client-id" in workflow
-    assert "--name meta-login-client-secret" in workflow
-    assert "secret_dir=$(mktemp -d)" in workflow
-    assert "trap 'rm -rf \"$secret_dir\"' EXIT" in workflow
-    assert '--file "$client_id_file"' in workflow
-    assert '--file "$client_secret_file"' in workflow
-    assert "echo $META_LOGIN" not in workflow
-    assert "--value \"$META_LOGIN" not in workflow
+    assert "Synchronize approved Demo Meta login credentials" not in workflow
+    assert "secrets.META_LOGIN_CLIENT_ID" not in workflow
+    assert "secrets.META_LOGIN_CLIENT_SECRET" not in workflow
+    assert "--name meta-login-client-id" not in workflow
+    assert "--name meta-login-client-secret" not in workflow
+    assert "meta-login-client-id" in facebook
+    assert "meta-login-client-secret" in facebook
+    assert 'resource "azurerm_role_assignment" "facebook_broker_secret"' in facebook
 
 
 def test_demo_verification_requires_google_and_facebook_available() -> None:
