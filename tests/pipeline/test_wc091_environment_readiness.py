@@ -3,6 +3,10 @@
 
 import copy
 import json
+import os
+import re
+import subprocess
+import sys
 
 import pytest
 
@@ -21,12 +25,8 @@ def test_demo_render_is_deterministic_secret_free_and_environment_bound() -> Non
 
 
 def test_checked_in_demo_render_is_current_and_consumed_by_terraform() -> None:
-    rendered = json.loads(
-        (wc091_environment.ROOT / "infrastructure/environment-readiness/demo.rendered.json").read_text()
-    )
-    identity_module = (
-        wc091_environment.ROOT / "infrastructure/terraform/phase2/modules/workload/identity.tf"
-    ).read_text()
+    rendered = json.loads((wc091_environment.ROOT / "infrastructure/environment-readiness/demo.rendered.json").read_text())
+    identity_module = (wc091_environment.ROOT / "infrastructure/terraform/phase2/modules/workload/identity.tf").read_text()
 
     assert rendered == wc091_environment.validate_and_render("demo")
     assert "environment-readiness/demo.rendered.json" in identity_module
@@ -122,15 +122,129 @@ def test_demo_terraform_uses_generation_fenced_emptydir_storage() -> None:
     assert 'name        = "Identity__Hmac__Key"' in module
     assert 'name  = "Identity__Hmac__ActiveVersion"' in module
     assert "demo_data_generation_id                  = var.manifest_digest" in demo
-    assert "filesha256(\"../../../../../environment-readiness/demo.rendered.json\")" in demo
+    assert 'filesha256("../../../../../environment-readiness/demo.rendered.json")' in demo
+
+
+def test_demo_deployment_provisions_and_orders_every_hmac_secret_dependency() -> None:
+    catalog = json.loads((wc091_environment.ROOT / "infrastructure/environment-readiness/secret-catalog.json").read_text())
+    workflow = (wc091_environment.ROOT / ".github/workflows/environment-deployment.yaml").read_text()
+    module = (wc091_environment.ROOT / "infrastructure/terraform/phase2/modules/workload/main.tf").read_text()
+    hmac_secret = next(entry["vaultSecretName"] for entry in catalog["entries"] if entry["id"] == "identity-hmac-active")
+    inventory = re.search(r'^\s*credential_names="([^"]+)"$', workflow, re.MULTILINE)
+    seeder = re.search(r"seeder_script='.*?for name in ([^;]+); do", workflow)
+
+    assert inventory is not None and hmac_secret in inventory.group(1).split()
+    assert seeder is not None and hmac_secret in seeder.group(1).split()
+    assert (
+        "azurerm_role_assignment.identity_hmac_secret" in module.split('resource "azurerm_container_app" "member"', maxsplit=1)[1]
+    )
+    assert 'scripts/goal006_keyvault_retry.py"' in workflow
+
+
+def test_private_deployment_seeder_creates_missing_hmac_secret(tmp_path) -> None:
+    workflow = (wc091_environment.ROOT / ".github/workflows/environment-deployment.yaml").read_text()
+    seeder = re.search(r"^\s*seeder_script='(.*)'$", workflow, re.MULTILINE)
+    assert seeder is not None
+
+    fake_az = tmp_path / "az"
+    fake_az.write_text(
+        """#!/bin/sh
+printf '%s\\n' "$*" >> "$FAKE_AZ_LOG"
+name=
+previous=
+for argument in "$@"; do
+    if [ "$previous" = "--name" ]; then name=$argument; fi
+    previous=$argument
+done
+if [ "$1" = "login" ]; then exit 0; fi
+if [ "$1 $2 $3" = "keyvault secret show" ]; then
+    if [ "$name" = "identity-hmac-active" ]; then
+        echo SecretNotFound >&2
+        exit 3
+    fi
+    printf '%s\\n' '{"attributes":{"enabled":true}}'
+    exit 0
+fi
+exit 0
+"""
+    )
+    fake_az.chmod(0o755)
+    fake_jq = tmp_path / "jq"
+    fake_jq.write_text("#!/bin/sh\ncat >/dev/null\nprintf 'true\\n'\n")
+    fake_jq.chmod(0o755)
+    az_log = tmp_path / "az.log"
+    environment = os.environ | {
+        "PATH": f"{tmp_path}:{os.environ['PATH']}",
+        "FAKE_AZ_LOG": str(az_log),
+        "AZURE_CLIENT_ID": "synthetic-client",
+        "CREDENTIAL_SCHEMA": "synthetic-schema",
+        "KEY_VAULT_NAME": "synthetic-vault",
+    }
+
+    result = subprocess.run(
+        ["/bin/sh", "-c", seeder.group(1)],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "credential_status name=business-platform status=preserved" in result.stdout
+    assert "credential_status name=identity-hmac-active status=created" in result.stdout
+    assert "keyvault secret set --vault-name synthetic-vault --name identity-hmac-active" in az_log.read_text()
+
+
+@pytest.mark.parametrize(
+    ("apply_log", "inventory", "expected"),
+    [
+        (
+            "Unable to get value using Managed identity for secret identity-hmac-active",
+            {"credentials": [{"name": "identity-hmac-active"}]},
+            True,
+        ),
+        (
+            "Unable to get value using Managed identity for secret undeclared-secret",
+            {"credentials": [{"name": "identity-hmac-active"}]},
+            False,
+        ),
+        (
+            "Updating ca-demo-web: Unable to get value using Managed identity for secret undeclared-secret",
+            {"credentials": [{"name": "web"}]},
+            False,
+        ),
+        (
+            "Terraform provider failed while updating identity-hmac-active",
+            {"credentials": [{"name": "identity-hmac-active"}]},
+            False,
+        ),
+        ("Unable to get value using Managed identity", {"credentials": "invalid"}, False),
+    ],
+)
+def test_keyvault_retry_classifier_fails_closed(tmp_path, apply_log: str, inventory: object, expected: bool) -> None:
+    apply_log_path = tmp_path / "workload-apply.log"
+    inventory_path = tmp_path / "credential-inventory.json"
+    apply_log_path.write_text(apply_log)
+    inventory_path.write_text(json.dumps(inventory))
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(wc091_environment.ROOT / "scripts/goal006_keyvault_retry.py"),
+            "--apply-log",
+            str(apply_log_path),
+            "--inventory",
+            str(inventory_path),
+        ],
+        check=False,
+    )
+
+    assert (result.returncode == 0) is expected
 
 
 def test_readiness_outcomes_are_independent_and_missing_evidence_is_not_proven() -> None:
     rendered = wc091_environment.validate_and_render("demo")
-    metadata = [
-        {"id": binding["id"], "enabled": True, "expired": False}
-        for binding in rendered["secretBindings"]
-    ]
+    metadata = [{"id": binding["id"], "enabled": True, "expired": False} for binding in rendered["secretBindings"]]
     evidence = {
         "renderDigest": rendered["renderDigest"],
         "secretMetadata": metadata,
@@ -157,7 +271,8 @@ def test_secret_provisioning_preserves_existing_version_without_reading_value(mo
     def fake_az(command, body=None):
         calls.append((command, body))
         return wc091_secret_provision.subprocess.CompletedProcess(
-            command, 0, '{"value":[{"id":"https://vault/secrets/demo-founder-bootstrap/version-1"}]}', "")
+            command, 0, '{"value":[{"id":"https://vault/secrets/demo-founder-bootstrap/version-1"}]}', ""
+        )
 
     monkeypatch.setattr(wc091_secret_provision, "_az", fake_az)
     result = wc091_secret_provision.provision("demo-founder-bootstrap", "demo", "FA-091")
@@ -176,7 +291,8 @@ def test_external_secret_value_uses_stdin_body_not_command_arguments(monkeypatch
         if len(calls) == 1:
             return wc091_secret_provision.subprocess.CompletedProcess(command, 1, "", "SecretNotFound 404")
         return wc091_secret_provision.subprocess.CompletedProcess(
-            command, 0, '{"id":"https://vault/secrets/meta-login-client-secret/version-2"}', "")
+            command, 0, '{"id":"https://vault/secrets/meta-login-client-secret/version-2"}', ""
+        )
 
     monkeypatch.setattr(wc091_secret_provision, "_az", fake_az)
     monkeypatch.setattr(wc091_secret_provision.getpass, "getpass", lambda _: "not-logged-secret")
