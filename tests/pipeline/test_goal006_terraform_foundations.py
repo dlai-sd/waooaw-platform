@@ -7,6 +7,7 @@ import json
 import sys
 from pathlib import Path
 
+import hcl2
 import pytest
 
 
@@ -204,11 +205,21 @@ def test_internal_verification_uses_the_identity_edge() -> None:
     assert "local.service_urls.keycloak" not in verification_job
 
 
+def test_verification_url_consumers_have_defined_keys() -> None:
+    contract = read_contract("modules/workload/main.tf")
+    parsed_contract = hcl2.loads(contract)
+    defined_keys = set(parsed_contract["locals"][0]["verification_urls"])
+    referenced_keys = set(re.findall(r"local\.verification_urls\.([a-z][a-z0-9_]*)", contract))
+
+    assert referenced_keys
+    assert referenced_keys <= defined_keys
+
+
 def test_web_uses_canonical_https_business_platform_origin() -> None:
     contract = read_contract("modules/workload/main.tf")
 
     assert 'business_platform_web = "https://ca-${var.environment}-business-platform.' in contract
-    assert "BUSINESS_PLATFORM_URL = local.service_urls.business_platform_web" in contract
+    assert "business_platform     = local.service_urls.business_platform_web" in contract
 
 
 def test_demo_temporal_lifecycle_and_member_readiness_are_fail_closed() -> None:
