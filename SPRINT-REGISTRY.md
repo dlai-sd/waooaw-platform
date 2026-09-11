@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-09-11 · **Version:** 1.45.0 · **Work Contracts:** 83 recorded (73 closed · 10 active · 1 blocked)
+**Last Updated:** 2026-09-11 · **Version:** 1.45.0 · **Work Contracts:** 84 recorded (73 closed · 11 active · 1 blocked)
 
 **Reference hierarchy:** This file is the canonical compact Work Contract and delivery index. `README.md`
 is the operator entry and routing summary; `constitution/PROJECT_STATE.md` records only the current
@@ -27,6 +27,7 @@ constitutional-repair record. Agents must select the record by title and Goal, n
 | **WC-076** | GOAL-006 Phase 3 Execution | Cloud delivery and environment promotion | IN PROGRESS · P3-EX01→10 PASSED · P3-EX11 OFFLINE READINESS PENDING · PRODUCTION PROHIBITED | WC-071→074 · FA-052 · PR #371 · PR #388 | Demo accepted and UAT verified from one exact-six release; recent readiness repairs are merged, while dark-Production handover and owner inputs remain open |
 | **WC-089** | DMA Thin Vertical Slice And Agent Image Proof | Agent productization planning | BLOCKED · OWNER-REVIEWED PLAN · SECURITY PASS · FOUNDER ACCEPTANCE PENDING · IMPLEMENTATION UNAUTHORIZED | WC-079 · WC-080 · WC-087 · WC-088 · ADR-035 · ADR-049 | Type-image/customer-instance concept and Profile → Research → Strategy plan are merged; separate admitted DMA image/version, reusable hosting closures, Skills 0/1/2 and qualification remain unimplemented pending Founder acceptance and session authorization |
 | **WC-090** | Facebook Login Enablement And Google Readiness Repair | Demo identity delivery | IMPLEMENTATION MERGED · DEMO ACTIVATION/ACCEPTANCE PENDING | WC-084 SP-04 and §6.4 · PR #416 · Meta/Google protected credentials | PR #417 merged provider-neutral Google/Facebook registration and readiness checks; protected Demo Meta secrets plus real redirect/login/registration/sign-out/repeat-login evidence remain open |
+| **WC-091** | Environment Readiness And Data Continuity | Three-iteration solution architecture | OWNER-REVIEWED CONDITIONAL PASS · EA/FOUNDER DEMO TOPOLOGY AMENDMENT REQUIRED · IMPLEMENTATION UNAUTHORIZED | WC-076 · WC-077 · WC-085 · WC-086 · WC-090 | Three iterations accepted as appropriate; I1 is blocked until the Demo disposable-data variance amends the accepted topology; I2 introduces UAT PostgreSQL/recovery; I3 remains dark Production under separate authority |
 
 ### Parked Owner Contracts From Delivered WC-084
 
