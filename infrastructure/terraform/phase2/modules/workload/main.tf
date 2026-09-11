@@ -55,7 +55,7 @@ locals {
     web                   = "https://ca-${var.environment}-web.${var.container_app_environment_default_domain}"
   }
   verification_urls = {
-    business_platform     = local.service_urls.business_platform
+    business_platform    = local.service_urls.business_platform
     professional_runtime = "http://ca-${var.environment}-professional-runtime"
     ai_runtime           = "http://ca-${var.environment}-ai-runtime"
     billing_engine       = "http://ca-${var.environment}-billing-engine"
@@ -319,6 +319,12 @@ locals {
     "web"                   = "web"
     "billing-engine"        = "billing-engine"
   }
+  identity_hmac_secret_uris = var.environment == "demo" ? {
+    identity-hmac-active = "${trimsuffix(var.key_vault_secret_uris["business-platform"], "/business-platform")}/identity-hmac-active"
+  } : {}
+  identity_hmac_secret_resource_ids = var.environment == "demo" ? {
+    identity-hmac-active = "${trimsuffix(var.key_vault_secret_resource_ids["business-platform"], "/business-platform")}/identity-hmac-active"
+  } : {}
   minimum_replicas = {
     "constitutional-engine" = var.ce_min_replicas
     "professional-runtime"  = var.pr_min_replicas
@@ -353,6 +359,13 @@ resource "azurerm_role_assignment" "professional_runtime_bp_secret" {
   principal_id         = azurerm_user_assigned_identity.member["professional-runtime"].principal_id
 }
 
+resource "azurerm_role_assignment" "identity_hmac_secret" {
+  for_each             = var.workload_enabled ? local.identity_hmac_secret_resource_ids : {}
+  scope                = each.value
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.member["business-platform"].principal_id
+}
+
 resource "azurerm_container_app" "member" {
   for_each = local.active_members
 
@@ -374,6 +387,15 @@ resource "azurerm_container_app" "member" {
 
   dynamic "secret" {
     for_each = each.key == "business-platform" ? local.identity_reader_secret_uris : {}
+    content {
+      name                = secret.key
+      identity            = azurerm_user_assigned_identity.member[each.key].id
+      key_vault_secret_id = secret.value
+    }
+  }
+
+  dynamic "secret" {
+    for_each = each.key == "business-platform" ? local.identity_hmac_secret_uris : {}
     content {
       name                = secret.key
       identity            = azurerm_user_assigned_identity.member[each.key].id
@@ -430,6 +452,22 @@ resource "azurerm_container_app" "member" {
       }
 
       dynamic "env" {
+        for_each = each.key == "business-platform" ? local.identity_hmac_secret_uris : {}
+        content {
+          name        = "Identity__Hmac__Key"
+          secret_name = env.key
+        }
+      }
+
+      dynamic "env" {
+        for_each = each.key == "business-platform" ? [1] : []
+        content {
+          name  = "Identity__Hmac__ActiveVersion"
+          value = var.identity_hmac_active_version
+        }
+      }
+
+      dynamic "env" {
         for_each = local.runtime_environment[each.key]
         content {
           name  = env.key
@@ -474,10 +512,20 @@ resource "azurerm_container_app" "member" {
     dynamic "container" {
       for_each = contains(["constitutional-engine", "business-platform", "billing-engine"], each.key) ? [1] : []
       content {
-        name   = "postgres"
-        image  = "postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685"
-        cpu    = 0.25
-        memory = "0.5Gi"
+        name    = "postgres"
+        image   = "postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685"
+        cpu     = 0.25
+        memory  = "0.5Gi"
+        command = var.environment == "demo" ? ["/bin/sh", "-ec"] : null
+        args = var.environment == "demo" ? [<<-EOT
+          rm -rf /var/lib/postgresql/data/*
+          printf '%s\n' \
+            'CREATE TABLE IF NOT EXISTS public.wc091_demo_generation (generation_id text PRIMARY KEY, fixture_digest text NOT NULL);' \
+            "INSERT INTO public.wc091_demo_generation VALUES ('$WC091_GENERATION_ID', '$WC091_FIXTURE_DIGEST');" \
+            > /docker-entrypoint-initdb.d/00-wc091-generation.sql
+          exec docker-entrypoint.sh postgres
+        EOT
+        ] : null
 
         env {
           name  = "POSTGRES_DB"
@@ -486,6 +534,23 @@ resource "azurerm_container_app" "member" {
         env {
           name  = "POSTGRES_HOST_AUTH_METHOD"
           value = "trust"
+        }
+        dynamic "env" {
+          for_each = var.environment == "demo" ? {
+            WC091_GENERATION_ID  = var.demo_data_generation_id
+            WC091_FIXTURE_DIGEST = var.demo_fixture_digest
+          } : {}
+          content {
+            name  = env.key
+            value = env.value
+          }
+        }
+        dynamic "volume_mounts" {
+          for_each = var.environment == "demo" ? [1] : []
+          content {
+            name = "wc091-demo-postgres"
+            path = "/var/lib/postgresql/data"
+          }
         }
       }
     }
@@ -497,6 +562,14 @@ resource "azurerm_container_app" "member" {
         image  = "redis@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2"
         cpu    = 0.25
         memory = "0.5Gi"
+      }
+    }
+
+    dynamic "volume" {
+      for_each = var.environment == "demo" ? [1] : []
+      content {
+        name         = "wc091-demo-postgres"
+        storage_type = "EmptyDir"
       }
     }
   }
@@ -546,6 +619,7 @@ resource "azurerm_container_app" "member" {
     azurerm_role_assignment.member_secret,
     azurerm_role_assignment.professional_runtime_bp_secret,
     azurerm_role_assignment.identity_reader_secret,
+    azurerm_role_assignment.identity_hmac_secret,
     azurerm_container_app.temporal,
   ]
 }
@@ -591,10 +665,20 @@ resource "azurerm_container_app" "temporal" {
     }
 
     container {
-      name   = "postgres"
-      image  = "postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685"
-      cpu    = 0.25
-      memory = "0.5Gi"
+      name    = "postgres"
+      image   = "postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685"
+      cpu     = 0.25
+      memory  = "0.5Gi"
+      command = ["/bin/sh", "-ec"]
+      args = [<<-EOT
+        rm -rf /var/lib/postgresql/data/*
+        printf '%s\n' \
+          'CREATE TABLE IF NOT EXISTS public.wc091_demo_generation (generation_id text PRIMARY KEY, fixture_digest text NOT NULL);' \
+          "INSERT INTO public.wc091_demo_generation VALUES ('$WC091_GENERATION_ID', '$WC091_FIXTURE_DIGEST');" \
+          > /docker-entrypoint-initdb.d/00-wc091-generation.sql
+        exec docker-entrypoint.sh postgres
+      EOT
+      ]
 
       env {
         name  = "POSTGRES_DB"
@@ -604,6 +688,23 @@ resource "azurerm_container_app" "temporal" {
         name  = "POSTGRES_HOST_AUTH_METHOD"
         value = "trust"
       }
+      env {
+        name  = "WC091_GENERATION_ID"
+        value = var.demo_data_generation_id
+      }
+      env {
+        name  = "WC091_FIXTURE_DIGEST"
+        value = var.demo_fixture_digest
+      }
+      volume_mounts {
+        name = "wc091-demo-temporal-postgres"
+        path = "/var/lib/postgresql/data"
+      }
+    }
+
+    volume {
+      name         = "wc091-demo-temporal-postgres"
+      storage_type = "EmptyDir"
     }
   }
 
@@ -685,6 +786,7 @@ resource "azurerm_container_app" "keycloak" {
         ${var.google_login_enabled ? ": \"$${GOOGLE_CLIENT_ID:?Google client ID is required}\" \"$${GOOGLE_CLIENT_SECRET:?Google client secret is required}\"" : ""}
         ${var.facebook_login_enabled ? ": \"$${META_LOGIN_CLIENT_ID:?Meta login client ID is required}\" \"$${META_LOGIN_CLIENT_SECRET:?Meta login client secret is required}\"" : ""}
         ${var.google_login_enabled ? ": \"$${BP_IDENTITY_READER_CLIENT_SECRET:?BP identity reader client secret is required}\"" : ""}
+        rm -rf /opt/keycloak/data/*
         mkdir -p /opt/keycloak/data/import
         printf '%s' '${local.keycloak_realm_base64}' | base64 --decode > /opt/keycloak/data/import/waooaw-realm.json
         exec /opt/keycloak/bin/kc.sh start-dev --db=dev-file --http-enabled=true --hostname-strict=false --import-realm
@@ -758,6 +860,16 @@ resource "azurerm_container_app" "keycloak" {
           secret_name = env.key
         }
       }
+
+      volume_mounts {
+        name = "wc091-demo-keycloak-data"
+        path = "/opt/keycloak/data"
+      }
+    }
+
+    volume {
+      name         = "wc091-demo-keycloak-data"
+      storage_type = "EmptyDir"
     }
   }
 

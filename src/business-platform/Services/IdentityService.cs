@@ -1,4 +1,5 @@
-// Implements: architecture/reference/components/identity-boundary.md §5-§11
+// Implements: architecture/reference/components/identity-boundary.md §5-§11;
+//             architecture/reference/components/environment-readiness-and-data-continuity.md §6
 // constitutional_basis: C-005, C-007, C-023, C-026, C-059
 
 using System.Security.Cryptography;
@@ -15,6 +16,8 @@ public sealed class IdentityHmacOptions
 {
     public const int MinKeyLength = 32;
     public string Key { get; set; } = string.Empty;
+    public string ActiveVersion { get; set; } = "v1";
+    public Dictionary<string, string> ReadOnlyVersions { get; set; } = new(StringComparer.Ordinal);
 }
 
 // ── Dispatcher abstraction ────────────────────────────────────────────────────
@@ -86,7 +89,8 @@ public sealed class IdentityStepUpRequiredException(string reason, Guid intentId
 public sealed class IdentityService
 {
     private readonly IDbContextFactory<IdentityDbContext> _dbFactory;
-    private readonly string _hmacKey;
+    private readonly string _activeHmacVersion;
+    private readonly IReadOnlyDictionary<string, byte[]> _hmacKeys;
     private readonly IIdentityVerificationDispatcher _dispatcher;
 
     private const int Aal3FreshWindowMinutes = 5;
@@ -98,12 +102,26 @@ public sealed class IdentityService
     {
         _dbFactory = dbFactory ?? throw new ArgumentNullException(nameof(dbFactory));
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
-        var key = hmacOptions?.Value?.Key;
+        var options = hmacOptions?.Value;
+        var key = options?.Key;
         if (string.IsNullOrEmpty(key) || key.Length < IdentityHmacOptions.MinKeyLength)
             throw new InvalidOperationException(
                 $"Identity:HmacKey is absent or too short; minimum {IdentityHmacOptions.MinKeyLength} characters required. " +
                 "IdentityService cannot be constructed without valid secret material.");
-        _hmacKey = key;
+        if (string.IsNullOrWhiteSpace(options!.ActiveVersion)
+            || options.ActiveVersion.Any(character => !char.IsAsciiLetterOrDigit(character) && character is not '-' and not '_'))
+            throw new InvalidOperationException("Identity:Hmac:ActiveVersion must be a stable alphanumeric version identifier.");
+        if (options.ReadOnlyVersions.ContainsKey(options.ActiveVersion)
+            || options.ReadOnlyVersions.Any(item => string.IsNullOrWhiteSpace(item.Key)
+                || item.Value.Length < IdentityHmacOptions.MinKeyLength))
+            throw new InvalidOperationException("Identity:Hmac read-only versions must be distinct and contain valid secret material.");
+
+        _activeHmacVersion = options.ActiveVersion;
+        _hmacKeys = new Dictionary<string, byte[]>(options.ReadOnlyVersions.ToDictionary(
+            item => item.Key, item => Encoding.UTF8.GetBytes(item.Value)), StringComparer.Ordinal)
+        {
+            [_activeHmacVersion] = Encoding.UTF8.GetBytes(key),
+        };
     }
 
     // ── Registration ────────────────────────────────────────────────────────
@@ -370,10 +388,10 @@ public sealed class IdentityService
 
         // Generate cryptographically secure 6-digit OTP; raw code must never be persisted or logged
         var rawCode = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
-        var codeHmac = ComputeHmac(rawCode);
+        var codeHmac = ComputeHmac("otp", rawCode, _activeHmacVersion);
 
         var masked = MaskEmail(email);
-        var emailHmac = ComputeHmac(email.ToLowerInvariant().Trim());
+        var emailHmac = ComputeHmac("email", email, _activeHmacVersion);
 
         var challenge = new IdentityVerificationChallengeRecord
         {
@@ -381,10 +399,13 @@ public sealed class IdentityService
             ActorSubject      = actorSubject,
             Purpose           = IdentityVerificationPurpose.Email,
             CodeHmac          = codeHmac,
+            CodeHmacVersion   = _activeHmacVersion,
             MaskedDestination = masked,
         };
 
         reg.EmailHmacKey = emailHmac;
+        reg.EmailHmacVersion = _activeHmacVersion;
+        reg.EmailHmacDomain = "email";
         reg.MaskedEmail  = masked;
         reg.UpdatedAt    = DateTimeOffset.UtcNow;
 
@@ -444,7 +465,7 @@ public sealed class IdentityService
         }
 
         // Constant-time HMAC comparison; wrong code returns privacy-safe denial without consuming
-        if (!VerifyCode(code, challenge.CodeHmac))
+        if (!VerifyCode(code, challenge.CodeHmac, challenge.CodeHmacVersion))
             throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
 
         challenge.State      = IdentityVerificationState.Consumed;
@@ -490,13 +511,15 @@ public sealed class IdentityService
 
         // Generate cryptographically secure 6-digit OTP; raw code must never be persisted
         var rawCode = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
-        var codeHmac = ComputeHmac(rawCode);
+        var codeHmac = ComputeHmac("otp", rawCode, _activeHmacVersion);
         var masked = MaskMobile(mobile);
 
         // Store normalized HMAC key and masked mobile on registration; never raw mobile
         if (reg is not null)
         {
-            reg.MobileHmacKey = ComputeHmac(mobile.Trim());
+            reg.MobileHmacKey = ComputeHmac("mobile", mobile, _activeHmacVersion);
+            reg.MobileHmacVersion = _activeHmacVersion;
+            reg.MobileHmacDomain = "mobile";
             reg.MaskedMobile  = masked;
             reg.UpdatedAt     = DateTimeOffset.UtcNow;
         }
@@ -507,6 +530,7 @@ public sealed class IdentityService
             ActorSubject      = actorSubject,
             Purpose           = IdentityVerificationPurpose.Mobile,
             CodeHmac          = codeHmac,
+            CodeHmacVersion   = _activeHmacVersion,
             MaskedDestination = masked,
         };
 
@@ -579,7 +603,7 @@ public sealed class IdentityService
         }
 
         // Constant-time HMAC comparison; wrong code returns privacy-safe denial without consuming
-        if (!VerifyCode(code, challenge.CodeHmac))
+        if (!VerifyCode(code, challenge.CodeHmac, challenge.CodeHmacVersion))
             throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
 
         var verifiedAt = DateTimeOffset.UtcNow;
@@ -971,19 +995,34 @@ public sealed class IdentityService
         return mobile[..^4].Replace(mobile[1..^4], "***") + mobile[^4..];
     }
 
-    private byte[] ComputeHmacBytes(string value)
+    public IReadOnlyDictionary<string, string> ComputeMatchCandidates(string domain, string value)
     {
-        var data = Encoding.UTF8.GetBytes(value.ToLowerInvariant().Trim());
-        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_hmacKey));
-        return hmac.ComputeHash(data)[..16];
+        if (domain is not ("email" or "mobile"))
+            throw new ArgumentOutOfRangeException(nameof(domain), "Identity match domain must be email or mobile.");
+        return _hmacKeys.Keys.ToDictionary(
+            version => version,
+            version => ComputeHmac(domain, value, version),
+            StringComparer.Ordinal);
     }
 
-    private string ComputeHmac(string value) =>
-        Convert.ToHexString(ComputeHmacBytes(value)).ToLowerInvariant();
-
-    private bool VerifyCode(string submittedCode, string storedHex)
+    private byte[] ComputeHmacBytes(string domain, string value, string version)
     {
-        var submitted = ComputeHmacBytes(submittedCode);
+        if (!_hmacKeys.TryGetValue(version, out var masterKey))
+            throw new InvalidOperationException("Identity HMAC version is unavailable.");
+        using var keyDerivation = new HMACSHA256(masterKey);
+        var domainKey = keyDerivation.ComputeHash(Encoding.UTF8.GetBytes($"waooaw:identity:{domain}:{version}"));
+        using var hmac = new HMACSHA256(domainKey);
+        return hmac.ComputeHash(Encoding.UTF8.GetBytes(value.ToLowerInvariant().Trim()))[..16];
+    }
+
+    private string ComputeHmac(string domain, string value, string version) =>
+        Convert.ToHexString(ComputeHmacBytes(domain, value, version)).ToLowerInvariant();
+
+    private bool VerifyCode(string submittedCode, string storedHex, string version)
+    {
+        byte[] submitted;
+        try { submitted = ComputeHmacBytes("otp", submittedCode, version); }
+        catch (InvalidOperationException) { return false; }
         byte[] stored;
         try { stored = Convert.FromHexString(storedHex); }
         catch (FormatException) { return false; }

@@ -60,6 +60,7 @@ for attempt in $(seq 1 30); do
       --silent http://professional-runtime:5003/health)
     break
   fi
+  sleep 1
 done
 test "$initial_status" = 503
 test "$(jq -r '.temporalConnected' <<< "$initial_body")" = false
@@ -79,6 +80,7 @@ for attempt in $(seq 1 30); do
     break
   fi
   test "$attempt" != 30
+  sleep 1
 done
 start_temporal() {
   docker run -d --rm \
@@ -105,6 +107,7 @@ for attempt in $(seq 1 90); do
       --silent http://professional-runtime:5003/health)
     break
   fi
+  sleep 1
 done
 if test "$ready_status" != 200; then
   docker logs "$RUNTIME" >&2
@@ -125,6 +128,7 @@ for attempt in $(seq 1 30); do
       --silent http://professional-runtime:5003/health)
     break
   fi
+  sleep 1
 done
 test "$interrupted_status" = 503
 test "$(jq -r '.temporalConnected' <<< "$interrupted_body")" = false
@@ -141,6 +145,7 @@ for attempt in $(seq 1 90); do
       --silent http://professional-runtime:5003/health)
     break
   fi
+  sleep 1
 done
 if test "$restart_status" != 200; then
   docker logs "$RUNTIME" >&2

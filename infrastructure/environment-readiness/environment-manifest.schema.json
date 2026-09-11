@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://waooaw.com/schemas/environment-manifest-1.0.json",
+  "title": "WAOOAW Environment Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "environment", "origins", "keycloak", "clients", "channels", "cookie", "identityEdge", "phoneIdentity", "providers"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "environment": { "enum": ["demo", "uat", "prod"] },
+    "origins": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["web", "api", "identity"],
+      "properties": {
+        "web": { "$ref": "#/$defs/httpsUri" },
+        "api": { "$ref": "#/$defs/httpsUri" },
+        "identity": { "$ref": "#/$defs/httpsUri" }
+      }
+    },
+    "keycloak": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["issuer", "audience", "jwksUri", "realm", "accessTokenMinutes", "refreshSessionHours", "clockSkewSeconds"],
+      "properties": {
+        "issuer": { "$ref": "#/$defs/httpsUri" },
+        "audience": { "const": "waooaw-platform" },
+        "jwksUri": { "$ref": "#/$defs/httpsUri" },
+        "realm": { "const": "waooaw" },
+        "accessTokenMinutes": { "const": 15 },
+        "refreshSessionHours": { "const": 8 },
+        "clockSkewSeconds": { "type": "integer", "minimum": 0, "maximum": 60 }
+      }
+    },
+    "clients": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/client" } },
+    "channels": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["web", "mobile", "whatsApp"],
+      "properties": {
+        "web": { "type": "boolean" },
+        "mobile": { "type": "boolean" },
+        "whatsApp": { "type": "boolean" }
+      }
+    },
+    "cookie": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "secure", "sameSite"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "secure": { "const": true },
+        "sameSite": { "enum": ["Lax", "Strict"] }
+      }
+    },
+    "identityEdge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["image", "routePolicy"],
+      "properties": {
+        "image": { "type": "string", "pattern": "@sha256:[0-9a-f]{64}$" },
+        "routePolicy": { "type": "string", "minLength": 1 }
+      }
+    },
+    "phoneIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["internalAudience"],
+      "properties": { "internalAudience": { "type": "string", "minLength": 1 } }
+    },
+    "providers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "displayName", "authenticationPath", "enabled", "scopes"],
+        "properties": {
+          "id": { "enum": ["GOOGLE", "FACEBOOK", "APPLE", "EMAIL"] },
+          "displayName": { "type": "string", "minLength": 1 },
+          "authenticationPath": { "enum": ["GOOGLE", "META", "APPLE", "CREDENTIAL"] },
+          "enabled": { "type": "boolean" },
+          "unavailableReason": { "enum": ["NOT_CONFIGURED", "TEMPORARILY_UNAVAILABLE"] },
+          "secretReference": { "type": "string", "pattern": "^kv://[a-z0-9-]+/secrets/[a-z0-9-]+$" },
+          "readinessEvidenceReference": { "type": "string", "minLength": 1 },
+          "brokerAlias": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+          "scopes": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "httpsUri": { "type": "string", "format": "uri", "pattern": "^https://" },
+    "client": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "channel", "pkceRequired", "redirectUris", "postLogoutRedirectUris", "allowedOrigins", "scopes"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "channel": { "enum": ["WEB", "MOBILE"] },
+        "pkceRequired": { "const": true },
+        "redirectUris": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/httpsUri" } },
+        "postLogoutRedirectUris": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/httpsUri" } },
+        "allowedOrigins": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/httpsUri" } },
+        "scopes": { "type": "array", "minItems": 1, "uniqueItems": true, "contains": { "const": "openid" }, "items": { "type": "string", "minLength": 1 } }
+      }
+    }
+  }
+}

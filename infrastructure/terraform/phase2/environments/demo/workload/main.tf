@@ -66,6 +66,11 @@ module "workload" {
   pr_min_replicas                          = 0
   max_replicas                             = 1
   workload_enabled                         = module.lease.workload_enabled
+  demo_data_generation_id                  = var.manifest_digest
+  demo_fixture_digest = sha256(jsonencode({
+    environment_contract = filesha256("../../../../../environment-readiness/demo.rendered.json")
+    release_members      = var.image_digests
+  }))
 }
 
 output "lease_reconciliation_inputs" {

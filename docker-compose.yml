@@ -65,6 +65,7 @@ services:
       dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner-dotnet
     volumes:
       - .:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       DOTNET_CLI_HOME: /tmp/dotnet
       NUGET_PACKAGES: /tmp/nuget
@@ -349,6 +350,7 @@ services:
       Keycloak__Authority: http://keycloak:8080/realms/waooaw
       Keycloak__Audience: waooaw-platform
       Identity__Hmac__Key: ${IDENTITY_HMAC_KEY:-waooaw-identity-local-dev-only-32chars}
+      Identity__Hmac__ActiveVersion: ${IDENTITY_HMAC_ACTIVE_VERSION:-v1}
       PhoneIdentity__SigningKey: ${PHONE_IDENTITY_SIGNING_KEY:-waooaw-phone-proof-local-dev-only-32chars}
       WhatsApp__WebhookSecret: ${WHATSAPP_WEBHOOK_SECRET:-waooaw-webhook-local-dev-only-32chars}
       WhatsApp__TenantTokenKey: ${WHATSAPP_TENANT_TOKEN_KEY:-waooaw-tenant-token-local-dev-only-32chars}

@@ -60,7 +60,7 @@ internal static class IdentityTestHelpers
 {
     private const string TestHmacKey = "test-only-identity-hmac-key-32-bytes-minimum";
 
-    private static readonly IdentityEnvironmentOptions TestEnvironment = new()
+    internal static readonly IdentityEnvironmentOptions TestEnvironment = new()
     {
         SchemaVersion = "1.0",
         Environment = "local",
@@ -183,8 +183,15 @@ public sealed class IdentityProviderProjectionTests
     [Fact]
     public void F2_GetProviders_ReturnsOrderedReadinessWithoutSecrets()
     {
-        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
-        var controller = IdentityTestHelpers.CreateController(factory);
+        var controller = new IdentityProvidersController(
+            new IdentityProviderProjectionService(Options.Create(IdentityTestHelpers.TestEnvironment)),
+            new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["IdentityBrokerRead:Enabled"] = "true",
+            }).Build())
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() },
+        };
 
         var result = Assert.IsType<OkObjectResult>(controller.GetProviders());
         var json = JsonSerializer.Serialize(result.Value);
@@ -204,7 +211,6 @@ public sealed class IdentityProviderProjectionTests
     [Fact]
     public void F2_GetProviders_UnconfiguredGoogleJourneyDoesNotDisableOtherProviders()
     {
-        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var projection = new IdentityProviderProjectionService(Options.Create(new IdentityEnvironmentOptions
         {
             Providers =
@@ -213,16 +219,12 @@ public sealed class IdentityProviderProjectionTests
                 new() { Id = "EMAIL", DisplayName = "Email", AuthenticationPath = "CREDENTIAL", Enabled = true },
             ],
         }));
-        var journey = new CustomerIdentityJourneyService(
-            IdentityTestHelpers.CreateService(factory),
-            factory,
-            new GoogleWorkspaceProofAdapter(new HttpClient(), Options.Create(new IdentityBrokerReadOptions())),
-            projection);
-        var controller = new IdentityController(
-            IdentityTestHelpers.CreateService(factory),
+        var controller = new IdentityProvidersController(
             projection,
-            NullLogger<IdentityController>.Instance,
-            journey)
+            new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["IdentityBrokerRead:Enabled"] = "false",
+            }).Build())
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() },
         };
@@ -1574,13 +1576,108 @@ public sealed class IdentityInputAndConfigurationTests
             regId, new("12345"), CancellationToken.None)).StatusCode);
     }
 
-    [Fact]
-    public void F2_MissingOrShortHmacSecret_FailsClosed()
+    [Theory]
+    [InlineData("")]
+    [InlineData("short")]
+    public void F2_MissingOrShortHmacSecret_FailsClosed(string key)
     {
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         Assert.Throws<InvalidOperationException>(() => new IdentityService(
             factory,
-            Options.Create(new IdentityHmacOptions { Key = "short" }),
+            Options.Create(new IdentityHmacOptions { Key = key }),
+            new CapturingVerificationDispatcher()));
+    }
+
+    [Fact]
+    public void WC091_HmacKeyRing_SeparatesDomainsAndRetainsReadVersions()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var service = new IdentityService(
+            factory,
+            Options.Create(new IdentityHmacOptions
+            {
+                Key = "synthetic-active-key-material-at-least-32-characters",
+                ActiveVersion = "v2",
+                ReadOnlyVersions = new Dictionary<string, string>
+                {
+                    ["v1"] = "synthetic-retained-key-material-at-least-32-characters",
+                },
+            }),
+            new CapturingVerificationDispatcher());
+
+        var email = service.ComputeMatchCandidates("email", "person@example.com");
+        var mobile = service.ComputeMatchCandidates("mobile", "person@example.com");
+
+        Assert.Equal(["v1", "v2"], email.Keys.Order(StringComparer.Ordinal).ToArray());
+        Assert.NotEqual(email["v2"], mobile["v2"]);
+        Assert.All(email.Values, digest => Assert.Matches("^[0-9a-f]{32}$", digest));
+    }
+
+    [Fact]
+    public void WC091_HmacKeyRing_RejectsActiveVersionInReadSet()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        Assert.Throws<InvalidOperationException>(() => new IdentityService(
+            factory,
+            Options.Create(new IdentityHmacOptions
+            {
+                Key = "synthetic-active-key-material-at-least-32-characters",
+                ActiveVersion = "v1",
+                ReadOnlyVersions = new Dictionary<string, string>
+                {
+                    ["v1"] = "synthetic-retained-key-material-at-least-32-characters",
+                },
+            }),
+            new CapturingVerificationDispatcher()));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("bad version")]
+    [InlineData("v2!")]
+    public void WC091_HmacKeyRing_RejectsInvalidActiveVersion(string activeVersion)
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        Assert.Throws<InvalidOperationException>(() => new IdentityService(
+            factory,
+            Options.Create(new IdentityHmacOptions
+            {
+                Key = "synthetic-active-key-material-at-least-32-characters",
+                ActiveVersion = activeVersion,
+            }),
+            new CapturingVerificationDispatcher()));
+    }
+
+    [Fact]
+    public void WC091_HmacKeyRing_AcceptsStableVersionSeparators()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var service = new IdentityService(
+            factory,
+            Options.Create(new IdentityHmacOptions
+            {
+                Key = "synthetic-active-key-material-at-least-32-characters",
+                ActiveVersion = "release-2_stable",
+            }),
+            new CapturingVerificationDispatcher());
+
+        Assert.Contains("release-2_stable", service.ComputeMatchCandidates("email", "person@example.com"));
+    }
+
+    [Theory]
+    [InlineData("", "synthetic-retained-key-material-at-least-32-characters")]
+    [InlineData("v1", "short")]
+    public void WC091_HmacKeyRing_RejectsInvalidReadVersion(string version, string key)
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        Assert.Throws<InvalidOperationException>(() => new IdentityService(
+            factory,
+            Options.Create(new IdentityHmacOptions
+            {
+                Key = "synthetic-active-key-material-at-least-32-characters",
+                ActiveVersion = "v2",
+                ReadOnlyVersions = new Dictionary<string, string> { [version] = key },
+            }),
             new CapturingVerificationDispatcher()));
     }
 

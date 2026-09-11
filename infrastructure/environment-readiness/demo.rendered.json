@@ -1,0 +1,201 @@
+{
+  "catalogDigest": "sha256:73c64f603cb7626ed3cf19d372ea9ddbb6ea90d8a987a10a3d8a8035b31c71e1",
+  "configuration": {
+    "channels": {
+      "mobile": false,
+      "web": true,
+      "whatsApp": true
+    },
+    "clients": [
+      {
+        "allowedOrigins": [
+          "https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io"
+        ],
+        "channel": "WEB",
+        "id": "waooaw-web",
+        "pkceRequired": true,
+        "postLogoutRedirectUris": [
+          "https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io/login"
+        ],
+        "redirectUris": [
+          "https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io/api/auth/callback/keycloak",
+          "https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io/api/auth/callback/keycloak-google",
+          "https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io/api/auth/callback/keycloak-facebook"
+        ],
+        "scopes": [
+          "openid",
+          "profile",
+          "email"
+        ]
+      },
+      {
+        "allowedOrigins": [],
+        "channel": "MOBILE",
+        "id": "waooaw-mobile-demo",
+        "pkceRequired": true,
+        "postLogoutRedirectUris": [
+          "https://mobile.demo.waooaw.com/logout"
+        ],
+        "redirectUris": [
+          "https://mobile.demo.waooaw.com/oidc/callback"
+        ],
+        "scopes": [
+          "openid",
+          "profile",
+          "email"
+        ]
+      }
+    ],
+    "cookie": {
+      "name": "waooaw.demo.session",
+      "sameSite": "Lax",
+      "secure": true
+    },
+    "environment": "demo",
+    "identityEdge": {
+      "image": "nginxinc/nginx-unprivileged@sha256:62a904036bfc0e4a4f2b556e34cbf17bc136b47fde8cdb4628762725f48c5782",
+      "routePolicy": "infrastructure/terraform/phase2/modules/workload/identity-edge.conf.tftpl"
+    },
+    "keycloak": {
+      "accessTokenMinutes": 15,
+      "audience": "waooaw-platform",
+      "clockSkewSeconds": 30,
+      "issuer": "https://ca-demo-identity-edge.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io/realms/waooaw",
+      "jwksUri": "https://ca-demo-identity-edge.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io/realms/waooaw/protocol/openid-connect/certs",
+      "realm": "waooaw",
+      "refreshSessionHours": 8
+    },
+    "origins": {
+      "api": "https://ca-demo-business-platform.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io",
+      "identity": "https://ca-demo-identity-edge.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io",
+      "web": "https://ca-demo-web.wonderfulmoss-740b2b2d.centralindia.azurecontainerapps.io"
+    },
+    "phoneIdentity": {
+      "internalAudience": "waooaw-phone-identity-demo"
+    },
+    "providers": [
+      {
+        "authenticationPath": "GOOGLE",
+        "brokerAlias": "google",
+        "displayName": "Google",
+        "enabled": true,
+        "id": "GOOGLE",
+        "readinessEvidenceReference": "WC-088-DEMO-GOOGLE-ACTIVATION-AUTHORIZED-2026-09-10",
+        "scopes": [
+          "openid",
+          "profile",
+          "email"
+        ],
+        "secretReference": "kv://kv-waooaw-demo/secrets/bp-identity-reader-client-secret"
+      },
+      {
+        "authenticationPath": "META",
+        "brokerAlias": "facebook",
+        "displayName": "Facebook",
+        "enabled": true,
+        "id": "FACEBOOK",
+        "readinessEvidenceReference": "WC-090-DEMO-FACEBOOK-ACTIVATION-AUTHORIZED-2026-09-10",
+        "scopes": [
+          "email",
+          "public_profile"
+        ],
+        "secretReference": "kv://kv-waooaw-demo/secrets/meta-login-client-secret"
+      },
+      {
+        "authenticationPath": "APPLE",
+        "brokerAlias": "apple",
+        "displayName": "Apple",
+        "enabled": false,
+        "id": "APPLE",
+        "scopes": [
+          "openid",
+          "name",
+          "email"
+        ],
+        "unavailableReason": "NOT_CONFIGURED"
+      },
+      {
+        "authenticationPath": "CREDENTIAL",
+        "displayName": "Email",
+        "enabled": false,
+        "id": "EMAIL",
+        "scopes": [],
+        "unavailableReason": "NOT_CONFIGURED"
+      }
+    ],
+    "schemaVersion": "1.0"
+  },
+  "environment": "demo",
+  "manifestDigest": "sha256:1acff7076972dc785dd6ad23ff077c8ab635ae62e1a643c377edabe5baef1028",
+  "renderDigest": "sha256:6de98e5c7bd6da2d82afb84eee3c17d7789b2ea1f46d08d615fc2e3334666b48",
+  "schemaVersion": "1.0",
+  "secretBindings": [
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "business-platform:Identity__Hmac__Key"
+      ],
+      "id": "identity-hmac-active",
+      "principal": "business-platform",
+      "reference": "kv://kv-waooaw-demo/secrets/identity-hmac-active"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "keycloak:KC_BOOTSTRAP_ADMIN_PASSWORD"
+      ],
+      "id": "keycloak-admin",
+      "principal": "keycloak",
+      "reference": "kv://kv-waooaw-demo/secrets/keycloak-admin-password"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "web:KEYCLOAK_CLIENT_SECRET",
+        "keycloak:KEYCLOAK_CLIENT_SECRET"
+      ],
+      "id": "web-oidc-client",
+      "principal": "web",
+      "reference": "kv://kv-waooaw-demo/secrets/keycloak-client-secret"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "business-platform:IdentityBrokerRead__ClientSecret"
+      ],
+      "id": "google-login-client",
+      "principal": "business-platform",
+      "reference": "kv://kv-waooaw-demo/secrets/bp-identity-reader-client-secret"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "keycloak:FACEBOOK_CLIENT_SECRET"
+      ],
+      "id": "facebook-login-client",
+      "principal": "keycloak",
+      "reference": "kv://kv-waooaw-demo/secrets/meta-login-client-secret"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "demo-seeder:DEMO_FOUNDER_BOOTSTRAP"
+      ],
+      "id": "demo-founder-bootstrap",
+      "principal": "demo-seeder",
+      "reference": "kv://kv-waooaw-demo/secrets/demo-founder-bootstrap"
+    }
+  ]
+}
