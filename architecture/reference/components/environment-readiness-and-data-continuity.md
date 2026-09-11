@@ -2,7 +2,7 @@
 
 **Work Contract:** WC-091
 **Owner:** Solution Architect (INST-005)
-**Status:** OWNER-REVIEWED - CONDITIONAL PASS - EA AMENDMENT BLOCKS I1 - IMPLEMENTATION UNAUTHORIZED
+**Status:** OWNER-REVIEWED - CONDITIONAL PASS - EA AMENDMENT APPROVED - FOUNDER ACCEPTANCE BLOCKS I1 - IMPLEMENTATION UNAUTHORIZED
 **Scope:** Runtime configuration, secret dependencies, identity match-key continuity, environment
 data posture, deployment preflight, and independent readiness evidence
 
@@ -53,15 +53,12 @@ schemas, cloud authorization, or Production acceptance.
 | Promotion | May restore Demo independently; no durability inference | Same immutable application digests after Demo acceptance | Same qualified tuple after separate authorization |
 | Recovery proof | Deterministic reset and reseed | Backup, PITR, isolated restore and prior-revision compatibility | Plan-only gates reuse UAT evidence and define separately authorized Production proof |
 
-The Demo row is a Founder-directed proposed bounded variance from the accepted reference topology,
-which specifies PostgreSQL Flexible Server for Demo. This combined review confirms that the
-three-iteration sequence is appropriate, but it cannot silently supersede that accepted topology.
-Before any WC091-I1 implementation, Enterprise Architecture must amend
-`architecture/reference/pipeline/azure-deployment-topology.md` to name this exact disposable ACA
-design and its no-durability consequences, and the Founder must accept that exact amendment.
-Until both events are recorded, the variance is not effective, I1 is implementation-blocked, and
-implementers may not choose between the competing designs. This component does not authorize the
-upstream amendment, implementation, cloud mutation, or acceptance.
+The Demo row is a Founder-directed bounded variance from the previously accepted reference topology.
+Enterprise Architecture amended `architecture/reference/pipeline/azure-deployment-topology.md` on
+2026-09-11 to name this exact disposable ACA design and its no-durability consequences and recorded
+EA approval. The Founder must still accept that exact amendment before WC091-I1 implementation.
+Until Founder acceptance is recorded, the variance is not effective and I1 remains implementation-
+blocked. This component does not authorize implementation, cloud mutation, or acceptance.
 
 ## 4. Environment Manifest
 
@@ -359,17 +356,16 @@ later office pass.
 
 | Decision space | Disposition | Basis and repaired finding |
 |---|---|---|
-| Chief Enterprise Architect | `CONCUR WITH BLOCKER` | Three iterations preserve the required Demo -> UAT -> plan-only dark Production sequence and let one runtime contract move from disposable to persistent data. The Demo database remains a conflict with the accepted Azure topology; Section 3 now names the exact EA-authored, Founder-accepted upstream amendment required before I1. |
+| Chief Enterprise Architect | `APPROVED - FOUNDER ACCEPTANCE PENDING` | Three iterations preserve the required Demo -> UAT -> plan-only dark Production sequence. The canonical topology now specifies the exact disposable ACA database design, its reset behavior and its no-durability consequences; UAT remains the first persistent tier. |
 | Data Architect | `CONCUR` | Sections 6 and 8 now make key-version/domain persistence, collision-safe rotation, role/owner separation, EF migration authority, prior-release compatibility, PITR, isolated restore, RLS, and cross-environment denial explicit and testable. |
 | Security Architect | `CONCUR` | Sections 5, 6, 8, 9, and 12 now require domain-separated keys, per-principal credentials and Key Vault operations, no-echo/no-plaintext provisioning, redacted evidence, least privilege, compromise holds, and fail-closed recovery without silent identity creation or merge. |
-| Platform Architect | `CONCUR WITH EA PREREQUISITE` | Sections 4, 5, 8, 9, and 12 define one canonical render, ACA-feasible replica-local storage plus startup reset, Key Vault binding, UAT PostgreSQL/Temporal handoff, preflight, rollback, and a non-bypassable plan-only Production guard. Implementation remains blocked by Section 3 and separate session authority. |
+| Platform Architect | `CONCUR - FOUNDER ACCEPTANCE PENDING` | Sections 4, 5, 8, 9, and 12 define one canonical render, ACA-feasible replica-local storage plus startup reset, Key Vault binding, UAT PostgreSQL/Temporal handoff, preflight, rollback, and a non-bypassable plan-only Production guard. Implementation remains blocked by Founder acceptance and separate session authority. |
 
-**Overall status:** `CONDITIONAL PASS - EXTERNAL EA/FOUNDER AMENDMENT REQUIRED - IMPLEMENTATION UNAUTHORIZED`.
+**Overall status:** `CONDITIONAL PASS - EA AMENDMENT APPROVED - FOUNDER ACCEPTANCE REQUIRED - IMPLEMENTATION UNAUTHORIZED`.
 All small/manageable owner findings identified in this combined call are repaired above. The sole
-unresolved prerequisite is external to these permitted artifacts: Enterprise Architecture must amend
-the accepted Azure deployment topology for the exact Demo variance and the Founder must accept that
-amendment. This table is a combined owner disposition, not independent assurance, implementation,
-cloud evidence, Production approval, or Founder acceptance.
+unresolved prerequisite is Founder acceptance of the exact Enterprise Architecture amendment.
+This table is a combined owner disposition, not independent assurance, implementation, cloud
+evidence, Production approval, or Founder acceptance.
 
 ## 14. Acceptance Mapping
 

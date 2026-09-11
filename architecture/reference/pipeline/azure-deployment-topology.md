@@ -21,6 +21,16 @@ is missing, inconsistent, or unapproved, execution stops rather than selecting a
 | Sequence | Qualify Demo first, obtain Founder Demo acceptance before UAT, and keep Production dark and plan-only until separately authorized. |
 | Operating posture | Prefer local deterministic validation for fast iteration, but use the protected workflow to prove OIDC identity, private DNS/data paths, environment approval, cleanup, and immutable evidence. |
 
+### WC-091 Demo Data Amendment - Enterprise Architecture Approved 2026-09-11
+
+Enterprise Architecture approves the WC091-I1 bounded variance: Demo uses a digest-pinned PostgreSQL
+container in ACA with replica-scoped ephemeral `EmptyDir` storage and generation-fenced destructive
+initialize-and-seed on every database process start and revision replacement. Demo has no durability,
+backup, restore, migration-continuity, or customer-data claim. UAT remains the first environment with
+persistent PostgreSQL and recovery qualification. This approval changes architecture only; Founder
+acceptance of this exact amendment and separate current-session implementation authorization remain
+mandatory before WC091-I1 implementation.
+
 ### Current Delivery State - 2026-08-28
 
 `constitution/PROJECT_STATE.md` remains authoritative for live authorization. This dated snapshot
@@ -63,7 +73,7 @@ flowchart TB
     DDNS[www.demo / api.demo / auth.demo]
     DING[ACA managed ingress and L7 load balancer\nFounder IPv4 allowlist]
     DAPP[ACA revisions\nWeb, BP, PR, CE, AIR, Billing, identity edge, Keycloak, self-hosted Temporal, Redis]
-    DDB[PostgreSQL Flexible Server\nprivate DNS, isolated databases]
+    DDB[Digest-pinned PostgreSQL in ACA\nreplica-scoped EmptyDir, reset and reseed]
     DKV[Key Vault private endpoint]
     DMON[Log Analytics]
     DDNS --> DING --> DAPP
@@ -109,17 +119,17 @@ Azure Container Apps ingress is the environment load balancer. Demo and UAT do n
 | Access | Founder `/32` | Approved tester CIDRs | No customer traffic |
 | TLS | ACA managed certificates; monitored renewal | ACA managed certificates; monitored renewal | Front Door managed TLS after activation decision |
 | Application compute | ACA min replicas `0`, max `1` | ACA min replicas `0`, bounded test max | Accepted production minima; no apply under WC-076 |
-| Data | Synthetic; isolated PostgreSQL | Synthetic representative; isolated PostgreSQL and PITR test | Separate production data boundary |
+| Data | Synthetic only; disposable PostgreSQL in ACA on replica-scoped `EmptyDir`; destructive reset and reseed on every database start or revision replacement | Synthetic representative; isolated persistent PostgreSQL and PITR test | Separate persistent production data boundary |
 | Redis | Transient ACA dependency; no backup | Transient ACA dependency; no backup | Managed or HA decision before activation |
-| Temporal | Self-hosted ACA dependency using environment PostgreSQL | Temporal Cloud namespace and mTLS per ADR-015 | Temporal Cloud namespace; activation remains reserved |
-| Expiry | Scale all workloads to zero; stop PostgreSQL; keep state, vault, DNS, backups and evidence | Same | Not leased |
+| Temporal | Self-hosted ACA dependency using the disposable Demo PostgreSQL boundary | Temporal Cloud namespace and mTLS per ADR-015 | Temporal Cloud namespace; activation remains reserved |
+| Expiry | Scale all workloads to zero; retain no database state; keep vault, DNS and evidence | Scale all workloads to zero; stop PostgreSQL; keep state, vault, DNS, backups and evidence | Not leased |
 | Cost | Pre-plan forecast gate, tags, alerts, short log retention | Same | Plan-only until separately authorized |
 
-PostgreSQL Flexible Server cannot remain stopped indefinitely: Azure automatically restarts a stopped server after its service limit. A scheduled lease reconciler MUST re-stop expired Demo/UAT servers and verify workloads remain at zero. Reconciliation is idempotent, records evidence, retries only bounded transient failures, and escalates after its final attempt. Storage, backups, state, vault, DNS, and minimal telemetry continue to incur small foundation cost.
+UAT PostgreSQL Flexible Server cannot remain stopped indefinitely: Azure automatically restarts a stopped server after its service limit. A scheduled lease reconciler MUST re-stop the expired UAT server and verify workloads remain at zero. Reconciliation is idempotent, records evidence, retries only bounded transient failures, and escalates after its final attempt. UAT storage and backups, plus retained state, vault, DNS, and minimal telemetry, continue to incur small foundation cost. Demo database storage is replica-scoped and disposable.
 
 ## Network And Trust Boundaries
 
-- One VNet per environment with delegated ACA, delegated PostgreSQL, and private-endpoint subnets.
+- One VNet per environment with delegated ACA and private-endpoint subnets; UAT and Production also provide the PostgreSQL network boundary required by their persistent data posture.
 - Deployment jobs run on ephemeral Azure self-hosted runners inside environment-isolated runner subnets. GitHub-hosted runner public-IP discovery and temporary Storage firewall rules are prohibited after the Demo runner activation gate passes.
 - Demo, UAT, and Production reuse one versioned runner blueprint, but never one runner instance or one unrestricted subnet. Each environment has a distinct runner label, subnet, managed identity boundary, and Storage private endpoint. Production runners remain at zero capacity unless a separately authorized Production job is active.
 - The runner control plane is bootstrapped separately from environment Terraform because a runner must exist before Terraform can read its remote backend. Bootstrap state and credentials must not depend on the protected backend they create. GitHub App runner-registration material is held in Azure Key Vault, retrieved through managed identity, and never stored in GitHub variables or client secrets.
@@ -192,8 +202,9 @@ ADR-046 governs workload-to-service authentication and does not create a new run
 
 ## Data And Migration Contract
 
-- Remove PostgreSQL sidecars from CE, BP, and Billing. One PostgreSQL Flexible Server per environment hosts separate databases/roles for application state, Keycloak, and Temporal.
-- Terraform first creates PostgreSQL with Entra authentication enabled, password authentication disabled, and no administrator password. The environment deployment identity is the bounded Entra database administrator.
+- Demo uses one digest-pinned PostgreSQL container in ACA with replica-scoped ephemeral `EmptyDir` storage. It has no Azure Files, managed disk, Flexible Server, backup, export, replica-external endpoint, or retained volume. Every database process start and revision replacement performs a generation-fenced destructive initialize-and-seed before traffic; a reset failure or generation/fixture mismatch keeps affected routes unready.
+- UAT and Production remove PostgreSQL sidecars from CE, BP, and Billing. Their persistent PostgreSQL boundary hosts separate databases/roles for application state, Keycloak, and approved dependencies.
+- For UAT and Production, Terraform first creates PostgreSQL with Entra authentication enabled, password authentication disabled, and no administrator password. The environment deployment identity is the bounded Entra database administrator.
 - A private, digest-pinned bootstrap job connects with an Entra token, creates separate databases and least-privilege roles, and writes generated dependency credentials directly to Key Vault. Values never pass through Terraform inputs, state, plans, outputs, workflow logs, or artifacts.
 - Application services MUST use managed-identity token refresh where their runtime supports it. Password authentication is enabled only in a second reviewed foundation plan when a pinned dependency such as Keycloak or self-hosted Demo Temporal cannot use Entra tokens; only its generated non-admin role may use that path.
 - UAT and Production use Temporal Cloud under ADR-015, with environment-specific mTLS material held in Key Vault. They do not deploy a self-hosted Temporal server.
@@ -210,7 +221,7 @@ ADR-046 governs workload-to-service authentication and does not create a new run
 | State isolation | Environment backend key, resource scope, OIDC subject, naming and tags | Separate environment plan/state with no cross-environment reference | Wrong subscription, scope, backend or existing-resource ownership stops plan | INST-009 with INST-007 |
 | Release and dependencies | Signed exact-six manifest, signed pinned-dependency manifest, reviewed config digest, schema compatibility | One immutable deployment tuple | Missing member, digest/signature mismatch, mutable dependency or incompatible schema stops before cloud mutation | INST-009 with INST-006/007 |
 | Runtime configuration | Versioned non-secret schema, Key Vault references, per-service identity matrix | Validated startup configuration with no image-baked environment values | Missing/unknown config, secret fallback or identity failure keeps revision unready | INST-005/007 with INST-009 |
-| Database bootstrap | Entra-only server, database/role/RLS contract, bounded bootstrap identity | Separate databases/roles and Key Vault references; no value in Terraform or workflow evidence | Partial bootstrap, Key Vault write failure or unexpected password authority blocks application plan | INST-006/007 with INST-009 |
+| Database bootstrap | Demo: pinned database digest, generation ID and approved synthetic fixture digest. UAT/Production: Entra-only server, database/role/RLS contract and bounded bootstrap identity | Demo: clean seeded generation with no prior generation reachable. UAT/Production: separate databases/roles and Key Vault references with no value in Terraform or workflow evidence | Demo reset/seed mismatch or retained prior generation keeps routes unready; persistent-tier partial bootstrap, Key Vault write failure or unexpected password authority blocks application plan | INST-006/007 with INST-009 |
 | Dependency handoff | Pinned identity-edge, Keycloak, Demo Temporal and Redis digests; Temporal Cloud endpoint/mTLS for UAT | Healthy private dependencies and approved public identity paths | Version, TLS, health or path-policy failure keeps application traffic at zero | INST-005/007 with INST-009 |
 | Pre-traffic qualification | Migration result, readiness/dependency probes, required CCT set, public journey probes | Signed traffic-switch decision | Any required internal or public probe, CCT, migration or evidence failure leaves old revision active | INST-015 with INST-005/009 |
 | Rollback | Previous qualified tuple, current schema compatibility, approval and hold state | Audited ACA traffic switch with no rebuild or migration | Missing tuple, expired hold, incompatible schema or approval failure blocks rollback | INST-009 with INST-006 |
@@ -236,7 +247,7 @@ Demo may shift directly from zero to 100% after verification. UAT proves the sam
 - Private runner networking is budgeted independently from application infrastructure: approximately one Private Link endpoint-hour charge per active environment plus low-volume data processing and one shared private DNS zone. VNet/subnet creation, private IP allocation, load balancers, and certificates add no runner-path charge because the design does not provision public ingress. The combined plan remains fail-closed above FA-052's INR 15,000 one-time or INR 10,000 monthly ceiling.
 - Runner compute is ephemeral and starts at zero capacity. Demo is activated and cost-qualified first; UAT remains unprovisioned until Founder Demo acceptance; Production runner capacity remains zero and its private path is plan-only until separately authorized.
 - The target state boundary is one Storage account per environment. During incremental migration, multiple environment-specific private endpoints may reach the existing account, but backend keys, identities, subnets, and evidence remain isolated; account separation must complete before UAT qualification.
-- Use one small PostgreSQL Flexible Server per non-Production environment; stop it on lease expiry and reconcile the stopped state.
+- Use one small PostgreSQL Flexible Server for UAT; stop it on lease expiry and reconcile the stopped state. Demo uses only its replica-scoped disposable PostgreSQL dependency.
 - Keep ACA workloads at min replicas zero outside active leases.
 - Use short non-Production log retention and bounded ingestion.
 - Do not provision Front Door Premium, Application Gateway, managed Redis, production HA, or a second region under the Demo recovery sprint.
