@@ -47,9 +47,18 @@ start_generation() {
 
 assert_generation() {
   expected=$1
-  actual=$(docker exec "$CONTAINER" psql -U postgres -d waooaw -Atc \
-    "SELECT generation_id || ':' || fixture_digest FROM public.wc091_demo_generation;")
-  [ "$actual" = "$expected:$FIXTURE_DIGEST" ]
+  attempt=0
+  while [ "$attempt" -lt 60 ]; do
+    actual=$(docker exec "$CONTAINER" psql -U postgres -d waooaw -Atc \
+      "SELECT generation_id || ':' || fixture_digest FROM public.wc091_demo_generation;" 2>/dev/null || true)
+    if [ "$actual" = "$expected:$FIXTURE_DIGEST" ]; then
+      return 0
+    fi
+    attempt=$((attempt + 1))
+    sleep 1
+  done
+  echo "Demo PostgreSQL generation did not match expected evidence" >&2
+  return 1
 }
 
 start_generation "$GENERATION_ONE"
