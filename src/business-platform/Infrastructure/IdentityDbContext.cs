@@ -1,4 +1,5 @@
-// Implements: architecture/reference/components/identity-boundary.md §8 Canonical Data Contracts
+// Implements: architecture/reference/components/identity-boundary.md §8 Canonical Data Contracts;
+//             architecture/reference/components/environment-readiness-and-data-continuity.md §6
 // constitutional_basis: C-005, C-007, C-026, C-059
 
 using Microsoft.EntityFrameworkCore;
@@ -67,7 +68,11 @@ public sealed class IdentityRegistrationRecord
     public string? ProviderIssuer { get; set; }
     // Match keys are keyed HMAC values — never returned to clients or exposed in logs
     public string? EmailHmacKey { get; set; }
+    public string? EmailHmacVersion { get; set; }
+    public string? EmailHmacDomain { get; set; }
     public string? MobileHmacKey { get; set; }
+    public string? MobileHmacVersion { get; set; }
+    public string? MobileHmacDomain { get; set; }
     public string? MaskedEmail { get; set; }
     public string? MaskedMobile { get; set; }
     public string? DisplayName { get; set; }
@@ -96,6 +101,7 @@ public sealed class IdentityVerificationChallengeRecord
     public IdentityVerificationState State { get; set; } = IdentityVerificationState.Pending;
     // OTP code stored as HMAC — raw code never persisted
     public string CodeHmac { get; init; } = string.Empty;
+    public string CodeHmacVersion { get; init; } = "v1";
     public string MaskedDestination { get; init; } = string.Empty;
     public DateTimeOffset? VerifiedAt { get; set; }
     public DateTimeOffset ExpiresAt { get; init; } = DateTimeOffset.UtcNow.AddMinutes(15);
@@ -252,7 +258,11 @@ public sealed class IdentityDbContext : DbContext
             e.Property(r => r.EmailVerified).HasColumnName("email_verified");
             e.Property(r => r.MobileVerified).HasColumnName("mobile_verified");
             e.Property(r => r.EmailHmacKey).HasColumnName("email_hmac_key").HasMaxLength(128);
+            e.Property(r => r.EmailHmacVersion).HasColumnName("email_hmac_version").HasMaxLength(32);
+            e.Property(r => r.EmailHmacDomain).HasColumnName("email_hmac_domain").HasMaxLength(16);
             e.Property(r => r.MobileHmacKey).HasColumnName("mobile_hmac_key").HasMaxLength(128);
+            e.Property(r => r.MobileHmacVersion).HasColumnName("mobile_hmac_version").HasMaxLength(32);
+            e.Property(r => r.MobileHmacDomain).HasColumnName("mobile_hmac_domain").HasMaxLength(16);
             e.Property(r => r.MaskedEmail).HasColumnName("masked_email").HasMaxLength(254);
             e.Property(r => r.MaskedMobile).HasColumnName("masked_mobile").HasMaxLength(32);
             e.Property(r => r.DisplayName).HasColumnName("display_name").HasMaxLength(120);
@@ -284,6 +294,7 @@ public sealed class IdentityDbContext : DbContext
             e.Property(c => c.Purpose).HasColumnName("purpose").HasConversion<string>();
             e.Property(c => c.State).HasColumnName("state").HasConversion<string>();
             e.Property(c => c.CodeHmac).HasColumnName("code_hmac").HasMaxLength(128);
+            e.Property(c => c.CodeHmacVersion).HasColumnName("code_hmac_version").HasMaxLength(32);
             e.Property(c => c.MaskedDestination).HasColumnName("masked_destination").HasMaxLength(254);
             e.Property(c => c.VerifiedAt).HasColumnName("verified_at");
             e.Property(c => c.ExpiresAt).HasColumnName("expires_at");

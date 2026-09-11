@@ -97,6 +97,38 @@ variable "workload_enabled" {
   default     = true
 }
 
+variable "demo_data_generation_id" {
+  type        = string
+  description = "Immutable identifier for the disposable Demo data generation."
+  default     = null
+  nullable    = true
+  validation {
+    condition     = var.environment != "demo" || can(regex("^sha256:[0-9a-f]{64}$", var.demo_data_generation_id))
+    error_message = "Demo requires a sha256-bound disposable data generation identifier."
+  }
+}
+
+variable "demo_fixture_digest" {
+  type        = string
+  description = "SHA-256 digest of the complete synthetic Demo fixture inputs."
+  default     = null
+  nullable    = true
+  validation {
+    condition     = var.environment != "demo" || can(regex("^[0-9a-f]{64}$", var.demo_fixture_digest))
+    error_message = "Demo requires an exact synthetic fixture digest."
+  }
+}
+
+variable "identity_hmac_active_version" {
+  type        = string
+  description = "Stable version identifier for the active identity HMAC key."
+  default     = "v1"
+  validation {
+    condition     = can(regex("^[A-Za-z0-9_-]+$", var.identity_hmac_active_version))
+    error_message = "Identity HMAC active version must be alphanumeric with optional hyphens or underscores."
+  }
+}
+
 variable "ghcr_packages_public" {
   type        = bool
   description = "Administrator attestation that all exact-six GHCR packages allow anonymous digest pulls."

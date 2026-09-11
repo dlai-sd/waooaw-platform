@@ -1,4 +1,5 @@
--- Implements: architecture/reference/components/identity-boundary.md §8 Canonical Data Contracts
+-- Implements: architecture/reference/components/identity-boundary.md §8 Canonical Data Contracts;
+--             architecture/reference/components/environment-readiness-and-data-continuity.md §6
 -- constitutional_basis: C-005, C-007, C-026, C-059
 -- Mutable identity workflow snapshots with append-only event/idempotency evidence — Migration 20
 
@@ -21,7 +22,11 @@ CREATE TABLE IF NOT EXISTS identity.registrations (
     mobile_verified         BOOLEAN      NOT NULL DEFAULT FALSE,
     -- match keys are keyed HMAC values; raw PII is never stored here
     email_hmac_key          VARCHAR(128),
+    email_hmac_version      VARCHAR(32),
+    email_hmac_domain       VARCHAR(16),
     mobile_hmac_key         VARCHAR(128),
+    mobile_hmac_version     VARCHAR(32),
+    mobile_hmac_domain      VARCHAR(16),
     masked_email            VARCHAR(254),
     masked_mobile           VARCHAR(32),
     display_name            VARCHAR(120),
@@ -42,6 +47,12 @@ CREATE TABLE IF NOT EXISTS identity.registrations (
 
 CREATE INDEX IF NOT EXISTS registrations_actor_subject_idx ON identity.registrations (actor_subject);
 CREATE INDEX IF NOT EXISTS registrations_state_idx ON identity.registrations (state);
+CREATE UNIQUE INDEX IF NOT EXISTS registrations_email_match_key_idx
+    ON identity.registrations (email_hmac_domain, email_hmac_version, email_hmac_key)
+    WHERE email_hmac_key IS NOT NULL AND state = 'Completed';
+CREATE UNIQUE INDEX IF NOT EXISTS registrations_mobile_match_key_idx
+    ON identity.registrations (mobile_hmac_domain, mobile_hmac_version, mobile_hmac_key)
+    WHERE mobile_hmac_key IS NOT NULL AND state = 'Completed';
 
 -- State transitions are recorded here as append-only evidence; registrations remain mutable snapshots.
 CREATE TABLE IF NOT EXISTS identity.registration_events (
@@ -66,6 +77,7 @@ CREATE TABLE IF NOT EXISTS identity.verification_challenges (
     purpose              VARCHAR(16)  NOT NULL CHECK (purpose IN ('Email', 'Mobile')),
     state                VARCHAR(16)  NOT NULL DEFAULT 'Pending' CHECK (state IN ('Pending', 'Verified', 'Expired', 'Consumed')),
     code_hmac            VARCHAR(128) NOT NULL,
+    code_hmac_version    VARCHAR(32)  NOT NULL DEFAULT 'v1',
     masked_destination   VARCHAR(254) NOT NULL,
     expires_at           TIMESTAMPTZ  NOT NULL DEFAULT NOW() + INTERVAL '15 minutes',
     resend_after         TIMESTAMPTZ  NOT NULL DEFAULT NOW() + INTERVAL '1 minute',

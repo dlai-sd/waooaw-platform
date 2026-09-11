@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "1.0",
+  "workContract": "WC-091",
+  "iteration": "I1",
+  "result": "PASS",
+  "databaseImage": "postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685",
+  "fixtureDigest": "81d1e9f95e7e0b7779607664c5754d02a48dbca390a3c6a85dc735a159f3e290",
+  "cycles": [
+    {"generationId": "sha256:c131073c745399d645a8d12c980eb5a614745c7facd8fc10062c8ab811ba43a0", "priorGenerationReachable": false},
+    {"generationId": "sha256:d506fb164a0ba36aff6339bd9ad59dc3e17bb21fccd48f613f1663feb39f98ab", "priorGenerationReachable": false}
+  ]
+}

@@ -1,5 +1,6 @@
 locals {
-  demo_identity_manifest = jsondecode(file("${path.module}/../../../../identity-config/environments/demo.json"))
+  demo_environment_contract = jsondecode(file("${path.module}/../../../../environment-readiness/demo.rendered.json"))
+  demo_identity_manifest    = local.demo_environment_contract.configuration
   demo_identity_runtime = merge(
     {
       IdentityEnvironment__SchemaVersion = local.demo_identity_manifest.schemaVersion

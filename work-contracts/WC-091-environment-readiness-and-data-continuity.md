@@ -2,7 +2,7 @@
 
 **Office:** Solution Architect (INST-005), with one combined owner review and repair round
 **Assigned by:** Founder instruction, 2026-09-11
-**Status:** OWNER-REVIEWED - CONDITIONAL PASS - EA AMENDMENT APPROVED - FOUNDER ACCEPTANCE BLOCKS I1 - IMPLEMENTATION UNAUTHORIZED
+**Status:** I1 IMPLEMENTED - AUTHOR REVIEW PASS - FOUNDER PR REVIEW PENDING
 **Delivery unit:** One environment-readiness component delivered through three independently gated iterations
 **Controlling contract:** `architecture/reference/components/environment-readiness-and-data-continuity.md`
 **Predecessors:** WC-076, WC-077, WC-085, WC-086 and WC-090
@@ -129,7 +129,7 @@ scope remains a Founder decision rather than a reviewer repair.
 | Security Architect | `CONCUR` | The controlling contract now fixes domain separation, per-principal credentials, catalog-derived least privilege, no-echo handling, redaction, version overlap, compromise holds, cross-environment denial, and fail-closed identity behavior. No small Security finding remains delegated. |
 | Platform Architect | `CONCUR - FOUNDER ACCEPTANCE PENDING` | The proposed I1 design is feasible on ACA using replica-scoped ephemeral storage plus deterministic startup reset/reseed; manifest/catalog rendering, Key Vault references, PostgreSQL/Temporal handoff, preflight, rollback, and plan-only Production rejection are specified. Platform implementation remains blocked by Founder acceptance and separate session authorization. |
 
-**Overall review status:** `CONDITIONAL PASS - EA AMENDMENT APPROVED - FOUNDER ACCEPTANCE REQUIRED - IMPLEMENTATION UNAUTHORIZED`.
+**Historical planning disposition:** `CONDITIONAL PASS - EA AMENDMENT APPROVED - FOUNDER ACCEPTANCE REQUIRED - I1 NOT YET AUTHORIZED`.
 The only unresolved item is Founder acceptance of the exact amendment. It is not delegated to an
 implementer and no implementation, cloud action, Production action, independent assurance, or
 Founder approval is claimed by these dispositions.
@@ -139,6 +139,35 @@ Founder approval is claimed by these dispositions.
 **Status:** PASS for the repaired planning artifacts. Focused validation completed on 2026-09-11:
 `git diff --check` passed, and 30 relevant deployment/identity pipeline tests passed in the
 repository-defined Docker Compose Python test runner. No host language runtime, virtual environment,
-or host dependency installation was used. The plan remains implementation-unauthorized, WC091-I1
-remains blocked by the accepted-topology amendment, and Production remains plan-only and separately
-authorized.
+or host dependency installation was used. At that planning checkpoint, implementation was
+unauthorized and WC091-I1 remained blocked by Founder acceptance of the topology amendment. The
+later I1 authorization and implementation evidence are recorded below; Production remains plan-only
+and separately authorized.
+
+## WC091-I1 Implementation Evidence
+
+**Status:** `PASS - LOCAL AND EMULATOR-BACKED EVIDENCE`; Founder authorized the Platform IT Expert
+implementation session on 2026-09-11. No live Azure authentication or mutation was performed.
+
+- The canonical Demo render is strict, deterministic, secret-free, drift-tested, and consumed by
+  Terraform; 13 focused contract/readiness tests and Ruff passed in repository containers.
+- Demo PostgreSQL and Keycloak use replica-scoped `EmptyDir` storage with deterministic reset/reseed
+  and generation fences. Two real PostgreSQL replacement cycles proved prior generations
+  unreachable; retained evidence is `test-results/wc091/i1-demo-data.json`.
+- The anonymous provider projection no longer constructs mutation-only HMAC dependencies. The HMAC
+  key ring persists explicit version/domain metadata and preserves legacy rows without relabeling
+  their derivation; 20 focused Business Platform tests and two PostgreSQL contracts passed.
+- All six GOAL-006 Terraform roots, the lease-controlled workload plan, Azure CLI emulator
+  verification, and 505 pipeline tests passed. Actionlint and Terraform format/validate also passed.
+- The broad Business Platform run completed with 647 of 666 tests passing. The 20 tests in the
+  WC-091-touched runtime classes pass independently; the remaining broad-suite failures are not
+  represented as I1 acceptance evidence and require separate baseline triage.
+- Readiness remains independent: configuration, provider redirect, provider real-account login, and
+  data continuity cannot imply one another. Real-account provider login and human acceptance remain
+  `NOT_PROVEN`.
+
+**I1 author review:** PASS. The implementation is fail-closed for unknown configuration, missing
+secret metadata, provider-readiness gaps, and stale rendered contracts. Rollback returns to the
+previous qualified release tuple; Demo data is intentionally discarded and never presented as
+durable. UAT, Production, DNS activation, customer traffic, self-approval, and merge remain outside
+this implementation.

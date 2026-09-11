@@ -355,18 +355,6 @@ public sealed class IdentityController(
             ["STEP_UP", "CHANGE_PASSWORDLESS_METHODS", "LINK_WHATSAPP", "REMOVE_LOGIN_METHOD"],
             state.UpdatedAt);
 
-    [AllowAnonymous]
-    [HttpGet("providers")]
-    public IActionResult GetProviders()
-    {
-        Response.Headers.CacheControl = "no-store";
-        var providers = providerProjectionService.GetProviders();
-        if (customerJourney is not null)
-            providers = providers.Select(provider => provider.Id != "GOOGLE" || customerJourney.IsAvailable
-                ? provider : provider with { Availability = "UNAVAILABLE", UnavailableReason = "NOT_CONFIGURED" }).ToArray();
-        return Ok(new IdentityProviderCollectionResponse(providers));
-    }
-
     [HttpGet("session")]
     [CustomerIdentityRoute(requiresMembership: true)]
     public async Task<IActionResult> GetSessionAsync(CancellationToken ct)

@@ -23,10 +23,13 @@ docker run --rm \
   "$TERRAFORM_IMAGE" \
   -c '
     set -eu
-    cp -R /repo/infrastructure/terraform/phase2 /tmp/phase2
+    mkdir -p /tmp/infrastructure/terraform
+    cp -R /repo/infrastructure/terraform/phase2 /tmp/infrastructure/terraform/phase2
+    cp -R /repo/infrastructure/identity-config /tmp/infrastructure/identity-config
+    cp -R /repo/infrastructure/environment-readiness /tmp/infrastructure/environment-readiness
     for environment in demo uat prod; do
       for root in foundation workload; do
-        directory="/tmp/phase2/environments/$environment/$root"
+        directory="/tmp/infrastructure/terraform/phase2/environments/$environment/$root"
         echo "  terraform validate: $environment/$root"
         terraform -chdir="$directory" init -backend=false -input=false -no-color >/dev/null
         terraform -chdir="$directory" validate -no-color
@@ -35,7 +38,7 @@ docker run --rm \
     mkdir /tmp/lease-plan
     cat > /tmp/lease-plan/main.tf <<EOF
 module "lease" {
-  source                  = "../phase2/modules/lifecycle"
+  source                  = "../infrastructure/terraform/phase2/modules/lifecycle"
   environment             = "demo"
   purpose                 = "local deployment rehearsal"
   manifest_digest         = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
