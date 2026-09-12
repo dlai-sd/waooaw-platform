@@ -4,7 +4,7 @@
 // Constitutional basis: C-049 (Honest Limitation), C-063 (Data Minimisation)
 
 import { useState } from 'react';
-import { FaApple, FaEnvelope, FaFacebookF, FaGoogle, FaWhatsapp } from 'react-icons/fa6';
+import { FaApple, FaEnvelope, FaFacebookF, FaGoogle } from 'react-icons/fa6';
 import { signIn } from 'next-auth/react';
 import type { IdentityProvider } from '@/lib/api/generated/models/IdentityProvider';
 
@@ -28,34 +28,28 @@ const icons = {
   EMAIL: FaEnvelope,
 } as const;
 
+function supportsNextAuth(providerId: IdentityProvider['id']): providerId is keyof typeof nextAuthProvider {
+  return providerId in nextAuthProvider;
+}
+
+function isActionable(provider: IdentityProvider) {
+  return provider.availability === 'AVAILABLE' && supportsNextAuth(provider.id);
+}
+
 export function ProviderCommands({ callbackUrl, providers }: { callbackUrl: string; providers: IdentityProvider[] }) {
   const [pendingProvider, setPendingProvider] = useState<string>();
-  const [appleMessage, setAppleMessage] = useState(false);
-  const availableAlternatives = providers
-    .filter((provider) => provider.id !== 'APPLE' && provider.availability === 'AVAILABLE')
-    .map((provider) => provider.displayName);
-  const alternativeText = availableAlternatives.length > 0
-    ? availableAlternatives.join(', ').replace(/, ([^,]*)$/, ' or $1')
-    : 'email registration when it becomes available';
 
   function begin(provider: IdentityProvider) {
-    if (provider.id === 'APPLE') {
-      setAppleMessage(true);
-      return;
-    }
-    if (provider.availability !== 'AVAILABLE') return;
+    if (!isActionable(provider) || !supportsNextAuth(provider.id)) return;
     setPendingProvider(provider.id);
     void signIn(nextAuthProvider[provider.id], { callbackUrl });
   }
 
-  return (
-    <div className="provider-commands">
-      {providers.map((provider) => {
+  const renderProvider = (provider: IdentityProvider) => {
         const Icon = icons[provider.id];
-        const unavailable = provider.id !== 'APPLE' && provider.availability !== 'AVAILABLE';
+        const unavailable = !isActionable(provider);
         return (
           <button
-            aria-describedby={provider.id === 'APPLE' && appleMessage ? 'apple-integration-status' : undefined}
             className={`provider-command provider-command-${provider.id.toLowerCase()}`}
             disabled={unavailable || pendingProvider !== undefined}
             key={provider.id}
@@ -64,16 +58,18 @@ export function ProviderCommands({ callbackUrl, providers }: { callbackUrl: stri
           >
             <Icon aria-hidden="true" size={20} />
             <span>{labels[provider.id]}</span>
-            {unavailable ? <small>Unavailable</small> : null}
+            {unavailable ? <small>Coming soon</small> : null}
           </button>
         );
-      })}
-      {appleMessage ? (
-        <p className="provider-status" id="apple-integration-status" role="alert">
-          <strong>Apple is coming soon.</strong> Meanwhile, use {alternativeText}. WhatsApp registration remains available only through its approved identity flow.
-          <FaWhatsapp aria-hidden="true" size={18} />
-        </p>
-      ) : null}
+  };
+  const available = providers.filter(isActionable);
+  const unavailable = providers.filter((provider) => !isActionable(provider));
+
+  return (
+    <div className="provider-commands">
+      {available.map(renderProvider)}
+      {unavailable.length > 0 ? <p className="provider-coming-soon">Coming soon</p> : null}
+      {unavailable.map(renderProvider)}
     </div>
   );
 }

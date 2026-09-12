@@ -17,14 +17,15 @@ export async function RegisterView({ searchParams }: { searchParams?: Promise<{ 
   const messages = getIdentityMessages(locale);
   const returnTo = safeReturnTarget(resolvedSearchParams?.returnTo);
   const providers = session?.authenticated ? [] : await listIdentityProviders();
+  if (session?.authenticated) {
+    return <section className="auth-view identity-view"><RegistrationFlow locale={locale} messages={messages} returnTo={returnTo} /></section>;
+  }
   return (
     <section className="auth-view identity-view">
       <p className="eyebrow">{messages.eyebrow}</p>
       <h1 id="auth-dialog-title">{messages.title}</h1>
-      <p>{session?.authenticated ? messages.description : messages.signInDescription}</p>
-      {session?.authenticated
-        ? <RegistrationFlow locale={locale} messages={messages} returnTo={returnTo} />
-        : <ProviderCommands callbackUrl={`/register?returnTo=${encodeURIComponent(returnTo)}`} providers={providers} />}
+      <p>{messages.signInDescription}</p>
+      <ProviderCommands callbackUrl={`/register?returnTo=${encodeURIComponent(returnTo)}`} providers={providers} />
     </section>
   );
 }

@@ -61,7 +61,8 @@ const unavailableProviders: IdentityProvider[] = [
 export async function listIdentityProviders(): Promise<IdentityProvider[]> {
   try {
     const api = new IdentityApi(new Configuration({ basePath: businessPlatformUrl }));
-    return (await api.listIdentityProviders({ cache: 'no-store' })).providers;
+    const signal = typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(12_000) : undefined;
+    return (await api.listIdentityProviders({ cache: 'no-store', ...(signal ? { signal } : {}) })).providers;
   } catch {
     return unavailableProviders;
   }

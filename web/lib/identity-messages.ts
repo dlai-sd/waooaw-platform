@@ -4,11 +4,12 @@
 import type { SupportedLocale } from './preferences';
 
 const en = {
-  eyebrow: 'Secure registration', title: 'Create your WAOOAW account', description: 'Your identity is verified through WAOOAW’s approved broker before an account is completed.',
+  eyebrow: 'Secure registration', title: 'Create your WAOOAW account', description: 'Sign in securely to create your account and continue.',
   displayName: 'Your name', businessName: 'Business name', businessDomain: 'Type of business', email: 'Email address', mobile: 'Mobile number', code: 'Six-digit code',
   saveProfile: 'Save and continue', sendCode: 'Send verification code', verifyCode: 'Verify code', complete: 'Complete registration', optionalMobile: 'Verify mobile now',
-  working: 'Securing your registration…', retry: 'Try again', signInFirst: 'Continue securely to create your account', signInDescription: 'WAOOAW uses Keycloak to broker approved sign-in methods. Your access token is never exposed to this page.',
-  verificationSent: 'Enter the code sent to', unavailable: 'Registration could not be completed. No account change was assumed.', duplicate: 'Additional identity confirmation is required before this account can be completed.',
+  working: 'Securing your registration…', retry: 'Try again', signInFirst: 'Continue securely to create your account', signInDescription: 'Choose a secure sign-in method to create your WAOOAW account.',
+  resolvingTitle: 'Finishing your sign-in', resolvingDescription: 'We’re preparing your WAOOAW account.', signInRejected: 'We couldn’t complete your sign-in. Your account was not changed.', restartSignIn: 'Sign in again',
+  verificationSent: 'Enter the code sent to', unavailable: 'We couldn’t complete your registration. Your account was not changed.', duplicate: 'Additional identity confirmation is required before this account can be completed.',
 } as const;
 
 export type IdentityMessages = { [Key in keyof typeof en]: string };

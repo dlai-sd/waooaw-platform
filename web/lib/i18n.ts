@@ -51,7 +51,7 @@ const english = {
   waooawExperts: 'WaooaW Experts',
   secureAccess: 'Secure access',
   welcomeBack: 'Welcome back',
-  identityBrokerDescription: "Continue through WAOOAW's approved identity broker.",
+  identityBrokerDescription: 'Sign in to continue growing your business with WAOOAW AI professionals.',
   signInSecurely: 'Sign in securely',
   newToWaaoaw: 'New to WAOOAW?',
   createAccount: 'Create an account',
@@ -105,6 +105,20 @@ export const messages: Record<SupportedLocale, Messages> = {
   ur: { skipToContent: 'مرکزی مواد پر جائیں', publicNavigation: 'عوامی نیویگیشن', professionals: 'ماہرین', blogs: 'معلومات', login: 'لاگ اِن', register: 'رجسٹر', language: 'زبان', darkTheme: 'گہری تھیم استعمال کریں', lightTheme: 'ہلکی تھیم استعمال کریں', publicEyebrow: 'آئینی طور پر زیرِ نگرانی ڈیجیٹل ماہرین', publicDescription: 'ایسے ماہر کو ملازم رکھیں جس کا دائرۂ کار واضح ہو، کام قابلِ جائزہ ہو اور جسے آپ کسی بھی وقت روک سکیں۔', heroTitle: 'WAOOAW AI ماہرین کے ساتھ اپنا کاروبار بڑھائیں', heroSubtitle: 'دن میں صرف دس منٹ میں کام کی رہنمائی کریں۔ اپنے کاروبار کو بڑھانے کے لیے زیادہ وقت گزاریں۔', browseProfessionals: 'ماہرین دیکھیں', continueWorkspace: 'اپنے کام کی جگہ پر جائیں', safeguards: 'WAOOAW حفاظتی اقدامات', controlYours: 'اختیار آپ کے پاس رہتا ہے۔', safeguardsDescription: 'واضح دائرۂ کار، ثبوت پر مبنی حالتیں اور ہمیشہ دستیاب ہنگامی روک۔', gettingStarted: 'آغاز کیسے کریں', gettingStartedDescription: 'آپ کے کاروبار کو سمجھنے سے منظم کام تک تین واضح مراحل۔', stepBusiness: 'اپنے کاروبار کے بارے میں بتائیں', stepScope: 'ماہر کے دائرۂ کار کا جائزہ لیں', stepControl: 'اختیار کے ساتھ آغاز کریں', expertProfessionals: 'WaooaW ماہرین', expertDescription: 'WAOOAW ملازمت کے لیے تیار کی جانے والی پیشہ ورانہ اقسام دیکھیں۔', marketingExpert: 'ڈیجیٹل مارکیٹنگ', agricultureExpert: 'زرعی مشاورت', tradingExpert: 'تجارتی مشاورت', tutorExpert: 'نجی تدریس', trustJourney: 'ثبوت سے اعتماد بڑھتا ہے', trustDescription: 'واضح دائرۂ کار، قابلِ جائزہ کام اور ثبوت پر مبنی نتائج پیشہ ورانہ تعلق کو قابلِ اعتماد بناتے ہیں۔', constitutionalPromise: 'تحریری آئین کے تحت', constitutionalDescription: 'ہر WaooaW ماہر اعلان شدہ اختیار، دیانت دار حدود اور روکنے کے آپ کے غیر مشروط حق کے اندر کام کرتا ہے۔', home: 'ہوم', myExperts: 'میرے WaooaW ماہرین', settings: 'ترتیبات', founder: 'بانی', founderNavigation: 'بانی نیویگیشن', customerNavigation: 'صارف نیویگیشن', founderHome: 'بانی ہوم', customerMobileNavigation: 'صارف موبائل نیویگیشن', conversation: 'گفتگو', plan: 'منصوبہ', work: 'کام', waooawExperts: 'WaooaW ماہرین', secureAccess: 'محفوظ رسائی', welcomeBack: 'دوبارہ خوش آمدید', identityBrokerDescription: 'WAOOAW کے منظور شدہ شناختی بروکر کے ذریعے جاری رکھیں۔', signInSecurely: 'محفوظ طریقے سے سائن اِن کریں', newToWaaoaw: 'WAOOAW پر نئے ہیں؟', createAccount: 'اکاؤنٹ بنائیں', registrationUnavailable: 'رجسٹریشن ابھی دستیاب نہیں', registrationDescription: 'F1 صرف تصدیقی شیل فراہم کرتا ہے۔ شناختی معاہدوں کی منظوری کے بعد رجسٹریشن شروع ہوگی۔', continueSecureSignIn: 'محفوظ سائن اِن کی طرف جائیں', verificationInactive: 'تصدیق فعال نہیں', verificationDescription: 'تصدیق F2 کا حصہ ہے اور F1 شیل میں دستیاب نہیں۔', returnToLogin: 'لاگ اِن پر واپس جائیں', authErrorTitle: 'سائن اِن مکمل نہیں ہو سکا', authErrorDescription: 'اکاؤنٹ یا تعلق میں کوئی تبدیلی نہیں کی گئی۔', retrySecureSignIn: 'محفوظ سائن اِن دوبارہ آزمائیں', professionalCatalogueDescription: 'ماہرین کی فہرست تیار کی جا رہی ہے۔ کسی غیر دستیاب صلاحیت کو تیار ظاہر نہیں کیا گیا۔', insightsDescription: 'اشاعت کی منظوری ملنے پر تحقیق اور پیشہ ورانہ رہنمائی یہاں دکھائی دے گی۔', workspaceReady: 'آپ کا کام کی جگہ تیار ہے', workspaceReadyDescription: 'گفتگو کا معاہدہ دستیاب ہونے پر آپ کی پیشہ ورانہ گفتگو یہاں دکھائی دے گی۔', noProfessionalRelationships: 'اس F1 شیل حالت میں کوئی پیشہ ورانہ تعلق دستیاب نہیں۔', profile: 'پروفائل', profileUnavailableDescription: 'منظور شدہ سروس معاہدہ منتخب ہونے تک پروفائل ڈیٹا دستیاب نہیں۔', preferences: 'ترجیحات', settingsDescription: 'زبان اور تھیم کے کنٹرول ایپلیکیشن ہیڈر میں دستیاب ہیں۔', founderAdministration: 'بانی انتظامیہ', founderDescription: 'مجاز بانی شیل تیار ہے۔ F7 داخلہ مراحل پورے ہونے تک انتظامی خصوصیات دستیاب نہیں۔', returnHome: 'ہوم پر واپس جائیں', accessNotPermitted: 'رسائی کی اجازت نہیں', accessNotPermittedDescription: 'آپ کا موجودہ کردار اس حصے تک رسائی کی اجازت نہیں دیتا۔', loading: 'لوڈ ہو رہا ہے', loadingDescription: 'درخواست کردہ منظر تیار کیا جا رہا ہے۔', pageNotFound: 'صفحہ نہیں ملا', pageNotFoundDescription: 'درخواست کردہ صفحہ موجود نہیں یا اب دستیاب نہیں۔', offline: 'آپ آف لائن ہیں', offlineDescription: 'جامد شیل دستیاب ہے، لیکن محفوظ معلومات اور تبدیلیوں کے لیے کنکشن درکار ہے۔', globalErrorTitle: 'کچھ غلط ہو گیا', globalErrorDescription: 'نتیجہ نامعلوم ہے۔ درخواست دوبارہ آزمائیں۔', tryAgain: 'دوبارہ آزمائیں' },
 };
 
+const authDescriptions: Record<SupportedLocale, string> = {
+  en: 'Sign in to continue growing your business with WAOOAW AI professionals.',
+  hi: 'WAOOAW AI पेशेवरों के साथ अपना व्यवसाय बढ़ाने के लिए साइन इन करें।',
+  mr: 'WAOOAW AI व्यावसायिकांसह तुमचा व्यवसाय वाढवण्यासाठी साइन इन करा.',
+  ta: 'WAOOAW AI நிபுணர்களுடன் உங்கள் வணிகத்தை வளர்க்க உள்நுழையவும்.',
+  te: 'WAOOAW AI నిపుణులతో మీ వ్యాపారాన్ని అభివృద్ధి చేయడానికి సైన్ ఇన్ చేయండి.',
+  kn: 'WAOOAW AI ತಜ್ಞರೊಂದಿಗೆ ನಿಮ್ಮ ವ್ಯವಹಾರವನ್ನು ಬೆಳೆಸಲು ಸೈನ್ ಇನ್ ಮಾಡಿ.',
+  gu: 'WAOOAW AI વ્યાવસાયિકો સાથે તમારો વ્યવસાય વધારવા માટે સાઇન ઇન કરો.',
+  bn: 'WAOOAW AI পেশাদারদের সাথে আপনার ব্যবসা বাড়াতে সাইন ইন করুন।',
+  ml: 'WAOOAW AI വിദഗ്ധരുമായി നിങ്ങളുടെ ബിസിനസ്സ് വളർത്താൻ സൈൻ ഇൻ ചെയ്യുക.',
+  pa: 'WAOOAW AI ਮਾਹਰਾਂ ਨਾਲ ਆਪਣਾ ਕਾਰੋਬਾਰ ਵਧਾਉਣ ਲਈ ਸਾਈਨ ਇਨ ਕਰੋ।',
+  ur: 'WAOOAW AI ماہرین کے ساتھ اپنا کاروبار بڑھانے کے لیے سائن اِن کریں۔',
+};
+
 export function getMessages(locale: SupportedLocale): Messages {
-  return messages[locale];
+  return { ...messages[locale], identityBrokerDescription: authDescriptions[locale] };
 }

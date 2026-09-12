@@ -133,18 +133,18 @@ Stop rather than proceed when:
 
 ## Definition Of Done
 
-- [ ] WC092-A01 through WC092-A14 have `PASS`, `BLOCKED` or `NOT_RUN` evidence with no unsupported pass.
-- [ ] Landing-page Login and Register remain modal-owned through delayed loading, switching, bounded
+- [x] WC092-A01 through WC092-A14 have `PASS`, `BLOCKED` or `NOT_RUN` evidence with no unsupported pass.
+- [x] Landing-page Login and Register remain modal-owned through delayed loading, switching, bounded
       failure and dismissal; direct routes remain standalone.
-- [ ] Existing and new customer flows are distinguished only by server-owned identity results, and
+- [x] Existing and new customer flows are distinguished only by server-owned identity results, and
       the original safe destination is preserved.
-- [ ] Customer-facing auth text contains no identity-broker terminology and unavailable provider
+- [x] Customer-facing auth text contains no identity-broker terminology and unavailable provider
       states are unambiguous.
-- [ ] The Business Platform 403 can be attributed to one privacy-safe validation rule without logging
+- [x] The Business Platform 403 can be attributed to one privacy-safe validation rule without logging
       any token, claim value, provider subject or personal data.
-- [ ] Focused unit, API, browser, accessibility, type/build and security checks pass in repository
+- [x] Focused unit, API, browser, accessibility, type/build and security checks pass in repository
       containers, with fixture-backed and real-provider boundaries stated exactly.
-- [ ] Author review finds no unresolved in-scope correctness, security, accessibility, compatibility,
+- [x] Author review finds no unresolved in-scope correctness, security, accessibility, compatibility,
       failure-handling or rollback issue.
 - [ ] The exact pushed HEAD passes `scripts/prepare_pr_body.py` and one unmerged PR is submitted for
       Founder review; no self-approval or merge occurs.
@@ -158,8 +158,50 @@ weakening validation, retain the current fail-closed denial and report the exact
 
 ## Implementation Evidence
 
-**Status:** PENDING
+**Status:** ENGINEERING QUALIFIED LOCALLY
+
+| Acceptance | Result | Evidence |
+|---|---|---|
+| WC092-A01 | PASS | Delayed-provider Playwright matrix proves the public hero remains visible while the immediate modal-owned loading dialog is open. |
+| WC092-A02 | PASS | Playwright proves Close, Escape and backdrop dismissal restore the public origin; focused dialog and journey unit tests cover lifecycle and focus restoration. |
+| WC092-A03 | PASS | All five browser projects prove direct `/login` remains standalone; route/component tests cover direct Register rendering. |
+| WC092-A04 | PASS | Provider lookup uses a 12-second abort deadline and fail-closed projection; API unit tests and delayed browser execution pass. |
+| WC092-A05 | PASS | Auth journey and view tests cover captured origin and sanitized `returnTo`; the intercepted Register route now forwards search parameters. |
+| WC092-A06 | PASS | Full Jest run covers all 11 rendered locales; changed customer strings contain no internal broker terminology. |
+| WC092-A07 | PASS | Provider component tests and all five browser projects prove Google/Email actionable and Facebook/Apple disabled under Coming soon. |
+| WC092-A08 | PASS | Registration component tests prove neutral account resolution pending server-owned identity results. |
+| WC092-A09 | PASS | Registration unit tests cover confirmed handoff and required completion; safe-return tests preserve allowlisted protected destinations. |
+| WC092-A10 | PASS | Eighteen registration tests and all five browser projects prove persistent `403` no-change messaging, no generic retry loop and fresh sign-in preserving `/settings` through the real Web BFF. |
+| WC092-A11 | PASS | Thirty-three adapter tests prove stable rule identifiers and assert that claim values, tokens and personal data are absent from structured log messages. Live rule identification awaits deployment. |
+| WC092-A12 | PASS | Existing strict actor branches remain fail-closed; 33 adapter tests and 12 application-host tests pass. |
+| WC092-A13 | PASS | Thirty Playwright cases pass across Chromium, Firefox, WebKit, 360x800 and 768x1024; the modal axe scan reports no serious or critical findings. Four screenshots were visually reviewed without clipping or overlap. |
+| WC092-A14 | PASS | This record distinguishes local fixture/BFF evidence from unperformed deployed Google acceptance and the unresolved external hostname branding gap. |
+
+### Local Qualification
+
+- Web Jest: `44/44` suites, `289/289` tests, `0` snapshots.
+- TypeScript: strict `tsc --noEmit --incremental false` passed.
+- Web image: production `web/Dockerfile` build passed.
+- Browser interactions/accessibility: `30/30` passed across five configured projects against the production Web image and a delayed local identity fixture.
+- Visual capture: `1/1` passed; reviewed images are retained under `test-results/wc092/screenshots/`.
+- Business Platform adapter: `33/33` passed after CI-equivalent CSharpier 1.3.0 formatting.
+- Business Platform application host: `12/12` `CustomerIdentityProgramHostTests` passed with no adapter dependency-injection failure.
+- Static/security: `git diff --check`, C-073 changed-file traceability, CSharpier 1.3.0, Business Platform vulnerable-package scan and pnpm high-severity audit passed.
+
+### Evidence Boundary And Residual Gaps
+
+- Browser evidence uses a synthetic signed NextAuth session and a local HTTP Business Platform fixture. It proves Web BFF behavior, not Google, Keycloak or deployed Business Platform acceptance.
+- No Azure, DNS, provider-console, secret, deployment or customer-traffic mutation occurred.
+- The exact Demo `403` denial rule remains unknown until this diagnostic-only Business Platform change is deployed under separate authority and a new sanitized log record is observed.
+- Google consent branding that displays an `azurecontainerapps.io` hostname remains an external configuration gap outside this Work Component.
+- The canceled namespace-wide Business Platform run is not evidence; focused 33-test validator and 12-test host boundaries are the claimed backend evidence.
 
 ## Author Review
 
-**Status:** PENDING
+**Status:** PASS
+
+Reviewed the complete authorized diff, local qualification results, privacy boundary, rollback path and
+fixture-versus-provider evidence. No unresolved in-scope correctness, security, accessibility,
+compatibility or failure-handling finding remains. The implementation preserves strict fail-closed
+identity validation and adds diagnostics without changing policy. Founder review, approval, deployment,
+real-provider acceptance and merge remain explicitly reserved.

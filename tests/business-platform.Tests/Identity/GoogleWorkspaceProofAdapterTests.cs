@@ -3,11 +3,12 @@
 
 using System.Net;
 using System.Security.Claims;
-using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Waooaw.BusinessPlatform.Services;
 using Xunit;
 
@@ -15,39 +16,73 @@ namespace Waooaw.BusinessPlatform.Tests.Identity;
 
 public sealed class GoogleWorkspaceProofAdapterTests
 {
-    internal static IdentityBrokerReadOptions Configuration() => new()
+    private sealed class RecordingLogger : ILogger<GoogleWorkspaceProofAdapter>
     {
-        Enabled = true, ActorIssuer = "https://synthetic.invalid/realms/waooaw",
-        PrivateOrigin = "https://keycloak.private.invalid", AllowedPrivateHosts = ["keycloak.private.invalid"],
-        ClientId = "waooaw-bp-identity-reader", ClientSecret = "synthetic-reader-secret",
-        Providers = new()
-        {
-            ["google"] = new()
-            {
-                ProviderNamespace = "urn:waooaw:identity:synthetic:google:customer-login:v1",
-                TrustConfigDigest = new string('a', 64),
-            },
-            ["facebook"] = new()
-            {
-                ProviderNamespace = "urn:waooaw:identity:synthetic:facebook:customer-login:v1",
-                TrustConfigDigest = new string('b', 64),
-            },
-        },
-    };
+        public List<string> Messages { get; } = [];
 
-    internal static ClaimsPrincipal Principal(string subject = "synthetic-actor", string? issuer = null,
-        string provider = "google")
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter
+        ) => Messages.Add(formatter(state, exception));
+    }
+
+    internal static IdentityBrokerReadOptions Configuration() =>
+        new()
+        {
+            Enabled = true,
+            ActorIssuer = "https://synthetic.invalid/realms/waooaw",
+            PrivateOrigin = "https://keycloak.private.invalid",
+            AllowedPrivateHosts = ["keycloak.private.invalid"],
+            ClientId = "waooaw-bp-identity-reader",
+            ClientSecret = "synthetic-reader-secret",
+            Providers = new()
+            {
+                ["google"] = new()
+                {
+                    ProviderNamespace = "urn:waooaw:identity:synthetic:google:customer-login:v1",
+                    TrustConfigDigest = new string('a', 64),
+                },
+                ["facebook"] = new()
+                {
+                    ProviderNamespace = "urn:waooaw:identity:synthetic:facebook:customer-login:v1",
+                    TrustConfigDigest = new string('b', 64),
+                },
+            },
+        };
+
+    internal static ClaimsPrincipal Principal(
+        string subject = "synthetic-actor",
+        string? issuer = null,
+        string provider = "google"
+    )
     {
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        return new ClaimsPrincipal(new ClaimsIdentity(new[]
-        {
-            new Claim("iss", issuer ?? Configuration().ActorIssuer), new Claim("sub", subject),
-            new Claim("aud", "waooaw-platform"), new Claim("azp", "waooaw-web"),
-            new Claim("idp", provider), new Claim("email_verified", "true"),
-            new Claim("realm_access", "{\"roles\":[\"customer\"]}"),
-            new Claim("iat", now.ToString()), new Claim("exp", (now + 600).ToString()),
-            new Claim("auth_time", now.ToString()),
-        }, "synthetic-validated-test-principal"));
+        return new ClaimsPrincipal(
+            new ClaimsIdentity(
+                new[]
+                {
+                    new Claim("iss", issuer ?? Configuration().ActorIssuer),
+                    new Claim("sub", subject),
+                    new Claim("aud", "waooaw-platform"),
+                    new Claim("azp", "waooaw-web"),
+                    new Claim("idp", provider),
+                    new Claim("email_verified", "true"),
+                    new Claim("realm_access", "{\"roles\":[\"customer\"]}"),
+                    new Claim("iat", now.ToString()),
+                    new Claim("exp", (now + 600).ToString()),
+                    new Claim("auth_time", now.ToString()),
+                },
+                "synthetic-validated-test-principal"
+            )
+        );
     }
 
     [Fact]
@@ -59,9 +94,15 @@ public sealed class GoogleWorkspaceProofAdapterTests
         var proof = await adapter.ReadAsync(Principal(), default);
         Assert.Equal("Google-Opaque-synthetic-actor", proof.ProviderSubject);
         Assert.Equal(Configuration().Providers["google"].ProviderNamespace, proof.ProviderIssuer);
-        Assert.Equal(new[] { "POST /realms/waooaw/protocol/openid-connect/token",
-            "GET /admin/realms/waooaw/users/synthetic-actor",
-            "GET /admin/realms/waooaw/users/synthetic-actor/federated-identity" }, handler.Requests);
+        Assert.Equal(
+            new[]
+            {
+                "POST /realms/waooaw/protocol/openid-connect/token",
+                "GET /admin/realms/waooaw/users/synthetic-actor",
+                "GET /admin/realms/waooaw/users/synthetic-actor/federated-identity",
+            },
+            handler.Requests
+        );
     }
 
     [Fact]
@@ -76,7 +117,10 @@ public sealed class GoogleWorkspaceProofAdapterTests
         Assert.Equal("Facebook-Opaque-synthetic-actor", proof.ProviderSubject);
         Assert.Equal("facebook", proof.BrokerAlias);
         Assert.Equal(Configuration().Providers["facebook"].ProviderNamespace, proof.ProviderIssuer);
-        Assert.Equal(Configuration().Providers["facebook"].TrustConfigDigest, proof.TrustConfigDigest);
+        Assert.Equal(
+            Configuration().Providers["facebook"].TrustConfigDigest,
+            proof.TrustConfigDigest
+        );
     }
 
     [Fact]
@@ -86,8 +130,9 @@ public sealed class GoogleWorkspaceProofAdapterTests
         using var client = new HttpClient(handler);
         var adapter = new GoogleWorkspaceProofAdapter(client, Options.Create(Configuration()));
 
-        await Assert.ThrowsAsync<IdentityActionDeniedException>(
-            () => adapter.ReadAsync(Principal(provider: "apple"), default));
+        await Assert.ThrowsAsync<IdentityActionDeniedException>(() =>
+            adapter.ReadAsync(Principal(provider: "apple"), default)
+        );
 
         Assert.Empty(handler.Requests);
     }
@@ -95,7 +140,8 @@ public sealed class GoogleWorkspaceProofAdapterTests
     [Fact]
     public async Task Read_PinnedStockKeycloakOverPrivateHttps_PreservesOpaqueProviderSubject()
     {
-        if (Environment.GetEnvironmentVariable("WC085_STOCK_READER") != "true") return;
+        if (Environment.GetEnvironmentVariable("WC085_STOCK_READER") != "true")
+            return;
 
         var origin = Environment.GetEnvironmentVariable("WC085_READER_ORIGIN")!;
         var actorSubject = Environment.GetEnvironmentVariable("WC085_READER_ACTOR")!;
@@ -119,7 +165,10 @@ public sealed class GoogleWorkspaceProofAdapterTests
         using var client = new HttpClient();
         var adapter = new GoogleWorkspaceProofAdapter(client, Options.Create(configuration));
 
-        var proof = await adapter.ReadAsync(Principal(actorSubject, configuration.ActorIssuer), default);
+        var proof = await adapter.ReadAsync(
+            Principal(actorSubject, configuration.ActorIssuer),
+            default
+        );
 
         Assert.Equal(actorSubject, proof.Actor.Subject);
         Assert.Equal("Google-Opaque-" + actorSubject, proof.ProviderSubject);
@@ -148,6 +197,29 @@ public sealed class GoogleWorkspaceProofAdapterTests
         Assert.Empty(handler.Requests);
     }
 
+    [Fact]
+    public void ValidateActor_DenialLogsRuleWithoutClaimValue()
+    {
+        var principal = Principal();
+        var identity = (ClaimsIdentity)principal.Identity!;
+        identity.RemoveClaim(identity.FindFirst("aud"));
+        identity.AddClaim(new Claim("aud", "private-audience-value"));
+        var logger = new RecordingLogger();
+        using var client = new HttpClient(new SyntheticKeycloakHandler());
+        var adapter = new GoogleWorkspaceProofAdapter(
+            client,
+            Options.Create(Configuration()),
+            logger
+        );
+
+        Assert.Throws<IdentityActionDeniedException>(() => adapter.ValidateActor(principal));
+
+        var message = Assert.Single(logger.Messages);
+        Assert.Contains("actor_audience", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("private-audience-value", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("synthetic-actor", message, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData(302)]
     [InlineData(401)]
@@ -158,7 +230,9 @@ public sealed class GoogleWorkspaceProofAdapterTests
         var handler = new SyntheticKeycloakHandler { Status = (HttpStatusCode)status };
         using var client = new HttpClient(handler);
         var adapter = new GoogleWorkspaceProofAdapter(client, Options.Create(Configuration()));
-        var failure = await Assert.ThrowsAsync<CustomerWorkspaceException>(() => adapter.ReadAsync(Principal(), default));
+        var failure = await Assert.ThrowsAsync<CustomerWorkspaceException>(() =>
+            adapter.ReadAsync(Principal(), default)
+        );
         Assert.Equal(503, failure.StatusCode);
         Assert.Single(handler.Requests);
     }
@@ -167,15 +241,25 @@ public sealed class GoogleWorkspaceProofAdapterTests
     public void AbsentConfiguration_IsUnavailable()
     {
         using var client = new HttpClient(new SyntheticKeycloakHandler());
-        var adapter = new GoogleWorkspaceProofAdapter(client, Options.Create(new IdentityBrokerReadOptions()));
-        Assert.Equal(503, Assert.Throws<CustomerWorkspaceException>(() => adapter.ValidateActor(Principal())).StatusCode);
+        var adapter = new GoogleWorkspaceProofAdapter(
+            client,
+            Options.Create(new IdentityBrokerReadOptions())
+        );
+        Assert.Equal(
+            503,
+            Assert
+                .Throws<CustomerWorkspaceException>(() => adapter.ValidateActor(Principal()))
+                .StatusCode
+        );
     }
 
     [Theory]
     [InlineData("[]")]
     [InlineData("[{\"identityProvider\":\"google\",\"userId\":\"\"}]")]
     [InlineData("[{\"identityProvider\":\"apple\",\"userId\":\"subject\"}]")]
-    [InlineData("[{\"identityProvider\":\"google\",\"userId\":\"one\"},{\"identityProvider\":\"google\",\"userId\":\"two\"}]")]
+    [InlineData(
+        "[{\"identityProvider\":\"google\",\"userId\":\"one\"},{\"identityProvider\":\"google\",\"userId\":\"two\"}]"
+    )]
     [InlineData("[{\"identityProvider\":\"google\",\"userId\":\"one\",\"userId\":\"two\"}]")]
     [InlineData("not-json")]
     public async Task Read_MissingAmbiguousOrMalformedBinding_Denies(string body)
@@ -194,7 +278,14 @@ public sealed class GoogleWorkspaceProofAdapterTests
         var handler = new SyntheticKeycloakHandler { BindingResponse = new string(' ', 16385) };
         using var client = new HttpClient(handler);
         var adapter = new GoogleWorkspaceProofAdapter(client, Options.Create(Configuration()));
-        Assert.Equal(503, (await Assert.ThrowsAsync<CustomerWorkspaceException>(() => adapter.ReadAsync(Principal(), default))).StatusCode);
+        Assert.Equal(
+            503,
+            (
+                await Assert.ThrowsAsync<CustomerWorkspaceException>(() =>
+                    adapter.ReadAsync(Principal(), default)
+                )
+            ).StatusCode
+        );
     }
 
     [Fact]
@@ -205,7 +296,9 @@ public sealed class GoogleWorkspaceProofAdapterTests
         var handler = new SyntheticKeycloakHandler();
         using var client = new HttpClient(handler);
         var adapter = new GoogleWorkspaceProofAdapter(client, Options.Create(Configuration()));
-        await Assert.ThrowsAsync<IdentityActionDeniedException>(() => adapter.ReadAsync(principal, default));
+        await Assert.ThrowsAsync<IdentityActionDeniedException>(() =>
+            adapter.ReadAsync(principal, default)
+        );
         Assert.Empty(handler.Requests);
     }
 
@@ -213,26 +306,68 @@ public sealed class GoogleWorkspaceProofAdapterTests
     public void CanonicalHash_UsesFullSha256AndBindsOperationRegistrationAndInput()
     {
         var registration = Guid.NewGuid();
-        var hash = CustomerIdentityJourneyService.CanonicalHash("CompleteRegistration", registration, new { });
+        var hash = CustomerIdentityJourneyService.CanonicalHash(
+            "CompleteRegistration",
+            registration,
+            new { }
+        );
         Assert.Matches("^[0-9a-f]{64}$", hash);
-        Assert.Equal(hash, CustomerIdentityJourneyService.CanonicalHash("CompleteRegistration", registration, new { }));
-        Assert.NotEqual(hash, CustomerIdentityJourneyService.CanonicalHash("CompleteRegistration", Guid.NewGuid(), new { }));
-        Assert.NotEqual(hash, CustomerIdentityJourneyService.CanonicalHash("UpdateProfile", registration, new { }));
-        Assert.NotEqual(hash, CustomerIdentityJourneyService.CanonicalHash("CompleteRegistration", registration, new { forged = true }));
+        Assert.Equal(
+            hash,
+            CustomerIdentityJourneyService.CanonicalHash(
+                "CompleteRegistration",
+                registration,
+                new { }
+            )
+        );
+        Assert.NotEqual(
+            hash,
+            CustomerIdentityJourneyService.CanonicalHash(
+                "CompleteRegistration",
+                Guid.NewGuid(),
+                new { }
+            )
+        );
+        Assert.NotEqual(
+            hash,
+            CustomerIdentityJourneyService.CanonicalHash("UpdateProfile", registration, new { })
+        );
+        Assert.NotEqual(
+            hash,
+            CustomerIdentityJourneyService.CanonicalHash(
+                "CompleteRegistration",
+                registration,
+                new { forged = true }
+            )
+        );
     }
 
     [Fact]
     public async Task MvcFilter_MissingJourneyDI_DeniesLegacyAction()
     {
-        var controller = IdentityTestHelpers.CreateController(new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString()));
-        var action = new ActionContext(controller.HttpContext, new RouteData(), new ActionDescriptor());
-        var context = new ActionExecutingContext(action, [], new Dictionary<string, object?>(), controller);
+        var controller = IdentityTestHelpers.CreateController(
+            new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString())
+        );
+        var action = new ActionContext(
+            controller.HttpContext,
+            new RouteData(),
+            new ActionDescriptor()
+        );
+        var context = new ActionExecutingContext(
+            action,
+            [],
+            new Dictionary<string, object?>(),
+            controller
+        );
         var invoked = false;
-        await controller.OnActionExecutionAsync(context, () =>
-        {
-            invoked = true;
-            return Task.FromResult(new ActionExecutedContext(action, [], controller));
-        });
+        await controller.OnActionExecutionAsync(
+            context,
+            () =>
+            {
+                invoked = true;
+                return Task.FromResult(new ActionExecutedContext(action, [], controller));
+            }
+        );
         Assert.False(invoked);
         Assert.Equal(503, Assert.IsType<ObjectResult>(context.Result).StatusCode);
     }
@@ -253,7 +388,9 @@ public sealed class GoogleWorkspaceProofAdapterTests
     public void SharedProviderNamespace_IsNotConfigured()
     {
         var configuration = Configuration();
-        configuration.Providers["facebook"].ProviderNamespace = configuration.Providers["google"].ProviderNamespace;
+        configuration.Providers["facebook"].ProviderNamespace = configuration
+            .Providers["google"]
+            .ProviderNamespace;
 
         Assert.False(configuration.IsConfigured);
     }
@@ -264,7 +401,11 @@ public sealed class GoogleWorkspaceProofAdapterTests
         public HttpStatusCode Status { get; set; } = HttpStatusCode.OK;
         public string? BindingResponse { get; set; }
         public string Provider { get; set; } = "google";
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken ct
+        )
         {
             var path = request.RequestUri!.AbsolutePath;
             Requests.Add(request.Method + " " + path);
@@ -275,7 +416,8 @@ public sealed class GoogleWorkspaceProofAdapterTests
                 var form = await request.Content!.ReadAsStringAsync(ct);
                 Assert.Contains("grant_type=client_credentials", form);
                 Assert.Contains("client_id=waooaw-bp-identity-reader", form);
-                body = "{\"access_token\":\"synthetic-machine-token\",\"token_type\":\"Bearer\",\"expires_in\":60}";
+                body =
+                    "{\"access_token\":\"synthetic-machine-token\",\"token_type\":\"Bearer\",\"expires_in\":60}";
             }
             else
             {
@@ -283,9 +425,28 @@ public sealed class GoogleWorkspaceProofAdapterTests
                 Assert.Equal("synthetic-machine-token", request.Headers.Authorization!.Parameter);
                 var subject = Uri.UnescapeDataString(path.Split('/')[5]);
                 body = path.EndsWith("/federated-identity", StringComparison.Ordinal)
-                    ? BindingResponse ?? System.Text.Json.JsonSerializer.Serialize(new[] { new
-                        { identityProvider = Provider, userId = char.ToUpperInvariant(Provider[0]) + Provider[1..] + "-Opaque-" + subject } })
-                    : System.Text.Json.JsonSerializer.Serialize(new { id = subject, enabled = true, emailVerified = true });
+                    ? BindingResponse
+                        ?? System.Text.Json.JsonSerializer.Serialize(
+                            new[]
+                            {
+                                new
+                                {
+                                    identityProvider = Provider,
+                                    userId = char.ToUpperInvariant(Provider[0])
+                                        + Provider[1..]
+                                        + "-Opaque-"
+                                        + subject,
+                                },
+                            }
+                        )
+                    : System.Text.Json.JsonSerializer.Serialize(
+                        new
+                        {
+                            id = subject,
+                            enabled = true,
+                            emailVerified = true,
+                        }
+                    );
             }
             return new HttpResponseMessage(Status) { Content = new StringContent(body) };
         }

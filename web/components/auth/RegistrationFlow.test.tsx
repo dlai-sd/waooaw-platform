@@ -83,6 +83,19 @@ describe('F2 registration flow', () => {
     expect(second.idempotencyKey).toBe(first.idempotencyKey);
   });
 
+  it('requires a fresh sign-in after a policy denial without offering a retry loop', async () => {
+    global.fetch = jest.fn(() => jsonResponse({ code: 'IDENTITY_ACTION_DENIED' }, 403));
+    render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} returnTo="/settings" />);
+
+    expect(await screen.findByRole('heading', { name: 'Sign in could not be completed' })).toBeVisible();
+    expect(screen.getByText(getIdentityMessages('en').signInRejected)).toBeVisible();
+    expect(screen.queryByRole('button', { name: getIdentityMessages('en').retry })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: getIdentityMessages('en').restartSignIn }));
+    expect(replace).toHaveBeenCalledWith('/login?returnTo=%2Fsettings');
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it('allows optional mobile verification before completing registration', async () => {
     global.fetch = jest.fn(() => jsonResponse({
       ...baseRegistration,
