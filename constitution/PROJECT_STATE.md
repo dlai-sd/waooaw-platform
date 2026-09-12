@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 148
-**Last Updated:** 2026-09-12 (WC-092 AUTH REPAIR IN PROGRESS)
+**State Revision:** 149
+**Last Updated:** 2026-09-12 (WC-092 AUTH REPAIR ENGINEERING QUALIFIED)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -43,7 +43,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | WC-087 agent-instance foundation | MERGED - PR #411 as `28f3e5e4`; immutable per-relationship agent identity, exact admission/version binding, same-type multi-instance proof and PR trial binding are on `main`. |
 | WC-088 customer multi-agent/skill journey | ENGINEERING QUALIFIED - canonical My Experts, relationship switching, four governed skill decisions, append-only/RLS persistence, generated OpenAPI client and two-agent isolation proof pass local Docker and web qualification; PR submission and Founder review/merge remain. |
 | WC-091 I1 disposable Demo readiness | ENGINEERING QUALIFIED - strict canonical environment rendering, catalog-derived secret bindings, anonymous provider projection, versioned/domain-separated identity HMAC, replica-scoped reset/reseed and real PostgreSQL replacement evidence pass local Docker and emulator qualification; no live Azure mutation occurred; real-account acceptance, I2 UAT persistence/recovery, I3 Production, PR approval and merge remain. |
-| WC-092 Demo authentication repair | IN PROGRESS - Founder supplied visual evidence and authorized Web/Business Platform implementation, local evidence and PR submission on 2026-09-12; sanitized Demo logs prove Google/Keycloak success followed by BP identity-session and registration `403`; cloud, DNS and provider mutation remain prohibited. |
+| WC-092 Demo authentication repair | ENGINEERING QUALIFIED - modal-owned delayed loading, bounded provider projection, customer-safe copy, truthful provider states, persistent `403` recovery and privacy-safe BP denial diagnostics pass 289 Web unit tests, 33 adapter tests, 12 host tests and 30 cross-browser cases; four visual states reviewed. Real Google/deployed-rule acceptance, external hostname branding, cloud, DNS and provider mutation remain open or prohibited. |
 | Production | PLAN ONLY - code-prepared; protected environments, authorized plan, traffic and final acceptance remain Founder-reserved |
 
 ### Checkpoint Context
@@ -80,9 +80,10 @@ downstream membership and browser account-switch qualification remain open; CB-0
 
 ## Next Authorized Action
 
-Submit the engineering-qualified WC-088 Customer Multi-Agent And Skill Journey and WC-091 I1
-Disposable Demo Readiness as bounded PRs for Founder review and merge. D-BILLING and D-IDENTITY
-remain separate queued deliveries. H9 Facebook/email remains deferred.
+Submit the engineering-qualified WC-088 Customer Multi-Agent And Skill Journey, WC-091 I1
+Disposable Demo Readiness and WC-092 Demo Authentication Experience Repair as bounded PRs for Founder
+review and merge. D-BILLING and D-IDENTITY remain separate queued deliveries. H9 Facebook/email
+remains deferred.
 
 Obtain INST-009 acceptance of the Production edge, data, runtime, recovery, cost and shared-state
 ownership inputs required for P3-EX11 offline readiness. Do not activate the Production runner, run
