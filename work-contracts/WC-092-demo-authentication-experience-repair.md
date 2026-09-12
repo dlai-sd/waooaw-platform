@@ -188,6 +188,21 @@ weakening validation, retain the current fail-closed denial and report the exact
 - Business Platform application host: `12/12` `CustomerIdentityProgramHostTests` passed with no adapter dependency-injection failure.
 - Static/security: `git diff --check`, C-073 changed-file traceability, CSharpier 1.3.0, Business Platform vulnerable-package scan and pnpm high-severity audit passed.
 
+### Pull Request Precheck Repair
+
+- PR #425 image builds completed, then Constitutional Engine, Professional Runtime, AI Runtime and
+   Billing Engine failed the shared Trivy 0.73.0 HIGH/CRITICAL vulnerability gate.
+- Passing Business Platform and Web images isolated the failure to runtime-image package state. The
+   failing Debian Bookworm bases contained `libpcre2-8-0 10.42-1`; the repository security candidate
+   was `10.42-1+deb12u1`.
+- Each affected final image now applies available Debian package upgrades and removes apt indexes
+   before creating the non-root runtime user. Trivy policy, severity, ignore-unfixed behavior and
+   failure exit code remain unchanged.
+- Exact local builds and CI-equivalent Trivy 0.73.0 scans passed for Professional Runtime and
+   Constitutional Engine. Both contained `libpcre2-8-0 10.42-1+deb12u1`, reported zero
+   HIGH/CRITICAL findings and returned exit `0`, covering the Python slim Bookworm and .NET ASP.NET
+   Bookworm runtime-base families. GitHub prechecks remain the authoritative four-image proof.
+
 ### Evidence Boundary And Residual Gaps
 
 - Browser evidence uses a synthetic signed NextAuth session and a local HTTP Business Platform fixture. It proves Web BFF behavior, not Google, Keycloak or deployed Business Platform acceptance.
