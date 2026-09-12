@@ -221,6 +221,45 @@ public sealed class GoogleWorkspaceProofAdapterTests
     }
 
     [Theory]
+    [InlineData("client_type", "service")]
+    [InlineData("sub", "service-account-synthetic")]
+    [InlineData("iat", "invalid")]
+    [InlineData("iat", "future")]
+    [InlineData("exp", "invalid")]
+    [InlineData("exp", "expired")]
+    [InlineData("exp", "long-lived")]
+    [InlineData("auth_time", "invalid")]
+    [InlineData("auth_time", "future")]
+    [InlineData("auth_time", "after-issued")]
+    [InlineData("nbf", "invalid")]
+    [InlineData("nbf", "future")]
+    public void ValidateActor_InvalidSecurityBoundary_DeniesWithoutLogger(
+        string claimType,
+        string value
+    )
+    {
+        var principal = Principal();
+        var identity = (ClaimsIdentity)principal.Identity!;
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var replacement = value switch
+        {
+            "future" => (now + 60).ToString(),
+            "expired" => (now - 60).ToString(),
+            "long-lived" => (now + 901).ToString(),
+            "after-issued" => (now + 31).ToString(),
+            _ => value,
+        };
+        var existing = identity.FindFirst(claimType);
+        if (existing is not null)
+            identity.RemoveClaim(existing);
+        identity.AddClaim(new Claim(claimType, replacement));
+        using var client = new HttpClient(new SyntheticKeycloakHandler());
+        var adapter = new GoogleWorkspaceProofAdapter(client, Options.Create(Configuration()));
+
+        Assert.Throws<IdentityActionDeniedException>(() => adapter.ValidateActor(principal));
+    }
+
+    [Theory]
     [InlineData(302)]
     [InlineData(401)]
     [InlineData(403)]

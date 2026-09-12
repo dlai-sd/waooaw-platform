@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 150
+**State Revision:** 152
 **Last Updated:** 2026-09-12 (WC-092 PR PRECHECK REPAIR QUALIFIED)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -43,7 +43,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | WC-087 agent-instance foundation | MERGED - PR #411 as `28f3e5e4`; immutable per-relationship agent identity, exact admission/version binding, same-type multi-instance proof and PR trial binding are on `main`. |
 | WC-088 customer multi-agent/skill journey | ENGINEERING QUALIFIED - canonical My Experts, relationship switching, four governed skill decisions, append-only/RLS persistence, generated OpenAPI client and two-agent isolation proof pass local Docker and web qualification; PR submission and Founder review/merge remain. |
 | WC-091 I1 disposable Demo readiness | ENGINEERING QUALIFIED - strict canonical environment rendering, catalog-derived secret bindings, anonymous provider projection, versioned/domain-separated identity HMAC, replica-scoped reset/reseed and real PostgreSQL replacement evidence pass local Docker and emulator qualification; no live Azure mutation occurred; real-account acceptance, I2 UAT persistence/recovery, I3 Production, PR approval and merge remain. |
-| WC-092 Demo authentication repair | ENGINEERING QUALIFIED - modal-owned delayed loading, bounded provider projection, customer-safe copy, truthful provider states, persistent `403` recovery and privacy-safe BP denial diagnostics pass 289 Web unit tests, 33 adapter tests, 12 host tests and 30 cross-browser cases; four visual states reviewed. PR image-scan RCA identified a fixable Debian runtime package; patched Python and .NET base-family images pass exact Trivy 0.73.0 HIGH/CRITICAL policy locally. GitHub four-image prechecks remain pending. Real Google/deployed-rule acceptance, external hostname branding, cloud, DNS and provider mutation remain open or prohibited. |
+| WC-092 Demo authentication repair | ENGINEERING QUALIFIED - modal-owned delayed loading, bounded provider projection, customer-safe copy, truthful provider states, persistent `403` recovery and privacy-safe BP denial diagnostics remain qualified. GitHub run `34693228900` passes all six image jobs after the Debian runtime-package repair. Expanded fail-closed adapter coverage passes `45/45`; exact CI-equivalent aggregate requalification passes `686/686` tests at `91.50%` line / `80.02%` branch. Real Google/deployed-rule acceptance, external hostname branding, cloud, DNS and provider mutation remain open or prohibited. |
 | Production | PLAN ONLY - code-prepared; protected environments, authorized plan, traffic and final acceptance remain Founder-reserved |
 
 ### Checkpoint Context

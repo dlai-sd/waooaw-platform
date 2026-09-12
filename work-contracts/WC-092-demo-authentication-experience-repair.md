@@ -184,7 +184,7 @@ weakening validation, retain the current fail-closed denial and report the exact
 - Web image: production `web/Dockerfile` build passed.
 - Browser interactions/accessibility: `30/30` passed across five configured projects against the production Web image and a delayed local identity fixture.
 - Visual capture: `1/1` passed; reviewed images are retained under `test-results/wc092/screenshots/`.
-- Business Platform adapter: `33/33` passed after CI-equivalent CSharpier 1.3.0 formatting.
+- Business Platform adapter: `45/45` passed after CI-equivalent CSharpier 1.3.0 formatting.
 - Business Platform application host: `12/12` `CustomerIdentityProgramHostTests` passed with no adapter dependency-injection failure.
 - Static/security: `git diff --check`, C-073 changed-file traceability, CSharpier 1.3.0, Business Platform vulnerable-package scan and pnpm high-severity audit passed.
 
@@ -201,7 +201,13 @@ weakening validation, retain the current fail-closed denial and report the exact
 - Exact local builds and CI-equivalent Trivy 0.73.0 scans passed for Professional Runtime and
    Constitutional Engine. Both contained `libpcre2-8-0 10.42-1+deb12u1`, reported zero
    HIGH/CRITICAL findings and returned exit `0`, covering the Python slim Bookworm and .NET ASP.NET
-   Bookworm runtime-base families. GitHub prechecks remain the authoritative four-image proof.
+   Bookworm runtime-base families. GitHub run `34693228900` subsequently passed all six image jobs,
+   including the four repaired images.
+- The same run passed all `674/674` Business Platform tests but exposed aggregate branch coverage of
+  `79.77%` against the C-076 `80%` gate. Focused fail-closed tests now exercise previously uncovered
+  service-client, subject, issued-at, expiry, lifetime, authentication-order and not-before rules;
+   the expanded adapter suite passes `45/45` with CSharpier 1.3.0 clean. Exact CI-equivalent aggregate
+   requalification passes `686/686` tests at `91.50%` line and `80.02%` branch coverage.
 
 ### Evidence Boundary And Residual Gaps
 
@@ -209,7 +215,8 @@ weakening validation, retain the current fail-closed denial and report the exact
 - No Azure, DNS, provider-console, secret, deployment or customer-traffic mutation occurred.
 - The exact Demo `403` denial rule remains unknown until this diagnostic-only Business Platform change is deployed under separate authority and a new sanitized log record is observed.
 - Google consent branding that displays an `azurecontainerapps.io` hostname remains an external configuration gap outside this Work Component.
-- The canceled namespace-wide Business Platform run is not evidence; focused 33-test validator and 12-test host boundaries are the claimed backend evidence.
+- The earlier canceled namespace-wide Business Platform run is not evidence; the later exact
+   CI-equivalent `686/686` run and its `91.50%` line / `80.02%` branch report supersede it.
 
 ## Author Review
 
