@@ -24,15 +24,23 @@ describe('ProviderCommands', () => {
     expect(screen.getByRole('button', { name: /Continue with Facebook/ })).toBeDisabled();
   });
 
-  it('keeps Apple local and explains approved alternatives', () => {
+  it('groups unavailable providers as non-actionable coming-soon choices', () => {
     render(<ProviderCommands callbackUrl="/register" providers={providers} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Continue with Apple' }));
+    fireEvent.click(screen.getByRole('button', { name: /Continue with Apple/ }));
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Apple is coming soon');
-    expect(screen.getByRole('alert')).toHaveTextContent('Google or Email');
-    expect(screen.getByRole('alert')).not.toHaveTextContent('Facebook or email');
-    expect(screen.getByRole('alert')).toHaveTextContent('WhatsApp registration');
+    expect(screen.getByText('Coming soon', { selector: 'p' })).toBeVisible();
+    expect(screen.getByRole('button', { name: /Continue with Apple/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Continue with Facebook/ })).toBeDisabled();
     expect(signIn).not.toHaveBeenCalled();
+  });
+
+  it('keeps an unsupported provider non-actionable even when projected as available', () => {
+    render(<ProviderCommands callbackUrl="/register" providers={[
+      { id: 'APPLE', displayName: 'Apple', authenticationPath: 'APPLE', availability: 'AVAILABLE' },
+    ]} />);
+
+    expect(screen.getByRole('button', { name: /Continue with Apple.*Coming soon/ })).toBeDisabled();
+    expect(screen.getByText('Coming soon', { selector: 'p' })).toBeVisible();
   });
 });

@@ -325,6 +325,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 .auth-view p, .content-page p, .state-view p { color: var(--muted); line-height: 1.65; }
 .auth-view .primary-command { margin-block: 1rem; }
 .provider-commands { display: grid; align-items: start; gap: .75rem; margin-block: 1rem; }
+.provider-coming-soon { display: flex; align-items: center; gap: .75rem; margin: .35rem 0 0; color: var(--muted); font-size: .78rem; font-weight: 800; text-transform: uppercase; }
+.provider-coming-soon::before, .provider-coming-soon::after { height: 1px; flex: 1; background: var(--line); content: ''; }
 .provider-commands .primary-command { margin-block: 0; }
 .provider-command { min-height: 48px; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: .75rem; padding: .75rem 1.15rem; border: 1px solid var(--border); border-radius: 6px; color: var(--ink); background: var(--surface); cursor: pointer; text-align: start; }
 .provider-command:hover { border-color: var(--blue); }

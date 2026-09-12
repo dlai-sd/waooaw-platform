@@ -35,7 +35,7 @@ test('WC083-VIS-01: capture reviewed authentication states', async ({ page }) =>
 
   await page.keyboard.press('Escape');
   await setPreferences(page, 'en', 'dark');
-  await page.reload();
+  await page.goto('/');
   await page.locator('a.secondary-link[href="/register"]').first().click();
   await expect(page.getByRole('dialog', { name: 'Create your WAOOAW account' })).toBeVisible();
   await page.screenshot({ animations: 'disabled', path: path.join(screenshotDir, 'register-desktop-dark.png') });
@@ -43,7 +43,7 @@ test('WC083-VIS-01: capture reviewed authentication states', async ({ page }) =>
   await page.keyboard.press('Escape');
   await page.setViewportSize({ width: 360, height: 800 });
   await setPreferences(page, 'ur', 'dark');
-  await page.reload();
+  await page.goto('/');
   await page.locator('a.secondary-link[href="/register"]').first().click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.screenshot({ animations: 'disabled', path: path.join(screenshotDir, 'register-mobile-rtl-dark.png') });
@@ -51,9 +51,9 @@ test('WC083-VIS-01: capture reviewed authentication states', async ({ page }) =>
   await page.keyboard.press('Escape');
   await page.setViewportSize({ width: 768, height: 1024 });
   await setPreferences(page, 'en', 'light');
-  await page.reload();
+  await page.goto('/');
   await page.locator('a.secondary-link[href="/register"]').first().click();
-  await page.getByRole('button', { name: 'Continue with Apple' }).click();
-  await expect(page.locator('#apple-integration-status')).toBeVisible();
-  await page.screenshot({ animations: 'disabled', path: path.join(screenshotDir, 'apple-placeholder-intermediate.png') });
+  await expect(page.getByRole('button', { name: /Continue with Apple.*Coming soon/ })).toBeDisabled();
+  await expect(page.locator('p.provider-coming-soon', { hasText: 'Coming soon' })).toBeVisible();
+  await page.screenshot({ animations: 'disabled', path: path.join(screenshotDir, 'provider-coming-soon-intermediate.png') });
 });

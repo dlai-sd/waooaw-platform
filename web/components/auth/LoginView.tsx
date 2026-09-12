@@ -19,7 +19,7 @@ export async function LoginView({ searchParams }: { searchParams?: Promise<{ ret
       <h1 id="auth-dialog-title">{messages.welcomeBack}</h1>
       <p>{messages.identityBrokerDescription}</p>
       <ProviderCommands callbackUrl={callbackUrl} providers={providers} />
-      <p>{messages.newToWaaoaw} <Link href="/register">{messages.createAccount}</Link></p>
+      <p>{messages.newToWaaoaw} <Link href={callbackUrl}>{messages.createAccount}</Link></p>
     </section>
   );
 }

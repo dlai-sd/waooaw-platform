@@ -6,6 +6,7 @@ const streamClients = new Map();
 const scopedTimelines = new Map();
 const continuityStates = new Map();
 const voiceSessions = new Map();
+const identityProviderDelayMs = Number.parseInt(process.env.IDENTITY_PROVIDER_DELAY_MS ?? '0', 10) || 0;
 
 const governedCards = [
   {
@@ -119,6 +120,7 @@ function json(response, body, status = 200) {
 const server = createServer(async (request, response) => {
   const url = new URL(request.url ?? '/', 'http://127.0.0.1:5001');
   const scope = scopeFor(request);
+  const policyDenied = request.headers.authorization?.startsWith('Bearer fixture-policy-denied-') === true;
   const relationshipMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)$/);
   const timelineMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/timeline$/);
   const messagesMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/conversation\/messages$/);
@@ -147,6 +149,9 @@ const server = createServer(async (request, response) => {
   const voiceCancelMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions\/([^/]+)\/cancel$/);
 
   if (request.method === 'GET' && url.pathname === '/api/v1/identity/providers') {
+    if (identityProviderDelayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, identityProviderDelayMs));
+    }
     json(response, { providers: [
       { id: 'GOOGLE', displayName: 'Google', authenticationPath: 'GOOGLE', availability: 'AVAILABLE' },
       { id: 'FACEBOOK', displayName: 'Facebook', authenticationPath: 'META', availability: 'UNAVAILABLE', unavailableReason: 'NOT_CONFIGURED' },
@@ -157,7 +162,16 @@ const server = createServer(async (request, response) => {
   }
 
   if (request.method === 'GET' && url.pathname === '/api/v1/identity/session') {
+    if (policyDenied) {
+      json(response, { code: 'IDENTITY_ACTION_DENIED' }, 403);
+      return;
+    }
     json(response, { accountReference: 'account-fixture', roles: ['OWNER'], capabilities: ['READ_ACCOUNT', 'MANAGE_ROUTINE_ACTIONS', 'HIRE_PROFESSIONAL'], assuranceLevel: 'AAL2_ACCOUNT', authenticationPath: 'PORTAL', emailVerified: true, mobileVerified: false, authenticatedAt: '2026-08-12T09:00:00Z', expiresAt: '2099-08-12T10:00:00Z', nextAction: 'NONE' });
+    return;
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/v1/identity/registrations' && policyDenied) {
+    json(response, { code: 'IDENTITY_ACTION_DENIED' }, 403);
     return;
   }
 

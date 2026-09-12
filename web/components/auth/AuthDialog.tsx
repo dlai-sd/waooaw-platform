@@ -10,18 +10,22 @@ import { useEffect, useRef } from 'react';
 import { useAuthJourney } from './AuthJourney';
 import { safePublicReturnTarget } from '@/lib/safe-return';
 
-export function AuthDialog({ children }: { children: ReactNode }) {
+export function AuthDialog({ children, routeReady = true }: { children: ReactNode; routeReady?: boolean }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const router = useRouter();
   const journey = useAuthJourney();
   const originRef = useRef('/');
+  const origin = safePublicReturnTarget(journey?.current.origin);
+  const trigger = journey?.current.trigger;
+  const completeLaunch = journey?.completeLaunch;
 
   useEffect(() => {
-    originRef.current = safePublicReturnTarget(journey?.current.origin);
-    returnFocusRef.current = journey?.current.trigger ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+    originRef.current = origin;
+    returnFocusRef.current = trigger ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     const dialog = dialogRef.current;
     if (dialog && !dialog.open) dialog.showModal();
+    if (routeReady) completeLaunch?.();
     return () => {
       if (returnFocusRef.current?.isConnected) {
         returnFocusRef.current.focus();
@@ -33,9 +37,10 @@ export function AuthDialog({ children }: { children: ReactNode }) {
         fallback.focus();
       }
     };
-  }, [journey]);
+  }, [completeLaunch, origin, routeReady, trigger]);
 
   function dismiss() {
+    journey?.cancelLaunch();
     dialogRef.current?.close();
     router.replace(originRef.current, { scroll: false });
   }

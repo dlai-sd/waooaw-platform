@@ -46,7 +46,7 @@ describe('authentication views', () => {
 
     expect(screen.getByRole('heading', { name: 'Welcome back' })).toBeInTheDocument();
     expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-callback-url', '/register?returnTo=%2Fhome');
-    expect(screen.getByRole('link', { name: 'Create account' })).toHaveAttribute('href', '/register');
+    expect(screen.getByRole('link', { name: 'Create account' })).toHaveAttribute('href', '/register?returnTo=%2Fhome');
   });
 
   it('preserves a safe protected target through registration', async () => {

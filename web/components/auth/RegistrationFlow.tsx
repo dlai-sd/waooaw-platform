@@ -14,6 +14,7 @@ import type { SupportedLocale } from '@/lib/preferences';
 
 type Draft = { displayName: string; businessName: string; businessDomain: string };
 type Command = Record<string, string> & { action: string };
+type ErrorKind = '' | 'rejected' | 'unavailable';
 const draftKey = 'waooaw:identity:registration-draft';
 
 export function RegistrationFlow({ locale, messages, returnTo = '/home' }: { locale: SupportedLocale; messages: IdentityMessages; returnTo?: string }) {
@@ -22,7 +23,7 @@ export function RegistrationFlow({ locale, messages, returnTo = '/home' }: { loc
   const [challenge, setChallenge] = useState<IdentityVerificationChallenge>();
   const [draft, setDraft] = useState<Draft>({ displayName: '', businessName: '', businessDomain: '' });
   const [pending, setPending] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<ErrorKind>('');
   const [voluntaryMobile, setVoluntaryMobile] = useState(false);
   const keys = useRef(new Map<string, string>());
   const activeRequest = useRef<AbortController>();
@@ -46,6 +47,10 @@ export function RegistrationFlow({ locale, messages, returnTo = '/home' }: { loc
           setChallenge(undefined);
           setRegistration(undefined);
         }
+        if (response.status === 403) {
+          setError('rejected');
+          return;
+        }
         throw new Error();
       }
       if ((commandBody.action === 'start' || commandBody.action === 'complete') && body?.handoffConfirmed === true) {
@@ -64,7 +69,7 @@ export function RegistrationFlow({ locale, messages, returnTo = '/home' }: { loc
       }
       return body;
     } catch {
-      if (activeRequest.current === controller) setError(messages.unavailable);
+      if (activeRequest.current === controller) setError('unavailable');
     } finally {
       clearTimeout(timeout);
       if (activeRequest.current === controller) {
@@ -111,6 +116,8 @@ export function RegistrationFlow({ locale, messages, returnTo = '/home' }: { loc
     return command({ action, registrationId: registration.registrationId, ...fields });
   }
 
+  const errorMessage = error === 'rejected' ? messages.signInRejected : error === 'unavailable' ? messages.unavailable : '';
+
   function verificationForm(purpose: 'email' | 'mobile') {
     const isEmail = purpose === 'email';
     if (!challenge) return <form className="identity-form" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); void registrationCommand(`${purpose}-start`, { [purpose]: String(form.get(purpose) ?? '') }); }}>
@@ -124,12 +131,17 @@ export function RegistrationFlow({ locale, messages, returnTo = '/home' }: { loc
     </form>;
   }
 
-  if (!registration) return <div aria-live="polite" className="identity-status">{pending ? <><LoaderCircle aria-hidden="true" className="spin" /> {messages.working}</> : <><p>{error || messages.unavailable}</p><button className="primary-command" type="button" onClick={() => void command({ action: 'start', languagePreference: locale })}>{messages.retry}</button></>}</div>;
+  if (!registration) return <>
+    <p className="eyebrow">Secure access</p>
+    <h1 id="auth-dialog-title">{error ? 'Sign in could not be completed' : messages.resolvingTitle}</h1>
+    <p>{errorMessage || messages.resolvingDescription}</p>
+    <div aria-live="polite" className="identity-status">{pending ? <><LoaderCircle aria-hidden="true" className="spin" /> {messages.resolvingDescription}</> : error === 'rejected' ? <button className="primary-command" type="button" onClick={() => router.replace(`/login?returnTo=${encodeURIComponent(returnTo)}`)}>{messages.restartSignIn}</button> : <button className="primary-command" type="button" onClick={() => void command({ action: 'start', languagePreference: locale })}>{messages.retry}</button>}</div>
+  </>;
 
   const action = voluntaryMobile ? 'VERIFY_MOBILE' : registration.nextAction;
-  return <div className="registration-flow">
+  return <><p className="eyebrow">{messages.eyebrow}</p><h1 id="auth-dialog-title">{messages.title}</h1><p>{messages.description}</p><div className="registration-flow">
     <RegistrationProgress action={action} pending={pending} />
-    {error ? <p className="identity-error" role="alert">{error}</p> : null}
+    {error ? <p className="identity-error" role="alert">{errorMessage}</p> : null}
     {action === 'COMPLETE_PROFILE' ? <form className="identity-form" onSubmit={(event) => { event.preventDefault(); void registrationCommand('profile', { ...draft, languagePreference: locale }); }}>
       <label>{messages.displayName}<input autoComplete="name" maxLength={120} onChange={(event) => updateDraft('displayName', event.target.value)} required value={draft.displayName} /></label>
       <label>{messages.businessName}<input autoComplete="organization" maxLength={160} onChange={(event) => updateDraft('businessName', event.target.value)} required value={draft.businessName} /></label>
@@ -142,5 +154,5 @@ export function RegistrationFlow({ locale, messages, returnTo = '/home' }: { loc
     {action === 'RESOLVE_DUPLICATE' ? <p role="status">{messages.duplicate}</p> : null}
     {(action === 'CONTINUE_TO_DEFAULT_TARGET' || action === 'NONE') ? <button className="primary-command" disabled={pending} type="button" onClick={() => void registrationCommand('complete')}>{messages.complete}</button> : null}
     {pending ? <span aria-live="polite" className="identity-pending"><LoaderCircle aria-hidden="true" className="spin" size={18} /> {messages.working}</span> : null}
-  </div>;
+  </div></>;
 }
