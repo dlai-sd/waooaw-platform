@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 147
-**Last Updated:** 2026-09-11 (WC-091 I1 ENGINEERING QUALIFIED)
+**State Revision:** 148
+**Last Updated:** 2026-09-12 (WC-092 AUTH REPAIR IN PROGRESS)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-080 - Agent Runtime Adapter Contract v1 |
 | Latest merge | PR #411 merged to `main` as `28f3e5e4` |
-| Active delivery | WC-088 Customer Multi-Agent And Skill Journey and WC-091 I1 Disposable Demo Readiness; P3-EX11 remains plan-only |
+| Active delivery | WC-088 Customer Multi-Agent And Skill Journey, WC-091 I1 Disposable Demo Readiness and WC-092 Demo Authentication Experience Repair; P3-EX11 remains plan-only |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 
@@ -43,6 +43,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | WC-087 agent-instance foundation | MERGED - PR #411 as `28f3e5e4`; immutable per-relationship agent identity, exact admission/version binding, same-type multi-instance proof and PR trial binding are on `main`. |
 | WC-088 customer multi-agent/skill journey | ENGINEERING QUALIFIED - canonical My Experts, relationship switching, four governed skill decisions, append-only/RLS persistence, generated OpenAPI client and two-agent isolation proof pass local Docker and web qualification; PR submission and Founder review/merge remain. |
 | WC-091 I1 disposable Demo readiness | ENGINEERING QUALIFIED - strict canonical environment rendering, catalog-derived secret bindings, anonymous provider projection, versioned/domain-separated identity HMAC, replica-scoped reset/reseed and real PostgreSQL replacement evidence pass local Docker and emulator qualification; no live Azure mutation occurred; real-account acceptance, I2 UAT persistence/recovery, I3 Production, PR approval and merge remain. |
+| WC-092 Demo authentication repair | IN PROGRESS - Founder supplied visual evidence and authorized Web/Business Platform implementation, local evidence and PR submission on 2026-09-12; sanitized Demo logs prove Google/Keycloak success followed by BP identity-session and registration `403`; cloud, DNS and provider mutation remain prohibited. |
 | Production | PLAN ONLY - code-prepared; protected environments, authorized plan, traffic and final acceptance remain Founder-reserved |
 
 ### Checkpoint Context
