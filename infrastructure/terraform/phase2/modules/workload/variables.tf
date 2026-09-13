@@ -2,6 +2,21 @@ variable "environment" {
   type = string
 }
 
+variable "auth_preview_origin" {
+  type        = string
+  default     = null
+  nullable    = true
+  description = "Exact Demo-only Codespaces origin for the public PKCE authentication preview client."
+
+  validation {
+    condition = var.auth_preview_origin == null || (
+      var.environment == "demo" &&
+      can(regex("^https://[a-z0-9-]+-[0-9]+[.]app[.]github[.]dev$", var.auth_preview_origin))
+    )
+    error_message = "Authentication preview origin must be one exact Demo Codespaces HTTPS origin without a path or wildcard."
+  }
+}
+
 variable "resource_group_name" {
   type = string
 }

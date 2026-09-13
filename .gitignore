@@ -13,6 +13,7 @@ infrastructure/terraform/**/*.tfplan
 .env
 .env.local
 .env.*.local
+.auth-preview/
 infrastructure/postgres/pgbouncer/userlist.txt   # contains DB passwords
 
 # ─── Build outputs ────────────────────────────────────────────────────────────
@@ -34,6 +35,7 @@ web/playwright-report/
 web/test-results/
 test-results/wc079/
 test-results/wc083/
+test-results/wc083-current/
 
 # ─── OS / editor ─────────────────────────────────────────────────────────────
 .DS_Store

@@ -178,7 +178,7 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests : IAsyncLifetime
     [Theory]
     [InlineData(null)]
     [InlineData("false")]
-    public async Task Http_FacebookWithoutVerifiedEmail_DeniesBeforeRegistration(string? emailVerified)
+    public async Task Http_FacebookWithoutVerifiedEmail_RequiresEmailVerification(string? emailVerified)
     {
         _broker.Provider = "facebook";
         var token = Token("facebook-incomplete", provider: "facebook", emailVerified: emailVerified);
@@ -186,9 +186,13 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests : IAsyncLifetime
         var response = await SendAsync(HttpMethod.Post, "/api/v1/identity/registrations", token,
             new { languagePreference = "en" });
 
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var registration = await JsonAsync(response);
+        Assert.Equal("EMAIL_VERIFICATION_REQUIRED", registration.GetProperty("state").GetString());
+        Assert.Equal("VERIFY_EMAIL", registration.GetProperty("nextAction").GetString());
+        Assert.False(registration.GetProperty("emailVerified").GetBoolean());
         Assert.Empty(_broker.Requests);
-        Assert.Equal(0L, await OwnerScalarAsync("SELECT count(*) FROM identity.registrations"));
+        Assert.Equal(1L, await OwnerScalarAsync("SELECT count(*) FROM identity.registrations"));
         await AssertEmptyPoolAsync();
     }
 

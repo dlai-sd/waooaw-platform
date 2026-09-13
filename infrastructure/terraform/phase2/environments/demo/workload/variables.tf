@@ -2,6 +2,12 @@ variable "image_digests" {
   type = map(string)
 }
 
+variable "auth_preview_origin" {
+  type        = string
+  default     = "https://probable-waffle-vpqg67gg59jhrrr-3100.app.github.dev"
+  description = "Exact Founder Codespaces origin accepted by the Demo-only public PKCE preview client."
+}
+
 variable "key_vault_secret_uris" {
   type = map(string)
 }

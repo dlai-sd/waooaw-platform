@@ -9,38 +9,34 @@ const providers: IdentityProvider[] = [
   { id: 'GOOGLE', displayName: 'Google', authenticationPath: 'GOOGLE', availability: 'AVAILABLE' },
   { id: 'FACEBOOK', displayName: 'Facebook', authenticationPath: 'META', availability: 'UNAVAILABLE', unavailableReason: 'NOT_CONFIGURED' },
   { id: 'APPLE', displayName: 'Apple', authenticationPath: 'APPLE', availability: 'UNAVAILABLE', unavailableReason: 'NOT_CONFIGURED' },
-  { id: 'EMAIL', displayName: 'Email', authenticationPath: 'CREDENTIAL', availability: 'AVAILABLE' },
+  { id: 'EMAIL', displayName: 'Email', authenticationPath: 'CREDENTIAL', availability: 'UNAVAILABLE', unavailableReason: 'NOT_CONFIGURED' },
 ];
 
 describe('ProviderCommands', () => {
   beforeEach(() => jest.mocked(signIn).mockClear());
 
   it('starts only an available brokered provider', () => {
-    render(<ProviderCommands callbackUrl="/home" providers={providers} />);
+    render(<ProviderCommands callbackUrl="/home" intent="login" providers={providers} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Continue with Google' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Log in with Google' }));
 
     expect(signIn).toHaveBeenCalledWith('keycloak-google', { callbackUrl: '/home' });
-    expect(screen.getByRole('button', { name: /Continue with Facebook/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Log in with Facebook (Unavailable)' })).toBeDisabled();
   });
 
-  it('groups unavailable providers as non-actionable coming-soon choices', () => {
-    render(<ProviderCommands callbackUrl="/register" providers={providers} />);
+  it('does not start unavailable providers', () => {
+    render(<ProviderCommands callbackUrl="/register" intent="register" providers={providers} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /Continue with Apple/ }));
-
-    expect(screen.getByText('Coming soon', { selector: 'p' })).toBeVisible();
-    expect(screen.getByRole('button', { name: /Continue with Apple/ })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /Continue with Facebook/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Sign up with Apple (Unavailable)' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Sign up with Email (Unavailable)' })).toBeDisabled();
     expect(signIn).not.toHaveBeenCalled();
   });
 
   it('keeps an unsupported provider non-actionable even when projected as available', () => {
-    render(<ProviderCommands callbackUrl="/register" providers={[
+    render(<ProviderCommands callbackUrl="/register" intent="register" providers={[
       { id: 'APPLE', displayName: 'Apple', authenticationPath: 'APPLE', availability: 'AVAILABLE' },
     ]} />);
 
-    expect(screen.getByRole('button', { name: /Continue with Apple.*Coming soon/ })).toBeDisabled();
-    expect(screen.getByText('Coming soon', { selector: 'p' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Sign up with Apple (Unavailable)' })).toBeDisabled();
   });
 });

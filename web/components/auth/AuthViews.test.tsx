@@ -10,8 +10,8 @@ jest.mock('next-auth', () => ({ getServerSession: jest.fn() }));
 jest.mock('@/lib/api/identity', () => ({ listIdentityProviders: jest.fn() }));
 jest.mock('@/lib/i18n-server', () => ({ getRequestI18n: jest.fn() }));
 jest.mock('./ProviderCommands', () => ({
-  ProviderCommands: ({ callbackUrl, providers }: { callbackUrl: string; providers: IdentityProvider[] }) => (
-    <div data-testid="provider-commands" data-callback-url={callbackUrl}>{providers.length} providers</div>
+  ProviderCommands: ({ callbackUrl, intent, providers }: { callbackUrl: string; intent: string; providers: IdentityProvider[] }) => (
+    <div data-testid="provider-commands" data-callback-url={callbackUrl} data-intent={intent}>{providers.length} providers</div>
   ),
 }));
 jest.mock('./RegistrationFlow', () => ({
@@ -29,6 +29,7 @@ beforeEach(() => {
   jest.mocked(getRequestI18n).mockResolvedValue({
     locale: 'en',
     messages: {
+      login: 'Log in',
       secureAccess: 'Secure access',
       welcomeBack: 'Welcome back',
       identityBrokerDescription: 'Brokered identity',
@@ -44,8 +45,9 @@ describe('authentication views', () => {
   it('renders login providers with a safe callback target', async () => {
     render(await LoginView({ searchParams: Promise.resolve({ returnTo: 'https://example.com' }) }));
 
-    expect(screen.getByRole('heading', { name: 'Welcome back' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Log in' })).toBeInTheDocument();
     expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-callback-url', '/register?returnTo=%2Fhome');
+    expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-intent', 'login');
     expect(screen.getByRole('link', { name: 'Create account' })).toHaveAttribute('href', '/register?returnTo=%2Fhome');
   });
 
@@ -58,8 +60,12 @@ describe('authentication views', () => {
   it('offers projected providers before registration authentication', async () => {
     render(await RegisterView());
 
-    expect(screen.getByRole('heading', { name: 'Create your WAOOAW account' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Create an account' })).toBeInTheDocument();
     expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-callback-url', '/register?returnTo=%2Fhome');
+    expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-intent', 'register');
+    expect(screen.getByRole('link', { name: 'Log in' })).toHaveAttribute('href', '/login?returnTo=%2Fhome');
+    expect(screen.getByRole('link', { name: 'Terms of Service' })).toHaveAttribute('href', '/terms');
+    expect(screen.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy');
     expect(listIdentityProviders).toHaveBeenCalledTimes(1);
   });
 

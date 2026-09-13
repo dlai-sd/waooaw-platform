@@ -5,19 +5,31 @@ import KeycloakProvider from 'next-auth/providers/keycloak';
 // Implements: architecture/reference/ux/hybrid-application-shell.md §Authentication Boundaries
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
-const keycloakIssuer = process.env.KEYCLOAK_ISSUER ?? 'http://localhost:8080/realms/waooaw';
-const keycloakClient = {
-  clientId: process.env.KEYCLOAK_CLIENT_ID ?? 'waooaw-web',
-  clientSecret: process.env.KEYCLOAK_CLIENT_SECRET ?? 'local-development-only',
-  issuer: keycloakIssuer,
-};
+interface KeycloakEnvironment {
+  KEYCLOAK_PUBLIC_CLIENT?: string;
+  KEYCLOAK_CLIENT_ID?: string;
+  KEYCLOAK_CLIENT_SECRET?: string;
+  KEYCLOAK_ISSUER?: string;
+}
+
+export function keycloakClientConfig(environment: KeycloakEnvironment = process.env as KeycloakEnvironment) {
+  const publicClient = environment.KEYCLOAK_PUBLIC_CLIENT === 'true';
+  return {
+    clientId: environment.KEYCLOAK_CLIENT_ID ?? 'waooaw-web',
+    clientSecret: publicClient ? '' : environment.KEYCLOAK_CLIENT_SECRET ?? 'local-development-only',
+    issuer: environment.KEYCLOAK_ISSUER ?? 'http://localhost:8080/realms/waooaw',
+    ...(publicClient ? { client: { token_endpoint_auth_method: 'none' as const } } : {}),
+  };
+}
+
+const keycloakClient = keycloakClientConfig();
 
 function brokeredKeycloakProvider(id: string, name: string, brokerAlias: string) {
   return {
     ...KeycloakProvider(keycloakClient),
     id,
     name,
-    authorization: { params: { kc_idp_hint: brokerAlias } },
+    authorization: { params: { scope: 'openid profile email', kc_idp_hint: brokerAlias } },
   };
 }
 
@@ -42,6 +54,7 @@ export const authOptions: NextAuthOptions = {
     KeycloakProvider(keycloakClient),
     brokeredKeycloakProvider('keycloak-google', 'Google', process.env.KEYCLOAK_GOOGLE_BROKER_ALIAS ?? 'google'),
     brokeredKeycloakProvider('keycloak-facebook', 'Facebook', process.env.KEYCLOAK_FACEBOOK_BROKER_ALIAS ?? 'facebook'),
+    brokeredKeycloakProvider('keycloak-apple', 'Apple', process.env.KEYCLOAK_APPLE_BROKER_ALIAS ?? 'apple'),
   ],
   session: { strategy: 'jwt' },
   callbacks: {

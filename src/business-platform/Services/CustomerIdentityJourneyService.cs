@@ -32,7 +32,8 @@ public sealed class CustomerIdentityJourneyService(IdentityService identity,
         var authenticationPath = proofAdapter.AuthenticationPath(principal);
         return identity.StartRegistrationAsync(
             proofAdapter.ValidateActor(principal, requireFresh: true), authenticationPath, key,
-            CanonicalHash("StartRegistration", null, new { languagePreference = language }), language, ct);
+            CanonicalHash("StartRegistration", null, new { languagePreference = language }), language,
+            proofAdapter.HasVerifiedEmail(principal), ct);
     }
 
     public Task<IdentityRegistrationRecord> GetAsync(ClaimsPrincipal principal, Guid registrationId, CancellationToken ct) =>
@@ -54,8 +55,12 @@ public sealed class CustomerIdentityJourneyService(IdentityService identity,
             CanonicalHash("CompleteRegistration", registrationId, new { }), ct);
     }
 
-    public Task<CustomerWorkspaceMembership> ResolveAsync(ClaimsPrincipal principal, CancellationToken ct) =>
-        Provisioning(proofAdapter.TrustFor(principal)).ResolveAsync(ValidateActor(principal), ct);
+    public Task<CustomerWorkspaceMembership> ResolveAsync(ClaimsPrincipal principal, CancellationToken ct)
+    {
+        if (!proofAdapter.HasVerifiedEmail(principal))
+            throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
+        return Provisioning(proofAdapter.TrustFor(principal)).ResolveAsync(ValidateActor(principal), ct);
+    }
 
     private CustomerWorkspaceProvisioningService Provisioning(CustomerWorkspaceTrust trust) => new(factory, trust);
 
@@ -63,6 +68,7 @@ public sealed class CustomerIdentityJourneyService(IdentityService identity,
     {
         IdentityAuthenticationPath.Google => "GOOGLE",
         IdentityAuthenticationPath.Meta => "FACEBOOK",
+        IdentityAuthenticationPath.Apple => "APPLE",
         _ => throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED"),
     };
 
