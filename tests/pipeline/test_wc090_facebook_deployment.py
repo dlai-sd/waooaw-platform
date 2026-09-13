@@ -1,6 +1,13 @@
 from pathlib import Path
+from urllib.error import HTTPError
+from urllib.parse import parse_qs, urlencode, urlsplit
+from unittest.mock import Mock
 
 import hcl2
+import pytest
+
+from scripts import verify_facebook_deployment
+from scripts.verify_facebook_deployment import validate_redirect
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -81,8 +88,63 @@ def test_demo_deployment_uses_preprovisioned_meta_key_vault_secrets() -> None:
 
 def test_demo_verification_requires_google_and_facebook_available() -> None:
     workload = (MODULE / "main.tf").read_text()
+    verification = (ROOT / "scripts/goal006_verify_deployment.sh").read_text()
+    workflow = (ROOT / ".github/workflows/environment-deployment-verification.yaml").read_text()
 
     assert "/api/v1/identity/providers" in workload
     assert 'probe_identity_provider "GOOGLE"' in workload
     assert 'probe_identity_provider "FACEBOOK"' in workload
     assert '.providers[] | select(.id == $provider and .availability == "AVAILABLE")' in workload
+    assert "verify_facebook_deployment.py" in verification
+    assert "facebook-deployment-verification.json" in workflow
+
+
+def test_facebook_verifier_exercises_exact_nextauth_callback(monkeypatch: pytest.MonkeyPatch) -> None:
+    issuer = "https://identity.demo.waooaw.com/realms/waooaw"
+    web_url = "https://app.demo.waooaw.com"
+    location = "https://graph.facebook.com/oauth/authorize?" + urlencode({
+        "client_id": verify_facebook_deployment.META_APP_ID,
+        "redirect_uri": issuer + "/broker/facebook/endpoint",
+        "scope": "email public_profile",
+        "response_type": "code",
+        "state": "synthetic-state",
+    })
+    opener = Mock()
+    opener.open.side_effect = HTTPError(issuer, 302, "Found", {"Location": location}, None)
+    monkeypatch.setattr(verify_facebook_deployment, "build_opener", lambda *handlers: opener)
+
+    evidence = verify_facebook_deployment.verify(issuer, web_url)
+
+    request = parse_qs(urlsplit(opener.open.call_args.args[0]).query)
+    assert request["redirect_uri"] == [web_url + "/api/auth/callback/keycloak-facebook"]
+    assert request["kc_idp_hint"] == ["facebook"]
+    assert request["code_challenge_method"] == ["S256"]
+    assert request["code_challenge"] and request["state"] and request["nonce"]
+    assert evidence["web_callback"] == request["redirect_uri"][0]
+    assert evidence["real_user_sign_in_verified"] is False
+
+
+@pytest.mark.parametrize("replacement", [None, "host", "callback", "client", "scope", "state"])
+def test_facebook_redirect_verification_rejects_untrusted_or_incomplete_results(replacement: str | None) -> None:
+    issuer = "https://identity.demo.waooaw.com/realms/waooaw"
+    query = {
+        "client_id": verify_facebook_deployment.META_APP_ID,
+        "redirect_uri": issuer + "/broker/facebook/endpoint",
+        "scope": "email public_profile",
+        "response_type": "code",
+        "state": "synthetic-state",
+    }
+    host = "graph.facebook.com"
+    if replacement == "host":
+        host = "example.com"
+    elif replacement == "callback":
+        query["redirect_uri"] = "https://example.com/callback"
+    elif replacement == "client":
+        query["client_id"] = "different-client"
+    elif replacement == "scope":
+        query["scope"] = "public_profile"
+    elif replacement == "state":
+        query["state"] = ""
+    assert validate_redirect(
+        "https://" + host + "/oauth/authorize?" + urlencode(query), issuer
+    ) is (replacement is None)

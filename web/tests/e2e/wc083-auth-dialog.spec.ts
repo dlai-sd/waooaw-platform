@@ -88,7 +88,7 @@ test('WC092-AUTH-02: policy denial offers fresh sign-in without a retry loop', a
   const value = await encode({
     secret: nextAuthSecret,
     maxAge: 3600,
-    token: { accessToken: `fixture-policy-denied-${testInfo.project.name}`, founder: false, sub: 'fixture-user' },
+    token: { accessToken: `fixture-policy-denied-${testInfo.project.name}`, accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600, founder: false, sub: 'fixture-user' },
   });
   await context.addCookies([{ name: 'next-auth.session-token', value, httpOnly: true, sameSite: 'Lax', url: baseURL }]);
 

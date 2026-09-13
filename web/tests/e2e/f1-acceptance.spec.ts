@@ -11,7 +11,7 @@ const secret = 'playwright-only-not-a-runtime-secret';
 const f1Routes = ['/', '/professionals', '/blogs', '/login', '/register', '/verify', '/auth/error', '/403', '/offline', '/missing-f1-route'];
 
 async function addSession(context: BrowserContext, founder: boolean) {
-  const value = await encode({ secret, maxAge: 60 * 60, token: { accessToken: 'fixture-access-token', founder, sub: 'fixture-user' } });
+  const value = await encode({ secret, maxAge: 60 * 60, token: { accessToken: 'fixture-access-token', accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600, founder, sub: 'fixture-user' } });
   await context.addCookies([{ name: 'next-auth.session-token', value, domain: '127.0.0.1', httpOnly: true, path: '/', sameSite: 'Lax' }]);
 }
 

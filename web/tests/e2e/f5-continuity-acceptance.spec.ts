@@ -10,7 +10,7 @@ const bpUrl = 'http://127.0.0.1:5001';
 
 async function addSession(context: BrowserContext, projectName: string) {
   const accessToken = `fixture-access-token-${projectName}`;
-  const value = await encode({ secret, maxAge: 3600, token: { accessToken, founder: false, sub: `fixture-user-${projectName}` } });
+  const value = await encode({ secret, maxAge: 3600, token: { accessToken, accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600, founder: false, sub: `fixture-user-${projectName}` } });
   await context.addCookies([{ name: 'next-auth.session-token', value, domain: '127.0.0.1', httpOnly: true, path: '/', sameSite: 'Lax' }]);
   return accessToken;
 }

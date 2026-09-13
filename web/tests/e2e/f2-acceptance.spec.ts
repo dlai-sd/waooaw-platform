@@ -8,7 +8,7 @@ import { encode } from 'next-auth/jwt';
 const secret = 'playwright-only-not-a-runtime-secret';
 
 async function addSession(context: BrowserContext) {
-  const value = await encode({ secret, maxAge: 60 * 60, token: { accessToken: 'fixture-access-token', founder: false, sub: 'fixture-user' } });
+  const value = await encode({ secret, maxAge: 60 * 60, token: { accessToken: 'fixture-access-token', accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600, founder: false, sub: 'fixture-user' } });
   await context.addCookies([{ name: 'next-auth.session-token', value, domain: '127.0.0.1', httpOnly: true, path: '/', sameSite: 'Lax' }]);
 }
 
@@ -19,7 +19,10 @@ test.beforeEach(async ({ context }) => {
 
 test('UX-AUTH-01 UX-PRIV-01: registration is broker-gated and the browser session contains no bearer token', async ({ context, page }) => {
   await page.goto('/register');
-  await expect(page.getByRole('button', { name: /Continue securely/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign up with Google' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Sign up with Facebook' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Sign up with Apple (Unavailable)' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Sign up with Email (Unavailable)' })).toBeDisabled();
   await expect(page.getByLabel('Your name')).toHaveCount(0);
 
   await addSession(context);
@@ -27,6 +30,21 @@ test('UX-AUTH-01 UX-PRIV-01: registration is broker-gated and the browser sessio
   const sessionBody = await browserSession.text();
   expect(JSON.parse(sessionBody)).toMatchObject({ authenticated: true, founder: false });
   expect(sessionBody).not.toContain('fixture-access-token');
+});
+
+test('UX-AUTH-01: an expired broker token cannot retain an authenticated browser session', async ({ context, page }) => {
+  const value = await encode({
+    secret,
+    maxAge: 60 * 60,
+    token: { accessToken: 'expired-fixture-access-token', accessTokenExpiresAt: Math.floor(Date.now() / 1000) - 1, founder: true, sub: 'fixture-user' },
+  });
+  await context.addCookies([{ name: 'next-auth.session-token', value, domain: '127.0.0.1', httpOnly: true, path: '/', sameSite: 'Lax' }]);
+
+  await page.goto('/home');
+
+  await expect(page).toHaveURL(/\/login$/);
+  const session = await page.request.get('/api/auth/session');
+  await expect(session.json()).resolves.toMatchObject({ authenticated: false, founder: false });
 });
 
 test('UX-AUTH-02 UX-AUTH-06 UX-PWA-04: verified broker state renders a private, responsive registration step', async ({ context, page }) => {
