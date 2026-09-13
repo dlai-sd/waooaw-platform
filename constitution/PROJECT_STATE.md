@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 147
-**Last Updated:** 2026-09-11 (WC-091 I1 ENGINEERING QUALIFIED)
+**State Revision:** 148
+**Last Updated:** 2026-09-13 (WC-085 AUTHENTICATION IN-PROGRESS CHECKPOINT)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-080 - Agent Runtime Adapter Contract v1 |
 | Latest merge | PR #411 merged to `main` as `28f3e5e4` |
-| Active delivery | WC-088 Customer Multi-Agent And Skill Journey and WC-091 I1 Disposable Demo Readiness; P3-EX11 remains plan-only |
+| Active delivery | WC-085 brokered authentication remediation, WC-088 Customer Multi-Agent And Skill Journey and WC-091 I1 Disposable Demo Readiness; P3-EX11 remains plan-only |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 
@@ -40,6 +40,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | WC-078 public visual experience | ENGINEERING QUALIFIED - WC-01 through WC-08 complete; WC-09 Docker build/tests/browser matrix/54 captures/scanners and author review PASS; Founder visual acceptance, PR approval and merge pending |
 | WC-084 Customer Portal | ENGINEERING QUALIFIED - generated-client-backed My Agents, Marketplace, Alerts, Profile, Settings, account drawer, Onboard/Induct and lifecycle views complete; Docker build/typecheck, 209 Jest tests, 96.33% changed-interaction line coverage, 40 focused BP tests and 238 Playwright tests pass; Founder visual acceptance, PR approval and merge remain |
 | WC-085 remediation | PARTIAL / D-GOAL LOCAL PASS - Draft PR #409 on `ib/085/remediation`. Founder-accepted D-GOAL is implemented through the existing relationship command: append-only RLS decisions, exact versions, fresh assurance, idempotency, generated client and Operations relock. Full BP Docker suite passes 641/641 at 91.59% line / 80.17% branch; exact candidate image and scans are recorded in WC-085 evidence. The PR's original 19-alert CodeQL set is repaired; the first pushed scan closed 18 and its sole remaining StorageEvent warning has a constructor-free follow-up awaiting pushed-head closure. D-BILLING, D-IDENTITY, real Google, deployment and full story acceptance remain open. |
+| WC-085 brokered authentication remediation | IN-PROGRESS CHECKPOINT - commit `c6375293` adds shared Google/Facebook broker handling, email-assurance separation, bounded identity-edge headers, minimal login/register UI, exact-origin Demo public-PKCE preview client and immutable-image Codespaces launcher. Terraform validation, 35 broker tests, 19 deployment tests, 14 web tests, production image build and 25 Chromium/Firefox/WebKit checks pass locally. No live Azure mutation or real-account acceptance occurred; trusted image publication, PR approval/merge, Demo deploy and real Google/Facebook journeys remain. |
 | WC-087 agent-instance foundation | MERGED - PR #411 as `28f3e5e4`; immutable per-relationship agent identity, exact admission/version binding, same-type multi-instance proof and PR trial binding are on `main`. |
 | WC-088 customer multi-agent/skill journey | ENGINEERING QUALIFIED - canonical My Experts, relationship switching, four governed skill decisions, append-only/RLS persistence, generated OpenAPI client and two-agent isolation proof pass local Docker and web qualification; PR submission and Founder review/merge remain. |
 | WC-091 I1 disposable Demo readiness | ENGINEERING QUALIFIED - strict canonical environment rendering, catalog-derived secret bindings, anonymous provider projection, versioned/domain-separated identity HMAC, replica-scoped reset/reseed and real PostgreSQL replacement evidence pass local Docker and emulator qualification; no live Azure mutation occurred; real-account acceptance, I2 UAT persistence/recovery, I3 Production, PR approval and merge remain. |
@@ -71,17 +72,18 @@ C-001 emergency-halt integration blocks Production apply and activation, which r
 WC-084 Goal verification and Operations reassessment now pass local D-GOAL engineering gates; immutable
 deployed-candidate and Founder acceptance remain. D-BILLING and D-IDENTITY were accepted by the
 Founder on 2026-09-10 and remain queued as separate bounded implementation deliveries.
-WC-085 remaining owner acceptance, Google full manifest/runtime/UI reconciliation and real-account
-journeys, Facebook inputs, email delivery inputs, reported Chrome reproduction and Founder visual
-acceptance remain open. Local reconstruction is not provider acceptance or full WC-085 completion.
+WC-085 brokered authentication is locally qualified, but trusted image publication, exact preview-client
+deployment, real Google/Facebook account journeys and Founder visual acceptance remain open. Local
+fixture and browser evidence is not provider acceptance or full WC-085 completion.
 WC-085 full-schema rehearsal, stock reader/private TLS, recreated identity continuity, independent
 downstream membership and browser account-switch qualification remain open; CB-009 tracks delivery.
 
 ## Next Authorized Action
 
 Submit the engineering-qualified WC-088 Customer Multi-Agent And Skill Journey and WC-091 I1
-Disposable Demo Readiness as bounded PRs for Founder review and merge. D-BILLING and D-IDENTITY
-remain separate queued deliveries. H9 Facebook/email remains deferred.
+Disposable Demo Readiness as bounded PRs for Founder review and merge. Submit the WC-085 authentication
+checkpoint for Founder review, trusted build and Demo deployment before real-account acceptance.
+D-BILLING and D-IDENTITY remain separate queued deliveries; email login remains deferred.
 
 Obtain INST-009 acceptance of the Production edge, data, runtime, recovery, cost and shared-state
 ownership inputs required for P3-EX11 offline readiness. Do not activate the Production runner, run
