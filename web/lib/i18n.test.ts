@@ -38,6 +38,12 @@ describe('F1 translations', () => {
     expect(messages.ur.customerNavigation).not.toBe(messages.en.customerNavigation);
   });
 
+  it('keeps internal identity-broker terminology out of every rendered login description', () => {
+    for (const locale of supportedLocales) {
+      expect(getMessages(locale).identityBrokerDescription).not.toMatch(/broker/i);
+    }
+  });
+
   it('keeps the client-safe global error catalog aligned', () => {
     for (const locale of supportedLocales) {
       expect(globalErrorMessages[locale]).toEqual({

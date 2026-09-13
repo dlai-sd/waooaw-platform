@@ -6,7 +6,11 @@ COPY src/professional-runtime/requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install/packages -r requirements.txt
 
 FROM python:3.12-slim-bookworm
-RUN groupadd --system waooaw && useradd --system --gid waooaw waooaw
+RUN apt-get update \
+	&& apt-get upgrade --yes \
+	&& rm -rf /var/lib/apt/lists/* \
+	&& groupadd --system waooaw \
+	&& useradd --system --gid waooaw waooaw
 WORKDIR /app
 COPY --from=dependencies /install/packages /usr/local
 COPY --chown=waooaw:waooaw src/professional-runtime/ .

@@ -24,6 +24,14 @@ const icons = {
 
 type ProviderIntent = 'login' | 'register';
 
+function supportsNextAuth(providerId: IdentityProvider['id']): providerId is keyof typeof nextAuthProvider {
+  return providerId in nextAuthProvider;
+}
+
+function isActionable(provider: IdentityProvider) {
+  return provider.availability === 'AVAILABLE' && (provider.id === 'GOOGLE' || provider.id === 'FACEBOOK');
+}
+
 export function ProviderCommands({ callbackUrl, intent, providers }: {
   callbackUrl: string;
   intent: ProviderIntent;
@@ -39,7 +47,7 @@ export function ProviderCommands({ callbackUrl, intent, providers }: {
   }
 
   function begin(provider: IdentityProvider) {
-    if (provider.availability !== 'AVAILABLE') return;
+    if (!isActionable(provider) || !supportsNextAuth(provider.id)) return;
     setPendingProvider(provider.id);
     void signIn(nextAuthProvider[provider.id], { callbackUrl });
   }
@@ -48,7 +56,7 @@ export function ProviderCommands({ callbackUrl, intent, providers }: {
     <div className="provider-commands">
       {primary ? (() => {
         const Icon = icons[primary.id];
-        const unavailable = primary.availability !== 'AVAILABLE';
+        const unavailable = !isActionable(primary);
         const label = actionLabel(primary);
         return (
           <button
@@ -67,7 +75,7 @@ export function ProviderCommands({ callbackUrl, intent, providers }: {
       <div className="provider-secondary">
       {secondary.map((provider) => {
         const Icon = icons[provider.id];
-        const unavailable = provider.availability !== 'AVAILABLE';
+        const unavailable = !isActionable(provider);
         const label = actionLabel(provider);
         return (
           <button

@@ -21,13 +21,14 @@ describe('identity provider projection', () => {
   afterEach(() => jest.restoreAllMocks());
 
   it('returns the Business Platform readiness projection', async () => {
-    jest.spyOn(IdentityApi.prototype, 'listIdentityProviders').mockResolvedValue({ providers: [
+    const projection = jest.spyOn(IdentityApi.prototype, 'listIdentityProviders').mockResolvedValue({ providers: [
       { id: 'GOOGLE', displayName: 'Google', authenticationPath: 'GOOGLE', availability: 'AVAILABLE' },
     ] });
 
     await expect(listIdentityProviders()).resolves.toEqual([
       expect.objectContaining({ id: 'GOOGLE', availability: 'AVAILABLE' }),
     ]);
+    expect(projection).toHaveBeenCalledWith(expect.objectContaining({ cache: 'no-store' }));
   });
 
   it('fails closed when readiness cannot be obtained', async () => {

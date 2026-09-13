@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 148
+**State Revision:** 153
 **Last Updated:** 2026-09-13 (WC-085 AUTHENTICATION IN-PROGRESS CHECKPOINT)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -20,8 +20,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-080 - Agent Runtime Adapter Contract v1 |
-| Latest merge | PR #411 merged to `main` as `28f3e5e4` |
-| Active delivery | WC-085 brokered authentication remediation, WC-088 Customer Multi-Agent And Skill Journey and WC-091 I1 Disposable Demo Readiness; P3-EX11 remains plan-only |
+| Latest merge | PR #425 merged to `main` as `b73338ed` |
+| Active delivery | WC-085 brokered authentication follow-up and WC-088 Customer Multi-Agent And Skill Journey; P3-EX11 remains plan-only |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 
@@ -43,7 +43,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | WC-085 brokered authentication remediation | IN-PROGRESS CHECKPOINT - commit `c6375293` adds shared Google/Facebook broker handling, email-assurance separation, bounded identity-edge headers, minimal login/register UI, exact-origin Demo public-PKCE preview client and immutable-image Codespaces launcher. Terraform validation, 35 broker tests, 19 deployment tests, 14 web tests, production image build and 25 Chromium/Firefox/WebKit checks pass locally. No live Azure mutation or real-account acceptance occurred; trusted image publication, PR approval/merge, Demo deploy and real Google/Facebook journeys remain. |
 | WC-087 agent-instance foundation | MERGED - PR #411 as `28f3e5e4`; immutable per-relationship agent identity, exact admission/version binding, same-type multi-instance proof and PR trial binding are on `main`. |
 | WC-088 customer multi-agent/skill journey | ENGINEERING QUALIFIED - canonical My Experts, relationship switching, four governed skill decisions, append-only/RLS persistence, generated OpenAPI client and two-agent isolation proof pass local Docker and web qualification; PR submission and Founder review/merge remain. |
-| WC-091 I1 disposable Demo readiness | ENGINEERING QUALIFIED - strict canonical environment rendering, catalog-derived secret bindings, anonymous provider projection, versioned/domain-separated identity HMAC, replica-scoped reset/reseed and real PostgreSQL replacement evidence pass local Docker and emulator qualification; no live Azure mutation occurred; real-account acceptance, I2 UAT persistence/recovery, I3 Production, PR approval and merge remain. |
+| WC-091 I1 disposable Demo readiness | MERGED - PR #424 as `7c11f9f2`; strict canonical environment rendering, catalog-derived secret bindings, anonymous provider projection, versioned/domain-separated identity HMAC, replica-scoped reset/reseed and real PostgreSQL replacement evidence are on `main`. No live Azure mutation occurred; real-account acceptance, I2 UAT persistence/recovery and I3 Production remain. |
+| WC-092 Demo authentication repair | MERGED - PR #425 as `b73338ed`; modal-owned delayed loading, bounded provider projection, customer-safe copy, truthful provider states, persistent `403` recovery and privacy-safe BP denial diagnostics are on `main`. Real Google/deployed-rule acceptance, external hostname branding, cloud, DNS and provider mutation remain open or prohibited. |
 | Production | PLAN ONLY - code-prepared; protected environments, authorized plan, traffic and final acceptance remain Founder-reserved |
 
 ### Checkpoint Context
@@ -80,10 +81,10 @@ downstream membership and browser account-switch qualification remain open; CB-0
 
 ## Next Authorized Action
 
-Submit the engineering-qualified WC-088 Customer Multi-Agent And Skill Journey and WC-091 I1
-Disposable Demo Readiness as bounded PRs for Founder review and merge. Submit the WC-085 authentication
-checkpoint for Founder review, trusted build and Demo deployment before real-account acceptance.
-D-BILLING and D-IDENTITY remain separate queued deliveries; email login remains deferred.
+Submit the WC-085 brokered authentication follow-up for Founder review, trusted build and Demo
+deployment before real-account acceptance. Submit the engineering-qualified WC-088 Customer
+Multi-Agent And Skill Journey as a separate bounded PR. D-BILLING remains a separate queued
+delivery; email login remains deferred.
 
 Obtain INST-009 acceptance of the Production edge, data, runtime, recovery, cost and shared-state
 ownership inputs required for P3-EX11 offline readiness. Do not activate the Production runner, run

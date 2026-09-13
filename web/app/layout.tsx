@@ -17,6 +17,7 @@ import '@/config/public-config';
 import { siteConfig } from '@/config/site';
 import { OfflineNotice } from '@/components/shell/OfflineNotice';
 import { AuthJourney } from '@/components/auth/AuthJourney';
+import { AuthLaunchIndicator } from '@/components/auth/AuthLaunchIndicator';
 import { directionForLocale, resolveLocale, resolveTheme } from '@/lib/preferences';
 import './globals.css';
 
@@ -67,6 +68,7 @@ export default async function RootLayout({ authModal, children }: Readonly<{ aut
         <AuthJourney>
           {children}
           {authModal}
+          <AuthLaunchIndicator />
         </AuthJourney>
       </body>
     </html>

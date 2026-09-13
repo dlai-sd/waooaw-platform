@@ -9,7 +9,8 @@ const en = {
   saveProfile: 'Save and continue', sendCode: 'Send verification code', verifyCode: 'Verify code', complete: 'Complete registration', optionalMobile: 'Verify mobile now',
   working: 'Securing your registration…', retry: 'Try again', signInFirst: 'Continue securely to create your account', signInDescription: 'WAOOAW uses Keycloak to broker approved sign-in methods. Your access token is never exposed to this page.',
   existingAccount: 'Already have an account?', signIn: 'Log in', legalPrefix: 'By continuing, you agree to WAOOAW’s', terms: 'Terms of Service', legalAnd: 'and', privacy: 'Privacy Policy',
-  verificationSent: 'Enter the code sent to', unavailable: 'Registration could not be completed. No account change was assumed.', duplicate: 'Additional identity confirmation is required before this account can be completed.',
+  resolvingTitle: 'Finishing your sign-in', resolvingDescription: 'We’re preparing your WAOOAW account.', signInRejected: 'We couldn’t complete your sign-in. Your account was not changed.', restartSignIn: 'Sign in again',
+  verificationSent: 'Enter the code sent to', unavailable: 'We couldn’t complete your registration. Your account was not changed.', duplicate: 'Additional identity confirmation is required before this account can be completed.',
 } as const;
 
 export type IdentityMessages = { [Key in keyof typeof en]: string };

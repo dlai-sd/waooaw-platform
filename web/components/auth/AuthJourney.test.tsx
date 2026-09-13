@@ -2,13 +2,30 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import Link from 'next/link';
 import { AuthJourney, useAuthJourney } from './AuthJourney';
 
+const push = jest.fn();
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push }),
+}));
+
 function Capture() {
   const journey = useAuthJourney();
-  return <button onClick={() => { document.title = journey?.current.origin ?? ''; }}>Inspect</button>;
+  return <><button onClick={() => { document.title = journey?.current.origin ?? ''; }}>Inspect</button><output>{journey?.launching ? 'Launching authentication' : 'Idle'}</output></>;
 }
 
 describe('auth public origin', () => {
-  afterEach(() => window.history.replaceState({}, '', '/'));
+  afterEach(() => {
+    push.mockClear();
+    window.history.replaceState({}, '', '/');
+  });
+
+  it('owns an ordinary public auth click before the route resolves', () => {
+    render(<AuthJourney><Link href="/login?returnTo=%2Fprofessionals">Log in</Link><Capture /></AuthJourney>);
+
+    fireEvent.click(screen.getByText('Log in'));
+
+    expect(push).toHaveBeenCalledWith('/login?returnTo=%2Fprofessionals', { scroll: false });
+    expect(screen.getByText('Launching authentication')).toBeVisible();
+  });
 
   it('retains the original public route across login and register switches', () => {
     window.history.replaceState({}, '', '/professionals');

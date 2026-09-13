@@ -19,7 +19,11 @@ RUN apk add --no-cache git \
     && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /grpc_health_probe .
 
 FROM mcr.microsoft.com/dotnet/aspnet:9.0
-RUN groupadd --system waooaw && useradd --system --gid waooaw waooaw
+RUN apt-get update \
+    && apt-get upgrade --yes \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system waooaw \
+    && useradd --system --gid waooaw waooaw
 WORKDIR /app
 COPY --from=build --chown=waooaw:waooaw /app/publish .
 COPY --from=health-probe /grpc_health_probe /usr/local/bin/grpc_health_probe

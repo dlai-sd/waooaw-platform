@@ -31,4 +31,12 @@ describe('ProviderCommands', () => {
     expect(screen.getByRole('button', { name: 'Sign up with Email (Unavailable)' })).toBeDisabled();
     expect(signIn).not.toHaveBeenCalled();
   });
+
+  it('keeps an unsupported provider non-actionable even when projected as available', () => {
+    render(<ProviderCommands callbackUrl="/register" intent="register" providers={[
+      { id: 'APPLE', displayName: 'Apple', authenticationPath: 'APPLE', availability: 'AVAILABLE' },
+    ]} />);
+
+    expect(screen.getByRole('button', { name: 'Sign up with Apple (Unavailable)' })).toBeDisabled();
+  });
 });
