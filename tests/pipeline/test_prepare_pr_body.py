@@ -5,7 +5,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from prepare_pr_body import add_runtime_evidence, prepare_body  # noqa: E402
+from prepare_pr_body import add_runtime_evidence, load_runtime_evidence, preparation_head, prepare_body  # noqa: E402
 from validate_author_review import validate_author_review  # noqa: E402
 
 
@@ -42,6 +42,31 @@ def test_prepare_body_requires_template_section() -> None:
         assert "Author Review" in str(error)
     else:
         raise AssertionError("missing Author Review section was accepted")
+
+
+def test_preparation_head_rejects_unpushed_commit_by_default() -> None:
+    try:
+        preparation_head("a" * 40, "b" * 40, False)
+    except ValueError as error:
+        assert "does not match pushed branch HEAD" in str(error)
+    else:
+        raise AssertionError("unpublished commit was accepted without explicit prebinding")
+
+
+def test_preparation_head_allows_explicit_existing_pr_prebinding() -> None:
+    assert preparation_head("a" * 40, "b" * 40, True) == "a" * 40
+
+
+def test_loaded_runtime_evidence_must_match_selected_head(tmp_path: Path) -> None:
+    evidence_file = tmp_path / "runtime.json"
+    evidence_file.write_text('{"commit_sha":"' + ("b" * 40) + '"}', encoding="utf-8")
+
+    try:
+        load_runtime_evidence(evidence_file, HEAD)
+    except ValueError as error:
+        assert "selected branch HEAD" in str(error)
+    else:
+        raise AssertionError("stale runtime evidence was accepted")
 
 
 def test_runtime_evidence_is_inserted_before_author_review() -> None:

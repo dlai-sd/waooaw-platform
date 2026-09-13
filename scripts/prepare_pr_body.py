@@ -52,6 +52,12 @@ def authoritative_remote_head(remote: str) -> str:
     return remote_record.split(maxsplit=1)[0]
 
 
+def preparation_head(local_head: str, remote_head: str, allow_unpushed_head: bool) -> str:
+    if local_head != remote_head and not allow_unpushed_head:
+        raise ValueError(f"local HEAD {local_head} does not match pushed branch HEAD {remote_head}")
+    return local_head if allow_unpushed_head else remote_head
+
+
 def prepare_body(body: str, head: str) -> str:
     match = SECTION.search(body)
     if match is None:
@@ -87,8 +93,17 @@ def run_runtime_gate(body_file: Path, head: str) -> dict[str, object]:
         check=True,
     )
     evidence = json.loads(evidence_file.read_text(encoding="utf-8"))
+    return validate_runtime_evidence_head(evidence, head)
+
+
+def load_runtime_evidence(evidence_file: Path, head: str) -> dict[str, object]:
+    evidence = json.loads(evidence_file.read_text(encoding="utf-8"))
+    return validate_runtime_evidence_head(evidence, head)
+
+
+def validate_runtime_evidence_head(evidence: dict[str, object], head: str) -> dict[str, object]:
     if evidence.get("commit_sha") != head:
-        raise ValueError("runtime lifecycle evidence is not bound to the pushed branch HEAD")
+        raise ValueError("runtime lifecycle evidence is not bound to the selected branch HEAD")
     return evidence
 
 
@@ -105,19 +120,33 @@ def main() -> int:
     parser.add_argument("--body-file", required=True, type=Path)
     parser.add_argument("--base", default="origin/main")
     parser.add_argument("--remote", default="origin")
+    parser.add_argument(
+        "--allow-unpushed-head",
+        action="store_true",
+        help="bind an existing PR body before push; rerun without this flag immediately after push",
+    )
+    parser.add_argument(
+        "--runtime-evidence-file",
+        type=Path,
+        help="reuse lifecycle evidence already generated for the selected commit",
+    )
     arguments = parser.parse_args()
 
     try:
         local_head = git("rev-parse", "HEAD")
         remote_head = authoritative_remote_head(arguments.remote)
-        if local_head != remote_head:
-            raise ValueError(f"local HEAD {local_head} does not match pushed branch HEAD {remote_head}")
+        head = preparation_head(local_head, remote_head, arguments.allow_unpushed_head)
         body = arguments.body_file.read_text(encoding="utf-8")
-        changed_files = git("diff", "--name-only", f"{arguments.base}..{remote_head}").splitlines()
+        changed_files = git("diff", "--name-only", f"{arguments.base}..{head}").splitlines()
         if runtime_gate_required(changed_files):
-            body = add_runtime_evidence(body, run_runtime_gate(arguments.body_file, remote_head))
-        body = prepare_body(body, remote_head)
-        violations = validate_prepared_body(body, arguments.base, remote_head)
+            evidence = (
+                load_runtime_evidence(arguments.runtime_evidence_file, head)
+                if arguments.runtime_evidence_file
+                else run_runtime_gate(arguments.body_file, head)
+            )
+            body = add_runtime_evidence(body, evidence)
+        body = prepare_body(body, head)
+        violations = validate_prepared_body(body, arguments.base, head)
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         print(f"PR body preparation failed: {error}", file=sys.stderr)
         return 1
@@ -129,7 +158,8 @@ def main() -> int:
         return 1
 
     arguments.body_file.write_text(body, encoding="utf-8")
-    print(f"PR body prepared for pushed commit {remote_head}")
+    source = "local pre-push" if arguments.allow_unpushed_head else "pushed"
+    print(f"PR body prepared for {source} commit {head}")
     return 0
 
 
