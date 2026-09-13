@@ -10,7 +10,10 @@ import { useEffect, useRef } from 'react';
 import { useAuthJourney } from './AuthJourney';
 import { safePublicReturnTarget } from '@/lib/safe-return';
 
-export function AuthDialog({ children }: { children: ReactNode }) {
+export function AuthDialog({ children, variant = 'default' }: {
+  children: ReactNode;
+  variant?: 'default' | 'entry';
+}) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const router = useRouter();
@@ -47,7 +50,7 @@ export function AuthDialog({ children }: { children: ReactNode }) {
   return (
     <dialog
       aria-labelledby="auth-dialog-title"
-      className="auth-dialog"
+      className={`auth-dialog auth-dialog-${variant}`}
       onCancel={(event) => { event.preventDefault(); dismiss(); }}
       onClick={dismissBackdrop}
       ref={dialogRef}

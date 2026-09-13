@@ -30,30 +30,35 @@ test('WC083-VIS-01: capture reviewed authentication states', async ({ page }) =>
   await page.goto('/');
   await dismissConsent(page);
   await page.getByRole('link', { name: 'Log in' }).click();
-  await expect(page.getByRole('dialog', { name: 'Welcome back' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Log in' })).toBeVisible();
   await page.screenshot({ animations: 'disabled', path: path.join(screenshotDir, 'login-desktop-light.png') });
 
   await page.keyboard.press('Escape');
+  await expect(page).toHaveURL(/\/$/);
   await setPreferences(page, 'en', 'dark');
   await page.reload();
-  await page.locator('a.secondary-link[href="/register"]').first().click();
-  await expect(page.getByRole('dialog', { name: 'Create your WAOOAW account' })).toBeVisible();
+  await page.goto('/');
+  await page.locator('a.secondary-link[href^="/register"]').first().click();
+  await expect(page.getByRole('dialog', { name: 'Create an account' })).toBeVisible();
   await page.screenshot({ animations: 'disabled', path: path.join(screenshotDir, 'register-desktop-dark.png') });
 
   await page.keyboard.press('Escape');
+  await expect(page).toHaveURL(/\/$/);
   await page.setViewportSize({ width: 360, height: 800 });
   await setPreferences(page, 'ur', 'dark');
   await page.reload();
-  await page.locator('a.secondary-link[href="/register"]').first().click();
+  await page.goto('/');
+  await page.locator('a.secondary-link[href^="/register"]').first().click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.screenshot({ animations: 'disabled', path: path.join(screenshotDir, 'register-mobile-rtl-dark.png') });
 
   await page.keyboard.press('Escape');
+  await expect(page).toHaveURL(/\/$/);
   await page.setViewportSize({ width: 768, height: 1024 });
   await setPreferences(page, 'en', 'light');
   await page.reload();
-  await page.locator('a.secondary-link[href="/register"]').first().click();
-  await page.getByRole('button', { name: 'Continue with Apple' }).click();
-  await expect(page.locator('#apple-integration-status')).toBeVisible();
-  await page.screenshot({ animations: 'disabled', path: path.join(screenshotDir, 'apple-placeholder-intermediate.png') });
+  await page.goto('/');
+  await page.locator('a.secondary-link[href^="/register"]').first().click();
+  await expect(page.getByRole('button', { name: 'Sign up with Apple (Unavailable)' })).toBeDisabled();
+  await page.screenshot({ animations: 'disabled', path: path.join(screenshotDir, 'providers-readiness-tablet.png') });
 });

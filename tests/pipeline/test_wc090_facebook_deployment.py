@@ -27,6 +27,14 @@ def test_facebook_broker_is_demo_only_and_key_vault_backed() -> None:
     assert 'IdentityBrokerRead__Providers__facebook__ProviderNamespace' in workload
     assert 'IdentityBrokerRead__Providers__facebook__TrustConfigDigest' in workload
 
+
+def test_identity_edge_has_bounded_keycloak_response_header_capacity() -> None:
+    edge = (MODULE / "identity-edge.conf.tftpl").read_text()
+
+    assert "proxy_buffer_size 16k;" in edge
+    assert "proxy_buffers 8 16k;" in edge
+    assert "proxy_busy_buffers_size 32k;" in edge
+
     for environment in ("uat", "prod"):
         environment_root = ROOT / f"infrastructure/terraform/phase2/environments/{environment}/workload/main.tf"
         assert "facebook_login_enabled" not in environment_root.read_text()

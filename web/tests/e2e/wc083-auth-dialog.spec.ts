@@ -19,7 +19,7 @@ test('WC083-AUTH-01: a public auth command opens a route-backed dialog and Escap
   const desktopLogin = page.getByRole('link', { name: 'Log in' });
   const compactRegister = page.locator('a.secondary-link[href="/register"]').first();
   const trigger = await desktopLogin.isVisible() ? desktopLogin : compactRegister;
-  const dialogName = await desktopLogin.isVisible() ? 'Welcome back' : 'Create your WAOOAW account';
+  const dialogName = await desktopLogin.isVisible() ? 'Log in' : 'Create an account';
   await trigger.focus();
   await trigger.click();
 
@@ -37,8 +37,11 @@ test('WC083-AUTH-01: a public auth command opens a route-backed dialog and Escap
 test('WC083-AUTH-02: backdrop dismissal returns to the originating public route', async ({ page }) => {
   await page.goto('/');
   await page.locator('a.secondary-link[href="/register"]').first().click();
-  const dialog = page.getByRole('dialog', { name: 'Create your WAOOAW account' });
+  const dialog = page.getByRole('dialog', { name: 'Create an account' });
   await expect(dialog).toBeVisible();
+  expect(await dialog.evaluate((element) => element.scrollHeight <= element.clientHeight + 1)).toBe(true);
+  await expect(dialog.getByRole('link', { name: 'Terms of Service' })).toHaveAttribute('href', '/terms');
+  await expect(dialog.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy');
 
   const bounds = await dialog.boundingBox();
   expect(bounds?.x).toBeGreaterThan(8);
@@ -52,12 +55,10 @@ test('WC083-AUTH-03: direct auth routes remain standalone and provider readiness
   await page.goto('/login');
 
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeEnabled();
-  await expect(page.getByRole('button', { name: /Continue with Facebook/ })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Continue with email' })).toBeEnabled();
-
-  await page.getByRole('button', { name: 'Continue with Apple' }).click();
-  await expect(page.locator('#apple-integration-status')).toContainText('Apple is coming soon');
+  await expect(page.getByRole('button', { name: 'Log in with Google' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Log in with Facebook' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Log in with Apple (Unavailable)' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Log in with Email (Unavailable)' })).toBeDisabled();
   await expect(page).toHaveURL(/\/login$/);
 });
 

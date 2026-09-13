@@ -320,13 +320,22 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 .trust-journey { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(2rem, 8vw, 8rem); color: #fff; background: var(--color-brand-navy); }
 .trust-journey p { color: #dce6ef; }
 .trust-journey svg { color: var(--color-brand-orange); }
-.auth-view, .content-page, .state-view { width: min(100% - 2rem, 680px); margin-inline: auto; padding-block: clamp(3rem, 10vh, 7rem); }
-.auth-view h1, .content-page h1, .state-view h1 { font-size: 3.2rem; }
+.auth-view { width: min(100% - 2rem, 476px); margin-inline: auto; padding-block: clamp(2.1rem, 7vh, 4.9rem); }
+.content-page, .state-view { width: min(100% - 2rem, 680px); margin-inline: auto; padding-block: clamp(3rem, 10vh, 7rem); }
+.auth-view h1 { font-size: 2.24rem; }
+.content-page h1, .state-view h1 { font-size: 3.2rem; }
 .auth-view p, .content-page p, .state-view p { color: var(--muted); line-height: 1.65; }
 .auth-view .primary-command { margin-block: 1rem; }
 .provider-commands { display: grid; align-items: start; gap: .75rem; margin-block: 1rem; }
 .provider-commands .primary-command { margin-block: 0; }
-.provider-command { min-height: 48px; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: .75rem; padding: .75rem 1.15rem; border: 1px solid var(--border); border-radius: 6px; color: var(--ink); background: var(--surface); cursor: pointer; text-align: start; }
+.provider-command { min-height: 44px; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: .525rem; padding: .525rem .8rem; border: 1px solid var(--border); border-radius: 6px; color: var(--ink); background: var(--surface); cursor: pointer; text-align: start; }
+.provider-command-primary { display: flex; justify-content: center; width: 100%; min-height: 46px; color: var(--ink); background: var(--surface); border-color: var(--line); font-weight: 700; }
+.provider-command-primary svg { color: #4285f4; }
+.provider-command-primary:hover { border-color: var(--blue); background: var(--paper); }
+.provider-secondary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
+.provider-icon-command { min-height: 44px; display: grid; place-items: center; padding: .5rem; border: 1px solid var(--border); border-radius: 6px; color: var(--ink); background: var(--surface); cursor: pointer; }
+.provider-icon-command:hover { border-color: var(--blue); }
+.provider-icon-command:disabled { cursor: not-allowed; opacity: .45; }
 .provider-command:hover { border-color: var(--blue); }
 .provider-command:disabled { cursor: not-allowed; opacity: .62; }
 .provider-command-google:not(:disabled) { border-color: var(--color-brand-blue); }
@@ -336,21 +345,28 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 .provider-status { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 0; padding: .85rem 1rem; border-inline-start: 4px solid var(--orange); background: var(--paper); }
 .apple-sign-in { display: grid; gap: .5rem; }
 .apple-sign-in p { max-width: 52ch; margin: 0; color: var(--ink); }
-.auth-dialog { width: min(calc(100% - 2rem), 620px); max-height: calc(100dvh - 2rem); padding: 0; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); box-shadow: 0 24px 72px rgb(15 31 48 / 30%); overflow: auto; }
+.auth-dialog { width: min(calc(100% - 2rem), 700px); height: min(calc(100dvh - 2rem), calc((100vw - 2rem) * .5625), 394px); max-height: calc(100dvh - 2rem); padding: 0; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); box-shadow: 0 24px 72px rgb(15 31 48 / 30%); overflow: auto; }
+.auth-dialog-entry { overflow: hidden; }
 .auth-dialog::backdrop { background: rgb(15 31 48 / 68%); backdrop-filter: blur(3px); }
-.auth-dialog-panel { position: relative; min-height: min(580px, calc(100dvh - 2rem)); border-block-start: 5px solid transparent; border-image: linear-gradient(90deg, var(--color-brand-blue), var(--color-brand-green), var(--color-brand-orange)) 1; }
+.auth-dialog-panel { position: relative; min-height: 100%; border-block-start: 5px solid transparent; border-image: linear-gradient(90deg, var(--color-brand-blue), var(--color-brand-green), var(--color-brand-orange)) 1; }
 .auth-dialog-close { position: absolute; inset-block-start: 1rem; inset-inline-end: 1rem; z-index: 1; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 50%; color: var(--ink); background: var(--surface); cursor: pointer; }
 .auth-dialog-close:hover { border-color: var(--blue); }
-.auth-dialog .auth-view { width: 100%; padding: 2rem; padding-block-start: 4.5rem; }
-.auth-dialog .auth-view h1 { font-size: 2rem; line-height: 1.2; overflow-wrap: break-word; }
+.auth-dialog .auth-view { width: 100%; padding: 1.25rem 1.5rem; padding-block-start: 2.5rem; }
+.auth-dialog .auth-entry-view { max-width: 480px; min-height: 100%; display: flex; flex-direction: column; justify-content: center; margin-inline: auto; padding-block: 2.25rem 1.25rem; }
+.auth-dialog .auth-view h1 { margin-block: .25rem .5rem; font-size: 1.35rem; line-height: 1.2; overflow-wrap: break-word; }
+.auth-dialog .auth-entry-view h1 { margin-block: 0 .75rem; font-size: 1.2rem; line-height: 1.2; text-align: center; }
+.auth-dialog .auth-view > p { margin-block: .4rem; font-size: .9rem; line-height: 1.45; }
+.auth-dialog .eyebrow { margin-block-end: .35rem; font-size: .75rem; }
+.auth-dialog .auth-switch { margin-block-start: .9rem; padding-block-start: .9rem; border-block-start: 1px solid var(--line); text-align: center; }
+.auth-dialog .auth-legal { max-width: 48ch; margin: .15rem auto 0; color: var(--muted); font-size: .75rem; line-height: 1.45; text-align: center; }
 [dir="rtl"] .auth-dialog .auth-view h1 { line-height: 2; }
 .auth-boundary { min-height: min(575px, calc(100dvh - 2.5rem)); }
+.auth-dialog .auth-boundary { min-height: 0; }
 .auth-loading-icon { animation: auth-loading 1s linear infinite; }
 @keyframes auth-loading { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .auth-loading-icon { animation: none; } }
-[dir="rtl"] .auth-dialog .provider-command { grid-template-columns: 24px minmax(0, 1fr); }
-[dir="rtl"] .auth-dialog .provider-command small { grid-column: 2; }
-.identity-view { width: min(100% - 2rem, 760px); }
+[dir="rtl"] .auth-dialog .provider-command { grid-template-columns: 24px minmax(0, 1fr) auto; }
+.identity-view { width: min(100% - 2rem, 532px); }
 .registration-flow { margin-block-start: 2rem; }
 .registration-progress { display: grid; gap: .55rem; margin-block: 1.25rem 2rem; color: var(--muted); font-size: .85rem; }
 .registration-progress ol { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .5rem; margin: 0; padding: 0; list-style: none; }
@@ -489,7 +505,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
   .public-hero h1 { font-size: 3.5rem; }
   .main-content { overflow-wrap: anywhere; }
   .command-row { align-items: stretch; flex-direction: column; }
-  .auth-view h1, .content-page h1, .state-view h1 { font-size: 2.6rem; }
+  .auth-view h1 { font-size: 1.82rem; }
+  .content-page h1, .state-view h1 { font-size: 2.6rem; }
   .professional-grid, .trust-journey { grid-template-columns: minmax(0, 1fr); }
 }
 
@@ -569,9 +586,14 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
   .offerability-decision dl { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 480px) {
-  [dir="rtl"] .auth-dialog .auth-view h1 { font-size: 1.75rem; }
-  .auth-dialog .provider-command { grid-template-columns: 24px minmax(0, 1fr); }
-  .auth-dialog .provider-command small { grid-column: 2; }
+  [dir="rtl"] .auth-dialog .auth-view h1 { font-size: 1.4rem; }
+}
+
+@media (max-width: 599px) {
+  .auth-dialog { width: min(calc(100% - 2rem), 434px); height: fit-content; }
+  .auth-dialog-panel { min-height: min(406px, calc(100dvh - 2rem)); }
+  .auth-dialog .auth-view { padding: 1.4rem; padding-block-start: 3.15rem; }
+  .auth-dialog .auth-entry-view { min-height: 0; }
 }
 
 @media (max-width: 899px) {

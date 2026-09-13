@@ -36,13 +36,13 @@ public sealed class GoogleWorkspaceProofAdapterTests
     };
 
     internal static ClaimsPrincipal Principal(string subject = "synthetic-actor", string? issuer = null,
-        string provider = "google")
+        string provider = "google", string authorizedParty = "waooaw-web")
     {
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         return new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
             new Claim("iss", issuer ?? Configuration().ActorIssuer), new Claim("sub", subject),
-            new Claim("aud", "waooaw-platform"), new Claim("azp", "waooaw-web"),
+            new Claim("aud", "waooaw-platform"), new Claim("azp", authorizedParty),
             new Claim("idp", provider), new Claim("email_verified", "true"),
             new Claim("realm_access", "{\"roles\":[\"customer\"]}"),
             new Claim("iat", now.ToString()), new Claim("exp", (now + 600).ToString()),
@@ -77,6 +77,42 @@ public sealed class GoogleWorkspaceProofAdapterTests
         Assert.Equal("facebook", proof.BrokerAlias);
         Assert.Equal(Configuration().Providers["facebook"].ProviderNamespace, proof.ProviderIssuer);
         Assert.Equal(Configuration().Providers["facebook"].TrustConfigDigest, proof.TrustConfigDigest);
+    }
+
+    [Fact]
+    public void PreviewAuthorizedParty_RequiresExplicitConfiguration()
+    {
+        var configuration = Configuration();
+        using var client = new HttpClient(new SyntheticKeycloakHandler());
+        var previewPrincipal = Principal(authorizedParty: "waooaw-web-preview");
+
+        var defaultAdapter = new GoogleWorkspaceProofAdapter(client, Options.Create(configuration));
+        Assert.Throws<IdentityActionDeniedException>(() => defaultAdapter.ValidateActor(previewPrincipal));
+
+        configuration.AllowedAuthorizedParties = ["waooaw-web", "waooaw-web-preview"];
+        var previewAdapter = new GoogleWorkspaceProofAdapter(client, Options.Create(configuration));
+        previewAdapter.ValidateActor(previewPrincipal);
+    }
+
+    [Fact]
+    public async Task Read_ConfiguredAppleBinding_UsesSharedBrokerProof()
+    {
+        var configuration = Configuration();
+        configuration.Providers["apple"] = new()
+        {
+            ProviderNamespace = "urn:waooaw:identity:synthetic:apple:customer-login:v1",
+            TrustConfigDigest = new string('c', 64),
+        };
+        var handler = new SyntheticKeycloakHandler { Provider = "apple" };
+        using var client = new HttpClient(handler);
+        var adapter = new GoogleWorkspaceProofAdapter(client, Options.Create(configuration));
+
+        var proof = await adapter.ReadAsync(Principal(provider: "apple"), default);
+
+        Assert.Equal(Waooaw.BusinessPlatform.Infrastructure.IdentityAuthenticationPath.Apple,
+            adapter.AuthenticationPath(Principal(provider: "apple")));
+        Assert.Equal("apple", proof.BrokerAlias);
+        Assert.Equal(configuration.Providers["apple"].ProviderNamespace, proof.ProviderIssuer);
     }
 
     [Fact]
@@ -131,7 +167,6 @@ public sealed class GoogleWorkspaceProofAdapterTests
     [InlineData("azp", "waooaw-mobile")]
     [InlineData("aud", "other")]
     [InlineData("idp", "password")]
-    [InlineData("email_verified", "false")]
     [InlineData("auth_time", "1")]
     [InlineData("realm_access", "{\"roles\":[\"customer\",\"waooaw-operator\"]}")]
     [InlineData("sub", "..")]
@@ -145,6 +180,25 @@ public sealed class GoogleWorkspaceProofAdapterTests
         using var client = new HttpClient(handler);
         var adapter = new GoogleWorkspaceProofAdapter(client, Options.Create(Configuration()));
         await Assert.ThrowsAnyAsync<Exception>(() => adapter.ReadAsync(principal, default));
+        Assert.Empty(handler.Requests);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("false")]
+    public async Task Read_UnverifiedEmail_DeniesBeforeNetwork(string? emailVerified)
+    {
+        var principal = Principal();
+        var identity = (ClaimsIdentity)principal.Identity!;
+        identity.RemoveClaim(identity.FindFirst("email_verified"));
+        if (emailVerified is not null) identity.AddClaim(new Claim("email_verified", emailVerified));
+        var handler = new SyntheticKeycloakHandler();
+        using var client = new HttpClient(handler);
+        var adapter = new GoogleWorkspaceProofAdapter(client, Options.Create(Configuration()));
+
+        Assert.False(adapter.HasVerifiedEmail(principal));
+        adapter.ValidateActor(principal);
+        await Assert.ThrowsAsync<IdentityActionDeniedException>(() => adapter.ReadAsync(principal, default));
         Assert.Empty(handler.Requests);
     }
 

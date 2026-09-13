@@ -14,12 +14,10 @@ export async function LoginView({ searchParams }: { searchParams?: Promise<{ ret
   const callbackUrl = `/register?returnTo=${encodeURIComponent(returnTo)}`;
   const providers = await listIdentityProviders();
   return (
-    <section className="auth-view">
-      <p className="eyebrow">{messages.secureAccess}</p>
-      <h1 id="auth-dialog-title">{messages.welcomeBack}</h1>
-      <p>{messages.identityBrokerDescription}</p>
-      <ProviderCommands callbackUrl={callbackUrl} providers={providers} />
-      <p>{messages.newToWaaoaw} <Link href="/register">{messages.createAccount}</Link></p>
+    <section className="auth-view auth-entry-view">
+      <h1 id="auth-dialog-title">{messages.login}</h1>
+      <ProviderCommands callbackUrl={callbackUrl} intent="login" providers={providers} />
+      <p className="auth-switch">{messages.newToWaaoaw} <Link href={`/register?returnTo=${encodeURIComponent(returnTo)}`}>{messages.createAccount}</Link></p>
     </section>
   );
 }

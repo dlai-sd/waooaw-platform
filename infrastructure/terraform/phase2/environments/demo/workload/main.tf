@@ -49,6 +49,7 @@ module "lease" {
 module "workload" {
   source = "../../../modules/workload"
 
+  auth_preview_origin                      = var.auth_preview_origin
   facebook_login_enabled                   = true
   google_login_enabled                     = true
   environment                              = "demo"

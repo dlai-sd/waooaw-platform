@@ -149,9 +149,9 @@ const server = createServer(async (request, response) => {
   if (request.method === 'GET' && url.pathname === '/api/v1/identity/providers') {
     json(response, { providers: [
       { id: 'GOOGLE', displayName: 'Google', authenticationPath: 'GOOGLE', availability: 'AVAILABLE' },
-      { id: 'FACEBOOK', displayName: 'Facebook', authenticationPath: 'META', availability: 'UNAVAILABLE', unavailableReason: 'NOT_CONFIGURED' },
+      { id: 'FACEBOOK', displayName: 'Facebook', authenticationPath: 'META', availability: 'AVAILABLE' },
       { id: 'APPLE', displayName: 'Apple', authenticationPath: 'APPLE', availability: 'UNAVAILABLE', unavailableReason: 'NOT_CONFIGURED' },
-      { id: 'EMAIL', displayName: 'Email', authenticationPath: 'CREDENTIAL', availability: 'AVAILABLE' },
+      { id: 'EMAIL', displayName: 'Email', authenticationPath: 'CREDENTIAL', availability: 'UNAVAILABLE', unavailableReason: 'NOT_CONFIGURED' },
     ] });
     return;
   }

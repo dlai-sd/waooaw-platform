@@ -4,10 +4,11 @@
 import type { SupportedLocale } from './preferences';
 
 const en = {
-  eyebrow: 'Secure registration', title: 'Create your WAOOAW account', description: 'Your identity is verified through WAOOAW’s approved broker before an account is completed.',
+  eyebrow: 'Secure registration', title: 'Create an account', description: 'Your identity is verified through WAOOAW’s approved broker before an account is completed.',
   displayName: 'Your name', businessName: 'Business name', businessDomain: 'Type of business', email: 'Email address', mobile: 'Mobile number', code: 'Six-digit code',
   saveProfile: 'Save and continue', sendCode: 'Send verification code', verifyCode: 'Verify code', complete: 'Complete registration', optionalMobile: 'Verify mobile now',
   working: 'Securing your registration…', retry: 'Try again', signInFirst: 'Continue securely to create your account', signInDescription: 'WAOOAW uses Keycloak to broker approved sign-in methods. Your access token is never exposed to this page.',
+  existingAccount: 'Already have an account?', signIn: 'Log in', legalPrefix: 'By continuing, you agree to WAOOAW’s', terms: 'Terms of Service', legalAnd: 'and', privacy: 'Privacy Policy',
   verificationSent: 'Enter the code sent to', unavailable: 'Registration could not be completed. No account change was assumed.', duplicate: 'Additional identity confirmation is required before this account can be completed.',
 } as const;
 
@@ -23,7 +24,7 @@ const translations: Partial<Record<SupportedLocale, Partial<IdentityMessages>>> 
   bn: { title: 'আপনার WAOOAW অ্যাকাউন্ট তৈরি করুন', displayName: 'আপনার নাম', businessName: 'ব্যবসার নাম', businessDomain: 'ব্যবসার ধরন', email: 'ইমেইল ঠিকানা', mobile: 'মোবাইল নম্বর', code: 'ছয় সংখ্যার কোড', saveProfile: 'সংরক্ষণ করে এগিয়ে যান', sendCode: 'যাচাইকরণ কোড পাঠান', verifyCode: 'কোড যাচাই করুন', complete: 'নিবন্ধন সম্পূর্ণ করুন', retry: 'আবার চেষ্টা করুন' },
   ml: { title: 'നിങ്ങളുടെ WAOOAW അക്കൗണ്ട് സൃഷ്ടിക്കുക', displayName: 'നിങ്ങളുടെ പേര്', businessName: 'ബിസിനസിന്റെ പേര്', businessDomain: 'ബിസിനസിന്റെ തരം', email: 'ഇമെയിൽ വിലാസം', mobile: 'മൊബൈൽ നമ്പർ', code: 'ആറക്ക കോഡ്', saveProfile: 'സംരക്ഷിച്ച് തുടരുക', sendCode: 'സ്ഥിരീകരണ കോഡ് അയയ്ക്കുക', verifyCode: 'കോഡ് സ്ഥിരീകരിക്കുക', complete: 'രജിസ്ട്രേഷൻ പൂർത്തിയാക്കുക', retry: 'വീണ്ടും ശ്രമിക്കുക' },
   pa: { title: 'ਆਪਣਾ WAOOAW ਖਾਤਾ ਬਣਾਓ', displayName: 'ਤੁਹਾਡਾ ਨਾਮ', businessName: 'ਕਾਰੋਬਾਰ ਦਾ ਨਾਮ', businessDomain: 'ਕਾਰੋਬਾਰ ਦੀ ਕਿਸਮ', email: 'ਈਮੇਲ ਪਤਾ', mobile: 'ਮੋਬਾਈਲ ਨੰਬਰ', code: 'ਛੇ ਅੰਕਾਂ ਦਾ ਕੋਡ', saveProfile: 'ਸੰਭਾਲੋ ਅਤੇ ਅੱਗੇ ਵਧੋ', sendCode: 'ਤਸਦੀਕ ਕੋਡ ਭੇਜੋ', verifyCode: 'ਕੋਡ ਦੀ ਤਸਦੀਕ ਕਰੋ', complete: 'ਰਜਿਸਟ੍ਰੇਸ਼ਨ ਪੂਰੀ ਕਰੋ', retry: 'ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ' },
-  ur: { title: 'اپنا WAOOAW اکاؤنٹ بنائیں', displayName: 'آپ کا نام', businessName: 'کاروبار کا نام', businessDomain: 'کاروبار کی قسم', email: 'ای میل پتہ', mobile: 'موبائل نمبر', code: 'چھ ہندسوں کا کوڈ', saveProfile: 'محفوظ کریں اور جاری رکھیں', sendCode: 'تصدیقی کوڈ بھیجیں', verifyCode: 'کوڈ کی تصدیق کریں', complete: 'رجسٹریشن مکمل کریں', retry: 'دوبارہ کوشش کریں' },
+  ur: { eyebrow: 'محفوظ رجسٹریشن', title: 'اپنا WAOOAW اکاؤنٹ بنائیں', signInDescription: 'WAOOAW منظور شدہ سائن اِن طریقوں کے لیے Keycloak استعمال کرتا ہے۔ آپ کا رسائی ٹوکن اس صفحے پر ظاہر نہیں ہوتا۔', existingAccount: 'کیا آپ کا پہلے سے اکاؤنٹ ہے؟', signIn: 'سائن اِن کریں', displayName: 'آپ کا نام', businessName: 'کاروبار کا نام', businessDomain: 'کاروبار کی قسم', email: 'ای میل پتہ', mobile: 'موبائل نمبر', code: 'چھ ہندسوں کا کوڈ', saveProfile: 'محفوظ کریں اور جاری رکھیں', sendCode: 'تصدیقی کوڈ بھیجیں', verifyCode: 'کوڈ کی تصدیق کریں', complete: 'رجسٹریشن مکمل کریں', retry: 'دوبارہ کوشش کریں' },
 };
 
 export function getIdentityMessages(locale: SupportedLocale): IdentityMessages {

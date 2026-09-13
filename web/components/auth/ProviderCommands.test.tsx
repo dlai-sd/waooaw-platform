@@ -9,30 +9,26 @@ const providers: IdentityProvider[] = [
   { id: 'GOOGLE', displayName: 'Google', authenticationPath: 'GOOGLE', availability: 'AVAILABLE' },
   { id: 'FACEBOOK', displayName: 'Facebook', authenticationPath: 'META', availability: 'UNAVAILABLE', unavailableReason: 'NOT_CONFIGURED' },
   { id: 'APPLE', displayName: 'Apple', authenticationPath: 'APPLE', availability: 'UNAVAILABLE', unavailableReason: 'NOT_CONFIGURED' },
-  { id: 'EMAIL', displayName: 'Email', authenticationPath: 'CREDENTIAL', availability: 'AVAILABLE' },
+  { id: 'EMAIL', displayName: 'Email', authenticationPath: 'CREDENTIAL', availability: 'UNAVAILABLE', unavailableReason: 'NOT_CONFIGURED' },
 ];
 
 describe('ProviderCommands', () => {
   beforeEach(() => jest.mocked(signIn).mockClear());
 
   it('starts only an available brokered provider', () => {
-    render(<ProviderCommands callbackUrl="/home" providers={providers} />);
+    render(<ProviderCommands callbackUrl="/home" intent="login" providers={providers} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Continue with Google' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Log in with Google' }));
 
     expect(signIn).toHaveBeenCalledWith('keycloak-google', { callbackUrl: '/home' });
-    expect(screen.getByRole('button', { name: /Continue with Facebook/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Log in with Facebook (Unavailable)' })).toBeDisabled();
   });
 
-  it('keeps Apple local and explains approved alternatives', () => {
-    render(<ProviderCommands callbackUrl="/register" providers={providers} />);
+  it('does not start unavailable providers', () => {
+    render(<ProviderCommands callbackUrl="/register" intent="register" providers={providers} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Continue with Apple' }));
-
-    expect(screen.getByRole('alert')).toHaveTextContent('Apple is coming soon');
-    expect(screen.getByRole('alert')).toHaveTextContent('Google or Email');
-    expect(screen.getByRole('alert')).not.toHaveTextContent('Facebook or email');
-    expect(screen.getByRole('alert')).toHaveTextContent('WhatsApp registration');
+    expect(screen.getByRole('button', { name: 'Sign up with Apple (Unavailable)' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Sign up with Email (Unavailable)' })).toBeDisabled();
     expect(signIn).not.toHaveBeenCalled();
   });
 });

@@ -1,0 +1,21 @@
+services:
+  auth-preview:
+    image: ${WAOOAW_WEB_IMAGE:?WAOOAW_WEB_IMAGE must be an immutable digest reference}
+    pull_policy: always
+    ports:
+      - "${AUTH_PREVIEW_PORT:-3100}:3000"
+    environment:
+      NODE_ENV: production
+      NEXTAUTH_URL: ${AUTH_PREVIEW_ORIGIN:?AUTH_PREVIEW_ORIGIN is required}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required}
+      KEYCLOAK_ISSUER: ${KEYCLOAK_ISSUER:?KEYCLOAK_ISSUER is required}
+      KEYCLOAK_CLIENT_ID: waooaw-web-preview
+      KEYCLOAK_PUBLIC_CLIENT: "true"
+      BUSINESS_PLATFORM_URL: ${BUSINESS_PLATFORM_URL:?BUSINESS_PLATFORM_URL is required}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/login"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 15s

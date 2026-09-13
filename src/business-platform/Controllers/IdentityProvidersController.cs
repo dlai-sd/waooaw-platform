@@ -20,7 +20,7 @@ public sealed class IdentityProvidersController(
         Response.Headers.CacheControl = "no-store";
         var brokerReadEnabled = configuration.GetValue<bool>("IdentityBrokerRead:Enabled");
         var providers = providerProjectionService.GetProviders()
-            .Select(provider => provider.Id != "GOOGLE" || brokerReadEnabled
+            .Select(provider => provider.AuthenticationPath == "CREDENTIAL" || brokerReadEnabled
                 ? provider
                 : provider with { Availability = "UNAVAILABLE", UnavailableReason = "NOT_CONFIGURED" })
             .ToArray();
