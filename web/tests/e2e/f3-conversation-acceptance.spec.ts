@@ -12,7 +12,7 @@ function fixtureAccessToken(projectName: string) {
 }
 
 async function addSession(context: BrowserContext, projectName: string) {
-  const value = await encode({ secret, maxAge: 60 * 60, token: { accessToken: fixtureAccessToken(projectName), founder: false, sub: `fixture-user-${projectName}` } });
+  const value = await encode({ secret, maxAge: 60 * 60, token: { accessToken: fixtureAccessToken(projectName), accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600, founder: false, sub: `fixture-user-${projectName}` } });
   await context.addCookies([{ name: 'next-auth.session-token', value, domain: '127.0.0.1', httpOnly: true, path: '/', sameSite: 'Lax' }]);
 }
 

@@ -43,9 +43,18 @@ export function hasFounderClaim(profile: unknown): boolean {
   return Array.isArray(roles) && roles.includes('founder');
 }
 
-export function projectSession(session: Session, token: JWT): Session {
-  session.authenticated = typeof token.accessToken === 'string';
-  session.founder = token.founder === true;
+export function activeAccessToken(token: JWT, nowSeconds = Math.floor(Date.now() / 1000)): string | undefined {
+  return typeof token.accessToken === 'string'
+    && typeof token.accessTokenExpiresAt === 'number'
+    && token.accessTokenExpiresAt > nowSeconds
+    ? token.accessToken
+    : undefined;
+}
+
+export function projectSession(session: Session, token: JWT, nowSeconds?: number): Session {
+  const authenticated = activeAccessToken(token, nowSeconds) !== undefined;
+  session.authenticated = authenticated;
+  session.founder = authenticated && token.founder === true;
   return session;
 }
 
@@ -59,8 +68,16 @@ export const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
   callbacks: {
     jwt({ token, account, profile }) {
-      if (account?.access_token) token.accessToken = account.access_token;
+      if (account?.access_token) {
+        token.accessToken = account.access_token;
+        token.accessTokenExpiresAt = account.expires_at;
+      }
       if (account) token.founder = hasFounderClaim(profile);
+      if (!activeAccessToken(token)) {
+        delete token.accessToken;
+        delete token.accessTokenExpiresAt;
+        token.founder = false;
+      }
       return token;
     },
     session({ session, token }) {

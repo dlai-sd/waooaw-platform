@@ -25,6 +25,9 @@ own PR, access or mutate a provider without exact authority, or invoke another i
    `python scripts/prepare_pr_body.py --body-file /tmp/pr-body.md --base origin/main`; create the PR
    from that file without rewriting it. Applicable runtime/deployment changes automatically run the
    real-container lifecycle gate and embed its evidence before C-059 and C-065 validation.
+   When updating an open PR, first run the same command with `--allow-unpushed-head` after the final
+   local commit and update the PR body before push. Push, then rerun without the flag and update the
+   body again; this prevents C-065 from evaluating stale commit-bound evidence during synchronization.
 
 Do not load the full agent specification, GEOM, ORGANIZATION, ADR index, workflow directory, or
 constitutional corpus. Expand context only when a concrete authority or engineering decision cannot

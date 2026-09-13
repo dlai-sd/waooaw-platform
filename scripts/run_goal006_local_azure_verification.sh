@@ -13,6 +13,10 @@ EVIDENCE_DIR="$WORK_DIR/evidence"
 AZURE_CONFIG_DIR="$WORK_DIR/azure-config"
 
 cleanup() {
+  if test -n "${GOAL006_EVIDENCE_DIR:-}" && test -d "$EVIDENCE_DIR"; then
+    mkdir -p "$GOAL006_EVIDENCE_DIR"
+    cp -R "$EVIDENCE_DIR/." "$GOAL006_EVIDENCE_DIR/"
+  fi
   docker rm -f "$EMULATOR" >/dev/null 2>&1 || true
   docker network rm "$NETWORK" >/dev/null 2>&1 || true
   rm -rf "$WORK_DIR"
@@ -131,6 +135,9 @@ test "$(jq -r '.functional_verification' "$EVIDENCE_DIR/deployment-verification.
 jq -e '.redirect_verified == true and .real_user_sign_in_verified == false and
   .keycloak_revision == "ca-demo-keycloak--0000002" and .release_sha == "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"' \
   "$EVIDENCE_DIR/google-deployment-verification.json" >/dev/null
+jq -e '.redirect_verified == true and .real_user_sign_in_verified == false and
+  .keycloak_revision == "ca-demo-keycloak--0000002" and .release_sha == "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"' \
+  "$EVIDENCE_DIR/facebook-deployment-verification.json" >/dev/null
 test "$(find "$EVIDENCE_DIR/revision-evidence" -name '*-revision.json' | wc -l)" = 9
 grep -F 'http-probes: all required runtime probes passed' "$EVIDENCE_DIR/functional-http-probes.log" >/dev/null
 grep -F 'constitutional-health: all required runtime probes passed' \
@@ -242,8 +249,4 @@ jq -n \
     cleanup_request_sha256: $cleanup_request_sha256,
     zero_active_private_executions: true
   }' > "$EVIDENCE_DIR/local-runtime-summary.json"
-if test -n "${GOAL006_EVIDENCE_DIR:-}"; then
-  mkdir -p "$GOAL006_EVIDENCE_DIR"
-  cp -R "$EVIDENCE_DIR/." "$GOAL006_EVIDENCE_DIR/"
-fi
 echo "GOAL-006 Docker Azure CLI end-to-end deployment verification passed."

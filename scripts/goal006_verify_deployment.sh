@@ -157,6 +157,11 @@ if [[ "$TARGET_ENVIRONMENT" == "demo" ]]; then
     --web-url "$EXPECTED_WEB_URL" \
     --release-sha "$RELEASE_SHA" --keycloak-revision "$keycloak_revision" \
     --output google-deployment-verification.json
+  python3 "$(dirname "$0")/verify_facebook_deployment.py" \
+    --issuer "https://$identity_fqdn/realms/waooaw" \
+    --web-url "$EXPECTED_WEB_URL" \
+    --release-sha "$RELEASE_SHA" --keycloak-revision "$keycloak_revision" \
+    --output facebook-deployment-verification.json
 fi
 jq -n \
   --arg environment "$TARGET_ENVIRONMENT" \

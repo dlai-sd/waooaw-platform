@@ -144,16 +144,27 @@ class AzureHandler(BaseHTTPRequestHandler):
         if path == "/realms/waooaw/protocol/openid-connect/auth":
             query = parse_qs(urlparse(self.path).query)
             assert query["client_id"] == ["waooaw-web"]
-            assert query["redirect_uri"] == ["https://ca-demo-web.local.waooaw.test/api/auth/callback/keycloak-google"]
-            assert query["kc_idp_hint"] == ["google"]
             assert query["code_challenge_method"] == ["S256"]
             assert query["state"] and query["nonce"] and query["code_challenge"]
+            provider = query["kc_idp_hint"][0]
+            assert provider in {"google", "facebook"}
+            assert query["redirect_uri"] == [
+                f"https://ca-demo-web.local.waooaw.test/api/auth/callback/keycloak-{provider}"
+            ]
+            if provider == "facebook":
+                location = "https://graph.facebook.com/oauth/authorize?" + urlencode({
+                    "client_id": "2590813568086235",
+                    "redirect_uri": "https://ca-demo-identity-edge.local.waooaw.test/realms/waooaw/broker/facebook/endpoint",
+                    "scope": "email public_profile", "response_type": "code", "state": "synthetic-state",
+                })
+            else:
+                location = "https://accounts.google.com/o/oauth2/auth?" + urlencode({
+                    "client_id": "synthetic.apps.googleusercontent.com",
+                    "redirect_uri": "https://ca-demo-identity-edge.local.waooaw.test/realms/waooaw/broker/google/endpoint",
+                    "scope": "openid email profile", "response_type": "code", "state": "synthetic-state",
+                })
             self.send_response(302)
-            self.send_header("Location", "https://accounts.google.com/o/oauth2/auth?" + urlencode({
-                "client_id": "synthetic.apps.googleusercontent.com",
-                "redirect_uri": "https://ca-demo-identity-edge.local.waooaw.test/realms/waooaw/broker/google/endpoint",
-                "scope": "openid email profile", "response_type": "code", "state": "synthetic-state",
-            }))
+            self.send_header("Location", location)
             self.end_headers()
             return
         if path == "/healthz":
