@@ -23,27 +23,37 @@ BROWSER_HEADERS = [
 ]
 
 
+class VerificationError(ValueError):
+    def __init__(self, reason: str):
+        super().__init__(reason)
+        self.reason = reason
+
+
 class NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, request, response, code, message, headers, new_url):
         return None
 
 
-def validate_redirect(location: str, issuer: str) -> bool:
+def redirect_failure_reason(location: str, issuer: str) -> str | None:
     parsed = urlsplit(location)
     query = parse_qs(parsed.query)
     scopes = set(query.get("scope", [""])[0].split())
-    return (
-        parsed.scheme == "https"
-        and parsed.hostname in META_AUTHORIZATION_HOSTS
-        and parsed.port in (None, 443)
-        and parsed.username is None
-        and parsed.password is None
-        and query.get("client_id") == [META_APP_ID]
-        and query.get("redirect_uri") == [issuer + "/broker/facebook/endpoint"]
-        and query.get("response_type") == ["code"]
-        and {"email", "public_profile"}.issubset(scopes)
-        and bool(query.get("state", [""])[0])
+    checks = (
+        (parsed.scheme == "https", "non_https_redirect"),
+        (parsed.hostname in META_AUTHORIZATION_HOSTS, "untrusted_authorization_host"),
+        (parsed.port in (None, 443), "unexpected_authorization_port"),
+        (parsed.username is None and parsed.password is None, "redirect_contains_credentials"),
+        (query.get("client_id") == [META_APP_ID], "meta_app_id_mismatch"),
+        (query.get("redirect_uri") == [issuer + "/broker/facebook/endpoint"], "broker_callback_mismatch"),
+        (query.get("response_type") == ["code"], "response_type_mismatch"),
+        ({"email", "public_profile"}.issubset(scopes), "required_scope_missing"),
+        (bool(query.get("state", [""])[0]), "state_missing"),
     )
+    return next((reason for passed, reason in checks if not passed), None)
+
+
+def validate_redirect(location: str, issuer: str) -> bool:
+    return redirect_failure_reason(location, issuer) is None
 
 
 def verify_redirect_chain(issuer: str, target: str) -> None:
@@ -54,18 +64,18 @@ def verify_redirect_chain(issuer: str, target: str) -> None:
             raise ValueError("Broker requests require HTTPS")
         try:
             with opener.open(target, timeout=30):
-                raise ValueError("Expected a broker redirect, received an HTML response")
+                raise VerificationError("authorization_html_response")
         except HTTPError as error:
             if error.code not in (301, 302, 303, 307, 308):
-                raise ValueError("Broker returned HTTP " + str(error.code)) from None
+                raise VerificationError(f"broker_http_{error.code}") from None
             target = urljoin(target, error.headers.get("Location", ""))
         if validate_redirect(target, issuer):
             break
         parsed = urlsplit(target)
         if parsed.scheme != "https" or parsed.netloc != urlsplit(issuer).netloc:
-            raise ValueError("Unexpected redirect destination")
+            raise VerificationError(redirect_failure_reason(target, issuer) or "unexpected_redirect_destination")
     else:
-        raise ValueError("Broker redirect limit exceeded")
+        raise VerificationError("broker_redirect_limit_exceeded")
 
 
 def verify(issuer: str, web_url: str) -> dict[str, object]:
@@ -85,7 +95,7 @@ def verify(issuer: str, web_url: str) -> dict[str, object]:
             break
         except (RemoteDisconnected, TimeoutError, URLError) as error:
             if initiation_attempt == 2:
-                raise ValueError("Broker transport failed after bounded retries") from error
+                raise VerificationError("broker_transport_retries_exhausted") from error
     return {
         "provider": "FACEBOOK", "issuer": issuer,
         "callback": issuer + "/broker/facebook/endpoint",
@@ -103,10 +113,19 @@ def main() -> int:
     parser.add_argument("--keycloak-revision", required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    evidence: dict[str, object]
     try:
         evidence = verify(args.issuer.rstrip("/"), args.web_url.rstrip("/"))
-    except Exception as error:
-        print("Facebook deployment verification failed: " + type(error).__name__)
+    except VerificationError as error:
+        evidence = {
+            "provider": "FACEBOOK",
+            "redirect_verified": False,
+            "real_user_sign_in_verified": False,
+            "failure_reason": error.reason,
+        }
+        evidence.update(release_sha=args.release_sha, keycloak_revision=args.keycloak_revision)
+        args.output.write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
+        print("Facebook deployment verification failed: " + error.reason)
         return 1
     evidence.update(release_sha=args.release_sha, keycloak_revision=args.keycloak_revision)
     args.output.write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")

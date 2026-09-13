@@ -1,5 +1,7 @@
+import json
 from pathlib import Path
 from http.client import RemoteDisconnected
+import sys
 from urllib.error import HTTPError
 from urllib.parse import parse_qs, urlencode, urlsplit
 from unittest.mock import Mock
@@ -8,7 +10,7 @@ import hcl2
 import pytest
 
 from scripts import verify_facebook_deployment
-from scripts.verify_facebook_deployment import validate_redirect
+from scripts.verify_facebook_deployment import redirect_failure_reason, validate_redirect
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -153,7 +155,7 @@ def test_facebook_verifier_fails_after_bounded_disconnects(monkeypatch: pytest.M
     opener.open.side_effect = RemoteDisconnected("persistent close")
     monkeypatch.setattr(verify_facebook_deployment, "build_opener", lambda *handlers: opener)
 
-    with pytest.raises(ValueError, match="transport failed after bounded retries"):
+    with pytest.raises(ValueError, match="broker_transport_retries_exhausted"):
         verify_facebook_deployment.verify(
             "https://identity.demo.waooaw.com/realms/waooaw",
             "https://app.demo.waooaw.com",
@@ -162,8 +164,44 @@ def test_facebook_verifier_fails_after_bounded_disconnects(monkeypatch: pytest.M
     assert opener.open.call_count == 3
 
 
-@pytest.mark.parametrize("replacement", [None, "host", "callback", "client", "scope", "state"])
-def test_facebook_redirect_verification_rejects_untrusted_or_incomplete_results(replacement: str | None) -> None:
+def test_facebook_verifier_writes_sanitized_failure_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "facebook-verification.json"
+    monkeypatch.setattr(
+        verify_facebook_deployment,
+        "verify",
+        Mock(side_effect=verify_facebook_deployment.VerificationError("broker_callback_mismatch")),
+    )
+    monkeypatch.setattr(sys, "argv", [
+        "verify_facebook_deployment.py",
+        "--issuer", "https://identity.demo.waooaw.com/realms/waooaw",
+        "--web-url", "https://app.demo.waooaw.com",
+        "--release-sha", "a" * 40,
+        "--keycloak-revision", "ca-demo-keycloak--0000002",
+        "--output", str(output),
+    ])
+
+    assert verify_facebook_deployment.main() == 1
+    evidence = json.loads(output.read_text(encoding="utf-8"))
+    assert evidence["failure_reason"] == "broker_callback_mismatch"
+    assert evidence["redirect_verified"] is False
+    assert "exception" not in evidence
+
+
+@pytest.mark.parametrize("replacement, expected_reason", [
+    (None, None),
+    ("host", "untrusted_authorization_host"),
+    ("callback", "broker_callback_mismatch"),
+    ("client", "meta_app_id_mismatch"),
+    ("scope", "required_scope_missing"),
+    ("state", "state_missing"),
+])
+def test_facebook_redirect_verification_rejects_untrusted_or_incomplete_results(
+    replacement: str | None,
+    expected_reason: str | None,
+) -> None:
     issuer = "https://identity.demo.waooaw.com/realms/waooaw"
     query = {
         "client_id": verify_facebook_deployment.META_APP_ID,
@@ -183,6 +221,6 @@ def test_facebook_redirect_verification_rejects_untrusted_or_incomplete_results(
         query["scope"] = "public_profile"
     elif replacement == "state":
         query["state"] = ""
-    assert validate_redirect(
-        "https://" + host + "/oauth/authorize?" + urlencode(query), issuer
-    ) is (replacement is None)
+    location = "https://" + host + "/oauth/authorize?" + urlencode(query)
+    assert redirect_failure_reason(location, issuer) == expected_reason
+    assert validate_redirect(location, issuer) is (replacement is None)
