@@ -169,7 +169,77 @@ locals {
         standardFlowEnabled       = false
         directAccessGrantsEnabled = false
       },
-      ], var.google_login_enabled || var.facebook_login_enabled ? [
+      ], var.auth_preview_origin != null ? [
+      {
+        clientId                  = "waooaw-web-preview"
+        name                      = "WAOOAW Codespaces Authentication Preview"
+        enabled                   = true
+        publicClient              = true
+        standardFlowEnabled       = true
+        implicitFlowEnabled       = false
+        directAccessGrantsEnabled = false
+        redirectUris = concat(
+          ["${var.auth_preview_origin}/api/auth/callback/keycloak"],
+          var.google_login_enabled ? ["${var.auth_preview_origin}/api/auth/callback/keycloak-google"] : [],
+          var.facebook_login_enabled ? ["${var.auth_preview_origin}/api/auth/callback/keycloak-facebook"] : [],
+        )
+        webOrigins = [var.auth_preview_origin]
+        attributes = {
+          "pkce.code.challenge.method" = "S256"
+        }
+        protocolMappers = [
+          {
+            name           = "tenant_id_mapper"
+            protocol       = "openid-connect"
+            protocolMapper = "oidc-hardcoded-claim-mapper"
+            config = {
+              "claim.name"           = "tenant_id"
+              "jsonType.label"       = "String"
+              "id.token.claim"       = "true"
+              "access.token.claim"   = "true"
+              "userinfo.token.claim" = "true"
+              "claim.value"          = "00000000-0000-0000-0000-000000000001"
+            }
+          },
+          {
+            name           = "audience_mapper"
+            protocol       = "openid-connect"
+            protocolMapper = "oidc-audience-mapper"
+            config = {
+              "included.client.audience" = "waooaw-platform"
+              "id.token.claim"           = "false"
+              "access.token.claim"       = "true"
+            }
+          },
+          {
+            name           = "realm_roles_mapper"
+            protocol       = "openid-connect"
+            protocolMapper = "oidc-usermodel-realm-role-mapper"
+            config = {
+              "claim.name"           = "realm_access.roles"
+              "jsonType.label"       = "String"
+              "multivalued"          = "true"
+              "id.token.claim"       = "true"
+              "access.token.claim"   = "true"
+              "userinfo.token.claim" = "true"
+            }
+          },
+          {
+            name           = "identity_provider_session"
+            protocol       = "openid-connect"
+            protocolMapper = "oidc-usersessionmodel-note-mapper"
+            config = {
+              "user.session.note"    = "identity_provider"
+              "claim.name"           = "idp"
+              "jsonType.label"       = "String"
+              "id.token.claim"       = "true"
+              "access.token.claim"   = "true"
+              "userinfo.token.claim" = "false"
+            }
+          },
+        ]
+      },
+      ] : [], var.google_login_enabled || var.facebook_login_enabled ? [
       {
         clientId                  = "waooaw-bp-identity-reader"
         name                      = "WAOOAW Business Platform Identity Reader"
@@ -242,19 +312,22 @@ locals {
       ConnectionStrings__DefaultConnection = "Host=localhost;Port=5432;Database=waooaw;Username=postgres"
     }
     "business-platform" = merge({
-      ASPNETCORE_ENVIRONMENT                     = "Production"
-      ASPNETCORE_URLS                            = "http://+:5001"
-      ConnectionStrings__DefaultConnection       = "Host=localhost;Port=5432;Database=waooaw;Username=postgres"
-      ConstitutionalEngine__Address              = local.service_urls.constitutional_engine
-      Keycloak__Audience                         = "waooaw-platform"
-      Keycloak__Authority                        = "${local.service_urls.identity_edge}/realms/waooaw"
-      Keycloak__RequireHttpsMetadata             = "true"
-      IdentityBrokerRead__Enabled                = tostring(var.google_login_enabled || var.facebook_login_enabled)
-      IdentityBrokerRead__ActorIssuer            = "${local.service_urls.identity_edge}/realms/waooaw"
-      IdentityBrokerRead__PrivateOrigin          = local.service_urls.keycloak_private
-      IdentityBrokerRead__AllowedPrivateHosts__0 = "ca-${var.environment}-keycloak.internal.${var.container_app_environment_default_domain}"
-      IdentityBrokerRead__ClientId               = "waooaw-bp-identity-reader"
-      }, var.google_login_enabled ? {
+      ASPNETCORE_ENVIRONMENT                          = "Production"
+      ASPNETCORE_URLS                                 = "http://+:5001"
+      ConnectionStrings__DefaultConnection            = "Host=localhost;Port=5432;Database=waooaw;Username=postgres"
+      ConstitutionalEngine__Address                   = local.service_urls.constitutional_engine
+      Keycloak__Audience                              = "waooaw-platform"
+      Keycloak__Authority                             = "${local.service_urls.identity_edge}/realms/waooaw"
+      Keycloak__RequireHttpsMetadata                  = "true"
+      IdentityBrokerRead__Enabled                     = tostring(var.google_login_enabled || var.facebook_login_enabled)
+      IdentityBrokerRead__ActorIssuer                 = "${local.service_urls.identity_edge}/realms/waooaw"
+      IdentityBrokerRead__PrivateOrigin               = local.service_urls.keycloak_private
+      IdentityBrokerRead__AllowedPrivateHosts__0      = "ca-${var.environment}-keycloak.internal.${var.container_app_environment_default_domain}"
+      IdentityBrokerRead__AllowedAuthorizedParties__0 = "waooaw-web"
+      IdentityBrokerRead__ClientId                    = "waooaw-bp-identity-reader"
+      }, var.auth_preview_origin != null ? {
+      IdentityBrokerRead__AllowedAuthorizedParties__1 = "waooaw-web-preview"
+      } : {}, var.google_login_enabled ? {
       IdentityBrokerRead__Providers__google__ProviderNamespace = "urn:waooaw:identity:${var.environment}:google:customer-login:v1"
       IdentityBrokerRead__Providers__google__TrustConfigDigest = sha256(jsonencode({
         issuer             = "${local.service_urls.identity_edge}/realms/waooaw"

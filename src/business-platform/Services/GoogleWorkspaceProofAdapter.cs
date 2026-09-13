@@ -21,6 +21,7 @@ public sealed class IdentityBrokerReadOptions
     public string[] AllowedPrivateHosts { get; set; } = [];
     public string ClientId { get; set; } = "";
     public string ClientSecret { get; set; } = "";
+    public string[] AllowedAuthorizedParties { get; set; } = ["waooaw-web"];
     public Dictionary<string, IdentityBrokerProviderOptions> Providers { get; set; } =
         new(StringComparer.Ordinal);
 
@@ -39,11 +40,14 @@ public sealed class IdentityBrokerReadOptions
         && origin.Query == ""
         && origin.Fragment == ""
         && AllowedPrivateHosts.Contains(origin.Host, StringComparer.Ordinal)
-        && ClientId == "waooaw-bp-identity-reader"
-        && !string.IsNullOrWhiteSpace(ClientSecret)
+    && ClientId == "waooaw-bp-identity-reader"
+    && !string.IsNullOrWhiteSpace(ClientSecret)
+        && AllowedAuthorizedParties.Length > 0
+        && AllowedAuthorizedParties.Distinct(StringComparer.Ordinal).Count() == AllowedAuthorizedParties.Length
+        && AllowedAuthorizedParties.All(GoogleWorkspaceProofAdapter.ValidKey)
         && Providers.Count > 0
         && Providers.All(provider =>
-            provider.Key is "google" or "facebook"
+        provider.Key is "google" or "facebook" or "apple"
             && GoogleWorkspaceProofAdapter.ValidKey(provider.Value.ProviderNamespace)
             && Regex.IsMatch(
                 provider.Value.TrustConfigDigest,
@@ -89,8 +93,12 @@ public sealed class GoogleWorkspaceProofAdapter(
         {
             "google" => IdentityAuthenticationPath.Google,
             "facebook" => IdentityAuthenticationPath.Meta,
+            "apple" => IdentityAuthenticationPath.Apple,
             _ => Denied<IdentityAuthenticationPath>("unsupported_provider"),
         };
+
+    public bool HasVerifiedEmail(ClaimsPrincipal principal) =>
+        SingleClaim(principal, "email_verified") == "true";
 
     public VerifiedCustomerActor ValidateActor(ClaimsPrincipal principal, bool requireFresh = false)
     {
@@ -111,12 +119,10 @@ public sealed class GoogleWorkspaceProofAdapter(
             || subject!.StartsWith("service-account-", StringComparison.Ordinal)
         )
             return Denied<VerifiedCustomerActor>("actor_subject");
-        if (SingleClaim(principal, "azp") != "waooaw-web")
+        if (!_options.AllowedAuthorizedParties.Contains(SingleClaim(principal, "azp"), StringComparer.Ordinal))
             return Denied<VerifiedCustomerActor>("actor_client");
         if (!principal.FindAll("aud").Any(claim => claim.Value == "waooaw-platform"))
             return Denied<VerifiedCustomerActor>("actor_audience");
-        if (SingleClaim(principal, "email_verified") != "true")
-            return Denied<VerifiedCustomerActor>("actor_email_verification");
         if (principal.HasClaim("client_type", "service"))
             return Denied<VerifiedCustomerActor>("actor_service_client");
         if (!CustomerRolesOnly(principal))
@@ -150,6 +156,8 @@ public sealed class GoogleWorkspaceProofAdapter(
     {
         var (brokerAlias, provider) = ConfiguredProvider(principal);
         var actor = ValidateActor(principal, requireFresh: true);
+        if (!HasVerifiedEmail(principal))
+            throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(TimeSpan.FromSeconds(10));
         try
