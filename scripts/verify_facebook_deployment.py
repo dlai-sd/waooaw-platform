@@ -8,14 +8,19 @@ import hashlib
 import http.cookiejar
 import json
 import secrets
+from http.client import RemoteDisconnected
 from pathlib import Path
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlencode, urljoin, urlsplit
 from urllib.request import HTTPRedirectHandler, HTTPCookieProcessor, build_opener
 
 
 META_APP_ID = "2590813568086235"
 META_AUTHORIZATION_HOSTS = {"graph.facebook.com", "www.facebook.com", "web.facebook.com"}
+BROWSER_HEADERS = [
+    ("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"),
+    ("User-Agent", "Mozilla/5.0 AppleWebKit/537.36 Chrome/124.0 Safari/537.36"),
+]
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -41,18 +46,9 @@ def validate_redirect(location: str, issuer: str) -> bool:
     )
 
 
-def verify(issuer: str, web_url: str) -> dict[str, object]:
-    if any(urlsplit(value).scheme != "https" or urlsplit(value).query or urlsplit(value).fragment for value in (issuer, web_url)):
-        raise ValueError("Verification requires exact HTTPS endpoints")
+def verify_redirect_chain(issuer: str, target: str) -> None:
     opener = build_opener(NoRedirect(), HTTPCookieProcessor(http.cookiejar.CookieJar()))
-    verifier = secrets.token_urlsafe(32)
-    challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
-    target = issuer + "/protocol/openid-connect/auth?" + urlencode({
-        "client_id": "waooaw-web", "redirect_uri": web_url + "/api/auth/callback/keycloak-facebook",
-        "response_type": "code", "scope": "openid email profile", "kc_idp_hint": "facebook",
-        "code_challenge": challenge, "code_challenge_method": "S256",
-        "state": secrets.token_urlsafe(24), "nonce": secrets.token_urlsafe(24),
-    })
+    opener.addheaders = BROWSER_HEADERS
     for _attempt in range(5):
         if urlsplit(target).scheme != "https":
             raise ValueError("Broker requests require HTTPS")
@@ -70,6 +66,26 @@ def verify(issuer: str, web_url: str) -> dict[str, object]:
             raise ValueError("Unexpected redirect destination")
     else:
         raise ValueError("Broker redirect limit exceeded")
+
+
+def verify(issuer: str, web_url: str) -> dict[str, object]:
+    if any(urlsplit(value).scheme != "https" or urlsplit(value).query or urlsplit(value).fragment for value in (issuer, web_url)):
+        raise ValueError("Verification requires exact HTTPS endpoints")
+    verifier = secrets.token_urlsafe(32)
+    challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
+    target = issuer + "/protocol/openid-connect/auth?" + urlencode({
+        "client_id": "waooaw-web", "redirect_uri": web_url + "/api/auth/callback/keycloak-facebook",
+        "response_type": "code", "scope": "openid email profile", "kc_idp_hint": "facebook",
+        "code_challenge": challenge, "code_challenge_method": "S256",
+        "state": secrets.token_urlsafe(24), "nonce": secrets.token_urlsafe(24),
+    })
+    for initiation_attempt in range(3):
+        try:
+            verify_redirect_chain(issuer, target)
+            break
+        except (RemoteDisconnected, TimeoutError, URLError) as error:
+            if initiation_attempt == 2:
+                raise ValueError("Broker transport failed after bounded retries") from error
     return {
         "provider": "FACEBOOK", "issuer": issuer,
         "callback": issuer + "/broker/facebook/endpoint",

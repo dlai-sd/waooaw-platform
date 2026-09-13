@@ -1,4 +1,5 @@
 from pathlib import Path
+from http.client import RemoteDisconnected
 from urllib.error import HTTPError
 from urllib.parse import parse_qs, urlencode, urlsplit
 from unittest.mock import Mock
@@ -120,8 +121,45 @@ def test_facebook_verifier_exercises_exact_nextauth_callback(monkeypatch: pytest
     assert request["kc_idp_hint"] == ["facebook"]
     assert request["code_challenge_method"] == ["S256"]
     assert request["code_challenge"] and request["state"] and request["nonce"]
+    assert opener.addheaders == verify_facebook_deployment.BROWSER_HEADERS
     assert evidence["web_callback"] == request["redirect_uri"][0]
     assert evidence["real_user_sign_in_verified"] is False
+
+
+def test_facebook_verifier_retries_one_transient_disconnect(monkeypatch: pytest.MonkeyPatch) -> None:
+    issuer = "https://identity.demo.waooaw.com/realms/waooaw"
+    location = "https://graph.facebook.com/oauth/authorize?" + urlencode({
+        "client_id": verify_facebook_deployment.META_APP_ID,
+        "redirect_uri": issuer + "/broker/facebook/endpoint",
+        "scope": "email public_profile",
+        "response_type": "code",
+        "state": "synthetic-state",
+    })
+    opener = Mock()
+    opener.open.side_effect = [
+        RemoteDisconnected("transient close"),
+        HTTPError(issuer, 302, "Found", {"Location": location}, None),
+    ]
+    monkeypatch.setattr(verify_facebook_deployment, "build_opener", lambda *handlers: opener)
+
+    evidence = verify_facebook_deployment.verify(issuer, "https://app.demo.waooaw.com")
+
+    assert evidence["redirect_verified"] is True
+    assert opener.open.call_count == 2
+
+
+def test_facebook_verifier_fails_after_bounded_disconnects(monkeypatch: pytest.MonkeyPatch) -> None:
+    opener = Mock()
+    opener.open.side_effect = RemoteDisconnected("persistent close")
+    monkeypatch.setattr(verify_facebook_deployment, "build_opener", lambda *handlers: opener)
+
+    with pytest.raises(ValueError, match="transport failed after bounded retries"):
+        verify_facebook_deployment.verify(
+            "https://identity.demo.waooaw.com/realms/waooaw",
+            "https://app.demo.waooaw.com",
+        )
+
+    assert opener.open.call_count == 3
 
 
 @pytest.mark.parametrize("replacement", [None, "host", "callback", "client", "scope", "state"])
