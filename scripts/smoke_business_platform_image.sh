@@ -5,6 +5,7 @@ image=${1:?usage: smoke_business_platform_image.sh IMAGE}
 suffix=$$
 postgres_container="waooaw-bp-smoke-postgres-$suffix"
 app_container="waooaw-bp-smoke-app-$suffix"
+hmac_key=$(printf 'waooaw-bp-smoke-%s' "$suffix" | sha256sum | cut -d' ' -f1)
 
 cleanup() {
   docker rm -f "$app_container" "$postgres_container" >/dev/null 2>&1 || true
@@ -36,7 +37,7 @@ docker run --detach --name "$app_container" \
   --env Keycloak__Audience=waooaw-platform \
   --env Keycloak__RequireHttpsMetadata=true \
   --env Identity__Hmac__ActiveVersion=v1 \
-  --env Identity__Hmac__Key=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
+  --env Identity__Hmac__Key="$hmac_key" \
   --env IdentityBrokerRead__Enabled=true \
   --env IdentityBrokerRead__ActorIssuer=https://identity.invalid/realms/waooaw \
   --env IdentityBrokerRead__PrivateOrigin=https://keycloak.private.invalid \
