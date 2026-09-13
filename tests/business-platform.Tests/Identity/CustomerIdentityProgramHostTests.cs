@@ -116,6 +116,7 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
             settings["IdentityBrokerRead:AllowedPrivateHosts:0"] = _configuration.AllowedPrivateHosts[0];
             settings["IdentityBrokerRead:ClientId"] = _configuration.ClientId;
             settings["IdentityBrokerRead:ClientSecret"] = _configuration.ClientSecret;
+            settings["IdentityBrokerRead:AllowedAuthorizedParties:0"] = "waooaw-web";
             settings["IdentityBrokerRead:Providers:google:ProviderNamespace"] =
                 _configuration.Providers["google"].ProviderNamespace;
             settings["IdentityBrokerRead:Providers:google:TrustConfigDigest"] =
