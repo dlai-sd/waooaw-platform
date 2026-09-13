@@ -21,7 +21,7 @@ public sealed class IdentityBrokerReadOptions
     public string[] AllowedPrivateHosts { get; set; } = [];
     public string ClientId { get; set; } = "";
     public string ClientSecret { get; set; } = "";
-    public string[] AllowedAuthorizedParties { get; set; } = ["waooaw-web"];
+    public string[] AllowedAuthorizedParties { get; set; } = [];
     public Dictionary<string, IdentityBrokerProviderOptions> Providers { get; set; } =
         new(StringComparer.Ordinal);
 

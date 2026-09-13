@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Waooaw.BusinessPlatform.Services;
@@ -43,6 +44,7 @@ public sealed class GoogleWorkspaceProofAdapterTests
             AllowedPrivateHosts = ["keycloak.private.invalid"],
             ClientId = "waooaw-bp-identity-reader",
             ClientSecret = "synthetic-reader-secret",
+            AllowedAuthorizedParties = ["waooaw-web"],
             Providers = new()
             {
                 ["google"] = new()
@@ -487,6 +489,35 @@ public sealed class GoogleWorkspaceProofAdapterTests
             .ProviderNamespace;
 
         Assert.False(configuration.IsConfigured);
+    }
+
+    [Fact]
+    public void IndexedAuthorizedParties_BindWithoutDuplicatingDefaults()
+    {
+        var values = new Dictionary<string, string?>
+        {
+            ["IdentityBrokerRead:Enabled"] = "true",
+            ["IdentityBrokerRead:ActorIssuer"] = "https://synthetic.invalid/realms/waooaw",
+            ["IdentityBrokerRead:PrivateOrigin"] = "https://keycloak.private.invalid",
+            ["IdentityBrokerRead:AllowedPrivateHosts:0"] = "keycloak.private.invalid",
+            ["IdentityBrokerRead:ClientId"] = "waooaw-bp-identity-reader",
+            ["IdentityBrokerRead:ClientSecret"] = "synthetic-reader-secret",
+            ["IdentityBrokerRead:AllowedAuthorizedParties:0"] = "waooaw-web",
+            ["IdentityBrokerRead:AllowedAuthorizedParties:1"] = "waooaw-web-preview",
+            ["IdentityBrokerRead:Providers:google:ProviderNamespace"] =
+                "urn:waooaw:identity:synthetic:google:customer-login:v1",
+            ["IdentityBrokerRead:Providers:google:TrustConfigDigest"] = new string('a', 64),
+            ["IdentityBrokerRead:Providers:facebook:ProviderNamespace"] =
+                "urn:waooaw:identity:synthetic:facebook:customer-login:v1",
+            ["IdentityBrokerRead:Providers:facebook:TrustConfigDigest"] = new string('b', 64),
+        };
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+        var options = new IdentityBrokerReadOptions();
+
+        configuration.GetSection(IdentityBrokerReadOptions.SectionName).Bind(options);
+
+        Assert.Equal(["waooaw-web", "waooaw-web-preview"], options.AllowedAuthorizedParties);
+        Assert.True(options.IsConfigured);
     }
 
     internal sealed class SyntheticKeycloakHandler : HttpMessageHandler

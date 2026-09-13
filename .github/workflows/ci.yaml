@@ -66,6 +66,9 @@ jobs:
           provenance: false
           cache-from: type=gha,scope=release-${{ matrix.service.name }}
           cache-to: type=gha,mode=max,scope=release-${{ matrix.service.name }}
+      - name: Smoke Business Platform deployment configuration
+        if: matrix.service.name == 'business-platform'
+        run: scripts/smoke_business_platform_image.sh '${{ env.REGISTRY_PREFIX }}/business-platform:sha-${{ github.sha }}'
       - name: Scan pull-request image
         uses: aquasecurity/trivy-action@2736533278103862a861f4a35ebac3e97854d956
         with:
