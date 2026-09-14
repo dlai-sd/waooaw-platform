@@ -121,6 +121,7 @@ def test_demo_terraform_uses_generation_fenced_emptydir_storage() -> None:
     assert "WC091_FIXTURE_DIGEST" in module
     assert 'name        = "Identity__Hmac__Key"' in module
     assert 'name  = "Identity__Hmac__ActiveVersion"' in module
+    assert 'name        = "ChannelContinuity__EnvelopeHmacKey"' in module
     assert "demo_data_generation_id                  = var.manifest_digest" in demo
     assert 'filesha256("../../../../../environment-readiness/demo.rendered.json")' in demo
 
@@ -130,13 +131,19 @@ def test_demo_deployment_provisions_and_orders_every_hmac_secret_dependency() ->
     workflow = (wc091_environment.ROOT / ".github/workflows/environment-deployment.yaml").read_text()
     module = (wc091_environment.ROOT / "infrastructure/terraform/phase2/modules/workload/main.tf").read_text()
     hmac_secret = next(entry["vaultSecretName"] for entry in catalog["entries"] if entry["id"] == "identity-hmac-active")
+    continuity_secret = next(entry["vaultSecretName"] for entry in catalog["entries"] if entry["id"] == "continuity-envelope-hmac")
     inventory = re.search(r'^\s*credential_names="([^"]+)"$', workflow, re.MULTILINE)
     seeder = re.search(r"seeder_script='.*?for name in ([^;]+); do", workflow)
 
     assert inventory is not None and hmac_secret in inventory.group(1).split()
+    assert inventory is not None and continuity_secret in inventory.group(1).split()
     assert seeder is not None and hmac_secret in seeder.group(1).split()
+    assert seeder is not None and continuity_secret in seeder.group(1).split()
     assert (
         "azurerm_role_assignment.identity_hmac_secret" in module.split('resource "azurerm_container_app" "member"', maxsplit=1)[1]
+    )
+    assert (
+        "azurerm_role_assignment.continuity_hmac_secret" in module.split('resource "azurerm_container_app" "member"', maxsplit=1)[1]
     )
     assert 'scripts/goal006_keyvault_retry.py"' in workflow
 
