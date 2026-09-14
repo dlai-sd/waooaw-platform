@@ -18,6 +18,7 @@ export default async function CustomerLayout({ children }: { children: ReactNode
   if (!accessToken) redirect('/login');
   const identity = await getIdentitySession(accessToken);
   if (identity.kind === 'expired' || identity.kind === 'unauthorized') redirect('/login');
+  if (identity.kind === 'registration-required') redirect('/login');
   const { locale, messages } = await getRequestI18n();
   if (identity.kind === 'step-up') {
     return <ProtectedAppShell locale={locale} messages={messages} variant="customer"><StateView actionHref="/login" actionLabel={messages.retrySecureSignIn} kind="forbidden" title={messages.accessNotPermitted} description={messages.accessNotPermittedDescription} /></ProtectedAppShell>;

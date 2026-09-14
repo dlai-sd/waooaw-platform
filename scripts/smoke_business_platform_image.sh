@@ -17,7 +17,7 @@ docker run --detach --name "$postgres_container" \
   --env POSTGRES_DB=waooaw \
   --env POSTGRES_HOST_AUTH_METHOD=trust \
   --publish 127.0.0.1::5001 \
-  postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685 >/dev/null
+  pgvector/pgvector@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b >/dev/null
 
 attempt=0
 until docker exec "$postgres_container" pg_isready --username postgres --dbname waooaw >/dev/null 2>&1; do
@@ -29,6 +29,10 @@ done
 docker run --detach --name "$app_container" \
   --network "container:$postgres_container" \
   --cpus 0.5 --memory 1g \
+  --env WAOOAW_DEMO_DATABASE_BOOTSTRAP=true \
+  --env POSTGRES_USER=postgres \
+  --env POSTGRES_DB=waooaw \
+  --env POSTGRES_PASSWORD=demo-disposable-only \
   --env ASPNETCORE_ENVIRONMENT=Production \
   --env ASPNETCORE_URLS=http://+:5001 \
   --env ConnectionStrings__DefaultConnection='Host=localhost;Port=5432;Database=waooaw;Username=postgres' \
@@ -61,4 +65,16 @@ fi
 
 test "$(docker inspect "$app_container" --format '{{.State.Running}}')" = true
 test "$(docker inspect "$app_container" --format '{{.RestartCount}}')" = 0
+test "$(docker exec "$postgres_container" psql --username postgres --dbname waooaw --tuples-only --no-align \
+  --command "SELECT to_regclass('identity.idempotency_ledger') IS NOT NULL AND to_regclass('identity.accounts') IS NOT NULL")" = t
+
+docker restart "$app_container" >/dev/null
+if ! curl --fail --silent --show-error --retry 30 --retry-all-errors --retry-delay 1 \
+  "http://127.0.0.1:$host_port/health/ready" >/dev/null; then
+  docker logs "$app_container" >&2
+  exit 1
+fi
+docker logs "$app_container" 2>&1 | grep -q "Demo schema bundle already applied; skipping bootstrap"
+test "$(docker exec "$postgres_container" psql --username postgres --dbname waooaw --tuples-only --no-align \
+  --command "SELECT count(*) FROM public.waooaw_demo_schema_bootstrap WHERE state = 'complete'")" = 1
 printf 'Business Platform deployment-shaped image smoke passed: %s\n' "$image"

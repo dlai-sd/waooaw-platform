@@ -7,6 +7,7 @@ using Waooaw.BusinessPlatform.Services;
 using Waooaw.BusinessPlatform.Workflows;
 using Waooaw.ConstitutionalEngine.Grpc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Options;
 using Temporalio.Extensions.Hosting;
@@ -17,7 +18,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddHealthChecks();
+builder.Services.AddHealthChecks()
+    .AddCheck<IdentitySchemaHealthCheck>("identity-schema", tags: ["ready"]);
 
 // ── JWT Authentication — Keycloak (ADR-003, C-026) ───────────────────────────
 // tenant_id extracted in TenantIsolationMiddleware after token is validated.
@@ -324,8 +326,10 @@ app.UseWhen(context => !context.Items.ContainsKey(CustomerMembershipMiddleware.J
 
 app.MapControllers();
 app.MapHealthChecks("/health");
-app.MapHealthChecks("/health/live");
-app.MapHealthChecks("/health/ready");
+app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
+app.MapHealthChecks("/health/ready", new HealthCheckOptions {
+    Predicate = registration => registration.Tags.Contains("ready"),
+});
 
 app.Run();
 

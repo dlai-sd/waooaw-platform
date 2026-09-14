@@ -66,6 +66,7 @@ public enum CustomerWorkspaceError
     IdempotencyConflict,
     RecoveryRequired,
     MembershipRequired,
+    MembershipInactive,
     InvariantViolation,
     DependencyUnavailable,
 }
@@ -77,7 +78,8 @@ public sealed class CustomerWorkspaceException(CustomerWorkspaceError error, Exc
     public int StatusCode => Error switch
     {
         CustomerWorkspaceError.InvalidInput => 400,
-        CustomerWorkspaceError.FreshAuthenticationRequired or CustomerWorkspaceError.MembershipRequired => 403,
+        CustomerWorkspaceError.FreshAuthenticationRequired or CustomerWorkspaceError.MembershipRequired
+            or CustomerWorkspaceError.MembershipInactive => 403,
         CustomerWorkspaceError.RegistrationNotFound => 404,
         CustomerWorkspaceError.IdempotencyConflict or CustomerWorkspaceError.RecoveryRequired => 409,
         CustomerWorkspaceError.RegistrationIneligible => 422,
@@ -184,8 +186,15 @@ public sealed class CustomerWorkspaceProvisioningService
         try
         {
             await SetContextAsync(db, actor, ct);
-            var membership = await ReadMembershipAsync(db, ct)
-                ?? throw new CustomerWorkspaceException(CustomerWorkspaceError.MembershipRequired);
+            var membership = await ReadMembershipAsync(db, ct);
+            if (membership is null)
+            {
+                var actorExists = await db.ActorBindings.AnyAsync(binding =>
+                    binding.ActorIssuer == actor.Issuer && binding.ActorSubject == actor.Subject, ct);
+                throw new CustomerWorkspaceException(actorExists
+                    ? CustomerWorkspaceError.MembershipInactive
+                    : CustomerWorkspaceError.MembershipRequired);
+            }
             await db.Database.ExecuteSqlInterpolatedAsync($"""
                 SELECT pg_catalog.set_config('app.tenant_id', {membership.TenantId.ToString("D")}, true),
                        pg_catalog.set_config('app.current_tenant_id', {membership.TenantId.ToString("D")}, true)

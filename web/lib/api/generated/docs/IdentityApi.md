@@ -729,12 +729,13 @@ This endpoint does not need any parameter.
 
 ### HTTP response details
 
-| Status code | Description                                                                 | Response headers |
-| ----------- | --------------------------------------------------------------------------- | ---------------- |
-| **200**     | Current privacy-safe customer session projection                            | -                |
-| **401**     | Identity session is missing, invalid, or expired                            | -                |
-| **403**     | Fresh or stronger Keycloak assurance is required before the command can run | -                |
-| **503**     | Identity dependency is unavailable and the outcome remains unresolved       | -                |
+| Status code | Description                                                                                                  | Response headers |
+| ----------- | ------------------------------------------------------------------------------------------------------------ | ---------------- |
+| **200**     | Current privacy-safe customer session projection                                                             | -                |
+| **401**     | Identity session is missing, invalid, or expired                                                             | -                |
+| **403**     | Fresh or stronger Keycloak assurance is required before the command can run                                  | -                |
+| **409**     | The authenticated broker identity has no active customer account; registration requires explicit user intent | -                |
+| **503**     | Identity dependency is unavailable and the outcome remains unresolved                                        | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 

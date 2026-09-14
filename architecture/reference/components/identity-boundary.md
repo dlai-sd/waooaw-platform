@@ -85,6 +85,40 @@ under its controlling contract and must not be delayed by ordinary role or step-
 
 Google, Facebook, Apple, and email fallback must be designed as one `Continue with...` experience for new and returning customers. Provider activation is independent: an unavailable provider is not displayed as active until its setup and customer-safety evidence passes. Microsoft remains a compatible future Keycloak provider but is not required to close WC-034 F2.
 
+### 3.0 Browser intent and modal state machine
+
+`LOGIN` and `REGISTER` are distinct user intents even when they use the same Keycloak broker. The
+Next.js server binds the selected intent, provider, locale and safe return target to the OIDC
+transaction. A callback must not infer intent from the existence of an account, a `403`, provider
+claims or a browser-controlled return URL.
+
+Both journeys complete in the route-backed authentication modal. Full-page `/login`, `/register`
+and `/auth/error` routes are direct-entry fallbacks that render the same modal content and state
+machine; successful broker return must not replace the modal with an unrelated page.
+
+```text
+LOGIN
+  provider selection -> Keycloak broker -> resolve current membership
+  -> existing active account: establish session -> close modal -> safe target
+  -> no active account: offer explicit "Create account" transition; never auto-register
+  -> insufficient assurance/dependency failure: remain in modal with bounded recovery
+
+REGISTER
+  provider selection -> Keycloak broker -> resolve current membership
+  -> existing active account: establish session -> close modal -> safe target
+  -> no active account: start/resume actor-bound registration
+  -> profile -> email proof when required -> optional mobile -> explicit completion
+  -> verify session/account handoff -> close modal -> safe target
+```
+
+The server uses typed outcomes, not overloaded HTTP status interpretation, to distinguish
+`ACCOUNT_SESSION_READY`, `REGISTRATION_REQUIRED`, `ASSURANCE_REQUIRED`, `ACTION_DENIED` and
+`DEPENDENCY_UNAVAILABLE`. A valid pre-account actor with no membership is
+`REGISTRATION_REQUIRED`; an assurance or policy denial is not evidence that the account is absent.
+The UI may preserve only locale, safe target and non-secret registration draft while switching
+intent. Provider tokens, authorization codes, state, nonce, PKCE material and verification codes
+remain server-bound and are never logged or copied into application URLs.
+
 ### Meta separation rule
 
 The customer-login Meta application and the DMA Business Manager OAuth application are separate security principals with separate client IDs, secrets, redirect URIs, consent text, and scopes. The login application must never request page, advertisement, post, contact, WhatsApp Business management, publishing, or business-activity permissions. FA-035 resolves the Founder policy decision; INST-004 must still reconcile ADR-008 before implementation begins.
@@ -395,6 +429,12 @@ The normative HTTP details and generated models are in `business-platform.openap
 
 No API accepts `tenantId`, raw provider access token, password, upstream provider authorization code, relationship ID, or return URL in a request body. Keycloak protocol endpoints and callbacks remain Keycloak/Next.js session-boundary concerns and are not re-exposed as BP convenience endpoints.
 
+The Next.js authentication boundary must preserve the distinction between login intent and
+registration intent. It may orchestrate the existing provider, session and registration operations,
+but it must not translate every session `403` into registration. Server-to-server responses retain
+privacy-safe public errors while carrying an internal typed outcome and one correlation ID across
+Web, Identity Edge, Keycloak and Business Platform logs.
+
 ### 7.1 Identity endpoint authorization matrix
 
 | Operations | Required context | Role and assurance |
@@ -513,6 +553,7 @@ Every F2 error uses RFC 9457 `IdentityProblemDetail` with stable `code`, HTTP `s
 | 401 | `IDENTITY_SESSION_REQUIRED` | Missing, invalid, or expired actor session; protected content hidden |
 | 403 | `IDENTITY_STEP_UP_REQUIRED` | Stronger/fresher Keycloak assurance required; bound intent supplied |
 | 403 | `IDENTITY_ACTION_DENIED` | Caller cannot perform operation; no account existence disclosed |
+| 409 | `REGISTRATION_REQUIRED` | Valid broker session has no active customer account; login remains non-mutating and offers an explicit registration transition |
 | 409 | `IDENTITY_IDEMPOTENCY_CONFLICT` | Same key with a different canonical request hash; zero mutation |
 | 409 | `DUPLICATE_RESOLUTION_REQUIRED` | Automatic completion/linking is unsafe; no conflicting account detail |
 | 410 | `IDENTITY_CHALLENGE_EXPIRED` | Challenge cannot be reused; restarting does not disclose existence |
@@ -598,6 +639,10 @@ Protected content is removed immediately. Non-secret drafts may remain encrypted
 
 Sign-out clears the server session, browser memory, query cache, relationship cache, protected drafts according to policy, pending verification/link state, optimistic state, and account-scoped storage. Account switch performs the same cleanup before Keycloak `prompt=select_account`. Static assets and public locale/theme preferences may remain. A post-switch sentinel test must prove no prior-account text, identifiers, requests, drafts, or cache entries remain.
 
+Sign-out also performs Keycloak RP-initiated logout using the server-held session and an exact
+allowlisted post-logout redirect. Clearing only the NextAuth cookie is incomplete because it leaves
+the Keycloak SSO session capable of silently re-authenticating the prior account.
+
 ## 12. Privacy, Telemetry, and Tenant Isolation
 
 - URLs and telemetry contain no email, mobile, token, code, tenant ID, provider subject, relationship ID, or evidence payload.
@@ -605,7 +650,34 @@ Sign-out clears the server session, browser memory, query cache, relationship ca
 - The service worker caches static assets only. Identity API, auth callback, authenticated HTML, RSC, and protected payload responses use `no-store` and are excluded from runtime caches.
 - Before account completion, access is actor-scoped. After completion, WC-085 derives tenant only from current membership keyed by validated issuer/subject; each resource owner independently resolves and enforces it through RLS.
 - Provider callbacks bind to server-held state, nonce, PKCE verifier, and intended authentication transaction. Browser parameters cannot choose provider identity, tenant, or account.
+- Identity Edge access logs record only time, environment, request ID, route class, method, status,
+  response size and latency. They must not record request URIs, query strings, remote addresses,
+  referrers or user agents on authorization, broker, callback, login-action, token or logout routes.
 - ADR-023 WhatsApp continuation invokes the logical Identity Boundary through an internal server-to-server adapter. The Phone Identity Service token is never issued to a browser and cannot self-upgrade to a Keycloak session. Web continuation requires a Keycloak round trip and proof-gated binding.
+
+## 12.1 Environment and deployment qualification
+
+The same flow and API contract applies to Codespaces, Demo, UAT and Production. Environments differ
+only in approved origins, callbacks, credentials, provider activation and data durability:
+
+| Environment | Identity and data requirement | Promotion evidence |
+|---|---|---|
+| Codespaces/local | Synthetic providers and disposable PostgreSQL are allowed; apply the complete ordered migration set before tests | Docker journey covers both intents, new/returning account, denial, retry and sign-out |
+| Demo | Approved real provider callbacks; disposable data must be reset and then migrated/seeded deterministically | Real-account login and registration plus schema/readiness proof; no customer traffic |
+| UAT | Protected provider credentials and persistent recoverable data | Same immutable candidate; migration plan/apply, rollback and complete journey evidence |
+| Production | Separately authorized credentials, persistent data, recovery and customer traffic | Founder-authorized apply; migration/rollback proof and complete journey acceptance |
+
+Every Business Platform revision must apply or verify the exact ordered database migrations before
+receiving traffic. `/health/live` proves process liveness only. `/health/ready` fails unless the
+database is reachable and the required identity schema version, tables, functions, grants and RLS
+policies are present. Provider projection cannot be `AVAILABLE` when its broker, callback, required
+assurance path, registration persistence or session handoff is unavailable.
+
+Deployment verification must exercise the immutable deployed candidate through provider discovery,
+broker callback, login of a returning account, registration start/profile/required verification/
+completion for a new account, session handoff, sign-out, account switch, cancellation and one safe
+failure/retry. A redirect to Google or Meta without code exchange and application completion is
+connectivity evidence only and cannot qualify login or registration.
 
 ## 13. UX Acceptance Mapping
 

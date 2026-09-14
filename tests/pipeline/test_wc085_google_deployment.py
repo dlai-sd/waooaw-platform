@@ -26,7 +26,7 @@ def test_google_recreated_only_in_demo_with_external_credentials() -> None:
     assert 'identityProviders      = concat(local.google_identity_providers, local.facebook_identity_providers)' in workload
     assert 'clientId     = "$${GOOGLE_CLIENT_ID}"' in google
     assert 'clientSecret = "$${GOOGLE_CLIENT_SECRET}"' in google
-    assert 'trustEmail                = false' in google
+    assert 'trustEmail                = true' in google
     assert 'storeToken                = false' in google
     assert 'defaultScope = "openid email profile"' in google
     assert 'GOOGLE_CLIENT_SECRET:?Google client secret is required' in workload

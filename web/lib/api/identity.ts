@@ -19,6 +19,7 @@ export function createIdentityApi(accessToken: string): IdentityApi {
 
 export type IdentitySessionResult =
   | { kind: 'ready'; session: IdentitySession }
+  | { kind: 'registration-required' }
   | { kind: 'expired' }
   | { kind: 'step-up' }
   | { kind: 'unauthorized' }
@@ -34,6 +35,10 @@ export async function getIdentitySession(accessToken: string): Promise<IdentityS
     if (error instanceof ResponseError) {
       if (error.response.status === 401) return { kind: 'unauthorized' };
       if (error.response.status === 403) return { kind: 'step-up' };
+      if (error.response.status === 409) {
+        const problem = await error.response.clone().json().catch(() => undefined) as { code?: unknown } | undefined;
+        if (problem?.code === 'REGISTRATION_REQUIRED') return { kind: 'registration-required' };
+      }
     }
     return { kind: 'unavailable' };
   }

@@ -78,7 +78,7 @@ public sealed class OwnerGatewayCoverageTests(OwnerGatewayIdentityFixture fixtur
         });
         using var client = factory.CreateClient();
 
-        var response = await client.GetAsync("/health");
+        var response = await client.GetAsync("/health/live");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.IsType<AuthenticatedRelationshipWorkspaceOwnerGateway>(

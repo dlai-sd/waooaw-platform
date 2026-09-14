@@ -20,6 +20,7 @@ export const IdentityProblemCode = {
   IdentityRequestInvalid: "IDENTITY_REQUEST_INVALID",
   IdentitySessionRequired: "IDENTITY_SESSION_REQUIRED",
   IdentityStepUpRequired: "IDENTITY_STEP_UP_REQUIRED",
+  RegistrationRequired: "REGISTRATION_REQUIRED",
   IdentityActionDenied: "IDENTITY_ACTION_DENIED",
   IdentityResourceNotAccessible: "IDENTITY_RESOURCE_NOT_ACCESSIBLE",
   IdentityIdempotencyConflict: "IDENTITY_IDEMPOTENCY_CONFLICT",

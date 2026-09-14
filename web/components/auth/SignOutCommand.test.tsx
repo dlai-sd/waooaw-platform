@@ -2,10 +2,10 @@
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { signIn, signOut } from 'next-auth/react';
+import { signIn } from 'next-auth/react';
 import { AccountSwitchCommand, SignOutCommand } from './SignOutCommand';
 
-jest.mock('next-auth/react', () => ({ signIn: jest.fn(), signOut: jest.fn() }));
+jest.mock('next-auth/react', () => ({ signIn: jest.fn() }));
 
 it('clears WAOOAW protected state before ending the session', () => {
   sessionStorage.setItem('waooaw:identity:registration-draft', '{"displayName":"Asha"}');
@@ -18,14 +18,17 @@ it('clears WAOOAW protected state before ending the session', () => {
   localStorage.setItem('waooaw:preference:theme', 'dark');
   localStorage.setItem('other-app-preference', 'preserve');
   render(<SignOutCommand label="Sign out" />);
-  fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+  const button = screen.getByRole('button', { name: 'Sign out' });
+  button.closest('form')!.addEventListener('submit', (event) => event.preventDefault());
+  fireEvent.click(button);
   expect(sessionStorage.getItem('waooaw:identity:registration-draft')).toBeNull();
   expect(Object.keys(localStorage).filter((key) => key.startsWith('waooaw:conversation:'))).toEqual([]);
   expect(localStorage.getItem('waooaw:preference:theme')).toBeNull();
   expect(JSON.parse(String(localStorage.getItem('waooaw:identity:session-change')))).toMatchObject({ action: 'SIGN_OUT' });
   expect(sessionStorage.getItem('other-app')).toBe('preserve');
   expect(localStorage.getItem('other-app-preference')).toBe('preserve');
-  expect(signOut).toHaveBeenCalledWith({ callbackUrl: '/' });
+  expect(button.closest('form')).toHaveAttribute('action', '/api/auth/keycloak-logout');
+  expect(button.closest('form')).toHaveAttribute('method', 'post');
 });
 
 it('clears protected state before requesting a different Keycloak account', () => {

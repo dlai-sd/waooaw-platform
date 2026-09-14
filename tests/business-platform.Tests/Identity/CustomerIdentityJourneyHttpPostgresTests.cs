@@ -191,6 +191,12 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests : IAsyncLifetime
         Assert.Equal("EMAIL_VERIFICATION_REQUIRED", registration.GetProperty("state").GetString());
         Assert.Equal("VERIFY_EMAIL", registration.GetProperty("nextAction").GetString());
         Assert.False(registration.GetProperty("emailVerified").GetBoolean());
+        var challenge = await SendAsync(HttpMethod.Post,
+            $"/api/v1/identity/registrations/{registration.GetProperty("registrationId").GetGuid()}/email-verifications",
+            token, new { email = "customer@example.com" });
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, challenge.StatusCode);
+        Assert.Equal("IDENTITY_DEPENDENCY_UNAVAILABLE",
+            (await JsonAsync(challenge)).GetProperty("code").GetString());
         Assert.Empty(_broker.Requests);
         Assert.Equal(1L, await OwnerScalarAsync("SELECT count(*) FROM identity.registrations"));
         await AssertEmptyPoolAsync();
@@ -260,7 +266,7 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests : IAsyncLifetime
         var token = Token("actor", extra: [new Claim("tenant_id", Guid.NewGuid().ToString()), new Claim("waooaw_roles", "OWNER")]);
         foreach (var path in new[] { "/api/v1/identity/profile", "/api/v1/identity/settings",
             "/api/v1/identity/login-methods", "/api/v1/identity/mobile-verifications",
-            "/api/v1/identity/account-links", "/api/v1/subscriptions", "/api/v1/identity/registrations/00000000-0000-0000-0000-000000000085/email-verifications" })
+            "/api/v1/identity/account-links", "/api/v1/subscriptions" })
         {
             foreach (var method in new[] { HttpMethod.Get, HttpMethod.Put, HttpMethod.Post })
             {

@@ -72,6 +72,7 @@ export const authOptions: NextAuthOptions = {
         token.accessToken = account.access_token;
         token.accessTokenExpiresAt = account.expires_at;
       }
+      if (account?.id_token) token.idToken = account.id_token;
       if (account) token.founder = hasFounderClaim(profile);
       if (!activeAccessToken(token)) {
         delete token.accessToken;

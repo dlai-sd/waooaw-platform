@@ -149,6 +149,7 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
     public async Task Program_TenantlessGoogleSignup_ProfileCompleteSession_UsesRealRegistrationsAndJwtBearer()
     {
         StartHost();
+        Assert.Equal(HttpStatusCode.OK, (await _client.GetAsync("/health/ready")).StatusCode);
         var schemes = await _factory!.Services.GetRequiredService<IAuthenticationSchemeProvider>().GetAllSchemesAsync();
         Assert.Equal(typeof(JwtBearerHandler), Assert.Single(schemes).HandlerType);
         var options = _factory.Services.GetRequiredService<IOptionsMonitor<JwtBearerOptions>>().Get(JwtBearerDefaults.AuthenticationScheme);
@@ -162,6 +163,9 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
 
         var token = Token();
         Assert.DoesNotContain(new JwtSecurityTokenHandler().ReadJwtToken(token).Claims, claim => claim.Type == "tenant_id");
+        using var unresolved = await SendAsync(HttpMethod.Get, "/api/v1/identity/session", token);
+        Assert.Equal("REGISTRATION_REQUIRED",
+            (await ExpectAsync(unresolved, HttpStatusCode.Conflict)).GetProperty("code").GetString());
         using var started = await SendAsync(HttpMethod.Post, "/api/v1/identity/registrations", token, new { languagePreference = "en" });
         var registration = (await ExpectAsync(started, HttpStatusCode.Created)).GetProperty("registrationId").GetGuid();
         using var profile = await SendAsync(HttpMethod.Put, $"/api/v1/identity/registrations/{registration}/profile", token,

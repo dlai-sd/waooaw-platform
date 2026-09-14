@@ -44,13 +44,14 @@ describe('Browser session projection', () => {
 
     const token = await jwt!({
       token: {},
-      account: { access_token: 'secret-bearer-token', expires_at: expiresAt },
+      account: { access_token: 'secret-bearer-token', expires_at: expiresAt, id_token: 'server-held-id-token' },
       profile: { realm_access: { roles: ['founder'] } },
     } as never);
 
     expect(token).toMatchObject({
       accessToken: 'secret-bearer-token',
       accessTokenExpiresAt: expiresAt,
+      idToken: 'server-held-id-token',
       founder: true,
     });
   });
