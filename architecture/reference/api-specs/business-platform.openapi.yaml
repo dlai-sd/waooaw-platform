@@ -124,6 +124,7 @@ paths:
                 $ref: "#/components/schemas/IdentitySession"
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
         "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
+        "409": { $ref: "#/components/responses/IdentityRegistrationRequired" }
         "503": { $ref: "#/components/responses/IdentityUnavailable" }
 
   /api/v1/identity/profile:
@@ -3957,6 +3958,12 @@ components:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/IdentityProblemDetail"
+    IdentityRegistrationRequired:
+      description: The authenticated broker identity has no active customer account; registration requires explicit user intent
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/IdentityProblemDetail"
     IdentityConflict:
       description: Idempotency conflict or duplicate resolution requires a safe recovery path
       content:
@@ -4373,7 +4380,7 @@ components:
 
     IdentityProblemCode:
       type: string
-      enum: [IDENTITY_REQUEST_INVALID, IDENTITY_SESSION_REQUIRED, IDENTITY_STEP_UP_REQUIRED, IDENTITY_ACTION_DENIED, IDENTITY_RESOURCE_NOT_ACCESSIBLE, IDENTITY_IDEMPOTENCY_CONFLICT, DUPLICATE_RESOLUTION_REQUIRED, IDENTITY_CHALLENGE_EXPIRED, IDENTITY_VERIFICATION_REQUIRED, IDENTITY_RATE_LIMITED, IDENTITY_DEPENDENCY_UNAVAILABLE]
+      enum: [IDENTITY_REQUEST_INVALID, IDENTITY_SESSION_REQUIRED, IDENTITY_STEP_UP_REQUIRED, REGISTRATION_REQUIRED, IDENTITY_ACTION_DENIED, IDENTITY_RESOURCE_NOT_ACCESSIBLE, IDENTITY_IDEMPOTENCY_CONFLICT, DUPLICATE_RESOLUTION_REQUIRED, IDENTITY_CHALLENGE_EXPIRED, IDENTITY_VERIFICATION_REQUIRED, IDENTITY_RATE_LIMITED, IDENTITY_DEPENDENCY_UNAVAILABLE]
 
     EmploymentState:
       type: string

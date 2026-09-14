@@ -28,7 +28,7 @@ locals {
     alias                     = "google"
     providerId                = "google"
     enabled                   = true
-    trustEmail                = false
+    trustEmail                = true
     storeToken                = false
     addReadTokenRoleOnCreate  = false
     firstBrokerLoginFlowAlias = "first broker login"

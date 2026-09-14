@@ -356,7 +356,7 @@ public sealed class IdentityController(
             state.UpdatedAt);
 
     [HttpGet("session")]
-    [CustomerIdentityRoute(requiresMembership: true)]
+    [CustomerIdentityRoute(requiresMembership: true, registrationRequiredWhenMissing: true)]
     public async Task<IActionResult> GetSessionAsync(CancellationToken ct)
     {
         if (customerJourney is not null)
@@ -409,6 +409,7 @@ public sealed class IdentityController(
     }
 
     [HttpGet("profile")]
+    [CustomerIdentityRoute(requiresMembership: true)]
     public async Task<IActionResult> GetCustomerProfileAsync(CancellationToken ct)
     {
         if (ValidatePortalSession(out var tenantId) is { } error) return error;
@@ -424,6 +425,7 @@ public sealed class IdentityController(
     }
 
     [HttpPut("profile")]
+    [CustomerIdentityRoute(requiresMembership: true)]
     public async Task<IActionResult> UpdateCustomerProfileAsync(
         [FromBody] UpdateCustomerProfileRequest req, CancellationToken ct)
     {
@@ -455,6 +457,7 @@ public sealed class IdentityController(
     }
 
     [HttpGet("settings")]
+    [CustomerIdentityRoute(requiresMembership: true)]
     public async Task<IActionResult> GetCustomerSettingsAsync(CancellationToken ct)
     {
         if (ValidatePortalSession(out var tenantId) is { } error) return error;
@@ -469,6 +472,7 @@ public sealed class IdentityController(
     }
 
     [HttpPut("settings")]
+    [CustomerIdentityRoute(requiresMembership: true)]
     public async Task<IActionResult> UpdateCustomerSettingsAsync(
         [FromBody] UpdateCustomerSettingsRequest req, CancellationToken ct)
     {
@@ -502,6 +506,7 @@ public sealed class IdentityController(
     }
 
     [HttpGet("login-methods")]
+    [CustomerIdentityRoute(requiresMembership: true)]
     public IActionResult ListCustomerLoginMethods()
     {
         if (ValidatePortalSession(out _) is { } error) return error;
@@ -701,6 +706,7 @@ public sealed class IdentityController(
     // ── POST /api/v1/identity/registrations/{registrationId}/email-verifications
 
     [HttpPost("registrations/{registrationId:guid}/email-verifications")]
+    [CustomerIdentityRoute]
     public async Task<IActionResult> StartEmailVerificationAsync(
         Guid registrationId,
         [FromBody] StartEmailVerificationRequest req,
@@ -714,8 +720,11 @@ public sealed class IdentityController(
             var idempotencyKey = IdempotencyKey;
             var hash = ComputeHash(req);
 
-            var (challenge, _) = await identityService.StartEmailVerificationAsync(
-                registrationId, ActorSubject, idempotencyKey, hash, req.Email, ct);
+            var (challenge, _) = customerJourney is not null
+                ? await customerJourney.StartEmailVerificationAsync(
+                    User, registrationId, idempotencyKey, hash, req.Email, ct)
+                : await identityService.StartEmailVerificationAsync(
+                    registrationId, ActorSubject, idempotencyKey, hash, req.Email, ct);
 
             return StatusCode(202, ToResponse(challenge));
         }
@@ -743,6 +752,7 @@ public sealed class IdentityController(
     // ── POST /registrations/{id}/email-verifications/confirm ─────────────────
 
     [HttpPost("registrations/{registrationId:guid}/email-verifications/confirm")]
+    [CustomerIdentityRoute]
     public async Task<IActionResult> ConfirmEmailVerificationAsync(
         Guid registrationId,
         [FromBody] ConfirmVerificationRequest req,
@@ -789,6 +799,7 @@ public sealed class IdentityController(
     // ── POST /registrations/{id}/mobile-verifications ─────────────────────────
 
     [HttpPost("registrations/{registrationId:guid}/mobile-verifications")]
+    [CustomerIdentityRoute]
     public async Task<IActionResult> StartRegistrationMobileVerificationAsync(
         Guid registrationId,
         [FromBody] StartMobileVerificationRequest req,
@@ -831,6 +842,7 @@ public sealed class IdentityController(
     // ── POST /registrations/{id}/mobile-verifications/confirm ─────────────────
 
     [HttpPost("registrations/{registrationId:guid}/mobile-verifications/confirm")]
+    [CustomerIdentityRoute]
     public async Task<IActionResult> ConfirmRegistrationMobileVerificationAsync(
         Guid registrationId,
         [FromBody] ConfirmVerificationRequest req,
@@ -926,6 +938,7 @@ public sealed class IdentityController(
     // ── POST /api/v1/identity/mobile-verifications (progressive) ─────────────
 
     [HttpPost("mobile-verifications")]
+    [CustomerIdentityRoute(requiresMembership: true)]
     public async Task<IActionResult> StartAccountMobileVerificationAsync(
         [FromBody] StartMobileVerificationRequest req,
         CancellationToken ct)
@@ -962,6 +975,7 @@ public sealed class IdentityController(
     // ── POST /api/v1/identity/mobile-verifications/confirm (progressive) ──────
 
     [HttpPost("mobile-verifications/confirm")]
+    [CustomerIdentityRoute(requiresMembership: true)]
     public async Task<IActionResult> ConfirmAccountMobileVerificationAsync(
         [FromBody] ConfirmVerificationRequest req,
         CancellationToken ct)
@@ -1009,6 +1023,7 @@ public sealed class IdentityController(
     // ── POST /api/v1/identity/account-links ───────────────────────────────────
 
     [HttpPost("account-links")]
+    [CustomerIdentityRoute(requiresMembership: true)]
     public async Task<IActionResult> StartAccountLinkAsync(
         [FromBody] StartAccountLinkRequest req,
         CancellationToken ct)
@@ -1049,6 +1064,7 @@ public sealed class IdentityController(
     // ── POST /api/v1/identity/account-links/{linkId}/approve ─────────────────
 
     [HttpPost("account-links/{linkId:guid}/approve")]
+    [CustomerIdentityRoute(requiresMembership: true)]
     public async Task<IActionResult> ApproveAccountLinkAsync(Guid linkId, CancellationToken ct)
     {
         var tenantId = TenantIdFromContext;
@@ -1095,6 +1111,7 @@ public sealed class IdentityController(
     // ── GET /api/v1/identity/account-links/{linkId} ───────────────────────────
 
     [HttpGet("account-links/{linkId:guid}")]
+    [CustomerIdentityRoute(requiresMembership: true)]
     public async Task<IActionResult> GetAccountLinkAsync(Guid linkId, CancellationToken ct)
     {
         var tenantId = TenantIdFromContext;

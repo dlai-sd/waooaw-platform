@@ -2,7 +2,11 @@ pid /tmp/nginx.pid;
 worker_processes auto;
 events { worker_connections 256; }
 http {
-  access_log /dev/stdout;
+  log_format identity_edge escape=json
+    '{"time":"$time_iso8601","environment":"${environment}",'
+    '"request_id":"$request_id","method":"$request_method",'
+    '"status":$status,"bytes":$body_bytes_sent,"latency":$request_time}';
+  access_log /dev/stdout identity_edge;
   error_log /dev/stderr warn;
   client_body_temp_path /tmp/client_temp;
   proxy_temp_path /tmp/proxy_temp;

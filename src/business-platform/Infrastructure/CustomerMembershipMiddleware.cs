@@ -13,9 +13,12 @@ using Waooaw.BusinessPlatform.Services;
 namespace Waooaw.BusinessPlatform.Infrastructure;
 
 [AttributeUsage(AttributeTargets.Method)]
-public sealed class CustomerIdentityRouteAttribute(bool requiresMembership = false) : Attribute
+public sealed class CustomerIdentityRouteAttribute(
+    bool requiresMembership = false,
+    bool registrationRequiredWhenMissing = false) : Attribute
 {
     public bool RequiresMembership { get; } = requiresMembership;
+    public bool RegistrationRequiredWhenMissing { get; } = registrationRequiredWhenMissing;
 }
 
 public sealed class CustomerMembershipMiddleware(RequestDelegate next)
@@ -62,7 +65,9 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
         }
         catch (CustomerWorkspaceException exception)
         {
-            var code = exception.Error switch
+            var registrationRequired = exception.Error == CustomerWorkspaceError.MembershipRequired
+                && route?.RegistrationRequiredWhenMissing == true;
+            var code = registrationRequired ? "REGISTRATION_REQUIRED" : exception.Error switch
             {
                 CustomerWorkspaceError.IdempotencyConflict => "IDENTITY_IDEMPOTENCY_CONFLICT",
                 CustomerWorkspaceError.RegistrationNotFound => "IDENTITY_RESOURCE_NOT_ACCESSIBLE",
@@ -70,10 +75,11 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
                 CustomerWorkspaceError.RecoveryRequired => "IDENTITY_DUPLICATE_RESOLUTION_REQUIRED",
                 CustomerWorkspaceError.RegistrationIneligible => "IDENTITY_VERIFICATION_REQUIRED",
                 CustomerWorkspaceError.MembershipRequired => "IDENTITY_ACTION_DENIED",
+                CustomerWorkspaceError.MembershipInactive => "IDENTITY_ACTION_DENIED",
                 CustomerWorkspaceError.InvalidInput => "IDENTITY_REQUEST_INVALID",
                 _ => "IDENTITY_DEPENDENCY_UNAVAILABLE",
             };
-            await ProblemAsync(context, exception.StatusCode, code);
+            await ProblemAsync(context, registrationRequired ? StatusCodes.Status409Conflict : exception.StatusCode, code);
         }
         catch (IdentityActionDeniedException)
         {

@@ -59,6 +59,17 @@ describe('identity provider projection', () => {
     await expect(getIdentitySession('access-token')).resolves.toEqual({ kind });
   });
 
+  it('maps only the typed registration-required conflict', async () => {
+    jest.spyOn(IdentityApi.prototype, 'getIdentitySession').mockRejectedValue(
+      new ResponseError({
+        status: 409,
+        clone: () => ({ json: async () => ({ code: 'REGISTRATION_REQUIRED' }) }),
+      } as Response),
+    );
+
+    await expect(getIdentitySession('access-token')).resolves.toEqual({ kind: 'registration-required' });
+  });
+
   it('does not treat an expired projection as an active session', async () => {
     jest.spyOn(IdentityApi.prototype, 'getIdentitySession').mockResolvedValue({
       ...session,

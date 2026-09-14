@@ -5,7 +5,13 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from prepare_pr_body import add_runtime_evidence, load_runtime_evidence, preparation_head, prepare_body  # noqa: E402
+from prepare_pr_body import (  # noqa: E402
+    add_runtime_evidence,
+    business_platform_gate_required,
+    load_runtime_evidence,
+    preparation_head,
+    prepare_body,
+)
 from validate_author_review import validate_author_review  # noqa: E402
 
 
@@ -93,3 +99,18 @@ def test_runtime_evidence_rejects_failed_gate() -> None:
         assert "passed=true" in str(error)
     else:
         raise AssertionError("failed runtime evidence was accepted")
+
+
+def test_business_platform_gate_covers_shared_runtime_and_deployment_paths() -> None:
+    for path in (
+        "src/business-platform/Program.cs",
+        "tests/business-platform.Tests/OwnerGatewayCoverageTests.cs",
+        "infrastructure/postgres/init/029_identity.sql",
+        "infrastructure/terraform/phase2/modules/workload/main.tf",
+        "architecture/reference/api-specs/business-platform.openapi.yaml",
+    ):
+        assert business_platform_gate_required([path])
+
+
+def test_business_platform_gate_ignores_unrelated_paths() -> None:
+    assert not business_platform_gate_required(["web/components/auth/LoginView.tsx"])

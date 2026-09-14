@@ -1,14 +1,18 @@
 import { render, screen } from '@testing-library/react';
 import { getServerSession } from 'next-auth';
+import { redirect } from 'next/navigation';
 import { LoginView } from './LoginView';
 import { RegisterView } from './RegisterView';
-import { listIdentityProviders } from '@/lib/api/identity';
+import { getIdentitySession, listIdentityProviders } from '@/lib/api/identity';
 import { getRequestI18n } from '@/lib/i18n-server';
+import { getServerAccessToken } from '@/lib/server-auth';
 import type { IdentityProvider } from '@/lib/api/generated/models/IdentityProvider';
 
 jest.mock('next-auth', () => ({ getServerSession: jest.fn() }));
-jest.mock('@/lib/api/identity', () => ({ listIdentityProviders: jest.fn() }));
+jest.mock('next/navigation', () => ({ redirect: jest.fn() }));
+jest.mock('@/lib/api/identity', () => ({ getIdentitySession: jest.fn(), listIdentityProviders: jest.fn() }));
 jest.mock('@/lib/i18n-server', () => ({ getRequestI18n: jest.fn() }));
+jest.mock('@/lib/server-auth', () => ({ getServerAccessToken: jest.fn() }));
 jest.mock('./ProviderCommands', () => ({
   ProviderCommands: ({ callbackUrl, intent, providers }: { callbackUrl: string; intent: string; providers: IdentityProvider[] }) => (
     <div data-testid="provider-commands" data-callback-url={callbackUrl} data-intent={intent}>{providers.length} providers</div>
@@ -39,6 +43,8 @@ beforeEach(() => {
   } as Awaited<ReturnType<typeof getRequestI18n>>);
   jest.mocked(listIdentityProviders).mockResolvedValue(providers);
   jest.mocked(getServerSession).mockResolvedValue(null);
+  jest.mocked(getServerAccessToken).mockResolvedValue(undefined);
+  jest.mocked(redirect).mockImplementation(() => { throw new Error('NEXT_REDIRECT'); });
 });
 
 describe('authentication views', () => {
@@ -46,7 +52,7 @@ describe('authentication views', () => {
     render(await LoginView({ searchParams: Promise.resolve({ returnTo: 'https://example.com' }) }));
 
     expect(screen.getByRole('heading', { name: 'Log in' })).toBeInTheDocument();
-    expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-callback-url', '/register?returnTo=%2Fhome');
+    expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-callback-url', '/login?returnTo=%2Fhome');
     expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-intent', 'login');
     expect(screen.getByRole('link', { name: 'Create account' })).toHaveAttribute('href', '/register?returnTo=%2Fhome');
   });
@@ -54,7 +60,30 @@ describe('authentication views', () => {
   it('preserves a safe protected target through registration', async () => {
     render(await LoginView({ searchParams: Promise.resolve({ returnTo: '/settings' }) }));
 
-    expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-callback-url', '/register?returnTo=%2Fsettings');
+    expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-callback-url', '/login?returnTo=%2Fsettings');
+  });
+
+  it('requires an explicit registration transition when login finds no account', async () => {
+    jest.mocked(getServerSession).mockResolvedValue({ authenticated: true } as never);
+    jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
+    jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'registration-required' });
+
+    render(await LoginView({ searchParams: Promise.resolve({ returnTo: '/settings' }) }));
+
+    expect(screen.queryByTestId('provider-commands')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Create account' })).toHaveAttribute('href', '/register?returnTo=%2Fsettings');
+  });
+
+  it('continues an existing account to the safe target after broker return', async () => {
+    jest.mocked(getServerSession).mockResolvedValue({ authenticated: true } as never);
+    jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
+    jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'ready', session: {} as never });
+
+    await expect(LoginView({ searchParams: Promise.resolve({ returnTo: '/settings' }) }))
+      .rejects.toThrow('NEXT_REDIRECT');
+
+    expect(redirect).toHaveBeenCalledWith('/settings');
+    expect(listIdentityProviders).not.toHaveBeenCalled();
   });
 
   it('offers projected providers before registration authentication', async () => {

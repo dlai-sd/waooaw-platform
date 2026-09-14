@@ -39,6 +39,10 @@ public sealed class CustomerIdentityJourneyService(IdentityService identity,
     public Task<IdentityRegistrationRecord> GetAsync(ClaimsPrincipal principal, Guid registrationId, CancellationToken ct) =>
         identity.GetRegistrationAsync(registrationId, ValidateActor(principal), ct);
 
+    public Task<(IdentityVerificationChallengeRecord challenge, bool isNew)> StartEmailVerificationAsync(
+        ClaimsPrincipal principal, Guid registrationId, Guid key, string canonicalHash, string email, CancellationToken ct) =>
+        identity.StartEmailVerificationAsync(registrationId, ValidateActor(principal), key, canonicalHash, email, ct);
+
     public Task<(IdentityRegistrationRecord reg, bool isNew)> UpdateAsync(ClaimsPrincipal principal,
         Guid registrationId, Guid key, string displayName, string businessName, string businessDomain,
         string languagePreference, CancellationToken ct) => identity.UpdateProfileAsync(registrationId,

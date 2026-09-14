@@ -4,7 +4,7 @@
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
 import { LogOut, RefreshCw } from 'lucide-react';
-import { signIn, signOut } from 'next-auth/react';
+import { signIn } from 'next-auth/react';
 
 export const identitySessionChangeKey = 'waooaw:identity:session-change';
 
@@ -22,7 +22,7 @@ function announceIdentitySessionChange(action: 'SIGN_OUT' | 'ACCOUNT_SWITCH') {
 }
 
 export function SignOutCommand({ label }: { label: string }) {
-  return <button aria-label={label} className="icon-command" title={label} type="button" onClick={() => { clearProtectedClientState(); announceIdentitySessionChange('SIGN_OUT'); void signOut({ callbackUrl: '/' }); }}><LogOut aria-hidden="true" size={19} /></button>;
+  return <form action="/api/auth/keycloak-logout" method="post"><button aria-label={label} className="icon-command" title={label} type="submit" onClick={() => { clearProtectedClientState(); announceIdentitySessionChange('SIGN_OUT'); }}><LogOut aria-hidden="true" size={19} /></button></form>;
 }
 
 export function AccountSwitchCommand({ label }: { label: string }) {

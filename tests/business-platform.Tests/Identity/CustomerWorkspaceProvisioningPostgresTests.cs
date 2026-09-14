@@ -402,7 +402,7 @@ public sealed class CustomerWorkspaceProvisioningPostgresTests : IAsyncLifetime
         var lookup = await Assert.ThrowsAsync<CustomerWorkspaceException>(() => Service().ResolveAsync(proof.Actor));
         var replay = await Assert.ThrowsAsync<CustomerWorkspaceException>(() => Service().CompleteAsync(proof, registration, key, Hash));
 
-        Assert.Equal(CustomerWorkspaceError.MembershipRequired, lookup.Error);
+        Assert.Equal(CustomerWorkspaceError.MembershipInactive, lookup.Error);
         Assert.Contains(replay.Error, new[] { CustomerWorkspaceError.MembershipRequired, CustomerWorkspaceError.RecoveryRequired });
         await AssertCountsAsync(1, 1, 1);
     }

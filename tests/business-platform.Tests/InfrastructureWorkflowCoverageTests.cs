@@ -95,7 +95,7 @@ public sealed class InfrastructureWorkflowCoverageTests
     }
 
     [Fact]
-    public async Task ProductionReadiness_DeploymentAuthorityOverridesPackagedLocalIssuer()
+    public async Task ProductionHealth_LivenessPassesButReadinessFailsWithoutSchema()
     {
         await using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
@@ -110,9 +110,11 @@ public sealed class InfrastructureWorkflowCoverageTests
         });
         using var client = factory.CreateClient();
 
-        var response = await client.GetAsync("/health/ready");
+        var live = await client.GetAsync("/health/live");
+        var ready = await client.GetAsync("/health/ready");
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, live.StatusCode);
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, ready.StatusCode);
     }
 
     [Fact]

@@ -165,7 +165,7 @@ describe('WC085 registration handoff', () => {
 
   it('sanitizes an upstream start error without forwarding its raw body', async () => {
     const { ResponseError } = await import('@/lib/api/generated/runtime');
-    getIdentitySession.mockRejectedValue(new ResponseError(new Response(null, { status: 403 })));
+    getIdentitySession.mockRejectedValue(new ResponseError(new Response(JSON.stringify({ code: 'REGISTRATION_REQUIRED' }), { status: 409 })));
     startIdentityRegistration.mockRejectedValue(new ResponseError(new Response(JSON.stringify({ title: 'private-token private-tenant', accountReference }), { status: 409 })));
     const { POST } = await import('./identity/registration/route');
     const response = await POST(new NextRequest('http://localhost/api/identity/registration', {
@@ -178,7 +178,7 @@ describe('WC085 registration handoff', () => {
 
   it('leaves registration start responses unchanged', async () => {
     const { ResponseError } = await import('@/lib/api/generated/runtime');
-    getIdentitySession.mockRejectedValue(new ResponseError(new Response(null, { status: 403 })));
+    getIdentitySession.mockRejectedValue(new ResponseError(new Response(JSON.stringify({ code: 'REGISTRATION_REQUIRED' }), { status: 409 })));
     const { POST } = await import('./identity/registration/route');
     const registration = { registrationId: 'registration-1', nextAction: 'COMPLETE_PROFILE' };
     startIdentityRegistration.mockResolvedValue(registration);

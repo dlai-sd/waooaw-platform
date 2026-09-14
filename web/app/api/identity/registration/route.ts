@@ -40,7 +40,11 @@ export async function POST(request: NextRequest) {
           }
           return NextResponse.json({ handoffConfirmed: true }, { headers: { 'Cache-Control': 'no-store' } });
         } catch (error) {
-          if (init.signal.aborted || !(error instanceof ResponseError) || error.response.status !== 403) {
+          const problem = error instanceof ResponseError
+            ? await error.response.clone().json().catch(() => undefined) as { code?: unknown } | undefined
+            : undefined;
+          if (init.signal.aborted || !(error instanceof ResponseError)
+            || error.response.status !== 409 || problem?.code !== 'REGISTRATION_REQUIRED') {
             return NextResponse.json({ code: 'IDENTITY_DEPENDENCY_UNAVAILABLE', title: 'Identity request could not be completed.' }, {
               status: 503, headers: { 'Cache-Control': 'no-store' },
             });

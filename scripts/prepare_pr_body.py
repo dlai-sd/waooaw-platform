@@ -30,6 +30,13 @@ RUNTIME_EVIDENCE_SECTION = re.compile(
     r"^## Pre-PR Runtime Evidence\s*$\n.*?(?=^##\s|\Z)",
     re.MULTILINE | re.DOTALL,
 )
+BUSINESS_PLATFORM_GATE_PATHS = (
+    "src/business-platform/",
+    "tests/business-platform.Tests/",
+    "infrastructure/postgres/init/",
+    "infrastructure/terraform/phase2/modules/workload/",
+    "architecture/reference/api-specs/business-platform.openapi.yaml",
+)
 
 
 def git(*arguments: str) -> str:
@@ -107,6 +114,41 @@ def validate_runtime_evidence_head(evidence: dict[str, object], head: str) -> di
     return evidence
 
 
+def business_platform_gate_required(changed_files: list[str]) -> bool:
+    return any(path.startswith(BUSINESS_PLATFORM_GATE_PATHS) for path in changed_files)
+
+
+def run_ci_prechecks(base: str, head: str, changed_files: list[str]) -> None:
+    repository_root = Path(git("rev-parse", "--show-toplevel"))
+    git_common_dir = Path(git("rev-parse", "--path-format=absolute", "--git-common-dir"))
+    subprocess.run(  # noqa: S603
+        [
+            "docker", "run", "--rm",
+            "-v", f"{repository_root}:/repo:ro",
+            "-v", f"{git_common_dir}:{git_common_dir}:ro",
+            "zricethezav/gitleaks:v8.28.0", "git", "/repo",
+            "--log-opts", f"{base}..{head}", "--no-banner", "--redact",
+        ],
+        cwd=repository_root,
+        check=True,
+    )
+    if business_platform_gate_required(changed_files):
+        subprocess.run(  # noqa: S603
+            [
+                "docker", "compose", "--profile", "test", "run", "--rm", "--user", "root",
+                "test-runner", "sh", "-lc",
+                "dotnet restore tests/business-platform.Tests/business-platform.Tests.csproj && "
+                "dotnet build tests/business-platform.Tests/business-platform.Tests.csproj "
+                "--no-restore -warnaserror && "
+                "dotnet test tests/business-platform.Tests/business-platform.Tests.csproj "
+                "--no-build --settings tests/coverage.runsettings --collect:'XPlat Code Coverage' "
+                "--results-directory ./coverage/business-platform",
+            ],
+            cwd=repository_root,
+            check=True,
+        )
+
+
 def validate_prepared_body(body: str, base: str, head: str) -> list[str]:
     violations = validate_pr_body(body)
     for subject, commit_body in read_commits(base, head):
@@ -138,6 +180,7 @@ def main() -> int:
         head = preparation_head(local_head, remote_head, arguments.allow_unpushed_head)
         body = arguments.body_file.read_text(encoding="utf-8")
         changed_files = git("diff", "--name-only", f"{arguments.base}..{head}").splitlines()
+        run_ci_prechecks(arguments.base, head, changed_files)
         if runtime_gate_required(changed_files):
             evidence = (
                 load_runtime_evidence(arguments.runtime_evidence_file, head)

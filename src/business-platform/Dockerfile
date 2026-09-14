@@ -11,12 +11,15 @@ RUN dotnet publish --configuration Release --runtime linux-musl-x64 \
 FROM mcr.microsoft.com/dotnet/aspnet:9.0
 RUN apt-get update \
     && apt-get upgrade --yes \
-    && apt-get install --yes --no-install-recommends curl \
+    && apt-get install --yes --no-install-recommends curl postgresql-client \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system waooaw \
     && useradd --system --gid waooaw waooaw
 WORKDIR /app
 COPY --from=build --chown=waooaw:waooaw /app/publish .
+COPY --chown=waooaw:waooaw infrastructure/postgres/init/ /app/postgres-init/
+COPY --chown=waooaw:waooaw src/business-platform/docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod 0555 /app/docker-entrypoint.sh
 USER waooaw
 EXPOSE 5001
-ENTRYPOINT ["dotnet", "BusinessPlatform.dll"]
+ENTRYPOINT ["/app/docker-entrypoint.sh"]

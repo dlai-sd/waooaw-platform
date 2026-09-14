@@ -104,6 +104,7 @@ locals {
         webOrigins = [local.service_urls.web]
         attributes = {
           "pkce.code.challenge.method" = "S256"
+          "post.logout.redirect.uris"  = "${local.service_urls.web}/"
         }
         protocolMappers = [
           {
@@ -186,6 +187,7 @@ locals {
         webOrigins = [var.auth_preview_origin]
         attributes = {
           "pkce.code.challenge.method" = "S256"
+          "post.logout.redirect.uris"  = "${var.auth_preview_origin}/"
         }
         protocolMappers = [
           {
@@ -325,7 +327,11 @@ locals {
       IdentityBrokerRead__AllowedPrivateHosts__0      = "ca-${var.environment}-keycloak.internal.${var.container_app_environment_default_domain}"
       IdentityBrokerRead__AllowedAuthorizedParties__0 = "waooaw-web"
       IdentityBrokerRead__ClientId                    = "waooaw-bp-identity-reader"
-      }, var.auth_preview_origin != null ? {
+      }, var.environment == "demo" ? {
+      WAOOAW_DEMO_DATABASE_BOOTSTRAP = "true"
+      POSTGRES_USER                  = "postgres"
+      POSTGRES_DB                    = "waooaw"
+      } : {}, var.auth_preview_origin != null ? {
       IdentityBrokerRead__AllowedAuthorizedParties__1 = "waooaw-web-preview"
       } : {}, var.google_login_enabled ? {
       IdentityBrokerRead__Providers__google__ProviderNamespace = "urn:waooaw:identity:${var.environment}:google:customer-login:v1"
@@ -586,7 +592,7 @@ resource "azurerm_container_app" "member" {
       for_each = contains(["constitutional-engine", "business-platform", "billing-engine"], each.key) ? [1] : []
       content {
         name    = "postgres"
-        image   = "postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685"
+        image   = each.key == "business-platform" ? "pgvector/pgvector@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b" : "postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685"
         cpu     = 0.25
         memory  = "0.5Gi"
         command = var.environment == "demo" ? ["/bin/sh", "-ec"] : null
