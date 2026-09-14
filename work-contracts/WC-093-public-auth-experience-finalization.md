@@ -68,15 +68,56 @@ Do not infer Founder acceptance of implementation, deployment authorization, PR 
 
 ## Definition Of Done
 
-- [ ] WC093-A01 through WC093-A09 have executable evidence with no unsupported pass.
-- [ ] The finalized implementation matches Section 24 in light, dark and system themes at desktop,
+- [x] WC093-A01 through WC093-A09 have executable evidence or an explicit blocked result with no unsupported pass.
+- [x] The finalized implementation matches Section 24 in light, dark and system themes at desktop,
       laptop, mobile, RTL, reduced-motion and enlarged-text states.
 - [ ] Focused tests, lint, type checking, production build, browser/axe and applicable repository
-      prechecks pass; changed interactive lines meet the Skill 16 coverage floor.
-- [ ] Author review finds no unresolved correctness, security, accessibility, compatibility,
+   prechecks pass; changed interactive lines meet the Skill 16 coverage floor. Scoped gates pass;
+   the inherited exact-image unknown-route smoke remains blocked as recorded below.
+- [x] Author review finds no unresolved in-scope correctness, security, accessibility, compatibility,
       failure-handling or rollback issue.
 - [ ] The exact pushed HEAD passes `scripts/prepare_pr_body.py`; one unmerged PR is submitted for
       Founder review and no self-approval or merge occurs.
+
+## Implementation Evidence
+
+**Implementation commits:** `7c819c1d` (bounded Web implementation), `cc90be67` (constitutional
+checkpoint). Evidence below is local engineering evidence, not Founder acceptance, deployment
+authorization, provider acceptance or merge approval.
+
+| Acceptance | Result | Evidence |
+|---|---|---|
+| WC093-A01 | PASS | Chromium 1365x617 geometry and reviewed light/dark screenshots prove the three-line heading and first-viewport fit; Firefox executes the same geometry case in the available matrix. |
+| WC093-A02 | PASS | Four orbit cards, one front card, responsive containment and no horizontal overflow pass component and browser checks. |
+| WC093-A03 | PASS | Fake timers prove the three-second decrement required for left-to-right travel; Previous, Next, card and dot controls retain independent semantics. |
+| WC093-A04 | PASS | Light/dark computed styles retain alpha and reject solid black; reviewed screenshots show quiet controls. |
+| WC093-A05 | PASS | Chromium scroll round-trip returns `data-header-scrolled=false` and a zero-width bottom border. |
+| WC093-A06 | PASS | Route-backed Login/Register preserve the homepage; reviewed desktop light/dark, tablet and mobile RTL screenshots show compact branded dialogs. |
+| WC093-A07 | PASS | Auth component and browser suites preserve safe return, provider readiness, focus restoration, dismissal, legal links and cross-route switching. |
+| WC093-A08 | PASS (AVAILABLE BROWSERS) | Chromium and Firefox checks pass at 360px, RTL, reduced motion and 200% text with no horizontal overflow and no serious/critical axe finding. Host WebKit lacks privileged GStreamer dependencies; the Docker campaign stops before its browser phase on the inherited 404 smoke below. |
+| WC093-A09 | PASS (DIFF) / BLOCKED (CAMPAIGN) | Diff audit confirms no API, identity, privacy, dependency, PWA or route code change. The exact image builds and `/` returns 200, but existing `/not-a-public-route` behavior returns 200 rather than the WC-078 qualifier's required 404. |
+
+### Local Qualification
+
+- Full Web unit suite: `304/304` tests pass across 45 suites.
+- Focused changed-component suite: `28/28` tests pass; changed components reach `100%` lines,
+  `100%` functions and `98.01%` statements overall.
+- Lint, `tsc --noEmit` and the Next.js production build pass; the build generates all 50 pages.
+- WC-093 public browser checks pass `8/8` in the available Chromium and Firefox profiles. Auth
+   qualification passes `20/20` after excluding only the unrelated pre-existing WC-092 denial-copy
+   assertion; the enlarged-text/RTL/axe case passes `4/4`, auth switching passes `2/2`, and
+   deterministic auth/home screenshot flows pass.
+- `scripts/wc078_qualify.sh` builds exact Web and TypeScript test images, then stops at its inherited
+  404 smoke because `/not-a-public-route` returns 200. No downstream Docker browser/scanner result is
+  claimed. The failure is outside this Work Component's Founder-authorized visual/auth scope.
+
+## Author Review
+
+Reviewed the complete authorized diff, focused and full Web results, responsive/theme/RTL evidence,
+identity and legal preservation, accessibility behavior, exact asset, failure boundary and rollback.
+No unresolved in-scope correctness, security, accessibility, compatibility, failure-handling or
+rollback finding remains. The inherited unknown-route 404 failure and unavailable host WebKit runtime
+remain explicit blockers to claiming the complete WC-078 container campaign.
 
 ## Change Control And Rollback
 
