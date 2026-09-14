@@ -8,9 +8,12 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from prepare_pr_body import (  # noqa: E402
     add_runtime_evidence,
     business_platform_gate_required,
+    expected_pr_labels,
     load_runtime_evidence,
     preparation_head,
     prepare_body,
+    release_qualification_gate_required,
+    validate_precheck_evidence,
 )
 from validate_author_review import validate_author_review  # noqa: E402
 
@@ -114,3 +117,45 @@ def test_business_platform_gate_covers_shared_runtime_and_deployment_paths() -> 
 
 def test_business_platform_gate_ignores_unrelated_paths() -> None:
     assert not business_platform_gate_required(["web/components/auth/LoginView.tsx"])
+
+
+def test_release_qualification_gate_matches_ci_change_paths() -> None:
+    for path in (
+        "infrastructure/terraform/phase2/modules/workload/main.tf",
+        "tests/pipeline/test_wc091_environment_readiness.py",
+        "scripts/goal006_release_simulator.py",
+        ".github/workflows/ci.yaml",
+        "docker-compose.yml",
+    ):
+        assert release_qualification_gate_required([path])
+
+
+def test_release_qualification_gate_ignores_application_only_paths() -> None:
+    assert not release_qualification_gate_required(["web/components/auth/LoginView.tsx"])
+
+
+def test_expected_pr_labels_include_lifecycle_and_branch_tier() -> None:
+    assert expected_pr_labels("fix/precheck") == (
+        "tier:1-bugfix",
+        "status:pr-open",
+        "awaiting:review",
+    )
+    assert expected_pr_labels("agent/update/platform") == (
+        "tier:3-constitutional",
+        "status:pr-open",
+        "awaiting:review",
+    )
+    assert expected_pr_labels("feature/new-flow")[0] == "tier:2-feature"
+
+
+def test_precheck_evidence_must_match_base_and_head() -> None:
+    evidence = {"passed": True, "base_sha": "b" * 40, "commit_sha": HEAD}
+    assert validate_precheck_evidence(evidence, "b" * 40, HEAD) == evidence
+
+    for base_sha, head in (("c" * 40, HEAD), ("b" * 40, "d" * 40)):
+        try:
+            validate_precheck_evidence(evidence, base_sha, head)
+        except ValueError as error:
+            assert "selected base and branch HEAD" in str(error)
+        else:
+            raise AssertionError("stale precheck evidence was accepted")

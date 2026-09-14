@@ -195,12 +195,14 @@ def test_ci_build_and_scan_matrices_contain_exactly_six_release_members() -> Non
 
 def test_ci_audits_billing_dependencies_and_release_qualification_has_no_provider_authority() -> None:
     ci_text = CI_PATH.read_text(encoding="utf-8")
+    release_runner = Path("scripts/run_release_qualification.sh").read_text(encoding="utf-8")
     workflow = yaml.safe_load(ci_text)
     release_job = workflow["jobs"]["release-qualification"]
     release_job_text = json.dumps(release_job)
     assert "pip-audit -r src/billing-engine/requirements.txt --strict" in ci_text
     assert release_job["permissions"] == {"contents": "read"}
-    assert "scripts/test-wc059-postgres.sh" in release_job_text
-    assert "scripts/goal006_release_simulator.py" in release_job_text
+    assert "scripts/run_release_qualification.sh" in release_job_text
+    assert "scripts/test-wc059-postgres.sh" in release_runner
+    assert "scripts/goal006_release_simulator.py" in release_runner
     for prohibited in ("azure/login", "az login", "terraform apply", "secrets.", "continue-on-error"):
-        assert prohibited not in release_job_text
+        assert prohibited not in release_job_text + release_runner

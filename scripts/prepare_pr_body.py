@@ -37,6 +37,25 @@ BUSINESS_PLATFORM_GATE_PATHS = (
     "infrastructure/terraform/phase2/modules/workload/",
     "architecture/reference/api-specs/business-platform.openapi.yaml",
 )
+RELEASE_QUALIFICATION_GATE_PATHS = (
+    "release/goal006/",
+    "scripts/goal006_",
+    "scripts/test-wc059-postgres.sh",
+    "scripts/wc091_",
+    "scripts/run_wc091_",
+    "tests/test_wc012_dry_run.py",
+    "tests/pipeline/test_goal006_",
+    "tests/pipeline/test_billing_ce_validator.py",
+    "tests/pipeline/test_wc091_",
+    "infrastructure/recovery/phase2/",
+    "infrastructure/environment-readiness/",
+    "infrastructure/postgres/demo/",
+    "infrastructure/terraform/phase2/",
+    ".github/workflows/ci.yaml",
+    "docker-compose.yml",
+    "architecture/reference/dockerfiles/Dockerfile.test-runner",
+    "requirements-test.txt",
+)
 
 
 def git(*arguments: str) -> str:
@@ -118,9 +137,38 @@ def business_platform_gate_required(changed_files: list[str]) -> bool:
     return any(path.startswith(BUSINESS_PLATFORM_GATE_PATHS) for path in changed_files)
 
 
-def run_ci_prechecks(base: str, head: str, changed_files: list[str]) -> None:
+def release_qualification_gate_required(changed_files: list[str]) -> bool:
+    return any(path.startswith(RELEASE_QUALIFICATION_GATE_PATHS) for path in changed_files)
+
+
+def expected_pr_labels(branch: str) -> tuple[str, str, str]:
+    if branch.startswith("fix/"):
+        tier = "tier:1-bugfix"
+    elif branch.startswith("agent/"):
+        tier = "tier:3-constitutional"
+    else:
+        tier = "tier:2-feature"
+    return tier, "status:pr-open", "awaiting:review"
+
+
+def validate_precheck_evidence(
+    evidence: dict[str, object], base_sha: str, head: str
+) -> dict[str, object]:
+    if evidence.get("passed") is not True:
+        raise ValueError("precheck evidence must report passed=true")
+    if evidence.get("base_sha") != base_sha or evidence.get("commit_sha") != head:
+        raise ValueError("precheck evidence is not bound to the selected base and branch HEAD")
+    return evidence
+
+
+def run_ci_prechecks(base: str, head: str, changed_files: list[str]) -> dict[str, object]:
     repository_root = Path(git("rev-parse", "--show-toplevel"))
     git_common_dir = Path(git("rev-parse", "--path-format=absolute", "--git-common-dir"))
+    gates = {
+        "gitleaks": "PASS",
+        "business_platform": "NOT_APPLICABLE",
+        "release_qualification": "NOT_APPLICABLE",
+    }
     subprocess.run(  # noqa: S603
         [
             "docker", "run", "--rm",
@@ -147,6 +195,28 @@ def run_ci_prechecks(base: str, head: str, changed_files: list[str]) -> None:
             cwd=repository_root,
             check=True,
         )
+        gates["business_platform"] = "PASS"
+    if release_qualification_gate_required(changed_files):
+        subprocess.run(  # noqa: S603
+            [str(repository_root / "scripts/run_release_qualification.sh")],
+            cwd=repository_root,
+            check=True,
+        )
+        gates["release_qualification"] = "PASS"
+    return {
+        "schema": "waooaw.pr-prechecks/v1",
+        "passed": True,
+        "base_sha": git("rev-parse", base),
+        "commit_sha": head,
+        "gates": gates,
+    }
+
+
+def update_pull_request(pr_number: int, body_file: Path, branch: str) -> None:
+    command = ["gh", "pr", "edit", str(pr_number), "--body-file", str(body_file)]
+    for label in expected_pr_labels(branch):
+        command.extend(("--add-label", label))
+    subprocess.run(command, check=True)  # noqa: S603
 
 
 def validate_prepared_body(body: str, base: str, head: str) -> list[str]:
@@ -172,15 +242,37 @@ def main() -> int:
         type=Path,
         help="reuse lifecycle evidence already generated for the selected commit",
     )
+    parser.add_argument(
+        "--precheck-evidence-file",
+        type=Path,
+        help="reuse successful prechecks bound to the selected base and branch HEAD",
+    )
+    parser.add_argument(
+        "--update-pr",
+        type=int,
+        metavar="NUMBER",
+        help="update an existing PR body and labels before pushing the prepared local commit",
+    )
     arguments = parser.parse_args()
 
     try:
+        if arguments.update_pr is not None and not arguments.allow_unpushed_head:
+            raise ValueError("--update-pr requires --allow-unpushed-head")
         local_head = git("rev-parse", "HEAD")
         remote_head = authoritative_remote_head(arguments.remote)
         head = preparation_head(local_head, remote_head, arguments.allow_unpushed_head)
         body = arguments.body_file.read_text(encoding="utf-8")
         changed_files = git("diff", "--name-only", f"{arguments.base}..{head}").splitlines()
-        run_ci_prechecks(arguments.base, head, changed_files)
+        base_sha = git("rev-parse", arguments.base)
+        if arguments.precheck_evidence_file:
+            evidence = json.loads(arguments.precheck_evidence_file.read_text(encoding="utf-8"))
+            validate_precheck_evidence(evidence, base_sha, head)
+        else:
+            evidence = run_ci_prechecks(arguments.base, head, changed_files)
+            arguments.body_file.with_suffix(".precheck-evidence.json").write_text(
+                json.dumps(evidence, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
         if runtime_gate_required(changed_files):
             evidence = (
                 load_runtime_evidence(arguments.runtime_evidence_file, head)
@@ -201,6 +293,8 @@ def main() -> int:
         return 1
 
     arguments.body_file.write_text(body, encoding="utf-8")
+    if arguments.update_pr is not None:
+        update_pull_request(arguments.update_pr, arguments.body_file, git("branch", "--show-current"))
     source = "local pre-push" if arguments.allow_unpushed_head else "pushed"
     print(f"PR body prepared for {source} commit {head}")
     return 0

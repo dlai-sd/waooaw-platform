@@ -159,12 +159,12 @@ jobs:
           gh issue comment "$ISSUE" --repo "$REPO" \
             --body "Sprint Plan Approved by Founder. Mode 2 ACTIVATED. All agents assigned to issues in this sprint may now begin execution autonomously within pre-approved assumption boundaries. Constitutional basis: BOOTSTRAP Full Agent Operating Cycle Mode 2 (Sprint Execution) activated."
 
-  # ─── Classify PR tier metadata (C-066) ──────────────────────────────────────
-  # Tier labels support reporting only. Founder review and merge are the
-  # authorization gate, so label reconciliation can never block CI.
+  # ─── Reconcile PR lifecycle metadata (C-066) ────────────────────────────────
+  # Labels support reporting only. Founder review and merge are the
+  # authorization gate, so reconciliation can never block CI.
   # Constitutional basis: C-066 (Autonomous Development Authorization Tiers)
   auto-tier-label:
-    name: Classify C-066 tier metadata
+    name: Reconcile C-066 PR metadata
     runs-on: ubuntu-latest
     if: |
       github.event_name == 'pull_request' &&
@@ -187,3 +187,25 @@ jobs:
             gh pr edit "$PR" --repo "$REPO" --add-label "$tier" || \
               echo "Tier metadata could not be applied; Founder merge gate remains authoritative."
           fi
+          gh pr edit "$PR" --repo "$REPO" \
+            --add-label "status:pr-open" \
+            --add-label "awaiting:review" || \
+            echo "Lifecycle metadata could not be applied; Founder merge gate remains authoritative."
+
+  close-pr-labels:
+    name: Close PR lifecycle metadata
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.action == 'closed'
+    steps:
+      - name: Remove open-review labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh pr edit "$PR" --repo "$REPO" \
+            --remove-label "status:pr-open" \
+            --remove-label "awaiting:review" || \
+            echo "Closed PR metadata could not be reconciled; Founder merge record remains authoritative."
