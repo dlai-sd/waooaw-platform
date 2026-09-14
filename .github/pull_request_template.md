@@ -67,13 +67,16 @@ Coverage:         NN% (threshold: NN%)
 ## Author Review
 
 <!--
-After the final push, run:
+Before creating a PR, push the branch and run:
 python scripts/prepare_pr_body.py --body-file /tmp/pr-body.md --base origin/main
 Applicable runtime/deployment diffs automatically run the real-container lifecycle gate and add its
 evidence to this body. Submit that exact prepared file. Any new commit makes this review stale.
-For an already-open PR, prevent a push/check race by running the command with
---allow-unpushed-head and updating the PR body before push. Immediately after push, rerun the command
-without that flag and update the PR body again to verify the authoritative remote head.
+For an already-open PR, prevent a push/check race with:
+python scripts/prepare_pr_body.py --body-file /tmp/pr-body.md --base origin/main \
+	--allow-unpushed-head --update-pr PR_NUMBER
+Push only after that command succeeds. Immediately after push, rerun without the two final options
+and add `--precheck-evidence-file /tmp/pr-body.precheck-evidence.json`; update the PR body again to
+verify the authoritative remote head without repeating the expensive local gates.
 -->
 - [ ] Reviewed the complete diff against the authorized scope
 - [ ] Reviewed test and quality-gate results

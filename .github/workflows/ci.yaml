@@ -389,31 +389,9 @@ jobs:
             echo "required=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build Docker test runner
+      - name: Run release qualification
         if: steps.changes.outputs.required == 'true'
-        run: docker compose build test-runner
-
-      - name: Run release contracts
-        if: steps.changes.outputs.required == 'true'
-        run: >-
-          docker compose run --rm test-runner pytest -q
-          tests/test_wc012_dry_run.py
-          tests/pipeline/test_goal006_data_recovery.py
-          tests/pipeline/test_goal006_qualification.py
-          tests/pipeline/test_goal006_release_manifest.py
-          tests/pipeline/test_goal006_release_simulator.py
-          tests/pipeline/test_goal006_six_member_packaging.py
-          tests/pipeline/test_goal006_terraform_foundations.py
-          tests/pipeline/test_billing_ce_validator.py
-          tests/pipeline/test_wc091_environment_readiness.py -rA
-
-      - name: Run delegated PostgreSQL contracts
-        if: steps.changes.outputs.required == 'true'
-        run: scripts/test-wc059-postgres.sh
-
-      - name: Verify disposable Demo data lifecycle
-        if: steps.changes.outputs.required == 'true'
-        run: bash scripts/run_wc091_demo_data_verification.sh
+        run: scripts/run_release_qualification.sh
 
       - name: Retain WC-091 Demo data evidence
         if: always() && steps.changes.outputs.required == 'true'
@@ -423,21 +401,6 @@ jobs:
           path: test-results/wc091/i1-demo-data.json
           if-no-files-found: error
           retention-days: 90
-
-      - name: Verify successful release simulation
-        if: steps.changes.outputs.required == 'true'
-        run: >-
-          docker compose run --rm test-runner python
-          scripts/goal006_release_simulator.py
-          release/goal006/promotion-policy.json
-          release/goal006/release-manifest.json
-          infrastructure/recovery/phase2/fixtures/valid-recovery-bundle.json
-
-      - name: Run Docker Azure CLI deployment verification
-        if: steps.changes.outputs.required == 'true'
-        env:
-          GOAL006_EVIDENCE_DIR: goal006-local-azure-runtime
-        run: bash scripts/run_goal006_local_azure_verification.sh
 
       - name: Retain Docker Azure CLI runtime evidence
         if: always() && steps.changes.outputs.required == 'true'
@@ -680,14 +643,24 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPOSITORY: ${{ github.repository }}
         run: |
-          gh pr view "$PR_NUMBER" --json body --jq .body --repo "$REPOSITORY" > /tmp/pr-body.md
-          python scripts/validate_author_review.py \
-            --pr-body-file /tmp/pr-body.md \
-            --head "$HEAD_SHA"
-          python scripts/validate_runtime_lifecycle_evidence.py \
-            --pr-body-file /tmp/pr-body.md \
-            --base "$BASE_SHA" \
-            --head "$HEAD_SHA"
+          for attempt in 1 2 3; do
+            gh pr view "$PR_NUMBER" --json body --jq .body --repo "$REPOSITORY" > /tmp/pr-body.md
+            if python scripts/validate_author_review.py \
+                --pr-body-file /tmp/pr-body.md \
+                --head "$HEAD_SHA" && \
+              python scripts/validate_runtime_lifecycle_evidence.py \
+                --pr-body-file /tmp/pr-body.md \
+                --base "$BASE_SHA" \
+                --head "$HEAD_SHA"; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "C-065 failed after three metadata reads for PR head $HEAD_SHA" >&2
+              exit 1
+            fi
+            echo "PR metadata has not converged to $HEAD_SHA; retrying in 5 seconds"
+            sleep 5
+          done
 
   # ─── Authorization boundary check (C-066) ─────────────────────────────────
   # Every PR may run CI. Authorization to enter main is enforced by the
@@ -742,6 +715,7 @@ jobs:
         run: |
           mkdir -p qa-evidence
           BLOCKING=$(jq '[to_entries[] | select(.value.result == "failure" or .value.result == "cancelled")] | length' <<< "$GATE_RESULTS")
+          BLOCKING_GATES=$(jq -c '[to_entries[] | select(.value.result == "failure" or .value.result == "cancelled") | .key]' <<< "$GATE_RESULTS")
           VERDICT=PASS
           if [ "$BLOCKING" -gt 0 ]; then
             VERDICT=BLOCK
@@ -756,16 +730,18 @@ jobs:
             --arg run_id "$RUN_ID" \
             --arg event_name "$EVENT_NAME" \
             --argjson gates "$GATE_RESULTS" \
+            --argjson blocking_gates "$BLOCKING_GATES" \
             '{schema_version: $schema_version, institution: $institution,
               recommendation: $verdict, repository: $repository,
               commit_sha: $commit_sha, run_id: $run_id, event_name: $event_name,
               gates: ($gates | with_entries(.value = {result: .value.result})),
+              blocking_gates: $blocking_gates,
               authority_boundary: "Recommendation only; no PR approval or merge authority"}' \
             > qa-evidence/test-champion-verdict.json
 
           cat qa-evidence/test-champion-verdict.json
           if [ "$VERDICT" = BLOCK ]; then
-            echo "Test Champion recommendation: BLOCK"
+            echo "Test Champion recommendation: BLOCK; upstream gates: $(jq -r 'join(", ")' <<< "$BLOCKING_GATES")"
             exit 1
           fi
           echo "Test Champion recommendation: PASS"
