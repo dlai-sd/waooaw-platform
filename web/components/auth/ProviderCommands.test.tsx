@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { signIn } from 'next-auth/react';
 import { ProviderCommands } from './ProviderCommands';
 import type { IdentityProvider } from '@/lib/api/generated/models/IdentityProvider';
@@ -13,7 +13,7 @@ const providers: IdentityProvider[] = [
 ];
 
 describe('ProviderCommands', () => {
-  beforeEach(() => jest.mocked(signIn).mockClear());
+  beforeEach(() => jest.mocked(signIn).mockReset());
 
   it('starts only an available brokered provider', () => {
     render(<ProviderCommands callbackUrl="/home" intent="login" providers={providers} />);
@@ -38,5 +38,18 @@ describe('ProviderCommands', () => {
     ]} />);
 
     expect(screen.getByRole('button', { name: 'Sign up with Apple (Unavailable)' })).toBeDisabled();
+  });
+
+  it('restores provider controls when sign-in cannot start', async () => {
+    jest.mocked(signIn).mockRejectedValueOnce(new Error('navigation unavailable'));
+    render(<ProviderCommands callbackUrl="/login" intent="login" providers={[
+      providers[0],
+      { ...providers[1], availability: 'AVAILABLE', unavailableReason: undefined },
+    ]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Log in with Google' }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Log in with Google' })).toBeEnabled());
+    expect(screen.getByRole('button', { name: 'Log in with Facebook' })).toBeEnabled();
   });
 });

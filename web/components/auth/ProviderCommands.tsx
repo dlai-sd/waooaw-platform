@@ -46,10 +46,14 @@ export function ProviderCommands({ callbackUrl, intent, providers }: {
     return `${action} with ${provider.displayName}`;
   }
 
-  function begin(provider: IdentityProvider) {
+  async function begin(provider: IdentityProvider) {
     if (!isActionable(provider) || !supportsNextAuth(provider.id)) return;
     setPendingProvider(provider.id);
-    void signIn(nextAuthProvider[provider.id], { callbackUrl });
+    try {
+      await signIn(nextAuthProvider[provider.id], { callbackUrl });
+    } catch {
+      setPendingProvider(undefined);
+    }
   }
 
   return (
@@ -63,7 +67,7 @@ export function ProviderCommands({ callbackUrl, intent, providers }: {
             aria-label={unavailable ? `${label} (Unavailable)` : label}
             className="provider-command provider-command-primary"
             disabled={unavailable || pendingProvider !== undefined}
-            onClick={() => begin(primary)}
+            onClick={() => void begin(primary)}
             title={unavailable ? `${primary.displayName} is unavailable` : label}
             type="button"
           >
@@ -83,7 +87,7 @@ export function ProviderCommands({ callbackUrl, intent, providers }: {
             className={`provider-icon-command provider-command-${provider.id.toLowerCase()}`}
             disabled={unavailable || pendingProvider !== undefined}
             key={provider.id}
-            onClick={() => begin(provider)}
+            onClick={() => void begin(provider)}
             title={unavailable ? `${provider.displayName} is unavailable` : label}
             type="button"
           >

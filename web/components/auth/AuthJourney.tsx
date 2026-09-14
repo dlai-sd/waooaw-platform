@@ -4,7 +4,8 @@ import { useRouter } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { safePublicReturnTarget } from '@/lib/safe-return';
 
-type Journey = { origin: string; trigger: HTMLElement | null };
+type AuthDestination = '/login' | '/register';
+type Journey = { origin: string; trigger: HTMLElement | null; destination: AuthDestination };
 type AuthJourneyState = {
   current: Journey;
   launching: boolean;
@@ -14,7 +15,7 @@ type AuthJourneyState = {
 const AuthJourneyContext = createContext<AuthJourneyState | null>(null);
 
 export function AuthJourney({ children }: { children: ReactNode }) {
-  const journey = useRef<Journey>({ origin: '/', trigger: null });
+  const journey = useRef<Journey>({ origin: '/', trigger: null, destination: '/login' });
   const router = useRouter();
   const [launching, setLaunching] = useState(false);
   const cancelLaunch = useCallback(() => setLaunching(false), []);
@@ -30,6 +31,7 @@ export function AuthJourney({ children }: { children: ReactNode }) {
       journey.current = {
         origin: safePublicReturnTarget(location.pathname + location.hash),
         trigger: link,
+        destination: link.pathname as AuthDestination,
       };
       setLaunching(true);
       router.push(link.pathname + link.search + link.hash, { scroll: false });

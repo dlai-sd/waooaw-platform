@@ -14,7 +14,7 @@ describe('AuthLaunchIndicator', () => {
 
   beforeEach(() => {
     jest.mocked(useAuthJourney).mockReturnValue({
-      current: { origin: '/', trigger: null },
+      current: { origin: '/', trigger: null, destination: '/login' },
       launching: true,
       cancelLaunch: jest.fn(),
       completeLaunch: jest.fn(),
@@ -25,7 +25,20 @@ describe('AuthLaunchIndicator', () => {
     jest.mocked(usePathname).mockReturnValue('/');
     render(<AuthLaunchIndicator />);
 
-    expect(screen.getByRole('dialog', { name: 'Loading' })).toBeVisible();
+    expect(screen.getByRole('dialog', { name: 'Log in to WAOOAW' })).toBeVisible();
+  });
+
+  it('shows registration branding while registration loads', () => {
+    jest.mocked(usePathname).mockReturnValue('/');
+    jest.mocked(useAuthJourney).mockReturnValue({
+      current: { origin: '/', trigger: null, destination: '/register' },
+      launching: true,
+      cancelLaunch: jest.fn(),
+      completeLaunch: jest.fn(),
+    });
+    render(<AuthLaunchIndicator />);
+
+    expect(screen.getByRole('dialog', { name: 'Create your WAOOAW account' })).toBeVisible();
   });
 
   it.each(['/login', '/register'])('does not overlap the resolved %s route dialog', (pathname) => {

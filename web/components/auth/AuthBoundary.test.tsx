@@ -8,11 +8,20 @@ describe('auth loading boundary', () => {
   it('announces loading, then exposes a bounded failure and retry', () => {
     const retry = jest.fn();
     render(<AuthBoundary retry={retry} />);
+    expect(screen.getByRole('heading', { name: 'Log in to WAOOAW' })).toBeVisible();
+    expect(screen.getByRole('img', { name: 'WAOOAW' })).toBeVisible();
     expect(screen.getByRole('status')).toBeVisible();
     act(() => jest.advanceTimersByTime(15_000));
     expect(screen.getByRole('alert')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(retry).toHaveBeenCalledTimes(1);
+  });
+
+  it('brands registration loading for the intended journey', () => {
+    render(<AuthBoundary intent="register" />);
+
+    expect(screen.getByRole('heading', { name: 'Create your WAOOAW account' })).toBeVisible();
+    expect(screen.getByText('Start your professional journey.')).toBeVisible();
   });
 
   it('renders a provider error without exposing server details', () => {

@@ -19,6 +19,7 @@ export function clearProtectedClientState(storages: readonly Storage[] = [window
 
 function announceIdentitySessionChange(action: 'SIGN_OUT' | 'ACCOUNT_SWITCH') {
   window.localStorage.setItem(identitySessionChangeKey, JSON.stringify({ action, nonce: crypto.randomUUID() }));
+  window.localStorage.removeItem(identitySessionChangeKey);
 }
 
 export function SignOutCommand({ label }: { label: string }) {

@@ -18,6 +18,7 @@ const session = {
 };
 
 describe('identity provider projection', () => {
+  beforeEach(() => jest.spyOn(console, 'warn').mockImplementation(() => undefined));
   afterEach(() => jest.restoreAllMocks());
 
   it('returns the Business Platform readiness projection', async () => {
@@ -32,12 +33,29 @@ describe('identity provider projection', () => {
   });
 
   it('fails closed when readiness cannot be obtained', async () => {
-    jest.spyOn(IdentityApi.prototype, 'listIdentityProviders').mockRejectedValue(new Error('unavailable'));
+    const projection = jest.spyOn(IdentityApi.prototype, 'listIdentityProviders').mockRejectedValue(new Error('unavailable'));
 
     const providers = await listIdentityProviders();
 
+    expect(projection).toHaveBeenCalledTimes(2);
     expect(providers).toHaveLength(4);
     expect(providers.every((provider) => provider.availability === 'UNAVAILABLE')).toBe(true);
+    expect(console.warn).toHaveBeenCalledTimes(2);
+  });
+
+  it('recovers when the provider projection becomes available after a transient failure', async () => {
+    const projection = jest.spyOn(IdentityApi.prototype, 'listIdentityProviders')
+      .mockRejectedValueOnce(new Error('cold start'))
+      .mockResolvedValueOnce({ providers: [
+        { id: 'GOOGLE', displayName: 'Google', authenticationPath: 'GOOGLE', availability: 'AVAILABLE' },
+        { id: 'FACEBOOK', displayName: 'Facebook', authenticationPath: 'META', availability: 'AVAILABLE' },
+      ] });
+
+    await expect(listIdentityProviders()).resolves.toEqual([
+      expect.objectContaining({ id: 'GOOGLE', availability: 'AVAILABLE' }),
+      expect.objectContaining({ id: 'FACEBOOK', availability: 'AVAILABLE' }),
+    ]);
+    expect(projection).toHaveBeenCalledTimes(2);
   });
 
   it('returns the current BP-owned session projection without caching', async () => {

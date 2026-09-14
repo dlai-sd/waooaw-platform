@@ -12,5 +12,6 @@ export function AuthLaunchIndicator() {
   const journey = useAuthJourney();
   const pathname = usePathname();
   if (!journey?.launching || pathname === '/login' || pathname === '/register') return null;
-  return <AuthDialog routeReady={false}><AuthBoundary /></AuthDialog>;
+  const intent = journey.current.destination === '/register' ? 'register' : 'login';
+  return <AuthDialog routeReady={false} variant="entry"><AuthBoundary intent={intent} /></AuthDialog>;
 }
