@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 158
-**Last Updated:** 2026-09-13 (WC-090 AUTHENTICATION AND PR COMPLIANCE CHECKPOINT)
+**State Revision:** 159
+**Last Updated:** 2026-09-14 (WC-093 PUBLIC AND AUTH EXPERIENCE CHECKPOINT)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-080 - Agent Runtime Adapter Contract v1 |
 | Latest merge | PR #425 merged to `main` as `b73338ed` |
-| Active delivery | WC-085 brokered authentication follow-up and WC-088 Customer Multi-Agent And Skill Journey; P3-EX11 remains plan-only |
+| Active delivery | WC-093 public/auth experience finalization, WC-085 brokered authentication follow-up and WC-088 Customer Multi-Agent And Skill Journey; P3-EX11 remains plan-only |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 
@@ -45,6 +45,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | WC-088 customer multi-agent/skill journey | ENGINEERING QUALIFIED - canonical My Experts, relationship switching, four governed skill decisions, append-only/RLS persistence, generated OpenAPI client and two-agent isolation proof pass local Docker and web qualification; PR submission and Founder review/merge remain. |
 | WC-091 I1 disposable Demo readiness | MERGED - PR #424 as `7c11f9f2`; strict canonical environment rendering, catalog-derived secret bindings, anonymous provider projection, versioned/domain-separated identity HMAC, replica-scoped reset/reseed and real PostgreSQL replacement evidence are on `main`. No live Azure mutation occurred; real-account acceptance, I2 UAT persistence/recovery and I3 Production remain. |
 | WC-092 Demo authentication repair | MERGED - PR #425 as `b73338ed`; modal-owned delayed loading, bounded provider projection, customer-safe copy, truthful provider states, persistent `403` recovery and privacy-safe BP denial diagnostics are on `main`. Real Google/deployed-rule acceptance, external hostname branding, cloud, DNS and provider mutation remain open or prohibited. |
+| WC-093 public/auth experience finalization | IN-PROGRESS CHECKPOINT - Founder-approved public hero, four-professional orbit, exact WAOOAW branding and compact route-backed Login/Register dialogs are implemented on `ib/093/public-auth-experience-finalization` as `7c819c1d`. Full Web unit/lint/type/build gates, changed-component coverage, available Chromium/Firefox geometry, theme, RTL, reduced-motion, 200% text and axe checks pass. Clean-HEAD container qualification, exact pushed-head prechecks, PR submission and Founder review/merge remain; no cloud, provider, deployment or Production action is authorized. |
 | Production | PLAN ONLY - code-prepared; protected environments, authorized plan, traffic and final acceptance remain Founder-reserved |
 
 ### Checkpoint Context
