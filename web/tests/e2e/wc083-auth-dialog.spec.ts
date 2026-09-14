@@ -21,13 +21,14 @@ test('WC083-AUTH-01: a public auth command opens a route-backed dialog and Escap
   const desktopLogin = page.getByRole('link', { name: 'Log in' });
   const compactRegister = page.locator('a.secondary-link[href="/register"]').first();
   const trigger = await desktopLogin.isVisible() ? desktopLogin : compactRegister;
-  const dialogName = await desktopLogin.isVisible() ? 'Log in' : 'Create an account';
+  const dialogName = await desktopLogin.isVisible() ? 'Log in to WAOOAW' : 'Create your WAOOAW account';
   await trigger.focus();
   await trigger.click();
 
   await expect(page).toHaveURL(/\/(login|register)$/);
   const dialog = page.getByRole('dialog', { name: dialogName });
   await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('img', { name: 'WAOOAW' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Grow your business with WAOOAW AI professionals' })).toBeVisible();
 
   await page.keyboard.press('Escape');
@@ -54,8 +55,9 @@ test('WC092-AUTH-01: launch state keeps the public page visible before the auth 
 test('WC083-AUTH-02: backdrop dismissal returns to the originating public route', async ({ page }) => {
   await page.goto('/');
   await page.locator('a.secondary-link[href="/register"]').first().click();
-  const dialog = page.getByRole('dialog', { name: 'Create an account' });
+  const dialog = page.getByRole('dialog', { name: 'Create your WAOOAW account' });
   await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('img', { name: 'WAOOAW' })).toBeVisible();
   expect(await dialog.evaluate((element) => element.scrollHeight <= element.clientHeight + 1)).toBe(true);
   await expect(dialog.getByRole('link', { name: 'Terms of Service' })).toHaveAttribute('href', '/terms');
   await expect(dialog.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy');
@@ -72,6 +74,8 @@ test('WC083-AUTH-03: direct auth routes remain standalone and provider readiness
   await page.goto('/login');
 
   await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Log in to WAOOAW' })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'WAOOAW' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Log in with Google' })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Log in with Facebook' })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Log in with Apple (Unavailable)' })).toBeDisabled();
@@ -113,11 +117,19 @@ test('WC083-AUTH-04: modal is accessible, reduced-motion safe, responsive, and R
 
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveAccessibleName('Create your WAOOAW account');
+  await expect(dialog.getByRole('img', { name: 'WAOOAW' })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
   const bounds = await dialog.boundingBox();
   expect(bounds?.x).toBeGreaterThanOrEqual(0);
   expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(360);
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
+  await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
+  const signInLink = dialog.locator('a[href^="/login"]');
+  await signInLink.scrollIntoViewIfNeeded();
+  await expect(signInLink).toBeVisible();
+  expect(await dialog.evaluate((element) => getComputedStyle(element).overflowY)).toBe('auto');
   const blocking = (await new AxeBuilder({ page }).include('.auth-dialog').analyze()).violations
     .filter((violation) => violation.impact === 'critical' || violation.impact === 'serious');
   expect(blocking).toEqual([]);

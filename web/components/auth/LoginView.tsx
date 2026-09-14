@@ -4,6 +4,7 @@
 import Link from 'next/link';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
+import { AuthBrand } from '@/components/auth/AuthBrand';
 import { ProviderCommands } from '@/components/auth/ProviderCommands';
 import { getIdentitySession, listIdentityProviders } from '@/lib/api/identity';
 import { authOptions } from '@/lib/auth';
@@ -24,7 +25,7 @@ export async function LoginView({ searchParams }: { searchParams?: Promise<{ ret
     if (identity.kind === 'registration-required') {
       return (
         <section className="auth-view auth-entry-view">
-          <h1 id="auth-dialog-title">{messages.login}</h1>
+          <AuthBrand subtitle="Welcome back." title="Log in to WAOOAW" />
           <p className="auth-switch">{messages.newToWaaoaw} <Link href={`/register?returnTo=${encodeURIComponent(returnTo)}`}>{messages.createAccount}</Link></p>
         </section>
       );
@@ -33,7 +34,7 @@ export async function LoginView({ searchParams }: { searchParams?: Promise<{ ret
   const providers = await listIdentityProviders();
   return (
     <section className="auth-view auth-entry-view">
-      <h1 id="auth-dialog-title">{messages.login}</h1>
+      <AuthBrand subtitle="Welcome back." title="Log in to WAOOAW" />
       <ProviderCommands callbackUrl={callbackUrl} intent="login" providers={providers} />
       <p className="auth-switch">{messages.newToWaaoaw} <Link href={`/register?returnTo=${encodeURIComponent(returnTo)}`}>{messages.createAccount}</Link></p>
     </section>

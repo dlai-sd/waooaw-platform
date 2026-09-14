@@ -1,7 +1,7 @@
 // Implements: work-contracts/WC-078-public-acquisition-experience-plan.md §Approved Landing Composition
 // Implements: architecture/reference/ux/wc-078-visual-experience-implementation-plan.md §7, §9, §10 (WC-03, WC-04, WC-02, WC-05)
 // Constitutional basis: C-002 (Evidence Integrity), C-059 (Implementation Traceability), C-063 (Data Minimisation)
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AnnouncementBar } from './AnnouncementBar';
 import { ConsentController, cookiePreferencesReopenEvent } from './ConsentController';
 import { CookiePreferencesTrigger } from './CookiePreferencesTrigger';
@@ -37,12 +37,6 @@ function stubMatchMedia(reduced: boolean) {
   })) as typeof window.matchMedia;
 }
 
-function finishTransformTransition(track: HTMLElement) {
-  const event = new Event('transitionend', { bubbles: true });
-  Object.defineProperty(event, 'propertyName', { value: 'transform' });
-  fireEvent(track, event);
-}
-
 describe('public acquisition components', () => {
   beforeEach(() => {
     document.cookie = 'waooaw_consent=; Max-Age=0; Path=/';
@@ -50,59 +44,66 @@ describe('public acquisition components', () => {
     document.documentElement.style.removeProperty('--announcement-offset');
     global.fetch = jest.fn(async () => ({ ok: true } as Response));
     (global as unknown as { IntersectionObserver: typeof IntersectionObserver }).IntersectionObserver = IntersectionObserverStub as unknown as typeof IntersectionObserver;
+    (global as unknown as { ResizeObserver: typeof ResizeObserver }).ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
     stubMatchMedia(false);
   });
 
-  it('renders the exact approved hero copy and five film exposures from four professional scenes', () => {
+  it('renders the exact approved hero copy and four professional orbit cards', () => {
     const content = getProfessionalJourneyContent('en');
     expect(content.heroTitle).toBe('Grow your business with WAOOAW AI professionals');
     expect(content.heroSubtitle).toBe('Guide the work in just ten minutes a day. Spend more time growing your business.');
     const { container } = render(<ProfessionalJourneyShowcase content={content} />);
-    const frames = container.querySelectorAll('.spotlight-film-cell');
-    expect(frames).toHaveLength(5);
-    expect(new Set(Array.from(frames, (frame) => frame.getAttribute('data-scene')))).toEqual(new Set(['agricultural-advisory', 'digital-marketing', 'private-tutoring', 'trading-advisory']));
-    expect(container.querySelectorAll('.spotlight-artwork img')).toHaveLength(0);
+    expect(container.querySelectorAll('.orbit-card')).toHaveLength(4);
+    expect(container.querySelectorAll('.orbit-card.front')).toHaveLength(1);
   });
 
-  it('exposes fixed previous, next, and replay controls', () => {
+  it('exposes semantic previous, next, card, and scene controls', () => {
     render(<ProfessionalJourneyShowcase content={getProfessionalJourneyContent('en')} />);
     expect(screen.getByRole('button', { name: 'Previous professional' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Next professional' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Replay professional sequence' })).toBeVisible();
+    expect(screen.getAllByRole('button', { name: /^Bring .+ to front$/ })).toHaveLength(4);
+    expect(screen.getAllByRole('button', { name: /^Show / })).toHaveLength(4);
   });
 
-  it('undims the destination, disables controls during transport, and normalizes on transition end', () => {
+  it('keeps manual previous and next navigation directional', () => {
     const { container } = render(<ProfessionalJourneyShowcase content={getProfessionalJourneyContent('en')} />);
     const next = screen.getByRole('button', { name: 'Next professional' });
     const previous = screen.getByRole('button', { name: 'Previous professional' });
-    const track = screen.getByTestId('spotlight-film-track');
     fireEvent.click(next);
-    expect(next).toBeDisabled();
-    expect(previous).toBeDisabled();
-    expect(track).toHaveClass('is-moving-forward');
-    expect(container.querySelector('.spotlight-film-cell.is-current')).toHaveAttribute('data-position', '1');
-    finishTransformTransition(track);
-    expect(container.querySelector('.agent-spotlight')).toHaveAttribute('data-professional', 'digital-marketing');
-    expect(next).toBeEnabled();
-    expect(previous).toBeEnabled();
+    expect(container.querySelector('.orbit-footer')).toHaveTextContent('02 / 04');
+    fireEvent.click(previous);
+    expect(container.querySelector('.orbit-footer')).toHaveTextContent('01 / 04');
   });
 
-  it('changes exposure without transport animation when reduced motion is requested', () => {
+  it('selects a professional through card and dot controls', () => {
+    const { container } = render(<ProfessionalJourneyShowcase content={getProfessionalJourneyContent('en')} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Bring Private Tutoring Professional to front' }));
+    expect(container.querySelector('.orbit-footer')).toHaveTextContent('03 / 04');
+    fireEvent.click(screen.getByRole('button', { name: 'Show Trading Advisory Professional' }));
+    expect(container.querySelector('.orbit-footer')).toHaveTextContent('04 / 04');
+  });
+
+  it('does not autoplay when reduced motion is requested', () => {
+    jest.useFakeTimers();
     stubMatchMedia(true);
     const { container } = render(<ProfessionalJourneyShowcase content={getProfessionalJourneyContent('en')} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Previous professional' }));
-    expect(container.querySelector('.agent-spotlight')).toHaveAttribute('data-professional', 'trading-advisory');
-    expect(screen.getByTestId('spotlight-film-track')).not.toHaveClass('is-moving-backward');
-    expect(screen.getByRole('button', { name: 'Next professional' })).toBeEnabled();
+    act(() => jest.advanceTimersByTime(6000));
+    expect(container.querySelector('.orbit-footer')).toHaveTextContent('01 / 04');
+    jest.useRealTimers();
   });
 
-  it('replays from the first exposure after manual navigation settles', () => {
+  it('autoplays left-to-right every three seconds', () => {
+    jest.useFakeTimers();
     const { container } = render(<ProfessionalJourneyShowcase content={getProfessionalJourneyContent('en')} />);
-    const track = screen.getByTestId('spotlight-film-track');
-    fireEvent.click(screen.getByRole('button', { name: 'Next professional' }));
-    finishTransformTransition(track);
-    fireEvent.click(screen.getByRole('button', { name: 'Replay professional sequence' }));
-    expect(container.querySelector('.agent-spotlight')).toHaveAttribute('data-professional', 'agricultural-advisory');
+    act(() => jest.advanceTimersByTime(2999));
+    expect(container.querySelector('.orbit-footer')).toHaveTextContent('01 / 04');
+    act(() => jest.advanceTimersByTime(1));
+    expect(container.querySelector('.orbit-footer')).toHaveTextContent('04 / 04');
+    jest.useRealTimers();
   });
 
   it('links every admitted professional to a public detail page', () => {

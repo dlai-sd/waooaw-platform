@@ -6,16 +6,17 @@ test('WC085 SP-01/SP-08: switching auth dismisses directly to the public origin'
   const trigger = page.getByRole('link', { name: 'Log in', exact: true });
   await trigger.click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog.getByRole('heading', { name: 'Log in' })).toBeVisible();
+  await expect(dialog.getByRole('heading', { name: 'Log in to WAOOAW' })).toBeVisible();
   expect(await dialog.evaluate((element) => element.scrollHeight <= element.clientHeight + 1)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('login-1366.png'), fullPage: true });
   const initial = await dialog.boundingBox();
   await dialog.getByRole('link', { name: 'Create an account' }).click();
-  await expect(dialog.getByRole('heading', { name: 'Create an account' })).toBeVisible();
+  await expect(dialog.getByRole('heading', { name: 'Create your WAOOAW account' })).toBeVisible();
   expect(await dialog.evaluate((element) => element.scrollHeight <= element.clientHeight + 1)).toBe(true);
   const switched = await dialog.boundingBox();
   expect(Math.abs((initial?.width ?? 0) - (switched?.width ?? 0))).toBeLessThanOrEqual(1);
-  expect(Math.abs((initial?.height ?? 0) - (switched?.height ?? 0))).toBeLessThanOrEqual(1);
+  expect(switched?.y ?? -1).toBeGreaterThanOrEqual(16);
+  expect((switched?.y ?? 0) + (switched?.height ?? 0)).toBeLessThanOrEqual(752);
   await page.screenshot({ path: testInfo.outputPath('register-1366.png'), fullPage: true });
   await page.keyboard.press('Escape');
   await expect(page).toHaveURL(/\/professionals$/);
@@ -33,5 +34,5 @@ test('WC085 SP-08: dismissed modal stays closed on public navigation', async ({ 
   await expect(page).toHaveURL(/\/$/);
   await page.goto('/login');
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: 'Log in' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Log in to WAOOAW' })).toBeVisible();
 });

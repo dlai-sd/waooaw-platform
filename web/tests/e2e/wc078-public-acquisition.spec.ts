@@ -16,22 +16,21 @@ test.beforeEach(async ({ context }) => {
   await context.addCookies([{ name: 'waooaw-locale', value: 'en', url: baseURL }]);
 });
 
-test('VRA-02 VRA-03 VRA-05: hero film reel renders five native exposures with reduced motion, responsive controls, and RTL safety', async ({ context, page }) => {
+test('WC093-A02 WC093-A03 WC093-A08: orbit renders four cards with reduced motion, responsive controls, and RTL safety', async ({ context, page }, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Grow your business with WAOOAW AI professionals' })).toBeVisible();
-  const spotlight = page.locator('.agent-spotlight');
-  await expect(spotlight).toBeVisible();
-  await expect(spotlight.locator('.spotlight-film-cell')).toHaveCount(5);
-  await expect(spotlight.locator('.spotlight-film-cell.is-current')).toHaveCount(1);
-  await expect(spotlight.locator('img')).toHaveCount(0);
+  const orbit = page.locator('.orbit-showcase');
+  await expect(orbit).toBeVisible();
+  await expect(orbit.locator('.orbit-card')).toHaveCount(4);
+  await expect(orbit.locator('.orbit-card.front')).toHaveCount(1);
   await expect(page.getByRole('button', { name: 'Previous professional' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Next professional' })).toBeVisible();
   await page.getByRole('button', { name: 'Next professional' }).press('Enter');
-  await expect(spotlight).toHaveAttribute('data-professional', 'digital-marketing');
-  await expect(spotlight).toHaveAttribute('data-transport', 'settled');
+  await expect(orbit.locator('.orbit-card.front')).toContainText('Digital Marketing Professional');
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
+  await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('wc093-orbit-mobile-reduced.png') });
   await page.setViewportSize({ width: 768, height: 1024 });
   await expect(page.getByRole('button', { name: 'Previous professional' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Next professional' })).toBeVisible();
@@ -39,35 +38,49 @@ test('VRA-02 VRA-03 VRA-05: hero film reel renders five native exposures with re
   await context.addCookies([{ name: 'waooaw-locale', value: 'ur', url: baseURL }]);
   await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
-  await expect(page.locator('.spotlight-film-cell.is-current')).toBeVisible();
+  await expect(page.locator('.orbit-card.front')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
 });
 
-test('VRA-04: transport covers both stage edges and controls recover after forward and backward settlement', async ({ page }) => {
+test('WC093-A01 WC093-A03 WC093-A04 WC093-A05: laptop orbit advances left-to-right with quiet theme controls and no sticky edge', async ({ page }, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
-  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.setViewportSize({ width: 1365, height: 617 });
   await page.goto('/');
   await page.getByRole('button', { name: 'Reject optional' }).click();
-  const spotlight = page.locator('.agent-spotlight');
+  const intro = page.locator('.public-intro-wc078');
+  const orbit = page.locator('.orbit-showcase');
+  const front = orbit.locator('.orbit-card.front');
   const previous = page.getByRole('button', { name: 'Previous professional' });
   const next = page.getByRole('button', { name: 'Next professional' });
-  async function assertTransportCoverage(control: typeof next, direction: 'forward' | 'backward') {
-    await control.click();
-    await expect(spotlight).toHaveAttribute('data-transport', direction);
-    await expect(previous).toBeDisabled();
-    await expect(next).toBeDisabled();
-    const coverage = await spotlight.evaluate((node) => {
-      const stage = node.querySelector('.spotlight-stage')!.getBoundingClientRect();
-      const track = node.querySelector('.spotlight-film-track')!.getBoundingClientRect();
-      return { left: track.left <= stage.left + 1, right: track.right >= stage.right - 1 };
-    });
-    expect(coverage).toEqual({ left: true, right: true });
-    await expect(spotlight).toHaveAttribute('data-transport', 'settled', { timeout: 3_000 });
-    await expect(previous).toBeEnabled();
-    await expect(next).toBeEnabled();
+  await expect(front).toContainText('Agricultural Advisor');
+  await expect(front).toContainText('Trading Advisor', { timeout: 4_000 });
+  await next.click();
+  await expect(front).toContainText('Agricultural Advisor');
+  await previous.click();
+  await expect(front).toContainText('Trading Advisor');
+  const geometry = await intro.evaluate((node) => {
+    const introRect = node.getBoundingClientRect();
+    const orbitRect = node.querySelector('.orbit-showcase')!.getBoundingClientRect();
+    return { bottom: introRect.bottom, orbitLeft: orbitRect.left, orbitRight: orbitRect.right, viewportWidth: document.documentElement.clientWidth };
+  });
+  expect(geometry.bottom).toBeLessThanOrEqual(618);
+  expect(geometry.orbitLeft).toBeGreaterThanOrEqual(0);
+  expect(geometry.orbitRight).toBeLessThanOrEqual(geometry.viewportWidth);
+  for (const control of [previous, next]) {
+    const background = await control.evaluate((element) => getComputedStyle(element).backgroundColor);
+    expect(background).not.toBe('rgb(0, 0, 0)');
+    expect(background, 'orbit controls must retain a translucent alpha channel').toMatch(/(?:rgba\([^)]*,\s*0?\.[0-9]+\)|\/\s*0?\.[0-9]+\))/);
   }
-  await assertTransportCoverage(next, 'forward');
-  await assertTransportCoverage(previous, 'backward');
+  await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('wc093-home-laptop-light.png') });
+  await page.getByRole('button', { name: messages.en.darkTheme }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  expect(await next.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe('rgb(0, 0, 0)');
+  await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('wc093-home-laptop-dark.png') });
+  await page.evaluate(() => scrollTo(0, 500));
+  await expect(page.locator('html')).toHaveAttribute('data-header-scrolled', 'true');
+  await page.evaluate(() => scrollTo(0, 0));
+  await expect(page.locator('html')).toHaveAttribute('data-header-scrolled', 'false');
+  expect(await page.locator('.top-bar').evaluate((element) => getComputedStyle(element).borderBottomWidth)).toBe('0px');
 });
 
 test('VRA-09: hero and final CTAs share one truthful primary/secondary command hierarchy', async ({ page }) => {

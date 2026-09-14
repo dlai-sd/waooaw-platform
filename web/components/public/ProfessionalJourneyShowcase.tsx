@@ -1,5 +1,5 @@
-// Implements: architecture/reference/ux/wc-078-visual-experience-implementation-plan.md §7, §9, §10.4
-// Implements: prototypes/wc078-agent-spotlight/index.html at 0798a072 (Founder-approved film-reel behavior)
+// Implements: work-contracts/WC-093-public-auth-experience-finalization.md WC093-A02, WC093-A03, WC093-A08
+// Implements: architecture/reference/ux/wc-078-visual-experience-implementation-plan.md §24
 // Constitutional basis: C-002 (Evidence Integrity), C-059 (Implementation Traceability), C-063 (Data Minimisation)
 'use client';
 
@@ -8,108 +8,87 @@ import { useEffect, useRef, useState } from 'react';
 import { listPublicProfessionals } from '@/config/professionals';
 import type { ProfessionalJourneyContent } from '@/lib/professional-journey-content';
 
-const AUTO_ADVANCE_MS = 3820;
+const AUTO_ADVANCE_MS = 3000;
 const SCENE_ORDER = ['agricultural-advisory', 'digital-marketing', 'private-tutoring', 'trading-advisory'] as const;
+const SLOT_STYLE = [
+  { scale: 1, opacity: 1, blur: 0, zIndex: 40 },
+  { scale: 0.8, opacity: 0.55, blur: 1.5, zIndex: 30 },
+  { scale: 0.68, opacity: 0.42, blur: 2, zIndex: 20 },
+  { scale: 0.8, opacity: 0.55, blur: 1.5, zIndex: 30 },
+] as const;
 type SceneId = (typeof SCENE_ORDER)[number];
-type Direction = -1 | 1;
-type SpotlightScene = Readonly<{ id: SceneId; name: string; context: string; capability: string; outcomes: readonly string[]; accent: string; accentRgb: string }>;
-
-function reducedMotionRequested(): boolean {
-  return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
+type SpotlightScene = Readonly<{ id: SceneId; name: string; context: string; capability: string; outcomes: readonly string[] }>;
 
 export function ProfessionalJourneyShowcase({ content }: { content: ProfessionalJourneyContent }) {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [direction, setDirection] = useState<Direction | null>(null);
-  const [autoplay, setAutoplay] = useState(true);
-  const [isVisible, setIsVisible] = useState(false);
-  const containerRef = useRef<HTMLElement | null>(null);
-  const reducedMotionRef = useRef(false);
+  const [stageWidth, setStageWidth] = useState(720);
+  const stageRef = useRef<HTMLDivElement | null>(null);
   const catalogue = listPublicProfessionals();
   const agriculturalStory = content.stories.find(({ id }) => id === 'agricultural-advisor');
   const marketingStory = content.stories.find(({ id }) => id === 'digital-marketing-professional');
   const scenes: readonly SpotlightScene[] = SCENE_ORDER.map((id) => {
     const professional = catalogue.find(({ slug }) => slug === id);
     const story = id === 'agricultural-advisory' ? agriculturalStory : id === 'digital-marketing' ? marketingStory : undefined;
-    const palette = { 'agricultural-advisory': ['#2a8c56', '42 140 86'], 'digital-marketing': ['#1769d2', '23 105 210'], 'private-tutoring': ['#b77908', '183 121 8'], 'trading-advisory': ['#087d84', '8 125 132'] }[id];
-    return { id, name: story?.selectorLabel ?? professional?.name ?? id, context: story?.contextLabel ?? professional?.domain ?? '', capability: story?.stages[5].summary ?? professional?.summary ?? '', outcomes: professional?.outcomes.slice(0, 3) ?? [], accent: palette[0], accentRgb: palette[1] };
+    return { id, name: story?.selectorLabel ?? professional?.name ?? id, context: story?.contextLabel ?? professional?.domain ?? '', capability: story?.stages[5].summary ?? professional?.summary ?? '', outcomes: professional?.outcomes.slice(0, 3) ?? [] };
   });
 
   useEffect(() => {
-    reducedMotionRef.current = reducedMotionRequested();
-    if (reducedMotionRef.current) setAutoplay(false);
-    const node = containerRef.current;
-    if (!node || typeof IntersectionObserver === 'undefined') { setIsVisible(true); return; }
-    const observer = new IntersectionObserver((entries) => setIsVisible(entries.some((entry) => entry.isIntersecting)), { threshold: 0.3 });
-    observer.observe(node);
+    const stage = stageRef.current;
+    if (!stage) return;
+    const updateWidth = () => setStageWidth(stage.clientWidth || 720);
+    updateWidth();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(stage);
     return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
-    if (!autoplay || !isVisible || direction !== null || document.visibilityState === 'hidden') return;
-    const timer = window.setTimeout(() => setDirection(1), AUTO_ADVANCE_MS);
-    return () => window.clearTimeout(timer);
-  }, [activeIndex, autoplay, direction, isVisible]);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const timer = window.setInterval(() => setActiveIndex((index) => (index - 1 + scenes.length) % scenes.length), AUTO_ADVANCE_MS);
+    return () => window.clearInterval(timer);
+  }, [activeIndex, scenes.length]);
 
-  function move(nextDirection: Direction) {
-    if (direction !== null) return;
-    setAutoplay(false);
-    if (reducedMotionRef.current) { setActiveIndex((index) => (index + nextDirection + scenes.length) % scenes.length); return; }
-    setDirection(nextDirection);
+  const cardWidth = stageWidth * 0.78;
+  const radiusX = cardWidth * 0.55;
+  const radiusY = cardWidth * 0.14;
+
+  function selectScene(index: number) {
+    setActiveIndex((index + scenes.length) % scenes.length);
   }
 
-  function settleTransport(propertyName: string) {
-    if (propertyName !== 'transform' || direction === null) return;
-    setActiveIndex((index) => (index + direction + scenes.length) % scenes.length);
-    setDirection(null);
-  }
-
-  function replay() {
-    setDirection(null);
-    setActiveIndex(0);
-    setAutoplay(!reducedMotionRef.current);
-  }
-
-  const positions = [-2, -1, 0, 1, 2] as const;
-  const announcedPosition = direction ?? 0;
-  const activeScene = scenes[(activeIndex + announcedPosition + scenes.length) % scenes.length];
   return (
-    <section ref={containerRef} className="journey-showcase agent-spotlight" data-professional={activeScene.id} data-transport={direction === null ? 'settled' : direction > 0 ? 'forward' : 'backward'} aria-labelledby="journey-showcase-title" style={{ '--spotlight-accent': activeScene.accent, '--spotlight-accent-rgb': activeScene.accentRgb } as React.CSSProperties}>
+    <section className="orbit-showcase" aria-labelledby="journey-showcase-title">
       <h2 id="journey-showcase-title" className="visually-hidden">WAOOAW professional spotlight</h2>
-      <p className="visually-hidden" aria-live="polite">Showing {activeScene.name}</p>
-      <div className="spotlight-stage">
-        <button className="spotlight-control spotlight-control-previous" type="button" aria-label="Previous professional" disabled={direction !== null} onClick={() => move(-1)}><ChevronLeft aria-hidden="true" size={22} /></button>
-        <button className="spotlight-control spotlight-control-next" type="button" aria-label="Next professional" disabled={direction !== null} onClick={() => move(1)}><ChevronRight aria-hidden="true" size={22} /></button>
-        <button className="spotlight-control spotlight-replay" type="button" aria-label="Replay professional sequence" disabled={direction !== null} onClick={replay}><RotateCcw aria-hidden="true" size={18} /></button>
-        <div className={`spotlight-film-track${direction === 1 ? ' is-moving-forward' : direction === -1 ? ' is-moving-backward' : ''}`} data-testid="spotlight-film-track" onTransitionEnd={(event) => settleTransport(event.propertyName)}>
-          {positions.map((position) => { const scene = scenes[(activeIndex + position + scenes.length) % scenes.length]; return <FilmFrame key={position} scene={scene} position={position} isCurrent={position === announcedPosition} />; })}
+      <p className="visually-hidden" aria-live="polite">Showing {scenes[activeIndex].name}</p>
+      <div className="orbit-stage" ref={stageRef}>
+        <div className="orbit-core" aria-hidden="true" />
+        <div className="orbit-ring" aria-hidden="true" />
+        <div className="professional-orbit">
+          {scenes.map((scene, index) => {
+            const slot = (index - activeIndex + scenes.length) % scenes.length;
+            const style = SLOT_STYLE[slot];
+            const angle = ((slot / scenes.length) * Math.PI * 2) - Math.PI / 2;
+            const offsetX = Math.cos(angle) * radiusX;
+            const offsetY = Math.sin(angle) * radiusY;
+            return <OrbitCard key={scene.id} scene={scene} front={slot === 0} onSelect={() => selectScene(index)} style={{ opacity: style.opacity, filter: style.blur ? `blur(${style.blur}px) saturate(.85)` : 'none', zIndex: style.zIndex, transform: `translate(-50%, -50%) translate(${offsetX}px, ${offsetY}px) scale(${style.scale})` }} />;
+          })}
         </div>
+        <button className="orbit-nav orbit-nav-previous" type="button" aria-label="Previous professional" onClick={() => selectScene(activeIndex - 1)}><ChevronLeft aria-hidden="true" size={18} /></button>
+        <button className="orbit-nav orbit-nav-next" type="button" aria-label="Next professional" onClick={() => selectScene(activeIndex + 1)}><ChevronRight aria-hidden="true" size={18} /></button>
       </div>
+      <div className="orbit-footer"><span>{String(activeIndex + 1).padStart(2, '0')} / {String(scenes.length).padStart(2, '0')}</span><span className="orbit-dots">{scenes.map((scene, index) => <button aria-label={`Show ${scene.name}`} aria-pressed={index === activeIndex} className={index === activeIndex ? 'active' : ''} key={scene.id} onClick={() => selectScene(index)} type="button" />)}</span></div>
     </section>
   );
 }
 
-function FilmFrame({ scene, position, isCurrent }: { scene: SpotlightScene; position: number; isCurrent: boolean }) {
+function OrbitCard({ front, onSelect, scene, style }: { front: boolean; onSelect: () => void; scene: SpotlightScene; style: React.CSSProperties }) {
   const Icon = scene.id === 'agricultural-advisory' ? Sprout : scene.id === 'digital-marketing' ? Megaphone : scene.id === 'private-tutoring' ? BookOpen : ChartCandlestick;
-  const frameCode = Math.abs(position) % 2 === 0 ? '12' : '11A';
   return (
-    <article className={`spotlight-film-cell${isCurrent ? ' is-current' : ''}`} data-position={position} data-scene={scene.id} aria-hidden={!isCurrent}>
-      <span className="spotlight-film-code spotlight-film-code-top" aria-hidden="true">{frameCode}</span><span className="spotlight-film-code spotlight-film-code-bottom" aria-hidden="true">{frameCode}</span>
-      <div className="spotlight-frame" style={{ '--frame-accent': scene.accent, '--frame-accent-rgb': scene.accentRgb } as React.CSSProperties}>
-        <SceneArtwork sceneId={scene.id} />
-        <header className="spotlight-identity"><span className="spotlight-identity-icon"><Icon aria-hidden="true" size={24} /></span><span><strong>{scene.name}</strong><small>{scene.context}</small></span></header>
-        <p className="spotlight-capability">{scene.capability}</p>
-        <div className="spotlight-signals">{scene.outcomes.map((outcome, index) => <span className="spotlight-signal" key={outcome}><small>{index === 0 ? 'Focus' : index === 1 ? 'Active work' : 'Outcome'}</small><strong>{outcome}</strong><em>{index === 2 ? 'Review' : 'Ready'}</em></span>)}</div>
-      </div>
+    <article className={`orbit-card ${front ? 'front' : 'back'}`} style={style}>
+      <div className="orbit-card-head"><div className="orbit-card-heading"><span className="orbit-card-icon"><Icon aria-hidden="true" size={22} /></span><span><strong>{scene.name}</strong><small>{scene.context}</small></span></div><button aria-label={`Bring ${scene.name} to front`} className="orbit-refresh" type="button" onClick={onSelect}><RotateCcw aria-hidden="true" size={15} /></button></div>
+      <p className="orbit-capability">{scene.capability}</p>
+      <div className="orbit-workflow">{scene.outcomes.map((outcome, index) => <div className="orbit-work-card" data-role={index === 1 ? 'active' : index === 2 ? 'outcome' : 'focus'} key={outcome}><div className="orbit-work-label">{index === 0 ? 'Focus' : index === 1 ? 'Active work' : 'Outcome'}</div><div className="orbit-work-title">{outcome}</div><div className={index === 2 ? 'orbit-status review' : 'orbit-status ready'}><span />{index === 2 ? 'Review' : 'Ready'}</div></div>)}</div>
     </article>
   );
-}
-
-function SceneArtwork({ sceneId }: { sceneId: SceneId }) {
-  return <div className={`spotlight-artwork artwork-${sceneId}`} aria-hidden="true">
-    {sceneId === 'digital-marketing' ? <><span className="artwork-post" /><span className="artwork-post" /><span className="artwork-chart"><i /><i /><i /><i /></span></> : null}
-    {sceneId === 'private-tutoring' ? <><span className="artwork-book"><i /><i /></span><span className="artwork-grade">A+</span><span className="artwork-rule" /></> : null}
-    {sceneId === 'agricultural-advisory' ? <><span className="artwork-sun" /><span className="artwork-field"><i /><i /><i /><i /></span><span className="artwork-leaf"><i /><i /></span></> : null}
-    {sceneId === 'trading-advisory' ? <><span className="artwork-grid" /><span className="artwork-candles"><i /><i /><i /><i /><i /></span><span className="artwork-trend" /></> : null}
-  </div>;
 }
