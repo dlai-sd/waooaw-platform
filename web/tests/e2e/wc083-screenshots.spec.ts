@@ -22,6 +22,13 @@ async function dismissConsent(page: Page) {
   if (await reject.isVisible()) await reject.click();
 }
 
+async function waitForBrandLogo(page: Page) {
+  const logo = page.getByRole('img', { name: 'WAOOAW' });
+  await expect(logo).toBeVisible();
+  await expect.poll(() => logo.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+  await logo.evaluate((image: HTMLImageElement) => image.decode());
+}
+
 test.beforeAll(async () => mkdir(screenshotDir, { recursive: true }));
 
 test('WC083-VIS-01: capture reviewed authentication states', async ({ page }) => {
@@ -30,7 +37,8 @@ test('WC083-VIS-01: capture reviewed authentication states', async ({ page }) =>
   await page.goto('/');
   await dismissConsent(page);
   await page.getByRole('link', { name: 'Log in' }).click();
-  await expect(page.getByRole('dialog', { name: 'Log in' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Log in to WAOOAW' })).toBeVisible();
+  await waitForBrandLogo(page);
   await page.screenshot({ animations: 'disabled', path: path.join(screenshotDir, 'login-desktop-light.png') });
 
   await page.keyboard.press('Escape');
@@ -39,7 +47,8 @@ test('WC083-VIS-01: capture reviewed authentication states', async ({ page }) =>
   await page.reload();
   await page.goto('/');
   await page.locator('a.secondary-link[href^="/register"]').first().click();
-  await expect(page.getByRole('dialog', { name: 'Create an account' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Create your WAOOAW account' })).toBeVisible();
+  await waitForBrandLogo(page);
   await page.screenshot({ animations: 'disabled', path: path.join(screenshotDir, 'register-desktop-dark.png') });
 
   await page.keyboard.press('Escape');
@@ -50,6 +59,7 @@ test('WC083-VIS-01: capture reviewed authentication states', async ({ page }) =>
   await page.goto('/');
   await page.locator('a.secondary-link[href^="/register"]').first().click();
   await expect(page.getByRole('dialog')).toBeVisible();
+  await waitForBrandLogo(page);
   await page.screenshot({ animations: 'disabled', path: path.join(screenshotDir, 'register-mobile-rtl-dark.png') });
 
   await page.keyboard.press('Escape');
@@ -60,5 +70,6 @@ test('WC083-VIS-01: capture reviewed authentication states', async ({ page }) =>
   await page.goto('/');
   await page.locator('a.secondary-link[href^="/register"]').first().click();
   await expect(page.getByRole('button', { name: 'Sign up with Apple (Unavailable)' })).toBeDisabled();
+  await waitForBrandLogo(page);
   await page.screenshot({ animations: 'disabled', path: path.join(screenshotDir, 'providers-readiness-tablet.png') });
 });

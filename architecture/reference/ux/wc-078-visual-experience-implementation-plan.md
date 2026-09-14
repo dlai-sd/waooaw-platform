@@ -5,11 +5,69 @@
 **Implementation office:** Platform IT Expert (INST-010), Skill 16
 **Requirements input:** `architecture/reference/ux/wc-078-visual-experience-requirements-input.md`
 **Parent delivery:** WC-078 Public Acquisition Experience, merged through PR #376 at `e20539b`
-**Status:** REVIEW CANDIDATE - FOUNDER ACCEPTANCE AND IMPLEMENTATION AUTHORIZATION REQUIRED
+**Status:** FOUNDER ACCEPTED THROUGH WC-093 SECTION 24; WC-093 IMPLEMENTATION AUTHORIZED 2026-09-14
 **New deployable component:** NO - existing Web Application component only
 **Application implementation authority:** NOT GRANTED BY THIS PLAN
 **Environment authority:** NONE
 **Constitutional basis:** C-002, C-032, C-039, C-042, C-059, C-063, C-065, C-071, C-076, C-080, C-095, C-100; ADR-017
+
+## 24. WC-093 Founder-Approved Final Visual Revision
+
+**Constitutional stamp:** FOUNDER ACCEPTED, 2026-09-14. IMPLEMENTATION AUTHORIZED FOR THE CURRENT
+WC-093 SESSION. FUTURE CHANGE REQUIRES NEW EXPLICIT FOUNDER AUTHORIZATION.
+
+This section records the final light/dark prototype accepted by the Founder and supersedes only the
+conflicting visual and motion clauses in Sections 7-10. All route, server/client, identity, privacy,
+legal, accessibility, localization, safe-return, failure and evidence boundaries remain controlling.
+
+### 24.1 Public Hero
+
+- Preserve the existing hero copy and actions. At expanded widths the heading wraps as `Grow your
+  business` / `with WAOOAW AI` / `professionals`; compact widths reflow naturally.
+- The public shell owns one continuous near-white light canvas and one restrained deep dark canvas
+  across header and hero. No detached top strip appears. The sticky header may gain a translucent
+  neutral shadow after 24px scroll but never a persistent colored edge.
+- The complete hero fits 1365x617 and larger laptop viewports while leaving the next section cue
+  available. The approved WAOOAW mark uses the supplied repository-owned logo asset.
+
+### 24.2 Professional Orbit
+
+- Replace the film-strip/rail presentation with four catalogue-backed cards: Agricultural Advisor,
+  Digital Marketing Professional, Private Tutoring Professional and Trading Advisory Professional.
+- One card is front and inspectable; three cards occupy stable elliptical slots with reduced scale,
+  opacity and blur. The showcase is 20 percent smaller than the reviewed source animation and, at
+  expanded widths, translated 20 percent of its own width toward inline-start.
+- Autoplay selects the previous catalogue index every 3000ms so visible card travel is left-to-right
+  in LTR. Previous decrements, Next increments, dots select directly, and all indices wrap.
+- Reduced motion disables autoplay. Card selection remains available. No network request, claim of
+  live work, customer result or provider state is introduced.
+- Previous/Next controls are 44px circular controls using translucent theme surfaces, subtle border,
+  blur and restrained shadow. Light uses translucent white/navy; dark uses translucent deep
+  navy/soft white. Controls are never solid black and remain keyboard/focus accessible.
+- Card radius 16px and the accepted restrained glow/elevation supersede the earlier 12px/no-glow
+  visual cap only for this explanatory orbit. Stable dimensions, no overlap and no horizontal
+  overflow remain mandatory.
+
+### 24.3 Login And Registration Entry
+
+- Public Login and Register remain route-backed dialogs over the originating homepage; direct route
+  fallback, close/Escape/backdrop dismissal, focus restoration and safe return remain unchanged.
+- Both entry dialogs use a compact intrinsic-height surface, the approved WAOOAW mark, clear captions
+  `Log in to WAOOAW` and `Create your WAOOAW account`, and short supporting copy.
+- Google remains the primary provider row. Existing secondary providers remain equal outlined icon
+  controls with truthful availability. No provider is activated or made to appear available by CSS.
+- Login preserves Create account. Register preserves Terms of Service, Privacy Policy and Log in.
+- Light uses the near-white semantic surface; dark uses the existing deep semantic surface. The
+  originating homepage remains visible beneath a restrained blurred backdrop. Mobile and enlarged
+  text reflow without nested scrolling or clipped controls.
+
+### 24.4 Component And Change Boundary
+
+WC-093 changes internal modules of the existing ADR-017 Web Application only and introduces no new
+deployable component or dependency. The Next.js source root remains `web/`; repository-root `src/`
+service code is not duplicated or modified for this presentation. After WC-093, any change to this
+section or its implementing visual, copy, motion, layout, theme, authentication-entry or asset state
+requires explicit Founder authorization in the session that proposes the change.
 
 ## 1. Work Package Objective
 

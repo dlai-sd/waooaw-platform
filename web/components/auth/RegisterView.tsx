@@ -3,6 +3,7 @@
 
 import Link from 'next/link';
 import { getServerSession } from 'next-auth';
+import { AuthBrand } from '@/components/auth/AuthBrand';
 import { ProviderCommands } from '@/components/auth/ProviderCommands';
 import { RegistrationFlow } from '@/components/auth/RegistrationFlow';
 import { listIdentityProviders } from '@/lib/api/identity';
@@ -21,7 +22,7 @@ export async function RegisterView({ searchParams }: { searchParams?: Promise<{ 
   if (!session?.authenticated) {
     return (
       <section className="auth-view auth-entry-view identity-view">
-        <h1 id="auth-dialog-title">{messages.title}</h1>
+        <AuthBrand subtitle="Start your professional journey." title="Create your WAOOAW account" />
         <ProviderCommands callbackUrl={`/register?returnTo=${encodeURIComponent(returnTo)}`} intent="register" providers={providers} />
         <p className="auth-legal">
           {messages.legalPrefix} <Link href="/terms">{messages.terms}</Link> {messages.legalAnd}{' '}
