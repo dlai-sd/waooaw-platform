@@ -4,7 +4,7 @@
 import { getToken } from 'next-auth/jwt';
 import { NextRequest, NextResponse } from 'next/server';
 
-const sessionCookie = /^(?:__Secure-)?next-auth\.session-token(?:\.\d+)?$/;
+const sessionCookie = /^(?:(?:__Secure-|__Host-)?next-auth\.|waooaw[.-])/i;
 
 export async function POST(request: NextRequest) {
   const applicationOrigin = new URL(process.env.NEXTAUTH_URL ?? request.nextUrl.origin).origin;

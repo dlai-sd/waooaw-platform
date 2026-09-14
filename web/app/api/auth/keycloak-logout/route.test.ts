@@ -20,7 +20,7 @@ describe('Keycloak logout route', () => {
       method: 'POST',
       headers: {
         origin: 'https://app.example',
-        cookie: 'next-auth.session-token=local-session; next-auth.session-token.0=chunk',
+        cookie: 'next-auth.session-token=local-session; next-auth.session-token.0=chunk; __Host-next-auth.csrf-token=csrf; next-auth.callback-url=%2Fhome; waooaw-theme=dark; unrelated=preserve',
       },
     });
 
@@ -33,6 +33,10 @@ describe('Keycloak logout route', () => {
     expect(location.searchParams.get('client_id')).toBe('waooaw-web');
     expect(location.searchParams.get('post_logout_redirect_uri')).toBe('https://app.example/');
     expect(response.headers.get('set-cookie')).toContain('next-auth.session-token=;');
+    expect(response.headers.get('set-cookie')).toContain('__Host-next-auth.csrf-token=;');
+    expect(response.headers.get('set-cookie')).toContain('next-auth.callback-url=;');
+    expect(response.headers.get('set-cookie')).toContain('waooaw-theme=;');
+    expect(response.headers.get('set-cookie')).not.toContain('unrelated=;');
     expect(response.headers.get('cache-control')).toBe('no-store');
   });
 

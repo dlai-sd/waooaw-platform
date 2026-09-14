@@ -64,13 +64,19 @@ const unavailableProviders: IdentityProvider[] = [
 ];
 
 export async function listIdentityProviders(): Promise<IdentityProvider[]> {
-  try {
-    const api = new IdentityApi(new Configuration({ basePath: businessPlatformUrl }));
-    const signal = typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(12_000) : undefined;
-    return (await api.listIdentityProviders({ cache: 'no-store', ...(signal ? { signal } : {}) })).providers;
-  } catch {
-    return unavailableProviders;
+  const api = new IdentityApi(new Configuration({ basePath: businessPlatformUrl }));
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      const signal = typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(12_000) : undefined;
+      return (await api.listIdentityProviders({ cache: 'no-store', ...(signal ? { signal } : {}) })).providers;
+    } catch (error) {
+      console.warn('Identity provider readiness projection unavailable.', {
+        attempt,
+        error: error instanceof Error ? error.name : 'UnknownError',
+      });
+    }
   }
+  return unavailableProviders;
 }
 
 export async function identityProblem(error: unknown): Promise<{ status: number; body: unknown }> {

@@ -104,8 +104,8 @@ def test_business_platform_uses_dedicated_stock_identity_reader() -> None:
 def test_demo_seeder_provisions_dedicated_identity_reader_secret_at_runtime() -> None:
     workflow = (ROOT / ".github/workflows/environment-deployment.yaml").read_text()
 
-    assert 'credential_names="constitutional-engine business-platform professional-runtime ai-runtime web billing-engine bp-identity-reader-client-secret identity-hmac-active"' in workflow
-    assert "for name in constitutional-engine business-platform professional-runtime ai-runtime web billing-engine bp-identity-reader-client-secret identity-hmac-active; do" in workflow
+    assert 'credential_names="constitutional-engine business-platform professional-runtime ai-runtime web billing-engine bp-identity-reader-client-secret identity-hmac-active continuity-envelope-hmac"' in workflow
+    assert "for name in constitutional-engine business-platform professional-runtime ai-runtime web billing-engine bp-identity-reader-client-secret identity-hmac-active continuity-envelope-hmac; do" in workflow
     assert 'credential=$(head -c 48 /dev/urandom | base64 | tr -d "\\n")' in workflow
     assert 'bp-identity-reader-client-secret' not in (ROOT / "docker-compose.yml").read_text()
 

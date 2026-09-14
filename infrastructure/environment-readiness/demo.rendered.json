@@ -1,5 +1,5 @@
 {
-  "catalogDigest": "sha256:73c64f603cb7626ed3cf19d372ea9ddbb6ea90d8a987a10a3d8a8035b31c71e1",
+  "catalogDigest": "sha256:83c87e093043715d310c7dd1f4b47483f25716ec34a161a17eeb9b12d8d080e4",
   "configuration": {
     "channels": {
       "mobile": false,
@@ -127,7 +127,7 @@
   },
   "environment": "demo",
   "manifestDigest": "sha256:1acff7076972dc785dd6ad23ff077c8ab635ae62e1a643c377edabe5baef1028",
-  "renderDigest": "sha256:6de98e5c7bd6da2d82afb84eee3c17d7789b2ea1f46d08d615fc2e3334666b48",
+  "renderDigest": "sha256:2ae2f9dd4135923518a85159d034a4965b30526f7fb1685d32a05b03d980e1da",
   "schemaVersion": "1.0",
   "secretBindings": [
     {
@@ -140,6 +140,17 @@
       "id": "identity-hmac-active",
       "principal": "business-platform",
       "reference": "kv://kv-waooaw-demo/secrets/identity-hmac-active"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "business-platform:ChannelContinuity__EnvelopeHmacKey"
+      ],
+      "id": "continuity-envelope-hmac",
+      "principal": "business-platform",
+      "reference": "kv://kv-waooaw-demo/secrets/continuity-envelope-hmac"
     },
     {
       "allowedOperations": [

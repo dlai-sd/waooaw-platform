@@ -42,11 +42,12 @@ test('WC092-AUTH-01: launch state keeps the public page visible before the auth 
   const desktopLogin = page.getByRole('link', { name: 'Log in' });
   const compactRegister = page.locator('a.secondary-link[href="/register"]').first();
   const trigger = await desktopLogin.isVisible() ? desktopLogin : compactRegister;
+  const dialogName = await desktopLogin.isVisible() ? 'Log in to WAOOAW' : 'Create your WAOOAW account';
 
   await trigger.click();
 
   await expect(page.getByRole('heading', { name: 'Grow your business with WAOOAW AI professionals' })).toBeVisible();
-  await expect(page.getByRole('dialog', { name: 'Loading' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: dialogName })).toBeVisible();
   await page.getByRole('button', { name: 'Close' }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('dialog')).toHaveCount(0);
