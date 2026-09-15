@@ -110,6 +110,12 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
   }
 }
 
+export async function resolveAccessToken(token: JWT): Promise<string | undefined> {
+  const current = activeAccessToken(token);
+  if (current) return current;
+  return activeAccessToken(await refreshAccessToken(token));
+}
+
 export function projectSession(session: Session, token: JWT, nowSeconds?: number): Session {
   const authenticated = activeAccessToken(token, nowSeconds) !== undefined;
   session.authenticated = authenticated;

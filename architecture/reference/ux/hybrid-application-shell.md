@@ -162,6 +162,8 @@ Conversation is where work happens. Relationship is where the customer verifies 
 
 ## Entry and Resume Behavior
 
+After a broker callback, the login route distinguishes identity authentication from Business Platform readiness. A valid authenticated visitor continues to the safe server-owned target; if the identity projection is temporarily unavailable, the target application shell renders the explicit unavailable state instead of presenting login controls again. This continuation performs no account, workspace, relationship, trial, or payment mutation.
+
 After authentication, WAOOAW opens the most recently active conversation by default, including when the latest interaction occurred through WhatsApp. After their contracts exist, the customer may instead select `My WaooaW Experts` or `Needs your attention` as the default start view in Settings.
 
 Resume restores the professional, first unread position, active goal context, and outstanding customer action. It does not automatically mark content as read before that content becomes visible. Cross-channel transitions display a quiet separator such as `Continued on WhatsApp` rather than starting a new thread.

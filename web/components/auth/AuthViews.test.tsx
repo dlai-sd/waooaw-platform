@@ -1,5 +1,4 @@
 import { render, screen } from '@testing-library/react';
-import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { LoginView } from './LoginView';
 import { RegisterView } from './RegisterView';
@@ -8,7 +7,6 @@ import { getRequestI18n } from '@/lib/i18n-server';
 import { getServerAccessToken } from '@/lib/server-auth';
 import type { IdentityProvider } from '@/lib/api/generated/models/IdentityProvider';
 
-jest.mock('next-auth', () => ({ getServerSession: jest.fn() }));
 jest.mock('next/navigation', () => ({ redirect: jest.fn() }));
 jest.mock('@/lib/api/identity', () => ({ getIdentitySession: jest.fn(), listIdentityProviders: jest.fn() }));
 jest.mock('@/lib/i18n-server', () => ({ getRequestI18n: jest.fn() }));
@@ -42,7 +40,6 @@ beforeEach(() => {
     },
   } as Awaited<ReturnType<typeof getRequestI18n>>);
   jest.mocked(listIdentityProviders).mockResolvedValue(providers);
-  jest.mocked(getServerSession).mockResolvedValue(null);
   jest.mocked(getServerAccessToken).mockResolvedValue(undefined);
   jest.mocked(redirect).mockImplementation(() => { throw new Error('NEXT_REDIRECT'); });
 });
@@ -66,7 +63,6 @@ describe('authentication views', () => {
   });
 
   it('continues an authenticated visitor to Marketplace without registration', async () => {
-    jest.mocked(getServerSession).mockResolvedValue({ authenticated: true } as never);
     jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
     jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'registration-required' });
 
@@ -78,8 +74,6 @@ describe('authentication views', () => {
   });
 
   it('falls back to provider login when an authenticated broker session has no access token', async () => {
-    jest.mocked(getServerSession).mockResolvedValue({ authenticated: true } as never);
-
     render(await LoginView({ searchParams: Promise.resolve({ returnTo: '/settings' }) }));
 
     expect(getIdentitySession).not.toHaveBeenCalled();
@@ -87,9 +81,19 @@ describe('authentication views', () => {
   });
 
   it('continues an existing account to the safe target after broker return', async () => {
-    jest.mocked(getServerSession).mockResolvedValue({ authenticated: true } as never);
     jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
     jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'ready', session: {} as never });
+
+    await expect(LoginView({ searchParams: Promise.resolve({ returnTo: '/settings' }) }))
+      .rejects.toThrow('NEXT_REDIRECT');
+
+    expect(redirect).toHaveBeenCalledWith('/settings');
+    expect(listIdentityProviders).not.toHaveBeenCalled();
+  });
+
+  it('does not present another login when the identity API is temporarily unavailable', async () => {
+    jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
+    jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'unavailable' });
 
     await expect(LoginView({ searchParams: Promise.resolve({ returnTo: '/settings' }) }))
       .rejects.toThrow('NEXT_REDIRECT');
@@ -113,7 +117,7 @@ describe('authentication views', () => {
   });
 
   it('reuses the registration flow for an authenticated session', async () => {
-    jest.mocked(getServerSession).mockResolvedValue({ authenticated: true } as never);
+    jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
 
     render(await RegisterView({ searchParams: Promise.resolve({ returnTo: '/settings' }) }));
 

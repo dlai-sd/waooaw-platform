@@ -2,24 +2,23 @@
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
 import Link from 'next/link';
-import { getServerSession } from 'next-auth';
 import { AuthBrand } from '@/components/auth/AuthBrand';
 import { ProviderCommands } from '@/components/auth/ProviderCommands';
 import { RegistrationFlow } from '@/components/auth/RegistrationFlow';
 import { listIdentityProviders } from '@/lib/api/identity';
-import { authOptions } from '@/lib/auth';
 import { getIdentityMessages } from '@/lib/identity-messages';
 import { getRequestI18n } from '@/lib/i18n-server';
 import { safeReturnTarget } from '@/lib/safe-return';
+import { getServerAccessToken } from '@/lib/server-auth';
 
 export async function RegisterView({ searchParams }: { searchParams?: Promise<{ returnTo?: string | string[] }> } = {}) {
-  const session = await getServerSession(authOptions);
+  const accessToken = await getServerAccessToken();
   const resolvedSearchParams = await searchParams;
   const { locale } = await getRequestI18n();
   const messages = getIdentityMessages(locale);
   const returnTo = safeReturnTarget(resolvedSearchParams?.returnTo);
-  const providers = session?.authenticated ? [] : await listIdentityProviders();
-  if (!session?.authenticated) {
+  const providers = accessToken ? [] : await listIdentityProviders();
+  if (!accessToken) {
     return (
       <section className="auth-view auth-entry-view identity-view">
         <AuthBrand subtitle="Start your professional journey." title="Create your WAOOAW account" />
