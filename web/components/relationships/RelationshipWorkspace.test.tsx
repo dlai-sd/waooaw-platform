@@ -103,7 +103,10 @@ describe('RelationshipWorkspace', () => {
     render(<RelationshipWorkspace relationship={relationship} timeline={timeline} views={views} evaluation={evaluation} />);
 
     expect(screen.getByRole('complementary', { name: 'Your agents' })).toBeVisible();
-    expect(screen.getByRole('navigation', { name: 'Relationship context' })).toBeVisible();
+    const contextNavigation = screen.getByRole('navigation', { name: 'Relationship context' });
+    expect(contextNavigation).toBeVisible();
+    expect(within(contextNavigation).getByRole('link', { name: 'Usage & budget' })).toHaveAttribute('href', '#usage-and-budget');
+    expect(within(contextNavigation).getByRole('link', { name: 'Rights & control' })).toHaveAttribute('href', '#rights-and-control');
     expect(screen.getByRole('link', { name: relationship.professionalType })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByText('Evaluation · TRIAL_ACTIVE')).toBeVisible();
     expect(screen.getAllByText('TRIAL ACTIVE')).toHaveLength(2);

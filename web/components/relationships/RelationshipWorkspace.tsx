@@ -72,7 +72,7 @@ export function RelationshipWorkspace({ relationship, relationships = [], timeli
         </ol>
         <nav className="relationship-context-nav" aria-label="Relationship context">
           {['Conversation', 'Needs your attention', 'Plan', 'Work', 'Results', 'Usage & budget', 'Rights & control', 'Evidence'].map((label) => (
-            <a key={label} href={`#${label.toLowerCase().replaceAll(' ', '-').replace('&', 'and')}`}>{label}</a>
+            <a key={label} href={`#${label.toLowerCase().replaceAll(' ', '-').replaceAll('&', 'and')}`}>{label}</a>
           ))}
         </nav>
       </section>
