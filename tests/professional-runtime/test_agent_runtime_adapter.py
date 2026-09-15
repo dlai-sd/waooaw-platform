@@ -9,6 +9,7 @@ import hashlib
 import json
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -222,31 +223,98 @@ def test_same_relationship_instances_are_isolated_for_status_replay_and_stop() -
         )
 
 
+def test_two_tenants_complete_release_one_skill_sequence_on_one_digest_without_crossover() -> None:
+    adapter = create_digital_marketing_adapter()
+    descriptor = adapter.describe()
+
+    def run_sequence(tenant_ref: str, business_name: str, source_id: str, theme: str) -> tuple[Any, Any, Any]:
+        base = envelope(descriptor, tenant_ref=tenant_ref)
+
+        def execute(skill_id: str, payload: dict[str, Any]) -> Any:
+            request = replace(
+                base,
+                skill_id=skill_id,
+                invocation_id=str(uuid4()),
+                idempotency_key=str(uuid4()),
+                payload_digest=digest(payload),
+            )
+            return adapter.execute(request, payload).output
+
+        profile_payload = domain_payload(descriptor)
+        profile_payload["fields"]["businessIdentity"]["value"] = business_name
+        profile = execute("CUSTOMER_PROFILING", profile_payload)
+        research = execute(
+            "MARKET_RESEARCH",
+            {
+                "sources": [
+                    {"sourceId": source_id, "url": f"https://{source_id}.example/market", "observedAt": "2026-09-15"}
+                ],
+                "claims": [{"claim": f"Evidence for {business_name}.", "sourceId": source_id}],
+                "maturitySignals": {"website": 2},
+                "unavailableProviders": [],
+            },
+        )
+        strategy = execute(
+            "CONTENT_STRATEGY",
+            {
+                "profileRevision": f"profile-{source_id}",
+                "researchRevision": f"research-{source_id}",
+                "researchStatus": "REVIEWED",
+                "startDate": "2026-10-01",
+                "themes": [theme],
+            },
+        )
+        return profile, research, strategy
+
+    with ThreadPoolExecutor(max_workers=2) as workers:
+        first = workers.submit(run_sequence, "tenant-opaque-1", "Clinic Alpha", "alpha", "education")
+        second = workers.submit(run_sequence, "tenant-opaque-2", "Studio Beta", "beta", "community")
+        alpha = first.result(timeout=2)
+        beta = second.result(timeout=2)
+
+    assert descriptor.artifact_digest == adapter.describe().artifact_digest
+    assert alpha[0]["fields"]["businessIdentity"]["value"] == "Clinic Alpha"
+    assert beta[0]["fields"]["businessIdentity"]["value"] == "Studio Beta"
+    assert alpha[1]["sources"][0]["sourceId"] == "alpha"
+    assert beta[1]["sources"][0]["sourceId"] == "beta"
+    assert {item["theme"] for item in alpha[2]["calendar"]} == {"education"}
+    assert {item["theme"] for item in beta[2]["calendar"]} == {"community"}
+
+
 def test_cancel_and_emergency_stop_preempt_active_work_under_250ms() -> None:
-    started = threading.Event()
+    started = threading.Barrier(3)
     release = threading.Event()
     descriptor = create_digital_marketing_adapter().describe()
 
-    def blocking_handler(_envelope: AdapterInvocationEnvelopeV1, _payload: dict[str, Any]) -> dict[str, Any]:
-        started.set()
+    def blocking_handler(current: AdapterInvocationEnvelopeV1, _payload: dict[str, Any]) -> dict[str, Any]:
+        started.wait(timeout=2)
         assert release.wait(timeout=2)
-        return {"late": True}
+        return {"tenantRef": current.tenant_ref}
 
     adapter = ReferenceAdapter(descriptor, blocking_handler)
     request = envelope(descriptor)
+    other_tenant = envelope(descriptor, tenant_ref="tenant-opaque-2")
     worker = threading.Thread(target=adapter.execute, args=(request, {"inputReference": "opaque-input-1"}))
+    other_worker = threading.Thread(
+        target=adapter.execute, args=(other_tenant, {"inputReference": "opaque-input-2"})
+    )
     worker.start()
-    assert started.wait(timeout=1)
+    other_worker.start()
+    started.wait(timeout=2)
 
     stop_started = time.perf_counter()
     acknowledgement = adapter.emergency_stop(request, "stop-evidence-1")
     stop_elapsed = time.perf_counter() - stop_started
     release.set()
     worker.join(timeout=1)
+    other_worker.join(timeout=1)
 
     assert stop_elapsed < 0.250
     assert acknowledgement["state"] == "STOPPED"
-    assert adapter.status(request, request.invocation_id).state is InvocationState.STOPPED
+    stopped = adapter.status(request, request.invocation_id)
+    assert stopped.state is InvocationState.STOPPED
+    assert stopped.output is None
+    assert adapter.result(other_tenant, other_tenant.invocation_id).output == {"tenantRef": "tenant-opaque-2"}
     with pytest.raises(AdapterContractError, match="ADAPTER_STOPPED"):
         adapter.execute(
             envelope(

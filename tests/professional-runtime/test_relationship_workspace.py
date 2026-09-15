@@ -209,12 +209,3 @@ def test_trial_replay_rejects_changed_agent_instance() -> None:
     changed_instance = trial.model_copy(update={"agent_instance_id": uuid.uuid4()})
     with pytest.raises(ServiceAuthError, match="TRIAL_BINDING_CONFLICT"):
         store.start_trial(_context(), RELATIONSHIP_ID, changed_instance)
-
-    def test_trial_replay_rejects_changed_agent_instance() -> None:
-        store = RelationshipExecutionStore()
-        trial = _trial_request()
-        store.start_trial(_context(), RELATIONSHIP_ID, trial)
-
-        changed_instance = trial.model_copy(update={"agent_instance_id": uuid.uuid4()})
-        with pytest.raises(ServiceAuthError, match="TRIAL_BINDING_CONFLICT"):
-            store.start_trial(_context(), RELATIONSHIP_ID, changed_instance)
