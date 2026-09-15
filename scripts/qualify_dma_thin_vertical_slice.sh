@@ -127,7 +127,7 @@ ADMISSION_DIGEST="sha256:$(sha256sum tests/fixtures/agent-admission/digital-mark
 docker run --rm --read-only --tmpfs /tmp:size=16m,mode=1770 \
   -e WAOOAW_ENVIRONMENT=demo -e DMA_ARTIFACT_DIGEST="$IMAGE_ID" \
   -e DMA_ADMISSION_CONTENT_DIGEST="$ADMISSION_DIGEST" "$IMAGE" \
-  python -c 'from digital_marketing.service import app; d=app.state.adapter.describe(); assert d.professional_version == "1.0.0"; assert len(d.skill_versions) == 3' \
+  python -c 'from digital_marketing.adapter import create_adapter; d=create_adapter().describe(); assert d.professional_version == "1.0.0"; assert len(d.skill_versions) == 3' \
   > "$EVIDENCE_DIR/image-conformance.log"
 
 FAILURE_CLASSIFICATION="security"
