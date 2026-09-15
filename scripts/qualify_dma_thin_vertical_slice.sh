@@ -71,7 +71,7 @@ docker compose --profile test-python run --rm test-runner-python \
     tests/billing-engine/test_meter.py -q \
   | tee "$EVIDENCE_DIR/python-tests.log"
 
-docker compose --profile test-dotnet run --rm test-runner-dotnet \
+docker compose --profile test run --rm --user root test-runner \
   dotnet test tests/business-platform.Tests/business-platform.Tests.csproj \
   --filter 'FullyQualifiedName~ProfessionalsControllerTests|FullyQualifiedName~RelationshipWorkspaceControllerTests|FullyQualifiedName~OwnerGatewayCoverageTests|FullyQualifiedName~InfrastructureWorkflowCoverageTests.UnconfiguredWorkspaceOwners' \
   --logger 'console;verbosity=minimal' | tee "$EVIDENCE_DIR/business-platform-tests.log"

@@ -94,7 +94,9 @@ public sealed class AuthenticatedRelationshipWorkspaceOwnerGateway : IRelationsh
             var root = document.RootElement;
             if (root.GetProperty("schemaVersion").GetString() != "1.0"
                 || root.GetProperty("relationshipId").GetGuid() != context.RelationshipId) return null;
-            var items = root.GetProperty("items").EnumerateArray().Select(item => new ExecutionOwnerWorkItem(
+            var items = (root.TryGetProperty("items", out var itemCollection)
+                ? itemCollection.EnumerateArray()
+                : Enumerable.Empty<JsonElement>()).Select(item => new ExecutionOwnerWorkItem(
                 item.GetProperty("workItemId").GetGuid(),
                 item.GetProperty("agentInstanceId").GetGuid(),
                 item.GetProperty("skillId").GetString()!,
