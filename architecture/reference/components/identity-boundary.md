@@ -171,6 +171,8 @@ unsigned, altered, or untrusted-key tokens are rejected before any claim is cons
 
 Keycloak access tokens expire after 15 minutes and refresh eligibility after eight hours, as fixed by ADR-008. Token refresh does not satisfy freshness. WhatsApp internal session tokens expire after 30 minutes. Step-up intents and account-link challenges expire after 15 minutes, are single-use, and are bound to actor subject, intended command, and safe return target.
 
+The web boundary keeps the Keycloak refresh token only inside its encrypted HttpOnly NextAuth JWT cookie and never projects it into the browser session or application URLs. On access-token expiry it calls the configured realm token endpoint, rotates any returned refresh token, reprojects privileged claims from the renewed access token, and preserves the original `auth_time` semantics. A rejected, malformed, or unavailable refresh response purges bearer, refresh, and privileged session state and requires a new login; no API request proceeds with stale authority.
+
 ### 4.2 High-risk behavior
 
 - Insufficient assurance returns `403 IDENTITY_STEP_UP_REQUIRED` with an opaque step-up intent.

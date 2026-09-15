@@ -15,6 +15,11 @@ describe('Founder claim parsing', () => {
 });
 
 describe('Browser session projection', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+    Reflect.deleteProperty(globalThis, 'fetch');
+  });
+
   it('reports authentication without exposing the Keycloak bearer token', () => {
     const session = projectSession(
       { expires: '2099-01-01', user: {} } as Session,
@@ -44,13 +49,17 @@ describe('Browser session projection', () => {
 
     const token = await jwt!({
       token: {},
-      account: { access_token: 'secret-bearer-token', expires_at: expiresAt, id_token: 'server-held-id-token' },
+      account: {
+        access_token: 'secret-bearer-token', expires_at: expiresAt,
+        refresh_token: 'server-held-refresh-token', id_token: 'server-held-id-token',
+      },
       profile: { realm_access: { roles: ['founder'] } },
     } as never);
 
     expect(token).toMatchObject({
       accessToken: 'secret-bearer-token',
       accessTokenExpiresAt: expiresAt,
+      refreshToken: 'server-held-refresh-token',
       idToken: 'server-held-id-token',
       founder: true,
     });
@@ -67,6 +76,68 @@ describe('Browser session projection', () => {
 
     expect(token).not.toHaveProperty('accessToken');
     expect(token).not.toHaveProperty('accessTokenExpiresAt');
+    expect(token.founder).toBe(false);
+  });
+
+  it('refreshes an expired bearer without exposing the refresh token to the browser session', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(100_000);
+    const refresh = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        access_token: 'renewed-bearer-token',
+        expires_in: 300,
+        refresh_token: 'rotated-refresh-token',
+        id_token: 'renewed-id-token',
+      }),
+    });
+    Object.defineProperty(globalThis, 'fetch', { configurable: true, value: refresh });
+    const jwt = authOptions.callbacks?.jwt;
+
+    const token = await jwt!({
+      token: {
+        accessToken: 'expired-bearer-token', accessTokenExpiresAt: 1,
+        refreshToken: 'server-held-refresh-token', founder: false,
+      },
+      account: null,
+    } as never);
+
+    expect(refresh).toHaveBeenCalledWith(
+      'http://localhost:8080/realms/waooaw/protocol/openid-connect/token',
+      expect.objectContaining({ method: 'POST', cache: 'no-store' }),
+    );
+    const request = refresh.mock.calls[0][1] as RequestInit;
+    expect(String(request.body)).toBe(
+      'grant_type=refresh_token&refresh_token=server-held-refresh-token&client_id=waooaw-web&client_secret=local-development-only',
+    );
+    expect(token).toMatchObject({
+      accessToken: 'renewed-bearer-token',
+      accessTokenExpiresAt: 400,
+      refreshToken: 'rotated-refresh-token',
+      idToken: 'renewed-id-token',
+    });
+    const session = projectSession({ expires: '2099-01-01', user: {} } as Session, token, 100);
+    expect(session.authenticated).toBe(true);
+    expect(JSON.stringify(session)).not.toContain('rotated-refresh-token');
+  });
+
+  it('purges all authentication authority when Keycloak rejects refresh', async () => {
+    Object.defineProperty(globalThis, 'fetch', {
+      configurable: true,
+      value: jest.fn().mockResolvedValue({ ok: false }),
+    });
+    const jwt = authOptions.callbacks?.jwt;
+
+    const token = await jwt!({
+      token: {
+        accessToken: 'expired-bearer-token', accessTokenExpiresAt: 1,
+        refreshToken: 'rejected-refresh-token', founder: true,
+      },
+      account: null,
+    } as never);
+
+    expect(token).not.toHaveProperty('accessToken');
+    expect(token).not.toHaveProperty('accessTokenExpiresAt');
+    expect(token).not.toHaveProperty('refreshToken');
     expect(token.founder).toBe(false);
   });
 });
