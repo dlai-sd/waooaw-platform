@@ -131,6 +131,47 @@ public sealed class RelationshipTrialServiceTests
     }
 
     [Fact]
+    public async Task RelationshipListMarksActiveTrialUnresolvedWhenWbeStatusIsUnavailable()
+    {
+        var (service, _, _, gateway, relationship, tenantId, actorId) = await CreateAsync();
+        var startsAt = DateTimeOffset.UtcNow;
+        var trialId = Guid.NewGuid();
+        gateway.Wbe = new(trialId, startsAt, startsAt.AddDays(14));
+        gateway.Pr = new(trialId, "TRIAL_DEMONSTRATING", startsAt.AddDays(14));
+        await service.StartAsync(
+            tenantId, relationship.RelationshipId, actorId, Guid.NewGuid(), CancellationToken.None);
+
+        var statuses = await service.GetAuthoritativeStatusesAsync(
+            tenantId, [relationship.RelationshipId], CancellationToken.None);
+
+        Assert.Equal("UNRESOLVED", statuses[relationship.RelationshipId]);
+    }
+
+    [Fact]
+    public async Task RelationshipListPreservesStoredStatusWithoutConsultingWbe()
+    {
+        var (service, _, factory, gateway, relationship, tenantId, _) = await CreateAsync();
+        await using (var db = factory.CreateDbContext())
+        {
+            db.RelationshipTrialBindings.Add(new RelationshipTrialBinding
+            {
+                TenantId = tenantId,
+                RelationshipId = relationship.RelationshipId,
+                CustomerId = relationship.InitiatingParticipantId,
+                CorrelationId = Guid.NewGuid(),
+                Status = "PENDING",
+            });
+            await db.SaveChangesAsync();
+        }
+        gateway.WbeStatus = new(Guid.NewGuid(), "ACTIVE");
+
+        var statuses = await service.GetAuthoritativeStatusesAsync(
+            tenantId, [relationship.RelationshipId], CancellationToken.None);
+
+        Assert.Equal("PENDING", statuses[relationship.RelationshipId]);
+    }
+
+    [Fact]
     public async Task PrUncertaintyRetryReusesDurableWbeConfirmation()
     {
         var (service, relationships, _, gateway, relationship, tenantId, actorId) = await CreateAsync();
