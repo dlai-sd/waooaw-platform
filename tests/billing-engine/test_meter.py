@@ -70,10 +70,35 @@ async def test_record_usage_writes_to_platform_cost_ledger() -> None:
         MagicMock(),
     )
     svc = _make_service(session)
-    await svc.record_usage(customer_id, "DMA", 5000)
+    from meter.service import UsageAttribution
+
+    attribution = UsageAttribution(
+        tenant_id=uuid4(), relationship_id=uuid4(), agent_instance_id=uuid4(),
+        skill_id="MARKET_RESEARCH", skill_version="1.0.0", work_item_id=uuid4(), invocation_id=uuid4(),
+    )
+    await svc.record_usage(customer_id, "DMA", 5000, attribution)
 
     assert session.execute.call_count == 2
     session.commit.assert_awaited_once()
+    parameters = session.execute.await_args_list[1].args[0].compile().params
+    assert parameters["tenant_id"] == str(attribution.tenant_id)
+    assert parameters["relationship_id"] == str(attribution.relationship_id)
+    assert parameters["agent_instance_id"] == str(attribution.agent_instance_id)
+    assert parameters["skill_id"] == "MARKET_RESEARCH"
+    assert parameters["skill_version"] == "1.0.0"
+    assert parameters["work_item_id"] == str(attribution.work_item_id)
+    assert parameters["invocation_id"] == str(attribution.invocation_id)
+
+
+@pytest.mark.asyncio
+async def test_dma_usage_without_attribution_fails_before_database_access() -> None:
+    session = _mock_session()
+    svc = _make_service(session)
+
+    with pytest.raises(ValueError, match="DMA_USAGE_ATTRIBUTION_REQUIRED"):
+        await svc.record_usage(uuid4(), "DMA", 5000)
+
+    session.execute.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -722,13 +747,19 @@ async def test_scope3_quiet_hours_suppress_runway_p2() -> None:
 @pytest.mark.asyncio
 async def test_record_usage_raises_on_runtime_error() -> None:
     """record_usage: execute raises RuntimeError → exception re-raised."""
+    from meter.service import UsageAttribution
+
     customer_id = uuid4()
     session = _mock_session()
     session.execute = AsyncMock(side_effect=RuntimeError("DB error"))
     svc = _make_service(session)
+    attribution = UsageAttribution(
+        tenant_id=uuid4(), relationship_id=uuid4(), agent_instance_id=uuid4(),
+        skill_id="MARKET_RESEARCH", skill_version="1.0.0", work_item_id=uuid4(), invocation_id=uuid4(),
+    )
 
     with pytest.raises(RuntimeError):
-        await svc.record_usage(customer_id, "DMA", 5000)
+        await svc.record_usage(customer_id, "DMA", 5000, attribution)
 
 
 @pytest.mark.asyncio

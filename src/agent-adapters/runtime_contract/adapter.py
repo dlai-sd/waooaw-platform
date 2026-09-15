@@ -54,10 +54,10 @@ class ReferenceAdapter:
         self._handler = handler
         self._now = now or (lambda: datetime.now(timezone.utc))
         self._invocations: dict[str, AdapterInvocationV1] = {}
-        self._replays: dict[str, tuple[str, str]] = {}
+        self._replays: dict[tuple[str, str, str, str, str], tuple[str, str]] = {}
         self._events: dict[str, list[AdapterEventV1]] = {}
-        self._stopped_relationships: dict[str, str] = {}
-        self._configuration_revisions: set[tuple[str, str, str]] = set()
+        self._stopped_instances: dict[tuple[str, str, str], str] = {}
+        self._configuration_revisions: set[tuple[str, str, str, str]] = set()
         self._lock = RLock()
 
     def describe(self) -> AdapterDescriptorV1:
@@ -71,7 +71,7 @@ class ReferenceAdapter:
         revision = envelope.configuration_revision
         if revision is None:
             raise self._error("ADAPTER_REQUEST_INVALID", envelope)
-        binding = (envelope.tenant_ref, envelope.relationship_id, revision)
+        binding = (envelope.tenant_ref, envelope.relationship_id, envelope.agent_instance_id, revision)
         with self._lock:
             self._configuration_revisions.add(binding)
         return {"schemaVersion": "1.0.0", "configurationRevision": revision, "valid": bool(payload)}
@@ -88,18 +88,20 @@ class ReferenceAdapter:
     def execute(self, envelope: AdapterInvocationEnvelopeV1, payload: dict[str, Any]) -> AdapterInvocationV1:
         self._validate_envelope(envelope, consequential=True)
         with self._lock:
-            replay = self._replays.get(envelope.idempotency_key)
+            scope = self._scope(envelope)
+            replay_key = (*scope, envelope.mode, envelope.idempotency_key)
+            replay = self._replays.get(replay_key)
             if replay is not None:
                 prior_digest, prior_invocation_id = replay
                 if not hmac.compare_digest(prior_digest, envelope.payload_digest):
                     raise self._error("ADAPTER_IDEMPOTENCY_CONFLICT", envelope)
                 return self._invocations[prior_invocation_id]
-            if envelope.relationship_id in self._stopped_relationships:
+            if scope in self._stopped_instances:
                 raise self._error("ADAPTER_STOPPED", envelope)
 
             invocation = AdapterInvocationV1(envelope=envelope)
             self._invocations[envelope.invocation_id] = invocation
-            self._replays[envelope.idempotency_key] = (envelope.payload_digest, envelope.invocation_id)
+            self._replays[replay_key] = (envelope.payload_digest, envelope.invocation_id)
             self._transition(invocation, InvocationState.VALIDATING)
             self._transition(invocation, InvocationState.ACCEPTED)
             self._transition(invocation, InvocationState.RUNNING)
@@ -153,9 +155,10 @@ class ReferenceAdapter:
         if not stop_evidence_ref:
             raise self._error("ADAPTER_REQUEST_INVALID", envelope)
         with self._lock:
-            self._stopped_relationships[envelope.relationship_id] = stop_evidence_ref
+            scope = self._scope(envelope)
+            self._stopped_instances[scope] = stop_evidence_ref
             for invocation in self._invocations.values():
-                if invocation.envelope.relationship_id != envelope.relationship_id:
+                if self._scope(invocation.envelope) != scope:
                     continue
                 if invocation.state not in TERMINAL_STATES:
                     self._transition(invocation, InvocationState.STOP_REQUESTED)
@@ -164,6 +167,7 @@ class ReferenceAdapter:
         return {
             "schemaVersion": "1.0.0",
             "relationshipId": envelope.relationship_id,
+            "agentInstanceId": envelope.agent_instance_id,
             "state": "STOPPED",
             "stopEvidenceRef": stop_evidence_ref,
         }
@@ -171,12 +175,13 @@ class ReferenceAdapter:
     def resume(self, envelope: AdapterInvocationEnvelopeV1) -> dict[str, str]:
         self._validate_envelope(envelope, consequential=True)
         with self._lock:
-            stop_ref = self._stopped_relationships.get(envelope.relationship_id)
+            scope = self._scope(envelope)
+            stop_ref = self._stopped_instances.get(scope)
             if stop_ref is None or not envelope.stop_evidence_ref:
                 raise self._error("ADAPTER_RESUME_DENIED", envelope)
             if not hmac.compare_digest(stop_ref, envelope.stop_evidence_ref):
                 raise self._error("ADAPTER_RESUME_DENIED", envelope)
-            del self._stopped_relationships[envelope.relationship_id]
+            del self._stopped_instances[scope]
         return {
             "schemaVersion": "1.0.0",
             "relationshipId": envelope.relationship_id,
@@ -210,6 +215,8 @@ class ReferenceAdapter:
     ) -> None:
         try:
             UUID(envelope.invocation_id)
+            UUID(envelope.relationship_id)
+            UUID(envelope.agent_instance_id)
         except ValueError as exc:
             raise self._error("ADAPTER_REQUEST_INVALID", envelope) from exc
         descriptor = self._descriptor
@@ -254,6 +261,8 @@ class ReferenceAdapter:
         owned = (
             invocation.envelope.tenant_ref == envelope.tenant_ref
             and invocation.envelope.relationship_id == envelope.relationship_id
+            and invocation.envelope.agent_instance_id == envelope.agent_instance_id
+            and invocation.envelope.mode == envelope.mode
         )
         if not owned:
             raise self._error("ADAPTER_NOT_ACCESSIBLE", envelope)
@@ -275,6 +284,10 @@ class ReferenceAdapter:
                 partial=state == InvocationState.PARTIAL,
             )
         )
+
+    @staticmethod
+    def _scope(envelope: AdapterInvocationEnvelopeV1) -> tuple[str, str, str]:
+        return (envelope.tenant_ref, envelope.relationship_id, envelope.agent_instance_id)
 
     @staticmethod
     def _digest(payload: dict[str, Any]) -> str:

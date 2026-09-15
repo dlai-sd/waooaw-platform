@@ -5,32 +5,48 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
-from runtime_contract import AdapterDescriptorV1, AdapterInvocationEnvelopeV1, ReferenceAdapter
+from runtime_contract import AdapterContractError, AdapterDescriptorV1, AdapterInvocationEnvelopeV1, ReferenceAdapter
+
+from .skills import SkillInputDenied, create_content_strategy, profile_customer, research_market
 
 
 def _handle(envelope: AdapterInvocationEnvelopeV1, payload: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "kind": "CAMPAIGN_PLAN",
-        "skillId": envelope.skill_id,
-        "status": "DRAFT" if envelope.mode == "TRIAL" else "PREPARED",
-        "inputReference": payload.get("inputReference"),
+    handlers = {
+        "CUSTOMER_PROFILING": profile_customer,
+        "MARKET_RESEARCH": research_market,
+        "CONTENT_STRATEGY": create_content_strategy,
     }
+    try:
+        return handlers[envelope.skill_id](payload)
+    except (KeyError, SkillInputDenied) as error:
+        raise AdapterContractError("ADAPTER_DOMAIN_INPUT_DENIED", envelope.correlation_id) from error
 
 
 def create_adapter() -> ReferenceAdapter:
+    artifact_digest = os.environ.get("DMA_ARTIFACT_DIGEST")
+    if artifact_digest is None:
+        raise RuntimeError("DMA_ARTIFACT_DIGEST is required")
+    admission_content_digest = os.environ.get("DMA_ADMISSION_CONTENT_DIGEST")
+    if admission_content_digest is None:
+        raise RuntimeError("DMA_ADMISSION_CONTENT_DIGEST is required")
     return ReferenceAdapter(
         AdapterDescriptorV1(
             protocol_version="1.0.0",
             compatible_minor_versions=("1.0.0",),
             professional_type_id="DIGITAL_MARKETING_LOCAL_SERVICE",
-            professional_version="3.1.0",
-            artifact_digest="sha256:" + "12" * 32,
-            admission_content_digest="sha256:" + "21" * 32,
+            professional_version="1.0.0",
+            artifact_digest=artifact_digest,
+            admission_content_digest=admission_content_digest,
             pac_version="1.0.0",
             pac_digest="sha256:" + "44" * 32,
-            skill_versions={"LOCAL_CAMPAIGN_MANAGEMENT": "3.1.0", "LOCAL_CONTENT_PLANNING": "3.1.0"},
+            skill_versions={
+                "CUSTOMER_PROFILING": "1.0.0",
+                "MARKET_RESEARCH": "1.0.0",
+                "CONTENT_STRATEGY": "1.0.0",
+            },
             schema_digests={"configuration": "sha256:" + "99" * 32, "goal": "sha256:" + "aa" * 32},
             execution_models=("APPROVAL_GATE", "PRE_AUTHORIZED"),
             capabilities=("planning", "streaming", "cancellation", "stop", "resume", "result-replay"),

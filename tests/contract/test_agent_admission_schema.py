@@ -18,7 +18,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA = json.loads((ROOT / "architecture/reference/api-specs/schemas/agent-admission-contract-v1.schema.json").read_text())
 FIXTURES = [
-    ROOT / "tests/fixtures/agent-admission/digital-marketing-local-service-v3.1.0.json",
+    ROOT / "tests/fixtures/agent-admission/digital-marketing-local-service-v1.0.0.json",
     ROOT / "tests/fixtures/agent-admission/trading-fo-crypto-v1.8.0.json",
 ]
 SPEC_DIGESTS = {
@@ -49,6 +49,48 @@ def test_multi_skill_and_materially_different_cadence_are_preserved() -> None:
         ("WEB", "WHATSAPP"),
         ("WEB", "API"),
     }
+
+
+def test_dma_release_1_coordinates_are_distinct_and_content_bound() -> None:
+    contract = json.loads(FIXTURES[0].read_text(encoding="utf-8"))
+    identity = contract["professionalIdentity"]
+    compliance = contract["complianceDeclaration"]
+
+    assert identity["professionalVersion"] == "1.0.0"
+    assert identity["agentSpecification"]["version"] == "3.1"
+    assert {skill["skillId"]: skill["skillVersion"] for skill in contract["skillManifest"]} == {
+        "CUSTOMER_PROFILING": "1.0.0",
+        "MARKET_RESEARCH": "1.0.0",
+        "CONTENT_STRATEGY": "1.0.0",
+    }
+
+    artifact_references = [
+        identity["agentSpecification"],
+        identity["agentVerificationDocument"],
+        compliance["constitutionalDna"],
+        compliance["agentBaseSpec"],
+        compliance["decisionConsequenceMap"],
+    ]
+    for reference in artifact_references:
+        actual = hashlib.sha256((ROOT / reference["path"]).read_bytes()).hexdigest()
+        assert reference["digest"] == f"sha256:{actual}"
+
+    expected_schema_digests = {
+        "CUSTOMER_PROFILING": "dma-customer-profiling-v1.schema.json",
+        "MARKET_RESEARCH": "dma-market-research-v1.schema.json",
+        "CONTENT_STRATEGY": "dma-content-strategy-v1.schema.json",
+    }
+    for skill in contract["skillManifest"]:
+        schema_path = ROOT / "architecture/reference/api-specs/schemas" / expected_schema_digests[skill["skillId"]]
+        expected = f"sha256:{hashlib.sha256(schema_path.read_bytes()).hexdigest()}"
+        assert skill["configurationSchema"]["schemaDigest"] == expected
+        assert skill["goalSchema"]["schemaDigest"] == expected
+        assert skill["compatibility"]["schemaDigest"] == expected
+
+    digests = json.dumps(contract, sort_keys=True)
+    assert "1111111111111111" not in digests
+    assert "6666666666666666" not in digests
+    assert contract["runtimeAdapter"]["artifactDigest"].startswith("sha256:")
 
 
 def test_unknown_or_missing_contract_fields_fail() -> None:

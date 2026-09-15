@@ -344,7 +344,7 @@ public sealed class OwnerGatewayCoverageTests(OwnerGatewayIdentityFixture fixtur
         "dma-starter-v1", "DMA", "STARTER", 7_000);
 
     private static RelationshipOwnerContext OwnerContext() => new(
-        "actor", "EMPLOYER", Guid.NewGuid(), Guid.NewGuid(), 3, Guid.NewGuid().ToString("D"));
+        "actor", "EMPLOYER", Guid.NewGuid(), Guid.NewGuid(), 3, Guid.NewGuid().ToString("D"), Guid.NewGuid());
 
     private static HttpResponseMessage Json(HttpStatusCode status, string body) => new(status)
     {

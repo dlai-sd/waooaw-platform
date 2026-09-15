@@ -12,6 +12,7 @@ import pytest
 from relationship_workspace import (
     ExecutionControlRequest,
     ExecutionProjection,
+    ExecutionWorkItem,
     RelationshipExecutionStore,
     RelationshipTrialStartRequest,
 )
@@ -71,6 +72,41 @@ def test_projection_is_explicitly_unavailable_until_owner_state_exists() -> None
 
     assert projection.state == "UNAVAILABLE"
     assert projection.projection_version == "unavailable-1"
+    assert projection.items == []
+
+
+def test_work_revisions_preserve_instance_binding_and_tenant_isolation() -> None:
+    store = RelationshipExecutionStore()
+    work_item_id = uuid.uuid4()
+    item = ExecutionWorkItem(
+        workItemId=work_item_id,
+        agentInstanceId=uuid.uuid4(),
+        skillId="MARKET_RESEARCH",
+        skillVersion="1.0.0",
+        invocationId=uuid.uuid4(),
+        revision=1,
+        state="RUNNING",
+        effect="Reviewing approved public sources.",
+        updatedAt=datetime.now(timezone.utc),
+    )
+
+    store.record_work(TENANT, RELATIONSHIP_ID, item)
+    store.record_work(
+        TENANT, RELATIONSHIP_ID, item.model_copy(update={"revision": 2, "state": "SUCCEEDED", "result_ref": "result-2"})
+    )
+
+    projection = store.projection(TENANT, RELATIONSHIP_ID)
+    assert projection.items[0].revision == 2
+    assert projection.items[0].result_ref == "result-2"
+    assert RelationshipExecutionStore().projection("tenant-b", RELATIONSHIP_ID).items == []
+    with pytest.raises(ServiceAuthError, match="EXECUTION_WORK_REVISION_CONFLICT"):
+        store.record_work(TENANT, RELATIONSHIP_ID, item)
+    with pytest.raises(ServiceAuthError, match="EXECUTION_WORK_REVISION_CONFLICT"):
+        store.record_work(
+            TENANT,
+            RELATIONSHIP_ID,
+            item.model_copy(update={"revision": 3, "agent_instance_id": uuid.uuid4()}),
+        )
 
 
 def test_current_projection_accepts_pending_control_and_exact_replay() -> None:
@@ -175,12 +211,3 @@ def test_trial_replay_rejects_changed_agent_instance() -> None:
     changed_instance = trial.model_copy(update={"agent_instance_id": uuid.uuid4()})
     with pytest.raises(ServiceAuthError, match="TRIAL_BINDING_CONFLICT"):
         store.start_trial(_context(), RELATIONSHIP_ID, changed_instance)
-
-    def test_trial_replay_rejects_changed_agent_instance() -> None:
-        store = RelationshipExecutionStore()
-        trial = _trial_request()
-        store.start_trial(_context(), RELATIONSHIP_ID, trial)
-
-        changed_instance = trial.model_copy(update={"agent_instance_id": uuid.uuid4()})
-        with pytest.raises(ServiceAuthError, match="TRIAL_BINDING_CONFLICT"):
-            store.start_trial(_context(), RELATIONSHIP_ID, changed_instance)

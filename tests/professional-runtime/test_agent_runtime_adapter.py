@@ -9,6 +9,7 @@ import hashlib
 import json
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -43,12 +44,28 @@ def digest(payload: dict[str, Any]) -> str:
     return f"sha256:{hashlib.sha256(value).hexdigest()}"
 
 
+def domain_payload(descriptor: AdapterDescriptorV1) -> dict[str, Any]:
+    if descriptor.professional_type_id != "DIGITAL_MARKETING_LOCAL_SERVICE":
+        return {"inputReference": "opaque-input-1"}
+    return {
+        "fields": {
+            "accountMode": {"value": "OWNER_OPERATED", "provenance": "CONFIRMED"},
+            "businessIdentity": {"value": "Local clinic", "provenance": "CONFIRMED"},
+            "audience": {"value": "Local families", "provenance": "CONFIRMED"},
+            "priority": {"value": "Qualified enquiries", "provenance": "CONFIRMED"},
+            "constraints": {"value": "No health claims", "provenance": "CONFIRMED"},
+            "approvedChannels": {"value": ["WEB"], "provenance": "CONFIRMED"},
+        }
+    }
+
+
 def envelope(descriptor: AdapterDescriptorV1, **changes: Any) -> AdapterInvocationEnvelopeV1:
-    payload = {"inputReference": "opaque-input-1"}
+    payload = domain_payload(descriptor)
     values: dict[str, Any] = {
         "schema_version": "1.0.0",
         "tenant_ref": "tenant-opaque-1",
         "relationship_id": str(uuid4()),
+        "agent_instance_id": str(uuid4()),
         "professional_type_id": descriptor.professional_type_id,
         "professional_version": descriptor.professional_version,
         "skill_id": next(iter(descriptor.skill_versions)),
@@ -77,7 +94,7 @@ def test_both_professions_pass_one_common_operation_contract(factory: Any) -> No
     adapter = factory()
     descriptor = adapter.describe()
     request = envelope(descriptor)
-    payload = {"inputReference": "opaque-input-1"}
+    payload = domain_payload(descriptor)
 
     assert adapter.health() == {"schemaVersion": "1.0.0", "status": "READY"}
     assert adapter.configure(request, {"approved": True})["valid"] is True
@@ -97,7 +114,7 @@ def test_binding_deadline_scope_and_replay_fail_closed_without_leakage() -> None
     adapter = create_digital_marketing_adapter()
     descriptor = adapter.describe()
     request = envelope(descriptor)
-    payload = {"inputReference": "opaque-input-1"}
+    payload = domain_payload(descriptor)
     adapter.execute(request, payload)
 
     denials = [
@@ -171,8 +188,8 @@ def test_stop_skips_other_relationships_and_terminal_work() -> None:
     descriptor = adapter.describe()
     terminal = envelope(descriptor)
     other = envelope(descriptor)
-    adapter.execute(terminal, {})
-    adapter.execute(other, {})
+    adapter.execute(terminal, domain_payload(descriptor))
+    adapter.execute(other, domain_payload(descriptor))
 
     adapter.emergency_stop(terminal, "stop-evidence-terminal")
 
@@ -180,40 +197,143 @@ def test_stop_skips_other_relationships_and_terminal_work() -> None:
     assert adapter.status(other, other.invocation_id).state is InvocationState.SUCCEEDED
 
 
+def test_same_relationship_instances_are_isolated_for_status_replay_and_stop() -> None:
+    adapter = create_digital_marketing_adapter()
+    descriptor = adapter.describe()
+    relationship_id = str(uuid4())
+    first = envelope(descriptor, relationship_id=relationship_id)
+    second = envelope(descriptor, relationship_id=relationship_id)
+    adapter.execute(first, domain_payload(descriptor))
+
+    with pytest.raises(AdapterContractError, match="ADAPTER_NOT_ACCESSIBLE"):
+        adapter.status(second, first.invocation_id)
+
+    adapter.emergency_stop(first, "stop-evidence-first-instance")
+    second_result = adapter.execute(second, domain_payload(descriptor))
+
+    assert second_result.state is InvocationState.SUCCEEDED
+    with pytest.raises(AdapterContractError, match="ADAPTER_STOPPED"):
+        adapter.execute(
+            envelope(
+                descriptor,
+                relationship_id=relationship_id,
+                agent_instance_id=first.agent_instance_id,
+            ),
+            {},
+        )
+
+
+def test_two_tenants_complete_release_one_skill_sequence_on_one_digest_without_crossover() -> None:
+    adapter = create_digital_marketing_adapter()
+    descriptor = adapter.describe()
+
+    def run_sequence(tenant_ref: str, business_name: str, source_id: str, theme: str) -> tuple[Any, Any, Any]:
+        base = envelope(descriptor, tenant_ref=tenant_ref)
+
+        def execute(skill_id: str, payload: dict[str, Any]) -> Any:
+            request = replace(
+                base,
+                skill_id=skill_id,
+                invocation_id=str(uuid4()),
+                idempotency_key=str(uuid4()),
+                payload_digest=digest(payload),
+            )
+            return adapter.execute(request, payload).output
+
+        profile_payload = domain_payload(descriptor)
+        profile_payload["fields"]["businessIdentity"]["value"] = business_name
+        profile = execute("CUSTOMER_PROFILING", profile_payload)
+        research = execute(
+            "MARKET_RESEARCH",
+            {
+                "sources": [{"sourceId": source_id, "url": f"https://{source_id}.example/market", "observedAt": "2026-09-15"}],
+                "claims": [{"claim": f"Evidence for {business_name}.", "sourceId": source_id}],
+                "maturitySignals": {"website": 2},
+                "unavailableProviders": [],
+            },
+        )
+        strategy = execute(
+            "CONTENT_STRATEGY",
+            {
+                "profileRevision": f"profile-{source_id}",
+                "researchRevision": f"research-{source_id}",
+                "researchStatus": "REVIEWED",
+                "startDate": "2026-10-01",
+                "themes": [theme],
+            },
+        )
+        return profile, research, strategy
+
+    with ThreadPoolExecutor(max_workers=2) as workers:
+        first = workers.submit(run_sequence, "tenant-opaque-1", "Clinic Alpha", "alpha", "education")
+        second = workers.submit(run_sequence, "tenant-opaque-2", "Studio Beta", "beta", "community")
+        alpha = first.result(timeout=2)
+        beta = second.result(timeout=2)
+
+    assert descriptor.artifact_digest == adapter.describe().artifact_digest
+    assert alpha[0]["fields"]["businessIdentity"]["value"] == "Clinic Alpha"
+    assert beta[0]["fields"]["businessIdentity"]["value"] == "Studio Beta"
+    assert alpha[1]["sources"][0]["sourceId"] == "alpha"
+    assert beta[1]["sources"][0]["sourceId"] == "beta"
+    assert {item["theme"] for item in alpha[2]["calendar"]} == {"education"}
+    assert {item["theme"] for item in beta[2]["calendar"]} == {"community"}
+
+
 def test_cancel_and_emergency_stop_preempt_active_work_under_250ms() -> None:
-    started = threading.Event()
+    started = threading.Barrier(3)
     release = threading.Event()
     descriptor = create_digital_marketing_adapter().describe()
 
-    def blocking_handler(_envelope: AdapterInvocationEnvelopeV1, _payload: dict[str, Any]) -> dict[str, Any]:
-        started.set()
+    def blocking_handler(current: AdapterInvocationEnvelopeV1, _payload: dict[str, Any]) -> dict[str, Any]:
+        started.wait(timeout=2)
         assert release.wait(timeout=2)
-        return {"late": True}
+        return {"tenantRef": current.tenant_ref}
 
     adapter = ReferenceAdapter(descriptor, blocking_handler)
     request = envelope(descriptor)
+    other_tenant = envelope(descriptor, tenant_ref="tenant-opaque-2")
     worker = threading.Thread(target=adapter.execute, args=(request, {"inputReference": "opaque-input-1"}))
+    other_worker = threading.Thread(target=adapter.execute, args=(other_tenant, {"inputReference": "opaque-input-2"}))
     worker.start()
-    assert started.wait(timeout=1)
+    other_worker.start()
+    started.wait(timeout=2)
 
     stop_started = time.perf_counter()
     acknowledgement = adapter.emergency_stop(request, "stop-evidence-1")
     stop_elapsed = time.perf_counter() - stop_started
     release.set()
     worker.join(timeout=1)
+    other_worker.join(timeout=1)
 
     assert stop_elapsed < 0.250
     assert acknowledgement["state"] == "STOPPED"
-    assert adapter.status(request, request.invocation_id).state is InvocationState.STOPPED
+    stopped = adapter.status(request, request.invocation_id)
+    assert stopped.state is InvocationState.STOPPED
+    assert stopped.output is None
+    assert adapter.result(other_tenant, other_tenant.invocation_id).output == {"tenantRef": "tenant-opaque-2"}
     with pytest.raises(AdapterContractError, match="ADAPTER_STOPPED"):
-        adapter.execute(envelope(descriptor, relationship_id=request.relationship_id), {})
+        adapter.execute(
+            envelope(
+                descriptor,
+                relationship_id=request.relationship_id,
+                agent_instance_id=request.agent_instance_id,
+            ),
+            {},
+        )
     with pytest.raises(AdapterContractError, match="ADAPTER_RESUME_DENIED"):
-        adapter.resume(envelope(descriptor, relationship_id=request.relationship_id))
+        adapter.resume(
+            envelope(
+                descriptor,
+                relationship_id=request.relationship_id,
+                agent_instance_id=request.agent_instance_id,
+            )
+        )
 
     resumed = adapter.resume(
         envelope(
             descriptor,
             relationship_id=request.relationship_id,
+            agent_instance_id=request.agent_instance_id,
             ce_decision_ref="fresh-ce-authority-10",
             stop_evidence_ref="stop-evidence-1",
         )
@@ -249,7 +369,7 @@ def test_generic_gateway_resolves_exact_artifact_without_type_branch(factory: An
     gateway = AgentRuntimeAdapterGateway(resolver)
     request = envelope(descriptor)
 
-    assert gateway.execute("demo", activation, request, {"inputReference": "opaque-input-1"}).state is InvocationState.SUCCEEDED
+    assert gateway.execute("demo", activation, request, domain_payload(descriptor)).state is InvocationState.SUCCEEDED
     assert gateway.result("demo", activation, request, request.invocation_id).state is InvocationState.SUCCEEDED
 
     forged = replace(activation, artifact_digest="sha256:" + "ff" * 32)
@@ -293,6 +413,8 @@ def test_gateway_denials_stop_resume_and_error_mapping() -> None:
     assert gateway.emergency_stop("demo", activation, request, "stop-evidence-1")["state"] == "STOPPED"
     with pytest.raises(AdapterGatewayError, match="ADAPTER_STOPPED"):
         gateway.execute("demo", activation, request, {})
+    sibling = envelope(descriptor, relationship_id=request.relationship_id)
+    assert gateway.execute("demo", activation, sibling, domain_payload(descriptor)).state is InvocationState.SUCCEEDED
     with pytest.raises(AdapterGatewayError, match="ADAPTER_RESUME_DENIED"):
         gateway.resume("demo", activation, replace(request, stop_evidence_ref="wrong"))
     resumed_request = replace(
@@ -365,7 +487,7 @@ def test_coordinator_persists_before_workflow_and_dispatch() -> None:
     coordinator = AdapterInvocationCoordinator(AgentRuntimeAdapterGateway(resolver), Store(), Workflow())
     request = envelope(descriptor)
 
-    coordinator.execute("demo", activation, request, {"inputReference": "opaque-input-1"})
+    coordinator.execute("demo", activation, request, domain_payload(descriptor))
     assert order == ["store", "workflow", "outcome"]
 
 
@@ -455,6 +577,7 @@ async def test_private_http_transport_requires_pr_identity_and_projects_strict_r
             "schemaVersion": request.schema_version,
             "tenantRef": request.tenant_ref,
             "relationshipId": request.relationship_id,
+            "agentInstanceId": request.agent_instance_id,
             "professionalTypeId": request.professional_type_id,
             "professionalVersion": request.professional_version,
             "skillId": request.skill_id,
@@ -477,12 +600,22 @@ async def test_private_http_transport_requires_pr_identity_and_projects_strict_r
         response = await client.post(
             "/internal/v1/invocations",
             headers=headers,
-            json={"envelope": wire_envelope, "payload": {"inputReference": "opaque-input-1"}},
+            json={"envelope": wire_envelope, "payload": domain_payload(descriptor)},
         )
         assert response.status_code == 202
         assert set(response.json()) == {"schemaVersion", "invocationId", "state", "stateVersion", "replayed", "updatedAt"}
 
-        body = {"envelope": wire_envelope, "payload": {"inputReference": "opaque-input-1"}}
+        missing_instance = dict(wire_envelope)
+        del missing_instance["agentInstanceId"]
+        invalid = await client.post(
+            "/internal/v1/invocations",
+            headers=headers,
+            json={"envelope": missing_instance, "payload": {"inputReference": "opaque-input-1"}},
+        )
+        assert invalid.status_code == 400
+        assert invalid.json()["detail"] == "ADAPTER_REQUEST_INVALID"
+
+        body = {"envelope": wire_envelope, "payload": domain_payload(descriptor)}
         assert (await client.get("/internal/v1/health/ready", headers=headers)).status_code == 200
         assert (await client.post("/internal/v1/configurations:validate", headers=headers, json=body)).status_code == 200
         planning = dict(wire_envelope)

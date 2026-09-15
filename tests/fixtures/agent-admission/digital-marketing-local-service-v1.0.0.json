@@ -1,0 +1,142 @@
+{
+  "contractSchemaVersion": "1.0.0",
+  "canonicalizationProfile": "RFC8785",
+  "professionalIdentity": {
+    "professionalTypeId": "DIGITAL_MARKETING_LOCAL_SERVICE",
+    "professionalVersion": "1.0.0",
+    "ownerSubjectId": "11111111-1111-1111-1111-111111111111",
+    "supportedLanguages": ["en", "hi"],
+    "supportedChannels": ["WEB", "WHATSAPP"],
+    "agentSpecification": {
+      "path": "architecture/reference/agents/digital-marketing-agent.md",
+      "version": "3.1",
+      "digest": "sha256:128b39b26346e5d09047e8cc835a3e3e6c7e627386d5ce9ad0df7e17c13a4ea2"
+    },
+    "agentVerificationDocument": {
+      "path": "avd/AVD-DMA-release-1.md",
+      "version": "1.0.0",
+      "digest": "sha256:1f70407b14e954f94cbb713780ba1fa71d26667bb6f1e72dfc1eb8bae856acef"
+    }
+  },
+  "complianceDeclaration": {
+    "constitutionalDna": {
+      "path": "architecture/reference/agents/CONSTITUTIONAL_DNA.md",
+      "version": "2.0",
+      "digest": "sha256:1d47ffecd0dffee3fc59e32faf0d72ec395e9fce3a805a17efbf20645091f961"
+    },
+    "agentBaseSpec": {
+      "path": "architecture/reference/agents/AGENT-BASE-SPEC.md",
+      "version": "1.0",
+      "digest": "sha256:58ee2bef72887a0187a61dce66214a37b7d10ed517c45fa9b9566dc2b66da4b1"
+    },
+    "platformAgentContract": {
+      "schemaVersion": "1.0.0",
+      "schemaDigest": "sha256:128b39b26346e5d09047e8cc835a3e3e6c7e627386d5ce9ad0df7e17c13a4ea2"
+    },
+    "decisionSpaceSchema": {
+      "schemaVersion": "1.0.0",
+      "schemaDigest": "sha256:128b39b26346e5d09047e8cc835a3e3e6c7e627386d5ce9ad0df7e17c13a4ea2"
+    },
+    "decisionConsequenceMap": {
+      "path": "architecture/reference/agents/digital-marketing-agent.md",
+      "version": "3.1#3.25",
+      "digest": "sha256:128b39b26346e5d09047e8cc835a3e3e6c7e627386d5ce9ad0df7e17c13a4ea2"
+    },
+    "evidenceFirstOperations": ["PRESENT_PROFILE_PROPOSAL", "PRESENT_RESEARCH_REPORT", "PRESENT_STRATEGY_PROPOSAL"],
+    "emergencyStop": {
+      "supported": true,
+      "signal": "EMERGENCY_STOP",
+      "maximumResponseSeconds": 1
+    },
+    "constitutionalConformanceTests": [
+      "CCT-DMA-BUILD-AUTH-01",
+      "CCT-DMA-INSTANCE-01",
+      "CCT-DMA-PROFILE-01",
+      "CCT-DMA-RESEARCH-01",
+      "CCT-DMA-STRATEGY-01",
+      "CCT-DMA-STOP-01"
+    ],
+    "dataClasses": ["BUSINESS_DATA", "CUSTOMER_CONTACT_DATA", "PUBLIC_RESEARCH_DATA"],
+    "retentionPolicy": {
+      "schemaVersion": "1.0.0",
+      "schemaDigest": "sha256:128b39b26346e5d09047e8cc835a3e3e6c7e627386d5ce9ad0df7e17c13a4ea2"
+    },
+    "securityPosture": {
+      "schemaVersion": "1.0.0",
+      "schemaDigest": "sha256:128b39b26346e5d09047e8cc835a3e3e6c7e627386d5ce9ad0df7e17c13a4ea2"
+    },
+    "limitationBehavior": "Disclose missing or unavailable public evidence and request customer confirmation where required.",
+    "degradationBehavior": "Return an explicit partial result or preserve the latest draft; never publish or expand authority."
+  },
+  "runtimeAdapter": {
+    "protocolVersion": "1.0.0",
+    "compatibleMinorVersions": ["1.0.0"],
+    "artifactDigest": "sha256:085fe3121aeae81b3ce25b1c7a9dc1eec6437719b7115a052c5e54591d07bc7b",
+    "isolationProfile": "ONE_ARTIFACT_PER_DEPLOYMENT",
+    "conformanceEvidence": {
+      "schemaVersion": "1.0.0",
+      "schemaDigest": "sha256:51f8712022cf95ecb1e889d72d8d0889f7aeb24a774784c90e3ad44c62eae6a2"
+    }
+  },
+  "skillManifest": [
+    {
+      "skillId": "CUSTOMER_PROFILING",
+      "skillVersion": "1.0.0",
+      "capability": "Produce a customer-confirmable profile while preserving observation, inference, missing and confirmed provenance.",
+      "businessKpi": "required profile fields explicitly confirmed by the customer",
+      "inputs": ["profile fields", "field provenance"],
+      "outputs": ["profile proposal", "confirmation readiness"],
+      "decisionSpaceSubset": ["classify profile input provenance", "propose profile confirmation"],
+      "tools": [],
+      "constitutionalActions": ["PRESENT_PROFILE_PROPOSAL"],
+      "configurationSchema": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:916e65184d907abce40106b330cd217b89431ca313f295f5d3c89569fc955813" },
+      "goalSchema": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:916e65184d907abce40106b330cd217b89431ca313f295f5d3c89569fc955813" },
+      "schedulePolicy": { "mode": "BOUNDED", "customerAdjustable": true },
+      "reviewPolicy": { "performanceReviewDays": 30, "customerContractReviewDays": 30 },
+      "costUnits": { "profileProposal": 1 },
+      "trialBehavior": "Produce a bounded profile proposal with no durable confirmation or external action.",
+      "degradationBehavior": "Preserve provenance and return missing fields without inventing values.",
+      "compatibility": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:916e65184d907abce40106b330cd217b89431ca313f295f5d3c89569fc955813" }
+    },
+    {
+      "skillId": "MARKET_RESEARCH",
+      "skillVersion": "1.0.0",
+      "capability": "Produce a cited market maturity report from approved public sources.",
+      "businessKpi": "research claims with resolvable public source and observation date",
+      "inputs": ["public sources", "source-bound claims", "maturity signals"],
+      "outputs": ["market research report", "maturity percentage", "limitations"],
+      "decisionSpaceSubset": ["interpret approved public evidence", "calculate bounded maturity"],
+      "tools": [
+        { "toolId": "PUBLIC_RESEARCH", "providerId": "DETERMINISTIC_SIMULATOR", "defaultDenied": true, "governedAction": "RESEARCH_PUBLIC_SOURCE" }
+      ],
+      "constitutionalActions": ["RESEARCH_PUBLIC_SOURCE", "PRESENT_RESEARCH_REPORT"],
+      "configurationSchema": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:576a52ff1286e33cd4e4cc39ad7da91541cf6820b1cb32b00cb7333bbfadd722" },
+      "goalSchema": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:576a52ff1286e33cd4e4cc39ad7da91541cf6820b1cb32b00cb7333bbfadd722" },
+      "schedulePolicy": { "mode": "BOUNDED", "customerAdjustable": true },
+      "reviewPolicy": { "performanceReviewDays": 30, "customerContractReviewDays": 30 },
+      "costUnits": { "publicSourceReview": 1, "researchReport": 1 },
+      "trialBehavior": "Use deterministic public-source fixtures only and return a cited report without provider writes.",
+      "degradationBehavior": "Return PARTIAL with unavailable sources and explicit limitations.",
+      "compatibility": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:576a52ff1286e33cd4e4cc39ad7da91541cf6820b1cb32b00cb7333bbfadd722" }
+    },
+    {
+      "skillId": "CONTENT_STRATEGY",
+      "skillVersion": "1.0.0",
+      "capability": "Produce an approval-gated 30-day content strategy from exact profile and research revisions.",
+      "businessKpi": "customer-reviewed strategy proposals bound to current upstream evidence",
+      "inputs": ["confirmed profile revision", "reviewed research revision", "approved themes"],
+      "outputs": ["30-day draft calendar", "strategy approval proposal"],
+      "decisionSpaceSubset": ["propose content themes", "draft content calendar"],
+      "tools": [],
+      "constitutionalActions": ["PRESENT_STRATEGY_PROPOSAL"],
+      "configurationSchema": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:c479e5bfadfa9a4f1cfd2dd23ad4d431fd52938ce50df0ae8b771967629090d1" },
+      "goalSchema": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:c479e5bfadfa9a4f1cfd2dd23ad4d431fd52938ce50df0ae8b771967629090d1" },
+      "schedulePolicy": { "mode": "BOUNDED", "customerAdjustable": true },
+      "reviewPolicy": { "performanceReviewDays": 30, "customerContractReviewDays": 30 },
+      "costUnits": { "strategyProposal": 1 },
+      "trialBehavior": "Produce one approval-pending 30-day draft strategy with publication disabled.",
+      "degradationBehavior": "Reject stale or unreviewed inputs and preserve the prior approved draft.",
+      "compatibility": { "schemaVersion": "1.0.0", "schemaDigest": "sha256:c479e5bfadfa9a4f1cfd2dd23ad4d431fd52938ce50df0ae8b771967629090d1" }
+    }
+  ]
+}

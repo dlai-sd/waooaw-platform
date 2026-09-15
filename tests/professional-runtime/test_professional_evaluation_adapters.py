@@ -30,11 +30,11 @@ def capabilities() -> tuple[TrialCapability, ...]:
 
 
 @pytest.mark.asyncio
-async def test_dma_adapter_covers_exact_catalog_and_all_19_demonstrations() -> None:
+async def test_dma_adapter_covers_exact_release_one_catalog() -> None:
     catalog = json.loads(DMA_CATALOG.read_text(encoding="utf-8"))
     catalog_skills = {item["skillId"] for item in catalog["skills"]}
-    assert len(catalog_skills) == 19
-    assert set(DMA_RECIPES) == catalog_skills
+    assert catalog_skills == {"CUSTOMER_PROFILING", "MARKET_RESEARCH", "CONTENT_STRATEGY"}
+    assert catalog_skills <= set(DMA_RECIPES)
 
     service = TrialDemonstrationService(DigitalMarketingEvaluationAdapter())
     results = [
@@ -49,11 +49,10 @@ async def test_dma_adapter_covers_exact_catalog_and_all_19_demonstrations() -> N
         for skill_id in sorted(catalog_skills)
     ]
 
-    assert len(results) == 19
-    assert sum(result.applicable for result in results) == 17
+    assert len(results) == 3
+    assert all(result.applicable for result in results)
     assert all(not result.external_actions for result in results)
-    assert all(result.artifact and result.artifact["mode"] == "SIMULATION_ONLY" for result in results if result.applicable)
-    assert all(result.reason and result.activation_condition for result in results if not result.applicable)
+    assert all(result.artifact and result.artifact["mode"] == "SIMULATION_ONLY" for result in results)
 
 
 @pytest.mark.asyncio

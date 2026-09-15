@@ -61,6 +61,7 @@ class AdapterInvocationEnvelopeV1:
     schema_version: str
     tenant_ref: str
     relationship_id: str
+    agent_instance_id: str
     professional_type_id: str
     professional_version: str
     skill_id: str

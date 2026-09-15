@@ -874,10 +874,26 @@ components:
       type: string
       enum: [CURRENT, STALE, UNKNOWN, UNAVAILABLE, BLOCKED]
 
+    PrRelationshipExecutionWorkItemV1:
+      type: object
+      additionalProperties: false
+      required: [workItemId, agentInstanceId, skillId, skillVersion, invocationId, revision, state, effect, updatedAt]
+      properties:
+        workItemId: { type: string, format: uuid }
+        agentInstanceId: { type: string, format: uuid }
+        skillId: { type: string, minLength: 1, maxLength: 100 }
+        skillVersion: { type: string, pattern: '^\d+\.\d+\.\d+$' }
+        invocationId: { type: string, format: uuid }
+        revision: { type: integer, minimum: 1 }
+        state: { type: string, enum: [PENDING, RUNNING, PARTIAL, SUCCEEDED, FAILED, STOPPED] }
+        effect: { type: string, minLength: 1, maxLength: 500 }
+        resultRef: { type: string, minLength: 1, maxLength: 256 }
+        updatedAt: { type: string, format: date-time }
+
     PrRelationshipExecutionProjectionV1:
       type: object
       additionalProperties: false
-      required: [schemaVersion, relationshipId, projectionVersion, state, producedAt]
+      required: [schemaVersion, relationshipId, projectionVersion, state, producedAt, items]
       properties:
         schemaVersion: { $ref: "#/components/schemas/PrRelationshipExecutionSchemaVersion" }
         relationshipId: { type: string, format: uuid }
@@ -885,6 +901,9 @@ components:
         state: { $ref: "#/components/schemas/PrRelationshipExecutionState" }
         producedAt: { type: string, format: date-time }
         nextReviewAt: { type: string, format: date-time }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/PrRelationshipExecutionWorkItemV1" }
 
     PrRelationshipTrialStartRequestV1:
       type: object

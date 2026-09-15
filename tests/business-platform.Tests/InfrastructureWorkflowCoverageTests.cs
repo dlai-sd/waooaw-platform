@@ -142,7 +142,7 @@ public sealed class InfrastructureWorkflowCoverageTests
     {
         var gateway = new UnconfiguredRelationshipWorkspaceOwnerGateway();
         var context = new RelationshipOwnerContext(
-            "actor", "EMPLOYER", Guid.NewGuid(), Guid.NewGuid(), 1, Guid.NewGuid().ToString());
+            "actor", "EMPLOYER", Guid.NewGuid(), Guid.NewGuid(), 1, Guid.NewGuid().ToString(), Guid.NewGuid());
 
         Assert.Null(await gateway.GetExecutionAsync(context, CancellationToken.None));
         Assert.Null(await gateway.GetCommercialAsync(context, CancellationToken.None));

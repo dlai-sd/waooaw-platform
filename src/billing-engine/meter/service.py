@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
@@ -63,6 +64,21 @@ def _is_quiet_hours(policy: ThresholdPolicy, now_ist: datetime) -> bool:
     return start <= hour < end
 
 
+@dataclass(frozen=True)
+class UsageAttribution:
+    tenant_id: UUID
+    relationship_id: UUID
+    agent_instance_id: UUID
+    skill_id: str
+    skill_version: str
+    work_item_id: UUID
+    invocation_id: UUID
+
+    def __post_init__(self) -> None:
+        if not self.skill_id or not self.skill_version:
+            raise ValueError("DMA_USAGE_ATTRIBUTION_INVALID")
+
+
 class MeterService(IMeterService):
     """
     Usage Meter + Alert Engine.
@@ -85,7 +101,11 @@ class MeterService(IMeterService):
     # IMeterService.record_usage
     # ------------------------------------------------------------------
     async def record_usage(
-        self, customer_id: UUID, thread_type: str, amount_paise: int
+        self,
+        customer_id: UUID,
+        thread_type: str,
+        amount_paise: int,
+        attribution: UsageAttribution | None = None,
     ) -> None:
         """
         Record one usage event.
@@ -95,6 +115,8 @@ class MeterService(IMeterService):
         2. Write to platform_cost_ledger with marked_up_cost_inr_paise.
         C-063: customer_id logged only as UUID string (no name/email).
         """
+        if thread_type == "DMA" and attribution is None:
+            raise ValueError("DMA_USAGE_ATTRIBUTION_REQUIRED")
         try:
             async with self._session_factory() as session:
                 # 1. Resolve provider_account_id
@@ -127,10 +149,14 @@ class MeterService(IMeterService):
                         """
                         INSERT INTO platform_cost_ledger
                             (id, customer_id, thread_type, provider_account_id,
-                             marked_up_cost_inr_paise, recorded_at, billing_period_start)
+                             marked_up_cost_inr_paise, recorded_at, billing_period_start,
+                             tenant_id, relationship_id, agent_instance_id, skill_id,
+                             skill_version, work_item_id, invocation_id)
                         VALUES
                             (:id, :customer_id, :thread_type, :provider_account_id,
-                             :amount_paise, :recorded_at, :billing_period_start)
+                             :amount_paise, :recorded_at, :billing_period_start,
+                             :tenant_id, :relationship_id, :agent_instance_id, :skill_id,
+                             :skill_version, :work_item_id, :invocation_id)
                         """
                     ).bindparams(
                         id=_sid(uuid4()),
@@ -140,6 +166,13 @@ class MeterService(IMeterService):
                         amount_paise=amount_paise,
                         recorded_at=now_utc,
                         billing_period_start=_current_billing_period_start(now_utc),
+                        tenant_id=_sid(attribution.tenant_id) if attribution else None,
+                        relationship_id=_sid(attribution.relationship_id) if attribution else None,
+                        agent_instance_id=_sid(attribution.agent_instance_id) if attribution else None,
+                        skill_id=attribution.skill_id if attribution else None,
+                        skill_version=attribution.skill_version if attribution else None,
+                        work_item_id=_sid(attribution.work_item_id) if attribution else None,
+                        invocation_id=_sid(attribution.invocation_id) if attribution else None,
                     )
                 )
                 await session.commit()

@@ -44,6 +44,7 @@ def _envelope(payload: dict[str, Any]) -> AdapterInvocationEnvelopeV1:
             schema_version=values["schemaVersion"],
             tenant_ref=values["tenantRef"],
             relationship_id=values["relationshipId"],
+            agent_instance_id=values["agentInstanceId"],
             professional_type_id=values["professionalTypeId"],
             professional_version=values["professionalVersion"],
             skill_id=values["skillId"],

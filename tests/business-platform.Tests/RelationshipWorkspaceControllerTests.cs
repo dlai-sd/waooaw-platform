@@ -443,20 +443,37 @@ public sealed class RelationshipWorkspaceControllerTests
     {
         var (controller, relationship, gateway, _) = await CreateControllerAsync();
         var producedAt = DateTimeOffset.UtcNow;
-        gateway.Execution = new ExecutionOwnerProjection("execution-7", "CURRENT", producedAt);
+        var workItemId = Guid.NewGuid();
+        var invocationId = Guid.NewGuid();
+        gateway.Execution = new ExecutionOwnerProjection("execution-7", "CURRENT", producedAt,
+        [
+            new ExecutionOwnerWorkItem(
+                workItemId, relationship.AgentInstanceId, "MARKET_RESEARCH", "1.0.0",
+                invocationId, 2, "SUCCEEDED", "Cited market research is ready.", "result-research-2", producedAt),
+        ]);
         gateway.Commercial = new CommercialOwnerProjection(
             "commercial-9", "CURRENT", "INR 125", "INR 700 to INR 900", "BELOW_LIMIT", producedAt);
 
         var work = Json(await controller.GetWorkAsync(relationship.RelationshipId, CancellationToken.None));
+        var results = Json(await controller.GetResultsAsync(relationship.RelationshipId, CancellationToken.None));
         var usage = Json(await controller.GetUsageBudgetAsync(relationship.RelationshipId, CancellationToken.None));
 
         Assert.Equal("CURRENT", work.GetProperty("currencyState").GetString());
         Assert.Equal("execution-7", work.GetProperty("provenance").GetProperty("sourceProjectionVersion").GetString());
+        var workItem = Assert.Single(work.GetProperty("items").EnumerateArray());
+        Assert.Equal(workItemId, workItem.GetProperty("itemId").GetGuid());
+        Assert.Equal(relationship.AgentInstanceId, workItem.GetProperty("agentInstanceId").GetGuid());
+        Assert.Equal("MARKET_RESEARCH", workItem.GetProperty("skillId").GetString());
+        Assert.Equal(invocationId, workItem.GetProperty("invocationId").GetGuid());
+        var outcome = Assert.Single(results.GetProperty("outcomes").EnumerateArray());
+        Assert.Equal("result-research-2", outcome.GetProperty("attributionBasis").GetString());
+        Assert.Equal(2, outcome.GetProperty("revision").GetInt32());
         Assert.Equal("CURRENT", usage.GetProperty("currencyState").GetString());
         Assert.Equal("INR 125", usage.GetProperty("actualAmount").GetString());
         Assert.Equal("commercial-9", usage.GetProperty("wbeProjectionVersion").GetString());
         Assert.Equal(relationship.TenantId, gateway.LastContext?.TenantId);
         Assert.Equal(relationship.RelationshipId, gateway.LastContext?.RelationshipId);
+        Assert.Equal(relationship.AgentInstanceId, gateway.LastContext?.AgentInstanceId);
     }
 
     [Fact]
