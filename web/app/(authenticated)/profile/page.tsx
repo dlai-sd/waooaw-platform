@@ -5,7 +5,7 @@ import { BadgeCheck, CircleAlert, CreditCard, Mail, Smartphone } from 'lucide-re
 import { ProfileEditor } from '@/components/portal/ProfileEditor';
 import { StateView } from '@/components/system/StateView';
 import { getRequestI18n } from '@/lib/i18n-server';
-import { getCustomerProfile, listCustomerLoginMethods } from '@/lib/api/identity';
+import { getCustomerProfile, getIdentitySession, listCustomerLoginMethods } from '@/lib/api/identity';
 import { getServerAccessToken } from '@/lib/server-auth';
 
 export default async function ProfilePage() {
@@ -15,6 +15,11 @@ export default async function ProfilePage() {
 	}
 
 	try {
+		const identity = await getIdentitySession(accessToken);
+		if (identity.kind === 'registration-required') {
+			return <StateView actionHref="/marketplace" actionLabel="Browse Marketplace" kind="empty" title="Your customer profile is ready to begin" description="Your login is secure. Organization, billing and customer profile details are created only when you choose Trial or Hire." />;
+		}
+		if (identity.kind !== 'ready') throw new Error('Customer identity is unavailable.');
 		const [profile, loginMethods] = await Promise.all([
 			getCustomerProfile(accessToken),
 			listCustomerLoginMethods(accessToken),

@@ -6,9 +6,24 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const sessionCookie = /^(?:(?:__Secure-|__Host-)?next-auth\.|waooaw[.-])/i;
 
+function isSameOriginSubmission(request: NextRequest, applicationOrigin: string) {
+  const origin = request.headers.get('origin');
+  if (origin) return origin === applicationOrigin;
+
+  if (request.headers.get('sec-fetch-site') === 'same-origin') return true;
+
+  const referer = request.headers.get('referer');
+  if (!referer) return false;
+  try {
+    return new URL(referer).origin === applicationOrigin;
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(request: NextRequest) {
   const applicationOrigin = new URL(process.env.NEXTAUTH_URL ?? request.nextUrl.origin).origin;
-  if (request.headers.get('origin') !== applicationOrigin) {
+  if (!isSameOriginSubmission(request, applicationOrigin)) {
     return NextResponse.json({ code: 'IDENTITY_ACTION_DENIED', title: 'Sign out request was denied.' }, { status: 403 });
   }
 

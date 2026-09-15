@@ -49,6 +49,29 @@ describe('Keycloak logout route', () => {
     expect(getToken).not.toHaveBeenCalled();
   });
 
+  it('accepts a browser form submission with same-origin fetch metadata when Origin is omitted', async () => {
+    const response = await POST(new NextRequest('https://app.example/api/auth/keycloak-logout', {
+      method: 'POST',
+      headers: {
+        'sec-fetch-site': 'same-origin',
+        cookie: '__Secure-next-auth.session-token.0=first; __Secure-next-auth.session-token.1=second',
+      },
+    }));
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get('set-cookie')).toContain('__Secure-next-auth.session-token.0=;');
+    expect(response.headers.get('set-cookie')).toContain('__Secure-next-auth.session-token.1=;');
+  });
+
+  it('rejects a logout submission without same-origin provenance', async () => {
+    const response = await POST(new NextRequest('https://app.example/api/auth/keycloak-logout', {
+      method: 'POST',
+    }));
+
+    expect(response.status).toBe(403);
+    expect(getToken).not.toHaveBeenCalled();
+  });
+
   it('does not trust a forged request host for the post-logout target', async () => {
     const response = await POST(new NextRequest('https://attacker.example/api/auth/keycloak-logout', {
       method: 'POST', headers: { origin: 'https://app.example' },

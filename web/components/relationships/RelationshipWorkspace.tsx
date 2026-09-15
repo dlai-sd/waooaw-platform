@@ -23,7 +23,7 @@ export function RelationshipWorkspace({ relationship, relationships = [], timeli
   const live = relationship.state === 'ACTIVE';
 
   return (
-    <main className="workspace-shell">
+    <main className="workspace-shell relationship-workspace-grid">
       <header className="workspace-header">
         <div>
           <p className="brand">WAOOAW</p>
@@ -32,7 +32,12 @@ export function RelationshipWorkspace({ relationship, relationships = [], timeli
         <span className={`state-banner ${live ? 'live' : 'trial'}`}>{live ? 'Live' : 'Evaluation'} · {relationship.state}</span>
       </header>
 
-      {relationships.length > 1 ? <nav className="workspace-nav" aria-label="Switch expert">{relationships.map((item) => <a aria-current={item.relationshipId === relationship.relationshipId ? 'page' : undefined} key={item.relationshipId} href={`/relationships/${item.relationshipId}`}>{item.professionalDisplayName}</a>)}</nav> : null}
+      <aside className="relationship-switcher" aria-label="Your agents">
+        <p className="section-label">My Agents</p>
+        <nav aria-label="Switch expert">
+          {relationships.length ? relationships.map((item) => <a aria-label={item.professionalDisplayName} aria-current={item.relationshipId === relationship.relationshipId ? 'page' : undefined} key={item.relationshipId} href={`/relationships/${item.relationshipId}`}><strong>{item.professionalDisplayName}</strong><span>{stateLabel(item.lifecycleState)}</span></a>) : <a aria-label={relationship.professionalType} aria-current="page" href={`/relationships/${relationship.relationshipId}`}><strong>{relationship.professionalType}</strong><span>{stateLabel(relationship.state)}</span></a>}
+        </nav>
+      </aside>
 
       <section className="relationship-summary" aria-labelledby="relationship-summary-title">
         <div>
@@ -65,12 +70,18 @@ export function RelationshipWorkspace({ relationship, relationships = [], timeli
           <li data-state={views.businessOutcomes.currencyState.toLowerCase()}><span>4</span><div><strong>Business Outcomes</strong><small>{views.businessOutcomes.items.length ? `${views.businessOutcomes.items.length} traced outcomes` : 'No supported outcomes available'}</small></div></li>
           <li data-state={views.operations.eligibilityState.toLowerCase()}><span>5</span><div><strong>Operations</strong><small>{stateLabel(views.operations.eligibilityState)}</small></div></li>
         </ol>
-        <div className="lifecycle-details">
+        <nav className="relationship-context-nav" aria-label="Relationship context">
+          {['Conversation', 'Needs your attention', 'Plan', 'Work', 'Results', 'Usage & budget', 'Rights & control', 'Evidence'].map((label) => (
+            <a key={label} href={`#${label.toLowerCase().replaceAll(' ', '-').replace('&', 'and')}`}>{label}</a>
+          ))}
+        </nav>
+      </section>
+
+      <section className="lifecycle-details" aria-label="Lifecycle actions">
           <section><h3>Onboard</h3><OnboardForm relationshipId={relationship.relationshipId} summary={views.configuration.items.find((item) => item.stepKey === 'ONBOARD')?.summary} /></section>
-          <section><h3>Induct</h3><p>Continue the agent-led induction in the conversation below. The confirmed context remains server-owned and shared across supported channels.</p><a className="secondary-link" href="#relationship-conversation">Continue induction</a></section>
+          <section><h3>Induct</h3><p>Continue the agent-led induction in the conversation below. The confirmed context remains server-owned and shared across supported channels.</p><a className="secondary-link" href="#conversation">Continue induction</a></section>
           <section><h3>Goals</h3>{views.goals.activeGoals.length ? <ul className="decision-list">{views.goals.activeGoals.map((goal) => <li key={goal.goalId}><span><strong>{goal.skillLabel}</strong><small>{goal.measure} · {goal.frequency}</small></span><b>{stateLabel(goal.verificationStatus)}</b></li>)}</ul> : <p>No active goals are available.</p>}<p className="truth-note">Goal verification cannot be changed here because no canonical verification command exists.</p></section>
           <section><h3>Operations eligibility</h3><p><strong>{stateLabel(views.operations.eligibilityState)}</strong></p>{views.operations.blockedReasons?.length ? <ul>{views.operations.blockedReasons.map((reason) => <li key={reason}>{reason}</li>)}</ul> : <p>No server-reported blockers.</p>}</section>
-        </div>
       </section>
 
       <nav className="workspace-nav" aria-label="Relationship workspace views">
@@ -95,14 +106,14 @@ export function RelationshipWorkspace({ relationship, relationships = [], timeli
         <section className="workspace-family" id="rights-and-control"><p className="section-label">Rights &amp; control</p><h2>Scope, authority and lifecycle</h2><span className="currency-state">{stateLabel(views.rightsControls.currencyState)}</span><p>{stateLabel(views.rightsControls.lifecycleState)} · Emergency Stop {views.rightsControls.emergencyStopReachable ? 'available' : 'unavailable'}</p></section>
       </div>
 
-      <div id="relationship-conversation">
+      <div id="conversation">
         <ConversationExperience
           relationshipId={relationship.relationshipId}
           relationshipStopped={relationship.state === 'STOPPED_EMERGENCY'}
         />
       </div>
 
-      <EvidenceWindow relationshipId={relationship.relationshipId} evidence={views.evidence} />
+      <div id="evidence"><EvidenceWindow relationshipId={relationship.relationshipId} evidence={views.evidence} /></div>
 
       <section className="timeline" aria-labelledby="timeline-title">
         <p className="section-label">Evidence timeline</p>
