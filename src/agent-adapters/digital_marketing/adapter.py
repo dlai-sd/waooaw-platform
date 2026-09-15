@@ -29,6 +29,9 @@ def create_adapter() -> ReferenceAdapter:
     artifact_digest = os.environ.get("DMA_ARTIFACT_DIGEST")
     if artifact_digest is None:
         raise RuntimeError("DMA_ARTIFACT_DIGEST is required")
+    admission_content_digest = os.environ.get("DMA_ADMISSION_CONTENT_DIGEST")
+    if admission_content_digest is None:
+        raise RuntimeError("DMA_ADMISSION_CONTENT_DIGEST is required")
     return ReferenceAdapter(
         AdapterDescriptorV1(
             protocol_version="1.0.0",
@@ -36,7 +39,7 @@ def create_adapter() -> ReferenceAdapter:
             professional_type_id="DIGITAL_MARKETING_LOCAL_SERVICE",
             professional_version="1.0.0",
             artifact_digest=artifact_digest,
-            admission_content_digest="sha256:" + "21" * 32,
+            admission_content_digest=admission_content_digest,
             pac_version="1.0.0",
             pac_digest="sha256:" + "44" * 32,
             skill_versions={

@@ -22,7 +22,7 @@ ADMISSION_SCHEMA = json.loads(
     (ROOT / "architecture/reference/api-specs/schemas/agent-admission-contract-v1.schema.json").read_text()
 )
 ADMISSION_FIXTURES = [
-    ROOT / "tests/fixtures/agent-admission/digital-marketing-local-service-v3.1.0.json",
+    ROOT / "tests/fixtures/agent-admission/digital-marketing-local-service-v1.0.0.json",
     ROOT / "tests/fixtures/agent-admission/trading-fo-crypto-v1.8.0.json",
 ]
 
