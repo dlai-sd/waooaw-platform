@@ -71,7 +71,7 @@
   "runtimeAdapter": {
     "protocolVersion": "1.0.0",
     "compatibleMinorVersions": ["1.0.0"],
-    "artifactDigest": "sha256:0bd5f34e9f9cae80b0e7c6a2342ffa2b6e4e34913f894ae0b7bcd744643f8d5c",
+    "artifactDigest": "sha256:085fe3121aeae81b3ce25b1c7a9dc1eec6437719b7115a052c5e54591d07bc7b",
     "isolationProfile": "ONE_ARTIFACT_PER_DEPLOYMENT",
     "conformanceEvidence": {
       "schemaVersion": "1.0.0",
