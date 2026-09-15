@@ -37,11 +37,12 @@
     "AdapterInvocationEnvelopeV1": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["schemaVersion", "tenantRef", "relationshipId", "professionalTypeId", "professionalVersion", "skillId", "skillVersion", "admissionContentDigest", "artifactDigest", "customerContractDigest", "decisionSpaceVersion", "invocationId", "idempotencyKey", "payloadDigest", "ceDecisionRef", "evidenceContextRef", "deadline", "correlationId", "mode"],
+      "required": ["schemaVersion", "tenantRef", "relationshipId", "agentInstanceId", "professionalTypeId", "professionalVersion", "skillId", "skillVersion", "admissionContentDigest", "artifactDigest", "customerContractDigest", "decisionSpaceVersion", "invocationId", "idempotencyKey", "payloadDigest", "ceDecisionRef", "evidenceContextRef", "deadline", "correlationId", "mode"],
       "properties": {
         "schemaVersion": { "const": "1.0.0" },
         "tenantRef": { "$ref": "#/$defs/opaqueRef" },
         "relationshipId": { "type": "string", "format": "uuid" },
+        "agentInstanceId": { "type": "string", "format": "uuid" },
         "professionalTypeId": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,99}$" },
         "professionalVersion": { "$ref": "#/$defs/semver" },
         "skillId": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,99}$" },

@@ -2,6 +2,7 @@
 # constitutional_basis: C-076 (≥90% coverage)
 
 import importlib.util
+import os
 import sys
 from pathlib import Path
 
@@ -12,6 +13,7 @@ professional_runtime_path = Path(__file__).parent.parent.parent / "src" / "profe
 agent_adapters_path = Path(__file__).parent.parent.parent / "src" / "agent-adapters"
 sys.path.insert(0, str(professional_runtime_path))
 sys.path.insert(0, str(agent_adapters_path))
+os.environ.setdefault("DMA_ARTIFACT_DIGEST", "sha256:" + "ab" * 32)
 
 module_spec = importlib.util.spec_from_file_location(
     "professional_runtime_main",

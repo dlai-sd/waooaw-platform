@@ -43,12 +43,28 @@ def digest(payload: dict[str, Any]) -> str:
     return f"sha256:{hashlib.sha256(value).hexdigest()}"
 
 
+def domain_payload(descriptor: AdapterDescriptorV1) -> dict[str, Any]:
+    if descriptor.professional_type_id != "DIGITAL_MARKETING_LOCAL_SERVICE":
+        return {"inputReference": "opaque-input-1"}
+    return {
+        "fields": {
+            "accountMode": {"value": "OWNER_OPERATED", "provenance": "CONFIRMED"},
+            "businessIdentity": {"value": "Local clinic", "provenance": "CONFIRMED"},
+            "audience": {"value": "Local families", "provenance": "CONFIRMED"},
+            "priority": {"value": "Qualified enquiries", "provenance": "CONFIRMED"},
+            "constraints": {"value": "No health claims", "provenance": "CONFIRMED"},
+            "approvedChannels": {"value": ["WEB"], "provenance": "CONFIRMED"},
+        }
+    }
+
+
 def envelope(descriptor: AdapterDescriptorV1, **changes: Any) -> AdapterInvocationEnvelopeV1:
-    payload = {"inputReference": "opaque-input-1"}
+    payload = domain_payload(descriptor)
     values: dict[str, Any] = {
         "schema_version": "1.0.0",
         "tenant_ref": "tenant-opaque-1",
         "relationship_id": str(uuid4()),
+        "agent_instance_id": str(uuid4()),
         "professional_type_id": descriptor.professional_type_id,
         "professional_version": descriptor.professional_version,
         "skill_id": next(iter(descriptor.skill_versions)),
@@ -77,7 +93,7 @@ def test_both_professions_pass_one_common_operation_contract(factory: Any) -> No
     adapter = factory()
     descriptor = adapter.describe()
     request = envelope(descriptor)
-    payload = {"inputReference": "opaque-input-1"}
+    payload = domain_payload(descriptor)
 
     assert adapter.health() == {"schemaVersion": "1.0.0", "status": "READY"}
     assert adapter.configure(request, {"approved": True})["valid"] is True
@@ -97,7 +113,7 @@ def test_binding_deadline_scope_and_replay_fail_closed_without_leakage() -> None
     adapter = create_digital_marketing_adapter()
     descriptor = adapter.describe()
     request = envelope(descriptor)
-    payload = {"inputReference": "opaque-input-1"}
+    payload = domain_payload(descriptor)
     adapter.execute(request, payload)
 
     denials = [
@@ -171,13 +187,39 @@ def test_stop_skips_other_relationships_and_terminal_work() -> None:
     descriptor = adapter.describe()
     terminal = envelope(descriptor)
     other = envelope(descriptor)
-    adapter.execute(terminal, {})
-    adapter.execute(other, {})
+    adapter.execute(terminal, domain_payload(descriptor))
+    adapter.execute(other, domain_payload(descriptor))
 
     adapter.emergency_stop(terminal, "stop-evidence-terminal")
 
     assert adapter.status(terminal, terminal.invocation_id).state is InvocationState.SUCCEEDED
     assert adapter.status(other, other.invocation_id).state is InvocationState.SUCCEEDED
+
+
+def test_same_relationship_instances_are_isolated_for_status_replay_and_stop() -> None:
+    adapter = create_digital_marketing_adapter()
+    descriptor = adapter.describe()
+    relationship_id = str(uuid4())
+    first = envelope(descriptor, relationship_id=relationship_id)
+    second = envelope(descriptor, relationship_id=relationship_id)
+    adapter.execute(first, domain_payload(descriptor))
+
+    with pytest.raises(AdapterContractError, match="ADAPTER_NOT_ACCESSIBLE"):
+        adapter.status(second, first.invocation_id)
+
+    adapter.emergency_stop(first, "stop-evidence-first-instance")
+    second_result = adapter.execute(second, domain_payload(descriptor))
+
+    assert second_result.state is InvocationState.SUCCEEDED
+    with pytest.raises(AdapterContractError, match="ADAPTER_STOPPED"):
+        adapter.execute(
+            envelope(
+                descriptor,
+                relationship_id=relationship_id,
+                agent_instance_id=first.agent_instance_id,
+            ),
+            {},
+        )
 
 
 def test_cancel_and_emergency_stop_preempt_active_work_under_250ms() -> None:
@@ -206,14 +248,28 @@ def test_cancel_and_emergency_stop_preempt_active_work_under_250ms() -> None:
     assert acknowledgement["state"] == "STOPPED"
     assert adapter.status(request, request.invocation_id).state is InvocationState.STOPPED
     with pytest.raises(AdapterContractError, match="ADAPTER_STOPPED"):
-        adapter.execute(envelope(descriptor, relationship_id=request.relationship_id), {})
+        adapter.execute(
+            envelope(
+                descriptor,
+                relationship_id=request.relationship_id,
+                agent_instance_id=request.agent_instance_id,
+            ),
+            {},
+        )
     with pytest.raises(AdapterContractError, match="ADAPTER_RESUME_DENIED"):
-        adapter.resume(envelope(descriptor, relationship_id=request.relationship_id))
+        adapter.resume(
+            envelope(
+                descriptor,
+                relationship_id=request.relationship_id,
+                agent_instance_id=request.agent_instance_id,
+            )
+        )
 
     resumed = adapter.resume(
         envelope(
             descriptor,
             relationship_id=request.relationship_id,
+            agent_instance_id=request.agent_instance_id,
             ce_decision_ref="fresh-ce-authority-10",
             stop_evidence_ref="stop-evidence-1",
         )
@@ -249,7 +305,7 @@ def test_generic_gateway_resolves_exact_artifact_without_type_branch(factory: An
     gateway = AgentRuntimeAdapterGateway(resolver)
     request = envelope(descriptor)
 
-    assert gateway.execute("demo", activation, request, {"inputReference": "opaque-input-1"}).state is InvocationState.SUCCEEDED
+    assert gateway.execute("demo", activation, request, domain_payload(descriptor)).state is InvocationState.SUCCEEDED
     assert gateway.result("demo", activation, request, request.invocation_id).state is InvocationState.SUCCEEDED
 
     forged = replace(activation, artifact_digest="sha256:" + "ff" * 32)
@@ -365,7 +421,7 @@ def test_coordinator_persists_before_workflow_and_dispatch() -> None:
     coordinator = AdapterInvocationCoordinator(AgentRuntimeAdapterGateway(resolver), Store(), Workflow())
     request = envelope(descriptor)
 
-    coordinator.execute("demo", activation, request, {"inputReference": "opaque-input-1"})
+    coordinator.execute("demo", activation, request, domain_payload(descriptor))
     assert order == ["store", "workflow", "outcome"]
 
 
@@ -455,6 +511,7 @@ async def test_private_http_transport_requires_pr_identity_and_projects_strict_r
             "schemaVersion": request.schema_version,
             "tenantRef": request.tenant_ref,
             "relationshipId": request.relationship_id,
+            "agentInstanceId": request.agent_instance_id,
             "professionalTypeId": request.professional_type_id,
             "professionalVersion": request.professional_version,
             "skillId": request.skill_id,
@@ -477,12 +534,22 @@ async def test_private_http_transport_requires_pr_identity_and_projects_strict_r
         response = await client.post(
             "/internal/v1/invocations",
             headers=headers,
-            json={"envelope": wire_envelope, "payload": {"inputReference": "opaque-input-1"}},
+            json={"envelope": wire_envelope, "payload": domain_payload(descriptor)},
         )
         assert response.status_code == 202
         assert set(response.json()) == {"schemaVersion", "invocationId", "state", "stateVersion", "replayed", "updatedAt"}
 
-        body = {"envelope": wire_envelope, "payload": {"inputReference": "opaque-input-1"}}
+        missing_instance = dict(wire_envelope)
+        del missing_instance["agentInstanceId"]
+        invalid = await client.post(
+            "/internal/v1/invocations",
+            headers=headers,
+            json={"envelope": missing_instance, "payload": {"inputReference": "opaque-input-1"}},
+        )
+        assert invalid.status_code == 400
+        assert invalid.json()["detail"] == "ADAPTER_REQUEST_INVALID"
+
+        body = {"envelope": wire_envelope, "payload": domain_payload(descriptor)}
         assert (await client.get("/internal/v1/health/ready", headers=headers)).status_code == 200
         assert (await client.post("/internal/v1/configurations:validate", headers=headers, json=body)).status_code == 200
         planning = dict(wire_envelope)

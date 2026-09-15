@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://waooaw.com/schemas/dma/customer-profiling/1.0.0",
+  "title": "DMA Customer Profiling Skill Contract v1",
+  "$defs": {
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "provenance"],
+      "properties": {
+        "value": {},
+        "provenance": { "enum": ["OBSERVED", "INFERRED", "MISSING", "CONFIRMED"] }
+      }
+    },
+    "fields": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "accountMode": { "$ref": "#/$defs/field" },
+        "businessIdentity": { "$ref": "#/$defs/field" },
+        "audience": { "$ref": "#/$defs/field" },
+        "priority": { "$ref": "#/$defs/field" },
+        "constraints": { "$ref": "#/$defs/field" },
+        "approvedChannels": { "$ref": "#/$defs/field" }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "title": "Input",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fields"],
+      "properties": { "fields": { "$ref": "#/$defs/fields" } }
+    },
+    {
+      "title": "Output",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "status", "fields", "confirmedFieldCount", "requiredFieldCount", "sideEffects"],
+      "properties": {
+        "kind": { "const": "CUSTOMER_PROFILE_PROPOSAL" },
+        "status": { "enum": ["INCOMPLETE", "READY_FOR_CONFIRMATION"] },
+        "fields": {
+          "$ref": "#/$defs/fields",
+          "required": ["accountMode", "businessIdentity", "audience", "priority", "constraints", "approvedChannels"]
+        },
+        "confirmedFieldCount": { "type": "integer", "minimum": 0, "maximum": 6 },
+        "requiredFieldCount": { "const": 6 },
+        "sideEffects": { "const": [] }
+      }
+    }
+  ]
+}

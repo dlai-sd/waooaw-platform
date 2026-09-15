@@ -1,0 +1,15 @@
+{
+  "founderApprovalRef": "github-issue:437",
+  "sessionAuthorizationRef": "github-issue:437#authority",
+  "effectiveAt": "2026-09-15T00:00:00Z",
+  "expiresAt": "2026-09-16T00:00:00Z",
+  "releaseSequence": 1,
+  "professionalType": "digital-marketing-local-service",
+  "professionalVersion": "1.0.0",
+  "specificationRevision": "3.1",
+  "branch": "ib/089/dma-release-1",
+  "sourceHead": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "builderIdentity": "platform-it-expert",
+  "environment": "local-docker",
+  "nonce": "wc089-authority-1"
+}

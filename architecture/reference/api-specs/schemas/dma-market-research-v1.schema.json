@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://waooaw.com/schemas/dma/market-research/1.0.0",
+  "title": "DMA Market Research Skill Contract v1",
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceId", "url", "observedAt"],
+      "properties": {
+        "sourceId": { "type": "string", "minLength": 1 },
+        "url": { "type": "string", "format": "uri", "pattern": "^https://" },
+        "observedAt": { "type": "string", "format": "date" }
+      }
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim", "sourceId"],
+      "properties": {
+        "claim": { "type": "string", "minLength": 1 },
+        "sourceId": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "title": "Input",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sources", "claims", "maturitySignals"],
+      "properties": {
+        "sources": { "type": "array", "items": { "$ref": "#/$defs/source" } },
+        "claims": { "type": "array", "items": { "$ref": "#/$defs/claim" } },
+        "maturitySignals": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0, "maximum": 2 } },
+        "unavailableProviders": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    {
+      "title": "Output",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "status", "sources", "claims", "maturityPercent", "unavailableProviders", "limitations", "sideEffects"],
+      "properties": {
+        "kind": { "const": "MARKET_RESEARCH_REPORT" },
+        "status": { "enum": ["COMPLETE", "PARTIAL"] },
+        "sources": { "type": "array", "items": { "$ref": "#/$defs/source" } },
+        "claims": { "type": "array", "items": { "$ref": "#/$defs/claim" } },
+        "maturityPercent": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "unavailableProviders": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "limitations": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "sideEffects": { "const": [] }
+      }
+    }
+  ]
+}
