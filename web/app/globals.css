@@ -102,6 +102,15 @@ h1 { max-width: 760px; margin: 0; font-size: 5.5rem; font-weight: 650; line-heig
 .trust-band { display: flex; flex-direction: column; justify-content: flex-end; gap: .7rem; padding: clamp(2rem, 6vw, 5rem); color: white; background: #17334e; }
 .trust-band span { color: #d8e4ee; line-height: 1.5; }
 .workspace-shell { min-height: 100vh; padding: clamp(1rem, 4vw, 4rem); padding-bottom: 7rem; }
+.relationship-workspace-grid { display: grid; grid-template-columns: minmax(11rem, 15rem) minmax(0, 1fr) minmax(16rem, 20rem); align-items: start; gap: 0 clamp(1rem, 2vw, 2rem); }
+.relationship-workspace-grid > * { min-width: 0; grid-column: 2; }
+.relationship-workspace-grid > .workspace-header { grid-column: 1 / -1; }
+.relationship-switcher { position: sticky; inset-block-start: 1rem; grid-column: 1; grid-row: 2 / span 30; padding-block: 2rem; }
+.relationship-switcher nav { display: grid; gap: .35rem; }
+.relationship-switcher a { min-width: 0; display: grid; gap: .25rem; padding: .8rem; border-inline-start: 3px solid transparent; color: var(--muted); text-decoration: none; }
+.relationship-switcher a[aria-current="page"] { border-color: var(--blue); color: var(--ink); background: var(--surface); }
+.relationship-switcher strong, .relationship-switcher span { overflow-wrap: anywhere; }
+.relationship-switcher span { font-size: .78rem; }
 .workspace-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--line); }
 .workspace-header h1 { font-size: 4rem; }
 .state-banner { flex: 0 0 auto; padding: .5rem .75rem; border: 1px solid; border-radius: 4px; font-size: .85rem; font-weight: 700; }
@@ -400,6 +409,19 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 .portal-heading { max-width: 720px; padding-block-end: 1.5rem; border-block-end: 2px solid var(--ink); }
 .portal-heading h1 { margin-block: .35rem .75rem; font-size: 3.6rem; }
 .portal-heading > p:last-child, .portal-list-item p { color: var(--muted); line-height: 1.6; }
+.empty-agent-workspace { min-height: calc(100vh - 72px); display: grid; grid-template-columns: minmax(13rem, 17rem) minmax(20rem, 1fr) minmax(16rem, 20rem); }
+.agent-list-panel, .agent-context-panel { min-width: 0; padding: 1.5rem; background: var(--surface); }
+.agent-list-panel { border-inline-end: 1px solid var(--line); }
+.agent-context-panel { border-inline-start: 1px solid var(--line); }
+.agent-list-empty { display: grid; gap: .75rem; margin-block-start: 2rem; color: var(--muted); }
+.agent-empty-primary { align-self: center; width: min(100% - 3rem, 42rem); margin-inline: auto; padding-block: 3rem; }
+.agent-empty-primary > svg { color: var(--color-brand-blue); }
+.agent-empty-primary h1 { margin-block: .5rem 1rem; font-size: 3rem; }
+.agent-empty-primary > p:not(.eyebrow) { max-width: 55ch; margin-block-end: 1.5rem; color: var(--muted); line-height: 1.65; }
+.agent-context-panel h2 { margin-block: 1rem 1.5rem; font-size: 1.35rem; }
+.portal-checklist { display: grid; gap: 1rem; margin: 0; padding: 0; list-style: none; }
+.portal-checklist li { display: flex; align-items: flex-start; gap: .65rem; color: var(--muted); line-height: 1.45; }
+.portal-checklist svg { flex: 0 0 auto; color: var(--green); }
 .portal-list { display: grid; gap: 1px; margin: 2rem 0 0; padding: 0; border-block: 1px solid var(--line); list-style: none; background: var(--line); }
 .portal-list-item { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 1.5rem; padding: 1.4rem; background: var(--surface); }
 .portal-list-item h2, .portal-list-item p { margin-block: .25rem; }
@@ -436,8 +458,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 .account-drawer summary { list-style: none; }
 .account-drawer summary::-webkit-details-marker { display: none; }
 .account-drawer > div { position: absolute; z-index: 60; inset-block-start: calc(100% + .5rem); inset-inline-end: 0; width: min(18rem, calc(100vw - 1rem)); display: grid; gap: .25rem; padding: 1rem; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow); }
-.account-drawer a, .account-drawer > div > button { min-height: 44px; display: flex; align-items: center; gap: .6rem; padding: .6rem; border: 0; color: var(--ink); background: transparent; text-decoration: none; font: inherit; cursor: pointer; }
-.account-drawer > div > button { width: 100%; }
+.account-drawer a, .account-drawer .account-command { min-height: 44px; display: flex; align-items: center; gap: .6rem; padding: .6rem; border: 0; color: var(--ink); background: transparent; text-decoration: none; font: inherit; cursor: pointer; }
+.account-drawer form, .account-drawer .account-command { width: 100%; }
 .portal-sections { display: grid; gap: 2rem; margin-block-start: 2rem; }
 .portal-sections > section { padding-block-end: 2rem; border-block-end: 1px solid var(--line); }
 .detail-list { margin: 0; }
@@ -457,10 +479,11 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 .settings-grid > section > svg { color: var(--green); }
 .settings-grid h2 { margin-block: .65rem; }
 .settings-wide { grid-column: 1 / -1; }
-.lifecycle-panel { padding: clamp(1.25rem, 4vw, 2rem); border-block: 1px solid var(--line); background: var(--surface); }
+.relationship-workspace-grid > .lifecycle-panel { position: sticky; inset-block-start: 1rem; grid-column: 3; grid-row: 2 / span 30; max-height: calc(100vh - 2rem); overflow-y: auto; }
+.lifecycle-panel { padding: 1.25rem; border-block: 1px solid var(--line); background: var(--surface); }
 .lifecycle-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .lifecycle-heading h2 { margin-block: .3rem; }
-.lifecycle-steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .65rem; margin-block: 1.5rem; padding: 0; list-style: none; }
+.lifecycle-steps { display: grid; grid-template-columns: minmax(0, 1fr); gap: .65rem; margin-block: 1.5rem; padding: 0; list-style: none; }
 .lifecycle-steps li { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: .55rem; padding: .75rem; border-block-start: 3px solid var(--line); background: var(--paper); }
 .lifecycle-steps li > span { width: 1.7rem; height: 1.7rem; display: grid; place-items: center; border-radius: 50%; color: #fff; background: var(--color-brand-navy); font-size: .75rem; font-weight: 800; }
 .lifecycle-steps li[data-state="complete"], .lifecycle-steps li[data-state="current"], .lifecycle-steps li[data-state="verified"] { border-color: var(--green); }
@@ -469,6 +492,9 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 .lifecycle-steps small { margin-block-start: .25rem; color: var(--muted); }
 .lifecycle-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; }
 .lifecycle-details > section { min-width: 0; padding-block-start: 1rem; border-block-start: 1px solid var(--line); }
+.relationship-context-nav { display: grid; border-block-start: 1px solid var(--line); }
+.relationship-context-nav a { padding: .65rem 0; border-block-end: 1px solid var(--line); color: var(--muted); font-size: .82rem; font-weight: 700; text-decoration: none; }
+.relationship-context-nav a:hover, .relationship-context-nav a:focus-visible { color: var(--blue); }
 .truth-note { padding: .65rem; border-inline-start: 3px solid var(--orange); color: var(--muted); }
 .onboard-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .onboard-form > p, .onboard-form > button, .onboard-form > [role="status"] { grid-column: 1 / -1; }
@@ -505,6 +531,13 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 
 @media (max-width: 899px) {
   h1 { font-size: 4rem; }
+  .relationship-workspace-grid { display: block; }
+  .relationship-switcher, .relationship-workspace-grid > .lifecycle-panel { position: static; max-height: none; overflow: visible; }
+  .relationship-switcher { padding-block: 1.25rem; border-block-end: 1px solid var(--line); }
+  .relationship-switcher nav { grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); }
+  .empty-agent-workspace { grid-template-columns: minmax(0, 1fr); }
+  .agent-list-panel { border-inline-end: 0; border-block-end: 1px solid var(--line); }
+  .agent-context-panel { border-inline-start: 0; border-block-start: 1px solid var(--line); }
   .workspace-header h1 { font-size: 3rem; }
   .app-shell-customer, .app-shell-founder { grid-template-columns: 76px minmax(0, 1fr); }
   .side-navigation a span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }

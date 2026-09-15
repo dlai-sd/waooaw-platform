@@ -102,6 +102,12 @@ describe('RelationshipWorkspace', () => {
   it('presents evaluation state and evidence history', async () => {
     render(<RelationshipWorkspace relationship={relationship} timeline={timeline} views={views} evaluation={evaluation} />);
 
+    expect(screen.getByRole('complementary', { name: 'Your agents' })).toBeVisible();
+    const contextNavigation = screen.getByRole('navigation', { name: 'Relationship context' });
+    expect(contextNavigation).toBeVisible();
+    expect(within(contextNavigation).getByRole('link', { name: 'Usage & budget' })).toHaveAttribute('href', '#usage-and-budget');
+    expect(within(contextNavigation).getByRole('link', { name: 'Rights & control' })).toHaveAttribute('href', '#rights-and-control');
+    expect(screen.getByRole('link', { name: relationship.professionalType })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByText('Evaluation · TRIAL_ACTIVE')).toBeVisible();
     expect(screen.getAllByText('TRIAL ACTIVE')).toHaveLength(2);
     expect(within(screen.getByText('Version').parentElement!).getByText('1')).toBeVisible();

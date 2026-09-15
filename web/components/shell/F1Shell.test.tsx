@@ -32,14 +32,16 @@ describe('F1 shell primitives', () => {
     expect(screen.queryByRole('button', { name: /Emergency Stop/i })).not.toBeInTheDocument();
   });
 
-  it('limits authenticated visitor navigation to Marketplace', () => {
+  it('keeps the full customer portal visible for an authenticated visitor', () => {
     render(<ProtectedAppShell messages={messages.en} variant="customer"><p>Visitor content</p></ProtectedAppShell>);
     expect(screen.getByRole('navigation', { name: messages.en.customerNavigation })).toBeVisible();
     expect(screen.getByRole('navigation', { name: messages.en.customerMobileNavigation })).toBeVisible();
-    expect(screen.queryByRole('link', { name: 'My Agents' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'My Agents' })).toHaveLength(2);
     expect(screen.getAllByRole('link', { name: 'Marketplace' })).toHaveLength(2);
-    expect(screen.queryByRole('link', { name: 'Alerts' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Profile' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Alerts' })).toHaveLength(2);
+    expect(screen.getByRole('link', { name: 'Profile' })).toHaveAttribute('href', '/profile');
+    expect(screen.getByRole('link', { name: 'Billing' })).toHaveAttribute('href', '/profile#billing');
+    expect(screen.getByRole('button', { name: 'Sign out' })).toHaveTextContent('Sign out');
   });
 
   it('composes registered customer navigation with persistent Stop', () => {

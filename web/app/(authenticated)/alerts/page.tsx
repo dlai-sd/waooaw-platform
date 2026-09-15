@@ -4,6 +4,7 @@
 import { AlertFeed } from '@/components/portal/AlertFeed';
 import { StateView } from '@/components/system/StateView';
 import { getRequestI18n } from '@/lib/i18n-server';
+import { getIdentitySession } from '@/lib/api/identity';
 import type { CustomerPortalDestinationV1 } from '@/lib/api/generated/models/CustomerPortalDestinationV1';
 import { listCustomerAlerts } from '@/lib/api/notifications';
 import { portalMessages } from '@/lib/portal-i18n';
@@ -25,6 +26,11 @@ export default async function AlertsPage() {
   }
 
   try {
+    const identity = await getIdentitySession(accessToken);
+    if (identity.kind === 'registration-required') {
+      return <StateView actionHref="/marketplace" actionLabel="Browse Marketplace" kind="empty" title="No alerts yet" description="Relationship decisions and activity will appear here after you try or hire a WAOOAW AI Agent." />;
+    }
+    if (identity.kind !== 'ready') throw new Error('Customer identity is unavailable.');
     const page = await listCustomerAlerts(accessToken);
     if (page.items.length === 0) {
       return <StateView actionHref="/home" actionLabel={messages.returnHome} kind="empty" title="No alerts" description="There are no current alerts for your authorized relationships." />;

@@ -5,7 +5,7 @@ import { Bell, Globe2, MoonStar, ShieldCheck } from 'lucide-react';
 import { SettingsEditor } from '@/components/portal/SettingsEditor';
 import { StateView } from '@/components/system/StateView';
 import { getRequestI18n } from '@/lib/i18n-server';
-import { getCustomerSettings } from '@/lib/api/identity';
+import { getCustomerSettings, getIdentitySession } from '@/lib/api/identity';
 import { getServerAccessToken } from '@/lib/server-auth';
 
 export default async function SettingsPage() {
@@ -15,6 +15,11 @@ export default async function SettingsPage() {
 	}
 
 	try {
+		const identity = await getIdentitySession(accessToken);
+		if (identity.kind === 'registration-required') {
+			return <StateView actionHref="/marketplace" actionLabel="Browse Marketplace" kind="empty" title="Customer settings will appear here" description="Language and theme remain available in the header. Relationship notifications and organization settings begin after Trial or Hire." />;
+		}
+		if (identity.kind !== 'ready') throw new Error('Customer identity is unavailable.');
 		const settings = await getCustomerSettings(accessToken);
 		const notificationRows = [
 			['Approval requests', settings.notificationPreferences.approvalRequests],

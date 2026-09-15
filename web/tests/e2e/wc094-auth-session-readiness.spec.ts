@@ -44,20 +44,17 @@ test('WC094-A01: logout clears WAOOAW state and returns through Keycloak to the 
   await addSession(context);
   await page.route('**/api/auth/keycloak-logout', async (route) => {
     const response = await route.fetch({ maxRedirects: 0 });
-    await route.fulfill({
-      response,
-      status: 303,
-      headers: { ...response.headers(), location: `${baseURL}/` },
-    });
+    await route.fulfill({ response, status: 303, headers: { ...response.headers(), location: `${baseURL}/` } });
   });
   await page.goto('/home');
+  await page.waitForURL('**/professionals/mine');
   await page.evaluate(() => {
     localStorage.setItem('waooaw:conversation:relationship-a:draft', 'protected draft');
     sessionStorage.setItem('waooaw:identity:registration-draft', 'protected registration');
     localStorage.setItem('unrelated-preference', 'preserve');
   });
 
-  await page.locator('summary[aria-label="Account"]').click();
+  await page.locator('summary[aria-label="Account"]').first().click();
   await page.getByRole('button', { name: 'Sign out' }).click();
 
   await expect(page).toHaveURL(`${baseURL}/`);

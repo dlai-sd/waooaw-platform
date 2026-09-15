@@ -1,9 +1,11 @@
 import { render, screen, within } from '@testing-library/react';
 import MyProfessionalsPage from '@/app/(authenticated)/professionals/mine/page';
 import { getServerAccessToken } from '@/lib/server-auth';
+import { getIdentitySession } from '@/lib/api/identity';
 import { listEmploymentRelationships } from '@/lib/api/relationships';
 
 jest.mock('@/lib/server-auth', () => ({ getServerAccessToken: jest.fn() }));
+jest.mock('@/lib/api/identity', () => ({ getIdentitySession: jest.fn() }));
 jest.mock('@/lib/api/relationships', () => ({ listEmploymentRelationships: jest.fn() }));
 jest.mock('@/lib/i18n-server', () => ({
   getRequestI18n: async () => ({ messages: {
@@ -12,12 +14,14 @@ jest.mock('@/lib/i18n-server', () => ({
 }));
 
 const mockGetServerAccessToken = jest.mocked(getServerAccessToken);
+const mockGetIdentitySession = jest.mocked(getIdentitySession);
 const mockListEmploymentRelationships = jest.mocked(listEmploymentRelationships);
 
 describe('MyProfessionalsPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetServerAccessToken.mockResolvedValue('server-token');
+    mockGetIdentitySession.mockResolvedValue({ kind: 'ready', session: {} as never });
   });
 
   it('renders each authoritative relationship as a separate expert workspace', async () => {
@@ -54,8 +58,19 @@ describe('MyProfessionalsPage', () => {
 
     render(await MyProfessionalsPage());
 
-    expect(screen.getByText('No employed professionals yet.')).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Browse professionals' })).toHaveAttribute('href', '/marketplace');
+    expect(screen.getByRole('heading', { name: 'Hire or try a WAOOAW AI Agent now.' })).toBeVisible();
+    expect(screen.getByRole('link', { name: /Browse Marketplace/ })).toHaveAttribute('href', '/marketplace');
+    expect(screen.getByRole('complementary', { name: 'Your agents' })).toBeVisible();
+    expect(screen.getByRole('complementary', { name: 'Getting started' })).toBeVisible();
+  });
+
+  it('shows the full My Agents empty workspace before registration', async () => {
+    mockGetIdentitySession.mockResolvedValue({ kind: 'registration-required' });
+
+    render(await MyProfessionalsPage());
+
+    expect(screen.getByRole('heading', { name: 'Hire or try a WAOOAW AI Agent now.' })).toBeVisible();
+    expect(mockListEmploymentRelationships).not.toHaveBeenCalled();
   });
 
   it('requires sign-in before reading employed professionals', async () => {

@@ -23,9 +23,9 @@ function announceIdentitySessionChange(action: 'SIGN_OUT' | 'ACCOUNT_SWITCH') {
 }
 
 export function SignOutCommand({ label }: { label: string }) {
-  return <form action="/api/auth/keycloak-logout" method="post"><button aria-label={label} className="icon-command" title={label} type="submit" onClick={() => { clearProtectedClientState(); announceIdentitySessionChange('SIGN_OUT'); }}><LogOut aria-hidden="true" size={19} /></button></form>;
+  return <form action="/api/auth/keycloak-logout" method="post"><button aria-label={label} className="account-command" type="submit" onClick={() => { clearProtectedClientState(); announceIdentitySessionChange('SIGN_OUT'); }}><LogOut aria-hidden="true" size={19} /><span>{label}</span></button></form>;
 }
 
 export function AccountSwitchCommand({ label }: { label: string }) {
-  return <button aria-label={label} className="icon-command" title={label} type="button" onClick={() => { clearProtectedClientState(); announceIdentitySessionChange('ACCOUNT_SWITCH'); void signIn('keycloak', { callbackUrl: '/home' }, { prompt: 'select_account' }); }}><RefreshCw aria-hidden="true" size={19} /></button>;
+  return <button aria-label={label} className="account-command" type="button" onClick={() => { clearProtectedClientState(); announceIdentitySessionChange('ACCOUNT_SWITCH'); void signIn('keycloak', { callbackUrl: '/home' }, { prompt: 'select_account' }); }}><RefreshCw aria-hidden="true" size={19} /><span>{label}</span></button>;
 }
