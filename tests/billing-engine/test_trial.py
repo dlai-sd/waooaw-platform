@@ -451,6 +451,18 @@ async def test_get_status_returns_active_trial(trial_service):
 
 
 @pytest.mark.asyncio
+async def test_get_status_targets_exact_trial(trial_service):
+    cid = uuid.uuid4()
+    start_result = await trial_service.start_trial(cid, "DMA", phone_verified=True)
+
+    status = await trial_service.get_status(cid, start_result.trial_id)
+
+    assert status is not None
+    assert status.trial_id == start_result.trial_id
+    assert await trial_service.get_status(cid, uuid.uuid4()) is None
+
+
+@pytest.mark.asyncio
 async def test_get_status_returns_none_for_unknown_customer(trial_service):
     status = await trial_service.get_status(uuid.uuid4())
     assert status is None
@@ -540,12 +552,13 @@ async def test_router_get_status_returns_200():
     app.dependency_overrides[_get_trial_service] = lambda: mock_svc
     try:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-            resp = await c.get(f"/trial/status/{cid}")
+            resp = await c.get(f"/trial/status/{cid}?trial_id={tid}")
     finally:
         _clear_overrides()
 
     assert resp.status_code == 200
     assert resp.json()["status"] == "ACTIVE"
+    mock_svc.get_status.assert_awaited_once_with(cid, tid)
 
 
 @pytest.mark.asyncio

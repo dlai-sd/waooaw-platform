@@ -11,6 +11,7 @@
 | `professionalVersion`            | string                                                                                    |
 | `professionalDisplayName`        | string                                                                                    |
 | `lifecycleState`                 | [EmploymentRelationshipState](EmploymentRelationshipState.md)                             |
+| `trialStatus`                    | string                                                                                    |
 | `currentGoalSummary`             | string                                                                                    |
 | `unreadState`                    | string                                                                                    |
 | `availabilityState`              | [EmploymentRelationshipAvailabilityStateV1](EmploymentRelationshipAvailabilityStateV1.md) |
@@ -32,6 +33,7 @@ const example = {
   professionalVersion: null,
   professionalDisplayName: null,
   lifecycleState: null,
+  trialStatus: null,
   currentGoalSummary: null,
   unreadState: null,
   availabilityState: null,

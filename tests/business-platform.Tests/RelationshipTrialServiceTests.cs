@@ -12,6 +12,7 @@ namespace Waooaw.BusinessPlatform.Tests;
 internal sealed class TrialOwnerGatewayStub : IRelationshipTrialOwnerGateway
 {
     public WbeTrialEntitlement? Wbe { get; set; }
+    public WbeTrialStatus? WbeStatus { get; set; }
     public PrTrialWorkflow? Pr { get; set; }
     public int WbeCalls { get; private set; }
     public int PrCalls { get; private set; }
@@ -26,6 +27,10 @@ internal sealed class TrialOwnerGatewayStub : IRelationshipTrialOwnerGateway
         WbeCalls++;
         return Task.FromResult(Wbe);
     }
+
+    public Task<WbeTrialStatus?> GetWbeTrialStatusAsync(
+        Guid customerId, Guid trialId, CancellationToken cancellationToken) =>
+        Task.FromResult(WbeStatus);
 
     public Task<PrTrialWorkflow?> StartPrTrialAsync(
         Guid tenantId, Guid relationshipId, Guid agentInstanceId, Guid professionalAdmissionId,
@@ -103,6 +108,67 @@ public sealed class RelationshipTrialServiceTests
         Assert.Equal(trialId, replay.TrialId);
         Assert.Equal(1, gateway.WbeCalls);
         Assert.Equal(1, gateway.PrCalls);
+    }
+
+    [Fact]
+    public async Task RelationshipListUsesAuthoritativeExpiredStatusWithoutChangingLifecycle()
+    {
+        var (service, relationships, _, gateway, relationship, tenantId, actorId) = await CreateAsync();
+        var startsAt = DateTimeOffset.UtcNow;
+        var trialId = Guid.NewGuid();
+        gateway.Wbe = new(trialId, startsAt, startsAt.AddDays(14));
+        gateway.Pr = new(trialId, "TRIAL_DEMONSTRATING", startsAt.AddDays(14));
+        await service.StartAsync(
+            tenantId, relationship.RelationshipId, actorId, Guid.NewGuid(), CancellationToken.None);
+        gateway.WbeStatus = new(trialId, "EXPIRED");
+
+        var statuses = await service.GetAuthoritativeStatusesAsync(
+            tenantId, [relationship.RelationshipId], CancellationToken.None);
+
+        Assert.Equal("EXPIRED", statuses[relationship.RelationshipId]);
+        Assert.Equal(EmploymentRelationshipState.TrialActive,
+            (await relationships.GetAsync(tenantId, relationship.RelationshipId, CancellationToken.None))?.State);
+    }
+
+    [Fact]
+    public async Task RelationshipListMarksActiveTrialUnresolvedWhenWbeStatusIsUnavailable()
+    {
+        var (service, _, _, gateway, relationship, tenantId, actorId) = await CreateAsync();
+        var startsAt = DateTimeOffset.UtcNow;
+        var trialId = Guid.NewGuid();
+        gateway.Wbe = new(trialId, startsAt, startsAt.AddDays(14));
+        gateway.Pr = new(trialId, "TRIAL_DEMONSTRATING", startsAt.AddDays(14));
+        await service.StartAsync(
+            tenantId, relationship.RelationshipId, actorId, Guid.NewGuid(), CancellationToken.None);
+
+        var statuses = await service.GetAuthoritativeStatusesAsync(
+            tenantId, [relationship.RelationshipId], CancellationToken.None);
+
+        Assert.Equal("UNRESOLVED", statuses[relationship.RelationshipId]);
+    }
+
+    [Fact]
+    public async Task RelationshipListPreservesStoredStatusWithoutConsultingWbe()
+    {
+        var (service, _, factory, gateway, relationship, tenantId, _) = await CreateAsync();
+        await using (var db = factory.CreateDbContext())
+        {
+            db.RelationshipTrialBindings.Add(new RelationshipTrialBinding
+            {
+                TenantId = tenantId,
+                RelationshipId = relationship.RelationshipId,
+                CustomerId = relationship.InitiatingParticipantId,
+                CorrelationId = Guid.NewGuid(),
+                Status = "PENDING",
+            });
+            await db.SaveChangesAsync();
+        }
+        gateway.WbeStatus = new(Guid.NewGuid(), "ACTIVE");
+
+        var statuses = await service.GetAuthoritativeStatusesAsync(
+            tenantId, [relationship.RelationshipId], CancellationToken.None);
+
+        Assert.Equal("PENDING", statuses[relationship.RelationshipId]);
     }
 
     [Fact]

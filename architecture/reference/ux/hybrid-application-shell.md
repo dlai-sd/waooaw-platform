@@ -44,8 +44,9 @@ Route groups are ownership boundaries, not visible URL segments. Authorization i
 | Route family | Route group | Layout owner | Rendering default | Required boundary |
 |---|---|---|---|---|
 | `/`, `/professionals`, `/professionals/[slug]`, `/blogs`, `/blogs/[slug]` | `(public)` | Public layout | Server-first | No authenticated relationship preload; capability and limitation disclosure |
-| `/login`, `/register`, `/verify`, `/auth/error` | `(auth)` | Authentication layout | Server shell with isolated interactive form | Keycloak-brokered identity; safe server-owned return target |
-| `/home`, `/professionals/mine`, `/relationships/[relationshipId]/*`, `/settings`, `/profile` | `(authenticated)` | Customer application layout | Server-authorized shell with client interaction islands | Validated tenant and participant session; persistent Emergency Stop |
+| `/login`, `/register`, `/verify`, `/auth/error` | `(auth)` | Authentication layout; authenticated registration reuses the application shell | Server shell with isolated interactive form | Keycloak-brokered identity; safe server-owned return target; no account or workspace creation on login |
+| `/home`, `/marketplace` | `(application)` | Authenticated application layout | Server-authorized shell with client interaction islands | Validated OAuth identity; no tenant derivation; Marketplace reads only globally published offers |
+| `/professionals/mine`, `/relationships/[relationshipId]/*`, `/alerts`, `/settings`, `/profile` | `(authenticated)` | Registered customer application layout | Server-authorized shell with client interaction islands | Validated tenant and participant session; persistent Emergency Stop |
 | `/founder/*` | `(founder)` | Founder administration layout | Server-authorized shell | Explicit Founder claim; `/403` on denial; no CSS-only hiding |
 | `/403`, not-found, global error, offline recovery | global | Shared system layout | Static or server-first | No fabricated success; correlation reference where available |
 
@@ -62,6 +63,23 @@ The canonical customer relationship routes are:
 | `/relationships/[relationshipId]/governance` | Scope, rights, evidence, pause/resume, and lifecycle | Full-screen secondary view |
 
 Shareable routes identify a view, not a browser-owned authority decision. Relationship and item identifiers are re-authorized on the server for every direct navigation.
+
+Successful OAuth login creates an authenticated visitor session only. It does not create a customer account, organisation, workspace membership, trial, employment relationship, subscription, or payment obligation. `/home` sends a visitor or a registered customer without relationships to Marketplace; a registered customer with any retained relationship is sent to My Agents. Trial and Hire begin the same in-application registration flow, and only explicit registration completion may create account and membership records before the selected relationship action resumes.
+
+The Trial or Hire choice carries only a server-validated professional reference, version, intent,
+and safe return target through registration. Registration completion returns to the exact disclosure
+and decision step; it does not itself admit a relationship, start a trial, accept a contract, or
+authorize payment. Those governed commands remain explicit and independently evidenced.
+Until Business Platform exposes a canonical customer-facing command that creates the required
+evaluation intent from that exact disclosure, the web must not fabricate an evaluation identifier
+or call the relationship admission endpoint. The preserved choice remains a continuation hint, not
+evidence that Trial or Hire started.
+
+An expired trial remains in My Agents with its relationship workspace and historical billing,
+goals, performance, usage, and evidence reads available under the existing participant and tenant
+checks. The customer-facing `EXPIRED` status may be shown only after the authoritative billing
+owner has confirmed expiry and Business Platform has reconciled that result. The browser must not
+infer expiry from its clock, and expiry does not delete or demote the customer account.
 
 ## Server and Client Rendering Rules
 
@@ -143,6 +161,8 @@ Employment Relationship
 Conversation is where work happens. Relationship is where the customer verifies and governs it.
 
 ## Entry and Resume Behavior
+
+After a broker callback, the login route distinguishes identity authentication from Business Platform readiness. A valid authenticated visitor continues to the safe server-owned target; if the identity projection is temporarily unavailable, the target application shell renders the explicit unavailable state instead of presenting login controls again. This continuation performs no account, workspace, relationship, trial, or payment mutation.
 
 After authentication, WAOOAW opens the most recently active conversation by default, including when the latest interaction occurred through WhatsApp. After their contracts exist, the customer may instead select `My WaooaW Experts` or `Needs your attention` as the default start view in Settings.
 

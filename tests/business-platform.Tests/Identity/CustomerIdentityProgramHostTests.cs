@@ -73,6 +73,10 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
             "CREATE TABLE IF NOT EXISTS business.relationship_goals (", StringComparison.Ordinal);
         var goalsEnd = contextConfiguration.IndexOf(");", goalsStart, StringComparison.Ordinal) + 2;
         await OwnerAsync(contextConfiguration[goalsStart..goalsEnd]);
+        var trialsStart = contextConfiguration.IndexOf(
+            "CREATE TABLE IF NOT EXISTS business.relationship_trial_bindings (", StringComparison.Ordinal);
+        var trialsEnd = contextConfiguration.IndexOf(");", trialsStart, StringComparison.Ordinal) + 2;
+        await OwnerAsync(contextConfiguration[trialsStart..trialsEnd]);
         await OwnerAsync("""
             ALTER TABLE business.relationship_goals ENABLE ROW LEVEL SECURITY;
             ALTER TABLE business.relationship_goals FORCE ROW LEVEL SECURITY;
@@ -80,6 +84,12 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
                 USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
                 WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);
             GRANT SELECT, INSERT, UPDATE ON business.relationship_goals TO business_app;
+            ALTER TABLE business.relationship_trial_bindings ENABLE ROW LEVEL SECURITY;
+            ALTER TABLE business.relationship_trial_bindings FORCE ROW LEVEL SECURITY;
+            CREATE POLICY relationship_trial_bindings_tenant_isolation ON business.relationship_trial_bindings
+                USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
+                WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+            GRANT SELECT, INSERT, UPDATE ON business.relationship_trial_bindings TO business_app;
             """);
     }
 
@@ -163,6 +173,11 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
 
         var token = Token();
         Assert.DoesNotContain(new JwtSecurityTokenHandler().ReadJwtToken(token).Claims, claim => claim.Type == "tenant_id");
+        using var marketplace = await SendAsync(HttpMethod.Get, "/api/v1/professionals/marketplace", token);
+        var marketplaceBody = await ExpectAsync(marketplace, HttpStatusCode.OK);
+        Assert.Equal("1.0.0", marketplaceBody.GetProperty("schemaVersion").GetString());
+        using var relationships = await SendAsync(HttpMethod.Get, "/api/v1/employment/relationships", token);
+        Assert.Equal(HttpStatusCode.Forbidden, relationships.StatusCode);
         using var unresolved = await SendAsync(HttpMethod.Get, "/api/v1/identity/session", token);
         Assert.Equal("REGISTRATION_REQUIRED",
             (await ExpectAsync(unresolved, HttpStatusCode.Conflict)).GetProperty("code").GetString());

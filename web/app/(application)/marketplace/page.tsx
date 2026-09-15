@@ -17,7 +17,7 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
   const { locale, messages } = await getRequestI18n();
   const [accessToken, filters] = await Promise.all([getServerAccessToken(), searchParams]);
   if (!accessToken) {
-    return <StateView actionHref="/login" actionLabel="Sign in" kind="error" title="Marketplace unavailable" description="Sign in again to browse professionals available to your organization." />;
+    return <StateView actionHref="/login" actionLabel="Sign in" kind="error" title="Marketplace unavailable" description="Sign in again to browse available professionals." />;
   }
 
   try {

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Cryptography;
 using System.Text;
+using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
 
 namespace Waooaw.BusinessPlatform.Controllers;
@@ -49,6 +50,7 @@ public sealed class ProfessionalsController : ControllerBase
     }
 
     [HttpGet("marketplace")]
+    [CustomerIdentityRoute]
     public IActionResult BrowseMarketplace(
         [FromQuery] string? cursor,
         [FromQuery] int limit = 20,

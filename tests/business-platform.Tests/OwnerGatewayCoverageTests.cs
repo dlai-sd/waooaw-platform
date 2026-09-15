@@ -255,6 +255,71 @@ public sealed class OwnerGatewayCoverageTests(OwnerGatewayIdentityFixture fixtur
     }
 
     [Theory]
+    [InlineData("ACTIVE")]
+    [InlineData("EXPIRED")]
+    [InlineData("CONVERTED")]
+    public async Task TrialOwner_ReturnsCanonicalWbeStatus(string status)
+    {
+        var trialId = Guid.NewGuid();
+        HttpRequestMessage? capturedRequest = null;
+        using var identity = fixture.CreateIdentity();
+        using var gateway = new HttpRelationshipTrialOwnerGateway(
+            new StubClientFactory(Handler((request, _) =>
+            {
+                capturedRequest = request;
+                return Json(HttpStatusCode.OK, $$"""
+                    {"trial_id":"{{trialId:D}}","status":"{{status}}"}
+                    """);
+            })),
+            identity,
+            new Uri("https://runtime.test"));
+
+        var result = await gateway.GetWbeTrialStatusAsync(
+            Guid.NewGuid(), trialId, CancellationToken.None);
+
+        Assert.Equal(status, result?.Status);
+        Assert.Equal($"?trial_id={trialId}", capturedRequest?.RequestUri?.Query);
+    }
+
+    [Fact]
+    public async Task TrialOwner_RejectsMismatchedOrUnsupportedWbeStatus()
+    {
+        var trialId = Guid.NewGuid();
+        var response = Json(HttpStatusCode.OK, $$"""
+            {"trial_id":"{{Guid.NewGuid():D}}","status":"ACTIVE"}
+            """);
+        using var identity = fixture.CreateIdentity();
+        using var gateway = new HttpRelationshipTrialOwnerGateway(
+            new StubClientFactory(Handler((_, _) => response)),
+            identity,
+            new Uri("https://runtime.test"));
+
+        Assert.Null(await gateway.GetWbeTrialStatusAsync(
+            Guid.NewGuid(), trialId, CancellationToken.None));
+
+        response = Json(HttpStatusCode.OK, $$"""
+            {"trial_id":"{{trialId:D}}","status":"UNKNOWN"}
+            """);
+        Assert.Null(await gateway.GetWbeTrialStatusAsync(
+            Guid.NewGuid(), trialId, CancellationToken.None));
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.BadGateway, "{}")]
+    [InlineData(HttpStatusCode.OK, "{invalid")]
+    public async Task TrialOwner_FailsClosedForUnusableWbeStatus(HttpStatusCode status, string body)
+    {
+        using var identity = fixture.CreateIdentity();
+        using var gateway = new HttpRelationshipTrialOwnerGateway(
+            new StubClientFactory(Handler((_, _) => Json(status, body))),
+            identity,
+            new Uri("https://runtime.test"));
+
+        Assert.Null(await gateway.GetWbeTrialStatusAsync(
+            Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None));
+    }
+
+    [Theory]
     [InlineData(HttpStatusCode.BadGateway, "{}")]
     [InlineData(HttpStatusCode.OK, "{invalid")]
     public async Task TrialOwners_FailClosedForUnusableResponses(HttpStatusCode status, string body)

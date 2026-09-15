@@ -5,7 +5,7 @@ import 'server-only';
 
 import { headers } from 'next/headers';
 import { getToken } from 'next-auth/jwt';
-import { NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { activeAccessToken } from '@/lib/auth';
 
 export async function accessTokenFromRequest(request: NextRequest): Promise<string | undefined> {
@@ -14,6 +14,6 @@ export async function accessTokenFromRequest(request: NextRequest): Promise<stri
 }
 
 export async function getServerAccessToken(): Promise<string | undefined> {
-  const request = new NextRequest(process.env.NEXTAUTH_URL ?? 'http://localhost:3000', { headers: new Headers(await headers()) });
+  const request = { headers: new Headers(await headers()) } as NextRequest;
   return accessTokenFromRequest(request);
 }

@@ -24,7 +24,7 @@ describe('MyProfessionalsPage', () => {
     mockListEmploymentRelationships.mockResolvedValue({ schemaVersion: '1.0.0', producedAt: new Date('2026-08-10T12:00:00Z'), items: [
         {
           relationshipId: 'relationship-1', agentInstanceId: 'agent-1', professionalDisplayName: 'Local growth expert',
-          professionalType: 'DMA', lifecycleState: 'TRIAL_ACTIVE', currentGoalSummary: 'Grow leads',
+          professionalType: 'DMA', lifecycleState: 'TRIAL_ACTIVE', trialStatus: 'EXPIRED', currentGoalSummary: 'Grow leads',
           unreadState: 'NONE', availabilityState: 'AVAILABLE', currencyState: 'CURRENT',
           lastAuthoritativelyConfirmedAt: new Date('2026-08-10T10:00:00Z'),
           resumeTarget: { surface: 'CONVERSATION', relationshipId: 'relationship-1' },
@@ -43,6 +43,7 @@ describe('MyProfessionalsPage', () => {
     expect(screen.getByRole('heading', { name: 'My Experts' })).toBeVisible();
     const experts = screen.getAllByRole('listitem');
     expect(experts).toHaveLength(2);
+    expect(within(experts[0]).getByText('EXPIRED')).toBeVisible();
     expect(within(experts[0]).getByRole('link', { name: /Open workspace/ })).toHaveAttribute('href', '/relationships/relationship-1');
     expect(within(experts[1]).getByRole('link', { name: /Open workspace/ })).toHaveAttribute('href', '/relationships/relationship-2');
     expect(mockListEmploymentRelationships).toHaveBeenCalledWith('server-token');
