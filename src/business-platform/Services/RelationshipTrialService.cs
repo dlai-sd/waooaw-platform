@@ -12,6 +12,7 @@ using Waooaw.BusinessPlatform.Infrastructure;
 namespace Waooaw.BusinessPlatform.Services;
 
 public sealed record WbeTrialEntitlement(Guid TrialId, DateTimeOffset StartsAt, DateTimeOffset ExpiresAt);
+public sealed record WbeTrialStatus(Guid TrialId, string Status);
 public sealed record PrTrialWorkflow(Guid TrialId, string WorkflowState, DateTimeOffset ExpiresAt);
 public sealed record RelationshipTrialResult(Guid TrialId, DateTimeOffset StartsAt, DateTimeOffset ExpiresAt, string Status);
 
@@ -20,6 +21,8 @@ public interface IRelationshipTrialOwnerGateway
     Task<WbeTrialEntitlement?> StartWbeTrialAsync(
         Guid customerId, string professionalType, Guid relationshipId, Guid correlationId,
         CancellationToken cancellationToken);
+    Task<WbeTrialStatus?> GetWbeTrialStatusAsync(
+        Guid customerId, Guid trialId, CancellationToken cancellationToken);
     Task<PrTrialWorkflow?> StartPrTrialAsync(
         Guid tenantId, Guid relationshipId, Guid agentInstanceId, Guid professionalAdmissionId,
         string professionalType, string professionalVersion, Guid trialId, DateTimeOffset startsAt,
@@ -31,6 +34,10 @@ public sealed class UnconfiguredRelationshipTrialOwnerGateway : IRelationshipTri
     public Task<WbeTrialEntitlement?> StartWbeTrialAsync(
         Guid customerId, string professionalType, Guid relationshipId, Guid correlationId,
         CancellationToken cancellationToken) => Task.FromResult<WbeTrialEntitlement?>(null);
+
+    public Task<WbeTrialStatus?> GetWbeTrialStatusAsync(
+        Guid customerId, Guid trialId, CancellationToken cancellationToken) =>
+        Task.FromResult<WbeTrialStatus?>(null);
 
     public Task<PrTrialWorkflow?> StartPrTrialAsync(
         Guid tenantId, Guid relationshipId, Guid agentInstanceId, Guid professionalAdmissionId,
@@ -94,6 +101,30 @@ public sealed class HttpRelationshipTrialOwnerGateway : IRelationshipTrialOwnerG
         root.GetProperty("trial_id").GetGuid(),
         root.GetProperty("started_at").GetDateTimeOffset(),
         root.GetProperty("expires_at").GetDateTimeOffset());
+
+    public async Task<WbeTrialStatus?> GetWbeTrialStatusAsync(
+        Guid customerId, Guid trialId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient("WBE");
+            using var response = await client.GetAsync($"/trial/status/{customerId}", cancellationToken);
+            if (!response.IsSuccessStatusCode) return null;
+            using var document = await JsonDocument.ParseAsync(
+                await response.Content.ReadAsStreamAsync(cancellationToken), cancellationToken: cancellationToken);
+            var root = document.RootElement;
+            var returnedTrialId = root.GetProperty("trial_id").GetGuid();
+            var status = root.GetProperty("status").GetString();
+            return returnedTrialId == trialId && status is "ACTIVE" or "EXPIRED" or "CONVERTED"
+                ? new WbeTrialStatus(returnedTrialId, status)
+                : null;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException
+            or JsonException or InvalidOperationException or FormatException)
+        {
+            return null;
+        }
+    }
 
     public async Task<PrTrialWorkflow?> StartPrTrialAsync(
         Guid tenantId, Guid relationshipId, Guid agentInstanceId, Guid professionalAdmissionId,
@@ -165,6 +196,26 @@ public sealed class RelationshipTrialService(
     EmploymentRelationshipService relationships,
     IRelationshipTrialOwnerGateway owners)
 {
+    public async Task<IReadOnlyDictionary<Guid, string>> GetAuthoritativeStatusesAsync(
+        Guid tenantId,
+        IReadOnlyCollection<Guid> relationshipIds,
+        CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var bindings = await db.RelationshipTrialBindings.AsNoTracking()
+            .Where(value => value.TenantId == tenantId && relationshipIds.Contains(value.RelationshipId))
+            .ToArrayAsync(cancellationToken);
+        var statuses = await Task.WhenAll(bindings.Select(async binding =>
+        {
+            if (binding.Status != "ACTIVE" || !binding.TrialId.HasValue)
+                return (binding.RelationshipId, binding.Status);
+            var authoritative = await owners.GetWbeTrialStatusAsync(
+                binding.CustomerId, binding.TrialId.Value, cancellationToken);
+            return (binding.RelationshipId, authoritative?.Status ?? "UNRESOLVED");
+        }));
+        return statuses.ToDictionary(value => value.RelationshipId, value => value.Item2);
+    }
+
     public async Task<RelationshipTrialResult> StartAsync(
         Guid tenantId,
         Guid relationshipId,

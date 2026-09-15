@@ -239,7 +239,14 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         {
             var page = await _service.ListAuthorizedAsync(
                 tenantId, participantId, cursor, limit, cancellationToken);
-            var items = page.Items.Select(item => ToPortalSummary(item.Relationship, item.CurrentGoalSummary, item.TrialStatus)).ToArray();
+            var statuses = _trials is null
+                ? new Dictionary<Guid, string>()
+                : await _trials.GetAuthoritativeStatusesAsync(
+                    tenantId, page.Items.Select(item => item.Relationship.RelationshipId).ToArray(), cancellationToken);
+            var items = page.Items.Select(item => ToPortalSummary(
+                item.Relationship,
+                item.CurrentGoalSummary,
+                statuses.GetValueOrDefault(item.Relationship.RelationshipId, item.TrialStatus))).ToArray();
             return Ok(new EmploymentRelationshipCollectionResponse(
                 "1.0.0",
                 DateTimeOffset.UtcNow,
