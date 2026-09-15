@@ -7,7 +7,14 @@ import { AccountSwitchCommand, SignOutCommand } from './SignOutCommand';
 
 jest.mock('next-auth/react', () => ({ signIn: jest.fn() }));
 
+afterEach(() => {
+  jest.restoreAllMocks();
+  Reflect.deleteProperty(globalThis, 'fetch');
+});
+
 it('clears WAOOAW protected state before ending the session', () => {
+  const fetchMock = jest.fn().mockReturnValue(new Promise(() => undefined));
+  Object.defineProperty(globalThis, 'fetch', { configurable: true, value: fetchMock });
   sessionStorage.setItem('waooaw:identity:registration-draft', '{"displayName":"Asha"}');
   localStorage.setItem('waooaw:conversation:relationship-a:draft', 'protected draft');
   localStorage.setItem('waooaw:conversation:relationship-a:outbox', 'protected outbox');
@@ -19,7 +26,6 @@ it('clears WAOOAW protected state before ending the session', () => {
   localStorage.setItem('other-app-preference', 'preserve');
   render(<SignOutCommand label="Sign out" />);
   const button = screen.getByRole('button', { name: 'Sign out' });
-  button.closest('form')!.addEventListener('submit', (event) => event.preventDefault());
   fireEvent.click(button);
   expect(sessionStorage.getItem('waooaw:identity:registration-draft')).toBeNull();
   expect(Object.keys(localStorage).filter((key) => key.startsWith('waooaw:conversation:'))).toEqual([]);
@@ -27,8 +33,10 @@ it('clears WAOOAW protected state before ending the session', () => {
   expect(localStorage.getItem('waooaw:identity:session-change')).toBeNull();
   expect(sessionStorage.getItem('other-app')).toBe('preserve');
   expect(localStorage.getItem('other-app-preference')).toBe('preserve');
-  expect(button.closest('form')).toHaveAttribute('action', '/api/auth/keycloak-logout');
-  expect(button.closest('form')).toHaveAttribute('method', 'post');
+  expect(fetchMock).toHaveBeenCalledWith('/api/auth/keycloak-logout', {
+    method: 'POST',
+    headers: { Accept: 'application/json' },
+  });
 });
 
 it('clears protected state before requesting a different Keycloak account', () => {

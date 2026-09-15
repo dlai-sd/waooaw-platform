@@ -513,5 +513,30 @@ const server = createServer(async (request, response) => {
   json(response, { error: 'NOT_FOUND', path: url.pathname }, 404);
 });
 
+const identityServer = createServer((request, response) => {
+  const url = new URL(request.url ?? '/', 'http://localhost:8080');
+  const redirectTarget = url.searchParams.get('post_logout_redirect_uri');
+  let redirectOrigin;
+  try {
+    redirectOrigin = new URL(redirectTarget ?? '').origin;
+  } catch {
+    redirectOrigin = undefined;
+  }
+  if (!/^\/realms\/[^/]+\/protocol\/openid-connect\/logout$/.test(url.pathname)
+    || !redirectTarget
+    || redirectOrigin !== 'http://127.0.0.1:3000') {
+    response.statusCode = 400;
+    response.end('Invalid test identity logout request.');
+    return;
+  }
+  response.statusCode = 302;
+  response.setHeader('Location', redirectTarget);
+  response.end();
+});
+
 server.listen(5001, '0.0.0.0');
-process.on('SIGTERM', () => server.close());
+identityServer.listen(8080, '0.0.0.0');
+process.on('SIGTERM', () => {
+  server.close();
+  identityServer.close();
+});

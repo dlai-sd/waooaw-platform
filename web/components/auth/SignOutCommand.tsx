@@ -23,7 +23,23 @@ function announceIdentitySessionChange(action: 'SIGN_OUT' | 'ACCOUNT_SWITCH') {
 }
 
 export function SignOutCommand({ label }: { label: string }) {
-  return <form action="/api/auth/keycloak-logout" method="post"><button aria-label={label} className="account-command" type="submit" onClick={() => { clearProtectedClientState(); announceIdentitySessionChange('SIGN_OUT'); }}><LogOut aria-hidden="true" size={19} /><span>{label}</span></button></form>;
+  async function signOut() {
+    clearProtectedClientState();
+    announceIdentitySessionChange('SIGN_OUT');
+    const response = await fetch('/api/auth/keycloak-logout', {
+      method: 'POST',
+      headers: { Accept: 'application/json' },
+    });
+    if (!response.ok) throw new Error('Sign out request was denied.');
+    const result: unknown = await response.json();
+    if (!result || typeof result !== 'object' || !('logoutPath' in result) || typeof result.logoutPath !== 'string'
+      || !result.logoutPath.startsWith('/api/auth/keycloak-logout?nonce=')) {
+      throw new Error('Sign out response was invalid.');
+    }
+    window.location.assign(result.logoutPath);
+  }
+
+  return <button aria-label={label} className="account-command" type="button" onClick={() => void signOut()}><LogOut aria-hidden="true" size={19} /><span>{label}</span></button>;
 }
 
 export function AccountSwitchCommand({ label }: { label: string }) {
