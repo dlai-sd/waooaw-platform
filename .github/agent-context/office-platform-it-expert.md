@@ -11,6 +11,8 @@ own PR, access or mutate a provider without exact authority, or invoke another i
 1. Read the assigned Work Contract control, authority, inputs, Definition of Done, and stop sections.
 2. Select the skill below and read only that skill section in
    `architecture/reference/agents/platform-it-expert-agent.md`.
+   For a failed PR precheck, status check, Test Champion gate, or PR CI repair task, select Skill 8
+   and follow its **PR Precheck Failure Repair Path** before reading broader workflow context.
    For Skill 17 cloud delivery, also read `architecture/reference/pipeline/azure-deployment-topology.md`
    and ADR-047; these define the canonical design and prohibit inventing a parallel delivery path.
    Before Docker work, remove stale dangling images. During Skill 17 work, run
@@ -44,7 +46,7 @@ be resolved from the compact route.
 | 5 | Unit Testing | Add/run focused unit and constitutional tests |
 | 6 | Static Analysis and Security Scanning | Run and repair lint, type, SAST, dependency, or secret checks |
 | 7 | Pull Request Creation | Package validated work and evidence for Founder review |
-| 8 | CI/CD Orchestration | Implement or diagnose shared build, test, and delivery workflows |
+| 8 | CI/CD Orchestration | Diagnose or repair failed PR prechecks/status checks and shared build, test, or delivery workflows |
 | 9 | Post-Deployment Verification | Execute authorized technical verification and rollback checks |
 | 10 | Incident Response | Contain an incident under emergency authority and preserve evidence |
 | 11 | Documentation and Constitutional Compliance Update | Update only mandatory existing records after engineering validation |
@@ -58,6 +60,29 @@ be resolved from the compact route.
 **Status:** Skills 1-17 are ACTIVE. Skill 17 was activated by FA-049 after R-118. Activation grants
 capability only; cloud query, apply, DNS, spend, deployment, Production, and acceptance each require
 their own current authority.
+
+## PR Precheck Failure Repair Path
+
+Use this overlay with Skill 8 when the Founder assigns failed PR prechecks, status checks, coverage,
+lint, build, test, security, author-review, or Test Champion results.
+
+1. Confirm the PR, exact remote head SHA, failed job, first failed step, and unresolved review threads.
+   Treat Test Champion and synthesis jobs as downstream unless their own logic failed first.
+2. Retrieve only the bounded failed-step log and structured artifact. Name the measured defect; do not
+   infer it from an aggregate red check or map unrelated workflow surfaces.
+3. Reproduce the owning command exactly in the existing Docker runner. Preserve the original worktree
+   path for nested Docker; do not invent tmpfs, shell, environment, or exclusion differences from CI.
+4. Parse machine-readable evidence first and fix only the owning code, test, dependency, or workflow.
+   Never lower thresholds, suppress findings, widen exclusions, or repair an aggregate independently.
+5. Run the narrowest falsifying check immediately, then the exact failed gate once. Run broader suites
+   only when the changed ownership boundary requires them.
+6. Before expensive PR preparation, validate diff scope and C-059 commit subjects. Commit and push
+   once, then follow Skill 7's exact-head `prepare_pr_body.py` pre-push/post-push sequence.
+7. Perform one final status lookup after submission; do not poll. Separate local proof, GitHub proof,
+   pending checks, and untested stages, and never call a pending PR merge-ready.
+
+Stop and escalate on an exact-head mismatch, conflicting user changes, missing secret/provider
+authority, two reproducible infrastructure failures, a quality-gate exception, or an architecture change.
 
 ## Engineering-First Execution
 
