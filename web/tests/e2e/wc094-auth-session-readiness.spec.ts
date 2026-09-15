@@ -42,9 +42,12 @@ test('WC094-A03: Login and Register project the same available brokers', async (
 
 test('WC094-A01: logout clears WAOOAW state and returns through Keycloak to the homepage', async ({ context, page }) => {
   await addSession(context);
-  await page.route('**/api/auth/keycloak-logout', async (route) => {
-    const response = await route.fetch({ maxRedirects: 0 });
-    await route.fulfill({ response, status: 303, headers: { ...response.headers(), location: `${baseURL}/` } });
+  let logoutContinuationStatus: number | undefined;
+  page.on('response', (response) => {
+    const url = new URL(response.url());
+    if (url.pathname === '/api/auth/keycloak-logout' && url.searchParams.has('nonce')) {
+      logoutContinuationStatus = response.status();
+    }
   });
   await page.goto('/home');
   await page.waitForURL('**/professionals/mine');
@@ -57,6 +60,7 @@ test('WC094-A01: logout clears WAOOAW state and returns through Keycloak to the 
   await page.locator('summary[aria-label="Account"]').first().click();
   await page.getByRole('button', { name: 'Sign out' }).click();
 
+  await expect.poll(() => logoutContinuationStatus).toBe(303);
   await expect(page).toHaveURL(`${baseURL}/`);
   await expect(page.getByRole('heading', { name: 'Grow your business with WAOOAW AI professionals' })).toBeVisible();
   await expect.poll(async () => context.cookies()).toEqual(expect.not.arrayContaining([
