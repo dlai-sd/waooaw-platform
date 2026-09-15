@@ -11,7 +11,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 
-class SkillInputDenied(ValueError):
+class SkillInputDenied(ValueError):  # noqa: N818 - domain denial term
     """Raised when structured Skill input violates its admitted contract."""
 
 

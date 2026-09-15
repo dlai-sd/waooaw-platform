@@ -10,16 +10,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 import re
 from threading import Lock
-from typing import Any
+from typing import Any, ClassVar
 
 
-class BuildAuthorityDenied(ValueError):
+class BuildAuthorityDenied(ValueError):  # noqa: N818 - constitutional denial term
     """Raised before builder execution when release authority is invalid."""
 
 
 class CandidateBuildAuthorityGate:
     _HEAD_PATTERN = re.compile(r"^[0-9a-f]{40}$")
-    _EXPECTED = {
+    _EXPECTED: ClassVar[dict[str, Any]] = {
         "releaseSequence": 1,
         "professionalType": "digital-marketing-local-service",
         "professionalVersion": "1.0.0",
