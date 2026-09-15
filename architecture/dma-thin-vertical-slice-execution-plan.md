@@ -2,18 +2,21 @@
 
 **Office:** Solution Architect (INST-005)
 **Work Contract:** WC-089
-**Status:** OWNER-REVIEWED PLAN - SECURITY PASS; FOUNDER ACCEPTANCE PENDING; IMPLEMENTATION UNAUTHORIZED
+**Status:** FOUNDER ACCEPTED - ISSUE #437 IMPLEMENTATION/LOCAL BUILD AUTHORIZED FOR 2026-09-15 SESSION; PROVIDER/CLOUD/DEPLOYMENT PROHIBITED
 **Concept:** `architecture/dma-agent-image-concept.md`
-**Delivery unit:** One real DMA image version serving isolated customer instances through Skills 0/1/2
+**Delivery unit:** DMA product/image Release 1 (`professionalVersion: 1.0.0`) serving isolated customer instances through Skills 0/1/2
+**Specification mapping:** Current DMA requirements/specification revision `3.1`; independent from the professional product/image release
 **Reference architecture:** exact-six platform release tuple plus private admitted adapter workload images outside that tuple
 **Dependencies:** WC-079, WC-080, WC-087 and WC-088 merged; ADR-035 and ADR-049 accepted
 **Constitutional basis:** C-001, C-023, C-026, C-035, C-049, C-059, C-065, C-071, C-079
 
 ## 1. Objective
 
-Deliver one bounded Digital Marketing Agent release that proves the approved type-image/customer-
+Deliver one bounded Digital Marketing Agent Release 1 that proves the approved type-image/customer-
 instance model without changing WAOOAW's six-image platform boundary. One immutable admitted DMA
-professional version and OCI digest serves multiple customer-specific trial or hired instances. Each
+professional version `1.0.0` and OCI digest serves multiple customer-specific trial or hired instances.
+The current DMA requirements/specification revision is `3.1`; it is an independently bound design
+coordinate and must not become the professional version, adapter audience version or image tag. Each
 instance retains its own tenant, relationship, `agentInstanceId`, contract, mode, goals, configuration,
 Skill versions, Decision Space, evidence, usage, work and lifecycle.
 
@@ -61,9 +64,9 @@ Implementation is blocked until every row is accepted and bound by exact path, v
 | ADR-035 and ADR-049 | Accepted/current | PAC remains signals; adapter remains private with one isolated deployment per admitted type + version + digest tuple |
 | Solution contracts | INST-005 accepted | Skill schemas, work/result contract and instance binding deterministic |
 | Enterprise review | INST-004 accepted or findings recorded | Six-image boundary and no-new-service decision preserved |
-| Security contract | INST-007 PASS - 2026-09-10 | Image trust, workload/tenant/instance/mode binding, anti-replay, egress, secret, privacy, abuse and Stop controls fixed; implementation replaces registry/configuration/test drift with the exact ADR-049 audience without alias or fallback |
+| Security contract | INST-007 REVISED PASS - 2026-09-15 | Image trust, pre-build authority, workload/tenant/instance/mode binding, anti-replay, egress, secret, privacy, abuse and Stop controls fixed; implementation replaces registry/configuration/test drift with the exact ADR-049 audience without alias or fallback |
 | Data contract | INST-006 accepted | Ownership, lineage, retention, erasure and isolation shapes fixed |
-| Implementation Work Contract | Founder authorized in session | Exact branch, paths, tests, CCTs, environments and command named |
+| Implementation Work Contract | AUTHORIZED - Issue #437, 2026-09-15 session | Branch `ib/089/dma-release-1`, paths, tests, CCTs, fixtures, local-Docker-only environment and qualification command frozen in Issue #437 |
 
 ### 3.1 Readiness Gap Register
 
@@ -79,7 +82,8 @@ Implementation is blocked until every row is accepted and bound by exact path, v
 | DMA-GAP-08 Stop under real work | Prove active and queued DMA work halts, emits no late result and needs fresh-authority future invocation | Solution + Constitutional owner | OPEN |
 | DMA-GAP-09 Resource and failure isolation | Apply WC-080's accepted request-size, replica, execution, queue, filesystem and runtime-hardening limits; prove limit-plus-one denial and Stop reserved capacity without choosing infrastructure here | Security + Platform owners | OPEN |
 | DMA-GAP-10 Additive Skill release | Define compatibility, old-instance continuity and rollback for a later Skill/image version | Solution + Enterprise | OPEN |
-| DMA-GAP-11 Adapter audience consistency | Apply ADR-049 to the existing distinct versioned adapter IDs: DMA is `urn:waooaw:service:agent-runtime-adapter:digital-marketing-local-service:3.1.0` and trading is `urn:waooaw:service:agent-runtime-adapter:trading-fo-crypto:1.8.0`; replace registry/configuration/test drift synchronously without alias or fallback; keep professional version and OCI digest as separate admission bindings | Enterprise + Security + Platform | ARCHITECTURE RECONCILED; SECURITY PASS - Founder authorized 2026-09-10; implementation repair not executed |
+| DMA-GAP-11 Adapter audience consistency | Apply ADR-049 to the distinct versioned adapter IDs: DMA Release 1 is `urn:waooaw:service:agent-runtime-adapter:digital-marketing-local-service:1.0.0` and trading remains `urn:waooaw:service:agent-runtime-adapter:trading-fo-crypto:1.8.0`; replace legacy registry/configuration/test drift synchronously without alias or fallback; keep release sequence, professional version, specification revision and OCI digest as separate bindings | Enterprise + Security + Platform | CONTRACT RECONCILED; ENTERPRISE/SECURITY REVIEW PASS 2026-09-15; implementation repair remains gated |
+| DMA-GAP-12 Release and customer lifecycle binding | Freeze the professional release state machine and map trial/hire entry through Onboard, Induct, Goal Verification, Business Outcomes and Operations without browser/adapter-owned eligibility | Solution + Enterprise + Product contracts | CONTRACT FIXED IN WC-089; deterministic implementation fixtures remain gated |
 
 ## 4. Scope
 
@@ -315,7 +319,7 @@ An executor must not choose a missing contract, fixture shape or persistence pat
 |---|---|---|
 | Exact-six plus admitted workloads | `docker-compose.yml`; `architecture/reference/components/manifest/` | The `agent-runtime-adapter` profile currently declares both DMA and trading adapter workloads. Both remain outside the exact-six release tuple. WC-089 may explicitly build/start DMA only and must assert that enabling the profile does not change exact-six membership, promotion or rollback evidence; trading is unchanged and is not a WC-089 deliverable. |
 | Common adapter contract | `architecture/reference/api-specs/agent-runtime-adapter-v1.openapi.yaml`; `architecture/reference/api-specs/schemas/agent-runtime-adapter-v1.schema.json`; `src/agent-adapters/runtime_contract/`; `src/professional-runtime/adapter_gateway.py` | `AdapterInvocationEnvelopeV1` has no `agentInstanceId`; the OpenAPI remains PR-only and generic. |
-| DMA fixture | `src/agent-adapters/digital_marketing/adapter.py`; `tests/fixtures/agent-admission/digital-marketing-local-service-v3.1.0.json` | The handler returns one generic `CAMPAIGN_PLAN`; digests are placeholders; only `LOCAL_CAMPAIGN_MANAGEMENT` and `LOCAL_CONTENT_PLANNING` are declared. `tests/fixtures/agent-runtime-adapter/` does not exist. |
+| DMA fixture | `src/agent-adapters/digital_marketing/adapter.py`; legacy `tests/fixtures/agent-admission/digital-marketing-local-service-v3.1.0.json` | The fixture incorrectly conflates specification revision with product version and must be replaced by a Release 1 / `1.0.0` fixture only after implementation authorization. The handler returns one generic `CAMPAIGN_PLAN`; digests are placeholders; only `LOCAL_CAMPAIGN_MANAGEMENT` and `LOCAL_CONTENT_PLANNING` are declared. `tests/fixtures/agent-runtime-adapter/` does not exist. |
 | Adapter/PR tests | `tests/contract/test_agent_runtime_adapter_contract.py`; `tests/professional-runtime/test_agent_runtime_adapter.py`; `tests/constitutional/test_agent_runtime_adapter_cct.py` | Existing tests prove WC-080 common lifecycle and invalid admission behavior, not Skills 0/1/2, instance binding, two DMA versions or customer work. |
 | BP instance and workspace | `src/business-platform/Services/EmploymentRelationshipService.cs`; `src/business-platform/Controllers/RelationshipWorkspaceController.cs`; `tests/business-platform.Tests/EmploymentRelationshipServiceTests.cs`; `tests/business-platform.Tests/RelationshipWorkspaceControllerTests.cs`; `architecture/reference/api-specs/business-platform.openapi.yaml` | BP already creates `AgentInstanceId` and exposes relationship workspace patterns. DMA work/profile/research/strategy records and owner-accepted persistence/migration paths are `TO FREEZE`; they may not be inferred from controller shape. |
 | WBE | `src/billing-engine/wallet/`; `src/billing-engine/meter/`; `src/billing-engine/reconciliation/`; `src/billing-engine/relationship_workspace.py`; matching `tests/billing-engine/` tests | Reservation and usage primitives exist, but the owner-accepted instance/Skill/work/invocation attribution contract and any additive persistence path are `TO FREEZE`. Adapter output is not a billing fact. |
@@ -368,10 +372,13 @@ contracts, fixture limitations and all frozen paths before source mutation.
 
 **Actions:** Record base/head, issue, accepted commits, scope, Skill IDs/versions, existing tests and
 known unrelated failures. Prove the current DMA handler is a generic fixture and the conformance gate
-can reject an invalid descriptor.
+can reject an invalid descriptor. Run the candidate-builder authority preflight with a deliberately
+missing/mismatched authority fixture and prove denial creates no local image, registry artifact,
+signature, provenance, SBOM or admission mutation before any positive build path is enabled.
 
-**Definition of Done:** Every Section 3 gate resolves; implementation authorization is explicit;
-baseline and one negative validator result are captured; unresolved owner decision stops work.
+**Definition of Done:** Every Section 3 gate resolves; Founder release approval and current-session
+build authorization are exact and explicit; baseline, negative validator and no-artifact pre-build
+denial results are captured; unresolved owner decision stops work.
 
 **AI token optimization:** Load only this plan, accepted owner repairs, current DMA adapter/common
 contract and nearest tests. Cache exact versions/hashes; do not reread the full DMA specification.
@@ -586,6 +593,13 @@ tests, coverage, builds, SBOM and scans.
 | DMA-AS-06 | Emergency Stop during active research halts before late result publication and leaves another instance running |
 | DMA-AS-07 | New image/schema mismatch fails before work; prior admitted digest remains available |
 | DMA-AS-08 | Future additive Skill fixture passes admission compatibility without platform lifecycle changes |
+| DMA-AS-09 | Founder rejection or missing/mismatched build authority is denied before builder execution and leaves no local image, registry artifact, signature, provenance, SBOM, admission mutation or autonomous version change |
+| DMA-AS-10 | Product `1.0.0`, specification `3.1`, Skill/PAC/schema/prompt versions and OCI digest remain distinct and exactly traceable across admission and runtime |
+| DMA-AS-11 | Interrupted Induct resumes one BP-owned confirmed context without duplicate questions, fact promotion or relationship/instance fork |
+| DMA-AS-12 | Trial-to-paid activation obtains fresh authority and billing state; trial mode, allowance and delegation cannot replay into live work |
+| DMA-AS-13 | Material goal/configuration amendment relocks affected Operations work and preserves prior decisions, results and evidence |
+| DMA-AS-14 | Portal refresh or channel handoff reconstructs authoritative BP lifecycle/work state and preserves Emergency Stop without browser-created authority |
+| DMA-AS-15 | Erasure and legal hold remove or retain eligible payload correctly while preserving minimum immutable attribution and non-resurrecting lineage |
 
 ### 9.2 Coverage And Quality
 
@@ -621,7 +635,7 @@ schema validation, tests, generators, builds, coverage and scanners run in pinne
 4. computes sorted path/content and normalized configuration hashes;
 5. builds each changed image once and records ID/digest/platform;
 6. runs smokes and the complete affected unit/contract/integration/CCT suites;
-7. runs DMA-AS-01 through DMA-AS-08 and coverage thresholds;
+7. runs DMA-AS-01 through DMA-AS-15 and coverage thresholds;
 8. validates OpenAPI/schema/generated drift and production builds;
 9. generates SBOM and runs pinned image/configuration/secret scanners;
 10. verifies implementation-authorization evidence and that required C-059/C-065 validators and PR
@@ -705,11 +719,18 @@ PR body after opening it to manufacture PASS.
 | DMA-ACC-23 | Profile observations/inferences/confirmations, research sources/citations/partials, strategy drafts/decisions and work/results preserve owner, revision, lineage and concurrency semantics |
 | DMA-ACC-24 | Retention, erasure and legal hold preserve proof/payload separation and minimum immutable attribution without content resurrection |
 | DMA-ACC-25 | Supported record/contract versions coexist; additive migration and rollback obligations satisfy ADR-011 without rewriting immutable history |
+| DMA-ACC-26 | Release 1 is `professionalVersion: 1.0.0`; DMA specification `3.1` and all Skill/PAC/schema/prompt/digest coordinates remain independent and exactly traceable |
+| DMA-ACC-27 | Builder preflight denies missing/expired/mismatched/replayed authority before execution; no image build, publish, sign, admission, activation or version bump occurs before exact Founder and current-session gates, and provenance binds their references/times |
+| DMA-ACC-28 | Design/build checkpoints and WC-079 canonical BP admission states are evidenced in order; no parallel lifecycle or inferred planning, review, admission or deployment state exists |
+| DMA-ACC-29 | Onboard mutates presentation preferences only; Induct confirms BP-owned context; verified goals gate Business Outcomes and Operations |
+| DMA-ACC-30 | Trial/live transition, material amendment, relock/reassessment, portal reconstruction, erasure/legal hold and channel continuity simulations pass without authority or history corruption |
 
 ## 14. Compatibility And Rollback
 
 - Any behavior, dependency, schema digest or image content change produces a new immutable image digest
   and follows WC-079 admission compatibility treatment; no active admission record is edited in place.
+  A new professional version or Release 2 requires a separate Founder decision and is never inferred
+  from DMA specification, Skill, PAC, schema, prompt or dependency revision.
 - Existing relationships retain their exact admitted professional version and accepted Skill versions
   unless BP records a governed WC-087/088-compatible selection or update. Adapter deployment or
   rollback never silently rebinds a relationship or changes its immutable `agentInstanceId`.
@@ -745,7 +766,7 @@ PR body after opening it to manufacture PASS.
 WC-089 is complete only when:
 
 - Founder accepted concept and owner-reviewed plan are bound to implementation authority.
-- One admitted DMA type/version image has real, non-placeholder artifact/conformance identity.
+- One admitted DMA Release 1 / professional version `1.0.0` image has real, non-placeholder artifact/conformance identity and is mapped to exact DMA specification revision `3.1` without coordinate conflation.
 - Skills 0/1/2 have canonical typed contracts and real domain behavior.
 - Every invocation binds exact tenant, relationship, instance, versions, artifact, authority and work.
 - Profile, research and strategy complete the customer journey with required confirmations.
@@ -761,13 +782,12 @@ WC-089 is complete only when:
 
 ## 17. Author And Institutional Review Record
 
-**Author review:** PASS - 2026-09-10. The complete planning package was checked before and after the
-institutional repairs against WC-080's structure, the accepted exact-six and adapter boundaries,
-Skills 0/1/2 scope, component-to-acceptance traceability, implementation authority, registry
-arithmetic, path references, Markdown integrity, ASCII policy and diff integrity. The final audit
-found no structural or semantic defect. The audience issue was resolved through the authorized
-Enterprise decision and subsequent Security PASS; remaining implementation inputs are not unresolved
-author-review findings.
+**Solution Architecture author review:** PASS - 2026-09-15. The complete revised Work Contract,
+concept and plan were checked against the Founder-directed Release 1 mapping, WC-079 admission,
+ADR-049 transport/isolation, AEEC/customer-portal lifecycle, constitutional DNA, PAC/base contract,
+Skills 0/1/2 scope, component ownership, simulations, Definition of Done and Stops. Review repaired a
+parallel-lifecycle ambiguity, stale audience conclusion, missing checkpoint ownership/evidence and a
+prose-only pre-build gate. No unresolved in-scope author finding remains.
 
 The Founder requested one edit-and-repair pass by Enterprise Architecture, Security, and Data after
 Solution Architecture author review, followed by one Platform IT Expert implementability pass. Each
@@ -776,8 +796,12 @@ authority gaps or reference-architecture changes are recorded as blockers rather
 
 | Review | Status | Findings and repairs |
 |---|---|---|
-| Solution Architecture author review | PASS | Confirmed every DMA-00 through DMA-11 component has an objective, actions, Definition of Done, AI token optimization and Docker testing approach; no repair required |
-| Enterprise Architecture | PASS | Preserved the exact-six platform release tuple, ADR-035 signal-only PAC role and ADR-049 type + version + digest deployment boundary; clarified that DMA is a private admitted workload, not a seventh service; bound instance/version evolution and rollback to WC-079/087/088 without silent relationship migration. Founder-authorized reconciliation on 2026-09-10 classified the registry namespace as conformance drift and fixed the canonical versioned audiences as `urn:waooaw:service:agent-runtime-adapter:digital-marketing-local-service:3.1.0` and `urn:waooaw:service:agent-runtime-adapter:trading-fo-crypto:1.8.0`; version and artifact digest remain independent admission bindings; no ADR change required. |
-| Security | PASS | INST-007 confirmed the reconciled exact versioned audiences, synchronized registry/configuration/test replacement, independent professional-version and OCI-digest binding, and fail-closed denial of old or wrong audiences without alias or fallback. The complete planning contract also fixes least privilege, instance/mode and anti-replay binding, secret and egress separation, privacy-safe evidence and telemetry, saturation-safe Stop, resource limits, provenance, scans, trial/live isolation and executable negative-test obligations. The current registry drift remains an implementation entry gate, not an unresolved planning decision or executable proof. |
-| Data Architecture | PASS | INST-006 clarified BP-owned customer records versus DMA proposals; separated observations/inferences/confirmations, sources/citations/partials and strategy drafts/decisions; fixed scoped keys, revisions, concurrency, work/invocation/result lineage, WBE attribution, evidence-reference versus payload/proof ownership, retention/erasure/legal hold, immutable facts, version coexistence and ADR-011 migration/rollback obligations. No physical schema or implementation technology selected. |
-| Platform IT Expert implementability | BLOCKED | INST-010 froze current adapter, PR, BP, WBE, web, fixture, Compose and qualification anchors; added component-sized edit/check boundaries, missing-fixture requirements, generated-client timing, image/cache reuse, bounded failure/retry evidence and the correct authorization -> qualification -> push -> C-059/C-065 -> PR sequence. The audience decision is reconciled but its registry/configuration/test repair is an unexecuted implementation input; Section 3 owner inputs and `TO FREEZE` contract/persistence/test paths remain open; current fixtures have placeholder digests, legacy Skill aliases, no runtime fixture directory and no second DMA version needed to prove rollback. No implementation or Founder acceptance is claimed. |
+| Solution Architecture author review | PASS | Mapped the reusable agent release and customer employment lifecycles to existing owners; made version axes, constitutional inheritance, portal outcome, simulations and completion evidence explicit; repaired all manageable findings |
+| Enterprise Architecture | PASS | Confirmed no new capability/service or parallel admission lifecycle: design/build are governed checkpoints and evidence, while WC-079 BP states remain canonical. ADR-049 permits a distinct adapter ID using Founder-directed product `1.0.0`; specification `3.1`, Skill/PAC/schema/prompt versions and digest remain independent. Exact-six boundary and old-version coexistence remain intact |
+| Security | PASS | Required builder authorization before first local/remote image creation, authority/time-bound provenance, fail-closed no-artifact denial, exact mTLS audience/version/digest binding, no alias/fallback, anti-replay, least privilege, no direct egress/provider credential, privacy-safe evidence, trial/live isolation and saturation-safe Stop. No provider/deployment authority is inferred |
+| Data Architecture | PASS | Confirmed BP owns relationship, instance, configuration, goal, customer decision, work and lifecycle truth; admission revisions/transitions remain BP-owned and append-only. Profile/research/strategy revisions, provenance, optimistic concurrency, retention/erasure/legal hold, tombstones, version coexistence and immutable evidence/usage boundaries remain explicit; no physical schema is selected |
+| Platform IT Expert implementability | CONDITIONAL PASS | DMA-00 now has an executable pre-build authority/no-artifact negative gate; component-sized checks, Docker-only runtimes, image reuse, exact-head qualification and C-059/C-065 handoff are implementable. Execution remains correctly blocked until Founder accepts this revision, current-session implementation authority exists, and every Section 3/7.1 `TO FREEZE`, legacy fixture, missing selector and placeholder digest is resolved |
+
+These requested review passes are author-managed design assurance, not independent approval. They do
+not approve Release 1, authorize image creation or implementation, accept deployment, or replace the
+Founder decision.

@@ -2,8 +2,9 @@
 
 **Office:** Solution Architect (INST-005)
 **Date:** 2026-09-10
-**Status:** OWNER-REVIEWED CONCEPT - SECURITY PASS; FOUNDER ACCEPTANCE PENDING
+**Status:** FOUNDER ACCEPTED - ISSUE #437 IMPLEMENTATION/LOCAL BUILD AUTHORIZED; PROVIDER/CLOUD/DEPLOYMENT PROHIBITED
 **Work Contract:** WC-089
+**Release mapping:** DMA product/image Release 1 = `professionalVersion: 1.0.0`; current requirements/specification revision = `3.1`
 **Reference architecture:** six WAOOAW platform application images plus admitted agent images
 **Constitutional basis:** C-001, C-023, C-026, C-035, C-049, C-059, C-065, C-071, C-079
 
@@ -84,7 +85,9 @@ content.
 | Concept | Cardinality | Identity | State rule |
 |---|---|---|---|
 | Professional type | One logical DMA definition | `professionalTypeId` | Version-independent catalogue identity |
-| Professional version | One immutable admitted release | type + SemVer + admission digest | Never changed in place |
+| Professional product release | One Founder-governed release sequence | `releaseSequence` | Independent of requirements/specification revision; Release 1 is fixed by WC-089 |
+| Professional version | One immutable admitted release | type + SemVer + admission digest | Release 1 is `1.0.0`; never changed in place |
+| Requirements/specification revision | One reviewed design revision | specification ID + revision + source commit | May differ from professional version; DMA `3.1` maps to Release 1 without re-versioning it |
 | Image | One exact OCI artifact in each active admission snapshot | immutable OCI digest, verified signature and provenance attestation | Build identity, source commit, SBOM, conformance evidence, admission and the runtime-reported digest must form one verifiable chain; tags are never authority |
 | Adapter deployment | One isolated deployment per admitted type + version + digest tuple | activation-registry binding + distinct workload identity | Outside the exact-six platform release tuple; never shared across artifacts |
 | Replica | Zero or more runtime copies within one adapter deployment | workload identity + deployment identity | Ephemeral and interchangeable; never a customer identity |
@@ -98,13 +101,15 @@ trial or live mode, evidence context, deadline, invocation, single-use delegatio
 digest and idempotency identity. A retry uses fresh short-lived delegation and can only reconcile the
 same prior outcome; it cannot repeat semantic work or cross an instance or mode boundary.
 
-The adapter audience follows accepted ADR-049 exactly. The existing versioned adapter IDs remain the
-distinct deployment identifiers, so the canonical audiences are
-`urn:waooaw:service:agent-runtime-adapter:digital-marketing-local-service:3.1.0` and
+The adapter audience follows accepted ADR-049 exactly. The versioned adapter IDs remain distinct
+deployment identifiers and use the professional product version, not the requirements/specification
+revision. The canonical audiences for the governed releases are
+`urn:waooaw:service:agent-runtime-adapter:digital-marketing-local-service:1.0.0` and
 `urn:waooaw:service:agent-runtime-adapter:trading-fo-crypto:1.8.0`. The workload registry's shorter
-`urn:waooaw:adapter:*` namespace is conformance drift to repair synchronously in implementation
-configuration and tests. No alias or fallback is permitted. Professional version and OCI artifact
-digest remain independently verified admission and activation bindings; audience replaces neither.
+`urn:waooaw:adapter:*` namespace and any DMA audience derived from specification revision `3.1` are
+conformance drift to repair synchronously in implementation configuration and tests. No alias or
+fallback is permitted. Professional version, specification revision and OCI artifact digest remain
+independently verified admission and activation bindings; audience replaces none of them.
 
 ## 5. Release 1 Skills
 
