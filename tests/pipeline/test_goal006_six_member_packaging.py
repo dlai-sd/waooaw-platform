@@ -42,6 +42,16 @@ def test_ci_publishes_only_main_with_attestations_and_digest_artifacts() -> None
     jobs = yaml.safe_load(workflow)["jobs"]
     build = jobs["build"]
     publish = jobs["publish"]
+    for job in (build, publish):
+        services = job["strategy"]["matrix"]["service"]
+        assert all((REPO_ROOT / service["dockerfile"]).is_file() for service in services)
+        dma = next(
+            service
+            for service in services
+            if service["name"] == "agent-runtime-adapter-digital-marketing"
+        )
+        assert dma["context"] == "src/agent-adapters"
+        assert dma["dockerfile"] == "src/agent-adapters/digital_marketing/Dockerfile"
     assert build["if"] == "github.event_name == 'pull_request'"
     assert build["permissions"] == {"contents": "read", "security-events": "write"}
     assert publish["if"] == "github.event_name == 'push' && github.ref == 'refs/heads/main'"

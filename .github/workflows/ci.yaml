@@ -57,7 +57,7 @@ jobs:
             dockerfile: src/billing-engine/Dockerfile
           - name: agent-runtime-adapter-digital-marketing
             context: src/agent-adapters
-            dockerfile: digital_marketing/Dockerfile
+            dockerfile: src/agent-adapters/digital_marketing/Dockerfile
     steps:
       - uses: actions/checkout@v4
 
@@ -129,7 +129,7 @@ jobs:
             dockerfile: src/billing-engine/Dockerfile
           - name: agent-runtime-adapter-digital-marketing
             context: src/agent-adapters
-            dockerfile: digital_marketing/Dockerfile
+            dockerfile: src/agent-adapters/digital_marketing/Dockerfile
     steps:
       - uses: actions/checkout@v4
       - name: Log in to GHCR
