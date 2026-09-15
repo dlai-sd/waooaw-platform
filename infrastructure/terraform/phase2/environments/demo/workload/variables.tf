@@ -2,6 +2,10 @@ variable "image_digests" {
   type = map(string)
 }
 
+variable "dma_admission_content_digest" {
+  type = string
+}
+
 variable "auth_preview_origin" {
   type        = string
   default     = "https://probable-waffle-vpqg67gg59jhrrr-3100.app.github.dev"
@@ -23,7 +27,7 @@ variable "founder_ipv4_cidr" {
 
 variable "ghcr_packages_public" {
   type        = bool
-  description = "Administrator attestation that all exact-six GHCR packages allow anonymous digest pulls."
+  description = "Administrator attestation that all exact-seven GHCR packages allow anonymous digest pulls."
   default     = false
 }
 

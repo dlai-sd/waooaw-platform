@@ -11,7 +11,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-RELEASE_MEMBERS = frozenset({"ce", "bp", "pr", "air", "web", "billing"})
+RELEASE_MEMBERS = frozenset({"ce", "bp", "pr", "air", "web", "billing", "dma"})
 SHA256_PATTERN = re.compile(r"^(?:sha256:)?[0-9a-f]{64}$")
 PROHIBITED_SQL = re.compile(
     r"\b(?:DROP|TRUNCATE|DELETE|UPDATE|RENAME)\b|\bALTER\s+TABLE\b[^;]*\b(?:DROP|TYPE)\b",

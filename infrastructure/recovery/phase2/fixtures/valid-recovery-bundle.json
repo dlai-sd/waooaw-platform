@@ -44,7 +44,8 @@
       "pr": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
       "air": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
       "web": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-      "billing": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      "billing": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "dma": "sha256:9999999999999999999999999999999999999999999999999999999999999999"
     },
     "config_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
     "data_version": "data-v2",

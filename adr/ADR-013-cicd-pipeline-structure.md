@@ -1,6 +1,6 @@
 # ADR-013: CI/CD Pipeline Structure
 
-**Status:** Accepted — amended 2026-08-31
+**Status:** Accepted — amended 2026-08-31 and 2026-09-15
 **Date:** 2026-07-07
 **Roles Applied:** Platform Architect (pipeline design) + Enterprise Architect (quality gate sequence)
 **Constitutional Basis:** GENESIS Engineering Quality Mandate (zero manual testing; build once, image promotion; Constitutional Compliance Tests are a required gate); GENESIS Part 02 — "Every deployment is a formal act of institutional judgment"
@@ -11,7 +11,7 @@
 
 The implementation-specific pipeline topology below is historical. The durable decision is:
 
-- `ci.yaml` builds and qualifies one exact-six release from a source commit.
+- `ci.yaml` builds and qualifies one exact-seven release from a source commit.
 - Images are promoted by immutable OCI digest without retagging or rebuilding.
 - `deploy.yaml` is the only manual application deployment entry for Demo, UAT and Production.
 - Environment configuration, identities, approvals and secrets remain external to images.
@@ -24,6 +24,13 @@ The implementation-specific pipeline topology below is historical. The durable d
 This amendment supersedes the mutable `:dev`/`:qa` retagging model, automatic environment promotion,
 Dev/QA stage names and five-workflow example below. The normative current topology is
 `architecture/reference/pipeline/azure-deployment-topology.md`.
+
+## 2026-09-15 Exact-Seven Amendment
+
+By Founder direction, DMA Release 1 is the seventh permanent first-party release workload. The
+build-once, immutable-digest, attestation, promotion, verification and rollback rules apply to all
+seven images as one tuple. This does not transfer admission, customer-state or platform authority to
+the DMA image. Later independent agent releases require a separate accepted amendment.
 
 ---
 

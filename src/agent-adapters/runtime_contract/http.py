@@ -6,6 +6,10 @@
 from __future__ import annotations
 
 import os
+import hmac
+import json
+import logging
+import time
 from dataclasses import asdict
 from datetime import datetime
 from enum import Enum
@@ -16,6 +20,8 @@ from fastapi.responses import JSONResponse
 
 from .adapter import AdapterContractError, ReferenceAdapter
 from .models import AdapterInvocationEnvelopeV1, AdapterInvocationV1
+
+LOGGER = logging.getLogger("uvicorn.error")
 
 
 def _camel(value: str) -> str:
@@ -87,12 +93,37 @@ def create_app(adapter: ReferenceAdapter) -> FastAPI:
         "PR_WORKLOAD_URI",
         "spiffe://demo.waooaw.internal/workload/professional-runtime",
     )
+    expected_bearer = os.environ.get("PR_SERVICE_JWT_SECRET")
+    if not expected_bearer:
+        raise RuntimeError("PR_SERVICE_JWT_SECRET is required")
+
+    @app.middleware("http")
+    async def log_request(request: Request, call_next: Any) -> Any:
+        started = time.monotonic()
+        response = await call_next(request)
+        LOGGER.info(
+            json.dumps(
+                {
+                    "event": "adapter_request_completed",
+                    "method": request.method,
+                    "path": request.url.path,
+                    "status": response.status_code,
+                    "duration_ms": round((time.monotonic() - started) * 1000),
+                    "correlation_id": request.headers.get("x-correlation-id"),
+                },
+                separators=(",", ":"),
+            )
+        )
+        return response
 
     def require_professional_runtime(
         workload_uri: str = Header(alias="X-WAOOAW-Workload-URI"),
         authorization: str = Header(alias="Authorization"),
     ) -> None:
-        if workload_uri != expected_workload or not authorization.startswith("Bearer "):
+        if workload_uri != expected_workload or not hmac.compare_digest(
+            authorization,
+            f"Bearer {expected_bearer}",
+        ):
             raise HTTPException(status_code=403, detail="ADAPTER_NOT_ACCESSIBLE")
 
     @app.exception_handler(AdapterContractError)

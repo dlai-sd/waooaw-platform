@@ -102,10 +102,10 @@ def test_uncertain_temporal_workflows_remain_paused() -> None:
     assert_violation(bundle, "UNCERTAIN_WORKFLOW_NOT_PAUSED")
 
 
-def test_release_tuple_requires_exact_six_members_including_billing() -> None:
+def test_release_tuple_requires_exact_seven_members_including_dma() -> None:
     bundle = load_bundle()
     assert set(bundle["release_tuple"]["oci_digests"]) == RELEASE_MEMBERS
-    del bundle["release_tuple"]["oci_digests"]["billing"]
+    del bundle["release_tuple"]["oci_digests"]["dma"]
     assert_violation(bundle, "RELEASE_MEMBERSHIP_INVALID")
 
 

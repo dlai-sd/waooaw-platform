@@ -28,6 +28,7 @@ LEASE_FIELDS = frozenset(
         "evidence_digest",
     }
 )
+DMA_MEMBER = "agent-runtime-adapter-digital-marketing"
 
 
 def parse_key_vault_url(value: Any):
@@ -59,10 +60,12 @@ def add_key_vault_references(
         raise ValueError("key_vault_uri must be an Azure Key Vault URI")
     values = dict(configuration)
     values["key_vault_secret_uris"] = {
-        member: f"{key_vault_uri}secrets/{member}" for member in RELEASE_MEMBERS
+        member: f"{key_vault_uri}secrets/{'professional-runtime' if member == DMA_MEMBER else member}"
+        for member in RELEASE_MEMBERS
     }
     values["key_vault_secret_resource_ids"] = {
-        member: f"{key_vault_id}/secrets/{member}" for member in RELEASE_MEMBERS
+        member: f"{key_vault_id}/secrets/{'professional-runtime' if member == DMA_MEMBER else member}"
+        for member in RELEASE_MEMBERS
     }
     return values
 
@@ -80,10 +83,10 @@ def create_inputs(
     if environment not in {"demo", "uat", "prod"}:
         raise ValueError("environment must be demo, uat, or prod")
     if not ghcr_packages_public_verified:
-        raise ValueError("anonymous digest pulls must be verified for all exact-six GHCR packages")
+        raise ValueError("anonymous digest pulls must be verified for all exact-seven GHCR packages")
     secret_uris = configuration.get("key_vault_secret_uris")
     if not isinstance(secret_uris, Mapping) or set(secret_uris) != RELEASE_MEMBERS:
-        raise ValueError("key_vault_secret_uris must contain exactly the six release members")
+        raise ValueError("key_vault_secret_uris must contain exactly the seven release members")
     if not all(
         (parsed := parse_key_vault_url(value)) is not None
         and re.fullmatch(r"/secrets/[^/]+", parsed.path) is not None
@@ -92,18 +95,24 @@ def create_inputs(
         raise ValueError("every Key Vault runtime reference must be a versionless secret URI")
     secret_resource_ids = configuration.get("key_vault_secret_resource_ids")
     if not isinstance(secret_resource_ids, Mapping) or set(secret_resource_ids) != RELEASE_MEMBERS:
-        raise ValueError("key_vault_secret_resource_ids must contain exactly the six release members")
+        raise ValueError("key_vault_secret_resource_ids must contain exactly the seven release members")
     if not all(
         isinstance(value, str) and value.startswith("/subscriptions/") and "/secrets/" in value
         for value in secret_resource_ids.values()
     ):
         raise ValueError("every Key Vault RBAC scope must be a secret resource ID")
+    dma_admission_content_digest = configuration.get("dma_admission_content_digest")
+    if not isinstance(dma_admission_content_digest, str) or re.fullmatch(
+        r"sha256:[0-9a-f]{64}", dma_admission_content_digest
+    ) is None:
+        raise ValueError("dma_admission_content_digest must be an immutable sha256 digest")
     for field in ("planned_incremental_monthly_cost_inr", "cumulative_one_time_cost_inr"):
         value = configuration.get(field)
         if not isinstance(value, int | float) or value < 0:
             raise ValueError(f"{field} must be a nonnegative accepted INR value")
 
     inputs: dict[str, Any] = {
+        "dma_admission_content_digest": dma_admission_content_digest,
         "ghcr_packages_public": True,
         "image_digests": dict(manifest["images"]),
         "key_vault_secret_uris": dict(secret_uris),

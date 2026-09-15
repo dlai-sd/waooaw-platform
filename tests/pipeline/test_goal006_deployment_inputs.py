@@ -61,6 +61,7 @@ def configuration() -> dict[str, Any]:
         },
         "planned_incremental_monthly_cost_inr": 1000,
         "cumulative_one_time_cost_inr": 1000,
+        "dma_admission_content_digest": "sha256:" + "f" * 64,
         "founder_ipv4_cidr": "203.0.113.8/32",
     }
     values.update({field: f"accepted-{field}" for field in LEASE_FIELDS})
@@ -106,7 +107,7 @@ def test_anonymous_ghcr_verification_is_required() -> None:
 def test_missing_member_or_lease_field_is_rejected() -> None:
     values = configuration()
     del values["key_vault_secret_uris"]["web"]
-    with pytest.raises(ValueError, match="exactly the six"):
+    with pytest.raises(ValueError, match="exactly the seven"):
         create_inputs("demo", manifest(), values, True)
     values = configuration()
     del values["lease_expires_at"]
@@ -133,6 +134,9 @@ def test_vault_references_are_derived_from_foundation_outputs() -> None:
     inputs = create_inputs("demo", manifest(), values, True)
     assert inputs["key_vault_secret_uris"]["web"] == "https://kv-demo.vault.azure.net/secrets/web"
     assert inputs["key_vault_secret_resource_ids"]["web"].endswith("/vaults/kv-demo/secrets/web")
+    assert inputs["key_vault_secret_uris"]["agent-runtime-adapter-digital-marketing"].endswith(
+        "/secrets/professional-runtime"
+    )
 
 
 @pytest.mark.parametrize(

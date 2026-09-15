@@ -30,7 +30,7 @@ def test_pm_report_posts_status_without_mutating_repository() -> None:
 def test_post_merge_reporting_cannot_invalidate_current_main_release() -> None:
     assert "push:" in CI_WORKFLOW
     assert "branches: [main]" in CI_WORKFLOW
-    assert "goal006-exact-six-release-${{ github.sha }}" in CI_WORKFLOW
+    assert "goal006-exact-seven-release-${{ github.sha }}" in CI_WORKFLOW
     assert 'latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main"' in DEPLOY_WORKFLOW
     assert "select(.head_sha == $sha)" in DEPLOY_WORKFLOW
     assert "git push" not in WORKFLOW

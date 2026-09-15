@@ -17,31 +17,41 @@ locals {
     "ai-runtime",
     "web",
     "billing-engine",
+    "agent-runtime-adapter-digital-marketing",
   ])
   active_members = var.workload_enabled ? local.release_members : toset([])
   public_ingress = {
-    "constitutional-engine" = false
-    "ai-runtime"            = false
-    "billing-engine"        = false
-    "web"                   = true
-    "business-platform"     = true
-    "professional-runtime"  = true
+    "constitutional-engine"                   = false
+    "ai-runtime"                              = false
+    "billing-engine"                          = false
+    "web"                                     = true
+    "business-platform"                       = true
+    "professional-runtime"                    = true
+    "agent-runtime-adapter-digital-marketing" = false
+  }
+  member_names = {
+    for member in local.release_members : member => member == "agent-runtime-adapter-digital-marketing" ? "ca-${var.environment}-dma" : "ca-${var.environment}-${member}"
+  }
+  container_names = {
+    for member in local.release_members : member => member == "agent-runtime-adapter-digital-marketing" ? "dma" : member
   }
   target_ports = {
-    "constitutional-engine" = 5002
-    "business-platform"     = 5001
-    "professional-runtime"  = 5003
-    "ai-runtime"            = 5004
-    "web"                   = 3000
-    "billing-engine"        = 8140
+    "constitutional-engine"                   = 5002
+    "business-platform"                       = 5001
+    "professional-runtime"                    = 5003
+    "ai-runtime"                              = 5004
+    "web"                                     = 3000
+    "billing-engine"                          = 8140
+    "agent-runtime-adapter-digital-marketing" = 8443
   }
   ingress_transports = {
-    "constitutional-engine" = "http2"
-    "business-platform"     = "auto"
-    "professional-runtime"  = "auto"
-    "ai-runtime"            = "auto"
-    "web"                   = "auto"
-    "billing-engine"        = "auto"
+    "constitutional-engine"                   = "http2"
+    "business-platform"                       = "auto"
+    "professional-runtime"                    = "auto"
+    "ai-runtime"                              = "auto"
+    "web"                                     = "auto"
+    "billing-engine"                          = "auto"
+    "agent-runtime-adapter-digital-marketing" = "auto"
   }
   service_urls = {
     constitutional_engine = "http://ca-${var.environment}-constitutional-engine"
@@ -49,6 +59,7 @@ locals {
     professional_runtime  = "http://ca-${var.environment}-professional-runtime"
     ai_runtime            = "http://ca-${var.environment}-ai-runtime"
     billing_engine        = "http://ca-${var.environment}-billing-engine"
+    dma_adapter           = "http://ca-${var.environment}-dma"
     identity_edge         = "https://ca-${var.environment}-identity-edge.${var.container_app_environment_default_domain}"
     keycloak              = "http://ca-${var.environment}-keycloak"
     keycloak_private      = "https://ca-${var.environment}-keycloak.internal.${var.container_app_environment_default_domain}"
@@ -59,15 +70,17 @@ locals {
     professional_runtime = "http://ca-${var.environment}-professional-runtime"
     ai_runtime           = "http://ca-${var.environment}-ai-runtime"
     billing_engine       = "http://ca-${var.environment}-billing-engine"
+    dma_adapter          = "http://ca-${var.environment}-dma"
     identity_edge        = "https://ca-${var.environment}-identity-edge.${var.container_app_environment_default_domain}"
     web                  = "http://ca-${var.environment}-web"
   }
   readiness_paths = {
-    business-platform    = "/health/ready"
-    professional-runtime = "/health"
-    ai-runtime           = "/health"
-    web                  = "/"
-    billing-engine       = "/health"
+    business-platform                       = "/health/ready"
+    professional-runtime                    = "/health"
+    ai-runtime                              = "/health"
+    web                                     = "/"
+    billing-engine                          = "/health"
+    agent-runtime-adapter-digital-marketing = "/health/live"
   }
   keycloak_realm = {
     realm                  = "waooaw"
@@ -351,6 +364,7 @@ locals {
     "professional-runtime" = merge({
       AIR_TRANSCRIPTION_BASE_URL    = local.service_urls.ai_runtime
       CONSTITUTIONAL_ENGINE_ADDRESS = "ca-${var.environment}-constitutional-engine:80"
+      DMA_ADAPTER_BASE_URL          = local.service_urls.dma_adapter
       KEYCLOAK_AUDIENCE             = "waooaw-platform"
       KEYCLOAK_ISSUER               = "${local.service_urls.identity_edge}/realms/waooaw"
       KEYCLOAK_JWKS_URL             = "${local.service_urls.identity_edge}/realms/waooaw/protocol/openid-connect/certs"
@@ -381,22 +395,30 @@ locals {
       REDIS_URL                      = "redis://localhost:6379/0"
       WBE_INTERNAL_BASE_URL          = local.service_urls.billing_engine
     }
+    "agent-runtime-adapter-digital-marketing" = {
+      DMA_ADMISSION_CONTENT_DIGEST = var.dma_admission_content_digest
+      DMA_ARTIFACT_DIGEST          = split("@", var.image_digests["agent-runtime-adapter-digital-marketing"])[1]
+      PR_WORKLOAD_URI              = "spiffe://${var.environment}.waooaw.internal/workload/professional-runtime"
+      WAOOAW_ENVIRONMENT           = var.environment
+    }
   }
   credential_environment = {
-    "constitutional-engine" = "CE_RUNTIME_CREDENTIAL"
-    "business-platform"     = "BP_SERVICE_JWT_SECRET"
-    "professional-runtime"  = "PR_SERVICE_JWT_SECRET"
-    "ai-runtime"            = "PR_SERVICE_JWT_SECRET"
-    "web"                   = "KEYCLOAK_CLIENT_SECRET"
-    "billing-engine"        = "OPS_AUTH_TOKEN"
+    "constitutional-engine"                   = "CE_RUNTIME_CREDENTIAL"
+    "business-platform"                       = "BP_SERVICE_JWT_SECRET"
+    "professional-runtime"                    = "PR_SERVICE_JWT_SECRET"
+    "ai-runtime"                              = "PR_SERVICE_JWT_SECRET"
+    "web"                                     = "KEYCLOAK_CLIENT_SECRET"
+    "billing-engine"                          = "OPS_AUTH_TOKEN"
+    "agent-runtime-adapter-digital-marketing" = "PR_SERVICE_JWT_SECRET"
   }
   credential_member = {
-    "constitutional-engine" = "constitutional-engine"
-    "business-platform"     = "business-platform"
-    "professional-runtime"  = "professional-runtime"
-    "ai-runtime"            = "professional-runtime"
-    "web"                   = "web"
-    "billing-engine"        = "billing-engine"
+    "constitutional-engine"                   = "constitutional-engine"
+    "business-platform"                       = "business-platform"
+    "professional-runtime"                    = "professional-runtime"
+    "ai-runtime"                              = "professional-runtime"
+    "web"                                     = "web"
+    "billing-engine"                          = "billing-engine"
+    "agent-runtime-adapter-digital-marketing" = "professional-runtime"
   }
   identity_hmac_secret_uris = var.environment == "demo" ? {
     identity-hmac-active = "${trimsuffix(var.key_vault_secret_uris["business-platform"], "/business-platform")}/identity-hmac-active"
@@ -411,12 +433,13 @@ locals {
     continuity-envelope-hmac = "${trimsuffix(var.key_vault_secret_resource_ids["business-platform"], "/business-platform")}/continuity-envelope-hmac"
   }
   minimum_replicas = {
-    "constitutional-engine" = var.ce_min_replicas
-    "professional-runtime"  = var.pr_min_replicas
-    "business-platform"     = 0
-    "ai-runtime"            = 0
-    "web"                   = 0
-    "billing-engine"        = 0
+    "constitutional-engine"                   = var.ce_min_replicas
+    "professional-runtime"                    = var.pr_min_replicas
+    "business-platform"                       = 0
+    "ai-runtime"                              = 0
+    "web"                                     = 0
+    "billing-engine"                          = 0
+    "agent-runtime-adapter-digital-marketing" = 0
   }
 }
 
@@ -461,7 +484,7 @@ resource "azurerm_role_assignment" "continuity_hmac_secret" {
 resource "azurerm_container_app" "member" {
   for_each = local.active_members
 
-  name                         = "ca-${var.environment}-${each.key}"
+  name                         = local.member_names[each.key]
   container_app_environment_id = var.container_app_environment_id
   resource_group_name          = var.resource_group_name
   revision_mode                = "Multiple"
@@ -518,7 +541,7 @@ resource "azurerm_container_app" "member" {
     max_replicas = var.max_replicas
 
     container {
-      name   = each.key
+      name   = local.container_names[each.key]
       image  = var.image_digests[each.key]
       cpu    = 0.5
       memory = "1Gi"
@@ -720,7 +743,7 @@ resource "azurerm_container_app" "member" {
 
     precondition {
       condition     = !var.workload_enabled || var.ghcr_packages_public
-      error_message = "Enabled workloads require administrator verification that all exact-six GHCR packages allow anonymous digest pulls."
+      error_message = "Enabled workloads require administrator verification that all exact-seven GHCR packages allow anonymous digest pulls."
     }
   }
 
@@ -1105,9 +1128,10 @@ resource "azurerm_container_app_job" "verification" {
         probe professional-runtime "${local.verification_urls.professional_runtime}/health" & professional_runtime_pid=$!
         probe ai-runtime "${local.verification_urls.ai_runtime}/health" & ai_runtime_pid=$!
         probe billing-engine "${local.verification_urls.billing_engine}/health" & billing_engine_pid=$!
+        probe dma-adapter "${local.verification_urls.dma_adapter}/health/live" & dma_adapter_pid=$!
         probe identity-edge "${local.verification_urls.identity_edge}/realms/waooaw/.well-known/openid-configuration" & identity_edge_pid=$!
         probe_status=0
-        for probe_pid in "$web_pid" "$business_platform_pid" "$professional_runtime_pid" "$ai_runtime_pid" "$billing_engine_pid" "$identity_edge_pid"; do
+        for probe_pid in "$web_pid" "$business_platform_pid" "$professional_runtime_pid" "$ai_runtime_pid" "$billing_engine_pid" "$dma_adapter_pid" "$identity_edge_pid"; do
           wait "$probe_pid" || probe_status=1
         done
         if [ "${var.environment}" = "demo" ]; then

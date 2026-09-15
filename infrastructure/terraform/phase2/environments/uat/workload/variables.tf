@@ -2,6 +2,10 @@ variable "image_digests" {
   type = map(string)
 }
 
+variable "dma_admission_content_digest" {
+  type = string
+}
+
 variable "key_vault_secret_uris" {
   type = map(string)
 }
@@ -12,7 +16,7 @@ variable "key_vault_secret_resource_ids" {
 
 variable "ghcr_packages_public" {
   type        = bool
-  description = "Administrator attestation that all exact-six GHCR packages allow anonymous digest pulls."
+  description = "Administrator attestation that all exact-seven GHCR packages allow anonymous digest pulls."
   default     = false
 }
 

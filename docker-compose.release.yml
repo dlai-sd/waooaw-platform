@@ -172,6 +172,22 @@ services:
       timeout: 3s
       retries: 5
 
+  agent-runtime-adapter-digital-marketing:
+    build:
+      context: src/agent-adapters
+      dockerfile: digital_marketing/Dockerfile
+    environment:
+      WAOOAW_ENVIRONMENT: release
+      DMA_ARTIFACT_DIGEST: ${DMA_ARTIFACT_DIGEST:?DMA_ARTIFACT_DIGEST is required}
+      DMA_ADMISSION_CONTENT_DIGEST: ${DMA_ADMISSION_CONTENT_DIGEST:?DMA_ADMISSION_CONTENT_DIGEST is required}
+      PR_WORKLOAD_URI: spiffe://release.waooaw.internal/workload/professional-runtime
+      PR_SERVICE_JWT_SECRET: ${PR_SERVICE_JWT_SECRET:?PR_SERVICE_JWT_SECRET is required}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8443/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   ai-runtime:
     build:
       context: .

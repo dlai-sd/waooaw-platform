@@ -1,4 +1,4 @@
-"""P2-WC02 six-member packaging and baseline Compose contracts."""
+"""P2-WC02 seven-member packaging and baseline Compose contracts."""
 
 from pathlib import Path
 
@@ -8,12 +8,17 @@ import yaml
 REPO_ROOT = Path(__file__).parents[2]
 COMPOSE_FILE = REPO_ROOT / "docker-compose.release.yml"
 RELEASE_MEMBERS = {
-    "constitutional-engine": ("5002", "src/constitutional-engine/Dockerfile"),
-    "business-platform": ("5001", "src/business-platform/Dockerfile"),
-    "professional-runtime": ("5003", "src/professional-runtime/Dockerfile"),
-    "ai-runtime": ("5004", "src/ai-runtime/Dockerfile"),
-    "web": ("3000", "web/Dockerfile"),
-    "billing-engine": ("8140", "src/billing-engine/Dockerfile"),
+    "constitutional-engine": ("5002", ".", "src/constitutional-engine/Dockerfile"),
+    "business-platform": ("5001", ".", "src/business-platform/Dockerfile"),
+    "professional-runtime": ("5003", ".", "src/professional-runtime/Dockerfile"),
+    "ai-runtime": ("5004", ".", "src/ai-runtime/Dockerfile"),
+    "web": ("3000", ".", "web/Dockerfile"),
+    "billing-engine": ("8140", ".", "src/billing-engine/Dockerfile"),
+    "agent-runtime-adapter-digital-marketing": (
+        "8443",
+        "src/agent-adapters",
+        "digital_marketing/Dockerfile",
+    ),
 }
 CI_WORKFLOW = REPO_ROOT / ".github/workflows/ci.yaml"
 
@@ -22,13 +27,13 @@ def _compose() -> dict:
     return yaml.safe_load(COMPOSE_FILE.read_text(encoding="utf-8"))
 
 
-def test_exactly_six_release_members_have_explicit_builds() -> None:
+def test_exactly_seven_release_members_have_explicit_builds() -> None:
     services = _compose()["services"]
-    for member, (_, dockerfile) in RELEASE_MEMBERS.items():
+    for member, (_, context, dockerfile) in RELEASE_MEMBERS.items():
         assert member in services
-        assert (REPO_ROOT / dockerfile).is_file()
+        assert (REPO_ROOT / context / dockerfile).is_file()
         build = services[member]["build"]
-        assert build["context"] == "."
+        assert build["context"] == context
         assert build["dockerfile"] == dockerfile
 
 
@@ -64,7 +69,7 @@ def test_ci_publishes_only_main_with_attestations_and_digest_artifacts() -> None
     assert "python scripts/goal006_registry_manifest.py" in workflow
     assert "actions/attest-build-provenance@v2" in workflow
     assert "attestations: write" in workflow
-    assert "goal006-exact-six-release-${{ github.sha }}" in workflow
+    assert "goal006-exact-seven-release-${{ github.sha }}" in workflow
 
 
 def test_ci_has_deterministic_spec_and_fixable_vulnerability_gates() -> None:
@@ -84,8 +89,8 @@ def test_ci_has_deterministic_spec_and_fixable_vulnerability_gates() -> None:
 
 
 def test_release_images_are_non_root_and_expose_accepted_ports() -> None:
-    for _, (port, dockerfile) in RELEASE_MEMBERS.items():
-        content = (REPO_ROOT / dockerfile).read_text(encoding="utf-8")
+    for _, (port, context, dockerfile) in RELEASE_MEMBERS.items():
+        content = (REPO_ROOT / context / dockerfile).read_text(encoding="utf-8")
         assert "USER " in content
         assert "USER root" not in content
         assert f"EXPOSE {port}" in content

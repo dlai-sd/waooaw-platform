@@ -2,21 +2,21 @@
 
 **Office:** Solution Architect (INST-005)
 **Date:** 2026-09-10
-**Status:** FOUNDER ACCEPTED - ISSUE #437 IMPLEMENTATION/LOCAL BUILD AUTHORIZED; PROVIDER/CLOUD/DEPLOYMENT PROHIBITED
+**Status:** FOUNDER ACCEPTED - EXACT-SEVEN DELIVERY CODE AUTHORIZED; PROVIDER/CLOUD MUTATION PROHIBITED
 **Work Contract:** WC-089
 **Release mapping:** DMA product/image Release 1 = `professionalVersion: 1.0.0`; current requirements/specification revision = `3.1`
-**Reference architecture:** six WAOOAW platform application images plus admitted agent images
+**Reference architecture:** seven first-party release images, including DMA Release 1
 **Constitutional basis:** C-001, C-023, C-026, C-035, C-049, C-059, C-065, C-071, C-079
 
 ## 1. Decision In Plain English
 
-WAOOAW remains a stable governed platform of six application images. Each professional type and
-version is packaged as one separately admitted immutable image. The image is reusable executable
+WAOOAW Release 1 contains six platform application images and DMA as a seventh permanent first-party
+release workload. Each professional type and version remains separately admitted. The image is reusable executable
 behavior; it is not a customer, employment, subscription, trial, or durable agent identity.
 
-The admitted professional image is an Agent Runtime Adapter workload artifact outside the exact-six
-platform release tuple. It neither becomes a seventh platform application image nor changes the
-membership, promotion, or rollback semantics of that tuple.
+The admitted DMA image participates in the exact-seven release tuple and therefore shares its build,
+promotion, verification and rollback lifecycle. Release membership does not grant DMA platform
+authority or weaken its separate admission and activation controls.
 
 Each customer trial or hire creates a separate platform-owned Employment Relationship and immutable
 `agentInstanceId`. That instance binds the customer, tenant, contract, goals, selected Skill versions,
@@ -25,8 +25,8 @@ instances may safely use replicas of the same admitted image digest, but no stat
 instances.
 
 ```text
-SIX GOVERNED PLATFORM IMAGES
-  + one admitted DMA type/version image and digest
+SEVEN GOVERNED RELEASE IMAGES
+  including one admitted DMA type/version image and digest
       + customer A trial instance (relationship A, agent instance A)
       + customer B hired instance (relationship B, agent instance B)
       + customer C hired instance (relationship C, agent instance C)
@@ -67,7 +67,7 @@ accounts, spend money, manage advertisements, or carry Production traffic.
 | Usage and economics | WBE | Reservation, metering, attribution and reconciliation facts | Professional execution or customer authority |
 | DMA domain behavior | Admitted DMA image | Skill 0/1/2 logic and admitted domain input/output interpretation | Admission, identity, billing truth, evidence acceptance or platform lifecycle |
 
-No seventh shared platform service is introduced. DMA is an admitted workload behind Professional
+No new shared platform authority is introduced. DMA is the seventh first-party release workload behind Professional
 Runtime's private Agent Runtime Adapter port established by WC-080 and ADR-049. Its isolated
 deployment is resolved by the exact `professionalTypeId + professionalVersion + artifactDigest`
 tuple; it is not a new platform service or a customer-owned deployment.
@@ -89,7 +89,7 @@ content.
 | Professional version | One immutable admitted release | type + SemVer + admission digest | Release 1 is `1.0.0`; never changed in place |
 | Requirements/specification revision | One reviewed design revision | specification ID + revision + source commit | May differ from professional version; DMA `3.1` maps to Release 1 without re-versioning it |
 | Image | One exact OCI artifact in each active admission snapshot | immutable OCI digest, verified signature and provenance attestation | Build identity, source commit, SBOM, conformance evidence, admission and the runtime-reported digest must form one verifiable chain; tags are never authority |
-| Adapter deployment | One isolated deployment per admitted type + version + digest tuple | activation-registry binding + distinct workload identity | Outside the exact-six platform release tuple; never shared across artifacts |
+| Adapter deployment | One isolated deployment per admitted type + version + digest tuple | activation-registry binding + distinct workload identity | DMA Release 1 is inside the exact-seven release tuple; never shared across artifacts |
 | Replica | Zero or more runtime copies within one adapter deployment | workload identity + deployment identity | Ephemeral and interchangeable; never a customer identity |
 | Agent instance | One per customer Employment Relationship | immutable `agentInstanceId` | Customer-specific durable boundary |
 | Invocation | One logical work attempt | `invocationId` + idempotency identity | Replayable; never duplicated on ambiguity |
@@ -158,7 +158,7 @@ Skills 0/1/2 with distinct profiles and outputs, stop one instance without affec
 requests without duplicate work or usage, and observe evidence and usage attributed to the correct
 instance. The platform must then validate a non-executable additive future-Skill contract fixture
 without adding a new platform service, changing shared runtime lifecycle semantics, expanding the
-exact-six release tuple, or redeploying an unrelated platform image.
+exact-seven release tuple, or redeploying an unrelated platform image.
 
 ## 8. Non-Goals
 
@@ -169,7 +169,7 @@ exact-six release tuple, or redeploying an unrelated platform image.
 - One container or image per customer instance.
 - Shared multi-professional process hosting or remote third-party agent hosting.
 - DMA-specific branches in Professional Runtime, Constitutional Engine, WBE or identity services.
-- New microservices, new business capabilities or changes to the six-image reference architecture.
+- New shared platform authorities, new business capabilities or release members beyond the accepted exact-seven tuple.
 
 ## 9. Consequences
 

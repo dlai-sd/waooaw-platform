@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify live Azure Container Apps equal one GOAL-006 exact-six release tuple."""
+"""Verify live Azure Container Apps equal one GOAL-006 exact-seven release tuple."""
 
 from __future__ import annotations
 
@@ -14,6 +14,12 @@ from goal006_registry_manifest import RELEASE_MEMBERS, validate_registry_manifes
 KEYCLOAK_IMAGE = "quay.io/keycloak/keycloak@sha256:82c5b7a110456dbd42b86ea572e728878549954cc8bd03cd65410d75328095d2"
 IDENTITY_EDGE_IMAGE = "nginxinc/nginx-unprivileged@sha256:62a904036bfc0e4a4f2b556e34cbf17bc136b47fde8cdb4628762725f48c5782"
 DEMO_TEMPORAL_IMAGE = "temporalio/auto-setup@sha256:98cdb6b5e02d64cb933864a9ba91cb66065eb320623a0dafdf44beba535bca88"
+DMA_MEMBER = "agent-runtime-adapter-digital-marketing"
+
+
+def release_app_name(environment: str, member: str) -> str:
+    suffix = "dma" if member == DMA_MEMBER else member
+    return f"ca-{environment}-{suffix}"
 
 
 def expected_dependencies(environment: str) -> dict[str, str]:
@@ -31,7 +37,10 @@ def validate_inventory(environment: str, manifest: Mapping[str, Any], inventory:
     if environment not in {"demo", "uat", "prod"}:
         violations.append("ENVIRONMENT_INVALID")
         return sorted(set(violations))
-    expected = {f"ca-{environment}-{member}": image for member, image in manifest.get("images", {}).items()}
+    expected = {
+        release_app_name(environment, member): image
+        for member, image in manifest.get("images", {}).items()
+    }
     expected.update(expected_dependencies(environment))
     actual: dict[str, Mapping[str, Any]] = {}
     for item in inventory:

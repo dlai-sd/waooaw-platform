@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create and validate an exact-six immutable GOAL-006 registry manifest."""
+"""Create and validate an exact-seven immutable GOAL-006 registry manifest."""
 
 from __future__ import annotations
 
@@ -12,7 +12,15 @@ from pathlib import Path
 from typing import Any
 
 RELEASE_MEMBERS = frozenset(
-    {"constitutional-engine", "business-platform", "professional-runtime", "ai-runtime", "web", "billing-engine"}
+    {
+        "agent-runtime-adapter-digital-marketing",
+        "constitutional-engine",
+        "business-platform",
+        "professional-runtime",
+        "ai-runtime",
+        "web",
+        "billing-engine",
+    }
 )
 DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 HEX_DIGEST_PATTERN = re.compile(r"^[0-9a-f]{64}$")
@@ -189,14 +197,14 @@ def create_registry_manifest(
 ) -> dict[str, Any]:
     digest_files = {path.stem: path for path in digest_directory.glob("*.digest")}
     if set(digest_files) != RELEASE_MEMBERS:
-        raise ValueError("digest directory must contain exactly the six release-member digest files")
+        raise ValueError("digest directory must contain exactly the seven release-member digest files")
     images = {
         member: f"ghcr.io/dlai-sd/{member}@{digest_files[member].read_text(encoding='utf-8').strip()}"
         for member in sorted(RELEASE_MEMBERS)
     }
     scan_files = {path.stem.removeprefix("trivy-"): path for path in evidence_directory.glob("trivy-*.sarif")}
     if set(scan_files) != RELEASE_MEMBERS:
-        raise ValueError("evidence directory must contain exactly the six release-member SARIF files")
+        raise ValueError("evidence directory must contain exactly the seven release-member SARIF files")
     sbom_files = {
         path.name.removesuffix(".sbom.json"): path for path in evidence_directory.glob("*.sbom.json")
     }
@@ -213,7 +221,7 @@ def create_registry_manifest(
         or set(provenance_files) != RELEASE_MEMBERS
         or set(signature_files) != RELEASE_MEMBERS
     ):
-        raise ValueError("evidence directory must contain exactly six registry SBOM, provenance and signature files")
+        raise ValueError("evidence directory must contain exactly seven registry SBOM, provenance and signature files")
     for member in RELEASE_MEMBERS:
         _validate_scan(scan_files[member])
         _validate_sbom(sbom_files[member])

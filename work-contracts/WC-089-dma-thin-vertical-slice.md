@@ -2,7 +2,7 @@
 
 **Office:** Solution Architect (INST-005), then Platform IT Expert (INST-010) only after implementation authorization
 **Assigned by:** Founder instruction, 2026-09-10
-**Status:** FOUNDER ACCEPTED - IMPLEMENTATION AND LOCAL CANDIDATE BUILD AUTHORIZED FOR 2026-09-15 SESSION; PROVIDER/CLOUD/DEPLOYMENT PROHIBITED
+**Status:** FOUNDER ACCEPTED - EXACT-SEVEN RELEASE/DEPLOYMENT CODE AND LOCAL DOCKER VALIDATION AUTHORIZED FOR 2026-09-15 SESSION; PROVIDER/CLOUD MUTATION PROHIBITED
 **Design direction:** Founder instruction, 2026-09-15 - first product/image release remains Release 1; requirements/specification revisions are independent
 **Implementation issue:** GitHub Issue #437 on branch `ib/089/dma-release-1`
 **Delivery unit:** One admitted DMA Release 1 image (`professionalVersion: 1.0.0`), customer-specific instances, Skills 0/1/2, generic hosting closures, conformance, qualification and Founder-ready PR
@@ -13,11 +13,11 @@
 
 ## Authority And Scope
 
-The Founder accepted the revised plan and authorized repository implementation plus local candidate
-image build in the 2026-09-15 session. Authority is bound to Issue #437, Release 1 / version `1.0.0`,
-the named branch, paths, tests, fixtures and local Docker qualification. It does not authorize
-provider access, expenditure, cloud/environment mutation, deployment, DNS, customer traffic, UAT,
-Production, PR approval or merge.
+The Founder accepted the revised plan and authorized repository implementation, exact-seven release
+and deployment workflow changes, Terraform changes, observability, and local Docker qualification in
+the 2026-09-15 session. Authority is bound to WC-089, Release 1 / version `1.0.0`, the named branch,
+paths, tests and fixtures. It does not authorize provider access, expenditure, cloud/environment
+mutation, deployment execution, DNS, customer traffic, UAT, Production, PR approval or merge.
 
 The implementing Platform IT Expert must validate every controlling-plan entry gate before touching
 runnable paths. This session's explicit authority satisfies the per-session authorization gate only
@@ -61,8 +61,19 @@ Release 1 must prove all of the following as one coherent customer outcome:
    prior admitted relationships.
 
 Close only reusable hosting gaps required by this journey so later Skills and professional types can
-be admitted through additive releases rather than shared-platform redesign. The DMA adapter remains a
-private workload outside the exact-six platform release tuple, not a seventh platform service.
+be admitted through additive releases rather than shared-platform redesign. The DMA adapter is the
+seventh permanent first-party release workload and remains a private service behind Professional
+Runtime. It does not acquire platform authority or customer identity by joining the atomic tuple.
+
+## 2026-09-15 Exact-Seven Deployment Amendment
+
+Founder direction supersedes the earlier independent-image deployment model for Release 1. CI must
+build, scan, attest and sign DMA with the six existing images; promotion, live inventory, verification
+and rollback treat all seven immutable digests as one release. Terraform deploys DMA as the private
+`ca-<environment>-dma` Container App, binds its admitted content and image digests, reuses the
+Professional Runtime service credential, and sends privacy-minimized stdout/stderr telemetry through
+the existing Container Apps Log Analytics integration. This amendment changes deployment membership,
+not professional admission, Skill versioning, tenant isolation or platform ownership.
 
 ## Product, Specification And Image Version Contract
 

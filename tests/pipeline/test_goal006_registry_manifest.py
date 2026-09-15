@@ -99,7 +99,7 @@ def test_missing_or_additional_digest_file_is_rejected(tmp_path: Path) -> None:
     write_digests(tmp_path)
     write_evidence(tmp_path)
     (tmp_path / "web.digest").unlink()
-    with pytest.raises(ValueError, match="exactly the six"):
+    with pytest.raises(ValueError, match="exactly the seven"):
         create_registry_manifest(tmp_path, tmp_path, "a" * 40, "12345")
 
 
@@ -154,7 +154,7 @@ def test_missing_registry_attestation_content_is_rejected(tmp_path: Path) -> Non
     write_digests(tmp_path)
     write_evidence(tmp_path)
     (tmp_path / "web.sbom.json").unlink()
-    with pytest.raises(ValueError, match="exactly six registry SBOM, provenance and signature files"):
+    with pytest.raises(ValueError, match="exactly seven registry SBOM, provenance and signature files"):
         create_registry_manifest(tmp_path, tmp_path, "a" * 40, "12345")
 
 

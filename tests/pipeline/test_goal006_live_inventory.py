@@ -6,6 +6,7 @@ from goal006_live_inventory import (
     DEMO_TEMPORAL_IMAGE,
     IDENTITY_EDGE_IMAGE,
     KEYCLOAK_IMAGE,
+    release_app_name,
     validate_inventory,
 )
 from goal006_registry_manifest import RELEASE_MEMBERS
@@ -53,7 +54,7 @@ def manifest() -> dict[str, Any]:
 
 def inventory(environment: str, release: dict[str, Any]) -> list[dict[str, str]]:
     live = [
-        {"name": f"ca-{environment}-{member}", "image": image, "provisioningState": "Succeeded"}
+        {"name": release_app_name(environment, member), "image": image, "provisioningState": "Succeeded"}
         for member, image in release["images"].items()
     ]
     live.append(
@@ -81,11 +82,12 @@ def inventory(environment: str, release: dict[str, Any]) -> list[dict[str, str]]
     return live
 
 
-def test_exact_six_and_pinned_environment_dependencies_pass() -> None:
+def test_exact_seven_and_pinned_environment_dependencies_pass() -> None:
     release = manifest()
     assert validate_inventory("demo", release, inventory("demo", release)) == []
     assert validate_inventory("uat", release, inventory("uat", release)) == []
     assert validate_inventory("prod", release, inventory("prod", release)) == []
+    assert release_app_name("demo", "agent-runtime-adapter-digital-marketing") == "ca-demo-dma"
 
 
 def test_demo_temporal_is_required_and_digest_pinned() -> None:
