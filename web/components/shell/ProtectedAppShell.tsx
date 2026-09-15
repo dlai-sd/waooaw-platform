@@ -28,16 +28,19 @@ export function ProtectedAppShell({ children, identitySession, locale = 'en', me
   variant: ProtectedVariant;
 }) {
   const portal = portalMessages[locale];
-  const customerLinks = [
-    { href: '/home', label: portal.myAgents, icon: Bot },
-    { href: '/marketplace', label: portal.marketplace, icon: Store },
-    { href: '/alerts', label: portal.alerts, icon: Bell },
-    { href: '/settings', label: messages.settings, icon: Settings },
-  ];
+  const registeredCustomer = identitySession !== undefined;
+  const customerLinks = registeredCustomer
+    ? [
+        { href: '/professionals/mine', label: portal.myAgents, icon: Bot },
+        { href: '/marketplace', label: portal.marketplace, icon: Store },
+        { href: '/alerts', label: portal.alerts, icon: Bell },
+        { href: '/settings', label: messages.settings, icon: Settings },
+      ]
+    : [{ href: '/marketplace', label: portal.marketplace, icon: Store }];
   const links = variant === 'founder'
     ? [{ href: '/founder', label: messages.founderHome, icon: ShieldCheck }]
     : customerLinks;
-  const accountDrawer = variant === 'customer' ? <details className="account-drawer"><summary className="icon-command" aria-label="Account"><CircleUserRound aria-hidden="true" size={20} /></summary><div><p className="section-label">Account</p><Link href="/profile"><UserRound aria-hidden="true" size={18} />Profile</Link><Link href="/profile#billing"><CreditCard aria-hidden="true" size={18} />Billing</Link><Link href="/settings"><Settings aria-hidden="true" size={18} />Settings</Link><AccountSwitchCommand label="Switch account" /><SignOutCommand label="Sign out" /></div></details> : null;
+  const accountDrawer = variant === 'customer' ? <details className="account-drawer"><summary className="icon-command" aria-label="Account"><CircleUserRound aria-hidden="true" size={20} /></summary><div><p className="section-label">Account</p>{registeredCustomer ? <><Link href="/profile"><UserRound aria-hidden="true" size={18} />Profile</Link><Link href="/profile#billing"><CreditCard aria-hidden="true" size={18} />Billing</Link><Link href="/settings"><Settings aria-hidden="true" size={18} />Settings</Link></> : null}<AccountSwitchCommand label="Switch account" /><SignOutCommand label="Sign out" /></div></details> : null;
 
   const sideNavigation = (
     <aside className="side-navigation">
@@ -54,9 +57,9 @@ export function ProtectedAppShell({ children, identitySession, locale = 'en', me
         <Link href="/founder"><ShieldCheck aria-hidden="true" size={21} /><span>{messages.founderHome}</span></Link>
       ) : (
         <>
-          <Link href="/home"><Bot aria-hidden="true" size={21} /><span>{portal.myAgents}</span></Link>
+          {registeredCustomer ? <Link href="/professionals/mine"><Bot aria-hidden="true" size={21} /><span>{portal.myAgents}</span></Link> : null}
           <Link href="/marketplace"><Store aria-hidden="true" size={21} /><span>{portal.marketplace}</span></Link>
-          <Link href="/alerts"><Bell aria-hidden="true" size={21} /><span>{portal.alerts}</span></Link>
+          {registeredCustomer ? <Link href="/alerts"><Bell aria-hidden="true" size={21} /><span>{portal.alerts}</span></Link> : null}
         </>
       )}
     </nav>

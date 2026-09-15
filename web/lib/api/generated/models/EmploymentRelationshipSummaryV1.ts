@@ -91,6 +91,12 @@ export interface EmploymentRelationshipSummaryV1 {
    */
   lifecycleState: EmploymentRelationshipState;
   /**
+   * Authoritative reconciled trial status; clients must not derive expiry from local time.
+   * @type {string}
+   * @memberof EmploymentRelationshipSummaryV1
+   */
+  trialStatus?: EmploymentRelationshipSummaryV1TrialStatusEnum;
+  /**
    *
    * @type {string}
    * @memberof EmploymentRelationshipSummaryV1
@@ -127,6 +133,19 @@ export interface EmploymentRelationshipSummaryV1 {
    */
   resumeTarget: CustomerPortalDestinationV1;
 }
+
+/**
+ * @export
+ */
+export const EmploymentRelationshipSummaryV1TrialStatusEnum = {
+  Pending: "PENDING",
+  Active: "ACTIVE",
+  Expired: "EXPIRED",
+  Converted: "CONVERTED",
+  Unresolved: "UNRESOLVED",
+} as const;
+export type EmploymentRelationshipSummaryV1TrialStatusEnum =
+  (typeof EmploymentRelationshipSummaryV1TrialStatusEnum)[keyof typeof EmploymentRelationshipSummaryV1TrialStatusEnum];
 
 /**
  * @export
@@ -204,6 +223,7 @@ export function EmploymentRelationshipSummaryV1FromJSONTyped(
         : json["professionalVersion"],
     professionalDisplayName: json["professionalDisplayName"],
     lifecycleState: EmploymentRelationshipStateFromJSON(json["lifecycleState"]),
+    trialStatus: json["trialStatus"] == null ? undefined : json["trialStatus"],
     currentGoalSummary:
       json["currentGoalSummary"] == null
         ? undefined
@@ -244,6 +264,7 @@ export function EmploymentRelationshipSummaryV1ToJSONTyped(
     professionalVersion: value["professionalVersion"],
     professionalDisplayName: value["professionalDisplayName"],
     lifecycleState: EmploymentRelationshipStateToJSON(value["lifecycleState"]),
+    trialStatus: value["trialStatus"],
     currentGoalSummary: value["currentGoalSummary"],
     unreadState: value["unreadState"],
     availabilityState: EmploymentRelationshipAvailabilityStateV1ToJSON(

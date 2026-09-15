@@ -8,7 +8,7 @@ describe('safe return targets', () => {
     expect(safeReturnTarget(target)).toBe('/home');
   });
 
-  it.each(['/home', '/settings', '/professionals/mine', '/relationships/8f6f7550-98c7-4a8f-bd63-36f07ee15c9d'])('accepts %s', (target) => {
+  it.each(['/home', '/marketplace', '/marketplace?professionalType=DIGITAL_MARKETING&version=3.1.0&intent=trial', '/settings', '/professionals/mine', '/relationships/8f6f7550-98c7-4a8f-bd63-36f07ee15c9d'])('accepts %s', (target) => {
     expect(safeReturnTarget(target)).toBe(target);
   });
 });

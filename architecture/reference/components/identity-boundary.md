@@ -100,7 +100,8 @@ machine; successful broker return must not replace the modal with an unrelated p
 LOGIN
   provider selection -> Keycloak broker -> resolve current membership
   -> existing active account: establish session -> close modal -> safe target
-  -> no active account: offer explicit "Create account" transition; never auto-register
+  -> no active account: establish authenticated visitor access -> Marketplace; never auto-register
+  -> visitor selects Trial or Hire: start/resume registration inside the authenticated application
   -> insufficient assurance/dependency failure: remain in modal with bounded recovery
 
 REGISTER
@@ -114,7 +115,9 @@ REGISTER
 The server uses typed outcomes, not overloaded HTTP status interpretation, to distinguish
 `ACCOUNT_SESSION_READY`, `REGISTRATION_REQUIRED`, `ASSURANCE_REQUIRED`, `ACTION_DENIED` and
 `DEPENDENCY_UNAVAILABLE`. A valid pre-account actor with no membership is
-`REGISTRATION_REQUIRED`; an assurance or policy denial is not evidence that the account is absent.
+`REGISTRATION_REQUIRED` for membership-scoped APIs, but remains an authenticated visitor for
+approved actor-scoped reads such as Marketplace. Trial or Hire is the explicit transition into
+registration; an assurance or policy denial is not evidence that the account is absent.
 The UI may preserve only locale, safe target and non-secret registration draft while switching
 intent. Provider tokens, authorization codes, state, nonce, PKCE material and verification codes
 remain server-bound and are never logged or copied into application URLs.
@@ -212,7 +215,7 @@ subscription/employment, multi-workspace selector, role-management or additional
 | `startIdentityRegistration` | Validated exact actor; returning active binding reuses the same account/tenant, never latest registration or email. A different actor matching an existing stable Google key is unresolved recovery, not automatic rebinding. |
 | `getIdentityRegistration` | Actor-scoped observational read. Before commit existing pending states apply; after commit `COMPLETED` / `CONTINUE_TO_DEFAULT_TARGET`. Foreign/absent/inactive actor access is normalized `404`. |
 | `completeIdentityRegistration` | Verified Google session/email, stored minimum profile/language, fresh authentication and exact server-read broker proof. In ONE PostgreSQL transaction persist/reuse account, canonical organisation, initial ACTIVE OWNER membership, actor/login/proof, registration association, fixed outcome, existing idempotency result and required evidence. Only then `200 IdentityCompletion`; no token/tenant response or extra body. |
-| `getIdentitySession` | SAME still-valid Keycloak token is sufficient; resolve current membership by exact issuer/subject, return existing account reference/current roles/capabilities. No signed tenant anchor, publication status or refresh prerequisite. No membership gives privacy-safe `403`; lookup failure gives `503`, never fallback. |
+| `getIdentitySession` | SAME still-valid Keycloak token is sufficient; resolve current membership by exact issuer/subject, return existing account reference/current roles/capabilities. No signed tenant anchor, publication status or refresh prerequisite. No membership gives typed `409 REGISTRATION_REQUIRED`; the web may retain authenticated visitor access only to separately approved actor-scoped reads. Lookup failure gives `503`, never fallback. |
 
 Serialize competing completions on actor/provider/registration and enforce unique actor and stable
 provider keys. Same key/hash replays its immutable result after access checks; different hash is

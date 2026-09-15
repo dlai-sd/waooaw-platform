@@ -1,7 +1,6 @@
 // Implements: work-contracts/WC-083-route-backed-auth-dialog.md §Milestone 1
 // Constitutional basis: C-059 (Implementation Traceability)
 
-import Link from 'next/link';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { AuthBrand } from '@/components/auth/AuthBrand';
@@ -22,21 +21,13 @@ export async function LoginView({ searchParams }: { searchParams?: Promise<{ ret
     const accessToken = await getServerAccessToken();
     const identity = accessToken ? await getIdentitySession(accessToken) : { kind: 'unauthorized' as const };
     if (identity.kind === 'ready') redirect(returnTo);
-    if (identity.kind === 'registration-required') {
-      return (
-        <section className="auth-view auth-entry-view">
-          <AuthBrand subtitle="Welcome back." title="Log in to WAOOAW" />
-          <p className="auth-switch">{messages.newToWaaoaw} <Link href={`/register?returnTo=${encodeURIComponent(returnTo)}`}>{messages.createAccount}</Link></p>
-        </section>
-      );
-    }
+    if (identity.kind === 'registration-required') redirect('/marketplace');
   }
   const providers = await listIdentityProviders();
   return (
     <section className="auth-view auth-entry-view">
       <AuthBrand subtitle="Welcome back." title="Log in to WAOOAW" />
       <ProviderCommands callbackUrl={callbackUrl} intent="login" providers={providers} />
-      <p className="auth-switch">{messages.newToWaaoaw} <Link href={`/register?returnTo=${encodeURIComponent(returnTo)}`}>{messages.createAccount}</Link></p>
     </section>
   );
 }

@@ -163,6 +163,7 @@ public sealed record EmploymentRelationshipSummaryResponse(
     string? ProfessionalVersion,
     string ProfessionalDisplayName,
     string LifecycleState,
+    string? TrialStatus,
     string? CurrentGoalSummary,
     string UnreadState,
     string AvailabilityState,
@@ -238,7 +239,7 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         {
             var page = await _service.ListAuthorizedAsync(
                 tenantId, participantId, cursor, limit, cancellationToken);
-            var items = page.Items.Select(item => ToPortalSummary(item.Relationship, item.CurrentGoalSummary)).ToArray();
+            var items = page.Items.Select(item => ToPortalSummary(item.Relationship, item.CurrentGoalSummary, item.TrialStatus)).ToArray();
             return Ok(new EmploymentRelationshipCollectionResponse(
                 "1.0.0",
                 DateTimeOffset.UtcNow,
@@ -937,7 +938,8 @@ public sealed class EmploymentRelationshipsController : ControllerBase
 
     private static EmploymentRelationshipSummaryResponse ToPortalSummary(
         EmploymentRelationship relationship,
-        string? currentGoalSummary)
+        string? currentGoalSummary,
+        string? trialStatus)
     {
         var availability = relationship.State switch
         {
@@ -969,6 +971,7 @@ public sealed class EmploymentRelationshipsController : ControllerBase
             relationship.ProfessionalVersion,
             relationship.ProfessionalType,
             RelationshipStateCodec.ToDatabase(relationship.State),
+            trialStatus,
             currentGoalSummary,
             unreadState,
             availability,

@@ -12,7 +12,8 @@ public sealed record AdmitRelationshipResult(EmploymentRelationship Relationship
 
 public sealed record EmploymentRelationshipListItem(
     EmploymentRelationship Relationship,
-    string? CurrentGoalSummary);
+    string? CurrentGoalSummary,
+    string? TrialStatus);
 
 public sealed record EmploymentRelationshipListPage(
     IReadOnlyList<EmploymentRelationshipListItem> Items,
@@ -348,10 +349,14 @@ public sealed class EmploymentRelationshipService
             .Where(value => value.TenantId == tenantId && selectedIds.Contains(value.RelationshipId))
             .OrderByDescending(value => value.UpdatedAt)
             .ToListAsync(cancellationToken);
+        var trialStatuses = await db.RelationshipTrialBindings.AsNoTracking()
+            .Where(value => value.TenantId == tenantId && selectedIds.Contains(value.RelationshipId))
+            .ToDictionaryAsync(value => value.RelationshipId, value => value.Status, cancellationToken);
         var items = selected.Select(relationship => new EmploymentRelationshipListItem(
             relationship,
             goals.FirstOrDefault(goal => goal.RelationshipId == relationship.RelationshipId
-                && goal.Status is not ("RETIRED" or "SUPERSEDED"))?.Goal)).ToArray();
+                && goal.Status is not ("RETIRED" or "SUPERSEDED"))?.Goal,
+            trialStatuses.GetValueOrDefault(relationship.RelationshipId))).ToArray();
         var nextCursor = page.Length > limit
             ? Convert.ToBase64String(Encoding.UTF8.GetBytes(selected[^1].RelationshipId.ToString()))
             : null;

@@ -357,7 +357,7 @@ export class ProfessionalsApi extends runtime.BaseAPI {
   }
 
   /**
-   * Returns a paginated marketplace projection for published and currently offerable professionals. Suitability, offerability, pricing source, and next action are server-owned. The browser may filter presentation only; it must not invent eligibility or price.
+   * Returns a paginated marketplace projection for published and currently offerable professionals. Suitability, offerability, pricing source, and next action are server-owned. The browser may filter presentation only; it must not invent eligibility or price. A validated customer OAuth identity is required, but customer registration, workspace membership, and tenant derivation are not. This read creates no customer, membership, relationship, trial, subscription, or payment record.
    * Browse the customer portal marketplace
    */
   async browseMarketplaceProfessionalsRaw(
@@ -412,7 +412,7 @@ export class ProfessionalsApi extends runtime.BaseAPI {
   }
 
   /**
-   * Returns a paginated marketplace projection for published and currently offerable professionals. Suitability, offerability, pricing source, and next action are server-owned. The browser may filter presentation only; it must not invent eligibility or price.
+   * Returns a paginated marketplace projection for published and currently offerable professionals. Suitability, offerability, pricing source, and next action are server-owned. The browser may filter presentation only; it must not invent eligibility or price. A validated customer OAuth identity is required, but customer registration, workspace membership, and tenant derivation are not. This read creates no customer, membership, relationship, trial, subscription, or payment record.
    * Browse the customer portal marketplace
    */
   async browseMarketplaceProfessionals(

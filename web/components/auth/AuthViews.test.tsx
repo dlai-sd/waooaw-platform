@@ -56,7 +56,7 @@ describe('authentication views', () => {
     expect(screen.getByText('Welcome back.')).toBeInTheDocument();
     expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-callback-url', '/login?returnTo=%2Fhome');
     expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-intent', 'login');
-    expect(screen.getByRole('link', { name: 'Create account' })).toHaveAttribute('href', '/register?returnTo=%2Fhome');
+    expect(screen.queryByRole('link', { name: 'Create account' })).not.toBeInTheDocument();
   });
 
   it('preserves a safe protected target through registration', async () => {
@@ -65,15 +65,16 @@ describe('authentication views', () => {
     expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-callback-url', '/login?returnTo=%2Fsettings');
   });
 
-  it('requires an explicit registration transition when login finds no account', async () => {
+  it('continues an authenticated visitor to Marketplace without registration', async () => {
     jest.mocked(getServerSession).mockResolvedValue({ authenticated: true } as never);
     jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
     jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'registration-required' });
 
-    render(await LoginView({ searchParams: Promise.resolve({ returnTo: '/settings' }) }));
+    await expect(LoginView({ searchParams: Promise.resolve({ returnTo: '/settings' }) }))
+      .rejects.toThrow('NEXT_REDIRECT');
 
-    expect(screen.queryByTestId('provider-commands')).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Create account' })).toHaveAttribute('href', '/register?returnTo=%2Fsettings');
+    expect(redirect).toHaveBeenCalledWith('/marketplace');
+    expect(listIdentityProviders).not.toHaveBeenCalled();
   });
 
   it('falls back to provider login when an authenticated broker session has no access token', async () => {

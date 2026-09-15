@@ -48,14 +48,21 @@ The controlling terminology decision is:
 
 ### 3.1 Authentication, assurance, and tenant derivation
 
-- Public portal reads require the authenticated Keycloak customer session unless the existing
-  operation is explicitly anonymous.
+- Marketplace detail reads require a validated Keycloak identity but do not require customer
+  registration, workspace membership, or tenant derivation. All profile, settings, alerts,
+  relationship, billing, goal, performance, and operational reads remain membership scoped.
+- Login establishes an authenticated visitor and performs no customer, organisation, membership,
+  trial, employment, subscription, or payment write. Registration begins only after an explicit
+  Trial or Hire decision and is completed inside the authenticated application shell.
 - `AAL2_ACCOUNT` is the default authenticated floor for portal reads.
 - `AAL3_FRESH` is required only where the accepted identity or security contracts already require it,
   including login-method change, hiring, account linking, sensitive security action, or an owner
   declared consequential mutation.
 - Tenant identity is always derived from the validated session/JWT and never from path, body, query,
   local storage, or adapter state.
+- Trial expiry changes relationship entitlement, not login or account existence. Expired
+  relationships remain listed in My Agents with their authorized billing, goals, and performance
+  history; the canonical lifecycle representation requires a separate additive contract change.
 
 ### 3.2 Idempotency and conflict
 
