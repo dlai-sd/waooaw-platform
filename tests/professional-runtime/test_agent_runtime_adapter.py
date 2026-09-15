@@ -246,9 +246,7 @@ def test_two_tenants_complete_release_one_skill_sequence_on_one_digest_without_c
         research = execute(
             "MARKET_RESEARCH",
             {
-                "sources": [
-                    {"sourceId": source_id, "url": f"https://{source_id}.example/market", "observedAt": "2026-09-15"}
-                ],
+                "sources": [{"sourceId": source_id, "url": f"https://{source_id}.example/market", "observedAt": "2026-09-15"}],
                 "claims": [{"claim": f"Evidence for {business_name}.", "sourceId": source_id}],
                 "maturitySignals": {"website": 2},
                 "unavailableProviders": [],
@@ -295,9 +293,7 @@ def test_cancel_and_emergency_stop_preempt_active_work_under_250ms() -> None:
     request = envelope(descriptor)
     other_tenant = envelope(descriptor, tenant_ref="tenant-opaque-2")
     worker = threading.Thread(target=adapter.execute, args=(request, {"inputReference": "opaque-input-1"}))
-    other_worker = threading.Thread(
-        target=adapter.execute, args=(other_tenant, {"inputReference": "opaque-input-2"})
-    )
+    other_worker = threading.Thread(target=adapter.execute, args=(other_tenant, {"inputReference": "opaque-input-2"}))
     worker.start()
     other_worker.start()
     started.wait(timeout=2)

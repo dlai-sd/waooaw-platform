@@ -91,7 +91,9 @@ def test_work_revisions_preserve_instance_binding_and_tenant_isolation() -> None
     )
 
     store.record_work(TENANT, RELATIONSHIP_ID, item)
-    store.record_work(TENANT, RELATIONSHIP_ID, item.model_copy(update={"revision": 2, "state": "SUCCEEDED", "result_ref": "result-2"}))
+    store.record_work(
+        TENANT, RELATIONSHIP_ID, item.model_copy(update={"revision": 2, "state": "SUCCEEDED", "result_ref": "result-2"})
+    )
 
     projection = store.projection(TENANT, RELATIONSHIP_ID)
     assert projection.items[0].revision == 2

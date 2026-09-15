@@ -46,9 +46,7 @@ def test_profile_never_promotes_inference_to_confirmed_fact() -> None:
 
 def test_research_requires_citations_and_discloses_partial_sources() -> None:
     payload = {
-        "sources": [
-            {"sourceId": "source-1", "url": "https://public.example/market", "observedAt": "2026-09-15"}
-        ],
+        "sources": [{"sourceId": "source-1", "url": "https://public.example/market", "observedAt": "2026-09-15"}],
         "claims": [{"claim": "Demand is seasonal.", "sourceId": "source-1"}],
         "maturitySignals": {"website": 2, "directory": 1},
         "unavailableProviders": ["public-directory-simulator"],
