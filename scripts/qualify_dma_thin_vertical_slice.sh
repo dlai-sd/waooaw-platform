@@ -141,7 +141,8 @@ docker run --rm -v "$ROOT:/repo:ro" -v "$COMMON_GIT_DIR:$COMMON_GIT_DIR:ro" -v "
   --log-opts="$BASE_SHA..$HEAD_SHA" --report-format=json --report-path=/out/gitleaks-diff.json
 
 git diff --check "$BASE_SHA..$HEAD_SHA"
-sha256sum "$EVIDENCE_DIR"/*.json "$EVIDENCE_DIR"/*.log > "$EVIDENCE_DIR/report-hashes.sha256"
+find "$EVIDENCE_DIR" -maxdepth 1 -type f \( -name '*.json' -o -name '*.log' \) \
+  ! -name qualification.json -print0 | sort -z | xargs -0 sha256sum > "$EVIDENCE_DIR/report-hashes.sha256"
 FAILURE_CLASSIFICATION="none"
 RESULT="PASS"
 echo "WC-089 qualification PASS: $OUTPUT"
