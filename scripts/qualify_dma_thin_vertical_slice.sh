@@ -97,6 +97,7 @@ jq --arg head "$HEAD_SHA" --arg effective "$STARTED_AT" \
   tests/fixtures/dma-release-1/build-authority-valid.json > "$AUTHORITY_FILE"
 
 docker compose --profile test-python run --rm --user root \
+  -e PYTHONPATH=/workspace/src/agent-adapters \
   -e WC089_HEAD="$HEAD_SHA" -e WC089_IMAGE="$IMAGE" -e WC089_AUTHORITY="$CONTAINER_EVIDENCE_DIR/build-authority-effective.json" \
   test-runner-python python -c '
 import json, os, subprocess
