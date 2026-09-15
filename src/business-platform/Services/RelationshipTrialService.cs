@@ -108,7 +108,8 @@ public sealed class HttpRelationshipTrialOwnerGateway : IRelationshipTrialOwnerG
         try
         {
             var client = _httpClientFactory.CreateClient("WBE");
-            using var response = await client.GetAsync($"/trial/status/{customerId}", cancellationToken);
+            using var response = await client.GetAsync(
+                $"/trial/status/{customerId}?trial_id={trialId}", cancellationToken);
             if (!response.IsSuccessStatusCode) return null;
             using var document = await JsonDocument.ParseAsync(
                 await response.Content.ReadAsStreamAsync(cancellationToken), cancellationToken: cancellationToken);

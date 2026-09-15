@@ -45,6 +45,7 @@ export function hasFounderClaim(profile: unknown): boolean {
 
 export function activeAccessToken(token: JWT, nowSeconds = Math.floor(Date.now() / 1000)): string | undefined {
   return typeof token.accessToken === 'string'
+    && token.accessToken.trim().length > 0
     && typeof token.accessTokenExpiresAt === 'number'
     && token.accessTokenExpiresAt > nowSeconds
     ? token.accessToken
@@ -95,14 +96,17 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       id_token?: unknown;
     };
     if (typeof refreshed.access_token !== 'string'
+      || refreshed.access_token.trim().length === 0
       || typeof refreshed.expires_in !== 'number'
       || !Number.isFinite(refreshed.expires_in)
       || refreshed.expires_in <= 0) return purgeAuthentication(token);
 
     token.accessToken = refreshed.access_token;
     token.accessTokenExpiresAt = Math.floor(Date.now() / 1000) + refreshed.expires_in;
-    if (typeof refreshed.refresh_token === 'string') token.refreshToken = refreshed.refresh_token;
-    if (typeof refreshed.id_token === 'string') token.idToken = refreshed.id_token;
+    if (typeof refreshed.refresh_token === 'string' && refreshed.refresh_token.trim()) {
+      token.refreshToken = refreshed.refresh_token;
+    }
+    if (typeof refreshed.id_token === 'string' && refreshed.id_token.trim()) token.idToken = refreshed.id_token;
     token.founder = hasFounderClaim(accessTokenClaims(refreshed.access_token));
     return token;
   } catch {

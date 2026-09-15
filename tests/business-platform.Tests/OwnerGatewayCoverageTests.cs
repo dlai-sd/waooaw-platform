@@ -261,11 +261,16 @@ public sealed class OwnerGatewayCoverageTests(OwnerGatewayIdentityFixture fixtur
     public async Task TrialOwner_ReturnsCanonicalWbeStatus(string status)
     {
         var trialId = Guid.NewGuid();
+        HttpRequestMessage? capturedRequest = null;
         using var identity = fixture.CreateIdentity();
         using var gateway = new HttpRelationshipTrialOwnerGateway(
-            new StubClientFactory(Handler((_, _) => Json(HttpStatusCode.OK, $$"""
-                {"trial_id":"{{trialId:D}}","status":"{{status}}"}
-                """))),
+            new StubClientFactory(Handler((request, _) =>
+            {
+                capturedRequest = request;
+                return Json(HttpStatusCode.OK, $$"""
+                    {"trial_id":"{{trialId:D}}","status":"{{status}}"}
+                    """);
+            })),
             identity,
             new Uri("https://runtime.test"));
 
@@ -273,6 +278,7 @@ public sealed class OwnerGatewayCoverageTests(OwnerGatewayIdentityFixture fixtur
             Guid.NewGuid(), trialId, CancellationToken.None);
 
         Assert.Equal(status, result?.Status);
+        Assert.Equal($"?trial_id={trialId}", capturedRequest?.RequestUri?.Query);
     }
 
     [Fact]

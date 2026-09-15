@@ -4,7 +4,11 @@
 import { safePublicReturnTarget, safeReturnTarget } from './safe-return';
 
 describe('safe return targets', () => {
-  it.each(['https://attacker.test', '//attacker.test', '/api/auth/signout', '/founder', '/relationships/../founder'])('rejects %s', (target) => {
+  it.each([
+    'https://attacker.test', '//attacker.test', '/api/auth/signout', '/founder',
+    '/relationships/../founder', '/marketplace?code=secret', '/marketplace#access_token=secret',
+    '/marketplace?intent=delete', '/marketplace?intent=trial&intent=hire',
+  ])('rejects %s', (target) => {
     expect(safeReturnTarget(target)).toBe('/home');
   });
 

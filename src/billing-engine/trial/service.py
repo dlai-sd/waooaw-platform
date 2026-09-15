@@ -284,16 +284,25 @@ class TrialService:
     # get_status
     # ------------------------------------------------------------------
 
-    async def get_status(self, customer_id: uuid.UUID) -> TrialStatus | None:
-        """Return the most recent trial status for a customer, or None if no trial exists."""
+    async def get_status(
+        self,
+        customer_id: uuid.UUID,
+        trial_id: uuid.UUID | None = None,
+    ) -> TrialStatus | None:
+        """Return an exact trial status, or the customer's most recent trial when unspecified."""
         async with self._session_factory() as session:
+            trial_filter = "AND trial_id = :trial_id " if trial_id is not None else ""
+            parameters = {"cid": str(customer_id)}
+            if trial_id is not None:
+                parameters["trial_id"] = str(trial_id)
             result = await session.execute(
                 text(
                     "SELECT trial_id, agent_type, started_at, expires_at, status "
                     "FROM trial_allocations "
                     "WHERE customer_id = :cid "
+                    f"{trial_filter}"
                     "ORDER BY started_at DESC LIMIT 1"
-                ).bindparams(cid=str(customer_id))
+                ).bindparams(**parameters)
             )
             row = result.fetchone()
             if row is None:

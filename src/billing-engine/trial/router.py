@@ -108,9 +108,10 @@ async def start_trial(
 @router.get("/status/{customer_id}")
 async def get_trial_status(
     customer_id: uuid.UUID,
+    trial_id: uuid.UUID | None = None,
     service: TrialService = Depends(_get_trial_service),
 ) -> dict:
-    status = await service.get_status(customer_id)
+    status = await service.get_status(customer_id, trial_id)
     if status is None:
         raise HTTPException(status_code=404, detail={"code": "TRIAL_NOT_FOUND"})
     return {

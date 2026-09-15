@@ -35,6 +35,7 @@ describe('Browser session projection', () => {
     ['expired', { accessToken: 'secret-bearer-token', accessTokenExpiresAt: 100, founder: true }],
     ['missing expiry', { accessToken: 'secret-bearer-token', founder: true }],
     ['missing token', { accessTokenExpiresAt: 101, founder: true }],
+    ['blank token', { accessToken: '   ', accessTokenExpiresAt: 101, founder: true }],
   ])('fails closed for %s token state', (_scenario, token) => {
     expect(activeAccessToken(token, 100)).toBeUndefined();
     const session = projectSession({ expires: '2099-01-01', user: {} } as Session, token, 100);
@@ -137,6 +138,26 @@ describe('Browser session projection', () => {
 
     expect(token).not.toHaveProperty('accessToken');
     expect(token).not.toHaveProperty('accessTokenExpiresAt');
+    expect(token).not.toHaveProperty('refreshToken');
+    expect(token.founder).toBe(false);
+  });
+
+  it('purges authentication authority when Keycloak returns a blank access token', async () => {
+    Object.defineProperty(globalThis, 'fetch', {
+      configurable: true,
+      value: jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ access_token: '  ', expires_in: 300 }),
+      }),
+    });
+    const jwt = authOptions.callbacks?.jwt;
+
+    const token = await jwt!({
+      token: { accessToken: 'expired', accessTokenExpiresAt: 1, refreshToken: 'refresh', founder: true },
+      account: null,
+    } as never);
+
+    expect(token).not.toHaveProperty('accessToken');
     expect(token).not.toHaveProperty('refreshToken');
     expect(token.founder).toBe(false);
   });

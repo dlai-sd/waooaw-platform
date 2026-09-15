@@ -6,11 +6,11 @@ import 'server-only';
 import { headers } from 'next/headers';
 import { getToken } from 'next-auth/jwt';
 import type { NextRequest } from 'next/server';
-import { resolveAccessToken } from '@/lib/auth';
+import { activeAccessToken } from '@/lib/auth';
 
 export async function accessTokenFromRequest(request: NextRequest): Promise<string | undefined> {
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-  return token ? resolveAccessToken(token) : undefined;
+  return token ? activeAccessToken(token) : undefined;
 }
 
 export async function getServerAccessToken(): Promise<string | undefined> {
