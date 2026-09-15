@@ -13,12 +13,26 @@ public sealed record RelationshipOwnerContext(
     Guid TenantId,
     Guid RelationshipId,
     int RelationshipVersion,
-    string CorrelationId);
+    string CorrelationId,
+    Guid AgentInstanceId);
+
+public sealed record ExecutionOwnerWorkItem(
+    Guid WorkItemId,
+    Guid AgentInstanceId,
+    string SkillId,
+    string SkillVersion,
+    Guid InvocationId,
+    int Revision,
+    string State,
+    string Effect,
+    string? ResultRef,
+    DateTimeOffset UpdatedAt);
 
 public sealed record ExecutionOwnerProjection(
     string ProjectionVersion,
     string State,
-    DateTimeOffset ProducedAt);
+    DateTimeOffset ProducedAt,
+    IReadOnlyList<ExecutionOwnerWorkItem>? Items = null);
 
 public sealed record CommercialOwnerProjection(
     string ProjectionVersion,
@@ -80,10 +94,23 @@ public sealed class AuthenticatedRelationshipWorkspaceOwnerGateway : IRelationsh
             var root = document.RootElement;
             if (root.GetProperty("schemaVersion").GetString() != "1.0"
                 || root.GetProperty("relationshipId").GetGuid() != context.RelationshipId) return null;
+            var items = root.GetProperty("items").EnumerateArray().Select(item => new ExecutionOwnerWorkItem(
+                item.GetProperty("workItemId").GetGuid(),
+                item.GetProperty("agentInstanceId").GetGuid(),
+                item.GetProperty("skillId").GetString()!,
+                item.GetProperty("skillVersion").GetString()!,
+                item.GetProperty("invocationId").GetGuid(),
+                item.GetProperty("revision").GetInt32(),
+                item.GetProperty("state").GetString()!,
+                item.GetProperty("effect").GetString()!,
+                item.TryGetProperty("resultRef", out var resultRef) ? resultRef.GetString() : null,
+                item.GetProperty("updatedAt").GetDateTimeOffset())).ToArray();
+            if (items.Any(item => item.AgentInstanceId != context.AgentInstanceId)) return null;
             return new ExecutionOwnerProjection(
                 root.GetProperty("projectionVersion").GetString()!,
                 root.GetProperty("state").GetString()!,
-                root.GetProperty("producedAt").GetDateTimeOffset());
+                root.GetProperty("producedAt").GetDateTimeOffset(),
+                items);
         }
         catch (Exception exception) when (exception is JsonException or InvalidOperationException or FormatException)
         {
@@ -143,7 +170,11 @@ public sealed class AuthenticatedRelationshipWorkspaceOwnerGateway : IRelationsh
             context.RelationshipId.ToString(),
             Guid.NewGuid().ToString(),
             null,
-            new Dictionary<string, string> { ["relationship"] = context.RelationshipVersion.ToString() },
+            new Dictionary<string, string>
+            {
+                ["relationship"] = context.RelationshipVersion.ToString(),
+                ["agent_instance"] = context.AgentInstanceId.ToString(),
+            },
             context.CorrelationId);
         var envelope = _identity.Sign(
             delegatedContext,

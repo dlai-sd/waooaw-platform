@@ -52,14 +52,15 @@ public sealed class ProfessionalsControllerTests
     }
 
     [Fact]
-    public void Disclosure_ReturnsAllNineteenSkillsAndTrialBoundaries()
+    public void Disclosure_ReturnsExactlyReleaseOneSkillsAndTrialBoundaries()
     {
         var result = _controller.GetDisclosure("DIGITAL_MARKETING_LOCAL_SERVICE");
 
         var ok = result.Result.Should().BeOfType<OkObjectResult>().Subject;
         var disclosure = ok.Value.Should().BeOfType<ProfessionalDisclosure>().Subject;
         disclosure.ProjectionVersion.Should().Be("1.0.0");
-        disclosure.Skills.Should().HaveCount(19);
+        disclosure.Skills.Select(skill => skill.SkillId).Should().BeEquivalentTo(
+            ["CUSTOMER_PROFILING", "MARKET_RESEARCH", "CONTENT_STRATEGY"]);
         disclosure.Trial.DurationDays.Should().Be(14);
         disclosure.Trial.PaidApiCallsAllowed.Should().BeFalse();
         disclosure.Trial.ExternalActionsAllowed.Should().BeFalse();

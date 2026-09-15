@@ -84,6 +84,13 @@ class PlatformCostLedgerEntry(Base):
         index=True,
     )
     agent_type: Mapped[str] = mapped_column(String(128), nullable=False)
+    tenant_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
+    relationship_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
+    agent_instance_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
+    skill_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    skill_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    work_item_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
+    invocation_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
     raw_cost_inr_paise: Mapped[int] = mapped_column(BigInteger, nullable=False)
     fx_rate_inr_per_usd: Mapped[float] = mapped_column(Float, nullable=False)
     recorded_at: Mapped[datetime] = mapped_column(

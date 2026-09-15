@@ -102,7 +102,7 @@ class AgentRuntimeAdapterGateway:
 
     def __init__(self, resolver: AdapterResolver) -> None:
         self._resolver = resolver
-        self._stop_barriers: dict[tuple[str, str], str] = {}
+        self._stop_barriers: dict[tuple[str, str, str], str] = {}
 
     def resolve_and_verify(
         self,
@@ -146,7 +146,7 @@ class AgentRuntimeAdapterGateway:
         envelope: Any,
         payload: dict[str, Any],
     ) -> Any:
-        barrier = self._stop_barriers.get((envelope.tenant_ref, envelope.relationship_id))
+        barrier = self._stop_barriers.get(self._stop_scope(envelope))
         if barrier is not None:
             raise AdapterGatewayError("ADAPTER_STOPPED")
         resolved = self.resolve_and_verify(environment, activation)
@@ -176,7 +176,7 @@ class AgentRuntimeAdapterGateway:
         envelope: Any,
         stop_evidence_ref: str,
     ) -> dict[str, str]:
-        barrier_key = (envelope.tenant_ref, envelope.relationship_id)
+        barrier_key = self._stop_scope(envelope)
         self._stop_barriers[barrier_key] = stop_evidence_ref
         resolved = self.resolve_and_verify(environment, activation)
         try:
@@ -190,7 +190,7 @@ class AgentRuntimeAdapterGateway:
         activation: AdmissionActivationBinding,
         envelope: Any,
     ) -> dict[str, str]:
-        barrier_key = (envelope.tenant_ref, envelope.relationship_id)
+        barrier_key = self._stop_scope(envelope)
         barrier = self._stop_barriers.get(barrier_key)
         if barrier is None or envelope.stop_evidence_ref != barrier:
             raise AdapterGatewayError("ADAPTER_RESUME_DENIED")
@@ -198,6 +198,10 @@ class AgentRuntimeAdapterGateway:
         acknowledgement = resolved.client.resume(envelope)
         del self._stop_barriers[barrier_key]
         return acknowledgement
+
+    @staticmethod
+    def _stop_scope(envelope: Any) -> tuple[str, str, str]:
+        return (envelope.tenant_ref, envelope.relationship_id, envelope.agent_instance_id)
 
     def result(
         self,

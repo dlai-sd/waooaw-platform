@@ -268,6 +268,13 @@ CREATE TABLE IF NOT EXISTS institutional.platform_cost_ledger (
     customer_id                 UUID,
     agent_type                  VARCHAR(50),
     employment_contract_id      UUID,
+    tenant_id                   UUID,
+    relationship_id             UUID,
+    agent_instance_id           UUID,
+    skill_id                    VARCHAR(100),
+    skill_version               VARCHAR(64),
+    work_item_id                UUID,
+    invocation_id               UUID,
     bucket_reservation_id       UUID,
     raw_cost_usd_cents          INTEGER,
     raw_cost_inr_paise          INTEGER     NOT NULL,
@@ -283,6 +290,9 @@ CREATE INDEX IF NOT EXISTS idx_cost_ledger_period
 CREATE INDEX IF NOT EXISTS idx_cost_ledger_customer
     ON institutional.platform_cost_ledger (customer_id, billing_period_start)
     WHERE customer_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_cost_ledger_dma_invocation
+    ON institutional.platform_cost_ledger (tenant_id, relationship_id, agent_instance_id, invocation_id)
+    WHERE invocation_id IS NOT NULL;
 
 CREATE RULE no_update_cost_ledger AS
     ON UPDATE TO institutional.platform_cost_ledger DO INSTEAD NOTHING;
@@ -305,6 +315,15 @@ ALTER TABLE business.subscription_tiers
     ADD COLUMN IF NOT EXISTS bundle_version                 INTEGER NOT NULL DEFAULT 1,
     ADD COLUMN IF NOT EXISTS cost_floor_paise               INTEGER,
     ADD COLUMN IF NOT EXISTS billing_profile_agent_type     VARCHAR(50);
+
+ALTER TABLE institutional.platform_cost_ledger
+    ADD COLUMN IF NOT EXISTS tenant_id                       UUID,
+    ADD COLUMN IF NOT EXISTS relationship_id                 UUID,
+    ADD COLUMN IF NOT EXISTS agent_instance_id               UUID,
+    ADD COLUMN IF NOT EXISTS skill_id                        VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS skill_version                   VARCHAR(64),
+    ADD COLUMN IF NOT EXISTS work_item_id                    UUID,
+    ADD COLUMN IF NOT EXISTS invocation_id                   UUID;
 
 -- --------------------------------------------------------------------------
 -- Grants

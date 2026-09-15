@@ -81,7 +81,9 @@ class IMeterService(ABC):
     """Usage meter + threshold alert engine."""
 
     @abstractmethod
-    async def record_usage(self, customer_id: UUID, thread_type: str, amount_paise: int) -> None: ...
+    async def record_usage(
+        self, customer_id: UUID, thread_type: str, amount_paise: int, attribution: object | None = None
+    ) -> None: ...
 
     @abstractmethod
     async def project_depletion(self, customer_id: UUID, thread_type: str) -> DepletionProjection: ...

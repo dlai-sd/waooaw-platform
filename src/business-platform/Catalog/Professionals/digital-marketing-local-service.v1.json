@@ -19,23 +19,7 @@
   "skills": [
     { "skillId": "CUSTOMER_PROFILING", "displayName": "Customer Profiling", "applicableInTrial": true },
     { "skillId": "MARKET_RESEARCH", "displayName": "Market Research and Maturity Scoring", "applicableInTrial": true },
-    { "skillId": "CONTENT_STRATEGY", "displayName": "Content Strategy", "applicableInTrial": true },
-    { "skillId": "INSTAGRAM", "displayName": "Instagram", "applicableInTrial": true },
-    { "skillId": "FACEBOOK", "displayName": "Facebook", "applicableInTrial": true },
-    { "skillId": "GOOGLE_BUSINESS_PROFILE", "displayName": "Google Business Profile", "applicableInTrial": true },
-    { "skillId": "WHATSAPP_BUSINESS", "displayName": "WhatsApp Business", "applicableInTrial": true },
-    { "skillId": "VIDEO_VISUAL_CONTENT", "displayName": "Video and Visual Content", "applicableInTrial": true },
-    { "skillId": "PERFORMANCE_ANALYTICS", "displayName": "Performance Analytics", "applicableInTrial": true },
-    { "skillId": "LOCAL_SEO", "displayName": "Local SEO", "applicableInTrial": true },
-    { "skillId": "PAID_ADVERTISING", "displayName": "Paid Advertising", "applicableInTrial": true },
-    { "skillId": "EMAIL_MARKETING", "displayName": "Email Marketing", "applicableInTrial": true },
-    { "skillId": "CUSTOMER_LIFECYCLE", "displayName": "Customer Lifecycle Management", "applicableInTrial": true },
-    { "skillId": "CONVERSION_OPTIMISATION", "displayName": "Conversion Optimisation", "applicableInTrial": true },
-    { "skillId": "COMPETITIVE_INTELLIGENCE", "displayName": "Competitive Intelligence", "applicableInTrial": true },
-    { "skillId": "AGENCY_OPERATIONS", "displayName": "Agency Operations", "applicableInTrial": false, "activationCondition": "Applicable when the customer operates as an agency or reseller." },
-    { "skillId": "MULTI_LOCATION_MANAGEMENT", "displayName": "Multi-Location Management", "applicableInTrial": false, "activationCondition": "Applicable when the customer operates more than one location." },
-    { "skillId": "CRISIS_COMMUNICATIONS", "displayName": "Crisis Communications", "applicableInTrial": true },
-    { "skillId": "QUARTERLY_STRATEGY_REVIEW", "displayName": "Quarterly Strategy Review", "applicableInTrial": true }
+    { "skillId": "CONTENT_STRATEGY", "displayName": "Content Strategy", "applicableInTrial": true }
   ],
   "limitations": [
     "Trial outputs are demonstrations and do not publish, spend, message third parties, or mutate provider state.",

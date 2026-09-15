@@ -250,13 +250,50 @@ public sealed class RelationshipWorkspaceController(
             provenance = Provenance("PR", projection?.ProjectionVersion ?? "unavailable-1",
                 projection?.ProducedAt ?? DateTimeOffset.UtcNow),
             availableCommands = Array.Empty<object>(),
-            items = Array.Empty<object>(),
+            items = projection?.Items?.Select(item => new
+            {
+                itemId = item.WorkItemId,
+                agentInstanceId = item.AgentInstanceId,
+                skillId = item.SkillId,
+                skillVersion = item.SkillVersion,
+                invocationId = item.InvocationId,
+                revision = item.Revision,
+                state = item.State,
+                effect = item.Effect,
+                resultRef = item.ResultRef,
+                updatedAt = item.UpdatedAt,
+            }).ToArray() ?? Array.Empty<object>(),
         });
     }
 
     [HttpGet("results")]
-    public Task<IActionResult> GetResultsAsync(Guid relationshipId, CancellationToken cancellationToken) =>
-        UnavailableSectionAsync(relationshipId, "RESULTS", "outcomes", cancellationToken);
+    public async Task<IActionResult> GetResultsAsync(Guid relationshipId, CancellationToken cancellationToken)
+    {
+        var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
+        if (relationship is null) return NotFoundProblem();
+        var projection = await owners.GetExecutionAsync(OwnerContext(relationship), cancellationToken);
+        var outcomes = projection?.Items?.Where(item => item.ResultRef is not null).Select(item => new
+        {
+            outcomeId = item.WorkItemId,
+            agentInstanceId = item.AgentInstanceId,
+            skillId = item.SkillId,
+            skillVersion = item.SkillVersion,
+            invocationId = item.InvocationId,
+            revision = item.Revision,
+            label = item.Effect,
+            attributionBasis = item.ResultRef,
+            updatedAt = item.UpdatedAt,
+        }).ToArray() ?? Array.Empty<object>();
+        return Ok(new
+        {
+            sectionType = "RESULTS",
+            currencyState = projection?.State ?? "UNAVAILABLE",
+            provenance = Provenance("PR", projection?.ProjectionVersion ?? "unavailable-1",
+                projection?.ProducedAt ?? DateTimeOffset.UtcNow),
+            availableCommands = Array.Empty<object>(),
+            outcomes,
+        });
+    }
 
     [HttpGet("usage-budget")]
     public async Task<IActionResult> GetUsageBudgetAsync(Guid relationshipId, CancellationToken cancellationToken)
@@ -594,7 +631,8 @@ public sealed class RelationshipWorkspaceController(
             relationship.TenantId,
             relationship.RelationshipId,
             relationship.StateVersion,
-            correlationId);
+            correlationId,
+            relationship.AgentInstanceId);
     }
 
     private bool TryGetEvidenceContext(out Guid tenantId, out Guid participantId)

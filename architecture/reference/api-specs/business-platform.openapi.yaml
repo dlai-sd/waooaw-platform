@@ -7165,11 +7165,18 @@ components:
               items:
                 type: object
                 additionalProperties: false
-                required: [itemId, state, effect]
+                required: [itemId, agentInstanceId, skillId, skillVersion, invocationId, revision, state, effect, updatedAt]
                 properties:
                   itemId: { type: string, format: uuid }
+                  agentInstanceId: { type: string, format: uuid }
+                  skillId: { type: string, minLength: 1, maxLength: 128 }
+                  skillVersion: { type: string, minLength: 1, maxLength: 64 }
+                  invocationId: { type: string, format: uuid }
+                  revision: { type: integer, format: int32, minimum: 1 }
                   state: { type: string, minLength: 1, maxLength: 64 }
                   effect: { type: string, minLength: 1, maxLength: 500 }
+                  resultRef: { type: string, nullable: true, minLength: 1, maxLength: 240 }
+                  updatedAt: { type: string, format: date-time }
 
     RelationshipResultsV1:
       allOf:
@@ -7183,11 +7190,17 @@ components:
               items:
                 type: object
                 additionalProperties: false
-                required: [outcomeId, label, attributionBasis]
+                required: [outcomeId, agentInstanceId, skillId, skillVersion, invocationId, revision, label, attributionBasis, updatedAt]
                 properties:
                   outcomeId: { type: string, format: uuid }
+                  agentInstanceId: { type: string, format: uuid }
+                  skillId: { type: string, minLength: 1, maxLength: 128 }
+                  skillVersion: { type: string, minLength: 1, maxLength: 64 }
+                  invocationId: { type: string, format: uuid }
+                  revision: { type: integer, format: int32, minimum: 1 }
                   label: { type: string, minLength: 1, maxLength: 240 }
                   attributionBasis: { type: string, minLength: 1, maxLength: 240 }
+                  updatedAt: { type: string, format: date-time }
 
     RelationshipUsageBudgetV1:
       allOf:

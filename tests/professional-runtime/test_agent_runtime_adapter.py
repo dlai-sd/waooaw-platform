@@ -349,6 +349,8 @@ def test_gateway_denials_stop_resume_and_error_mapping() -> None:
     assert gateway.emergency_stop("demo", activation, request, "stop-evidence-1")["state"] == "STOPPED"
     with pytest.raises(AdapterGatewayError, match="ADAPTER_STOPPED"):
         gateway.execute("demo", activation, request, {})
+    sibling = envelope(descriptor, relationship_id=request.relationship_id)
+    assert gateway.execute("demo", activation, sibling, domain_payload(descriptor)).state is InvocationState.SUCCEEDED
     with pytest.raises(AdapterGatewayError, match="ADAPTER_RESUME_DENIED"):
         gateway.resume("demo", activation, replace(request, stop_evidence_ref="wrong"))
     resumed_request = replace(

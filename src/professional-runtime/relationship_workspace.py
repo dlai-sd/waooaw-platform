@@ -51,6 +51,19 @@ class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
 
+class ExecutionWorkItem(StrictModel):
+    work_item_id: uuid.UUID = Field(alias="workItemId")
+    agent_instance_id: uuid.UUID = Field(alias="agentInstanceId")
+    skill_id: str = Field(alias="skillId", min_length=1, max_length=100)
+    skill_version: str = Field(alias="skillVersion", pattern=r"^\d+\.\d+\.\d+$")
+    invocation_id: uuid.UUID = Field(alias="invocationId")
+    revision: int = Field(ge=1)
+    state: Literal["PENDING", "RUNNING", "PARTIAL", "SUCCEEDED", "FAILED", "STOPPED"]
+    effect: str = Field(min_length=1, max_length=500)
+    result_ref: str | None = Field(default=None, alias="resultRef", min_length=1, max_length=256)
+    updated_at: datetime = Field(alias="updatedAt")
+
+
 class ExecutionProjection(StrictModel):
     schema_version: Literal["1.0"] = Field(alias="schemaVersion")
     relationship_id: uuid.UUID = Field(alias="relationshipId")
@@ -58,6 +71,7 @@ class ExecutionProjection(StrictModel):
     state: Literal["CURRENT", "STALE", "UNKNOWN", "UNAVAILABLE", "BLOCKED"]
     produced_at: datetime = Field(alias="producedAt")
     next_review_at: datetime | None = Field(default=None, alias="nextReviewAt")
+    items: list[ExecutionWorkItem] = Field(default_factory=list)
 
 
 class PauseWorkPayload(StrictModel):
@@ -151,6 +165,7 @@ class RelationshipExecutionStore:
         self._controls: dict[uuid.UUID, StoredControl] = {}
         self._idempotency: dict[tuple[str, ...], uuid.UUID] = {}
         self._trials: dict[tuple[str, uuid.UUID], RelationshipTrialStartResult] = {}
+        self._work: dict[tuple[str, uuid.UUID, uuid.UUID], ExecutionWorkItem] = {}
         self._lock = Lock()
 
     def projection(self, tenant_id: str, relationship_id: uuid.UUID) -> ExecutionProjection:
@@ -167,6 +182,35 @@ class RelationshipExecutionStore:
     def set_projection(self, tenant_id: str, projection: ExecutionProjection) -> None:
         with self._lock:
             self._projections[(tenant_id, projection.relationship_id)] = projection
+
+    def record_work(self, tenant_id: str, relationship_id: uuid.UUID, item: ExecutionWorkItem) -> None:
+        key = (tenant_id, relationship_id, item.work_item_id)
+        with self._lock:
+            current = self._work.get(key)
+            if current is not None:
+                immutable_binding = (
+                    current.agent_instance_id == item.agent_instance_id
+                    and current.skill_id == item.skill_id
+                    and current.skill_version == item.skill_version
+                    and current.invocation_id == item.invocation_id
+                )
+                if not immutable_binding or item.revision <= current.revision:
+                    raise ServiceAuthError("EXECUTION_WORK_REVISION_CONFLICT")
+            self._work[key] = item
+            items = [
+                value
+                for (owner_tenant, owner_relationship, _), value in self._work.items()
+                if (owner_tenant, owner_relationship) == (tenant_id, relationship_id)
+            ]
+            revision = max(value.revision for value in items)
+            self._projections[(tenant_id, relationship_id)] = ExecutionProjection(
+                schemaVersion=SCHEMA_VERSION,
+                relationshipId=relationship_id,
+                projectionVersion=f"work-{revision}",
+                state="CURRENT",
+                producedAt=item.updated_at,
+                items=sorted(items, key=lambda value: str(value.work_item_id)),
+            )
 
     def submit(
         self,
