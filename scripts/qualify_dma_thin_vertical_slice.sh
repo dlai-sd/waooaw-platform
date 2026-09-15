@@ -63,7 +63,7 @@ WAOOAW_ENVIRONMENT=demo docker compose --profile agent-runtime-adapter config --
 FAILURE_CLASSIFICATION="assertion"
 docker compose --profile test-python build test-runner-python > "$EVIDENCE_DIR/build-test-runner.log" 2>&1
 docker compose --profile test-python run --rm test-runner-python \
-  pytest tests/constitutional/test_dma_build_authority.py \
+  python -B -m pytest tests/constitutional/test_dma_build_authority.py \
     tests/contract/test_agent_admission_schema.py \
     tests/professional-runtime/test_dma_release_1_skills.py \
     tests/professional-runtime/test_agent_runtime_adapter.py \
