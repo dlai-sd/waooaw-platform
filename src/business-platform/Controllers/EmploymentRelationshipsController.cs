@@ -246,7 +246,7 @@ public sealed class EmploymentRelationshipsController : ControllerBase
             var items = page.Items.Select(item => ToPortalSummary(
                 item.Relationship,
                 item.CurrentGoalSummary,
-                statuses.GetValueOrDefault(item.Relationship.RelationshipId, item.TrialStatus))).ToArray();
+                statuses.TryGetValue(item.Relationship.RelationshipId, out var status) ? status : item.TrialStatus)).ToArray();
             return Ok(new EmploymentRelationshipCollectionResponse(
                 "1.0.0",
                 DateTimeOffset.UtcNow,
