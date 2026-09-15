@@ -57,7 +57,7 @@ jobs:
         with:
           ref: ${{ inputs.release_sha }}
 
-      - name: Download verified exact-six tuple
+      - name: Download verified exact-seven tuple
         uses: actions/download-artifact@v4
         with:
           name: goal006-private-runner-prestart-${{ github.run_id }}-${{ github.run_attempt }}

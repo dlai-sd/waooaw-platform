@@ -45,10 +45,19 @@ variable "image_digests" {
   type = map(string)
   validation {
     condition = (
-      length(var.image_digests) == 6 &&
+      length(var.image_digests) == 7 &&
       alltrue([for image in values(var.image_digests) : can(regex("@sha256:[0-9a-f]{64}$", image))])
     )
-    error_message = "Exactly six immutable sha256 image references are required."
+    error_message = "Exactly seven immutable sha256 image references are required."
+  }
+}
+
+variable "dma_admission_content_digest" {
+  type        = string
+  description = "Immutable SHA-256 digest of the admitted DMA Release 1 content."
+  validation {
+    condition     = can(regex("^sha256:[0-9a-f]{64}$", var.dma_admission_content_digest))
+    error_message = "DMA admission content digest must be an immutable sha256 digest."
   }
 }
 
@@ -146,6 +155,6 @@ variable "identity_hmac_active_version" {
 
 variable "ghcr_packages_public" {
   type        = bool
-  description = "Administrator attestation that all exact-six GHCR packages allow anonymous digest pulls."
+  description = "Administrator attestation that all exact-seven GHCR packages allow anonymous digest pulls."
   default     = false
 }

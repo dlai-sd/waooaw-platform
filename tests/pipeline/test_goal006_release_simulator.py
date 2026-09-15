@@ -169,11 +169,12 @@ def test_failure_does_not_mutate_input_policy() -> None:
     assert policy == original
 
 
-def test_ci_build_and_scan_matrices_contain_exactly_six_release_members() -> None:
+def test_ci_build_and_scan_matrices_contain_exactly_seven_release_members() -> None:
     workflow = yaml.safe_load(CI_PATH.read_text(encoding="utf-8"))
     build_members = {entry["name"] for entry in workflow["jobs"]["build"]["strategy"]["matrix"]["service"]}
     scan_members = set(workflow["jobs"]["trivy"]["strategy"]["matrix"]["image"])
     expected = {
+        "agent-runtime-adapter-digital-marketing",
         "constitutional-engine",
         "business-platform",
         "professional-runtime",
@@ -186,7 +187,17 @@ def test_ci_build_and_scan_matrices_contain_exactly_six_release_members() -> Non
     build_step = next(
         step for step in workflow["jobs"]["build"]["steps"] if step.get("uses") == "docker/build-push-action@v5"
     )
-    assert build_step["with"]["context"] == "."
+    assert build_step["with"]["context"] == "${{ matrix.service.context }}"
+    dma = next(
+        entry
+        for entry in workflow["jobs"]["build"]["strategy"]["matrix"]["service"]
+        if entry["name"] == "agent-runtime-adapter-digital-marketing"
+    )
+    assert dma == {
+        "name": "agent-runtime-adapter-digital-marketing",
+        "context": "src/agent-adapters",
+        "dockerfile": "src/agent-adapters/digital_marketing/Dockerfile",
+    }
     scan_step = next(
         step for step in workflow["jobs"]["trivy"]["steps"] if step.get("uses", "").startswith("aquasecurity/trivy-action@")
     )

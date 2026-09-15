@@ -10,6 +10,7 @@ readonly release_members=(
   ai-runtime
   web
   billing-engine
+  agent-runtime-adapter-digital-marketing
 )
 members=("${release_members[@]}")
 
@@ -70,6 +71,9 @@ for member in "${members[@]}"; do
     RAZORPAY_KEY_SECRET="${RAZORPAY_KEY_SECRET:-goal006-offline-build}" \
     RAZORPAY_WEBHOOK_SECRET="${RAZORPAY_WEBHOOK_SECRET:-goal006-offline-build}" \
     BILLING_CONTRACT_ID="${BILLING_CONTRACT_ID:-goal006-offline-build}" \
+    DMA_ARTIFACT_DIGEST="${DMA_ARTIFACT_DIGEST:-sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}" \
+    DMA_ADMISSION_CONTENT_DIGEST="${DMA_ADMISSION_CONTENT_DIGEST:-sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb}" \
+    PR_SERVICE_JWT_SECRET="${PR_SERVICE_JWT_SECRET:-goal006-offline-build}" \
     docker compose -f "$compose_file" build "$member"
   source_image="$(basename "$PWD")-${member}:latest"
   docker image tag "$source_image" "waooaw-${member}:phase2"

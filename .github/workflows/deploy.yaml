@@ -80,7 +80,7 @@ jobs:
             | jq -r --arg sha "$latest_main_sha" \
               '[.workflow_runs[] | select(.head_sha == $sha)] | sort_by(.run_number) | last | .id // empty')
           test -n "$release_run_id"
-          artifact_name="goal006-exact-six-release-$latest_main_sha"
+          artifact_name="goal006-exact-seven-release-$latest_main_sha"
           artifact_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$release_run_id/artifacts" \
             | jq -r --arg name "$artifact_name" \
               '[.artifacts[] | select(.name == $name and (.expired | not))] | first | .id // empty')

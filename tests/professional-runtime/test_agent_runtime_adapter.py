@@ -558,19 +558,33 @@ def test_coordinator_records_deterministic_denial_without_reconciliation() -> No
 
 
 @pytest.mark.asyncio
-async def test_private_http_transport_requires_pr_identity_and_projects_strict_response() -> None:
+async def test_private_http_transport_requires_pr_identity_and_projects_strict_response(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     adapter = create_digital_marketing_adapter()
     descriptor = adapter.describe()
     app = create_app(adapter)
+    caplog.set_level("INFO", logger="uvicorn.error")
     headers = {
         "X-WAOOAW-Workload-URI": "spiffe://demo.waooaw.internal/workload/professional-runtime",
         "Authorization": "Bearer test-service-assertion",
     }
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://adapter") as client:
         assert (await client.get("/internal/v1/descriptor")).status_code == 422
+        wrong_token = dict(headers, Authorization="Bearer wrong-service-assertion")
+        assert (await client.get("/internal/v1/descriptor", headers=wrong_token)).status_code == 403
         described = await client.get("/internal/v1/descriptor", headers=headers)
         assert described.status_code == 200
         assert described.json()["professionalTypeId"] == descriptor.professional_type_id
+        completion = next(
+            json.loads(record.message)
+            for record in caplog.records
+            if '"event":"adapter_request_completed"' in record.message
+            and '"path":"/internal/v1/descriptor"' in record.message
+            and '"status":200' in record.message
+        )
+        assert set(completion) == {"event", "method", "path", "status", "duration_ms", "correlation_id"}
+        assert "test-service-assertion" not in caplog.text
 
         request = envelope(descriptor)
         wire_envelope = {

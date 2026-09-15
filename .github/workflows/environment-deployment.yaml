@@ -102,10 +102,10 @@ jobs:
         with:
           ref: ${{ inputs.release_sha }}
 
-      - name: Download signed exact-six tuple
+      - name: Download signed exact-seven tuple
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          pattern: goal006-exact-six-release-*
+          pattern: goal006-exact-seven-release-*
           path: release-input
           repository: ${{ github.repository }}
           run-id: ${{ inputs.release_run_id }}
@@ -134,7 +134,7 @@ jobs:
             --manifest registry-release-manifest.json \
             --record release-verification.json
 
-      - name: Verify anonymous exact-six GHCR pulls
+      - name: Verify anonymous exact-seven GHCR pulls
         run: |
           verify_ghcr_digest() {
             image=$1
@@ -412,7 +412,7 @@ jobs:
               --blob-name "$source_blob" \
               --output workload-configuration.source.json \
               --evidence configuration-promotion-download-attempts.jsonl
-            jq '.lease_purpose = "UAT exact-six qualification" | del(.founder_ipv4_cidr)' \
+            jq '.lease_purpose = "UAT exact-seven qualification" | del(.founder_ipv4_cidr)' \
               workload-configuration.source.json > workload-configuration.seed.json
             issued_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
             expires_at=$(date -u -d '+10 days' +%Y-%m-%dT%H:%M:%SZ)
@@ -542,8 +542,11 @@ jobs:
               > configuration-lease-validation.json
           fi
           manifest_digest="sha256:$(sha256sum registry-release-manifest.json | cut -d' ' -f1)"
+          dma_admission_content_digest="sha256:$(sha256sum tests/fixtures/agent-admission/digital-marketing-local-service-v1.0.0.json | cut -d' ' -f1)"
           jq --arg manifest_digest "$manifest_digest" \
-            '.manifest_digest = $manifest_digest' workload-configuration.json > workload-configuration.bound.json
+            --arg dma_admission_content_digest "$dma_admission_content_digest" \
+            '.manifest_digest = $manifest_digest | .dma_admission_content_digest = $dma_admission_content_digest' \
+            workload-configuration.json > workload-configuration.bound.json
           mv workload-configuration.bound.json workload-configuration.json
           jq -e '.planned_incremental_monthly_cost_inr != null and .cumulative_one_time_cost_inr != null' \
             workload-configuration.json >/dev/null

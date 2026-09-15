@@ -167,5 +167,5 @@ jq -n \
   --arg environment "$TARGET_ENVIRONMENT" \
   --arg release_sha "$RELEASE_SHA" \
   --arg web_url "$EXPECTED_WEB_URL" \
-  '{environment: $environment, release_sha: $release_sha, web_url: $web_url, exact_six_verified: true, dependencies_verified: true, revisions_verified: true, functional_verification: true}' \
+  '{environment: $environment, release_sha: $release_sha, web_url: $web_url, exact_seven_verified: true, dependencies_verified: true, revisions_verified: true, functional_verification: true}' \
   > deployment-verification.json

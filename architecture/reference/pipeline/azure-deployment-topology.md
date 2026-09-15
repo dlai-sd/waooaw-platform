@@ -16,7 +16,7 @@ is missing, inconsistent, or unapproved, execution stops rather than selecting a
 |---|---|
 | Strategy | Azure-first with application-layer portability and a named escape hatch for each Azure-specific dependency. |
 | Design | GitHub Actions OIDC, immutable GHCR digests, isolated Azure Container Apps environments, managed identities, Key Vault, private networking, PostgreSQL, and OpenTelemetry/Azure Monitor. |
-| Delivery | Build the exact-six tuple once, promote the same digests through Demo, UAT, and Production, and fail closed on authorization, cost, security, recovery, or evidence failure. |
+| Delivery | Build the exact-seven tuple once, promote the same digests through Demo, UAT, and Production, and fail closed on authorization, cost, security, recovery, or evidence failure. |
 | Runner path | A GitHub-hosted management job reconciles the Azure Deployment Stack; an ephemeral environment runner performs private deployment; independent cleanup removes its registration, token, and execution. |
 | Sequence | Qualify Demo first, obtain Founder Demo acceptance before UAT, and keep Production dark and plan-only until separately authorized. |
 | Operating posture | Prefer local deterministic validation for fast iteration, but use the protected workflow to prove OIDC identity, private DNS/data paths, environment approval, cleanup, and immutable evidence. |
@@ -30,6 +30,15 @@ backup, restore, migration-continuity, or customer-data claim. UAT remains the f
 persistent PostgreSQL and recovery qualification. This approval changes architecture only; Founder
 acceptance of this exact amendment and separate current-session implementation authorization remain
 mandatory before WC091-I1 implementation.
+
+### WC-089 Exact-Seven Amendment - Founder Directed 2026-09-15
+
+DMA Release 1 is the seventh permanent first-party release workload. It uses the private
+`ca-<environment>-dma` Container App, the existing Container Apps Log Analytics integration, and a
+Professional Runtime service credential. All seven OCI digests are built, signed, promoted, verified
+and rolled back as one tuple. DMA remains separately admitted and gains no platform or customer-state
+authority from release membership. This repository change authorizes code and local validation only;
+cloud apply remains separately authorized.
 
 ### Current Delivery State - 2026-08-28
 
@@ -52,19 +61,19 @@ section is a routing summary and must not be copied into a separate implementati
 
 ## Constitutional Delivery Invariants
 
-1. Build the exact-six application images once. Demo, UAT, Production, and rollback use the same immutable OCI digests.
-2. The promoted release tuple is `manifest + six image digests + reviewed configuration digest + data schema compatibility + evidence`.
+1. Build the exact-seven application images once. Demo, UAT, Production, and rollback use the same immutable OCI digests.
+2. The promoted release tuple is `manifest + seven image digests + reviewed configuration digest + data schema compatibility + evidence`.
 3. Images contain no environment configuration or secret values. Runtime configuration comes from reviewed environment configuration, managed identity, and Key Vault references.
 4. Demo precedes UAT, and UAT action requires prior explicit Founder Demo acceptance. That prerequisite was satisfied for the accepted PR #371 UAT delivery. Production customer traffic remains Founder-reserved.
 5. Every environment has separate state, identity, VNet, data, Key Vault, DNS records, and evidence. Production data never moves down. "Dark Production" means the single Production environment before traffic activation, not a second environment.
 6. A failed authorization, cost, security, recovery, or evidence gate stops before mutation.
-7. First-party release membership remains exactly six. Pinned third-party runtime dependencies are recorded in a separately signed dependency manifest bound to the release tuple; they never become mutable or silently expand exact-six membership.
+7. First-party release membership remains exactly seven, including DMA Release 1. Pinned third-party runtime dependencies are recorded in a separately signed dependency manifest bound to the release tuple; they never become mutable or silently expand exact-seven membership.
 
 ## Target Topology
 
 ```mermaid
 flowchart TB
-  GH[GitHub Actions OIDC] --> REL[Signed exact-six release tuple in GHCR]
+  GH[GitHub Actions OIDC] --> REL[Signed exact-seven release tuple in GHCR]
   REL --> D
   REL --> U
   REL --> P
@@ -72,7 +81,7 @@ flowchart TB
   subgraph D[Demo - leased]
     DDNS[www.demo / api.demo / auth.demo]
     DING[ACA managed ingress and L7 load balancer\nFounder IPv4 allowlist]
-    DAPP[ACA revisions\nWeb, BP, PR, CE, AIR, Billing, identity edge, Keycloak, self-hosted Temporal, Redis]
+    DAPP[ACA revisions\nWeb, BP, PR, CE, AIR, Billing, DMA, identity edge, Keycloak, self-hosted Temporal, Redis]
     DDB[Digest-pinned PostgreSQL in ACA\nreplica-scoped EmptyDir, reset and reseed]
     DKV[Key Vault private endpoint]
     DMON[Log Analytics]
@@ -219,7 +228,7 @@ ADR-046 governs workload-to-service authentication and does not create a new run
 |---|---|---|---|---|
 | Runner bootstrap | Accepted ADR-047, versioned Deployment Stack template, GitHub App permission manifest, environment label/group, subnet/NSG/RBAC/DNS matrix and cost estimate | One healthy ephemeral runner execution with private state/config access, negative isolation proof, deregistration and zero-idle evidence | Missing ADR acceptance, secret material, private resolution, exact backend operation, isolation denial, cleanup, stack health or cost proof blocks runner-label activation; no public fallback | INST-009 with INST-007; INST-015 independently verifies |
 | State isolation | Environment backend key, resource scope, OIDC subject, naming and tags | Separate environment plan/state with no cross-environment reference | Wrong subscription, scope, backend or existing-resource ownership stops plan | INST-009 with INST-007 |
-| Release and dependencies | Signed exact-six manifest, signed pinned-dependency manifest, reviewed config digest, schema compatibility | One immutable deployment tuple | Missing member, digest/signature mismatch, mutable dependency or incompatible schema stops before cloud mutation | INST-009 with INST-006/007 |
+| Release and dependencies | Signed exact-seven manifest, signed pinned-dependency manifest, reviewed config digest, schema compatibility | One immutable deployment tuple | Missing member, digest/signature mismatch, mutable dependency or incompatible schema stops before cloud mutation | INST-009 with INST-006/007 |
 | Runtime configuration | Versioned non-secret schema, Key Vault references, per-service identity matrix | Validated startup configuration with no image-baked environment values | Missing/unknown config, secret fallback or identity failure keeps revision unready | INST-005/007 with INST-009 |
 | Database bootstrap | Demo: pinned database digest, generation ID and approved synthetic fixture digest. UAT/Production: Entra-only server, database/role/RLS contract and bounded bootstrap identity | Demo: clean seeded generation with no prior generation reachable. UAT/Production: separate databases/roles and Key Vault references with no value in Terraform or workflow evidence | Demo reset/seed mismatch or retained prior generation keeps routes unready; persistent-tier partial bootstrap, Key Vault write failure or unexpected password authority blocks application plan | INST-006/007 with INST-009 |
 | Dependency handoff | Pinned identity-edge, Keycloak, Demo Temporal and Redis digests; Temporal Cloud endpoint/mTLS for UAT | Healthy private dependencies and approved public identity paths | Version, TLS, health or path-policy failure keeps application traffic at zero | INST-005/007 with INST-009 |
@@ -231,7 +240,7 @@ The exact CCT subset, probe semantics, timeout bounds, configuration schema, rol
 
 ## Promotion, Blue-Green, And Rollback
 
-1. CI builds and attests the exact-six tuple once.
+1. CI builds and attests the exact-seven tuple once.
 2. Plan verifies current-main release, configuration digest, cost, identity, state, provider allowlist, DNS prerequisites, and migration compatibility.
 3. Apply creates a new ACA revision with a release-derived suffix while the previous revision remains available.
 4. Run migration, private health probes, the environment-required CCT set, and public journey probes against the new revision without shifting production traffic. Failure of any required probe is blocking.
@@ -259,7 +268,7 @@ Demo may shift directly from zero to 100% after verification. UAT proves the sam
 2. **Control plane:** after the complete qualification matrix passes, INST-009 records the result and the Founder authorizes Demo activation. One reviewed commit/PR must switch Demo plan jobs to the environment-scoped runner label and remove temporary public-IP firewall mutation, with an automated assertion that both deltas are present. Disable Storage public network access only after the private job proves exact backend operations. Repeat for UAT only after Founder Demo acceptance; keep Production plan-only and zero-capacity. Reintroducing public mutation or a GitHub-hosted deploy label requires a new reviewed architecture decision.
 3. **Foundation:** VNet/subnets, Log Analytics, Key Vault, PostgreSQL Flexible Server, private DNS, environment identities, DNS prerequisites.
 4. **Runtime dependencies:** database roles/config references, Keycloak, Temporal, transient Redis; remove sidecar databases.
-5. **Application plane:** exact-six ACA revisions, private/public boundaries, custom domains, managed TLS, managed identities.
+5. **Application plane:** exact-seven ACA revisions, private/public boundaries, custom domains, managed TLS, managed identities.
 6. **Release mechanics:** migration job, pre-traffic verification, blue-green traffic switch, rollback, lease expiry and scale-to-zero reconciliation.
 7. **Promotion:** Founder Demo acceptance gate, same-tuple UAT deployment/qualification, dark-Production plan only.
 

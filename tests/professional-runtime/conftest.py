@@ -15,6 +15,7 @@ sys.path.insert(0, str(professional_runtime_path))
 sys.path.insert(0, str(agent_adapters_path))
 os.environ.setdefault("DMA_ARTIFACT_DIGEST", "sha256:" + "ab" * 32)
 os.environ.setdefault("DMA_ADMISSION_CONTENT_DIGEST", "sha256:" + "cd" * 32)
+os.environ.setdefault("PR_SERVICE_JWT_SECRET", "test-service-assertion")
 
 module_spec = importlib.util.spec_from_file_location(
     "professional_runtime_main",

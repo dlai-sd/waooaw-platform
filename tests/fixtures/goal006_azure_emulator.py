@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import ClassVar
 from urllib.parse import parse_qs, urlencode, urlparse
 
-from goal006_live_inventory import DEMO_TEMPORAL_IMAGE, IDENTITY_EDGE_IMAGE, KEYCLOAK_IMAGE
+from goal006_live_inventory import DEMO_TEMPORAL_IMAGE, IDENTITY_EDGE_IMAGE, KEYCLOAK_IMAGE, release_app_name
 from goal006_registry_manifest import RELEASE_MEMBERS
 from goal006_runner_execution import CLEANUP_ARGS, CLEANUP_COMMAND, CLEANUP_REQUIRED_ENVIRONMENT, REQUIRED_ENVIRONMENT
 
@@ -65,7 +65,17 @@ def container_apps(manifest: dict[str, object]) -> list[dict[str, object]]:
         "identity-edge": IDENTITY_EDGE_IMAGE,
         "temporal": DEMO_TEMPORAL_IMAGE,
     }
-    return [
+    release_apps = [
+        {
+            "name": release_app_name(ENVIRONMENT, name),
+            "properties": {
+                "provisioningState": "Succeeded",
+                "template": {"containers": [{"image": image}]},
+            },
+        }
+        for name, image in images.items()
+    ]
+    dependency_apps = [
         {
             "name": f"ca-{ENVIRONMENT}-{name}",
             "properties": {
@@ -73,8 +83,9 @@ def container_apps(manifest: dict[str, object]) -> list[dict[str, object]]:
                 "template": {"containers": [{"image": image}]},
             },
         }
-        for name, image in {**images, **dependencies}.items()
+        for name, image in dependencies.items()
     ]
+    return release_apps + dependency_apps
 
 
 def cleanup_job() -> dict[str, object]:

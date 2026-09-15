@@ -292,7 +292,7 @@ AS-001 Dr. Mehta (DMA) · AS-003 Rahul (Trading) · AS-005 Suresh (Agricultural)
 
 ### 5.4 Cloud Deployment Strategy
 
-WAOOAW builds one signed exact-six release and deploys its immutable OCI digests through
+WAOOAW builds one signed exact-seven release and deploys its immutable OCI digests through
 environment-isolated Azure Container Apps infrastructure. Environment configuration, identities and
 Key Vault references remain external to images. Deployment fails closed on authorization, release,
 cost, plan, security, health, cleanup or evidence failure.
@@ -307,7 +307,7 @@ evidence.
 
 | Surface | Single responsibility |
 |---|---|
-| `.github/workflows/ci.yaml` | Test, scan, build, attest and publish the current-main exact-six release. |
+| `.github/workflows/ci.yaml` | Test, scan, build, attest and publish the current-main exact-seven release. |
 | `.github/workflows/deploy.yaml` | Sole manual application deployment entry for `demo`, `uat` and `prod`; selects the trusted current-main release and delegates execution. |
 | `.github/workflows/environment-deployment.yaml` | Reusable environment deployment engine using environment-derived private runners, OIDC, external configuration, Terraform policy, cost controls and always-run cleanup. |
 | `.github/workflows/environment-deployment-verification.yaml` | Independent environment verification of the release, live inventory, revisions, functional probes and returned URL. |
@@ -324,8 +324,8 @@ belong in the canonical entry, protected GitHub Environments and executable cont
 
 | Environment | Verified state | Authority boundary |
 |---|---|---|
-| Demo | Private deployment, exact-six verification, browser CIDR correction, cleanup and Founder acceptance passed. | Further mutation requires current authority. |
-| UAT | Private runner delivery, exact-six deployment, functional/public endpoint verification and cleanup passed. | Evidence is a Production-readiness input, not Production authority. |
+| Demo | Prior exact-six deployment accepted; exact-seven DMA migration is code-prepared and awaits authorized execution. | Further mutation requires current authority. |
+| UAT | Prior exact-six deployment accepted; exact-seven promotion has not been executed. | Evidence is a Production-readiness input, not Production authority. |
 | Production | Terraform and runner blueprints are code-prepared; runner remains inactive. | Plan, apply, DNS, customer traffic and acceptance require separate Founder authorization. |
 
 Operator entry point:

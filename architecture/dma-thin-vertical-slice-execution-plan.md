@@ -2,18 +2,18 @@
 
 **Office:** Solution Architect (INST-005)
 **Work Contract:** WC-089
-**Status:** FOUNDER ACCEPTED - ISSUE #437 IMPLEMENTATION/LOCAL BUILD AUTHORIZED FOR 2026-09-15 SESSION; PROVIDER/CLOUD/DEPLOYMENT PROHIBITED
+**Status:** FOUNDER ACCEPTED - EXACT-SEVEN DELIVERY CODE AUTHORIZED FOR 2026-09-15 SESSION; PROVIDER/CLOUD MUTATION PROHIBITED
 **Concept:** `architecture/dma-agent-image-concept.md`
 **Delivery unit:** DMA product/image Release 1 (`professionalVersion: 1.0.0`) serving isolated customer instances through Skills 0/1/2
 **Specification mapping:** Current DMA requirements/specification revision `3.1`; independent from the professional product/image release
-**Reference architecture:** exact-six platform release tuple plus private admitted adapter workload images outside that tuple
+**Reference architecture:** exact-seven release tuple with DMA Release 1 as the private seventh workload
 **Dependencies:** WC-079, WC-080, WC-087 and WC-088 merged; ADR-035 and ADR-049 accepted
 **Constitutional basis:** C-001, C-023, C-026, C-035, C-049, C-059, C-065, C-071, C-079
 
 ## 1. Objective
 
 Deliver one bounded Digital Marketing Agent Release 1 that proves the approved type-image/customer-
-instance model without changing WAOOAW's six-image platform boundary. One immutable admitted DMA
+instance model as WAOOAW's seventh permanent release workload. One immutable admitted DMA
 professional version `1.0.0` and OCI digest serves multiple customer-specific trial or hired instances.
 The current DMA requirements/specification revision is `3.1`; it is an independently bound design
 coordinate and must not become the professional version, adapter audience version or image tag. Each
@@ -317,7 +317,7 @@ An executor must not choose a missing contract, fixture shape or persistence pat
 
 | Slice | Current repository anchor | Reality the implementation issue must preserve or close |
 |---|---|---|
-| Exact-six plus admitted workloads | `docker-compose.yml`; `architecture/reference/components/manifest/` | The `agent-runtime-adapter` profile currently declares both DMA and trading adapter workloads. Both remain outside the exact-six release tuple. WC-089 may explicitly build/start DMA only and must assert that enabling the profile does not change exact-six membership, promotion or rollback evidence; trading is unchanged and is not a WC-089 deliverable. |
+| Exact-seven release plus other admitted workloads | `docker-compose.yml`; `architecture/reference/components/manifest/` | DMA Release 1 is the permanent seventh release member and must participate in build, promotion, verification and rollback. Trading remains outside this tuple and is not a WC-089 deliverable. |
 | Common adapter contract | `architecture/reference/api-specs/agent-runtime-adapter-v1.openapi.yaml`; `architecture/reference/api-specs/schemas/agent-runtime-adapter-v1.schema.json`; `src/agent-adapters/runtime_contract/`; `src/professional-runtime/adapter_gateway.py` | `AdapterInvocationEnvelopeV1` has no `agentInstanceId`; the OpenAPI remains PR-only and generic. |
 | DMA fixture | `src/agent-adapters/digital_marketing/adapter.py`; legacy `tests/fixtures/agent-admission/digital-marketing-local-service-v3.1.0.json` | The fixture incorrectly conflates specification revision with product version and must be replaced by a Release 1 / `1.0.0` fixture only after implementation authorization. The handler returns one generic `CAMPAIGN_PLAN`; digests are placeholders; only `LOCAL_CAMPAIGN_MANAGEMENT` and `LOCAL_CONTENT_PLANNING` are declared. `tests/fixtures/agent-runtime-adapter/` does not exist. |
 | Adapter/PR tests | `tests/contract/test_agent_runtime_adapter_contract.py`; `tests/professional-runtime/test_agent_runtime_adapter.py`; `tests/constitutional/test_agent_runtime_adapter_cct.py` | Existing tests prove WC-080 common lifecycle and invalid admission behavior, not Skills 0/1/2, instance binding, two DMA versions or customer work. |
@@ -797,7 +797,7 @@ authority gaps or reference-architecture changes are recorded as blockers rather
 | Review | Status | Findings and repairs |
 |---|---|---|
 | Solution Architecture author review | PASS | Mapped the reusable agent release and customer employment lifecycles to existing owners; made version axes, constitutional inheritance, portal outcome, simulations and completion evidence explicit; repaired all manageable findings |
-| Enterprise Architecture | PASS | Confirmed no new capability/service or parallel admission lifecycle: design/build are governed checkpoints and evidence, while WC-079 BP states remain canonical. ADR-049 permits a distinct adapter ID using Founder-directed product `1.0.0`; specification `3.1`, Skill/PAC/schema/prompt versions and digest remain independent. Exact-six boundary and old-version coexistence remain intact |
+| Enterprise Architecture | PASS | Confirmed no parallel admission lifecycle: design/build are governed checkpoints and evidence, while WC-079 BP states remain canonical. ADR-049 permits a distinct adapter ID using Founder-directed product `1.0.0`; specification `3.1`, Skill/PAC/schema/prompt versions and digest remain independent. The later Founder-directed exact-seven deployment amendment preserves admission and old-version coexistence boundaries. |
 | Security | PASS | Required builder authorization before first local/remote image creation, authority/time-bound provenance, fail-closed no-artifact denial, exact mTLS audience/version/digest binding, no alias/fallback, anti-replay, least privilege, no direct egress/provider credential, privacy-safe evidence, trial/live isolation and saturation-safe Stop. No provider/deployment authority is inferred |
 | Data Architecture | PASS | Confirmed BP owns relationship, instance, configuration, goal, customer decision, work and lifecycle truth; admission revisions/transitions remain BP-owned and append-only. Profile/research/strategy revisions, provenance, optimistic concurrency, retention/erasure/legal hold, tombstones, version coexistence and immutable evidence/usage boundaries remain explicit; no physical schema is selected |
 | Platform IT Expert implementability | CONDITIONAL PASS | DMA-00 now has an executable pre-build authority/no-artifact negative gate; component-sized checks, Docker-only runtimes, image reuse, exact-head qualification and C-059/C-065 handoff are implementable. Execution remains correctly blocked until Founder accepts this revision, current-session implementation authority exists, and every Section 3/7.1 `TO FREEZE`, legacy fixture, missing selector and placeholder digest is resolved |

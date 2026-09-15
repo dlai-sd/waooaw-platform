@@ -20,6 +20,7 @@ def _probe_script(environment: str = "uat") -> str:
         "professional_runtime",
         "ai_runtime",
         "billing_engine",
+        "dma_adapter",
         "identity_edge",
     ):
         script = script.replace(f"${{local.verification_urls.{name}}}", f"http://{name}")
@@ -100,6 +101,7 @@ def test_parallel_probes_succeed_only_when_all_probes_succeed(tmp_path: Path) ->
     assert "http://professional_runtime" in probe_log
     assert "http://ai_runtime" in probe_log
     assert "http://billing_engine" in probe_log
+    assert "http://dma_adapter" in probe_log
     assert "http://identity_edge" in probe_log
 
 

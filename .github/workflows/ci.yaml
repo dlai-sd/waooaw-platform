@@ -38,17 +38,26 @@ jobs:
       matrix:
         service:
           - name: constitutional-engine
+            context: .
             dockerfile: src/constitutional-engine/Dockerfile
           - name: business-platform
+            context: .
             dockerfile: src/business-platform/Dockerfile
           - name: professional-runtime
+            context: .
             dockerfile: src/professional-runtime/Dockerfile
           - name: ai-runtime
+            context: .
             dockerfile: src/ai-runtime/Dockerfile
           - name: web
+            context: .
             dockerfile: web/Dockerfile
           - name: billing-engine
+            context: .
             dockerfile: src/billing-engine/Dockerfile
+          - name: agent-runtime-adapter-digital-marketing
+            context: src/agent-adapters
+            dockerfile: src/agent-adapters/digital_marketing/Dockerfile
     steps:
       - uses: actions/checkout@v4
 
@@ -57,7 +66,7 @@ jobs:
       - name: Build pull-request image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ${{ matrix.service.context }}
           file: ${{ matrix.service.dockerfile }}
           push: false
           load: true
@@ -101,17 +110,26 @@ jobs:
       matrix:
         service:
           - name: constitutional-engine
+            context: .
             dockerfile: src/constitutional-engine/Dockerfile
           - name: business-platform
+            context: .
             dockerfile: src/business-platform/Dockerfile
           - name: professional-runtime
+            context: .
             dockerfile: src/professional-runtime/Dockerfile
           - name: ai-runtime
+            context: .
             dockerfile: src/ai-runtime/Dockerfile
           - name: web
+            context: .
             dockerfile: web/Dockerfile
           - name: billing-engine
+            context: .
             dockerfile: src/billing-engine/Dockerfile
+          - name: agent-runtime-adapter-digital-marketing
+            context: src/agent-adapters
+            dockerfile: src/agent-adapters/digital_marketing/Dockerfile
     steps:
       - uses: actions/checkout@v4
       - name: Log in to GHCR
@@ -126,7 +144,7 @@ jobs:
         id: image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ${{ matrix.service.context }}
           file: ${{ matrix.service.dockerfile }}
           push: true
           tags: |
@@ -491,7 +509,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: [constitutional-engine, business-platform, professional-runtime, ai-runtime, web, billing-engine]
+        image: [constitutional-engine, business-platform, professional-runtime, ai-runtime, web, billing-engine, agent-runtime-adapter-digital-marketing]
     steps:
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -756,7 +774,7 @@ jobs:
           retention-days: 90
 
   release-manifest:
-    name: Attest exact-six release manifest
+    name: Attest exact-seven release manifest
     runs-on: ubuntu-latest
     if: >-
       always() &&
@@ -793,21 +811,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download exact-six registry digests
+      - name: Download exact-seven registry digests
         uses: actions/download-artifact@v4
         with:
           pattern: goal006-digest-*
           path: release-digests
           merge-multiple: true
 
-      - name: Download exact-six scan evidence
+      - name: Download exact-seven scan evidence
         uses: actions/download-artifact@v4
         with:
           pattern: goal006-scan-*
           path: release-evidence
           merge-multiple: true
 
-      - name: Download exact-six registry attestations
+      - name: Download exact-seven registry attestations
         uses: actions/download-artifact@v4
         with:
           pattern: goal006-attestation-*
@@ -832,10 +850,10 @@ jobs:
           subject-path: release/goal006/registry-release-manifest.json
           show-summary: true
 
-      - name: Upload signed exact-six release tuple
+      - name: Upload signed exact-seven release tuple
         uses: actions/upload-artifact@v4
         with:
-          name: goal006-exact-six-release-${{ github.sha }}
+          name: goal006-exact-seven-release-${{ github.sha }}
           path: |
             release/goal006/registry-release-manifest.json
             release/goal006/evidence

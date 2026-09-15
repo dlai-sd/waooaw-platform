@@ -18,7 +18,12 @@ import goal006_live_inventory  # noqa: E402
 
 PHASE2_ROOT = REPO_ROOT / "infrastructure" / "terraform" / "phase2"
 ENVIRONMENTS = ("demo", "uat", "prod")
-PRIVATE_MEMBERS = ("constitutional-engine", "ai-runtime", "billing-engine")
+PRIVATE_MEMBERS = (
+    "constitutional-engine",
+    "ai-runtime",
+    "billing-engine",
+    "agent-runtime-adapter-digital-marketing",
+)
 PUBLIC_CANDIDATES = ("web", "business-platform", "professional-runtime")
 
 
@@ -35,7 +40,11 @@ def test_live_inventory_requires_pinned_identity_dependencies(monkeypatch: pytes
         for member in goal006_live_inventory.RELEASE_MEMBERS
     }
     inventory = [
-        {"name": f"ca-demo-{member}", "image": image, "provisioningState": "Succeeded"}
+        {
+            "name": goal006_live_inventory.release_app_name("demo", member),
+            "image": image,
+            "provisioningState": "Succeeded",
+        }
         for member, image in images.items()
     ]
     inventory.append(
@@ -64,6 +73,13 @@ def test_live_inventory_requires_pinned_identity_dependencies(monkeypatch: pytes
     assert "LIVE_MEMBERSHIP_INVALID" in goal006_live_inventory.validate_inventory(
         "demo", {"images": images}, inventory[:-1]
     )
+
+
+def test_dma_uses_azure_safe_private_resource_names() -> None:
+    contract = read_contract("modules/workload/main.tf")
+    assert 'member == "agent-runtime-adapter-digital-marketing" ? "ca-${var.environment}-dma"' in contract
+    assert 'member == "agent-runtime-adapter-digital-marketing" ? "dma" : member' in contract
+    assert "name   = local.container_names[each.key]" in contract
 
 
 @pytest.mark.parametrize("environment", ENVIRONMENTS)
@@ -176,7 +192,11 @@ def test_private_boundaries_and_key_vault_references_are_explicit() -> None:
     assert "NEXTAUTH_SECRET" in contract
     assert "OPS_AUTH_TOKEN" in contract
     assert 'key_vault_secret_uris["business-platform"]' in contract
-    assert '"ai-runtime"            = "professional-runtime"' in contract
+    assert re.search(r'"ai-runtime"\s*=\s*"professional-runtime"', contract)
+    assert re.search(
+        r'"agent-runtime-adapter-digital-marketing"\s*=\s*"professional-runtime"',
+        contract,
+    )
     assert "BP_BASE_URL" in contract
     assert "ca-${var.environment}-constitutional-engine:80" in contract
     assert 'resource "azurerm_container_app_job" "verification"' in contract
@@ -200,6 +220,7 @@ def test_internal_verification_uses_the_identity_edge() -> None:
     assert 'probe professional-runtime "${local.verification_urls.professional_runtime}/health"' in verification_job
     assert 'probe ai-runtime "${local.verification_urls.ai_runtime}/health"' in verification_job
     assert 'probe billing-engine "${local.verification_urls.billing_engine}/health"' in verification_job
+    assert 'probe dma-adapter "${local.verification_urls.dma_adapter}/health/live"' in verification_job
     assert 'probe identity-edge "${local.verification_urls.identity_edge}/realms/waooaw/.well-known/openid-configuration"' in verification_job
     assert "local.service_urls.web" not in verification_job
     assert "local.service_urls.keycloak" not in verification_job
@@ -817,7 +838,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
     assert "runner_rule_present" not in workflow
     assert "firewall-cleanup.json" not in workflow
     assert 'manifest_digest="sha256:$(sha256sum registry-release-manifest.json' in workflow
-    assert "'.manifest_digest = $manifest_digest'" in workflow
+    assert ".manifest_digest = $manifest_digest | .dma_admission_content_digest = $dma_admission_content_digest" in workflow
     assert "terraform state show \"$resource_address\"" in workflow
     assert "scripts/goal006_execution_gate.py" in workflow
     assert '--execution "$APPLY_REQUESTED"' in workflow
@@ -968,7 +989,7 @@ def test_environment_deployment_is_authorized_without_changing_promotion_state()
     assert '*) echo "Unauthorized deployment dispatcher" >&2; exit 1 ;;' in deploy
     assert 'test "$DISPATCH_REF" = "refs/heads/main"' in deploy
     assert "actions/workflows/ci.yaml/runs?branch=main&event=push&status=success" in deploy
-    assert 'artifact_name="goal006-exact-six-release-$latest_main_sha"' in deploy
+    assert 'artifact_name="goal006-exact-seven-release-$latest_main_sha"' in deploy
     assert 'test -n "$release_run_id"' in deploy
     assert 'test -n "$artifact_id"' in deploy
     assert "release_run_id: ${{ fromJSON(needs.authorize.outputs.release_run_id) }}" in deploy
