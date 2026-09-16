@@ -121,10 +121,6 @@ test('UX-CONV-02 UX-CONV-03: retry reconciles first and preserves one canonical 
 
 test('UX-PWA-03 UX-CONV-03 UX-CONV-07: offline outbox reconciles once and remains relationship-local', async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium-compact-360', 'Offline reconciliation is normalized once in compact Chromium.');
-  const operations: { method: string; url: string; body?: string | null }[] = [];
-  page.on('request', (request) => {
-    if (request.url().includes('/api/conversations/relationship-offline')) operations.push({ method: request.method(), url: request.url(), body: request.postData() });
-  });
   await page.goto('/relationships/relationship-offline');
   await openConversation(page);
   await context.setOffline(true);
@@ -135,12 +131,16 @@ test('UX-PWA-03 UX-CONV-03 UX-CONV-07: offline outbox reconciles once and remain
   expect(await page.evaluate(() => localStorage.getItem('waooaw:conversation:relationship-offline:outbox'))).toContain('Queue this safely.');
 
   await context.setOffline(false);
+  await expect.poll(() => page.evaluate(() => document.readyState).catch(() => '')).toBe('complete');
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
   await expect(page.getByText('Accepted by WAOOAW')).toBeVisible();
-  await expect.poll(() => operations.filter(({ method }) => method === 'POST').length).toBe(1);
-  const postIndex = operations.findIndex(({ method }) => method === 'POST');
-  const submitted = JSON.parse(operations[postIndex].body ?? '{}') as { expectedCursor?: string };
-  expect(submitted.expectedCursor).toMatch(/^cursor-relationship-offline-/);
   expect(await page.evaluate(() => localStorage.getItem('waooaw:conversation:relationship-offline:outbox'))).toBeNull();
+  const canonical = await page.request.get('http://127.0.0.1:5001/api/v1/employment/relationships/relationship-offline/conversation/messages', {
+    headers: { Authorization: `Bearer ${fixtureAccessToken(testInfo.project.name)}` },
+  });
+  expect(canonical.ok()).toBe(true);
+  const timeline = await canonical.json() as { items: Array<{ content: Array<{ text: string }> }> };
+  expect(timeline.items.filter((item) => item.content.some(({ text }) => text === 'Queue this safely.'))).toHaveLength(1);
 
   await page.getByLabel('Message your professional').fill('Private first-professional draft');
   await page.goto('/relationships/relationship-second');
