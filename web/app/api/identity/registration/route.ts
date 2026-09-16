@@ -10,6 +10,31 @@ type CommandBody = Record<string, unknown> & { action?: unknown };
 
 class InvalidRequestError extends Error {}
 
+const approvedProblemCodes = new Set([
+  'IDENTITY_ACTION_DENIED',
+  'IDENTITY_CHALLENGE_EXPIRED',
+  'IDENTITY_DEPENDENCY_UNAVAILABLE',
+  'IDENTITY_DUPLICATE_RESOLUTION_REQUIRED',
+  'IDENTITY_IDEMPOTENCY_CONFLICT',
+  'IDENTITY_REQUEST_INVALID',
+  'IDENTITY_RESOURCE_NOT_ACCESSIBLE',
+  'IDENTITY_SESSION_REQUIRED',
+  'IDENTITY_STEP_UP_REQUIRED',
+  'IDENTITY_VERIFICATION_REQUIRED',
+]);
+
+async function safeRegistrationProblem(error: ResponseError) {
+  const upstream = await error.response.clone().json().catch(() => undefined) as { code?: unknown; correlationId?: unknown } | undefined;
+  const approved = typeof upstream?.code === 'string' && approvedProblemCodes.has(upstream.code);
+  const code = approved ? upstream.code as string : 'IDENTITY_DEPENDENCY_UNAVAILABLE';
+  const correlationId = typeof upstream?.correlationId === 'string'
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(upstream.correlationId)
+    ? upstream.correlationId : undefined;
+  const status = approved && [400, 401, 403, 404, 409, 410, 422, 429, 503].includes(error.response.status)
+    ? error.response.status : 503;
+  return { status, body: { code, title: 'Identity request could not be completed.', ...(correlationId ? { correlationId } : {}) } };
+}
+
 function requiredString(body: CommandBody, name: string): string {
   const value = body[name];
   if (typeof value !== 'string' || value.length === 0) throw new InvalidRequestError(`Invalid ${name}`);
@@ -110,7 +135,11 @@ export async function POST(request: NextRequest) {
             throw new Error();
           }
           return NextResponse.json({ handoffConfirmed: true }, { headers: { 'Cache-Control': 'no-store' } });
-        } catch {
+        } catch (error) {
+          if (error instanceof ResponseError) {
+            const problem = await safeRegistrationProblem(error);
+            return NextResponse.json(problem.body, { status: problem.status, headers: { 'Cache-Control': 'no-store' } });
+          }
           return NextResponse.json({ code: 'IDENTITY_DEPENDENCY_UNAVAILABLE', title: 'Identity request could not be completed.' }, {
             status: 503, headers: { 'Cache-Control': 'no-store' },
           });
@@ -123,10 +152,10 @@ export async function POST(request: NextRequest) {
     if (error instanceof InvalidRequestError || error instanceof SyntaxError) {
       return NextResponse.json({ code: 'IDENTITY_REQUEST_INVALID', title: 'Identity request is invalid.' }, { status: 400 });
     }
-    const status = error instanceof ResponseError && [400, 401, 403, 404, 409, 422, 429].includes(error.response.status)
-      ? error.response.status : 503;
-    return NextResponse.json({ code: 'IDENTITY_DEPENDENCY_UNAVAILABLE', title: 'Identity request could not be completed.' }, {
-      status, headers: { 'Cache-Control': 'no-store' },
-    });
+    if (error instanceof ResponseError) {
+      const problem = await safeRegistrationProblem(error);
+      return NextResponse.json(problem.body, { status: problem.status, headers: { 'Cache-Control': 'no-store' } });
+    }
+    return NextResponse.json({ code: 'IDENTITY_DEPENDENCY_UNAVAILABLE', title: 'Identity request could not be completed.' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
   }
 }

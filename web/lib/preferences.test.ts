@@ -28,12 +28,14 @@ describe('experience preferences', () => {
     expect(directionForLocale('hi')).toBe('ltr');
   });
 
-  it.each(['light', 'dark', 'system'] as const)('accepts the %s theme', (theme) => {
+  it.each(['light', 'dark'] as const)('accepts the %s theme', (theme) => {
     expect(resolveTheme(theme)).toBe(theme);
   });
 
-  it('defaults unknown themes to system', () => {
-    expect(resolveTheme('contrast')).toBe(defaultTheme);
-    expect(resolveTheme(undefined)).toBe(defaultTheme);
+  it('defaults absent, unknown, and legacy system themes to dark', () => {
+    expect(defaultTheme).toBe('dark');
+    expect(resolveTheme('contrast')).toBe('dark');
+    expect(resolveTheme('system')).toBe('dark');
+    expect(resolveTheme(undefined)).toBe('dark');
   });
 });

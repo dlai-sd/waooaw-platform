@@ -5850,7 +5850,7 @@ components:
         locale: { type: string, minLength: 2, maxLength: 16 }
         theme:
           type: string
-          enum: [SYSTEM, LIGHT, DARK]
+          enum: [LIGHT, DARK]
         timestampVisibility:
           type: string
           enum: [RELATIVE, ABSOLUTE]
@@ -5982,7 +5982,7 @@ components:
           enum: [RELATIVE, ABSOLUTE]
         themePreference:
           type: string
-          enum: [SYSTEM, LIGHT, DARK]
+          enum: [LIGHT, DARK]
 
     RelationshipGoalVerificationStatusV1:
       type: string

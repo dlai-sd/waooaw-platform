@@ -22,7 +22,7 @@ export function ExperienceControls({ messages, reload = () => window.location.re
   reload?: () => void;
 }) {
   const [locale, setLocale] = useState<SupportedLocale>('en');
-  const [theme, setTheme] = useState<ThemePreference>('system');
+  const [theme, setTheme] = useState<ThemePreference>('dark');
 
   useEffect(() => {
     setLocale(resolveLocale(document.documentElement.lang));

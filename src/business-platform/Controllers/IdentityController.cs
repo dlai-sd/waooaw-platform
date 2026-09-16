@@ -478,7 +478,7 @@ public sealed class IdentityController(
     {
         if (ValidatePortalSession(out var tenantId) is { } error) return error;
         if (req.SchemaVersion != CustomerPortalSchemaVersion || !LocalePattern.IsMatch(req.Locale)
-            || req.Theme is not ("SYSTEM" or "LIGHT" or "DARK")
+            || req.Theme is not ("LIGHT" or "DARK")
             || req.TimestampVisibility is not ("RELATIVE" or "ABSOLUTE")
             || !ValidChannels(req.NotificationPreferences))
             return IdentityProblem(400, "IDENTITY_REQUEST_INVALID", "Settings fields are invalid.");

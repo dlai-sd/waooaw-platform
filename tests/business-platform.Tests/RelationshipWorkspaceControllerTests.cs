@@ -72,6 +72,19 @@ public sealed class RelationshipWorkspaceControllerTests
     }
 
     [Fact]
+    public async Task Onboard_RejectsLegacySystemTheme()
+    {
+        var (controller, relationship, _, _) = await CreateControllerAsync();
+
+        var result = Assert.IsType<ObjectResult>(await controller.UpdateOnboardAsync(
+            relationship.RelationshipId,
+            new RelationshipOnboardRequest("1.0.0", null, null, null, "SYSTEM"),
+            Guid.NewGuid().ToString(), CancellationToken.None));
+
+        Assert.Equal(400, result.StatusCode);
+    }
+
+    [Fact]
     public async Task Workspace_DoesNotExposeRelationshipToUnboundParticipant()
     {
         var (controller, relationship, _, _) = await CreateControllerAsync();

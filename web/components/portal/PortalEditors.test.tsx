@@ -48,7 +48,8 @@ describe('WC084 portal editors', () => {
   it('persists settings before updating presentation cookies', async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: true });
     render(<SettingsEditor locale="en-IN" notificationPreferences={{ approvalRequests: [NotificationChannel.InApp], maturityReports: [NotificationChannel.Email], monthlyNarratives: [NotificationChannel.Email], selfGovernanceAlerts: [NotificationChannel.InApp] }} theme="SYSTEM" timestampVisibility="RELATIVE" />);
-    fireEvent.change(screen.getByLabelText('Theme'), { target: { value: 'DARK' } });
+    expect(screen.getByLabelText('Theme')).toHaveValue('DARK');
+    expect(screen.queryByRole('option', { name: 'System' })).not.toBeInTheDocument();
     fireEvent.submit(screen.getByRole('button', { name: 'Save settings' }).closest('form')!);
     expect(await screen.findByText('Settings saved.')).toBeVisible();
     expect(document.cookie).toContain('waooaw-theme=dark');
@@ -65,10 +66,13 @@ describe('WC084 portal editors', () => {
   it('persists only the lightweight Onboard preferences', async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: true });
     render(<OnboardForm relationshipId="relationship-1" />);
+    expect(screen.getByLabelText('Theme')).toHaveValue('DARK');
+    expect(screen.queryByRole('option', { name: 'System' })).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Agent display name'), { target: { value: 'Mira' } });
     fireEvent.submit(screen.getByRole('button', { name: 'Save Onboard preferences' }).closest('form')!);
     expect(await screen.findByText('Onboard preferences saved.')).toBeVisible();
     expect(global.fetch).toHaveBeenCalledWith('/api/relationships/relationship-1/onboard', expect.objectContaining({ method: 'PUT', body: expect.stringContaining('Mira') }));
+    expect(global.fetch).toHaveBeenCalledWith('/api/relationships/relationship-1/onboard', expect.objectContaining({ body: expect.stringContaining('"themePreference":"DARK"') }));
   });
 
   it('reports an Onboard persistence failure', async () => {

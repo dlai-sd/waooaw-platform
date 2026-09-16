@@ -4,13 +4,14 @@
 import type { SupportedLocale } from './preferences';
 
 const en = {
-  eyebrow: 'Secure registration', title: 'Create an account', description: 'Your identity is verified through WAOOAW’s approved broker before an account is completed.',
+  eyebrow: 'Account registration', title: 'Create your WAOOAW account', description: 'Confirm your details before creating your account.',
   displayName: 'Your name', businessName: 'Business name', businessDomain: 'Type of business', email: 'Email address', mobile: 'Mobile number', code: 'Six-digit code',
-  saveProfile: 'Save and continue', sendCode: 'Send verification code', verifyCode: 'Verify code', complete: 'Complete registration', optionalMobile: 'Verify mobile now',
+  saveProfile: 'Save and continue', sendCode: 'Send verification code', verifyCode: 'Verify code', complete: 'Complete registration', optionalMobile: 'Mobile verification (optional)',
+  verifiedEmail: 'Verified email', verifiedBy: 'Verified by', smsUnavailable: 'SMS verification is not available yet.', smsBudget: 'It will remain optional and disabled until an approved India delivery provider and budget are active.',
   working: 'Securing your registration…', retry: 'Try again', signInFirst: 'Continue securely to create your account', signInDescription: 'WAOOAW uses Keycloak to broker approved sign-in methods. Your access token is never exposed to this page.',
   existingAccount: 'Already have an account?', signIn: 'Log in', legalPrefix: 'By continuing, you agree to WAOOAW’s', terms: 'Terms of Service', legalAnd: 'and', privacy: 'Privacy Policy',
   resolvingTitle: 'Finishing your sign-in', resolvingDescription: 'We’re preparing your WAOOAW account.', signInRejected: 'We couldn’t complete your sign-in. Your account was not changed.', restartSignIn: 'Sign in again',
-  verificationSent: 'Enter the code sent to', unavailable: 'We couldn’t complete your registration. Your account was not changed.', duplicate: 'Additional identity confirmation is required before this account can be completed.',
+  verificationSent: 'Enter the code sent to', verificationExpired: 'That verification code expired. Request a new code to continue.', registrationLost: 'This registration is no longer accessible. Sign in again to restart securely.', unavailable: 'We couldn’t complete your registration. Your account was not changed.', duplicate: 'Additional identity confirmation is required before this account can be completed.',
 } as const;
 
 export type IdentityMessages = { [Key in keyof typeof en]: string };

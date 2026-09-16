@@ -52,4 +52,13 @@ describe('ProviderCommands', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Log in with Google' })).toBeEnabled());
     expect(screen.getByRole('button', { name: 'Log in with Facebook' })).toBeEnabled();
   });
+
+  it('offers an actionable retry when provider readiness is temporarily unavailable', () => {
+    const reload = jest.fn();
+    render(<ProviderCommands callbackUrl="/register" intent="register" providers={providers.map((provider) => ({ ...provider, availability: 'UNAVAILABLE', unavailableReason: 'TEMPORARILY_UNAVAILABLE' }))} reload={reload} />);
+
+    expect(screen.getByText('Sign-in services are still starting.')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
 });
