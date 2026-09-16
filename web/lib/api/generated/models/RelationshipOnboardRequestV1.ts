@@ -83,7 +83,6 @@ export type RelationshipOnboardRequestV1TimestampVisibilityEnum =
  * @export
  */
 export const RelationshipOnboardRequestV1ThemePreferenceEnum = {
-  System: "SYSTEM",
   Light: "LIGHT",
   Dark: "DARK",
 } as const;

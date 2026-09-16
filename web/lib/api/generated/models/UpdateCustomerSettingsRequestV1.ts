@@ -70,7 +70,6 @@ export interface UpdateCustomerSettingsRequestV1 {
  * @export
  */
 export const UpdateCustomerSettingsRequestV1ThemeEnum = {
-  System: "SYSTEM",
   Light: "LIGHT",
   Dark: "DARK",
 } as const;
