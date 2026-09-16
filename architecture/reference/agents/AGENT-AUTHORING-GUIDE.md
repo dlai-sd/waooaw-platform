@@ -1552,6 +1552,62 @@ content_moderation_cost:
 
 ---
 
+## 9A. Professional Operating Envelope (MANDATORY - every agent)
+
+Every agent specification must declare how the professional binds to the platform-owned
+**Professional Operating Envelope** defined in
+`architecture/reference/components/professional-operating-envelope.md`.
+
+```yaml
+professional_operating_envelope:
+  contract_version: "1.0"
+  professional_type: "[exact admitted professional type]"
+  agent_billing_profile: "[authorized ABP registry ID]"
+  eligible_bundles:
+    - bundle_id: "[bundle coordinate]"
+      bundle_version: "[immutable version]"
+  skills:
+    - skill_id: "[exact admitted Skill ID]"
+      skill_version: "[SemVer]"
+      capabilities:
+        - capability_id: "[versioned capability coordinate]"
+          thread_catalog_mapping: "[active WBE Thread Catalog coordinate]"
+          reservation_basis: "[bounded estimate rule]"
+      prompt_bindings:
+        - prompt_id: "[approved prompt ID]"
+          prompt_version: "[version]"
+          minimum_model_tier: "[LOCAL | MID | FRONTIER]"
+  package_signals:
+    consumed:
+      - "[typed platform signal that wakes professional reasoning]"
+    behavior: "[professional response without treating a signal as authority]"
+  degradation:
+    empty_allowance: "[honest customer disclosure and bounded behavior]"
+    provider_unavailable: "[honest partial/block behavior]"
+  unused_resource_classes:
+    - resource_class: "[class]"
+      status: "NOT_APPLICABLE"
+      reason: "[why this professional does not consume it]"
+```
+
+The agent declares professional need; it does not declare trusted balances, prices, reservations,
+settlement, provider cost or spend authority. Enforcement remains structural in BP, CE, CTG, PR,
+AIR and WBE. A prompt instruction to stay within budget cannot satisfy this section.
+
+Required checklist:
+
+- [ ] Exact professional and Skill coordinates match the admission contract.
+- [ ] The ABP is Founder-authorized and every eligible bundle is versioned.
+- [ ] Every cost-generating capability resolves to an active Thread Catalog coordinate.
+- [ ] Every inference binds an approved prompt version and minimum model tier.
+- [ ] Package signals are declared as reasoning inputs, never authorization.
+- [ ] Empty, stale, unavailable and exhausted behavior is explicit and honest.
+- [ ] Emergency Stop and mandatory constitutional disclosure are allowance-exempt.
+- [ ] Unused resource classes are explicitly `NOT_APPLICABLE`; omission is not compliance.
+- [ ] No agent-owned code or prompt mutates platform commercial, authority or evidence truth.
+
+---
+
 ## 10. Review and Approval
 
 Reviewer: Enterprise Architect
@@ -1575,6 +1631,7 @@ Review creates: `reviews/R-NNN-sprint-N-agent-{name}-ea-review.md`
 | Containers | `architecture/reference/containers.md` | Add any new MCP servers to the MCP Integration Layer server inventory table | Skip if no new MCP servers |
 | MCP Tool Catalogue | `architecture/reference/mcp-tool-catalogues.md` | Add full tool signature spec for every new MCP server (request, response, authorization, failure mode) | Skip if no new MCP servers — but if MCP server is referenced in spec without a catalogue entry, this is a GATE BLOCKER |
 | Prompt Catalogue | `architecture/reference/prompts/` | Create prompt file for agent type; add every prompt to agent_prompt_versions seed data; update README index | NEVER skip — missing approved prompt = INFERENCE_BLOCKED at runtime (C-045, AD-018) |
+| Operating Envelope | Agent spec Section 9A + ABP, bundle and Thread Catalog records | Bind exact professional/Skill IDs, capabilities, prompts, package signals and honest degradation to the common envelope | Never skip |
 | Component spec | `architecture/reference/components/ai-runtime.md` | Add/expand any component behavior the agent requires (new processing pipelines, new RAG tiers, new VTL behavior) | Skip if no new AI Runtime behavior |
 | Data schema | `infrastructure/postgres/init/03-enums-and-tables.sql` | Add any tables the agent needs (profiles, session records, progressive state, logs) | Skip if no new tables |
 | RLS policies | `infrastructure/postgres/init/04-rls-policies.sql` | Add RLS policies and GRANT statements for every new table | NEVER skip — new table without RLS = AD-004 violation |
@@ -1816,56 +1873,21 @@ SECTION 16 — DECISION CONSEQUENCE MAP GATE (C-099 — MANDATORY — every agen
          FAIL condition: DETERMINISTIC_REQUIRED action without CE.ValidateAction → GATE BLOCKED
 [ ] 16.5  C-099 check present in the Constitutional Checklist section
 
-OVERALL GATE RESULT:
-  All 16 sections PASS → AGENT MAY BE ACTIVATED
-  Any section FAIL → CONSTITUTIONAL BLOCKER → raise blocker in blockers/ → agent NOT activated
-```
-[ ] 12.1  Section 3.18 exists in the spec OR `signal_intelligence: NOT_APPLICABLE` with reason stated
-[ ] 12.2  (If applicable) At least one signal_feed declared with poll_cadence
-[ ] 12.3  (If applicable) Every URGENCY_CLASS=CRITICAL signal type has emergency_exempt: true
-          FAIL condition: CRITICAL signal without emergency_exempt → C-001 + C-053 violation
-[ ] 12.4  (If applicable) PROACTIVE_ALERT prompt in Prompt Catalogue (MID_TIER minimum)
-[ ] 12.5  (If applicable) Evidence action_type declared for each signal_type
-[ ] 12.6  (If applicable) HSM templates declared for any out-of-TRAI-window signals
-[ ] 12.7  C-053 check present in Constitutional Checklist section
-
-SECTION 13 — SKILL INTELLIGENCE ROUTING GATE (C-054) — for multi-skill agents
-[ ] 13.1  Section 3.19 exists in the spec OR `skill_intelligence_router: NOT_APPLICABLE` with reason
-[ ] 13.2  (If applicable) Every Skill has a `skill_capability_manifest` block
-          FAIL condition: any Skill missing SCM → GATE BLOCKED
-[ ] 13.3  (If applicable) Each SCM has minimum 5 intent_signatures
-[ ] 13.4  (If applicable) Each SCM declares collaboration_affinities OR justifies empty (rare)
-[ ] 13.5  (If applicable) skill_gap_signalling block declared with threshold and table reference
-[ ] 13.6  (If applicable) SKILL_INTENT_ROUTER prompt exists in Prompt Catalogue (LOCAL tier)
-          FAIL condition: no router prompt → SIR cannot operate → GATE BLOCKED
-[ ] 13.7  C-054 check present in Constitutional Checklist section
+SECTION 17 — PROFESSIONAL OPERATING ENVELOPE GATE (MANDATORY — every agent)
+[ ] 17.1  Section 9A exists and references Professional Operating Envelope contract version 1.0
+[ ] 17.2  Professional type, Skill IDs and versions exactly match the active admission contract
+[ ] 17.3  Founder-authorized ABP and eligible versioned bundle coordinates are declared
+[ ] 17.4  Every cost-generating capability resolves to an active Thread Catalog coordinate
+[ ] 17.5  Every inference binds an approved prompt version and minimum model tier
+[ ] 17.6  Empty, stale, unavailable and exhausted behavior is explicit and C-049 compliant
+[ ] 17.7  Emergency Stop and mandatory constitutional disclosure are allowance-exempt
+[ ] 17.8  Signals are reasoning inputs only and cannot grant authority or mutate platform truth
+[ ] 17.9  Every unused resource class is explicitly NOT_APPLICABLE with a reason
+         FAIL condition: unresolved capability, inactive ABP/bundle/thread or missing degradation
+         behavior → GATE BLOCKED
 
 OVERALL GATE RESULT:
-  All 13 sections PASS → AGENT MAY BE ACTIVATED
-=======
-SECTION 14 — CAMPAIGN THEME ENGINE GATE (C-055) — for multi-post, multi-platform content agents
-[ ] 14.1  Section 3.21 exists in the spec OR `campaign_theme_engine: NOT_APPLICABLE` with reason
-[ ] 14.2  (If applicable) Platform Intelligence declared with research_signals + output_fields
-[ ] 14.3  (If applicable) Campaign Theme Cascade structure declared (all 3 levels with required_fields)
-[ ] 14.4  (If applicable) SCR 5-check criteria declared with pass_threshold and model_tier per check
-          FAIL condition: SCR declared without individual check thresholds → GATE BLOCKED
-[ ] 14.5  (If applicable) SCR Check 3 (Compliance) fail_action = ROUTE_TO_CUSTOMER (never silent)
-          FAIL condition: any compliance failure routed to auto-regeneration → C-055 violation
-[ ] 14.6  (If applicable) Content Approval Modes declared (POST_APPROVAL, CAMPAIGN_APPROVAL, CAMPAIGN_AUTO)
-[ ] 14.7  (If applicable) Upgrade criteria declared for each mode transition
-[ ] 14.8  (If applicable) Campaign Digest declared (cadence, channels, prompt)
-[ ] 14.9  (If applicable) All campaign prompts in Prompt Catalogue:
-          MASTER_THEME_PROPOSAL (FRONTIER, BREAKING)
-          WEEKLY_THEME_CASCADE (MID_TIER, BEHAVIOURAL)
-          PLATFORM_CONTENT_VARIANT (MID_TIER, BEHAVIOURAL)
-          SCR_QUALITY_CHECK (MID_TIER, BEHAVIOURAL — Check 5 only)
-          CAMPAIGN_DIGEST (MID_TIER, BEHAVIOURAL)
-          FAIL condition: any of these missing → GATE BLOCKED
-[ ] 14.10 C-055 check present in Constitutional Checklist section
-
-OVERALL GATE RESULT:
-  All 14 sections PASS → AGENT MAY BE ACTIVATED
->>>>>>> 699f049 (constitutional(dma): C-055 Campaign Theme Engine + SCR + Platform Intelligence (DMA v2.5, v0.39.0))
+  All 17 sections PASS → AGENT MAY BE ACTIVATED
   Any section FAIL → CONSTITUTIONAL BLOCKER → raise blocker in blockers/ → agent NOT activated
 ```
 
