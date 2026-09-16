@@ -1,5 +1,5 @@
 import { render, screen, within } from '@testing-library/react';
-import MyProfessionalsPage from '@/app/(authenticated)/professionals/mine/page';
+import MyProfessionalsPage from '@/app/(application)/professionals/mine/page';
 import { getServerAccessToken } from '@/lib/server-auth';
 import { getIdentitySession } from '@/lib/api/identity';
 import { listEmploymentRelationships } from '@/lib/api/relationships';

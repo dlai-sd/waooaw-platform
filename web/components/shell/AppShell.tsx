@@ -13,9 +13,10 @@ import { HeaderScrollState } from './HeaderScrollState';
 
 type ShellVariant = 'public' | 'auth' | 'customer' | 'founder';
 
-export function AppShell({ bottomNavigation, children, headerStatus, messages, sideNavigation, stopControl, variant }: {
+export function AppShell({ bottomNavigation, children, headerLeading, headerStatus, messages, sideNavigation, stopControl, variant }: {
   bottomNavigation?: ReactNode;
   children: ReactNode;
+  headerLeading?: ReactNode;
   headerStatus?: ReactNode;
   messages: Messages;
   sideNavigation?: ReactNode;
@@ -30,6 +31,7 @@ export function AppShell({ bottomNavigation, children, headerStatus, messages, s
         <a className="skip-link" href="#main-content">{messages.skipToContent}</a>
         <header className="top-bar">
           {variant === 'public' ? <HeaderScrollState /> : null}
+          {headerLeading}
           <Brand />
           {variant === 'public' ? <nav aria-label={messages.publicNavigation}>{publicLinks.map((link) => <a key={link.href} href={link.href}>{link.label}</a>)}</nav> : null}
           <div className="top-actions">

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
-import AlertsPage from '@/app/(authenticated)/alerts/page';
-import ProfilePage from '@/app/(authenticated)/profile/page';
-import SettingsPage from '@/app/(authenticated)/settings/page';
+import AlertsPage from '@/app/(application)/alerts/page';
+import ProfilePage from '@/app/(application)/profile/page';
+import SettingsPage from '@/app/(application)/settings/page';
 import { getIdentitySession } from '@/lib/api/identity';
 import { getServerAccessToken } from '@/lib/server-auth';
 

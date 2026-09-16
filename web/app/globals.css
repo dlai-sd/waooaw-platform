@@ -26,7 +26,7 @@
   --orange: #a85b00;
   --stop: var(--color-override);
   --shadow: 0 12px 32px rgb(30 51 82 / 10%);
-  --nav-width: 248px;
+  --nav-width: 76px;
   --announcement-offset: 0px;
   --color-surface-translucent: rgb(255 255 255 / 88%);
 }
@@ -301,10 +301,16 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 .icon-command { width: 44px; height: 44px; display: inline-grid; place-items: center; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); cursor: pointer; }
 .select-control { min-height: 44px; display: flex; align-items: center; gap: .4rem; padding-inline: .65rem; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 .select-control select { max-width: 9rem; border: 0; color: var(--ink); background: transparent; }
-.side-navigation { padding: 1.25rem .75rem; border-inline-end: 1px solid var(--line); background: var(--surface); }
+.side-navigation { width: 76px; padding: 1.25rem .75rem; border-inline-end: 1px solid var(--line); background: var(--surface); transition: width .18s ease; }
 .side-navigation nav { display: grid; gap: .35rem; }
-.side-navigation a { min-height: 48px; display: flex; align-items: center; gap: .75rem; padding-inline: .85rem; border-radius: 8px; text-decoration: none; }
-.side-navigation a:hover { background: var(--color-surface-strong); }
+.side-navigation a { min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .25rem; padding: .45rem; border-radius: 8px; text-decoration: none; }
+.side-navigation a span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+.side-navigation a:hover, .side-navigation a:focus-visible { background: var(--color-surface-strong); }
+.side-navigation a[aria-current="page"] { color: var(--blue); background: color-mix(in srgb, var(--blue) 11%, var(--surface)); }
+.side-navigation[data-expanded="true"] { width: 184px; }
+.side-navigation[data-expanded="true"] a span { position: static; width: auto; height: auto; overflow: visible; clip: auto; font-size: .72rem; text-align: center; }
+.app-shell-customer:has(.side-navigation[data-expanded="true"]) { --nav-width: 184px; }
+.navigation-toggle { flex: 0 0 auto; }
 .portal-assurance { min-height: 32px; display: inline-flex; align-items: center; gap: .4rem; padding-inline: .65rem; border: 1px solid color-mix(in srgb, var(--green) 45%, var(--line)); border-radius: 999px; color: var(--green); font-size: .75rem; font-weight: 800; white-space: nowrap; }
 .main-content { min-width: 0; }
 .app-shell-public .main-content, .app-shell-auth .main-content { grid-column: 1 / -1; }
@@ -540,8 +546,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
   .agent-context-panel { border-inline-start: 0; border-block-start: 1px solid var(--line); }
   .workspace-header h1 { font-size: 3rem; }
   .app-shell-customer, .app-shell-founder { grid-template-columns: 76px minmax(0, 1fr); }
-  .side-navigation a span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
-  .side-navigation a { justify-content: center; }
+  .app-shell-customer:has(.side-navigation[data-expanded="true"]) { --nav-width: 76px; }
+  .side-navigation[data-expanded="true"] { position: fixed; inset-block: 72px 0; inset-inline-start: 0; z-index: 50; width: min(184px, calc(100vw - 1rem)); box-shadow: var(--shadow); }
   .top-bar nav { display: none; }
   .top-actions > a { display: none; }
   .public-intro { grid-template-columns: minmax(0, 1fr); }

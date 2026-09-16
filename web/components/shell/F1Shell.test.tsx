@@ -22,6 +22,7 @@ describe('F1 shell primitives', () => {
     jest.mocked(usePathname).mockReturnValue('/home');
     document.documentElement.lang = 'en';
     document.documentElement.dataset.theme = 'system';
+    localStorage.clear();
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
   });
 
@@ -54,6 +55,19 @@ describe('F1 shell primitives', () => {
     expect(screen.getAllByRole('link', { name: 'Alerts' })[0]).toHaveAttribute('href', '/alerts');
     expect(screen.getByRole('link', { name: 'Profile' })).toHaveAttribute('href', '/profile');
     expect(screen.getByRole('button', { name: 'No active work to stop' })).toBeDisabled();
+  });
+
+  it('uses client navigation with active state and an accessible persisted rail', () => {
+    jest.mocked(usePathname).mockReturnValue('/marketplace');
+    render(<ProtectedAppShell messages={messages.en} variant="customer"><p>Marketplace</p></ProtectedAppShell>);
+
+    expect(screen.getAllByRole('link', { name: 'Marketplace' })[0]).toHaveAttribute('aria-current', 'page');
+    const toggle = screen.getByRole('button', { name: 'Expand navigation' });
+    fireEvent.click(toggle);
+    expect(screen.getByRole('button', { name: 'Collapse navigation' })).toHaveAttribute('aria-expanded', 'true');
+    expect(localStorage.getItem('waooaw:navigation-expanded')).toBe('true');
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.getByRole('button', { name: 'Expand navigation' })).toHaveFocus();
   });
 
   it('passes an approved active Stop context to the constitutional control', () => {

@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { redirect } from 'next/navigation';
-import CustomerLayout from '@/app/(authenticated)/layout';
+import CustomerLayout from '@/app/(application)/layout';
 import { getIdentitySession } from '@/lib/api/identity';
 import { getRequestI18n } from '@/lib/i18n-server';
 import { getServerAccessToken } from '@/lib/server-auth';
