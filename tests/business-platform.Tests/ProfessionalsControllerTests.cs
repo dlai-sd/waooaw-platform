@@ -89,6 +89,9 @@ public sealed class ProfessionalsControllerTests
         var json = System.Text.Json.JsonSerializer.SerializeToElement(ok.Value);
         var listing = json.GetProperty("items").EnumerateArray().Should().ContainSingle().Subject;
         listing.GetProperty("professionalType").GetString().Should().Be("DIGITAL_MARKETING_LOCAL_SERVICE");
+        listing.GetProperty("disclosurePath").GetString().Should().Be("/professionals/digital-marketing");
+        listing.GetProperty("availableIntents").EnumerateArray()
+            .Select(value => value.GetString()).Should().Equal("TRIAL", "HIRE");
         listing.GetProperty("offerabilityState").GetString().Should().Be("OFFERABLE");
         listing.GetProperty("nextAction").GetString().Should().Be("VIEW_DISCLOSURE");
         listing.GetProperty("indicativePrice").GetProperty("Currency").GetString().Should().Be("INR");
@@ -149,7 +152,7 @@ public sealed class ProfessionalsControllerTests
     }
 
     private static ProfessionalDisclosure Disclosure(string type) => new(
-        type, "1.0.0", type, ["Suitable"], [], [], [], [],
+        type, "1.0.0", type.ToLowerInvariant(), type, ["Suitable"], [], [], [], [],
         new ProfessionalTrialDisclosure(true, 14, false, false), "RECORDED",
         new IndicativePriceDisclosure("INR", 100, "MONTHLY", "Indicative"),
         new ProfessionalEligibility(true, "Eligible"));

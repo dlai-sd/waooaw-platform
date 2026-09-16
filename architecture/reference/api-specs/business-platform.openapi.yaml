@@ -5991,11 +5991,22 @@ components:
     ProfessionalMarketplaceListingV1:
       type: object
       additionalProperties: false
-      required: [professionalType, version, displayName, offerabilityState, eligibility, nextAction]
+      required: [professionalType, version, displayName, disclosurePath, availableIntents, offerabilityState, eligibility, nextAction]
       properties:
         professionalType: { type: string, minLength: 1, maxLength: 100 }
         version: { type: string, minLength: 1, maxLength: 32 }
         displayName: { type: string, minLength: 1, maxLength: 200 }
+        disclosurePath:
+          type: string
+          pattern: "^/professionals/[a-z0-9]+(?:-[a-z0-9]+)*$"
+          minLength: 16
+          maxLength: 240
+        availableIntents:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum: [TRIAL, HIRE]
         suitability:
           type: array
           items: { type: string, minLength: 1, maxLength: 500 }

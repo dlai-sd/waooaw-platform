@@ -28,6 +28,7 @@ public sealed record IndicativePriceDisclosure(
 public sealed record ProfessionalDisclosure(
     string ProfessionalType,
     string ProjectionVersion,
+    string CustomerRouteSlug,
     string DisplayName,
     IReadOnlyList<string> Suitability,
     IReadOnlyList<ProfessionalSkillDisclosure> Skills,
@@ -107,6 +108,7 @@ public sealed class ProfessionalCatalog : IProfessionalCatalog
             : new ProfessionalDisclosure(
                 manifest.ProfessionalType,
                 manifest.ProjectionVersion,
+                manifest.CustomerRouteSlug,
                 manifest.DisplayName,
                 manifest.Suitability,
                 manifest.Skills,
@@ -151,6 +153,7 @@ public sealed class ProfessionalCatalog : IProfessionalCatalog
     private sealed record ProfessionalCatalogManifest(
         string ProfessionalType,
         string ProjectionVersion,
+        string CustomerRouteSlug,
         string DisplayName,
         bool Active,
         IReadOnlyList<string> SupportedOutcomeTerms,

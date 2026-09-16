@@ -188,6 +188,7 @@ public sealed class EmploymentContractServiceTests
         public ProfessionalDisclosure? GetDisclosure(string professionalType) => new(
             professionalType,
             "1.0.0",
+            "digital-marketing",
             "Digital Marketing Professional",
             ["Local service growth"],
             [new ProfessionalSkillDisclosure("LOCAL_SEO", "Local SEO", true, null)],

@@ -54,6 +54,18 @@ export interface ProfessionalMarketplaceListingV1 {
   displayName: string;
   /**
    *
+   * @type {string}
+   * @memberof ProfessionalMarketplaceListingV1
+   */
+  disclosurePath: string;
+  /**
+   *
+   * @type {Set<string>}
+   * @memberof ProfessionalMarketplaceListingV1
+   */
+  availableIntents: Set<ProfessionalMarketplaceListingV1AvailableIntentsEnum>;
+  /**
+   *
    * @type {Array<string>}
    * @memberof ProfessionalMarketplaceListingV1
    */
@@ -93,6 +105,16 @@ export interface ProfessionalMarketplaceListingV1 {
 /**
  * @export
  */
+export const ProfessionalMarketplaceListingV1AvailableIntentsEnum = {
+  Trial: "TRIAL",
+  Hire: "HIRE",
+} as const;
+export type ProfessionalMarketplaceListingV1AvailableIntentsEnum =
+  (typeof ProfessionalMarketplaceListingV1AvailableIntentsEnum)[keyof typeof ProfessionalMarketplaceListingV1AvailableIntentsEnum];
+
+/**
+ * @export
+ */
 export const ProfessionalMarketplaceListingV1OfferabilityStateEnum = {
   Offerable: "OFFERABLE",
   TrialOnly: "TRIAL_ONLY",
@@ -125,6 +147,10 @@ export function instanceOfProfessionalMarketplaceListingV1(
   if (!("version" in value) || value["version"] === undefined) return false;
   if (!("displayName" in value) || value["displayName"] === undefined)
     return false;
+  if (!("disclosurePath" in value) || value["disclosurePath"] === undefined)
+    return false;
+  if (!("availableIntents" in value) || value["availableIntents"] === undefined)
+    return false;
   if (!("eligibility" in value) || value["eligibility"] === undefined)
     return false;
   if (
@@ -154,6 +180,8 @@ export function ProfessionalMarketplaceListingV1FromJSONTyped(
     professionalType: json["professionalType"],
     version: json["version"],
     displayName: json["displayName"],
+    disclosurePath: json["disclosurePath"],
+    availableIntents: new Set(json["availableIntents"]),
     suitability: json["suitability"] == null ? undefined : json["suitability"],
     eligibility: ProfessionalEligibilityFromJSON(json["eligibility"]),
     indicativePrice:
@@ -184,6 +212,8 @@ export function ProfessionalMarketplaceListingV1ToJSONTyped(
     professionalType: value["professionalType"],
     version: value["version"],
     displayName: value["displayName"],
+    disclosurePath: value["disclosurePath"],
+    availableIntents: Array.from(value["availableIntents"] as Set<any>),
     suitability: value["suitability"],
     eligibility: ProfessionalEligibilityToJSON(value["eligibility"]),
     indicativePrice: IndicativePriceDisclosureToJSON(value["indicativePrice"]),

@@ -48,9 +48,12 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
                 {professional.trialTerms ? <p><strong>Trial:</strong> {professional.trialTerms}</p> : null}
                 <footer>
                   <span>{professional.nextAction.replaceAll('_', ' ')}</span>
-                  {professional.nextAction !== 'NONE' ? <Link className="secondary-link" href={`/professionals/${encodeURIComponent(professional.professionalType.toLowerCase().replaceAll('_', '-'))}`}>{professional.nextAction === 'START_TRIAL' ? 'Review trial disclosure' : professional.nextAction === 'START_HIRE' ? 'Review hire disclosure' : 'View disclosure'} <ArrowRight aria-hidden="true" size={18} /></Link> : null}
+                  <div className="command-row">
+                    {professional.availableIntents.has('TRIAL') ? <Link className="secondary-link" href={`${professional.disclosurePath}?${new URLSearchParams({ professionalType: professional.professionalType, version: professional.version, intent: 'trial' })}`}>Start trial <ArrowRight aria-hidden="true" size={18} /></Link> : null}
+                    {professional.availableIntents.has('HIRE') ? <Link className="primary-link" href={`${professional.disclosurePath}?${new URLSearchParams({ professionalType: professional.professionalType, version: professional.version, intent: 'hire' })}`}>Hire <ArrowRight aria-hidden="true" size={18} /></Link> : null}
+                  </div>
                 </footer>
-                {professional.nextAction === 'START_TRIAL' || professional.nextAction === 'START_HIRE' ? <p className="portal-action-note">The action continues through the approved relationship lifecycle after disclosure review.</p> : null}
+                {professional.availableIntents.size > 0 ? <p className="portal-action-note">Review the scope, limits, rights, and commercial terms before you continue.</p> : null}
               </li>
             ))}
           </ul>

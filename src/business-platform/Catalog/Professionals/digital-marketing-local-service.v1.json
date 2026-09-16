@@ -1,6 +1,7 @@
 {
   "professionalType": "DIGITAL_MARKETING_LOCAL_SERVICE",
   "projectionVersion": "1.0.0",
+  "customerRouteSlug": "digital-marketing",
   "displayName": "Digital Marketing Professional",
   "active": true,
   "supportedOutcomeTerms": [
