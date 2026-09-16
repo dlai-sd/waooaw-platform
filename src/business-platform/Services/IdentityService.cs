@@ -130,33 +130,33 @@ public sealed class IdentityService
         VerifiedCustomerActor actor, Guid idempotencyKey, string canonicalHash,
         string languagePreference, CancellationToken ct) =>
         MutateBrokerRegistrationAsync(actor, IdentityAuthenticationPath.Google, null, idempotencyKey, canonicalHash,
-            "StartRegistration", languagePreference, true, null, null, null, ct);
+            "StartRegistration", languagePreference, true, null, null, null, null, ct);
 
     public Task<(IdentityRegistrationRecord reg, bool isNew)> StartRegistrationAsync(
         VerifiedCustomerActor actor, IdentityAuthenticationPath authenticationPath, Guid idempotencyKey,
-        string canonicalHash, string languagePreference, bool emailVerified, CancellationToken ct) =>
+        string canonicalHash, string languagePreference, bool emailVerified, string? maskedEmail, CancellationToken ct) =>
         MutateBrokerRegistrationAsync(actor, authenticationPath, null, idempotencyKey, canonicalHash,
-            "StartRegistration", languagePreference, emailVerified, null, null, null, ct);
+            "StartRegistration", languagePreference, emailVerified, maskedEmail, null, null, null, ct);
 
     public Task<(IdentityRegistrationRecord reg, bool isNew)> UpdateProfileAsync(
         Guid registrationId, VerifiedCustomerActor actor, Guid idempotencyKey, string canonicalHash,
         string displayName, string businessName, string businessDomain, string languagePreference,
         CancellationToken ct) =>
         MutateBrokerRegistrationAsync(actor, IdentityAuthenticationPath.Google, registrationId, idempotencyKey, canonicalHash,
-            "UpdateProfile", languagePreference, true, displayName, businessName, businessDomain, ct);
+            "UpdateProfile", languagePreference, true, null, displayName, businessName, businessDomain, ct);
 
     public Task<(IdentityRegistrationRecord reg, bool isNew)> UpdateProfileAsync(
         Guid registrationId, VerifiedCustomerActor actor, IdentityAuthenticationPath authenticationPath,
         Guid idempotencyKey, string canonicalHash, string displayName, string businessName,
         string businessDomain, string languagePreference, CancellationToken ct) =>
         MutateBrokerRegistrationAsync(actor, authenticationPath, registrationId, idempotencyKey, canonicalHash,
-            "UpdateProfile", languagePreference, true, displayName, businessName, businessDomain, ct);
+            "UpdateProfile", languagePreference, true, null, displayName, businessName, businessDomain, ct);
 
     private async Task<(IdentityRegistrationRecord reg, bool isNew)> MutateBrokerRegistrationAsync(
         VerifiedCustomerActor actor, IdentityAuthenticationPath authenticationPath, Guid? registrationId,
         Guid idempotencyKey, string canonicalHash,
-        string operation, string languagePreference, bool emailVerified, string? displayName, string? businessName,
-        string? businessDomain, CancellationToken ct)
+        string operation, string languagePreference, bool emailVerified, string? maskedEmail, string? displayName,
+        string? businessName, string? businessDomain, CancellationToken ct)
     {
         if (idempotencyKey == Guid.Empty)
             throw new ArgumentException("An idempotency key is required.");
@@ -197,7 +197,8 @@ public sealed class IdentityService
                     IdentityAuthenticationPath.Apple => "apple",
                     _ => throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED"),
                 },
-                ProviderIssuer = actor.Issuer, EmailVerified = emailVerified, LanguagePreference = languagePreference,
+                ProviderIssuer = actor.Issuer, EmailVerified = emailVerified, MaskedEmail = maskedEmail,
+                LanguagePreference = languagePreference,
                 State = emailVerified ? IdentityRegistrationState.FederatedIdentityAccepted
                     : IdentityRegistrationState.EmailVerificationRequired,
             };

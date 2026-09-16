@@ -78,6 +78,7 @@ public sealed class GoogleWorkspaceProofAdapterTests
                     new Claim("azp", authorizedParty),
                     new Claim("idp", provider),
                     new Claim("email_verified", "true"),
+                    new Claim("email", "customer@example.com"),
                     new Claim("realm_access", "{\"roles\":[\"customer\"]}"),
                     new Claim("iat", now.ToString()),
                     new Claim("exp", (now + 600).ToString()),
@@ -314,6 +315,20 @@ public sealed class GoogleWorkspaceProofAdapterTests
         adapter.ValidateActor(principal);
         await Assert.ThrowsAsync<IdentityActionDeniedException>(() => adapter.ReadAsync(principal, default));
         Assert.Empty(handler.Requests);
+    }
+
+    [Fact]
+    public void VerifiedEmail_RequiresValidEmailClaim()
+    {
+        var principal = Principal();
+        var adapter = new GoogleWorkspaceProofAdapter(
+            new HttpClient(new SyntheticKeycloakHandler()), Options.Create(Configuration()));
+        Assert.Equal("customer@example.com", adapter.VerifiedEmail(principal));
+
+        var identity = (ClaimsIdentity)principal.Identity!;
+        identity.RemoveClaim(identity.FindFirst("email"));
+        identity.AddClaim(new Claim("email", "not-an-email"));
+        Assert.Throws<IdentityActionDeniedException>(() => adapter.VerifiedEmail(principal));
     }
 
     [Theory]

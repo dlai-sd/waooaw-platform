@@ -175,6 +175,20 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests : IAsyncLifetime
         await AssertEmptyPoolAsync();
     }
 
+    [Fact]
+    public async Task Http_VerifiedBrokerEmail_IsProjectedReadOnlyAsMaskedIdentity()
+    {
+        var response = await SendAsync(HttpMethod.Post, "/api/v1/identity/registrations",
+            Token("verified-email"), new { languagePreference = "en" });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var registration = await JsonAsync(response);
+        Assert.True(registration.GetProperty("emailVerified").GetBoolean());
+        Assert.Equal("c***@example.com", registration.GetProperty("maskedEmail").GetString());
+        Assert.Equal("google", registration.GetProperty("providerLabel").GetString());
+        await AssertEmptyPoolAsync();
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("false")]
