@@ -4,6 +4,7 @@ const primaryRelationshipId = 'relationship-active';
 const executionId = '3ead2d21-f908-40b5-9510-b1e77f516d7e';
 const streamClients = new Map();
 const scopedTimelines = new Map();
+const portalTimelines = new Map();
 const continuityStates = new Map();
 const voiceSessions = new Map();
 const identityProviderDelayMs = Number.parseInt(process.env.IDENTITY_PROVIDER_DELAY_MS ?? '0', 10) || 0;
@@ -80,6 +81,11 @@ function setMessages(scope, relationshipId, messages) {
   scopedTimelines.set(scopeKey(scope, relationshipId), messages);
 }
 
+function portalMessagesFor(scope) {
+  if (!portalTimelines.has(scope)) portalTimelines.set(scope, []);
+  return portalTimelines.get(scope);
+}
+
 function timeline(scope, relationshipId) {
   const messages = messagesFor(scope, relationshipId);
   return {
@@ -148,6 +154,23 @@ const server = createServer(async (request, response) => {
   const voiceSendMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions\/([^/]+)\/send$/);
   const voiceCancelMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions\/([^/]+)\/cancel$/);
 
+  if (request.method === 'GET' && url.pathname === '/api/v1/customer-portal/interactions/portal/messages') {
+    const items = portalMessagesFor(scope);
+    json(response, { schemaVersion: '1.0', scope: 'PORTAL', contextId: '77777777-7777-4777-8777-777777777777', items, authoritativeCursor: `portal-cursor-${items.length}`, hasMore: false, serverTime: '2026-08-12T10:00:00Z' });
+    return;
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/v1/customer-portal/interactions/portal/messages') {
+    const body = await readBody(request);
+    const items = portalMessagesFor(scope);
+    const acceptedAt = '2026-08-12T10:01:00Z';
+    const customerMessage = { schemaVersion: '1.0', messageId: body.clientMessageId, sequence: items.length + 1, actor: 'CUSTOMER', content: body.content, capabilities: [], currentSurface: body.currentSurface, clientMessageId: body.clientMessageId, acceptedAt };
+    const guideMessage = { schemaVersion: '1.0', messageId: `guide-${body.clientMessageId}`, sequence: items.length + 2, actor: 'GUIDE', content: [{ schemaVersion: '1.0', blockType: 'TEXT', text: 'I can help you navigate and explain this portal. Relationship work remains with the selected professional.' }], capabilities: [{ capabilityType: 'NAVIGATE', label: 'Open My Agents', destination: '/professionals/mine' }], currentSurface: body.currentSurface, acceptedAt };
+    items.push(customerMessage, guideMessage);
+    json(response, { schemaVersion: '1.0', scope: 'PORTAL', outcome: 'ACCEPTED', customerMessage, guideMessage, authoritativeCursor: `portal-cursor-${items.length}`, replayed: false }, 202);
+    return;
+  }
+
   if (request.method === 'GET' && url.pathname === '/api/v1/identity/providers') {
     if (identityProviderDelayMs > 0) {
       await new Promise((resolve) => setTimeout(resolve, identityProviderDelayMs));
@@ -203,7 +226,7 @@ const server = createServer(async (request, response) => {
   }
 
   if (request.method === 'GET' && url.pathname === '/api/v1/employment/relationships') {
-    json(response, { schemaVersion: '1.0.0', producedAt: '2026-08-12T10:00:00Z', items: [{ relationshipId: primaryRelationshipId, professionalType: 'DIGITAL_MARKETING', professionalDisplayName: 'Mira', lifecycleState: 'ACTIVE', currentGoalSummary: 'Increase qualified enquiries', unreadState: 'ACTION_REQUIRED', availabilityState: 'AVAILABLE', currencyState: 'CURRENT', lastAuthoritativelyConfirmedAt: '2026-08-12T09:55:00Z', resumeTarget: { surface: 'CONVERSATION', relationshipId: primaryRelationshipId } }] });
+    json(response, { schemaVersion: '1.0.0', producedAt: '2026-08-12T10:00:00Z', items: [{ relationshipId: primaryRelationshipId, professionalType: 'DIGITAL_MARKETING', professionalVersion: '2.1.0', professionalDisplayName: 'Mira', lifecycleState: 'ACTIVE', currentGoalSummary: 'Increase qualified enquiries', unreadState: 'ACTION_REQUIRED', availabilityState: 'AVAILABLE', currencyState: 'CURRENT', configurationState: 'COMPLETE', enabledSkillCount: 3, pendingSkillCount: 1, currentWorkSummary: 'Preparing the local campaign brief.', performanceSummary: 'No evidenced performance summary is available yet.', billingSummary: 'No current billing amount is available in this summary.', nextActionLabel: 'View work', lastAuthoritativelyConfirmedAt: '2026-08-12T09:55:00Z', resumeTarget: { surface: 'CONVERSATION', relationshipId: primaryRelationshipId } }] });
     return;
   }
 
