@@ -5835,7 +5835,7 @@ components:
     EmploymentRelationshipSummaryV1:
       type: object
       additionalProperties: false
-      required: [relationshipId, agentInstanceId, professionalType, professionalDisplayName, lifecycleState, unreadState, availabilityState, currencyState, lastAuthoritativelyConfirmedAt, resumeTarget]
+      required: [relationshipId, agentInstanceId, professionalType, professionalDisplayName, lifecycleState, unreadState, availabilityState, currencyState, configurationState, enabledSkillCount, pendingSkillCount, performanceSummary, billingSummary, nextActionLabel, lastAuthoritativelyConfirmedAt, resumeTarget]
       properties:
         relationshipId: { type: string, format: uuid }
         agentInstanceId: { type: string, format: uuid }
@@ -5855,6 +5855,16 @@ components:
           enum: [NONE, UNREAD, ACTION_REQUIRED]
         availabilityState: { $ref: "#/components/schemas/EmploymentRelationshipAvailabilityStateV1" }
         currencyState: { $ref: "#/components/schemas/RelationshipWorkspaceCurrencyState" }
+        configurationState:
+          type: string
+          enum: [NOT_STARTED, IN_PROGRESS, COMPLETE, BLOCKED]
+        enabledSkillCount: { type: integer, minimum: 0 }
+        pendingSkillCount: { type: integer, minimum: 0 }
+        currentWorkSummary: { type: string, minLength: 1, maxLength: 240, nullable: true }
+        blockerSummary: { type: string, minLength: 1, maxLength: 240, nullable: true }
+        performanceSummary: { type: string, minLength: 1, maxLength: 240 }
+        billingSummary: { type: string, minLength: 1, maxLength: 240 }
+        nextActionLabel: { type: string, minLength: 1, maxLength: 80 }
         lastAuthoritativelyConfirmedAt: { type: string, format: date-time }
         resumeTarget: { $ref: "#/components/schemas/CustomerPortalDestinationV1" }
 

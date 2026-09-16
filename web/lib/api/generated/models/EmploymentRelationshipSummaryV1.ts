@@ -122,6 +122,54 @@ export interface EmploymentRelationshipSummaryV1 {
   currencyState: RelationshipWorkspaceCurrencyState;
   /**
    *
+   * @type {string}
+   * @memberof EmploymentRelationshipSummaryV1
+   */
+  configurationState: EmploymentRelationshipSummaryV1ConfigurationStateEnum;
+  /**
+   *
+   * @type {number}
+   * @memberof EmploymentRelationshipSummaryV1
+   */
+  enabledSkillCount: number;
+  /**
+   *
+   * @type {number}
+   * @memberof EmploymentRelationshipSummaryV1
+   */
+  pendingSkillCount: number;
+  /**
+   *
+   * @type {string}
+   * @memberof EmploymentRelationshipSummaryV1
+   */
+  currentWorkSummary?: string;
+  /**
+   *
+   * @type {string}
+   * @memberof EmploymentRelationshipSummaryV1
+   */
+  blockerSummary?: string;
+  /**
+   *
+   * @type {string}
+   * @memberof EmploymentRelationshipSummaryV1
+   */
+  performanceSummary: string;
+  /**
+   *
+   * @type {string}
+   * @memberof EmploymentRelationshipSummaryV1
+   */
+  billingSummary: string;
+  /**
+   *
+   * @type {string}
+   * @memberof EmploymentRelationshipSummaryV1
+   */
+  nextActionLabel: string;
+  /**
+   *
    * @type {Date}
    * @memberof EmploymentRelationshipSummaryV1
    */
@@ -159,6 +207,18 @@ export type EmploymentRelationshipSummaryV1UnreadStateEnum =
   (typeof EmploymentRelationshipSummaryV1UnreadStateEnum)[keyof typeof EmploymentRelationshipSummaryV1UnreadStateEnum];
 
 /**
+ * @export
+ */
+export const EmploymentRelationshipSummaryV1ConfigurationStateEnum = {
+  NotStarted: "NOT_STARTED",
+  InProgress: "IN_PROGRESS",
+  Complete: "COMPLETE",
+  Blocked: "BLOCKED",
+} as const;
+export type EmploymentRelationshipSummaryV1ConfigurationStateEnum =
+  (typeof EmploymentRelationshipSummaryV1ConfigurationStateEnum)[keyof typeof EmploymentRelationshipSummaryV1ConfigurationStateEnum];
+
+/**
  * Check if a given object implements the EmploymentRelationshipSummaryV1 interface.
  */
 export function instanceOfEmploymentRelationshipSummaryV1(
@@ -185,6 +245,30 @@ export function instanceOfEmploymentRelationshipSummaryV1(
   )
     return false;
   if (!("currencyState" in value) || value["currencyState"] === undefined)
+    return false;
+  if (
+    !("configurationState" in value) ||
+    value["configurationState"] === undefined
+  )
+    return false;
+  if (
+    !("enabledSkillCount" in value) ||
+    value["enabledSkillCount"] === undefined
+  )
+    return false;
+  if (
+    !("pendingSkillCount" in value) ||
+    value["pendingSkillCount"] === undefined
+  )
+    return false;
+  if (
+    !("performanceSummary" in value) ||
+    value["performanceSummary"] === undefined
+  )
+    return false;
+  if (!("billingSummary" in value) || value["billingSummary"] === undefined)
+    return false;
+  if (!("nextActionLabel" in value) || value["nextActionLabel"] === undefined)
     return false;
   if (
     !("lastAuthoritativelyConfirmedAt" in value) ||
@@ -235,6 +319,18 @@ export function EmploymentRelationshipSummaryV1FromJSONTyped(
     currencyState: RelationshipWorkspaceCurrencyStateFromJSON(
       json["currencyState"],
     ),
+    configurationState: json["configurationState"],
+    enabledSkillCount: json["enabledSkillCount"],
+    pendingSkillCount: json["pendingSkillCount"],
+    currentWorkSummary:
+      json["currentWorkSummary"] == null
+        ? undefined
+        : json["currentWorkSummary"],
+    blockerSummary:
+      json["blockerSummary"] == null ? undefined : json["blockerSummary"],
+    performanceSummary: json["performanceSummary"],
+    billingSummary: json["billingSummary"],
+    nextActionLabel: json["nextActionLabel"],
     lastAuthoritativelyConfirmedAt: new Date(
       json["lastAuthoritativelyConfirmedAt"],
     ),
@@ -273,6 +369,14 @@ export function EmploymentRelationshipSummaryV1ToJSONTyped(
     currencyState: RelationshipWorkspaceCurrencyStateToJSON(
       value["currencyState"],
     ),
+    configurationState: value["configurationState"],
+    enabledSkillCount: value["enabledSkillCount"],
+    pendingSkillCount: value["pendingSkillCount"],
+    currentWorkSummary: value["currentWorkSummary"],
+    blockerSummary: value["blockerSummary"],
+    performanceSummary: value["performanceSummary"],
+    billingSummary: value["billingSummary"],
+    nextActionLabel: value["nextActionLabel"],
     lastAuthoritativelyConfirmedAt:
       value["lastAuthoritativelyConfirmedAt"].toISOString(),
     resumeTarget: CustomerPortalDestinationV1ToJSON(value["resumeTarget"]),

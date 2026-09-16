@@ -19,7 +19,9 @@ public sealed record RelationshipAcquisitionEvidence(
 public sealed record EmploymentRelationshipListItem(
     EmploymentRelationship Relationship,
     string? CurrentGoalSummary,
-    string? TrialStatus);
+    string? TrialStatus,
+    int EnabledSkillCount,
+    int PendingSkillCount);
 
 public sealed record EmploymentRelationshipListPage(
     IReadOnlyList<EmploymentRelationshipListItem> Items,
@@ -389,11 +391,23 @@ public sealed class EmploymentRelationshipService
         var trialStatuses = await db.RelationshipTrialBindings.AsNoTracking()
             .Where(value => value.TenantId == tenantId && selectedIds.Contains(value.RelationshipId))
             .ToDictionaryAsync(value => value.RelationshipId, value => value.Status, cancellationToken);
+        var skills = await db.RelationshipSkillConfigurations.AsNoTracking()
+            .Where(value => value.TenantId == tenantId && selectedIds.Contains(value.RelationshipId))
+            .GroupBy(value => value.RelationshipId)
+            .Select(group => new
+            {
+                RelationshipId = group.Key,
+                Enabled = group.Count(value => value.Status == "ACTIVE" || value.Status == "ENABLED" || value.Status == "APPROVED"),
+                Pending = group.Count(value => value.Status != "ACTIVE" && value.Status != "ENABLED" && value.Status != "APPROVED"),
+            })
+            .ToDictionaryAsync(value => value.RelationshipId, cancellationToken);
         var items = selected.Select(relationship => new EmploymentRelationshipListItem(
             relationship,
             goals.FirstOrDefault(goal => goal.RelationshipId == relationship.RelationshipId
                 && goal.Status is not ("RETIRED" or "SUPERSEDED"))?.Goal,
-            trialStatuses.GetValueOrDefault(relationship.RelationshipId))).ToArray();
+            trialStatuses.GetValueOrDefault(relationship.RelationshipId),
+            skills.GetValueOrDefault(relationship.RelationshipId)?.Enabled ?? 0,
+            skills.GetValueOrDefault(relationship.RelationshipId)?.Pending ?? 0)).ToArray();
         var nextCursor = page.Length > limit
             ? Convert.ToBase64String(Encoding.UTF8.GetBytes(selected[^1].RelationshipId.ToString()))
             : null;

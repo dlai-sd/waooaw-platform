@@ -31,6 +31,21 @@ public sealed class EmploymentRelationshipsControllerTests
             tenantId, Guid.NewGuid(), Guid.NewGuid(), "SALES", Guid.NewGuid(), CancellationToken.None);
         await service.AdmitAsync(
             Guid.NewGuid(), participantId, Guid.NewGuid(), "HR", Guid.NewGuid(), CancellationToken.None);
+        await using (var seed = factory.CreateDbContext())
+        {
+            seed.RelationshipSkillConfigurations.AddRange(
+                new RelationshipSkillConfiguration
+                {
+                    TenantId = tenantId, RelationshipId = authorized.Relationship.RelationshipId,
+                    SkillId = "local-seo", SkillVersion = "1.0.0", Status = "ACTIVE",
+                },
+                new RelationshipSkillConfiguration
+                {
+                    TenantId = tenantId, RelationshipId = authorized.Relationship.RelationshipId,
+                    SkillId = "campaign-planning", SkillVersion = "1.0.0", Status = "PROPOSED",
+                });
+            await seed.SaveChangesAsync();
+        }
         var controller = new EmploymentRelationshipsController(service)
         {
             ControllerContext = CreateControllerContext(tenantId, participantId),
@@ -44,6 +59,10 @@ public sealed class EmploymentRelationshipsControllerTests
         Assert.Equal(authorized.Relationship.RelationshipId, item.GetProperty("RelationshipId").GetGuid());
         Assert.Equal("CONVERSATION", item.GetProperty("ResumeTarget").GetProperty("Surface").GetString());
         Assert.Equal("UNKNOWN", item.GetProperty("CurrencyState").GetString());
+        Assert.Equal("NOT_STARTED", item.GetProperty("ConfigurationState").GetString());
+        Assert.Equal(1, item.GetProperty("EnabledSkillCount").GetInt32());
+        Assert.Equal(1, item.GetProperty("PendingSkillCount").GetInt32());
+        Assert.Equal("Interview agent", item.GetProperty("NextActionLabel").GetString());
     }
 
     [Fact]

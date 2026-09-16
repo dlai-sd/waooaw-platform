@@ -168,6 +168,14 @@ public sealed record EmploymentRelationshipSummaryResponse(
     string UnreadState,
     string AvailabilityState,
     string CurrencyState,
+    string ConfigurationState,
+    int EnabledSkillCount,
+    int PendingSkillCount,
+    string? CurrentWorkSummary,
+    string? BlockerSummary,
+    string PerformanceSummary,
+    string BillingSummary,
+    string NextActionLabel,
     DateTimeOffset LastAuthoritativelyConfirmedAt,
     CustomerPortalDestinationResponse ResumeTarget);
 
@@ -246,7 +254,9 @@ public sealed class EmploymentRelationshipsController : ControllerBase
             var items = page.Items.Select(item => ToPortalSummary(
                 item.Relationship,
                 item.CurrentGoalSummary,
-                statuses.TryGetValue(item.Relationship.RelationshipId, out var status) ? status : item.TrialStatus)).ToArray();
+                statuses.TryGetValue(item.Relationship.RelationshipId, out var status) ? status : item.TrialStatus,
+                item.EnabledSkillCount,
+                item.PendingSkillCount)).ToArray();
             return Ok(new EmploymentRelationshipCollectionResponse(
                 "1.0.0",
                 DateTimeOffset.UtcNow,
@@ -1003,7 +1013,9 @@ public sealed class EmploymentRelationshipsController : ControllerBase
     private static EmploymentRelationshipSummaryResponse ToPortalSummary(
         EmploymentRelationship relationship,
         string? currentGoalSummary,
-        string? trialStatus)
+        string? trialStatus,
+        int enabledSkillCount,
+        int pendingSkillCount)
     {
         var availability = relationship.State switch
         {
@@ -1027,6 +1039,29 @@ public sealed class EmploymentRelationshipsController : ControllerBase
             or EmploymentRelationshipState.ActivationPending
             ? "ACTION_REQUIRED"
             : "NONE";
+        var configurationState = relationship.State switch
+        {
+            EmploymentRelationshipState.Discovered or EmploymentRelationshipState.Interviewing => "NOT_STARTED",
+            EmploymentRelationshipState.TrialActive or EmploymentRelationshipState.Configuring => "IN_PROGRESS",
+            EmploymentRelationshipState.StoppedEmergency => "BLOCKED",
+            _ => "COMPLETE",
+        };
+        var nextActionLabel = resumeSurface switch
+        {
+            "CONVERSATION" => relationship.State == EmploymentRelationshipState.Discovered ? "Interview agent" : "Open conversation",
+            "CONFIGURATION" => relationship.State == EmploymentRelationshipState.ContractPendingAcceptance ? "Review contract" : "Continue setup",
+            "WORK" => relationship.State == EmploymentRelationshipState.StoppedEmergency ? "Review stopped agent" : "View work",
+            _ => "Open agent",
+        };
+        var blockerSummary = relationship.State switch
+        {
+            EmploymentRelationshipState.StoppedEmergency => "Emergency Stop is active.",
+            EmploymentRelationshipState.ContractPendingAcceptance => "Contract review is required.",
+            EmploymentRelationshipState.ContractAcceptedPendingPayment => "Payment is required before activation.",
+            EmploymentRelationshipState.ActivationPending => "Activation confirmation is pending.",
+            _ when trialStatus == "UNRESOLVED" => "Trial owner confirmation is unresolved.",
+            _ => null,
+        };
         return new EmploymentRelationshipSummaryResponse(
             relationship.RelationshipId,
             relationship.AgentInstanceId,
@@ -1040,6 +1075,14 @@ public sealed class EmploymentRelationshipsController : ControllerBase
             unreadState,
             availability,
             "UNKNOWN",
+            configurationState,
+            enabledSkillCount,
+            pendingSkillCount,
+            relationship.State == EmploymentRelationshipState.Active ? "Live work details are available in the workspace." : null,
+            blockerSummary,
+            "No evidenced performance summary is available yet.",
+            "No current billing amount is available in this summary.",
+            nextActionLabel,
             relationship.UpdatedAt,
             new CustomerPortalDestinationResponse(resumeSurface, relationship.RelationshipId));
     }

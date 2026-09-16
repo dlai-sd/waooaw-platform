@@ -16,6 +16,14 @@
 | `unreadState`                    | string                                                                                    |
 | `availabilityState`              | [EmploymentRelationshipAvailabilityStateV1](EmploymentRelationshipAvailabilityStateV1.md) |
 | `currencyState`                  | [RelationshipWorkspaceCurrencyState](RelationshipWorkspaceCurrencyState.md)               |
+| `configurationState`             | string                                                                                    |
+| `enabledSkillCount`              | number                                                                                    |
+| `pendingSkillCount`              | number                                                                                    |
+| `currentWorkSummary`             | string                                                                                    |
+| `blockerSummary`                 | string                                                                                    |
+| `performanceSummary`             | string                                                                                    |
+| `billingSummary`                 | string                                                                                    |
+| `nextActionLabel`                | string                                                                                    |
 | `lastAuthoritativelyConfirmedAt` | Date                                                                                      |
 | `resumeTarget`                   | [CustomerPortalDestinationV1](CustomerPortalDestinationV1.md)                             |
 
@@ -38,6 +46,14 @@ const example = {
   unreadState: null,
   availabilityState: null,
   currencyState: null,
+  configurationState: null,
+  enabledSkillCount: null,
+  pendingSkillCount: null,
+  currentWorkSummary: null,
+  blockerSummary: null,
+  performanceSummary: null,
+  billingSummary: null,
+  nextActionLabel: null,
   lastAuthoritativelyConfirmedAt: null,
   resumeTarget: null,
 } satisfies EmploymentRelationshipSummaryV1;
