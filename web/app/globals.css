@@ -14,6 +14,7 @@
   --color-text-muted: #52667a;
   --color-border: #d7e1eb;
   --color-focus: #1a66c2;
+  --color-command-blue: #1a66c2;
   --color-error: #a82929;
   --color-override: #c51f2f;
   --ink: var(--color-text);
@@ -76,7 +77,8 @@ a { color: inherit; text-decoration-thickness: .08em; text-underline-offset: .2e
 .brand, .section-label { margin: 0 0 1rem; color: var(--orange); font-size: .78rem; font-weight: 800; letter-spacing: .12em; }
 h1 { max-width: 760px; margin: 0; font-size: 5.5rem; font-weight: 650; line-height: 1.02; }
 .lede { max-width: 620px; margin: 1.5rem 0 2rem; color: var(--muted); font-size: 1.15rem; line-height: 1.6; }
-.primary-command { width: fit-content; display: inline-flex; align-items: center; gap: .6rem; padding: .85rem 1.15rem; border: 0; border-radius: 6px; color: white; background: var(--blue); cursor: pointer; }
+.primary-command { width: fit-content; display: inline-flex; align-items: center; gap: .6rem; padding: .85rem 1.15rem; border: 0; border-radius: 6px; color: white; background: var(--color-command-blue); cursor: pointer; }
+.primary-command:disabled { color: var(--muted); background: var(--color-surface-strong); cursor: not-allowed; }
 .trust-band { display: flex; flex-direction: column; justify-content: flex-end; gap: .7rem; padding: clamp(2rem, 6vw, 5rem); color: white; background: #17334e; }
 .trust-band span { color: #d8e4ee; line-height: 1.5; }
 .workspace-shell { min-height: 100vh; padding: clamp(1rem, 4vw, 4rem); padding-bottom: 7rem; }
@@ -142,7 +144,7 @@ h1 { max-width: 760px; margin: 0; font-size: 5.5rem; font-weight: 650; line-heig
 .outcome-search label { display: block; margin-bottom: .55rem; font-size: .82rem; font-weight: 800; }
 .outcome-search > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; border: 1px solid var(--ink); background: var(--surface); }
 .outcome-search input { min-width: 0; padding: 1rem; border: 0; color: var(--ink); background: transparent; font: inherit; }
-.outcome-search button { display: inline-flex; align-items: center; gap: .5rem; padding: 0 1.25rem; border: 0; color: white; background: var(--blue); cursor: pointer; }
+.outcome-search button { display: inline-flex; align-items: center; gap: .5rem; padding: 0 1.25rem; border: 0; color: white; background: var(--color-command-blue); cursor: pointer; }
 .catalog-prompt, .catalog-empty, .catalog-unavailable { max-width: 760px; padding-block: 1.25rem; border-block: 1px solid var(--line); color: var(--muted); line-height: 1.6; }
 .catalog-unavailable { color: var(--color-error); }
 .comparison-grid { display: grid; gap: 1.5rem; max-width: 1180px; }
@@ -882,7 +884,7 @@ html[data-header-scrolled="true"] .app-shell-public .top-bar { background: color
 .consent-banner > div:last-child { min-width: 0; max-inline-size: 100%; display: flex; flex: 1 1 20rem; flex-wrap: wrap; gap: .5rem; }
 .consent-banner button { min-height: 44px; padding: .6rem .8rem; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); cursor: pointer; }
 .consent-banner > div:last-child button { min-width: 0; flex: 1 1 8rem; }
-.consent-banner button.primary-link { color: #fff; background: var(--blue); }
+.consent-banner button.primary-link { color: #fff; background: var(--color-command-blue); }
 
 @media (min-width: 900px) {
   .public-intro-wc078 { min-block-size: calc(100svh - var(--announcement-offset, 0px)); align-items: center; }

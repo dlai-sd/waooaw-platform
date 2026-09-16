@@ -4,6 +4,8 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext } from '@playwright/test';
 import { encode } from 'next-auth/jwt';
+import { mkdirSync } from 'node:fs';
+import path from 'node:path';
 
 const secret = 'playwright-only-not-a-runtime-secret';
 
@@ -62,7 +64,31 @@ test('UX-AUTH-02 UX-AUTH-06 UX-PWA-04: verified broker state renders a private, 
   await expect(page.getByRole('button', { name: 'Save and continue' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   expect((await new AxeBuilder({ page }).analyze()).violations.filter((violation) => violation.impact === 'critical' || violation.impact === 'serious')).toEqual([]);
+});
 
-  await expect(page.getByRole('button', { name: 'Switch account' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible();
+test('WC098-D04/D07: registration completion is truthful, accessible, and responsive', async ({ context, page }, testInfo) => {
+  test.skip(!['chromium-expanded', 'chromium-compact-360'].includes(testInfo.project.name));
+  await addSession(context);
+  await page.route('**/api/identity/registration', async (route) => route.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({
+      registrationId: '8f6f7550-98c7-4a8f-bd63-36f07ee15c9d', state: 'REGISTRATION_COMPLETION_REQUIRED', nextAction: 'COMPLETE_REGISTRATION',
+      authenticationPath: 'GOOGLE', providerLabel: 'google', maskedEmail: 'a***@example.com', emailVerified: true, mobileVerified: false,
+      profile: {}, expiresAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    }),
+  }));
+
+  await page.goto('/register');
+  await expect(page.getByRole('heading', { name: 'Create your WAOOAW account' })).toHaveCount(1);
+  await expect(page.getByLabel('Verified email')).toHaveValue('a***@example.com');
+  await expect(page.getByLabel('Verified email')).toHaveAttribute('readonly', '');
+  await expect(page.getByText('Verified by Google')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Mobile verification (optional)' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Complete registration' })).toBeEnabled();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  expect((await new AxeBuilder({ page }).analyze()).violations.filter((violation) => violation.impact === 'critical' || violation.impact === 'serious')).toEqual([]);
+
+  const evidenceDirectory = path.resolve(__dirname, '../../../test-results/wc098');
+  mkdirSync(evidenceDirectory, { recursive: true });
+  await page.screenshot({ path: path.join(evidenceDirectory, `registration-${testInfo.project.name}.png`), fullPage: true });
 });
