@@ -7,6 +7,8 @@
 | `professionalType`  | string                                                    |
 | `version`           | string                                                    |
 | `displayName`       | string                                                    |
+| `disclosurePath`    | string                                                    |
+| `availableIntents`  | Set&lt;string&gt;                                         |
 | `suitability`       | Array&lt;string&gt;                                       |
 | `eligibility`       | [ProfessionalEligibility](ProfessionalEligibility.md)     |
 | `indicativePrice`   | [IndicativePriceDisclosure](IndicativePriceDisclosure.md) |
@@ -24,6 +26,8 @@ const example = {
   professionalType: null,
   version: null,
   displayName: null,
+  disclosurePath: null,
+  availableIntents: null,
   suitability: null,
   eligibility: null,
   indicativePrice: null,

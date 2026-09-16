@@ -673,6 +673,36 @@ paths:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/OfferableProfessionalVersion" } }
 
+  /api/v1/acquisition/continuations:
+    post:
+      tags: [Professionals]
+      summary: Continue an explicitly accepted Trial or Hire journey
+      description: |
+        Validates the exact active professional release, disclosure revision and terms version,
+        resolves the active admission server-side, records the accepted acquisition context in
+        constitutional evidence and idempotently creates the initial relationship. This operation
+        does not start a trial, accept a contract, initiate payment or activate live work.
+      operationId: continueAcquisition
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - name: X-Correlation-ID
+          in: header
+          required: false
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ContinueAcquisitionRequest" }
+      responses:
+        "200": { description: Existing identical continuation replayed, content: { application/json: { schema: { $ref: "#/components/schemas/AcquisitionContinuation" } } } }
+        "201": { description: Initial relationship created, content: { application/json: { schema: { $ref: "#/components/schemas/AcquisitionContinuation" } } } }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { description: Customer membership or constitutional authorization denied }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "503": { description: Constitutional evidence or relationship owner unavailable }
+
   /api/v1/professionals/marketplace:
     get:
       tags: [Professionals]
@@ -2811,6 +2841,58 @@ paths:
 
   # ─── Conversation Core (WC-034 F3) ────────────────────────────────────────
 
+  /api/v1/customer-portal/interactions/portal/messages:
+    get:
+      tags: [Conversation]
+      summary: Read the authenticated participant's durable WAOOAW Guide timeline
+      description: |
+        Returns only the PORTAL-scoped Guide timeline for the tenant and participant derived
+        from the validated session. The Guide may explain or navigate but cannot issue a
+        relationship command or impersonate an employed professional.
+      operationId: listPortalInteractionMessages
+      parameters:
+        - $ref: "#/components/parameters/ConversationCursor"
+        - $ref: "#/components/parameters/ConversationPageLimit"
+      responses:
+        "200":
+          description: Authoritative portal interaction timeline
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalInteractionTimelinePageV1" }
+        "400": { $ref: "#/components/responses/ConversationInvalidRequest" }
+        "401": { $ref: "#/components/responses/ConversationUnauthorized" }
+        "410": { $ref: "#/components/responses/ConversationCursorExpired" }
+        "503": { $ref: "#/components/responses/ConversationUnavailable" }
+    post:
+      tags: [Conversation]
+      summary: Send one durable contribution to the WAOOAW Guide
+      description: |
+        Persists a participant-bound PORTAL contribution and a bounded Guide response.
+        Returned capabilities are navigation-only; relationship commands are unsupported.
+      operationId: sendPortalInteractionMessage
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SendPortalInteractionMessageRequestV1" }
+      responses:
+        "202":
+          description: Portal contribution and Guide response accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalInteractionSubmissionV1" }
+        "200":
+          description: Prior identical outcome replayed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalInteractionSubmissionV1" }
+        "400": { $ref: "#/components/responses/ConversationInvalidRequest" }
+        "401": { $ref: "#/components/responses/ConversationUnauthorized" }
+        "409": { $ref: "#/components/responses/ConversationConflict" }
+        "503": { $ref: "#/components/responses/ConversationUnavailable" }
+
   /api/v1/employment/relationships/{relationshipId}/conversation/messages:
     get:
       tags: [Conversation]
@@ -4357,10 +4439,13 @@ components:
     ProfessionalDisclosure:
       type: object
       additionalProperties: false
-      required: [professionalType, projectionVersion, displayName, suitability, skills, limitations, authorityNeeds, customerRights, trial, evidencePosture, indicativePrice, eligibility]
+      required: [professionalType, projectionVersion, customerRouteSlug, disclosureRevision, termsVersion, displayName, suitability, skills, limitations, authorityNeeds, customerRights, trial, evidencePosture, indicativePrice, eligibility]
       properties:
         professionalType: { type: string, maxLength: 100 }
         projectionVersion: { type: string, pattern: '^\d+\.\d+\.\d+$' }
+        customerRouteSlug: { type: string, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' }
+        disclosureRevision: { type: string, pattern: '^\d+\.\d+\.\d+$' }
+        termsVersion: { type: string, format: date }
         displayName: { type: string, maxLength: 200 }
         suitability:
           type: array
@@ -4396,6 +4481,29 @@ components:
         displayName: { type: string, maxLength: 200 }
         applicableInTrial: { type: boolean }
         activationCondition: { type: string, maxLength: 500 }
+
+    ContinueAcquisitionRequest:
+      type: object
+      additionalProperties: false
+      required: [professionalType, professionalVersion, intent, disclosureRevision, termsVersion, acceptance]
+      properties:
+        professionalType: { type: string, minLength: 1, maxLength: 64 }
+        professionalVersion: { type: string, pattern: '^\d+\.\d+\.\d+$' }
+        intent: { type: string, enum: [TRIAL, HIRE] }
+        disclosureRevision: { type: string, pattern: '^\d+\.\d+\.\d+$' }
+        termsVersion: { type: string, format: date }
+        acceptance: { type: string, const: ACCEPT_DISCLOSURE }
+
+    AcquisitionContinuation:
+      type: object
+      additionalProperties: false
+      required: [relationshipId, intent, status, resumePath, replayed]
+      properties:
+        relationshipId: { type: string, format: uuid }
+        intent: { type: string, enum: [TRIAL, HIRE] }
+        status: { type: string, enum: [READY] }
+        resumePath: { type: string, pattern: '^/relationships/[0-9a-f-]+$' }
+        replayed: { type: boolean }
 
     ProfessionalTrialDisclosure:
       type: object
@@ -5779,7 +5887,7 @@ components:
     EmploymentRelationshipSummaryV1:
       type: object
       additionalProperties: false
-      required: [relationshipId, agentInstanceId, professionalType, professionalDisplayName, lifecycleState, unreadState, availabilityState, currencyState, lastAuthoritativelyConfirmedAt, resumeTarget]
+      required: [relationshipId, agentInstanceId, professionalType, professionalDisplayName, lifecycleState, unreadState, availabilityState, currencyState, configurationState, enabledSkillCount, pendingSkillCount, performanceSummary, billingSummary, nextActionLabel, lastAuthoritativelyConfirmedAt, resumeTarget]
       properties:
         relationshipId: { type: string, format: uuid }
         agentInstanceId: { type: string, format: uuid }
@@ -5799,6 +5907,16 @@ components:
           enum: [NONE, UNREAD, ACTION_REQUIRED]
         availabilityState: { $ref: "#/components/schemas/EmploymentRelationshipAvailabilityStateV1" }
         currencyState: { $ref: "#/components/schemas/RelationshipWorkspaceCurrencyState" }
+        configurationState:
+          type: string
+          enum: [NOT_STARTED, IN_PROGRESS, COMPLETE, BLOCKED]
+        enabledSkillCount: { type: integer, minimum: 0 }
+        pendingSkillCount: { type: integer, minimum: 0 }
+        currentWorkSummary: { type: string, minLength: 1, maxLength: 240, nullable: true }
+        blockerSummary: { type: string, minLength: 1, maxLength: 240, nullable: true }
+        performanceSummary: { type: string, minLength: 1, maxLength: 240 }
+        billingSummary: { type: string, minLength: 1, maxLength: 240 }
+        nextActionLabel: { type: string, minLength: 1, maxLength: 80 }
         lastAuthoritativelyConfirmedAt: { type: string, format: date-time }
         resumeTarget: { $ref: "#/components/schemas/CustomerPortalDestinationV1" }
 
@@ -5991,11 +6109,22 @@ components:
     ProfessionalMarketplaceListingV1:
       type: object
       additionalProperties: false
-      required: [professionalType, version, displayName, offerabilityState, eligibility, nextAction]
+      required: [professionalType, version, displayName, disclosurePath, availableIntents, offerabilityState, eligibility, nextAction]
       properties:
         professionalType: { type: string, minLength: 1, maxLength: 100 }
         version: { type: string, minLength: 1, maxLength: 32 }
         displayName: { type: string, minLength: 1, maxLength: 200 }
+        disclosurePath:
+          type: string
+          pattern: "^/professionals/[a-z0-9]+(?:-[a-z0-9]+)*$"
+          minLength: 16
+          maxLength: 240
+        availableIntents:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum: [TRIAL, HIRE]
         suitability:
           type: array
           items: { type: string, minLength: 1, maxLength: 500 }
@@ -6868,6 +6997,84 @@ components:
         blockType: { type: string, const: TEXT }
         text: { type: string, minLength: 1, maxLength: 32000 }
         language: { type: string, minLength: 2, maxLength: 35 }
+
+    PortalInteractionSurfaceV1:
+      type: string
+      enum: [MARKETPLACE, MY_AGENTS, ALERTS, RELATIONSHIP, PERFORMANCE, BILLING, SETTINGS, PROFILE]
+
+    PortalNavigationCapabilityV1:
+      type: object
+      additionalProperties: false
+      required: [capabilityType, label, destination]
+      properties:
+        capabilityType: { type: string, const: NAVIGATE }
+        label: { type: string, minLength: 1, maxLength: 80 }
+        destination: { type: string, pattern: "^/", maxLength: 512 }
+
+    PortalInteractionMessageV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, messageId, sequence, actor, content, capabilities, currentSurface, acceptedAt]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationSchemaVersion" }
+        messageId: { type: string, format: uuid }
+        sequence: { type: integer, format: int64, minimum: 1 }
+        actor: { type: string, enum: [CUSTOMER, GUIDE] }
+        content:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/ConversationTextBlockV1" }
+        capabilities:
+          type: array
+          items: { $ref: "#/components/schemas/PortalNavigationCapabilityV1" }
+        currentSurface: { $ref: "#/components/schemas/PortalInteractionSurfaceV1" }
+        clientMessageId: { type: string, format: uuid }
+        acceptedAt: { type: string, format: date-time }
+
+    PortalInteractionTimelinePageV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, scope, contextId, items, authoritativeCursor, hasMore, serverTime]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationSchemaVersion" }
+        scope: { type: string, const: PORTAL }
+        contextId: { type: string, format: uuid }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/PortalInteractionMessageV1" }
+        authoritativeCursor: { type: string }
+        nextCursor: { type: string }
+        hasMore: { type: boolean }
+        serverTime: { type: string, format: date-time }
+
+    SendPortalInteractionMessageRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, clientMessageId, content, locale, currentSurface]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationSchemaVersion" }
+        clientMessageId: { type: string, format: uuid }
+        content:
+          type: array
+          minItems: 1
+          maxItems: 1
+          items: { $ref: "#/components/schemas/ConversationTextBlockV1" }
+        locale: { type: string, minLength: 2, maxLength: 35 }
+        currentSurface: { $ref: "#/components/schemas/PortalInteractionSurfaceV1" }
+        expectedCursor: { type: string, minLength: 16, maxLength: 2048 }
+
+    PortalInteractionSubmissionV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, scope, outcome, customerMessage, guideMessage, authoritativeCursor, replayed]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationSchemaVersion" }
+        scope: { type: string, const: PORTAL }
+        outcome: { type: string, enum: [ACCEPTED, REPLAYED] }
+        customerMessage: { $ref: "#/components/schemas/PortalInteractionMessageV1" }
+        guideMessage: { $ref: "#/components/schemas/PortalInteractionMessageV1" }
+        authoritativeCursor: { type: string }
+        replayed: { type: boolean }
 
     ConversationCardCommandV1:
       type: object

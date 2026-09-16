@@ -77,6 +77,10 @@ public sealed class ProfessionalsController : ControllerBase
             professionalType = disclosure.ProfessionalType,
             version = disclosure.ProjectionVersion,
             displayName = disclosure.DisplayName,
+            disclosurePath = $"/professionals/{disclosure.CustomerRouteSlug}",
+            availableIntents = disclosure.Eligibility.Eligible
+                ? disclosure.Trial.Available ? new[] { "TRIAL", "HIRE" } : ["HIRE"]
+                : [],
             suitability = disclosure.Suitability,
             eligibility = disclosure.Eligibility,
             indicativePrice = disclosure.IndicativePrice,

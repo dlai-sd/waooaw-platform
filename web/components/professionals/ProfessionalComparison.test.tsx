@@ -5,6 +5,9 @@ import type { ProfessionalDisclosure } from '@/lib/api/professionals';
 const professional: ProfessionalDisclosure = {
   professionalType: 'DIGITAL_MARKETING_LOCAL_SERVICE',
   projectionVersion: '1.0.0',
+  customerRouteSlug: 'digital-marketing',
+  disclosureRevision: '1.0.0',
+  termsVersion: '2026-07-18',
   displayName: 'Digital Marketing Professional',
   suitability: ['Local customer growth'],
   eligibility: { eligible: true, explanation: 'Suitable for lawful local growth.' },

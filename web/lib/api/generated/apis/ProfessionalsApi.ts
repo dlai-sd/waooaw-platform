@@ -14,11 +14,13 @@
 
 import * as runtime from "../runtime";
 import type {
+  AcquisitionContinuation,
   AdmissionProblem,
   AgentAdmission,
   AgentAdmissionFinding,
   AgentAdmissionTransitionRequest,
   AgentAdmissionValidation,
+  ContinueAcquisitionRequest,
   CreateAgentAdmissionDraftRequest,
   OfferableProfessionalVersion,
   ProblemDetail,
@@ -29,6 +31,8 @@ import type {
   ValidateAgentAdmissionRequest,
 } from "../models/index";
 import {
+  AcquisitionContinuationFromJSON,
+  AcquisitionContinuationToJSON,
   AdmissionProblemFromJSON,
   AdmissionProblemToJSON,
   AgentAdmissionFromJSON,
@@ -39,6 +43,8 @@ import {
   AgentAdmissionTransitionRequestToJSON,
   AgentAdmissionValidationFromJSON,
   AgentAdmissionValidationToJSON,
+  ContinueAcquisitionRequestFromJSON,
+  ContinueAcquisitionRequestToJSON,
   CreateAgentAdmissionDraftRequestFromJSON,
   CreateAgentAdmissionDraftRequestToJSON,
   OfferableProfessionalVersionFromJSON,
@@ -76,6 +82,12 @@ export interface BrowseMarketplaceProfessionalsRequest {
   limit?: number;
   professionalType?: string;
   q?: string;
+}
+
+export interface ContinueAcquisitionOperationRequest {
+  idempotencyKey: string;
+  continueAcquisitionRequest: ContinueAcquisitionRequest;
+  xCorrelationID?: string;
 }
 
 export interface CreateAgentAdmissionDraftOperationRequest {
@@ -420,6 +432,90 @@ export class ProfessionalsApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<ProfessionalMarketplacePageV1> {
     const response = await this.browseMarketplaceProfessionalsRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
+   * Validates the exact active professional release, disclosure revision and terms version, resolves the active admission server-side, records the accepted acquisition context in constitutional evidence and idempotently creates the initial relationship. This operation does not start a trial, accept a contract, initiate payment or activate live work.
+   * Continue an explicitly accepted Trial or Hire journey
+   */
+  async continueAcquisitionRaw(
+    requestParameters: ContinueAcquisitionOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<AcquisitionContinuation>> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling continueAcquisition().',
+      );
+    }
+
+    if (requestParameters["continueAcquisitionRequest"] == null) {
+      throw new runtime.RequiredError(
+        "continueAcquisitionRequest",
+        'Required parameter "continueAcquisitionRequest" was null or undefined when calling continueAcquisition().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(
+        requestParameters["idempotencyKey"],
+      );
+    }
+
+    if (requestParameters["xCorrelationID"] != null) {
+      headerParameters["X-Correlation-ID"] = String(
+        requestParameters["xCorrelationID"],
+      );
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("BearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/acquisition/continuations`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "POST",
+        headers: headerParameters,
+        query: queryParameters,
+        body: ContinueAcquisitionRequestToJSON(
+          requestParameters["continueAcquisitionRequest"],
+        ),
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      AcquisitionContinuationFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * Validates the exact active professional release, disclosure revision and terms version, resolves the active admission server-side, records the accepted acquisition context in constitutional evidence and idempotently creates the initial relationship. This operation does not start a trial, accept a contract, initiate payment or activate live work.
+   * Continue an explicitly accepted Trial or Hire journey
+   */
+  async continueAcquisition(
+    requestParameters: ContinueAcquisitionOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<AcquisitionContinuation> {
+    const response = await this.continueAcquisitionRaw(
       requestParameters,
       initOverrides,
     );

@@ -10,10 +10,18 @@ namespace Waooaw.BusinessPlatform.Services;
 
 public sealed record AdmitRelationshipResult(EmploymentRelationship Relationship, bool Created);
 
+public sealed record RelationshipAcquisitionEvidence(
+    string Intent,
+    string DisclosureRevision,
+    string TermsVersion,
+    DateTimeOffset AcceptedAt);
+
 public sealed record EmploymentRelationshipListItem(
     EmploymentRelationship Relationship,
     string? CurrentGoalSummary,
-    string? TrialStatus);
+    string? TrialStatus,
+    int EnabledSkillCount,
+    int PendingSkillCount);
 
 public sealed record EmploymentRelationshipListPage(
     IReadOnlyList<EmploymentRelationshipListItem> Items,
@@ -77,7 +85,7 @@ public sealed class EmploymentRelationshipService
         CancellationToken cancellationToken) =>
         await AdmitCoreAsync(
             tenantId, participantId, evaluationIntentId, professionalType,
-            null, null, correlationId, cancellationToken);
+            null, null, correlationId, null, cancellationToken);
 
     public async Task<AdmitRelationshipResult> AdmitAsync(
         Guid tenantId,
@@ -90,7 +98,21 @@ public sealed class EmploymentRelationshipService
         CancellationToken cancellationToken) =>
         await AdmitCoreAsync(
             tenantId, participantId, evaluationIntentId, professionalType,
-            professionalAdmissionId, professionalVersion, correlationId, cancellationToken);
+            professionalAdmissionId, professionalVersion, correlationId, null, cancellationToken);
+
+    public async Task<AdmitRelationshipResult> AdmitFromAcquisitionAsync(
+        Guid tenantId,
+        Guid participantId,
+        Guid evaluationIntentId,
+        string professionalType,
+        Guid professionalAdmissionId,
+        string professionalVersion,
+        Guid correlationId,
+        RelationshipAcquisitionEvidence acquisitionEvidence,
+        CancellationToken cancellationToken) =>
+        await AdmitCoreAsync(
+            tenantId, participantId, evaluationIntentId, professionalType,
+            professionalAdmissionId, professionalVersion, correlationId, acquisitionEvidence, cancellationToken);
 
     private async Task<AdmitRelationshipResult> AdmitCoreAsync(
         Guid tenantId,
@@ -100,6 +122,7 @@ public sealed class EmploymentRelationshipService
         Guid? professionalAdmissionId,
         string? professionalVersion,
         Guid correlationId,
+        RelationshipAcquisitionEvidence? acquisitionEvidence,
         CancellationToken cancellationToken)
     {
         var normalizedProfessionalType = professionalType.Trim().ToUpperInvariant();
@@ -141,13 +164,8 @@ public sealed class EmploymentRelationshipService
 
         var relationshipId = Guid.NewGuid();
         var agentInstanceId = Guid.NewGuid();
-        var evidenceId = await _constitutionalGateway.AuthorizeAndRecordAsync(
-            tenantId,
-            relationshipId,
-            normalizedProfessionalType,
-            "ADMIT_EMPLOYMENT_RELATIONSHIP",
-            correlationId,
-            new
+        var actionParameters = acquisitionEvidence is null
+            ? (object)new
             {
                 evaluation_intent_id = evaluationIntentId,
                 initiating_participant_id = participantId,
@@ -156,7 +174,28 @@ public sealed class EmploymentRelationshipService
                 professional_type = normalizedProfessionalType,
                 professional_version = normalizedProfessionalVersion,
                 target_state = "DISCOVERED",
-            },
+            }
+            : new
+            {
+                evaluation_intent_id = evaluationIntentId,
+                initiating_participant_id = participantId,
+                agent_instance_id = agentInstanceId,
+                professional_admission_id = professionalAdmissionId,
+                professional_type = normalizedProfessionalType,
+                professional_version = normalizedProfessionalVersion,
+                target_state = "DISCOVERED",
+                acquisition_intent = acquisitionEvidence.Intent,
+                disclosure_revision = acquisitionEvidence.DisclosureRevision,
+                terms_version = acquisitionEvidence.TermsVersion,
+                disclosure_accepted_at = acquisitionEvidence.AcceptedAt,
+            };
+        var evidenceId = await _constitutionalGateway.AuthorizeAndRecordAsync(
+            tenantId,
+            relationshipId,
+            normalizedProfessionalType,
+            "ADMIT_EMPLOYMENT_RELATIONSHIP",
+            correlationId,
+            actionParameters,
             cancellationToken);
 
         var relationship = new EmploymentRelationship
@@ -352,11 +391,23 @@ public sealed class EmploymentRelationshipService
         var trialStatuses = await db.RelationshipTrialBindings.AsNoTracking()
             .Where(value => value.TenantId == tenantId && selectedIds.Contains(value.RelationshipId))
             .ToDictionaryAsync(value => value.RelationshipId, value => value.Status, cancellationToken);
+        var skills = await db.RelationshipSkillConfigurations.AsNoTracking()
+            .Where(value => value.TenantId == tenantId && selectedIds.Contains(value.RelationshipId))
+            .GroupBy(value => value.RelationshipId)
+            .Select(group => new
+            {
+                RelationshipId = group.Key,
+                Enabled = group.Count(value => value.Status == "ACTIVE" || value.Status == "ENABLED" || value.Status == "APPROVED"),
+                Pending = group.Count(value => value.Status != "ACTIVE" && value.Status != "ENABLED" && value.Status != "APPROVED"),
+            })
+            .ToDictionaryAsync(value => value.RelationshipId, cancellationToken);
         var items = selected.Select(relationship => new EmploymentRelationshipListItem(
             relationship,
             goals.FirstOrDefault(goal => goal.RelationshipId == relationship.RelationshipId
                 && goal.Status is not ("RETIRED" or "SUPERSEDED"))?.Goal,
-            trialStatuses.GetValueOrDefault(relationship.RelationshipId))).ToArray();
+            trialStatuses.GetValueOrDefault(relationship.RelationshipId),
+            skills.GetValueOrDefault(relationship.RelationshipId)?.Enabled ?? 0,
+            skills.GetValueOrDefault(relationship.RelationshipId)?.Pending ?? 0)).ToArray();
         var nextCursor = page.Length > limit
             ? Convert.ToBase64String(Encoding.UTF8.GetBytes(selected[^1].RelationshipId.ToString()))
             : null;

@@ -51,6 +51,8 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
     expect(generatedApis).toEqual(['BillingApi.ts', 'ConfigurationApi.ts', 'ConversationApi.ts', 'EmploymentApi.ts', 'IdentityApi.ts', 'NotificationsApi.ts', 'ProfessionalsApi.ts', 'RelationshipWorkspaceApi.ts', 'VoiceContributionsApi.ts', 'index.ts']);
     expect(version).toBe('7.17.0');
     for (const operation of [
+      'listPortalInteractionMessages',
+      'sendPortalInteractionMessage',
       'listConversationMessages',
       'sendConversationMessage',
       'retryConversationMessage',
@@ -58,7 +60,7 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
       'streamConversation',
       'cancelConversationExecution',
     ]) expect(generated).toContain(`async ${operation}(`);
-    expect(generated.match(/token\("BearerAuth", \[\]\)/g)).toHaveLength(6);
+    expect(generated.match(/token\("BearerAuth", \[\]\)/g)).toHaveLength(8);
     expect(identity).toContain('token("BearerAuth", [])');
     expect(identity).toContain('token("PreAccountBearerAuth", [])');
     expect(generated).toContain('The version of the OpenAPI document: 1.10.0');
@@ -93,13 +95,14 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
       'cancelVoiceContributionSession', 'requestVoicePayloadErasure',
     ]) expect(voice).toContain(`async ${operation}(`);
     for (const operation of [
-      'getOfferableProfessionalVersions', 'browseMarketplaceProfessionals', 'createAgentAdmissionDraft',
+      'getOfferableProfessionalVersions', 'browseMarketplaceProfessionals', 'discoverProfessionals',
+      'getProfessionalDisclosure', 'createAgentAdmissionDraft',
       'putAgentAdmissionRevision', 'validateAgentAdmission', 'getAgentAdmissionFindings',
       'submitAgentAdmission', 'approveAgentAdmission', 'rejectAgentAdmission',
       'activateAgentAdmission', 'suspendAgentAdmission', 'supersedeAgentAdmission',
       'retireAgentAdmission',
     ]) expect(professionals).toContain(`async ${operation}(`);
-    expect(professionals.match(/token\("BearerAuth", \[\]\)/g)).toHaveLength(14);
+    expect(professionals.match(/token\("BearerAuth", \[\]\)/g)).toHaveLength(15);
 
     for (const model of [
       'ConversationMessageV1',

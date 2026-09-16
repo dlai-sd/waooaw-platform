@@ -27,4 +27,23 @@ public sealed class ConversationMigrationTests
         Assert.DoesNotContain("TRUNCATE", sql, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("DELETE FROM", sql, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void PortalInteractionMigrationDefinesParticipantScopeIdempotencyAndForcedRls()
+    {
+        var sql = File.ReadAllText(
+            RepositoryPaths.Resolve("infrastructure/postgres/init/35-wc096-portal-interactions.sql"));
+
+        Assert.Contains("business.portal_interaction_contexts", sql);
+        Assert.Contains("UNIQUE (tenant_id, participant_id)", sql);
+        Assert.Contains("business.portal_interaction_messages", sql);
+        Assert.Contains("client_message_id", sql);
+        Assert.Contains("business.portal_interaction_idempotency_outcomes", sql);
+        Assert.Contains("request_hash", sql);
+        Assert.Contains("FORCE ROW LEVEL SECURITY", sql);
+        Assert.Contains("current_setting('app.current_tenant_id', TRUE)", sql);
+        Assert.DoesNotContain("DROP TABLE", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("TRUNCATE", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("DELETE FROM", sql, StringComparison.OrdinalIgnoreCase);
+    }
 }
