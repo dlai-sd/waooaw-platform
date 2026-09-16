@@ -6,7 +6,7 @@
 |---|---|
 | Office | Platform IT Expert (INST-010) |
 | Assigned and authorized by | Founder instruction in the 2026-09-16 continuous working session |
-| Status | IMPLEMENTATION AUTHORIZED - SOURCE, TESTS, AND UNMERGED PR |
+| Status | ENGINEERING QUALIFIED - FOUNDER REVIEW AND MERGE PENDING |
 | Branch | `ib/096/conversational-customer-portal` |
 | Baseline | `origin/main` at `6c21bb37` after WC-095 merge |
 | Delivery type | Customer Portal remediation and reusable conversational interaction component |
@@ -240,3 +240,20 @@ backward compatible through their accepted version window. UI rollback returns t
 while preserving canonical relationships, conversations, commands, evidence and billing state.
 Rollback must never rewrite history, reuse an idempotency identity for changed material or claim
 that an accepted consequential action did not occur.
+
+## 12. Qualification Evidence
+
+- Business Platform: `714/714` tests passed in the repository `test-runner-dotnet` image; raw
+  Cobertura result was 77.64% lines and 65.07% branches across the full instrumented assembly.
+- Web: `57/57` suites and `356/356` tests passed; coverage was 91.65% statements, 81.71% branches
+  and 94.61% lines. Lint, TypeScript and the Next.js production build passed in the Playwright image.
+- Browser: WC-096 desktop/360px acceptance passed `5` applicable cases with `1` compact-only skip;
+  final focused professional-conversation checks passed for desktop/360px, including Stop access,
+  and authoritative offline reconciliation passed in compact Chromium.
+- Contract and data: OpenAPI validation completed with zero errors, SQLFluff passed, PostgreSQL
+  initialization passed, and an application-role RLS probe returned `1` owner row and `0` rows for
+  another tenant.
+
+This is local exact-image and emulated-browser evidence only. It does not establish deployment,
+provider or mobile-device acceptance, customer traffic, UAT, Production readiness, PR approval or
+merge.
