@@ -813,8 +813,11 @@ public sealed class IdentityController(
             var idempotencyKey = IdempotencyKey;
             var hash = ComputeHash(req);
 
-            var (challenge, _) = await identityService.StartMobileVerificationAsync(
-                registrationId, ActorSubject, idempotencyKey, hash, req.Mobile, ct);
+            var (challenge, _) = customerJourney is not null
+                ? await customerJourney.StartMobileVerificationAsync(
+                    User, registrationId, idempotencyKey, req.Mobile, ct)
+                : await identityService.StartMobileVerificationAsync(
+                    registrationId, ActorSubject, idempotencyKey, hash, req.Mobile, ct);
 
             return StatusCode(202, ToResponse(challenge));
         }

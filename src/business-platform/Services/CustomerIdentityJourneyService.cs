@@ -43,6 +43,11 @@ public sealed class CustomerIdentityJourneyService(IdentityService identity,
         ClaimsPrincipal principal, Guid registrationId, Guid key, string canonicalHash, string email, CancellationToken ct) =>
         identity.StartEmailVerificationAsync(registrationId, ValidateActor(principal), key, canonicalHash, email, ct);
 
+    public Task<(IdentityVerificationChallengeRecord challenge, bool isNew)> StartMobileVerificationAsync(
+        ClaimsPrincipal principal, Guid registrationId, Guid key, string mobile, CancellationToken ct) =>
+        identity.StartMobileVerificationAsync(registrationId, ValidateActor(principal), key,
+            CanonicalHash("StartMobileVerification", registrationId, new { mobile }), mobile, ct);
+
     public Task<(IdentityRegistrationRecord reg, bool isNew)> UpdateAsync(ClaimsPrincipal principal,
         Guid registrationId, Guid key, string displayName, string businessName, string businessDomain,
         string languagePreference, CancellationToken ct) => identity.UpdateProfileAsync(registrationId,

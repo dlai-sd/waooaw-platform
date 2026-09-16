@@ -500,21 +500,33 @@ public sealed class IdentityService
 
     // ── Mobile Verification ──────────────────────────────────────────────────
 
+    public Task<(IdentityVerificationChallengeRecord challenge, bool isNew)> StartMobileVerificationAsync(
+        Guid registrationId, VerifiedCustomerActor actor, Guid idempotencyKey, string canonicalHash,
+        string mobile, CancellationToken ct) =>
+        StartMobileVerificationAsync(registrationId, actor.Subject, idempotencyKey, canonicalHash, mobile, ct, actor);
+
     public async Task<(IdentityVerificationChallengeRecord challenge, bool isNew)> StartMobileVerificationAsync(
         Guid? registrationId,
         string actorSubject,
         Guid idempotencyKey,
         string canonicalHash,
         string mobile,
-        CancellationToken ct)
+        CancellationToken ct) =>
+        await StartMobileVerificationAsync(registrationId, actorSubject, idempotencyKey, canonicalHash, mobile, ct, null);
+
+    private async Task<(IdentityVerificationChallengeRecord challenge, bool isNew)> StartMobileVerificationAsync(
+        Guid? registrationId, string actorSubject, Guid idempotencyKey, string canonicalHash,
+        string mobile, CancellationToken ct, VerifiedCustomerActor? actor)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
+        await using var transaction = actor is null ? null : await db.Database.BeginTransactionAsync(ct);
+        if (actor is not null) await SetActorContextAsync(db, actor, ct);
 
         IdentityRegistrationRecord? reg = null;
         if (registrationId.HasValue)
         {
             reg = await db.Registrations.FindAsync([registrationId.Value], ct);
-            if (reg is null || reg.ActorSubject != actorSubject)
+            if (reg is null || reg.ActorSubject != actorSubject || actor is not null && reg.ActorIssuer != actor.Issuer)
                 throw new IdentityResourceNotFoundException("Registration not found or not accessible.");
         }
 
@@ -524,6 +536,7 @@ public sealed class IdentityService
         if (replay is not null)
         {
             var replayChallenge = await db.VerificationChallenges.FindAsync([Guid.Parse(replay)], ct);
+            if (transaction is not null) await transaction.CommitAsync(ct);
             return (replayChallenge!, false);
         }
 
@@ -562,10 +575,12 @@ public sealed class IdentityService
         {
             challenge.State = IdentityVerificationState.Expired;
             await db.SaveChangesAsync(ct);
+            if (transaction is not null) await transaction.CommitAsync(ct);
             throw new IdentityDeliveryUnavailableException("Verification delivery is unavailable.");
         }
         await RecordIdempotencyAsync(db, actorSubject, idempotencyKey, "StartMobileVerification",
             canonicalHash, 202, challenge.ChallengeId.ToString(), ct);
+        if (transaction is not null) await transaction.CommitAsync(ct);
 
         return (challenge, true);
     }

@@ -203,6 +203,26 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Http_RegistrationMobile_UsesVerifiedActorAndPreservesCrossActorIsolation()
+    {
+        var owner = Token("mobile-owner");
+        var registration = await RegisterAsync(owner);
+
+        var own = await SendAsync(HttpMethod.Post,
+            $"/api/v1/identity/registrations/{registration}/mobile-verifications",
+            owner, new { mobile = "+911234567890" });
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, own.StatusCode);
+        Assert.Equal("IDENTITY_DEPENDENCY_UNAVAILABLE", (await JsonAsync(own)).GetProperty("code").GetString());
+
+        var foreign = await SendAsync(HttpMethod.Post,
+            $"/api/v1/identity/registrations/{registration}/mobile-verifications",
+            Token("mobile-foreign"), new { mobile = "+911234567890" });
+        Assert.Equal(HttpStatusCode.NotFound, foreign.StatusCode);
+        Assert.Equal("IDENTITY_RESOURCE_NOT_ACCESSIBLE", (await JsonAsync(foreign)).GetProperty("code").GetString());
+        await AssertEmptyPoolAsync();
+    }
+
+    [Fact]
     public async Task Http_ForgedTenantClaimsNeverSelectMembership_AndForeignHeadersDeny()
     {
         var token = Token("actor-one");
