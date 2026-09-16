@@ -30,6 +30,36 @@ export interface RelationshipWorkPageV1AllOfItems {
    * @type {string}
    * @memberof RelationshipWorkPageV1AllOfItems
    */
+  agentInstanceId: string;
+  /**
+   *
+   * @type {string}
+   * @memberof RelationshipWorkPageV1AllOfItems
+   */
+  skillId: string;
+  /**
+   *
+   * @type {string}
+   * @memberof RelationshipWorkPageV1AllOfItems
+   */
+  skillVersion: string;
+  /**
+   *
+   * @type {string}
+   * @memberof RelationshipWorkPageV1AllOfItems
+   */
+  invocationId: string;
+  /**
+   *
+   * @type {number}
+   * @memberof RelationshipWorkPageV1AllOfItems
+   */
+  revision: number;
+  /**
+   *
+   * @type {string}
+   * @memberof RelationshipWorkPageV1AllOfItems
+   */
   state: string;
   /**
    *
@@ -37,6 +67,18 @@ export interface RelationshipWorkPageV1AllOfItems {
    * @memberof RelationshipWorkPageV1AllOfItems
    */
   effect: string;
+  /**
+   *
+   * @type {string}
+   * @memberof RelationshipWorkPageV1AllOfItems
+   */
+  resultRef?: string;
+  /**
+   *
+   * @type {Date}
+   * @memberof RelationshipWorkPageV1AllOfItems
+   */
+  updatedAt: Date;
 }
 
 /**
@@ -46,8 +88,17 @@ export function instanceOfRelationshipWorkPageV1AllOfItems(
   value: object,
 ): value is RelationshipWorkPageV1AllOfItems {
   if (!("itemId" in value) || value["itemId"] === undefined) return false;
+  if (!("agentInstanceId" in value) || value["agentInstanceId"] === undefined)
+    return false;
+  if (!("skillId" in value) || value["skillId"] === undefined) return false;
+  if (!("skillVersion" in value) || value["skillVersion"] === undefined)
+    return false;
+  if (!("invocationId" in value) || value["invocationId"] === undefined)
+    return false;
+  if (!("revision" in value) || value["revision"] === undefined) return false;
   if (!("state" in value) || value["state"] === undefined) return false;
   if (!("effect" in value) || value["effect"] === undefined) return false;
+  if (!("updatedAt" in value) || value["updatedAt"] === undefined) return false;
   return true;
 }
 
@@ -66,8 +117,15 @@ export function RelationshipWorkPageV1AllOfItemsFromJSONTyped(
   }
   return {
     itemId: json["itemId"],
+    agentInstanceId: json["agentInstanceId"],
+    skillId: json["skillId"],
+    skillVersion: json["skillVersion"],
+    invocationId: json["invocationId"],
+    revision: json["revision"],
     state: json["state"],
     effect: json["effect"],
+    resultRef: json["resultRef"] == null ? undefined : json["resultRef"],
+    updatedAt: new Date(json["updatedAt"]),
   };
 }
 
@@ -87,7 +145,14 @@ export function RelationshipWorkPageV1AllOfItemsToJSONTyped(
 
   return {
     itemId: value["itemId"],
+    agentInstanceId: value["agentInstanceId"],
+    skillId: value["skillId"],
+    skillVersion: value["skillVersion"],
+    invocationId: value["invocationId"],
+    revision: value["revision"],
     state: value["state"],
     effect: value["effect"],
+    resultRef: value["resultRef"],
+    updatedAt: value["updatedAt"].toISOString(),
   };
 }

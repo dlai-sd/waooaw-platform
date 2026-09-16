@@ -42,6 +42,24 @@ export interface RelationshipContextV1 {
   relationshipId: string;
   /**
    *
+   * @type {string}
+   * @memberof RelationshipContextV1
+   */
+  agentInstanceId: string;
+  /**
+   *
+   * @type {string}
+   * @memberof RelationshipContextV1
+   */
+  professionalType: string;
+  /**
+   *
+   * @type {string}
+   * @memberof RelationshipContextV1
+   */
+  professionalVersion?: string;
+  /**
+   *
    * @type {EmploymentRelationshipState}
    * @memberof RelationshipContextV1
    */
@@ -61,6 +79,10 @@ export function instanceOfRelationshipContextV1(
   value: object,
 ): value is RelationshipContextV1 {
   if (!("relationshipId" in value) || value["relationshipId"] === undefined)
+    return false;
+  if (!("agentInstanceId" in value) || value["agentInstanceId"] === undefined)
+    return false;
+  if (!("professionalType" in value) || value["professionalType"] === undefined)
     return false;
   if (!("lifecycleState" in value) || value["lifecycleState"] === undefined)
     return false;
@@ -84,6 +106,12 @@ export function RelationshipContextV1FromJSONTyped(
   }
   return {
     relationshipId: json["relationshipId"],
+    agentInstanceId: json["agentInstanceId"],
+    professionalType: json["professionalType"],
+    professionalVersion:
+      json["professionalVersion"] == null
+        ? undefined
+        : json["professionalVersion"],
     lifecycleState: EmploymentRelationshipStateFromJSON(json["lifecycleState"]),
     policySelection: RelationshipPolicySelectionV1FromJSON(
       json["policySelection"],
@@ -105,6 +133,9 @@ export function RelationshipContextV1ToJSONTyped(
 
   return {
     relationshipId: value["relationshipId"],
+    agentInstanceId: value["agentInstanceId"],
+    professionalType: value["professionalType"],
+    professionalVersion: value["professionalVersion"],
     lifecycleState: EmploymentRelationshipStateToJSON(value["lifecycleState"]),
     policySelection: RelationshipPolicySelectionV1ToJSON(
       value["policySelection"],

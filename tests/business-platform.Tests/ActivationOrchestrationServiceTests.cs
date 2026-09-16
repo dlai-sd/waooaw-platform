@@ -155,6 +155,28 @@ public sealed class ActivationOrchestrationServiceTests
     }
 
     [Fact]
+    public async Task ZeroPriceActivationPreservesOwnerOutcomeKindAndEvidence()
+    {
+        var context = await CreateContextAsync();
+        var starter = new RecordingActivationWorkflowStarter();
+        var dispatch = new ActivationWorkflowDispatchService(context.Factory, context.Service, starter);
+        var evidenceId = Guid.NewGuid();
+
+        await dispatch.StartAsync(
+            context.Request.TenantId, context.Request.RelationshipId,
+            context.Request.ActorParticipantId,
+            new StartPaidActivationRequest(
+                "ZERO_PRICE_SATISFIED", "zero-price:checkout-123", evidenceId),
+            new ContractPortalAssurance(true, DateTimeOffset.UtcNow),
+            CancellationToken.None);
+
+        var activation = Assert.Single(starter.Requests);
+        Assert.Equal("ZERO_PRICE_SATISFIED", activation.CommercialOutcomeKind);
+        Assert.Equal("zero-price:checkout-123", activation.PaymentReference);
+        Assert.Equal(evidenceId, activation.PaymentEvidenceId);
+    }
+
+    [Fact]
     public async Task ActivationCommandRejectsStalePortalAssuranceBeforeWorkflowStart()
     {
         var context = await CreateContextAsync();
@@ -368,6 +390,7 @@ public sealed class ActivationOrchestrationServiceTests
         public int FailuresRemaining { get; set; }
         public bool HoldCalls { get; set; }
         public Guid LastCorrelationId { get; private set; }
+        public string? LastCommercialOutcomeKind { get; private set; }
         public Task FirstCallEntered => _firstCallEntered.Task;
 
         public void ReleaseCalls() => _releaseCalls.TrySetResult();
@@ -377,6 +400,7 @@ public sealed class ActivationOrchestrationServiceTests
         {
             CallCount++;
             LastCorrelationId = request.CorrelationId;
+            LastCommercialOutcomeKind = request.CommercialOutcomeKind;
             _firstCallEntered.TrySetResult();
             if (HoldCalls) await _releaseCalls.Task.WaitAsync(cancellationToken);
             if (FailNext || FailuresRemaining > 0)

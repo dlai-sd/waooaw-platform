@@ -31,8 +31,11 @@ public sealed class AuthenticatedActivationBillingGateway : IActivationBillingGa
             ["contract_acceptance_id"] = request.ContractAcceptanceId,
             ["contract_version"] = request.ContractVersion,
             ["correlation_id"] = request.CorrelationId,
-            ["payment_evidence_id"] = request.PaymentEvidenceId,
-            ["payment_reference"] = request.PaymentReference,
+            ["commercial_evidence_id"] = request.PaymentEvidenceId,
+            ["commercial_outcome_kind"] = request.CommercialOutcomeKind,
+            ["commercial_outcome_reference"] = request.PaymentReference,
+            ["payment_evidence_id"] = null,
+            ["payment_reference"] = null,
         };
         var bodyBytes = JsonSerializer.SerializeToUtf8Bytes(body);
         var digest = Convert.ToHexStringLower(SHA256.HashData(bodyBytes));

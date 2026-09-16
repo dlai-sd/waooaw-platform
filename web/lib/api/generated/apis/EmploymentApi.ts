@@ -29,14 +29,14 @@ import type {
   LegacyFormEmploymentContractRequest,
   LegacyHireAgentRequest,
   LegacyHireAgentResponse,
-  PaidRelationshipActivationOutcome,
   PhaseBundleSubscription,
   PrepareRelationshipHandoffRequest,
   ProblemDetail,
   ProposeEmploymentContractRequest,
+  RelationshipActivationOutcome,
+  RelationshipCheckoutOutcome,
   RelationshipContractJourney,
   RelationshipHandoff,
-  RelationshipHostedOnboardingOrder,
   RelationshipOfferabilityDecision,
   RelationshipPaymentProceedRequest,
   RelationshipTimelineEntry,
@@ -44,7 +44,7 @@ import type {
   RelationshipWorkspaceProblemDetailV1,
   ReleaseEmploymentRelationshipStopRequest,
   RenewContractRequest,
-  StartPaidRelationshipActivationRequest,
+  StartRelationshipActivationRequest,
   StartRelationshipTrialRequest,
   StopEmploymentRelationshipRequest,
   SuspendContractRequest,
@@ -83,8 +83,6 @@ import {
   LegacyHireAgentRequestToJSON,
   LegacyHireAgentResponseFromJSON,
   LegacyHireAgentResponseToJSON,
-  PaidRelationshipActivationOutcomeFromJSON,
-  PaidRelationshipActivationOutcomeToJSON,
   PhaseBundleSubscriptionFromJSON,
   PhaseBundleSubscriptionToJSON,
   PrepareRelationshipHandoffRequestFromJSON,
@@ -93,12 +91,14 @@ import {
   ProblemDetailToJSON,
   ProposeEmploymentContractRequestFromJSON,
   ProposeEmploymentContractRequestToJSON,
+  RelationshipActivationOutcomeFromJSON,
+  RelationshipActivationOutcomeToJSON,
+  RelationshipCheckoutOutcomeFromJSON,
+  RelationshipCheckoutOutcomeToJSON,
   RelationshipContractJourneyFromJSON,
   RelationshipContractJourneyToJSON,
   RelationshipHandoffFromJSON,
   RelationshipHandoffToJSON,
-  RelationshipHostedOnboardingOrderFromJSON,
-  RelationshipHostedOnboardingOrderToJSON,
   RelationshipOfferabilityDecisionFromJSON,
   RelationshipOfferabilityDecisionToJSON,
   RelationshipPaymentProceedRequestFromJSON,
@@ -113,8 +113,8 @@ import {
   ReleaseEmploymentRelationshipStopRequestToJSON,
   RenewContractRequestFromJSON,
   RenewContractRequestToJSON,
-  StartPaidRelationshipActivationRequestFromJSON,
-  StartPaidRelationshipActivationRequestToJSON,
+  StartRelationshipActivationRequestFromJSON,
+  StartRelationshipActivationRequestToJSON,
   StartRelationshipTrialRequestFromJSON,
   StartRelationshipTrialRequestToJSON,
   StopEmploymentRelationshipRequestFromJSON,
@@ -156,6 +156,7 @@ export interface ConvertTrialToPaidRequest {
 
 export interface CreateRelationshipOnboardingOrderRequest {
   relationshipId: string;
+  idempotencyKey: string;
   version: number;
   relationshipPaymentProceedRequest: RelationshipPaymentProceedRequest;
 }
@@ -185,6 +186,16 @@ export interface GetEmploymentRelationshipTimelineRequest {
 
 export interface GetPhaseBundleRequest {
   contractId: string;
+}
+
+export interface GetRelationshipCheckoutRequest {
+  relationshipId: string;
+  version: number;
+}
+
+export interface GetRelationshipCheckoutIntentRequest {
+  relationshipId: string;
+  checkoutIntentId: string;
 }
 
 export interface GetRelationshipContractJourneyRequest {
@@ -236,9 +247,9 @@ export interface StartEmploymentRelationshipTrialRequest {
   startRelationshipTrialRequest: StartRelationshipTrialRequest;
 }
 
-export interface StartPaidRelationshipActivationOperationRequest {
+export interface StartRelationshipActivationOperationRequest {
   relationshipId: string;
-  startPaidRelationshipActivationRequest: StartPaidRelationshipActivationRequest;
+  startRelationshipActivationRequest: StartRelationshipActivationRequest;
 }
 
 export interface StopEmploymentRelationshipOperationRequest {
@@ -651,17 +662,24 @@ export class EmploymentApi extends runtime.BaseAPI {
   }
 
   /**
-   * Requires fresh Keycloak portal authentication, an active same-tenant EMPLOYER binding, one exact accepted contract, and itemization whose subscription plus wallet seed equals the accepted INR gross amount. Records constitutional proceed evidence before asking WBE for a Razorpay-hosted order. Payment secrets and bypass coupons are never accepted. Payment capture does not activate the relationship; durable activation is a separate flow.
-   * Record explicit payment consent and create a contract-linked hosted order
+   * Requires fresh Keycloak portal authentication, an active same-tenant EMPLOYER binding, and one exact accepted contract. BP records constitutional proceed evidence before asking WBE for authoritative price, promotion and provider readiness. Payment secrets, amounts, environment identity and bypass coupons are never accepted from the browser. A fully discounted outcome never creates a Razorpay order. Payment or zero-price satisfaction does not activate the relationship; durable activation is a separate flow.
+   * Create or replay a contract-linked checkout intent
    */
   async createRelationshipOnboardingOrderRaw(
     requestParameters: CreateRelationshipOnboardingOrderRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<RelationshipHostedOnboardingOrder>> {
+  ): Promise<runtime.ApiResponse<RelationshipCheckoutOutcome>> {
     if (requestParameters["relationshipId"] == null) {
       throw new runtime.RequiredError(
         "relationshipId",
         'Required parameter "relationshipId" was null or undefined when calling createRelationshipOnboardingOrder().',
+      );
+    }
+
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling createRelationshipOnboardingOrder().',
       );
     }
 
@@ -684,6 +702,12 @@ export class EmploymentApi extends runtime.BaseAPI {
     const headerParameters: runtime.HTTPHeaders = {};
 
     headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(
+        requestParameters["idempotencyKey"],
+      );
+    }
 
     if (this.configuration && this.configuration.accessToken) {
       const token = this.configuration.accessToken;
@@ -718,18 +742,18 @@ export class EmploymentApi extends runtime.BaseAPI {
     );
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
-      RelationshipHostedOnboardingOrderFromJSON(jsonValue),
+      RelationshipCheckoutOutcomeFromJSON(jsonValue),
     );
   }
 
   /**
-   * Requires fresh Keycloak portal authentication, an active same-tenant EMPLOYER binding, one exact accepted contract, and itemization whose subscription plus wallet seed equals the accepted INR gross amount. Records constitutional proceed evidence before asking WBE for a Razorpay-hosted order. Payment secrets and bypass coupons are never accepted. Payment capture does not activate the relationship; durable activation is a separate flow.
-   * Record explicit payment consent and create a contract-linked hosted order
+   * Requires fresh Keycloak portal authentication, an active same-tenant EMPLOYER binding, and one exact accepted contract. BP records constitutional proceed evidence before asking WBE for authoritative price, promotion and provider readiness. Payment secrets, amounts, environment identity and bypass coupons are never accepted from the browser. A fully discounted outcome never creates a Razorpay order. Payment or zero-price satisfaction does not activate the relationship; durable activation is a separate flow.
+   * Create or replay a contract-linked checkout intent
    */
   async createRelationshipOnboardingOrder(
     requestParameters: CreateRelationshipOnboardingOrderRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<RelationshipHostedOnboardingOrder> {
+  ): Promise<RelationshipCheckoutOutcome> {
     const response = await this.createRelationshipOnboardingOrderRaw(
       requestParameters,
       initOverrides,
@@ -1150,6 +1174,156 @@ export class EmploymentApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<PhaseBundleSubscription> {
     const response = await this.getPhaseBundleRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
+   * Returns BP-mediated WBE commercial truth for the exact accepted contract. Amounts, promotion eligibility, provider readiness and activation eligibility are server-derived; the browser does not calculate or authorize them.
+   * Read the current relationship checkout projection
+   */
+  async getRelationshipCheckoutRaw(
+    requestParameters: GetRelationshipCheckoutRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<RelationshipCheckoutOutcome>> {
+    if (requestParameters["relationshipId"] == null) {
+      throw new runtime.RequiredError(
+        "relationshipId",
+        'Required parameter "relationshipId" was null or undefined when calling getRelationshipCheckout().',
+      );
+    }
+
+    if (requestParameters["version"] == null) {
+      throw new runtime.RequiredError(
+        "version",
+        'Required parameter "version" was null or undefined when calling getRelationshipCheckout().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("BearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/employment/relationships/{relationshipId}/contracts/{version}/payments/onboarding-order`;
+    urlPath = urlPath.replace(
+      `{${"relationshipId"}}`,
+      encodeURIComponent(String(requestParameters["relationshipId"])),
+    );
+    urlPath = urlPath.replace(
+      `{${"version"}}`,
+      encodeURIComponent(String(requestParameters["version"])),
+    );
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      RelationshipCheckoutOutcomeFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * Returns BP-mediated WBE commercial truth for the exact accepted contract. Amounts, promotion eligibility, provider readiness and activation eligibility are server-derived; the browser does not calculate or authorize them.
+   * Read the current relationship checkout projection
+   */
+  async getRelationshipCheckout(
+    requestParameters: GetRelationshipCheckoutRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<RelationshipCheckoutOutcome> {
+    const response = await this.getRelationshipCheckoutRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
+   * Returns the stored or reconciled WBE-owned commercial outcome. Browser callbacks are only prompts to reconcile and never establish captured payment or activation eligibility.
+   * Reconcile one relationship checkout intent
+   */
+  async getRelationshipCheckoutIntentRaw(
+    requestParameters: GetRelationshipCheckoutIntentRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<RelationshipCheckoutOutcome>> {
+    if (requestParameters["relationshipId"] == null) {
+      throw new runtime.RequiredError(
+        "relationshipId",
+        'Required parameter "relationshipId" was null or undefined when calling getRelationshipCheckoutIntent().',
+      );
+    }
+
+    if (requestParameters["checkoutIntentId"] == null) {
+      throw new runtime.RequiredError(
+        "checkoutIntentId",
+        'Required parameter "checkoutIntentId" was null or undefined when calling getRelationshipCheckoutIntent().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("BearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/employment/relationships/{relationshipId}/checkout-intents/{checkoutIntentId}`;
+    urlPath = urlPath.replace(
+      `{${"relationshipId"}}`,
+      encodeURIComponent(String(requestParameters["relationshipId"])),
+    );
+    urlPath = urlPath.replace(
+      `{${"checkoutIntentId"}}`,
+      encodeURIComponent(String(requestParameters["checkoutIntentId"])),
+    );
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      RelationshipCheckoutOutcomeFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * Returns the stored or reconciled WBE-owned commercial outcome. Browser callbacks are only prompts to reconcile and never establish captured payment or activation eligibility.
+   * Reconcile one relationship checkout intent
+   */
+  async getRelationshipCheckoutIntent(
+    requestParameters: GetRelationshipCheckoutIntentRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<RelationshipCheckoutOutcome> {
+    const response = await this.getRelationshipCheckoutIntentRaw(
       requestParameters,
       initOverrides,
     );
@@ -1873,24 +2047,24 @@ export class EmploymentApi extends runtime.BaseAPI {
   }
 
   /**
-   * Requires fresh Keycloak portal authentication and an active same-tenant EMPLOYER binding. BP derives the accepted contract, acceptance evidence, authority snapshot, actor, and stable correlation from canonical relationship state. WBE remains payment owner and revalidates the supplied payment reference and evidence identifier against its signature-verified CAPTURED row. Identical replay joins the stable Temporal workflow; unresolved owner outcomes never report success.
-   * Start or join durable paid relationship activation
+   * Requires fresh Keycloak portal authentication and an active same-tenant EMPLOYER binding. BP derives the accepted contract, acceptance evidence, authority snapshot, actor, and stable correlation from canonical relationship state. WBE remains commercial owner and revalidates the supplied reference and evidence identifier against either its signature-verified CAPTURED row or its immutable ZERO_PRICE_SATISFIED row. Identical replay joins the stable Temporal workflow; unresolved owner outcomes never report success.
+   * Start or join durable commercial relationship activation
    */
-  async startPaidRelationshipActivationRaw(
-    requestParameters: StartPaidRelationshipActivationOperationRequest,
+  async startRelationshipActivationRaw(
+    requestParameters: StartRelationshipActivationOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<runtime.ApiResponse<PaidRelationshipActivationOutcome>> {
+  ): Promise<runtime.ApiResponse<RelationshipActivationOutcome>> {
     if (requestParameters["relationshipId"] == null) {
       throw new runtime.RequiredError(
         "relationshipId",
-        'Required parameter "relationshipId" was null or undefined when calling startPaidRelationshipActivation().',
+        'Required parameter "relationshipId" was null or undefined when calling startRelationshipActivation().',
       );
     }
 
-    if (requestParameters["startPaidRelationshipActivationRequest"] == null) {
+    if (requestParameters["startRelationshipActivationRequest"] == null) {
       throw new runtime.RequiredError(
-        "startPaidRelationshipActivationRequest",
-        'Required parameter "startPaidRelationshipActivationRequest" was null or undefined when calling startPaidRelationshipActivation().',
+        "startRelationshipActivationRequest",
+        'Required parameter "startRelationshipActivationRequest" was null or undefined when calling startRelationshipActivation().',
       );
     }
 
@@ -1921,27 +2095,27 @@ export class EmploymentApi extends runtime.BaseAPI {
         method: "POST",
         headers: headerParameters,
         query: queryParameters,
-        body: StartPaidRelationshipActivationRequestToJSON(
-          requestParameters["startPaidRelationshipActivationRequest"],
+        body: StartRelationshipActivationRequestToJSON(
+          requestParameters["startRelationshipActivationRequest"],
         ),
       },
       initOverrides,
     );
 
     return new runtime.JSONApiResponse(response, (jsonValue) =>
-      PaidRelationshipActivationOutcomeFromJSON(jsonValue),
+      RelationshipActivationOutcomeFromJSON(jsonValue),
     );
   }
 
   /**
-   * Requires fresh Keycloak portal authentication and an active same-tenant EMPLOYER binding. BP derives the accepted contract, acceptance evidence, authority snapshot, actor, and stable correlation from canonical relationship state. WBE remains payment owner and revalidates the supplied payment reference and evidence identifier against its signature-verified CAPTURED row. Identical replay joins the stable Temporal workflow; unresolved owner outcomes never report success.
-   * Start or join durable paid relationship activation
+   * Requires fresh Keycloak portal authentication and an active same-tenant EMPLOYER binding. BP derives the accepted contract, acceptance evidence, authority snapshot, actor, and stable correlation from canonical relationship state. WBE remains commercial owner and revalidates the supplied reference and evidence identifier against either its signature-verified CAPTURED row or its immutable ZERO_PRICE_SATISFIED row. Identical replay joins the stable Temporal workflow; unresolved owner outcomes never report success.
+   * Start or join durable commercial relationship activation
    */
-  async startPaidRelationshipActivation(
-    requestParameters: StartPaidRelationshipActivationOperationRequest,
+  async startRelationshipActivation(
+    requestParameters: StartRelationshipActivationOperationRequest,
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
-  ): Promise<PaidRelationshipActivationOutcome> {
-    const response = await this.startPaidRelationshipActivationRaw(
+  ): Promise<RelationshipActivationOutcome> {
+    const response = await this.startRelationshipActivationRaw(
       requestParameters,
       initOverrides,
     );

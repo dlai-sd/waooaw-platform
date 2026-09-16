@@ -5,6 +5,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Waooaw.BusinessPlatform.Controllers;
 using Waooaw.BusinessPlatform.Infrastructure;
@@ -505,8 +506,173 @@ public sealed class RelationshipWorkspaceControllerTests
         Assert.Equal("PARTIAL", workspace.GetProperty("snapshotState").GetString());
     }
 
+    [Fact]
+    public async Task AggregateComposesFiveStageLifecycleWithoutInventingRelationshipStates()
+    {
+        var (controller, relationship, _, _) = await CreateControllerAsync();
+
+        var workspace = Json(await controller.GetWorkspaceAsync(
+            relationship.RelationshipId, CancellationToken.None));
+        var profile = workspace.GetProperty("lifecycleProfile");
+        var stages = profile.GetProperty("stages").EnumerateArray().ToArray();
+
+        Assert.Equal(relationship.AgentInstanceId, profile.GetProperty("agentInstanceId").GetGuid());
+        Assert.Equal(
+            new[] { "ONBOARD", "INDUCT", "GOAL_VERIFICATION", "BUSINESS_OUTCOMES", "OPERATIONS" },
+            stages.Select(stage => stage.GetProperty("stage").GetString()).ToArray());
+        Assert.Equal("NOT_STARTED", stages[0].GetProperty("state").GetString());
+        Assert.Equal("BLOCKED", stages[^1].GetProperty("state").GetString());
+        Assert.NotEmpty(stages[^1].GetProperty("blockerReasons").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task AggregateProjectsEachLifecycleProgressionFromAuthoritativeInputs()
+    {
+        var (controller, relationship, gateway, configuration) = await CreateControllerAsync();
+
+        await controller.UpdateOnboardAsync(
+            relationship.RelationshipId,
+            new RelationshipOnboardRequest("1.0.0", "Maya", "COMPACT", "ABSOLUTE", "DARK"),
+            Guid.NewGuid().ToString("D"), CancellationToken.None);
+        var onboarded = Stages(await controller.GetWorkspaceAsync(
+            relationship.RelationshipId, CancellationToken.None));
+        Assert.Equal("VERIFIED", onboarded[0].GetProperty("state").GetString());
+        Assert.Equal("NOT_STARTED", onboarded[1].GetProperty("state").GetString());
+
+        await ConfirmContextAsync(configuration, relationship, "NAME");
+        var partialInduction = Stages(await controller.GetWorkspaceAsync(
+            relationship.RelationshipId, CancellationToken.None));
+        var partialConfiguration = Json(await controller.GetConfigurationAsync(
+            relationship.RelationshipId, CancellationToken.None));
+        Assert.Equal("IN_PROGRESS", partialInduction[1].GetProperty("state").GetString());
+        Assert.Equal("INDUCT", partialConfiguration.GetProperty("lifecyclePhase").GetString());
+        Assert.Equal("IN_PROGRESS", partialConfiguration.GetProperty("items")[1].GetProperty("state").GetString());
+        Assert.Equal("context-1", partialConfiguration.GetProperty("items")[1]
+            .GetProperty("confirmedContextVersion").GetString());
+
+        await ConfirmContextAsync(configuration, relationship, "LOCATION");
+        await ConfirmContextAsync(configuration, relationship, "BUSINESS_NATURE");
+        var inducted = Stages(await controller.GetWorkspaceAsync(
+            relationship.RelationshipId, CancellationToken.None));
+        var completedConfiguration = Json(await controller.GetConfigurationAsync(
+            relationship.RelationshipId, CancellationToken.None));
+        Assert.Equal("VERIFIED", inducted[1].GetProperty("state").GetString());
+        Assert.Equal("NOT_STARTED", inducted[2].GetProperty("state").GetString());
+        Assert.Equal("GOAL_VERIFICATION", completedConfiguration.GetProperty("lifecyclePhase").GetString());
+        Assert.Equal("VERIFIED", completedConfiguration.GetProperty("items")[1].GetProperty("state").GetString());
+
+        var goal = await configuration.SaveGoalAsync(
+            relationship.TenantId, relationship.RelationshipId, "Increase bookings", "10 monthly",
+            "Confirmed bookings", "15 monthly", "Customer records", "ACCEPTED", CancellationToken.None);
+        await configuration.SaveSkillAsync(
+            relationship.TenantId, relationship.RelationshipId, "local-seo", "1.0.0", goal.GoalId,
+            "NOT_GRANTED", "APPLICABLE", null, "ACCEPTED", CancellationToken.None);
+        var pendingGoal = Stages(await controller.GetWorkspaceAsync(
+            relationship.RelationshipId, CancellationToken.None));
+        Assert.Equal("READY_FOR_CONFIRMATION", pendingGoal[2].GetProperty("state").GetString());
+        Assert.Equal("BLOCKED", pendingGoal[3].GetProperty("state").GetString());
+
+        var goalVersion = RelationshipConfigurationService.GetGoalVersion(goal);
+        var command = JsonSerializer.SerializeToElement(new
+        {
+            schemaVersion = "1.0",
+            expectedWorkspaceVersion = $"relationship-{relationship.StateVersion}",
+            expectedSubjectVersion = goalVersion,
+            payload = new
+            {
+                commandKind = "VERIFY_GOAL",
+                goalId = goal.GoalId,
+                goalVersion,
+                verificationDecision = "VERIFIED",
+            },
+        });
+        await controller.SubmitCommandAsync(
+            relationship.RelationshipId, command, Guid.NewGuid().ToString("D"), CancellationToken.None);
+
+        var ownersUnavailable = Stages(await controller.GetWorkspaceAsync(
+            relationship.RelationshipId, CancellationToken.None))[^1];
+        Assert.Equal("BLOCKED", ownersUnavailable.GetProperty("state").GetString());
+
+        gateway.Execution = new ExecutionOwnerProjection("execution-current", "CURRENT", DateTimeOffset.UtcNow);
+        var commercialUnavailable = Stages(await controller.GetWorkspaceAsync(
+            relationship.RelationshipId, CancellationToken.None))[^1];
+        Assert.Equal("BLOCKED", commercialUnavailable.GetProperty("state").GetString());
+
+        gateway.Commercial = new CommercialOwnerProjection(
+            "commercial-current", "CURRENT", "INR 0", "INR 0", "WITHIN_LIMIT", DateTimeOffset.UtcNow);
+
+        var verified = Stages(await controller.GetWorkspaceAsync(
+            relationship.RelationshipId, CancellationToken.None));
+        Assert.Equal("VERIFIED", verified[2].GetProperty("state").GetString());
+        Assert.Equal("VERIFIED", verified[3].GetProperty("state").GetString());
+        Assert.Equal("BLOCKED", verified[4].GetProperty("state").GetString());
+        Assert.Equal("RECORDED", verified[3].GetProperty("evidenceState").GetString());
+    }
+
+    private static async Task ConfirmContextAsync(
+        RelationshipConfigurationService configuration,
+        EmploymentRelationship relationship,
+        string fieldType)
+    {
+        await configuration.ConfirmContextAsync(
+            relationship.TenantId, relationship.RelationshipId, relationship.InitiatingParticipantId,
+            fieldType, JsonSerializer.SerializeToElement("confirmed"), "STATED", null, null,
+            Guid.NewGuid(), CancellationToken.None);
+    }
+
+    private static JsonElement[] Stages(IActionResult result) =>
+        Json(result).GetProperty("lifecycleProfile").GetProperty("stages").EnumerateArray().ToArray();
+
+    [Fact]
+    public async Task AggregateVerifiesOperationsOnlyWhenEveryOwnerDependencyIsCurrent()
+    {
+        var (controller, relationship, gateway, configuration) = await CreateControllerAsync(
+            EmploymentRelationshipState.Active);
+        await controller.UpdateOnboardAsync(
+            relationship.RelationshipId,
+            new RelationshipOnboardRequest("1.0.0", "Maya", "COMPACT", "ABSOLUTE", "DARK"),
+            Guid.NewGuid().ToString("D"), CancellationToken.None);
+        foreach (var fieldType in new[] { "NAME", "LOCATION", "BUSINESS_NATURE" })
+            await ConfirmContextAsync(configuration, relationship, fieldType);
+        var goal = await configuration.SaveGoalAsync(
+            relationship.TenantId, relationship.RelationshipId, "Increase bookings", "10 monthly",
+            "Confirmed bookings", "15 monthly", "Customer records", "ACCEPTED", CancellationToken.None);
+        await configuration.SaveSkillAsync(
+            relationship.TenantId, relationship.RelationshipId, "local-seo", "1.0.0", goal.GoalId,
+            "NOT_GRANTED", "APPLICABLE", null, "ACCEPTED", CancellationToken.None);
+        var goalVersion = RelationshipConfigurationService.GetGoalVersion(goal);
+        var command = JsonSerializer.SerializeToElement(new
+        {
+            schemaVersion = "1.0",
+            expectedWorkspaceVersion = $"relationship-{relationship.StateVersion}",
+            expectedSubjectVersion = goalVersion,
+            payload = new
+            {
+                commandKind = "VERIFY_GOAL",
+                goalId = goal.GoalId,
+                goalVersion,
+                verificationDecision = "VERIFIED",
+            },
+        });
+        await controller.SubmitCommandAsync(
+            relationship.RelationshipId, command, Guid.NewGuid().ToString("D"), CancellationToken.None);
+        gateway.Execution = new ExecutionOwnerProjection("execution-current", "CURRENT", DateTimeOffset.UtcNow);
+        gateway.Commercial = new CommercialOwnerProjection(
+            "commercial-current", "CURRENT", "INR 0", "INR 0", "WITHIN_LIMIT", DateTimeOffset.UtcNow);
+
+        var operations = Stages(await controller.GetWorkspaceAsync(
+            relationship.RelationshipId, CancellationToken.None))[^1];
+
+        Assert.Equal("VERIFIED", operations.GetProperty("state").GetString());
+        Assert.Equal("RECORDED", operations.GetProperty("evidenceState").GetString());
+        Assert.Equal($"relationship-{relationship.StateVersion}", operations.GetProperty("outputRevision").GetString());
+        Assert.Empty(operations.GetProperty("blockerReasons").EnumerateArray());
+        Assert.Equal("Continue governed work.", operations.GetProperty("nextAuthorizedAction").GetString());
+    }
+
     private static async Task<(RelationshipWorkspaceController Controller, EmploymentRelationship Relationship,
-        RelationshipOwnerGatewayStub Gateway, RelationshipConfigurationService Configuration)> CreateControllerAsync()
+        RelationshipOwnerGatewayStub Gateway, RelationshipConfigurationService Configuration)> CreateControllerAsync(
+        EmploymentRelationshipState? state = null)
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
         var service = new EmploymentRelationshipService(
@@ -517,6 +683,15 @@ public sealed class RelationshipWorkspaceControllerTests
         var participantId = Guid.NewGuid();
         var admitted = await service.AdmitAsync(
             tenantId, participantId, Guid.NewGuid(), "DMA", Guid.NewGuid(), CancellationToken.None);
+        if (state.HasValue)
+        {
+            await using var db = factory.CreateDbContext();
+            var stored = await db.EmploymentRelationships.SingleAsync(item =>
+                item.TenantId == tenantId && item.RelationshipId == admitted.Relationship.RelationshipId);
+            stored.State = state.Value;
+            await db.SaveChangesAsync();
+            admitted.Relationship.State = state.Value;
+        }
         var gateway = new RelationshipOwnerGatewayStub();
         var configuration = new RelationshipConfigurationService(
             factory, new RecordingRelationshipConstitutionalGateway());

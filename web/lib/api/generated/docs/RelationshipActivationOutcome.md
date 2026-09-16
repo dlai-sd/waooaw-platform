@@ -1,4 +1,4 @@
-# PaidRelationshipActivationOutcome
+# RelationshipActivationOutcome
 
 ## Properties
 
@@ -12,7 +12,7 @@
 ## Example
 
 ```typescript
-import type { PaidRelationshipActivationOutcome } from "";
+import type { RelationshipActivationOutcome } from "";
 
 // TODO: Update the object below with actual values
 const example = {
@@ -20,7 +20,7 @@ const example = {
   subscriptionId: null,
   evidenceId: null,
   status: null,
-} satisfies PaidRelationshipActivationOutcome;
+} satisfies RelationshipActivationOutcome;
 
 console.log(example);
 
@@ -29,9 +29,7 @@ const exampleJSON: string = JSON.stringify(example);
 console.log(exampleJSON);
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(
-  exampleJSON,
-) as PaidRelationshipActivationOutcome;
+const exampleParsed = JSON.parse(exampleJSON) as RelationshipActivationOutcome;
 console.log(exampleParsed);
 ```
 

@@ -9,13 +9,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!accessToken) return NextResponse.json({ title: 'Secure sign in is required.' }, { status: 401 });
   const { relationshipId } = await params;
   const body = await request.json();
-  const root = `${businessPlatformUrl}/api/v1/employment/relationships/${encodeURIComponent(relationshipId)}/contracts/${body.version}`;
-  const target = body.action === 'accept' ? `${root}/accept` : body.action === 'pay' ? `${root}/payments/onboarding-order` : null;
+  const relationshipRoot = `${businessPlatformUrl}/api/v1/employment/relationships/${encodeURIComponent(relationshipId)}`;
+  const contractRoot = `${relationshipRoot}/contracts/${body.version}`;
+  const target = body.action === 'accept' ? `${contractRoot}/accept` : body.action === 'pay' ? `${contractRoot}/payments/onboarding-order` : body.action === 'activate' ? `${relationshipRoot}/activation` : null;
   if (!target) return NextResponse.json({ title: 'Contract request is invalid.' }, { status: 400 });
   if (typeof body.idempotencyKey !== 'string' || body.idempotencyKey.length === 0) return NextResponse.json({ title: 'Contract request is invalid.' }, { status: 400 });
   const payload = body.action === 'accept'
     ? { contractHash: body.contractHash, scopeConfirmation }
-    : { bundleTier: 'CONTRACT', subscriptionAmountInrPaise: body.grossAmountInrPaise, walletSeedInrPaise: 0, proceedConfirmation: 'PROCEED_TO_RAZORPAY' };
+    : body.action === 'pay'
+      ? { proceedConfirmation: 'CONFIRM_CHECKOUT_AND_RENEWAL_TERMS' }
+      : {
+          commercialOutcomeKind: body.commercialOutcomeKind,
+          commercialOutcomeReference: body.commercialOutcomeReference,
+          commercialEvidenceId: body.commercialEvidenceId,
+        };
   const response = await fetch(target, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json', 'Idempotency-Key': body.idempotencyKey }, body: JSON.stringify(payload), cache: 'no-store' });
   const result = await response.json();
   return NextResponse.json(result, { status: response.status, headers: { 'Cache-Control': 'no-store' } });

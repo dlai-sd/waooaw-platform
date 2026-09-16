@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { RelationshipWorkspace } from './RelationshipWorkspace';
 import type { ContractJourneyProjection, EmploymentRelationship, RelationshipEvaluationProjection, RelationshipTimelineEntry } from '@/lib/api/relationships';
 import type { RelationshipWorkspaceViews } from '@/lib/api/relationship-workspace';
+import type { AgentEmploymentLifecycleStageV1 } from '@/lib/api/generated';
 
 const relationship: EmploymentRelationship = {
   relationshipId: '5f33925b-fb0c-4366-8414-7f85309639b9',
@@ -27,12 +28,36 @@ const timeline: RelationshipTimelineEntry[] = [{
 
 const provenance = { owner: 'BP', sourceProjectionVersion: 'relationship-1', producedAt: new Date('2026-08-10T10:00:00Z') };
 const section = { currencyState: 'UNAVAILABLE' as const, provenance, availableCommands: [] };
+const lifecycleStages = (['ONBOARD', 'INDUCT', 'GOAL_VERIFICATION', 'BUSINESS_OUTCOMES', 'OPERATIONS'] as const)
+  .map((stage): AgentEmploymentLifecycleStageV1 => ({
+    stage,
+    state: stage === 'ONBOARD' || stage === 'INDUCT' ? 'VERIFIED' : 'NOT_STARTED',
+    owner: 'BP',
+    inputRevisions: ['relationship-1'],
+    evidenceState: 'RECORDED',
+    freshness: 'CURRENT',
+    completionCriteria: `${stage} completion criteria`,
+    blockerReasons: [],
+    nextAuthorizedAction: `continue-${stage.toLowerCase()}`,
+  }));
 const views: RelationshipWorkspaceViews = {
   workspace: {
     schemaVersion: '1.0', relationshipId: relationship.relationshipId, workspaceVersion: 'relationship-1',
     snapshotState: 'PARTIAL', currencyState: 'CURRENT', authoritativeCursor: 'workspace:relationship:00000001',
     producedAt: new Date('2026-08-10T10:00:00Z'),
-    context: { relationshipId: relationship.relationshipId, lifecycleState: 'TRIAL_ACTIVE', policySelection: { f4Pol01: 'A', f4Pol02: 'A', f4Pol03: 'B', f4Pol04: 'A', f4Pol05: 'B', f4Pol06: 'A' } },
+    context: {
+      relationshipId: relationship.relationshipId,
+      agentInstanceId: relationship.agentInstanceId,
+      professionalType: relationship.professionalType,
+      lifecycleState: 'TRIAL_ACTIVE',
+      policySelection: { f4Pol01: 'A', f4Pol02: 'A', f4Pol03: 'B', f4Pol04: 'A', f4Pol05: 'B', f4Pol06: 'A' },
+    },
+    lifecycleProfile: {
+      agentInstanceId: relationship.agentInstanceId,
+      relationshipVersion: relationship.stateVersion,
+      producedAt: new Date('2026-08-10T10:00:00Z'),
+      stages: lifecycleStages,
+    },
     sections: [],
   },
   configuration: {
@@ -78,7 +103,7 @@ const contractJourney: ContractJourneyProjection = {
   document: {
     professionalDisplayName: 'Digital Marketing Professional', rights: ['Inspect evidence', 'Choose not now'],
     obligations: ['Provide accurate context'], limitations: ['Cannot publish without authority'], authorityTerms: ['No publishing'], stopTerms: ['Emergency Stop remains available'],
-    priceTax: { currency: 'INR', grossAmountInrPaise: 118000, gstAmountInrPaise: 18000, cadence: 'MONTHLY', subscriptionTerms: 'Monthly subscription', adSpendTreatment: 'Ad spend is separate', cancellationAndRefundTerms: 'Cancel before renewal; captured charges follow the stated refund policy' },
+    priceTax: { currency: 'INR', grossAmountInrPaise: 118000, gstAmountInrPaise: 18000, cadence: 'MONTHLY', subscriptionTerms: 'Monthly subscription', adSpendTreatment: 'Ad spend is separate', cancellationAndRefundTerms: 'Cancel before renewal; captured charges follow the stated refund policy', offeringId: 'dma-release-1', bundleTier: 'STARTER', quoteVersion: 'quote-v1', renewalConsequence: 'Renews at the accepted monthly price' },
   },
 };
 
@@ -188,15 +213,15 @@ describe('RelationshipWorkspace', () => {
     for (const name of ['Hire and accept exact contract', 'Not now', 'Cancel', 'Exit']) {
       expect(within(decisions).getByRole(name === 'Exit' ? 'link' : 'button', { name })).toBeVisible();
     }
-    expect(within(decisions).queryByRole('button', { name: 'Proceed to Razorpay' })).not.toBeInTheDocument();
+    expect(within(decisions).queryByRole('button', { name: 'Continue to payment' })).not.toBeInTheDocument();
     expect(within(decisions).queryByRole('checkbox')).not.toBeInTheDocument();
     expect(screen.queryByText(/hurry|expires in|last chance/i)).not.toBeInTheDocument();
     fireEvent.click(within(decisions).getByRole('button', { name: 'Hire and accept exact contract' }));
-    const proceed = await within(decisions).findByRole('button', { name: 'Proceed to Razorpay' });
+    const proceed = await within(decisions).findByRole('button', { name: 'Continue to payment' });
     expect(proceed).toBeVisible();
     expect(screen.getByText('Contract accepted and evidenced. Payment has not started.')).toBeVisible();
     fireEvent.click(proceed);
-    expect(await screen.findByText(/Payment remains unconfirmed until hosted checkout capture/)).toBeVisible();
+    expect(await screen.findByText(/Checkout remains unresolved/)).toBeVisible();
     fireEvent.click(within(decisions).getByRole('button', { name: 'Not now' }));
     expect(screen.getByText('Not now selected. No contract or payment state changed.')).toBeVisible();
     fireEvent.click(within(decisions).getByRole('button', { name: 'Cancel' }));
@@ -211,9 +236,47 @@ describe('RelationshipWorkspace', () => {
     render(<RelationshipWorkspace relationship={relationship} timeline={timeline} views={views} evaluation={evaluation} contractJourney={{ ...contractJourney, acceptanceState: 'ACCEPTED' }} />);
     const contractSection = screen.getByRole('heading', { name: 'Employment contract' }).closest('section')!;
 
-    fireEvent.click(screen.getByRole('button', { name: 'Proceed to Razorpay' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to payment' }));
 
     expect(await within(contractSection).findByText('Payment owner is unavailable.')).toBeVisible();
     expect(screen.queryByText(/payment succeeded/i)).not.toBeInTheDocument();
+  });
+
+  it('renders a truthful non-collecting Demo zero-price checkout', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        outcomeKind: 'FULLY_DISCOUNTED',
+        payableInrPaise: 0,
+        listPriceInrPaise: 118000,
+        discountInrPaise: 118000,
+        taxInrPaise: 18000,
+        renewalConsequence: 'Renews at the accepted monthly price',
+        commercialOutcomeReference: 'zero-price:intent-1',
+        commercialEvidenceId: '14eddf57-ef75-4a94-bfac-06b2b550dd44',
+      }),
+    } as Response);
+    render(<RelationshipWorkspace relationship={relationship} timeline={timeline} views={views} evaluation={evaluation} contractJourney={{ ...contractJourney, acceptanceState: 'ACCEPTED' }} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to payment' }));
+
+    expect(await screen.findByText('100% Demo discount applied. Amount paid: INR 0. No payment method charged.')).toBeVisible();
+    expect(screen.getByText('Amount paid').nextSibling).toHaveTextContent('INR 0');
+    for (const method of ['Credit card', 'Debit card', 'UPI', 'Netbanking', 'Wallet']) {
+      expect(screen.getByText(method)).toBeVisible();
+    }
+    expect(screen.getAllByText('Not required - 100% Demo discount applied')).toHaveLength(5);
+    expect(screen.getByText('No bank, card network, UPI app, wallet, or Razorpay processed money.')).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Complete fully discounted activation' }));
+
+    expect(await screen.findByText('Employment relationship activated. Amount paid: INR 0.')).toBeVisible();
+    const activationCall = (global.fetch as jest.Mock).mock.calls.find(([, options]) =>
+      typeof options?.body === 'string' && JSON.parse(options.body).action === 'activate');
+    expect(JSON.parse(String(activationCall?.[1]?.body))).toMatchObject({
+      commercialOutcomeKind: 'ZERO_PRICE_SATISFIED',
+      commercialOutcomeReference: 'zero-price:intent-1',
+      commercialEvidenceId: '14eddf57-ef75-4a94-bfac-06b2b550dd44',
+    });
   });
 });

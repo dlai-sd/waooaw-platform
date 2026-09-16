@@ -30,6 +30,36 @@ export interface RelationshipResultsV1AllOfOutcomes {
    * @type {string}
    * @memberof RelationshipResultsV1AllOfOutcomes
    */
+  agentInstanceId: string;
+  /**
+   *
+   * @type {string}
+   * @memberof RelationshipResultsV1AllOfOutcomes
+   */
+  skillId: string;
+  /**
+   *
+   * @type {string}
+   * @memberof RelationshipResultsV1AllOfOutcomes
+   */
+  skillVersion: string;
+  /**
+   *
+   * @type {string}
+   * @memberof RelationshipResultsV1AllOfOutcomes
+   */
+  invocationId: string;
+  /**
+   *
+   * @type {number}
+   * @memberof RelationshipResultsV1AllOfOutcomes
+   */
+  revision: number;
+  /**
+   *
+   * @type {string}
+   * @memberof RelationshipResultsV1AllOfOutcomes
+   */
   label: string;
   /**
    *
@@ -37,6 +67,12 @@ export interface RelationshipResultsV1AllOfOutcomes {
    * @memberof RelationshipResultsV1AllOfOutcomes
    */
   attributionBasis: string;
+  /**
+   *
+   * @type {Date}
+   * @memberof RelationshipResultsV1AllOfOutcomes
+   */
+  updatedAt: Date;
 }
 
 /**
@@ -46,9 +82,18 @@ export function instanceOfRelationshipResultsV1AllOfOutcomes(
   value: object,
 ): value is RelationshipResultsV1AllOfOutcomes {
   if (!("outcomeId" in value) || value["outcomeId"] === undefined) return false;
+  if (!("agentInstanceId" in value) || value["agentInstanceId"] === undefined)
+    return false;
+  if (!("skillId" in value) || value["skillId"] === undefined) return false;
+  if (!("skillVersion" in value) || value["skillVersion"] === undefined)
+    return false;
+  if (!("invocationId" in value) || value["invocationId"] === undefined)
+    return false;
+  if (!("revision" in value) || value["revision"] === undefined) return false;
   if (!("label" in value) || value["label"] === undefined) return false;
   if (!("attributionBasis" in value) || value["attributionBasis"] === undefined)
     return false;
+  if (!("updatedAt" in value) || value["updatedAt"] === undefined) return false;
   return true;
 }
 
@@ -67,8 +112,14 @@ export function RelationshipResultsV1AllOfOutcomesFromJSONTyped(
   }
   return {
     outcomeId: json["outcomeId"],
+    agentInstanceId: json["agentInstanceId"],
+    skillId: json["skillId"],
+    skillVersion: json["skillVersion"],
+    invocationId: json["invocationId"],
+    revision: json["revision"],
     label: json["label"],
     attributionBasis: json["attributionBasis"],
+    updatedAt: new Date(json["updatedAt"]),
   };
 }
 
@@ -88,7 +139,13 @@ export function RelationshipResultsV1AllOfOutcomesToJSONTyped(
 
   return {
     outcomeId: value["outcomeId"],
+    agentInstanceId: value["agentInstanceId"],
+    skillId: value["skillId"],
+    skillVersion: value["skillVersion"],
+    invocationId: value["invocationId"],
+    revision: value["revision"],
     label: value["label"],
     attributionBasis: value["attributionBasis"],
+    updatedAt: value["updatedAt"].toISOString(),
   };
 }

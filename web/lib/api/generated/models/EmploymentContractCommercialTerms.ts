@@ -61,6 +61,30 @@ export interface EmploymentContractCommercialTerms {
    * @memberof EmploymentContractCommercialTerms
    */
   cancellationAndRefundTerms: string;
+  /**
+   *
+   * @type {string}
+   * @memberof EmploymentContractCommercialTerms
+   */
+  offeringId: string;
+  /**
+   *
+   * @type {string}
+   * @memberof EmploymentContractCommercialTerms
+   */
+  bundleTier: string;
+  /**
+   *
+   * @type {string}
+   * @memberof EmploymentContractCommercialTerms
+   */
+  quoteVersion: string;
+  /**
+   *
+   * @type {string}
+   * @memberof EmploymentContractCommercialTerms
+   */
+  renewalConsequence: string;
 }
 
 /**
@@ -111,6 +135,17 @@ export function instanceOfEmploymentContractCommercialTerms(
     value["cancellationAndRefundTerms"] === undefined
   )
     return false;
+  if (!("offeringId" in value) || value["offeringId"] === undefined)
+    return false;
+  if (!("bundleTier" in value) || value["bundleTier"] === undefined)
+    return false;
+  if (!("quoteVersion" in value) || value["quoteVersion"] === undefined)
+    return false;
+  if (
+    !("renewalConsequence" in value) ||
+    value["renewalConsequence"] === undefined
+  )
+    return false;
   return true;
 }
 
@@ -135,6 +170,10 @@ export function EmploymentContractCommercialTermsFromJSONTyped(
     subscriptionTerms: json["subscriptionTerms"],
     adSpendTreatment: json["adSpendTreatment"],
     cancellationAndRefundTerms: json["cancellationAndRefundTerms"],
+    offeringId: json["offeringId"],
+    bundleTier: json["bundleTier"],
+    quoteVersion: json["quoteVersion"],
+    renewalConsequence: json["renewalConsequence"],
   };
 }
 
@@ -160,5 +199,9 @@ export function EmploymentContractCommercialTermsToJSONTyped(
     subscriptionTerms: value["subscriptionTerms"],
     adSpendTreatment: value["adSpendTreatment"],
     cancellationAndRefundTerms: value["cancellationAndRefundTerms"],
+    offeringId: value["offeringId"],
+    bundleTier: value["bundleTier"],
+    quoteVersion: value["quoteVersion"],
+    renewalConsequence: value["renewalConsequence"],
   };
 }

@@ -9,13 +9,15 @@ All URIs are relative to _http://localhost:5001_
 | [**activateRelationshipHandoff**](EmploymentApi.md#activaterelationshiphandoffoperation)             | **POST** /api/v1/employment/relationships/{relationshipId}/handoffs/{handoffId}/activate                 | Authenticate the target channel and activate a prepared handoff            |
 | [**admitEmploymentRelationship**](EmploymentApi.md#admitemploymentrelationshipoperation)             | **POST** /api/v1/employment/relationships                                                                | Admit or replay an employment relationship                                 |
 | [**convertTrialToPaid**](EmploymentApi.md#converttrialtopaid)                                        | **POST** /api/v1/employment/contracts/{contractId}/convert-trial                                         | Convert a trial contract to paid subscription (FR-002)                     |
-| [**createRelationshipOnboardingOrder**](EmploymentApi.md#createrelationshiponboardingorder)          | **POST** /api/v1/employment/relationships/{relationshipId}/contracts/{version}/payments/onboarding-order | Record explicit payment consent and create a contract-linked hosted order  |
+| [**createRelationshipOnboardingOrder**](EmploymentApi.md#createrelationshiponboardingorder)          | **POST** /api/v1/employment/relationships/{relationshipId}/contracts/{version}/payments/onboarding-order | Create or replay a contract-linked checkout intent                         |
 | [**evaluateRelationshipOfferability**](EmploymentApi.md#evaluaterelationshipofferabilityoperation)   | **POST** /api/v1/employment/relationships/{relationshipId}/offerability/evaluations                      | Evaluate and evidence one Founder offering decision                        |
 | [**formEmploymentContract**](EmploymentApi.md#formemploymentcontract)                                | **POST** /api/v1/employment/contracts                                                                    | Compatibility adapter for relationship admission                           |
 | [**getEmploymentContract**](EmploymentApi.md#getemploymentcontract)                                  | **GET** /api/v1/employment/contracts/{contractId}                                                        | Compatibility projection of an employment relationship                     |
 | [**getEmploymentRelationship**](EmploymentApi.md#getemploymentrelationship)                          | **GET** /api/v1/employment/relationships/{relationshipId}                                                | Get an employment relationship                                             |
 | [**getEmploymentRelationshipTimeline**](EmploymentApi.md#getemploymentrelationshiptimeline)          | **GET** /api/v1/employment/relationships/{relationshipId}/timeline                                       | Get the evidence-linked relationship state timeline                        |
 | [**getPhaseBundle**](EmploymentApi.md#getphasebundle)                                                | **GET** /api/v1/employment/contracts/{contractId}/phase-bundle                                           | Get active phase bundle                                                    |
+| [**getRelationshipCheckout**](EmploymentApi.md#getrelationshipcheckout)                              | **GET** /api/v1/employment/relationships/{relationshipId}/contracts/{version}/payments/onboarding-order  | Read the current relationship checkout projection                          |
+| [**getRelationshipCheckoutIntent**](EmploymentApi.md#getrelationshipcheckoutintent)                  | **GET** /api/v1/employment/relationships/{relationshipId}/checkout-intents/{checkoutIntentId}            | Reconcile one relationship checkout intent                                 |
 | [**getRelationshipContractJourney**](EmploymentApi.md#getrelationshipcontractjourney)                | **GET** /api/v1/employment/relationships/{relationshipId}/contract-journey                               | Read the latest exact contract and activation journey                      |
 | [**hireAgentCompatibilityUnversioned**](EmploymentApi.md#hireagentcompatibilityunversioned)          | **POST** /api/agents/hire                                                                                | Deprecated unversioned hire compatibility adapter                          |
 | [**hireAgentCompatibilityV1**](EmploymentApi.md#hireagentcompatibilityv1)                            | **POST** /api/v1/agents/hire                                                                             | Deprecated v1 hire compatibility adapter                                   |
@@ -26,7 +28,7 @@ All URIs are relative to _http://localhost:5001_
 | [**releaseEmploymentRelationshipStop**](EmploymentApi.md#releaseemploymentrelationshipstopoperation) | **POST** /api/v1/employment/relationships/{relationshipId}/emergency-stop/release                        | Release the active relationship Stop with fresh Tier-4 employer proof      |
 | [**renewEmploymentContract**](EmploymentApi.md#renewemploymentcontract)                              | **POST** /api/v1/employment/contracts/{contractId}/renew                                                 | Renew an employment contract                                               |
 | [**startEmploymentRelationshipTrial**](EmploymentApi.md#startemploymentrelationshiptrial)            | **POST** /api/v1/employment/relationships/{relationshipId}/trial                                         | Start the relationship evaluation trial                                    |
-| [**startPaidRelationshipActivation**](EmploymentApi.md#startpaidrelationshipactivationoperation)     | **POST** /api/v1/employment/relationships/{relationshipId}/activation                                    | Start or join durable paid relationship activation                         |
+| [**startRelationshipActivation**](EmploymentApi.md#startrelationshipactivationoperation)             | **POST** /api/v1/employment/relationships/{relationshipId}/activation                                    | Start or join durable commercial relationship activation                   |
 | [**stopEmploymentRelationship**](EmploymentApi.md#stopemploymentrelationshipoperation)               | **POST** /api/v1/employment/relationships/{relationshipId}/emergency-stop                                | Stop the complete AE-01 Employment Relationship                            |
 | [**suspendEmploymentContract**](EmploymentApi.md#suspendemploymentcontract)                          | **PUT** /api/v1/employment/contracts/{contractId}/suspend                                                | Suspend an employment contract                                             |
 | [**terminateEmploymentContract**](EmploymentApi.md#terminateemploymentcontract)                      | **DELETE** /api/v1/employment/contracts/{contractId}                                                     | Terminate an employment contract                                           |
@@ -421,11 +423,11 @@ example().catch(console.error);
 
 ## createRelationshipOnboardingOrder
 
-> RelationshipHostedOnboardingOrder createRelationshipOnboardingOrder(relationshipId, version, relationshipPaymentProceedRequest)
+> RelationshipCheckoutOutcome createRelationshipOnboardingOrder(relationshipId, idempotencyKey, version, relationshipPaymentProceedRequest)
 
-Record explicit payment consent and create a contract-linked hosted order
+Create or replay a contract-linked checkout intent
 
-Requires fresh Keycloak portal authentication, an active same-tenant EMPLOYER binding, one exact accepted contract, and itemization whose subscription plus wallet seed equals the accepted INR gross amount. Records constitutional proceed evidence before asking WBE for a Razorpay-hosted order. Payment secrets and bypass coupons are never accepted. Payment capture does not activate the relationship; durable activation is a separate flow.
+Requires fresh Keycloak portal authentication, an active same-tenant EMPLOYER binding, and one exact accepted contract. BP records constitutional proceed evidence before asking WBE for authoritative price, promotion and provider readiness. Payment secrets, amounts, environment identity and bypass coupons are never accepted from the browser. A fully discounted outcome never creates a Razorpay order. Payment or zero-price satisfaction does not activate the relationship; durable activation is a separate flow.
 
 ### Example
 
@@ -447,6 +449,8 @@ async function example() {
   const body = {
     // string | Tenant-scoped durable employment relationship UUID
     relationshipId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts.
+    idempotencyKey: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
     // number
     version: 56,
     // RelationshipPaymentProceedRequest
@@ -467,15 +471,16 @@ example().catch(console.error);
 
 ### Parameters
 
-| Name                                  | Type                                                                      | Description                                        | Notes                     |
-| ------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------- | ------------------------- |
-| **relationshipId**                    | `string`                                                                  | Tenant-scoped durable employment relationship UUID | [Defaults to `undefined`] |
-| **version**                           | `number`                                                                  |                                                    | [Defaults to `undefined`] |
-| **relationshipPaymentProceedRequest** | [RelationshipPaymentProceedRequest](RelationshipPaymentProceedRequest.md) |                                                    |                           |
+| Name                                  | Type                                                                      | Description                                                                              | Notes                     |
+| ------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------- |
+| **relationshipId**                    | `string`                                                                  | Tenant-scoped durable employment relationship UUID                                       | [Defaults to `undefined`] |
+| **idempotencyKey**                    | `string`                                                                  | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts. | [Defaults to `undefined`] |
+| **version**                           | `number`                                                                  |                                                                                          | [Defaults to `undefined`] |
+| **relationshipPaymentProceedRequest** | [RelationshipPaymentProceedRequest](RelationshipPaymentProceedRequest.md) |                                                                                          |                           |
 
 ### Return type
 
-[**RelationshipHostedOnboardingOrder**](RelationshipHostedOnboardingOrder.md)
+[**RelationshipCheckoutOutcome**](RelationshipCheckoutOutcome.md)
 
 ### Authorization
 
@@ -488,15 +493,16 @@ example().catch(console.error);
 
 ### HTTP response details
 
-| Status code | Description                                                                        | Response headers |
-| ----------- | ---------------------------------------------------------------------------------- | ---------------- |
-| **200**     | Contract-linked Razorpay-hosted order created                                      | -                |
-| **400**     | Request body failed validation                                                     | -                |
-| **401**     | JWT missing, expired, or invalid                                                   | -                |
-| **403**     | Fresh portal assurance or active same-tenant EMPLOYER authority denied             | -                |
-| **404**     | Resource not found (or not accessible to this tenant)                              | -                |
-| **409**     | Exact contract acceptance is absent or itemization differs from the contract       | -                |
-| **503**     | Constitutional evidence or WBE hosted-order outcome is unavailable or inconsistent | -                |
+| Status code | Description                                                                  | Response headers |
+| ----------- | ---------------------------------------------------------------------------- | ---------------- |
+| **200**     | Existing checkout intent replayed or current outcome returned                | -                |
+| **201**     | Checkout intent created                                                      | -                |
+| **400**     | Request body failed validation                                               | -                |
+| **401**     | JWT missing, expired, or invalid                                             | -                |
+| **403**     | Fresh portal assurance or active same-tenant EMPLOYER authority denied       | -                |
+| **404**     | Resource not found (or not accessible to this tenant)                        | -                |
+| **409**     | Exact contract acceptance is absent or itemization differs from the contract | -                |
+| **503**     | Constitutional evidence or WBE commercial outcome is unavailable             | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
@@ -929,6 +935,160 @@ example().catch(console.error);
 | Status code | Description                      | Response headers |
 | ----------- | -------------------------------- | ---------------- |
 | **200**     | Active phase bundle subscription | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## getRelationshipCheckout
+
+> RelationshipCheckoutOutcome getRelationshipCheckout(relationshipId, version)
+
+Read the current relationship checkout projection
+
+Returns BP-mediated WBE commercial truth for the exact accepted contract. Amounts, promotion eligibility, provider readiness and activation eligibility are server-derived; the browser does not calculate or authorize them.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  EmploymentApi,
+} from '';
+import type { GetRelationshipCheckoutRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new EmploymentApi(config);
+
+  const body = {
+    // string | Tenant-scoped durable employment relationship UUID
+    relationshipId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // number
+    version: 56,
+  } satisfies GetRelationshipCheckoutRequest;
+
+  try {
+    const data = await api.getRelationshipCheckout(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name               | Type     | Description                                        | Notes                     |
+| ------------------ | -------- | -------------------------------------------------- | ------------------------- |
+| **relationshipId** | `string` | Tenant-scoped durable employment relationship UUID | [Defaults to `undefined`] |
+| **version**        | `number` |                                                    | [Defaults to `undefined`] |
+
+### Return type
+
+[**RelationshipCheckoutOutcome**](RelationshipCheckoutOutcome.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                           | Response headers |
+| ----------- | ----------------------------------------------------- | ---------------- |
+| **200**     | Current checkout projection                           | -                |
+| **401**     | JWT missing, expired, or invalid                      | -                |
+| **403**     | Active same-tenant participant authority denied       | -                |
+| **404**     | Resource not found (or not accessible to this tenant) | -                |
+| **409**     | Operation not valid in current state                  | -                |
+| **503**     | Commercial truth is unavailable                       | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## getRelationshipCheckoutIntent
+
+> RelationshipCheckoutOutcome getRelationshipCheckoutIntent(relationshipId, checkoutIntentId)
+
+Reconcile one relationship checkout intent
+
+Returns the stored or reconciled WBE-owned commercial outcome. Browser callbacks are only prompts to reconcile and never establish captured payment or activation eligibility.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  EmploymentApi,
+} from '';
+import type { GetRelationshipCheckoutIntentRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new EmploymentApi(config);
+
+  const body = {
+    // string | Tenant-scoped durable employment relationship UUID
+    relationshipId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    checkoutIntentId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetRelationshipCheckoutIntentRequest;
+
+  try {
+    const data = await api.getRelationshipCheckoutIntent(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name                 | Type     | Description                                        | Notes                     |
+| -------------------- | -------- | -------------------------------------------------- | ------------------------- |
+| **relationshipId**   | `string` | Tenant-scoped durable employment relationship UUID | [Defaults to `undefined`] |
+| **checkoutIntentId** | `string` |                                                    | [Defaults to `undefined`] |
+
+### Return type
+
+[**RelationshipCheckoutOutcome**](RelationshipCheckoutOutcome.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                           | Response headers |
+| ----------- | ----------------------------------------------------- | ---------------- |
+| **200**     | Current authoritative checkout intent outcome         | -                |
+| **401**     | JWT missing, expired, or invalid                      | -                |
+| **403**     | Active same-tenant participant authority denied       | -                |
+| **404**     | Resource not found (or not accessible to this tenant) | -                |
+| **409**     | Operation not valid in current state                  | -                |
+| **503**     | Provider reconciliation is unavailable or unresolved  | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
@@ -1676,13 +1836,13 @@ example().catch(console.error);
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
-## startPaidRelationshipActivation
+## startRelationshipActivation
 
-> PaidRelationshipActivationOutcome startPaidRelationshipActivation(relationshipId, startPaidRelationshipActivationRequest)
+> RelationshipActivationOutcome startRelationshipActivation(relationshipId, startRelationshipActivationRequest)
 
-Start or join durable paid relationship activation
+Start or join durable commercial relationship activation
 
-Requires fresh Keycloak portal authentication and an active same-tenant EMPLOYER binding. BP derives the accepted contract, acceptance evidence, authority snapshot, actor, and stable correlation from canonical relationship state. WBE remains payment owner and revalidates the supplied payment reference and evidence identifier against its signature-verified CAPTURED row. Identical replay joins the stable Temporal workflow; unresolved owner outcomes never report success.
+Requires fresh Keycloak portal authentication and an active same-tenant EMPLOYER binding. BP derives the accepted contract, acceptance evidence, authority snapshot, actor, and stable correlation from canonical relationship state. WBE remains commercial owner and revalidates the supplied reference and evidence identifier against either its signature-verified CAPTURED row or its immutable ZERO_PRICE_SATISFIED row. Identical replay joins the stable Temporal workflow; unresolved owner outcomes never report success.
 
 ### Example
 
@@ -1691,7 +1851,7 @@ import {
   Configuration,
   EmploymentApi,
 } from '';
-import type { StartPaidRelationshipActivationOperationRequest } from '';
+import type { StartRelationshipActivationOperationRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
@@ -1704,12 +1864,12 @@ async function example() {
   const body = {
     // string | Tenant-scoped durable employment relationship UUID
     relationshipId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
-    // StartPaidRelationshipActivationRequest
-    startPaidRelationshipActivationRequest: ...,
-  } satisfies StartPaidRelationshipActivationOperationRequest;
+    // StartRelationshipActivationRequest
+    startRelationshipActivationRequest: ...,
+  } satisfies StartRelationshipActivationOperationRequest;
 
   try {
-    const data = await api.startPaidRelationshipActivation(body);
+    const data = await api.startRelationshipActivation(body);
     console.log(data);
   } catch (error) {
     console.error(error);
@@ -1722,14 +1882,14 @@ example().catch(console.error);
 
 ### Parameters
 
-| Name                                       | Type                                                                                | Description                                        | Notes                     |
-| ------------------------------------------ | ----------------------------------------------------------------------------------- | -------------------------------------------------- | ------------------------- |
-| **relationshipId**                         | `string`                                                                            | Tenant-scoped durable employment relationship UUID | [Defaults to `undefined`] |
-| **startPaidRelationshipActivationRequest** | [StartPaidRelationshipActivationRequest](StartPaidRelationshipActivationRequest.md) |                                                    |                           |
+| Name                                   | Type                                                                        | Description                                        | Notes                     |
+| -------------------------------------- | --------------------------------------------------------------------------- | -------------------------------------------------- | ------------------------- |
+| **relationshipId**                     | `string`                                                                    | Tenant-scoped durable employment relationship UUID | [Defaults to `undefined`] |
+| **startRelationshipActivationRequest** | [StartRelationshipActivationRequest](StartRelationshipActivationRequest.md) |                                                    |                           |
 
 ### Return type
 
-[**PaidRelationshipActivationOutcome**](PaidRelationshipActivationOutcome.md)
+[**RelationshipActivationOutcome**](RelationshipActivationOutcome.md)
 
 ### Authorization
 

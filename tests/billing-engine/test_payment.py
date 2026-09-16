@@ -1,5 +1,5 @@
-# Implements: work-contracts/WC-042-wbe-s7-onboarding-payment-renewal-saga.md §WC042-05
-# constitutional_basis: C-059, ADR-022 §1.2/1.3/1.4, C-090, FA-029
+# Implements: architecture/reference/api-specs/business-platform.openapi.yaml §RelationshipCheckoutOutcome
+# Constitutional basis: C-059, C-088, C-090, ADR-022 §1.2/1.3/1.4
 """
 CCT-ONBOARD-01   — Single onboarding order: subscription + wallet seed in one Razorpay call.
 CCT-WEBHOOK-01   — payment.captured webhook: HMAC verified, idempotent, activates wallet.
@@ -22,7 +22,13 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-from payment.models import OnboardingOrderRequest, PaidActivationRequest, PaymentCapturedEvent
+from payment.models import (
+    CheckoutOutcomeKind,
+    OnboardingOrderRequest,
+    PaidActivationRequest,
+    PaymentCapturedEvent,
+    RelationshipCheckoutRequest,
+)
 from payment.onboarding import OnboardingService
 from payment.paid_activation import PaidActivationService
 from payment.razorpay_client import RazorpayClient
@@ -286,6 +292,113 @@ class TestCCT_ONBOARD_01:
         assert notes["contract_hash"] == "a" * 64
         assert notes["contract_acceptance_id"] == str(ids[3])
         assert notes["payment_consent_evidence_id"] == str(ids[4])
+
+
+class TestWC095RelationshipCheckout:
+    @staticmethod
+    def request() -> RelationshipCheckoutRequest:
+        return RelationshipCheckoutRequest(
+            checkout_intent_id=uuid.uuid4(),
+            tenant_id=uuid.uuid4(),
+            customer_id=uuid.uuid4(),
+            relationship_id=uuid.uuid4(),
+            contract_id=uuid.uuid4(),
+            contract_version=1,
+            contract_hash="a" * 64,
+            contract_acceptance_id=uuid.uuid4(),
+            payment_consent_evidence_id=uuid.uuid4(),
+            agent_type="DIGITAL_MARKETING_LOCAL_SERVICE",
+            bundle_tier="STARTER",
+            gross_amount_inr_paise=249900,
+            gst_amount_inr_paise=38120,
+            quote_version="quote-v1",
+            idempotency_key="checkout-1",
+        )
+
+    @pytest.mark.asyncio
+    async def test_demo_discount_returns_zero_price_without_calling_razorpay(self):
+        settings = MagicMock()
+        settings.WAOOAW_ENVIRONMENT = "demo"
+        settings.DEMO_PROMOTION_ENABLED = True
+        settings.DEMO_PROMOTION_VERSION = "demo-100-v1"
+        settings.DEMO_RENEWAL_CONSEQUENCE = "Renews at the accepted monthly price."
+        settings.MAX_DISCOUNT_PCT = 100
+        settings.RAZORPAY_KEY_ID = ""
+        settings.RAZORPAY_KEY_SECRET = ""
+        settings.RAZORPAY_MERCHANT_DISPLAY_NAME = ""
+        settings.RAZORPAY_ENABLED_METHOD_FAMILIES = ""
+        settings.RAZORPAY_READINESS_STATE = "NOT_CONFIGURED"
+        razorpay = AsyncMock()
+        outcomes = AsyncMock()
+
+        result = await OnboardingService(
+            razorpay_client=razorpay,
+            settings=settings,
+            zero_price_outcomes=outcomes,
+        ).create_relationship_checkout(self.request())
+
+        assert result.outcome_kind is CheckoutOutcomeKind.FULLY_DISCOUNTED
+        assert result.payable_inr_paise == 0
+        assert result.discount_inr_paise == result.list_price_inr_paise
+        assert result.commercial_outcome_reference is not None
+        assert result.commercial_evidence_id is not None
+        assert result.evidence_state == "COMMITTED"
+        assert result.order_id is None
+        outcomes.record.assert_awaited_once()
+        razorpay.create_order.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_missing_razorpay_account_returns_typed_pending_outcome(self):
+        settings = MagicMock()
+        settings.WAOOAW_ENVIRONMENT = "production"
+        settings.DEMO_PROMOTION_ENABLED = False
+        settings.RAZORPAY_KEY_ID = ""
+        settings.RAZORPAY_KEY_SECRET = ""
+        razorpay = AsyncMock()
+
+        result = await OnboardingService(
+            razorpay_client=razorpay,
+            settings=settings,
+        ).create_relationship_checkout(self.request())
+
+        assert result.outcome_kind is CheckoutOutcomeKind.PROVIDER_CONFIGURATION_PENDING
+        assert result.reason_code == "RAZORPAY_ACCOUNT_NOT_CONFIGURED"
+        assert result.accountable_owner == "PLATFORM_OWNER"
+        assert result.retryable is False
+        razorpay.create_order.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_payable_checkout_uses_exact_contract_total_and_stable_intent(self):
+        settings = MagicMock()
+        settings.WAOOAW_ENVIRONMENT = "production"
+        settings.DEMO_PROMOTION_ENABLED = False
+        settings.RAZORPAY_KEY_ID = "rzp_test_public"
+        settings.RAZORPAY_KEY_SECRET = "configured-secret"
+        settings.RAZORPAY_MERCHANT_DISPLAY_NAME = "WAOOAW"
+        settings.RAZORPAY_ENABLED_METHOD_FAMILIES = "CREDIT_CARD,DEBIT_CARD,UPI,NETBANKING,WALLET"
+        settings.RAZORPAY_CHECKOUT_TTL_SECONDS = 900
+        settings.RAZORPAY_READINESS_STATE = "READY_LIVE"
+        settings.razorpay_enabled_method_families = (
+            "CREDIT_CARD", "DEBIT_CARD", "UPI", "NETBANKING", "WALLET",
+        )
+        razorpay = AsyncMock()
+        razorpay.create_order.return_value = {"id": "order_wc095"}
+        request = self.request()
+        service = OnboardingService(razorpay_client=razorpay, settings=settings)
+
+        first = await service.create_relationship_checkout(request)
+        second = await service.create_relationship_checkout(request)
+
+        assert first.outcome_kind is CheckoutOutcomeKind.RAZORPAY_CHECKOUT_REQUIRED
+        assert first.checkout_intent_id == second.checkout_intent_id
+        assert first.amount_inr_paise == request.gross_amount_inr_paise
+        assert first.public_checkout_key == "rzp_test_public"
+        assert first.provider_order_reference == "order_wc095"
+        assert first.merchant_display_name == "WAOOAW"
+        assert first.enabled_method_families == settings.razorpay_enabled_method_families
+        assert first.expires_at is not None
+        assert first.reconciliation_target is not None
+        assert razorpay.create_order.await_args.kwargs["amount_paise"] == request.gross_amount_inr_paise
 
 
 # ---------------------------------------------------------------------------

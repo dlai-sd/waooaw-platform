@@ -26,8 +26,27 @@ export interface ContractJourneyProjection {
       subscriptionTerms: string;
       adSpendTreatment: string;
       cancellationAndRefundTerms: string;
+      offeringId?: string;
+      bundleTier?: string;
+      quoteVersion?: string;
+      renewalConsequence?: string;
     };
   };
+}
+
+interface CheckoutOutcome {
+  outcomeKind: 'RAZORPAY_CHECKOUT_REQUIRED' | 'FULLY_DISCOUNTED' | 'PROVIDER_CONFIGURATION_PENDING' | 'COMMERCIAL_CONFLICT' | 'OUTCOME_UNRESOLVED';
+  orderId?: string;
+  publicCheckoutKey?: string;
+  payableInrPaise?: number;
+  listPriceInrPaise?: number;
+  discountInrPaise?: number;
+  taxInrPaise?: number;
+  renewalConsequence?: string;
+  commercialOutcomeReference?: string;
+  commercialEvidenceId?: string;
+  reasonCode?: string;
+  customerSafeNextAction?: string;
 }
 
 interface Props { relationshipId: string; journey: ContractJourneyProjection | null }
@@ -45,22 +64,41 @@ export function ContractJourney({ relationshipId, journey }: Props) {
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const [accepted, setAccepted] = useState(journey?.acceptanceState === 'ACCEPTED');
+  const [checkout, setCheckout] = useState<CheckoutOutcome | null>(null);
   const idempotencyKeys = useRef<Record<string, string>>({});
   if (!journey) return null;
 
-  async function command(action: 'accept' | 'pay') {
+  async function command(action: 'accept' | 'pay' | 'activate') {
     setBusy(true);
     setStatus('');
     const response = await fetch(`/api/relationships/${encodeURIComponent(relationshipId)}/contract-journey`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, version: journey!.version, contractHash: journey!.contractHash, grossAmountInrPaise: journey!.document.priceTax.grossAmountInrPaise, idempotencyKey: idempotencyKeys.current[action] ??= newIdempotencyKey() }),
+      body: JSON.stringify({
+        action,
+        version: journey!.version,
+        contractHash: journey!.contractHash,
+        idempotencyKey: idempotencyKeys.current[action] ??= newIdempotencyKey(),
+        commercialOutcomeKind: checkout?.outcomeKind === 'FULLY_DISCOUNTED' ? 'ZERO_PRICE_SATISFIED' : undefined,
+        commercialOutcomeReference: checkout?.commercialOutcomeReference,
+        commercialEvidenceId: checkout?.commercialEvidenceId,
+      }),
     });
     const result = await response.json().catch(() => ({}));
     if (response.ok && action === 'accept') {
       setAccepted(true);
       setStatus('Contract accepted and evidenced. Payment has not started.');
+    } else if (response.ok && action === 'pay') {
+      const outcome = result as CheckoutOutcome;
+      setCheckout(outcome);
+      if (outcome.outcomeKind === 'RAZORPAY_CHECKOUT_REQUIRED') {
+        setStatus('Secure Razorpay Checkout is ready. Payment remains unconfirmed until server reconciliation.');
+      } else if (outcome.outcomeKind === 'FULLY_DISCOUNTED') {
+        setStatus('100% Demo discount applied. Amount paid: INR 0. No payment method charged.');
+      } else {
+        setStatus(outcome.customerSafeNextAction ?? 'Checkout remains unresolved. No payment or activation success was recorded.');
+      }
     } else if (response.ok) {
-      setStatus(`Razorpay order ${result.orderId ?? ''} is ready. Payment remains unconfirmed until hosted checkout capture.`);
+      setStatus('Employment relationship activated. Amount paid: INR 0.');
     } else {
       setStatus(result.title ?? 'The request remains unresolved. No success was recorded.');
     }
@@ -88,9 +126,31 @@ export function ContractJourney({ relationshipId, journey }: Props) {
       <p><strong>Subscription:</strong> {terms.subscriptionTerms}. The full contract total is the subscription amount.</p>
       <p><strong>Ad spend:</strong> {terms.adSpendTreatment}</p>
       <p><strong>Cancellation and refund:</strong> {terms.cancellationAndRefundTerms}</p>
+      {checkout?.outcomeKind === 'FULLY_DISCOUNTED' && (
+        <section className="discounted-checkout" aria-labelledby="discounted-checkout-title">
+          <h3 id="discounted-checkout-title">Payment summary</h3>
+          <dl className="contract-money">
+            <div><dt>List price</dt><dd>{money(checkout.listPriceInrPaise ?? terms.grossAmountInrPaise)}</dd></div>
+            <div><dt>Demo discount</dt><dd>-{money(checkout.discountInrPaise ?? terms.grossAmountInrPaise)}</dd></div>
+            <div><dt>Amount paid</dt><dd>INR 0</dd></div>
+          </dl>
+          <p>{checkout.renewalConsequence ?? terms.renewalConsequence}</p>
+          <ul className="payment-method-gallery" aria-label="Payment methods not required">
+            {['Credit card', 'Debit card', 'UPI', 'Netbanking', 'Wallet'].map((method) => (
+              <li key={method}><strong>{method}</strong><span>Not required - 100% Demo discount applied</span></li>
+            ))}
+          </ul>
+          <p>No bank, card network, UPI app, wallet, or Razorpay processed money.</p>
+          <button
+            type="button"
+            disabled={busy || !checkout.commercialOutcomeReference || !checkout.commercialEvidenceId}
+            onClick={() => command('activate')}
+          >Complete fully discounted activation</button>
+        </section>
+      )}
       <div className="decision-actions" role="group" aria-label="Contract decisions">
         {!accepted && <button type="button" disabled={busy} onClick={() => command('accept')}>Hire and accept exact contract</button>}
-        {accepted && journey.activationState !== 'ACTIVE' && <button type="button" disabled={busy} onClick={() => command('pay')}>Proceed to Razorpay</button>}
+        {accepted && journey.activationState !== 'ACTIVE' && <button type="button" disabled={busy} onClick={() => command('pay')}>Continue to payment</button>}
         <button type="button" disabled={busy} onClick={() => setStatus('Not now selected. No contract or payment state changed.')}>Not now</button>
         <button type="button" disabled={busy} onClick={() => setStatus('Cancelled. No contract or payment state changed.')}>Cancel</button>
         <Link href="/home">Exit</Link>

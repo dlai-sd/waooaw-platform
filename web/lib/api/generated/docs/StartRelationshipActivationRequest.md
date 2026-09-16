@@ -1,28 +1,24 @@
-# RelationshipHostedOnboardingOrder
+# StartRelationshipActivationRequest
 
 ## Properties
 
-| Name             | Type    |
-| ---------------- | ------- |
-| `orderId`        | string  |
-| `amountInrPaise` | number  |
-| `currency`       | string  |
-| `isBypass`       | boolean |
-| `checkoutMode`   | string  |
+| Name                         | Type   |
+| ---------------------------- | ------ |
+| `commercialOutcomeKind`      | string |
+| `commercialOutcomeReference` | string |
+| `commercialEvidenceId`       | string |
 
 ## Example
 
 ```typescript
-import type { RelationshipHostedOnboardingOrder } from "";
+import type { StartRelationshipActivationRequest } from "";
 
 // TODO: Update the object below with actual values
 const example = {
-  orderId: null,
-  amountInrPaise: null,
-  currency: null,
-  isBypass: null,
-  checkoutMode: null,
-} satisfies RelationshipHostedOnboardingOrder;
+  commercialOutcomeKind: null,
+  commercialOutcomeReference: null,
+  commercialEvidenceId: null,
+} satisfies StartRelationshipActivationRequest;
 
 console.log(example);
 
@@ -33,7 +29,7 @@ console.log(exampleJSON);
 // Parse the JSON string back to an object
 const exampleParsed = JSON.parse(
   exampleJSON,
-) as RelationshipHostedOnboardingOrder;
+) as StartRelationshipActivationRequest;
 console.log(exampleParsed);
 ```
 

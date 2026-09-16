@@ -20,6 +20,9 @@ docs/AgentAdmissionFinding.md
 docs/AgentAdmissionState.md
 docs/AgentAdmissionTransitionRequest.md
 docs/AgentAdmissionValidation.md
+docs/AgentEmploymentLifecycleProfileV1.md
+docs/AgentEmploymentLifecycleStageState.md
+docs/AgentEmploymentLifecycleStageV1.md
 docs/AmendGoalPayloadV1.md
 docs/BillingAllowanceSummaryV1.md
 docs/BillingApi.md
@@ -141,7 +144,6 @@ docs/OfferableProfessionalVersion.md
 docs/OfferableProfessionalVersionSkillsInner.md
 docs/OutcomeInterpretationV1.md
 docs/PAASParameters.md
-docs/PaidRelationshipActivationOutcome.md
 docs/PauseRelationshipPayloadV1.md
 docs/PhaseBundleSubscription.md
 docs/PlanCardV1.md
@@ -157,6 +159,7 @@ docs/ProfessionalTrialDisclosure.md
 docs/ProfessionalsApi.md
 docs/ProposeEmploymentContractRequest.md
 docs/PutAgentAdmissionRevisionRequest.md
+docs/RelationshipActivationOutcome.md
 docs/RelationshipAttentionItemV1.md
 docs/RelationshipAttentionPageV1.md
 docs/RelationshipAuthenticationAssurance.md
@@ -166,11 +169,15 @@ docs/RelationshipBusinessOutcomesV1.md
 docs/RelationshipChannel.md
 docs/RelationshipChannelBinding.md
 docs/RelationshipChannelBindingStatus.md
+docs/RelationshipCheckoutBase.md
+docs/RelationshipCheckoutOutcome.md
+docs/RelationshipCheckoutUnresolved.md
 docs/RelationshipCommandKindV1.md
 docs/RelationshipCommandOutcomeStepV1.md
 docs/RelationshipCommandOutcomeV1.md
 docs/RelationshipCommandReceiptV1.md
 docs/RelationshipCommandStatus.md
+docs/RelationshipCommercialConflict.md
 docs/RelationshipConfigurationStepStateV1.md
 docs/RelationshipConfigurationStepV1.md
 docs/RelationshipConfigurationV1.md
@@ -185,6 +192,7 @@ docs/RelationshipEvidenceExportReceiptV1.md
 docs/RelationshipEvidencePageV1.md
 docs/RelationshipEvidenceState.md
 docs/RelationshipEvidenceSummaryV1.md
+docs/RelationshipFullyDiscountedCheckout.md
 docs/RelationshipGoalHistoryEntryV1.md
 docs/RelationshipGoalStatusV1.md
 docs/RelationshipGoalV1.md
@@ -192,7 +200,6 @@ docs/RelationshipGoalVerificationStatusV1.md
 docs/RelationshipGoalsV1.md
 docs/RelationshipHandoff.md
 docs/RelationshipHandoffStatus.md
-docs/RelationshipHostedOnboardingOrder.md
 docs/RelationshipOfferabilityDecision.md
 docs/RelationshipOnboardRequestV1.md
 docs/RelationshipOperationsEligibilityStateV1.md
@@ -202,6 +209,8 @@ docs/RelationshipParticipantRole.md
 docs/RelationshipPaymentProceedRequest.md
 docs/RelationshipPlanV1.md
 docs/RelationshipPolicySelectionV1.md
+docs/RelationshipProviderConfigurationPending.md
+docs/RelationshipRazorpayCheckoutRequired.md
 docs/RelationshipResultsV1.md
 docs/RelationshipResultsV1AllOfOutcomes.md
 docs/RelationshipRightsControlsV1.md
@@ -239,7 +248,7 @@ docs/StartEmailVerificationRequest.md
 docs/StartIdentityAccountLinkRequest.md
 docs/StartIdentityRegistrationRequest.md
 docs/StartMobileVerificationRequest.md
-docs/StartPaidRelationshipActivationRequest.md
+docs/StartRelationshipActivationRequest.md
 docs/StartRelationshipTrialRequest.md
 docs/StopEmploymentRelationshipRequest.md
 docs/SubmitRelationshipCommandRequestV1.md
@@ -293,6 +302,9 @@ models/AgentAdmissionFinding.ts
 models/AgentAdmissionState.ts
 models/AgentAdmissionTransitionRequest.ts
 models/AgentAdmissionValidation.ts
+models/AgentEmploymentLifecycleProfileV1.ts
+models/AgentEmploymentLifecycleStageState.ts
+models/AgentEmploymentLifecycleStageV1.ts
 models/AmendGoalPayloadV1.ts
 models/BillingAllowanceSummaryV1.ts
 models/BillingLineItem.ts
@@ -408,7 +420,6 @@ models/OfferableProfessionalVersion.ts
 models/OfferableProfessionalVersionSkillsInner.ts
 models/OutcomeInterpretationV1.ts
 models/PAASParameters.ts
-models/PaidRelationshipActivationOutcome.ts
 models/PauseRelationshipPayloadV1.ts
 models/PhaseBundleSubscription.ts
 models/PlanCardV1.ts
@@ -423,6 +434,7 @@ models/ProfessionalSkillDisclosure.ts
 models/ProfessionalTrialDisclosure.ts
 models/ProposeEmploymentContractRequest.ts
 models/PutAgentAdmissionRevisionRequest.ts
+models/RelationshipActivationOutcome.ts
 models/RelationshipAttentionItemV1.ts
 models/RelationshipAttentionPageV1.ts
 models/RelationshipAuthenticationAssurance.ts
@@ -432,11 +444,15 @@ models/RelationshipBusinessOutcomesV1.ts
 models/RelationshipChannel.ts
 models/RelationshipChannelBinding.ts
 models/RelationshipChannelBindingStatus.ts
+models/RelationshipCheckoutBase.ts
+models/RelationshipCheckoutOutcome.ts
+models/RelationshipCheckoutUnresolved.ts
 models/RelationshipCommandKindV1.ts
 models/RelationshipCommandOutcomeStepV1.ts
 models/RelationshipCommandOutcomeV1.ts
 models/RelationshipCommandReceiptV1.ts
 models/RelationshipCommandStatus.ts
+models/RelationshipCommercialConflict.ts
 models/RelationshipConfigurationStepStateV1.ts
 models/RelationshipConfigurationStepV1.ts
 models/RelationshipConfigurationV1.ts
@@ -451,6 +467,7 @@ models/RelationshipEvidenceExportReceiptV1.ts
 models/RelationshipEvidencePageV1.ts
 models/RelationshipEvidenceState.ts
 models/RelationshipEvidenceSummaryV1.ts
+models/RelationshipFullyDiscountedCheckout.ts
 models/RelationshipGoalHistoryEntryV1.ts
 models/RelationshipGoalStatusV1.ts
 models/RelationshipGoalV1.ts
@@ -458,7 +475,6 @@ models/RelationshipGoalVerificationStatusV1.ts
 models/RelationshipGoalsV1.ts
 models/RelationshipHandoff.ts
 models/RelationshipHandoffStatus.ts
-models/RelationshipHostedOnboardingOrder.ts
 models/RelationshipOfferabilityDecision.ts
 models/RelationshipOnboardRequestV1.ts
 models/RelationshipOperationsEligibilityStateV1.ts
@@ -468,6 +484,8 @@ models/RelationshipParticipantRole.ts
 models/RelationshipPaymentProceedRequest.ts
 models/RelationshipPlanV1.ts
 models/RelationshipPolicySelectionV1.ts
+models/RelationshipProviderConfigurationPending.ts
+models/RelationshipRazorpayCheckoutRequired.ts
 models/RelationshipResultsV1.ts
 models/RelationshipResultsV1AllOfOutcomes.ts
 models/RelationshipRightsControlsV1.ts
@@ -504,7 +522,7 @@ models/StartEmailVerificationRequest.ts
 models/StartIdentityAccountLinkRequest.ts
 models/StartIdentityRegistrationRequest.ts
 models/StartMobileVerificationRequest.ts
-models/StartPaidRelationshipActivationRequest.ts
+models/StartRelationshipActivationRequest.ts
 models/StartRelationshipTrialRequest.ts
 models/StopEmploymentRelationshipRequest.ts
 models/SubmitRelationshipCommandRequestV1.ts

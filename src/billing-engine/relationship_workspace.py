@@ -25,8 +25,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from config import Settings
 from database import get_session_factory
 from markup.bundle_engine import BundleEngine
-from payment.models import PaidActivationRequest
+from payment.models import PaidActivationRequest, ZeroPriceActivationRequest
 from payment.paid_activation import PaidActivationService
+from payment.zero_price_activation import ZeroPriceActivationService
 from wallet.service import WalletService
 from workload_identity import (
     DelegatedContext,
@@ -146,8 +147,11 @@ class PaidActivationBody(StrictModel):
     accepted_contract_id: uuid.UUID
     contract_version: int = Field(gt=0)
     contract_acceptance_id: uuid.UUID
-    payment_reference: str = Field(min_length=1, max_length=128)
-    payment_evidence_id: uuid.UUID
+    commercial_outcome_kind: Literal["CAPTURED", "ZERO_PRICE_SATISFIED"] = "CAPTURED"
+    commercial_outcome_reference: str | None = Field(default=None, min_length=1, max_length=128)
+    commercial_evidence_id: uuid.UUID | None = None
+    payment_reference: str | None = Field(default=None, min_length=1, max_length=128)
+    payment_evidence_id: uuid.UUID | None = None
     correlation_id: uuid.UUID
 
 
@@ -357,19 +361,35 @@ async def activate_paid_relationship(
     async with session_factory() as db:
         redis_client = aioredis.from_url(Settings().REDIS_URL, decode_responses=True)
         try:
-            result = await PaidActivationService(db, WalletService(db=db, redis_client=redis_client)).activate(
-                PaidActivationRequest(
+            outcome_reference = body.commercial_outcome_reference or body.payment_reference
+            evidence_id = body.commercial_evidence_id or body.payment_evidence_id
+            if outcome_reference is None or evidence_id is None:
+                raise HTTPException(status_code=422, detail="COMMERCIAL_OUTCOME_MATERIAL_REQUIRED")
+            wallet = WalletService(db=db, redis_client=redis_client)
+            if body.commercial_outcome_kind == "ZERO_PRICE_SATISFIED":
+                result = await ZeroPriceActivationService(db, wallet).activate(ZeroPriceActivationRequest(
                     tenant_id=uuid.UUID(context.tenant_id),
                     relationship_id=relationship_id,
                     activation_intent_id=body.activation_intent_id,
                     accepted_contract_id=body.accepted_contract_id,
                     contract_version=body.contract_version,
                     contract_acceptance_id=body.contract_acceptance_id,
-                    payment_reference=body.payment_reference,
-                    payment_evidence_id=body.payment_evidence_id,
+                    commercial_outcome_reference=outcome_reference,
+                    commercial_evidence_id=evidence_id,
                     correlation_id=body.correlation_id,
-                )
-            )
+                ))
+            else:
+                result = await PaidActivationService(db, wallet).activate(PaidActivationRequest(
+                    tenant_id=uuid.UUID(context.tenant_id),
+                    relationship_id=relationship_id,
+                    activation_intent_id=body.activation_intent_id,
+                    accepted_contract_id=body.accepted_contract_id,
+                    contract_version=body.contract_version,
+                    contract_acceptance_id=body.contract_acceptance_id,
+                    payment_reference=outcome_reference,
+                    payment_evidence_id=evidence_id,
+                    correlation_id=body.correlation_id,
+                ))
         finally:
             await redis_client.aclose()
     return {"subscription_id": str(result.subscription_id), "status": result.status}

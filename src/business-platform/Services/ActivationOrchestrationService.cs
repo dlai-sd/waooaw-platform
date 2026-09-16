@@ -22,7 +22,8 @@ public sealed record ActivationRequest(
     string PaymentReference,
     Guid PaymentEvidenceId,
     Guid AuthoritySnapshotId,
-    Guid CorrelationId);
+    Guid CorrelationId,
+    string CommercialOutcomeKind = "CAPTURED");
 
 public sealed record ActivationBillingRequest(
     Guid TenantId,
@@ -34,7 +35,8 @@ public sealed record ActivationBillingRequest(
     Guid ContractAcceptanceId,
     string PaymentReference,
     Guid PaymentEvidenceId,
-    Guid CorrelationId);
+    Guid CorrelationId,
+    string CommercialOutcomeKind = "CAPTURED");
 
 public sealed record ActivationBillingOutcome(Guid SubscriptionId, string Status);
 public sealed record ActivationOutcome(Guid ActivationIntentId, Guid SubscriptionId, Guid EvidenceId, string Status);
@@ -62,7 +64,7 @@ public sealed class ActivationOrchestrationService(
     public async Task<ActivationOutcome> ActivateAsync(
         ActivationRequest request, CancellationToken cancellationToken)
     {
-        var tupleKey = $"{request.TenantId:D}|{request.RelationshipId:D}|{request.AcceptedContractId:D}|{request.PaymentReference}";
+        var tupleKey = $"{request.TenantId:D}|{request.RelationshipId:D}|{request.AcceptedContractId:D}|{request.CommercialOutcomeKind}|{request.PaymentReference}";
         var tupleLock = AcquireTupleLockReference(tupleKey);
         await tupleLock.Gate.WaitAsync(cancellationToken);
         try
@@ -161,17 +163,18 @@ public sealed class ActivationOrchestrationService(
                     request.ContractAcceptanceId,
                     request.PaymentReference,
                     request.PaymentEvidenceId,
-                    request.CorrelationId),
+                    request.CorrelationId,
+                    request.CommercialOutcomeKind),
                 cancellationToken);
             if (billingOutcome.Status != "ACTIVE" || billingOutcome.SubscriptionId == Guid.Empty)
-                throw new ActivationOwnerUnavailableException("WBE paid activation outcome is not active.");
+                throw new ActivationOwnerUnavailableException("WBE commercial activation outcome is not active.");
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             await MarkRetryableAsync(intent.ActivationIntentId, cancellationToken);
             throw exception is ActivationOwnerUnavailableException
                 ? exception
-                : new ActivationOwnerUnavailableException("WBE paid activation outcome is unresolved.", exception);
+                : new ActivationOwnerUnavailableException("WBE commercial activation outcome is unresolved.", exception);
         }
 
         Guid evidenceId;
@@ -181,15 +184,16 @@ public sealed class ActivationOrchestrationService(
                 request.TenantId,
                 request.RelationshipId,
                 professionalType,
-                "ACTIVATE_PAID_EMPLOYMENT_RELATIONSHIP",
+                "ACTIVATE_EMPLOYMENT_RELATIONSHIP",
                 request.CorrelationId,
                 new
                 {
                     activation_intent_id = intent.ActivationIntentId,
                     accepted_contract_id = request.AcceptedContractId,
                     contract_acceptance_id = request.ContractAcceptanceId,
-                    payment_reference = request.PaymentReference,
-                    payment_evidence_id = request.PaymentEvidenceId,
+                    commercial_outcome_kind = request.CommercialOutcomeKind,
+                    commercial_outcome_reference = request.PaymentReference,
+                    commercial_evidence_id = request.PaymentEvidenceId,
                     subscription_id = billingOutcome.SubscriptionId,
                     authority_snapshot_id = request.AuthoritySnapshotId,
                 },
@@ -354,7 +358,8 @@ public sealed class ActivationOrchestrationService(
             request.ActorParticipantId.ToString("D"), request.AcceptedContractId.ToString("D"),
             request.ContractVersion,
             request.ContractAcceptanceId.ToString("D"), request.PaymentReference,
-            request.PaymentEvidenceId.ToString("D"), request.AuthoritySnapshotId.ToString("D"),
+            request.PaymentEvidenceId.ToString("D"), request.CommercialOutcomeKind,
+            request.AuthoritySnapshotId.ToString("D"),
             request.CorrelationId.ToString("D")))));
 
     private static ActivationOutcome ToOutcome(ActivationIntent intent) => new(

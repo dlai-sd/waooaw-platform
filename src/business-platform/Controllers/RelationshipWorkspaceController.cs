@@ -43,6 +43,15 @@ public sealed class RelationshipWorkspaceController(
         await Task.WhenAll(executionTask, commercialTask);
         var execution = await executionTask;
         var commercial = await commercialTask;
+        var configurationState = configuration is null ? null
+            : await configuration.GetPortalConfigurationAsync(
+                relationship.TenantId, relationshipId, cancellationToken);
+        var goals = configuration is null ? []
+            : await configuration.GetPortalGoalsAsync(
+                relationship.TenantId, relationshipId, cancellationToken);
+        var activeGoals = goals.Where(item => NormalizeGoalStatus(item.Goal.Status) == "ACTIVE").ToArray();
+        var goalsVerified = activeGoals.Length > 0
+            && activeGoals.All(item => item.CurrentDecision?.Decision == "VERIFIED");
         var sections = SectionTypes.Select(type => Section(type,
             type switch
             {
@@ -65,9 +74,15 @@ public sealed class RelationshipWorkspaceController(
             context = new
             {
                 relationshipId,
+                agentInstanceId = relationship.AgentInstanceId,
+                professionalType = relationship.ProfessionalType,
+                professionalVersion = relationship.ProfessionalVersion,
                 lifecycleState = RelationshipStateCodec.ToDatabase(relationship.State),
                 policySelection = new { f4Pol01 = "A", f4Pol02 = "A", f4Pol03 = "B", f4Pol04 = "A", f4Pol05 = "B", f4Pol06 = "A" },
             },
+            lifecycleProfile = LifecycleProfile(
+                relationship, configurationState, activeGoals.Length, goalsVerified,
+                execution, commercial, now),
             sections,
         });
     }
@@ -736,6 +751,78 @@ public sealed class RelationshipWorkspaceController(
             },
         };
     }
+
+    private static object LifecycleProfile(
+        EmploymentRelationship relationship,
+        RelationshipConfigurationState? configuration,
+        int activeGoalCount,
+        bool goalsVerified,
+        ExecutionOwnerProjection? execution,
+        CommercialOwnerProjection? commercial,
+        DateTimeOffset producedAt)
+    {
+        var onboardVerified = configuration?.Onboard is not null;
+        var inductVerified = configuration?.InductComplete is true;
+        var goalState = !inductVerified ? "BLOCKED"
+            : activeGoalCount == 0 ? "NOT_STARTED"
+            : goalsVerified ? "VERIFIED" : "READY_FOR_CONFIRMATION";
+        var outcomeState = goalsVerified ? "VERIFIED" : "BLOCKED";
+        var active = relationship.State is EmploymentRelationshipState.Active
+            or EmploymentRelationshipState.TrialActive;
+        var operationsReady = active && goalsVerified
+            && execution?.State == "CURRENT" && commercial?.CurrencyState == "CURRENT";
+        return new
+        {
+            agentInstanceId = relationship.AgentInstanceId,
+            relationshipVersion = relationship.StateVersion,
+            producedAt,
+            stages = new object[]
+            {
+                LifecycleStage("ONBOARD", onboardVerified ? "VERIFIED" : "NOT_STARTED", "BP",
+                    onboardVerified ? "onboard-current" : null,
+                    "Customer presentation preferences are accepted.",
+                    onboardVerified ? [] : ["Presentation preferences are not confirmed."],
+                    onboardVerified ? "Continue induction." : "Confirm presentation preferences."),
+                LifecycleStage("INDUCT", inductVerified ? "VERIFIED"
+                        : configuration?.ConfirmedContextCount > 0 ? "IN_PROGRESS" : "NOT_STARTED", "BP",
+                    inductVerified ? $"context-{configuration!.ConfirmedContextCount}" : null,
+                    "Required business context fields are explicitly confirmed.",
+                    inductVerified ? [] : ["Required business context remains unconfirmed."],
+                    inductVerified ? "Review goals." : "Continue the induction conversation."),
+                LifecycleStage("GOAL_VERIFICATION", goalState, "BP",
+                    goalsVerified ? $"goals-{activeGoalCount}-verified" : null,
+                    "Every active Skill has a current customer-verified goal and authority snapshot.",
+                    goalsVerified ? [] : ["Every active goal must be verified."],
+                    goalsVerified ? "Review business outcomes." : "Verify each active goal."),
+                LifecycleStage("BUSINESS_OUTCOMES", outcomeState, "BP",
+                    goalsVerified ? $"outcomes-{activeGoalCount}-verified" : null,
+                    "Outcome measures, attribution boundaries and review cadence are customer-verified.",
+                    goalsVerified ? [] : ["Verified goal outcome definitions are required."],
+                    goalsVerified ? "Check operational eligibility." : "Complete goal verification."),
+                LifecycleStage("OPERATIONS", operationsReady ? "VERIFIED" : "BLOCKED", "BP",
+                    operationsReady ? $"relationship-{relationship.StateVersion}" : null,
+                    "Relationship, goals, execution and commercial owner truth are current.",
+                    operationsReady ? [] : ["One or more operational dependencies are not current."],
+                    operationsReady ? "Continue governed work." : "Resolve the named lifecycle dependencies."),
+            },
+        };
+    }
+
+    private static object LifecycleStage(
+        string stage, string state, string owner, string? outputRevision,
+        string completionCriteria, string[] blockerReasons, string nextAuthorizedAction) => new
+        {
+            stage,
+            state,
+            owner,
+            inputRevisions = Array.Empty<string>(),
+            outputRevision,
+            evidenceState = state == "VERIFIED" ? "RECORDED" : "PENDING",
+            freshness = "CURRENT",
+            completionCriteria,
+            blockerReasons,
+            nextAuthorizedAction,
+        };
 
     private static object GoalResponse(RelationshipPortalGoal item) => new
     {
