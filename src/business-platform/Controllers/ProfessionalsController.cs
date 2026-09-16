@@ -1,4 +1,4 @@
-// Implements: architecture/reference/product/ae01-solution-contract.md §Canonical API and Compatibility
+// Implements: architecture/reference/product/ae01-solution-contract.md §Canonical API and Compatibility; WC-097 A03
 // Constitutional basis: C-009, C-048, C-059, C-063
 
 using Microsoft.AspNetCore.Authorization;
@@ -77,7 +77,7 @@ public sealed class ProfessionalsController : ControllerBase
             professionalType = disclosure.ProfessionalType,
             version = disclosure.ProjectionVersion,
             displayName = disclosure.DisplayName,
-            disclosurePath = $"/professionals/{disclosure.CustomerRouteSlug}",
+            disclosurePath = $"/marketplace/{disclosure.CustomerRouteSlug}",
             availableIntents = disclosure.Eligibility.Eligible
                 ? disclosure.Trial.Available ? new[] { "TRIAL", "HIRE" } : ["HIRE"]
                 : [],

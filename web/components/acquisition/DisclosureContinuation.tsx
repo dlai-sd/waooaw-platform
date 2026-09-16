@@ -1,6 +1,6 @@
 'use client';
 
-// Implements: WC-096 §4.3 Marketplace And Disclosure
+// Implements: work-contracts/WC-097-marketplace-acquisition-experience.md A06
 // Constitutional basis: C-023 (Evidence First), C-049 (Honest Limitation), C-059 (Implementation Traceability)
 
 import Link from 'next/link';
@@ -35,9 +35,9 @@ export function DisclosureContinuation({ disclosureRevision, initialIntent, prof
   }
 
   return <section className="disclosure-continuation" aria-labelledby="disclosure-decision-title">
-    <h2 id="disclosure-decision-title">Choose how to continue</h2>
-    <label><input checked={accepted} onChange={(event) => setAccepted(event.target.checked)} type="checkbox" /> I have reviewed this disclosure and agree to continue under the applicable terms.</label>
-    <p>Read the <Link href="/terms">Terms and Conditions</Link> (version {termsVersion}).</p>
+    <h2 id="disclosure-decision-title">Ready to continue?</h2>
+    <label><input checked={accepted} onChange={(event) => setAccepted(event.target.checked)} type="checkbox" /> <span>I agree to the <Link href="/terms">Terms</Link> and acknowledge the <Link href="/privacy">Privacy Policy</Link>.</span></label>
+    <p className="offer-terms-version">Terms version {termsVersion}. Nothing starts until you continue.</p>
     <div className="command-row">
       {intents.includes('trial') ? <button className="primary-command" disabled={!accepted} onClick={() => continueWith('trial')} type="button">Continue to trial</button> : null}
       {intents.includes('hire') ? <button className={initialIntent === 'hire' ? 'primary-command' : 'secondary-command'} disabled={!accepted} onClick={() => continueWith('hire')} type="button">Continue to hire</button> : null}

@@ -58,7 +58,7 @@ describe('F1 shell primitives', () => {
     expect(screen.getAllByRole('link', { name: 'Alerts' })).toHaveLength(2);
     expect(screen.getAllByRole('link', { name: 'Alerts' })[0]).toHaveAttribute('href', '/alerts');
     expect(screen.getByRole('link', { name: 'Profile' })).toHaveAttribute('href', '/profile');
-    expect(screen.getByRole('button', { name: 'No active work to stop' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'No active work to stop' })).not.toBeInTheDocument();
   });
 
   it('uses client navigation with active state and an accessible persisted rail', () => {

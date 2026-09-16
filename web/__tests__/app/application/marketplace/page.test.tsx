@@ -49,10 +49,13 @@ it('uses the canonical disclosure route and preserves each available intent', as
       professionalType: 'DIGITAL_MARKETING_LOCAL_SERVICE',
       version: '1.0.0',
       displayName: 'Digital Marketing Agent',
-      disclosurePath: '/professionals/digital-marketing',
+      disclosurePath: '/marketplace/digital-marketing',
       availableIntents: new Set(['TRIAL', 'HIRE']),
+      suitability: ['Build an evidence-backed marketing plan.'],
       eligibility: { isEligible: true, explanation: 'Available for your business.' },
+      indicativePrice: { currency: 'INR', amountInrPaise: 249900, cadence: 'MONTHLY', qualification: 'Indicative' },
       offerabilityState: 'OFFERABLE',
+      trialTerms: '14-day governed trial',
       nextAction: 'VIEW_DISCLOSURE',
     }],
   } as never);
@@ -61,11 +64,15 @@ it('uses the canonical disclosure route and preserves each available intent', as
 
   expect(screen.getByRole('link', { name: /Start trial/ })).toHaveAttribute(
     'href',
-    '/professionals/digital-marketing?professionalType=DIGITAL_MARKETING_LOCAL_SERVICE&version=1.0.0&intent=trial',
+    '/marketplace/digital-marketing?professionalType=DIGITAL_MARKETING_LOCAL_SERVICE&version=1.0.0&intent=trial',
   );
   expect(screen.getByRole('link', { name: /Hire/ })).toHaveAttribute(
     'href',
-    '/professionals/digital-marketing?professionalType=DIGITAL_MARKETING_LOCAL_SERVICE&version=1.0.0&intent=hire',
+    '/marketplace/digital-marketing?professionalType=DIGITAL_MARKETING_LOCAL_SERVICE&version=1.0.0&intent=hire',
   );
   expect(document.querySelector('a[href*="digital-marketing-local-service"]')).not.toBeInTheDocument();
+  expect(screen.queryByText('DIGITAL_MARKETING_LOCAL_SERVICE')).not.toBeInTheDocument();
+  expect(screen.queryByText(/Eligibility depends only/)).not.toBeInTheDocument();
+  expect(screen.getByText('Evidence-backed plans')).toBeInTheDocument();
+  expect(screen.getByText('14-day governed trial')).toBeInTheDocument();
 });
