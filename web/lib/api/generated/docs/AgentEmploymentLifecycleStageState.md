@@ -1,22 +1,17 @@
-# StartPaidRelationshipActivationRequest
+# AgentEmploymentLifecycleStageState
 
 ## Properties
 
-| Name                | Type   |
-| ------------------- | ------ |
-| `paymentReference`  | string |
-| `paymentEvidenceId` | string |
+| Name | Type |
+| ---- | ---- |
 
 ## Example
 
 ```typescript
-import type { StartPaidRelationshipActivationRequest } from "";
+import type { AgentEmploymentLifecycleStageState } from "";
 
 // TODO: Update the object below with actual values
-const example = {
-  paymentReference: null,
-  paymentEvidenceId: null,
-} satisfies StartPaidRelationshipActivationRequest;
+const example = {} satisfies AgentEmploymentLifecycleStageState;
 
 console.log(example);
 
@@ -27,7 +22,7 @@ console.log(exampleJSON);
 // Parse the JSON string back to an object
 const exampleParsed = JSON.parse(
   exampleJSON,
-) as StartPaidRelationshipActivationRequest;
+) as AgentEmploymentLifecycleStageState;
 console.log(exampleParsed);
 ```
 

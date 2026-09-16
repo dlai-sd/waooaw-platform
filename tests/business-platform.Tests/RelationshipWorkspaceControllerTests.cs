@@ -505,6 +505,25 @@ public sealed class RelationshipWorkspaceControllerTests
         Assert.Equal("PARTIAL", workspace.GetProperty("snapshotState").GetString());
     }
 
+    [Fact]
+    public async Task AggregateComposesFiveStageLifecycleWithoutInventingRelationshipStates()
+    {
+        var (controller, relationship, _, _) = await CreateControllerAsync();
+
+        var workspace = Json(await controller.GetWorkspaceAsync(
+            relationship.RelationshipId, CancellationToken.None));
+        var profile = workspace.GetProperty("lifecycleProfile");
+        var stages = profile.GetProperty("stages").EnumerateArray().ToArray();
+
+        Assert.Equal(relationship.AgentInstanceId, profile.GetProperty("agentInstanceId").GetGuid());
+        Assert.Equal(
+            new[] { "ONBOARD", "INDUCT", "GOAL_VERIFICATION", "BUSINESS_OUTCOMES", "OPERATIONS" },
+            stages.Select(stage => stage.GetProperty("stage").GetString()).ToArray());
+        Assert.Equal("NOT_STARTED", stages[0].GetProperty("state").GetString());
+        Assert.Equal("BLOCKED", stages[^1].GetProperty("state").GetString());
+        Assert.NotEmpty(stages[^1].GetProperty("blockerReasons").EnumerateArray());
+    }
+
     private static async Task<(RelationshipWorkspaceController Controller, EmploymentRelationship Relationship,
         RelationshipOwnerGatewayStub Gateway, RelationshipConfigurationService Configuration)> CreateControllerAsync()
     {

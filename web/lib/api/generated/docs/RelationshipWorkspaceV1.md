@@ -12,6 +12,7 @@
 | `authoritativeCursor` | string                                                                           |
 | `producedAt`          | Date                                                                             |
 | `context`             | [RelationshipContextV1](RelationshipContextV1.md)                                |
+| `lifecycleProfile`    | [AgentEmploymentLifecycleProfileV1](AgentEmploymentLifecycleProfileV1.md)        |
 | `sections`            | [Array&lt;RelationshipWorkspaceSectionV1&gt;](RelationshipWorkspaceSectionV1.md) |
 
 ## Example
@@ -29,6 +30,7 @@ const example = {
   authoritativeCursor: null,
   producedAt: null,
   context: null,
+  lifecycleProfile: null,
   sections: null,
 } satisfies RelationshipWorkspaceV1;
 

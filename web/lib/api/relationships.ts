@@ -42,7 +42,7 @@ export interface ContractJourneyProjection {
     limitations: string[];
     authorityTerms: string[];
     stopTerms: string[];
-    priceTax: { currency: string; grossAmountInrPaise: number; gstAmountInrPaise: number; cadence: string; subscriptionTerms: string; adSpendTreatment: string; cancellationAndRefundTerms: string };
+    priceTax: { currency: string; grossAmountInrPaise: number; gstAmountInrPaise: number; cadence: string; subscriptionTerms: string; adSpendTreatment: string; cancellationAndRefundTerms: string; offeringId?: string; bundleTier?: string; quoteVersion?: string; renewalConsequence?: string };
   };
 }
 

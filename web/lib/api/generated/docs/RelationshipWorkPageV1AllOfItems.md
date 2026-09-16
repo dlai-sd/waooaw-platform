@@ -2,11 +2,18 @@
 
 ## Properties
 
-| Name     | Type   |
-| -------- | ------ |
-| `itemId` | string |
-| `state`  | string |
-| `effect` | string |
+| Name              | Type   |
+| ----------------- | ------ |
+| `itemId`          | string |
+| `agentInstanceId` | string |
+| `skillId`         | string |
+| `skillVersion`    | string |
+| `invocationId`    | string |
+| `revision`        | number |
+| `state`           | string |
+| `effect`          | string |
+| `resultRef`       | string |
+| `updatedAt`       | Date   |
 
 ## Example
 
@@ -16,8 +23,15 @@ import type { RelationshipWorkPageV1AllOfItems } from "";
 // TODO: Update the object below with actual values
 const example = {
   itemId: null,
+  agentInstanceId: null,
+  skillId: null,
+  skillVersion: null,
+  invocationId: null,
+  revision: null,
   state: null,
   effect: null,
+  resultRef: null,
+  updatedAt: null,
 } satisfies RelationshipWorkPageV1AllOfItems;
 
 console.log(example);

@@ -1,5 +1,5 @@
-// Implements: architecture/reference/product/ae01-solution-contract.md § Canonical API and Compatibility
-// constitutional_basis: C-005, C-023, C-026, C-059
+// Implements: architecture/reference/api-specs/business-platform.openapi.yaml §RelationshipCheckoutOutcome
+// Constitutional basis: C-005, C-023, C-026, C-059
 
 using System.Security.Claims;
 using System.Text.Json;
@@ -703,11 +703,10 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         }
     }
 
-    [HttpPost("{relationshipId:guid}/contracts/{version:int}/payments/onboarding-order")]
-    public async Task<IActionResult> CreateOnboardingPaymentOrderAsync(
+    [HttpGet("{relationshipId:guid}/contracts/{version:int}/payments/onboarding-order")]
+    public async Task<IActionResult> GetOnboardingPaymentOrderAsync(
         Guid relationshipId,
         int version,
-        [FromBody] PaymentProceedRequest request,
         CancellationToken cancellationToken)
     {
         if (!TryGetTenantId(out var tenantId) || !TryGetParticipantId(out var participantId)) return Forbid();
@@ -715,11 +714,69 @@ public sealed class EmploymentRelationshipsController : ControllerBase
 
         try
         {
-            return Ok(await _payments.CreateOnboardingOrderAsync(
+            var outcome = await _payments.GetCurrentCheckoutAsync(
+                tenantId, relationshipId, participantId, version, cancellationToken);
+            return outcome is null ? NoContent() : Ok(outcome);
+        }
+        catch (ConstitutionalActionDeniedException exception)
+        {
+            return Problem(statusCode: 403, title: "Constitutional authorization denied", detail: exception.Message);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return Problem(statusCode: 503, title: "Payment owner outcome unresolved");
+        }
+    }
+
+    [HttpGet("{relationshipId:guid}/checkout-intents/{checkoutIntentId:guid}")]
+    public async Task<IActionResult> GetCheckoutIntentAsync(
+        Guid relationshipId,
+        Guid checkoutIntentId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetTenantId(out var tenantId) || !TryGetParticipantId(out var participantId)) return Forbid();
+        if (_payments is null) return Problem(statusCode: 503, title: "Payment owner unavailable");
+
+        try
+        {
+            return Ok(await _payments.GetCheckoutIntentAsync(
+                tenantId, relationshipId, participantId, checkoutIntentId, cancellationToken));
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (ConstitutionalActionDeniedException exception)
+        {
+            return Problem(statusCode: 403, title: "Constitutional authorization denied", detail: exception.Message);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return Problem(statusCode: 503, title: "Payment owner outcome unresolved");
+        }
+    }
+
+    [HttpPost("{relationshipId:guid}/contracts/{version:int}/payments/onboarding-order")]
+    public async Task<IActionResult> CreateOnboardingPaymentOrderAsync(
+        Guid relationshipId,
+        int version,
+        [FromHeader(Name = "Idempotency-Key")] Guid? idempotencyKey,
+        [FromBody] CheckoutProceedRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetTenantId(out var tenantId) || !TryGetParticipantId(out var participantId)) return Forbid();
+        if (_payments is null) return Problem(statusCode: 503, title: "Payment owner unavailable");
+        if (!idempotencyKey.HasValue)
+            return ValidationProblem("Idempotency-Key is required.");
+
+        try
+        {
+            return Ok(await _payments.CreateCheckoutAsync(
                 tenantId,
                 relationshipId,
                 participantId,
                 version,
+                idempotencyKey.Value,
                 request,
                 GetContractPortalAssurance(),
                 Guid.NewGuid(),

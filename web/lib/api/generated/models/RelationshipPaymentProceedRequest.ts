@@ -24,24 +24,6 @@ export interface RelationshipPaymentProceedRequest {
    * @type {string}
    * @memberof RelationshipPaymentProceedRequest
    */
-  bundleTier: string;
-  /**
-   *
-   * @type {number}
-   * @memberof RelationshipPaymentProceedRequest
-   */
-  subscriptionAmountInrPaise: number;
-  /**
-   *
-   * @type {number}
-   * @memberof RelationshipPaymentProceedRequest
-   */
-  walletSeedInrPaise: number;
-  /**
-   *
-   * @type {string}
-   * @memberof RelationshipPaymentProceedRequest
-   */
   proceedConfirmation: RelationshipPaymentProceedRequestProceedConfirmationEnum;
 }
 
@@ -49,7 +31,7 @@ export interface RelationshipPaymentProceedRequest {
  * @export
  */
 export const RelationshipPaymentProceedRequestProceedConfirmationEnum = {
-  ProceedToRazorpay: "PROCEED_TO_RAZORPAY",
+  ConfirmCheckoutAndRenewalTerms: "CONFIRM_CHECKOUT_AND_RENEWAL_TERMS",
 } as const;
 export type RelationshipPaymentProceedRequestProceedConfirmationEnum =
   (typeof RelationshipPaymentProceedRequestProceedConfirmationEnum)[keyof typeof RelationshipPaymentProceedRequestProceedConfirmationEnum];
@@ -60,18 +42,6 @@ export type RelationshipPaymentProceedRequestProceedConfirmationEnum =
 export function instanceOfRelationshipPaymentProceedRequest(
   value: object,
 ): value is RelationshipPaymentProceedRequest {
-  if (!("bundleTier" in value) || value["bundleTier"] === undefined)
-    return false;
-  if (
-    !("subscriptionAmountInrPaise" in value) ||
-    value["subscriptionAmountInrPaise"] === undefined
-  )
-    return false;
-  if (
-    !("walletSeedInrPaise" in value) ||
-    value["walletSeedInrPaise"] === undefined
-  )
-    return false;
   if (
     !("proceedConfirmation" in value) ||
     value["proceedConfirmation"] === undefined
@@ -94,9 +64,6 @@ export function RelationshipPaymentProceedRequestFromJSONTyped(
     return json;
   }
   return {
-    bundleTier: json["bundleTier"],
-    subscriptionAmountInrPaise: json["subscriptionAmountInrPaise"],
-    walletSeedInrPaise: json["walletSeedInrPaise"],
     proceedConfirmation: json["proceedConfirmation"],
   };
 }
@@ -116,9 +83,6 @@ export function RelationshipPaymentProceedRequestToJSONTyped(
   }
 
   return {
-    bundleTier: value["bundleTier"],
-    subscriptionAmountInrPaise: value["subscriptionAmountInrPaise"],
-    walletSeedInrPaise: value["walletSeedInrPaise"],
     proceedConfirmation: value["proceedConfirmation"],
   };
 }

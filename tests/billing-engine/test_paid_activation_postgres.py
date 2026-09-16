@@ -7,6 +7,7 @@ import os
 import uuid
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
 
 import fakeredis
 import psycopg2
@@ -15,8 +16,15 @@ import pytest_asyncio
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from payment.models import PaidActivationRequest
+from payment.commercial_outcomes import ZeroPriceCommercialOutcomeStore
+from payment.models import (
+    PaidActivationRequest,
+    RelationshipCheckoutRequest,
+    ZeroPriceActivationRequest,
+)
+from payment.onboarding import OnboardingService
 from payment.paid_activation import PaidActivationService
+from payment.zero_price_activation import ZeroPriceActivationService
 from wallet.service import WalletService
 
 
@@ -57,6 +65,11 @@ async def postgres_activation():
             migration = (REPO_ROOT / "infrastructure/postgres/init/21c-ae01-paid-activation-ordering.sql").read_text()
             cursor.execute(migration)
             cursor.execute(migration)
+            zero_price_migration = (
+                REPO_ROOT / "infrastructure/postgres/init/34-wc095-zero-price-outcomes.sql"
+            ).read_text()
+            cursor.execute(zero_price_migration)
+            cursor.execute(zero_price_migration)
     url = sync_url.replace("postgresql://", "postgresql+asyncpg://")
     engine = create_async_engine(
         url,
@@ -103,6 +116,59 @@ async def postgres_activation():
     await engine.dispose()
 
 
+@pytest_asyncio.fixture
+async def postgres_zero_price_activation(postgres_activation):
+    factory, paid_request = postgres_activation
+    checkout_intent_id = uuid.uuid4()
+    async with factory() as session:
+        payment = (await session.execute(text("""
+            SELECT customer_id, contract_hash, payment_consent_evidence_id,
+                agent_type, bundle_tier
+            FROM payment_intents
+            WHERE razorpay_payment_id = :payment_reference
+        """).bindparams(payment_reference=paid_request.payment_reference))).one()
+        settings = MagicMock()
+        settings.WAOOAW_ENVIRONMENT = "demo"
+        settings.DEMO_PROMOTION_ENABLED = True
+        settings.DEMO_PROMOTION_VERSION = "demo-100-v1"
+        settings.DEMO_RENEWAL_CONSEQUENCE = "Renews at the accepted monthly price."
+        settings.MAX_DISCOUNT_PCT = 100
+        settings.RAZORPAY_KEY_ID = ""
+        settings.RAZORPAY_KEY_SECRET = ""
+        checkout = await OnboardingService(
+            razorpay_client=AsyncMock(),
+            settings=settings,
+            zero_price_outcomes=ZeroPriceCommercialOutcomeStore(session),
+        ).create_relationship_checkout(RelationshipCheckoutRequest(
+            checkout_intent_id=checkout_intent_id,
+            tenant_id=paid_request.tenant_id,
+            customer_id=uuid.UUID(str(payment.customer_id)),
+            relationship_id=paid_request.relationship_id,
+            contract_id=paid_request.accepted_contract_id,
+            contract_version=paid_request.contract_version,
+            contract_hash=payment.contract_hash,
+            contract_acceptance_id=paid_request.contract_acceptance_id,
+            payment_consent_evidence_id=uuid.UUID(str(payment.payment_consent_evidence_id)),
+            agent_type=payment.agent_type,
+            bundle_tier=payment.bundle_tier,
+            gross_amount_inr_paise=249900,
+            gst_amount_inr_paise=38120,
+            quote_version="quote-v1",
+            idempotency_key=str(uuid.uuid4()),
+        ))
+    yield factory, ZeroPriceActivationRequest(
+        tenant_id=paid_request.tenant_id,
+        relationship_id=paid_request.relationship_id,
+        activation_intent_id=uuid.uuid4(),
+        accepted_contract_id=paid_request.accepted_contract_id,
+        contract_version=paid_request.contract_version,
+        contract_acceptance_id=paid_request.contract_acceptance_id,
+        commercial_outcome_reference=checkout.commercial_outcome_reference or "",
+        commercial_evidence_id=checkout.commercial_evidence_id or uuid.UUID(int=0),
+        correlation_id=uuid.uuid4(),
+    )
+
+
 @pytest.mark.asyncio
 async def test_postgres_competing_paid_activation_has_one_canonical_outcome(postgres_activation) -> None:
     factory, request = postgres_activation
@@ -142,3 +208,32 @@ async def test_postgres_response_loss_replay_returns_stored_subscription(postgre
         ).activate(request)
 
     assert replay.subscription_id == first.subscription_id
+
+
+@pytest.mark.asyncio
+async def test_postgres_zero_price_activation_replays_one_subscription(
+    postgres_zero_price_activation,
+) -> None:
+    factory, request = postgres_zero_price_activation
+    async with factory() as session:
+        first = await ZeroPriceActivationService(
+            session, WalletService(db=session, redis_client=fakeredis.aioredis.FakeRedis())
+        ).activate(request)
+    async with factory() as session:
+        replay = await ZeroPriceActivationService(
+            session, WalletService(db=session, redis_client=fakeredis.aioredis.FakeRedis())
+        ).activate(request)
+        outcome = (await session.execute(text("""
+            SELECT status, outcome_subscription_id
+            FROM zero_price_commercial_outcomes
+            WHERE outcome_reference = :outcome_reference
+        """).bindparams(outcome_reference=request.commercial_outcome_reference))).one()
+        subscription_count = (await session.execute(text("""
+            SELECT count(*) FROM paid_subscriptions
+            WHERE commercial_outcome_reference = :outcome_reference
+        """).bindparams(outcome_reference=request.commercial_outcome_reference))).scalar_one()
+
+    assert replay.subscription_id == first.subscription_id
+    assert outcome.status == "ACTIVATED"
+    assert outcome.outcome_subscription_id == first.subscription_id
+    assert subscription_count == 1

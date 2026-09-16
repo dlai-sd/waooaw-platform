@@ -2,12 +2,9 @@
 
 ## Properties
 
-| Name                         | Type   |
-| ---------------------------- | ------ |
-| `bundleTier`                 | string |
-| `subscriptionAmountInrPaise` | number |
-| `walletSeedInrPaise`         | number |
-| `proceedConfirmation`        | string |
+| Name                  | Type   |
+| --------------------- | ------ |
+| `proceedConfirmation` | string |
 
 ## Example
 
@@ -16,9 +13,6 @@ import type { RelationshipPaymentProceedRequest } from "";
 
 // TODO: Update the object below with actual values
 const example = {
-  bundleTier: null,
-  subscriptionAmountInrPaise: null,
-  walletSeedInrPaise: null,
   proceedConfirmation: null,
 } satisfies RelationshipPaymentProceedRequest;
 

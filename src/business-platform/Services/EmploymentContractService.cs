@@ -1,5 +1,5 @@
-// Implements: work-contracts/WC-059-goal005-ae01-contract-payment-activation.md §WC059-02
-// constitutional_basis: C-009, C-023, C-043, C-049, C-059
+// Implements: architecture/reference/api-specs/business-platform.openapi.yaml §RelationshipCheckoutOutcome
+// Constitutional basis: C-009, C-023, C-043, C-049, C-059
 
 using System.Security.Cryptography;
 using System.Text;
@@ -16,7 +16,11 @@ public sealed record EmploymentContractCommercialTerms(
     string Cadence,
     string SubscriptionTerms,
     string AdSpendTreatment,
-    string CancellationAndRefundTerms);
+    string CancellationAndRefundTerms,
+    string OfferingId = "LEGACY",
+    string BundleTier = "LEGACY",
+    string QuoteVersion = "LEGACY",
+    string RenewalConsequence = "Accepted renewal terms apply.");
 
 public sealed record EmploymentContractGoal(
     string Goal,
@@ -140,6 +144,10 @@ public sealed class EmploymentContractService(
                 SubscriptionTerms = commercialTerms.SubscriptionTerms.Trim(),
                 AdSpendTreatment = commercialTerms.AdSpendTreatment.Trim(),
                 CancellationAndRefundTerms = commercialTerms.CancellationAndRefundTerms.Trim(),
+                OfferingId = commercialTerms.OfferingId.Trim(),
+                BundleTier = commercialTerms.BundleTier.Trim().ToUpperInvariant(),
+                QuoteVersion = commercialTerms.QuoteVersion.Trim(),
+                RenewalConsequence = commercialTerms.RenewalConsequence.Trim(),
             },
             disclosure.EvidencePosture);
         var documentJson = JsonSerializer.Serialize(document, JsonOptions);
@@ -236,7 +244,13 @@ public sealed class EmploymentContractService(
         if (string.IsNullOrWhiteSpace(terms.Cadence)
             || string.IsNullOrWhiteSpace(terms.SubscriptionTerms)
             || string.IsNullOrWhiteSpace(terms.AdSpendTreatment)
-            || string.IsNullOrWhiteSpace(terms.CancellationAndRefundTerms))
-            throw new ArgumentException("Complete subscription, ad-spend, and cancellation terms are required.", nameof(terms));
+            || string.IsNullOrWhiteSpace(terms.CancellationAndRefundTerms)
+            || string.IsNullOrWhiteSpace(terms.OfferingId)
+            || string.IsNullOrWhiteSpace(terms.BundleTier)
+            || string.IsNullOrWhiteSpace(terms.QuoteVersion)
+            || string.IsNullOrWhiteSpace(terms.RenewalConsequence))
+            throw new ArgumentException(
+                "Complete offering, quote, renewal, subscription, ad-spend, and cancellation terms are required.",
+                nameof(terms));
     }
 }

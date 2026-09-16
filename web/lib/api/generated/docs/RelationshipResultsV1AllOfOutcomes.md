@@ -5,8 +5,14 @@
 | Name               | Type   |
 | ------------------ | ------ |
 | `outcomeId`        | string |
+| `agentInstanceId`  | string |
+| `skillId`          | string |
+| `skillVersion`     | string |
+| `invocationId`     | string |
+| `revision`         | number |
 | `label`            | string |
 | `attributionBasis` | string |
+| `updatedAt`        | Date   |
 
 ## Example
 
@@ -16,8 +22,14 @@ import type { RelationshipResultsV1AllOfOutcomes } from "";
 // TODO: Update the object below with actual values
 const example = {
   outcomeId: null,
+  agentInstanceId: null,
+  skillId: null,
+  skillVersion: null,
+  invocationId: null,
+  revision: null,
   label: null,
   attributionBasis: null,
+  updatedAt: null,
 } satisfies RelationshipResultsV1AllOfOutcomes;
 
 console.log(example);

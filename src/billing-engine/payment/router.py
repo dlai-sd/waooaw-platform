@@ -1,5 +1,5 @@
-# Implements: adr/ADR-022-payment-processing-razorpay-india.md §Amendment 1.2
-# constitutional_basis: C-059, C-088, C-090
+# Implements: architecture/reference/api-specs/business-platform.openapi.yaml §RelationshipCheckoutOutcome
+# Constitutional basis: C-059, C-088, C-090
 """Payment FastAPI router — onboarding order + Razorpay webhook endpoint."""
 from __future__ import annotations
 
@@ -12,7 +12,13 @@ from pydantic import BaseModel, Field, model_validator
 import redis.asyncio as aioredis
 from database import get_session_factory
 from config import Settings
-from payment.models import OnboardingOrderRequest, PaymentCapturedEvent
+from payment.models import (
+    OnboardingOrderRequest,
+    PaymentCapturedEvent,
+    RelationshipCheckoutRequest,
+    RelationshipCheckoutResult,
+)
+from payment.commercial_outcomes import ZeroPriceCommercialOutcomeStore
 from payment.onboarding import OnboardingService
 from payment.razorpay_client import RazorpayClient
 from payment.webhook import WebhookHandler
@@ -67,6 +73,35 @@ class PaymentCaptureBody(BaseModel):
     agent_type: str
     bundle_tier: str
     is_bypass: bool = False
+
+
+class RelationshipCheckoutBody(BaseModel):
+    checkout_intent_id: UUID
+    tenant_id: UUID
+    customer_id: UUID
+    relationship_id: UUID
+    contract_id: UUID
+    contract_version: int = Field(gt=0)
+    contract_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    contract_acceptance_id: UUID
+    payment_consent_evidence_id: UUID
+    agent_type: str = Field(min_length=1)
+    bundle_tier: str = Field(min_length=1)
+    gross_amount_inr_paise: int = Field(gt=0)
+    gst_amount_inr_paise: int = Field(ge=0)
+    quote_version: str = Field(min_length=1)
+    idempotency_key: str = Field(min_length=1, max_length=200)
+
+
+@router.post("/relationship-checkout", response_model=RelationshipCheckoutResult)
+async def create_relationship_checkout(body: RelationshipCheckoutBody) -> RelationshipCheckoutResult:
+    """Return WBE-owned commercial truth for one accepted relationship contract."""
+    session_factory = get_session_factory()
+    async with session_factory() as db:
+        return await OnboardingService(
+            settings=_settings,
+            zero_price_outcomes=ZeroPriceCommercialOutcomeStore(db),
+        ).create_relationship_checkout(RelationshipCheckoutRequest(**body.model_dump()))
 
 
 @router.post("/onboarding-order")

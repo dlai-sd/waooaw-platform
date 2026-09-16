@@ -2,11 +2,14 @@
 
 ## Properties
 
-| Name              | Type                                                              |
-| ----------------- | ----------------------------------------------------------------- |
-| `relationshipId`  | string                                                            |
-| `lifecycleState`  | [EmploymentRelationshipState](EmploymentRelationshipState.md)     |
-| `policySelection` | [RelationshipPolicySelectionV1](RelationshipPolicySelectionV1.md) |
+| Name                  | Type                                                              |
+| --------------------- | ----------------------------------------------------------------- |
+| `relationshipId`      | string                                                            |
+| `agentInstanceId`     | string                                                            |
+| `professionalType`    | string                                                            |
+| `professionalVersion` | string                                                            |
+| `lifecycleState`      | [EmploymentRelationshipState](EmploymentRelationshipState.md)     |
+| `policySelection`     | [RelationshipPolicySelectionV1](RelationshipPolicySelectionV1.md) |
 
 ## Example
 
@@ -16,6 +19,9 @@ import type { RelationshipContextV1 } from "";
 // TODO: Update the object below with actual values
 const example = {
   relationshipId: null,
+  agentInstanceId: null,
+  professionalType: null,
+  professionalVersion: null,
   lifecycleState: null,
   policySelection: null,
 } satisfies RelationshipContextV1;

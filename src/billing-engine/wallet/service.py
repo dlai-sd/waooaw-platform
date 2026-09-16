@@ -466,6 +466,57 @@ class WalletService:
             activated_at=now_utc,
         )
 
+    async def activate_zero_price_subscription(
+        self,
+        customer_id: UUID,
+        agent_type: str,
+        bundle_tier: str,
+        commercial_outcome_reference: str,
+        commit: bool = True,
+    ) -> SubscriptionActivationResult:
+        existing = (await self._db.execute(text("""
+            SELECT subscription_id AS id, activated_at
+            FROM paid_subscriptions
+            WHERE commercial_outcome_reference = :outcome_reference
+            LIMIT 1
+        """).bindparams(outcome_reference=commercial_outcome_reference))).fetchone()
+        if existing is not None:
+            return SubscriptionActivationResult(
+                subscription_id=UUID(str(existing.id)), customer_id=customer_id,
+                agent_type=agent_type, bundle_tier=bundle_tier,
+                activated_at=datetime.fromisoformat(str(existing.activated_at).replace("Z", "+00:00")),
+            )
+        profile = (await self._db.execute(text("""
+            SELECT status FROM billing_profiles WHERE agent_type = :agent_type LIMIT 1
+        """).bindparams(agent_type=agent_type))).fetchone()
+        if profile is None or profile.status != "FOUNDER_AUTHORIZED":
+            raise HTTPException(status_code=403, detail={"code": "BILLING_PROFILE_NOT_AUTHORIZED"})
+        subscription_id = uuid.uuid4()
+        now_utc = datetime.now(timezone.utc)
+        is_postgres = self._db.bind is not None and self._db.bind.dialect.name == "postgresql"
+        database_uuid = (lambda value: value) if is_postgres else (lambda value: str(value))
+        await self._db.execute(text("""
+            INSERT INTO paid_subscriptions (
+                subscription_id, organisation_id, agent_type, bundle_tier,
+                commercial_outcome_kind, commercial_outcome_reference, activated_at)
+            VALUES (
+                :subscription_id, :customer_id, :agent_type, :bundle_tier,
+                'ZERO_PRICE_SATISFIED', :outcome_reference, :activated_at)
+        """).bindparams(
+            subscription_id=database_uuid(subscription_id),
+            customer_id=database_uuid(customer_id),
+            agent_type=agent_type,
+            bundle_tier=bundle_tier,
+            outcome_reference=commercial_outcome_reference,
+            activated_at=now_utc,
+        ))
+        if commit:
+            await self._db.commit()
+        return SubscriptionActivationResult(
+            subscription_id=subscription_id, customer_id=customer_id,
+            agent_type=agent_type, bundle_tier=bundle_tier, activated_at=now_utc,
+        )
+
     async def renew(
         self,
         customer_id: UUID,

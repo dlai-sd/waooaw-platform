@@ -1,5 +1,5 @@
-// Implements: architecture/reference/product/ae01-relationship-data-contract.md § Migration 19 and § Migration 22
-// constitutional_basis: C-005, C-007, C-023, C-026, C-059, C-063
+// Implements: architecture/reference/api-specs/business-platform.openapi.yaml §RelationshipCheckoutOutcome
+// Constitutional basis: C-005, C-007, C-023, C-026, C-059, C-063
 
 using Microsoft.EntityFrameworkCore;
 
@@ -312,6 +312,24 @@ public sealed class ActivationIntent
     public DateTimeOffset? CompletedAt { get; set; }
 }
 
+public sealed class RelationshipCheckoutIntent
+{
+    public Guid CheckoutIntentId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public Guid ContractId { get; init; }
+    public int ContractVersion { get; init; }
+    public string ContractHash { get; init; } = string.Empty;
+    public Guid IdempotencyKey { get; init; }
+    public string MaterialRequestHash { get; init; } = string.Empty;
+    public string Status { get; set; } = "PENDING";
+    public string? OutcomeKind { get; set; }
+    public string? OutcomeJson { get; set; }
+    public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? CompletedAt { get; set; }
+}
+
 public sealed class OfferabilityDecisionRecord
 {
     public Guid DecisionId { get; init; } = Guid.NewGuid();
@@ -479,6 +497,7 @@ public sealed class EmploymentRelationshipDbContext : DbContext
     public DbSet<EmploymentContractVersion> EmploymentContractVersions => Set<EmploymentContractVersion>();
     public DbSet<ContractAcceptance> ContractAcceptances => Set<ContractAcceptance>();
     public DbSet<ActivationIntent> ActivationIntents => Set<ActivationIntent>();
+    public DbSet<RelationshipCheckoutIntent> RelationshipCheckoutIntents => Set<RelationshipCheckoutIntent>();
     public DbSet<OfferabilityDecisionRecord> OfferabilityDecisions => Set<OfferabilityDecisionRecord>();
     public DbSet<RelationshipTrialBinding> RelationshipTrialBindings => Set<RelationshipTrialBinding>();
     public DbSet<WhatsAppJourneyContact> WhatsAppJourneyContacts => Set<WhatsAppJourneyContact>();
@@ -904,6 +923,7 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.ContractId).HasColumnName("contract_id");
             entity.Property(value => value.ContractVersion).HasColumnName("contract_version");
             entity.Property(value => value.ContractHash).HasColumnName("contract_hash").HasMaxLength(64).IsFixedLength();
+            entity.Property(value => value.ContractHash).HasColumnName("contract_hash").HasMaxLength(64).IsFixedLength();
             entity.Property(value => value.ParticipantId).HasColumnName("participant_id");
             entity.Property(value => value.ParticipantRole).HasColumnName("participant_role").HasConversion(
                 value => RelationshipRoleCodec.ToDatabase(value),
@@ -960,6 +980,30 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.CreatedAt).HasColumnName("created_at");
             entity.Property(value => value.UpdatedAt).HasColumnName("updated_at");
             entity.Property(value => value.CompletedAt).HasColumnName("completed_at");
+        });
+
+        modelBuilder.Entity<RelationshipCheckoutIntent>(entity =>
+        {
+            entity.ToTable("relationship_checkout_intents", "business");
+            entity.HasKey(value => value.CheckoutIntentId);
+            entity.HasIndex(value => new { value.TenantId, value.IdempotencyKey }).IsUnique();
+            entity.Property(value => value.CheckoutIntentId).HasColumnName("checkout_intent_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.ContractId).HasColumnName("contract_id");
+            entity.Property(value => value.ContractVersion).HasColumnName("contract_version");
+            entity.Property(value => value.IdempotencyKey).HasColumnName("idempotency_key");
+            entity.Property(value => value.MaterialRequestHash).HasColumnName("material_request_hash").HasMaxLength(64).IsFixedLength();
+            entity.Property(value => value.Status).HasColumnName("status").HasMaxLength(24);
+            entity.Property(value => value.OutcomeKind).HasColumnName("outcome_kind").HasMaxLength(48);
+            entity.Property(value => value.OutcomeJson).HasColumnName("outcome_json").HasColumnType("jsonb");
+            entity.Property(value => value.CreatedAt).HasColumnName("created_at");
+            entity.Property(value => value.UpdatedAt).HasColumnName("updated_at");
+            entity.Property(value => value.CompletedAt).HasColumnName("completed_at");
+            entity.HasOne<EmploymentRelationship>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
         });
 
         modelBuilder.Entity<RelationshipTrialBinding>(entity =>

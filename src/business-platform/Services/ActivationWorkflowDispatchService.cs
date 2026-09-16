@@ -12,7 +12,14 @@ using Waooaw.BusinessPlatform.Workflows;
 
 namespace Waooaw.BusinessPlatform.Services;
 
-public sealed record StartPaidActivationRequest(string PaymentReference, Guid PaymentEvidenceId);
+public sealed record StartPaidActivationRequest(
+    string CommercialOutcomeKind,
+    string CommercialOutcomeReference,
+    Guid CommercialEvidenceId)
+{
+    public StartPaidActivationRequest(string paymentReference, Guid paymentEvidenceId)
+        : this("CAPTURED", paymentReference, paymentEvidenceId) { }
+}
 
 public interface IActivationWorkflowStarter
 {
@@ -59,8 +66,11 @@ public sealed class ActivationWorkflowDispatchService(
         if (!assurance.IsKeycloakPortal || authenticationAge > TimeSpan.FromMinutes(5)
             || authenticationAge < TimeSpan.FromSeconds(-30))
             throw new PaymentStepUpRequiredException();
-        if (string.IsNullOrWhiteSpace(request.PaymentReference) || request.PaymentEvidenceId == Guid.Empty)
-            throw new ActivationEligibilityException("Captured payment evidence is required for activation.");
+        if (request.CommercialOutcomeKind is not ("CAPTURED" or "ZERO_PRICE_SATISFIED")
+            || string.IsNullOrWhiteSpace(request.CommercialOutcomeReference)
+            || request.CommercialEvidenceId == Guid.Empty)
+            throw new ActivationEligibilityException(
+                "A captured or zero-price commercial outcome is required for activation.");
 
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var relationship = await db.EmploymentRelationships.AsNoTracking().SingleOrDefaultAsync(
@@ -88,20 +98,23 @@ public sealed class ActivationWorkflowDispatchService(
             relationship.AcceptedContractId.Value,
             acceptance.ContractVersion,
             acceptance.AcceptanceId,
-            request.PaymentReference.Trim(),
-            request.PaymentEvidenceId,
+            request.CommercialOutcomeReference.Trim(),
+            request.CommercialEvidenceId,
             relationship.AuthoritySnapshotId.Value,
-            StableCorrelation(tenantId, relationshipId, relationship.AcceptedContractId.Value, request.PaymentReference));
+            StableCorrelation(
+                tenantId, relationshipId, relationship.AcceptedContractId.Value,
+                request.CommercialOutcomeKind, request.CommercialOutcomeReference),
+            request.CommercialOutcomeKind);
         var storedOutcome = await orchestration.PrepareDispatchAsync(activation, cancellationToken);
         if (storedOutcome is not null) return storedOutcome;
         return await workflowStarter.StartOrJoinAsync(activation, cancellationToken);
     }
 
     private static Guid StableCorrelation(
-        Guid tenantId, Guid relationshipId, Guid contractId, string paymentReference)
+        Guid tenantId, Guid relationshipId, Guid contractId, string outcomeKind, string outcomeReference)
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(
-            $"{tenantId:D}|{relationshipId:D}|{contractId:D}|{paymentReference.Trim()}"));
+            $"{tenantId:D}|{relationshipId:D}|{contractId:D}|{outcomeKind}|{outcomeReference.Trim()}"));
         bytes[6] = (byte)((bytes[6] & 0x0f) | 0x40);
         bytes[8] = (byte)((bytes[8] & 0x3f) | 0x80);
         return new Guid(bytes[..16]);

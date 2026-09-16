@@ -16,50 +16,50 @@ import { mapValues } from "../runtime";
 /**
  *
  * @export
- * @interface PaidRelationshipActivationOutcome
+ * @interface RelationshipActivationOutcome
  */
-export interface PaidRelationshipActivationOutcome {
+export interface RelationshipActivationOutcome {
   /**
    *
    * @type {string}
-   * @memberof PaidRelationshipActivationOutcome
+   * @memberof RelationshipActivationOutcome
    */
   activationIntentId: string;
   /**
    *
    * @type {string}
-   * @memberof PaidRelationshipActivationOutcome
+   * @memberof RelationshipActivationOutcome
    */
   subscriptionId: string;
   /**
    *
    * @type {string}
-   * @memberof PaidRelationshipActivationOutcome
+   * @memberof RelationshipActivationOutcome
    */
   evidenceId: string;
   /**
    *
    * @type {string}
-   * @memberof PaidRelationshipActivationOutcome
+   * @memberof RelationshipActivationOutcome
    */
-  status: PaidRelationshipActivationOutcomeStatusEnum;
+  status: RelationshipActivationOutcomeStatusEnum;
 }
 
 /**
  * @export
  */
-export const PaidRelationshipActivationOutcomeStatusEnum = {
+export const RelationshipActivationOutcomeStatusEnum = {
   Succeeded: "SUCCEEDED",
 } as const;
-export type PaidRelationshipActivationOutcomeStatusEnum =
-  (typeof PaidRelationshipActivationOutcomeStatusEnum)[keyof typeof PaidRelationshipActivationOutcomeStatusEnum];
+export type RelationshipActivationOutcomeStatusEnum =
+  (typeof RelationshipActivationOutcomeStatusEnum)[keyof typeof RelationshipActivationOutcomeStatusEnum];
 
 /**
- * Check if a given object implements the PaidRelationshipActivationOutcome interface.
+ * Check if a given object implements the RelationshipActivationOutcome interface.
  */
-export function instanceOfPaidRelationshipActivationOutcome(
+export function instanceOfRelationshipActivationOutcome(
   value: object,
-): value is PaidRelationshipActivationOutcome {
+): value is RelationshipActivationOutcome {
   if (
     !("activationIntentId" in value) ||
     value["activationIntentId"] === undefined
@@ -73,16 +73,16 @@ export function instanceOfPaidRelationshipActivationOutcome(
   return true;
 }
 
-export function PaidRelationshipActivationOutcomeFromJSON(
+export function RelationshipActivationOutcomeFromJSON(
   json: any,
-): PaidRelationshipActivationOutcome {
-  return PaidRelationshipActivationOutcomeFromJSONTyped(json, false);
+): RelationshipActivationOutcome {
+  return RelationshipActivationOutcomeFromJSONTyped(json, false);
 }
 
-export function PaidRelationshipActivationOutcomeFromJSONTyped(
+export function RelationshipActivationOutcomeFromJSONTyped(
   json: any,
   ignoreDiscriminator: boolean,
-): PaidRelationshipActivationOutcome {
+): RelationshipActivationOutcome {
   if (json == null) {
     return json;
   }
@@ -94,14 +94,14 @@ export function PaidRelationshipActivationOutcomeFromJSONTyped(
   };
 }
 
-export function PaidRelationshipActivationOutcomeToJSON(
+export function RelationshipActivationOutcomeToJSON(
   json: any,
-): PaidRelationshipActivationOutcome {
-  return PaidRelationshipActivationOutcomeToJSONTyped(json, false);
+): RelationshipActivationOutcome {
+  return RelationshipActivationOutcomeToJSONTyped(json, false);
 }
 
-export function PaidRelationshipActivationOutcomeToJSONTyped(
-  value?: PaidRelationshipActivationOutcome | null,
+export function RelationshipActivationOutcomeToJSONTyped(
+  value?: RelationshipActivationOutcome | null,
   ignoreDiscriminator: boolean = false,
 ): any {
   if (value == null) {

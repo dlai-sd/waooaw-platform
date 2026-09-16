@@ -101,7 +101,8 @@ public sealed class EmploymentControllerCoverageTests
         var payment = await fixture.Controller.CreateOnboardingPaymentOrderAsync(
             fixture.RelationshipId,
             1,
-            new PaymentProceedRequest("STARTER", 100, 10, "PROCEED"),
+            Guid.NewGuid(),
+            new CheckoutProceedRequest("CONFIRM_CHECKOUT_AND_RENEWAL_TERMS"),
             CancellationToken.None);
         var activation = await fixture.Controller.StartPaidActivationAsync(
             fixture.RelationshipId,

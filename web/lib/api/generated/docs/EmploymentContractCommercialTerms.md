@@ -11,6 +11,10 @@
 | `subscriptionTerms`          | string |
 | `adSpendTreatment`           | string |
 | `cancellationAndRefundTerms` | string |
+| `offeringId`                 | string |
+| `bundleTier`                 | string |
+| `quoteVersion`               | string |
+| `renewalConsequence`         | string |
 
 ## Example
 
@@ -26,6 +30,10 @@ const example = {
   subscriptionTerms: null,
   adSpendTreatment: null,
   cancellationAndRefundTerms: null,
+  offeringId: null,
+  bundleTier: null,
+  quoteVersion: null,
+  renewalConsequence: null,
 } satisfies EmploymentContractCommercialTerms;
 
 console.log(example);

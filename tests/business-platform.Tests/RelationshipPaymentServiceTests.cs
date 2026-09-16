@@ -1,5 +1,5 @@
-// Implements: work-contracts/WC-059-goal005-ae01-contract-payment-activation.md §WC059-04
-// constitutional_basis: C-023, C-038, C-043, C-059, C-088
+// Implements: architecture/reference/api-specs/business-platform.openapi.yaml §RelationshipCheckoutOutcome
+// Constitutional basis: C-023, C-038, C-043, C-059, C-088
 
 using Microsoft.EntityFrameworkCore;
 using Waooaw.BusinessPlatform.Infrastructure;
@@ -10,6 +10,87 @@ namespace Waooaw.BusinessPlatform.Tests;
 
 public sealed class RelationshipPaymentServiceTests
 {
+    [Fact]
+    public async Task ExactCheckoutReplayReturnsStoredOutcomeWithoutRepeatingOwnerMutation()
+    {
+        var context = await CreateContextAsync(includeAcceptance: true);
+        var idempotencyKey = Guid.NewGuid();
+
+        var first = await context.Service.CreateCheckoutAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId,
+            context.Contract.Version, idempotencyKey,
+            new CheckoutProceedRequest("CONFIRM_CHECKOUT_AND_RENEWAL_TERMS"),
+            FreshPortalAssurance(), context.CorrelationId, CancellationToken.None);
+        var replay = await context.Service.CreateCheckoutAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId,
+            context.Contract.Version, idempotencyKey,
+            new CheckoutProceedRequest("CONFIRM_CHECKOUT_AND_RENEWAL_TERMS"),
+            FreshPortalAssurance(), Guid.NewGuid(), CancellationToken.None);
+
+        Assert.Equal("FULLY_DISCOUNTED", first.OutcomeKind);
+        Assert.Equal(first.CheckoutIntentId, replay.CheckoutIntentId);
+        Assert.Equal(0, first.PayableInrPaise);
+        Assert.Equal(1, context.Gateway.CallCount);
+        Assert.Equal(1, context.Wbe.CheckoutCallCount);
+    }
+
+    [Fact]
+    public async Task DivergentIdempotencyReuseReturnsCommercialConflictWithoutCallingOwners()
+    {
+        var context = await CreateContextAsync(includeAcceptance: true);
+        var idempotencyKey = Guid.NewGuid();
+        await using (var db = context.Factory.CreateDbContext())
+        {
+            db.RelationshipCheckoutIntents.Add(new RelationshipCheckoutIntent
+            {
+                TenantId = context.TenantId,
+                RelationshipId = context.RelationshipId,
+                ContractId = context.Contract.ContractId,
+                ContractVersion = context.Contract.Version,
+                ContractHash = context.Contract.ContractHash,
+                IdempotencyKey = idempotencyKey,
+                MaterialRequestHash = new string('f', 64),
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var result = await context.Service.CreateCheckoutAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId,
+            context.Contract.Version, idempotencyKey,
+            new CheckoutProceedRequest("CONFIRM_CHECKOUT_AND_RENEWAL_TERMS"),
+            FreshPortalAssurance(), context.CorrelationId, CancellationToken.None);
+
+        Assert.Equal("COMMERCIAL_CONFLICT", result.OutcomeKind);
+        Assert.Equal("IDEMPOTENCY_CONFLICT", result.ReasonCode);
+        Assert.Equal(0, context.Gateway.CallCount);
+        Assert.Equal(0, context.Wbe.CheckoutCallCount);
+    }
+
+    [Fact]
+    public async Task CheckoutReadsReturnStoredOutcomeOnlyToActiveSameTenantParticipant()
+    {
+        var context = await CreateContextAsync(includeAcceptance: true);
+        var created = await context.Service.CreateCheckoutAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId,
+            context.Contract.Version, Guid.NewGuid(),
+            new CheckoutProceedRequest("CONFIRM_CHECKOUT_AND_RENEWAL_TERMS"),
+            FreshPortalAssurance(), context.CorrelationId, CancellationToken.None);
+
+        var current = await context.Service.GetCurrentCheckoutAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId,
+            context.Contract.Version, CancellationToken.None);
+        var exact = await context.Service.GetCheckoutIntentAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId,
+            created.CheckoutIntentId, CancellationToken.None);
+
+        Assert.Equal(created, current);
+        Assert.Equal(created, exact);
+        await Assert.ThrowsAsync<ConstitutionalActionDeniedException>(() =>
+            context.Service.GetCheckoutIntentAsync(
+                Guid.NewGuid(), context.RelationshipId, context.ParticipantId,
+                created.CheckoutIntentId, CancellationToken.None));
+    }
+
     // CCT-AE01-PAY-ORDER
     [Fact]
     public async Task AcceptedContractAndExplicitProceedCreateContractLinkedHostedOrder()
@@ -182,6 +263,27 @@ public sealed class RelationshipPaymentServiceTests
     private sealed class RecordingPaymentGateway(bool isBypass) : IRelationshipPaymentGateway
     {
         public ContractLinkedOnboardingOrderRequest? LastRequest { get; private set; }
+        public int CheckoutCallCount { get; private set; }
+
+        public Task<RelationshipCheckoutOutcome> CreateCheckoutAsync(
+            ContractLinkedCheckoutRequest request,
+            CancellationToken cancellationToken)
+        {
+            CheckoutCallCount++;
+            return Task.FromResult(new RelationshipCheckoutOutcome(
+                "FULLY_DISCOUNTED", request.CheckoutIntentId, request.RelationshipId,
+                request.ContractVersion, DateTimeOffset.UtcNow,
+                QuoteVersion: request.QuoteVersion,
+                PromotionVersion: "demo-100-v1",
+                ListPriceInrPaise: request.GrossAmountInrPaise,
+                DiscountInrPaise: request.GrossAmountInrPaise,
+                TaxInrPaise: request.GstAmountInrPaise,
+                PayableInrPaise: 0,
+                RenewalConsequence: "Renews at the accepted monthly price.",
+                CommercialOutcomeReference: $"zero-price:{request.CheckoutIntentId}",
+                CommercialEvidenceId: Guid.NewGuid(),
+                EvidenceState: "COMMITTED"));
+        }
 
         public Task<HostedOnboardingOrder> CreateOrderAsync(
             ContractLinkedOnboardingOrderRequest request,

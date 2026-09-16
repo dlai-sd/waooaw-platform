@@ -20,6 +20,13 @@ import {
   RelationshipWorkspaceCurrencyStateToJSON,
   RelationshipWorkspaceCurrencyStateToJSONTyped,
 } from "./RelationshipWorkspaceCurrencyState";
+import type { AgentEmploymentLifecycleProfileV1 } from "./AgentEmploymentLifecycleProfileV1";
+import {
+  AgentEmploymentLifecycleProfileV1FromJSON,
+  AgentEmploymentLifecycleProfileV1FromJSONTyped,
+  AgentEmploymentLifecycleProfileV1ToJSON,
+  AgentEmploymentLifecycleProfileV1ToJSONTyped,
+} from "./AgentEmploymentLifecycleProfileV1";
 import type { RelationshipContextV1 } from "./RelationshipContextV1";
 import {
   RelationshipContextV1FromJSON,
@@ -105,6 +112,12 @@ export interface RelationshipWorkspaceV1 {
   context: RelationshipContextV1;
   /**
    *
+   * @type {AgentEmploymentLifecycleProfileV1}
+   * @memberof RelationshipWorkspaceV1
+   */
+  lifecycleProfile: AgentEmploymentLifecycleProfileV1;
+  /**
+   *
    * @type {Array<RelationshipWorkspaceSectionV1>}
    * @memberof RelationshipWorkspaceV1
    */
@@ -135,6 +148,8 @@ export function instanceOfRelationshipWorkspaceV1(
   if (!("producedAt" in value) || value["producedAt"] === undefined)
     return false;
   if (!("context" in value) || value["context"] === undefined) return false;
+  if (!("lifecycleProfile" in value) || value["lifecycleProfile"] === undefined)
+    return false;
   if (!("sections" in value) || value["sections"] === undefined) return false;
   return true;
 }
@@ -167,6 +182,9 @@ export function RelationshipWorkspaceV1FromJSONTyped(
     authoritativeCursor: json["authoritativeCursor"],
     producedAt: new Date(json["producedAt"]),
     context: RelationshipContextV1FromJSON(json["context"]),
+    lifecycleProfile: AgentEmploymentLifecycleProfileV1FromJSON(
+      json["lifecycleProfile"],
+    ),
     sections: (json["sections"] as Array<any>).map(
       RelationshipWorkspaceSectionV1FromJSON,
     ),
@@ -202,6 +220,9 @@ export function RelationshipWorkspaceV1ToJSONTyped(
     authoritativeCursor: value["authoritativeCursor"],
     producedAt: value["producedAt"].toISOString(),
     context: RelationshipContextV1ToJSON(value["context"]),
+    lifecycleProfile: AgentEmploymentLifecycleProfileV1ToJSON(
+      value["lifecycleProfile"],
+    ),
     sections: (value["sections"] as Array<any>).map(
       RelationshipWorkspaceSectionV1ToJSON,
     ),
