@@ -11,6 +11,9 @@ export interface ProfessionalDiscoveryResult {
 }
 
 export interface ProfessionalDisclosure extends ProfessionalDiscoveryResult {
+  customerRouteSlug: string;
+  disclosureRevision: string;
+  termsVersion: string;
   skills: Array<{ skillId: string; displayName: string; applicableInTrial: boolean; activationCondition?: string | null }>;
   limitations: string[];
   authorityNeeds: string[];

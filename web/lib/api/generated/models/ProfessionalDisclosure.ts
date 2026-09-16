@@ -65,6 +65,24 @@ export interface ProfessionalDisclosure {
    * @type {string}
    * @memberof ProfessionalDisclosure
    */
+  customerRouteSlug: string;
+  /**
+   *
+   * @type {string}
+   * @memberof ProfessionalDisclosure
+   */
+  disclosureRevision: string;
+  /**
+   *
+   * @type {Date}
+   * @memberof ProfessionalDisclosure
+   */
+  termsVersion: Date;
+  /**
+   *
+   * @type {string}
+   * @memberof ProfessionalDisclosure
+   */
   displayName: string;
   /**
    *
@@ -135,6 +153,18 @@ export function instanceOfProfessionalDisclosure(
     value["projectionVersion"] === undefined
   )
     return false;
+  if (
+    !("customerRouteSlug" in value) ||
+    value["customerRouteSlug"] === undefined
+  )
+    return false;
+  if (
+    !("disclosureRevision" in value) ||
+    value["disclosureRevision"] === undefined
+  )
+    return false;
+  if (!("termsVersion" in value) || value["termsVersion"] === undefined)
+    return false;
   if (!("displayName" in value) || value["displayName"] === undefined)
     return false;
   if (!("suitability" in value) || value["suitability"] === undefined)
@@ -172,6 +202,9 @@ export function ProfessionalDisclosureFromJSONTyped(
   return {
     professionalType: json["professionalType"],
     projectionVersion: json["projectionVersion"],
+    customerRouteSlug: json["customerRouteSlug"],
+    disclosureRevision: json["disclosureRevision"],
+    termsVersion: new Date(json["termsVersion"]),
     displayName: json["displayName"],
     suitability: json["suitability"],
     skills: (json["skills"] as Array<any>).map(
@@ -204,6 +237,9 @@ export function ProfessionalDisclosureToJSONTyped(
   return {
     professionalType: value["professionalType"],
     projectionVersion: value["projectionVersion"],
+    customerRouteSlug: value["customerRouteSlug"],
+    disclosureRevision: value["disclosureRevision"],
+    termsVersion: value["termsVersion"].toISOString().substring(0, 10),
     displayName: value["displayName"],
     suitability: value["suitability"],
     skills: (value["skills"] as Array<any>).map(

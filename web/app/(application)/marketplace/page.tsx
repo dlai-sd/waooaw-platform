@@ -3,6 +3,7 @@
 
 import { ArrowRight, BadgeCheck, Search } from 'lucide-react';
 import Link from 'next/link';
+import { AcquisitionContinuation } from '@/components/acquisition/AcquisitionContinuation';
 import { StateView } from '@/components/system/StateView';
 import { getRequestI18n } from '@/lib/i18n-server';
 import { browseMarketplaceProfessionals } from '@/lib/api/professionals';
@@ -10,7 +11,16 @@ import { portalMessages } from '@/lib/portal-i18n';
 import { getServerAccessToken } from '@/lib/server-auth';
 
 interface MarketplacePageProps {
-  searchParams: Promise<{ cursor?: string; professionalType?: string; q?: string }>;
+  searchParams: Promise<{
+    cursor?: string;
+    professionalType?: string;
+    q?: string;
+    version?: string;
+    intent?: string;
+    disclosureRevision?: string;
+    termsVersion?: string;
+    idempotencyKey?: string;
+  }>;
 }
 
 export default async function MarketplacePage({ searchParams }: MarketplacePageProps) {
@@ -19,6 +29,19 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
   if (!accessToken) {
     return <StateView actionHref="/login" actionLabel="Sign in" kind="error" title="Marketplace unavailable" description="Sign in again to browse available professionals." />;
   }
+
+  const continuation = filters.professionalType && filters.version
+    && (filters.intent === 'trial' || filters.intent === 'hire')
+    && filters.disclosureRevision && filters.termsVersion && filters.idempotencyKey
+    ? <AcquisitionContinuation
+        disclosureRevision={filters.disclosureRevision}
+        idempotencyKey={filters.idempotencyKey}
+        intent={filters.intent}
+        professionalType={filters.professionalType}
+        professionalVersion={filters.version}
+        termsVersion={filters.termsVersion}
+      />
+    : null;
 
   try {
     const page = await browseMarketplaceProfessionals(accessToken, filters);
@@ -29,6 +52,7 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
           <h1 id="marketplace-title">{portalMessages[locale].marketplace}</h1>
           <p>Eligibility, price, and available next steps come directly from the Business Platform.</p>
         </header>
+        {continuation}
         <form className="portal-filter" role="search">
           <label htmlFor="marketplace-search">Search</label>
           <div><Search aria-hidden="true" size={18} /><input id="marketplace-search" name="q" defaultValue={filters.q} placeholder="Name or capability" /></div>

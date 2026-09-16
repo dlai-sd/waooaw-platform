@@ -2,6 +2,7 @@
 /* eslint-disable */
 export * from "./AcceptEmploymentContractRequest";
 export * from "./AcceptSkillPayloadV1";
+export * from "./AcquisitionContinuation";
 export * from "./ActionCardV1";
 export * from "./ActionDefinition";
 export * from "./ActivateRelationshipHandoffRequest";
@@ -29,6 +30,7 @@ export * from "./ChangePacingPayloadV1";
 export * from "./ConfirmBaselinePayloadV1";
 export * from "./ConfirmIdentityVerificationRequest";
 export * from "./ConfirmScopeBoundaryPayloadV1";
+export * from "./ContinueAcquisitionRequest";
 export * from "./ConversationActorType";
 export * from "./ConversationCardBaseV1";
 export * from "./ConversationCardCommandV1";

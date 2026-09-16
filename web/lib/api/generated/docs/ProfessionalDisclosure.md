@@ -2,20 +2,23 @@
 
 ## Properties
 
-| Name                | Type                                                                       |
-| ------------------- | -------------------------------------------------------------------------- |
-| `professionalType`  | string                                                                     |
-| `projectionVersion` | string                                                                     |
-| `displayName`       | string                                                                     |
-| `suitability`       | Array&lt;string&gt;                                                        |
-| `skills`            | [Array&lt;ProfessionalSkillDisclosure&gt;](ProfessionalSkillDisclosure.md) |
-| `limitations`       | Array&lt;string&gt;                                                        |
-| `authorityNeeds`    | Array&lt;string&gt;                                                        |
-| `customerRights`    | Array&lt;string&gt;                                                        |
-| `trial`             | [ProfessionalTrialDisclosure](ProfessionalTrialDisclosure.md)              |
-| `evidencePosture`   | string                                                                     |
-| `indicativePrice`   | [IndicativePriceDisclosure](IndicativePriceDisclosure.md)                  |
-| `eligibility`       | [ProfessionalEligibility](ProfessionalEligibility.md)                      |
+| Name                 | Type                                                                       |
+| -------------------- | -------------------------------------------------------------------------- |
+| `professionalType`   | string                                                                     |
+| `projectionVersion`  | string                                                                     |
+| `customerRouteSlug`  | string                                                                     |
+| `disclosureRevision` | string                                                                     |
+| `termsVersion`       | Date                                                                       |
+| `displayName`        | string                                                                     |
+| `suitability`        | Array&lt;string&gt;                                                        |
+| `skills`             | [Array&lt;ProfessionalSkillDisclosure&gt;](ProfessionalSkillDisclosure.md) |
+| `limitations`        | Array&lt;string&gt;                                                        |
+| `authorityNeeds`     | Array&lt;string&gt;                                                        |
+| `customerRights`     | Array&lt;string&gt;                                                        |
+| `trial`              | [ProfessionalTrialDisclosure](ProfessionalTrialDisclosure.md)              |
+| `evidencePosture`    | string                                                                     |
+| `indicativePrice`    | [IndicativePriceDisclosure](IndicativePriceDisclosure.md)                  |
+| `eligibility`        | [ProfessionalEligibility](ProfessionalEligibility.md)                      |
 
 ## Example
 
@@ -26,6 +29,9 @@ import type { ProfessionalDisclosure } from "";
 const example = {
   professionalType: null,
   projectionVersion: null,
+  customerRouteSlug: null,
+  disclosureRevision: null,
+  termsVersion: null,
   displayName: null,
   suitability: null,
   skills: null,

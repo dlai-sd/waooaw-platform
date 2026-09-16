@@ -673,6 +673,36 @@ paths:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/OfferableProfessionalVersion" } }
 
+  /api/v1/acquisition/continuations:
+    post:
+      tags: [Professionals]
+      summary: Continue an explicitly accepted Trial or Hire journey
+      description: |
+        Validates the exact active professional release, disclosure revision and terms version,
+        resolves the active admission server-side, records the accepted acquisition context in
+        constitutional evidence and idempotently creates the initial relationship. This operation
+        does not start a trial, accept a contract, initiate payment or activate live work.
+      operationId: continueAcquisition
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - name: X-Correlation-ID
+          in: header
+          required: false
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ContinueAcquisitionRequest" }
+      responses:
+        "200": { description: Existing identical continuation replayed, content: { application/json: { schema: { $ref: "#/components/schemas/AcquisitionContinuation" } } } }
+        "201": { description: Initial relationship created, content: { application/json: { schema: { $ref: "#/components/schemas/AcquisitionContinuation" } } } }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { description: Customer membership or constitutional authorization denied }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "503": { description: Constitutional evidence or relationship owner unavailable }
+
   /api/v1/professionals/marketplace:
     get:
       tags: [Professionals]
@@ -4357,10 +4387,13 @@ components:
     ProfessionalDisclosure:
       type: object
       additionalProperties: false
-      required: [professionalType, projectionVersion, displayName, suitability, skills, limitations, authorityNeeds, customerRights, trial, evidencePosture, indicativePrice, eligibility]
+      required: [professionalType, projectionVersion, customerRouteSlug, disclosureRevision, termsVersion, displayName, suitability, skills, limitations, authorityNeeds, customerRights, trial, evidencePosture, indicativePrice, eligibility]
       properties:
         professionalType: { type: string, maxLength: 100 }
         projectionVersion: { type: string, pattern: '^\d+\.\d+\.\d+$' }
+        customerRouteSlug: { type: string, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' }
+        disclosureRevision: { type: string, pattern: '^\d+\.\d+\.\d+$' }
+        termsVersion: { type: string, format: date }
         displayName: { type: string, maxLength: 200 }
         suitability:
           type: array
@@ -4396,6 +4429,29 @@ components:
         displayName: { type: string, maxLength: 200 }
         applicableInTrial: { type: boolean }
         activationCondition: { type: string, maxLength: 500 }
+
+    ContinueAcquisitionRequest:
+      type: object
+      additionalProperties: false
+      required: [professionalType, professionalVersion, intent, disclosureRevision, termsVersion, acceptance]
+      properties:
+        professionalType: { type: string, minLength: 1, maxLength: 64 }
+        professionalVersion: { type: string, pattern: '^\d+\.\d+\.\d+$' }
+        intent: { type: string, enum: [TRIAL, HIRE] }
+        disclosureRevision: { type: string, pattern: '^\d+\.\d+\.\d+$' }
+        termsVersion: { type: string, format: date }
+        acceptance: { type: string, const: ACCEPT_DISCLOSURE }
+
+    AcquisitionContinuation:
+      type: object
+      additionalProperties: false
+      required: [relationshipId, intent, status, resumePath, replayed]
+      properties:
+        relationshipId: { type: string, format: uuid }
+        intent: { type: string, enum: [TRIAL, HIRE] }
+        status: { type: string, enum: [READY] }
+        resumePath: { type: string, pattern: '^/relationships/[0-9a-f-]+$' }
+        replayed: { type: boolean }
 
     ProfessionalTrialDisclosure:
       type: object

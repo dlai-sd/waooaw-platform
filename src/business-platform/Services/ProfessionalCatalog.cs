@@ -38,7 +38,11 @@ public sealed record ProfessionalDisclosure(
     ProfessionalTrialDisclosure Trial,
     string EvidencePosture,
     IndicativePriceDisclosure IndicativePrice,
-    ProfessionalEligibility Eligibility);
+    ProfessionalEligibility Eligibility)
+{
+    public string DisclosureRevision => ProjectionVersion;
+    public string TermsVersion => "2026-07-18";
+}
 
 public sealed record ProfessionalDiscoveryResult(
     string ProfessionalType,

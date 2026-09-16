@@ -7,6 +7,7 @@ All URIs are relative to _http://localhost:5001_
 | [**activateAgentAdmission**](ProfessionalsApi.md#activateagentadmission)                     | **POST** /api/v1/professionals/{type}/versions/{version}/admission/activations                                         | Activate an approved and currently ready professional version       |
 | [**approveAgentAdmission**](ProfessionalsApi.md#approveagentadmission)                       | **POST** /api/v1/professionals/{type}/versions/{version}/admission/approvals                                           | Independently approve an exact admission revision                   |
 | [**browseMarketplaceProfessionals**](ProfessionalsApi.md#browsemarketplaceprofessionals)     | **GET** /api/v1/professionals/marketplace                                                                              | Browse the customer portal marketplace                              |
+| [**continueAcquisition**](ProfessionalsApi.md#continueacquisitionoperation)                  | **POST** /api/v1/acquisition/continuations                                                                             | Continue an explicitly accepted Trial or Hire journey               |
 | [**createAgentAdmissionDraft**](ProfessionalsApi.md#createagentadmissiondraftoperation)      | **POST** /api/v1/professionals/{type}/versions/{version}/admission/drafts                                              | Create or replay an admission draft                                 |
 | [**discoverProfessionals**](ProfessionalsApi.md#discoverprofessionals)                       | **GET** /api/v1/professionals                                                                                          | Discover suitable professionals for a business outcome              |
 | [**getAgentAdmissionFindings**](ProfessionalsApi.md#getagentadmissionfindings)               | **GET** /api/v1/professionals/{type}/versions/{version}/admission/drafts/{draftId}/validations/{validationId}/findings | Read safe deterministic admission findings                          |
@@ -257,6 +258,87 @@ example().catch(console.error);
 | ----------- | -------------------------------- | ---------------- |
 | **200**     | Portal marketplace page          | -                |
 | **401**     | JWT missing, expired, or invalid | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## continueAcquisition
+
+> AcquisitionContinuation continueAcquisition(idempotencyKey, continueAcquisitionRequest, xCorrelationID)
+
+Continue an explicitly accepted Trial or Hire journey
+
+Validates the exact active professional release, disclosure revision and terms version, resolves the active admission server-side, records the accepted acquisition context in constitutional evidence and idempotently creates the initial relationship. This operation does not start a trial, accept a contract, initiate payment or activate live work.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ProfessionalsApi,
+} from '';
+import type { ContinueAcquisitionOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new ProfessionalsApi(config);
+
+  const body = {
+    // string | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts.
+    idempotencyKey: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // ContinueAcquisitionRequest
+    continueAcquisitionRequest: ...,
+    // string (optional)
+    xCorrelationID: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies ContinueAcquisitionOperationRequest;
+
+  try {
+    const data = await api.continueAcquisition(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name                           | Type                                                        | Description                                                                              | Notes                                |
+| ------------------------------ | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------ |
+| **idempotencyKey**             | `string`                                                    | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts. | [Defaults to `undefined`]            |
+| **continueAcquisitionRequest** | [ContinueAcquisitionRequest](ContinueAcquisitionRequest.md) |                                                                                          |                                      |
+| **xCorrelationID**             | `string`                                                    |                                                                                          | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+[**AcquisitionContinuation**](AcquisitionContinuation.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                | Response headers |
+| ----------- | ---------------------------------------------------------- | ---------------- |
+| **200**     | Existing identical continuation replayed                   | -                |
+| **201**     | Initial relationship created                               | -                |
+| **400**     | Request body failed validation                             | -                |
+| **401**     | JWT missing, expired, or invalid                           | -                |
+| **403**     | Customer membership or constitutional authorization denied | -                |
+| **409**     | Operation not valid in current state                       | -                |
+| **503**     | Constitutional evidence or relationship owner unavailable  | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 

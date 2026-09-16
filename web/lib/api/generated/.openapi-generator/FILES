@@ -10,6 +10,7 @@ apis/VoiceContributionsApi.ts
 apis/index.ts
 docs/AcceptEmploymentContractRequest.md
 docs/AcceptSkillPayloadV1.md
+docs/AcquisitionContinuation.md
 docs/ActionCardV1.md
 docs/ActionDefinition.md
 docs/ActivateRelationshipHandoffRequest.md
@@ -39,6 +40,7 @@ docs/ConfigurationApi.md
 docs/ConfirmBaselinePayloadV1.md
 docs/ConfirmIdentityVerificationRequest.md
 docs/ConfirmScopeBoundaryPayloadV1.md
+docs/ContinueAcquisitionRequest.md
 docs/ConversationActorType.md
 docs/ConversationApi.md
 docs/ConversationCardBaseV1.md
@@ -292,6 +294,7 @@ docs/WAOOAWAgentAdmissionContractSkillManifestInnerToolsInner.md
 index.ts
 models/AcceptEmploymentContractRequest.ts
 models/AcceptSkillPayloadV1.ts
+models/AcquisitionContinuation.ts
 models/ActionCardV1.ts
 models/ActionDefinition.ts
 models/ActivateRelationshipHandoffRequest.ts
@@ -319,6 +322,7 @@ models/ChangePacingPayloadV1.ts
 models/ConfirmBaselinePayloadV1.ts
 models/ConfirmIdentityVerificationRequest.ts
 models/ConfirmScopeBoundaryPayloadV1.ts
+models/ContinueAcquisitionRequest.ts
 models/ConversationActorType.ts
 models/ConversationCardBaseV1.ts
 models/ConversationCardCommandV1.ts
