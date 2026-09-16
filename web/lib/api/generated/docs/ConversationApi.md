@@ -2,14 +2,16 @@
 
 All URIs are relative to _http://localhost:5001_
 
-| Method                                                                                  | HTTP request                                                                                       | Description                                                  |
-| --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| [**cancelConversationExecution**](ConversationApi.md#cancelconversationexecution)       | **DELETE** /api/v1/employment/relationships/{relationshipId}/conversation/executions/{executionId} | Request cancellation of one professional response execution  |
-| [**listConversationMessages**](ConversationApi.md#listconversationmessages)             | **GET** /api/v1/employment/relationships/{relationshipId}/conversation/messages                    | Read the authoritative durable conversation timeline         |
-| [**retryConversationMessage**](ConversationApi.md#retryconversationmessage)             | **POST** /api/v1/employment/relationships/{relationshipId}/conversation/messages/{messageId}/retry | Reconcile and retry one failed or unresolved contribution    |
-| [**sendConversationMessage**](ConversationApi.md#sendconversationmessage)               | **POST** /api/v1/employment/relationships/{relationshipId}/conversation/messages                   | Send or replay one customer text contribution                |
-| [**streamConversation**](ConversationApi.md#streamconversation)                         | **GET** /api/v1/employment/relationships/{relationshipId}/conversation/stream                      | Stream canonical conversation state as Server-Sent Events    |
-| [**updateConversationReadPosition**](ConversationApi.md#updateconversationreadposition) | **PUT** /api/v1/employment/relationships/{relationshipId}/conversation/read-position               | Advance the authenticated participant\&#39;s unread position |
+| Method                                                                                  | HTTP request                                                                                       | Description                                                             |
+| --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| [**cancelConversationExecution**](ConversationApi.md#cancelconversationexecution)       | **DELETE** /api/v1/employment/relationships/{relationshipId}/conversation/executions/{executionId} | Request cancellation of one professional response execution             |
+| [**listConversationMessages**](ConversationApi.md#listconversationmessages)             | **GET** /api/v1/employment/relationships/{relationshipId}/conversation/messages                    | Read the authoritative durable conversation timeline                    |
+| [**listPortalInteractionMessages**](ConversationApi.md#listportalinteractionmessages)   | **GET** /api/v1/customer-portal/interactions/portal/messages                                       | Read the authenticated participant\&#39;s durable WAOOAW Guide timeline |
+| [**retryConversationMessage**](ConversationApi.md#retryconversationmessage)             | **POST** /api/v1/employment/relationships/{relationshipId}/conversation/messages/{messageId}/retry | Reconcile and retry one failed or unresolved contribution               |
+| [**sendConversationMessage**](ConversationApi.md#sendconversationmessage)               | **POST** /api/v1/employment/relationships/{relationshipId}/conversation/messages                   | Send or replay one customer text contribution                           |
+| [**sendPortalInteractionMessage**](ConversationApi.md#sendportalinteractionmessage)     | **POST** /api/v1/customer-portal/interactions/portal/messages                                      | Send one durable contribution to the WAOOAW Guide                       |
+| [**streamConversation**](ConversationApi.md#streamconversation)                         | **GET** /api/v1/employment/relationships/{relationshipId}/conversation/stream                      | Stream canonical conversation state as Server-Sent Events               |
+| [**updateConversationReadPosition**](ConversationApi.md#updateconversationreadposition) | **PUT** /api/v1/employment/relationships/{relationshipId}/conversation/read-position               | Advance the authenticated participant\&#39;s unread position            |
 
 ## cancelConversationExecution
 
@@ -175,6 +177,79 @@ example().catch(console.error);
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
+## listPortalInteractionMessages
+
+> PortalInteractionTimelinePageV1 listPortalInteractionMessages(cursor, limit)
+
+Read the authenticated participant\&#39;s durable WAOOAW Guide timeline
+
+Returns only the PORTAL-scoped Guide timeline for the tenant and participant derived from the validated session. The Guide may explain or navigate but cannot issue a relationship command or impersonate an employed professional.
+
+### Example
+
+```ts
+import { Configuration, ConversationApi } from "";
+import type { ListPortalInteractionMessagesRequest } from "";
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new ConversationApi(config);
+
+  const body = {
+    // string | Opaque relationship-bound cursor for older timeline pages; mutually exclusive with afterCursor (optional)
+    cursor: cursor_example,
+    // number (optional)
+    limit: 56,
+  } satisfies ListPortalInteractionMessagesRequest;
+
+  try {
+    const data = await api.listPortalInteractionMessages(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name       | Type     | Description                                                                                    | Notes                                |
+| ---------- | -------- | ---------------------------------------------------------------------------------------------- | ------------------------------------ |
+| **cursor** | `string` | Opaque relationship-bound cursor for older timeline pages; mutually exclusive with afterCursor | [Optional] [Defaults to `undefined`] |
+| **limit**  | `number` |                                                                                                | [Optional] [Defaults to `50`]        |
+
+### Return type
+
+[**PortalInteractionTimelinePageV1**](PortalInteractionTimelinePageV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                                                         | Response headers |
+| ----------- | --------------------------------------------------------------------------------------------------- | ---------------- |
+| **200**     | Authoritative portal interaction timeline                                                           | -                |
+| **400**     | Conversation request or schema version is malformed or unsupported                                  | -                |
+| **401**     | Authenticated customer session is missing, invalid, or expired                                      | -                |
+| **410**     | Cursor can no longer be resumed; fetch a fresh authoritative timeline snapshot                      | -                |
+| **503**     | Professional execution or constitutional dependency is unavailable and the outcome remains explicit | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
 ## retryConversationMessage
 
 > ConversationSubmissionV1 retryConversationMessage(relationshipId, messageId, idempotencyKey)
@@ -337,6 +412,83 @@ example().catch(console.error);
 | **423**     | Relationship execution is stopped; ordinary reconnect, retry, or cancellation cannot release it                      | -                     |
 | **429**     | Conversation command is rate limited without losing its idempotency identity                                         | \* Retry-After - <br> |
 | **503**     | Professional execution or constitutional dependency is unavailable and the outcome remains explicit                  | -                     |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## sendPortalInteractionMessage
+
+> PortalInteractionSubmissionV1 sendPortalInteractionMessage(idempotencyKey, sendPortalInteractionMessageRequestV1)
+
+Send one durable contribution to the WAOOAW Guide
+
+Persists a participant-bound PORTAL contribution and a bounded Guide response. Returned capabilities are navigation-only; relationship commands are unsupported.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  ConversationApi,
+} from '';
+import type { SendPortalInteractionMessageRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new ConversationApi(config);
+
+  const body = {
+    // string | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts.
+    idempotencyKey: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // SendPortalInteractionMessageRequestV1
+    sendPortalInteractionMessageRequestV1: ...,
+  } satisfies SendPortalInteractionMessageRequest;
+
+  try {
+    const data = await api.sendPortalInteractionMessage(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name                                      | Type                                                                              | Description                                                                              | Notes                     |
+| ----------------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------- |
+| **idempotencyKey**                        | `string`                                                                          | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts. | [Defaults to `undefined`] |
+| **sendPortalInteractionMessageRequestV1** | [SendPortalInteractionMessageRequestV1](SendPortalInteractionMessageRequestV1.md) |                                                                                          |                           |
+
+### Return type
+
+[**PortalInteractionSubmissionV1**](PortalInteractionSubmissionV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                                                         | Response headers |
+| ----------- | --------------------------------------------------------------------------------------------------- | ---------------- |
+| **202**     | Portal contribution and Guide response accepted                                                     | -                |
+| **200**     | Prior identical outcome replayed                                                                    | -                |
+| **400**     | Conversation request or schema version is malformed or unsupported                                  | -                |
+| **401**     | Authenticated customer session is missing, invalid, or expired                                      | -                |
+| **409**     | Idempotency identity conflicts or authoritative state must be reconciled                            | -                |
+| **503**     | Professional execution or constitutional dependency is unavailable and the outcome remains explicit | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 

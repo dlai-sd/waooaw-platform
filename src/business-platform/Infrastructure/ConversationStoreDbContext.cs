@@ -95,6 +95,42 @@ public sealed class ConversationEvent
     public DateTimeOffset OccurredAt { get; init; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class PortalInteractionContext
+{
+    public Guid ContextId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid ParticipantId { get; init; }
+    public long NextMessageSequence { get; set; } = 1;
+    public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class PortalInteractionMessage
+{
+    public Guid MessageId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid ContextId { get; init; }
+    public Guid ParticipantId { get; init; }
+    public long Sequence { get; init; }
+    public string Actor { get; init; } = string.Empty;
+    public string ContentJson { get; init; } = "[]";
+    public string CapabilitiesJson { get; init; } = "[]";
+    public string CurrentSurface { get; init; } = string.Empty;
+    public Guid? ClientMessageId { get; init; }
+    public DateTimeOffset AcceptedAt { get; init; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class PortalInteractionIdempotencyOutcome
+{
+    public Guid IdempotencyId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid ParticipantId { get; init; }
+    public Guid IdempotencyKey { get; init; }
+    public string RequestHash { get; init; } = string.Empty;
+    public string ResponseJson { get; init; } = "{}";
+    public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class ConversationStoreDbContext : DbContext
 {
     public ConversationStoreDbContext(DbContextOptions<ConversationStoreDbContext> options)
@@ -106,6 +142,9 @@ public sealed class ConversationStoreDbContext : DbContext
     public DbSet<ConversationIdempotencyOutcome> IdempotencyOutcomes => Set<ConversationIdempotencyOutcome>();
     public DbSet<ConversationReadPosition> ReadPositions => Set<ConversationReadPosition>();
     public DbSet<ConversationEvent> Events => Set<ConversationEvent>();
+    public DbSet<PortalInteractionContext> PortalInteractionContexts => Set<PortalInteractionContext>();
+    public DbSet<PortalInteractionMessage> PortalInteractionMessages => Set<PortalInteractionMessage>();
+    public DbSet<PortalInteractionIdempotencyOutcome> PortalInteractionIdempotencyOutcomes => Set<PortalInteractionIdempotencyOutcome>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -115,6 +154,9 @@ public sealed class ConversationStoreDbContext : DbContext
         ConfigureIdempotency(modelBuilder.Entity<ConversationIdempotencyOutcome>());
         ConfigureReadPosition(modelBuilder.Entity<ConversationReadPosition>());
         ConfigureEvent(modelBuilder.Entity<ConversationEvent>());
+        ConfigurePortalContext(modelBuilder.Entity<PortalInteractionContext>());
+        ConfigurePortalMessage(modelBuilder.Entity<PortalInteractionMessage>());
+        ConfigurePortalIdempotency(modelBuilder.Entity<PortalInteractionIdempotencyOutcome>());
     }
 
     private static void ConfigureConversation(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<ConversationProjection> entity)
@@ -230,5 +272,51 @@ public sealed class ConversationStoreDbContext : DbContext
         entity.Property(value => value.ExecutionId).HasColumnName("execution_id");
         entity.Property(value => value.DataJson).HasColumnName("data_json").HasColumnType("jsonb");
         entity.Property(value => value.OccurredAt).HasColumnName("occurred_at");
+    }
+
+    private static void ConfigurePortalContext(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<PortalInteractionContext> entity)
+    {
+        entity.ToTable("portal_interaction_contexts", "business");
+        entity.HasKey(value => value.ContextId);
+        entity.HasIndex(value => new { value.TenantId, value.ParticipantId }).IsUnique();
+        entity.Property(value => value.ContextId).HasColumnName("context_id");
+        entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+        entity.Property(value => value.ParticipantId).HasColumnName("participant_id");
+        entity.Property(value => value.NextMessageSequence).HasColumnName("next_message_sequence").IsConcurrencyToken();
+        entity.Property(value => value.CreatedAt).HasColumnName("created_at");
+        entity.Property(value => value.UpdatedAt).HasColumnName("updated_at");
+    }
+
+    private static void ConfigurePortalMessage(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<PortalInteractionMessage> entity)
+    {
+        entity.ToTable("portal_interaction_messages", "business");
+        entity.HasKey(value => value.MessageId);
+        entity.HasIndex(value => new { value.TenantId, value.ParticipantId, value.Sequence }).IsUnique();
+        entity.HasIndex(value => new { value.TenantId, value.ParticipantId, value.ClientMessageId }).IsUnique();
+        entity.Property(value => value.MessageId).HasColumnName("message_id");
+        entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+        entity.Property(value => value.ContextId).HasColumnName("context_id");
+        entity.Property(value => value.ParticipantId).HasColumnName("participant_id");
+        entity.Property(value => value.Sequence).HasColumnName("sequence");
+        entity.Property(value => value.Actor).HasColumnName("actor");
+        entity.Property(value => value.ContentJson).HasColumnName("content_json").HasColumnType("jsonb");
+        entity.Property(value => value.CapabilitiesJson).HasColumnName("capabilities_json").HasColumnType("jsonb");
+        entity.Property(value => value.CurrentSurface).HasColumnName("current_surface");
+        entity.Property(value => value.ClientMessageId).HasColumnName("client_message_id");
+        entity.Property(value => value.AcceptedAt).HasColumnName("accepted_at");
+    }
+
+    private static void ConfigurePortalIdempotency(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<PortalInteractionIdempotencyOutcome> entity)
+    {
+        entity.ToTable("portal_interaction_idempotency_outcomes", "business");
+        entity.HasKey(value => value.IdempotencyId);
+        entity.HasIndex(value => new { value.TenantId, value.ParticipantId, value.IdempotencyKey }).IsUnique();
+        entity.Property(value => value.IdempotencyId).HasColumnName("idempotency_id");
+        entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+        entity.Property(value => value.ParticipantId).HasColumnName("participant_id");
+        entity.Property(value => value.IdempotencyKey).HasColumnName("idempotency_key");
+        entity.Property(value => value.RequestHash).HasColumnName("request_hash");
+        entity.Property(value => value.ResponseJson).HasColumnName("response_json").HasColumnType("jsonb");
+        entity.Property(value => value.CreatedAt).HasColumnName("created_at");
     }
 }

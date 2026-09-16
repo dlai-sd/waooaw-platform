@@ -149,6 +149,11 @@ docs/PAASParameters.md
 docs/PauseRelationshipPayloadV1.md
 docs/PhaseBundleSubscription.md
 docs/PlanCardV1.md
+docs/PortalInteractionMessageV1.md
+docs/PortalInteractionSubmissionV1.md
+docs/PortalInteractionSurfaceV1.md
+docs/PortalInteractionTimelinePageV1.md
+docs/PortalNavigationCapabilityV1.md
 docs/PrepareRelationshipHandoffRequest.md
 docs/ProblemDetail.md
 docs/ProfessionalDisclosure.md
@@ -245,6 +250,7 @@ docs/ResumeRelationshipPayloadV1.md
 docs/ReviewCadence.md
 docs/SelectSkillPayloadV1.md
 docs/SendConversationMessageRequestV1.md
+docs/SendPortalInteractionMessageRequestV1.md
 docs/SendVoiceContributionRequestV1.md
 docs/StartEmailVerificationRequest.md
 docs/StartIdentityAccountLinkRequest.md
@@ -427,6 +433,11 @@ models/PAASParameters.ts
 models/PauseRelationshipPayloadV1.ts
 models/PhaseBundleSubscription.ts
 models/PlanCardV1.ts
+models/PortalInteractionMessageV1.ts
+models/PortalInteractionSubmissionV1.ts
+models/PortalInteractionSurfaceV1.ts
+models/PortalInteractionTimelinePageV1.ts
+models/PortalNavigationCapabilityV1.ts
 models/PrepareRelationshipHandoffRequest.ts
 models/ProblemDetail.ts
 models/ProfessionalDisclosure.ts
@@ -521,6 +532,7 @@ models/ResumeRelationshipPayloadV1.ts
 models/ReviewCadence.ts
 models/SelectSkillPayloadV1.ts
 models/SendConversationMessageRequestV1.ts
+models/SendPortalInteractionMessageRequestV1.ts
 models/SendVoiceContributionRequestV1.ts
 models/StartEmailVerificationRequest.ts
 models/StartIdentityAccountLinkRequest.ts

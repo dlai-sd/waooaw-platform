@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AccountSwitchCommand, SignOutCommand } from '@/components/auth/SignOutCommand';
+import { ConversationContextAction, PersistentConversationDock } from '@/components/conversation/PersistentConversationDock';
 import type { IdentitySession } from '@/lib/api/generated/models/IdentitySession';
 import type { Messages } from '@/lib/i18n';
 import { portalMessages } from '@/lib/portal-i18n';
@@ -91,10 +92,11 @@ export function ProtectedAppShell({ children, identitySession, locale = 'en', me
   );
 
   return (
+    <>
     <AppShell
       bottomNavigation={bottomNavigation}
       headerLeading={variant === 'customer' ? <button aria-controls="customer-navigation" aria-expanded={navigationExpanded} aria-label={navigationExpanded ? 'Collapse navigation' : 'Expand navigation'} className="icon-command navigation-toggle" onClick={toggleNavigation} ref={navigationToggle} type="button">{navigationExpanded ? <ChevronLeft aria-hidden="true" size={20} /> : <ChevronRight aria-hidden="true" size={20} />}</button> : null}
-      headerStatus={<>{variant === 'founder' ? <span className="role-label"><ShieldCheck aria-hidden="true" size={17} /> {messages.founder}</span> : null}{identitySession ? <span className="portal-assurance"><ShieldCheck aria-hidden="true" size={16} />{portal.verified} · {identitySession.assuranceLevel}</span> : null}{accountDrawer}</>}
+      headerStatus={<>{variant === 'founder' ? <span className="role-label"><ShieldCheck aria-hidden="true" size={17} /> {messages.founder}</span> : null}{variant === 'customer' && registeredCustomer ? <ConversationContextAction /> : null}{identitySession ? <span className="portal-assurance"><ShieldCheck aria-hidden="true" size={16} />{portal.verified} · {identitySession.assuranceLevel}</span> : null}{accountDrawer}</>}
       messages={messages}
       sideNavigation={sideNavigation}
       stopControl={<RouteAwareEmergencyStop stopContext={stopContext} />}
@@ -102,5 +104,7 @@ export function ProtectedAppShell({ children, identitySession, locale = 'en', me
     >
       {children}
     </AppShell>
+    {variant === 'customer' && registeredCustomer ? <PersistentConversationDock locale={locale} /> : null}
+    </>
   );
 }

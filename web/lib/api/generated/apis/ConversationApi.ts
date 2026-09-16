@@ -20,7 +20,10 @@ import type {
   ConversationStreamEventV1,
   ConversationSubmissionV1,
   ConversationTimelinePageV1,
+  PortalInteractionSubmissionV1,
+  PortalInteractionTimelinePageV1,
   SendConversationMessageRequestV1,
+  SendPortalInteractionMessageRequestV1,
   UpdateConversationReadPositionRequestV1,
 } from "../models/index";
 import {
@@ -36,8 +39,14 @@ import {
   ConversationSubmissionV1ToJSON,
   ConversationTimelinePageV1FromJSON,
   ConversationTimelinePageV1ToJSON,
+  PortalInteractionSubmissionV1FromJSON,
+  PortalInteractionSubmissionV1ToJSON,
+  PortalInteractionTimelinePageV1FromJSON,
+  PortalInteractionTimelinePageV1ToJSON,
   SendConversationMessageRequestV1FromJSON,
   SendConversationMessageRequestV1ToJSON,
+  SendPortalInteractionMessageRequestV1FromJSON,
+  SendPortalInteractionMessageRequestV1ToJSON,
   UpdateConversationReadPositionRequestV1FromJSON,
   UpdateConversationReadPositionRequestV1ToJSON,
 } from "../models/index";
@@ -55,6 +64,11 @@ export interface ListConversationMessagesRequest {
   limit?: number;
 }
 
+export interface ListPortalInteractionMessagesRequest {
+  cursor?: string;
+  limit?: number;
+}
+
 export interface RetryConversationMessageRequest {
   relationshipId: string;
   messageId: string;
@@ -65,6 +79,11 @@ export interface SendConversationMessageRequest {
   relationshipId: string;
   idempotencyKey: string;
   sendConversationMessageRequestV1: SendConversationMessageRequestV1;
+}
+
+export interface SendPortalInteractionMessageRequest {
+  idempotencyKey: string;
+  sendPortalInteractionMessageRequestV1: SendPortalInteractionMessageRequestV1;
 }
 
 export interface StreamConversationRequest {
@@ -247,6 +266,67 @@ export class ConversationApi extends runtime.BaseAPI {
   }
 
   /**
+   * Returns only the PORTAL-scoped Guide timeline for the tenant and participant derived from the validated session. The Guide may explain or navigate but cannot issue a relationship command or impersonate an employed professional.
+   * Read the authenticated participant\'s durable WAOOAW Guide timeline
+   */
+  async listPortalInteractionMessagesRaw(
+    requestParameters: ListPortalInteractionMessagesRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<PortalInteractionTimelinePageV1>> {
+    const queryParameters: any = {};
+
+    if (requestParameters["cursor"] != null) {
+      queryParameters["cursor"] = requestParameters["cursor"];
+    }
+
+    if (requestParameters["limit"] != null) {
+      queryParameters["limit"] = requestParameters["limit"];
+    }
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("BearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/customer-portal/interactions/portal/messages`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      PortalInteractionTimelinePageV1FromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * Returns only the PORTAL-scoped Guide timeline for the tenant and participant derived from the validated session. The Guide may explain or navigate but cannot issue a relationship command or impersonate an employed professional.
+   * Read the authenticated participant\'s durable WAOOAW Guide timeline
+   */
+  async listPortalInteractionMessages(
+    requestParameters: ListPortalInteractionMessagesRequest = {},
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<PortalInteractionTimelinePageV1> {
+    const response = await this.listPortalInteractionMessagesRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
    * Requires the original Idempotency-Key. BP verifies the stored canonical payload hash and retries the same logical message; it never mints a duplicate message. Completed outcomes replay. Changed content must be sent as a new message with a new key.
    * Reconcile and retry one failed or unresolved contribution
    */
@@ -417,6 +497,84 @@ export class ConversationApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<ConversationSubmissionV1> {
     const response = await this.sendConversationMessageRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
+   * Persists a participant-bound PORTAL contribution and a bounded Guide response. Returned capabilities are navigation-only; relationship commands are unsupported.
+   * Send one durable contribution to the WAOOAW Guide
+   */
+  async sendPortalInteractionMessageRaw(
+    requestParameters: SendPortalInteractionMessageRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<PortalInteractionSubmissionV1>> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling sendPortalInteractionMessage().',
+      );
+    }
+
+    if (requestParameters["sendPortalInteractionMessageRequestV1"] == null) {
+      throw new runtime.RequiredError(
+        "sendPortalInteractionMessageRequestV1",
+        'Required parameter "sendPortalInteractionMessageRequestV1" was null or undefined when calling sendPortalInteractionMessage().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(
+        requestParameters["idempotencyKey"],
+      );
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("BearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/customer-portal/interactions/portal/messages`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "POST",
+        headers: headerParameters,
+        query: queryParameters,
+        body: SendPortalInteractionMessageRequestV1ToJSON(
+          requestParameters["sendPortalInteractionMessageRequestV1"],
+        ),
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      PortalInteractionSubmissionV1FromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * Persists a participant-bound PORTAL contribution and a bounded Guide response. Returned capabilities are navigation-only; relationship commands are unsupported.
+   * Send one durable contribution to the WAOOAW Guide
+   */
+  async sendPortalInteractionMessage(
+    requestParameters: SendPortalInteractionMessageRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<PortalInteractionSubmissionV1> {
+    const response = await this.sendPortalInteractionMessageRaw(
       requestParameters,
       initOverrides,
     );

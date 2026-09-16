@@ -2841,6 +2841,58 @@ paths:
 
   # ─── Conversation Core (WC-034 F3) ────────────────────────────────────────
 
+  /api/v1/customer-portal/interactions/portal/messages:
+    get:
+      tags: [Conversation]
+      summary: Read the authenticated participant's durable WAOOAW Guide timeline
+      description: |
+        Returns only the PORTAL-scoped Guide timeline for the tenant and participant derived
+        from the validated session. The Guide may explain or navigate but cannot issue a
+        relationship command or impersonate an employed professional.
+      operationId: listPortalInteractionMessages
+      parameters:
+        - $ref: "#/components/parameters/ConversationCursor"
+        - $ref: "#/components/parameters/ConversationPageLimit"
+      responses:
+        "200":
+          description: Authoritative portal interaction timeline
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalInteractionTimelinePageV1" }
+        "400": { $ref: "#/components/responses/ConversationInvalidRequest" }
+        "401": { $ref: "#/components/responses/ConversationUnauthorized" }
+        "410": { $ref: "#/components/responses/ConversationCursorExpired" }
+        "503": { $ref: "#/components/responses/ConversationUnavailable" }
+    post:
+      tags: [Conversation]
+      summary: Send one durable contribution to the WAOOAW Guide
+      description: |
+        Persists a participant-bound PORTAL contribution and a bounded Guide response.
+        Returned capabilities are navigation-only; relationship commands are unsupported.
+      operationId: sendPortalInteractionMessage
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SendPortalInteractionMessageRequestV1" }
+      responses:
+        "202":
+          description: Portal contribution and Guide response accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalInteractionSubmissionV1" }
+        "200":
+          description: Prior identical outcome replayed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalInteractionSubmissionV1" }
+        "400": { $ref: "#/components/responses/ConversationInvalidRequest" }
+        "401": { $ref: "#/components/responses/ConversationUnauthorized" }
+        "409": { $ref: "#/components/responses/ConversationConflict" }
+        "503": { $ref: "#/components/responses/ConversationUnavailable" }
+
   /api/v1/employment/relationships/{relationshipId}/conversation/messages:
     get:
       tags: [Conversation]
@@ -6945,6 +6997,84 @@ components:
         blockType: { type: string, const: TEXT }
         text: { type: string, minLength: 1, maxLength: 32000 }
         language: { type: string, minLength: 2, maxLength: 35 }
+
+    PortalInteractionSurfaceV1:
+      type: string
+      enum: [MARKETPLACE, MY_AGENTS, ALERTS, RELATIONSHIP, PERFORMANCE, BILLING, SETTINGS, PROFILE]
+
+    PortalNavigationCapabilityV1:
+      type: object
+      additionalProperties: false
+      required: [capabilityType, label, destination]
+      properties:
+        capabilityType: { type: string, const: NAVIGATE }
+        label: { type: string, minLength: 1, maxLength: 80 }
+        destination: { type: string, pattern: "^/", maxLength: 512 }
+
+    PortalInteractionMessageV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, messageId, sequence, actor, content, capabilities, currentSurface, acceptedAt]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationSchemaVersion" }
+        messageId: { type: string, format: uuid }
+        sequence: { type: integer, format: int64, minimum: 1 }
+        actor: { type: string, enum: [CUSTOMER, GUIDE] }
+        content:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/ConversationTextBlockV1" }
+        capabilities:
+          type: array
+          items: { $ref: "#/components/schemas/PortalNavigationCapabilityV1" }
+        currentSurface: { $ref: "#/components/schemas/PortalInteractionSurfaceV1" }
+        clientMessageId: { type: string, format: uuid }
+        acceptedAt: { type: string, format: date-time }
+
+    PortalInteractionTimelinePageV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, scope, contextId, items, authoritativeCursor, hasMore, serverTime]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationSchemaVersion" }
+        scope: { type: string, const: PORTAL }
+        contextId: { type: string, format: uuid }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/PortalInteractionMessageV1" }
+        authoritativeCursor: { type: string }
+        nextCursor: { type: string }
+        hasMore: { type: boolean }
+        serverTime: { type: string, format: date-time }
+
+    SendPortalInteractionMessageRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, clientMessageId, content, locale, currentSurface]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationSchemaVersion" }
+        clientMessageId: { type: string, format: uuid }
+        content:
+          type: array
+          minItems: 1
+          maxItems: 1
+          items: { $ref: "#/components/schemas/ConversationTextBlockV1" }
+        locale: { type: string, minLength: 2, maxLength: 35 }
+        currentSurface: { $ref: "#/components/schemas/PortalInteractionSurfaceV1" }
+        expectedCursor: { type: string, minLength: 16, maxLength: 2048 }
+
+    PortalInteractionSubmissionV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, scope, outcome, customerMessage, guideMessage, authoritativeCursor, replayed]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationSchemaVersion" }
+        scope: { type: string, const: PORTAL }
+        outcome: { type: string, enum: [ACCEPTED, REPLAYED] }
+        customerMessage: { $ref: "#/components/schemas/PortalInteractionMessageV1" }
+        guideMessage: { $ref: "#/components/schemas/PortalInteractionMessageV1" }
+        authoritativeCursor: { type: string }
+        replayed: { type: boolean }
 
     ConversationCardCommandV1:
       type: object

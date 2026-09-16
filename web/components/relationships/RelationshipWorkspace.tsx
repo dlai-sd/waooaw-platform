@@ -1,12 +1,12 @@
 import type { ContractJourneyProjection, EmploymentRelationship, RelationshipEvaluationProjection, RelationshipTimelineEntry } from '@/lib/api/relationships';
 import type { RelationshipWorkspaceViews } from '@/lib/api/relationship-workspace';
-import { ConversationExperience } from '@/components/conversation/ConversationExperience';
 import { RelationshipEvaluation } from './RelationshipEvaluation';
 import { ContractJourney } from './ContractJourney';
 import { EvidenceWindow } from './EvidenceWindow';
 import { OnboardForm } from './OnboardForm';
 import { SkillDecisionControls } from './SkillDecisionControls';
 import type { EmploymentRelationshipSummaryV1 } from '@/lib/api/generated/models/EmploymentRelationshipSummaryV1';
+import { OpenConversationCommand } from '@/components/conversation/OpenConversationCommand';
 
 interface RelationshipWorkspaceProps {
   relationship: EmploymentRelationship;
@@ -71,15 +71,16 @@ export function RelationshipWorkspace({ relationship, relationships = [], timeli
           <li data-state={views.operations.eligibilityState.toLowerCase()}><span>5</span><div><strong>Operations</strong><small>{stateLabel(views.operations.eligibilityState)}</small></div></li>
         </ol>
         <nav className="relationship-context-nav" aria-label="Relationship context">
-          {['Conversation', 'Needs your attention', 'Plan', 'Work', 'Results', 'Usage & budget', 'Rights & control', 'Evidence'].map((label) => (
+          {['Needs your attention', 'Plan', 'Work', 'Results', 'Usage & budget', 'Rights & control', 'Evidence'].map((label) => (
             <a key={label} href={`#${label.toLowerCase().replaceAll(' ', '-').replaceAll('&', 'and')}`}>{label}</a>
           ))}
+          <OpenConversationCommand label="Conversation" />
         </nav>
       </section>
 
       <section className="lifecycle-details" aria-label="Lifecycle actions">
           <section><h3>Onboard</h3><OnboardForm relationshipId={relationship.relationshipId} summary={views.configuration.items.find((item) => item.stepKey === 'ONBOARD')?.summary} /></section>
-          <section><h3>Induct</h3><p>Continue the agent-led induction in the conversation below. The confirmed context remains server-owned and shared across supported channels.</p><a className="secondary-link" href="#conversation">Continue induction</a></section>
+          <section><h3>Induct</h3><p>Continue the agent-led induction in the persistent professional conversation. The confirmed context remains server-owned and shared across supported channels.</p><OpenConversationCommand label="Continue induction" /></section>
           <section><h3>Goals</h3>{views.goals.activeGoals.length ? <ul className="decision-list">{views.goals.activeGoals.map((goal) => <li key={goal.goalId}><span><strong>{goal.skillLabel}</strong><small>{goal.measure} · {goal.frequency}</small></span><b>{stateLabel(goal.verificationStatus)}</b></li>)}</ul> : <p>No active goals are available.</p>}<p className="truth-note">Goal verification cannot be changed here because no canonical verification command exists.</p></section>
           <section><h3>Operations eligibility</h3><p><strong>{stateLabel(views.operations.eligibilityState)}</strong></p>{views.operations.blockedReasons?.length ? <ul>{views.operations.blockedReasons.map((reason) => <li key={reason}>{reason}</li>)}</ul> : <p>No server-reported blockers.</p>}</section>
       </section>
@@ -104,13 +105,6 @@ export function RelationshipWorkspace({ relationship, relationships = [], timeli
         <section className="workspace-family" id="results"><p className="section-label">Results</p><h2>Business outcomes</h2><span className="currency-state">{stateLabel(views.results.currencyState)}</span><p>{views.results.outcomes.length ? `${views.results.outcomes.length} evidenced outcomes` : 'No supported business outcome is available yet.'}</p></section>
         <section className="workspace-family" id="usage-and-budget"><p className="section-label">Usage &amp; budget</p><h2>Commercial truth</h2><span className="currency-state">{stateLabel(views.usageBudget.currencyState)}</span><dl><div><dt>Actual</dt><dd>{views.usageBudget.actualAmount}</dd></div><div><dt>Forecast</dt><dd>{views.usageBudget.forecastRange}</dd></div></dl></section>
         <section className="workspace-family" id="rights-and-control"><p className="section-label">Rights &amp; control</p><h2>Scope, authority and lifecycle</h2><span className="currency-state">{stateLabel(views.rightsControls.currencyState)}</span><p>{stateLabel(views.rightsControls.lifecycleState)} · Emergency Stop {views.rightsControls.emergencyStopReachable ? 'available' : 'unavailable'}</p></section>
-      </div>
-
-      <div id="conversation">
-        <ConversationExperience
-          relationshipId={relationship.relationshipId}
-          relationshipStopped={relationship.state === 'STOPPED_EMERGENCY'}
-        />
       </div>
 
       <div id="evidence"><EvidenceWindow relationshipId={relationship.relationshipId} evidence={views.evidence} /></div>

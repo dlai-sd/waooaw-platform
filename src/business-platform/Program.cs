@@ -268,6 +268,7 @@ builder.Services.Configure<ConversationCursorOptions>(
 builder.Services.AddSingleton<ConversationCursorCodec>();
 builder.Services.AddSingleton<IConversationExecutionGateway, UnconfiguredConversationExecutionGateway>();
 builder.Services.AddScoped<ConversationService>();
+builder.Services.AddScoped<PortalInteractionService>();
 
 // ── Voice Contributions — WC-062 / GOAL-005 F6 ─────────────────────────────
 var voiceConn = builder.Configuration.GetConnectionString("VoiceContribution")

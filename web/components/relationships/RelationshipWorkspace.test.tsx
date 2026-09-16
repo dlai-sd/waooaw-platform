@@ -143,14 +143,12 @@ describe('RelationshipWorkspace', () => {
     expect(screen.getByText('deferred')).toBeVisible();
     expect(screen.getByText('TRIAL_STARTED')).toBeVisible();
     expect(screen.getByText('Participant observation unresolved')).toBeVisible();
-    expect(await screen.findByText('No messages yet. Start with a clear outcome for your professional.')).toBeVisible();
   });
 
   it('distinguishes an active relationship as live', async () => {
     render(<RelationshipWorkspace relationship={{ ...relationship, state: 'ACTIVE' }} timeline={timeline} views={views} evaluation={evaluation} />);
 
     expect(screen.getByText('Live · ACTIVE')).toBeVisible();
-    expect(await screen.findByText('No messages yet. Start with a clear outcome for your professional.')).toBeVisible();
   });
 
   it('switches experts by relationship without mutating either relationship', () => {
@@ -197,15 +195,6 @@ describe('RelationshipWorkspace', () => {
         payload: { commandKind: 'ACCEPT_SKILL', configurationId: 'skill-1', skillId: 'MARKET_RESEARCH', skillVersion: '1.0.0' },
       },
     });
-  });
-
-  it('projects authoritative relationship Stop into the conversation controls', async () => {
-    render(<RelationshipWorkspace relationship={{ ...relationship, state: 'STOPPED_EMERGENCY' }} timeline={timeline} views={views} evaluation={evaluation} />);
-
-    expect(await screen.findByText('stopped', { exact: true })).toBeVisible();
-    expect(screen.getByLabelText('Message your professional')).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
-    expect(screen.queryByText('live', { exact: true })).not.toBeInTheDocument();
   });
 
   it('CCT-AE01-DARK-01 shows exact terms and symmetric unselected contract decisions', async () => {

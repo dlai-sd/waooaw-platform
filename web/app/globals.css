@@ -313,6 +313,25 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 .navigation-toggle { flex: 0 0 auto; }
 .portal-assurance { min-height: 32px; display: inline-flex; align-items: center; gap: .4rem; padding-inline: .65rem; border: 1px solid color-mix(in srgb, var(--green) 45%, var(--line)); border-radius: 999px; color: var(--green); font-size: .75rem; font-weight: 800; white-space: nowrap; }
 .main-content { min-width: 0; }
+.conversation-launcher { position: fixed; z-index: 45; inset-inline-end: 1rem; inset-block-end: 1rem; min-height: 48px; display: flex; align-items: center; gap: .65rem; padding: .45rem .7rem; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); box-shadow: 0 8px 28px rgb(18 35 50 / 16%); cursor: pointer; }
+.context-conversation-action { min-height: 38px; display: inline-flex; align-items: center; gap: .4rem; padding: .4rem .65rem; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); font-weight: 700; cursor: pointer; }
+.conversation-launcher span { display: grid; text-align: start; line-height: 1.15; }
+.conversation-launcher small { color: var(--muted); }
+.persistent-conversation { position: fixed; z-index: 60; inset-block: 72px 0; inset-inline-end: 0; width: min(31rem, 42vw); padding: 1rem; overflow-y: auto; border-inline-start: 1px solid var(--line); background: var(--surface); box-shadow: -10px 0 28px rgb(18 35 50 / 14%); transform: translateX(105%); transition: transform .18s ease; }
+.persistent-conversation[data-open="true"] { transform: translateX(0); }
+.conversation-close { position: sticky; z-index: 2; inset-block-start: 0; margin-inline-start: auto; }
+.persistent-conversation .conversation-experience { width: 100%; margin-block-start: 0; }
+.portal-guide { display: grid; gap: 1rem; }
+.portal-guide header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
+.portal-guide header .section-label { grid-column: 1 / -1; }
+.portal-guide header span, .scope-disclosure { color: var(--muted); font-size: .8rem; }
+.portal-guide-timeline { min-height: 16rem; max-height: calc(100vh - 25rem); display: grid; align-content: start; gap: .75rem; overflow-y: auto; }
+.guide-message { padding: .75rem; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); overflow-wrap: anywhere; }
+.guide-message-customer { margin-inline-start: 2rem; border-color: color-mix(in srgb, var(--blue) 35%, var(--line)); }
+.portal-guide form { display: grid; gap: .5rem; }
+.portal-guide textarea { width: 100%; resize: vertical; padding: .75rem; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: var(--surface); font: inherit; }
+.portal-guide .send-command { justify-self: end; }
+.conversation-scrim { display: none; }
 .app-shell-public .main-content, .app-shell-auth .main-content { grid-column: 1 / -1; }
 .public-home { min-height: 0; }
 .public-intro { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(270px, 32%); }
@@ -564,6 +583,10 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
   .public-intro { grid-template-columns: minmax(0, 1fr); }
   .public-hero h1 { font-size: 3.5rem; }
   .main-content { overflow-wrap: anywhere; }
+  .persistent-conversation { inset-block-start: 0; width: min(100%, 34rem); }
+  .conversation-scrim { position: fixed; z-index: 55; inset: 0; display: block; border: 0; background: rgb(18 35 50 / 42%); }
+  .conversation-launcher { inset-block-end: 5.25rem; max-width: calc(100vw - 2rem); }
+  .context-conversation-action span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
   .command-row { align-items: stretch; flex-direction: column; }
   .auth-view h1 { font-size: 1.82rem; }
   .content-page h1, .state-view h1 { font-size: 2.6rem; }
