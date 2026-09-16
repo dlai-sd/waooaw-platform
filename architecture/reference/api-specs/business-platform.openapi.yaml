@@ -6116,7 +6116,7 @@ components:
         displayName: { type: string, minLength: 1, maxLength: 200 }
         disclosurePath:
           type: string
-          pattern: "^/professionals/[a-z0-9]+(?:-[a-z0-9]+)*$"
+          pattern: "^/marketplace/[a-z0-9]+(?:-[a-z0-9]+)*$"
           minLength: 16
           maxLength: 240
         availableIntents:

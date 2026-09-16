@@ -1,7 +1,7 @@
-// Implements: work-contracts/WC-084-auth-readiness-and-customer-portal-plan.md §8.6 Marketplace
+// Implements: work-contracts/WC-097-marketplace-acquisition-experience.md A01-A03
 // Constitutional basis: C-049 (Honest Limitation), C-059 (Implementation Traceability)
 
-import { ArrowRight, BadgeCheck, Search } from 'lucide-react';
+import { ArrowRight, BadgeCheck, BarChart3, Clock3, Search, ShieldCheck, Sparkles, Target } from 'lucide-react';
 import Link from 'next/link';
 import { AcquisitionContinuation } from '@/components/acquisition/AcquisitionContinuation';
 import { StateView } from '@/components/system/StateView';
@@ -50,7 +50,7 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
         <header className="portal-heading">
           <p className="eyebrow">Find a professional</p>
           <h1 id="marketplace-title">{portalMessages[locale].marketplace}</h1>
-          <p>Eligibility, price, and available next steps come directly from the Business Platform.</p>
+          <p>Choose a professional whose skills and approach fit the outcome you want.</p>
         </header>
         {continuation}
         <form className="portal-filter" role="search">
@@ -63,21 +63,26 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
         ) : (
           <ul className="marketplace-grid">
             {page.items.map((professional) => (
-              <li key={`${professional.professionalType}:${professional.version}`}>
-                <div className="portal-item-heading"><h2>{professional.displayName}</h2><span className="status-label">{professional.offerabilityState.replaceAll('_', ' ')}</span></div>
-                <p>{professional.professionalType}</p>
-                <p>{professional.eligibility.explanation}</p>
-                {professional.suitability?.length ? <ul className="compact-list">{professional.suitability.map((item) => <li key={item}><BadgeCheck aria-hidden="true" size={16} />{item}</li>)}</ul> : null}
-                {professional.indicativePrice ? <p className="price-disclosure"><strong>{new Intl.NumberFormat(locale, { style: 'currency', currency: professional.indicativePrice.currency }).format(professional.indicativePrice.amountInrPaise / 100)}</strong> / {professional.indicativePrice.cadence.toLowerCase()}<small>{professional.indicativePrice.qualification}</small></p> : <p>Price is not available.</p>}
-                {professional.trialTerms ? <p><strong>Trial:</strong> {professional.trialTerms}</p> : null}
-                <footer>
-                  <span>{professional.nextAction.replaceAll('_', ' ')}</span>
+              <li className="marketplace-offer" key={`${professional.professionalType}:${professional.version}`}>
+                <header className="marketplace-offer-heading">
+                  <span className="offer-mark"><Sparkles aria-hidden="true" size={22} /></span>
+                  <div><p className="eyebrow">Growth professional</p><h2>{professional.displayName}</h2></div>
+                  <span className="offer-available"><span aria-hidden="true" />Available now</span>
+                </header>
+                <p className="offer-promise">A focused digital marketing partner for local businesses ready to grow with clarity.</p>
+                {professional.suitability?.length ? <ul className="offer-outcomes">{professional.suitability.map((item, index) => <li key={item}>{index === 0 ? <Target aria-hidden="true" size={19} /> : <BarChart3 aria-hidden="true" size={19} />}<span>{item}</span></li>)}</ul> : null}
+                <div className="offer-trust-line"><span><ShieldCheck aria-hidden="true" size={17} />Evidence-backed plans</span>{professional.trialTerms ? <span><Clock3 aria-hidden="true" size={17} />Trial available</span> : null}<span><BadgeCheck aria-hidden="true" size={17} />You stay in control</span></div>
+                <div className="offer-commercial">
+                  {professional.indicativePrice ? <p><span>From</span><strong>{new Intl.NumberFormat(locale, { style: 'currency', currency: professional.indicativePrice.currency }).format(professional.indicativePrice.amountInrPaise / 100)}</strong><span>/ {professional.indicativePrice.cadence.toLowerCase()}</span></p> : <p>Price available during review</p>}
+                  {professional.trialTerms ? <p><strong>{professional.trialTerms}</strong></p> : null}
+                </div>
+                <footer className="offer-actions">
                   <div className="command-row">
                     {professional.availableIntents.has('TRIAL') ? <Link className="secondary-link" href={`${professional.disclosurePath}?${new URLSearchParams({ professionalType: professional.professionalType, version: professional.version, intent: 'trial' })}`}>Start trial <ArrowRight aria-hidden="true" size={18} /></Link> : null}
                     {professional.availableIntents.has('HIRE') ? <Link className="primary-link" href={`${professional.disclosurePath}?${new URLSearchParams({ professionalType: professional.professionalType, version: professional.version, intent: 'hire' })}`}>Hire <ArrowRight aria-hidden="true" size={18} /></Link> : null}
                   </div>
                 </footer>
-                {professional.availableIntents.size > 0 ? <p className="portal-action-note">Review the scope, limits, rights, and commercial terms before you continue.</p> : null}
+                <p className="offer-footnote">Review what is included before you decide. Nothing starts until you confirm.</p>
               </li>
             ))}
           </ul>

@@ -89,7 +89,7 @@ public sealed class ProfessionalsControllerTests
         var json = System.Text.Json.JsonSerializer.SerializeToElement(ok.Value);
         var listing = json.GetProperty("items").EnumerateArray().Should().ContainSingle().Subject;
         listing.GetProperty("professionalType").GetString().Should().Be("DIGITAL_MARKETING_LOCAL_SERVICE");
-        listing.GetProperty("disclosurePath").GetString().Should().Be("/professionals/digital-marketing");
+        listing.GetProperty("disclosurePath").GetString().Should().Be("/marketplace/digital-marketing");
         listing.GetProperty("availableIntents").EnumerateArray()
             .Select(value => value.GetString()).Should().Equal("TRIAL", "HIRE");
         listing.GetProperty("offerabilityState").GetString().Should().Be("OFFERABLE");

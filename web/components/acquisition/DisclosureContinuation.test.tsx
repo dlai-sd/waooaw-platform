@@ -25,6 +25,8 @@ describe('DisclosureContinuation', () => {
 
     const continueButton = screen.getByRole('button', { name: 'Continue to trial' });
     expect(continueButton).toBeDisabled();
+    expect(screen.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms');
+    expect(screen.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy');
     expect(screen.queryByRole('button', { name: 'Continue to hire' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(continueButton);
