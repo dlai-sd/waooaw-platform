@@ -25,17 +25,22 @@ test.beforeEach(async ({ context }, testInfo) => {
 
 test('WC084-PORTAL-01: customer can navigate server-owned portal summaries', async ({ page }) => {
   await page.goto('/home');
-  await expect(page.getByRole('heading', { name: 'My Agents' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'My WaooaW Experts' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Mira' })).toBeVisible();
   await expectIntegrity(page);
 
   await page.goto('/marketplace');
+  const marketplaceOffer = page.locator('.marketplace-offer').filter({ has: page.getByRole('heading', { name: 'Digital Marketing Professional' }) }).first();
+  await expect(marketplaceOffer.getByRole('heading', { name: 'Digital Marketing Professional' })).toBeVisible();
+  await expect(marketplaceOffer.getByText('14-day trial; no paid API calls or external actions.')).toBeVisible();
+  await marketplaceOffer.getByRole('link', { name: 'Start trial' }).click();
+  await expect(page).toHaveURL(/\/marketplace\/digital-marketing\?.*intent=trial/);
   await expect(page.getByRole('heading', { name: 'Digital Marketing Professional' })).toBeVisible();
-  await expect(page.getByText('₹1,180.00')).toBeVisible();
-  await page.getByRole('link', { name: 'Review trial disclosure' }).click();
-  await expect(page).toHaveURL(/\/professionals\/digital-marketing$/);
-  await expect(page.getByRole('heading', { name: 'Digital Marketing Professional' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Start the approved registration path' })).toBeVisible();
+  await expect(page.getByText('No paid tools')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Continue to trial' })).toBeDisabled();
+  await page.getByRole('checkbox').check();
+  await page.getByRole('button', { name: 'Continue to trial' }).click();
+  await expect(page).toHaveURL(/\/register\?returnTo=.*intent%3Dtrial/);
   await expectIntegrity(page);
 
   await page.goto('/alerts');

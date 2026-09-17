@@ -1,6 +1,6 @@
 # WC-095 Exact Implementation Scope Audit
 
-Implementation commit: `44159a9cbfe66b3b72ec7970ad264ad08a64dd9d`
+Qualified source head: `c2528e3ef5417a704eeb1f48fa90024b6026e177`
 
 Status meanings:
 
@@ -19,11 +19,11 @@ Status meanings:
 | WC095-02 API contracts | PARTIAL | Canonical BP/PR OpenAPI and byte-stable generated Portal client | Private WBE readiness/reconciliation contract and complete induction/review command families are not OpenAPI-complete. |
 | WC095-03 Data contract | PARTIAL | Append-only mandate/review tables, constraints, indexes and forced RLS; PostgreSQL tests | Retention, erasure/legal-hold, rollback and dedicated migration-36 adversarial proof are absent. |
 | WC095-04 Security contract | PARTIAL | Workload JWT, mandate validation, exact reconciliation tuple, raw-body HMAC and browser non-authority tests | Full adversarial suite, CSP/origin acceptance, abuse, redaction and cross-context matrix are absent. |
-| WC095-05A Payment/no-account delivery | PARTIAL | Hosted Checkout launch, bodyless reconciliation, deterministic WBE outcomes, zero-price path and 27 WBE tests | Browser acceptance and the complete SIM-095-01/02/20/22/24-28 matrix are not all proven. |
+| WC095-05A Payment/no-account delivery | PARTIAL | Hosted Checkout launch, bodyless reconciliation, deterministic WBE outcomes, 114 focused WBE checks, and desktop/mobile payable and zero-price Hire journeys | Provider-backed and complete cross-service SIM-095-01/02/20/22/24-28 acceptance is not all proven. |
 | WC095-05B Razorpay account binding | BLOCKED_EXTERNAL_INPUT | Environment-only configuration boundary; no secret committed | Merchant account, credentials, enabled methods, webhook round trip, rotation evidence and authorized test-mode use are required. |
-| WC095-06 BP lifecycle orchestration | PARTIAL | Shared readiness, immutable mandate resolution, checkout reconciliation and immutable review ledger; 746 BP tests | Complete relock/cancellation/reassessment orchestration and runtime promotion input are absent. |
+| WC095-06 BP lifecycle orchestration | PARTIAL | Shared readiness, immutable mandate resolution, checkout reconciliation and immutable review ledger; full 749-test BP gate plus 77 focused trial/Hire checks | Complete relock/cancellation/reassessment orchestration and runtime promotion input are absent. |
 | WC095-07 PR/adapter integration | BLOCKED_GOVERNED_INPUT | BP-to-PR mandate command and PR pre-parse mandate validation pass 80 tests | Exact admitted runtime binding and existing-image protocol/schema compatibility are not supplied; cancel path remains fail-closed. |
-| WC095-08 Customer Portal | PASS | Generated-client-backed review control plus payable/discounted checkout; 12 Jest checks, TypeScript and 11 desktop/360px/200-percent-text/Axe/browser-state checks | Provider-backed positive payment remains correctly excluded with WC095-05B. |
+| WC095-08 Customer Portal | PASS | Generated-client-backed review control, Trial disclosure/consent continuation and payable/discounted Hire checkout; 14 focused Jest and 7 focused trial/Hire browser checks plus the 11-check WC-095 matrix | Provider-backed positive payment remains correctly excluded with WC095-05B. |
 | WC095-09 Monitoring/review | PASS | Seven dimensions, append-only response/alert ledger, exact-version actor-bound decisions, CE Evidence First, command reconciliation and Operations relock; 5 focused BP checks | Deployment telemetry acceptance is outside repository-local qualification. |
 | WC095-10 Integrated qualification | PARTIAL | Docker BP/PR/WBE/Web/schema/static/build checks and author review at one implementation commit | Components 01-09 and all 28 simulations are not complete; exact-image, browser, security/privacy and rollback qualification remain. |
 
@@ -31,9 +31,9 @@ Status meanings:
 
 | Simulation | Status | Evidence or exact missing proof |
 |---|---|---|
-| SIM-095-01 | PARTIAL | Zero-price satisfaction, no provider order and exactly-once activation are tested; the complete customer journey is not browser-qualified. |
-| SIM-095-02 | PARTIAL | Promotion environment and validity checks exist; full expired/reused/Production customer-flow acceptance is absent. |
-| SIM-095-03 | PARTIAL | Relationship/instance continuity foundations exist; trial-to-live authority and allowance isolation are not tested end to end here. |
+| SIM-095-01 | PARTIAL | Desktop/mobile browser checks cover exact contract acceptance and INR 0/no-method activation; WBE proves no provider order and exactly-once PostgreSQL activation. A single cross-service browser-to-database journey is absent. |
+| SIM-095-02 | PARTIAL | Focused promotion tests cover Demo validity, caps, reuse and expiry; full Production customer-flow acceptance is absent. |
+| SIM-095-03 | PARTIAL | BP/WBE focused checks cover trial ownership, expiry/conversion and relationship binding; trial-to-live authority and allowance isolation are not proven in one integrated journey. |
 | SIM-095-04 | PARTIAL | Tenant-bound stores, RLS and mandate validation exist; prompt/cache/Stop/outcome crossover is not fully exercised. |
 | SIM-095-05 | PARTIAL | Relationship switching and instance binding exist; review, work and Stop isolation are not integrated at one test boundary. |
 | SIM-095-06 | PARTIAL | Conversation and context revisions persist; interrupted cross-channel induction is not requalified. |
