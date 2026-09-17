@@ -1,6 +1,6 @@
 # WC-095 Repository-Local Completion Evidence
 
-Qualified source head: `c2528e3ef5417a704eeb1f48fa90024b6026e177`
+Qualified source head: `09c6ad90c3f4629ec67f003f752e46302c810304`
 
 Branch: `ib/095/employment-lifecycle-completion`
 
@@ -46,7 +46,8 @@ admitted runtime binding. These coordinates were not inferred or inserted as fix
 
 | Boundary | Command/check | Result |
 |---|---|---|
-| Business Platform | Full assembly plus post-audit review filter | PASS - 748/749 full run; remaining private-listener test 1/1 with declared dependencies; review slice 5/5 |
+| Business Platform | Exact CI restore, warning-as-error build, full assembly and coverage gate | PASS - 792/792; 91.49% line, 80.01% branch (4499/5623) |
+| BP review and payment precheck repair | Focused service filters | PASS - review 24/24; payment 32/32 |
 | BP trial and Hire workflow | Trial ownership, admission/controller, contract acceptance, payment, authenticated activation, evaluation, expiry and conversion filters | PASS - 77/77 |
 | Mandate replay repair | Resolver and conversation focused filter | PASS - 24/24 |
 | BP PostgreSQL | Migration 33 and 37 Testcontainers filter | PASS - 2/2 |
@@ -55,7 +56,7 @@ admitted runtime binding. These coordinates were not inferred or inserted as fix
 | WBE PostgreSQL | `scripts/test-wc059-postgres.sh` | PASS - 3/3 |
 | WBE promotion and workload identity | Demo discount lifecycle and authenticated internal activation | PASS - 31/31 |
 | Portal trial and Hire components | Relationship workspace and professional comparison Jest suites | PASS - 14/14 |
-| TypeScript | `tsc --noEmit` | PASS |
+| TypeScript and Web unit precheck | Exact CI type check, zero-warning lint, Jest and global coverage gate | PASS - 62/62 suites, 375/375 tests; 90.48% statements, 80.28% branches, 90.14% functions, 93.62% lines |
 | Browser acceptance | WC-095 Playwright desktop and 360px matrix | PASS - 11; 19 intentional project skips |
 | Browser Hire workflow | Exact contract, payable fail-closed and zero-price journeys at desktop and 360px | PASS - 6/6 |
 | Browser Trial workflow | Marketplace, governed limits, Trial disclosure, consent and registration continuation | PASS - 1/1 |
@@ -79,3 +80,8 @@ The completion audit additionally repaired locally minted review-response eviden
 idempotency replay. Unresolved contract gaps are recorded in `scope-audit.md`. In particular, PR
 cancellation remains fail-closed rather than implemented, migration 36 lacks a dedicated
 real-PostgreSQL adversarial test, and provider/runtime-coordinate acceptance remains blocked.
+
+The PR precheck repair corrected a stale Web assertion so the caller's validated idempotency key is
+verified end to end. Report-guided tests exercise review and payment validation, reconciliation and
+owner-identity branches without lowering either constitutional coverage threshold. The Test Champion
+failure was downstream-only; C-065 is refreshed from the final pushed head after this evidence commit.
