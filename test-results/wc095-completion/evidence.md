@@ -1,41 +1,67 @@
-# WC-095 Completion Evidence
+# WC-095 Repository-Local Completion Evidence
+
+Implementation commit: `457fe3c08fee2f6bf7a0fa613ad50c4b1fee6307`
 
 Branch: `ib/095/employment-lifecycle-completion`
 
-## Exact Status
+Qualification date: 2026-09-17
 
-| Component | Status | Exact-head evidence or blocker |
+## Claim Boundary
+
+This evidence qualifies the independently executable repository-local implementation delivered at
+the implementation commit above. It does not claim WC-095 contract completion, provider-backed
+Razorpay acceptance, exact DMA image compatibility, browser visual/accessibility acceptance,
+deployment, Production readiness, customer traffic, PR approval or merge.
+
+`WC095-05B` and `SIM-095-23` are `BLOCKED_EXTERNAL_INPUT`: merchant credentials and authority to use
+them in Razorpay test mode were not supplied. `WC095-07` cannot be promoted because no governed
+repository source supplies the exact specification, prompt and input/output schema digests for the
+admitted runtime binding. These coordinates were not inferred or inserted as fixtures.
+
+## Delivered Behavior
+
+- BP resolves and persists immutable, relationship/participant/Skill-bound operational mandates only
+  when current admission, contract, Decision Space, goal, context and exact runtime binding inputs exist.
+- BP and PR reject missing, stale, stopped, mismatched or divergent mandate requests before domain work.
+- BP uses short-lived workload assertions to call PR; the customer bearer is not forwarded.
+- WBE binds capture and reconciliation to the exact checkout, tenant, relationship, contract,
+  acceptance and consent tuple. Browser callbacks carry no payment truth.
+- The Portal launches official Razorpay Checkout from server-created order data; dismissal is not
+  reported as failure, and callback handling performs bodyless owner reconciliation.
+- Seven review dimensions are stored separately in an append-only, forced-RLS review ledger and
+  projected separately in the Portal. Only the seven WC-095 recommendations are accepted.
+- Operations and lifecycle projections consume the same non-mutating mandate readiness result.
+
+## Docker Qualification
+
+| Boundary | Command/check | Result |
 |---|---|---|
-| WC095-05A | Historical dependency | Not requalified by this change; no provider claim made. |
-| WC095-05B | BLOCKED_EXTERNAL_INPUT | Razorpay merchant configuration and separate test-mode authority are absent. |
-| WC095-06 | PARTIAL | BP now rejects false Operations eligibility and the Portal exposes canonical exact-version customer goal verification. |
-| WC095-07 | BLOCKED_CONTRACT | The accepted adapter envelope exists, but no accepted BP-to-PR command carries the complete mandate and no PR mandate-resolution boundary exists. |
-| WC095-08 | PARTIAL | Goal verification UI/BFF passes focused tests; complete responsive/browser/accessibility acceptance was not run. |
-| WC095-09 | BLOCKED_CONTRACT | No persisted review-window aggregate or accepted review command contract exists for the seven required dimensions. |
-| WC095-10 | BLOCKED | Components 01-09 are not complete at one exact head; all 28 simulations therefore cannot be claimed. |
+| Business Platform | Full `business-platform.Tests` assembly | PASS - 746/746 |
+| Mandate replay repair | Resolver and conversation focused filter | PASS - 24/24 |
+| BP PostgreSQL | Migration 33 and 37 Testcontainers filter | PASS - 2/2 |
+| Professional Runtime and OpenAPI | `tests/test_openapi_slice.py` plus PR conversation execution | PASS - 80/80 |
+| Billing Engine | Payment and paid-activation pytest files | PASS - 24; 3 delegated |
+| WBE PostgreSQL | `scripts/test-wc059-postgres.sh` | PASS - 3/3 |
+| Portal/BFF | Five touched Jest suites | PASS - 41/41 |
+| TypeScript | `tsc --noEmit` | PASS |
+| Python static analysis | Ruff over every touched Python file | PASS |
+| SQL static analysis | SQLFluff over migrations 21c, 33, 36 and 37 | PASS |
+| Generated client | Canonical regeneration and before/after tree SHA-256 | PASS - byte-identical |
+| Portal lint/build | Next lint and production build | PASS; one inherited autoprefixer warning |
+| Patch integrity | `git diff --check` and generated/credential author review | PASS |
 
-## Repair Evidence
-
-- Operations remains `LOCKED` unless relationship, onboarding, induction, accepted Skills, verified goals, PR readiness and commercial readiness are current.
-- Operations also remains locked without accepted contract, authority snapshot and complete admitted artifact/Decision Space mandate coordinates.
-- BP returns `operationalMandate: null` rather than presenting a partial digest as the Section 6.3 mandate.
-- Customer goal verification uses exact workspace and goal versions through a server-only authenticated BFF.
-- `correctionReason` is sent only with `CHANGES_REQUESTED`; `VERIFIED` cannot accidentally send the forbidden field.
-
-## Docker Validation
-
-| Check | Result |
-|---|---|
-| BP `RelationshipWorkspaceControllerTests` | 23 passed |
-| Web relationship workspace and goal/Skill BFF suites | 12 passed |
-| TypeScript `tsc --noEmit` | passed |
-| Next lint | passed, no warnings or errors |
-| Next production build | passed |
-| Business Platform OpenAPI Spectral error gate | passed; inherited warnings remain |
-| Pinned OpenAPI client regeneration | passed |
-
-All commands ran in Docker. No Python virtual environment, cloud/provider mutation, deployment, Production traffic, approval or merge was used.
+All tests and tooling executed through repository Docker runners or repository Docker orchestration.
+No Python virtual environment was created or used. The production build warning points to the
+untouched `web/app/globals.css` use of mixed-support `end` alignment.
 
 ## Author Review
 
-The initial implementation generated a digest from only relationship, context, Skill/goal and owner projection versions. Author review rejected it because WC-095 Section 6.3 also requires accepted contract, complete admission/artifact/PAC/specification bindings, Decision Space, purpose/action/deadline/idempotency, Stop, CE and WBE contexts. The repair deliberately fails closed until an accepted cross-service command can resolve all fields.
+Author review found and repaired a mandate replay defect: the first implementation returned a stored
+mandate before checking actor, Skill and operational-purpose binding. Divergent replay now returns the
+existing conversation idempotency conflict while exact retry replay remains stable. SQLFluff findings
+in the touched migrations were mechanically repaired and the real-PostgreSQL checks rerun.
+
+Unresolved contract gaps are recorded in `scope-audit.md`. In particular, PR cancellation remains
+fail-closed rather than implemented, review alerts/customer-decision/reassessment commands are absent,
+migration 36 lacks a dedicated real-PostgreSQL adversarial test, and the required browser geometry,
+200-percent text and accessibility matrix was not run.
