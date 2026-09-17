@@ -147,6 +147,9 @@ docs/OfferableProfessionalVersionSkillsInner.md
 docs/OutcomeInterpretationV1.md
 docs/PAASParameters.md
 docs/PauseRelationshipPayloadV1.md
+docs/PerformanceReviewDimensionV1.md
+docs/PerformanceReviewRecommendationV1.md
+docs/PerformanceReviewWindowV1.md
 docs/PhaseBundleSubscription.md
 docs/PlanCardV1.md
 docs/PortalInteractionMessageV1.md
@@ -173,6 +176,7 @@ docs/RelationshipAuthenticationAssurance.md
 docs/RelationshipAvailableCommandV1.md
 docs/RelationshipBusinessOutcomeV1.md
 docs/RelationshipBusinessOutcomesV1.md
+docs/RelationshipCapturedCheckout.md
 docs/RelationshipChannel.md
 docs/RelationshipChannelBinding.md
 docs/RelationshipChannelBindingStatus.md
@@ -214,6 +218,7 @@ docs/RelationshipOperationsV1.md
 docs/RelationshipOutcomeStatusV1.md
 docs/RelationshipParticipantRole.md
 docs/RelationshipPaymentProceedRequest.md
+docs/RelationshipPerformanceV1.md
 docs/RelationshipPlanV1.md
 docs/RelationshipPolicySelectionV1.md
 docs/RelationshipProviderConfigurationPending.md
@@ -431,6 +436,9 @@ models/OfferableProfessionalVersionSkillsInner.ts
 models/OutcomeInterpretationV1.ts
 models/PAASParameters.ts
 models/PauseRelationshipPayloadV1.ts
+models/PerformanceReviewDimensionV1.ts
+models/PerformanceReviewRecommendationV1.ts
+models/PerformanceReviewWindowV1.ts
 models/PhaseBundleSubscription.ts
 models/PlanCardV1.ts
 models/PortalInteractionMessageV1.ts
@@ -456,6 +464,7 @@ models/RelationshipAuthenticationAssurance.ts
 models/RelationshipAvailableCommandV1.ts
 models/RelationshipBusinessOutcomeV1.ts
 models/RelationshipBusinessOutcomesV1.ts
+models/RelationshipCapturedCheckout.ts
 models/RelationshipChannel.ts
 models/RelationshipChannelBinding.ts
 models/RelationshipChannelBindingStatus.ts
@@ -497,6 +506,7 @@ models/RelationshipOperationsV1.ts
 models/RelationshipOutcomeStatusV1.ts
 models/RelationshipParticipantRole.ts
 models/RelationshipPaymentProceedRequest.ts
+models/RelationshipPerformanceV1.ts
 models/RelationshipPlanV1.ts
 models/RelationshipPolicySelectionV1.ts
 models/RelationshipProviderConfigurationPending.ts

@@ -25,6 +25,7 @@ import type {
   RelationshipEvidencePageV1,
   RelationshipGoalsV1,
   RelationshipOperationsV1,
+  RelationshipPerformanceV1,
   RelationshipPlanV1,
   RelationshipResultsV1,
   RelationshipRightsControlsV1,
@@ -59,6 +60,8 @@ import {
   RelationshipGoalsV1ToJSON,
   RelationshipOperationsV1FromJSON,
   RelationshipOperationsV1ToJSON,
+  RelationshipPerformanceV1FromJSON,
+  RelationshipPerformanceV1ToJSON,
   RelationshipPlanV1FromJSON,
   RelationshipPlanV1ToJSON,
   RelationshipResultsV1FromJSON,
@@ -114,6 +117,10 @@ export interface GetRelationshipGoalsRequest {
 }
 
 export interface GetRelationshipOperationsRequest {
+  relationshipId: string;
+}
+
+export interface GetRelationshipPerformanceRequest {
   relationshipId: string;
 }
 
@@ -705,6 +712,70 @@ export class RelationshipWorkspaceApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<RelationshipOperationsV1> {
     const response = await this.getRelationshipOperationsRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
+   * Returns current and historical Skill review windows with work delivery, agent quality, constitutional performance, commercial usage, customer business outcome, explicit customer assessment, and relationship-specific trust/autonomy kept as seven separate dimensions.
+   * Read immutable relationship performance reviews
+   */
+  async getRelationshipPerformanceRaw(
+    requestParameters: GetRelationshipPerformanceRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<RelationshipPerformanceV1>> {
+    if (requestParameters["relationshipId"] == null) {
+      throw new runtime.RequiredError(
+        "relationshipId",
+        'Required parameter "relationshipId" was null or undefined when calling getRelationshipPerformance().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("BearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/employment/relationships/{relationshipId}/workspace/performance`;
+    urlPath = urlPath.replace(
+      `{${"relationshipId"}}`,
+      encodeURIComponent(String(requestParameters["relationshipId"])),
+    );
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      RelationshipPerformanceV1FromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * Returns current and historical Skill review windows with work delivery, agent quality, constitutional performance, commercial usage, customer business outcome, explicit customer assessment, and relationship-specific trust/autonomy kept as seven separate dimensions.
+   * Read immutable relationship performance reviews
+   */
+  async getRelationshipPerformance(
+    requestParameters: GetRelationshipPerformanceRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<RelationshipPerformanceV1> {
+    const response = await this.getRelationshipPerformanceRaw(
       requestParameters,
       initOverrides,
     );

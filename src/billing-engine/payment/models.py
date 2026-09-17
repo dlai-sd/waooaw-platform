@@ -17,6 +17,7 @@ class PaymentEnvironment(StrEnum):
 
 class CheckoutOutcomeKind(StrEnum):
     RAZORPAY_CHECKOUT_REQUIRED = "RAZORPAY_CHECKOUT_REQUIRED"
+    CAPTURED = "CAPTURED"
     FULLY_DISCOUNTED = "FULLY_DISCOUNTED"
     PROVIDER_CONFIGURATION_PENDING = "PROVIDER_CONFIGURATION_PENDING"
     COMMERCIAL_CONFLICT = "COMMERCIAL_CONFLICT"
@@ -124,6 +125,7 @@ class PaymentCapturedEvent:
     contract_acceptance_id: UUID | None = None
     payment_consent_evidence_id: UUID | None = None
     payment_evidence_id: UUID | None = None
+    checkout_intent_id: UUID | None = None
 
 
 @dataclass(frozen=True)

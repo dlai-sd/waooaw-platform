@@ -22,6 +22,7 @@ const stateLabel = (state: string) => state.replaceAll('_', ' ').toLowerCase();
 
 export function RelationshipWorkspace({ relationship, relationships = [], timeline, views, evaluation, contractJourney = null }: RelationshipWorkspaceProps) {
   const live = relationship.state === 'ACTIVE';
+  const performance = views.performance.current;
 
   return (
     <main className="workspace-shell relationship-workspace-grid">
@@ -84,6 +85,7 @@ export function RelationshipWorkspace({ relationship, relationships = [], timeli
           <section><h3>Induct</h3><p>Continue the agent-led induction in the persistent professional conversation. The confirmed context remains server-owned and shared across supported channels.</p><OpenConversationCommand label="Continue induction" /></section>
           <section><h3>Goals</h3>{views.goals.activeGoals.length ? <ul className="decision-list">{views.goals.activeGoals.map((goal) => <li key={goal.goalId}><span><strong>{goal.skillLabel}</strong><small>{goal.measure} · {goal.frequency}</small></span><b>{stateLabel(goal.verificationStatus)}</b></li>)}</ul> : <p>No active goals are available.</p>}<GoalVerificationControls goals={views.goals.activeGoals} relationshipId={relationship.relationshipId} workspaceVersion={views.workspace.workspaceVersion} /></section>
           <section><h3>Operations eligibility</h3><p><strong>{stateLabel(views.operations.eligibilityState)}</strong></p>{views.operations.blockedReasons?.length ? <ul>{views.operations.blockedReasons.map((reason) => <li key={reason}>{reason}</li>)}</ul> : <p>No server-reported blockers.</p>}</section>
+            <section><h3>Performance</h3>{performance ? <><p>{performance.skillId} · {new Date(performance.periodStart).toLocaleDateString('en-IN')} to {new Date(performance.periodEnd).toLocaleDateString('en-IN')}</p><dl className="state-grid"><div><dt>Work delivery</dt><dd>{stateLabel(performance.workDelivery.state)}</dd></div><div><dt>Agent quality</dt><dd>{stateLabel(performance.agentQuality.state)}</dd></div><div><dt>Constitutional performance</dt><dd>{stateLabel(performance.constitutionalPerformance.state)}</dd></div><div><dt>Commercial usage</dt><dd>{stateLabel(performance.commercialUsage.state)}</dd></div><div><dt>Business outcome</dt><dd>{stateLabel(performance.customerBusinessOutcome.state)}</dd></div><div><dt>Customer assessment</dt><dd>{stateLabel(performance.customerAssessment.state)}</dd></div><div><dt>Trust and autonomy</dt><dd>{stateLabel(performance.trustAutonomy.state)}</dd></div></dl><p><strong>Recommendation:</strong> {stateLabel(performance.recommendation)}</p></> : <p>No completed review window is available.</p>}</section>
       </section>
 
       <nav className="workspace-nav" aria-label="Relationship workspace views">

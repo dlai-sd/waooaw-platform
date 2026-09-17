@@ -12,6 +12,13 @@
  * Do not edit the class manually.
  */
 
+import type { RelationshipCapturedCheckout } from "./RelationshipCapturedCheckout";
+import {
+  instanceOfRelationshipCapturedCheckout,
+  RelationshipCapturedCheckoutFromJSON,
+  RelationshipCapturedCheckoutFromJSONTyped,
+  RelationshipCapturedCheckoutToJSON,
+} from "./RelationshipCapturedCheckout";
 import type { RelationshipCheckoutUnresolved } from "./RelationshipCheckoutUnresolved";
 import {
   instanceOfRelationshipCheckoutUnresolved,
@@ -54,6 +61,7 @@ import {
  * @export
  */
 export type RelationshipCheckoutOutcome =
+  | ({ outcomeKind: "CAPTURED" } & RelationshipCapturedCheckout)
   | ({ outcomeKind: "COMMERCIAL_CONFLICT" } & RelationshipCommercialConflict)
   | ({ outcomeKind: "FULLY_DISCOUNTED" } & RelationshipFullyDiscountedCheckout)
   | ({ outcomeKind: "OUTCOME_UNRESOLVED" } & RelationshipCheckoutUnresolved)
@@ -78,6 +86,12 @@ export function RelationshipCheckoutOutcomeFromJSONTyped(
     return json;
   }
   switch (json["outcomeKind"]) {
+    case "CAPTURED":
+      return Object.assign(
+        {},
+        RelationshipCapturedCheckoutFromJSONTyped(json, true),
+        { outcomeKind: "CAPTURED" } as const,
+      );
     case "COMMERCIAL_CONFLICT":
       return Object.assign(
         {},
@@ -125,6 +139,10 @@ export function RelationshipCheckoutOutcomeToJSONTyped(
     return value;
   }
   switch (value["outcomeKind"]) {
+    case "CAPTURED":
+      return Object.assign({}, RelationshipCapturedCheckoutToJSON(value), {
+        outcomeKind: "CAPTURED",
+      } as const);
     case "COMMERCIAL_CONFLICT":
       return Object.assign({}, RelationshipCommercialConflictToJSON(value), {
         outcomeKind: "COMMERCIAL_CONFLICT",

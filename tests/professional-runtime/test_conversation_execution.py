@@ -47,6 +47,7 @@ from workflows.conversation_execution_workflow import (
 )
 
 SECRET = "bp-service-test-secret"
+DEFAULT_IDEMPOTENCY_KEY = uuid.UUID("11111111-1111-1111-1111-111111111111")
 
 
 class FakeConstitutionalGateway:
@@ -257,18 +258,69 @@ def _service_token(**overrides: Any) -> str:
 
 
 def _headers(token: str | None = None, key: uuid.UUID | None = None) -> dict[str, str]:
-    headers = {"X-Correlation-Id": str(uuid.uuid4()), "Idempotency-Key": str(key or uuid.uuid4())}
+    headers = {"X-Correlation-Id": str(uuid.uuid4()), "Idempotency-Key": str(key or DEFAULT_IDEMPOTENCY_KEY)}
     if token is not None:
         headers["Authorization"] = f"Bearer {token}"
     return headers
 
 
 def _body(**overrides: Any) -> dict[str, Any]:
+    mandate_id = uuid.uuid4()
+    idempotency_identity = overrides.pop("idempotencyIdentity", DEFAULT_IDEMPOTENCY_KEY)
     body: dict[str, Any] = {
         "schemaVersion": "1.0",
         "messageId": str(uuid.uuid4()),
         "decisionSpaceVersion": 1,
         "locale": "en-IN",
+        "operationalMandate": {
+            "schemaVersion": "1.0",
+            "mandateId": str(mandate_id),
+            "mandateDigest": "",
+            "tenantId": "tenant-a",
+            "relationshipId": "relationship-a",
+            "agentInstanceId": "agent-instance-a",
+            "actorId": "participant-a",
+            "actorRole": "CUSTOMER",
+            "relationshipLifecycle": "ACTIVE",
+            "engagementMode": "LIVE",
+            "professionalType": "DIGITAL_MARKETING_LOCAL_SERVICE",
+            "releaseSequence": 1,
+            "professionalVersion": "1.0.0",
+            "specificationRevision": "3.1",
+            "specificationDigest": "sha256:" + "22" * 32,
+            "admissionRevision": 1,
+            "admissionContentDigest": "sha256:" + "33" * 32,
+            "artifactDigest": "sha256:" + "44" * 32,
+            "baseSpecVersion": "1.0.0",
+            "constitutionalDnaVersion": "1.0.0",
+            "pacVersion": "1.0.0",
+            "adapterProtocolVersion": "1.0.0",
+            "customerContractDigest": "sha256:" + "88" * 32,
+            "skillId": "CUSTOMER_PROFILING",
+            "skillVersion": "1.0.0",
+            "inputSchemaDigest": "sha256:" + "55" * 32,
+            "outputSchemaDigest": "sha256:" + "66" * 32,
+            "promptVersion": "1.0.0",
+            "promptDigest": "sha256:" + "77" * 32,
+            "contextRevision": 1,
+            "configurationRevision": 1,
+            "goalRevision": 1,
+            "decisionSpaceRevision": 1,
+            "budgetAllowanceRef": "allowance-a",
+            "reviewPolicyRevision": 1,
+            "approvalRefs": ["approval-a"],
+            "stopped": False,
+            "stopEvidenceRef": None,
+            "operationalPurpose": "Prepare the next update",
+            "permittedActions": ["CUSTOMER_PROFILING"],
+            "exclusions": ["PUBLISH_WITHOUT_APPROVAL"],
+            "deadline": "2027-01-01T00:00:00Z",
+            "idempotencyIdentity": str(idempotency_identity),
+            "constitutionalDecisionRef": "decision-a",
+            "constitutionalEvidenceRef": "evidence-a",
+            "billingReservationRef": "reservation-a",
+            "billingAttributionRef": "attribution-a",
+        },
         "content": {
             "schemaVersion": "1.0",
             "contentType": "TEXT",
@@ -277,7 +329,68 @@ def _body(**overrides: Any) -> dict[str, Any]:
         },
     }
     body.update(overrides)
+    mandate = body["operationalMandate"]
+    canonical = json.dumps(
+        {key: value for key, value in mandate.items() if key != "mandateDigest"},
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode()
+    mandate["mandateDigest"] = f"sha256:{hashlib.sha256(canonical).hexdigest()}"
     return body
+
+
+async def test_missing_operational_mandate_is_rejected_before_execution(client: Any) -> None:
+    body = _body()
+    del body["operationalMandate"]
+
+    response = await client.post(
+        f"/api/v1/internal/conversations/{uuid.uuid4()}/executions",
+        headers=_headers(_service_token()),
+        json=body,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "EXECUTION_REQUEST_INVALID"
+    assert app.state.temporal_client.started == []
+    assert app.state.conversation_constitutional_gateway.authorizations == []
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("tenantId", "tenant-b"),
+        ("relationshipId", "relationship-b"),
+        ("actorId", "participant-b"),
+        ("decisionSpaceRevision", 2),
+        ("deadline", "2020-01-01T00:00:00Z"),
+        ("stopped", True),
+    ],
+)
+async def test_invalid_operational_mandate_is_rejected_before_authorization(
+    client: Any,
+    field: str,
+    value: Any,
+) -> None:
+    body = _body()
+    mandate = body["operationalMandate"]
+    mandate[field] = value
+    canonical = json.dumps(
+        {name: item for name, item in mandate.items() if name != "mandateDigest"},
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode()
+    mandate["mandateDigest"] = f"sha256:{hashlib.sha256(canonical).hexdigest()}"
+
+    response = await client.post(
+        f"/api/v1/internal/conversations/{uuid.uuid4()}/executions",
+        headers=_headers(_service_token()),
+        json=body,
+    )
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "EXECUTION_MANDATE_INVALID"
+    assert app.state.temporal_client.started == []
+    assert app.state.conversation_constitutional_gateway.authorizations == []
 
 
 @pytest.fixture(autouse=True)
@@ -295,10 +408,11 @@ def execution_state() -> FakeTemporalClient:
 
 async def _start(client: Any, **kwargs: Any) -> tuple[uuid.UUID, dict[str, Any]]:
     conversation_id = uuid.uuid4()
+    key = kwargs.get("key", DEFAULT_IDEMPOTENCY_KEY)
     response = await client.post(
         f"/api/v1/internal/conversations/{conversation_id}/executions",
-        headers=_headers(_service_token(), kwargs.get("key")),
-        json=kwargs.get("body", _body()),
+        headers=_headers(_service_token(), key),
+        json=kwargs.get("body", _body(idempotencyIdentity=key)),
     )
     assert response.status_code == 202
     return conversation_id, response.json()
@@ -397,7 +511,7 @@ async def test_exited_temporal_worker_is_fail_safe(client: Any) -> None:
 
 async def test_start_and_replay_recover_entirely_from_temporal(client: Any) -> None:
     key = uuid.uuid4()
-    body = _body()
+    body = _body(idempotencyIdentity=key)
     conversation_id = uuid.uuid4()
     first = await client.post(
         f"/api/v1/internal/conversations/{conversation_id}/executions",
@@ -487,16 +601,27 @@ async def test_distinct_channels_keep_separate_execution_state_for_same_relation
     whatsapp_conversation = uuid.uuid4()
     web_conversation = uuid.uuid4()
     token = _service_token(relationship_id="relationship-shared")
+    whatsapp_body = _body()
+    web_body = _body()
+    for body in (whatsapp_body, web_body):
+        mandate = body["operationalMandate"]
+        mandate["relationshipId"] = "relationship-shared"
+        canonical = json.dumps(
+            {name: item for name, item in mandate.items() if name != "mandateDigest"},
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode()
+        mandate["mandateDigest"] = f"sha256:{hashlib.sha256(canonical).hexdigest()}"
 
     whatsapp = await client.post(
         f"/api/v1/internal/conversations/{whatsapp_conversation}/executions",
         headers=_headers(token),
-        json=_body(),
+        json=whatsapp_body,
     )
     web = await client.post(
         f"/api/v1/internal/conversations/{web_conversation}/executions",
         headers=_headers(token),
-        json=_body(),
+        json=web_body,
     )
 
     assert whatsapp.status_code == web.status_code == 202
@@ -654,6 +779,8 @@ async def test_real_workflow_signal_order_preserves_stopped(monkeypatch: pytest.
         "relationship-a",
         "participant-a",
         "CUSTOMER",
+        str(uuid.uuid4()),
+        "sha256:" + "11" * 32,
         1,
         "en-IN",
         {"text": "x"},
@@ -693,6 +820,8 @@ async def test_real_workflow_ignores_duplicate_cancel_and_post_terminal_event(
         "relationship-a",
         "participant-a",
         "CUSTOMER",
+        str(uuid.uuid4()),
+        "sha256:" + "11" * 32,
         1,
         "en-IN",
         {"text": "x"},
@@ -1453,6 +1582,7 @@ def test_problem_codes_match_canonical_openapi() -> None:
     assert {code.value for code in ExecutionProblemCode} == {
         "EXECUTION_REQUEST_INVALID",
         "EXECUTION_NOT_ACCESSIBLE",
+        "EXECUTION_MANDATE_INVALID",
         "EXECUTION_IDEMPOTENCY_CONFLICT",
         "EXECUTION_SCHEMA_UNSUPPORTED",
         "EXECUTION_CURSOR_EXPIRED",

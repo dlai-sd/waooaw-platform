@@ -184,6 +184,34 @@ def _request_hash(body: StartExecutionRequestV1, conversation_id: uuid.UUID, con
     return hashlib.sha256(json.dumps(canonical, separators=(",", ":"), sort_keys=True).encode()).hexdigest()
 
 
+def _mandate_digest(body: StartExecutionRequestV1) -> str:
+    mandate = body.operational_mandate.model_dump(by_alias=True, mode="json", exclude={"mandate_digest"})
+    canonical = json.dumps(mandate, separators=(",", ":"), sort_keys=True).encode()
+    return f"sha256:{hashlib.sha256(canonical).hexdigest()}"
+
+
+def _mandate_is_valid(
+    body: StartExecutionRequestV1,
+    context: BPServiceContext,
+    idempotency_key: uuid.UUID,
+) -> bool:
+    mandate = body.operational_mandate
+    return all(
+        (
+            hmac.compare_digest(mandate.mandate_digest, _mandate_digest(body)),
+            hmac.compare_digest(mandate.tenant_id, context.tenant_id),
+            hmac.compare_digest(mandate.relationship_id, context.relationship_id),
+            hmac.compare_digest(mandate.actor_id, context.delegated_actor_id),
+            hmac.compare_digest(mandate.actor_role, context.participant_role),
+            mandate.decision_space_revision == body.decision_space_version,
+            mandate.idempotency_identity == idempotency_key,
+            mandate.deadline > datetime.now(timezone.utc),
+            not mandate.stopped,
+            mandate.stop_evidence_ref is None,
+        )
+    )
+
+
 def _cancellation_hash(
     conversation_id: uuid.UUID,
     execution_id: uuid.UUID,
@@ -373,6 +401,8 @@ async def start_conversation_execution(
 ) -> JSONResponse:
     if context is None:
         return problem_response(401, ExecutionProblemCode.NOT_ACCESSIBLE, "Execution is not accessible", correlation_id)
+    if not _mandate_is_valid(body, context, idempotency_key):
+        return problem_response(409, ExecutionProblemCode.MANDATE_INVALID, "Operational mandate is invalid", correlation_id)
     if body.schema_version != SCHEMA_VERSION or body.content.schema_version != SCHEMA_VERSION:
         return problem_response(
             400, ExecutionProblemCode.SCHEMA_UNSUPPORTED, "Execution schema version is unsupported", correlation_id
@@ -436,6 +466,8 @@ async def start_conversation_execution(
         relationship_id=context.relationship_id,
         delegated_actor_id=context.delegated_actor_id,
         participant_role=context.participant_role,
+        mandate_id=str(body.operational_mandate.mandate_id),
+        mandate_digest=body.operational_mandate.mandate_digest,
         decision_space_version=body.decision_space_version,
         locale=body.locale,
         content=body.content.model_dump(by_alias=True, mode="json"),

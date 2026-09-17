@@ -45,12 +45,13 @@ class WebhookHandler:
         self,
         event: PaymentCapturedEvent,
         is_bypass: bool = False,
+        webhook_signature_verified: bool = False,
     ) -> SubscriptionActivationResult | PaymentCaptureResult:
         """Process payment.captured — idempotent, HMAC-verified, atomically activates wallet.
 
         Bypass orders (demo/UAT coupons) skip signature verification. FA-029.
         """
-        if not is_bypass:
+        if not is_bypass and not webhook_signature_verified:
             valid = self._razorpay.verify_payment_signature(
                 order_id=event.razorpay_order_id,
                 payment_id=event.razorpay_payment_id,
@@ -79,10 +80,10 @@ class WebhookHandler:
                     "(razorpay_order_id, razorpay_payment_id, customer_id, status, relationship_id, "
                     "tenant_id, accepted_contract_id, contract_version, contract_hash, "
                     "contract_acceptance_id, payment_consent_evidence_id, "
-                    "payment_evidence_id, agent_type, bundle_tier) "
+                    "payment_evidence_id, checkout_intent_id, agent_type, bundle_tier) "
                     "VALUES (:oid, :pid, :cid, 'CAPTURED', :rid, :tenant_id, :contract_id, "
                     ":contract_version, :contract_hash, :acceptance_id, "
-                    ":consent_id, :evidence_id, :agent_type, :bundle_tier) "
+                    ":consent_id, :evidence_id, :checkout_intent_id, :agent_type, :bundle_tier) "
                     "ON CONFLICT (razorpay_payment_id) DO NOTHING"
                 ).bindparams(
                     oid=event.razorpay_order_id, pid=event.razorpay_payment_id,
@@ -93,22 +94,25 @@ class WebhookHandler:
                     contract_hash=event.contract_hash,
                     acceptance_id=str(event.contract_acceptance_id),
                     consent_id=str(event.payment_consent_evidence_id),
-                    evidence_id=str(event.payment_evidence_id), agent_type=event.agent_type,
+                    evidence_id=str(event.payment_evidence_id), checkout_intent_id=str(event.checkout_intent_id),
+                    agent_type=event.agent_type,
                     bundle_tier=event.bundle_tier,
                 )
             )
             await self._db.commit()
             stored = (await self._db.execute(text(
                 "SELECT tenant_id, relationship_id, accepted_contract_id, contract_version, contract_hash, contract_acceptance_id, "
-                "payment_consent_evidence_id, payment_evidence_id, status FROM payment_intents "
+                "payment_consent_evidence_id, payment_evidence_id, checkout_intent_id, status FROM payment_intents "
                 "WHERE razorpay_payment_id = :pid"
             ).bindparams(pid=event.razorpay_payment_id))).fetchone()
             expected = tuple(str(value) for value in (
                 event.tenant_id, event.relationship_id, event.accepted_contract_id,
                 event.contract_version, event.contract_hash, event.contract_acceptance_id,
                 event.payment_consent_evidence_id,
+                event.payment_evidence_id,
+                event.checkout_intent_id,
             ))
-            if stored is None or tuple(str(stored[index]) for index in range(7)) != expected:
+            if stored is None or tuple(str(stored[index]) for index in range(9)) != expected:
                 raise HTTPException(status_code=409, detail={"code": "PAYMENT_CAPTURE_CONFLICT"})
             return PaymentCaptureResult(
                 payment_reference=event.razorpay_payment_id,

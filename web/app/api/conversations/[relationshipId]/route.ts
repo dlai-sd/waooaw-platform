@@ -84,6 +84,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           sendConversationMessageRequestV1: {
             schemaVersion: '1.0',
             clientMessageId: requiredString(body, 'clientMessageId'),
+            skillId: requiredString(body, 'skillId'),
             content: [{ schemaVersion: '1.0', blockType: 'TEXT', text: requiredString(body, 'text') }],
             locale: requiredString(body, 'locale'),
             expectedCursor: typeof body.expectedCursor === 'string' ? body.expectedCursor : undefined,

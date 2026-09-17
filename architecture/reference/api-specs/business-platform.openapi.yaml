@@ -3206,6 +3206,28 @@ paths:
         "423": { $ref: "#/components/responses/RelationshipWorkspaceBlocked" }
         "503": { $ref: "#/components/responses/RelationshipWorkspaceUnavailable" }
 
+  /api/v1/employment/relationships/{relationshipId}/workspace/performance:
+    get:
+      tags: [Relationship Workspace]
+      summary: Read immutable relationship performance reviews
+      description: |
+        Returns current and historical Skill review windows with work delivery, agent quality,
+        constitutional performance, commercial usage, customer business outcome, explicit customer
+        assessment, and relationship-specific trust/autonomy kept as seven separate dimensions.
+      operationId: getRelationshipPerformance
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      responses:
+        "200":
+          description: Relationship performance review projection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelationshipPerformanceV1"
+        "401": { $ref: "#/components/responses/RelationshipWorkspaceUnauthorized" }
+        "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
+        "503": { $ref: "#/components/responses/RelationshipWorkspaceUnavailable" }
+
   /api/v1/employment/relationships/{relationshipId}/workspace/operations:
     get:
       tags: [Relationship Workspace]
@@ -5588,6 +5610,7 @@ components:
     RelationshipCheckoutOutcome:
       oneOf:
         - $ref: "#/components/schemas/RelationshipRazorpayCheckoutRequired"
+        - $ref: "#/components/schemas/RelationshipCapturedCheckout"
         - $ref: "#/components/schemas/RelationshipFullyDiscountedCheckout"
         - $ref: "#/components/schemas/RelationshipProviderConfigurationPending"
         - $ref: "#/components/schemas/RelationshipCommercialConflict"
@@ -5596,6 +5619,7 @@ components:
         propertyName: outcomeKind
         mapping:
           RAZORPAY_CHECKOUT_REQUIRED: "#/components/schemas/RelationshipRazorpayCheckoutRequired"
+          CAPTURED: "#/components/schemas/RelationshipCapturedCheckout"
           FULLY_DISCOUNTED: "#/components/schemas/RelationshipFullyDiscountedCheckout"
           PROVIDER_CONFIGURATION_PENDING: "#/components/schemas/RelationshipProviderConfigurationPending"
           COMMERCIAL_CONFLICT: "#/components/schemas/RelationshipCommercialConflict"
@@ -5608,7 +5632,7 @@ components:
       properties:
         outcomeKind:
           type: string
-          enum: [RAZORPAY_CHECKOUT_REQUIRED, FULLY_DISCOUNTED, PROVIDER_CONFIGURATION_PENDING, COMMERCIAL_CONFLICT, OUTCOME_UNRESOLVED]
+          enum: [RAZORPAY_CHECKOUT_REQUIRED, CAPTURED, FULLY_DISCOUNTED, PROVIDER_CONFIGURATION_PENDING, COMMERCIAL_CONFLICT, OUTCOME_UNRESOLVED]
         checkoutIntentId: { type: string, format: uuid }
         relationshipId: { type: string, format: uuid }
         contractVersion: { type: integer, minimum: 1 }
@@ -5635,6 +5659,18 @@ components:
               items: { type: string, enum: [CREDIT_CARD, DEBIT_CARD, UPI, NETBANKING, WALLET] }
             expiresAt: { type: string, format: date-time }
             reconciliationTarget: { type: string, minLength: 1, maxLength: 2048 }
+
+    RelationshipCapturedCheckout:
+      allOf:
+        - $ref: "#/components/schemas/RelationshipCheckoutBase"
+        - type: object
+          additionalProperties: false
+          required: [commercialOutcomeReference, commercialEvidenceId, evidenceState]
+          properties:
+            outcomeKind: { type: string, enum: [CAPTURED] }
+            commercialOutcomeReference: { type: string, minLength: 1 }
+            commercialEvidenceId: { type: string, format: uuid }
+            evidenceState: { type: string, enum: [COMMITTED] }
 
     RelationshipFullyDiscountedCheckout:
       allOf:
@@ -6078,6 +6114,71 @@ components:
             items:
               type: array
               items: { $ref: "#/components/schemas/RelationshipBusinessOutcomeV1" }
+
+    PerformanceReviewDimensionV1:
+      type: object
+      additionalProperties: false
+      required: [state, summary, evidenceState]
+      properties:
+        state: { type: string, minLength: 1, maxLength: 64 }
+        summary: { type: string, minLength: 1, maxLength: 500 }
+        evidenceState: { $ref: "#/components/schemas/RelationshipEvidenceState" }
+        attributionLimits: { type: [string, "null"], minLength: 1, maxLength: 500 }
+        uncertainty: { type: [string, "null"], minLength: 1, maxLength: 500 }
+
+    PerformanceReviewRecommendationV1:
+      type: string
+      enum:
+        - CONTINUE_CURRENT_MANDATE
+        - TUNE_NON_MATERIAL_PRESENTATION
+        - PROPOSE_GOAL_OR_CONFIGURATION_CHANGE
+        - REASSESSMENT_REQUIRED
+        - PAUSE_AFFECTED_WORK
+        - ESCALATE_LIMITATION_OR_BLOCKER
+        - OFFER_TERMINATION_OR_APPROVED_MIGRATION
+
+    PerformanceReviewWindowV1:
+      type: object
+      additionalProperties: false
+      required: [reviewId, agentInstanceId, skillId, skillVersion, revision, policyVersion, periodStart, periodEnd, sourceVersions, workDelivery, agentQuality, constitutionalPerformance, commercialUsage, customerBusinessOutcome, customerAssessment, trustAutonomy, recommendation, evidenceId, createdAt]
+      properties:
+        reviewId: { type: string, format: uuid }
+        agentInstanceId: { type: string, format: uuid }
+        skillId: { type: string, minLength: 1, maxLength: 128 }
+        skillVersion: { type: string, minLength: 1, maxLength: 32 }
+        revision: { type: integer, minimum: 1 }
+        policyVersion: { type: string, minLength: 1, maxLength: 64 }
+        periodStart: { type: string, format: date-time }
+        periodEnd: { type: string, format: date-time }
+        sourceVersions:
+          type: object
+          minProperties: 1
+          additionalProperties: { type: string, minLength: 1, maxLength: 128 }
+        workDelivery: { $ref: "#/components/schemas/PerformanceReviewDimensionV1" }
+        agentQuality: { $ref: "#/components/schemas/PerformanceReviewDimensionV1" }
+        constitutionalPerformance: { $ref: "#/components/schemas/PerformanceReviewDimensionV1" }
+        commercialUsage: { $ref: "#/components/schemas/PerformanceReviewDimensionV1" }
+        customerBusinessOutcome: { $ref: "#/components/schemas/PerformanceReviewDimensionV1" }
+        customerAssessment: { $ref: "#/components/schemas/PerformanceReviewDimensionV1" }
+        trustAutonomy: { $ref: "#/components/schemas/PerformanceReviewDimensionV1" }
+        recommendation: { $ref: "#/components/schemas/PerformanceReviewRecommendationV1" }
+        evidenceId: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+
+    RelationshipPerformanceV1:
+      allOf:
+        - $ref: "#/components/schemas/RelationshipWorkspaceSectionV1"
+        - type: object
+          additionalProperties: false
+          required: [current, history]
+          properties:
+            current:
+              oneOf:
+                - $ref: "#/components/schemas/PerformanceReviewWindowV1"
+                - type: "null"
+            history:
+              type: array
+              items: { $ref: "#/components/schemas/PerformanceReviewWindowV1" }
 
     RelationshipOperationsEligibilityStateV1:
       type: string
@@ -7222,10 +7323,11 @@ components:
     SendConversationMessageRequestV1:
       type: object
       additionalProperties: false
-      required: [schemaVersion, clientMessageId, content, locale]
+      required: [schemaVersion, clientMessageId, skillId, content, locale]
       properties:
         schemaVersion: { $ref: "#/components/schemas/ConversationSchemaVersion" }
         clientMessageId: { type: string, format: uuid }
+        skillId: { type: string, minLength: 1, maxLength: 128 }
         content:
           type: array
           minItems: 1
@@ -7383,7 +7485,7 @@ components:
 
     RelationshipWorkspaceSectionType:
       type: string
-      enum: [PLAN, ATTENTION, WORK, RESULTS, USAGE_BUDGET, RIGHTS_CONTROLS, CONFIGURATION, GOALS, BUSINESS_OUTCOMES, OPERATIONS]
+      enum: [PLAN, ATTENTION, WORK, RESULTS, USAGE_BUDGET, RIGHTS_CONTROLS, CONFIGURATION, GOALS, BUSINESS_OUTCOMES, PERFORMANCE, OPERATIONS]
 
     RelationshipWorkspaceCommandAvailability:
       type: string

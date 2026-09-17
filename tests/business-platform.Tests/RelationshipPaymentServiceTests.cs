@@ -91,6 +91,36 @@ public sealed class RelationshipPaymentServiceTests
                 created.CheckoutIntentId, CancellationToken.None));
     }
 
+    [Fact]
+    public async Task HostedCheckoutReconcilesExactOwnerCaptureBeforeActivationEligibility()
+    {
+        var context = await CreateContextAsync(includeAcceptance: true);
+        context.Wbe.ReturnHostedCheckout = true;
+        var created = await context.Service.CreateCheckoutAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId,
+            context.Contract.Version, Guid.NewGuid(),
+            new CheckoutProceedRequest("CONFIRM_CHECKOUT_AND_RENEWAL_TERMS"),
+            FreshPortalAssurance(), context.CorrelationId, CancellationToken.None);
+        context.Wbe.ReconciledOutcome = new RelationshipCheckoutOutcome(
+            "CAPTURED", created.CheckoutIntentId, context.RelationshipId, context.Contract.Version,
+            DateTimeOffset.UtcNow, CommercialOutcomeReference: "pay_exact",
+            CommercialEvidenceId: Guid.NewGuid(), EvidenceState: "COMMITTED");
+
+        var captured = await context.Service.GetCheckoutIntentAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId,
+            created.CheckoutIntentId, CancellationToken.None);
+
+        Assert.Equal("RAZORPAY_CHECKOUT_REQUIRED", created.OutcomeKind);
+        Assert.Equal("CAPTURED", captured.OutcomeKind);
+        Assert.Equal("pay_exact", captured.CommercialOutcomeReference);
+        Assert.Equal(1, context.Wbe.ReconcileCallCount);
+        await using var db = context.Factory.CreateDbContext();
+        var stored = await db.RelationshipCheckoutIntents.SingleAsync();
+        Assert.Equal("COMPLETED", stored.Status);
+        Assert.NotNull(stored.PaymentConsentEvidenceId);
+        Assert.Equal(context.AcceptanceId, stored.ContractAcceptanceId);
+    }
+
     // CCT-AE01-PAY-ORDER
     [Fact]
     public async Task AcceptedContractAndExplicitProceedCreateContractLinkedHostedOrder()
@@ -264,12 +294,26 @@ public sealed class RelationshipPaymentServiceTests
     {
         public ContractLinkedOnboardingOrderRequest? LastRequest { get; private set; }
         public int CheckoutCallCount { get; private set; }
+        public int ReconcileCallCount { get; private set; }
+        public bool ReturnHostedCheckout { get; set; }
+        public RelationshipCheckoutOutcome? ReconciledOutcome { get; set; }
 
         public Task<RelationshipCheckoutOutcome> CreateCheckoutAsync(
             ContractLinkedCheckoutRequest request,
             CancellationToken cancellationToken)
         {
             CheckoutCallCount++;
+            if (ReturnHostedCheckout)
+            {
+                return Task.FromResult(new RelationshipCheckoutOutcome(
+                    "RAZORPAY_CHECKOUT_REQUIRED", request.CheckoutIntentId, request.RelationshipId,
+                    request.ContractVersion, DateTimeOffset.UtcNow,
+                    PublicCheckoutKey: "rzp_test_public", AmountInrPaise: request.GrossAmountInrPaise,
+                    CheckoutSessionId: "checkout-session", ProviderOrderReference: "order_exact",
+                    MerchantDisplayName: "WAOOAW", EnabledMethodFamilies: ["UPI", "CREDIT_CARD"],
+                    ExpiresAt: DateTimeOffset.UtcNow.AddMinutes(10),
+                    ReconciliationTarget: $"/checkout-intents/{request.CheckoutIntentId:D}"));
+            }
             return Task.FromResult(new RelationshipCheckoutOutcome(
                 "FULLY_DISCOUNTED", request.CheckoutIntentId, request.RelationshipId,
                 request.ContractVersion, DateTimeOffset.UtcNow,
@@ -283,6 +327,15 @@ public sealed class RelationshipPaymentServiceTests
                 CommercialOutcomeReference: $"zero-price:{request.CheckoutIntentId}",
                 CommercialEvidenceId: Guid.NewGuid(),
                 EvidenceState: "COMMITTED"));
+        }
+
+        public Task<RelationshipCheckoutOutcome> ReconcileCheckoutAsync(
+            ContractLinkedCheckoutReconciliation request,
+            CancellationToken cancellationToken)
+        {
+            ReconcileCallCount++;
+            return Task.FromResult(ReconciledOutcome
+                ?? throw new PaymentOwnerUnavailableException("No reconciliation outcome configured."));
         }
 
         public Task<HostedOnboardingOrder> CreateOrderAsync(

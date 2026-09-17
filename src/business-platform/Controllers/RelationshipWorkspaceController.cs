@@ -25,7 +25,9 @@ public sealed class RelationshipWorkspaceController(
     EmploymentRelationshipService relationships,
     IRelationshipWorkspaceOwnerGateway owners,
     RelationshipEvidenceService? evidence = null,
-    RelationshipConfigurationService? configuration = null) : ControllerBase
+    RelationshipConfigurationService? configuration = null,
+    IOperationalMandateResolver? mandateResolver = null,
+    PerformanceReviewService? performanceReviews = null) : ControllerBase
 {
     private static readonly string[] SectionTypes =
         ["PLAN", "ATTENTION", "WORK", "RESULTS", "USAGE_BUDGET", "RIGHTS_CONTROLS"];
@@ -52,6 +54,10 @@ public sealed class RelationshipWorkspaceController(
         var activeGoals = goals.Where(item => NormalizeGoalStatus(item.Goal.Status) == "ACTIVE").ToArray();
         var goalsVerified = activeGoals.Length > 0
             && activeGoals.All(item => item.CurrentDecision?.Decision == "VERIFIED");
+        var mandateReadiness = mandateResolver is not null && TryGetParticipantId(out var participantId)
+            ? await mandateResolver.GetReadinessAsync(
+                relationship.TenantId, participantId, relationshipId, cancellationToken)
+            : new OperationalMandateReadiness(false, ["The admitted artifact and runtime binding coordinates are unavailable."]);
         var sections = SectionTypes.Select(type => Section(type,
             type switch
             {
@@ -82,7 +88,7 @@ public sealed class RelationshipWorkspaceController(
             },
             lifecycleProfile = LifecycleProfile(
                 relationship, configurationState, activeGoals.Length, goalsVerified,
-                execution, commercial, now),
+                execution, commercial, mandateReadiness, now),
             sections,
         });
     }
@@ -221,6 +227,27 @@ public sealed class RelationshipWorkspaceController(
         });
     }
 
+    [HttpGet("performance")]
+    public async Task<IActionResult> GetPerformanceAsync(Guid relationshipId, CancellationToken cancellationToken)
+    {
+        var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
+        if (relationship is null) return NotFoundProblem();
+        if (performanceReviews is null)
+            return WorkspaceProblem(503, "RELATIONSHIP_WORKSPACE_DEPENDENCY_UNAVAILABLE");
+        var reviews = await performanceReviews.ListAsync(
+            relationship.TenantId, relationshipId, cancellationToken);
+        return Ok(new
+        {
+            sectionType = "PERFORMANCE",
+            currencyState = reviews.Count > 0 ? "CURRENT" : "UNAVAILABLE",
+            provenance = Provenance("BP", reviews.Count > 0
+                ? $"performance-{reviews[0].ReviewId:D}" : "unavailable-1", DateTimeOffset.UtcNow),
+            availableCommands = Array.Empty<object>(),
+            current = reviews.FirstOrDefault(),
+            history = reviews.Skip(1).ToArray(),
+        });
+    }
+
     [HttpGet("operations")]
     public async Task<IActionResult> GetOperationsAsync(Guid relationshipId, CancellationToken cancellationToken)
     {
@@ -267,7 +294,11 @@ public sealed class RelationshipWorkspaceController(
             blockedReasons.Add("An accepted employment contract is required.");
         if (!relationship.AuthoritySnapshotId.HasValue)
             blockedReasons.Add("A current authority snapshot is required.");
-        blockedReasons.Add("The complete admitted artifact and Decision Space mandate coordinates are unavailable.");
+        var mandateReadiness = mandateResolver is not null && TryGetParticipantId(out var participantId)
+            ? await mandateResolver.GetReadinessAsync(
+                relationship.TenantId, participantId, relationshipId, cancellationToken)
+            : new OperationalMandateReadiness(false, ["The admitted artifact and runtime binding coordinates are unavailable."]);
+        blockedReasons.AddRange(mandateReadiness.BlockedReasons);
         var eligible = blockedReasons.Count == 0;
         return Ok(new
         {
@@ -792,6 +823,7 @@ public sealed class RelationshipWorkspaceController(
         bool goalsVerified,
         ExecutionOwnerProjection? execution,
         CommercialOwnerProjection? commercial,
+        OperationalMandateReadiness mandateReadiness,
         DateTimeOffset producedAt)
     {
         var onboardVerified = configuration?.Onboard is not null;
@@ -802,8 +834,9 @@ public sealed class RelationshipWorkspaceController(
         var outcomeState = goalsVerified ? "VERIFIED" : "BLOCKED";
         var active = relationship.State is EmploymentRelationshipState.Active
             or EmploymentRelationshipState.TrialActive;
-        var operationsReady = active && goalsVerified
+        var ownerInputsReady = active && goalsVerified
             && execution?.State == "CURRENT" && commercial?.CurrencyState == "CURRENT";
+        var operationsReady = ownerInputsReady && mandateReadiness.Ready;
         return new
         {
             agentInstanceId = relationship.AgentInstanceId,
@@ -834,8 +867,10 @@ public sealed class RelationshipWorkspaceController(
                     goalsVerified ? "Check operational eligibility." : "Complete goal verification."),
                 LifecycleStage("OPERATIONS", operationsReady ? "VERIFIED" : "BLOCKED", "BP",
                     operationsReady ? $"relationship-{relationship.StateVersion}" : null,
-                    "Relationship, goals, execution and commercial owner truth are current.",
-                    operationsReady ? [] : ["One or more operational dependencies are not current."],
+                    "Relationship, goals, owner truth and a complete immutable mandate are current.",
+                    operationsReady ? [] : ownerInputsReady
+                        ? mandateReadiness.BlockedReasons.ToArray()
+                        : ["One or more operational dependencies are not current."],
                     operationsReady ? "Continue governed work." : "Resolve the named lifecycle dependencies."),
             },
         };

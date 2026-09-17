@@ -35,9 +35,15 @@ export interface ContractJourneyProjection {
 }
 
 interface CheckoutOutcome {
-  outcomeKind: 'RAZORPAY_CHECKOUT_REQUIRED' | 'FULLY_DISCOUNTED' | 'PROVIDER_CONFIGURATION_PENDING' | 'COMMERCIAL_CONFLICT' | 'OUTCOME_UNRESOLVED';
-  orderId?: string;
+  outcomeKind: 'RAZORPAY_CHECKOUT_REQUIRED' | 'CAPTURED' | 'FULLY_DISCOUNTED' | 'PROVIDER_CONFIGURATION_PENDING' | 'COMMERCIAL_CONFLICT' | 'OUTCOME_UNRESOLVED';
+  checkoutIntentId?: string;
+  providerOrderReference?: string;
   publicCheckoutKey?: string;
+  amountInrPaise?: number;
+  currency?: string;
+  merchantDisplayName?: string;
+  enabledMethodFamilies?: string[];
+  expiresAt?: string;
   payableInrPaise?: number;
   listPriceInrPaise?: number;
   discountInrPaise?: number;
@@ -49,9 +55,37 @@ interface CheckoutOutcome {
   customerSafeNextAction?: string;
 }
 
+interface RazorpayCheckout {
+  open(): void;
+}
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: Record<string, unknown>) => RazorpayCheckout;
+  }
+}
+
 interface Props { relationshipId: string; journey: ContractJourneyProjection | null }
 
 const money = (paise: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(paise / 100);
+const razorpayScriptId = 'razorpay-checkout-script';
+
+async function loadRazorpayCheckout() {
+  if (window.Razorpay) return;
+  await new Promise<void>((resolve, reject) => {
+    const existing = document.getElementById(razorpayScriptId) as HTMLScriptElement | null;
+    const script = existing ?? document.createElement('script');
+    script.addEventListener('load', () => resolve(), { once: true });
+    script.addEventListener('error', () => reject(new Error('Secure Razorpay Checkout could not be loaded.')), { once: true });
+    if (!existing) {
+      script.id = razorpayScriptId;
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      document.head.appendChild(script);
+    }
+  });
+  if (!window.Razorpay) throw new Error('Secure Razorpay Checkout could not be loaded.');
+}
 const newIdempotencyKey = () => {
   const bytes = crypto.getRandomValues(new Uint8Array(16));
   bytes[6] = (bytes[6] & 0x0f) | 0x40;
@@ -68,6 +102,44 @@ export function ContractJourney({ relationshipId, journey }: Props) {
   const idempotencyKeys = useRef<Record<string, string>>({});
   if (!journey) return null;
 
+  async function reconcileCheckout(checkoutIntentId: string) {
+    setStatus('Payment confirmation is being reconciled with Razorpay.');
+    const response = await fetch(`/api/relationships/${encodeURIComponent(relationshipId)}/contract-journey?checkoutIntentId=${encodeURIComponent(checkoutIntentId)}`, { cache: 'no-store' });
+    const result = await response.json().catch(() => ({})) as CheckoutOutcome & { title?: string };
+    if (!response.ok) {
+      setStatus(result.title ?? 'Payment confirmation remains unresolved. No activation success was recorded.');
+      return;
+    }
+    setCheckout(result);
+    setStatus(result.outcomeKind === 'CAPTURED'
+      ? 'Payment captured and reconciled by WAOOAW. Activation is ready for your confirmation.'
+      : result.customerSafeNextAction ?? 'Payment confirmation remains pending. Do not create another order.');
+  }
+
+  async function launchRazorpay(outcome: CheckoutOutcome) {
+    if (!outcome.checkoutIntentId || !outcome.publicCheckoutKey || !outcome.providerOrderReference
+      || !outcome.amountInrPaise || outcome.currency !== 'INR' || !outcome.merchantDisplayName) {
+      setStatus('Secure Razorpay Checkout configuration is incomplete. No payment was started.');
+      return;
+    }
+    try {
+      await loadRazorpayCheckout();
+      const Checkout = window.Razorpay!;
+      new Checkout({
+        key: outcome.publicCheckoutKey,
+        amount: outcome.amountInrPaise,
+        currency: outcome.currency,
+        name: outcome.merchantDisplayName,
+        order_id: outcome.providerOrderReference,
+        handler: () => void reconcileCheckout(outcome.checkoutIntentId!),
+        modal: { ondismiss: () => setStatus('Razorpay Checkout was closed. Payment is not marked failed; reconciliation remains available.') },
+        retry: { enabled: false },
+      }).open();
+    } catch (caught) {
+      setStatus(caught instanceof Error ? caught.message : 'Secure Razorpay Checkout could not be loaded.');
+    }
+  }
+
   async function command(action: 'accept' | 'pay' | 'activate') {
     setBusy(true);
     setStatus('');
@@ -79,6 +151,7 @@ export function ContractJourney({ relationshipId, journey }: Props) {
         contractHash: journey!.contractHash,
         idempotencyKey: idempotencyKeys.current[action] ??= newIdempotencyKey(),
         commercialOutcomeKind: checkout?.outcomeKind === 'FULLY_DISCOUNTED' ? 'ZERO_PRICE_SATISFIED' : undefined,
+        ...(checkout?.outcomeKind === 'CAPTURED' ? { commercialOutcomeKind: 'CAPTURED' } : {}),
         commercialOutcomeReference: checkout?.commercialOutcomeReference,
         commercialEvidenceId: checkout?.commercialEvidenceId,
       }),
@@ -92,13 +165,16 @@ export function ContractJourney({ relationshipId, journey }: Props) {
       setCheckout(outcome);
       if (outcome.outcomeKind === 'RAZORPAY_CHECKOUT_REQUIRED') {
         setStatus('Secure Razorpay Checkout is ready. Payment remains unconfirmed until server reconciliation.');
+        await launchRazorpay(outcome);
       } else if (outcome.outcomeKind === 'FULLY_DISCOUNTED') {
         setStatus('100% Demo discount applied. Amount paid: INR 0. No payment method charged.');
       } else {
         setStatus(outcome.customerSafeNextAction ?? 'Checkout remains unresolved. No payment or activation success was recorded.');
       }
     } else if (response.ok) {
-      setStatus('Employment relationship activated. Amount paid: INR 0.');
+      setStatus(checkout?.outcomeKind === 'FULLY_DISCOUNTED'
+        ? 'Employment relationship activated. Amount paid: INR 0.'
+        : 'Employment relationship activated after reconciled payment.');
     } else {
       setStatus(result.title ?? 'The request remains unresolved. No success was recorded.');
     }
@@ -146,6 +222,17 @@ export function ContractJourney({ relationshipId, journey }: Props) {
             disabled={busy || !checkout.commercialOutcomeReference || !checkout.commercialEvidenceId}
             onClick={() => command('activate')}
           >Complete fully discounted activation</button>
+        </section>
+      )}
+      {checkout?.outcomeKind === 'CAPTURED' && (
+        <section className="discounted-checkout" aria-labelledby="captured-checkout-title">
+          <h3 id="captured-checkout-title">Payment captured</h3>
+          <p>Razorpay payment was signature-verified and reconciled by WAOOAW. Payment capture does not activate the relationship by itself.</p>
+          <button
+            type="button"
+            disabled={busy || !checkout.commercialOutcomeReference || !checkout.commercialEvidenceId}
+            onClick={() => command('activate')}
+          >Complete paid activation</button>
         </section>
       )}
       <div className="decision-actions" role="group" aria-label="Contract decisions">

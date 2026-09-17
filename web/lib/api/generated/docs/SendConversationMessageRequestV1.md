@@ -6,6 +6,7 @@
 | ----------------- | ------------------------------------------------------------------ |
 | `schemaVersion`   | [ConversationSchemaVersion](ConversationSchemaVersion.md)          |
 | `clientMessageId` | string                                                             |
+| `skillId`         | string                                                             |
 | `content`         | [Array&lt;ConversationTextBlockV1&gt;](ConversationTextBlockV1.md) |
 | `locale`          | string                                                             |
 | `expectedCursor`  | string                                                             |
@@ -19,6 +20,7 @@ import type { SendConversationMessageRequestV1 } from "";
 const example = {
   schemaVersion: null,
   clientMessageId: null,
+  skillId: null,
   content: null,
   locale: null,
   expectedCursor: null,

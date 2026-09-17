@@ -16,35 +16,32 @@
  *
  * @export
  */
-export const RelationshipWorkspaceSectionType = {
-  Plan: "PLAN",
-  Attention: "ATTENTION",
-  Work: "WORK",
-  Results: "RESULTS",
-  UsageBudget: "USAGE_BUDGET",
-  RightsControls: "RIGHTS_CONTROLS",
-  Configuration: "CONFIGURATION",
-  Goals: "GOALS",
-  BusinessOutcomes: "BUSINESS_OUTCOMES",
-  Performance: "PERFORMANCE",
-  Operations: "OPERATIONS",
+export const PerformanceReviewRecommendationV1 = {
+  ContinueCurrentMandate: "CONTINUE_CURRENT_MANDATE",
+  TuneNonMaterialPresentation: "TUNE_NON_MATERIAL_PRESENTATION",
+  ProposeGoalOrConfigurationChange: "PROPOSE_GOAL_OR_CONFIGURATION_CHANGE",
+  ReassessmentRequired: "REASSESSMENT_REQUIRED",
+  PauseAffectedWork: "PAUSE_AFFECTED_WORK",
+  EscalateLimitationOrBlocker: "ESCALATE_LIMITATION_OR_BLOCKER",
+  OfferTerminationOrApprovedMigration:
+    "OFFER_TERMINATION_OR_APPROVED_MIGRATION",
 } as const;
-export type RelationshipWorkspaceSectionType =
-  (typeof RelationshipWorkspaceSectionType)[keyof typeof RelationshipWorkspaceSectionType];
+export type PerformanceReviewRecommendationV1 =
+  (typeof PerformanceReviewRecommendationV1)[keyof typeof PerformanceReviewRecommendationV1];
 
-export function instanceOfRelationshipWorkspaceSectionType(
+export function instanceOfPerformanceReviewRecommendationV1(
   value: any,
 ): boolean {
-  for (const key in RelationshipWorkspaceSectionType) {
+  for (const key in PerformanceReviewRecommendationV1) {
     if (
       Object.prototype.hasOwnProperty.call(
-        RelationshipWorkspaceSectionType,
+        PerformanceReviewRecommendationV1,
         key,
       )
     ) {
       if (
-        RelationshipWorkspaceSectionType[
-          key as keyof typeof RelationshipWorkspaceSectionType
+        PerformanceReviewRecommendationV1[
+          key as keyof typeof PerformanceReviewRecommendationV1
         ] === value
       ) {
         return true;
@@ -54,28 +51,28 @@ export function instanceOfRelationshipWorkspaceSectionType(
   return false;
 }
 
-export function RelationshipWorkspaceSectionTypeFromJSON(
+export function PerformanceReviewRecommendationV1FromJSON(
   json: any,
-): RelationshipWorkspaceSectionType {
-  return RelationshipWorkspaceSectionTypeFromJSONTyped(json, false);
+): PerformanceReviewRecommendationV1 {
+  return PerformanceReviewRecommendationV1FromJSONTyped(json, false);
 }
 
-export function RelationshipWorkspaceSectionTypeFromJSONTyped(
+export function PerformanceReviewRecommendationV1FromJSONTyped(
   json: any,
   ignoreDiscriminator: boolean,
-): RelationshipWorkspaceSectionType {
-  return json as RelationshipWorkspaceSectionType;
+): PerformanceReviewRecommendationV1 {
+  return json as PerformanceReviewRecommendationV1;
 }
 
-export function RelationshipWorkspaceSectionTypeToJSON(
-  value?: RelationshipWorkspaceSectionType | null,
+export function PerformanceReviewRecommendationV1ToJSON(
+  value?: PerformanceReviewRecommendationV1 | null,
 ): any {
   return value as any;
 }
 
-export function RelationshipWorkspaceSectionTypeToJSONTyped(
+export function PerformanceReviewRecommendationV1ToJSONTyped(
   value: any,
   ignoreDiscriminator: boolean,
-): RelationshipWorkspaceSectionType {
-  return value as RelationshipWorkspaceSectionType;
+): PerformanceReviewRecommendationV1 {
+  return value as PerformanceReviewRecommendationV1;
 }

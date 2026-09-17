@@ -4,6 +4,20 @@ import { accessTokenFromRequest } from '@/lib/server-auth';
 const businessPlatformUrl = process.env.BUSINESS_PLATFORM_URL ?? 'http://localhost:5001';
 const scopeConfirmation = 'I_CONFIRM_THE_ACCEPTED_DECISION_SPACE_AND_AUTHORITY_SCOPE';
 
+export async function GET(request: NextRequest, { params }: { params: Promise<{ relationshipId: string }> }) {
+  const accessToken = await accessTokenFromRequest(request);
+  if (!accessToken) return NextResponse.json({ title: 'Secure sign in is required.' }, { status: 401 });
+  const checkoutIntentId = request.nextUrl.searchParams.get('checkoutIntentId');
+  if (!checkoutIntentId) return NextResponse.json({ title: 'Checkout reconciliation request is invalid.' }, { status: 400 });
+  const { relationshipId } = await params;
+  const response = await fetch(
+    `${businessPlatformUrl}/api/v1/employment/relationships/${encodeURIComponent(relationshipId)}/checkout-intents/${encodeURIComponent(checkoutIntentId)}`,
+    { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' },
+  );
+  const result = await response.json().catch(() => ({ title: 'Checkout reconciliation remains unresolved.' }));
+  return NextResponse.json(result, { status: response.status, headers: { 'Cache-Control': 'no-store' } });
+}
+
 export async function POST(request: NextRequest, { params }: { params: Promise<{ relationshipId: string }> }) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) return NextResponse.json({ title: 'Secure sign in is required.' }, { status: 401 });

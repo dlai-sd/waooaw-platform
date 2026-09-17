@@ -25,6 +25,9 @@ public sealed record ContractLinkedCheckoutRequest(
     int ContractVersion, string ContractHash, Guid ContractAcceptanceId, Guid PaymentConsentEvidenceId,
     string AgentType, string BundleTier, long GrossAmountInrPaise, long GstAmountInrPaise,
     string QuoteVersion, Guid IdempotencyKey);
+public sealed record ContractLinkedCheckoutReconciliation(
+    Guid CheckoutIntentId, Guid TenantId, Guid RelationshipId, Guid ContractId, int ContractVersion,
+    string ContractHash, Guid ContractAcceptanceId, Guid PaymentConsentEvidenceId);
 public sealed record RelationshipCheckoutOutcome(
     string OutcomeKind, Guid CheckoutIntentId, Guid RelationshipId, int ContractVersion,
     DateTimeOffset ProducedAt, string? OrderId = null, string? PublicCheckoutKey = null,
@@ -44,6 +47,9 @@ public interface IRelationshipPaymentGateway
     Task<HostedOnboardingOrder> CreateOrderAsync(ContractLinkedOnboardingOrderRequest request, CancellationToken cancellationToken);
     Task<RelationshipCheckoutOutcome> CreateCheckoutAsync(
         ContractLinkedCheckoutRequest request,
+        CancellationToken cancellationToken);
+    Task<RelationshipCheckoutOutcome> ReconcileCheckoutAsync(
+        ContractLinkedCheckoutReconciliation request,
         CancellationToken cancellationToken);
 }
 
@@ -84,11 +90,41 @@ public sealed class RelationshipPaymentService(
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         await RequireActiveParticipantAsync(db, tenantId, relationshipId, participantId, cancellationToken);
-        var intent = await db.RelationshipCheckoutIntents.AsNoTracking().SingleOrDefaultAsync(
+        var intent = await db.RelationshipCheckoutIntents.SingleOrDefaultAsync(
             item => item.TenantId == tenantId && item.RelationshipId == relationshipId
                 && item.CheckoutIntentId == checkoutIntentId,
             cancellationToken) ?? throw new KeyNotFoundException("Checkout intent not found.");
-        return ToStoredOutcome(intent);
+        var stored = ToStoredOutcome(intent);
+        if (intent.Status != "AWAITING_PROVIDER") return stored;
+        if (!intent.PaymentConsentEvidenceId.HasValue)
+            throw new PaymentOwnerUnavailableException("Checkout consent evidence is unavailable.");
+        var reconciled = await paymentGateway.ReconcileCheckoutAsync(new ContractLinkedCheckoutReconciliation(
+            intent.CheckoutIntentId, intent.TenantId, intent.RelationshipId, intent.ContractId,
+            intent.ContractVersion, intent.ContractHash, intent.ContractAcceptanceId,
+            intent.PaymentConsentEvidenceId.Value), cancellationToken);
+        if (reconciled.CheckoutIntentId != intent.CheckoutIntentId
+            || reconciled.RelationshipId != intent.RelationshipId
+            || reconciled.ContractVersion != intent.ContractVersion)
+            throw new PaymentOwnerUnavailableException("WBE reconciliation identity is inconsistent with BP.");
+        if (reconciled.OutcomeKind == "CAPTURED")
+        {
+            intent.Status = "COMPLETED";
+            intent.CompletedAt = DateTimeOffset.UtcNow;
+        }
+        else if (reconciled.OutcomeKind == "OUTCOME_UNRESOLVED")
+        {
+            intent.Status = "UNRESOLVED";
+            intent.CompletedAt = DateTimeOffset.UtcNow;
+        }
+        else
+        {
+            throw new PaymentOwnerUnavailableException("WBE reconciliation returned an invalid outcome transition.");
+        }
+        intent.OutcomeKind = reconciled.OutcomeKind;
+        intent.OutcomeJson = JsonSerializer.Serialize(reconciled, JsonOptions);
+        intent.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+        return reconciled;
     }
 
     public async Task<RelationshipCheckoutOutcome> CreateCheckoutAsync(
@@ -154,6 +190,7 @@ public sealed class RelationshipPaymentService(
             ContractId = contract.ContractId,
             ContractVersion = contract.Version,
             ContractHash = contract.ContractHash,
+            ContractAcceptanceId = acceptance.AcceptanceId,
             IdempotencyKey = idempotencyKey,
             MaterialRequestHash = materialHash,
         };
@@ -176,6 +213,7 @@ public sealed class RelationshipPaymentService(
                 terms.GstAmountInrPaise,
                 terms.RenewalConsequence,
             }, cancellationToken);
+        intent.PaymentConsentEvidenceId = evidenceId;
         RelationshipCheckoutOutcome outcome;
         try
         {
@@ -200,10 +238,16 @@ public sealed class RelationshipPaymentService(
             || outcome.RelationshipId != relationshipId
             || outcome.ContractVersion != contractVersion)
             throw new PaymentOwnerUnavailableException("WBE returned checkout identity inconsistent with BP.");
-        intent.Status = outcome.OutcomeKind == "OUTCOME_UNRESOLVED" ? "UNRESOLVED" : "COMPLETED";
+        intent.Status = outcome.OutcomeKind switch
+        {
+            "RAZORPAY_CHECKOUT_REQUIRED" => "AWAITING_PROVIDER",
+            "OUTCOME_UNRESOLVED" => "UNRESOLVED",
+            _ => "COMPLETED",
+        };
         intent.OutcomeKind = outcome.OutcomeKind;
         intent.OutcomeJson = JsonSerializer.Serialize(outcome, JsonOptions);
-        intent.CompletedAt = intent.UpdatedAt = DateTimeOffset.UtcNow;
+        intent.CompletedAt = intent.Status == "AWAITING_PROVIDER" ? null : DateTimeOffset.UtcNow;
+        intent.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
         return outcome;
     }
@@ -326,6 +370,19 @@ public sealed class RelationshipPaymentService(
 
 public sealed class HttpRelationshipPaymentGateway(IHttpClientFactory httpClientFactory) : IRelationshipPaymentGateway
 {
+    public async Task<RelationshipCheckoutOutcome> ReconcileCheckoutAsync(
+        ContractLinkedCheckoutReconciliation request, CancellationToken cancellationToken)
+    {
+        using var response = await httpClientFactory.CreateClient("WBE").PostAsJsonAsync(
+            $"/payments/relationship-checkout/{request.CheckoutIntentId:D}/reconcile", request,
+            JsonOptions, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+            throw new PaymentOwnerUnavailableException(
+                $"WBE checkout reconciliation returned {(int)response.StatusCode}.");
+        return await response.Content.ReadFromJsonAsync<RelationshipCheckoutOutcome>(JsonOptions, cancellationToken)
+            ?? throw new PaymentOwnerUnavailableException("WBE returned an empty reconciliation outcome.");
+    }
+
     public async Task<RelationshipCheckoutOutcome> CreateCheckoutAsync(
         ContractLinkedCheckoutRequest request, CancellationToken cancellationToken)
     {

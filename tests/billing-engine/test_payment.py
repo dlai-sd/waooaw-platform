@@ -7,6 +7,9 @@ CCT-GRANDFATHER-01 — C-090: renewal blocked when plan price > agreed price wit
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
+import json
 import uuid
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -56,6 +59,7 @@ _PAYMENT_DDL = [
         contract_acceptance_id TEXT,
         payment_consent_evidence_id TEXT,
         payment_evidence_id TEXT,
+        checkout_intent_id TEXT,
         agent_type          TEXT,
         bundle_tier         TEXT,
         activation_intent_id TEXT,
@@ -89,6 +93,64 @@ _PAYMENT_DDL = [
         new_subscription_id TEXT
     )""",
 ]
+
+
+@pytest.mark.asyncio
+async def test_relationship_checkout_reconciliation_is_exact_bound(payment_session, monkeypatch):
+    from payment import router as payment_router
+
+    class SessionContext:
+        async def __aenter__(self):
+            return payment_session
+
+        async def __aexit__(self, _type, _value, _traceback):
+            return False
+
+    monkeypatch.setattr(payment_router, "get_session_factory", lambda: lambda: SessionContext())
+    checkout_intent_id = uuid.uuid4()
+    tenant_id = uuid.uuid4()
+    relationship_id = uuid.uuid4()
+    contract_id = uuid.uuid4()
+    acceptance_id = uuid.uuid4()
+    consent_id = uuid.uuid4()
+    evidence_id = uuid.uuid4()
+    body = payment_router.RelationshipCheckoutReconcileBody(
+        tenant_id=tenant_id,
+        relationship_id=relationship_id,
+        contract_id=contract_id,
+        contract_version=1,
+        contract_hash="a" * 64,
+        contract_acceptance_id=acceptance_id,
+        payment_consent_evidence_id=consent_id,
+    )
+
+    unresolved = await payment_router.reconcile_relationship_checkout(checkout_intent_id, body)
+    assert unresolved.outcome_kind is CheckoutOutcomeKind.OUTCOME_UNRESOLVED
+
+    await payment_session.execute(text(
+        "INSERT INTO payment_intents (razorpay_payment_id, razorpay_order_id, customer_id, status, "
+        "tenant_id, relationship_id, accepted_contract_id, contract_version, contract_hash, "
+        "contract_acceptance_id, payment_consent_evidence_id, payment_evidence_id, checkout_intent_id, "
+        "agent_type, bundle_tier) VALUES (:payment, 'order_exact', :customer, 'CAPTURED', :tenant, "
+        ":relationship, :contract, 1, :hash, :acceptance, :consent, :evidence, :checkout, 'DMA', 'STARTER')"
+    ).bindparams(
+        payment="pay_exact", customer=str(tenant_id), tenant=str(tenant_id),
+        relationship=str(relationship_id), contract=str(contract_id), hash="a" * 64,
+        acceptance=str(acceptance_id), consent=str(consent_id), evidence=str(evidence_id),
+        checkout=str(checkout_intent_id),
+    ))
+    await payment_session.commit()
+
+    captured = await payment_router.reconcile_relationship_checkout(checkout_intent_id, body)
+    assert captured.outcome_kind is CheckoutOutcomeKind.CAPTURED
+    assert captured.commercial_outcome_reference == "pay_exact"
+    assert captured.commercial_evidence_id == evidence_id
+    with pytest.raises(HTTPException) as conflict:
+        await payment_router.reconcile_relationship_checkout(
+            checkout_intent_id,
+            body.model_copy(update={"tenant_id": uuid.uuid4()}),
+        )
+    assert conflict.value.status_code == 409
 
 
 
@@ -769,17 +831,39 @@ class TestPaymentRouterHTTP:
                 }
             },
         }
+        raw_body = json.dumps(payload, separators=(",", ":")).encode()
+        from payment.router import _settings
+        signature = hmac.new(_settings.RAZORPAY_WEBHOOK_SECRET.encode(), raw_body, hashlib.sha256).hexdigest()
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
         ) as c:
             resp = await c.post(
                 "/payments/webhooks/razorpay",
-                json=payload,
-                headers={"X-Razorpay-Signature": "sig"},
+                content=raw_body,
+                headers={"Content-Type": "application/json", "X-Razorpay-Signature": signature},
             )
 
         assert resp.status_code == 400
         assert resp.json()["detail"]["code"] == "MISSING_CUSTOMER_ID"
+
+    @pytest.mark.asyncio
+    async def test_webhook_rejects_invalid_raw_body_signature_before_capture(self):
+        from httpx import ASGITransport, AsyncClient
+        from main import app
+
+        raw_body = json.dumps({
+            "event": "payment.captured",
+            "payload": {"payment": {"entity": {"id": "pay_tampered", "notes": {}}}},
+        }, separators=(",", ":")).encode()
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post(
+                "/payments/webhooks/razorpay",
+                content=raw_body,
+                headers={"Content-Type": "application/json", "X-Razorpay-Signature": "invalid"},
+            )
+
+        assert response.status_code == 400
+        assert response.json()["detail"]["code"] == "INVALID_SIGNATURE"
 
     @pytest.mark.asyncio
     async def test_activate_bypass_returns_400_when_not_bypass(self):

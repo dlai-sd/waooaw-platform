@@ -8,6 +8,7 @@ import type { RelationshipConfigurationV1 } from '@/lib/api/generated/models/Rel
 import type { RelationshipEvidencePageV1 } from '@/lib/api/generated/models/RelationshipEvidencePageV1';
 import type { RelationshipGoalsV1 } from '@/lib/api/generated/models/RelationshipGoalsV1';
 import type { RelationshipOperationsV1 } from '@/lib/api/generated/models/RelationshipOperationsV1';
+import type { RelationshipPerformanceV1 } from '@/lib/api/generated/models/RelationshipPerformanceV1';
 import type { RelationshipPlanV1 } from '@/lib/api/generated/models/RelationshipPlanV1';
 import type { RelationshipResultsV1 } from '@/lib/api/generated/models/RelationshipResultsV1';
 import type { RelationshipRightsControlsV1 } from '@/lib/api/generated/models/RelationshipRightsControlsV1';
@@ -21,6 +22,7 @@ export interface RelationshipWorkspaceViews {
   configuration: RelationshipConfigurationV1;
   goals: RelationshipGoalsV1;
   businessOutcomes: RelationshipBusinessOutcomesV1;
+  performance: RelationshipPerformanceV1;
   operations: RelationshipOperationsV1;
   plan: RelationshipPlanV1;
   attention: RelationshipAttentionPageV1;
@@ -42,11 +44,12 @@ export async function getRelationshipWorkspaceViews(
   const configurationApi = new ConfigurationApi(clientConfiguration);
   const request = { relationshipId };
   const noStore = { cache: 'no-store' as const };
-  const [workspace, configuration, goals, businessOutcomes, operations, plan, attention, work, results, usageBudget, rightsControls, evidence] = await Promise.all([
+  const [workspace, configuration, goals, businessOutcomes, performance, operations, plan, attention, work, results, usageBudget, rightsControls, evidence] = await Promise.all([
     workspaceApi.getRelationshipWorkspace(request, noStore),
     configurationApi.getRelationshipConfiguration(request, noStore),
     workspaceApi.getRelationshipGoals(request, noStore),
     workspaceApi.getRelationshipBusinessOutcomes(request, noStore),
+    workspaceApi.getRelationshipPerformance(request, noStore),
     workspaceApi.getRelationshipOperations(request, noStore),
     workspaceApi.getRelationshipPlan(request, noStore),
     workspaceApi.getRelationshipAttention({ ...request, limit: 40 }, noStore),
@@ -56,5 +59,5 @@ export async function getRelationshipWorkspaceViews(
     workspaceApi.getRelationshipRightsControls(request, noStore),
     workspaceApi.listRelationshipEvidence({ ...request, limit: 40 }, noStore),
   ]);
-  return { workspace, configuration, goals, businessOutcomes, operations, plan, attention, work, results, usageBudget, rightsControls, evidence };
+  return { workspace, configuration, goals, businessOutcomes, performance, operations, plan, attention, work, results, usageBudget, rightsControls, evidence };
 }

@@ -174,7 +174,7 @@ public sealed class RelationshipWorkspaceControllerTests
         Assert.Equal(goal.GoalId, Assert.Single(operations.GetProperty("verifiedGoalIds").EnumerateArray()).GetGuid());
         Assert.Equal(JsonValueKind.Null, operations.GetProperty("operationalMandate").ValueKind);
         Assert.Contains(operations.GetProperty("blockedReasons").EnumerateArray(),
-            reason => reason.GetString()!.Contains("mandate coordinates", StringComparison.Ordinal));
+            reason => reason.GetString()!.Contains("runtime binding coordinates", StringComparison.Ordinal));
         Assert.Equal("COMPLETED", outcome.GetProperty("status").GetString());
     }
 
@@ -688,7 +688,7 @@ public sealed class RelationshipWorkspaceControllerTests
         Json(result).GetProperty("lifecycleProfile").GetProperty("stages").EnumerateArray().ToArray();
 
     [Fact]
-    public async Task AggregateVerifiesOperationsOnlyWhenEveryOwnerDependencyIsCurrent()
+    public async Task AggregateKeepsOperationsBlockedUntilCompleteMandateExists()
     {
         var (controller, relationship, gateway, configuration) = await CreateControllerAsync(
             EmploymentRelationshipState.Active);
@@ -727,11 +727,12 @@ public sealed class RelationshipWorkspaceControllerTests
         var operations = Stages(await controller.GetWorkspaceAsync(
             relationship.RelationshipId, CancellationToken.None))[^1];
 
-        Assert.Equal("VERIFIED", operations.GetProperty("state").GetString());
-        Assert.Equal("RECORDED", operations.GetProperty("evidenceState").GetString());
-        Assert.Equal($"relationship-{relationship.StateVersion}", operations.GetProperty("outputRevision").GetString());
-        Assert.Empty(operations.GetProperty("blockerReasons").EnumerateArray());
-        Assert.Equal("Continue governed work.", operations.GetProperty("nextAuthorizedAction").GetString());
+        Assert.Equal("BLOCKED", operations.GetProperty("state").GetString());
+        Assert.Equal("PENDING", operations.GetProperty("evidenceState").GetString());
+        Assert.Equal(JsonValueKind.Null, operations.GetProperty("outputRevision").ValueKind);
+        Assert.Contains(operations.GetProperty("blockerReasons").EnumerateArray(),
+            reason => reason.GetString()!.Contains("runtime binding coordinates", StringComparison.Ordinal));
+        Assert.Equal("Resolve the named lifecycle dependencies.", operations.GetProperty("nextAuthorizedAction").GetString());
     }
 
     private static async Task<(RelationshipWorkspaceController Controller, EmploymentRelationship Relationship,

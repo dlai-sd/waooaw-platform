@@ -309,7 +309,14 @@ def canonical_openapi() -> dict[str, Any]:
                 "StartConversationExecutionRequestV1": {
                     "type": "object",
                     "additionalProperties": False,
-                    "required": ["schemaVersion", "messageId", "decisionSpaceVersion", "locale", "content"],
+                    "required": [
+                        "schemaVersion",
+                        "messageId",
+                        "decisionSpaceVersion",
+                        "locale",
+                        "operationalMandate",
+                        "content",
+                    ],
                     "properties": {
                         "schemaVersion": {"$ref": "#/components/schemas/ConversationExecutionSchemaVersion"},
                         "messageId": {
@@ -319,6 +326,7 @@ def canonical_openapi() -> dict[str, Any]:
                         },
                         "decisionSpaceVersion": {"type": "integer", "minimum": 1},
                         "locale": {"type": "string", "minLength": 2, "maxLength": 35},
+                        "operationalMandate": {"$ref": "#/components/schemas/OperationalMandateV1"},
                         "content": {"$ref": "#/components/schemas/ConversationExecutionTextV1"},
                         "activeGoalContextId": {"type": "string", "format": "uuid"},
                     },

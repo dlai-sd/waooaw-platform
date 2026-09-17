@@ -18,6 +18,9 @@
 | `enabledMethodFamilies`      | Set&lt;string&gt; |
 | `expiresAt`                  | Date              |
 | `reconciliationTarget`       | string            |
+| `commercialOutcomeReference` | string            |
+| `commercialEvidenceId`       | string            |
+| `evidenceState`              | string            |
 | `quoteVersion`               | string            |
 | `promotionVersion`           | string            |
 | `listPriceInrPaise`          | number            |
@@ -25,9 +28,6 @@
 | `taxInrPaise`                | number            |
 | `payableInrPaise`            | number            |
 | `renewalConsequence`         | string            |
-| `commercialOutcomeReference` | string            |
-| `commercialEvidenceId`       | string            |
-| `evidenceState`              | string            |
 | `reasonCode`                 | string            |
 | `accountableOwner`           | string            |
 | `retryable`                  | boolean           |
@@ -54,6 +54,9 @@ const example = {
   enabledMethodFamilies: null,
   expiresAt: null,
   reconciliationTarget: null,
+  commercialOutcomeReference: null,
+  commercialEvidenceId: null,
+  evidenceState: null,
   quoteVersion: null,
   promotionVersion: null,
   listPriceInrPaise: null,
@@ -61,9 +64,6 @@ const example = {
   taxInrPaise: null,
   payableInrPaise: null,
   renewalConsequence: null,
-  commercialOutcomeReference: null,
-  commercialEvidenceId: null,
-  evidenceState: null,
   reasonCode: null,
   accountableOwner: null,
   retryable: null,

@@ -16,61 +16,83 @@ import { mapValues } from "../runtime";
 /**
  *
  * @export
- * @interface RelationshipCheckoutBase
+ * @interface RelationshipCapturedCheckout
  */
-export interface RelationshipCheckoutBase {
+export interface RelationshipCapturedCheckout {
   /**
    *
    * @type {string}
-   * @memberof RelationshipCheckoutBase
+   * @memberof RelationshipCapturedCheckout
    */
-  outcomeKind: RelationshipCheckoutBaseOutcomeKindEnum;
+  outcomeKind: RelationshipCapturedCheckoutOutcomeKindEnum;
   /**
    *
    * @type {string}
-   * @memberof RelationshipCheckoutBase
+   * @memberof RelationshipCapturedCheckout
    */
   checkoutIntentId: string;
   /**
    *
    * @type {string}
-   * @memberof RelationshipCheckoutBase
+   * @memberof RelationshipCapturedCheckout
    */
   relationshipId: string;
   /**
    *
    * @type {number}
-   * @memberof RelationshipCheckoutBase
+   * @memberof RelationshipCapturedCheckout
    */
   contractVersion: number;
   /**
    *
    * @type {Date}
-   * @memberof RelationshipCheckoutBase
+   * @memberof RelationshipCapturedCheckout
    */
   producedAt: Date;
+  /**
+   *
+   * @type {string}
+   * @memberof RelationshipCapturedCheckout
+   */
+  commercialOutcomeReference: string;
+  /**
+   *
+   * @type {string}
+   * @memberof RelationshipCapturedCheckout
+   */
+  commercialEvidenceId: string;
+  /**
+   *
+   * @type {string}
+   * @memberof RelationshipCapturedCheckout
+   */
+  evidenceState: RelationshipCapturedCheckoutEvidenceStateEnum;
 }
 
 /**
  * @export
  */
-export const RelationshipCheckoutBaseOutcomeKindEnum = {
-  RazorpayCheckoutRequired: "RAZORPAY_CHECKOUT_REQUIRED",
+export const RelationshipCapturedCheckoutOutcomeKindEnum = {
   Captured: "CAPTURED",
-  FullyDiscounted: "FULLY_DISCOUNTED",
-  ProviderConfigurationPending: "PROVIDER_CONFIGURATION_PENDING",
-  CommercialConflict: "COMMERCIAL_CONFLICT",
-  OutcomeUnresolved: "OUTCOME_UNRESOLVED",
 } as const;
-export type RelationshipCheckoutBaseOutcomeKindEnum =
-  (typeof RelationshipCheckoutBaseOutcomeKindEnum)[keyof typeof RelationshipCheckoutBaseOutcomeKindEnum];
+export type RelationshipCapturedCheckoutOutcomeKindEnum =
+  (typeof RelationshipCapturedCheckoutOutcomeKindEnum)[keyof typeof RelationshipCapturedCheckoutOutcomeKindEnum];
 
 /**
- * Check if a given object implements the RelationshipCheckoutBase interface.
+ * @export
  */
-export function instanceOfRelationshipCheckoutBase(
+export const RelationshipCapturedCheckoutEvidenceStateEnum = {
+  Committed: "COMMITTED",
+} as const;
+export type RelationshipCapturedCheckoutEvidenceStateEnum =
+  (typeof RelationshipCapturedCheckoutEvidenceStateEnum)[keyof typeof RelationshipCapturedCheckoutEvidenceStateEnum];
+
+/**
+ * Check if a given object implements the RelationshipCapturedCheckout interface.
+ */
+export function instanceOfRelationshipCapturedCheckout(
   value: object,
-): value is RelationshipCheckoutBase {
+): value is RelationshipCapturedCheckout {
   if (!("outcomeKind" in value) || value["outcomeKind"] === undefined)
     return false;
   if (!("checkoutIntentId" in value) || value["checkoutIntentId"] === undefined)
@@ -81,19 +103,31 @@ export function instanceOfRelationshipCheckoutBase(
     return false;
   if (!("producedAt" in value) || value["producedAt"] === undefined)
     return false;
+  if (
+    !("commercialOutcomeReference" in value) ||
+    value["commercialOutcomeReference"] === undefined
+  )
+    return false;
+  if (
+    !("commercialEvidenceId" in value) ||
+    value["commercialEvidenceId"] === undefined
+  )
+    return false;
+  if (!("evidenceState" in value) || value["evidenceState"] === undefined)
+    return false;
   return true;
 }
 
-export function RelationshipCheckoutBaseFromJSON(
+export function RelationshipCapturedCheckoutFromJSON(
   json: any,
-): RelationshipCheckoutBase {
-  return RelationshipCheckoutBaseFromJSONTyped(json, false);
+): RelationshipCapturedCheckout {
+  return RelationshipCapturedCheckoutFromJSONTyped(json, false);
 }
 
-export function RelationshipCheckoutBaseFromJSONTyped(
+export function RelationshipCapturedCheckoutFromJSONTyped(
   json: any,
   ignoreDiscriminator: boolean,
-): RelationshipCheckoutBase {
+): RelationshipCapturedCheckout {
   if (json == null) {
     return json;
   }
@@ -103,17 +137,20 @@ export function RelationshipCheckoutBaseFromJSONTyped(
     relationshipId: json["relationshipId"],
     contractVersion: json["contractVersion"],
     producedAt: new Date(json["producedAt"]),
+    commercialOutcomeReference: json["commercialOutcomeReference"],
+    commercialEvidenceId: json["commercialEvidenceId"],
+    evidenceState: json["evidenceState"],
   };
 }
 
-export function RelationshipCheckoutBaseToJSON(
+export function RelationshipCapturedCheckoutToJSON(
   json: any,
-): RelationshipCheckoutBase {
-  return RelationshipCheckoutBaseToJSONTyped(json, false);
+): RelationshipCapturedCheckout {
+  return RelationshipCapturedCheckoutToJSONTyped(json, false);
 }
 
-export function RelationshipCheckoutBaseToJSONTyped(
-  value?: RelationshipCheckoutBase | null,
+export function RelationshipCapturedCheckoutToJSONTyped(
+  value?: RelationshipCapturedCheckout | null,
   ignoreDiscriminator: boolean = false,
 ): any {
   if (value == null) {
@@ -126,5 +163,8 @@ export function RelationshipCheckoutBaseToJSONTyped(
     relationshipId: value["relationshipId"],
     contractVersion: value["contractVersion"],
     producedAt: value["producedAt"].toISOString(),
+    commercialOutcomeReference: value["commercialOutcomeReference"],
+    commercialEvidenceId: value["commercialEvidenceId"],
+    evidenceState: value["evidenceState"],
   };
 }
