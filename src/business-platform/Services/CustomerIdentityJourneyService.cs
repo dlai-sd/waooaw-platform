@@ -25,15 +25,16 @@ public sealed class CustomerIdentityJourneyService(IdentityService identity,
         return actor;
     }
 
-    public Task<(IdentityRegistrationRecord reg, bool isNew)> StartAsync(ClaimsPrincipal principal,
+    public async Task<(IdentityRegistrationRecord reg, bool isNew)> StartAsync(ClaimsPrincipal principal,
         Guid key, string language, CancellationToken ct)
     {
         ValidateActor(principal);
         var authenticationPath = proofAdapter.AuthenticationPath(principal);
-        return identity.StartRegistrationAsync(
+        var verifiedEmail = proofAdapter.VerifiedEmail(principal);
+        return await identity.StartRegistrationAsync(
             proofAdapter.ValidateActor(principal, requireFresh: true), authenticationPath, key,
             CanonicalHash("StartRegistration", null, new { languagePreference = language }), language,
-            proofAdapter.HasVerifiedEmail(principal), ct);
+            verifiedEmail is not null, verifiedEmail is null ? null : IdentityService.MaskEmail(verifiedEmail), ct);
     }
 
     public Task<IdentityRegistrationRecord> GetAsync(ClaimsPrincipal principal, Guid registrationId, CancellationToken ct) =>
@@ -42,6 +43,11 @@ public sealed class CustomerIdentityJourneyService(IdentityService identity,
     public Task<(IdentityVerificationChallengeRecord challenge, bool isNew)> StartEmailVerificationAsync(
         ClaimsPrincipal principal, Guid registrationId, Guid key, string canonicalHash, string email, CancellationToken ct) =>
         identity.StartEmailVerificationAsync(registrationId, ValidateActor(principal), key, canonicalHash, email, ct);
+
+    public Task<(IdentityVerificationChallengeRecord challenge, bool isNew)> StartMobileVerificationAsync(
+        ClaimsPrincipal principal, Guid registrationId, Guid key, string mobile, CancellationToken ct) =>
+        identity.StartMobileVerificationAsync(registrationId, ValidateActor(principal), key,
+            CanonicalHash("StartMobileVerification", registrationId, new { mobile }), mobile, ct);
 
     public Task<(IdentityRegistrationRecord reg, bool isNew)> UpdateAsync(ClaimsPrincipal principal,
         Guid registrationId, Guid key, string displayName, string businessName, string businessDomain,

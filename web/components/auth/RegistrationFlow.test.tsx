@@ -13,7 +13,7 @@ jest.mock('next/navigation', () => ({ useRouter: () => ({ replace, refresh }) })
 const draftKey = 'waooaw:identity:registration-draft';
 const baseRegistration = {
   registrationId, state: 'PROFILE_COMPLETION_REQUIRED', nextAction: 'COMPLETE_PROFILE', authenticationPath: 'GOOGLE',
-  emailVerified: true, mobileVerified: false, profile: {}, expiresAt: new Date(), updatedAt: new Date(),
+  providerLabel: 'google', emailVerified: true, mobileVerified: false, maskedEmail: 'a***@example.com', profile: {}, expiresAt: new Date(), updatedAt: new Date(),
 };
 
 function jsonResponse(body: unknown, status = 200) {
@@ -96,7 +96,38 @@ describe('F2 registration flow', () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
-  it('allows optional mobile verification before completing registration', async () => {
+  it('restarts sign-in when an in-progress registration is no longer accessible', async () => {
+    global.fetch = jest.fn()
+      .mockImplementationOnce(() => jsonResponse(baseRegistration))
+      .mockImplementationOnce(() => jsonResponse({ code: 'IDENTITY_RESOURCE_NOT_ACCESSIBLE', correlationId: '11111111-1111-4111-8111-111111111111' }, 404));
+    render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} returnTo="/settings" />);
+    const profileForm = (await screen.findByLabelText('Your name')).closest('form');
+    fireEvent.submit(profileForm!);
+
+    expect(await screen.findByText(getIdentityMessages('en').registrationLost)).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: getIdentityMessages('en').restartSignIn }));
+    expect(replace).toHaveBeenCalledWith('/login?returnTo=%2Fsettings');
+    expect(screen.queryByText(/11111111/)).not.toBeInTheDocument();
+  });
+
+  it('returns an expired email challenge to the resend form', async () => {
+    const verificationRequired = { ...baseRegistration, state: 'EMAIL_VERIFICATION_REQUIRED', nextAction: 'VERIFY_EMAIL', emailVerified: false };
+    const challenge = { challengeId: '22222222-2222-4222-8222-222222222222', purpose: 'EMAIL', state: 'PENDING', maskedDestination: 'a***@example.com', expiresAt: new Date(), resendAfter: new Date() };
+    global.fetch = jest.fn()
+      .mockImplementationOnce(() => jsonResponse(verificationRequired))
+      .mockImplementationOnce(() => jsonResponse(challenge))
+      .mockImplementationOnce(() => jsonResponse({ code: 'IDENTITY_CHALLENGE_EXPIRED' }, 410));
+    render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} />);
+    fireEvent.change(await screen.findByLabelText('Email address'), { target: { value: 'asha@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: /Send verification code/ }));
+    fireEvent.change(await screen.findByLabelText('Six-digit code'), { target: { value: '123456' } });
+    fireEvent.click(screen.getByRole('button', { name: /Verify code/ }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(getIdentityMessages('en').verificationExpired);
+    expect(screen.getByLabelText('Email address')).toBeVisible();
+  });
+
+  it('shows verified broker email read-only and keeps unbudgeted SMS disabled', async () => {
     global.fetch = jest.fn(() => jsonResponse({
       ...baseRegistration,
       state: 'REGISTRATION_COMPLETION_REQUIRED',
@@ -104,9 +135,13 @@ describe('F2 registration flow', () => {
     }));
     render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Verify mobile now' }));
-
-    expect(await screen.findByLabelText('Mobile number')).toBeInTheDocument();
+    expect(await screen.findByLabelText('Verified email')).toHaveValue('a***@example.com');
+    expect(screen.getByLabelText('Verified email')).toHaveAttribute('readonly');
+    expect(screen.getByText('Verified by Google')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Mobile verification (optional)' })).toBeDisabled();
+    expect(screen.getByText(/approved India delivery provider and budget/)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Complete registration' })).toBeEnabled();
+    expect(screen.queryByLabelText('Mobile number')).not.toBeInTheDocument();
   });
 
   it.each(['COMPLETE_REGISTRATION', 'CONTINUE_TO_DEFAULT_TARGET', 'NONE'])('requires confirmation before leaving %s', async (nextAction) => {

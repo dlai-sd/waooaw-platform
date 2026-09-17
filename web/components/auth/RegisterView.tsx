@@ -33,9 +33,6 @@ export async function RegisterView({ searchParams }: { searchParams?: Promise<{ 
   }
   return (
     <section className="auth-view identity-view">
-      <p className="eyebrow">{messages.eyebrow}</p>
-      <h1 id="auth-dialog-title">{messages.title}</h1>
-      <p>{messages.description}</p>
       <RegistrationFlow locale={locale} messages={messages} returnTo={returnTo} />
     </section>
   );

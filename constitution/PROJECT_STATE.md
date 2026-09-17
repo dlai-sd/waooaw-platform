@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 166
-**Last Updated:** 2026-09-16 (WC-097 ENGINEERING QUALIFIED CHECKPOINT)
+**State Revision:** 171
+**Last Updated:** 2026-09-16 (WC-098 ENGINEERING QUALIFIED CHECKPOINT)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-080 - Agent Runtime Adapter Contract v1 |
 | Latest merge | PR #442 merged to `main` as `b7472535` |
-| Active delivery | WC-097 Marketplace Acquisition Experience, WC-089 DMA Release 1, WC-093 public/auth experience finalization, WC-085 brokered authentication follow-up and WC-088 Customer Multi-Agent And Skill Journey; P3-EX11 remains plan-only |
+| Active delivery | WC-098 Customer Registration Readiness, WC-097 Marketplace Acquisition Experience, WC-089 DMA Release 1, WC-093 public/auth experience finalization, WC-085 brokered authentication follow-up and WC-088 Customer Multi-Agent And Skill Journey; P3-EX11 remains plan-only |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 
@@ -50,6 +50,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | WC-095 agent employment lifecycle | ENGINEERING QUALIFIED CHECKPOINT - Generic BP-owned lifecycle projection, exact-once checkout, WBE-owned zero-price commercial truth, provider-readiness outcomes, generated client and truthful Demo activation UI are committed on `ib/095/agent-employment-lifecycle` through `78577075`. Docker qualification passes 707 BP tests at 91.28% line / 80.03% branch coverage, 407 Billing Engine tests plus 3 real-PostgreSQL activation tests, 8 portal tests, OpenAPI validation, changed-file Ruff, migration SQLFluff, TypeScript compilation and the Next.js production build. WC095-05B/positive Razorpay acceptance remains `BLOCKED_EXTERNAL_INPUT`; exact-image runtime, browser visual/accessibility, deployment, Production, PR approval and merge are not claimed. |
 | WC-096 conversational customer portal | ENGINEERING QUALIFIED CHECKPOINT - Founder-authorized contract `d231a8ae` and milestones through `ecc846c7` deliver DF-001 through DF-009: canonical Marketplace routes/intents, disclosure and continuation, one persistent customer shell, accessible icon rail, authoritative My Agents cards, participant-bound durable Portal Guide interactions, generated channel-neutral clients and a contextual Guide/professional conversation dock. Docker evidence passes 714 BP tests, 356 Web tests, lint, TypeScript, production build, OpenAPI with zero errors and SQLFluff; complete PostgreSQL initialization and an application-role RLS probe show owner tenant `1` row and other tenant `0`. Desktop/360px WC-096 browser acceptance passes client navigation, dashboard, Guide continuity, relationship isolation, focus, accessibility and responsive geometry; professional conversation and authoritative offline reconciliation checks pass. Trial entitlement/payment remain explicit later lifecycle steps. No deployment, provider/mobile-device acceptance, customer traffic, UAT, Production, PR approval or merge is claimed. |
 | WC-097 marketplace acquisition experience | ENGINEERING QUALIFIED CHECKPOINT - Milestone `17808018` replaces the compliance-led Marketplace card with an image-free WAOOAW offer, projects the canonical authenticated `/marketplace/{slug}` route from Business Platform, and keeps Trial/Hire review in the persistent customer shell with concise Terms and Privacy consent. Docker evidence passes 8 BP tests, 21 focused Web tests, TypeScript, lint, production build and OpenAPI with zero errors; six Chromium Trial/Hire journeys pass at 1440x900, 768x1024 and 360x800 with no horizontal overflow or serious/critical axe findings. DF-012 checkout/payment, deployment, UAT, Production, PR approval and merge are not claimed. |
+| WC-098 customer registration readiness | ENGINEERING QUALIFIED CHECKPOINT - Work Contract `67759834` governs WC098-R01 through R10 / D01 through D09. Product commit `b9f738e1` and evidence `a756c9ea` establish issuer-plus-subject actor continuity, masked broker-verified email, deterministic dark/light preferences, disabled optional SMS, one registration title owner, safe typed recovery, actionable bounded provider retry and generated-client alignment. Docker evidence passes 734 BP tests, 361 Web tests, production build, lint, type, OpenAPI, audit and fixed high/critical image scan; eight Chromium checks pass at 360x800 and 1440x900 with no overflow or serious/critical axe findings. D09 exact Demo deployment/Azure correlation and Founder acceptance remain unclaimed; cloud mutation, customer traffic, SMS vendor/spend, PR approval and merge remain prohibited or Founder-reserved. |
 | Production | PLAN ONLY - code-prepared; protected environments, authorized plan, traffic and final acceptance remain Founder-reserved |
 
 ### Checkpoint Context

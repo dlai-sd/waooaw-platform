@@ -32,10 +32,11 @@ function isActionable(provider: IdentityProvider) {
   return provider.availability === 'AVAILABLE' && (provider.id === 'GOOGLE' || provider.id === 'FACEBOOK');
 }
 
-export function ProviderCommands({ callbackUrl, intent, providers }: {
+export function ProviderCommands({ callbackUrl, intent, providers, reload = () => window.location.reload() }: {
   callbackUrl: string;
   intent: ProviderIntent;
   providers: IdentityProvider[];
+  reload?: () => void;
 }) {
   const [pendingProvider, setPendingProvider] = useState<string>();
   const primary = providers.find((provider) => provider.id === 'GOOGLE');
@@ -55,6 +56,8 @@ export function ProviderCommands({ callbackUrl, intent, providers }: {
       setPendingProvider(undefined);
     }
   }
+
+  const readinessUnavailable = providers.some((provider) => provider.unavailableReason === 'TEMPORARILY_UNAVAILABLE');
 
   return (
     <div className="provider-commands">
@@ -97,6 +100,10 @@ export function ProviderCommands({ callbackUrl, intent, providers }: {
         );
       })}
       </div>
+      {readinessUnavailable ? <div className="provider-readiness" role="status">
+        <p>Sign-in services are still starting.</p>
+        <button className="text-command" type="button" onClick={reload}>Try again</button>
+      </div> : null}
     </div>
   );
 }

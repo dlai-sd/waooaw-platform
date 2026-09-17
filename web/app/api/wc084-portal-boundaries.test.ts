@@ -9,7 +9,8 @@ const updateCustomerSettings = jest.fn();
 const completeIdentityRegistration = jest.fn();
 const getIdentitySession = jest.fn();
 const startIdentityRegistration = jest.fn();
-const createIdentityApi = jest.fn<Pick<IdentityApi, 'updateCustomerProfile' | 'updateCustomerSettings' | 'completeIdentityRegistration' | 'getIdentitySession' | 'startIdentityRegistration'>, [string]>(() => ({ updateCustomerProfile, updateCustomerSettings, completeIdentityRegistration, getIdentitySession, startIdentityRegistration }));
+const updateIdentityRegistrationProfile = jest.fn();
+const createIdentityApi = jest.fn<Pick<IdentityApi, 'updateCustomerProfile' | 'updateCustomerSettings' | 'completeIdentityRegistration' | 'getIdentitySession' | 'startIdentityRegistration' | 'updateIdentityRegistrationProfile'>, [string]>(() => ({ updateCustomerProfile, updateCustomerSettings, completeIdentityRegistration, getIdentitySession, startIdentityRegistration, updateIdentityRegistrationProfile }));
 const markCustomerAlertRead = jest.fn();
 const acknowledgeCustomerAlert = jest.fn();
 const updateRelationshipOnboard = jest.fn();
@@ -171,9 +172,24 @@ describe('WC085 registration handoff', () => {
     const response = await POST(new NextRequest('http://localhost/api/identity/registration', {
       method: 'POST', body: JSON.stringify({ action: 'start', languagePreference: 'en', idempotencyKey: 'key-1' }),
     }));
-    expect(response.status).toBe(409);
+    expect(response.status).toBe(503);
     expect(await response.json()).toEqual({ code: 'IDENTITY_DEPENDENCY_UNAVAILABLE', title: 'Identity request could not be completed.' });
     expect(identityProblem).not.toHaveBeenCalled();
+  });
+
+  it('preserves approved registration recovery fields and excludes upstream details', async () => {
+    const { ResponseError } = await import('@/lib/api/generated/runtime');
+    const correlationId = '11111111-1111-4111-8111-111111111111';
+    updateIdentityRegistrationProfile.mockRejectedValue(new ResponseError(new Response(JSON.stringify({
+      code: 'IDENTITY_RESOURCE_NOT_ACCESSIBLE', correlationId, detail: 'private-token other-account', accountReference,
+    }), { status: 404 })));
+    const { POST } = await import('./identity/registration/route');
+    const response = await POST(new NextRequest('http://localhost/api/identity/registration', {
+      method: 'POST', body: JSON.stringify({ action: 'profile', registrationId: 'registration-1', idempotencyKey: 'key-1', displayName: 'Asha', businessName: 'Field Co', businessDomain: 'Agriculture', languagePreference: 'en' }),
+    }));
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ code: 'IDENTITY_RESOURCE_NOT_ACCESSIBLE', title: 'Identity request could not be completed.', correlationId });
   });
 
   it('leaves registration start responses unchanged', async () => {

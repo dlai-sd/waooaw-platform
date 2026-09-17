@@ -14,7 +14,7 @@ import type { SupportedLocale } from '@/lib/preferences';
 
 type Draft = { displayName: string; businessName: string; businessDomain: string };
 type Command = Record<string, string> & { action: string };
-type ErrorKind = '' | 'rejected' | 'unavailable';
+type ErrorKind = '' | 'expired' | 'rejected' | 'restart' | 'unavailable';
 const draftKey = 'waooaw:identity:registration-draft';
 
 export function RegistrationFlow({ locale, messages, returnTo = '/home' }: { locale: SupportedLocale; messages: IdentityMessages; returnTo?: string }) {
@@ -24,7 +24,6 @@ export function RegistrationFlow({ locale, messages, returnTo = '/home' }: { loc
   const [draft, setDraft] = useState<Draft>({ displayName: '', businessName: '', businessDomain: '' });
   const [pending, setPending] = useState(true);
   const [error, setError] = useState<ErrorKind>('');
-  const [voluntaryMobile, setVoluntaryMobile] = useState(false);
   const keys = useRef(new Map<string, string>());
   const activeRequest = useRef<AbortController>();
 
@@ -43,11 +42,19 @@ export function RegistrationFlow({ locale, messages, returnTo = '/home' }: { loc
       if (activeRequest.current !== controller) return;
       if (controller.signal.aborted) throw new Error();
       if (!response.ok) {
-        if (response.status === 401) {
+        const code = typeof body?.code === 'string' ? body.code : '';
+        if (response.status === 401 || code === 'IDENTITY_RESOURCE_NOT_ACCESSIBLE') {
           setChallenge(undefined);
           setRegistration(undefined);
+          setError('restart');
+          return;
         }
-        if (response.status === 403) {
+        if (code === 'IDENTITY_CHALLENGE_EXPIRED') {
+          setChallenge(undefined);
+          setError('expired');
+          return;
+        }
+        if (response.status === 403 || code === 'IDENTITY_ACTION_DENIED') {
           setError('rejected');
           return;
         }
@@ -116,15 +123,17 @@ export function RegistrationFlow({ locale, messages, returnTo = '/home' }: { loc
     return command({ action, registrationId: registration.registrationId, ...fields });
   }
 
-  const errorMessage = error === 'rejected' ? messages.signInRejected : error === 'unavailable' ? messages.unavailable : '';
+  const errorMessage = error === 'rejected' ? messages.signInRejected
+    : error === 'restart' ? messages.registrationLost
+      : error === 'expired' ? messages.verificationExpired
+        : error === 'unavailable' ? messages.unavailable : '';
 
-  function verificationForm(purpose: 'email' | 'mobile') {
-    const isEmail = purpose === 'email';
-    if (!challenge) return <form className="identity-form" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); void registrationCommand(`${purpose}-start`, { [purpose]: String(form.get(purpose) ?? '') }); }}>
-      <label>{isEmail ? messages.email : messages.mobile}<input autoComplete={isEmail ? 'email' : 'tel'} name={purpose} required type={isEmail ? 'email' : 'tel'} pattern={isEmail ? undefined : String.raw`^\+[1-9][0-9]{7,14}$`} /></label>
+  function emailVerificationForm() {
+    if (!challenge) return <form className="identity-form" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); void registrationCommand('email-start', { email: String(form.get('email') ?? '') }); }}>
+      <label>{messages.email}<input autoComplete="email" name="email" required type="email" /></label>
       <button className="primary-command" disabled={pending} type="submit">{messages.sendCode} <Mail aria-hidden="true" size={18} /></button>
     </form>;
-    return <form className="identity-form" onSubmit={(event) => { event.preventDefault(); const formElement = event.currentTarget; const form = new FormData(formElement); const code = String(form.get('code') ?? ''); void registrationCommand(`${purpose}-confirm`, { challengeId: challenge.challengeId, code }).finally(() => formElement.reset()); }}>
+    return <form className="identity-form" onSubmit={(event) => { event.preventDefault(); const formElement = event.currentTarget; const form = new FormData(formElement); const code = String(form.get('code') ?? ''); void registrationCommand('email-confirm', { challengeId: challenge.challengeId, code }).finally(() => formElement.reset()); }}>
       <p>{messages.verificationSent} <strong>{challenge.maskedDestination}</strong>.</p>
       <label>{messages.code}<input autoComplete="one-time-code" inputMode="numeric" maxLength={6} minLength={6} name="code" pattern="[0-9]{6}" required /></label>
       <button className="primary-command" disabled={pending} type="submit">{messages.verifyCode} <CheckCircle2 aria-hidden="true" size={18} /></button>
@@ -135,22 +144,23 @@ export function RegistrationFlow({ locale, messages, returnTo = '/home' }: { loc
     <p className="eyebrow">Secure access</p>
     <h1 id="auth-dialog-title">{error ? 'Sign in could not be completed' : messages.resolvingTitle}</h1>
     <p>{errorMessage || messages.resolvingDescription}</p>
-    <div aria-live="polite" className="identity-status">{pending ? <><LoaderCircle aria-hidden="true" className="spin" /> {messages.resolvingDescription}</> : error === 'rejected' ? <button className="primary-command" type="button" onClick={() => router.replace(`/login?returnTo=${encodeURIComponent(returnTo)}`)}>{messages.restartSignIn}</button> : <button className="primary-command" type="button" onClick={() => void command({ action: 'start', languagePreference: locale })}>{messages.retry}</button>}</div>
+    <div aria-live="polite" className="identity-status">{pending ? <><LoaderCircle aria-hidden="true" className="spin" /> {messages.resolvingDescription}</> : error === 'rejected' || error === 'restart' ? <button className="primary-command" type="button" onClick={() => router.replace(`/login?returnTo=${encodeURIComponent(returnTo)}`)}>{messages.restartSignIn}</button> : <button className="primary-command" type="button" onClick={() => void command({ action: 'start', languagePreference: locale })}>{messages.retry}</button>}</div>
   </>;
 
-  const action = voluntaryMobile ? 'VERIFY_MOBILE' : registration.nextAction;
+  const action = registration.nextAction;
   return <><p className="eyebrow">{messages.eyebrow}</p><h1 id="auth-dialog-title">{messages.title}</h1><p>{messages.description}</p><div className="registration-flow">
     <RegistrationProgress action={action} pending={pending} />
     {error ? <p className="identity-error" role="alert">{errorMessage}</p> : null}
+    {registration.emailVerified && registration.maskedEmail ? <div className="verified-registration-email"><label htmlFor="verified-registration-email">{messages.verifiedEmail}</label><input id="verified-registration-email" readOnly type="text" value={registration.maskedEmail} /><span>{messages.verifiedBy} {registration.providerLabel === 'facebook' ? 'Facebook' : 'Google'}</span></div> : null}
     {action === 'COMPLETE_PROFILE' ? <form className="identity-form" onSubmit={(event) => { event.preventDefault(); void registrationCommand('profile', { ...draft, languagePreference: locale }); }}>
       <label>{messages.displayName}<input autoComplete="name" maxLength={120} onChange={(event) => updateDraft('displayName', event.target.value)} required value={draft.displayName} /></label>
       <label>{messages.businessName}<input autoComplete="organization" maxLength={160} onChange={(event) => updateDraft('businessName', event.target.value)} required value={draft.businessName} /></label>
       <label>{messages.businessDomain}<input maxLength={100} onChange={(event) => updateDraft('businessDomain', event.target.value)} required value={draft.businessDomain} /></label>
       <button className="primary-command" disabled={pending} type="submit">{messages.saveProfile} <ArrowRight aria-hidden="true" size={18} /></button>
     </form> : null}
-    {action === 'VERIFY_EMAIL' ? verificationForm('email') : null}
-    {action === 'VERIFY_MOBILE' ? verificationForm('mobile') : null}
-    {action === 'COMPLETE_REGISTRATION' ? <div className="identity-choice"><Smartphone aria-hidden="true" size={28} /><p>{messages.optionalMobile}</p><div className="command-row"><button className="primary-command" disabled={pending} type="button" onClick={() => setVoluntaryMobile(true)}>{messages.optionalMobile}</button><button className="text-command" disabled={pending} type="button" onClick={() => void registrationCommand('complete')}>{messages.complete}</button></div></div> : null}
+    {action === 'VERIFY_EMAIL' ? emailVerificationForm() : null}
+    {action === 'VERIFY_MOBILE' ? <p className="identity-error" role="alert">{messages.smsUnavailable}</p> : null}
+    {action === 'COMPLETE_REGISTRATION' ? <div className="identity-choice"><Smartphone aria-hidden="true" size={28} /><p><strong>{messages.optionalMobile}</strong></p><p>{messages.smsUnavailable} {messages.smsBudget}</p><div className="command-row"><button className="primary-command" disabled type="button">{messages.optionalMobile}</button><button className="text-command" disabled={pending} type="button" onClick={() => void registrationCommand('complete')}>{messages.complete}</button></div></div> : null}
     {action === 'RESOLVE_DUPLICATE' ? <p role="status">{messages.duplicate}</p> : null}
     {(action === 'CONTINUE_TO_DEFAULT_TARGET' || action === 'NONE') ? <button className="primary-command" disabled={pending} type="button" onClick={() => void registrationCommand('complete')}>{messages.complete}</button> : null}
     {pending ? <span aria-live="polite" className="identity-pending"><LoaderCircle aria-hidden="true" className="spin" size={18} /> {messages.working}</span> : null}

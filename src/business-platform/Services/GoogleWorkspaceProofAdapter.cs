@@ -3,6 +3,7 @@
 
 using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
+using System.Net.Mail;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
@@ -99,6 +100,15 @@ public sealed class GoogleWorkspaceProofAdapter(
 
     public bool HasVerifiedEmail(ClaimsPrincipal principal) =>
         SingleClaim(principal, "email_verified") == "true";
+
+    public string? VerifiedEmail(ClaimsPrincipal principal)
+    {
+        if (!HasVerifiedEmail(principal)) return null;
+        var email = SingleClaim(principal, "email");
+        return MailAddress.TryCreate(email, out var parsed) && parsed.Address == email
+            ? email
+            : Denied<string?>("verified_email");
+    }
 
     public VerifiedCustomerActor ValidateActor(ClaimsPrincipal principal, bool requireFresh = false)
     {

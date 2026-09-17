@@ -92,10 +92,14 @@ describe('F1 shell primitives', () => {
     expect(document.cookie).toContain('waooaw-locale=ur');
     expect(reload).toHaveBeenCalledTimes(1);
 
+    const useLight = await screen.findByRole('button', { name: 'Use light theme' });
+    fireEvent.click(useLight);
+    expect(document.documentElement.dataset.theme).toBe('light');
+    expect(document.cookie).toContain('waooaw-theme=light');
+
     fireEvent.click(screen.getByRole('button', { name: 'Use dark theme' }));
     expect(document.documentElement.dataset.theme).toBe('dark');
     expect(document.cookie).toContain('waooaw-theme=dark');
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Use light theme' })).toBeVisible());
   });
 
   it('announces offline state without claiming a sent outcome', async () => {

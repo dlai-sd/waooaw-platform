@@ -5,10 +5,10 @@ export const supportedLocales = ['en', 'hi', 'mr', 'ta', 'te', 'kn', 'gu', 'bn',
 
 export type SupportedLocale = (typeof supportedLocales)[number];
 export type TextDirection = 'ltr' | 'rtl';
-export type ThemePreference = 'light' | 'dark' | 'system';
+export type ThemePreference = 'light' | 'dark';
 
 export const defaultLocale: SupportedLocale = 'en';
-export const defaultTheme: ThemePreference = 'system';
+export const defaultTheme: ThemePreference = 'dark';
 
 export function resolveLocale(value: string | undefined): SupportedLocale {
   const locale = value?.toLowerCase().split('-')[0];
@@ -20,5 +20,5 @@ export function directionForLocale(locale: SupportedLocale): TextDirection {
 }
 
 export function resolveTheme(value: string | undefined): ThemePreference {
-  return value === 'light' || value === 'dark' || value === 'system' ? value : defaultTheme;
+  return value === 'light' || value === 'dark' ? value : defaultTheme;
 }

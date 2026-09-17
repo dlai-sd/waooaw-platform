@@ -123,6 +123,7 @@ describe('authentication views', () => {
 
     expect(screen.getByTestId('registration-flow')).toHaveTextContent('en');
     expect(screen.getByTestId('registration-flow')).toHaveAttribute('data-return-to', '/settings');
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
     expect(screen.queryByTestId('provider-commands')).not.toBeInTheDocument();
     expect(listIdentityProviders).not.toHaveBeenCalled();
   });

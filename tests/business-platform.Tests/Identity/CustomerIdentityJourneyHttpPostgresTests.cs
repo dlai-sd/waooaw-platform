@@ -175,6 +175,20 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests : IAsyncLifetime
         await AssertEmptyPoolAsync();
     }
 
+    [Fact]
+    public async Task Http_VerifiedBrokerEmail_IsProjectedReadOnlyAsMaskedIdentity()
+    {
+        var response = await SendAsync(HttpMethod.Post, "/api/v1/identity/registrations",
+            Token("verified-email"), new { languagePreference = "en" });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var registration = await JsonAsync(response);
+        Assert.True(registration.GetProperty("emailVerified").GetBoolean());
+        Assert.Equal("c***@example.com", registration.GetProperty("maskedEmail").GetString());
+        Assert.Equal("google", registration.GetProperty("providerLabel").GetString());
+        await AssertEmptyPoolAsync();
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("false")]
@@ -199,6 +213,26 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests : IAsyncLifetime
             (await JsonAsync(challenge)).GetProperty("code").GetString());
         Assert.Empty(_broker.Requests);
         Assert.Equal(1L, await OwnerScalarAsync("SELECT count(*) FROM identity.registrations"));
+        await AssertEmptyPoolAsync();
+    }
+
+    [Fact]
+    public async Task Http_RegistrationMobile_UsesVerifiedActorAndPreservesCrossActorIsolation()
+    {
+        var owner = Token("mobile-owner");
+        var registration = await RegisterAsync(owner);
+
+        var own = await SendAsync(HttpMethod.Post,
+            $"/api/v1/identity/registrations/{registration}/mobile-verifications",
+            owner, new { mobile = "+911234567890" });
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, own.StatusCode);
+        Assert.Equal("IDENTITY_DEPENDENCY_UNAVAILABLE", (await JsonAsync(own)).GetProperty("code").GetString());
+
+        var foreign = await SendAsync(HttpMethod.Post,
+            $"/api/v1/identity/registrations/{registration}/mobile-verifications",
+            Token("mobile-foreign"), new { mobile = "+911234567890" });
+        Assert.Equal(HttpStatusCode.NotFound, foreign.StatusCode);
+        Assert.Equal("IDENTITY_RESOURCE_NOT_ACCESSIBLE", (await JsonAsync(foreign)).GetProperty("code").GetString());
         await AssertEmptyPoolAsync();
     }
 

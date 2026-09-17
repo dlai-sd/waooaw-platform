@@ -133,7 +133,7 @@ public sealed class RelationshipWorkspaceController(
             || request.PreferredAgentDisplayName is { Length: > 80 }
             || request.ChatAppearance is not (null or "CONSTITUTIONAL" or "COMPACT")
             || request.TimestampVisibility is not (null or "RELATIVE" or "ABSOLUTE")
-            || request.ThemePreference is not (null or "SYSTEM" or "LIGHT" or "DARK"))
+            || request.ThemePreference is not (null or "LIGHT" or "DARK"))
             return WorkspaceProblem(400, "RELATIONSHIP_WORKSPACE_REQUEST_INVALID");
         var requestHash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(
             System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(request))));
