@@ -6088,7 +6088,7 @@ components:
         - $ref: "#/components/schemas/RelationshipWorkspaceSectionV1"
         - type: object
           additionalProperties: false
-          required: [eligibilityState, requiredGoalIds, verifiedGoalIds]
+          required: [eligibilityState, requiredGoalIds, verifiedGoalIds, blockedReasons, reassessmentRequired, dependentOutcomeIds, operationalMandate]
           properties:
             eligibilityState: { $ref: "#/components/schemas/RelationshipOperationsEligibilityStateV1" }
             requiredGoalIds:
@@ -6105,6 +6105,11 @@ components:
             dependentOutcomeIds:
               type: array
               items: { type: string, format: uuid }
+            operationalMandate:
+              type: [object, "null"]
+              additionalProperties: false
+              maxProperties: 0
+              description: Reserved for the complete immutable Section 6.3 mandate; null while any required coordinate is unavailable.
 
     ProfessionalMarketplaceListingV1:
       type: object

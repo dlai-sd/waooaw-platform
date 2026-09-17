@@ -77,6 +77,7 @@ const views: RelationshipWorkspaceViews = {
   operations: {
     ...section, sectionType: 'OPERATIONS', eligibilityState: 'LOCKED', requiredGoalIds: ['goal-1'],
     verifiedGoalIds: [], blockedReasons: ['Customer goal verification is required.'],
+    reassessmentRequired: false, dependentOutcomeIds: [], operationalMandate: null,
   },
   plan: { ...section, sectionType: 'PLAN', planId: relationship.relationshipId, goals: [] },
   attention: { ...section, sectionType: 'ATTENTION', currencyState: 'CURRENT', items: [] },
@@ -195,6 +196,23 @@ describe('RelationshipWorkspace', () => {
         payload: { commandKind: 'ACCEPT_SKILL', configurationId: 'skill-1', skillId: 'MARKET_RESEARCH', skillVersion: '1.0.0' },
       },
     });
+  });
+
+  it('submits exact-version customer goal verification for only the current relationship', async () => {
+    render(<RelationshipWorkspace relationship={relationship} timeline={timeline} views={views} evaluation={evaluation} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Verify goal' }));
+
+    expect(await screen.findByText('Goal verification recorded.')).toBeVisible();
+    const goalCall = (global.fetch as jest.Mock).mock.calls.find(([url]) => String(url).endsWith('/goal-verifications'));
+    expect(goalCall?.[0]).toBe(`/api/relationships/${relationship.relationshipId}/goal-verifications`);
+    expect(JSON.parse(goalCall?.[1].body)).toMatchObject({
+      command: {
+        schemaVersion: '1.0', expectedWorkspaceVersion: 'relationship-1', expectedSubjectVersion: '1',
+        payload: { commandKind: 'VERIFY_GOAL', goalId: 'goal-1', goalVersion: '1', verificationDecision: 'VERIFIED' },
+      },
+    });
+    expect(JSON.parse(String(goalCall?.[1]?.body)).command.payload).not.toHaveProperty('correctionReason');
   });
 
   it('CCT-AE01-DARK-01 shows exact terms and symmetric unselected contract decisions', async () => {

@@ -3,6 +3,7 @@ import type { RelationshipWorkspaceViews } from '@/lib/api/relationship-workspac
 import { RelationshipEvaluation } from './RelationshipEvaluation';
 import { ContractJourney } from './ContractJourney';
 import { EvidenceWindow } from './EvidenceWindow';
+import { GoalVerificationControls } from './GoalVerificationControls';
 import { OnboardForm } from './OnboardForm';
 import { SkillDecisionControls } from './SkillDecisionControls';
 import type { EmploymentRelationshipSummaryV1 } from '@/lib/api/generated/models/EmploymentRelationshipSummaryV1';
@@ -81,7 +82,7 @@ export function RelationshipWorkspace({ relationship, relationships = [], timeli
       <section className="lifecycle-details" aria-label="Lifecycle actions">
           <section><h3>Onboard</h3><OnboardForm relationshipId={relationship.relationshipId} summary={views.configuration.items.find((item) => item.stepKey === 'ONBOARD')?.summary} /></section>
           <section><h3>Induct</h3><p>Continue the agent-led induction in the persistent professional conversation. The confirmed context remains server-owned and shared across supported channels.</p><OpenConversationCommand label="Continue induction" /></section>
-          <section><h3>Goals</h3>{views.goals.activeGoals.length ? <ul className="decision-list">{views.goals.activeGoals.map((goal) => <li key={goal.goalId}><span><strong>{goal.skillLabel}</strong><small>{goal.measure} · {goal.frequency}</small></span><b>{stateLabel(goal.verificationStatus)}</b></li>)}</ul> : <p>No active goals are available.</p>}<p className="truth-note">Goal verification cannot be changed here because no canonical verification command exists.</p></section>
+          <section><h3>Goals</h3>{views.goals.activeGoals.length ? <ul className="decision-list">{views.goals.activeGoals.map((goal) => <li key={goal.goalId}><span><strong>{goal.skillLabel}</strong><small>{goal.measure} · {goal.frequency}</small></span><b>{stateLabel(goal.verificationStatus)}</b></li>)}</ul> : <p>No active goals are available.</p>}<GoalVerificationControls goals={views.goals.activeGoals} relationshipId={relationship.relationshipId} workspaceVersion={views.workspace.workspaceVersion} /></section>
           <section><h3>Operations eligibility</h3><p><strong>{stateLabel(views.operations.eligibilityState)}</strong></p>{views.operations.blockedReasons?.length ? <ul>{views.operations.blockedReasons.map((reason) => <li key={reason}>{reason}</li>)}</ul> : <p>No server-reported blockers.</p>}</section>
       </section>
 

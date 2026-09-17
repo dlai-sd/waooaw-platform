@@ -120,9 +120,16 @@ public sealed class RelationshipWorkspaceControllerTests
     }
 
     [Fact]
-    public async Task VerifyGoal_CompletesReplaysAndUnlocksOperations()
+    public async Task VerifyGoal_CompletesReplaysButOperationsRemainLockedWithoutCompleteMandate()
     {
-        var (controller, relationship, _, configuration) = await CreateControllerAsync();
+        var (controller, relationship, gateway, configuration) = await CreateControllerAsync(
+            EmploymentRelationshipState.Active);
+        await controller.UpdateOnboardAsync(
+            relationship.RelationshipId,
+            new RelationshipOnboardRequest("1.0.0", "Maya", "COMPACT", "ABSOLUTE", "DARK"),
+            Guid.NewGuid().ToString("D"), CancellationToken.None);
+        foreach (var fieldType in new[] { "NAME", "LOCATION", "BUSINESS_NATURE" })
+            await ConfirmContextAsync(configuration, relationship, fieldType);
         var goal = await configuration.SaveGoalAsync(
             relationship.TenantId, relationship.RelationshipId, "Increase bookings", "10 monthly",
             "Confirmed bookings", "15 monthly", "Customer records", "ACCEPTED", CancellationToken.None);
@@ -159,9 +166,53 @@ public sealed class RelationshipWorkspaceControllerTests
         Assert.True(JsonSerializer.SerializeToElement(replay.Value).GetProperty("replayed").GetBoolean());
         Assert.Equal("VERIFIED", Assert.Single(goals.GetProperty("activeGoals").EnumerateArray())
             .GetProperty("verificationStatus").GetString());
-        Assert.Equal("ELIGIBLE", operations.GetProperty("eligibilityState").GetString());
+        gateway.Execution = new ExecutionOwnerProjection("execution-current", "CURRENT", DateTimeOffset.UtcNow);
+        gateway.Commercial = new CommercialOwnerProjection(
+            "commercial-current", "CURRENT", "INR 0", "INR 0", "WITHIN_LIMIT", DateTimeOffset.UtcNow);
+        operations = Json(await controller.GetOperationsAsync(relationship.RelationshipId, CancellationToken.None));
+        Assert.Equal("LOCKED", operations.GetProperty("eligibilityState").GetString());
         Assert.Equal(goal.GoalId, Assert.Single(operations.GetProperty("verifiedGoalIds").EnumerateArray()).GetGuid());
+        Assert.Equal(JsonValueKind.Null, operations.GetProperty("operationalMandate").ValueKind);
+        Assert.Contains(operations.GetProperty("blockedReasons").EnumerateArray(),
+            reason => reason.GetString()!.Contains("mandate coordinates", StringComparison.Ordinal));
         Assert.Equal("COMPLETED", outcome.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task Operations_RemainLockedWithoutActiveRelationshipAndDoNotIssueMandate()
+    {
+        var (controller, relationship, _, configuration) = await CreateControllerAsync(
+            EmploymentRelationshipState.ContractAcceptedPendingPayment);
+        var goal = await configuration.SaveGoalAsync(
+            relationship.TenantId, relationship.RelationshipId, "Increase bookings", "10 monthly",
+            "Confirmed bookings", "15 monthly", "Customer records", "ACCEPTED", CancellationToken.None);
+        await configuration.SaveSkillAsync(
+            relationship.TenantId, relationship.RelationshipId, "local-seo", "1.0.0", goal.GoalId,
+            "NOT_GRANTED", "APPLICABLE", null, "ACCEPTED", CancellationToken.None);
+        var version = RelationshipConfigurationService.GetGoalVersion(goal);
+        var command = JsonSerializer.SerializeToElement(new
+        {
+            schemaVersion = "1.0",
+            expectedWorkspaceVersion = $"relationship-{relationship.StateVersion}",
+            expectedSubjectVersion = version,
+            payload = new
+            {
+                commandKind = "VERIFY_GOAL",
+                goalId = goal.GoalId,
+                goalVersion = version,
+                verificationDecision = "VERIFIED",
+            },
+        });
+        Assert.Equal(202, Assert.IsType<ObjectResult>(await controller.SubmitCommandAsync(
+            relationship.RelationshipId, command, Guid.NewGuid().ToString("D"), CancellationToken.None)).StatusCode);
+
+        var operations = Json(await controller.GetOperationsAsync(
+            relationship.RelationshipId, CancellationToken.None));
+
+        Assert.Equal("LOCKED", operations.GetProperty("eligibilityState").GetString());
+        Assert.Contains("active", operations.GetProperty("blockedReasons")[0].GetString(),
+            StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(JsonValueKind.Null, operations.GetProperty("operationalMandate").ValueKind);
     }
 
     [Fact]

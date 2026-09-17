@@ -227,16 +227,48 @@ public sealed class RelationshipWorkspaceController(
         var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
         if (relationship is null) return NotFoundProblem();
         if (configuration is null) return WorkspaceProblem(503, "RELATIONSHIP_WORKSPACE_DEPENDENCY_UNAVAILABLE");
-        var goals = await configuration.GetPortalGoalsAsync(relationship.TenantId, relationshipId, cancellationToken);
+        var configurationTask = configuration.GetPortalConfigurationAsync(
+            relationship.TenantId, relationshipId, cancellationToken);
+        var skillsTask = configuration.GetPortalSkillsAsync(
+            relationship.TenantId, relationshipId, cancellationToken);
+        var goalsTask = configuration.GetPortalGoalsAsync(
+            relationship.TenantId, relationshipId, cancellationToken);
+        var ownerContext = OwnerContext(relationship);
+        var executionTask = owners.GetExecutionAsync(ownerContext, cancellationToken);
+        var commercialTask = owners.GetCommercialAsync(ownerContext, cancellationToken);
+        await Task.WhenAll(configurationTask, skillsTask, goalsTask, executionTask, commercialTask);
+        var configurationState = await configurationTask;
+        var acceptedSkills = (await skillsTask).Where(item => item.Status == "ACCEPTED").ToArray();
+        var goals = await goalsTask;
         var requiredGoalIds = goals.Where(item => NormalizeGoalStatus(item.Goal.Status) == "ACTIVE")
             .Select(item => item.Goal.GoalId).ToArray();
         var activeGoals = goals.Where(item => NormalizeGoalStatus(item.Goal.Status) == "ACTIVE").ToArray();
         var verifiedGoalIds = activeGoals.Where(item => item.CurrentDecision?.Decision == "VERIFIED")
             .Select(item => item.Goal.GoalId).ToArray();
-        var eligible = requiredGoalIds.Length > 0 && verifiedGoalIds.Length == requiredGoalIds.Length;
-        var blockedReasons = eligible ? Array.Empty<string>() : requiredGoalIds.Length == 0
-            ? new[] { "At least one active goal must be customer-verified before Operations is available." }
-            : new[] { "Customer verification is required for every active goal before Operations is available." };
+        var execution = await executionTask;
+        var commercial = await commercialTask;
+        var activeRelationship = relationship.State is EmploymentRelationshipState.Active
+            or EmploymentRelationshipState.TrialActive;
+        var skillsReady = acceptedSkills.Length > 0 && acceptedSkills.All(item =>
+            item.GoalId.HasValue && verifiedGoalIds.Contains(item.GoalId.Value));
+        var blockedReasons = new List<string>();
+        if (!activeRelationship) blockedReasons.Add("The relationship must be active before Operations is available.");
+        if (configurationState.Onboard is null) blockedReasons.Add("Onboarding preferences must be confirmed.");
+        if (!configurationState.InductComplete) blockedReasons.Add("Required induction context must be confirmed.");
+        if (acceptedSkills.Length == 0) blockedReasons.Add("At least one admitted Skill must be accepted.");
+        if (requiredGoalIds.Length == 0) blockedReasons.Add("At least one active goal must be customer-verified.");
+        else if (verifiedGoalIds.Length != requiredGoalIds.Length)
+            blockedReasons.Add("Customer verification is required for every active goal.");
+        if (!skillsReady && acceptedSkills.Length > 0)
+            blockedReasons.Add("Every accepted Skill must bind a current verified goal.");
+        if (execution?.State != "CURRENT") blockedReasons.Add("Professional Runtime readiness is not current.");
+        if (commercial?.CurrencyState != "CURRENT") blockedReasons.Add("Commercial readiness is not current.");
+        if (!relationship.AcceptedContractId.HasValue)
+            blockedReasons.Add("An accepted employment contract is required.");
+        if (!relationship.AuthoritySnapshotId.HasValue)
+            blockedReasons.Add("A current authority snapshot is required.");
+        blockedReasons.Add("The complete admitted artifact and Decision Space mandate coordinates are unavailable.");
+        var eligible = blockedReasons.Count == 0;
         return Ok(new
         {
             sectionType = "OPERATIONS",
@@ -246,9 +278,10 @@ public sealed class RelationshipWorkspaceController(
             eligibilityState = eligible ? "ELIGIBLE" : "LOCKED",
             requiredGoalIds,
             verifiedGoalIds,
-            blockedReasons,
+            blockedReasons = blockedReasons.ToArray(),
             reassessmentRequired = activeGoals.Any(item => item.HasPriorDecision && item.CurrentDecision is null),
             dependentOutcomeIds = Array.Empty<Guid>(),
+            operationalMandate = (object?)null,
         });
     }
 

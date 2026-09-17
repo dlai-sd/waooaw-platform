@@ -15,6 +15,7 @@
 | `reassessmentRequired` | boolean                                                                                 |
 | `activeWorkSummary`    | string                                                                                  |
 | `dependentOutcomeIds`  | Array&lt;string&gt;                                                                     |
+| `operationalMandate`   | object                                                                                  |
 
 ## Example
 
@@ -34,6 +35,7 @@ const example = {
   reassessmentRequired: null,
   activeWorkSummary: null,
   dependentOutcomeIds: null,
+  operationalMandate: null,
 } satisfies RelationshipOperationsV1;
 
 console.log(example);
