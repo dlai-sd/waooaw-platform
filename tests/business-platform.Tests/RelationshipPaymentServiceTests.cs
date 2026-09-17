@@ -211,6 +211,223 @@ public sealed class RelationshipPaymentServiceTests
         Assert.Null(context.Wbe.LastRequest);
     }
 
+    [Theory]
+    [InlineData(true, 31, 149900, 100000, "STARTER", typeof(PaymentStepUpRequiredException))]
+    [InlineData(true, 0, 0, 100000, "STARTER", typeof(ArgumentOutOfRangeException))]
+    [InlineData(true, 0, 149900, -1, "STARTER", typeof(ArgumentOutOfRangeException))]
+    [InlineData(true, 0, 149900, 100000, " ", typeof(ArgumentException))]
+    public async Task InvalidOnboardingInputsFailBeforeEvidence(
+        bool isPortal, int authenticatedSecondsInFuture, long subscriptionAmount, long walletSeed,
+        string bundleTier, Type expectedException)
+    {
+        var context = await CreateContextAsync(includeAcceptance: true);
+
+        await Assert.ThrowsAsync(expectedException, () => context.Service.CreateOnboardingOrderAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId, context.Contract.Version,
+            new PaymentProceedRequest(bundleTier, subscriptionAmount, walletSeed, "PROCEED_TO_RAZORPAY"),
+            new ContractPortalAssurance(isPortal, DateTimeOffset.UtcNow.AddSeconds(authenticatedSecondsInFuture)),
+            context.CorrelationId, CancellationToken.None));
+
+        Assert.Equal(0, context.Gateway.CallCount);
+        Assert.Null(context.Wbe.LastRequest);
+    }
+
+    [Theory]
+    [InlineData("USD", "MONTHLY")]
+    [InlineData("INR", "ANNUAL")]
+    public async Task ContractCurrencyAndCadenceMustMatchHostedPayment(string currency, string cadence)
+    {
+        var context = await CreateContextAsync(
+            includeAcceptance: true, currency: currency, cadence: cadence);
+
+        await Assert.ThrowsAsync<PaymentItemizationMismatchException>(() =>
+            context.Service.CreateOnboardingOrderAsync(
+                context.TenantId, context.RelationshipId, context.ParticipantId, context.Contract.Version,
+                new PaymentProceedRequest("STARTER", 149900, 100000, "PROCEED_TO_RAZORPAY"),
+                FreshPortalAssurance(), context.CorrelationId, CancellationToken.None));
+
+        Assert.Equal(0, context.Gateway.CallCount);
+        Assert.Null(context.Wbe.LastRequest);
+    }
+
+    [Theory]
+    [InlineData("USD", 249900)]
+    [InlineData("INR", 1)]
+    public async Task InconsistentHostedOrderIsRejected(string currency, long amount)
+    {
+        var context = await CreateContextAsync(includeAcceptance: true);
+        context.Wbe.OrderCurrency = currency;
+        context.Wbe.OrderAmount = amount;
+
+        await Assert.ThrowsAsync<PaymentOwnerUnavailableException>(() =>
+            context.Service.CreateOnboardingOrderAsync(
+                context.TenantId, context.RelationshipId, context.ParticipantId, context.Contract.Version,
+                new PaymentProceedRequest("STARTER", 149900, 100000, "PROCEED_TO_RAZORPAY"),
+                FreshPortalAssurance(), context.CorrelationId, CancellationToken.None));
+    }
+
+    [Theory]
+    [InlineData("intent")]
+    [InlineData("relationship")]
+    [InlineData("version")]
+    public async Task CheckoutRejectsEachOwnerIdentityMismatch(string mismatch)
+    {
+        var context = await CreateContextAsync(includeAcceptance: true);
+        context.Wbe.CheckoutIdentityMismatch = mismatch;
+
+        await Assert.ThrowsAsync<PaymentOwnerUnavailableException>(() => context.Service.CreateCheckoutAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId,
+            context.Contract.Version, Guid.NewGuid(),
+            new CheckoutProceedRequest("CONFIRM_CHECKOUT_AND_RENEWAL_TERMS"),
+            FreshPortalAssurance(), context.CorrelationId, CancellationToken.None));
+    }
+
+    [Theory]
+    [InlineData("intent")]
+    [InlineData("relationship")]
+    [InlineData("version")]
+    public async Task ReconciliationRejectsEachOwnerIdentityMismatch(string mismatch)
+    {
+        var context = await CreateContextAsync(includeAcceptance: true);
+        context.Wbe.ReturnHostedCheckout = true;
+        var created = await context.Service.CreateCheckoutAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId,
+            context.Contract.Version, Guid.NewGuid(),
+            new CheckoutProceedRequest("CONFIRM_CHECKOUT_AND_RENEWAL_TERMS"),
+            FreshPortalAssurance(), context.CorrelationId, CancellationToken.None);
+        context.Wbe.ReconciledOutcome = new RelationshipCheckoutOutcome(
+            "CAPTURED",
+            mismatch == "intent" ? Guid.NewGuid() : created.CheckoutIntentId,
+            mismatch == "relationship" ? Guid.NewGuid() : context.RelationshipId,
+            mismatch == "version" ? context.Contract.Version + 1 : context.Contract.Version,
+            DateTimeOffset.UtcNow);
+
+        await Assert.ThrowsAsync<PaymentOwnerUnavailableException>(() =>
+            context.Service.GetCheckoutIntentAsync(
+                context.TenantId, context.RelationshipId, context.ParticipantId,
+                created.CheckoutIntentId, CancellationToken.None));
+    }
+
+    [Theory]
+    [InlineData("OUTCOME_UNRESOLVED", "UNRESOLVED")]
+    [InlineData("INVALID", null)]
+    public async Task ReconciliationOnlyAcceptsDefinedTransitions(string outcomeKind, string? storedStatus)
+    {
+        var context = await CreateContextAsync(includeAcceptance: true);
+        context.Wbe.ReturnHostedCheckout = true;
+        var created = await context.Service.CreateCheckoutAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId,
+            context.Contract.Version, Guid.NewGuid(),
+            new CheckoutProceedRequest("CONFIRM_CHECKOUT_AND_RENEWAL_TERMS"),
+            FreshPortalAssurance(), context.CorrelationId, CancellationToken.None);
+        context.Wbe.ReconciledOutcome = new RelationshipCheckoutOutcome(
+            outcomeKind, created.CheckoutIntentId, context.RelationshipId,
+            context.Contract.Version, DateTimeOffset.UtcNow);
+
+        if (storedStatus is null)
+        {
+            await Assert.ThrowsAsync<PaymentOwnerUnavailableException>(() =>
+                context.Service.GetCheckoutIntentAsync(
+                    context.TenantId, context.RelationshipId, context.ParticipantId,
+                    created.CheckoutIntentId, CancellationToken.None));
+            return;
+        }
+
+        var result = await context.Service.GetCheckoutIntentAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId,
+            created.CheckoutIntentId, CancellationToken.None);
+        Assert.Equal(outcomeKind, result.OutcomeKind);
+        await using var db = context.Factory.CreateDbContext();
+        Assert.Equal(storedStatus, (await db.RelationshipCheckoutIntents.SingleAsync()).Status);
+    }
+
+    [Fact]
+    public async Task CheckoutOwnerFailurePersistsUnresolvedOutcome()
+    {
+        var context = await CreateContextAsync(includeAcceptance: true);
+        context.Wbe.FailCheckout = true;
+
+        await Assert.ThrowsAsync<PaymentOwnerUnavailableException>(() => context.Service.CreateCheckoutAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId,
+            context.Contract.Version, Guid.NewGuid(),
+            new CheckoutProceedRequest("CONFIRM_CHECKOUT_AND_RENEWAL_TERMS"),
+            FreshPortalAssurance(), context.CorrelationId, CancellationToken.None));
+
+        await using var db = context.Factory.CreateDbContext();
+        var intent = await db.RelationshipCheckoutIntents.SingleAsync();
+        Assert.Equal("UNRESOLVED", intent.Status);
+        Assert.Equal("OUTCOME_UNRESOLVED", intent.OutcomeKind);
+    }
+
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, -301)]
+    [InlineData(true, 31)]
+    public async Task CheckoutRejectsEachInvalidAssuranceBeforePersistence(
+        bool isPortal, int authenticatedSecondsInFuture)
+    {
+        var context = await CreateContextAsync(includeAcceptance: true);
+
+        await Assert.ThrowsAsync<PaymentStepUpRequiredException>(() => context.Service.CreateCheckoutAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId,
+            context.Contract.Version, Guid.NewGuid(),
+            new CheckoutProceedRequest("CONFIRM_CHECKOUT_AND_RENEWAL_TERMS"),
+            new ContractPortalAssurance(isPortal, DateTimeOffset.UtcNow.AddSeconds(authenticatedSecondsInFuture)),
+            context.CorrelationId, CancellationToken.None));
+
+        Assert.Equal(0, context.Gateway.CallCount);
+        Assert.Equal(0, context.Wbe.CheckoutCallCount);
+    }
+
+    [Fact]
+    public async Task CheckoutRejectsMissingConsentBeforePersistence()
+    {
+        var context = await CreateContextAsync(includeAcceptance: true);
+
+        await Assert.ThrowsAsync<PaymentConsentRequiredException>(() => context.Service.CreateCheckoutAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId,
+            context.Contract.Version, Guid.NewGuid(), new CheckoutProceedRequest(""),
+            FreshPortalAssurance(), context.CorrelationId, CancellationToken.None));
+
+        Assert.Equal(0, context.Gateway.CallCount);
+        Assert.Equal(0, context.Wbe.CheckoutCallCount);
+    }
+
+    [Fact]
+    public async Task CheckoutRejectsMissingRelationshipEmployerAndAcceptance()
+    {
+        var context = await CreateContextAsync(includeAcceptance: false);
+        var request = new CheckoutProceedRequest("CONFIRM_CHECKOUT_AND_RENEWAL_TERMS");
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => context.Service.CreateCheckoutAsync(
+            context.TenantId, Guid.NewGuid(), context.ParticipantId,
+            context.Contract.Version, Guid.NewGuid(), request,
+            FreshPortalAssurance(), context.CorrelationId, CancellationToken.None));
+        await Assert.ThrowsAsync<ConstitutionalActionDeniedException>(() => context.Service.CreateCheckoutAsync(
+            context.TenantId, context.RelationshipId, Guid.NewGuid(),
+            context.Contract.Version, Guid.NewGuid(), request,
+            FreshPortalAssurance(), context.CorrelationId, CancellationToken.None));
+        await Assert.ThrowsAsync<PaymentOrderingException>(() => context.Service.CreateCheckoutAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId,
+            context.Contract.Version, Guid.NewGuid(), request,
+            FreshPortalAssurance(), context.CorrelationId, CancellationToken.None));
+
+        Assert.Equal(0, context.Gateway.CallCount);
+        Assert.Equal(0, context.Wbe.CheckoutCallCount);
+    }
+
+    [Fact]
+    public async Task CurrentCheckoutReturnsNullWhenNoIntentExists()
+    {
+        var context = await CreateContextAsync(includeAcceptance: true);
+
+        var current = await context.Service.GetCurrentCheckoutAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId,
+            context.Contract.Version, CancellationToken.None);
+
+        Assert.Null(current);
+    }
+
     [Fact]
     public async Task BypassOrderIsRejectedAsInconsistentWithAcceptedContract()
     {
@@ -225,7 +442,8 @@ public sealed class RelationshipPaymentServiceTests
     private static ContractPortalAssurance FreshPortalAssurance() =>
         new(true, DateTimeOffset.UtcNow);
 
-    private static async Task<PaymentTestContext> CreateContextAsync(bool includeAcceptance, bool isBypass = false)
+    private static async Task<PaymentTestContext> CreateContextAsync(
+        bool includeAcceptance, bool isBypass = false, string currency = "INR", string cadence = "MONTHLY")
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
         var gateway = new RecordingRelationshipConstitutionalGateway();
@@ -243,7 +461,8 @@ public sealed class RelationshipPaymentServiceTests
             AeecVersion = "1.0",
             DomainScheduleHash = new string('b', 64),
             ConfigurationSnapshotJson = "{}",
-            PriceTaxSummaryJson = "{\"currency\":\"INR\",\"grossAmountInrPaise\":249900,\"gstAmountInrPaise\":38120,\"cadence\":\"MONTHLY\",\"subscriptionTerms\":\"Monthly\",\"adSpendTreatment\":\"Separate approved wallet seed\",\"cancellationAndRefundTerms\":\"Cancel before renewal\"}",
+            PriceTaxSummaryJson =
+                $"{{\"currency\":\"{currency}\",\"grossAmountInrPaise\":249900,\"gstAmountInrPaise\":38120,\"cadence\":\"{cadence}\",\"subscriptionTerms\":\"Monthly\",\"adSpendTreatment\":\"Separate approved wallet seed\",\"cancellationAndRefundTerms\":\"Cancel before renewal\"}}",
             CreatedByParticipantId = participantId,
         };
         await using var db = factory.CreateDbContext();
@@ -296,6 +515,10 @@ public sealed class RelationshipPaymentServiceTests
         public int CheckoutCallCount { get; private set; }
         public int ReconcileCallCount { get; private set; }
         public bool ReturnHostedCheckout { get; set; }
+        public bool FailCheckout { get; set; }
+        public string? CheckoutIdentityMismatch { get; set; }
+        public string OrderCurrency { get; set; } = "INR";
+        public long OrderAmount { get; set; } = 249900;
         public RelationshipCheckoutOutcome? ReconciledOutcome { get; set; }
 
         public Task<RelationshipCheckoutOutcome> CreateCheckoutAsync(
@@ -303,11 +526,18 @@ public sealed class RelationshipPaymentServiceTests
             CancellationToken cancellationToken)
         {
             CheckoutCallCount++;
+            if (FailCheckout)
+                throw new InvalidOperationException("WBE unavailable.");
+            var checkoutIntentId = CheckoutIdentityMismatch == "intent" ? Guid.NewGuid() : request.CheckoutIntentId;
+            var relationshipId = CheckoutIdentityMismatch == "relationship" ? Guid.NewGuid() : request.RelationshipId;
+            var contractVersion = CheckoutIdentityMismatch == "version"
+                ? request.ContractVersion + 1
+                : request.ContractVersion;
             if (ReturnHostedCheckout)
             {
                 return Task.FromResult(new RelationshipCheckoutOutcome(
-                    "RAZORPAY_CHECKOUT_REQUIRED", request.CheckoutIntentId, request.RelationshipId,
-                    request.ContractVersion, DateTimeOffset.UtcNow,
+                    "RAZORPAY_CHECKOUT_REQUIRED", checkoutIntentId, relationshipId,
+                    contractVersion, DateTimeOffset.UtcNow,
                     PublicCheckoutKey: "rzp_test_public", AmountInrPaise: request.GrossAmountInrPaise,
                     CheckoutSessionId: "checkout-session", ProviderOrderReference: "order_exact",
                     MerchantDisplayName: "WAOOAW", EnabledMethodFamilies: ["UPI", "CREDIT_CARD"],
@@ -315,8 +545,8 @@ public sealed class RelationshipPaymentServiceTests
                     ReconciliationTarget: $"/checkout-intents/{request.CheckoutIntentId:D}"));
             }
             return Task.FromResult(new RelationshipCheckoutOutcome(
-                "FULLY_DISCOUNTED", request.CheckoutIntentId, request.RelationshipId,
-                request.ContractVersion, DateTimeOffset.UtcNow,
+                "FULLY_DISCOUNTED", checkoutIntentId, relationshipId,
+                contractVersion, DateTimeOffset.UtcNow,
                 QuoteVersion: request.QuoteVersion,
                 PromotionVersion: "demo-100-v1",
                 ListPriceInrPaise: request.GrossAmountInrPaise,
@@ -343,7 +573,8 @@ public sealed class RelationshipPaymentServiceTests
             CancellationToken cancellationToken)
         {
             LastRequest = request;
-            return Task.FromResult(new HostedOnboardingOrder("order_test_123", 249900, "INR", isBypass));
+            return Task.FromResult(new HostedOnboardingOrder(
+                "order_test_123", OrderAmount, OrderCurrency, isBypass));
         }
     }
 

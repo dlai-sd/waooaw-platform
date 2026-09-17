@@ -118,6 +118,128 @@ public sealed class PerformanceReviewServiceTests
             fixture.TenantId, fixture.RelationshipId, CancellationToken.None)).CustomerResponse);
     }
 
+    [Theory]
+    [InlineData("skill")]
+    [InlineData("version")]
+    [InlineData("policy")]
+    [InlineData("period")]
+    [InlineData("sources")]
+    [InlineData("recommendation")]
+    [InlineData("evidence")]
+    [InlineData("dimension-state")]
+    [InlineData("dimension-summary")]
+    [InlineData("dimension-evidence")]
+    public async Task RejectsEveryInvalidReviewShape(string invalidField)
+    {
+        var fixture = await CreateFixtureAsync();
+        var service = new PerformanceReviewService(
+            fixture.Factory, new RecordingRelationshipConstitutionalGateway());
+        var draft = Draft("CONTINUE_CURRENT_MANDATE");
+        var skillId = "CUSTOMER_PROFILING";
+        var skillVersion = "1.0.0";
+        draft = invalidField switch
+        {
+            "skill" => draft,
+            "version" => draft,
+            "policy" => draft with { PolicyVersion = " " },
+            "period" => draft with { PeriodStart = draft.PeriodEnd },
+            "sources" => draft with { SourceVersions = new Dictionary<string, string>() },
+            "recommendation" => draft with { Recommendation = "PROMOTE_OWN_PROMPT" },
+            "evidence" => draft with { EvidenceId = Guid.Empty },
+            "dimension-state" => draft with { WorkDelivery = draft.WorkDelivery with { State = "" } },
+            "dimension-summary" => draft with { AgentQuality = draft.AgentQuality with { Summary = " " } },
+            "dimension-evidence" => draft with { TrustAutonomy = draft.TrustAutonomy with { EvidenceState = "" } },
+            _ => throw new ArgumentOutOfRangeException(nameof(invalidField)),
+        };
+        if (invalidField == "skill") skillId = " ";
+        if (invalidField == "version") skillVersion = "";
+
+        await Assert.ThrowsAsync<PerformanceReviewInvalidException>(() => service.AppendAsync(
+            fixture.TenantId, fixture.RelationshipId, skillId, skillVersion, draft,
+            CancellationToken.None));
+        Assert.Empty(await service.ListAsync(
+            fixture.TenantId, fixture.RelationshipId, CancellationToken.None));
+    }
+
+    [Theory]
+    [InlineData("decision")]
+    [InlineData("revision")]
+    [InlineData("idempotency")]
+    [InlineData("correlation")]
+    [InlineData("hash")]
+    [InlineData("long-reason")]
+    [InlineData("continue-reason")]
+    [InlineData("missing-reason")]
+    public async Task RejectsEveryInvalidResponseShapeBeforeEvidence(string invalidField)
+    {
+        var fixture = await CreateFixtureAsync();
+        var gateway = new RecordingRelationshipConstitutionalGateway();
+        var service = new PerformanceReviewService(fixture.Factory, gateway);
+        var review = await service.AppendAsync(fixture.TenantId, fixture.RelationshipId,
+            "CUSTOMER_PROFILING", "1.0.0", Draft("CONTINUE_CURRENT_MANDATE"),
+            CancellationToken.None);
+        var decision = invalidField == "continue-reason"
+            ? "CONTINUE_CURRENT_MANDATE" : "REQUEST_REASSESSMENT";
+        var reason = invalidField switch
+        {
+            "long-reason" => new string('x', 501),
+            "continue-reason" => "A reason is forbidden for this decision.",
+            "missing-reason" => " ",
+            _ => "Reassess this outcome.",
+        };
+
+        await Assert.ThrowsAsync<PerformanceReviewInvalidException>(() => service.RespondAsync(
+            fixture.TenantId, fixture.RelationshipId, fixture.ParticipantId, review.ReviewId,
+            invalidField == "revision" ? 0 : review.Revision,
+            invalidField == "decision" ? "PROMOTE_OWN_PROMPT" : decision,
+            reason,
+            invalidField == "idempotency" ? Guid.Empty : Guid.NewGuid(),
+            invalidField == "hash" ? "short" : new string('a', 64),
+            invalidField == "correlation" ? Guid.Empty : Guid.NewGuid(),
+            CancellationToken.None));
+
+        Assert.Equal(0, gateway.CallCount);
+        Assert.Null(await service.GetResponseAsync(
+            fixture.TenantId, fixture.RelationshipId, Guid.NewGuid(), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task ContinueDecisionNeedsNoReasonAndNonMaterialReviewCreatesNoAlert()
+    {
+        var fixture = await CreateFixtureAsync();
+        var service = new PerformanceReviewService(
+            fixture.Factory, new RecordingRelationshipConstitutionalGateway());
+        var review = await service.AppendAsync(fixture.TenantId, fixture.RelationshipId,
+            "CUSTOMER_PROFILING", "1.0.0", Draft("TUNE_NON_MATERIAL_PRESENTATION"),
+            CancellationToken.None);
+        var response = await service.RespondAsync(
+            fixture.TenantId, fixture.RelationshipId, fixture.ParticipantId, review.ReviewId,
+            review.Revision, "CONTINUE_CURRENT_MANDATE", null, Guid.NewGuid(), new string('a', 64),
+            Guid.NewGuid(), CancellationToken.None);
+
+        Assert.Null(response.Response.Reason);
+        Assert.False(Assert.Single(await service.ListAsync(
+            fixture.TenantId, fixture.RelationshipId, CancellationToken.None)).ReassessmentRequired);
+        await using var db = fixture.Factory.CreateDbContext();
+        Assert.Empty(await db.CustomerAlerts.ToListAsync());
+    }
+
+    [Fact]
+    public async Task PauseRecommendationCreatesHighAlertAndRequiresReassessment()
+    {
+        var fixture = await CreateFixtureAsync();
+        var service = new PerformanceReviewService(
+            fixture.Factory, new RecordingRelationshipConstitutionalGateway());
+
+        var review = await service.AppendAsync(fixture.TenantId, fixture.RelationshipId,
+            "CUSTOMER_PROFILING", "1.0.0", Draft("PAUSE_AFFECTED_WORK"),
+            CancellationToken.None);
+
+        Assert.True(review.ReassessmentRequired);
+        await using var db = fixture.Factory.CreateDbContext();
+        Assert.Equal("HIGH", Assert.Single(await db.CustomerAlerts.ToListAsync()).Severity);
+    }
+
     private static PerformanceReviewDraftV1 Draft(string recommendation) => new(
         "review-policy-1", DateTimeOffset.UtcNow.AddDays(-30), DateTimeOffset.UtcNow,
         new Dictionary<string, string>
