@@ -1,6 +1,6 @@
 # WC-098 Qualification Evidence
 
-**Qualified product commit:** `f3f6f4ac80c79808c4bd0620c046bdcbc2a341a2`
+**Qualified product commit:** `b9f738e153456f05fbd6e00e8525fcb8600c2d60`
 **Baseline:** `c0d24a09`
 **Environment:** local Docker on Ubuntu 24.04; no Python virtual environment
 **Result:** LOCAL ENGINEERING PASS
