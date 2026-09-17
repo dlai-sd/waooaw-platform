@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { RelationshipWorkspace } from './RelationshipWorkspace';
 import type { ContractJourneyProjection, EmploymentRelationship, RelationshipEvaluationProjection, RelationshipTimelineEntry } from '@/lib/api/relationships';
 import type { RelationshipWorkspaceViews } from '@/lib/api/relationship-workspace';
-import type { AgentEmploymentLifecycleStageV1 } from '@/lib/api/generated';
+import type { AgentEmploymentLifecycleStageV1, PerformanceReviewWindowV1 } from '@/lib/api/generated';
 
 const relationship: EmploymentRelationship = {
   relationshipId: '5f33925b-fb0c-4366-8414-7f85309639b9',
@@ -108,6 +108,29 @@ const contractJourney: ContractJourneyProjection = {
     priceTax: { currency: 'INR', grossAmountInrPaise: 118000, gstAmountInrPaise: 18000, cadence: 'MONTHLY', subscriptionTerms: 'Monthly subscription', adSpendTreatment: 'Ad spend is separate', cancellationAndRefundTerms: 'Cancel before renewal; captured charges follow the stated refund policy', offeringId: 'dma-release-1', bundleTier: 'STARTER', quoteVersion: 'quote-v1', renewalConsequence: 'Renews at the accepted monthly price' },
   },
 };
+const performanceReview: PerformanceReviewWindowV1 = {
+  reviewId: '725792fa-c9c1-4377-b3db-0fb41b091279',
+  agentInstanceId: relationship.agentInstanceId,
+  skillId: 'MARKET_RESEARCH',
+  skillVersion: '1.0.0',
+  revision: 1,
+  policyVersion: 'review-policy-1',
+  periodStart: new Date('2026-08-01T00:00:00Z'),
+  periodEnd: new Date('2026-08-31T00:00:00Z'),
+  sourceVersions: { professionalRuntime: 'pr-17', constitutionalEngine: 'ce-9' },
+  workDelivery: { state: 'DELIVERED', summary: 'Work delivered.', evidenceState: 'RECORDED' },
+  agentQuality: { state: 'GOOD', summary: 'Quality passed.', evidenceState: 'RECORDED' },
+  constitutionalPerformance: { state: 'CONFORMANT', summary: 'Evidence complete.', evidenceState: 'RECORDED' },
+  commercialUsage: { state: 'WITHIN_ALLOWANCE', summary: 'Within allowance.', evidenceState: 'RECORDED' },
+  customerBusinessOutcome: { state: 'POOR', summary: 'Outcome did not improve.', evidenceState: 'RECORDED', attributionLimits: 'No causal guarantee' },
+  customerAssessment: { state: 'CUSTOMER_DISPUTED', summary: 'Customer requested correction.', evidenceState: 'RECORDED' },
+  trustAutonomy: { state: 'UNCHANGED', summary: 'No autonomy increase.', evidenceState: 'RECORDED' },
+  recommendation: 'REASSESSMENT_REQUIRED' as const,
+  evidenceId: '5bbc4e01-461a-4c51-99d8-59bb5daa85f1',
+  createdAt: new Date('2026-09-01T00:00:00Z'),
+  customerResponse: null,
+  reassessmentRequired: true,
+};
 
 describe('RelationshipWorkspace', () => {
   beforeEach(() => {
@@ -125,33 +148,12 @@ describe('RelationshipWorkspace', () => {
   });
 
   it('SIM-095-14 separates good agent quality from poor business outcome and unchanged trust', () => {
-    const dimension = (state: string, summary: string) => ({ state, summary, evidenceState: 'RECORDED' as const });
     render(<RelationshipWorkspace relationship={relationship} timeline={timeline} evaluation={evaluation} views={{
       ...views,
       performance: {
         ...views.performance,
         currencyState: 'CURRENT',
-        current: {
-          reviewId: '725792fa-c9c1-4377-b3db-0fb41b091279',
-          agentInstanceId: relationship.agentInstanceId,
-          skillId: 'MARKET_RESEARCH',
-          skillVersion: '1.0.0',
-          revision: 1,
-          policyVersion: 'review-policy-1',
-          periodStart: new Date('2026-08-01T00:00:00Z'),
-          periodEnd: new Date('2026-08-31T00:00:00Z'),
-          sourceVersions: { professionalRuntime: 'pr-17', constitutionalEngine: 'ce-9' },
-          workDelivery: dimension('DELIVERED', 'Work delivered.'),
-          agentQuality: dimension('GOOD', 'Quality passed.'),
-          constitutionalPerformance: dimension('CONFORMANT', 'Evidence complete.'),
-          commercialUsage: dimension('WITHIN_ALLOWANCE', 'Within allowance.'),
-          customerBusinessOutcome: { ...dimension('POOR', 'Outcome did not improve.'), attributionLimits: 'No causal guarantee' },
-          customerAssessment: dimension('CUSTOMER_DISPUTED', 'Customer requested correction.'),
-          trustAutonomy: dimension('UNCHANGED', 'No autonomy increase.'),
-          recommendation: 'REASSESSMENT_REQUIRED',
-          evidenceId: '5bbc4e01-461a-4c51-99d8-59bb5daa85f1',
-          createdAt: new Date('2026-09-01T00:00:00Z'),
-        },
+        current: performanceReview,
       },
     }} />);
 
@@ -159,6 +161,33 @@ describe('RelationshipWorkspace', () => {
     expect(screen.getByText('poor')).toBeVisible();
     expect(screen.getByText('unchanged')).toBeVisible();
     expect(screen.getByText(/reassessment required/)).toBeVisible();
+    expect(screen.getByText('No causal guarantee')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Record review decision' })).toBeVisible();
+  });
+
+  it('submits an exact-version customer review decision for only the current relationship', async () => {
+    render(<RelationshipWorkspace relationship={relationship} timeline={timeline} evaluation={evaluation} views={{
+      ...views,
+      performance: { ...views.performance, currencyState: 'CURRENT', current: performanceReview },
+    }} />);
+
+    fireEvent.change(screen.getByLabelText('Decision'), { target: { value: 'REQUEST_REASSESSMENT' } });
+    fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'Outcome requires a revised plan.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Record review decision' }));
+
+    expect(await screen.findByText(/Review decision recorded/)).toBeVisible();
+    const reviewCall = (global.fetch as jest.Mock).mock.calls.find(([url]) => String(url).endsWith('/performance-reviews'));
+    expect(reviewCall?.[0]).toBe(`/api/relationships/${relationship.relationshipId}/performance-reviews`);
+    expect(JSON.parse(reviewCall?.[1].body)).toMatchObject({
+      command: {
+        expectedWorkspaceVersion: 'relationship-1',
+        expectedSubjectVersion: `performance-${performanceReview.reviewId}-1`,
+        payload: {
+          commandKind: 'RESPOND_TO_PERFORMANCE_REVIEW', reviewId: performanceReview.reviewId,
+          reviewRevision: 1, decision: 'REQUEST_REASSESSMENT', reason: 'Outcome requires a revised plan.',
+        },
+      },
+    });
   });
 
   afterEach(() => jest.restoreAllMocks());

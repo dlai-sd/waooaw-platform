@@ -35,6 +35,7 @@ export const RelationshipCommandKindV1 = {
   RequestAllowanceAddition: "REQUEST_ALLOWANCE_ADDITION",
   RenewRelationship: "RENEW_RELATIONSHIP",
   TerminateRelationship: "TERMINATE_RELATIONSHIP",
+  RespondToPerformanceReview: "RESPOND_TO_PERFORMANCE_REVIEW",
 } as const;
 export type RelationshipCommandKindV1 =
   (typeof RelationshipCommandKindV1)[keyof typeof RelationshipCommandKindV1];

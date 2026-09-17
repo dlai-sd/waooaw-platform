@@ -2,25 +2,28 @@
 
 ## Properties
 
-| Name                   | Type   |
-| ---------------------- | ------ |
-| `commandKind`          | string |
-| `planId`               | string |
-| `resultId`             | string |
-| `reason`               | string |
-| `goalId`               | string |
-| `amendment`            | string |
-| `replacement`          | string |
-| `goalVersion`          | string |
-| `verificationDecision` | string |
-| `correctionReason`     | string |
-| `configurationId`      | string |
-| `skillId`              | string |
-| `skillVersion`         | string |
-| `boundaryId`           | string |
-| `acknowledgmentText`   | string |
-| `amountInrPaise`       | number |
-| `pacingChoice`         | string |
+| Name                   | Type                                                                          |
+| ---------------------- | ----------------------------------------------------------------------------- |
+| `commandKind`          | string                                                                        |
+| `planId`               | string                                                                        |
+| `resultId`             | string                                                                        |
+| `reason`               | string                                                                        |
+| `goalId`               | string                                                                        |
+| `amendment`            | string                                                                        |
+| `replacement`          | string                                                                        |
+| `goalVersion`          | string                                                                        |
+| `verificationDecision` | string                                                                        |
+| `correctionReason`     | string                                                                        |
+| `configurationId`      | string                                                                        |
+| `skillId`              | string                                                                        |
+| `skillVersion`         | string                                                                        |
+| `boundaryId`           | string                                                                        |
+| `acknowledgmentText`   | string                                                                        |
+| `amountInrPaise`       | number                                                                        |
+| `pacingChoice`         | string                                                                        |
+| `reviewId`             | string                                                                        |
+| `reviewRevision`       | number                                                                        |
+| `decision`             | [PerformanceReviewCustomerDecisionV1](PerformanceReviewCustomerDecisionV1.md) |
 
 ## Example
 
@@ -46,6 +49,9 @@ const example = {
   acknowledgmentText: null,
   amountInrPaise: null,
   pacingChoice: null,
+  reviewId: null,
+  reviewRevision: null,
+  decision: null,
 } satisfies RelationshipTypedCommandPayloadV1;
 
 console.log(example);

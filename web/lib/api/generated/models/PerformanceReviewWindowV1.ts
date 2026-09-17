@@ -20,6 +20,13 @@ import {
   PerformanceReviewRecommendationV1ToJSON,
   PerformanceReviewRecommendationV1ToJSONTyped,
 } from "./PerformanceReviewRecommendationV1";
+import type { PerformanceReviewResponseV1 } from "./PerformanceReviewResponseV1";
+import {
+  PerformanceReviewResponseV1FromJSON,
+  PerformanceReviewResponseV1FromJSONTyped,
+  PerformanceReviewResponseV1ToJSON,
+  PerformanceReviewResponseV1ToJSONTyped,
+} from "./PerformanceReviewResponseV1";
 import type { PerformanceReviewDimensionV1 } from "./PerformanceReviewDimensionV1";
 import {
   PerformanceReviewDimensionV1FromJSON,
@@ -148,6 +155,18 @@ export interface PerformanceReviewWindowV1 {
    * @memberof PerformanceReviewWindowV1
    */
   createdAt: Date;
+  /**
+   *
+   * @type {PerformanceReviewResponseV1}
+   * @memberof PerformanceReviewWindowV1
+   */
+  customerResponse: PerformanceReviewResponseV1 | null;
+  /**
+   *
+   * @type {boolean}
+   * @memberof PerformanceReviewWindowV1
+   */
+  reassessmentRequired: boolean;
 }
 
 /**
@@ -198,6 +217,13 @@ export function instanceOfPerformanceReviewWindowV1(
   if (!("evidenceId" in value) || value["evidenceId"] === undefined)
     return false;
   if (!("createdAt" in value) || value["createdAt"] === undefined) return false;
+  if (!("customerResponse" in value) || value["customerResponse"] === undefined)
+    return false;
+  if (
+    !("reassessmentRequired" in value) ||
+    value["reassessmentRequired"] === undefined
+  )
+    return false;
   return true;
 }
 
@@ -244,6 +270,10 @@ export function PerformanceReviewWindowV1FromJSONTyped(
     ),
     evidenceId: json["evidenceId"],
     createdAt: new Date(json["createdAt"]),
+    customerResponse: PerformanceReviewResponseV1FromJSON(
+      json["customerResponse"],
+    ),
+    reassessmentRequired: json["reassessmentRequired"],
   };
 }
 
@@ -291,5 +321,9 @@ export function PerformanceReviewWindowV1ToJSONTyped(
     ),
     evidenceId: value["evidenceId"],
     createdAt: value["createdAt"].toISOString(),
+    customerResponse: PerformanceReviewResponseV1ToJSON(
+      value["customerResponse"],
+    ),
+    reassessmentRequired: value["reassessmentRequired"],
   };
 }

@@ -504,6 +504,87 @@ public sealed class RelationshipWorkspaceControllerTests
     }
 
     [Fact]
+    public async Task PerformanceReviewResponseAcceptsReplaysReconcilesAndRelocksOperations()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var constitutional = new RecordingRelationshipConstitutionalGateway();
+        var relationships = new EmploymentRelationshipService(
+            factory, constitutional, NullLogger<EmploymentRelationshipService>.Instance);
+        var tenantId = Guid.NewGuid();
+        var participantId = Guid.NewGuid();
+        var admitted = await relationships.AdmitAsync(
+            tenantId, participantId, Guid.NewGuid(), "DMA", Guid.NewGuid(), CancellationToken.None);
+        var configuration = new RelationshipConfigurationService(factory, constitutional);
+        await configuration.SaveSkillAsync(
+            tenantId, admitted.Relationship.RelationshipId, "CUSTOMER_PROFILING", "1.0.0", null,
+            "NOT_GRANTED", "APPLICABLE", null, "ACCEPTED", CancellationToken.None);
+        var reviews = new PerformanceReviewService(factory, constitutional);
+        var review = await reviews.AppendAsync(
+            tenantId, admitted.Relationship.RelationshipId, "CUSTOMER_PROFILING", "1.0.0",
+            new PerformanceReviewDraftV1(
+                "review-policy-1", DateTimeOffset.UtcNow.AddDays(-30), DateTimeOffset.UtcNow,
+                new Dictionary<string, string> { ["professionalRuntime"] = "pr-17" },
+                new("DELIVERED", "Delivered.", "RECORDED"),
+                new("GOOD", "Quality passed.", "RECORDED"),
+                new("CONFORMANT", "Constitutional checks passed.", "RECORDED"),
+                new("WITHIN_ALLOWANCE", "Usage within allowance.", "RECORDED"),
+                new("POOR", "Outcome missed.", "RECORDED", "No causal guarantee", "External factors."),
+                new("CUSTOMER_DISPUTED", "Customer disputed.", "RECORDED"),
+                new("UNCHANGED", "No autonomy increase.", "RECORDED"),
+                "REASSESSMENT_REQUIRED", Guid.NewGuid()), CancellationToken.None);
+        var context = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [
+                    new Claim("participant_id", participantId.ToString()),
+                    new Claim("participant_role", "EMPLOYER"),
+                    new Claim("authentication_assurance", "AAL3_FRESH"),
+                    new Claim("auth_time", DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()),
+                ], "Test")),
+            TraceIdentifier = Guid.NewGuid().ToString(),
+        };
+        context.Items[TenantIsolationMiddleware.TenantIdItemKey] = tenantId.ToString();
+        var controller = new RelationshipWorkspaceController(
+            relationships, new RelationshipOwnerGatewayStub(), configuration: configuration,
+            performanceReviews: reviews)
+        {
+            ControllerContext = new ControllerContext { HttpContext = context },
+        };
+        var key = Guid.NewGuid().ToString("D");
+        var command = JsonSerializer.SerializeToElement(new
+        {
+            schemaVersion = "1.0",
+            expectedWorkspaceVersion = $"relationship-{admitted.Relationship.StateVersion}",
+            expectedSubjectVersion = $"performance-{review.ReviewId:D}-{review.Revision}",
+            payload = new
+            {
+                commandKind = "RESPOND_TO_PERFORMANCE_REVIEW",
+                reviewId = review.ReviewId,
+                reviewRevision = review.Revision,
+                decision = "REQUEST_REASSESSMENT",
+                reason = "Reassess against corrected customer evidence.",
+            },
+        });
+
+        var accepted = Assert.IsType<ObjectResult>(await controller.SubmitCommandAsync(
+            admitted.Relationship.RelationshipId, command, key, CancellationToken.None));
+        var replay = Json(await controller.SubmitCommandAsync(
+            admitted.Relationship.RelationshipId, command, key, CancellationToken.None));
+        var commandId = JsonSerializer.SerializeToElement(accepted.Value).GetProperty("commandId").GetGuid();
+        var outcome = Json(await controller.GetCommandAsync(
+            admitted.Relationship.RelationshipId, commandId, CancellationToken.None));
+        var operations = Json(await controller.GetOperationsAsync(
+            admitted.Relationship.RelationshipId, CancellationToken.None));
+
+        Assert.Equal(202, accepted.StatusCode);
+        Assert.True(replay.GetProperty("replayed").GetBoolean());
+        Assert.Equal("COMPLETED", outcome.GetProperty("status").GetString());
+        Assert.True(operations.GetProperty("reassessmentRequired").GetBoolean());
+        Assert.Contains(operations.GetProperty("blockedReasons").EnumerateArray(),
+            reason => reason.GetString()!.Contains("performance review requires reassessment", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task AuthenticatedOwnerTruthReplacesUnavailablePlaceholders()
     {
         var (controller, relationship, gateway, _) = await CreateControllerAsync();

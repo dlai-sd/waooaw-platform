@@ -71,6 +71,13 @@ public sealed class Migration37PostgresIntegrationTests : IAsyncLifetime
                     '{"state":"WITHIN_ALLOWANCE"}', '{"state":"POOR","attributionLimits":"No causal guarantee"}',
                     '{"state":"CUSTOMER_DISPUTED"}', '{"state":"UNCHANGED"}',
                     'REASSESSMENT_REQUIRED', gen_random_uuid());
+                INSERT INTO business.performance_review_responses
+                    (tenant_id, relationship_id, review_id, review_revision, response_revision,
+                     actor_participant_id, decision, reason, idempotency_key,
+                     material_request_hash, evidence_id)
+                VALUES ('{{tenantId:D}}', '{{relationshipId:D}}', '{{reviewId:D}}', 1, 1,
+                    gen_random_uuid(), 'REQUEST_REASSESSMENT', 'External outcome requires review.',
+                    gen_random_uuid(), repeat('a', 64), gen_random_uuid());
                 """);
 
             var invalidOutcome = await Assert.ThrowsAsync<PostgresException>(() => ExecuteAsync(owner, $"""
@@ -95,6 +102,12 @@ public sealed class Migration37PostgresIntegrationTests : IAsyncLifetime
             var delete = await Assert.ThrowsAsync<PostgresException>(() => ExecuteAsync(owner,
                 $"DELETE FROM business.performance_review_windows WHERE review_id = '{reviewId:D}';"));
             Assert.Contains("append-only", delete.MessageText);
+            var responseUpdate = await Assert.ThrowsAsync<PostgresException>(() => ExecuteAsync(owner,
+                $"UPDATE business.performance_review_responses SET decision = 'PAUSE_AFFECTED_WORK' WHERE review_id = '{reviewId:D}';"));
+            Assert.Contains("append-only", responseUpdate.MessageText);
+            var responseDelete = await Assert.ThrowsAsync<PostgresException>(() => ExecuteAsync(owner,
+                $"DELETE FROM business.performance_review_responses WHERE review_id = '{reviewId:D}';"));
+            Assert.Contains("append-only", responseDelete.MessageText);
         }
 
         await using var business = new NpgsqlConnection(_businessConnectionString);
@@ -103,6 +116,8 @@ public sealed class Migration37PostgresIntegrationTests : IAsyncLifetime
         await using var command = business.CreateCommand();
         command.CommandText = "SELECT count(*) FROM business.performance_review_windows WHERE review_id = @review_id";
         command.Parameters.AddWithValue("review_id", reviewId);
+        Assert.Equal(0L, (long)(await command.ExecuteScalarAsync())!);
+        command.CommandText = "SELECT count(*) FROM business.performance_review_responses WHERE review_id = @review_id";
         Assert.Equal(0L, (long)(await command.ExecuteScalarAsync())!);
     }
 

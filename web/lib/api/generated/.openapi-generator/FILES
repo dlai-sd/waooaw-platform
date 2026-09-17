@@ -147,8 +147,10 @@ docs/OfferableProfessionalVersionSkillsInner.md
 docs/OutcomeInterpretationV1.md
 docs/PAASParameters.md
 docs/PauseRelationshipPayloadV1.md
+docs/PerformanceReviewCustomerDecisionV1.md
 docs/PerformanceReviewDimensionV1.md
 docs/PerformanceReviewRecommendationV1.md
+docs/PerformanceReviewResponseV1.md
 docs/PerformanceReviewWindowV1.md
 docs/PhaseBundleSubscription.md
 docs/PlanCardV1.md
@@ -251,6 +253,7 @@ docs/RenewRelationshipPayloadV1.md
 docs/ReplaceGoalPayloadV1.md
 docs/RequestAllowanceAdditionPayloadV1.md
 docs/RequestRelationshipEvidenceExportV1.md
+docs/RespondToPerformanceReviewPayloadV1.md
 docs/ResumeRelationshipPayloadV1.md
 docs/ReviewCadence.md
 docs/SelectSkillPayloadV1.md
@@ -436,8 +439,10 @@ models/OfferableProfessionalVersionSkillsInner.ts
 models/OutcomeInterpretationV1.ts
 models/PAASParameters.ts
 models/PauseRelationshipPayloadV1.ts
+models/PerformanceReviewCustomerDecisionV1.ts
 models/PerformanceReviewDimensionV1.ts
 models/PerformanceReviewRecommendationV1.ts
+models/PerformanceReviewResponseV1.ts
 models/PerformanceReviewWindowV1.ts
 models/PhaseBundleSubscription.ts
 models/PlanCardV1.ts
@@ -538,6 +543,7 @@ models/RenewRelationshipPayloadV1.ts
 models/ReplaceGoalPayloadV1.ts
 models/RequestAllowanceAdditionPayloadV1.ts
 models/RequestRelationshipEvidenceExportV1.ts
+models/RespondToPerformanceReviewPayloadV1.ts
 models/ResumeRelationshipPayloadV1.ts
 models/ReviewCadence.ts
 models/SelectSkillPayloadV1.ts

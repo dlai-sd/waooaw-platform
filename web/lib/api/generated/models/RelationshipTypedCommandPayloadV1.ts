@@ -99,6 +99,13 @@ import {
   RequestAllowanceAdditionPayloadV1FromJSONTyped,
   RequestAllowanceAdditionPayloadV1ToJSON,
 } from "./RequestAllowanceAdditionPayloadV1";
+import type { RespondToPerformanceReviewPayloadV1 } from "./RespondToPerformanceReviewPayloadV1";
+import {
+  instanceOfRespondToPerformanceReviewPayloadV1,
+  RespondToPerformanceReviewPayloadV1FromJSON,
+  RespondToPerformanceReviewPayloadV1FromJSONTyped,
+  RespondToPerformanceReviewPayloadV1ToJSON,
+} from "./RespondToPerformanceReviewPayloadV1";
 import type { ResumeRelationshipPayloadV1 } from "./ResumeRelationshipPayloadV1";
 import {
   instanceOfResumeRelationshipPayloadV1,
@@ -150,6 +157,9 @@ export type RelationshipTypedCommandPayloadV1 =
   | ({
       commandKind: "REQUEST_ALLOWANCE_ADDITION";
     } & RequestAllowanceAdditionPayloadV1)
+  | ({
+      commandKind: "RESPOND_TO_PERFORMANCE_REVIEW";
+    } & RespondToPerformanceReviewPayloadV1)
   | ({ commandKind: "RESUME_RELATIONSHIP" } & ResumeRelationshipPayloadV1)
   | ({ commandKind: "SELECT_SKILL" } & SelectSkillPayloadV1)
   | ({ commandKind: "TERMINATE_RELATIONSHIP" } & TerminateRelationshipPayloadV1)
@@ -235,6 +245,12 @@ export function RelationshipTypedCommandPayloadV1FromJSONTyped(
         {},
         RequestAllowanceAdditionPayloadV1FromJSONTyped(json, true),
         { commandKind: "REQUEST_ALLOWANCE_ADDITION" } as const,
+      );
+    case "RESPOND_TO_PERFORMANCE_REVIEW":
+      return Object.assign(
+        {},
+        RespondToPerformanceReviewPayloadV1FromJSONTyped(json, true),
+        { commandKind: "RESPOND_TO_PERFORMANCE_REVIEW" } as const,
       );
     case "RESUME_RELATIONSHIP":
       return Object.assign(
@@ -329,6 +345,12 @@ export function RelationshipTypedCommandPayloadV1ToJSONTyped(
       return Object.assign({}, RequestAllowanceAdditionPayloadV1ToJSON(value), {
         commandKind: "REQUEST_ALLOWANCE_ADDITION",
       } as const);
+    case "RESPOND_TO_PERFORMANCE_REVIEW":
+      return Object.assign(
+        {},
+        RespondToPerformanceReviewPayloadV1ToJSON(value),
+        { commandKind: "RESPOND_TO_PERFORMANCE_REVIEW" } as const,
+      );
     case "RESUME_RELATIONSHIP":
       return Object.assign({}, ResumeRelationshipPayloadV1ToJSON(value), {
         commandKind: "RESUME_RELATIONSHIP",

@@ -321,6 +321,23 @@ public sealed class PerformanceReviewWindow
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class PerformanceReviewResponse
+{
+    public Guid ResponseId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public Guid ReviewId { get; init; }
+    public int ReviewRevision { get; init; }
+    public int ResponseRevision { get; init; }
+    public Guid ActorParticipantId { get; init; }
+    public string Decision { get; init; } = string.Empty;
+    public string? Reason { get; init; }
+    public Guid IdempotencyKey { get; init; }
+    public string MaterialRequestHash { get; init; } = string.Empty;
+    public Guid EvidenceId { get; init; }
+    public DateTimeOffset OccurredAt { get; init; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class EmploymentContractVersion
 {
     public Guid ContractId { get; init; } = Guid.NewGuid();
@@ -562,6 +579,7 @@ public sealed class EmploymentRelationshipDbContext : DbContext
     public DbSet<AgentSkillRuntimeBinding> AgentSkillRuntimeBindings => Set<AgentSkillRuntimeBinding>();
     public DbSet<OperationalMandateSnapshot> OperationalMandateSnapshots => Set<OperationalMandateSnapshot>();
     public DbSet<PerformanceReviewWindow> PerformanceReviewWindows => Set<PerformanceReviewWindow>();
+    public DbSet<PerformanceReviewResponse> PerformanceReviewResponses => Set<PerformanceReviewResponse>();
     public DbSet<EmploymentContractVersion> EmploymentContractVersions => Set<EmploymentContractVersion>();
     public DbSet<ContractAcceptance> ContractAcceptances => Set<ContractAcceptance>();
     public DbSet<ActivationIntent> ActivationIntents => Set<ActivationIntent>();
@@ -722,6 +740,31 @@ public sealed class EmploymentRelationshipDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+        });
+
+        modelBuilder.Entity<PerformanceReviewResponse>(entity =>
+        {
+            entity.ToTable("performance_review_responses", "business");
+            entity.HasKey(value => value.ResponseId);
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.ReviewId, value.ResponseRevision }).IsUnique();
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.IdempotencyKey }).IsUnique();
+            entity.Property(value => value.ResponseId).HasColumnName("response_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.ReviewId).HasColumnName("review_id");
+            entity.Property(value => value.ReviewRevision).HasColumnName("review_revision");
+            entity.Property(value => value.ResponseRevision).HasColumnName("response_revision");
+            entity.Property(value => value.ActorParticipantId).HasColumnName("actor_participant_id");
+            entity.Property(value => value.Decision).HasColumnName("decision").HasMaxLength(48);
+            entity.Property(value => value.Reason).HasColumnName("reason").HasMaxLength(500);
+            entity.Property(value => value.IdempotencyKey).HasColumnName("idempotency_key");
+            entity.Property(value => value.MaterialRequestHash).HasColumnName("material_request_hash").HasMaxLength(64);
+            entity.Property(value => value.EvidenceId).HasColumnName("evidence_id");
+            entity.Property(value => value.OccurredAt).HasColumnName("occurred_at");
+            entity.HasOne<PerformanceReviewWindow>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId, value.ReviewId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId, value.ReviewId });
         });
 
         modelBuilder.Entity<RelationshipStateHistory>(entity =>

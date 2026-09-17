@@ -59,8 +59,8 @@
 }
 
 * { box-sizing: border-box; }
-html { min-width: 320px; background: var(--paper); }
-body { min-height: 100vh; margin: 0; color: var(--ink); background: var(--paper); font-family: var(--font-sans), "Noto Sans", "Segoe UI", sans-serif; }
+html { min-width: 320px; max-width: 100%; overflow-x: clip; background: var(--paper); }
+body { min-height: 100vh; max-width: 100%; margin: 0; overflow-x: clip; color: var(--ink); background: var(--paper); font-family: var(--font-sans), "Noto Sans", "Segoe UI", sans-serif; }
 [lang="hi"] body, [lang="mr"] body { font-family: var(--font-devanagari), sans-serif; }
 [lang="ta"] body { font-family: var(--font-tamil), sans-serif; }
 [lang="te"] body { font-family: var(--font-telugu), sans-serif; }
@@ -92,10 +92,12 @@ h1 { max-width: 760px; margin: 0; font-size: 5.5rem; font-weight: 650; line-heig
 .relationship-switcher strong, .relationship-switcher span { overflow-wrap: anywhere; }
 .relationship-switcher span { font-size: .78rem; }
 .workspace-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--line); }
-.workspace-header h1 { font-size: 4rem; }
+.workspace-header h1 { overflow-wrap: anywhere; font-size: 4rem; }
 .state-banner { flex: 0 0 auto; padding: .5rem .75rem; border: 1px solid; border-radius: 4px; font-size: .85rem; font-weight: 700; }
-.state-banner.live { color: var(--green); background: #edf8ef; border-color: #b8dcbc; }
+.state-banner.live { color: var(--green); background: var(--surface); border-color: var(--green); }
 .state-banner.trial { color: #086d88; background: #ecf8fb; border-color: #b4dce5; }
+.performance-review-controls select, .performance-review-controls textarea { width: 100%; max-width: 100%; }
+.performance-review-controls button { max-width: 100%; white-space: normal; }
 .relationship-summary, .timeline { max-width: 1100px; margin-top: 3rem; }
 .contract-journey { max-width: 1100px; margin-top: 3rem; padding: 2rem 0; border-block: 1px solid var(--line); }
 .contract-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
@@ -299,7 +301,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 .conversation-launcher span { display: grid; text-align: start; line-height: 1.15; }
 .conversation-launcher small { color: var(--muted); }
 .persistent-conversation { position: fixed; z-index: 60; inset-block: 72px 0; inset-inline-end: 0; width: min(31rem, 42vw); padding: 1rem; overflow-y: auto; visibility: hidden; pointer-events: none; border-inline-start: 1px solid var(--line); background: var(--surface); box-shadow: -10px 0 28px rgb(18 35 50 / 14%); transform: translateX(105%); transition: transform .18s ease, visibility 0s linear .18s; }
-.persistent-conversation[data-open="true"] { visibility: visible; pointer-events: auto; transform: translateX(0); transition-delay: 0s; }
+.persistent-conversation[data-open="false"] { display: none; }
+.persistent-conversation[data-open="true"] { display: block; visibility: visible; pointer-events: auto; transform: translateX(0); transition-delay: 0s; }
 .conversation-close { position: sticky; z-index: 2; inset-block-start: 0; margin-inline-start: auto; }
 .persistent-conversation .conversation-experience { width: 100%; margin-block-start: 0; }
 .portal-guide { display: grid; gap: 1rem; }

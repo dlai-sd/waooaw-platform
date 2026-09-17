@@ -2,6 +2,7 @@
 // constitutional_basis: C-005, C-007, C-023, C-026, C-059, C-063, C-079
 
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
 using Xunit;
@@ -14,7 +15,8 @@ public sealed class PerformanceReviewServiceTests
     public async Task AppendsImmutableSevenDimensionRevisionsWithSourceLineage()
     {
         var fixture = await CreateFixtureAsync();
-        var service = new PerformanceReviewService(fixture.Factory);
+        var service = new PerformanceReviewService(
+            fixture.Factory, new RecordingRelationshipConstitutionalGateway());
 
         var first = await service.AppendAsync(fixture.TenantId, fixture.RelationshipId,
             "CUSTOMER_PROFILING", "1.0.0", Draft("CONTINUE_CURRENT_MANDATE"), CancellationToken.None);
@@ -33,21 +35,87 @@ public sealed class PerformanceReviewServiceTests
         Assert.Equal("CUSTOMER_DISPUTED", second.CustomerAssessment.State);
         Assert.Equal("UNCHANGED", second.TrustAutonomy.State);
         Assert.Equal("pr-17", second.SourceVersions["professionalRuntime"]);
+        Assert.True(second.ReassessmentRequired);
         Assert.NotEqual(first.ReviewId, second.ReviewId);
         Assert.NotEqual(first.EvidenceId, second.EvidenceId);
+        await using var alertDb = fixture.Factory.CreateDbContext();
+        Assert.Single(await alertDb.CustomerAlerts.Where(value => value.RelationshipId == fixture.RelationshipId).ToListAsync());
+    }
+
+    [Fact]
+    public async Task RecordsExactCustomerDecisionReplaysAndProjectsReassessment()
+    {
+        var fixture = await CreateFixtureAsync();
+        var gateway = new RecordingRelationshipConstitutionalGateway();
+        var service = new PerformanceReviewService(fixture.Factory, gateway);
+        var review = await service.AppendAsync(fixture.TenantId, fixture.RelationshipId,
+            "CUSTOMER_PROFILING", "1.0.0", Draft("REASSESSMENT_REQUIRED"), CancellationToken.None);
+        var key = Guid.NewGuid();
+        var correlationId = Guid.NewGuid();
+        var hash = new string('a', 64);
+
+        var first = await service.RespondAsync(
+            fixture.TenantId, fixture.RelationshipId, fixture.ParticipantId, review.ReviewId,
+            review.Revision, "REQUEST_REASSESSMENT", "The outcome requires a revised plan.",
+            key, hash, correlationId, CancellationToken.None);
+        var replay = await service.RespondAsync(
+            fixture.TenantId, fixture.RelationshipId, fixture.ParticipantId, review.ReviewId,
+            review.Revision, "REQUEST_REASSESSMENT", "The outcome requires a revised plan.",
+            key, hash, correlationId, CancellationToken.None);
+        var projected = Assert.Single(await service.ListAsync(
+            fixture.TenantId, fixture.RelationshipId, CancellationToken.None));
+
+        Assert.False(first.Replayed);
+        Assert.True(replay.Replayed);
+        Assert.Equal(first.Response.ResponseId, replay.Response.ResponseId);
+        Assert.Equal(1, gateway.CallCount);
+        Assert.Equal("RELATIONSHIP_PERFORMANCE_REVIEW_RESPONSE", gateway.LastActionType);
+        var constitutionalParameters = JsonSerializer.Serialize(gateway.LastActionParameters);
+        Assert.Contains("reasonHash", constitutionalParameters);
+        Assert.DoesNotContain("The outcome requires a revised plan.", constitutionalParameters);
+        Assert.Contains(fixture.ParticipantId.ToString(), constitutionalParameters, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("REQUEST_REASSESSMENT", projected.CustomerResponse?.Decision);
+        Assert.True(projected.ReassessmentRequired);
+        await Assert.ThrowsAsync<PerformanceReviewConflictException>(() => service.RespondAsync(
+            fixture.TenantId, fixture.RelationshipId, fixture.ParticipantId, review.ReviewId,
+            review.Revision, "DISPUTE_ASSESSMENT", "Different request.", key, new string('b', 64),
+            Guid.NewGuid(), CancellationToken.None));
+        await Assert.ThrowsAsync<PerformanceReviewConflictException>(() => service.RespondAsync(
+            fixture.TenantId, fixture.RelationshipId, Guid.NewGuid(), review.ReviewId,
+            review.Revision, "REQUEST_REASSESSMENT", "The outcome requires a revised plan.",
+            key, hash, Guid.NewGuid(), CancellationToken.None));
     }
 
     [Fact]
     public async Task RejectsSelfPromotionAndCrossTenantProjectionWithoutMutation()
     {
         var fixture = await CreateFixtureAsync();
-        var service = new PerformanceReviewService(fixture.Factory);
+        var service = new PerformanceReviewService(
+            fixture.Factory, new RecordingRelationshipConstitutionalGateway());
 
         await Assert.ThrowsAsync<PerformanceReviewInvalidException>(() => service.AppendAsync(
             fixture.TenantId, fixture.RelationshipId, "CUSTOMER_PROFILING", "1.0.0",
             Draft("PROMOTE_OWN_PROMPT"), CancellationToken.None));
         Assert.Empty(await service.ListAsync(fixture.TenantId, fixture.RelationshipId, CancellationToken.None));
         Assert.Empty(await service.ListAsync(Guid.NewGuid(), fixture.RelationshipId, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task DoesNotPersistResponseWhenConstitutionalEvidenceIsUnavailable()
+    {
+        var fixture = await CreateFixtureAsync();
+        var gateway = new RecordingRelationshipConstitutionalGateway { FailNext = true };
+        var service = new PerformanceReviewService(fixture.Factory, gateway);
+        var review = await service.AppendAsync(fixture.TenantId, fixture.RelationshipId,
+            "CUSTOMER_PROFILING", "1.0.0", Draft("REASSESSMENT_REQUIRED"), CancellationToken.None);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.RespondAsync(
+            fixture.TenantId, fixture.RelationshipId, fixture.ParticipantId, review.ReviewId,
+            review.Revision, "REQUEST_REASSESSMENT", "Reassess this outcome.", Guid.NewGuid(),
+            new string('a', 64), Guid.NewGuid(), CancellationToken.None));
+
+        Assert.Null(Assert.Single(await service.ListAsync(
+            fixture.TenantId, fixture.RelationshipId, CancellationToken.None)).CustomerResponse);
     }
 
     private static PerformanceReviewDraftV1 Draft(string recommendation) => new(
@@ -74,6 +142,7 @@ public sealed class PerformanceReviewServiceTests
         var tenantId = Guid.NewGuid();
         var relationshipId = Guid.NewGuid();
         var agentInstanceId = Guid.NewGuid();
+        var participantId = Guid.NewGuid();
         await using var db = factory.CreateDbContext();
         db.EmploymentRelationships.Add(new EmploymentRelationship
         {
@@ -83,7 +152,7 @@ public sealed class PerformanceReviewServiceTests
             ProfessionalType = "DMA",
             ProfessionalVersion = "1.0.0",
             EvaluationIntentId = Guid.NewGuid(),
-            InitiatingParticipantId = Guid.NewGuid(),
+            InitiatingParticipantId = participantId,
             State = EmploymentRelationshipState.Active,
         });
         db.RelationshipSkillConfigurations.Add(new RelationshipSkillConfiguration
@@ -95,12 +164,21 @@ public sealed class PerformanceReviewServiceTests
             AuthorityState = "GRANTED",
             Status = "ACCEPTED",
         });
+        db.RelationshipParticipants.Add(new RelationshipParticipant
+        {
+            TenantId = tenantId,
+            RelationshipId = relationshipId,
+            ParticipantId = participantId,
+            Role = RelationshipParticipantRole.Employer,
+            BoundEvidenceId = Guid.NewGuid(),
+        });
         await db.SaveChangesAsync();
-        return new Fixture(factory, tenantId, relationshipId);
+        return new Fixture(factory, tenantId, relationshipId, participantId);
     }
 
     private sealed record Fixture(
         InMemoryEmploymentRelationshipFactory Factory,
         Guid TenantId,
-        Guid RelationshipId);
+        Guid RelationshipId,
+        Guid ParticipantId);
 }

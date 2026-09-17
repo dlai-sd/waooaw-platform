@@ -50,11 +50,55 @@ CREATE TABLE IF NOT EXISTS business.performance_review_windows (
         'OFFER_TERMINATION_OR_APPROVED_MIGRATION'
     )),
     CONSTRAINT performance_review_revision_unique
-    UNIQUE (tenant_id, relationship_id, skill_id, revision)
+    UNIQUE (tenant_id, relationship_id, skill_id, revision),
+    CONSTRAINT performance_review_identity_unique
+    UNIQUE (tenant_id, relationship_id, review_id)
 );
 
 CREATE INDEX IF NOT EXISTS ix_performance_review_period
 ON business.performance_review_windows (tenant_id, relationship_id, period_end DESC);
+
+CREATE TABLE IF NOT EXISTS business.performance_review_responses (
+    response_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL,
+    relationship_id UUID NOT NULL,
+    review_id UUID NOT NULL,
+    review_revision INTEGER NOT NULL,
+    response_revision INTEGER NOT NULL,
+    actor_participant_id UUID NOT NULL,
+    decision VARCHAR(48) NOT NULL,
+    reason VARCHAR(500),
+    idempotency_key UUID NOT NULL,
+    material_request_hash VARCHAR(64) NOT NULL,
+    evidence_id UUID NOT NULL,
+    occurred_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT performance_review_response_review_fk
+    FOREIGN KEY (tenant_id, relationship_id, review_id)
+    REFERENCES business.performance_review_windows (tenant_id, relationship_id, review_id),
+    CONSTRAINT performance_review_response_revision_check CHECK (
+        review_revision > 0 AND response_revision > 0
+    ),
+    CONSTRAINT performance_review_response_decision_check CHECK (decision IN (
+        'CONTINUE_CURRENT_MANDATE',
+        'REQUEST_REASSESSMENT',
+        'DISPUTE_ASSESSMENT',
+        'PAUSE_AFFECTED_WORK',
+        'REQUEST_TERMINATION_OR_MIGRATION'
+    )),
+    CONSTRAINT performance_review_response_reason_check CHECK (
+        (decision = 'CONTINUE_CURRENT_MANDATE' AND reason IS NULL)
+        OR (decision <> 'CONTINUE_CURRENT_MANDATE' AND length(trim(reason)) > 0)
+    ),
+    CONSTRAINT performance_review_response_revision_unique
+    UNIQUE (tenant_id, relationship_id, review_id, response_revision),
+    CONSTRAINT performance_review_response_idempotency_unique
+    UNIQUE (tenant_id, relationship_id, idempotency_key)
+);
+
+CREATE INDEX IF NOT EXISTS ix_performance_review_response_period
+ON business.performance_review_responses (
+    tenant_id, relationship_id, review_id, response_revision DESC
+);
 
 CREATE OR REPLACE FUNCTION business.reject_wc095_immutable_mutation()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
@@ -66,6 +110,15 @@ $$;
 DROP TRIGGER IF EXISTS performance_review_windows_no_update ON business.performance_review_windows;
 CREATE TRIGGER performance_review_windows_no_update
 BEFORE UPDATE ON business.performance_review_windows
+FOR EACH ROW EXECUTE FUNCTION business.reject_wc095_immutable_mutation();
+
+DROP TRIGGER IF EXISTS performance_review_responses_no_update ON business.performance_review_responses;
+CREATE TRIGGER performance_review_responses_no_update
+BEFORE UPDATE ON business.performance_review_responses
+FOR EACH ROW EXECUTE FUNCTION business.reject_wc095_immutable_mutation();
+DROP TRIGGER IF EXISTS performance_review_responses_no_delete ON business.performance_review_responses;
+CREATE TRIGGER performance_review_responses_no_delete
+BEFORE DELETE ON business.performance_review_responses
 FOR EACH ROW EXECUTE FUNCTION business.reject_wc095_immutable_mutation();
 DROP TRIGGER IF EXISTS performance_review_windows_no_delete ON business.performance_review_windows;
 CREATE TRIGGER performance_review_windows_no_delete
@@ -79,4 +132,12 @@ CREATE POLICY performance_review_windows_tenant_isolation ON business.performanc
 USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
 WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
 
+ALTER TABLE business.performance_review_responses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE business.performance_review_responses FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS performance_review_responses_tenant_isolation ON business.performance_review_responses;
+CREATE POLICY performance_review_responses_tenant_isolation ON business.performance_review_responses
+USING (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID)
+WITH CHECK (tenant_id = nullif(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+
 GRANT SELECT, INSERT ON business.performance_review_windows TO business_app;
+GRANT SELECT, INSERT ON business.performance_review_responses TO business_app;

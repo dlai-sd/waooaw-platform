@@ -23,6 +23,8 @@
 | `recommendation`            | [PerformanceReviewRecommendationV1](PerformanceReviewRecommendationV1.md) |
 | `evidenceId`                | string                                                                    |
 | `createdAt`                 | Date                                                                      |
+| `customerResponse`          | [PerformanceReviewResponseV1](PerformanceReviewResponseV1.md)             |
+| `reassessmentRequired`      | boolean                                                                   |
 
 ## Example
 
@@ -50,6 +52,8 @@ const example = {
   recommendation: null,
   evidenceId: null,
   createdAt: null,
+  customerResponse: null,
+  reassessmentRequired: null,
 } satisfies PerformanceReviewWindowV1;
 
 console.log(example);

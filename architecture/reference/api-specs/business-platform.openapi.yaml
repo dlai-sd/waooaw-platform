@@ -6140,7 +6140,7 @@ components:
     PerformanceReviewWindowV1:
       type: object
       additionalProperties: false
-      required: [reviewId, agentInstanceId, skillId, skillVersion, revision, policyVersion, periodStart, periodEnd, sourceVersions, workDelivery, agentQuality, constitutionalPerformance, commercialUsage, customerBusinessOutcome, customerAssessment, trustAutonomy, recommendation, evidenceId, createdAt]
+      required: [reviewId, agentInstanceId, skillId, skillVersion, revision, policyVersion, periodStart, periodEnd, sourceVersions, workDelivery, agentQuality, constitutionalPerformance, commercialUsage, customerBusinessOutcome, customerAssessment, trustAutonomy, recommendation, evidenceId, createdAt, customerResponse, reassessmentRequired]
       properties:
         reviewId: { type: string, format: uuid }
         agentInstanceId: { type: string, format: uuid }
@@ -6164,6 +6164,25 @@ components:
         recommendation: { $ref: "#/components/schemas/PerformanceReviewRecommendationV1" }
         evidenceId: { type: string, format: uuid }
         createdAt: { type: string, format: date-time }
+        customerResponse:
+          oneOf:
+            - $ref: "#/components/schemas/PerformanceReviewResponseV1"
+            - type: "null"
+        reassessmentRequired: { type: boolean }
+
+    PerformanceReviewResponseV1:
+      type: object
+      additionalProperties: false
+      required: [responseId, reviewId, reviewRevision, responseRevision, decision, evidenceId, occurredAt]
+      properties:
+        responseId: { type: string, format: uuid }
+        reviewId: { type: string, format: uuid }
+        reviewRevision: { type: integer, minimum: 1 }
+        responseRevision: { type: integer, minimum: 1 }
+        decision: { $ref: "#/components/schemas/PerformanceReviewCustomerDecisionV1" }
+        reason: { type: [string, "null"], minLength: 1, maxLength: 500 }
+        evidenceId: { type: string, format: uuid }
+        occurredAt: { type: string, format: date-time }
 
     RelationshipPerformanceV1:
       allOf:
@@ -7800,7 +7819,8 @@ components:
         CHANGE_PACING,
         REQUEST_ALLOWANCE_ADDITION,
         RENEW_RELATIONSHIP,
-        TERMINATE_RELATIONSHIP
+        TERMINATE_RELATIONSHIP,
+        RESPOND_TO_PERFORMANCE_REVIEW
       ]
 
     CancelPlanPayloadV1:
@@ -7972,6 +7992,35 @@ components:
         commandKind: { type: string, const: TERMINATE_RELATIONSHIP }
         reason: { type: string, minLength: 1, maxLength: 240 }
 
+    PerformanceReviewCustomerDecisionV1:
+      type: string
+      enum:
+        - CONTINUE_CURRENT_MANDATE
+        - REQUEST_REASSESSMENT
+        - DISPUTE_ASSESSMENT
+        - PAUSE_AFFECTED_WORK
+        - REQUEST_TERMINATION_OR_MIGRATION
+
+    RespondToPerformanceReviewPayloadV1:
+      type: object
+      additionalProperties: false
+      required: [commandKind, reviewId, reviewRevision, decision]
+      allOf:
+        - if:
+            properties:
+              decision: { const: CONTINUE_CURRENT_MANDATE }
+          then:
+            not:
+              required: [reason]
+          else:
+            required: [reason]
+      properties:
+        commandKind: { type: string, const: RESPOND_TO_PERFORMANCE_REVIEW }
+        reviewId: { type: string, format: uuid }
+        reviewRevision: { type: integer, minimum: 1 }
+        decision: { $ref: "#/components/schemas/PerformanceReviewCustomerDecisionV1" }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+
     RelationshipTypedCommandPayloadV1:
       oneOf:
         - $ref: "#/components/schemas/CancelPlanPayloadV1"
@@ -7992,6 +8041,7 @@ components:
         - $ref: "#/components/schemas/RequestAllowanceAdditionPayloadV1"
         - $ref: "#/components/schemas/RenewRelationshipPayloadV1"
         - $ref: "#/components/schemas/TerminateRelationshipPayloadV1"
+        - $ref: "#/components/schemas/RespondToPerformanceReviewPayloadV1"
       discriminator:
         propertyName: commandKind
         mapping:
@@ -8013,6 +8063,7 @@ components:
           REQUEST_ALLOWANCE_ADDITION: "#/components/schemas/RequestAllowanceAdditionPayloadV1"
           RENEW_RELATIONSHIP: "#/components/schemas/RenewRelationshipPayloadV1"
           TERMINATE_RELATIONSHIP: "#/components/schemas/TerminateRelationshipPayloadV1"
+          RESPOND_TO_PERFORMANCE_REVIEW: "#/components/schemas/RespondToPerformanceReviewPayloadV1"
 
     SubmitRelationshipCommandRequestV1:
       type: object
