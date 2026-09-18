@@ -15,13 +15,47 @@ const providers: IdentityProvider[] = [
 describe('ProviderCommands', () => {
   beforeEach(() => jest.mocked(signIn).mockReset());
 
-  it('starts only an available brokered provider', () => {
+  it('requires explicit disclosure before starting Google account selection', () => {
     render(<ProviderCommands callbackUrl="/home" intent="login" providers={providers} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Log in with Google' }));
 
-    expect(signIn).toHaveBeenCalledWith('keycloak-google', { callbackUrl: '/home' });
+    expect(screen.getByRole('dialog', { name: 'Continue to Google' })).toBeVisible();
+    expect(screen.getByText(/WAOOAW will receive your name, email address, profile information and Google account identifier/)).toBeVisible();
+    expect(screen.getByText(/WAOOAW does not receive your Google password/)).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Privacy Notice' })).toHaveAttribute('href', '/privacy');
+    expect(signIn).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to Google' }));
+
+    expect(signIn).toHaveBeenCalledWith('keycloak-google', { callbackUrl: '/home' }, { prompt: 'select_account' });
     expect(screen.getByRole('button', { name: 'Log in with Facebook (Unavailable)' })).toBeDisabled();
+  });
+
+  it('cancels Google disclosure without provider handoff', () => {
+    render(<ProviderCommands callbackUrl="/home" intent="login" providers={providers} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Log in with Google' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByRole('dialog', { name: 'Continue to Google' })).not.toBeInTheDocument();
+    expect(signIn).not.toHaveBeenCalled();
+  });
+
+  it('contains disclosure focus and restores the Google command on Escape', () => {
+    render(<ProviderCommands callbackUrl="/home" intent="login" providers={providers} />);
+    const google = screen.getByRole('button', { name: 'Log in with Google' });
+    fireEvent.click(google);
+    const continueCommand = screen.getByRole('button', { name: 'Continue to Google' });
+    const privacy = screen.getByRole('link', { name: 'Privacy Notice' });
+
+    expect(continueCommand).toHaveFocus();
+    fireEvent.keyDown(window, { key: 'Tab' });
+    expect(privacy).toHaveFocus();
+    fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
+    expect(continueCommand).toHaveFocus();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(google).toHaveFocus();
   });
 
   it('does not start unavailable providers', () => {
@@ -48,8 +82,10 @@ describe('ProviderCommands', () => {
     ]} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Log in with Google' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to Google' }));
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Log in with Google' })).toBeEnabled());
+    expect(screen.getByRole('alert')).toHaveAttribute('data-reason-code', 'BROKER_LAUNCH_FAILED');
     expect(screen.getByRole('button', { name: 'Log in with Facebook' })).toBeEnabled();
   });
 

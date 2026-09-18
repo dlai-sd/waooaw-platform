@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { safePublicReturnTarget } from '@/lib/safe-return';
+import { beginAuthTransition } from '@/lib/auth-transition';
 
 type AuthDestination = '/login' | '/register';
 type Journey = { origin: string; trigger: HTMLElement | null; destination: AuthDestination };
@@ -28,6 +29,7 @@ export function AuthJourney({ children }: { children: ReactNode }) {
       if (!link || link.target === '_blank' || link.origin !== location.origin) return;
       if (!['/login', '/register'].includes(link.pathname) || ['/login', '/register'].includes(location.pathname)) return;
       event.preventDefault();
+      beginAuthTransition();
       journey.current = {
         origin: safePublicReturnTarget(location.pathname + location.hash),
         trigger: link,

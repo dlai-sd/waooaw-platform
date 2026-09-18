@@ -272,7 +272,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 .skip-link { position: fixed; inset-block-start: .5rem; inset-inline-start: .5rem; z-index: 100; padding: .75rem 1rem; color: #fff; background: var(--color-brand-navy); transform: translateY(-160%); }
 .skip-link:focus { transform: translateY(0); }
 .app-shell { min-height: 100vh; display: grid; grid-template-rows: 72px 1fr; background: var(--paper); }
-.app-shell-customer, .app-shell-founder { grid-template-columns: var(--nav-width) minmax(0, 1fr); }
+.app-shell-customer, .app-shell-founder { position: relative; grid-template-columns: var(--nav-width) minmax(0, 1fr); grid-template-rows: minmax(100vh, 1fr); }
 .top-bar { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; min-width: 0; padding-inline: clamp(1rem, 4vw, 3rem); border-block-end: 1px solid var(--line); background: var(--surface); }
 .top-bar nav, .top-actions, .experience-controls, .command-row { display: flex; align-items: center; gap: 1rem; }
 .brand-link { display: inline-flex; align-items: center; min-width: 120px; min-height: 44px; text-decoration: none; }
@@ -283,26 +283,40 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 .icon-command { width: 44px; height: 44px; display: inline-grid; place-items: center; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); cursor: pointer; }
 .select-control { min-height: 44px; display: flex; align-items: center; gap: .4rem; padding-inline: .65rem; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 .select-control select { max-width: 9rem; border: 0; color: var(--ink); background: transparent; }
-.side-navigation { width: 76px; padding: 1.25rem .75rem; border-inline-end: 1px solid var(--line); background: var(--surface); transition: width .18s ease; }
-.side-navigation nav { display: grid; gap: .35rem; }
+.side-navigation { position: fixed; z-index: 50; inset-block: 0; inset-inline-start: 0; width: 76px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 1rem; padding: .75rem; overflow: hidden; border-inline-end: 1px solid var(--line); background: var(--surface); transition: width .18s ease; }
+.rail-brand { display: grid; justify-items: center; gap: .5rem; }
+.rail-brand .brand-link { width: 100%; min-width: 0; overflow: hidden; }
+.rail-brand .brand-link img { width: auto; max-width: 100%; height: 44px; object-fit: contain; object-position: left center; }
+.side-navigation nav { display: grid; align-content: start; gap: .35rem; }
 .side-navigation a { min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .25rem; padding: .45rem; border-radius: 8px; text-decoration: none; }
 .side-navigation a span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
 .side-navigation a:hover, .side-navigation a:focus-visible { background: var(--color-surface-strong); }
 .side-navigation a[aria-current="page"] { color: var(--blue); background: color-mix(in srgb, var(--blue) 11%, var(--surface)); }
 .side-navigation[data-expanded="true"] { width: 184px; }
 .side-navigation[data-expanded="true"] a span { position: static; width: auto; height: auto; overflow: visible; clip: auto; font-size: .72rem; text-align: center; }
-.app-shell-customer:has(.side-navigation[data-expanded="true"]) { --nav-width: 184px; }
 .navigation-toggle { flex: 0 0 auto; }
-.portal-assurance { min-height: 32px; display: inline-flex; align-items: center; gap: .4rem; padding-inline: .65rem; border: 1px solid color-mix(in srgb, var(--green) 45%, var(--line)); border-radius: 999px; color: var(--green); font-size: .75rem; font-weight: 800; white-space: nowrap; }
+.side-navigation .experience-controls { display: grid; gap: .5rem; }
+.side-navigation .select-control { width: 100%; overflow: hidden; }
+.side-navigation:not([data-expanded="true"]) .select-control select { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+.application-controls { position: fixed; z-index: 55; inset-block-start: 1rem; inset-inline-end: 1rem; display: flex; align-items: center; gap: .5rem; }
+.account-assurance { display: flex; align-items: center; gap: .45rem; color: var(--green); font-weight: 750; }
 .main-content { min-width: 0; }
+.app-shell-customer .main-content, .app-shell-founder .main-content { grid-column: 2; grid-row: 1; padding-block-start: 4.75rem; }
+.app-shell-customer .main-content h1, .app-shell-founder .main-content h1 { font-size: 2rem; }
+.app-shell-customer .main-content h2, .app-shell-founder .main-content h2 { font-size: 1.5rem; }
+.app-shell-customer .main-content h3, .app-shell-founder .main-content h3 { font-size: 1.25rem; }
 .conversation-launcher { position: fixed; z-index: 45; inset-inline-end: 1rem; inset-block-end: 1rem; min-height: 48px; display: flex; align-items: center; gap: .65rem; padding: .45rem .7rem; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); box-shadow: 0 8px 28px rgb(18 35 50 / 16%); cursor: pointer; }
 .conversation-launcher[data-surface="RELATIONSHIP"] { inset-block-end: 5.5rem; }
 .context-conversation-action { min-height: 38px; display: inline-flex; align-items: center; gap: .4rem; padding: .4rem .65rem; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); font-weight: 700; cursor: pointer; }
 .conversation-launcher span { display: grid; text-align: start; line-height: 1.15; }
 .conversation-launcher small { color: var(--muted); }
-.persistent-conversation { position: fixed; z-index: 60; inset-block: 72px 0; inset-inline-end: 0; width: min(31rem, 42vw); padding: 1rem; overflow-y: auto; visibility: hidden; pointer-events: none; border-inline-start: 1px solid var(--line); background: var(--surface); box-shadow: -10px 0 28px rgb(18 35 50 / 14%); transform: translateX(105%); transition: transform .18s ease, visibility 0s linear .18s; }
+.persistent-conversation { position: relative; grid-column: 3; grid-row: 1; width: var(--guide-width, 400px); min-width: 320px; max-width: 560px; padding: 1rem; overflow-y: auto; visibility: hidden; pointer-events: none; border-inline-start: 1px solid var(--line); background: var(--surface); }
 .persistent-conversation[data-open="false"] { display: none; }
-.persistent-conversation[data-open="true"] { display: block; visibility: visible; pointer-events: auto; transform: translateX(0); transition-delay: 0s; }
+.persistent-conversation[data-open="true"] { display: block; visibility: visible; pointer-events: auto; }
+.app-shell-customer:has(.persistent-conversation[data-open="true"]) { grid-template-columns: var(--nav-width) minmax(480px, 1fr) auto; }
+.app-shell-customer:has(.persistent-conversation[data-open="true"]) .application-controls { inset-inline-end: calc(560px + 1rem); }
+.conversation-resizer { position: absolute; z-index: 3; inset-block: 0; inset-inline-start: -6px; width: 12px; cursor: ew-resize; touch-action: none; }
+.conversation-resizer:focus-visible { outline: 3px solid var(--color-focus); outline-offset: -3px; }
 .conversation-close { position: sticky; z-index: 2; inset-block-start: 0; margin-inline-start: auto; }
 .persistent-conversation .conversation-experience { width: 100%; margin-block-start: 0; }
 .portal-guide { display: grid; gap: 1rem; }
@@ -362,6 +376,10 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 .provider-command-facebook:not(:disabled) svg { color: #1877f2; }
 .provider-command-apple svg { color: var(--ink); }
 .provider-command small { color: var(--muted); }
+.provider-disclosure { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 1rem; background: rgb(15 31 48 / 58%); }
+.provider-disclosure-content { width: min(100%, 34rem); max-height: calc(100dvh - 2rem); display: grid; gap: 1rem; padding: 1.5rem; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); box-shadow: 0 24px 72px rgb(15 31 48 / 30%); }
+.provider-disclosure-content h2, .provider-disclosure-content p { margin: 0; }
+.provider-disclosure-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .75rem; }
 .provider-status { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 0; padding: .85rem 1rem; border-inline-start: 4px solid var(--orange); background: var(--paper); }
 .apple-sign-in { display: grid; gap: .5rem; }
 .apple-sign-in p { max-width: 52ch; margin: 0; color: var(--ink); }
@@ -626,7 +644,10 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
   .public-intro { grid-template-columns: minmax(0, 1fr); }
   .public-hero h1 { font-size: 3.5rem; }
   .main-content { overflow-wrap: anywhere; }
-  .persistent-conversation { inset-block-start: 0; width: min(100%, 34rem); }
+  .app-shell-customer:has(.persistent-conversation[data-open="true"]) { grid-template-columns: 76px minmax(0, 1fr); }
+  .persistent-conversation { position: fixed; z-index: 60; inset-block: 0; inset-inline-end: 0; width: min(100%, 34rem) !important; min-width: 0; max-width: none; }
+  .app-shell-customer:has(.persistent-conversation[data-open="true"]) .application-controls { inset-inline-end: 1rem; }
+  .conversation-resizer { display: none; }
   .conversation-scrim { position: fixed; z-index: 55; inset: 0; display: block; border: 0; background: rgb(18 35 50 / 42%); }
   .conversation-launcher { inset-block-end: 5.25rem; max-width: calc(100vw - 2rem); }
   .conversation-launcher[data-surface="RELATIONSHIP"] { inset-block-end: 9.5rem; }
@@ -659,7 +680,6 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 @media (max-width: 599px) {
   h1 { font-size: 2.7rem; }
   .workspace-header h1 { font-size: 2.4rem; }
-  .conversation-launcher { display: none; }
   .top-bar { gap: .5rem; }
   .top-actions { min-width: 0; gap: .35rem; }
   .experience-controls { min-width: 0; gap: .35rem; }

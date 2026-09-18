@@ -15,6 +15,7 @@ import { messages } from '@/lib/i18n';
 
 jest.mock('next-auth/react', () => ({ signIn: jest.fn() }));
 jest.mock('next/navigation', () => ({ usePathname: jest.fn() }));
+jest.mock('@/components/conversation/PersistentConversationDock', () => ({ PersistentConversationDock: () => null }));
 
 describe('F1 shell primitives', () => {
   beforeEach(() => {
@@ -50,7 +51,7 @@ describe('F1 shell primitives', () => {
   });
 
   it('composes registered customer navigation with persistent Stop', () => {
-    render(<ProtectedAppShell identitySession={{ assuranceLevel: 'AAL2_ACCOUNT' } as never} messages={messages.en} variant="customer"><p>Customer content</p></ProtectedAppShell>);
+    const { container } = render(<ProtectedAppShell identitySession={{ assuranceLevel: 'AAL2_ACCOUNT' } as never} messages={messages.en} variant="customer"><p>Customer content</p></ProtectedAppShell>);
     expect(screen.getAllByRole('link', { name: 'My Agents' })).toHaveLength(2);
     expect(screen.getAllByRole('link', { name: 'My Agents' })[0]).toHaveAttribute('href', '/professionals/mine');
     expect(screen.getAllByRole('link', { name: 'Marketplace' })).toHaveLength(2);
@@ -58,7 +59,10 @@ describe('F1 shell primitives', () => {
     expect(screen.getAllByRole('link', { name: 'Alerts' })).toHaveLength(2);
     expect(screen.getAllByRole('link', { name: 'Alerts' })[0]).toHaveAttribute('href', '/alerts');
     expect(screen.getByRole('link', { name: 'Profile' })).toHaveAttribute('href', '/profile');
-    expect(screen.queryByRole('button', { name: 'No active work to stop' })).not.toBeInTheDocument();
+    expect(container.querySelector('.top-bar')).not.toBeInTheDocument();
+    expect(screen.getByText('Account security: Verified')).toBeInTheDocument();
+    expect(screen.queryByText('AAL2_ACCOUNT')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'No active work to stop' })).toBeDisabled();
   });
 
   it('uses client navigation with active state and an accessible persisted rail', () => {
