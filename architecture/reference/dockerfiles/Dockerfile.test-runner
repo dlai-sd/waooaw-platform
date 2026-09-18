@@ -28,6 +28,7 @@ RUN apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https
     gh \
     curl \
     docker.io \
+    jq \
     python3 \
     python3-pip \
     python-is-python3 \
