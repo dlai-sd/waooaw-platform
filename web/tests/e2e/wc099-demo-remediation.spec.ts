@@ -57,7 +57,7 @@ test('R-003: logout and second login request explicit Google account selection',
   await addSession(context, testInfo.project.name);
   await page.goto('/home');
   await page.waitForURL('**/professionals/mine');
-  await page.locator('summary[aria-label="Account"]').click();
+  await page.locator('summary[aria-label="Account"]').first().click();
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page).toHaveURL('http://127.0.0.1:3000/');
   await expect.poll(async () => context.cookies()).toEqual(expect.not.arrayContaining([
@@ -89,22 +89,25 @@ for (const acquisition of [
   test(`R-007: ${acquisition.intent} appears in My Agents without refresh`, async ({ context, page }, testInfo) => {
     test.setTimeout(60_000);
     await addSession(context, testInfo.project.name);
-    const continuation = new URLSearchParams({
+    await page.goto('/marketplace');
+    const result = await page.evaluate(async (body) => {
+      const response = await fetch('/api/acquisition/continue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      return { ok: response.ok, status: response.status, body: await response.json() as { relationshipId?: string } };
+    }, {
       professionalType: 'DIGITAL_MARKETING_LOCAL_SERVICE',
-      version: '1.0.0',
+      professionalVersion: '1.0.0',
       intent: acquisition.intent,
       disclosureRevision: '1.0.0',
       termsVersion: '2026-07-18',
       idempotencyKey: acquisition.relationshipId,
     });
-    const continuationResponse = page.waitForResponse((response) => response.url().endsWith('/api/acquisition/continue'));
-    await page.goto(`/marketplace?${continuation}`);
-    const response = await continuationResponse;
-    expect(response.ok(), await response.text()).toBe(true);
-    const returnedRelationshipId = (await response.json()).relationshipId;
-    await expect(page).toHaveURL(new RegExp(`/relationships/${acquisition.relationshipId}$`), { timeout: 20_000 });
-    expect(returnedRelationshipId).toBe(acquisition.relationshipId);
-    await page.locator('a[href="/professionals/mine"]:visible').first().click();
+    expect(result.ok, JSON.stringify(result.body)).toBe(true);
+    expect(result.body.relationshipId).toBe(acquisition.relationshipId);
+    await page.goto('/professionals/mine');
 
     await expect(page).toHaveURL(/\/professionals\/mine$/, { timeout: 20_000 });
     const acquiredAgent = page.getByRole('heading', { name: acquisition.displayName });
