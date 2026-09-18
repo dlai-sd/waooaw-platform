@@ -49,9 +49,12 @@ def test_global_and_normative_changes_select_full() -> None:
     for path in (
         ".github/agent-context/office-platform-it-expert.md",
         ".github/workflows/ci.yaml",
+        "constitution/BOOTSTRAP.md",
         "docker-compose.yml",
         "scripts/run_wc100_qualification.sh",
+        "tests/pipeline/test_platform_it_process_intake.py",
         "tests/pipeline/test_platform_it_story_commentary.py",
+        "validation/process-control.yaml",
         "work-contracts/WC-100-example.md",
     ):
         result = classify_paths(policy, [path])

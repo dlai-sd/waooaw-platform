@@ -82,6 +82,19 @@ STEP 1 — Read only this Boot Sequence through Step 10b.
   Do NOT use memory or prior session context as a substitute.
   Complete this sequence once per explicit Founder authorization.
 
+  PROCESS CONTROL BASELINE — execute immediately after reading this step and before STEP 2:
+  - Bootstrap remains the first action. Do not inspect Git state before reading this protocol.
+  - Resolve the worktree that owns the assigned Work Contract; do not continue from an unrelated
+    shell working directory merely because it was open when the session started.
+  - Refresh `origin/main` once when network access is available, then record the selected worktree,
+    branch, full HEAD SHA, dirty state and merge base. If freshness cannot be established, implementation
+    is BLOCKED; knowledge-only work may continue with the limitation declared.
+  - For implementation work, require `origin/main` to be an ancestor of the selected HEAD. A branch
+    intentionally changing process controls may extend that baseline but may not omit it.
+  - Read `validation/process-control.yaml`, verify every declared source SHA-256 against the selected
+    worktree, and retain its version as the compact inherited-control route. If the manifest is missing,
+    malformed, stale, or inconsistent with a declared source, STOP as BLOCKED.
+
 STEP 2 — Read only README.md "Platform Status".
   Extract:
     - Current Epoch
@@ -136,6 +149,10 @@ STEP 6 — Read the exact assigned Work Contract sections
   If no Work Contract exists:
     → Ask the Founder whether a Work Contract is required. Do not create one automatically.
   Never produce sprint outputs before a Work Contract exists.
+  If the Work Contract contains implementation scope, require its sibling
+  `work-contracts/WC-NNN-requirements.yaml` before presenting an implementation plan or starting a
+  story. Its complete requirement set and contract digest must pass
+  `scripts/validate_requirement_ledger.py` in the repository Docker runner.
 
 STEP 7 — Validate all required inputs
   For each input listed in your Work Contract:
@@ -145,7 +162,8 @@ STEP 7 — Validate all required inputs
   If any required input is missing or unapproved → STOP → raise Constitutional Blocker
 
 STEP 8 — Declare state
-  Use one compact line: Office | Skill | Work Contract | READY/BLOCKED | missing input.
+  Use one compact line: Office | Skill | Work Contract | process-control version | selected branch
+  and full HEAD SHA | READY/BLOCKED | missing input.
 
 STEP 9 — If READY, execute the Office Operating Protocol
   Use the compact office card. Do not load ORGANIZATION.md unless the Founder asks

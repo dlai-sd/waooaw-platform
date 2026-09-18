@@ -22,6 +22,8 @@ Assign one stable `WCNNN-RNNN` ID to every normative implementation obligation. 
 create `work-contracts/WC-NNN-requirements.yaml` using schema
 `waooaw.requirement-evidence-ledger/v1`, bind it to this file's complete SHA-256 digest, and validate it
 with `scripts/validate_requirement_ledger.py` in the repository Docker test runner.
+The Work Contract may not advance to `IMPLEMENTATION_AUTHORIZED`, and the implementing office may not
+present its implementation plan or declare its first story `START`, until that validation passes.
 
 ## Definition Of Done
 

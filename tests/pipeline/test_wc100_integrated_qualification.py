@@ -57,6 +57,7 @@ def test_changed_file_scope() -> None:
         ".github/agent-context/office-platform-it-expert.md",
         ".github/workflows/ci.yaml",
         "architecture/reference/dockerfiles/Dockerfile.test-runner",
+        "constitution/BOOTSTRAP.md",
         "constitution/PROJECT_STATE.md",
         "scripts/",
         "tests/pipeline/",
@@ -71,6 +72,7 @@ def test_changed_file_scope() -> None:
         for path in (
             ".github/agent-context/office-platform-it-expert.md",
             "architecture/reference/dockerfiles/Dockerfile.test-runner",
+            "constitution/BOOTSTRAP.md",
             "constitution/PROJECT_STATE.md",
             "scripts/validation_policy.py",
             "tests/pipeline/test_validation_policy.py",

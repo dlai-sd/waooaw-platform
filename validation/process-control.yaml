@@ -1,0 +1,34 @@
+schema: waooaw.process-control/v1
+version: wc100-r033-v1
+authoritative_ref: origin/main
+bootstrap_first: constitution/BOOTSTRAP.md
+source_digests:
+  constitution/BOOTSTRAP.md: e83728a6b8360c3fd242bfa4a2039f1d92801f6fd483354cce2b2b0330f9248b
+  .github/agent-context/office-platform-it-expert.md: b0701ec65707a7f5953d4449a7a3fa2b9b903c0fdcf7dda14aba2bba2482cf8e
+  work-contracts/IMPLEMENTATION-WORK-CONTRACT-TEMPLATE.md: 6694c9923a7177a0210a7a6b6b5148ef328f4200ebb52652b615f401afbf192e
+required_controls:
+  process_baseline:
+    sources:
+      - constitution/BOOTSTRAP.md
+      - .github/agent-context/office-platform-it-expert.md
+    outcome: The assigned worktree contains the authoritative process baseline before office occupancy.
+  requirement_intake:
+    sources:
+      - work-contracts/IMPLEMENTATION-WORK-CONTRACT-TEMPLATE.md
+      - scripts/validate_requirement_ledger.py
+    outcome: An implementation Work Contract has a complete digest-bound ledger before planning or execution.
+  story_commentary:
+    sources:
+      - .github/agent-context/office-platform-it-expert.md
+      - tests/pipeline/test_platform_it_story_commentary.py
+    outcome: Every implementation story has ordered START and END commentary boundaries.
+  docker_execution:
+    sources:
+      - constitution/BOOTSTRAP.md
+      - architecture/reference/dockerfiles/Dockerfile.test-runner
+    outcome: Language tests and tooling execute only in repository Docker runners.
+  exact_head_handoff:
+    sources:
+      - .github/agent-context/office-platform-it-expert.md
+      - scripts/prepare_pr_body.py
+    outcome: Author review and PR evidence bind to the exact final head.
