@@ -1,0 +1,241 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-099
+contract_path: work-contracts/WC-099-demo-customer-journey-and-application-shell-remediation.md
+contract_digest: a3d872982cd23be96939075a1d66badcf1d0e6b1bf072d9250292472ba699982
+contract_status: IMPLEMENTATION_AUTHORIZED
+implementation_scope: true
+result: PLANNED
+requirements:
+  - &completed
+    requirement_id: WC099-R001
+    source: Section 7, D-001
+    observable_outcome: First login reaches provider selection or a specific recoverable state without an unexplained retry.
+    component_owner: Web auth and identity projection
+    evidence_class: local browser fixture
+    test_path_or_plan: web/lib/auth-transition.test.ts and web/tests/e2e/wc099-demo-remediation.spec.ts
+    initial_state: existing-pass
+    result: PASS
+    evidence_refs: [test-results/wc099/obligation-ledger.json]
+    dependencies: [Keycloak broker, Web auth route]
+    completion_rule: Focused timing and three-browser clean-profile journey pass at the exact candidate.
+    residual_risk: Active-Demo login timing remains part of WC099-R020.
+  - <<: *completed
+    requirement_id: WC099-R002
+    source: Section 7, D-002
+    observable_outcome: WAOOAW disclosure precedes Google handoff and cancel launches no provider request.
+    component_owner: Web auth UI
+    test_path_or_plan: web/components/auth/ProviderCommands.test.tsx and web/tests/e2e/wc099-demo-remediation.spec.ts
+    dependencies: [Google broker command]
+    completion_rule: Exact disclosure and no-handoff browser assertions pass.
+    residual_risk: Active-Demo disclosure proof remains part of WC099-R020.
+  - <<: *completed
+    requirement_id: WC099-R003
+    source: Section 7, D-003
+    observable_outcome: Post-logout or account-switch login permits explicit Google account selection without a stale session.
+    component_owner: Web auth and Keycloak launch
+    test_path_or_plan: web/components/auth/ProviderCommands.test.tsx and integrated Demo journey
+    dependencies: [Keycloak Google broker]
+    completion_rule: Logout and second-login account-choice journey passes.
+    residual_risk: Real broker journey remains part of WC099-R020.
+  - <<: *completed
+    requirement_id: WC099-R004
+    source: Section 7, D-004
+    observable_outcome: Home always renders a meaningful state across load, refresh, transition, relationship counts, and upstream failure.
+    component_owner: Web authenticated home
+    test_path_or_plan: web/__tests__/app/application/home/page.test.tsx and shell browser tests
+    dependencies: [Business Platform relationship projection]
+    completion_rule: Every specified home state has a visible semantic assertion.
+    residual_risk: Exact active-Demo direct-load proof remains part of WC099-R020.
+  - <<: *completed
+    requirement_id: WC099-R005
+    source: Section 7, D-005 and D-006
+    observable_outcome: Trial uses resolved internal membership and creates exactly one relationship, instance, and evidence result.
+    component_owner: Business Platform acquisition
+    evidence_class: local Docker integration
+    test_path_or_plan: tests/business-platform.Tests/EmploymentRelationshipsControllerTests.cs
+    dependencies: [Customer membership middleware]
+    completion_rule: Non-GUID external subject integration and replay tests pass.
+    residual_risk: Active-Demo Trial remains part of WC099-R007 and WC099-R020.
+  - <<: *completed
+    requirement_id: WC099-R006
+    source: Section 7, D-005 and D-006
+    observable_outcome: Hire uses resolved membership while preserving disclosure, admission, evidence, and replay gates.
+    component_owner: Business Platform acquisition
+    evidence_class: local Docker integration
+    test_path_or_plan: tests/business-platform.Tests/EmploymentRelationshipsControllerTests.cs and RelationshipEvaluationControllerTests.cs
+    dependencies: [Customer membership middleware, commercial gates]
+    completion_rule: Valid, denied, and replay integration cases pass without duplicates.
+    residual_risk: Active-Demo Hire remains part of WC099-R007 and WC099-R020.
+  - <<: *completed
+    requirement_id: WC099-R007
+    source: Section 7, D-005 and D-006
+    observable_outcome: Trial and Hire each appear in My Agents immediately without refresh or unrelated navigation.
+    component_owner: Business Platform projection and Web My Agents
+    evidence_class: integrated browser
+    test_path_or_plan: exact Trial and Hire browser journeys asserting returned relationship identity and visible list item
+    initial_state: expected-fail
+    result: PASS
+    evidence_refs: [web/tests/e2e/wc099-demo-remediation.spec.ts]
+    dependencies: [WC099-R005, WC099-R006, exact candidate runtime]
+    completion_rule: Both integrated no-refresh journeys pass at the exact candidate.
+    residual_risk: Local browser evidence does not replace the authorized Demo journey in WC099-R020.
+  - <<: *completed
+    requirement_id: WC099-R008
+    source: Section 7, D-007
+    observable_outcome: Authenticated desktop has no horizontal top menu and its rail reaches both viewport edges.
+    component_owner: Web shell
+    test_path_or_plan: web/tests/e2e/wc099-demo-remediation.spec.ts
+    dependencies: [Protected application shell]
+    completion_rule: Semantic and screenshot assertions pass at all three desktop sizes.
+    residual_risk: None in local browser evidence.
+  - <<: *completed
+    requirement_id: WC099-R009
+    source: Section 7, D-007
+    observable_outcome: Route changes and rail expansion preserve content, logo, and user-control origins within one pixel.
+    component_owner: Web shell navigation
+    test_path_or_plan: web/tests/e2e/wc099-demo-remediation.spec.ts
+    dependencies: [Protected application shell]
+    completion_rule: Geometry assertions pass before and after every primary route and rail mode.
+    residual_risk: Representative screenshots do not replace geometry assertions.
+  - <<: *completed
+    requirement_id: WC099-R010
+    source: Section 7, D-007 and D-011
+    observable_outcome: Logo, navigation, preferences, and user controls follow the required placement and keyboard order.
+    component_owner: Web shell and account controls
+    test_path_or_plan: web/components/shell/F1Shell.test.tsx and web/tests/e2e/wc099-demo-remediation.spec.ts
+    dependencies: [Shell preferences]
+    completion_rule: DOM, keyboard, accessible-name, theme, locale, and direction assertions pass.
+    residual_risk: None in local browser evidence.
+  - <<: *completed
+    requirement_id: WC099-R011
+    source: Section 7, D-011
+    observable_outcome: Assurance is plain-language account detail and customer-visible DOM excludes AAL2_ACCOUNT.
+    component_owner: Web account menu
+    test_path_or_plan: web/components/shell/F1Shell.test.tsx and web/tests/e2e/wc099-demo-remediation.spec.ts
+    dependencies: [Account menu]
+    completion_rule: Component and browser assertions pass.
+    residual_risk: None in local browser evidence.
+  - <<: *completed
+    requirement_id: WC099-R012
+    source: Section 7, D-008
+    observable_outcome: Application pages use the 32, 24, and 20 pixel hierarchy without clipping.
+    component_owner: Web visual system
+    test_path_or_plan: web/tests/e2e/wc099-demo-remediation.spec.ts
+    dependencies: [Application typography CSS]
+    completion_rule: Computed-style and screenshot assertions pass on every named route.
+    residual_risk: None in local browser evidence.
+  - <<: *completed
+    requirement_id: WC099-R013
+    source: Section 7, D-010
+    observable_outcome: Demo Guide configuration uses an approved secret reference and fails readiness for missing or short keys.
+    component_owner: Environment renderer and Business Platform
+    evidence_class: local Docker integration
+    test_path_or_plan: tests/pipeline/test_wc091_environment_readiness.py and Business Platform startup tests
+    dependencies: [Demo secret catalog, Key Vault binding]
+    completion_rule: Render, exact-candidate startup, readiness, and negative key tests pass without secret disclosure.
+    residual_risk: Active-Demo secret consumption is covered by WC099-R014.
+  - <<: *completed
+    requirement_id: WC099-R014
+    source: Section 7, D-009 and D-010
+    observable_outcome: Guide history and send work after exact-candidate deployment without logging content or secrets.
+    component_owner: Business Platform conversation and Web Guide
+    evidence_class: actual cloud
+    test_path_or_plan: persistence integration plus authorized Demo GET and POST smoke
+    initial_state: blocked
+    result: BLOCKED
+    evidence_refs: []
+    dependencies: [exact candidate Demo deployment, WC099-R013]
+    completion_rule: Authorized Demo history and send smoke passes with sanitized evidence.
+    residual_risk: Active Demo currently runs the older image.
+  - <<: *completed
+    requirement_id: WC099-R015
+    source: Section 7, D-009
+    observable_outcome: Desktop Guide resizes by pointer and keyboard without overlapping customer controls.
+    component_owner: Web Guide workspace
+    test_path_or_plan: web/components/conversation/PersistentConversationDock.test.tsx and web/tests/e2e/wc099-demo-remediation.spec.ts
+    dependencies: [Persistent conversation dock]
+    completion_rule: Min, default, and max width plus geometry assertions pass.
+    residual_risk: None in local browser evidence.
+  - <<: *completed
+    requirement_id: WC099-R016
+    source: Section 7, D-009
+    observable_outcome: Compact Guide keeps composer and actions visible and supports focus, keyboard, zoom, Hindi, and Urdu.
+    component_owner: Web Guide workspace
+    test_path_or_plan: web/tests/e2e/wc099-demo-remediation.spec.ts
+    dependencies: [Persistent conversation dock, locale support]
+    completion_rule: Three-browser tests pass at 360x800, 390x844, and 200 percent zoom.
+    residual_risk: None in local browser evidence.
+  - <<: *completed
+    requirement_id: WC099-R017
+    source: Section 7, D-007 and D-008
+    observable_outcome: Theme and every supported locale remain durable after relocation, route changes, and reload.
+    component_owner: Web preferences and shell
+    test_path_or_plan: web/lib/preferences.test.ts and browser preference journeys
+    dependencies: [Shell preferences]
+    completion_rule: Every locale, RTL, light, and dark route-reload assertion passes.
+    residual_risk: Full supported-locale browser matrix must remain explicit in final evidence.
+  - <<: *completed
+    requirement_id: WC099-R018
+    source: Section 7, D-007 and D-009
+    observable_outcome: Emergency Stop remains persistently reachable in every shell, Guide, and account state.
+    component_owner: Web shell and Emergency Stop
+    test_path_or_plan: web/components/constitutional/EmergencyStop.test.tsx and browser geometry tests
+    dependencies: [CCT-HO-02, route-aware Stop]
+    completion_rule: CCT, geometry, keyboard, and z-order checks pass on desktop and compact layouts.
+    residual_risk: None in local browser evidence.
+  - <<: *completed
+    requirement_id: WC099-R019
+    source: Section 7, D-003, D-005, D-006, D-009, and D-010
+    observable_outcome: Tenant, participant, relationship, and conversation isolation remain non-enumerating under hostile IDs.
+    component_owner: Business Platform and Web server boundaries
+    evidence_class: local Docker integration
+    test_path_or_plan: Business Platform two-tenant and two-participant hostile integration tests
+    dependencies: [RLS, customer membership, conversation authorization]
+    completion_rule: Every hostile cross-boundary case is denied without enumeration.
+    residual_risk: No active-Demo hostile probe is required to weaken or replace integration evidence.
+  - <<: *completed
+    requirement_id: WC099-R020
+    source: Section 7, D-001 through D-011
+    observable_outcome: One exact release passes the complete Founder acceptance journey with sanitized outcomes and screenshots.
+    component_owner: Integrated candidate
+    evidence_class: actual cloud
+    test_path_or_plan: authorized clean-profile Demo Login through Hire acceptance journey
+    initial_state: blocked
+    result: BLOCKED
+    evidence_refs: []
+    dependencies: [WC099-R001 through WC099-R019, WC099-R022, WC099-R023, exact candidate Demo deployment]
+    completion_rule: The complete ordered journey passes at one exact source and image tuple.
+    residual_risk: Active Demo currently runs the older image.
+  - <<: *completed
+    requirement_id: WC099-R021
+    source: Section 7, D-002 promotion gate
+    observable_outcome: Before UAT or Production, provider handoff identifies the approved WAOOAW brand and public identity origin.
+    component_owner: Identity and public-origin configuration owner
+    evidence_class: actual cloud
+    test_path_or_plan: authorized UAT or Production rendered-origin proof and clean-browser provider assertion
+    initial_state: Founder-reserved
+    result: FOUNDER_RESERVED
+    evidence_refs: [work-contracts/WC-099-demo-customer-journey-and-application-shell-remediation.md]
+    dependencies: [Founder-authorized UAT or Production provider configuration]
+    completion_rule: FOUNDER-DEFERRED-NOT-APPLICABLE-TO-DEMO; mandatory before UAT or Production traffic.
+    residual_risk: Demo completion cannot authorize UAT or Production promotion.
+  - <<: *completed
+    requirement_id: WC099-R022
+    source: Section 7, D-009 and D-010
+    observable_outcome: Current and prior cursor keys preserve conversation truth while retired keys fail explicitly.
+    component_owner: Environment catalog and Business Platform conversation
+    evidence_class: local Docker integration
+    test_path_or_plan: tests/business-platform.Tests/RelationshipEvaluationControllerTests.cs
+    dependencies: [Conversation cursor HMAC configuration]
+    completion_rule: Current, prior, and retired-key tests prove reload without loss or duplication.
+    residual_risk: Active-Demo rotation proof follows exact-candidate deployment.
+  - <<: *completed
+    requirement_id: WC099-R023
+    source: Section 7, D-002, D-005, D-006, D-009, and D-010
+    observable_outcome: No schema, durable disclosure record, browser cache, or parallel relationship or conversation truth is introduced.
+    component_owner: Business Platform persistence and Web presentation state
+    evidence_class: local source and Docker integration
+    test_path_or_plan: migration diff, browser storage inspection, and authoritative persistence tests
+    dependencies: [Final exact candidate diff]
+    completion_rule: Final schema, storage, and persistence assertions prove only existing authoritative records change.
+    residual_risk: Final committed diff scan must be repeated before handoff.

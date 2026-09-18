@@ -51,6 +51,38 @@ test('R-001 R-002 R-003: disclosure precedes provider handoff and cancel is iner
   await attachScreenshot(page, testInfo, 'login-after-disclosure-cancel');
 });
 
+for (const acquisition of [
+  { intent: 'trial', relationshipId: '11111111-1111-4111-8111-111111111111', displayName: 'Digital Marketing Trial' },
+  { intent: 'hire', relationshipId: '22222222-2222-4222-8222-222222222222', displayName: 'Digital Marketing Hire' },
+] as const) {
+  test(`R-007: ${acquisition.intent} appears in My Agents without refresh`, async ({ context, page }, testInfo) => {
+    test.setTimeout(60_000);
+    await addSession(context, testInfo.project.name);
+    const continuation = new URLSearchParams({
+      professionalType: 'DIGITAL_MARKETING_LOCAL_SERVICE',
+      version: '1.0.0',
+      intent: acquisition.intent,
+      disclosureRevision: '1.0.0',
+      termsVersion: '2026-07-18',
+      idempotencyKey: acquisition.relationshipId,
+    });
+    const continuationResponse = page.waitForResponse((response) => response.url().endsWith('/api/acquisition/continue'));
+    await page.goto(`/marketplace?${continuation}`);
+    const response = await continuationResponse;
+    expect(response.ok(), await response.text()).toBe(true);
+    const returnedRelationshipId = (await response.json()).relationshipId;
+    await expect(page).toHaveURL(new RegExp(`/relationships/${acquisition.relationshipId}$`), { timeout: 20_000 });
+    expect(returnedRelationshipId).toBe(acquisition.relationshipId);
+    await page.locator('a[href="/professionals/mine"]:visible').first().click();
+
+    await expect(page).toHaveURL(/\/professionals\/mine$/, { timeout: 20_000 });
+    const acquiredAgent = page.getByRole('heading', { name: acquisition.displayName });
+    await expect(acquiredAgent).toBeVisible();
+    await expect(acquiredAgent.locator('xpath=ancestor::li[1]').getByRole('link', { name: 'View work' }))
+      .toHaveAttribute('href', `/relationships/${acquisition.relationshipId}`);
+  });
+}
+
 test('R-008 R-009 R-010 R-011 R-012 R-017 R-018: desktop shell geometry is stable', async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium-expanded', 'Desktop geometry is normalized in expanded Chromium across contract widths.');
   await addSession(context, testInfo.project.name);
