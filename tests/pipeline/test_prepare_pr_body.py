@@ -8,11 +8,13 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from prepare_pr_body import (  # noqa: E402
     add_runtime_evidence,
     business_platform_gate_required,
+    changed_files_digest,
     expected_pr_labels,
     load_runtime_evidence,
     preparation_head,
     prepare_body,
     release_qualification_gate_required,
+    run_ci_prechecks,
     validate_precheck_evidence,
 )
 from validate_author_review import validate_author_review  # noqa: E402
@@ -149,13 +151,67 @@ def test_expected_pr_labels_include_lifecycle_and_branch_tier() -> None:
 
 
 def test_precheck_evidence_must_match_base_and_head() -> None:
-    evidence = {"passed": True, "base_sha": "b" * 40, "commit_sha": HEAD}
-    assert validate_precheck_evidence(evidence, "b" * 40, HEAD) == evidence
+    digest = changed_files_digest(["scripts/example.py"])
+    evidence = {
+        "schema": "waooaw.pr-prechecks/v2",
+        "passed": True,
+        "base_sha": "b" * 40,
+        "commit_sha": HEAD,
+        "changed_file_digest": digest,
+        "graph_version": "wc100-prechecks-v1",
+    }
+    assert validate_precheck_evidence(evidence, "b" * 40, HEAD, digest) == evidence
 
     for base_sha, head in (("c" * 40, HEAD), ("b" * 40, "d" * 40)):
         try:
-            validate_precheck_evidence(evidence, base_sha, head)
+            validate_precheck_evidence(evidence, base_sha, head, digest)
         except ValueError as error:
             assert "selected base and branch HEAD" in str(error)
         else:
             raise AssertionError("stale precheck evidence was accepted")
+
+
+def test_precheck_evidence_rejects_changed_files_or_graph_version() -> None:
+    evidence = {
+        "schema": "waooaw.pr-prechecks/v2",
+        "passed": True,
+        "base_sha": "b" * 40,
+        "commit_sha": HEAD,
+        "changed_file_digest": "d" * 64,
+        "graph_version": "wc100-prechecks-v1",
+    }
+
+    for digest, graph_version in (("e" * 64, "wc100-prechecks-v1"), ("d" * 64, "stale")):
+        try:
+            validate_precheck_evidence(evidence, "b" * 40, HEAD, digest, graph_version)
+        except ValueError as error:
+            assert "changed files" in str(error) or "gate graph" in str(error)
+        else:
+            raise AssertionError("stale precheck evidence was accepted")
+
+
+def test_prepare_pr_body_uses_requirement_ledger_validator() -> None:
+    source = (ROOT / "scripts/prepare_pr_body.py").read_text(encoding="utf-8")
+
+    assert "validate_changed_ledgers" in source
+
+
+def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path) -> None:
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        "prepare_pr_body.git", lambda *arguments: "b" * 40 if "--git-common-dir" not in arguments else str(tmp_path)
+    )
+    monkeypatch.setattr("prepare_pr_body.shutil.which", lambda executable: f"/usr/bin/{executable}")
+
+    def capture(nodes, **arguments):
+        captured["nodes"] = nodes
+        captured.update(arguments)
+        return {"passed": True}
+
+    monkeypatch.setattr("prepare_pr_body.run_prechecks", capture)
+
+    assert run_ci_prechecks("origin/main", HEAD, ["src/business-platform/Program.cs", ".github/workflows/ci.yaml"])["passed"]
+    nodes = captured["nodes"]
+    assert [node.name for node in nodes] == ["gitleaks", "business_platform", "release_qualification"]
+    assert captured["graph_version"] == "wc100-prechecks-v1"

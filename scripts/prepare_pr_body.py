@@ -4,15 +4,22 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+import yaml
+
+from precheck_orchestrator import PrecheckNode, run_prechecks
 from validate_author_review import SECTION, validate_author_review
 from validate_c059 import read_commits, validate_commit, validate_pr_body
+from validate_requirement_ledger import validate_changed_ledgers
 from validate_runtime_lifecycle_evidence import runtime_gate_required
+from validation_policy import classify_paths
 
 AUTHOR_REVIEW = """## Author Review
 
@@ -30,32 +37,7 @@ RUNTIME_EVIDENCE_SECTION = re.compile(
     r"^## Pre-PR Runtime Evidence\s*$\n.*?(?=^##\s|\Z)",
     re.MULTILINE | re.DOTALL,
 )
-BUSINESS_PLATFORM_GATE_PATHS = (
-    "src/business-platform/",
-    "tests/business-platform.Tests/",
-    "infrastructure/postgres/init/",
-    "infrastructure/terraform/phase2/modules/workload/",
-    "architecture/reference/api-specs/business-platform.openapi.yaml",
-)
-RELEASE_QUALIFICATION_GATE_PATHS = (
-    "release/goal006/",
-    "scripts/goal006_",
-    "scripts/test-wc059-postgres.sh",
-    "scripts/wc091_",
-    "scripts/run_wc091_",
-    "tests/test_wc012_dry_run.py",
-    "tests/pipeline/test_goal006_",
-    "tests/pipeline/test_billing_ce_validator.py",
-    "tests/pipeline/test_wc091_",
-    "infrastructure/recovery/phase2/",
-    "infrastructure/environment-readiness/",
-    "infrastructure/postgres/demo/",
-    "infrastructure/terraform/phase2/",
-    ".github/workflows/ci.yaml",
-    "docker-compose.yml",
-    "architecture/reference/dockerfiles/Dockerfile.test-runner",
-    "requirements-test.txt",
-)
+VALIDATION_POLICY_PATH = Path(__file__).resolve().parents[1] / "validation/engineering-validation.yaml"
 
 
 def git(*arguments: str) -> str:
@@ -133,12 +115,23 @@ def validate_runtime_evidence_head(evidence: dict[str, object], head: str) -> di
     return evidence
 
 
+def selected_prechecks(changed_files: list[str]) -> set[str]:
+    loaded = yaml.safe_load(VALIDATION_POLICY_PATH.read_text(encoding="utf-8"))
+    if not isinstance(loaded, dict):
+        raise ValueError("validation policy root must be a mapping")
+    selection = classify_paths(loaded, changed_files)
+    selected = selection.get("selected_prechecks")
+    if not isinstance(selected, list) or not all(isinstance(gate, str) for gate in selected):
+        raise ValueError("validation policy returned invalid prechecks")
+    return set(selected)
+
+
 def business_platform_gate_required(changed_files: list[str]) -> bool:
-    return any(path.startswith(BUSINESS_PLATFORM_GATE_PATHS) for path in changed_files)
+    return "business_platform" in selected_prechecks(changed_files)
 
 
 def release_qualification_gate_required(changed_files: list[str]) -> bool:
-    return any(path.startswith(RELEASE_QUALIFICATION_GATE_PATHS) for path in changed_files)
+    return "release_qualification" in selected_prechecks(changed_files)
 
 
 def expected_pr_labels(branch: str) -> tuple[str, str, str]:
@@ -151,65 +144,101 @@ def expected_pr_labels(branch: str) -> tuple[str, str, str]:
     return tier, "status:pr-open", "awaiting:review"
 
 
+def changed_files_digest(changed_files: list[str]) -> str:
+    return hashlib.sha256("\n".join(sorted(changed_files)).encode()).hexdigest()
+
+
 def validate_precheck_evidence(
-    evidence: dict[str, object], base_sha: str, head: str
+    evidence: dict[str, object],
+    base_sha: str,
+    head: str,
+    changed_file_digest: str,
+    graph_version: str = "wc100-prechecks-v1",
 ) -> dict[str, object]:
     if evidence.get("passed") is not True:
         raise ValueError("precheck evidence must report passed=true")
     if evidence.get("base_sha") != base_sha or evidence.get("commit_sha") != head:
         raise ValueError("precheck evidence is not bound to the selected base and branch HEAD")
+    if evidence.get("schema") != "waooaw.pr-prechecks/v2":
+        raise ValueError("precheck evidence schema is not trusted")
+    if evidence.get("changed_file_digest") != changed_file_digest:
+        raise ValueError("precheck evidence is not bound to the selected changed files")
+    if evidence.get("graph_version") != graph_version:
+        raise ValueError("precheck evidence is not bound to the current gate graph")
     return evidence
 
 
 def run_ci_prechecks(base: str, head: str, changed_files: list[str]) -> dict[str, object]:
     repository_root = Path(git("rev-parse", "--show-toplevel"))
     git_common_dir = Path(git("rev-parse", "--path-format=absolute", "--git-common-dir"))
-    gates = {
-        "gitleaks": "PASS",
-        "business_platform": "NOT_APPLICABLE",
-        "release_qualification": "NOT_APPLICABLE",
-    }
-    subprocess.run(  # noqa: S603
-        [
-            "docker", "run", "--rm",
-            "-v", f"{repository_root}:/repo:ro",
-            "-v", f"{git_common_dir}:{git_common_dir}:ro",
-            "zricethezav/gitleaks:v8.28.0", "git", "/repo",
-            "--log-opts", f"{base}..{head}", "--no-banner", "--redact",
-        ],
-        cwd=repository_root,
-        check=True,
+    docker = shutil.which("docker")
+    if docker is None:
+        raise ValueError("docker executable is required for PR prechecks")
+    applicable_prechecks = selected_prechecks(changed_files)
+    nodes = [
+        PrecheckNode(
+            name="gitleaks",
+            command=(
+                docker,
+                "run",
+                "--rm",
+                "-v",
+                f"{repository_root}:/repo:ro",
+                "-v",
+                f"{git_common_dir}:{git_common_dir}:ro",
+                "zricethezav/gitleaks:v8.28.0",
+                "git",
+                "/repo",
+                "--log-opts",
+                f"{base}..{head}",
+                "--no-banner",
+                "--redact",
+            ),
+        )
+    ]
+    if "business_platform" in applicable_prechecks:
+        nodes.append(
+            PrecheckNode(
+                name="business_platform",
+                command=(
+                    docker,
+                    "compose",
+                    "--profile",
+                    "test",
+                    "run",
+                    "--rm",
+                    "--user",
+                    "root",
+                    "test-runner",
+                    "sh",
+                    "-lc",
+                    "dotnet restore tests/business-platform.Tests/business-platform.Tests.csproj && "
+                    "dotnet build tests/business-platform.Tests/business-platform.Tests.csproj "
+                    "--no-restore -warnaserror && "
+                    "dotnet test tests/business-platform.Tests/business-platform.Tests.csproj "
+                    "--no-build --settings tests/coverage.runsettings --collect:'XPlat Code Coverage' "
+                    "--results-directory ./coverage/business-platform",
+                ),
+                heavy=True,
+            )
+        )
+    if "release_qualification" in applicable_prechecks:
+        nodes.append(
+            PrecheckNode(
+                name="release_qualification",
+                command=(str(repository_root / "scripts/run_release_qualification.sh"),),
+                heavy=True,
+            )
+        )
+    changed_file_digest = changed_files_digest(changed_files)
+    return run_prechecks(
+        nodes,
+        base_sha=git("rev-parse", base),
+        head_sha=head,
+        changed_file_digest=changed_file_digest,
+        graph_version="wc100-prechecks-v1",
+        artifact_dir=repository_root / "test-results/wc100/prechecks" / head,
     )
-    if business_platform_gate_required(changed_files):
-        subprocess.run(  # noqa: S603
-            [
-                "docker", "compose", "--profile", "test", "run", "--rm", "--user", "root",
-                "test-runner", "sh", "-lc",
-                "dotnet restore tests/business-platform.Tests/business-platform.Tests.csproj && "
-                "dotnet build tests/business-platform.Tests/business-platform.Tests.csproj "
-                "--no-restore -warnaserror && "
-                "dotnet test tests/business-platform.Tests/business-platform.Tests.csproj "
-                "--no-build --settings tests/coverage.runsettings --collect:'XPlat Code Coverage' "
-                "--results-directory ./coverage/business-platform",
-            ],
-            cwd=repository_root,
-            check=True,
-        )
-        gates["business_platform"] = "PASS"
-    if release_qualification_gate_required(changed_files):
-        subprocess.run(  # noqa: S603
-            [str(repository_root / "scripts/run_release_qualification.sh")],
-            cwd=repository_root,
-            check=True,
-        )
-        gates["release_qualification"] = "PASS"
-    return {
-        "schema": "waooaw.pr-prechecks/v1",
-        "passed": True,
-        "base_sha": git("rev-parse", base),
-        "commit_sha": head,
-        "gates": gates,
-    }
 
 
 def update_pull_request(pr_number: int, body_file: Path, branch: str) -> None:
@@ -263,16 +292,26 @@ def main() -> int:
         head = preparation_head(local_head, remote_head, arguments.allow_unpushed_head)
         body = arguments.body_file.read_text(encoding="utf-8")
         changed_files = git("diff", "--name-only", f"{arguments.base}..{head}").splitlines()
+        changed_file_digest = changed_files_digest(changed_files)
         base_sha = git("rev-parse", arguments.base)
+        ledger_violations = validate_changed_ledgers(Path(git("rev-parse", "--show-toplevel")), changed_files)
+        if ledger_violations:
+            raise ValueError("requirement ledger: " + "; ".join(ledger_violations))
         if arguments.precheck_evidence_file:
             evidence = json.loads(arguments.precheck_evidence_file.read_text(encoding="utf-8"))
-            validate_precheck_evidence(evidence, base_sha, head)
+            validate_precheck_evidence(evidence, base_sha, head, changed_file_digest)
         else:
             evidence = run_ci_prechecks(arguments.base, head, changed_files)
             arguments.body_file.with_suffix(".precheck-evidence.json").write_text(
                 json.dumps(evidence, indent=2, sort_keys=True) + "\n",
                 encoding="utf-8",
             )
+            if evidence.get("passed") is not True:
+                raise ValueError(
+                    "prechecks failed; first causal gate: "
+                    f"{evidence.get('first_causal_failure')}; "
+                    f"artifacts: test-results/wc100/prechecks/{head}"
+                )
         if runtime_gate_required(changed_files):
             evidence = (
                 load_runtime_evidence(arguments.runtime_evidence_file, head)

@@ -24,6 +24,86 @@ env:
 
 jobs:
 
+  validation-plan:
+    name: WC-100 validation plan (Shadow)
+    runs-on: ubuntu-latest
+    outputs:
+      release_required: ${{ steps.plan.outputs.release_required }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Resolve exact validation range
+        id: range
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BASE_SHA: ${{ github.event.before }}
+          PUSH_HEAD_SHA: ${{ github.sha }}
+        run: |
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            base_sha=$PR_BASE_SHA
+            head_sha=$PR_HEAD_SHA
+          else
+            base_sha=$PUSH_BASE_SHA
+            head_sha=$PUSH_HEAD_SHA
+          fi
+          echo "base_sha=$base_sha" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$head_sha" >> "$GITHUB_OUTPUT"
+          mkdir -p test-results/wc100
+          git diff --name-only --find-renames "$base_sha" "$head_sha" > test-results/wc100/changed-files.txt
+          git diff --name-status --find-renames "$base_sha" "$head_sha" > test-results/wc100/changed-files.status
+      - name: Build validation runner once (C-080)
+        id: runner-build
+        run: |
+          docker compose --profile test build test-runner
+          image_id=$(scripts/runner_image_id.sh test test-runner)
+          echo "image_id=$image_id" >> "$GITHUB_OUTPUT"
+      - name: Record immutable validation runner evidence
+        run: |
+          scripts/record_build_evidence.sh \
+            "$RUNNER_TEMP/build-evidence/validation-plan.json" 'test-runner-validation-plan' \
+            '${{ steps.range.outputs.base_sha }}' '${{ steps.range.outputs.head_sha }}' \
+            '${{ steps.runner-build.outputs.image_id }}' '' \
+            '["change-impact","requirement-ledger"]' 'workflow_build'
+      - name: Compute Shadow selection and validate changed ledgers
+        id: plan
+        env:
+          BASE_SHA: ${{ steps.range.outputs.base_sha }}
+          HEAD_SHA: ${{ steps.range.outputs.head_sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          scripts/verify_runner_image.sh test test-runner '${{ steps.runner-build.outputs.image_id }}'
+          docker compose --profile test run --rm --user root \
+            -e BASE_SHA -e HEAD_SHA -e EVENT_NAME test-runner sh -lc '
+              git config --global --add safe.directory /workspace
+              python scripts/validation_policy.py \
+                --policy validation/engineering-validation.yaml \
+                --base "$BASE_SHA" --head "$HEAD_SHA" \
+                --event "$EVENT_NAME" \
+                --changed-file-list test-results/wc100/changed-files.status \
+                --output test-results/wc100/change-impact.json
+              python scripts/validate_requirement_ledger.py \
+                --repository-root /workspace \
+                --changed-file-list test-results/wc100/changed-files.txt
+            '
+          release_required=$(jq -r '.selected_prechecks | index("release_qualification") != null' \
+            test-results/wc100/change-impact.json)
+          echo "release_required=$release_required" >> "$GITHUB_OUTPUT"
+      - name: Retain Shadow selection and validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wc100-validation-plan-${{ github.run_id }}
+          path: |
+            test-results/wc100/change-impact.json
+            test-results/wc100/changed-files.txt
+            test-results/wc100/changed-files.status
+            ${{ runner.temp }}/build-evidence/validation-plan.json
+          if-no-files-found: error
+          retention-days: 90
+
   # ─── Build and scan all pull-request release images ──────────────────────
   build:
     name: Build Docker image (${{ matrix.service.name }})
@@ -64,6 +144,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build pull-request image
+        id: candidate-build
         uses: docker/build-push-action@v5
         with:
           context: ${{ matrix.service.context }}
@@ -75,13 +156,31 @@ jobs:
           provenance: false
           cache-from: type=gha,scope=release-${{ matrix.service.name }}
           cache-to: type=gha,mode=max,scope=release-${{ matrix.service.name }}
+      - name: Record immutable candidate build evidence
+        run: |
+          scripts/record_build_evidence.sh \
+            "$RUNNER_TEMP/build-evidence/${{ matrix.service.name }}.json" \
+            '${{ matrix.service.name }}' \
+            '${{ github.event.pull_request.base.sha }}' \
+            '${{ github.event.pull_request.head.sha }}' \
+            '${{ steps.candidate-build.outputs.imageid }}' \
+            '${{ steps.candidate-build.outputs.digest }}' \
+            '["smoke","trivy"]' \
+            'workflow_build'
+      - name: Retain immutable candidate build evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: wc100-candidate-build-${{ matrix.service.name }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/build-evidence/${{ matrix.service.name }}.json
+          if-no-files-found: error
+          retention-days: 90
       - name: Smoke Business Platform deployment configuration
         if: matrix.service.name == 'business-platform'
-        run: scripts/smoke_business_platform_image.sh '${{ env.REGISTRY_PREFIX }}/business-platform:sha-${{ github.sha }}'
+        run: scripts/smoke_business_platform_image.sh '${{ steps.candidate-build.outputs.imageid }}'
       - name: Scan pull-request image
         uses: aquasecurity/trivy-action@2736533278103862a861f4a35ebac3e97854d956
         with:
-          image-ref: ${{ env.REGISTRY_PREFIX }}/${{ matrix.service.name }}:sha-${{ github.sha }}
+          image-ref: ${{ steps.candidate-build.outputs.imageid }}
           format: sarif
           output: trivy-${{ matrix.service.name }}.sarif
           scanners: vuln
@@ -267,10 +366,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build .NET Docker test runner (C-080)
-        run: docker compose --profile ${{ matrix.profile }} build ${{ matrix.runner }}
+        id: runner-build
+        run: |
+          docker compose --profile ${{ matrix.profile }} build ${{ matrix.runner }}
+          image_id=$(scripts/runner_image_id.sh '${{ matrix.profile }}' '${{ matrix.runner }}')
+          echo "image_id=$image_id" >> "$GITHUB_OUTPUT"
+      - name: Record immutable .NET runner evidence
+        run: |
+          scripts/record_build_evidence.sh \
+            "$RUNNER_TEMP/build-evidence/${{ matrix.service }}.json" \
+            '${{ matrix.runner }}-${{ matrix.service }}' \
+            '${{ github.event.pull_request.base.sha || github.event.before }}' \
+            '${{ github.event.pull_request.head.sha || github.sha }}' \
+            '${{ steps.runner-build.outputs.image_id }}' '' \
+            '["dotnet-test","coverage"]' 'workflow_build'
+      - name: Retain immutable .NET runner evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: wc100-dotnet-runner-${{ matrix.service }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/build-evidence/${{ matrix.service }}.json
+          if-no-files-found: error
+          retention-days: 90
 
       - name: Restore, build, and test in Docker (C-076, C-080)
         run: |
+          scripts/verify_runner_image.sh \
+            '${{ matrix.profile }}' '${{ matrix.runner }}' '${{ steps.runner-build.outputs.image_id }}'
           docker compose --profile ${{ matrix.profile }} run --rm --user root ${{ matrix.runner }} sh -lc '
             dotnet restore "${{ matrix.tests }}" &&
             dotnet build "${{ matrix.tests }}" --no-restore -warnaserror &&
@@ -330,10 +451,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build constitutional Docker test runner (C-080)
-        run: docker compose --profile test-python build test-runner-python
+        id: runner-build
+        run: |
+          docker compose --profile test-python build test-runner-python
+          image_id=$(scripts/runner_image_id.sh test-python test-runner-python)
+          echo "image_id=$image_id" >> "$GITHUB_OUTPUT"
+      - name: Record immutable Python runner evidence
+        run: |
+          scripts/record_build_evidence.sh \
+            "$RUNNER_TEMP/build-evidence/${{ matrix.service }}.json" \
+            'test-runner-python-${{ matrix.service }}' \
+            '${{ github.event.pull_request.base.sha || github.event.before }}' \
+            '${{ github.event.pull_request.head.sha || github.sha }}' \
+            '${{ steps.runner-build.outputs.image_id }}' '' \
+            '["ruff","mypy","pytest","coverage"]' 'workflow_build'
+      - name: Retain immutable Python runner evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: wc100-python-runner-${{ matrix.service }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/build-evidence/${{ matrix.service }}.json
+          if-no-files-found: error
+          retention-days: 90
 
       - name: Ruff in Docker (C-080)
         run: |
+          scripts/verify_runner_image.sh test-python test-runner-python '${{ steps.runner-build.outputs.image_id }}'
           docker compose --profile test-python run --rm --user root test-runner-python sh -lc '
             ruff check "${{ matrix.source }}" "${{ matrix.tests }}" &&
             ruff format --check "${{ matrix.source }}" "${{ matrix.tests }}"
@@ -383,6 +525,7 @@ jobs:
   release-qualification:
     name: Release qualification
     runs-on: ubuntu-latest
+    needs: validation-plan
     permissions:
       contents: read
     steps:
@@ -390,29 +533,40 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Detect release engineering changes
-        id: changes
-        shell: bash
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Build release qualification runner once (C-080)
+        if: needs.validation-plan.outputs.release_required == 'true'
+        id: runner-build
         run: |
-          if [[ "$EVENT_NAME" != "pull_request" ]]; then
-            echo "required=true" >> "$GITHUB_OUTPUT"
-          elif git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep -Eq \
-            '^(release/goal006/|scripts/goal006_|scripts/test-wc059-postgres\.sh|scripts/wc091_|scripts/run_wc091_|tests/test_wc012_dry_run\.py|tests/pipeline/test_goal006_|tests/pipeline/test_billing_ce_validator\.py|tests/pipeline/test_wc091_|infrastructure/recovery/phase2/|infrastructure/environment-readiness/|infrastructure/postgres/demo/|infrastructure/terraform/phase2/|\.github/workflows/ci\.yaml|docker-compose\.yml|architecture/reference/dockerfiles/Dockerfile\.test-runner|requirements-test\.txt)'; then
-            echo "required=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "required=false" >> "$GITHUB_OUTPUT"
-          fi
+          docker compose --profile test build test-runner
+          image_id=$(scripts/runner_image_id.sh test test-runner)
+          echo "image_id=$image_id" >> "$GITHUB_OUTPUT"
+      - name: Record immutable release runner evidence
+        if: needs.validation-plan.outputs.release_required == 'true'
+        run: |
+          scripts/record_build_evidence.sh \
+            "$RUNNER_TEMP/build-evidence/release-qualification.json" \
+            'test-runner-release-qualification' \
+            '${{ github.event.pull_request.base.sha || github.event.before }}' \
+            '${{ github.event.pull_request.head.sha || github.sha }}' \
+            '${{ steps.runner-build.outputs.image_id }}' '' \
+            '["release-qualification"]' 'workflow_build'
+      - name: Retain immutable release runner evidence
+        if: needs.validation-plan.outputs.release_required == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: wc100-release-runner-${{ github.run_id }}
+          path: ${{ runner.temp }}/build-evidence/release-qualification.json
+          if-no-files-found: error
+          retention-days: 90
 
       - name: Run release qualification
-        if: steps.changes.outputs.required == 'true'
+        if: needs.validation-plan.outputs.release_required == 'true'
+        env:
+          WAOOAW_TEST_RUNNER_IMAGE_ID: ${{ steps.runner-build.outputs.image_id }}
         run: scripts/run_release_qualification.sh
 
       - name: Retain WC-091 Demo data evidence
-        if: always() && steps.changes.outputs.required == 'true'
+        if: always() && needs.validation-plan.outputs.release_required == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: wc091-i1-demo-data-${{ github.run_id }}
@@ -421,7 +575,7 @@ jobs:
           retention-days: 90
 
       - name: Retain Docker Azure CLI runtime evidence
-        if: always() && steps.changes.outputs.required == 'true'
+        if: always() && needs.validation-plan.outputs.release_required == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: goal006-local-azure-runtime-${{ github.run_id }}
@@ -436,10 +590,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build TypeScript Docker test runner (C-080)
-        run: docker compose --profile test-ts build test-runner-ts
+        id: runner-build
+        run: |
+          docker compose --profile test-ts build test-runner-ts
+          image_id=$(scripts/runner_image_id.sh test-ts test-runner-ts)
+          echo "image_id=$image_id" >> "$GITHUB_OUTPUT"
+      - name: Record immutable TypeScript runner evidence
+        run: |
+          scripts/record_build_evidence.sh \
+            "$RUNNER_TEMP/build-evidence/web.json" \
+            'test-runner-ts-web' \
+            '${{ github.event.pull_request.base.sha || github.event.before }}' \
+            '${{ github.event.pull_request.head.sha || github.sha }}' \
+            '${{ steps.runner-build.outputs.image_id }}' '' \
+            '["typecheck","eslint","jest","coverage"]' 'workflow_build'
+      - name: Retain immutable TypeScript runner evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: wc100-typescript-runner-${{ github.run_id }}
+          path: ${{ runner.temp }}/build-evidence/web.json
+          if-no-files-found: error
+          retention-days: 90
 
       - name: Type check, lint, and test in Docker (C-076, C-080)
         run: |
+          scripts/verify_runner_image.sh test-ts test-runner-ts '${{ steps.runner-build.outputs.image_id }}'
           docker compose --profile test-ts run --rm test-runner-ts sh -lc '
             cd web &&
             pnpm tsc --noEmit &&
@@ -554,13 +729,44 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build dependency audit runners (C-080)
+        id: runner-build
         run: |
           docker compose --profile test-python build test-runner-python
           docker compose --profile test-dotnet build test-runner-dotnet
           docker compose --profile test-ts build test-runner-ts
+          echo "python_image_id=$(scripts/runner_image_id.sh test-python test-runner-python)" >> "$GITHUB_OUTPUT"
+          echo "dotnet_image_id=$(scripts/runner_image_id.sh test-dotnet test-runner-dotnet)" >> "$GITHUB_OUTPUT"
+          echo "ts_image_id=$(scripts/runner_image_id.sh test-ts test-runner-ts)" >> "$GITHUB_OUTPUT"
+
+      - name: Record immutable dependency runner evidence
+        run: |
+          scripts/record_build_evidence.sh \
+            "$RUNNER_TEMP/build-evidence/dependency-python.json" 'test-runner-python-dependencies' \
+            '${{ github.event.pull_request.base.sha || github.event.before }}' \
+            '${{ github.event.pull_request.head.sha || github.sha }}' \
+            '${{ steps.runner-build.outputs.python_image_id }}' '' '["pip-audit"]' 'workflow_build'
+          scripts/record_build_evidence.sh \
+            "$RUNNER_TEMP/build-evidence/dependency-dotnet.json" 'test-runner-dotnet-dependencies' \
+            '${{ github.event.pull_request.base.sha || github.event.before }}' \
+            '${{ github.event.pull_request.head.sha || github.sha }}' \
+            '${{ steps.runner-build.outputs.dotnet_image_id }}' '' '["dotnet-vulnerable"]' 'workflow_build'
+          scripts/record_build_evidence.sh \
+            "$RUNNER_TEMP/build-evidence/dependency-ts.json" 'test-runner-ts-dependencies' \
+            '${{ github.event.pull_request.base.sha || github.event.before }}' \
+            '${{ github.event.pull_request.head.sha || github.sha }}' \
+            '${{ steps.runner-build.outputs.ts_image_id }}' '' '["pnpm-audit"]' 'workflow_build'
+
+      - name: Retain immutable dependency runner evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: wc100-dependency-runners-${{ github.run_id }}
+          path: ${{ runner.temp }}/build-evidence/dependency-*.json
+          if-no-files-found: error
+          retention-days: 90
 
       - name: pip-audit — Python dependencies
         run: |
+          scripts/verify_runner_image.sh test-python test-runner-python '${{ steps.runner-build.outputs.python_image_id }}'
           docker compose --profile test-python run --rm --user root test-runner-python sh -lc '
             pip-audit -r src/professional-runtime/requirements.txt --strict &&
             sed -e "/^--extra-index-url/d" \
@@ -573,6 +779,7 @@ jobs:
 
       - name: dotnet vulnerable — .NET dependencies
         run: |
+          scripts/verify_runner_image.sh test-dotnet test-runner-dotnet '${{ steps.runner-build.outputs.dotnet_image_id }}'
           docker compose --profile test-dotnet run --rm --user root test-runner-dotnet sh -lc '
             audit_dotnet_project() {
               dotnet restore "$1" --nologo >/dev/null
@@ -591,6 +798,7 @@ jobs:
 
       - name: pnpm audit — Node.js dependencies
         run: |
+          scripts/verify_runner_image.sh test-ts test-runner-ts '${{ steps.runner-build.outputs.ts_image_id }}'
           docker compose --profile test-ts run --rm test-runner-ts sh -lc '
             cd web && pnpm audit --audit-level high
           '
@@ -708,6 +916,7 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     needs:
+      - validation-plan
       - build
       - secrets
       - test-dotnet
