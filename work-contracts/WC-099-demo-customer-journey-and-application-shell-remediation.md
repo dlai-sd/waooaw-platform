@@ -363,14 +363,15 @@ inspection alone is insufficient.
 | WC099-02 Identity and acquisition repair | D-001 through D-006 | Disclosure/account selection/home behavior pass; Trial and Hire create exactly one authorized relationship and appear in My Agents |
 | WC099-03 Stable shell and typography | D-007, D-008 and D-011 | Founder-directed rail/account composition and all R-008 through R-012/R-017/R-018 checks pass |
 | WC099-04 Guide workspace and readiness | D-009 and D-010 | Secret-backed readiness, persisted interaction, resizable pane and compact accessibility checks pass |
-| WC099-05 Integrated qualification | Entire Demo contract at one exact head and image tuple | R-001 through R-020 and R-022 through R-023 pass; R-021 carries only the recorded Demo variance; full affected suites, visual matrix, security checks and author review pass |
-| WC099-06 Founder handoff | One unmerged PR with exact evidence package | No partial/deferred/untested row except the exact R-021 Demo variance; Founder receives PR for review and merge |
+| WC099-05 Integrated qualification | Qualify the implementation candidate locally, then deploy its signed merge commit to Demo | Local gates pass before the implementation PR; R-014 and R-020 pass only after Founder merge and exact-main Demo deployment |
+| WC099-06 Founder handoff | Two-stage Founder-approved delivery: implementation PR, then evidence-only closure PR | Founder merges the implementation PR; the signed main candidate is deployed and qualified; a closure PR records the exact Demo evidence with no partial/deferred/untested row except R-021 |
 
 Milestones permit controlled implementation and review but do not permit separate completion claims.
-The implementation PR is not ready while any defect or requirement remains partial, deferred,
-untested, substituted or known-failing, except R-021 with the exact
-`FOUNDER-DEFERRED-NOT-APPLICABLE-TO-DEMO` status. That status cannot authorize UAT or Production
-traffic.
+The Founder approved this two-stage delivery sequence on 2026-09-18 because the deployment workflow
+accepts only a signed artifact from current `main`. The implementation PR may therefore carry R-014
+and R-020 as `BLOCKED` pending its Founder merge. WC-099 is not complete until the evidence-only
+closure PR records those rows as `PASS`; only R-021 may retain the exact
+`FOUNDER-DEFERRED-NOT-APPLICABLE-TO-DEMO` status. That status cannot authorize UAT or Production traffic.
 
 ## 11. Qualification And Evidence Package
 
@@ -417,9 +418,9 @@ WC-099 is complete only when all of the following are true at one exact candidat
 7. The full visual, accessibility, security, isolation, replay, build and regression gates pass.
 8. The complete Founder acceptance journey R-020 passes in an environment explicitly authorized for
    that execution.
-9. The PR contains the exact evidence package and no secrets or customer PII.
-10. The implementing agent performs author review and hands one unmerged PR to the Founder. The agent
-    does not self-approve, self-merge or claim Production readiness.
+9. The evidence-only closure PR contains the exact evidence package and no secrets or customer PII.
+10. The implementing agent performs author review and hands both unmerged PR stages to the Founder.
+   The agent does not self-approve, self-merge or claim Production readiness.
 11. D-002's WAOOAW disclosure is proved in Demo. Provider branding/public-origin acceptance remains
    pending under R-021 and must be proved by its authorized owner before UAT or Production traffic;
    repository changes alone cannot satisfy that promotion gate.
