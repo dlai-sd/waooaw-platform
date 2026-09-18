@@ -258,9 +258,21 @@ test('R-014 R-016 R-017 R-018 R-023: compact Guide contains focus, persists trut
     await expect(currentOpener).toBeFocused();
     await expect(page.locator('.bottom-navigation:visible').last()).toBeVisible();
     await expect(page.locator('.stop-control:visible').last()).toBeVisible();
+    await currentOpener.click();
+    await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
+    for (const control of [page.locator('.portal-guide textarea:visible').last(), page.getByRole('button', { name: 'Send' }).last()]) {
+      const controlBox = await control.boundingBox();
+      expect(controlBox?.x).toBeGreaterThanOrEqual(0);
+      expect((controlBox?.x ?? 0) + (controlBox?.width ?? 0)).toBeLessThanOrEqual(viewport.width);
+      expect(controlBox?.y).toBeGreaterThanOrEqual(0);
+      expect((controlBox?.y ?? 0) + (controlBox?.height ?? 0)).toBeLessThanOrEqual(viewport.height);
+    }
     await expectNoOverflow(page);
     const axe = await new AxeBuilder({ page }).analyze();
     expect(axe.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious')).toEqual([]);
     await attachScreenshot(page, testInfo, `compact-guide-${viewport.width}x${viewport.height}`);
+    await page.evaluate(() => { document.documentElement.style.fontSize = ''; });
+    await page.locator('.conversation-close:visible').last().click();
+    await expect(guide).toBeHidden();
   }
 });

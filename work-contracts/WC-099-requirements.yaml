@@ -165,9 +165,10 @@ requirements:
     observable_outcome: Compact Guide keeps composer and actions visible and supports focus, keyboard, zoom, Hindi, and Urdu.
     component_owner: Web Guide workspace
     test_path_or_plan: web/tests/e2e/wc099-demo-remediation.spec.ts
+    evidence_refs: [test-results/wc099/obligation-ledger.json, web/tests/e2e/wc099-demo-remediation.spec.ts]
     dependencies: [Persistent conversation dock, locale support]
     completion_rule: Three-browser tests pass at 360x800, 390x844, and 200 percent zoom.
-    residual_risk: None in local browser evidence.
+    residual_risk: None in local browser evidence; composer and Send remain persistently in-view at 200 percent zoom.
   - <<: *completed
     requirement_id: WC099-R017
     source: Section 7, D-007 and D-008

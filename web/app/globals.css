@@ -320,6 +320,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
 .conversation-close { position: sticky; z-index: 2; inset-block-start: 0; margin-inline-start: auto; }
 .persistent-conversation .conversation-experience { width: 100%; margin-block-start: 0; }
 .portal-guide { display: grid; gap: 1rem; }
+.portal-guide-scroll { min-height: 0; display: grid; gap: 1rem; }
 .portal-guide header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
 .portal-guide header .section-label { grid-column: 1 / -1; }
 .portal-guide header span, .scope-disclosure { color: var(--muted); font-size: .8rem; }
@@ -645,7 +646,11 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
   .public-hero h1 { font-size: 3.5rem; }
   .main-content { overflow-wrap: anywhere; }
   .app-shell-customer:has(.persistent-conversation[data-open="true"]) { grid-template-columns: 76px minmax(0, 1fr); }
-  .persistent-conversation { position: fixed; z-index: 60; inset-block: 0; inset-inline-end: 0; width: min(100%, 34rem) !important; min-width: 0; max-width: none; }
+  .persistent-conversation { position: fixed; z-index: 60; inset-block: 0; inset-inline-end: 0; width: min(100%, 34rem) !important; min-width: 0; max-width: none; max-height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr); padding: 8px; overflow: hidden; }
+  .persistent-conversation[data-open="true"] { display: grid; }
+  .persistent-conversation .portal-guide { min-height: 0; grid-template-rows: minmax(0, 1fr) auto auto; gap: 8px; overflow: hidden; }
+  .persistent-conversation .portal-guide-scroll { min-height: 0; gap: 8px; overflow-y: auto; }
+  .persistent-conversation .portal-guide-timeline { min-height: 0; max-height: none; overflow: visible; }
   .app-shell-customer:has(.persistent-conversation[data-open="true"]) .application-controls { inset-inline-end: 1rem; }
   .conversation-resizer { display: none; }
   .conversation-scrim { position: fixed; z-index: 55; inset: 0; display: block; border: 0; background: rgb(18 35 50 / 42%); }
