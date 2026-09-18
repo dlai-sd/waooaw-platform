@@ -23,6 +23,8 @@ requirements:
     evidence_class: integration
     test_path_or_plan: tests/pipeline/test_precheck_orchestrator.py::test_independent_gates_run_concurrently
     initial_state: new
+    result: PASS
+    evidence_refs: [tests/pipeline/test_precheck_orchestrator.py]
     dependencies: [Docker runner, synthetic gate commands]
     completion_rule: Trace proves overlap and equivalent selected gates.
     residual_risk: Local timing does not predict hosted-runner contention.
@@ -65,6 +67,8 @@ requirements:
     evidence_class: contract
     test_path_or_plan: tests/pipeline/test_precheck_orchestrator.py::test_manifest_binds_inputs_and_node_results
     initial_state: new
+    result: PASS
+    evidence_refs: [tests/pipeline/test_precheck_orchestrator.py, tests/pipeline/test_prepare_pr_body.py]
     dependencies: [Git repository, precheck orchestrator]
     completion_rule: Manifest schema and exact-binding tests pass.
     residual_risk: Local evidence remains untrusted for required CI unless policy later changes.
@@ -135,6 +139,8 @@ requirements:
     evidence_class: integration
     test_path_or_plan: tests/pipeline/test_precheck_orchestrator.py::test_parallel_nodes_have_isolated_namespaces
     initial_state: new
+    result: PASS
+    evidence_refs: [tests/pipeline/test_precheck_orchestrator.py]
     dependencies: [temporary filesystem, environment capture]
     completion_rule: Collision and failure-injection tests prove unique writable paths and names.
     residual_risk: External Docker daemon saturation is handled by serial fallback, not eliminated.
@@ -179,6 +185,8 @@ requirements:
     evidence_class: integration
     test_path_or_plan: tests/pipeline/test_precheck_orchestrator.py::test_precheck_dag_selects_current_nodes
     initial_state: new
+    result: PASS
+    evidence_refs: [tests/pipeline/test_precheck_orchestrator.py, tests/pipeline/test_prepare_pr_body.py]
     dependencies: [prepare_pr_body entry point]
     completion_rule: Selection and concurrency trace contains the same applicable nodes as baseline.
     residual_risk: Gate internals retain their own runtime variance.
@@ -189,6 +197,8 @@ requirements:
     evidence_class: integration
     test_path_or_plan: tests/pipeline/test_precheck_orchestrator.py::test_resource_fallback_and_failure_semantics
     initial_state: new
+    result: PASS
+    evidence_refs: [tests/pipeline/test_precheck_orchestrator.py]
     dependencies: [resource preflight, synthetic failures]
     completion_rule: Resource, dual-failure, cancellation, and retry tests pass.
     residual_risk: Platform-specific process detection may conservatively choose serial mode.

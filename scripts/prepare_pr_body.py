@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import shutil
@@ -11,6 +12,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from precheck_orchestrator import PrecheckNode, run_prechecks
 from validate_author_review import SECTION, validate_author_review
 from validate_c059 import read_commits, validate_commit, validate_pr_body
 from validate_requirement_ledger import validate_changed_ledgers
@@ -153,11 +155,27 @@ def expected_pr_labels(branch: str) -> tuple[str, str, str]:
     return tier, "status:pr-open", "awaiting:review"
 
 
-def validate_precheck_evidence(evidence: dict[str, object], base_sha: str, head: str) -> dict[str, object]:
+def changed_files_digest(changed_files: list[str]) -> str:
+    return hashlib.sha256("\n".join(sorted(changed_files)).encode()).hexdigest()
+
+
+def validate_precheck_evidence(
+    evidence: dict[str, object],
+    base_sha: str,
+    head: str,
+    changed_file_digest: str,
+    graph_version: str = "wc100-prechecks-v1",
+) -> dict[str, object]:
     if evidence.get("passed") is not True:
         raise ValueError("precheck evidence must report passed=true")
     if evidence.get("base_sha") != base_sha or evidence.get("commit_sha") != head:
         raise ValueError("precheck evidence is not bound to the selected base and branch HEAD")
+    if evidence.get("schema") != "waooaw.pr-prechecks/v2":
+        raise ValueError("precheck evidence schema is not trusted")
+    if evidence.get("changed_file_digest") != changed_file_digest:
+        raise ValueError("precheck evidence is not bound to the selected changed files")
+    if evidence.get("graph_version") != graph_version:
+        raise ValueError("precheck evidence is not bound to the current gate graph")
     return evidence
 
 
@@ -167,70 +185,70 @@ def run_ci_prechecks(base: str, head: str, changed_files: list[str]) -> dict[str
     docker = shutil.which("docker")
     if docker is None:
         raise ValueError("docker executable is required for PR prechecks")
-    gates = {
-        "gitleaks": "PASS",
-        "business_platform": "NOT_APPLICABLE",
-        "release_qualification": "NOT_APPLICABLE",
-    }
-    subprocess.run(  # noqa: S603
-        [
-            docker,
-            "run",
-            "--rm",
-            "-v",
-            f"{repository_root}:/repo:ro",
-            "-v",
-            f"{git_common_dir}:{git_common_dir}:ro",
-            "zricethezav/gitleaks:v8.28.0",
-            "git",
-            "/repo",
-            "--log-opts",
-            f"{base}..{head}",
-            "--no-banner",
-            "--redact",
-        ],
-        cwd=repository_root,
-        check=True,
-    )
-    if business_platform_gate_required(changed_files):
-        subprocess.run(  # noqa: S603
-            [
+    nodes = [
+        PrecheckNode(
+            name="gitleaks",
+            command=(
                 docker,
-                "compose",
-                "--profile",
-                "test",
                 "run",
                 "--rm",
-                "--user",
-                "root",
-                "test-runner",
-                "sh",
-                "-lc",
-                "dotnet restore tests/business-platform.Tests/business-platform.Tests.csproj && "
-                "dotnet build tests/business-platform.Tests/business-platform.Tests.csproj "
-                "--no-restore -warnaserror && "
-                "dotnet test tests/business-platform.Tests/business-platform.Tests.csproj "
-                "--no-build --settings tests/coverage.runsettings --collect:'XPlat Code Coverage' "
-                "--results-directory ./coverage/business-platform",
-            ],
-            cwd=repository_root,
-            check=True,
+                "-v",
+                f"{repository_root}:/repo:ro",
+                "-v",
+                f"{git_common_dir}:{git_common_dir}:ro",
+                "zricethezav/gitleaks:v8.28.0",
+                "git",
+                "/repo",
+                "--log-opts",
+                f"{base}..{head}",
+                "--no-banner",
+                "--redact",
+            ),
         )
-        gates["business_platform"] = "PASS"
+    ]
+    if business_platform_gate_required(changed_files):
+        nodes.append(
+            PrecheckNode(
+                name="business_platform",
+                command=(
+                    docker,
+                    "compose",
+                    "--profile",
+                    "test",
+                    "run",
+                    "--rm",
+                    "--user",
+                    "root",
+                    "test-runner",
+                    "sh",
+                    "-lc",
+                    "dotnet restore tests/business-platform.Tests/business-platform.Tests.csproj && "
+                    "dotnet build tests/business-platform.Tests/business-platform.Tests.csproj "
+                    "--no-restore -warnaserror && "
+                    "dotnet test tests/business-platform.Tests/business-platform.Tests.csproj "
+                    "--no-build --settings tests/coverage.runsettings --collect:'XPlat Code Coverage' "
+                    "--results-directory ./coverage/business-platform",
+                ),
+                heavy=True,
+            )
+        )
     if release_qualification_gate_required(changed_files):
-        subprocess.run(  # noqa: S603
-            [str(repository_root / "scripts/run_release_qualification.sh")],
-            cwd=repository_root,
-            check=True,
+        nodes.append(
+            PrecheckNode(
+                name="release_qualification",
+                command=(str(repository_root / "scripts/run_release_qualification.sh"),),
+                heavy=True,
+            )
         )
-        gates["release_qualification"] = "PASS"
-    return {
-        "schema": "waooaw.pr-prechecks/v1",
-        "passed": True,
-        "base_sha": git("rev-parse", base),
-        "commit_sha": head,
-        "gates": gates,
-    }
+    changed_file_digest = changed_files_digest(changed_files)
+    return run_prechecks(
+        nodes,
+        base_sha=git("rev-parse", base),
+        head_sha=head,
+        changed_file_digest=changed_file_digest,
+        graph_version="wc100-prechecks-v1",
+        artifact_dir=repository_root / "test-results/wc100/prechecks" / head,
+    )
 
 
 def update_pull_request(pr_number: int, body_file: Path, branch: str) -> None:
@@ -284,19 +302,26 @@ def main() -> int:
         head = preparation_head(local_head, remote_head, arguments.allow_unpushed_head)
         body = arguments.body_file.read_text(encoding="utf-8")
         changed_files = git("diff", "--name-only", f"{arguments.base}..{head}").splitlines()
+        changed_file_digest = changed_files_digest(changed_files)
         base_sha = git("rev-parse", arguments.base)
         ledger_violations = validate_changed_ledgers(Path(git("rev-parse", "--show-toplevel")), changed_files)
         if ledger_violations:
             raise ValueError("requirement ledger: " + "; ".join(ledger_violations))
         if arguments.precheck_evidence_file:
             evidence = json.loads(arguments.precheck_evidence_file.read_text(encoding="utf-8"))
-            validate_precheck_evidence(evidence, base_sha, head)
+            validate_precheck_evidence(evidence, base_sha, head, changed_file_digest)
         else:
             evidence = run_ci_prechecks(arguments.base, head, changed_files)
             arguments.body_file.with_suffix(".precheck-evidence.json").write_text(
                 json.dumps(evidence, indent=2, sort_keys=True) + "\n",
                 encoding="utf-8",
             )
+            if evidence.get("passed") is not True:
+                raise ValueError(
+                    "prechecks failed; first causal gate: "
+                    f"{evidence.get('first_causal_failure')}; "
+                    f"artifacts: test-results/wc100/prechecks/{head}"
+                )
         if runtime_gate_required(changed_files):
             evidence = (
                 load_runtime_evidence(arguments.runtime_evidence_file, head)
