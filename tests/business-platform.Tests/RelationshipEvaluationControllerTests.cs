@@ -309,6 +309,19 @@ public sealed class RelationshipEvaluationControllerTests
             retiredCodec.Decode(priorCursor, tenantId, relationshipId, "messages"));
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("short")]
+    public void ConversationCursor_RejectsInvalidPreviousKeys(string previousKey)
+    {
+        Assert.Throws<InvalidOperationException>(() => new ConversationCursorCodec(
+            Options.Create(new ConversationCursorOptions
+            {
+                HmacKey = new string('n', 32),
+                PreviousHmacKeys = [previousKey],
+            })));
+    }
+
     private static RelationshipEvaluationController Controller(
         InMemoryEmploymentRelationshipFactory factory, Guid tenantId)
     {

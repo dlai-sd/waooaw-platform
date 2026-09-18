@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { ConversationContextAction, PersistentConversationDock } from './PersistentConversationDock';
+import { ConversationContextAction, PersistentConversationDock, routeContext } from './PersistentConversationDock';
 
 const mockUsePathname = jest.fn();
 jest.mock('next/navigation', () => ({ usePathname: () => mockUsePathname() }));
@@ -72,6 +72,32 @@ describe('PersistentConversationDock', () => {
 
     expect(separator).toHaveAttribute('aria-valuenow', '480');
     expect(localStorage.getItem('waooaw:conversation-width')).toBe('480');
+  });
+
+  it('covers portal route labels and mouse resizing in both directions', () => {
+    expect(routeContext('/alerts')).toMatchObject({ surface: 'ALERTS', action: 'Review alerts' });
+    expect(routeContext('/settings')).toMatchObject({ surface: 'SETTINGS', action: 'Ask about settings' });
+    expect(routeContext('/profile')).toMatchObject({ surface: 'PROFILE', action: 'Ask about my account' });
+    expect(routeContext('/profile/billing')).toMatchObject({ surface: 'BILLING', action: 'Ask about my account' });
+    expect(routeContext('/unknown')).toMatchObject({ surface: 'MY_AGENTS', action: 'Ask WAOOAW Guide' });
+
+    document.documentElement.dir = 'rtl';
+    render(<PersistentConversationDock />);
+    fireEvent.click(screen.getByRole('button', { name: /Ask about professionals/ }));
+    const separator = screen.getByRole('separator', { name: 'Resize Guide' });
+
+    fireEvent.mouseDown(separator, { clientX: 700 });
+    fireEvent.mouseMove(window, { clientX: 620 });
+    expect(separator).toHaveAttribute('aria-valuenow', '320');
+    fireEvent.mouseUp(window);
+    fireEvent.mouseMove(window, { clientX: 500 });
+    expect(separator).toHaveAttribute('aria-valuenow', '320');
+
+    fireEvent.keyDown(separator, { key: 'ArrowRight' });
+    expect(separator).toHaveAttribute('aria-valuenow', '336');
+    fireEvent.keyDown(separator, { key: 'PageDown' });
+    expect(separator).toHaveAttribute('aria-valuenow', '336');
+    document.documentElement.dir = '';
   });
 
   it('contains focus in the compact Guide sheet', () => {
