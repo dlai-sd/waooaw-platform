@@ -264,7 +264,7 @@ builder.Services.AddDbContextFactory<ConversationStoreDbContext>((services, opti
         .UseNpgsql(conversationConn)
         .AddInterceptors(services.GetRequiredService<TenantDbConnectionInterceptor>()));
 builder.Services.Configure<ConversationCursorOptions>(
-    builder.Configuration.GetSection("Conversation:Cursor"));
+    builder.Configuration.GetSection("Conversation"));
 builder.Services.AddSingleton<ConversationCursorCodec>();
 var conversationPrBaseUrl = builder.Configuration["Conversation:ProfessionalRuntimeBaseUrl"]
     ?? "http://professional-runtime:5003";

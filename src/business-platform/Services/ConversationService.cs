@@ -159,6 +159,7 @@ public sealed class ConversationRequestException(string message) : Exception(mes
 public sealed class ConversationCursorOptions
 {
     public string HmacKey { get; set; } = string.Empty;
+    public string[] PreviousHmacKeys { get; set; } = [];
 }
 
 public interface IConversationExecutionGateway
@@ -248,6 +249,7 @@ public sealed class UnconfiguredConversationExecutionGateway : IConversationExec
 public sealed class ConversationCursorCodec
 {
     private readonly byte[] _key;
+    private readonly IReadOnlyList<byte[]> _verificationKeys;
 
     public ConversationCursorCodec(IOptions<ConversationCursorOptions> options)
     {
@@ -258,6 +260,11 @@ public sealed class ConversationCursorCodec
         }
 
         _key = Encoding.UTF8.GetBytes(configuredKey);
+        if (options.Value.PreviousHmacKeys.Any(key => string.IsNullOrWhiteSpace(key) || key.Length < 32))
+        {
+            throw new InvalidOperationException("Conversation:PreviousHmacKeys must contain keys of at least 32 characters.");
+        }
+        _verificationKeys = [_key, .. options.Value.PreviousHmacKeys.Distinct().Select(Encoding.UTF8.GetBytes)];
     }
 
     public string Encode(Guid tenantId, Guid relationshipId, string purpose, long sequence)
@@ -280,8 +287,8 @@ public sealed class ConversationCursorCodec
         {
             var payloadBytes = Base64UrlDecode(parts[0]);
             var suppliedSignature = Base64UrlDecode(parts[1]);
-            var expectedSignature = HMACSHA256.HashData(_key, payloadBytes);
-            if (!CryptographicOperations.FixedTimeEquals(suppliedSignature, expectedSignature))
+            if (!_verificationKeys.Any(key =>
+                CryptographicOperations.FixedTimeEquals(suppliedSignature, HMACSHA256.HashData(key, payloadBytes))))
             {
                 throw new ConversationCursorExpiredException();
             }

@@ -134,14 +134,16 @@ public sealed class EmploymentRelationshipsControllerTests
     }
 
     [Fact]
-    public void OnlyRelationshipCollectionOptsIntoCustomerMembership()
+    public void RelationshipCollectionAndAdmissionRequireCustomerMembership()
     {
         var adapted = typeof(EmploymentRelationshipsController).GetMethods()
             .Where(method => method.GetCustomAttributes(typeof(CustomerIdentityRouteAttribute), true).Length != 0)
             .Select(method => method.Name)
             .ToArray();
 
-        Assert.Equal([nameof(EmploymentRelationshipsController.ListAsync)], adapted);
+        Assert.Equal(
+            [nameof(EmploymentRelationshipsController.ListAsync), nameof(EmploymentRelationshipsController.AdmitAsync)],
+            adapted);
     }
 
     [Fact]
@@ -206,7 +208,7 @@ public sealed class EmploymentRelationshipsControllerTests
     }
 
     [Fact]
-    public async Task AdmissionDerivesTenantAndParticipantFromAuthenticatedContext()
+    public async Task AdmissionUsesResolvedMembershipWhenBrokerSubjectIsNotAGuid()
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
         var service = new EmploymentRelationshipService(
@@ -222,12 +224,14 @@ public sealed class EmploymentRelationshipsControllerTests
                 HttpContext = new DefaultHttpContext
                 {
                     User = new ClaimsPrincipal(new ClaimsIdentity(
-                        [new Claim("participant_id", participantId.ToString())],
+                        [new Claim("sub", "google-oauth2|customer-subject")],
                         "Test")),
                 },
             },
         };
         controller.HttpContext.Items[TenantIsolationMiddleware.TenantIdItemKey] = tenantId.ToString();
+        controller.HttpContext.Items[CustomerMembershipMiddleware.MembershipItem] =
+            new CustomerWorkspaceMembership(participantId, tenantId, Guid.NewGuid(), ["OWNER"]);
         var admission = new AgentAdmission
         {
             TenantId = tenantId,

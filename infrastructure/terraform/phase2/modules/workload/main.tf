@@ -432,6 +432,12 @@ locals {
   continuity_hmac_secret_resource_ids = {
     continuity-envelope-hmac = "${trimsuffix(var.key_vault_secret_resource_ids["business-platform"], "/business-platform")}/continuity-envelope-hmac"
   }
+  conversation_cursor_secret_uris = {
+    conversation-cursor-hmac = "${trimsuffix(var.key_vault_secret_uris["business-platform"], "/business-platform")}/conversation-cursor-hmac"
+  }
+  conversation_cursor_secret_resource_ids = {
+    conversation-cursor-hmac = "${trimsuffix(var.key_vault_secret_resource_ids["business-platform"], "/business-platform")}/conversation-cursor-hmac"
+  }
   minimum_replicas = {
     "constitutional-engine"                   = var.ce_min_replicas
     "professional-runtime"                    = var.pr_min_replicas
@@ -481,6 +487,13 @@ resource "azurerm_role_assignment" "continuity_hmac_secret" {
   principal_id         = azurerm_user_assigned_identity.member["business-platform"].principal_id
 }
 
+resource "azurerm_role_assignment" "conversation_cursor_secret" {
+  for_each             = var.workload_enabled ? local.conversation_cursor_secret_resource_ids : {}
+  scope                = each.value
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.member["business-platform"].principal_id
+}
+
 resource "azurerm_container_app" "member" {
   for_each = local.active_members
 
@@ -520,6 +533,15 @@ resource "azurerm_container_app" "member" {
 
   dynamic "secret" {
     for_each = each.key == "business-platform" ? local.continuity_hmac_secret_uris : {}
+    content {
+      name                = secret.key
+      identity            = azurerm_user_assigned_identity.member[each.key].id
+      key_vault_secret_id = secret.value
+    }
+  }
+
+  dynamic "secret" {
+    for_each = each.key == "business-platform" ? local.conversation_cursor_secret_uris : {}
     content {
       name                = secret.key
       identity            = azurerm_user_assigned_identity.member[each.key].id
@@ -587,6 +609,14 @@ resource "azurerm_container_app" "member" {
         for_each = each.key == "business-platform" ? local.continuity_hmac_secret_uris : {}
         content {
           name        = "ChannelContinuity__EnvelopeHmacKey"
+          secret_name = env.key
+        }
+      }
+
+      dynamic "env" {
+        for_each = each.key == "business-platform" ? local.conversation_cursor_secret_uris : {}
+        content {
+          name        = "Conversation__CursorHmacKey"
           secret_name = env.key
         }
       }
@@ -753,6 +783,7 @@ resource "azurerm_container_app" "member" {
     azurerm_role_assignment.identity_reader_secret,
     azurerm_role_assignment.identity_hmac_secret,
     azurerm_role_assignment.continuity_hmac_secret,
+    azurerm_role_assignment.conversation_cursor_secret,
     azurerm_container_app.temporal,
   ]
 }
