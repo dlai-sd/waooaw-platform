@@ -385,7 +385,7 @@ requirements:
     evidence_class: performance
     test_path_or_plan: tests/pipeline/test_ci_validation_efficiency.py::test_full_runner_avoids_post_copy_metadata_mutation and exact-image standalone/Compose smoke execution
     initial_state: expected-fail
-    result: PLANNED
+    result: PASS
     evidence_refs: [architecture/reference/dockerfiles/Dockerfile.test-runner, tests/pipeline/test_ci_validation_efficiency.py, test-results/wc100/docker-remediation]
     dependencies: [Docker BuildKit, full test-runner image, baseline precheck evidence]
     completion_rule: The Docker contract test, standalone and Compose smoke tests pass; the same WC-100 qualification outcomes pass; and measured stage and wall timings are reported without extrapolation.

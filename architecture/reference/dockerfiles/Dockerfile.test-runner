@@ -58,7 +58,7 @@ RUN pip install --break-system-packages --no-cache-dir -r requirements-test.txt
 COPY --chown=waooaw:waooaw . /workspace/
 
 # Preserve the standalone image contract without copying up the complete source layer.
-COPY --chown=waooaw:waooaw --chmod=0755 scripts/*.sh /workspace/scripts/
+COPY --link --chown=waooaw:waooaw --chmod=0755 scripts/*.sh /workspace/scripts/
 
 USER waooaw
 

@@ -43,7 +43,7 @@ def test_full_runner_avoids_post_copy_metadata_mutation() -> None:
     source = TEST_RUNNER_PATH.read_text(encoding="utf-8")
 
     assert "COPY --chown=waooaw:waooaw . /workspace/" in source
-    assert "COPY --chown=waooaw:waooaw --chmod=0755 scripts/*.sh /workspace/scripts/" in source
+    assert "COPY --link --chown=waooaw:waooaw --chmod=0755 scripts/*.sh /workspace/scripts/" in source
     assert "RUN chmod +x scripts/*.sh" not in source
 
 
