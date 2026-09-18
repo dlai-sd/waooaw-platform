@@ -7,6 +7,7 @@ import os
 import signal
 import shutil
 import subprocess
+import sys
 import threading
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
@@ -25,6 +26,7 @@ INFRASTRUCTURE_MARKERS = (
 )
 ACTIVE_PROCESSES: set[subprocess.Popen[str]] = set()
 ACTIVE_PROCESSES_LOCK = threading.Lock()
+DEFAULT_PROGRESS_INTERVAL_SECONDS = 30.0
 
 
 @dataclass(frozen=True)
@@ -98,7 +100,11 @@ def _write_bounded(path: Path, chunks: list[str]) -> None:
     path.write_bytes(encoded)
 
 
-def _run_command(command: tuple[str, ...], environment: dict[str, str]) -> subprocess.CompletedProcess[str]:
+def _run_command(
+    command: tuple[str, ...],
+    environment: dict[str, str],
+    node_name: str,
+) -> subprocess.CompletedProcess[str]:
     process = subprocess.Popen(  # noqa: S603
         command,
         stdout=subprocess.PIPE,
@@ -110,7 +116,19 @@ def _run_command(command: tuple[str, ...], environment: dict[str, str]) -> subpr
     with ACTIVE_PROCESSES_LOCK:
         ACTIVE_PROCESSES.add(process)
     try:
-        stdout, stderr = process.communicate()
+        progress_interval = float(environment.get("WC100_PROGRESS_INTERVAL_SECONDS", str(DEFAULT_PROGRESS_INTERVAL_SECONDS)))
+        if progress_interval <= 0:
+            raise ValueError("WC100_PROGRESS_INTERVAL_SECONDS must be greater than zero")
+        while True:
+            try:
+                stdout, stderr = process.communicate(timeout=progress_interval)
+                break
+            except subprocess.TimeoutExpired:
+                print(
+                    f"[{utc_now()}] WC-100 precheck still running: {node_name} (pid={process.pid})",
+                    file=sys.stderr,
+                    flush=True,
+                )
     finally:
         with ACTIVE_PROCESSES_LOCK:
             ACTIVE_PROCESSES.discard(process)
@@ -126,6 +144,14 @@ def _terminate_active_processes() -> None:
                 os.killpg(process.pid, signal.SIGTERM)
             except ProcessLookupError:
                 continue
+
+
+class _BlockedInterrupts:
+    def __enter__(self) -> None:
+        self.previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGINT, signal.SIGTERM})
+
+    def __exit__(self, *unused: object) -> None:
+        signal.pthread_sigmask(signal.SIG_SETMASK, self.previous_mask)
 
 
 def _cleanup_compose_projects(nodes: list[PrecheckNode]) -> None:
@@ -164,7 +190,7 @@ def _run_node(node: PrecheckNode, artifact_dir: Path, heavy_slots: threading.Sem
     with heavy_slots if node.heavy else _NullContext():
         while attempts <= node.transient_retries:
             attempts += 1
-            completed = _run_command(node.command, environment)
+            completed = _run_command(node.command, environment, node.name)
             stdout_chunks.append(completed.stdout)
             stderr_chunks.append(completed.stderr)
             return_code = completed.returncode
@@ -279,9 +305,10 @@ def run_prechecks(
                     if name in futures:
                         results[name] = futures[name].result()
             except (KeyboardInterrupt, SystemExit):
-                _terminate_active_processes()
-                _cleanup_compose_projects(runnable)
-                executor.shutdown(wait=True, cancel_futures=True)
+                with _BlockedInterrupts():
+                    _terminate_active_processes()
+                    _cleanup_compose_projects(runnable)
+                    executor.shutdown(wait=True, cancel_futures=True)
                 raise
             else:
                 executor.shutdown(wait=True)

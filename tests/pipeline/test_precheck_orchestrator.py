@@ -135,6 +135,7 @@ def test_interrupt_terminates_workers_and_cleans_compose(monkeypatch: pytest.Mon
             assert cancel_futures is True
 
     monkeypatch.setattr(precheck_orchestrator, "ThreadPoolExecutor", InterruptingExecutor)
+    monkeypatch.setattr(precheck_orchestrator, "_BlockedInterrupts", precheck_orchestrator._NullContext)
     monkeypatch.setattr(precheck_orchestrator, "_terminate_active_processes", lambda: terminated.append("workers"))
     monkeypatch.setattr(
         precheck_orchestrator,
@@ -151,6 +152,23 @@ def test_interrupt_terminates_workers_and_cleans_compose(monkeypatch: pytest.Mon
 
     assert terminated == ["workers"]
     assert cleaned == ["one", "two"]
+
+
+def test_long_running_node_emits_progress_signal(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("WC100_PROGRESS_INTERVAL_SECONDS", "0.02")
+
+    manifest = run(
+        [python_node("slow-gate", "import time; time.sleep(0.06)")],
+        tmp_path,
+        preflight=lambda: (True, []),
+    )
+
+    assert manifest["passed"] is True
+    assert "WC-100 precheck still running: slow-gate" in capsys.readouterr().err
 
 
 def test_transient_infrastructure_retry_is_bounded(tmp_path: Path) -> None:
