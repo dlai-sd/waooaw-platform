@@ -46,7 +46,14 @@ def test_classifier_failure_modes_select_full() -> None:
 def test_global_and_normative_changes_select_full() -> None:
     policy = load_policy()
 
-    for path in (".github/workflows/ci.yaml", "docker-compose.yml", "work-contracts/WC-100-example.md"):
+    for path in (
+        ".github/agent-context/office-platform-it-expert.md",
+        ".github/workflows/ci.yaml",
+        "docker-compose.yml",
+        "scripts/run_wc100_qualification.sh",
+        "tests/pipeline/test_platform_it_story_commentary.py",
+        "work-contracts/WC-100-example.md",
+    ):
         result = classify_paths(policy, [path])
         assert result["full"] is True
         assert result["selected_gates"] == policy["full_gates"]

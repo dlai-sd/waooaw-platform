@@ -57,6 +57,7 @@ components:
     gates: [build:web, test-web, sast:javascript, dep-scan]
     depends_on: [business-platform, professional-runtime]
 global_triggers:
+  - .github/agent-context/office-platform-it-expert.md
   - .github/workflows/**
   - docker-compose*.yml
   - requirements*.txt
@@ -69,6 +70,8 @@ global_triggers:
   - scripts/runner_image_id.sh
   - scripts/verify_runner_image.sh
   - scripts/run_release_qualification.sh
+  - scripts/run_wc100_qualification.sh
+  - tests/pipeline/test_platform_it_story_commentary.py
   - architecture/reference/dockerfiles/**
   - release/**
   - infrastructure/terraform/**
