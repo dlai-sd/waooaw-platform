@@ -24,6 +24,83 @@ env:
 
 jobs:
 
+  validation-plan:
+    name: WC-100 validation plan (Shadow)
+    runs-on: ubuntu-latest
+    outputs:
+      release_required: ${{ steps.plan.outputs.release_required }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Resolve exact validation range
+        id: range
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BASE_SHA: ${{ github.event.before }}
+          PUSH_HEAD_SHA: ${{ github.sha }}
+        run: |
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            base_sha=$PR_BASE_SHA
+            head_sha=$PR_HEAD_SHA
+          else
+            base_sha=$PUSH_BASE_SHA
+            head_sha=$PUSH_HEAD_SHA
+          fi
+          echo "base_sha=$base_sha" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$head_sha" >> "$GITHUB_OUTPUT"
+          mkdir -p test-results/wc100
+          git diff --name-only --find-renames "$base_sha" "$head_sha" > test-results/wc100/changed-files.txt
+      - name: Build validation runner once (C-080)
+        id: runner-build
+        run: |
+          docker compose --profile test build test-runner
+          image_id=$(scripts/runner_image_id.sh test test-runner)
+          echo "image_id=$image_id" >> "$GITHUB_OUTPUT"
+      - name: Record immutable validation runner evidence
+        run: |
+          scripts/record_build_evidence.sh \
+            "$RUNNER_TEMP/build-evidence/validation-plan.json" 'test-runner-validation-plan' \
+            '${{ steps.range.outputs.base_sha }}' '${{ steps.range.outputs.head_sha }}' \
+            '${{ steps.runner-build.outputs.image_id }}' '' \
+            '["change-impact","requirement-ledger"]' 'workflow_build'
+      - name: Compute Shadow selection and validate changed ledgers
+        id: plan
+        env:
+          BASE_SHA: ${{ steps.range.outputs.base_sha }}
+          HEAD_SHA: ${{ steps.range.outputs.head_sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          scripts/verify_runner_image.sh test test-runner '${{ steps.runner-build.outputs.image_id }}'
+          docker compose --profile test run --rm --user root \
+            -e BASE_SHA -e HEAD_SHA -e EVENT_NAME test-runner sh -lc '
+              git config --global --add safe.directory /workspace
+              python scripts/validation_policy.py \
+                --policy validation/engineering-validation.yaml \
+                --base "$BASE_SHA" --head "$HEAD_SHA" \
+                --event "$EVENT_NAME" \
+                --output test-results/wc100/change-impact.json
+              python scripts/validate_requirement_ledger.py \
+                --repository-root /workspace \
+                --changed-file-list test-results/wc100/changed-files.txt
+            '
+          release_required=$(jq -r '.selected_prechecks | index("release_qualification") != null' \
+            test-results/wc100/change-impact.json)
+          echo "release_required=$release_required" >> "$GITHUB_OUTPUT"
+      - name: Retain Shadow selection and validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wc100-validation-plan-${{ github.run_id }}
+          path: |
+            test-results/wc100/change-impact.json
+            test-results/wc100/changed-files.txt
+            ${{ runner.temp }}/build-evidence/validation-plan.json
+          if-no-files-found: error
+          retention-days: 90
+
   # ─── Build and scan all pull-request release images ──────────────────────
   build:
     name: Build Docker image (${{ matrix.service.name }})
@@ -445,6 +522,7 @@ jobs:
   release-qualification:
     name: Release qualification
     runs-on: ubuntu-latest
+    needs: validation-plan
     permissions:
       contents: read
     steps:
@@ -452,32 +530,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Detect release engineering changes
-        id: changes
-        shell: bash
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: |
-          if [[ "$EVENT_NAME" != "pull_request" ]]; then
-            echo "required=true" >> "$GITHUB_OUTPUT"
-          elif git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep -Eq \
-            '^(release/goal006/|scripts/goal006_|scripts/test-wc059-postgres\.sh|scripts/wc091_|scripts/run_wc091_|tests/test_wc012_dry_run\.py|tests/pipeline/test_goal006_|tests/pipeline/test_billing_ce_validator\.py|tests/pipeline/test_wc091_|infrastructure/recovery/phase2/|infrastructure/environment-readiness/|infrastructure/postgres/demo/|infrastructure/terraform/phase2/|\.github/workflows/ci\.yaml|docker-compose\.yml|architecture/reference/dockerfiles/Dockerfile\.test-runner|requirements-test\.txt)'; then
-            echo "required=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "required=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Build release qualification runner once (C-080)
-        if: steps.changes.outputs.required == 'true'
+        if: needs.validation-plan.outputs.release_required == 'true'
         id: runner-build
         run: |
           docker compose --profile test build test-runner
           image_id=$(scripts/runner_image_id.sh test test-runner)
           echo "image_id=$image_id" >> "$GITHUB_OUTPUT"
       - name: Record immutable release runner evidence
-        if: steps.changes.outputs.required == 'true'
+        if: needs.validation-plan.outputs.release_required == 'true'
         run: |
           scripts/record_build_evidence.sh \
             "$RUNNER_TEMP/build-evidence/release-qualification.json" \
@@ -487,7 +548,7 @@ jobs:
             '${{ steps.runner-build.outputs.image_id }}' '' \
             '["release-qualification"]' 'workflow_build'
       - name: Retain immutable release runner evidence
-        if: steps.changes.outputs.required == 'true'
+        if: needs.validation-plan.outputs.release_required == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: wc100-release-runner-${{ github.run_id }}
@@ -496,13 +557,13 @@ jobs:
           retention-days: 90
 
       - name: Run release qualification
-        if: steps.changes.outputs.required == 'true'
+        if: needs.validation-plan.outputs.release_required == 'true'
         env:
           WAOOAW_TEST_RUNNER_IMAGE_ID: ${{ steps.runner-build.outputs.image_id }}
         run: scripts/run_release_qualification.sh
 
       - name: Retain WC-091 Demo data evidence
-        if: always() && steps.changes.outputs.required == 'true'
+        if: always() && needs.validation-plan.outputs.release_required == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: wc091-i1-demo-data-${{ github.run_id }}
@@ -511,7 +572,7 @@ jobs:
           retention-days: 90
 
       - name: Retain Docker Azure CLI runtime evidence
-        if: always() && steps.changes.outputs.required == 'true'
+        if: always() && needs.validation-plan.outputs.release_required == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: goal006-local-azure-runtime-${{ github.run_id }}
@@ -852,6 +913,7 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     needs:
+      - validation-plan
       - build
       - secrets
       - test-dotnet

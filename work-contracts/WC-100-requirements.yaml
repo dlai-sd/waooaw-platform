@@ -13,6 +13,8 @@ requirements:
     evidence_class: integration
     test_path_or_plan: tests/pipeline/test_validation_policy.py::test_unknown_and_invalid_evidence_fail_closed
     initial_state: new
+    result: PASS
+    evidence_refs: [tests/pipeline/test_validation_policy.py, tests/pipeline/test_ci_validation_efficiency.py]
     dependencies: [validation policy, precheck manifest]
     completion_rule: Gate-equivalence and invalid-manifest tests pass.
     residual_risk: GitHub branch-protection configuration remains Founder-controlled external state.
@@ -47,6 +49,8 @@ requirements:
     evidence_class: unit
     test_path_or_plan: tests/pipeline/test_validation_policy.py::test_classifier_direct_reverse_and_unknown_paths
     initial_state: new
+    result: PASS
+    evidence_refs: [tests/pipeline/test_validation_policy.py]
     dependencies: [validation policy]
     completion_rule: Classifier unit and cycle tests pass.
     residual_risk: New repository paths require policy maintenance or trigger full fallback.
@@ -81,6 +85,8 @@ requirements:
     evidence_class: contract
     test_path_or_plan: tests/pipeline/test_ci_validation_efficiency.py::test_coverage_thresholds_are_unchanged
     initial_state: existing-pass
+    result: PASS
+    evidence_refs: [tests/pipeline/test_ci_validation_efficiency.py]
     dependencies: [.github/workflows/ci.yaml]
     completion_rule: Static assertions and representative threshold-failure fixture pass.
     residual_risk: Coverage tool behavior remains dependency-version sensitive.
@@ -91,6 +97,8 @@ requirements:
     evidence_class: contract
     test_path_or_plan: tests/pipeline/test_ci_validation_efficiency.py::test_language_tooling_uses_docker_runners
     initial_state: existing-pass
+    result: PASS
+    evidence_refs: [tests/pipeline/test_ci_validation_efficiency.py]
     dependencies: [Docker Compose, CI workflow]
     completion_rule: Workflow and script enforcement assertions pass.
     residual_risk: GitHub-owned security actions are outside language-test execution.
@@ -101,6 +109,8 @@ requirements:
     evidence_class: contract
     test_path_or_plan: tests/pipeline/test_ci_validation_efficiency.py::test_required_gate_aggregation_is_preserved
     initial_state: existing-pass
+    result: PASS
+    evidence_refs: [tests/pipeline/test_ci_validation_efficiency.py]
     dependencies: [.github/workflows/ci.yaml, PR template]
     completion_rule: Required-gate inventory and authority assertions pass.
     residual_risk: Repository settings require separate read-only verification.
@@ -135,6 +145,8 @@ requirements:
     evidence_class: unit
     test_path_or_plan: tests/pipeline/test_validation_policy.py::test_classifier_failure_modes_select_full
     initial_state: new
+    result: PASS
+    evidence_refs: [tests/pipeline/test_validation_policy.py]
     dependencies: [validation policy]
     completion_rule: All fail-closed fixtures return full=true and the complete gate set.
     residual_risk: Policy omissions are visible only when a path is changed.
@@ -239,6 +251,8 @@ requirements:
     evidence_class: contract
     test_path_or_plan: tests/pipeline/test_validation_policy.py::test_policy_is_single_selection_source
     initial_state: new
+    result: PASS
+    evidence_refs: [validation/engineering-validation.yaml, tests/pipeline/test_validation_policy.py]
     dependencies: [validation/engineering-validation.yaml]
     completion_rule: Duplicate-source prohibition and representative selection tests pass.
     residual_risk: Existing unrelated workflow path filters remain outside WC-100 selection scope.
@@ -259,6 +273,8 @@ requirements:
     evidence_class: manual Founder acceptance
     test_path_or_plan: tests/pipeline/test_validation_policy.py::test_enforced_mode_requires_founder_activation
     initial_state: Founder-reserved
+    result: FOUNDER_RESERVED
+    evidence_refs: [validation/engineering-validation.yaml, tests/pipeline/test_validation_policy.py]
     dependencies: [20 representative Shadow samples, separate Founder decision]
     completion_rule: Negative activation tests pass; Founder-reserved state remains unresolved for WC100-04C.
     residual_risk: Enforced-mode operational evidence does not yet exist.
@@ -299,6 +315,8 @@ requirements:
     evidence_class: integration
     test_path_or_plan: tests/pipeline/test_precheck_orchestrator.py::test_rollback_and_injected_triggers
     initial_state: new
+    result: PASS
+    evidence_refs: [tests/pipeline/test_precheck_orchestrator.py, validation/engineering-validation.yaml]
     dependencies: [environment configuration, failure fixtures]
     completion_rule: Rollback configuration and every injected trigger select safe behavior.
     residual_risk: Historical evidence retention depends on GitHub artifact policy.

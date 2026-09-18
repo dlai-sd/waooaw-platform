@@ -12,11 +12,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+import yaml
+
 from precheck_orchestrator import PrecheckNode, run_prechecks
 from validate_author_review import SECTION, validate_author_review
 from validate_c059 import read_commits, validate_commit, validate_pr_body
 from validate_requirement_ledger import validate_changed_ledgers
 from validate_runtime_lifecycle_evidence import runtime_gate_required
+from validation_policy import classify_paths
 
 AUTHOR_REVIEW = """## Author Review
 
@@ -34,32 +37,7 @@ RUNTIME_EVIDENCE_SECTION = re.compile(
     r"^## Pre-PR Runtime Evidence\s*$\n.*?(?=^##\s|\Z)",
     re.MULTILINE | re.DOTALL,
 )
-BUSINESS_PLATFORM_GATE_PATHS = (
-    "src/business-platform/",
-    "tests/business-platform.Tests/",
-    "infrastructure/postgres/init/",
-    "infrastructure/terraform/phase2/modules/workload/",
-    "architecture/reference/api-specs/business-platform.openapi.yaml",
-)
-RELEASE_QUALIFICATION_GATE_PATHS = (
-    "release/goal006/",
-    "scripts/goal006_",
-    "scripts/test-wc059-postgres.sh",
-    "scripts/wc091_",
-    "scripts/run_wc091_",
-    "tests/test_wc012_dry_run.py",
-    "tests/pipeline/test_goal006_",
-    "tests/pipeline/test_billing_ce_validator.py",
-    "tests/pipeline/test_wc091_",
-    "infrastructure/recovery/phase2/",
-    "infrastructure/environment-readiness/",
-    "infrastructure/postgres/demo/",
-    "infrastructure/terraform/phase2/",
-    ".github/workflows/ci.yaml",
-    "docker-compose.yml",
-    "architecture/reference/dockerfiles/Dockerfile.test-runner",
-    "requirements-test.txt",
-)
+VALIDATION_POLICY_PATH = Path(__file__).resolve().parents[1] / "validation/engineering-validation.yaml"
 
 
 def git(*arguments: str) -> str:
@@ -137,12 +115,23 @@ def validate_runtime_evidence_head(evidence: dict[str, object], head: str) -> di
     return evidence
 
 
+def selected_prechecks(changed_files: list[str]) -> set[str]:
+    loaded = yaml.safe_load(VALIDATION_POLICY_PATH.read_text(encoding="utf-8"))
+    if not isinstance(loaded, dict):
+        raise ValueError("validation policy root must be a mapping")
+    selection = classify_paths(loaded, changed_files)
+    selected = selection.get("selected_prechecks")
+    if not isinstance(selected, list) or not all(isinstance(gate, str) for gate in selected):
+        raise ValueError("validation policy returned invalid prechecks")
+    return set(selected)
+
+
 def business_platform_gate_required(changed_files: list[str]) -> bool:
-    return any(path.startswith(BUSINESS_PLATFORM_GATE_PATHS) for path in changed_files)
+    return "business_platform" in selected_prechecks(changed_files)
 
 
 def release_qualification_gate_required(changed_files: list[str]) -> bool:
-    return any(path.startswith(RELEASE_QUALIFICATION_GATE_PATHS) for path in changed_files)
+    return "release_qualification" in selected_prechecks(changed_files)
 
 
 def expected_pr_labels(branch: str) -> tuple[str, str, str]:
@@ -185,6 +174,7 @@ def run_ci_prechecks(base: str, head: str, changed_files: list[str]) -> dict[str
     docker = shutil.which("docker")
     if docker is None:
         raise ValueError("docker executable is required for PR prechecks")
+    applicable_prechecks = selected_prechecks(changed_files)
     nodes = [
         PrecheckNode(
             name="gitleaks",
@@ -206,7 +196,7 @@ def run_ci_prechecks(base: str, head: str, changed_files: list[str]) -> dict[str
             ),
         )
     ]
-    if business_platform_gate_required(changed_files):
+    if "business_platform" in applicable_prechecks:
         nodes.append(
             PrecheckNode(
                 name="business_platform",
@@ -232,7 +222,7 @@ def run_ci_prechecks(base: str, head: str, changed_files: list[str]) -> dict[str
                 heavy=True,
             )
         )
-    if release_qualification_gate_required(changed_files):
+    if "release_qualification" in applicable_prechecks:
         nodes.append(
             PrecheckNode(
                 name="release_qualification",

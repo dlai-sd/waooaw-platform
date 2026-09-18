@@ -1,0 +1,90 @@
+schema: waooaw.engineering-validation-policy/v1
+version: wc100-shadow-v1
+mode: shadow
+enforced_activation:
+  founder_approved: false
+  minimum_shadow_samples: 20
+  unresolved_false_negatives: null
+full_gates:
+  - build
+  - secrets
+  - test-dotnet
+  - test-python
+  - test-web
+  - spec-lint
+  - sast
+  - dep-scan
+  - license-check
+  - release-qualification
+  - constitutional-commit-gate
+  - requirement-ledger
+  - author-review-gate
+  - authorization-tier-check
+components:
+  constitutional-engine:
+    paths: [src/constitutional-engine/**, tests/constitutional-engine.Tests/**, architecture/reference/proto/**]
+    gates: [build:constitutional-engine, test-dotnet:constitutional-engine, spec-lint, sast:csharp, dep-scan]
+    depends_on: []
+  business-platform:
+    paths:
+      - src/business-platform/**
+      - tests/business-platform.Tests/**
+      - infrastructure/postgres/init/**
+      - architecture/reference/api-specs/business-platform.openapi.yaml
+    gates: [build:business-platform, test-dotnet:business-platform, spec-lint, sast:csharp, dep-scan, release-qualification]
+    depends_on: [constitutional-engine]
+  professional-runtime:
+    paths:
+      - src/professional-runtime/**
+      - tests/professional-runtime/**
+      - architecture/reference/api-specs/professional-runtime.openapi.yaml
+    gates: [build:professional-runtime, test-python:professional-runtime, spec-lint, sast:python, dep-scan]
+    depends_on: [constitutional-engine, business-platform]
+  ai-runtime:
+    paths: [src/ai-runtime/**, tests/ai-runtime/**, src/trust-layer/**, tests/trust-layer/**]
+    gates: [build:ai-runtime, test-python:ai-runtime, sast:python, dep-scan]
+    depends_on: [constitutional-engine]
+  billing-engine:
+    paths: [src/billing-engine/**, tests/billing-engine/**, tests/pipeline/test_billing_ce_validator.py]
+    gates: [build:billing-engine, test-python:billing-engine, sast:python, dep-scan, release-qualification]
+    depends_on: [constitutional-engine, business-platform]
+  agent-runtime-adapter-digital-marketing:
+    paths: [src/agent-adapters/**, tests/agent-adapters/**, tests/professional-runtime/test_dma_release_1_skills.py]
+    gates: [build:agent-runtime-adapter-digital-marketing, test-python:professional-runtime, sast:python, dep-scan]
+    depends_on: [professional-runtime, ai-runtime]
+  web:
+    paths: [web/**]
+    gates: [build:web, test-web, sast:javascript, dep-scan]
+    depends_on: [business-platform, professional-runtime]
+global_triggers:
+  - .github/workflows/**
+  - docker-compose*.yml
+  - requirements*.txt
+  - pyproject.toml
+  - validation/engineering-validation.yaml
+  - scripts/prepare_pr_body.py
+  - scripts/precheck_orchestrator.py
+  - scripts/build_evidence.py
+  - scripts/record_build_evidence.sh
+  - scripts/runner_image_id.sh
+  - scripts/verify_runner_image.sh
+  - scripts/run_release_qualification.sh
+  - architecture/reference/dockerfiles/**
+  - release/**
+  - infrastructure/terraform/**
+  - infrastructure/recovery/**
+  - infrastructure/environment-readiness/**
+  - work-contracts/**
+documentation_only:
+  - README.md
+  - CHANGELOG.md
+  - docs/**
+prechecks:
+  gitleaks:
+    always: true
+  business_platform:
+    components: [business-platform]
+  release_qualification:
+    gates: [release-qualification]
+release_full_inventory: true
+main_full_inventory: true

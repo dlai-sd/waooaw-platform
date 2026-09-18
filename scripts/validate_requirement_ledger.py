@@ -161,11 +161,15 @@ def main() -> int:
     parser.add_argument("--ledger", type=Path)
     parser.add_argument("--contract", type=Path)
     parser.add_argument("--changed-file", action="append", default=[])
+    parser.add_argument("--changed-file-list", type=Path)
     parser.add_argument("--repository-root", type=Path, default=Path.cwd())
     arguments = parser.parse_args()
 
-    if arguments.changed_file:
-        violations = validate_changed_ledgers(arguments.repository_root, arguments.changed_file)
+    changed_files = list(arguments.changed_file)
+    if arguments.changed_file_list is not None:
+        changed_files.extend(arguments.changed_file_list.read_text(encoding="utf-8").splitlines())
+    if changed_files:
+        violations = validate_changed_ledgers(arguments.repository_root, changed_files)
         if violations:
             print("Requirement ledger validation failed:", file=sys.stderr)
             for violation in violations:
