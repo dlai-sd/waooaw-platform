@@ -35,6 +35,8 @@ requirements:
     evidence_class: integration
     test_path_or_plan: tests/pipeline/test_validation_policy.py::test_build_identity_reuse_and_invalidation
     initial_state: new
+    result: PASS
+    evidence_refs: [tests/pipeline/test_build_evidence.py, tests/pipeline/test_ci_validation_efficiency.py]
     dependencies: [Docker image inspection, input manifest]
     completion_rule: Build-count and digest-consumption assertions pass.
     residual_risk: Registry retention and hosted cache availability remain environment-dependent.
@@ -109,6 +111,8 @@ requirements:
     evidence_class: security
     test_path_or_plan: tests/pipeline/test_validation_policy.py::test_reuse_manifest_negative_matrix
     initial_state: new
+    result: PASS
+    evidence_refs: [tests/pipeline/test_build_evidence.py]
     dependencies: [build evidence schema]
     completion_rule: Every negative manifest fixture fails with a specific reason.
     residual_risk: Trust-root compromise is outside repository-local validation.
@@ -119,6 +123,8 @@ requirements:
     evidence_class: unit
     test_path_or_plan: tests/pipeline/test_validation_policy.py::test_each_input_group_invalidates_identity
     initial_state: new
+    result: PASS
+    evidence_refs: [tests/pipeline/test_build_evidence.py]
     dependencies: [input files and fixtures]
     completion_rule: Per-input mutation tests produce distinct complete digests.
     residual_risk: Undeclared external base-image updates require freshness invalidation input.
@@ -209,6 +215,8 @@ requirements:
     evidence_class: integration
     test_path_or_plan: tests/pipeline/test_ci_validation_efficiency.py::test_runner_images_are_built_once_and_verified
     initial_state: new
+    result: PASS
+    evidence_refs: [tests/pipeline/test_ci_validation_efficiency.py, scripts/verify_runner_image.sh]
     dependencies: [Docker build metadata, CI artifacts]
     completion_rule: Build-spy and workflow assertions prove one producer and digest verification by consumers.
     residual_risk: GitHub artifact transfer cost may offset some build savings.
@@ -219,6 +227,8 @@ requirements:
     evidence_class: security
     test_path_or_plan: tests/pipeline/test_validation_policy.py::test_build_evidence_provenance_and_tamper_detection
     initial_state: new
+    result: PASS
+    evidence_refs: [tests/pipeline/test_build_evidence.py, scripts/record_build_evidence.sh]
     dependencies: [build evidence manifest, trusted source marker]
     completion_rule: Complete fixture passes; every tampered field fails.
     residual_risk: Registry-side attestation validation remains a release concern.

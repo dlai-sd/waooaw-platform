@@ -6,7 +6,11 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$ROOT"
 
-docker compose build test-runner
+if [ -z "${WAOOAW_TEST_RUNNER_IMAGE_ID:-}" ]; then
+  docker compose build test-runner
+  WAOOAW_TEST_RUNNER_IMAGE_ID=$(scripts/runner_image_id.sh test test-runner)
+fi
+scripts/verify_runner_image.sh test test-runner "$WAOOAW_TEST_RUNNER_IMAGE_ID"
 docker compose run --rm test-runner pytest -q \
   tests/test_wc012_dry_run.py \
   tests/pipeline/test_goal006_data_recovery.py \
@@ -19,6 +23,7 @@ docker compose run --rm test-runner pytest -q \
   tests/pipeline/test_wc091_environment_readiness.py -rA
 scripts/test-wc059-postgres.sh
 bash scripts/run_wc091_demo_data_verification.sh
+scripts/verify_runner_image.sh test test-runner "$WAOOAW_TEST_RUNNER_IMAGE_ID"
 docker compose run --rm test-runner python \
   scripts/goal006_release_simulator.py \
   release/goal006/promotion-policy.json \
