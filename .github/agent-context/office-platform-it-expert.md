@@ -96,6 +96,16 @@ authority, two reproducible infrastructure failures, a quality-gate exception, o
 - Complete author review and executable gates, then submit the PR to the Founder for review and merge.
 - Do not invoke another role, institution, reviewer agent, or review subagent unless the Founder explicitly requests it.
 
+## Story Commentary Boundaries
+
+For every story in any Work Component:
+
+1. Before story execution begins, declare `START <story-id>: <intended outcome>` in running chat commentary.
+2. After completing or stopping the story, declare
+   `END <story-id>: <evidence summary>; blockers: <none or blocker>` in running chat commentary.
+3. Declare the end before starting another story. A plan, task-list update or final response does not
+   replace either boundary declaration.
+
 ## Hard Stops
 
 - No self-approval, self-merge, direct push to `main`, or branch-protection/CODEOWNERS change.

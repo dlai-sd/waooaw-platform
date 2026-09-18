@@ -35,18 +35,21 @@ docker compose --profile test run --rm --user root \
     tests/pipeline/test_validation_policy.py \
     tests/pipeline/test_ci_validation_efficiency.py \
     tests/pipeline/test_prepare_pr_body.py \
+    tests/pipeline/test_platform_it_story_commentary.py \
     tests/pipeline/test_wc100_integrated_qualification.py
   ruff check \
     scripts/build_evidence.py scripts/precheck_orchestrator.py scripts/prepare_pr_body.py \
     scripts/validate_requirement_ledger.py scripts/validation_policy.py scripts/wc100_measurement.py \
     tests/pipeline/test_build_evidence.py tests/pipeline/test_precheck_orchestrator.py \
-    tests/pipeline/test_prepare_pr_body.py tests/pipeline/test_requirement_ledger.py \
+    tests/pipeline/test_platform_it_story_commentary.py tests/pipeline/test_prepare_pr_body.py \
+    tests/pipeline/test_requirement_ledger.py \
     tests/pipeline/test_validation_policy.py tests/pipeline/test_wc100_integrated_qualification.py
   ruff format --check \
     scripts/build_evidence.py scripts/precheck_orchestrator.py scripts/prepare_pr_body.py \
     scripts/validate_requirement_ledger.py scripts/validation_policy.py scripts/wc100_measurement.py \
     tests/pipeline/test_build_evidence.py tests/pipeline/test_precheck_orchestrator.py \
-    tests/pipeline/test_prepare_pr_body.py tests/pipeline/test_requirement_ledger.py \
+    tests/pipeline/test_platform_it_story_commentary.py tests/pipeline/test_prepare_pr_body.py \
+    tests/pipeline/test_requirement_ledger.py \
     tests/pipeline/test_validation_policy.py tests/pipeline/test_wc100_integrated_qualification.py
   python scripts/validation_policy.py \
     --policy validation/engineering-validation.yaml \
