@@ -25,7 +25,9 @@ public sealed class RelationshipWorkspaceController(
     EmploymentRelationshipService relationships,
     IRelationshipWorkspaceOwnerGateway owners,
     RelationshipEvidenceService? evidence = null,
-    RelationshipConfigurationService? configuration = null) : ControllerBase
+    RelationshipConfigurationService? configuration = null,
+    IOperationalMandateResolver? mandateResolver = null,
+    PerformanceReviewService? performanceReviews = null) : ControllerBase
 {
     private static readonly string[] SectionTypes =
         ["PLAN", "ATTENTION", "WORK", "RESULTS", "USAGE_BUDGET", "RIGHTS_CONTROLS"];
@@ -52,6 +54,10 @@ public sealed class RelationshipWorkspaceController(
         var activeGoals = goals.Where(item => NormalizeGoalStatus(item.Goal.Status) == "ACTIVE").ToArray();
         var goalsVerified = activeGoals.Length > 0
             && activeGoals.All(item => item.CurrentDecision?.Decision == "VERIFIED");
+        var mandateReadiness = mandateResolver is not null && TryGetParticipantId(out var participantId)
+            ? await mandateResolver.GetReadinessAsync(
+                relationship.TenantId, participantId, relationshipId, cancellationToken)
+            : new OperationalMandateReadiness(false, ["The admitted artifact and runtime binding coordinates are unavailable."]);
         var sections = SectionTypes.Select(type => Section(type,
             type switch
             {
@@ -82,7 +88,7 @@ public sealed class RelationshipWorkspaceController(
             },
             lifecycleProfile = LifecycleProfile(
                 relationship, configurationState, activeGoals.Length, goalsVerified,
-                execution, commercial, now),
+                execution, commercial, mandateReadiness, now),
             sections,
         });
     }
@@ -221,22 +227,89 @@ public sealed class RelationshipWorkspaceController(
         });
     }
 
+    [HttpGet("performance")]
+    public async Task<IActionResult> GetPerformanceAsync(Guid relationshipId, CancellationToken cancellationToken)
+    {
+        var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
+        if (relationship is null) return NotFoundProblem();
+        if (performanceReviews is null)
+            return WorkspaceProblem(503, "RELATIONSHIP_WORKSPACE_DEPENDENCY_UNAVAILABLE");
+        var reviews = await performanceReviews.ListAsync(
+            relationship.TenantId, relationshipId, cancellationToken);
+        return Ok(new
+        {
+            sectionType = "PERFORMANCE",
+            currencyState = reviews.Count > 0 ? "CURRENT" : "UNAVAILABLE",
+            provenance = Provenance("BP", reviews.Count > 0
+                ? $"performance-{reviews[0].ReviewId:D}" : "unavailable-1", DateTimeOffset.UtcNow),
+            availableCommands = reviews.Count > 0 ? new[] { new
+            {
+                commandKind = "RESPOND_TO_PERFORMANCE_REVIEW",
+                availability = "AVAILABLE",
+            } } : Array.Empty<object>(),
+            current = reviews.FirstOrDefault(),
+            history = reviews.Skip(1).ToArray(),
+        });
+    }
+
     [HttpGet("operations")]
     public async Task<IActionResult> GetOperationsAsync(Guid relationshipId, CancellationToken cancellationToken)
     {
         var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
         if (relationship is null) return NotFoundProblem();
         if (configuration is null) return WorkspaceProblem(503, "RELATIONSHIP_WORKSPACE_DEPENDENCY_UNAVAILABLE");
-        var goals = await configuration.GetPortalGoalsAsync(relationship.TenantId, relationshipId, cancellationToken);
+        var configurationTask = configuration.GetPortalConfigurationAsync(
+            relationship.TenantId, relationshipId, cancellationToken);
+        var skillsTask = configuration.GetPortalSkillsAsync(
+            relationship.TenantId, relationshipId, cancellationToken);
+        var goalsTask = configuration.GetPortalGoalsAsync(
+            relationship.TenantId, relationshipId, cancellationToken);
+        var ownerContext = OwnerContext(relationship);
+        var executionTask = owners.GetExecutionAsync(ownerContext, cancellationToken);
+        var commercialTask = owners.GetCommercialAsync(ownerContext, cancellationToken);
+        var reviewsTask = performanceReviews?.ListAsync(
+            relationship.TenantId, relationshipId, cancellationToken)
+            ?? Task.FromResult<IReadOnlyList<PerformanceReviewProjectionV1>>([]);
+        await Task.WhenAll(configurationTask, skillsTask, goalsTask, executionTask, commercialTask, reviewsTask);
+        var configurationState = await configurationTask;
+        var acceptedSkills = (await skillsTask).Where(item => item.Status == "ACCEPTED").ToArray();
+        var goals = await goalsTask;
         var requiredGoalIds = goals.Where(item => NormalizeGoalStatus(item.Goal.Status) == "ACTIVE")
             .Select(item => item.Goal.GoalId).ToArray();
         var activeGoals = goals.Where(item => NormalizeGoalStatus(item.Goal.Status) == "ACTIVE").ToArray();
         var verifiedGoalIds = activeGoals.Where(item => item.CurrentDecision?.Decision == "VERIFIED")
             .Select(item => item.Goal.GoalId).ToArray();
-        var eligible = requiredGoalIds.Length > 0 && verifiedGoalIds.Length == requiredGoalIds.Length;
-        var blockedReasons = eligible ? Array.Empty<string>() : requiredGoalIds.Length == 0
-            ? new[] { "At least one active goal must be customer-verified before Operations is available." }
-            : new[] { "Customer verification is required for every active goal before Operations is available." };
+        var execution = await executionTask;
+        var commercial = await commercialTask;
+        var currentReview = (await reviewsTask).FirstOrDefault();
+        var activeRelationship = relationship.State is EmploymentRelationshipState.Active
+            or EmploymentRelationshipState.TrialActive;
+        var skillsReady = acceptedSkills.Length > 0 && acceptedSkills.All(item =>
+            item.GoalId.HasValue && verifiedGoalIds.Contains(item.GoalId.Value));
+        var blockedReasons = new List<string>();
+        if (!activeRelationship) blockedReasons.Add("The relationship must be active before Operations is available.");
+        if (configurationState.Onboard is null) blockedReasons.Add("Onboarding preferences must be confirmed.");
+        if (!configurationState.InductComplete) blockedReasons.Add("Required induction context must be confirmed.");
+        if (acceptedSkills.Length == 0) blockedReasons.Add("At least one admitted Skill must be accepted.");
+        if (requiredGoalIds.Length == 0) blockedReasons.Add("At least one active goal must be customer-verified.");
+        else if (verifiedGoalIds.Length != requiredGoalIds.Length)
+            blockedReasons.Add("Customer verification is required for every active goal.");
+        if (!skillsReady && acceptedSkills.Length > 0)
+            blockedReasons.Add("Every accepted Skill must bind a current verified goal.");
+        if (execution?.State != "CURRENT") blockedReasons.Add("Professional Runtime readiness is not current.");
+        if (commercial?.CurrencyState != "CURRENT") blockedReasons.Add("Commercial readiness is not current.");
+        if (!relationship.AcceptedContractId.HasValue)
+            blockedReasons.Add("An accepted employment contract is required.");
+        if (!relationship.AuthoritySnapshotId.HasValue)
+            blockedReasons.Add("A current authority snapshot is required.");
+        if (currentReview?.ReassessmentRequired == true)
+            blockedReasons.Add("The current performance review requires reassessment before affected work can continue.");
+        var mandateReadiness = mandateResolver is not null && TryGetParticipantId(out var participantId)
+            ? await mandateResolver.GetReadinessAsync(
+                relationship.TenantId, participantId, relationshipId, cancellationToken)
+            : new OperationalMandateReadiness(false, ["The admitted artifact and runtime binding coordinates are unavailable."]);
+        blockedReasons.AddRange(mandateReadiness.BlockedReasons);
+        var eligible = blockedReasons.Count == 0;
         return Ok(new
         {
             sectionType = "OPERATIONS",
@@ -246,9 +319,11 @@ public sealed class RelationshipWorkspaceController(
             eligibilityState = eligible ? "ELIGIBLE" : "LOCKED",
             requiredGoalIds,
             verifiedGoalIds,
-            blockedReasons,
-            reassessmentRequired = activeGoals.Any(item => item.HasPriorDecision && item.CurrentDecision is null),
+            blockedReasons = blockedReasons.ToArray(),
+            reassessmentRequired = activeGoals.Any(item => item.HasPriorDecision && item.CurrentDecision is null)
+                || currentReview?.ReassessmentRequired == true,
             dependentOutcomeIds = Array.Empty<Guid>(),
+            operationalMandate = (object?)null,
         });
     }
 
@@ -357,6 +432,9 @@ public sealed class RelationshipWorkspaceController(
         if (commandKind is "SELECT_SKILL" or "UPDATE_SKILL" or "ACCEPT_SKILL" or "DEFER_SKILL")
             return await SubmitSkillCommandAsync(
                 relationship, command, payload, commandKind, parsedKey, cancellationToken);
+        if (commandKind == "RESPOND_TO_PERFORMANCE_REVIEW")
+            return await SubmitPerformanceReviewCommandAsync(
+                relationship, command, payload, parsedKey, cancellationToken);
         if (commandKind != "VERIFY_GOAL") return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_BLOCKED");
         if (configuration is null) return WorkspaceProblem(503, "RELATIONSHIP_WORKSPACE_DEPENDENCY_UNAVAILABLE");
         if (!TryGetString(command, "schemaVersion", out var schemaVersion) || schemaVersion != "1.0"
@@ -434,6 +512,78 @@ public sealed class RelationshipWorkspaceController(
         }
     }
 
+    private async Task<IActionResult> SubmitPerformanceReviewCommandAsync(
+        EmploymentRelationship relationship, JsonElement command, JsonElement payload,
+        Guid idempotencyKey, CancellationToken cancellationToken)
+    {
+        if (performanceReviews is null)
+            return WorkspaceProblem(503, "RELATIONSHIP_WORKSPACE_DEPENDENCY_UNAVAILABLE");
+        if (!TryGetString(command, "schemaVersion", out var schemaVersion) || schemaVersion != "1.0"
+            || !TryGetString(command, "expectedWorkspaceVersion", out var expectedWorkspaceVersion)
+            || expectedWorkspaceVersion != $"relationship-{relationship.StateVersion}"
+            || !TryGetString(command, "expectedSubjectVersion", out var expectedSubjectVersion)
+            || !TryGetGuid(payload, "reviewId", out var reviewId)
+            || !payload.TryGetProperty("reviewRevision", out var revisionElement)
+            || !revisionElement.TryGetInt32(out var reviewRevision)
+            || expectedSubjectVersion != $"performance-{reviewId:D}-{reviewRevision}"
+            || !TryGetString(payload, "decision", out var decision)
+            || !TryGetOptionalString(payload, "reason", out var reason))
+            return WorkspaceProblem(400, "RELATIONSHIP_WORKSPACE_REQUEST_INVALID");
+        if (!TryGetParticipantId(out var actorParticipantId)) return NotFoundProblem();
+        var actorRole = await relationships.GetActiveRoleAsync(
+            relationship.TenantId, relationship.RelationshipId, actorParticipantId, cancellationToken);
+        if (actorRole is not (RelationshipParticipantRole.Evaluator or RelationshipParticipantRole.Employer))
+            return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_BLOCKED");
+        if (!HasFreshAal3()) return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_ASSURANCE_REQUIRED");
+        var materialRequestHash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
+            {
+                schemaVersion,
+                expectedWorkspaceVersion,
+                expectedSubjectVersion,
+                commandKind = "RESPOND_TO_PERFORMANCE_REVIEW",
+                reviewId,
+                reviewRevision,
+                decision,
+                reason = reason?.Trim(),
+            }))));
+        try
+        {
+            var result = await performanceReviews.RespondAsync(
+                relationship.TenantId, relationship.RelationshipId, actorParticipantId,
+                reviewId, reviewRevision, decision, reason, idempotencyKey, materialRequestHash,
+                Guid.TryParse(User.FindFirstValue("correlation_id"), out var correlationId)
+                    ? correlationId : Guid.NewGuid(), cancellationToken);
+            var receipt = new
+            {
+                schemaVersion = "1.0",
+                commandId = result.Response.ResponseId,
+                commandKind = "RESPOND_TO_PERFORMANCE_REVIEW",
+                status = "COMPLETED",
+                acceptedAt = result.Response.OccurredAt,
+                replayed = result.Replayed,
+            };
+            return result.Replayed ? Ok(receipt) : StatusCode(202, receipt);
+        }
+        catch (PerformanceReviewInvalidException)
+        {
+            return WorkspaceProblem(400, "RELATIONSHIP_WORKSPACE_REQUEST_INVALID");
+        }
+        catch (KeyNotFoundException) { return NotFoundProblem(); }
+        catch (PerformanceReviewConflictException)
+        {
+            return WorkspaceProblem(409, "RELATIONSHIP_STATE_CONFLICT");
+        }
+        catch (ConstitutionalActionDeniedException)
+        {
+            return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_BLOCKED");
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return WorkspaceProblem(503, "CONSTITUTIONAL_ENGINE_UNAVAILABLE");
+        }
+    }
+
     private async Task<IActionResult> SubmitSkillCommandAsync(
         EmploymentRelationship relationship, JsonElement command, JsonElement payload,
         string commandKind, Guid idempotencyKey, CancellationToken cancellationToken)
@@ -482,7 +632,20 @@ public sealed class RelationshipWorkspaceController(
     public async Task<IActionResult> GetCommandAsync(Guid relationshipId, Guid commandId, CancellationToken cancellationToken)
     {
         var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
-        if (relationship is null || configuration is null) return NotFoundProblem();
+        if (relationship is null) return NotFoundProblem();
+        if (performanceReviews is not null)
+        {
+            var response = await performanceReviews.GetResponseAsync(
+                relationship.TenantId, relationshipId, commandId, cancellationToken);
+            if (response is not null) return Ok(new
+            {
+                schemaVersion = "1.0", commandId = response.ResponseId,
+                commandKind = "RESPOND_TO_PERFORMANCE_REVIEW", status = "COMPLETED", relationshipId,
+                steps = new[] { new { owner = "BP", status = "COMPLETED" } },
+                resolvedAt = response.OccurredAt,
+            });
+        }
+        if (configuration is null) return NotFoundProblem();
         var skillDecision = await configuration.GetSkillDecisionAsync(
             relationship.TenantId, relationshipId, commandId, cancellationToken);
         if (skillDecision is not null) return Ok(new
@@ -759,6 +922,7 @@ public sealed class RelationshipWorkspaceController(
         bool goalsVerified,
         ExecutionOwnerProjection? execution,
         CommercialOwnerProjection? commercial,
+        OperationalMandateReadiness mandateReadiness,
         DateTimeOffset producedAt)
     {
         var onboardVerified = configuration?.Onboard is not null;
@@ -769,8 +933,9 @@ public sealed class RelationshipWorkspaceController(
         var outcomeState = goalsVerified ? "VERIFIED" : "BLOCKED";
         var active = relationship.State is EmploymentRelationshipState.Active
             or EmploymentRelationshipState.TrialActive;
-        var operationsReady = active && goalsVerified
+        var ownerInputsReady = active && goalsVerified
             && execution?.State == "CURRENT" && commercial?.CurrencyState == "CURRENT";
+        var operationsReady = ownerInputsReady && mandateReadiness.Ready;
         return new
         {
             agentInstanceId = relationship.AgentInstanceId,
@@ -801,8 +966,10 @@ public sealed class RelationshipWorkspaceController(
                     goalsVerified ? "Check operational eligibility." : "Complete goal verification."),
                 LifecycleStage("OPERATIONS", operationsReady ? "VERIFIED" : "BLOCKED", "BP",
                     operationsReady ? $"relationship-{relationship.StateVersion}" : null,
-                    "Relationship, goals, execution and commercial owner truth are current.",
-                    operationsReady ? [] : ["One or more operational dependencies are not current."],
+                    "Relationship, goals, owner truth and a complete immutable mandate are current.",
+                    operationsReady ? [] : ownerInputsReady
+                        ? mandateReadiness.BlockedReasons.ToArray()
+                        : ["One or more operational dependencies are not current."],
                     operationsReady ? "Continue governed work." : "Resolve the named lifecycle dependencies."),
             },
         };

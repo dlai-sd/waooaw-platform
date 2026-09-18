@@ -120,9 +120,16 @@ public sealed class RelationshipWorkspaceControllerTests
     }
 
     [Fact]
-    public async Task VerifyGoal_CompletesReplaysAndUnlocksOperations()
+    public async Task VerifyGoal_CompletesReplaysButOperationsRemainLockedWithoutCompleteMandate()
     {
-        var (controller, relationship, _, configuration) = await CreateControllerAsync();
+        var (controller, relationship, gateway, configuration) = await CreateControllerAsync(
+            EmploymentRelationshipState.Active);
+        await controller.UpdateOnboardAsync(
+            relationship.RelationshipId,
+            new RelationshipOnboardRequest("1.0.0", "Maya", "COMPACT", "ABSOLUTE", "DARK"),
+            Guid.NewGuid().ToString("D"), CancellationToken.None);
+        foreach (var fieldType in new[] { "NAME", "LOCATION", "BUSINESS_NATURE" })
+            await ConfirmContextAsync(configuration, relationship, fieldType);
         var goal = await configuration.SaveGoalAsync(
             relationship.TenantId, relationship.RelationshipId, "Increase bookings", "10 monthly",
             "Confirmed bookings", "15 monthly", "Customer records", "ACCEPTED", CancellationToken.None);
@@ -159,9 +166,53 @@ public sealed class RelationshipWorkspaceControllerTests
         Assert.True(JsonSerializer.SerializeToElement(replay.Value).GetProperty("replayed").GetBoolean());
         Assert.Equal("VERIFIED", Assert.Single(goals.GetProperty("activeGoals").EnumerateArray())
             .GetProperty("verificationStatus").GetString());
-        Assert.Equal("ELIGIBLE", operations.GetProperty("eligibilityState").GetString());
+        gateway.Execution = new ExecutionOwnerProjection("execution-current", "CURRENT", DateTimeOffset.UtcNow);
+        gateway.Commercial = new CommercialOwnerProjection(
+            "commercial-current", "CURRENT", "INR 0", "INR 0", "WITHIN_LIMIT", DateTimeOffset.UtcNow);
+        operations = Json(await controller.GetOperationsAsync(relationship.RelationshipId, CancellationToken.None));
+        Assert.Equal("LOCKED", operations.GetProperty("eligibilityState").GetString());
         Assert.Equal(goal.GoalId, Assert.Single(operations.GetProperty("verifiedGoalIds").EnumerateArray()).GetGuid());
+        Assert.Equal(JsonValueKind.Null, operations.GetProperty("operationalMandate").ValueKind);
+        Assert.Contains(operations.GetProperty("blockedReasons").EnumerateArray(),
+            reason => reason.GetString()!.Contains("runtime binding coordinates", StringComparison.Ordinal));
         Assert.Equal("COMPLETED", outcome.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task Operations_RemainLockedWithoutActiveRelationshipAndDoNotIssueMandate()
+    {
+        var (controller, relationship, _, configuration) = await CreateControllerAsync(
+            EmploymentRelationshipState.ContractAcceptedPendingPayment);
+        var goal = await configuration.SaveGoalAsync(
+            relationship.TenantId, relationship.RelationshipId, "Increase bookings", "10 monthly",
+            "Confirmed bookings", "15 monthly", "Customer records", "ACCEPTED", CancellationToken.None);
+        await configuration.SaveSkillAsync(
+            relationship.TenantId, relationship.RelationshipId, "local-seo", "1.0.0", goal.GoalId,
+            "NOT_GRANTED", "APPLICABLE", null, "ACCEPTED", CancellationToken.None);
+        var version = RelationshipConfigurationService.GetGoalVersion(goal);
+        var command = JsonSerializer.SerializeToElement(new
+        {
+            schemaVersion = "1.0",
+            expectedWorkspaceVersion = $"relationship-{relationship.StateVersion}",
+            expectedSubjectVersion = version,
+            payload = new
+            {
+                commandKind = "VERIFY_GOAL",
+                goalId = goal.GoalId,
+                goalVersion = version,
+                verificationDecision = "VERIFIED",
+            },
+        });
+        Assert.Equal(202, Assert.IsType<ObjectResult>(await controller.SubmitCommandAsync(
+            relationship.RelationshipId, command, Guid.NewGuid().ToString("D"), CancellationToken.None)).StatusCode);
+
+        var operations = Json(await controller.GetOperationsAsync(
+            relationship.RelationshipId, CancellationToken.None));
+
+        Assert.Equal("LOCKED", operations.GetProperty("eligibilityState").GetString());
+        Assert.Contains("active", operations.GetProperty("blockedReasons")[0].GetString(),
+            StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(JsonValueKind.Null, operations.GetProperty("operationalMandate").ValueKind);
     }
 
     [Fact]
@@ -453,6 +504,87 @@ public sealed class RelationshipWorkspaceControllerTests
     }
 
     [Fact]
+    public async Task PerformanceReviewResponseAcceptsReplaysReconcilesAndRelocksOperations()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var constitutional = new RecordingRelationshipConstitutionalGateway();
+        var relationships = new EmploymentRelationshipService(
+            factory, constitutional, NullLogger<EmploymentRelationshipService>.Instance);
+        var tenantId = Guid.NewGuid();
+        var participantId = Guid.NewGuid();
+        var admitted = await relationships.AdmitAsync(
+            tenantId, participantId, Guid.NewGuid(), "DMA", Guid.NewGuid(), CancellationToken.None);
+        var configuration = new RelationshipConfigurationService(factory, constitutional);
+        await configuration.SaveSkillAsync(
+            tenantId, admitted.Relationship.RelationshipId, "CUSTOMER_PROFILING", "1.0.0", null,
+            "NOT_GRANTED", "APPLICABLE", null, "ACCEPTED", CancellationToken.None);
+        var reviews = new PerformanceReviewService(factory, constitutional);
+        var review = await reviews.AppendAsync(
+            tenantId, admitted.Relationship.RelationshipId, "CUSTOMER_PROFILING", "1.0.0",
+            new PerformanceReviewDraftV1(
+                "review-policy-1", DateTimeOffset.UtcNow.AddDays(-30), DateTimeOffset.UtcNow,
+                new Dictionary<string, string> { ["professionalRuntime"] = "pr-17" },
+                new("DELIVERED", "Delivered.", "RECORDED"),
+                new("GOOD", "Quality passed.", "RECORDED"),
+                new("CONFORMANT", "Constitutional checks passed.", "RECORDED"),
+                new("WITHIN_ALLOWANCE", "Usage within allowance.", "RECORDED"),
+                new("POOR", "Outcome missed.", "RECORDED", "No causal guarantee", "External factors."),
+                new("CUSTOMER_DISPUTED", "Customer disputed.", "RECORDED"),
+                new("UNCHANGED", "No autonomy increase.", "RECORDED"),
+                "REASSESSMENT_REQUIRED", Guid.NewGuid()), CancellationToken.None);
+        var context = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [
+                    new Claim("participant_id", participantId.ToString()),
+                    new Claim("participant_role", "EMPLOYER"),
+                    new Claim("authentication_assurance", "AAL3_FRESH"),
+                    new Claim("auth_time", DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()),
+                ], "Test")),
+            TraceIdentifier = Guid.NewGuid().ToString(),
+        };
+        context.Items[TenantIsolationMiddleware.TenantIdItemKey] = tenantId.ToString();
+        var controller = new RelationshipWorkspaceController(
+            relationships, new RelationshipOwnerGatewayStub(), configuration: configuration,
+            performanceReviews: reviews)
+        {
+            ControllerContext = new ControllerContext { HttpContext = context },
+        };
+        var key = Guid.NewGuid().ToString("D");
+        var command = JsonSerializer.SerializeToElement(new
+        {
+            schemaVersion = "1.0",
+            expectedWorkspaceVersion = $"relationship-{admitted.Relationship.StateVersion}",
+            expectedSubjectVersion = $"performance-{review.ReviewId:D}-{review.Revision}",
+            payload = new
+            {
+                commandKind = "RESPOND_TO_PERFORMANCE_REVIEW",
+                reviewId = review.ReviewId,
+                reviewRevision = review.Revision,
+                decision = "REQUEST_REASSESSMENT",
+                reason = "Reassess against corrected customer evidence.",
+            },
+        });
+
+        var accepted = Assert.IsType<ObjectResult>(await controller.SubmitCommandAsync(
+            admitted.Relationship.RelationshipId, command, key, CancellationToken.None));
+        var replay = Json(await controller.SubmitCommandAsync(
+            admitted.Relationship.RelationshipId, command, key, CancellationToken.None));
+        var commandId = JsonSerializer.SerializeToElement(accepted.Value).GetProperty("commandId").GetGuid();
+        var outcome = Json(await controller.GetCommandAsync(
+            admitted.Relationship.RelationshipId, commandId, CancellationToken.None));
+        var operations = Json(await controller.GetOperationsAsync(
+            admitted.Relationship.RelationshipId, CancellationToken.None));
+
+        Assert.Equal(202, accepted.StatusCode);
+        Assert.True(replay.GetProperty("replayed").GetBoolean());
+        Assert.Equal("COMPLETED", outcome.GetProperty("status").GetString());
+        Assert.True(operations.GetProperty("reassessmentRequired").GetBoolean());
+        Assert.Contains(operations.GetProperty("blockedReasons").EnumerateArray(),
+            reason => reason.GetString()!.Contains("performance review requires reassessment", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task AuthenticatedOwnerTruthReplacesUnavailablePlaceholders()
     {
         var (controller, relationship, gateway, _) = await CreateControllerAsync();
@@ -637,7 +769,7 @@ public sealed class RelationshipWorkspaceControllerTests
         Json(result).GetProperty("lifecycleProfile").GetProperty("stages").EnumerateArray().ToArray();
 
     [Fact]
-    public async Task AggregateVerifiesOperationsOnlyWhenEveryOwnerDependencyIsCurrent()
+    public async Task AggregateKeepsOperationsBlockedUntilCompleteMandateExists()
     {
         var (controller, relationship, gateway, configuration) = await CreateControllerAsync(
             EmploymentRelationshipState.Active);
@@ -676,11 +808,12 @@ public sealed class RelationshipWorkspaceControllerTests
         var operations = Stages(await controller.GetWorkspaceAsync(
             relationship.RelationshipId, CancellationToken.None))[^1];
 
-        Assert.Equal("VERIFIED", operations.GetProperty("state").GetString());
-        Assert.Equal("RECORDED", operations.GetProperty("evidenceState").GetString());
-        Assert.Equal($"relationship-{relationship.StateVersion}", operations.GetProperty("outputRevision").GetString());
-        Assert.Empty(operations.GetProperty("blockerReasons").EnumerateArray());
-        Assert.Equal("Continue governed work.", operations.GetProperty("nextAuthorizedAction").GetString());
+        Assert.Equal("BLOCKED", operations.GetProperty("state").GetString());
+        Assert.Equal("PENDING", operations.GetProperty("evidenceState").GetString());
+        Assert.Equal(JsonValueKind.Null, operations.GetProperty("outputRevision").ValueKind);
+        Assert.Contains(operations.GetProperty("blockerReasons").EnumerateArray(),
+            reason => reason.GetString()!.Contains("runtime binding coordinates", StringComparison.Ordinal));
+        Assert.Equal("Resolve the named lifecycle dependencies.", operations.GetProperty("nextAuthorizedAction").GetString());
     }
 
     private static async Task<(RelationshipWorkspaceController Controller, EmploymentRelationship Relationship,

@@ -731,15 +731,69 @@ components:
         text: { type: string, minLength: 1, maxLength: 32000 }
         language: { type: string, minLength: 2, maxLength: 35 }
 
+    OperationalMandateV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, mandateId, mandateDigest, tenantId, relationshipId, agentInstanceId, actorId, actorRole, relationshipLifecycle, engagementMode, professionalType, releaseSequence, professionalVersion, specificationRevision, specificationDigest, admissionRevision, admissionContentDigest, artifactDigest, baseSpecVersion, constitutionalDnaVersion, pacVersion, adapterProtocolVersion, customerContractDigest, skillId, skillVersion, inputSchemaDigest, outputSchemaDigest, promptVersion, promptDigest, contextRevision, configurationRevision, goalRevision, decisionSpaceRevision, budgetAllowanceRef, reviewPolicyRevision, approvalRefs, stopped, operationalPurpose, permittedActions, exclusions, deadline, idempotencyIdentity, constitutionalDecisionRef, constitutionalEvidenceRef]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationExecutionSchemaVersion" }
+        mandateId: { type: string, format: uuid }
+        mandateDigest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+        tenantId: { type: string, minLength: 1 }
+        relationshipId: { type: string, minLength: 1 }
+        agentInstanceId: { type: string, minLength: 1 }
+        actorId: { type: string, minLength: 1 }
+        actorRole: { type: string, minLength: 1 }
+        relationshipLifecycle: { type: string, minLength: 1 }
+        engagementMode: { type: string, enum: [TRIAL, LIVE] }
+        professionalType: { type: string, minLength: 1 }
+        releaseSequence: { type: integer, minimum: 1 }
+        professionalVersion: { type: string, minLength: 1 }
+        specificationRevision: { type: string, minLength: 1 }
+        specificationDigest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+        admissionRevision: { type: integer, minimum: 1 }
+        admissionContentDigest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+        artifactDigest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+        baseSpecVersion: { type: string, minLength: 1 }
+        constitutionalDnaVersion: { type: string, minLength: 1 }
+        pacVersion: { type: string, minLength: 1 }
+        adapterProtocolVersion: { type: string, minLength: 1 }
+        customerContractDigest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+        skillId: { type: string, minLength: 1 }
+        skillVersion: { type: string, minLength: 1 }
+        inputSchemaDigest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+        outputSchemaDigest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+        promptVersion: { type: string, minLength: 1 }
+        promptDigest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+        contextRevision: { type: integer, minimum: 1 }
+        configurationRevision: { type: integer, minimum: 1 }
+        goalRevision: { type: integer, minimum: 1 }
+        decisionSpaceRevision: { type: integer, minimum: 1 }
+        budgetAllowanceRef: { type: string, minLength: 1 }
+        reviewPolicyRevision: { type: integer, minimum: 1 }
+        approvalRefs: { type: array, minItems: 1, items: { type: string, minLength: 1 } }
+        stopped: { type: boolean }
+        stopEvidenceRef: { type: [string, 'null'] }
+        operationalPurpose: { type: string, minLength: 1 }
+        permittedActions: { type: array, minItems: 1, items: { type: string, minLength: 1 } }
+        exclusions: { type: array, items: { type: string } }
+        deadline: { type: string, format: date-time }
+        idempotencyIdentity: { type: string, format: uuid }
+        constitutionalDecisionRef: { type: string, minLength: 1 }
+        constitutionalEvidenceRef: { type: string, minLength: 1 }
+        billingReservationRef: { type: [string, 'null'] }
+        billingAttributionRef: { type: [string, 'null'] }
+
     StartConversationExecutionRequestV1:
       type: object
       additionalProperties: false
-      required: [schemaVersion, messageId, decisionSpaceVersion, locale, content]
+      required: [schemaVersion, messageId, decisionSpaceVersion, locale, operationalMandate, content]
       properties:
         schemaVersion: { $ref: "#/components/schemas/ConversationExecutionSchemaVersion" }
         messageId: { type: string, format: uuid, description: BP canonical customer message ID }
         decisionSpaceVersion: { type: integer, minimum: 1 }
         locale: { type: string, minLength: 2, maxLength: 35 }
+        operationalMandate: { $ref: "#/components/schemas/OperationalMandateV1" }
         content: { $ref: "#/components/schemas/ConversationExecutionTextV1" }
         activeGoalContextId: { type: string, format: uuid }
 
@@ -852,7 +906,7 @@ components:
 
     ExecutionProblemCode:
       type: string
-      enum: [EXECUTION_REQUEST_INVALID, EXECUTION_NOT_ACCESSIBLE, EXECUTION_IDEMPOTENCY_CONFLICT, EXECUTION_SCHEMA_UNSUPPORTED, EXECUTION_CURSOR_EXPIRED, EXECUTION_STOPPED, EXECUTION_DECISION_SPACE_STALE, EXECUTION_CONSTITUTIONAL_UNAVAILABLE, EXECUTION_RUNTIME_UNAVAILABLE]
+      enum: [EXECUTION_REQUEST_INVALID, EXECUTION_NOT_ACCESSIBLE, EXECUTION_MANDATE_INVALID, EXECUTION_IDEMPOTENCY_CONFLICT, EXECUTION_SCHEMA_UNSUPPORTED, EXECUTION_CURSOR_EXPIRED, EXECUTION_STOPPED, EXECUTION_DECISION_SPACE_STALE, EXECUTION_CONSTITUTIONAL_UNAVAILABLE, EXECUTION_RUNTIME_UNAVAILABLE]
 
     ExecutionProblemDetail:
       type: object

@@ -26,6 +26,7 @@ export const RelationshipWorkspaceSectionType = {
   Configuration: "CONFIGURATION",
   Goals: "GOALS",
   BusinessOutcomes: "BUSINESS_OUTCOMES",
+  Performance: "PERFORMANCE",
   Operations: "OPERATIONS",
 } as const;
 export type RelationshipWorkspaceSectionType =

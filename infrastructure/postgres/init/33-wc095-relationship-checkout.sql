@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS business.relationship_checkout_intents (
     contract_id UUID NOT NULL,
     contract_version INTEGER NOT NULL,
     contract_hash CHAR(64) NOT NULL,
+    contract_acceptance_id UUID NOT NULL,
+    payment_consent_evidence_id UUID,
     idempotency_key UUID NOT NULL,
     material_request_hash CHAR(64) NOT NULL,
     status VARCHAR(24) NOT NULL DEFAULT 'PENDING',
@@ -29,10 +31,14 @@ CREATE TABLE IF NOT EXISTS business.relationship_checkout_intents (
         material_request_hash ~ '^[0-9a-f]{64}$'
     ),
     CONSTRAINT relationship_checkout_intents_status_check CHECK (
-        status IN ('PENDING', 'COMPLETED', 'UNRESOLVED')
+        status IN ('PENDING', 'AWAITING_PROVIDER', 'COMPLETED', 'UNRESOLVED')
     ),
     CONSTRAINT relationship_checkout_intents_outcome_check CHECK (
         (status = 'PENDING' AND outcome_kind IS NULL AND outcome_json IS NULL AND completed_at IS NULL)
+        OR (
+            status = 'AWAITING_PROVIDER' AND outcome_kind = 'RAZORPAY_CHECKOUT_REQUIRED'
+            AND outcome_json IS NOT NULL AND completed_at IS NULL AND payment_consent_evidence_id IS NOT NULL
+        )
         OR (
             status IN ('COMPLETED', 'UNRESOLVED') AND outcome_kind IS NOT NULL
             AND outcome_json IS NOT NULL AND completed_at IS NOT NULL
@@ -53,13 +59,16 @@ BEGIN
        OR NEW.relationship_id IS DISTINCT FROM OLD.relationship_id
        OR NEW.contract_id IS DISTINCT FROM OLD.contract_id
        OR NEW.contract_version IS DISTINCT FROM OLD.contract_version
-    OR NEW.contract_hash IS DISTINCT FROM OLD.contract_hash
+       OR NEW.contract_hash IS DISTINCT FROM OLD.contract_hash
+       OR NEW.contract_acceptance_id IS DISTINCT FROM OLD.contract_acceptance_id
+       OR (OLD.payment_consent_evidence_id IS NOT NULL
+           AND NEW.payment_consent_evidence_id IS DISTINCT FROM OLD.payment_consent_evidence_id)
        OR NEW.idempotency_key IS DISTINCT FROM OLD.idempotency_key
        OR NEW.material_request_hash IS DISTINCT FROM OLD.material_request_hash
        OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
         RAISE EXCEPTION 'relationship checkout intent identity is immutable';
     END IF;
-    IF OLD.status <> 'PENDING' THEN
+    IF OLD.status NOT IN ('PENDING', 'AWAITING_PROVIDER') THEN
         RAISE EXCEPTION 'terminal relationship checkout intent is immutable';
     END IF;
     RETURN NEW;

@@ -102,13 +102,13 @@ export interface RelationshipOperationsV1 {
    * @type {Array<string>}
    * @memberof RelationshipOperationsV1
    */
-  blockedReasons?: Array<string>;
+  blockedReasons: Array<string>;
   /**
    *
    * @type {boolean}
    * @memberof RelationshipOperationsV1
    */
-  reassessmentRequired?: boolean;
+  reassessmentRequired: boolean;
   /**
    *
    * @type {string}
@@ -120,7 +120,13 @@ export interface RelationshipOperationsV1 {
    * @type {Array<string>}
    * @memberof RelationshipOperationsV1
    */
-  dependentOutcomeIds?: Array<string>;
+  dependentOutcomeIds: Array<string>;
+  /**
+   * Reserved for the complete immutable Section 6.3 mandate; null while any required coordinate is unavailable.
+   * @type {object}
+   * @memberof RelationshipOperationsV1
+   */
+  operationalMandate: object | null;
 }
 
 /**
@@ -140,6 +146,23 @@ export function instanceOfRelationshipOperationsV1(
   if (!("requiredGoalIds" in value) || value["requiredGoalIds"] === undefined)
     return false;
   if (!("verifiedGoalIds" in value) || value["verifiedGoalIds"] === undefined)
+    return false;
+  if (!("blockedReasons" in value) || value["blockedReasons"] === undefined)
+    return false;
+  if (
+    !("reassessmentRequired" in value) ||
+    value["reassessmentRequired"] === undefined
+  )
+    return false;
+  if (
+    !("dependentOutcomeIds" in value) ||
+    value["dependentOutcomeIds"] === undefined
+  )
+    return false;
+  if (
+    !("operationalMandate" in value) ||
+    value["operationalMandate"] === undefined
+  )
     return false;
   return true;
 }
@@ -174,18 +197,12 @@ export function RelationshipOperationsV1FromJSONTyped(
     ),
     requiredGoalIds: json["requiredGoalIds"],
     verifiedGoalIds: json["verifiedGoalIds"],
-    blockedReasons:
-      json["blockedReasons"] == null ? undefined : json["blockedReasons"],
-    reassessmentRequired:
-      json["reassessmentRequired"] == null
-        ? undefined
-        : json["reassessmentRequired"],
+    blockedReasons: json["blockedReasons"],
+    reassessmentRequired: json["reassessmentRequired"],
     activeWorkSummary:
       json["activeWorkSummary"] == null ? undefined : json["activeWorkSummary"],
-    dependentOutcomeIds:
-      json["dependentOutcomeIds"] == null
-        ? undefined
-        : json["dependentOutcomeIds"],
+    dependentOutcomeIds: json["dependentOutcomeIds"],
+    operationalMandate: json["operationalMandate"],
   };
 }
 
@@ -224,5 +241,6 @@ export function RelationshipOperationsV1ToJSONTyped(
     reassessmentRequired: value["reassessmentRequired"],
     activeWorkSummary: value["activeWorkSummary"],
     dependentOutcomeIds: value["dependentOutcomeIds"],
+    operationalMandate: value["operationalMandate"],
   };
 }

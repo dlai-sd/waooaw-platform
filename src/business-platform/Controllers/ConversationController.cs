@@ -370,7 +370,7 @@ public sealed class ConversationController : ControllerBase
             "CONVERSATION_STOPPED",
             "Conversation execution is stopped.",
             correlationId),
-        ConversationExecutionUnavailableException => ConversationProblem(
+        ConversationExecutionUnavailableException or OperationalMandateUnavailableException => ConversationProblem(
             StatusCodes.Status503ServiceUnavailable,
             "CONVERSATION_EXECUTION_UNAVAILABLE",
             "Conversation execution is temporarily unavailable.",

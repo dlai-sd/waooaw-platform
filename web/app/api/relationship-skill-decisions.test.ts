@@ -18,6 +18,13 @@ async function submit(body: object) {
   }), { params: Promise.resolve({ relationshipId }) });
 }
 
+async function readAcceptedSkills() {
+  const { GET } = await import('./relationships/[relationshipId]/skill-decisions/route');
+  return GET(new NextRequest('http://localhost/api/relationships/current/skill-decisions'), {
+    params: Promise.resolve({ relationshipId }),
+  });
+}
+
 describe('relationship skill decision proxy', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -39,6 +46,28 @@ describe('relationship skill decision proxy', () => {
     const headers = new Headers(fetchMock.mock.calls[0][1]?.headers);
     expect(headers.get('Authorization')).toBe('Bearer server-token');
     expect(headers.get('Idempotency-Key')).toBe('key-1');
+  });
+
+  it('returns only accepted Skill identity from the authoritative evaluation', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(JSON.stringify({ skills: [
+      { skillId: 'local-seo', skillVersion: '1.0.0', status: 'ACCEPTED', authorityState: 'GRANTED' },
+      { skillId: 'publishing', skillVersion: '2.0.0', status: 'DEFERRED', authorityState: 'NOT_GRANTED' },
+    ] }), { status: 200 }));
+
+    const response = await readAcceptedSkills();
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ skills: [{ skillId: 'local-seo', skillVersion: '1.0.0' }] });
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
+    expect(fetchMock).toHaveBeenCalledWith(
+      `http://localhost:5001/api/v1/employment/relationships/${relationshipId}/evaluation`,
+      expect.objectContaining({ cache: 'no-store' }),
+    );
+  });
+
+  it('fails closed when the authoritative Skill projection is malformed', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(new Response(JSON.stringify({}), { status: 200 }));
+    expect((await readAcceptedSkills()).status).toBe(503);
   });
 
   it('fails closed without a session or complete command envelope', async () => {

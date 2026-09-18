@@ -48,6 +48,12 @@ export interface SendConversationMessageRequestV1 {
   clientMessageId: string;
   /**
    *
+   * @type {string}
+   * @memberof SendConversationMessageRequestV1
+   */
+  skillId: string;
+  /**
+   *
    * @type {Array<ConversationTextBlockV1>}
    * @memberof SendConversationMessageRequestV1
    */
@@ -76,6 +82,7 @@ export function instanceOfSendConversationMessageRequestV1(
     return false;
   if (!("clientMessageId" in value) || value["clientMessageId"] === undefined)
     return false;
+  if (!("skillId" in value) || value["skillId"] === undefined) return false;
   if (!("content" in value) || value["content"] === undefined) return false;
   if (!("locale" in value) || value["locale"] === undefined) return false;
   return true;
@@ -97,6 +104,7 @@ export function SendConversationMessageRequestV1FromJSONTyped(
   return {
     schemaVersion: ConversationSchemaVersionFromJSON(json["schemaVersion"]),
     clientMessageId: json["clientMessageId"],
+    skillId: json["skillId"],
     content: (json["content"] as Array<any>).map(
       ConversationTextBlockV1FromJSON,
     ),
@@ -123,6 +131,7 @@ export function SendConversationMessageRequestV1ToJSONTyped(
   return {
     schemaVersion: ConversationSchemaVersionToJSON(value["schemaVersion"]),
     clientMessageId: value["clientMessageId"],
+    skillId: value["skillId"],
     content: (value["content"] as Array<any>).map(
       ConversationTextBlockV1ToJSON,
     ),

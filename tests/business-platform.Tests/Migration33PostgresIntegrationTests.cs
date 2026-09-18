@@ -56,6 +56,8 @@ public sealed class Migration33PostgresIntegrationTests : IAsyncLifetime
         var otherTenantId = Guid.NewGuid();
         var relationshipId = Guid.NewGuid();
         var contractId = Guid.NewGuid();
+        var contractAcceptanceId = Guid.NewGuid();
+        var paymentConsentEvidenceId = Guid.NewGuid();
         var intentId = Guid.NewGuid();
         var idempotencyKey = Guid.NewGuid();
         await using (var owner = new NpgsqlConnection(_ownerConnectionString))
@@ -73,9 +75,11 @@ public sealed class Migration33PostgresIntegrationTests : IAsyncLifetime
                     '1.0', repeat('b', 64), jsonb_build_object(), jsonb_build_object(), gen_random_uuid());
                 INSERT INTO business.relationship_checkout_intents
                     (checkout_intent_id, tenant_id, relationship_id, contract_id, contract_version,
-                     contract_hash, idempotency_key, material_request_hash)
+                     contract_hash, contract_acceptance_id, payment_consent_evidence_id,
+                     idempotency_key, material_request_hash)
                 VALUES ('{intentId:D}', '{tenantId:D}', '{relationshipId:D}', '{contractId:D}', 1,
-                    repeat('a', 64), '{idempotencyKey:D}', repeat('c', 64));
+                    repeat('a', 64), '{contractAcceptanceId:D}', '{paymentConsentEvidenceId:D}',
+                    '{idempotencyKey:D}', repeat('c', 64));
                 UPDATE business.relationship_checkout_intents
                 SET status = 'COMPLETED', outcome_kind = 'FULLY_DISCOUNTED',
                     outcome_json = jsonb_build_object('outcomeKind', 'FULLY_DISCOUNTED'), completed_at = NOW()
@@ -85,9 +89,11 @@ public sealed class Migration33PostgresIntegrationTests : IAsyncLifetime
             var duplicate = await Assert.ThrowsAsync<PostgresException>(() => ExecuteAsync(owner, $"""
                 INSERT INTO business.relationship_checkout_intents
                     (checkout_intent_id, tenant_id, relationship_id, contract_id, contract_version,
-                     contract_hash, idempotency_key, material_request_hash)
+                     contract_hash, contract_acceptance_id, payment_consent_evidence_id,
+                     idempotency_key, material_request_hash)
                 VALUES (gen_random_uuid(), '{tenantId:D}', '{relationshipId:D}', '{contractId:D}', 1,
-                    repeat('a', 64), '{idempotencyKey:D}', repeat('c', 64));
+                    repeat('a', 64), '{contractAcceptanceId:D}', '{paymentConsentEvidenceId:D}',
+                    '{idempotencyKey:D}', repeat('c', 64));
                 """));
             Assert.Equal(PostgresErrorCodes.UniqueViolation, duplicate.SqlState);
 

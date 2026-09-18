@@ -3,7 +3,9 @@ import type { RelationshipWorkspaceViews } from '@/lib/api/relationship-workspac
 import { RelationshipEvaluation } from './RelationshipEvaluation';
 import { ContractJourney } from './ContractJourney';
 import { EvidenceWindow } from './EvidenceWindow';
+import { GoalVerificationControls } from './GoalVerificationControls';
 import { OnboardForm } from './OnboardForm';
+import { PerformanceReviewControls } from './PerformanceReviewControls';
 import { SkillDecisionControls } from './SkillDecisionControls';
 import type { EmploymentRelationshipSummaryV1 } from '@/lib/api/generated/models/EmploymentRelationshipSummaryV1';
 import { OpenConversationCommand } from '@/components/conversation/OpenConversationCommand';
@@ -21,6 +23,7 @@ const stateLabel = (state: string) => state.replaceAll('_', ' ').toLowerCase();
 
 export function RelationshipWorkspace({ relationship, relationships = [], timeline, views, evaluation, contractJourney = null }: RelationshipWorkspaceProps) {
   const live = relationship.state === 'ACTIVE';
+  const performance = views.performance.current;
 
   return (
     <main className="workspace-shell relationship-workspace-grid">
@@ -81,8 +84,9 @@ export function RelationshipWorkspace({ relationship, relationships = [], timeli
       <section className="lifecycle-details" aria-label="Lifecycle actions">
           <section><h3>Onboard</h3><OnboardForm relationshipId={relationship.relationshipId} summary={views.configuration.items.find((item) => item.stepKey === 'ONBOARD')?.summary} /></section>
           <section><h3>Induct</h3><p>Continue the agent-led induction in the persistent professional conversation. The confirmed context remains server-owned and shared across supported channels.</p><OpenConversationCommand label="Continue induction" /></section>
-          <section><h3>Goals</h3>{views.goals.activeGoals.length ? <ul className="decision-list">{views.goals.activeGoals.map((goal) => <li key={goal.goalId}><span><strong>{goal.skillLabel}</strong><small>{goal.measure} · {goal.frequency}</small></span><b>{stateLabel(goal.verificationStatus)}</b></li>)}</ul> : <p>No active goals are available.</p>}<p className="truth-note">Goal verification cannot be changed here because no canonical verification command exists.</p></section>
+          <section><h3>Goals</h3>{views.goals.activeGoals.length ? <ul className="decision-list">{views.goals.activeGoals.map((goal) => <li key={goal.goalId}><span><strong>{goal.skillLabel}</strong><small>{goal.measure} · {goal.frequency}</small></span><b>{stateLabel(goal.verificationStatus)}</b></li>)}</ul> : <p>No active goals are available.</p>}<GoalVerificationControls goals={views.goals.activeGoals} relationshipId={relationship.relationshipId} workspaceVersion={views.workspace.workspaceVersion} /></section>
           <section><h3>Operations eligibility</h3><p><strong>{stateLabel(views.operations.eligibilityState)}</strong></p>{views.operations.blockedReasons?.length ? <ul>{views.operations.blockedReasons.map((reason) => <li key={reason}>{reason}</li>)}</ul> : <p>No server-reported blockers.</p>}</section>
+            <section><h3>Performance</h3>{performance ? <><p>{performance.skillId} · {new Date(performance.periodStart).toLocaleDateString('en-IN')} to {new Date(performance.periodEnd).toLocaleDateString('en-IN')}</p><dl className="state-grid"><div><dt>Work delivery</dt><dd>{stateLabel(performance.workDelivery.state)}</dd></div><div><dt>Agent quality</dt><dd>{stateLabel(performance.agentQuality.state)}</dd></div><div><dt>Constitutional performance</dt><dd>{stateLabel(performance.constitutionalPerformance.state)}</dd></div><div><dt>Commercial usage</dt><dd>{stateLabel(performance.commercialUsage.state)}</dd></div><div><dt>Business outcome</dt><dd>{stateLabel(performance.customerBusinessOutcome.state)}</dd></div><div><dt>Customer assessment</dt><dd>{stateLabel(performance.customerAssessment.state)}</dd></div><div><dt>Trust and autonomy</dt><dd>{stateLabel(performance.trustAutonomy.state)}</dd></div></dl>{performance.customerBusinessOutcome.attributionLimits ? <p><strong>Attribution limit:</strong> {performance.customerBusinessOutcome.attributionLimits}</p> : null}<p><strong>Recommendation:</strong> {stateLabel(performance.recommendation)}</p>{performance.reassessmentRequired ? <p className="empty-meaning"><strong>Reassessment required:</strong> affected work remains locked until a later review establishes current readiness.</p> : null}{performance.customerResponse ? <p><strong>Your recorded decision:</strong> {stateLabel(performance.customerResponse.decision)}</p> : <PerformanceReviewControls relationshipId={relationship.relationshipId} workspaceVersion={views.workspace.workspaceVersion} review={performance} />}</> : <p>No completed review window is available.</p>}</section>
       </section>
 
       <nav className="workspace-nav" aria-label="Relationship workspace views">

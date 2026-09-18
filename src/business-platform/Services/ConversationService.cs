@@ -21,6 +21,7 @@ public sealed record ConversationTextBlockV1(
 public sealed record SendConversationMessageRequestV1(
     string SchemaVersion,
     Guid ClientMessageId,
+    string SkillId,
     IReadOnlyList<ConversationTextBlockV1> Content,
     string Locale,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? ExpectedCursor = null);
@@ -95,6 +96,55 @@ public sealed record ConversationStreamEventV1(
 
 public sealed record ConversationCommandResult<T>(T Value, bool Replayed);
 
+public sealed record OperationalMandateV1(
+    string SchemaVersion,
+    Guid MandateId,
+    string MandateDigest,
+    Guid TenantId,
+    Guid RelationshipId,
+    Guid AgentInstanceId,
+    Guid ActorId,
+    string ActorRole,
+    string RelationshipLifecycle,
+    string EngagementMode,
+    string ProfessionalType,
+    int ReleaseSequence,
+    string ProfessionalVersion,
+    string SpecificationRevision,
+    string SpecificationDigest,
+    int AdmissionRevision,
+    string AdmissionContentDigest,
+    string ArtifactDigest,
+    string BaseSpecVersion,
+    string ConstitutionalDnaVersion,
+    string PacVersion,
+    string AdapterProtocolVersion,
+    string CustomerContractDigest,
+    string SkillId,
+    string SkillVersion,
+    string InputSchemaDigest,
+    string OutputSchemaDigest,
+    string PromptVersion,
+    string PromptDigest,
+    int ContextRevision,
+    int ConfigurationRevision,
+    int GoalRevision,
+    int DecisionSpaceRevision,
+    string BudgetAllowanceRef,
+    int ReviewPolicyRevision,
+    IReadOnlyList<string> ApprovalRefs,
+    bool Stopped,
+    string? StopEvidenceRef,
+    string OperationalPurpose,
+    IReadOnlyList<string> PermittedActions,
+    IReadOnlyList<string> Exclusions,
+    DateTimeOffset Deadline,
+    Guid IdempotencyIdentity,
+    string ConstitutionalDecisionRef,
+    string ConstitutionalEvidenceRef,
+    string? BillingReservationRef,
+    string? BillingAttributionRef);
+
 public sealed class ConversationNotAccessibleException : Exception;
 public sealed class ConversationIdempotencyConflictException : Exception;
 public sealed class ConversationStateConflictException : Exception;
@@ -102,6 +152,7 @@ public sealed class ConversationCursorExpiredException : Exception;
 public sealed class ConversationRetryNotAllowedException : Exception;
 public sealed class ConversationStoppedException : Exception;
 public sealed class ConversationExecutionUnavailableException : Exception;
+public sealed class OperationalMandateUnavailableException : Exception;
 
 public sealed class ConversationRequestException(string message) : Exception(message);
 
@@ -118,6 +169,8 @@ public interface IConversationExecutionGateway
         Guid messageId,
         Guid relationshipId,
         string locale,
+        IReadOnlyList<ConversationTextBlockV1> content,
+        OperationalMandateV1 operationalMandate,
         Guid idempotencyKey,
         CancellationToken cancellationToken);
 
@@ -128,6 +181,48 @@ public interface IConversationExecutionGateway
         CancellationToken cancellationToken);
 }
 
+public interface IOperationalMandateResolver
+{
+    Task<OperationalMandateReadiness> GetReadinessAsync(
+        Guid tenantId,
+        Guid participantId,
+        Guid relationshipId,
+        CancellationToken cancellationToken);
+
+    Task<OperationalMandateV1> ResolveAsync(
+        Guid tenantId,
+        Guid participantId,
+        Guid relationshipId,
+        Guid idempotencyKey,
+        Guid constitutionalEvidenceId,
+        string skillId,
+        string operationalPurpose,
+        CancellationToken cancellationToken);
+}
+
+public sealed record OperationalMandateReadiness(bool Ready, IReadOnlyList<string> BlockedReasons);
+
+public sealed class UnconfiguredOperationalMandateResolver : IOperationalMandateResolver
+{
+    public Task<OperationalMandateReadiness> GetReadinessAsync(
+        Guid tenantId,
+        Guid participantId,
+        Guid relationshipId,
+        CancellationToken cancellationToken) => Task.FromResult(new OperationalMandateReadiness(
+            false, ["The admitted artifact and runtime binding coordinates are unavailable."]));
+
+    public Task<OperationalMandateV1> ResolveAsync(
+        Guid tenantId,
+        Guid participantId,
+        Guid relationshipId,
+        Guid idempotencyKey,
+        Guid constitutionalEvidenceId,
+        string skillId,
+        string operationalPurpose,
+        CancellationToken cancellationToken) =>
+        throw new OperationalMandateUnavailableException();
+}
+
 public sealed class UnconfiguredConversationExecutionGateway : IConversationExecutionGateway
 {
     public Task StartAsync(
@@ -136,6 +231,8 @@ public sealed class UnconfiguredConversationExecutionGateway : IConversationExec
         Guid messageId,
         Guid relationshipId,
         string locale,
+        IReadOnlyList<ConversationTextBlockV1> content,
+        OperationalMandateV1 operationalMandate,
         Guid idempotencyKey,
         CancellationToken cancellationToken) =>
         throw new ConversationExecutionUnavailableException();
@@ -229,6 +326,7 @@ public sealed class ConversationService
     private readonly IDbContextFactory<EmploymentRelationshipDbContext> _relationshipFactory;
     private readonly IRelationshipConstitutionalGateway _constitutionalGateway;
     private readonly IConversationExecutionGateway _executionGateway;
+    private readonly IOperationalMandateResolver _mandateResolver;
     private readonly ConversationCursorCodec _cursorCodec;
 
     public ConversationService(
@@ -236,12 +334,14 @@ public sealed class ConversationService
         IDbContextFactory<EmploymentRelationshipDbContext> relationshipFactory,
         IRelationshipConstitutionalGateway constitutionalGateway,
         IConversationExecutionGateway executionGateway,
+        IOperationalMandateResolver mandateResolver,
         ConversationCursorCodec cursorCodec)
     {
         _conversationFactory = conversationFactory;
         _relationshipFactory = relationshipFactory;
         _constitutionalGateway = constitutionalGateway;
         _executionGateway = executionGateway;
+        _mandateResolver = mandateResolver;
         _cursorCodec = cursorCodec;
     }
 
@@ -367,6 +467,15 @@ public sealed class ConversationService
                 request_hash = requestHash,
             },
             cancellationToken);
+        var operationalMandate = await _mandateResolver.ResolveAsync(
+            tenantId,
+            participantId,
+            relationshipId,
+            idempotencyKey,
+            evidenceId,
+            request.SkillId,
+            request.Content[0].Text,
+            cancellationToken);
 
         var conversation = await GetOrCreateConversationAsync(db, tenantId, relationshipId, cancellationToken);
         var message = new ConversationMessage
@@ -375,6 +484,7 @@ public sealed class ConversationService
             ConversationId = conversation.ConversationId,
             RelationshipId = relationshipId,
             Sequence = conversation.NextMessageSequence++,
+            SkillId = request.SkillId,
             ContentJson = JsonSerializer.Serialize(request.Content, JsonOptions),
             ClientMessageId = request.ClientMessageId,
             EvidenceState = "RECORDED",
@@ -449,6 +559,8 @@ public sealed class ConversationService
                 message.MessageId,
                 relationshipId,
                 request.Locale,
+                request.Content,
+                operationalMandate,
                 idempotencyKey,
                 cancellationToken);
             return new ConversationCommandResult<ConversationSubmissionV1>(submission, false);
@@ -517,13 +629,23 @@ public sealed class ConversationService
             throw new ConversationRetryNotAllowedException();
         }
 
-        await _constitutionalGateway.AuthorizeAndRecordAsync(
+        var retryEvidenceId = await _constitutionalGateway.AuthorizeAndRecordAsync(
             tenantId,
             relationshipId,
             relationship.ProfessionalType,
             "RETRY_CONVERSATION_MESSAGE",
             originalIdempotencyKey,
             new { message_id = messageId, request_hash = original.RequestHash },
+            cancellationToken);
+        var retryContent = ToContract(message).Content;
+        var retryMandate = await _mandateResolver.ResolveAsync(
+            tenantId,
+            participantId,
+            relationshipId,
+            originalIdempotencyKey,
+            retryEvidenceId,
+            message.SkillId,
+            retryContent[0].Text,
             cancellationToken);
         message.DeliveryState = "ACCEPTED";
         message.ProcessingState = "QUEUED";
@@ -553,6 +675,8 @@ public sealed class ConversationService
                 message.MessageId,
                 relationshipId,
                 ExtractLocale(message),
+                retryContent,
+                retryMandate,
                 originalIdempotencyKey,
                 cancellationToken);
             return new ConversationCommandResult<ConversationSubmissionV1>(submission, false);
@@ -951,6 +1075,8 @@ public sealed class ConversationService
     private static void ValidateSendRequest(SendConversationMessageRequestV1 request)
     {
         if (request.SchemaVersion != SchemaVersion
+            || string.IsNullOrWhiteSpace(request.SkillId)
+            || request.SkillId.Length > 128
             || request.Content.Count != 1
             || request.Content[0].SchemaVersion != SchemaVersion
             || request.Content[0].BlockType != "TEXT"

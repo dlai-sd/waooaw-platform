@@ -12,6 +12,7 @@ All URIs are relative to _http://localhost:5001_
 | [**getRelationshipEvidenceExport**](RelationshipWorkspaceApi.md#getrelationshipevidenceexport)         | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/evidence-exports/{exportId} | Reconcile one relationship evidence export request                     |
 | [**getRelationshipGoals**](RelationshipWorkspaceApi.md#getrelationshipgoals)                           | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/goals                       | Read active and historical relationship goals                          |
 | [**getRelationshipOperations**](RelationshipWorkspaceApi.md#getrelationshipoperations)                 | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/operations                  | Read Operations eligibility and reassessment state                     |
+| [**getRelationshipPerformance**](RelationshipWorkspaceApi.md#getrelationshipperformance)               | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/performance                 | Read immutable relationship performance reviews                        |
 | [**getRelationshipPlan**](RelationshipWorkspaceApi.md#getrelationshipplan)                             | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/plan                        | Read relationship plan, goals, and available typed commands            |
 | [**getRelationshipResults**](RelationshipWorkspaceApi.md#getrelationshipresults)                       | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/results                     | Read relationship business outcomes and attribution context            |
 | [**getRelationshipRightsControls**](RelationshipWorkspaceApi.md#getrelationshiprightscontrols)         | **GET** /api/v1/employment/relationships/{relationshipId}/workspace/rights-controls             | Read relationship rights, scope, authority, and lifecycle controls     |
@@ -610,6 +611,78 @@ example().catch(console.error);
 | **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant | -                |
 | **409**     | Idempotency or expected-version conflict requires reconciliation        | -                |
 | **423**     | Command is blocked by policy, assurance, authority, or owner dependency | -                |
+| **503**     | Required owner projection or constitutional dependency is unavailable   | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## getRelationshipPerformance
+
+> RelationshipPerformanceV1 getRelationshipPerformance(relationshipId)
+
+Read immutable relationship performance reviews
+
+Returns current and historical Skill review windows with work delivery, agent quality, constitutional performance, commercial usage, customer business outcome, explicit customer assessment, and relationship-specific trust/autonomy kept as seven separate dimensions.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  RelationshipWorkspaceApi,
+} from '';
+import type { GetRelationshipPerformanceRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new RelationshipWorkspaceApi(config);
+
+  const body = {
+    // string | Tenant-scoped durable employment relationship UUID
+    relationshipId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetRelationshipPerformanceRequest;
+
+  try {
+    const data = await api.getRelationshipPerformance(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name               | Type     | Description                                        | Notes                     |
+| ------------------ | -------- | -------------------------------------------------- | ------------------------- |
+| **relationshipId** | `string` | Tenant-scoped durable employment relationship UUID | [Defaults to `undefined`] |
+
+### Return type
+
+[**RelationshipPerformanceV1**](RelationshipPerformanceV1.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                             | Response headers |
+| ----------- | ----------------------------------------------------------------------- | ---------------- |
+| **200**     | Relationship performance review projection                              | -                |
+| **401**     | Workspace session is missing, invalid, or expired                       | -                |
+| **404**     | Relationship or child resource is absent, inaccessible, or cross-tenant | -                |
 | **503**     | Required owner projection or constitutional dependency is unavailable   | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

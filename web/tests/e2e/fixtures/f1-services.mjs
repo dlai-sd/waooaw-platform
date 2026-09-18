@@ -34,7 +34,7 @@ function relationship(relationshipId) {
   return {
     relationshipId,
     professionalType: relationshipId === 'relationship-second' ? 'PRIVATE_TUTOR' : 'DIGITAL_MARKETING',
-    state: relationshipId === 'relationship-contract' ? 'CONTRACT_PENDING_ACCEPTANCE' : 'ACTIVE', stateVersion: 2,
+    state: relationshipId === 'relationship-contract' || relationshipId === 'relationship-discounted' ? 'CONTRACT_PENDING_ACCEPTANCE' : 'ACTIVE', stateVersion: 2,
     createdAt: '2026-08-08T10:00:00.000Z', updatedAt: '2026-08-09T10:00:00.000Z',
   };
 }
@@ -138,11 +138,16 @@ const server = createServer(async (request, response) => {
   const configurationMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/configuration$/);
   const goalsMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/goals$/);
   const outcomesMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/business-outcomes$/);
+  const performanceMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/performance$/);
   const operationsMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/operations$/);
+  const workspaceCommandMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/commands$/);
   const onboardMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/configuration\/onboard$/);
   const alertMutationMatch = url.pathname.match(/^\/api\/v1\/notifications\/alerts\/([^/]+)\/(read|acknowledge)$/);
   const evaluationMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/evaluation$/);
   const contractJourneyMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/contract-journey$/);
+  const contractAcceptMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/contracts\/([^/]+)\/accept$/);
+  const onboardingOrderMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/contracts\/([^/]+)\/payments\/onboarding-order$/);
+  const activationMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/activation$/);
   const prepareHandoffMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/handoffs$/);
   const activateHandoffMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/handoffs\/([^/]+)\/activate$/);
   const stopRelationshipMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/emergency-stop$/);
@@ -226,7 +231,8 @@ const server = createServer(async (request, response) => {
   }
 
   if (request.method === 'GET' && url.pathname === '/api/v1/employment/relationships') {
-    json(response, { schemaVersion: '1.0.0', producedAt: '2026-08-12T10:00:00Z', items: [{ relationshipId: primaryRelationshipId, professionalType: 'DIGITAL_MARKETING', professionalVersion: '2.1.0', professionalDisplayName: 'Mira', lifecycleState: 'ACTIVE', currentGoalSummary: 'Increase qualified enquiries', unreadState: 'ACTION_REQUIRED', availabilityState: 'AVAILABLE', currencyState: 'CURRENT', configurationState: 'COMPLETE', enabledSkillCount: 3, pendingSkillCount: 1, currentWorkSummary: 'Preparing the local campaign brief.', performanceSummary: 'No evidenced performance summary is available yet.', billingSummary: 'No current billing amount is available in this summary.', nextActionLabel: 'View work', lastAuthoritativelyConfirmedAt: '2026-08-12T09:55:00Z', resumeTarget: { surface: 'CONVERSATION', relationshipId: primaryRelationshipId } }] });
+    const summary = (relationshipId, professionalType, professionalDisplayName) => ({ relationshipId, professionalType, professionalVersion: '1.0.0', professionalDisplayName, lifecycleState: 'ACTIVE', currentGoalSummary: 'Increase qualified enquiries', unreadState: 'ACTION_REQUIRED', availabilityState: 'AVAILABLE', currencyState: 'CURRENT', configurationState: 'COMPLETE', enabledSkillCount: 3, pendingSkillCount: 1, currentWorkSummary: 'Preparing current work.', performanceSummary: 'Review requires customer attention.', billingSummary: 'No current billing amount is available in this summary.', nextActionLabel: 'View work', lastAuthoritativelyConfirmedAt: '2026-08-12T09:55:00Z', resumeTarget: { surface: 'CONVERSATION', relationshipId } });
+    json(response, { schemaVersion: '1.0.0', producedAt: '2026-08-12T10:00:00Z', items: [summary(primaryRelationshipId, 'DIGITAL_MARKETING', 'Mira'), summary('relationship-second', 'PRIVATE_TUTOR', 'Arun')] });
     return;
   }
 
@@ -380,7 +386,7 @@ const server = createServer(async (request, response) => {
 
   if (request.method === 'GET' && contractJourneyMatch) {
     const relationshipId = decodeURIComponent(contractJourneyMatch[1]);
-    if (relationshipId !== 'relationship-contract') {
+    if (relationshipId !== 'relationship-contract' && relationshipId !== 'relationship-discounted') {
       response.statusCode = 204;
       response.end();
       return;
@@ -397,6 +403,29 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  if (request.method === 'POST' && contractAcceptMatch) {
+    await readBody(request);
+    json(response, { outcomeKind: 'CONTRACT_ACCEPTED', replayed: false }, 202);
+    return;
+  }
+
+  if (request.method === 'POST' && onboardingOrderMatch) {
+    await readBody(request);
+    const relationshipId = decodeURIComponent(onboardingOrderMatch[1]);
+    if (relationshipId === 'relationship-discounted') {
+      json(response, { outcomeKind: 'FULLY_DISCOUNTED', payableInrPaise: 0, listPriceInrPaise: 118000, discountInrPaise: 118000, taxInrPaise: 0, renewalConsequence: 'Renews at the accepted monthly price after the Demo period.', commercialOutcomeReference: 'zero-price-outcome', commercialEvidenceId: '11111111-1111-4111-8111-111111111111' });
+    } else {
+      json(response, { outcomeKind: 'PROVIDER_CONFIGURATION_PENDING', reasonCode: 'PAYMENT_PROVIDER_CONFIGURATION_PENDING', title: 'Razorpay configuration is pending. No payment was started.', customerSafeNextAction: 'Razorpay configuration is pending. No payment was started.' }, 503);
+    }
+    return;
+  }
+
+  if (request.method === 'POST' && activationMatch) {
+    await readBody(request);
+    json(response, { state: 'ACTIVE', replayed: false }, 202);
+    return;
+  }
+
   if (request.method === 'GET' && configurationMatch) {
     const relationshipId = decodeURIComponent(configurationMatch[1]);
     json(response, { sectionType: 'CONFIGURATION', currencyState: 'CURRENT', provenance: { owner: 'BP', sourceProjectionVersion: 'fixture-1', producedAt: '2026-08-12T10:00:00Z' }, availableCommands: [], lifecyclePhase: 'GOAL_VERIFICATION', items: [{ stepKey: 'ONBOARD', label: 'Onboard', state: 'VERIFIED', summary: 'Presentation preferences confirmed.' }, { stepKey: 'INDUCT', label: 'Induct', state: 'VERIFIED', summary: 'Business context confirmed.', continuationTarget: { surface: 'CONVERSATION', relationshipId } }] });
@@ -410,6 +439,24 @@ const server = createServer(async (request, response) => {
 
   if (request.method === 'GET' && outcomesMatch) {
     json(response, { sectionType: 'BUSINESS_OUTCOMES', currencyState: 'UNAVAILABLE', provenance: { owner: 'BP', sourceProjectionVersion: 'unavailable-1', producedAt: '2026-08-12T10:00:00Z' }, availableCommands: [], items: [] });
+    return;
+  }
+
+  if (request.method === 'GET' && performanceMatch) {
+    const relationshipId = decodeURIComponent(performanceMatch[1]);
+    const second = relationshipId === 'relationship-second';
+    const dimension = (state, summary, extra = {}) => ({ state, summary, evidenceState: 'RECORDED', ...extra });
+    json(response, { sectionType: 'PERFORMANCE', currencyState: 'CURRENT', provenance: { owner: 'BP', sourceProjectionVersion: `performance-${relationshipId}`, producedAt: '2026-09-01T10:00:00Z' }, availableCommands: [{ commandKind: 'RESPOND_TO_PERFORMANCE_REVIEW', availability: 'AVAILABLE' }], current: { reviewId: second ? '22222222-2222-4222-8222-222222222222' : '11111111-1111-4111-8111-111111111111', agentInstanceId: second ? 'second-agent-instance' : 'primary-agent-instance', skillId: second ? 'TUTORING_PLAN' : 'MARKET_RESEARCH', skillVersion: '1.0.0', revision: 1, policyVersion: 'review-policy-1', periodStart: '2026-08-01T00:00:00Z', periodEnd: '2026-08-31T00:00:00Z', sourceVersions: { professionalRuntime: 'pr-17', constitutionalEngine: 'ce-9' }, workDelivery: dimension('DELIVERED', 'Planned work was delivered.'), agentQuality: dimension('GOOD', 'Quality checks passed.'), constitutionalPerformance: dimension('CONFORMANT', 'Evidence is complete.'), commercialUsage: dimension('WITHIN_ALLOWANCE', 'Usage stayed within the allowance.'), customerBusinessOutcome: dimension(second ? 'IMPROVED' : 'POOR', second ? 'Learning outcome improved.' : 'External outcome did not improve.', { attributionLimits: 'No causal guarantee' }), customerAssessment: dimension('CUSTOMER_REVIEW_REQUIRED', 'Customer decision is required.'), trustAutonomy: dimension('UNCHANGED', 'No autonomy increase is authorized.'), recommendation: 'REASSESSMENT_REQUIRED', evidenceId: '33333333-3333-4333-8333-333333333333', createdAt: '2026-09-01T10:00:00Z', customerResponse: null, reassessmentRequired: true }, history: [] });
+    return;
+  }
+
+  if (request.method === 'POST' && workspaceCommandMatch) {
+    const body = await readBody(request);
+    if (body.payload?.commandKind !== 'RESPOND_TO_PERFORMANCE_REVIEW') {
+      json(response, { title: 'Unsupported fixture command.' }, 423);
+      return;
+    }
+    json(response, { schemaVersion: '1.0', commandId: '44444444-4444-4444-8444-444444444444', commandKind: body.payload.commandKind, status: 'COMPLETED', acceptedAt: '2026-09-01T10:05:00Z', replayed: false }, 202);
     return;
   }
 

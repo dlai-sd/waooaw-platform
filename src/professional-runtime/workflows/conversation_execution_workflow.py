@@ -18,6 +18,8 @@ class ConversationExecutionInput:
     relationship_id: str
     delegated_actor_id: str
     participant_role: str
+    mandate_id: str
+    mandate_digest: str
     decision_space_version: int
     locale: str
     content: dict[str, Any]
@@ -135,6 +137,8 @@ class ConversationExecutionWorkflow:
             "relationshipId": self._input.relationship_id if self._input is not None else None,
             "delegatedActorId": self._input.delegated_actor_id if self._input is not None else None,
             "participantRole": self._input.participant_role if self._input is not None else None,
+            "mandateId": self._input.mandate_id if self._input is not None else None,
+            "mandateDigest": self._input.mandate_digest if self._input is not None else None,
             "decisionSpaceVersion": self._input.decision_space_version if self._input is not None else None,
             "state": self._state,
             "partial": self._partial,

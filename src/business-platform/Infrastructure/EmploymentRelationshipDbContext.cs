@@ -258,6 +258,86 @@ public sealed class DecisionSpaceSnapshot
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class AgentSkillRuntimeBinding
+{
+    public Guid BindingId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid AdmissionId { get; init; }
+    public string SkillId { get; init; } = string.Empty;
+    public string SkillVersion { get; init; } = string.Empty;
+    public int ReleaseSequence { get; init; }
+    public string SpecificationRevision { get; init; } = string.Empty;
+    public string SpecificationDigest { get; init; } = string.Empty;
+    public string PromptVersion { get; init; } = string.Empty;
+    public string PromptDigest { get; init; } = string.Empty;
+    public string InputSchemaDigest { get; init; } = string.Empty;
+    public string OutputSchemaDigest { get; init; } = string.Empty;
+    public DateTimeOffset ActivatedAt { get; init; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? SupersededAt { get; init; }
+}
+
+public sealed class OperationalMandateSnapshot
+{
+    public Guid MandateId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public Guid AgentInstanceId { get; init; }
+    public Guid ActorParticipantId { get; init; }
+    public Guid AdmissionId { get; init; }
+    public Guid RuntimeBindingId { get; init; }
+    public Guid ContractId { get; init; }
+    public Guid DecisionSpaceSnapshotId { get; init; }
+    public Guid ConstitutionalEvidenceId { get; init; }
+    public Guid IdempotencyIdentity { get; init; }
+    public string SkillId { get; init; } = string.Empty;
+    public string MandateDigest { get; init; } = string.Empty;
+    public string MandateJson { get; init; } = "{}";
+    public DateTimeOffset Deadline { get; init; }
+    public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class PerformanceReviewWindow
+{
+    public Guid ReviewId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public Guid AgentInstanceId { get; init; }
+    public string SkillId { get; init; } = string.Empty;
+    public string SkillVersion { get; init; } = string.Empty;
+    public int Revision { get; init; }
+    public string PolicyVersion { get; init; } = string.Empty;
+    public DateTimeOffset PeriodStart { get; init; }
+    public DateTimeOffset PeriodEnd { get; init; }
+    public string SourceVersionsJson { get; init; } = "{}";
+    public string WorkDeliveryJson { get; init; } = "{}";
+    public string AgentQualityJson { get; init; } = "{}";
+    public string ConstitutionalPerformanceJson { get; init; } = "{}";
+    public string CommercialUsageJson { get; init; } = "{}";
+    public string CustomerBusinessOutcomeJson { get; init; } = "{}";
+    public string CustomerAssessmentJson { get; init; } = "{}";
+    public string TrustAutonomyJson { get; init; } = "{}";
+    public string Recommendation { get; init; } = string.Empty;
+    public Guid EvidenceId { get; init; }
+    public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class PerformanceReviewResponse
+{
+    public Guid ResponseId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public Guid ReviewId { get; init; }
+    public int ReviewRevision { get; init; }
+    public int ResponseRevision { get; init; }
+    public Guid ActorParticipantId { get; init; }
+    public string Decision { get; init; } = string.Empty;
+    public string? Reason { get; init; }
+    public Guid IdempotencyKey { get; init; }
+    public string MaterialRequestHash { get; init; } = string.Empty;
+    public Guid EvidenceId { get; init; }
+    public DateTimeOffset OccurredAt { get; init; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class EmploymentContractVersion
 {
     public Guid ContractId { get; init; } = Guid.NewGuid();
@@ -320,6 +400,8 @@ public sealed class RelationshipCheckoutIntent
     public Guid ContractId { get; init; }
     public int ContractVersion { get; init; }
     public string ContractHash { get; init; } = string.Empty;
+    public Guid ContractAcceptanceId { get; init; }
+    public Guid? PaymentConsentEvidenceId { get; set; }
     public Guid IdempotencyKey { get; init; }
     public string MaterialRequestHash { get; init; } = string.Empty;
     public string Status { get; set; } = "PENDING";
@@ -494,6 +576,10 @@ public sealed class EmploymentRelationshipDbContext : DbContext
     public DbSet<RelationshipSkillConfiguration> RelationshipSkillConfigurations => Set<RelationshipSkillConfiguration>();
     public DbSet<RelationshipSkillDecision> RelationshipSkillDecisions => Set<RelationshipSkillDecision>();
     public DbSet<DecisionSpaceSnapshot> DecisionSpaceSnapshots => Set<DecisionSpaceSnapshot>();
+    public DbSet<AgentSkillRuntimeBinding> AgentSkillRuntimeBindings => Set<AgentSkillRuntimeBinding>();
+    public DbSet<OperationalMandateSnapshot> OperationalMandateSnapshots => Set<OperationalMandateSnapshot>();
+    public DbSet<PerformanceReviewWindow> PerformanceReviewWindows => Set<PerformanceReviewWindow>();
+    public DbSet<PerformanceReviewResponse> PerformanceReviewResponses => Set<PerformanceReviewResponse>();
     public DbSet<EmploymentContractVersion> EmploymentContractVersions => Set<EmploymentContractVersion>();
     public DbSet<ContractAcceptance> ContractAcceptances => Set<ContractAcceptance>();
     public DbSet<ActivationIntent> ActivationIntents => Set<ActivationIntent>();
@@ -556,6 +642,84 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.UpdatedAt).HasColumnName("updated_at");
         });
 
+        modelBuilder.Entity<AgentSkillRuntimeBinding>(entity =>
+        {
+            entity.ToTable("agent_skill_runtime_bindings", "business");
+            entity.HasKey(value => value.BindingId);
+            entity.HasIndex(value => new { value.TenantId, value.AdmissionId, value.SkillId, value.SkillVersion, value.ActivatedAt });
+            entity.Property(value => value.BindingId).HasColumnName("binding_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.AdmissionId).HasColumnName("admission_id");
+            entity.Property(value => value.SkillId).HasColumnName("skill_id");
+            entity.Property(value => value.SkillVersion).HasColumnName("skill_version");
+            entity.Property(value => value.ReleaseSequence).HasColumnName("release_sequence");
+            entity.Property(value => value.SpecificationRevision).HasColumnName("specification_revision");
+            entity.Property(value => value.SpecificationDigest).HasColumnName("specification_digest");
+            entity.Property(value => value.PromptVersion).HasColumnName("prompt_version");
+            entity.Property(value => value.PromptDigest).HasColumnName("prompt_digest");
+            entity.Property(value => value.InputSchemaDigest).HasColumnName("input_schema_digest");
+            entity.Property(value => value.OutputSchemaDigest).HasColumnName("output_schema_digest");
+            entity.Property(value => value.ActivatedAt).HasColumnName("activated_at");
+            entity.Property(value => value.SupersededAt).HasColumnName("superseded_at");
+        });
+
+        modelBuilder.Entity<OperationalMandateSnapshot>(entity =>
+        {
+            entity.ToTable("operational_mandate_snapshots", "business");
+            entity.HasKey(value => value.MandateId);
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.IdempotencyIdentity }).IsUnique();
+            entity.Property(value => value.MandateId).HasColumnName("mandate_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.AgentInstanceId).HasColumnName("agent_instance_id");
+            entity.Property(value => value.ActorParticipantId).HasColumnName("actor_participant_id");
+            entity.Property(value => value.AdmissionId).HasColumnName("admission_id");
+            entity.Property(value => value.RuntimeBindingId).HasColumnName("runtime_binding_id");
+            entity.Property(value => value.ContractId).HasColumnName("contract_id");
+            entity.Property(value => value.DecisionSpaceSnapshotId).HasColumnName("decision_space_snapshot_id");
+            entity.Property(value => value.ConstitutionalEvidenceId).HasColumnName("constitutional_evidence_id");
+            entity.Property(value => value.IdempotencyIdentity).HasColumnName("idempotency_identity");
+            entity.Property(value => value.SkillId).HasColumnName("skill_id");
+            entity.Property(value => value.MandateDigest).HasColumnName("mandate_digest");
+            entity.Property(value => value.MandateJson).HasColumnName("mandate_json").HasColumnType("jsonb");
+            entity.Property(value => value.Deadline).HasColumnName("deadline");
+            entity.Property(value => value.CreatedAt).HasColumnName("created_at");
+            entity.HasOne<EmploymentRelationship>().WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+        });
+
+        modelBuilder.Entity<PerformanceReviewWindow>(entity =>
+        {
+            entity.ToTable("performance_review_windows", "business");
+            entity.HasKey(value => value.ReviewId);
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.SkillId, value.Revision }).IsUnique();
+            entity.Property(value => value.ReviewId).HasColumnName("review_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.AgentInstanceId).HasColumnName("agent_instance_id");
+            entity.Property(value => value.SkillId).HasColumnName("skill_id");
+            entity.Property(value => value.SkillVersion).HasColumnName("skill_version");
+            entity.Property(value => value.Revision).HasColumnName("revision");
+            entity.Property(value => value.PolicyVersion).HasColumnName("policy_version");
+            entity.Property(value => value.PeriodStart).HasColumnName("period_start");
+            entity.Property(value => value.PeriodEnd).HasColumnName("period_end");
+            entity.Property(value => value.SourceVersionsJson).HasColumnName("source_versions_json").HasColumnType("jsonb");
+            entity.Property(value => value.WorkDeliveryJson).HasColumnName("work_delivery_json").HasColumnType("jsonb");
+            entity.Property(value => value.AgentQualityJson).HasColumnName("agent_quality_json").HasColumnType("jsonb");
+            entity.Property(value => value.ConstitutionalPerformanceJson).HasColumnName("constitutional_performance_json").HasColumnType("jsonb");
+            entity.Property(value => value.CommercialUsageJson).HasColumnName("commercial_usage_json").HasColumnType("jsonb");
+            entity.Property(value => value.CustomerBusinessOutcomeJson).HasColumnName("customer_business_outcome_json").HasColumnType("jsonb");
+            entity.Property(value => value.CustomerAssessmentJson).HasColumnName("customer_assessment_json").HasColumnType("jsonb");
+            entity.Property(value => value.TrustAutonomyJson).HasColumnName("trust_autonomy_json").HasColumnType("jsonb");
+            entity.Property(value => value.Recommendation).HasColumnName("recommendation");
+            entity.Property(value => value.EvidenceId).HasColumnName("evidence_id");
+            entity.Property(value => value.CreatedAt).HasColumnName("created_at");
+            entity.HasOne<EmploymentRelationship>().WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+        });
+
         modelBuilder.Entity<RelationshipParticipant>(entity =>
         {
             entity.ToTable("relationship_participants", "business");
@@ -576,6 +740,31 @@ public sealed class EmploymentRelationshipDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+        });
+
+        modelBuilder.Entity<PerformanceReviewResponse>(entity =>
+        {
+            entity.ToTable("performance_review_responses", "business");
+            entity.HasKey(value => value.ResponseId);
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.ReviewId, value.ResponseRevision }).IsUnique();
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.IdempotencyKey }).IsUnique();
+            entity.Property(value => value.ResponseId).HasColumnName("response_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.ReviewId).HasColumnName("review_id");
+            entity.Property(value => value.ReviewRevision).HasColumnName("review_revision");
+            entity.Property(value => value.ResponseRevision).HasColumnName("response_revision");
+            entity.Property(value => value.ActorParticipantId).HasColumnName("actor_participant_id");
+            entity.Property(value => value.Decision).HasColumnName("decision").HasMaxLength(48);
+            entity.Property(value => value.Reason).HasColumnName("reason").HasMaxLength(500);
+            entity.Property(value => value.IdempotencyKey).HasColumnName("idempotency_key");
+            entity.Property(value => value.MaterialRequestHash).HasColumnName("material_request_hash").HasMaxLength(64);
+            entity.Property(value => value.EvidenceId).HasColumnName("evidence_id");
+            entity.Property(value => value.OccurredAt).HasColumnName("occurred_at");
+            entity.HasOne<PerformanceReviewWindow>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId, value.ReviewId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId, value.ReviewId });
         });
 
         modelBuilder.Entity<RelationshipStateHistory>(entity =>
@@ -992,6 +1181,9 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
             entity.Property(value => value.ContractId).HasColumnName("contract_id");
             entity.Property(value => value.ContractVersion).HasColumnName("contract_version");
+            entity.Property(value => value.ContractHash).HasColumnName("contract_hash");
+            entity.Property(value => value.ContractAcceptanceId).HasColumnName("contract_acceptance_id");
+            entity.Property(value => value.PaymentConsentEvidenceId).HasColumnName("payment_consent_evidence_id");
             entity.Property(value => value.IdempotencyKey).HasColumnName("idempotency_key");
             entity.Property(value => value.MaterialRequestHash).HasColumnName("material_request_hash").HasMaxLength(64).IsFixedLength();
             entity.Property(value => value.Status).HasColumnName("status").HasMaxLength(24);

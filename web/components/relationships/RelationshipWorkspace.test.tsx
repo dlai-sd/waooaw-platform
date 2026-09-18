@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { RelationshipWorkspace } from './RelationshipWorkspace';
 import type { ContractJourneyProjection, EmploymentRelationship, RelationshipEvaluationProjection, RelationshipTimelineEntry } from '@/lib/api/relationships';
 import type { RelationshipWorkspaceViews } from '@/lib/api/relationship-workspace';
-import type { AgentEmploymentLifecycleStageV1 } from '@/lib/api/generated';
+import type { AgentEmploymentLifecycleStageV1, PerformanceReviewWindowV1 } from '@/lib/api/generated';
 
 const relationship: EmploymentRelationship = {
   relationshipId: '5f33925b-fb0c-4366-8414-7f85309639b9',
@@ -74,9 +74,11 @@ const views: RelationshipWorkspaceViews = {
     }], history: [],
   },
   businessOutcomes: { ...section, sectionType: 'BUSINESS_OUTCOMES', items: [] },
+  performance: { ...section, sectionType: 'PERFORMANCE', current: null, history: [] },
   operations: {
     ...section, sectionType: 'OPERATIONS', eligibilityState: 'LOCKED', requiredGoalIds: ['goal-1'],
     verifiedGoalIds: [], blockedReasons: ['Customer goal verification is required.'],
+    reassessmentRequired: false, dependentOutcomeIds: [], operationalMandate: null,
   },
   plan: { ...section, sectionType: 'PLAN', planId: relationship.relationshipId, goals: [] },
   attention: { ...section, sectionType: 'ATTENTION', currencyState: 'CURRENT', items: [] },
@@ -106,6 +108,29 @@ const contractJourney: ContractJourneyProjection = {
     priceTax: { currency: 'INR', grossAmountInrPaise: 118000, gstAmountInrPaise: 18000, cadence: 'MONTHLY', subscriptionTerms: 'Monthly subscription', adSpendTreatment: 'Ad spend is separate', cancellationAndRefundTerms: 'Cancel before renewal; captured charges follow the stated refund policy', offeringId: 'dma-release-1', bundleTier: 'STARTER', quoteVersion: 'quote-v1', renewalConsequence: 'Renews at the accepted monthly price' },
   },
 };
+const performanceReview: PerformanceReviewWindowV1 = {
+  reviewId: '725792fa-c9c1-4377-b3db-0fb41b091279',
+  agentInstanceId: relationship.agentInstanceId,
+  skillId: 'MARKET_RESEARCH',
+  skillVersion: '1.0.0',
+  revision: 1,
+  policyVersion: 'review-policy-1',
+  periodStart: new Date('2026-08-01T00:00:00Z'),
+  periodEnd: new Date('2026-08-31T00:00:00Z'),
+  sourceVersions: { professionalRuntime: 'pr-17', constitutionalEngine: 'ce-9' },
+  workDelivery: { state: 'DELIVERED', summary: 'Work delivered.', evidenceState: 'RECORDED' },
+  agentQuality: { state: 'GOOD', summary: 'Quality passed.', evidenceState: 'RECORDED' },
+  constitutionalPerformance: { state: 'CONFORMANT', summary: 'Evidence complete.', evidenceState: 'RECORDED' },
+  commercialUsage: { state: 'WITHIN_ALLOWANCE', summary: 'Within allowance.', evidenceState: 'RECORDED' },
+  customerBusinessOutcome: { state: 'POOR', summary: 'Outcome did not improve.', evidenceState: 'RECORDED', attributionLimits: 'No causal guarantee' },
+  customerAssessment: { state: 'CUSTOMER_DISPUTED', summary: 'Customer requested correction.', evidenceState: 'RECORDED' },
+  trustAutonomy: { state: 'UNCHANGED', summary: 'No autonomy increase.', evidenceState: 'RECORDED' },
+  recommendation: 'REASSESSMENT_REQUIRED' as const,
+  evidenceId: '5bbc4e01-461a-4c51-99d8-59bb5daa85f1',
+  createdAt: new Date('2026-09-01T00:00:00Z'),
+  customerResponse: null,
+  reassessmentRequired: true,
+};
 
 describe('RelationshipWorkspace', () => {
   beforeEach(() => {
@@ -120,6 +145,49 @@ describe('RelationshipWorkspace', () => {
         serverTime: '2026-08-10T10:01:00Z',
       }),
     } as Response);
+  });
+
+  it('SIM-095-14 separates good agent quality from poor business outcome and unchanged trust', () => {
+    render(<RelationshipWorkspace relationship={relationship} timeline={timeline} evaluation={evaluation} views={{
+      ...views,
+      performance: {
+        ...views.performance,
+        currencyState: 'CURRENT',
+        current: performanceReview,
+      },
+    }} />);
+
+    expect(screen.getByText('good')).toBeVisible();
+    expect(screen.getByText('poor')).toBeVisible();
+    expect(screen.getByText('unchanged')).toBeVisible();
+    expect(screen.getByText(/reassessment required/)).toBeVisible();
+    expect(screen.getByText('No causal guarantee')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Record review decision' })).toBeVisible();
+  });
+
+  it('submits an exact-version customer review decision for only the current relationship', async () => {
+    render(<RelationshipWorkspace relationship={relationship} timeline={timeline} evaluation={evaluation} views={{
+      ...views,
+      performance: { ...views.performance, currencyState: 'CURRENT', current: performanceReview },
+    }} />);
+
+    fireEvent.change(screen.getByLabelText('Decision'), { target: { value: 'REQUEST_REASSESSMENT' } });
+    fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'Outcome requires a revised plan.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Record review decision' }));
+
+    expect(await screen.findByText(/Review decision recorded/)).toBeVisible();
+    const reviewCall = (global.fetch as jest.Mock).mock.calls.find(([url]) => String(url).endsWith('/performance-reviews'));
+    expect(reviewCall?.[0]).toBe(`/api/relationships/${relationship.relationshipId}/performance-reviews`);
+    expect(JSON.parse(reviewCall?.[1].body)).toMatchObject({
+      command: {
+        expectedWorkspaceVersion: 'relationship-1',
+        expectedSubjectVersion: `performance-${performanceReview.reviewId}-1`,
+        payload: {
+          commandKind: 'RESPOND_TO_PERFORMANCE_REVIEW', reviewId: performanceReview.reviewId,
+          reviewRevision: 1, decision: 'REQUEST_REASSESSMENT', reason: 'Outcome requires a revised plan.',
+        },
+      },
+    });
   });
 
   afterEach(() => jest.restoreAllMocks());
@@ -197,6 +265,23 @@ describe('RelationshipWorkspace', () => {
     });
   });
 
+  it('submits exact-version customer goal verification for only the current relationship', async () => {
+    render(<RelationshipWorkspace relationship={relationship} timeline={timeline} views={views} evaluation={evaluation} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Verify goal' }));
+
+    expect(await screen.findByText('Goal verification recorded.')).toBeVisible();
+    const goalCall = (global.fetch as jest.Mock).mock.calls.find(([url]) => String(url).endsWith('/goal-verifications'));
+    expect(goalCall?.[0]).toBe(`/api/relationships/${relationship.relationshipId}/goal-verifications`);
+    expect(JSON.parse(goalCall?.[1].body)).toMatchObject({
+      command: {
+        schemaVersion: '1.0', expectedWorkspaceVersion: 'relationship-1', expectedSubjectVersion: '1',
+        payload: { commandKind: 'VERIFY_GOAL', goalId: 'goal-1', goalVersion: '1', verificationDecision: 'VERIFIED' },
+      },
+    });
+    expect(JSON.parse(String(goalCall?.[1]?.body)).command.payload).not.toHaveProperty('correctionReason');
+  });
+
   it('CCT-AE01-DARK-01 shows exact terms and symmetric unselected contract decisions', async () => {
     render(<RelationshipWorkspace relationship={relationship} timeline={timeline} views={views} evaluation={evaluation} contractJourney={contractJourney} />);
 
@@ -235,6 +320,86 @@ describe('RelationshipWorkspace', () => {
 
     expect(await within(contractSection).findByText('Payment owner is unavailable.')).toBeVisible();
     expect(screen.queryByText(/payment succeeded/i)).not.toBeInTheDocument();
+  });
+
+  it('launches official Razorpay Checkout and treats its callback only as a reconciliation prompt', async () => {
+    let checkoutOptions: Record<string, unknown> | undefined;
+    const open = jest.fn(() => (checkoutOptions?.handler as (() => void))());
+    Object.defineProperty(window, 'Razorpay', {
+      configurable: true,
+      value: function Razorpay(options: Record<string, unknown>) {
+        checkoutOptions = options;
+        return { open };
+      },
+    });
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          outcomeKind: 'RAZORPAY_CHECKOUT_REQUIRED',
+          checkoutIntentId: '7bc5b28a-a674-4c77-b3e0-7da0f8bf1e50',
+          providerOrderReference: 'order_exact',
+          publicCheckoutKey: 'rzp_test_public',
+          amountInrPaise: 118000,
+          currency: 'INR',
+          merchantDisplayName: 'WAOOAW',
+          enabledMethodFamilies: ['CREDIT_CARD', 'DEBIT_CARD', 'UPI', 'NETBANKING', 'WALLET'],
+        }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          outcomeKind: 'CAPTURED',
+          checkoutIntentId: '7bc5b28a-a674-4c77-b3e0-7da0f8bf1e50',
+          commercialOutcomeReference: 'pay_exact',
+          commercialEvidenceId: '14eddf57-ef75-4a94-bfac-06b2b550dd44',
+        }),
+      } as Response);
+    render(<RelationshipWorkspace relationship={relationship} timeline={timeline} views={views} evaluation={evaluation} contractJourney={{ ...contractJourney, acceptanceState: 'ACCEPTED' }} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to payment' }));
+
+    expect(await screen.findByRole('button', { name: 'Complete paid activation' })).toBeVisible();
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(checkoutOptions).toEqual(expect.objectContaining({
+      key: 'rzp_test_public', amount: 118000, currency: 'INR', order_id: 'order_exact',
+    }));
+    const reconciliationCall = (global.fetch as jest.Mock).mock.calls[1];
+    expect(reconciliationCall[0]).toContain('checkoutIntentId=7bc5b28a-a674-4c77-b3e0-7da0f8bf1e50');
+    expect(reconciliationCall[1]).not.toHaveProperty('body');
+    expect(screen.getByText(/signature-verified and reconciled/)).toBeVisible();
+  });
+
+  it('keeps Razorpay Checkout dismissal non-terminal without callback or activation', async () => {
+    let checkoutOptions: Record<string, unknown> | undefined;
+    Object.defineProperty(window, 'Razorpay', {
+      configurable: true,
+      value: function Razorpay(options: Record<string, unknown>) {
+        checkoutOptions = options;
+        return { open: () => ((options.modal as { ondismiss(): void }).ondismiss()) };
+      },
+    });
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        outcomeKind: 'RAZORPAY_CHECKOUT_REQUIRED',
+        checkoutIntentId: '7bc5b28a-a674-4c77-b3e0-7da0f8bf1e50',
+        providerOrderReference: 'order_exact',
+        publicCheckoutKey: 'rzp_test_public',
+        amountInrPaise: 118000,
+        currency: 'INR',
+        merchantDisplayName: 'WAOOAW',
+      }),
+    } as Response);
+    render(<RelationshipWorkspace relationship={relationship} timeline={timeline} views={views} evaluation={evaluation} contractJourney={{ ...contractJourney, acceptanceState: 'ACCEPTED' }} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to payment' }));
+
+    expect(await screen.findByText(/closed. Payment is not marked failed/)).toBeVisible();
+    expect(checkoutOptions).toBeDefined();
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button', { name: 'Complete paid activation' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/payment failed/i)).not.toBeInTheDocument();
   });
 
   it('renders a truthful non-collecting Demo zero-price checkout', async () => {

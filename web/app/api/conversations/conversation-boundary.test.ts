@@ -52,12 +52,14 @@ describe('conversation server boundary', () => {
   it('keeps send identity and content inside the server-side generated call', async () => {
     sendConversationMessage.mockResolvedValue({ outcome: 'ACCEPTED' });
     const { POST } = await import('./[relationshipId]/route');
+    const replayIdentity = crypto.randomUUID();
     const request = new NextRequest(`http://localhost/api/conversations/${relationshipId}`, {
       method: 'POST',
       body: JSON.stringify({
         action: 'send',
-        idempotencyKey: 'f5bc4af1-bb1a-45f9-b979-71f0dfc8379e',
+        idempotencyKey: replayIdentity,
         clientMessageId: '51885e4d-53ac-4abf-ad77-58cd127a3dc4',
+        skillId: 'campaign_planning',
         text: 'Please summarize today.',
         locale: 'en-IN',
         expectedCursor: 'authoritative-cursor',
@@ -68,9 +70,26 @@ describe('conversation server boundary', () => {
     expect(response.status).toBe(200);
     expect(sendConversationMessage).toHaveBeenCalledWith(expect.objectContaining({
       relationshipId,
-      idempotencyKey: 'f5bc4af1-bb1a-45f9-b979-71f0dfc8379e',
-      sendConversationMessageRequestV1: expect.objectContaining({ clientMessageId: '51885e4d-53ac-4abf-ad77-58cd127a3dc4' }),
+      idempotencyKey: replayIdentity,
+      sendConversationMessageRequestV1: expect.objectContaining({ clientMessageId: '51885e4d-53ac-4abf-ad77-58cd127a3dc4', skillId: 'campaign_planning' }),
     }));
+  });
+
+  it('rejects send without an explicit Skill identity', async () => {
+    const { POST } = await import('./[relationshipId]/route');
+    const request = new NextRequest(`http://localhost/api/conversations/${relationshipId}`, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'send',
+        idempotencyKey: '00000000-0000-4000-8000-000000000001',
+        clientMessageId: '51885e4d-53ac-4abf-ad77-58cd127a3dc4',
+        text: 'Please summarize today.',
+        locale: 'en-IN',
+      }),
+    });
+
+    expect((await POST(request, params)).status).toBe(400);
+    expect(sendConversationMessage).not.toHaveBeenCalled();
   });
 
   it('proxies SSE with resume identity and strips upstream private headers', async () => {

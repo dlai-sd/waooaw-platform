@@ -29,7 +29,13 @@ import { VoiceContribution } from './VoiceContribution';
 interface QueuedContribution {
   clientMessageId: string;
   idempotencyKey: string;
+  skillId: string;
   text: string;
+}
+
+interface AcceptedSkill {
+  skillId: string;
+  skillVersion: string;
 }
 
 interface ConversationExperienceProps {
@@ -179,6 +185,8 @@ export function ConversationExperience({ relationshipId, locale = 'en-IN', relat
   const [nextCursor, setNextCursor] = useState<string>();
   const [unreadBoundary, setUnreadBoundary] = useState<string>();
   const [draft, setDraft] = useState('');
+  const [acceptedSkills, setAcceptedSkills] = useState<AcceptedSkill[]>([]);
+  const [selectedSkillId, setSelectedSkillId] = useState('');
   const [queued, setQueued] = useState<QueuedContribution>();
   const [executionId, setExecutionId] = useState<string>();
   const [connection, setConnection] = useState<ConnectionState>(relationshipStopped ? 'stopped' : 'connecting');
@@ -186,6 +194,24 @@ export function ConversationExperience({ relationshipId, locale = 'en-IN', relat
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [announcement, setAnnouncement] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    fetch(`/api/relationships/${encodeURIComponent(relationshipId)}/skill-decisions`, { cache: 'no-store' })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(await readProblem(response));
+        return response.json() as Promise<{ skills?: AcceptedSkill[] }>;
+      })
+      .then((payload) => {
+        if (!active || !Array.isArray(payload.skills)) return;
+        setAcceptedSkills(payload.skills);
+        setSelectedSkillId((current) => payload.skills?.some((skill) => skill.skillId === current)
+          ? current
+          : payload.skills?.[0]?.skillId ?? '');
+      })
+      .catch((caught: unknown) => active && setError(caught instanceof Error ? caught.message : 'Accepted Skills are unavailable.'));
+    return () => { active = false; };
+  }, [relationshipId]);
 
   useEffect(() => {
     const stopped = (event: Event) => {
@@ -408,8 +434,8 @@ export function ConversationExperience({ relationshipId, locale = 'en-IN', relat
 
   async function sendMessage() {
     const text = draft.trim();
-    if (!text || sending || queued) return;
-    const contribution = { clientMessageId: crypto.randomUUID(), idempotencyKey: crypto.randomUUID(), text };
+    if (!text || !selectedSkillId || sending || queued) return;
+    const contribution = { clientMessageId: crypto.randomUUID(), idempotencyKey: crypto.randomUUID(), skillId: selectedSkillId, text };
     localStorage.setItem(storageKey(relationshipId, 'outbox'), JSON.stringify(contribution));
     setQueued(contribution);
     setMessages((current) => mergeMessages(current, [{
@@ -533,6 +559,16 @@ export function ConversationExperience({ relationshipId, locale = 'en-IN', relat
         textFallbackId={`conversation-draft-${relationshipId}`}
       />
       <form className="conversation-composer" onSubmit={(event) => { event.preventDefault(); void sendMessage(); }}>
+        <label htmlFor={`conversation-skill-${relationshipId}`}>Skill for this message</label>
+        <select
+          disabled={connection === 'stopped' || sending || Boolean(queued)}
+          id={`conversation-skill-${relationshipId}`}
+          onChange={(event) => setSelectedSkillId(event.target.value)}
+          value={selectedSkillId}
+        >
+          {!acceptedSkills.length ? <option value="">No accepted Skills available</option> : null}
+          {acceptedSkills.map((skill) => <option key={`${skill.skillId}:${skill.skillVersion}`} value={skill.skillId}>{skill.skillId.replaceAll('_', ' ').toLowerCase()} · {skill.skillVersion}</option>)}
+        </select>
         <label htmlFor={`conversation-draft-${relationshipId}`}>Message your professional</label>
         <textarea
           disabled={connection === 'stopped'}
@@ -546,7 +582,7 @@ export function ConversationExperience({ relationshipId, locale = 'en-IN', relat
         <div className="composer-commands">
           <span>{connection === 'offline' || queued ? 'Draft retained on this device until reconciliation.' : 'Enter sends only with the Send button.'}</span>
           {executionId ? <button className="cancel-command" onClick={() => void cancel()} type="button"><Square aria-hidden="true" size={16} />Cancel response</button> : null}
-          <button className="send-command" disabled={!draft.trim() || sending || Boolean(queued) || connection === 'stopped'} type="submit">
+          <button className="send-command" disabled={!draft.trim() || !selectedSkillId || sending || Boolean(queued) || connection === 'stopped'} type="submit">
             {sending ? <LoaderCircle aria-hidden="true" className="spin" size={18} /> : <Send aria-hidden="true" size={18} />}
             {queued && connection === 'offline' ? 'Queued' : sending ? 'Sending' : 'Send'}
           </button>

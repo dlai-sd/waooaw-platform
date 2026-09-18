@@ -56,6 +56,7 @@ export interface RelationshipCheckoutBase {
  */
 export const RelationshipCheckoutBaseOutcomeKindEnum = {
   RazorpayCheckoutRequired: "RAZORPAY_CHECKOUT_REQUIRED",
+  Captured: "CAPTURED",
   FullyDiscounted: "FULLY_DISCOUNTED",
   ProviderConfigurationPending: "PROVIDER_CONFIGURATION_PENDING",
   CommercialConflict: "COMMERCIAL_CONFLICT",

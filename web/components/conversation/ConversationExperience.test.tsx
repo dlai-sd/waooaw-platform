@@ -64,15 +64,16 @@ function installFetch(
   apiHandler: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>,
   streamHandler: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response> = async (_input, init) => streamResponse(init?.signal),
 ): FetchMock {
-  const mock = jest.fn((input: RequestInfo | URL, init?: RequestInit) => (
-    String(input).endsWith('/stream') ? streamHandler(input, init) : apiHandler(input, init)
-  )) as FetchMock;
+  const mock = jest.fn((input: RequestInfo | URL, init?: RequestInit) => {
+    if (String(input).endsWith('/skill-decisions')) return jsonResponse({ skills: [{ skillId: 'campaign_planning', skillVersion: '1.0.0' }] });
+    return String(input).endsWith('/stream') ? streamHandler(input, init) : apiHandler(input, init);
+  }) as FetchMock;
   global.fetch = mock;
   return mock;
 }
 
 function apiCalls(mock: FetchMock) {
-  return mock.mock.calls.filter(([input]) => !String(input).endsWith('/stream'));
+  return mock.mock.calls.filter(([input]) => !String(input).endsWith('/stream') && !String(input).endsWith('/skill-decisions'));
 }
 
 function streamCalls(mock: FetchMock) {
@@ -239,6 +240,7 @@ describe('ConversationExperience', () => {
       action: 'send',
       clientMessageId: '51885e4d-53ac-4abf-ad77-58cd127a3dc4',
       idempotencyKey: 'f5bc4af1-bb1a-45f9-b979-71f0dfc8379e',
+      skillId: 'campaign_planning',
       text: 'Please summarize today.',
     }));
     expect(await screen.findByRole('button', { name: 'Cancel response' })).toBeVisible();
@@ -355,6 +357,7 @@ describe('ConversationExperience', () => {
     const contribution = {
       clientMessageId: 'saved-client-message',
       idempotencyKey: 'saved-idempotency-key',
+      skillId: 'campaign_planning',
       text: 'Saved contribution',
     };
     localStorage.setItem(`waooaw:conversation:${relationshipId}:draft`, contribution.text);
@@ -375,6 +378,7 @@ describe('ConversationExperience', () => {
     const contribution = {
       clientMessageId: 'saved-client-message',
       idempotencyKey: 'saved-idempotency-key',
+      skillId: 'campaign_planning',
       text: 'Saved contribution',
     };
     localStorage.setItem(`waooaw:conversation:${relationshipId}:outbox`, JSON.stringify(contribution));

@@ -26,6 +26,7 @@ public sealed class ConversationMessage
     public string SchemaVersion { get; init; } = "1.0";
     public string Actor { get; init; } = "CUSTOMER";
     public string Channel { get; init; } = "WEB";
+    public string SkillId { get; init; } = string.Empty;
     public string ContentJson { get; set; } = "[]";
     public string CardsJson { get; set; } = "[]";
     public string DeliveryState { get; set; } = "ACCEPTED";
@@ -187,6 +188,7 @@ public sealed class ConversationStoreDbContext : DbContext
         entity.Property(value => value.SchemaVersion).HasColumnName("schema_version");
         entity.Property(value => value.Actor).HasColumnName("actor");
         entity.Property(value => value.Channel).HasColumnName("channel");
+        entity.Property(value => value.SkillId).HasColumnName("skill_id");
         entity.Property(value => value.ContentJson).HasColumnName("content_json").HasColumnType("jsonb");
         entity.Property(value => value.CardsJson).HasColumnName("cards_json").HasColumnType("jsonb");
         entity.Property(value => value.DeliveryState).HasColumnName("delivery_state");

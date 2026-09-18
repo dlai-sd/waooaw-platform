@@ -266,7 +266,16 @@ builder.Services.AddDbContextFactory<ConversationStoreDbContext>((services, opti
 builder.Services.Configure<ConversationCursorOptions>(
     builder.Configuration.GetSection("Conversation:Cursor"));
 builder.Services.AddSingleton<ConversationCursorCodec>();
-builder.Services.AddSingleton<IConversationExecutionGateway, UnconfiguredConversationExecutionGateway>();
+var conversationPrBaseUrl = builder.Configuration["Conversation:ProfessionalRuntimeBaseUrl"]
+    ?? "http://professional-runtime:5003";
+builder.Services.AddHttpClient("ConversationProfessionalRuntime", client =>
+{
+    client.BaseAddress = new Uri(conversationPrBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+builder.Services.AddScoped<IConversationExecutionGateway, HttpConversationExecutionGateway>();
+builder.Services.AddScoped<IOperationalMandateResolver, OperationalMandateResolver>();
+builder.Services.AddScoped<PerformanceReviewService>();
 builder.Services.AddScoped<ConversationService>();
 builder.Services.AddScoped<PortalInteractionService>();
 

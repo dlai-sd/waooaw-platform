@@ -55,6 +55,7 @@ internal sealed class ConversationExecutionGatewayStub : IConversationExecutionG
     public int StartCount { get; private set; }
     public int CancelCount { get; private set; }
     public bool FailStart { get; set; }
+    public OperationalMandateV1? LastMandate { get; private set; }
 
     public Task StartAsync(
         Guid conversationId,
@@ -62,10 +63,13 @@ internal sealed class ConversationExecutionGatewayStub : IConversationExecutionG
         Guid messageId,
         Guid relationshipId,
         string locale,
+        IReadOnlyList<ConversationTextBlockV1> content,
+        OperationalMandateV1 operationalMandate,
         Guid idempotencyKey,
         CancellationToken cancellationToken)
     {
         StartCount += 1;
+        LastMandate = operationalMandate;
         if (FailStart)
         {
             throw new ConversationExecutionUnavailableException();
@@ -82,6 +86,49 @@ internal sealed class ConversationExecutionGatewayStub : IConversationExecutionG
     {
         CancelCount += 1;
         return Task.CompletedTask;
+    }
+}
+
+internal sealed class OperationalMandateResolverStub : IOperationalMandateResolver
+{
+    public bool Fail { get; set; }
+    public int ResolveCount { get; private set; }
+
+    public Task<OperationalMandateReadiness> GetReadinessAsync(
+        Guid tenantId,
+        Guid participantId,
+        Guid relationshipId,
+        CancellationToken cancellationToken) => Task.FromResult(
+            new OperationalMandateReadiness(!Fail, Fail ? ["Unavailable"] : []));
+
+    public Task<OperationalMandateV1> ResolveAsync(
+        Guid tenantId,
+        Guid participantId,
+        Guid relationshipId,
+        Guid idempotencyKey,
+        Guid constitutionalEvidenceId,
+        string skillId,
+        string operationalPurpose,
+        CancellationToken cancellationToken)
+    {
+        ResolveCount += 1;
+        if (Fail)
+        {
+            throw new OperationalMandateUnavailableException();
+        }
+
+        return Task.FromResult(new OperationalMandateV1(
+            "1.0", Guid.NewGuid(), "sha256:" + new string('1', 64), tenantId, relationshipId,
+            Guid.NewGuid(), participantId, "EVALUATOR", "ACTIVE", "LIVE", "DMA", 1, "1.0.0", "3.1",
+            "sha256:" + new string('2', 64), 1, "sha256:" + new string('3', 64),
+            "sha256:" + new string('4', 64), "1.0.0", "1.0.0", "1.0.0", "1.0.0",
+            "sha256:" + new string('8', 64),
+            skillId, "1.0.0", "sha256:" + new string('5', 64),
+            "sha256:" + new string('6', 64), "1.0.0", "sha256:" + new string('7', 64),
+            1, 1, 1, 1, "allowance-a", 1, ["approval-a"], false, null, operationalPurpose,
+            ["CUSTOMER_PROFILING"], ["PUBLISH_WITHOUT_APPROVAL"], DateTimeOffset.UtcNow.AddMinutes(5),
+            idempotencyKey, $"decision:{constitutionalEvidenceId:D}", $"evidence:{constitutionalEvidenceId:D}",
+            null, null));
     }
 }
 
@@ -896,6 +943,7 @@ public sealed class ConversationServiceTests
         new(
             "1.0",
             Guid.NewGuid(),
+            "CUSTOMER_PROFILING",
             [new ConversationTextBlockV1("1.0", "TEXT", text, "en")],
             "en-IN");
 
@@ -939,6 +987,7 @@ public sealed class ConversationServiceTests
         var conversationFactory = new InMemoryConversationFactory($"conversation-{databaseSuffix}");
         var constitutionalGateway = new ConversationConstitutionalGatewayStub();
         var executionGateway = new ConversationExecutionGatewayStub();
+        var mandateResolver = new OperationalMandateResolverStub();
         var cursorCodec = new ConversationCursorCodec(Options.Create(new ConversationCursorOptions
         {
             HmacKey = "wc034-test-cursor-key-at-least-32-characters",
@@ -948,6 +997,7 @@ public sealed class ConversationServiceTests
             relationshipFactory,
             constitutionalGateway,
             executionGateway,
+            mandateResolver,
             cursorCodec);
         var tenantId = Guid.NewGuid();
         var participantId = Guid.NewGuid();

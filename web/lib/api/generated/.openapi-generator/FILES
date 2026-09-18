@@ -147,6 +147,11 @@ docs/OfferableProfessionalVersionSkillsInner.md
 docs/OutcomeInterpretationV1.md
 docs/PAASParameters.md
 docs/PauseRelationshipPayloadV1.md
+docs/PerformanceReviewCustomerDecisionV1.md
+docs/PerformanceReviewDimensionV1.md
+docs/PerformanceReviewRecommendationV1.md
+docs/PerformanceReviewResponseV1.md
+docs/PerformanceReviewWindowV1.md
 docs/PhaseBundleSubscription.md
 docs/PlanCardV1.md
 docs/PortalInteractionMessageV1.md
@@ -173,6 +178,7 @@ docs/RelationshipAuthenticationAssurance.md
 docs/RelationshipAvailableCommandV1.md
 docs/RelationshipBusinessOutcomeV1.md
 docs/RelationshipBusinessOutcomesV1.md
+docs/RelationshipCapturedCheckout.md
 docs/RelationshipChannel.md
 docs/RelationshipChannelBinding.md
 docs/RelationshipChannelBindingStatus.md
@@ -214,6 +220,7 @@ docs/RelationshipOperationsV1.md
 docs/RelationshipOutcomeStatusV1.md
 docs/RelationshipParticipantRole.md
 docs/RelationshipPaymentProceedRequest.md
+docs/RelationshipPerformanceV1.md
 docs/RelationshipPlanV1.md
 docs/RelationshipPolicySelectionV1.md
 docs/RelationshipProviderConfigurationPending.md
@@ -246,6 +253,7 @@ docs/RenewRelationshipPayloadV1.md
 docs/ReplaceGoalPayloadV1.md
 docs/RequestAllowanceAdditionPayloadV1.md
 docs/RequestRelationshipEvidenceExportV1.md
+docs/RespondToPerformanceReviewPayloadV1.md
 docs/ResumeRelationshipPayloadV1.md
 docs/ReviewCadence.md
 docs/SelectSkillPayloadV1.md
@@ -431,6 +439,11 @@ models/OfferableProfessionalVersionSkillsInner.ts
 models/OutcomeInterpretationV1.ts
 models/PAASParameters.ts
 models/PauseRelationshipPayloadV1.ts
+models/PerformanceReviewCustomerDecisionV1.ts
+models/PerformanceReviewDimensionV1.ts
+models/PerformanceReviewRecommendationV1.ts
+models/PerformanceReviewResponseV1.ts
+models/PerformanceReviewWindowV1.ts
 models/PhaseBundleSubscription.ts
 models/PlanCardV1.ts
 models/PortalInteractionMessageV1.ts
@@ -456,6 +469,7 @@ models/RelationshipAuthenticationAssurance.ts
 models/RelationshipAvailableCommandV1.ts
 models/RelationshipBusinessOutcomeV1.ts
 models/RelationshipBusinessOutcomesV1.ts
+models/RelationshipCapturedCheckout.ts
 models/RelationshipChannel.ts
 models/RelationshipChannelBinding.ts
 models/RelationshipChannelBindingStatus.ts
@@ -497,6 +511,7 @@ models/RelationshipOperationsV1.ts
 models/RelationshipOutcomeStatusV1.ts
 models/RelationshipParticipantRole.ts
 models/RelationshipPaymentProceedRequest.ts
+models/RelationshipPerformanceV1.ts
 models/RelationshipPlanV1.ts
 models/RelationshipPolicySelectionV1.ts
 models/RelationshipProviderConfigurationPending.ts
@@ -528,6 +543,7 @@ models/RenewRelationshipPayloadV1.ts
 models/ReplaceGoalPayloadV1.ts
 models/RequestAllowanceAdditionPayloadV1.ts
 models/RequestRelationshipEvidenceExportV1.ts
+models/RespondToPerformanceReviewPayloadV1.ts
 models/ResumeRelationshipPayloadV1.ts
 models/ReviewCadence.ts
 models/SelectSkillPayloadV1.ts

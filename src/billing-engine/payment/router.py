@@ -3,16 +3,20 @@
 """Payment FastAPI router — onboarding order + Razorpay webhook endpoint."""
 from __future__ import annotations
 
+import json
 import logging
+from datetime import datetime, timezone
 from uuid import NAMESPACE_URL, UUID, uuid5
 
+import redis.asyncio as aioredis
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field, model_validator
+from sqlalchemy import text
 
-import redis.asyncio as aioredis
 from database import get_session_factory
 from config import Settings
 from payment.models import (
+    CheckoutOutcomeKind,
     OnboardingOrderRequest,
     PaymentCapturedEvent,
     RelationshipCheckoutRequest,
@@ -93,6 +97,16 @@ class RelationshipCheckoutBody(BaseModel):
     idempotency_key: str = Field(min_length=1, max_length=200)
 
 
+class RelationshipCheckoutReconcileBody(BaseModel):
+    tenant_id: UUID
+    relationship_id: UUID
+    contract_id: UUID
+    contract_version: int = Field(gt=0)
+    contract_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    contract_acceptance_id: UUID
+    payment_consent_evidence_id: UUID
+
+
 @router.post("/relationship-checkout", response_model=RelationshipCheckoutResult)
 async def create_relationship_checkout(body: RelationshipCheckoutBody) -> RelationshipCheckoutResult:
     """Return WBE-owned commercial truth for one accepted relationship contract."""
@@ -102,6 +116,58 @@ async def create_relationship_checkout(body: RelationshipCheckoutBody) -> Relati
             settings=_settings,
             zero_price_outcomes=ZeroPriceCommercialOutcomeStore(db),
         ).create_relationship_checkout(RelationshipCheckoutRequest(**body.model_dump()))
+
+
+@router.post("/relationship-checkout/{checkout_intent_id}/reconcile", response_model=RelationshipCheckoutResult)
+async def reconcile_relationship_checkout(
+    checkout_intent_id: UUID,
+    body: RelationshipCheckoutReconcileBody,
+) -> RelationshipCheckoutResult:
+    session_factory = get_session_factory()
+    async with session_factory() as db:
+        row = (await db.execute(text(
+            "SELECT tenant_id, relationship_id, accepted_contract_id, contract_version, contract_hash, "
+            "contract_acceptance_id, payment_consent_evidence_id, payment_evidence_id, "
+            "razorpay_payment_id, status FROM payment_intents WHERE checkout_intent_id = :checkout_intent_id"
+        ).bindparams(checkout_intent_id=str(checkout_intent_id)))).fetchone()
+        if row is None:
+            return RelationshipCheckoutResult(
+                outcome_kind=CheckoutOutcomeKind.OUTCOME_UNRESOLVED,
+                checkout_intent_id=checkout_intent_id,
+                relationship_id=body.relationship_id,
+                contract_version=body.contract_version,
+                produced_at=datetime.now(timezone.utc),
+                reason_code="RECONCILIATION_PENDING",
+                retryable=True,
+                customer_safe_next_action="Wait while the existing checkout is reconciled.",
+            )
+        expected = tuple(str(value) for value in (
+            body.tenant_id, body.relationship_id, body.contract_id, body.contract_version,
+            body.contract_hash, body.contract_acceptance_id, body.payment_consent_evidence_id,
+        ))
+        if tuple(str(row[index]) for index in range(7)) != expected:
+            raise HTTPException(status_code=409, detail={"code": "CHECKOUT_RECONCILIATION_CONFLICT"})
+        if row.status != "CAPTURED":
+            return RelationshipCheckoutResult(
+                outcome_kind=CheckoutOutcomeKind.OUTCOME_UNRESOLVED,
+                checkout_intent_id=checkout_intent_id,
+                relationship_id=body.relationship_id,
+                contract_version=body.contract_version,
+                produced_at=datetime.now(timezone.utc),
+                reason_code="RECONCILIATION_PENDING",
+                retryable=True,
+                customer_safe_next_action="Wait while the existing checkout is reconciled.",
+            )
+        return RelationshipCheckoutResult(
+            outcome_kind=CheckoutOutcomeKind.CAPTURED,
+            checkout_intent_id=checkout_intent_id,
+            relationship_id=body.relationship_id,
+            contract_version=body.contract_version,
+            produced_at=datetime.now(timezone.utc),
+            commercial_outcome_reference=str(row.razorpay_payment_id),
+            commercial_evidence_id=UUID(str(row.payment_evidence_id)),
+            evidence_state="COMMITTED",
+        )
 
 
 @router.post("/onboarding-order")
@@ -143,12 +209,19 @@ async def razorpay_webhook(request: Request) -> dict:
     Signature verified via HMAC-SHA256 (ADR-014). Idempotent (payment_intents table).
     """
     signature = request.headers.get("X-Razorpay-Signature", "")
-    payload = await request.json()
+    raw_body = await request.body()
+    try:
+        payload = json.loads(raw_body)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail={"code": "INVALID_WEBHOOK_BODY"}) from None
 
     event_type = payload.get("event", "")
     if event_type != "payment.captured":
         # Acknowledge unhandled events gracefully
         return {"status": "ignored", "event": event_type}
+    razorpay_client = RazorpayClient(settings=_settings)
+    if not razorpay_client.verify_webhook_signature(raw_body, signature):
+        raise HTTPException(status_code=400, detail={"code": "INVALID_SIGNATURE"})
 
     payment = payload.get("payload", {}).get("payment", {}).get("entity", {})
     notes = payment.get("notes", {})
@@ -173,20 +246,20 @@ async def razorpay_webhook(request: Request) -> dict:
         contract_acceptance_id=_optional_uuid(notes.get("contract_acceptance_id")),
         payment_consent_evidence_id=_optional_uuid(notes.get("payment_consent_evidence_id")),
         payment_evidence_id=uuid5(NAMESPACE_URL, f"waooaw:payment:{payment.get('id', '')}"),
+        checkout_intent_id=_optional_uuid(notes.get("checkout_intent_id")),
     )
 
     session_factory = get_session_factory()
     async with session_factory() as db:
         redis_client = aioredis.from_url(_settings.REDIS_URL, decode_responses=True)
         wallet_svc = WalletService(db=db, redis_client=redis_client)
-        razorpay_client = RazorpayClient(settings=_settings)
         handler = WebhookHandler(
             db=db,
             wallet_service=wallet_svc,
             razorpay_client=razorpay_client,
             settings=_settings,
         )
-        result = await handler.handle_payment_captured(event, is_bypass=False)
+        result = await handler.handle_payment_captured(event, is_bypass=False, webhook_signature_verified=True)
 
     if hasattr(result, "payment_evidence_id"):
         return {
