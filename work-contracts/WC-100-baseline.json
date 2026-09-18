@@ -1,0 +1,100 @@
+{
+  "schema": "waooaw.wc100-measurement/v1",
+  "measurement_phase": "baseline",
+  "captured_at": "2026-09-18",
+  "source": "GitHub completed CI runs and repository workflow inspection",
+  "policy_head": "09c7ffd1fbb5b059132b4442c7072f97a4bd38a7",
+  "execution_model": {
+    "local_prechecks": "serial",
+    "pr_ci": "full",
+    "pr_release_image_builds": 7,
+    "configured_runner_build_invocations": {
+      "test-dotnet": 2,
+      "test-python": 2,
+      "test-web": 1,
+      "dependency-scan": 3,
+      "release-qualification_when_applicable": 1
+    },
+    "notes": [
+      "prepare_pr_body.py runs gitleaks, Business Platform, and release qualification serially",
+      "CI builds all seven release images for every pull request",
+      "CI independently rebuilds equivalent language runners in test and dependency-scan jobs",
+      "All baseline samples completed before WC-100 implementation"
+    ]
+  },
+  "samples": [
+    {
+      "change_class": "web-only",
+      "pr": 436,
+      "head_sha": "5bc1d129307540a28e78c1a12eeb4ab3876c6636",
+      "run_id": 34969764466,
+      "started_at": "2026-09-15T12:35:39Z",
+      "completed_at": "2026-09-15T12:40:00Z",
+      "wall_seconds": 261,
+      "jobs": 26,
+      "failed_jobs": 0,
+      "conclusion": "success"
+    },
+    {
+      "change_class": "business-platform",
+      "pr": 442,
+      "head_sha": "e753d8172fb65154bf9ba3ad75b6b3b7380944bd",
+      "run_id": 35068752777,
+      "started_at": "2026-09-16T07:29:04Z",
+      "completed_at": "2026-09-16T07:33:42Z",
+      "wall_seconds": 278,
+      "jobs": 27,
+      "failed_jobs": 0,
+      "conclusion": "success"
+    },
+    {
+      "change_class": "python-service",
+      "pr": 438,
+      "head_sha": "04f77611eec2c91840caac4a96dc231c6ea7476e",
+      "run_id": 34999239798,
+      "started_at": "2026-09-15T17:07:06Z",
+      "completed_at": "2026-09-15T17:13:16Z",
+      "wall_seconds": 370,
+      "jobs": 26,
+      "failed_jobs": 0,
+      "conclusion": "success"
+    },
+    {
+      "change_class": "shared-contract",
+      "pr": 433,
+      "head_sha": "fc5e107d71f94ca770627e45b0393a328bd13a68",
+      "run_id": 34930357151,
+      "started_at": "2026-09-15T04:50:14Z",
+      "completed_at": "2026-09-15T04:54:50Z",
+      "wall_seconds": 276,
+      "jobs": 26,
+      "failed_jobs": 0,
+      "conclusion": "success"
+    },
+    {
+      "change_class": "pipeline-global",
+      "pr": 430,
+      "head_sha": "3a6f40a8c681f7ba4ea7755f80a25ebb0106d425",
+      "run_id": 34810010893,
+      "started_at": "2026-09-14T05:32:33Z",
+      "completed_at": "2026-09-14T05:38:34Z",
+      "wall_seconds": 361,
+      "jobs": 26,
+      "failed_jobs": 0,
+      "conclusion": "success"
+    }
+  ],
+  "summary": {
+    "sample_size": 5,
+    "minimum_wall_seconds": 261,
+    "median_wall_seconds": 278,
+    "maximum_wall_seconds": 370,
+    "observed_failed_jobs": 0,
+    "unsupported_savings_claims": false
+  },
+  "limitations": [
+    "Completed GitHub run duration includes hosted-runner scheduling and concurrent jobs",
+    "Local precheck wall time was not retained by historical sessions",
+    "The sample is descriptive and is not extrapolated into a future percentage saving"
+  ]
+}

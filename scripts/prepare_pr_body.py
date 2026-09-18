@@ -6,12 +6,14 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 from validate_author_review import SECTION, validate_author_review
 from validate_c059 import read_commits, validate_commit, validate_pr_body
+from validate_requirement_ledger import validate_changed_ledgers
 from validate_runtime_lifecycle_evidence import runtime_gate_required
 
 AUTHOR_REVIEW = """## Author Review
@@ -151,9 +153,7 @@ def expected_pr_labels(branch: str) -> tuple[str, str, str]:
     return tier, "status:pr-open", "awaiting:review"
 
 
-def validate_precheck_evidence(
-    evidence: dict[str, object], base_sha: str, head: str
-) -> dict[str, object]:
+def validate_precheck_evidence(evidence: dict[str, object], base_sha: str, head: str) -> dict[str, object]:
     if evidence.get("passed") is not True:
         raise ValueError("precheck evidence must report passed=true")
     if evidence.get("base_sha") != base_sha or evidence.get("commit_sha") != head:
@@ -164,6 +164,9 @@ def validate_precheck_evidence(
 def run_ci_prechecks(base: str, head: str, changed_files: list[str]) -> dict[str, object]:
     repository_root = Path(git("rev-parse", "--show-toplevel"))
     git_common_dir = Path(git("rev-parse", "--path-format=absolute", "--git-common-dir"))
+    docker = shutil.which("docker")
+    if docker is None:
+        raise ValueError("docker executable is required for PR prechecks")
     gates = {
         "gitleaks": "PASS",
         "business_platform": "NOT_APPLICABLE",
@@ -171,11 +174,20 @@ def run_ci_prechecks(base: str, head: str, changed_files: list[str]) -> dict[str
     }
     subprocess.run(  # noqa: S603
         [
-            "docker", "run", "--rm",
-            "-v", f"{repository_root}:/repo:ro",
-            "-v", f"{git_common_dir}:{git_common_dir}:ro",
-            "zricethezav/gitleaks:v8.28.0", "git", "/repo",
-            "--log-opts", f"{base}..{head}", "--no-banner", "--redact",
+            docker,
+            "run",
+            "--rm",
+            "-v",
+            f"{repository_root}:/repo:ro",
+            "-v",
+            f"{git_common_dir}:{git_common_dir}:ro",
+            "zricethezav/gitleaks:v8.28.0",
+            "git",
+            "/repo",
+            "--log-opts",
+            f"{base}..{head}",
+            "--no-banner",
+            "--redact",
         ],
         cwd=repository_root,
         check=True,
@@ -183,8 +195,17 @@ def run_ci_prechecks(base: str, head: str, changed_files: list[str]) -> dict[str
     if business_platform_gate_required(changed_files):
         subprocess.run(  # noqa: S603
             [
-                "docker", "compose", "--profile", "test", "run", "--rm", "--user", "root",
-                "test-runner", "sh", "-lc",
+                docker,
+                "compose",
+                "--profile",
+                "test",
+                "run",
+                "--rm",
+                "--user",
+                "root",
+                "test-runner",
+                "sh",
+                "-lc",
                 "dotnet restore tests/business-platform.Tests/business-platform.Tests.csproj && "
                 "dotnet build tests/business-platform.Tests/business-platform.Tests.csproj "
                 "--no-restore -warnaserror && "
@@ -264,6 +285,9 @@ def main() -> int:
         body = arguments.body_file.read_text(encoding="utf-8")
         changed_files = git("diff", "--name-only", f"{arguments.base}..{head}").splitlines()
         base_sha = git("rev-parse", arguments.base)
+        ledger_violations = validate_changed_ledgers(Path(git("rev-parse", "--show-toplevel")), changed_files)
+        if ledger_violations:
+            raise ValueError("requirement ledger: " + "; ".join(ledger_violations))
         if arguments.precheck_evidence_file:
             evidence = json.loads(arguments.precheck_evidence_file.read_text(encoding="utf-8"))
             validate_precheck_evidence(evidence, base_sha, head)

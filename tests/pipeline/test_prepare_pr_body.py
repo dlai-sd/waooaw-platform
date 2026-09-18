@@ -159,3 +159,9 @@ def test_precheck_evidence_must_match_base_and_head() -> None:
             assert "selected base and branch HEAD" in str(error)
         else:
             raise AssertionError("stale precheck evidence was accepted")
+
+
+def test_prepare_pr_body_uses_requirement_ledger_validator() -> None:
+    source = (ROOT / "scripts/prepare_pr_body.py").read_text(encoding="utf-8")
+
+    assert "validate_changed_ledgers" in source

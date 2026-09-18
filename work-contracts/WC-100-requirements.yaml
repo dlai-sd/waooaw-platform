@@ -1,0 +1,314 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-100
+contract_path: work-contracts/WC-100-engineering-validation-efficiency.md
+contract_digest: 750d9fb8f7db3ce7f6b919a758e3ad9cc5f78a8d93674a38a00e2d8ba6162762
+contract_status: IMPLEMENTATION_AUTHORIZED
+implementation_scope: true
+result: PLANNED
+requirements:
+  - requirement_id: WC100-R001
+    source: Section 1
+    observable_outcome: Every currently required gate remains selected unless trusted policy proves it inapplicable; uncertainty selects full validation.
+    component_owner: validation policy and aggregate gate
+    evidence_class: integration
+    test_path_or_plan: tests/pipeline/test_validation_policy.py::test_unknown_and_invalid_evidence_fail_closed
+    initial_state: new
+    dependencies: [validation policy, precheck manifest]
+    completion_rule: Gate-equivalence and invalid-manifest tests pass.
+    residual_risk: GitHub branch-protection configuration remains Founder-controlled external state.
+  - requirement_id: WC100-R002
+    source: Section 3.1
+    observable_outcome: Independent applicable prechecks overlap in time within configured resource limits.
+    component_owner: precheck orchestrator
+    evidence_class: integration
+    test_path_or_plan: tests/pipeline/test_precheck_orchestrator.py::test_independent_gates_run_concurrently
+    initial_state: new
+    dependencies: [Docker runner, synthetic gate commands]
+    completion_rule: Trace proves overlap and equivalent selected gates.
+    residual_risk: Local timing does not predict hosted-runner contention.
+  - requirement_id: WC100-R003
+    source: Section 3.2
+    observable_outcome: A complete immutable input identity maps to one runner or candidate build consumed by compatible tests and scans.
+    component_owner: build evidence manifest
+    evidence_class: integration
+    test_path_or_plan: tests/pipeline/test_validation_policy.py::test_build_identity_reuse_and_invalidation
+    initial_state: new
+    dependencies: [Docker image inspection, input manifest]
+    completion_rule: Build-count and digest-consumption assertions pass.
+    residual_risk: Registry retention and hosted cache availability remain environment-dependent.
+  - requirement_id: WC100-R004
+    source: Section 3.3
+    observable_outcome: Changed paths select direct owners plus transitive reverse dependencies, with full fallback on uncertainty.
+    component_owner: change-impact classifier
+    evidence_class: unit
+    test_path_or_plan: tests/pipeline/test_validation_policy.py::test_classifier_direct_reverse_and_unknown_paths
+    initial_state: new
+    dependencies: [validation policy]
+    completion_rule: Classifier unit and cycle tests pass.
+    residual_risk: New repository paths require policy maintenance or trigger full fallback.
+  - requirement_id: WC100-R005
+    source: Sections 3.4 and 5
+    observable_outcome: Every indexed implementation obligation has a complete evidence row before implementation proceeds.
+    component_owner: requirement ledger validator
+    evidence_class: contract
+    test_path_or_plan: tests/pipeline/test_requirement_ledger.py::test_wc100_ledger_is_complete
+    initial_state: expected-fail
+    result: PASS
+    evidence_refs: [tests/pipeline/test_requirement_ledger.py]
+    dependencies: [WC-100 contract, WC-100 ledger]
+    completion_rule: The validator maps all 30 canonical IDs exactly once with every required field.
+    residual_risk: Requirement semantics still depend on author-review scrutiny.
+  - requirement_id: WC100-R006
+    source: Sections 3.5 and 6.3
+    observable_outcome: One manifest binds exact base/head, changed-file digest, graph version, and every run/reuse/skip/failure reason.
+    component_owner: precheck evidence manifest
+    evidence_class: contract
+    test_path_or_plan: tests/pipeline/test_precheck_orchestrator.py::test_manifest_binds_inputs_and_node_results
+    initial_state: new
+    dependencies: [Git repository, precheck orchestrator]
+    completion_rule: Manifest schema and exact-binding tests pass.
+    residual_risk: Local evidence remains untrusted for required CI unless policy later changes.
+  - requirement_id: WC100-R007
+    source: Section 4.1
+    observable_outcome: Existing 90 percent line and 80 percent branch thresholds remain unchanged.
+    component_owner: CI workflow
+    evidence_class: contract
+    test_path_or_plan: tests/pipeline/test_ci_validation_efficiency.py::test_coverage_thresholds_are_unchanged
+    initial_state: existing-pass
+    dependencies: [.github/workflows/ci.yaml]
+    completion_rule: Static assertions and representative threshold-failure fixture pass.
+    residual_risk: Coverage tool behavior remains dependency-version sensitive.
+  - requirement_id: WC100-R008
+    source: Section 4.2
+    observable_outcome: Repository language tests and tooling execute only through Docker runners.
+    component_owner: CI workflow and qualification scripts
+    evidence_class: contract
+    test_path_or_plan: tests/pipeline/test_ci_validation_efficiency.py::test_language_tooling_uses_docker_runners
+    initial_state: existing-pass
+    dependencies: [Docker Compose, CI workflow]
+    completion_rule: Workflow and script enforcement assertions pass.
+    residual_risk: GitHub-owned security actions are outside language-test execution.
+  - requirement_id: WC100-R009
+    source: Sections 4.3 and 4.4
+    observable_outcome: Security, CCT, author-review, Founder-review, and merge gate meanings are preserved.
+    component_owner: CI aggregate gate
+    evidence_class: contract
+    test_path_or_plan: tests/pipeline/test_ci_validation_efficiency.py::test_required_gate_aggregation_is_preserved
+    initial_state: existing-pass
+    dependencies: [.github/workflows/ci.yaml, PR template]
+    completion_rule: Required-gate inventory and authority assertions pass.
+    residual_risk: Repository settings require separate read-only verification.
+  - requirement_id: WC100-R010
+    source: Sections 4.5 and 7.3
+    observable_outcome: Failed, cancelled, stale, malformed, incomplete, or untrusted reuse evidence is rejected.
+    component_owner: evidence validator
+    evidence_class: security
+    test_path_or_plan: tests/pipeline/test_validation_policy.py::test_reuse_manifest_negative_matrix
+    initial_state: new
+    dependencies: [build evidence schema]
+    completion_rule: Every negative manifest fixture fails with a specific reason.
+    residual_risk: Trust-root compromise is outside repository-local validation.
+  - requirement_id: WC100-R011
+    source: Sections 4.6 and 7.1
+    observable_outcome: Every enumerated behaviorally relevant input class changes the immutable identity.
+    component_owner: build identity calculator
+    evidence_class: unit
+    test_path_or_plan: tests/pipeline/test_validation_policy.py::test_each_input_group_invalidates_identity
+    initial_state: new
+    dependencies: [input files and fixtures]
+    completion_rule: Per-input mutation tests produce distinct complete digests.
+    residual_risk: Undeclared external base-image updates require freshness invalidation input.
+  - requirement_id: WC100-R012
+    source: Sections 4.7 and 8.2
+    observable_outcome: Unknown paths, cycles, conflicts, and classifier errors select the full current gate inventory.
+    component_owner: change-impact classifier
+    evidence_class: unit
+    test_path_or_plan: tests/pipeline/test_validation_policy.py::test_classifier_failure_modes_select_full
+    initial_state: new
+    dependencies: [validation policy]
+    completion_rule: All fail-closed fixtures return full=true and the complete gate set.
+    residual_risk: Policy omissions are visible only when a path is changed.
+  - requirement_id: WC100-R013
+    source: Sections 4.8 and 6.2
+    observable_outcome: Concurrent nodes receive unique writable result, coverage, temporary, Compose, and container namespaces.
+    component_owner: precheck orchestrator
+    evidence_class: integration
+    test_path_or_plan: tests/pipeline/test_precheck_orchestrator.py::test_parallel_nodes_have_isolated_namespaces
+    initial_state: new
+    dependencies: [temporary filesystem, environment capture]
+    completion_rule: Collision and failure-injection tests prove unique writable paths and names.
+    residual_risk: External Docker daemon saturation is handled by serial fallback, not eliminated.
+  - requirement_id: WC100-R014
+    source: Sections 4.9 and 13
+    observable_outcome: Evidence provenance classes and measured results remain distinct without extrapolated claims.
+    component_owner: measurement manifest
+    evidence_class: performance
+    test_path_or_plan: tests/pipeline/test_validation_policy.py::test_measurement_schema_separates_evidence_classes
+    initial_state: new
+    dependencies: [baseline and candidate reports]
+    completion_rule: Schema rejects mixed provenance or unsupported savings fields.
+    residual_risk: Five historical samples do not establish long-term CI performance.
+  - requirement_id: WC100-R015
+    source: Sections 5.1 and 5.2
+    observable_outcome: Implementation intake fails until the complete acceptance ledger validates.
+    component_owner: requirement ledger validator
+    evidence_class: contract
+    test_path_or_plan: tests/pipeline/test_requirement_ledger.py::test_preimplementation_gate_rejects_incomplete_ledger
+    initial_state: expected-fail
+    result: PASS
+    evidence_refs: [tests/pipeline/test_requirement_ledger.py]
+    dependencies: [representative implementation contract fixtures]
+    completion_rule: Missing and incomplete representative ledgers are rejected.
+    residual_risk: The gate verifies mapping completeness, not requirement quality.
+  - requirement_id: WC100-R016
+    source: Sections 5.3 and 5.4
+    observable_outcome: Milestone or DONE claims fail when direct evidence is missing or rows remain unresolved without exact variance.
+    component_owner: requirement ledger validator
+    evidence_class: contract
+    test_path_or_plan: tests/pipeline/test_requirement_ledger.py::test_done_rejects_unresolved_rows
+    initial_state: new
+    result: PASS
+    evidence_refs: [tests/pipeline/test_requirement_ledger.py]
+    dependencies: [ledger result states, evidence references]
+    completion_rule: DONE-negative fixtures fail and resolved direct-evidence fixture passes.
+    residual_risk: Founder-reserved rows remain intentionally outside implementer control.
+  - requirement_id: WC100-R017
+    source: Section 6.1
+    observable_outcome: Selected gitleaks, Business Platform, and release gates execute as explicit independent DAG nodes.
+    component_owner: precheck orchestrator
+    evidence_class: integration
+    test_path_or_plan: tests/pipeline/test_precheck_orchestrator.py::test_precheck_dag_selects_current_nodes
+    initial_state: new
+    dependencies: [prepare_pr_body entry point]
+    completion_rule: Selection and concurrency trace contains the same applicable nodes as baseline.
+    residual_risk: Gate internals retain their own runtime variance.
+  - requirement_id: WC100-R018
+    source: Section 6.2
+    observable_outcome: Parallelism is bounded, low resources select serial mode, and multiple failures remain visible with stable first-cause classification.
+    component_owner: precheck orchestrator
+    evidence_class: integration
+    test_path_or_plan: tests/pipeline/test_precheck_orchestrator.py::test_resource_fallback_and_failure_semantics
+    initial_state: new
+    dependencies: [resource preflight, synthetic failures]
+    completion_rule: Resource, dual-failure, cancellation, and retry tests pass.
+    residual_risk: Platform-specific process detection may conservatively choose serial mode.
+  - requirement_id: WC100-R019
+    source: Section 7.2
+    observable_outcome: Tests and scans consume a named immutable image without hidden rebuild or mutable-tag substitution.
+    component_owner: CI runner image jobs
+    evidence_class: integration
+    test_path_or_plan: tests/pipeline/test_ci_validation_efficiency.py::test_runner_images_are_built_once_and_verified
+    initial_state: new
+    dependencies: [Docker build metadata, CI artifacts]
+    completion_rule: Build-spy and workflow assertions prove one producer and digest verification by consumers.
+    residual_risk: GitHub artifact transfer cost may offset some build savings.
+  - requirement_id: WC100-R020
+    source: Sections 7.3 and 7.4
+    observable_outcome: Build provenance is complete and reuse requires exact trusted identity equality.
+    component_owner: build evidence validator
+    evidence_class: security
+    test_path_or_plan: tests/pipeline/test_validation_policy.py::test_build_evidence_provenance_and_tamper_detection
+    initial_state: new
+    dependencies: [build evidence manifest, trusted source marker]
+    completion_rule: Complete fixture passes; every tampered field fails.
+    residual_risk: Registry-side attestation validation remains a release concern.
+  - requirement_id: WC100-R021
+    source: Sections 8.1 and 8.2
+    observable_outcome: One versioned policy owns path mapping, direct gates, reverse dependencies, and global triggers for local and CI use.
+    component_owner: validation policy
+    evidence_class: contract
+    test_path_or_plan: tests/pipeline/test_validation_policy.py::test_policy_is_single_selection_source
+    initial_state: new
+    dependencies: [validation/engineering-validation.yaml]
+    completion_rule: Duplicate-source prohibition and representative selection tests pass.
+    residual_risk: Existing unrelated workflow path filters remain outside WC-100 selection scope.
+  - requirement_id: WC100-R022
+    source: Section 8.3
+    observable_outcome: PR change selection is recorded in non-authoritative Shadow mode while full CI remains active.
+    component_owner: CI shadow planning job
+    evidence_class: integration
+    test_path_or_plan: tests/pipeline/test_ci_validation_efficiency.py::test_shadow_mode_keeps_full_ci_authoritative
+    initial_state: new
+    dependencies: [CI workflow, validation policy]
+    completion_rule: Workflow emits Shadow evidence and retains every current required job.
+    residual_risk: Twenty-PR evaluation cannot complete within the implementation PR.
+  - requirement_id: WC100-R023
+    source: Sections 8.3 and 8.4
+    observable_outcome: Enforced selection remains disabled until the evidence window is complete and Founder separately approves activation.
+    component_owner: validation policy activation gate
+    evidence_class: manual Founder acceptance
+    test_path_or_plan: tests/pipeline/test_validation_policy.py::test_enforced_mode_requires_founder_activation
+    initial_state: Founder-reserved
+    dependencies: [20 representative Shadow samples, separate Founder decision]
+    completion_rule: Negative activation tests pass; Founder-reserved state remains unresolved for WC100-04C.
+    residual_risk: Enforced-mode operational evidence does not yet exist.
+  - requirement_id: WC100-R024
+    source: Sections 9 and 11
+    observable_outcome: Validation follows intake, focused tests, freeze, qualification, aggregation, and handoff in order.
+    component_owner: integrated qualification
+    evidence_class: integration
+    test_path_or_plan: tests/pipeline/test_wc100_integrated_qualification.py::test_validation_lifecycle_trace_is_ordered
+    initial_state: new
+    dependencies: [all WC100-01 through WC100-04A components]
+    completion_rule: End-to-end dry-run trace matches the ordered lifecycle.
+    residual_risk: Final PR CI timing remains GitHub-hosted evidence.
+  - requirement_id: WC100-R025
+    source: Section 12
+    observable_outcome: The complete acceptance, parallelism, reuse, classifier, regression, and constitutional matrix passes.
+    component_owner: integrated qualification
+    evidence_class: integration
+    test_path_or_plan: scripts/run_wc100_qualification.sh
+    initial_state: new
+    dependencies: [Docker test runner, all WC-100 tests]
+    completion_rule: Qualification emits a passing exact-head evidence manifest with raw artifacts.
+    residual_risk: CodeQL and hosted action results remain PR CI evidence.
+  - requirement_id: WC100-R026
+    source: Section 13
+    observable_outcome: Baseline and candidate reports contain comparable observations for five named change classes.
+    component_owner: measurement manifest
+    evidence_class: performance
+    test_path_or_plan: tests/pipeline/test_wc100_integrated_qualification.py::test_measurement_report_has_five_classes
+    initial_state: new
+    dependencies: [completed historical CI runs, candidate classifier output]
+    completion_rule: Machine-readable report contains sample sizes, ranges, medians, and no unsupported extrapolation.
+    residual_risk: Candidate end-to-end hosted timings require the PR run.
+  - requirement_id: WC100-R027
+    source: Section 14
+    observable_outcome: One configuration restores serial prechecks, disables reuse, and keeps full CI; named trust failures trigger rollback.
+    component_owner: validation policy and precheck orchestrator
+    evidence_class: integration
+    test_path_or_plan: tests/pipeline/test_precheck_orchestrator.py::test_rollback_and_injected_triggers
+    initial_state: new
+    dependencies: [environment configuration, failure fixtures]
+    completion_rule: Rollback configuration and every injected trigger select safe behavior.
+    residual_risk: Historical evidence retention depends on GitHub artifact policy.
+  - requirement_id: WC100-R028
+    source: Section 15
+    observable_outcome: All implementer-controlled completion conditions pass at one exact head without claiming WC100-04C.
+    component_owner: requirement ledger and author review
+    evidence_class: contract
+    test_path_or_plan: scripts/run_wc100_qualification.sh
+    initial_state: new
+    dependencies: [final exact head, raw evidence, Founder-reserved R023]
+    completion_rule: Final ledger is qualified with only the explicit WC100-04C Founder reservation.
+    residual_risk: Founder review, merge, Shadow evaluation, and activation remain external.
+  - requirement_id: WC100-R029
+    source: Section 16
+    observable_outcome: Changed files stay within validation engineering and mandatory evidence scope.
+    component_owner: scope audit
+    evidence_class: contract
+    test_path_or_plan: tests/pipeline/test_wc100_integrated_qualification.py::test_changed_file_scope
+    initial_state: new
+    dependencies: [Git diff against origin/main]
+    completion_rule: Scope audit rejects application behavior, schema, cloud runtime, compaction, or peer-review changes.
+    residual_risk: Founder may authorize later separate scope.
+  - requirement_id: WC100-R030
+    source: Section 17
+    observable_outcome: The implementation trace records ledger, baseline, ordered milestones, focused Docker tests, freeze, qualification, author review, and handoff.
+    component_owner: WC-100 evidence manifest
+    evidence_class: contract
+    test_path_or_plan: tests/pipeline/test_wc100_integrated_qualification.py::test_handoff_trace_is_complete
+    initial_state: new
+    dependencies: [milestone evidence, final PR]
+    completion_rule: Milestone trace and exact-head author-review evidence validate.
+    residual_risk: Founder review and merge remain outside author authority.
