@@ -283,6 +283,45 @@ public sealed class RelationshipEvaluationControllerTests
             Options.Create(new ConversationCursorOptions { HmacKey = " " })));
     }
 
+    [Fact]
+    public void ConversationCursor_RotationAcceptsPriorKeyAndRejectsRetiredKey()
+    {
+        var tenantId = Guid.NewGuid();
+        var relationshipId = Guid.NewGuid();
+        var priorKey = new string('p', 32);
+        var priorCodec = new ConversationCursorCodec(Options.Create(new ConversationCursorOptions { HmacKey = priorKey }));
+        var priorCursor = priorCodec.Encode(tenantId, relationshipId, "messages", 9);
+        var rotatingCodec = new ConversationCursorCodec(Options.Create(new ConversationCursorOptions
+        {
+            HmacKey = new string('n', 32),
+            PreviousHmacKeys = [priorKey],
+        }));
+
+        Assert.Equal(9, rotatingCodec.Decode(priorCursor, tenantId, relationshipId, "messages"));
+        var activeCursor = rotatingCodec.Encode(tenantId, relationshipId, "messages", 10);
+        Assert.Equal(10, rotatingCodec.Decode(activeCursor, tenantId, relationshipId, "messages"));
+
+        var retiredCodec = new ConversationCursorCodec(Options.Create(new ConversationCursorOptions
+        {
+            HmacKey = new string('r', 32),
+        }));
+        Assert.Throws<ConversationCursorExpiredException>(() =>
+            retiredCodec.Decode(priorCursor, tenantId, relationshipId, "messages"));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("short")]
+    public void ConversationCursor_RejectsInvalidPreviousKeys(string previousKey)
+    {
+        Assert.Throws<InvalidOperationException>(() => new ConversationCursorCodec(
+            Options.Create(new ConversationCursorOptions
+            {
+                HmacKey = new string('n', 32),
+                PreviousHmacKeys = [previousKey],
+            })));
+    }
+
     private static RelationshipEvaluationController Controller(
         InMemoryEmploymentRelationshipFactory factory, Guid tenantId)
     {

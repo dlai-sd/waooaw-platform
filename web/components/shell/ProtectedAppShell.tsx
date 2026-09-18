@@ -1,6 +1,6 @@
 'use client';
 
-// Implements: architecture/reference/ux/hybrid-application-shell.md §Route and Layout Ownership
+// Implements: work-contracts/WC-099-demo-customer-journey-and-application-shell-remediation.md §5.4 Authenticated Application Shell
 // Constitutional basis: C-001 (Human Override), C-059 (Implementation Traceability)
 
 import { Bell, Bot, ChevronLeft, ChevronRight, CircleUserRound, CreditCard, Settings, ShieldCheck, Store, UserRound } from 'lucide-react';
@@ -8,12 +8,15 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AccountSwitchCommand, SignOutCommand } from '@/components/auth/SignOutCommand';
-import { ConversationContextAction, PersistentConversationDock } from '@/components/conversation/PersistentConversationDock';
+import { PersistentConversationDock } from '@/components/conversation/PersistentConversationDock';
 import type { IdentitySession } from '@/lib/api/generated/models/IdentitySession';
 import type { Messages } from '@/lib/i18n';
 import { portalMessages } from '@/lib/portal-i18n';
 import type { SupportedLocale } from '@/lib/preferences';
+import { recordAuthTransition } from '@/lib/auth-transition';
 import { AppShell } from './AppShell';
+import { Brand } from './Brand';
+import { ExperienceControls } from './ExperienceControls';
 import { RouteAwareEmergencyStop } from './RouteAwareEmergencyStop';
 
 export interface StopContext {
@@ -49,6 +52,9 @@ export function ProtectedAppShell({ children, identitySession, locale = 'en', me
     setNavigationExpanded(localStorage.getItem('waooaw:navigation-expanded') === 'true');
   }, []);
   useEffect(() => {
+    if (identitySession) recordAuthTransition('SESSION_RESOLVED');
+  }, [identitySession]);
+  useEffect(() => {
     if (!navigationExpanded) return;
     function collapse(event: KeyboardEvent) {
       if (event.key !== 'Escape') return;
@@ -66,15 +72,17 @@ export function ProtectedAppShell({ children, identitySession, locale = 'en', me
       return !expanded;
     });
   }
-  const accountDrawer = variant === 'customer' ? <details className="account-drawer"><summary className="icon-command" aria-label="Account"><CircleUserRound aria-hidden="true" size={20} /></summary><div><p className="section-label">Account</p><Link href="/profile"><UserRound aria-hidden="true" size={18} />Profile</Link><Link href="/profile#billing"><CreditCard aria-hidden="true" size={18} />Billing</Link><Link href="/settings"><Settings aria-hidden="true" size={18} />Settings</Link><AccountSwitchCommand label="Switch account" /><SignOutCommand label="Sign out" /></div></details> : null;
+  const accountDrawer = variant === 'customer' ? <details className="account-drawer"><summary className="icon-command" aria-label="Account"><CircleUserRound aria-hidden="true" size={20} /></summary><div><p className="section-label">Account</p>{identitySession ? <p className="account-assurance"><ShieldCheck aria-hidden="true" size={17} />Account security: {portal.verified}</p> : null}<Link href="/profile"><UserRound aria-hidden="true" size={18} />Profile</Link><Link href="/profile#billing"><CreditCard aria-hidden="true" size={18} />Billing</Link><Link href="/settings"><Settings aria-hidden="true" size={18} />Settings</Link><AccountSwitchCommand label="Switch account" /><SignOutCommand label="Sign out" /></div></details> : null;
 
   const sideNavigation = (
     <aside className="side-navigation" data-expanded={navigationExpanded} id="customer-navigation">
+      <div className="rail-brand"><Brand compact={!navigationExpanded} /><button aria-controls="customer-navigation" aria-expanded={navigationExpanded} aria-label={navigationExpanded ? 'Collapse navigation' : 'Expand navigation'} className="icon-command navigation-toggle" onClick={toggleNavigation} ref={navigationToggle} type="button">{navigationExpanded ? <ChevronLeft aria-hidden="true" size={20} /> : <ChevronRight aria-hidden="true" size={20} />}</button></div>
       <nav aria-label={variant === 'founder' ? messages.founderNavigation : messages.customerNavigation}>
         {links.map(({ href, label, icon: Icon }) => (
           <Link aria-current={pathname === href || pathname.startsWith(`${href}/`) ? 'page' : undefined} key={href} href={href} onClick={() => { if (window.matchMedia('(max-width: 899px)').matches) setNavigationExpanded(false); }} title={navigationExpanded ? undefined : label}><Icon aria-hidden="true" size={20} /><span>{label}</span></Link>
         ))}
       </nav>
+      <ExperienceControls messages={messages} />
     </aside>
   );
   const bottomNavigation = (
@@ -94,9 +102,9 @@ export function ProtectedAppShell({ children, identitySession, locale = 'en', me
   return (
     <>
     <AppShell
+      applicationControls={<div className="application-controls">{variant === 'founder' ? <span className="role-label"><ShieldCheck aria-hidden="true" size={17} /> {messages.founder}</span> : null}{accountDrawer}</div>}
       bottomNavigation={bottomNavigation}
-      headerLeading={variant === 'customer' ? <button aria-controls="customer-navigation" aria-expanded={navigationExpanded} aria-label={navigationExpanded ? 'Collapse navigation' : 'Expand navigation'} className="icon-command navigation-toggle" onClick={toggleNavigation} ref={navigationToggle} type="button">{navigationExpanded ? <ChevronLeft aria-hidden="true" size={20} /> : <ChevronRight aria-hidden="true" size={20} />}</button> : null}
-      headerStatus={<>{variant === 'founder' ? <span className="role-label"><ShieldCheck aria-hidden="true" size={17} /> {messages.founder}</span> : null}{variant === 'customer' && registeredCustomer ? <ConversationContextAction /> : null}{identitySession ? <span className="portal-assurance"><ShieldCheck aria-hidden="true" size={16} />{portal.verified} · {identitySession.assuranceLevel}</span> : null}{accountDrawer}</>}
+      conversationWorkspace={variant === 'customer' && registeredCustomer ? <PersistentConversationDock locale={locale} /> : null}
       messages={messages}
       sideNavigation={sideNavigation}
       stopControl={<RouteAwareEmergencyStop stopContext={stopContext} />}
@@ -104,7 +112,6 @@ export function ProtectedAppShell({ children, identitySession, locale = 'en', me
     >
       {children}
     </AppShell>
-    {variant === 'customer' && registeredCustomer ? <PersistentConversationDock locale={locale} /> : null}
     </>
   );
 }

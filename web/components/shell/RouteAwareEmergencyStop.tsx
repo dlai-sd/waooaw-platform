@@ -10,8 +10,6 @@ export function RouteAwareEmergencyStop({ stopContext }: { stopContext?: StopCon
   const relationshipId = relationshipMatch ? decodeURIComponent(relationshipMatch[1]) : null;
   const contractId = stopContext?.contractId ?? relationshipId;
 
-  if (!contractId) return null;
-
   return (
     <EmergencyStop
       contractId={contractId}

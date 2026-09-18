@@ -272,6 +272,7 @@ public sealed class EmploymentRelationshipsController : ControllerBase
     }
 
     [HttpPost]
+    [CustomerIdentityRoute(requiresMembership: true)]
     public async Task<IActionResult> AdmitAsync(
         [FromBody] AdmitEmploymentRelationshipRequest request,
         CancellationToken cancellationToken)
