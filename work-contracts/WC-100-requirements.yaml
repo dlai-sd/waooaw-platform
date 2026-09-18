@@ -289,6 +289,8 @@ requirements:
     evidence_class: integration
     test_path_or_plan: tests/pipeline/test_wc100_integrated_qualification.py::test_validation_lifecycle_trace_is_ordered
     initial_state: new
+    result: PASS
+    evidence_refs: [scripts/run_wc100_qualification.sh, tests/pipeline/test_wc100_integrated_qualification.py]
     dependencies: [all WC100-01 through WC100-04A components]
     completion_rule: End-to-end dry-run trace matches the ordered lifecycle.
     residual_risk: Final PR CI timing remains GitHub-hosted evidence.
@@ -299,6 +301,8 @@ requirements:
     evidence_class: integration
     test_path_or_plan: scripts/run_wc100_qualification.sh
     initial_state: new
+    result: BLOCKED
+    evidence_refs: [test-results/wc100/wc100-qualification.json, .github/workflows/ci.yaml]
     dependencies: [Docker test runner, all WC-100 tests]
     completion_rule: Qualification emits a passing exact-head evidence manifest with raw artifacts.
     residual_risk: CodeQL and hosted action results remain PR CI evidence.
@@ -333,6 +337,8 @@ requirements:
     evidence_class: contract
     test_path_or_plan: scripts/run_wc100_qualification.sh
     initial_state: new
+    result: BLOCKED
+    evidence_refs: [work-contracts/WC-100-requirements.yaml, scripts/run_wc100_qualification.sh]
     dependencies: [final exact head, raw evidence, Founder-reserved R023]
     completion_rule: Final ledger is qualified with only the explicit WC100-04C Founder reservation.
     residual_risk: Founder review, merge, Shadow evaluation, and activation remain external.
@@ -355,6 +361,8 @@ requirements:
     evidence_class: contract
     test_path_or_plan: tests/pipeline/test_wc100_integrated_qualification.py::test_handoff_trace_is_complete
     initial_state: new
+    result: BLOCKED
+    evidence_refs: [tests/pipeline/test_wc100_integrated_qualification.py, .github/pull_request_template.md]
     dependencies: [milestone evidence, final PR]
     completion_rule: Milestone trace and exact-head author-review evidence validate.
     residual_risk: Founder review and merge remain outside author authority.
