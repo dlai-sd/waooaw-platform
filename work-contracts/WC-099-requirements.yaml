@@ -33,10 +33,11 @@ requirements:
     source: Section 7, D-003
     observable_outcome: Post-logout or account-switch login permits explicit Google account selection without a stale session.
     component_owner: Web auth and Keycloak launch
-    test_path_or_plan: web/components/auth/ProviderCommands.test.tsx and integrated Demo journey
+    test_path_or_plan: web/components/auth/ProviderCommands.test.tsx and web/tests/e2e/wc099-demo-remediation.spec.ts
+    evidence_refs: [test-results/wc099/obligation-ledger.json, web/tests/e2e/wc099-demo-remediation.spec.ts]
     dependencies: [Keycloak Google broker]
     completion_rule: Logout and second-login account-choice journey passes.
-    residual_risk: Real broker journey remains part of WC099-R020.
+    residual_risk: Authorized real-provider acceptance remains part of WC099-R020 and WC099-R021.
   - <<: *completed
     requirement_id: WC099-R004
     source: Section 7, D-004

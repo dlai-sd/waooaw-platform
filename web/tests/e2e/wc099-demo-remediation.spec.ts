@@ -51,6 +51,36 @@ test('R-001 R-002 R-003: disclosure precedes provider handoff and cancel is iner
   await attachScreenshot(page, testInfo, 'login-after-disclosure-cancel');
 });
 
+test('R-003: logout and second login request explicit Google account selection', async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-expanded', 'One clean Chromium broker-boundary journey proves the account switch contract.');
+  await addSession(context, testInfo.project.name);
+  await page.goto('/home');
+  await page.waitForURL('**/professionals/mine');
+  await page.locator('summary[aria-label="Account"]').click();
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page).toHaveURL('http://127.0.0.1:3000/');
+  await expect.poll(async () => context.cookies()).toEqual(expect.not.arrayContaining([
+    expect.objectContaining({ name: 'next-auth.session-token' }),
+  ]));
+
+  await page.route('**/api/auth/signin/keycloak-google?**', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ url: 'http://localhost:8080/realms/waooaw/protocol/openid-connect/auth?prompt=select_account' }),
+    });
+  });
+  await page.route('http://localhost:8080/realms/waooaw/protocol/openid-connect/auth?**', async (route) => {
+    await route.fulfill({ contentType: 'text/html', body: '<title>Test identity provider</title>' });
+  });
+  await page.goto('/login');
+  await page.getByRole('button', { name: 'Log in with Google' }).click();
+  const brokerRequest = page.waitForRequest((request) => request.url().includes('/api/auth/signin/keycloak-google'));
+  await page.getByRole('button', { name: 'Continue to Google' }).click();
+
+  expect(new URL((await brokerRequest).url()).searchParams.get('prompt')).toBe('select_account');
+  await expect(page).toHaveURL(/localhost:8080\/realms\/waooaw\/protocol\/openid-connect\/auth\?prompt=select_account/);
+});
+
 for (const acquisition of [
   { intent: 'trial', relationshipId: '11111111-1111-4111-8111-111111111111', displayName: 'Digital Marketing Trial' },
   { intent: 'hire', relationshipId: '22222222-2222-4222-8222-222222222222', displayName: 'Digital Marketing Hire' },
