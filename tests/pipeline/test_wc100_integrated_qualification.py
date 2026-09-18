@@ -47,6 +47,7 @@ def test_validation_lifecycle_trace_is_ordered() -> None:
 
 def test_changed_file_scope() -> None:
     allowed = (
+        ".github/agent-context/office-platform-it-expert.md",
         ".github/workflows/ci.yaml",
         "constitution/PROJECT_STATE.md",
         "scripts/",
@@ -60,6 +61,7 @@ def test_changed_file_scope() -> None:
     assert all(
         path.startswith(allowed)
         for path in (
+            ".github/agent-context/office-platform-it-expert.md",
             "constitution/PROJECT_STATE.md",
             "scripts/validation_policy.py",
             "tests/pipeline/test_validation_policy.py",

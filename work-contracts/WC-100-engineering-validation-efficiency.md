@@ -336,6 +336,7 @@ Expected implementation surfaces are:
 | Dependency manifest and classifier | Direct/reverse ownership, global triggers, fail-closed path handling and reasoning output | High |
 | Work Contract template and validator | Requirement-to-evidence ledger and pre-implementation completeness gate | Medium |
 | QA/author-review aggregation | Validate direct evidence coverage, exact-head bindings and unresolved rows | Medium |
+| Platform IT Expert office card | Require explicit story start/end commentary boundaries for every Work Component | Low |
 
 No application business behavior, service API, database schema, customer data or cloud runtime is
 intended to change. Discovery that such a change is necessary stops the affected milestone for

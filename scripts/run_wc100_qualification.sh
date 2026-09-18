@@ -12,7 +12,7 @@ commit_sha=$(git rev-parse HEAD)
 mkdir -p "$(dirname "$output")"
 git diff --name-status --find-renames "$base_sha" "$commit_sha" > test-results/wc100/changed-files.status
 if git diff --name-only "$base_sha" "$commit_sha" | grep -Ev \
-  '^(\.github/workflows/ci\.yaml|constitution/PROJECT_STATE\.md|scripts/|tests/pipeline/|validation/|work-contracts/)' \
+  '^(\.github/agent-context/office-platform-it-expert\.md|\.github/workflows/ci\.yaml|constitution/PROJECT_STATE\.md|scripts/|tests/pipeline/|validation/|work-contracts/)' \
     > test-results/wc100/out-of-scope-files.txt; then
   echo "WC-100 contains out-of-scope files" >&2
   cat test-results/wc100/out-of-scope-files.txt >&2

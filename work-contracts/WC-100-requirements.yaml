@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-100
 contract_path: work-contracts/WC-100-engineering-validation-efficiency.md
-contract_digest: 47d433d68339816e2117759a49d234d94692a401aa0779201ab731afaca2f7bd
+contract_digest: f45ed522797d44129c757b754e634df4584cfd59123036b1d41698bf3fb46a23
 contract_status: IMPLEMENTATION_AUTHORIZED
 implementation_scope: true
 result: PLANNED
