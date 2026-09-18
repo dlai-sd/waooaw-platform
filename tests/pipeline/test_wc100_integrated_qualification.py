@@ -48,6 +48,7 @@ def test_validation_lifecycle_trace_is_ordered() -> None:
 def test_changed_file_scope() -> None:
     allowed = (
         ".github/workflows/ci.yaml",
+        "constitution/PROJECT_STATE.md",
         "scripts/",
         "tests/pipeline/",
         "validation/",
@@ -59,6 +60,7 @@ def test_changed_file_scope() -> None:
     assert all(
         path.startswith(allowed)
         for path in (
+            "constitution/PROJECT_STATE.md",
             "scripts/validation_policy.py",
             "tests/pipeline/test_validation_policy.py",
             "validation/engineering-validation.yaml",
