@@ -95,9 +95,10 @@ requirements:
     observable_outcome: Route changes and rail expansion preserve content, logo, and user-control origins within one pixel.
     component_owner: Web shell navigation
     test_path_or_plan: web/tests/e2e/wc099-demo-remediation.spec.ts
+    evidence_refs: [test-results/wc099/obligation-ledger.json, web/tests/e2e/wc099-demo-remediation.spec.ts]
     dependencies: [Protected application shell]
     completion_rule: Geometry assertions pass before and after every primary route and rail mode.
-    residual_risk: Representative screenshots do not replace geometry assertions.
+    residual_risk: None in the explicit route-wide geometry matrix.
   - <<: *completed
     requirement_id: WC099-R010
     source: Section 7, D-007 and D-011
@@ -122,9 +123,10 @@ requirements:
     observable_outcome: Application pages use the 32, 24, and 20 pixel hierarchy without clipping.
     component_owner: Web visual system
     test_path_or_plan: web/tests/e2e/wc099-demo-remediation.spec.ts
+    evidence_refs: [test-results/wc099/obligation-ledger.json, web/tests/e2e/wc099-demo-remediation.spec.ts]
     dependencies: [Application typography CSS]
     completion_rule: Computed-style and screenshot assertions pass on every named route.
-    residual_risk: None in local browser evidence.
+    residual_risk: None in the explicit visible-heading route matrix.
   - <<: *completed
     requirement_id: WC099-R013
     source: Section 7, D-010
@@ -172,9 +174,10 @@ requirements:
     observable_outcome: Theme and every supported locale remain durable after relocation, route changes, and reload.
     component_owner: Web preferences and shell
     test_path_or_plan: web/lib/preferences.test.ts and browser preference journeys
+    evidence_refs: [test-results/wc099/obligation-ledger.json, web/tests/e2e/wc099-demo-remediation.spec.ts]
     dependencies: [Shell preferences]
     completion_rule: Every locale, RTL, light, and dark route-reload assertion passes.
-    residual_risk: Full supported-locale browser matrix must remain explicit in final evidence.
+    residual_risk: None in the explicit 11-locale route and reload matrix.
   - <<: *completed
     requirement_id: WC099-R018
     source: Section 7, D-007 and D-009

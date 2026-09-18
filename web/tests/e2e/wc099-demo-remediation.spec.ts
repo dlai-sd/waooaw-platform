@@ -4,6 +4,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext, type Page, type TestInfo } from '@playwright/test';
 import { encode } from 'next-auth/jwt';
+import { supportedLocales } from '../../lib/preferences';
 
 const secret = 'playwright-only-not-a-runtime-secret';
 
@@ -137,12 +138,60 @@ test('R-008 R-009 R-010 R-011 R-012 R-017 R-018: desktop shell geometry is stabl
     await account.click();
     await expect(page.locator('.account-assurance:visible').first()).toHaveText('Account security: Verified');
     await expect(page.locator('body')).not.toContainText('AAL2_ACCOUNT');
-    const headingSizes = await page.locator('h1, h2, h3').evaluateAll((headings) => headings.map((heading) => [heading.tagName, getComputedStyle(heading).fontSize]));
+    const headingSizes = await page.locator('h1:visible, h2:visible, h3:visible').evaluateAll((headings) => headings.map((heading) => [heading.tagName, getComputedStyle(heading).fontSize]));
     for (const [tag, size] of headingSizes) expect(size).toBe(tag === 'H1' ? '32px' : tag === 'H2' ? '24px' : '20px');
     await expectNoOverflow(page);
     await attachScreenshot(page, testInfo, `shell-${viewport.width}x${viewport.height}`);
     await page.keyboard.press('Escape');
     await expect(rail).toHaveAttribute('data-expanded', 'false');
+  }
+});
+
+test('R-009 R-012: every application route preserves shell origin and typography', async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-expanded', 'The route-wide desktop matrix is normalized once at 1440x900.');
+  await addSession(context, testInfo.project.name);
+  for (const [name, path] of [
+    ['home-destination', '/home'],
+    ['marketplace', '/marketplace'],
+    ['my-agents', '/professionals/mine'],
+    ['alerts', '/alerts'],
+    ['settings', '/settings'],
+    ['profile', '/profile'],
+    ['relationship', '/relationships/relationship-active'],
+  ] as const) {
+    await page.goto(path);
+    const rail = page.locator('.side-navigation:visible');
+    const content = page.locator('.main-content:visible');
+    const account = page.locator('.account-drawer summary:visible');
+    const collapsed = await Promise.all([content.boundingBox(), account.boundingBox()]);
+    await page.getByRole('button', { name: 'Expand navigation' }).click();
+    await expect(rail).toHaveAttribute('data-expanded', 'true');
+    const expanded = await Promise.all([content.boundingBox(), account.boundingBox()]);
+    expect(Math.abs((expanded[0]?.x ?? 0) - (collapsed[0]?.x ?? 0))).toBeLessThanOrEqual(1);
+    expect(Math.abs((expanded[1]?.x ?? 0) - (collapsed[1]?.x ?? 0))).toBeLessThanOrEqual(1);
+    const headingSizes = await page.locator('h1:visible, h2:visible, h3:visible').evaluateAll((headings) => headings.map((heading) => [heading.tagName, getComputedStyle(heading).fontSize]));
+    for (const [tag, size] of headingSizes) expect(size).toBe(tag === 'H1' ? '32px' : tag === 'H2' ? '24px' : '20px');
+    await expectNoOverflow(page);
+    await attachScreenshot(page, testInfo, `route-${name}`);
+    await page.keyboard.press('Escape');
+    await expect(rail).toHaveAttribute('data-expanded', 'false');
+  }
+});
+
+test('R-017: every supported locale survives route changes and reload', async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-expanded', 'One Chromium matrix proves all server-rendered locale cookies and directions.');
+  await addSession(context, testInfo.project.name);
+  await page.goto('/marketplace');
+  for (const locale of supportedLocales) {
+    await page.locator('.side-navigation:visible .experience-controls select').selectOption(locale);
+    await expect(page.locator('html')).toHaveAttribute('lang', locale);
+    await expect(page.locator('html')).toHaveAttribute('dir', locale === 'ur' ? 'rtl' : 'ltr');
+    await page.goto('/alerts');
+    await expect(page.locator('html')).toHaveAttribute('lang', locale);
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('lang', locale);
+    await expect(page.locator('html')).toHaveAttribute('dir', locale === 'ur' ? 'rtl' : 'ltr');
+    await page.goto('/marketplace');
   }
 });
 
