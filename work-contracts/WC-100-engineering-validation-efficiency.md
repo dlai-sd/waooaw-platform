@@ -144,6 +144,15 @@ missing requirement IDs, missing source/test/evidence references, invalid result
 claims containing unresolved rows. Work Contracts that contain no implementation scope may declare
 the gate not applicable with a machine-readable reason.
 
+### 5.5 Running Commentary Story Boundaries
+
+While executing stories in any Work Component, the Platform IT Expert must declare the story start
+in running chat commentary before story execution begins, naming the story identifier and intended
+outcome. After completing or stopping that story, and before starting another story, it must declare
+the story end in running chat commentary with a concise summary of the evidence produced and any
+remaining blocker. A planning statement, task-list status change or final response does not
+substitute for either boundary declaration.
+
 ## 6. WC100-02 - Bounded Parallel Prechecks
 
 ### 6.1 Execution Model
@@ -497,7 +506,8 @@ After explicit current-session authorization, the Platform IT Expert must:
    final applicable aggregate check;
 8. distinguish code, coverage, infrastructure, security, metadata and acceptance failures in evidence;
 9. perform author review against every normative clause and repair all findings; and
-10. submit an unmerged PR with exact-head evidence for Founder review.
+10. declare each story start and end in running chat commentary as required by Section 5.5; and
+11. submit an unmerged PR with exact-head evidence for Founder review.
 
 The implementer may choose language-level concurrency and manifest formats consistent with existing
 repository patterns. It may not redesign the safety principles, selection semantics, evidence trust
@@ -542,6 +552,7 @@ row begins `PLANNED`; only raw executable evidence bound to the exact candidate 
 | WC100-R028 | Section 15 | Satisfy every completion condition at one exact implementation head without claiming WC100-04C early | Final ledger and exact-head author review | PLANNED |
 | WC100-R029 | Section 16 | Respect every stop condition and exclude compaction, peer review and unrelated process changes | Changed-file/scope audit | PLANNED |
 | WC100-R030 | Section 17 | Execute the Platform IT Expert handoff sequence without redesigning safety or authority boundaries | Milestone trace and author-review evidence | PLANNED |
+| WC100-R031 | Sections 5.5 and 17 | Declare each story start with its identifier and intended outcome, then declare its end with concise evidence and any blocker in running chat commentary | Deterministic office-card contract test and session story-boundary evidence | PLANNED |
 
 ## 19. Solution Architect Author Review
 

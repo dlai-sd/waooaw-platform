@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-100
 contract_path: work-contracts/WC-100-engineering-validation-efficiency.md
-contract_digest: 750d9fb8f7db3ce7f6b919a758e3ad9cc5f78a8d93674a38a00e2d8ba6162762
+contract_digest: 47d433d68339816e2117759a49d234d94692a401aa0779201ab731afaca2f7bd
 contract_status: IMPLEMENTATION_AUTHORIZED
 implementation_scope: true
 result: PLANNED
@@ -366,3 +366,14 @@ requirements:
     dependencies: [milestone evidence, final PR]
     completion_rule: Milestone trace and exact-head author-review evidence validate.
     residual_risk: Founder review and merge remain outside author authority.
+  - requirement_id: WC100-R031
+    source: Sections 5.5 and 17
+    observable_outcome: Each Platform IT story declares its identifier and intended outcome at start, then declares evidence and any blocker at end in running chat commentary.
+    component_owner: Platform IT Expert execution protocol
+    evidence_class: contract
+    test_path_or_plan: tests/pipeline/test_platform_it_story_commentary.py
+    initial_state: expected-fail
+    result: PLANNED
+    dependencies: [.github/agent-context/office-platform-it-expert.md, Platform IT chat session]
+    completion_rule: The office-card contract test requires distinct start and end declarations with story ID, intended outcome, evidence summary, blocker status, and ordering before the next story.
+    residual_risk: Repository tests can enforce agent instructions but cannot reconstruct commentary omitted before this rule was loaded.
