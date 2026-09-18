@@ -23,7 +23,8 @@ docker compose --profile test build test-runner
 runner_image_id=$(scripts/runner_image_id.sh test test-runner)
 scripts/verify_runner_image.sh test test-runner "$runner_image_id"
 
-docker compose --profile test run --rm --user root test-runner sh -lc '
+docker compose --profile test run --rm --user root \
+  -e WC100_BASE_SHA="$base_sha" -e WC100_HEAD_SHA="$commit_sha" test-runner sh -lc '
   python scripts/validate_requirement_ledger.py \
     --ledger work-contracts/WC-100-requirements.yaml \
     --contract work-contracts/WC-100-engineering-validation-efficiency.md
@@ -49,7 +50,7 @@ docker compose --profile test run --rm --user root test-runner sh -lc '
     tests/pipeline/test_validation_policy.py tests/pipeline/test_wc100_integrated_qualification.py
   python scripts/validation_policy.py \
     --policy validation/engineering-validation.yaml \
-    --base origin/main --head HEAD \
+    --base "$WC100_BASE_SHA" --head "$WC100_HEAD_SHA" \
     --changed-file-list test-results/wc100/changed-files.status \
     --output test-results/wc100/change-impact.json
 '
