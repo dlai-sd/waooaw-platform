@@ -39,6 +39,14 @@ def test_test_runner_contains_wc100_nested_docker_tools() -> None:
     assert "    jq \\\n" in source
 
 
+def test_full_runner_avoids_post_copy_metadata_mutation() -> None:
+    source = TEST_RUNNER_PATH.read_text(encoding="utf-8")
+
+    assert "COPY --chown=waooaw:waooaw . /workspace/" in source
+    assert "COPY --chown=waooaw:waooaw --chmod=0755 scripts/*.sh /workspace/scripts/" in source
+    assert "RUN chmod +x scripts/*.sh" not in source
+
+
 def test_release_qualification_accepts_exact_runner_without_hidden_rebuild() -> None:
     source = RELEASE_QUALIFICATION_PATH.read_text(encoding="utf-8")
 

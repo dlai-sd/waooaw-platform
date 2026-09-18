@@ -57,8 +57,8 @@ RUN pip install --break-system-packages --no-cache-dir -r requirements-test.txt
 # bind mount in docker-compose.yml overrides this for local dev
 COPY --chown=waooaw:waooaw . /workspace/
 
-# Ensure scripts are executable
-RUN chmod +x scripts/*.sh 2>/dev/null || true
+# Preserve the standalone image contract without copying up the complete source layer.
+COPY --chown=waooaw:waooaw --chmod=0755 scripts/*.sh /workspace/scripts/
 
 USER waooaw
 

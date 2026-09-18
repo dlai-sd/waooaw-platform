@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-100
 contract_path: work-contracts/WC-100-engineering-validation-efficiency.md
-contract_digest: f45ed522797d44129c757b754e634df4584cfd59123036b1d41698bf3fb46a23
+contract_digest: 797dbf4a4ff0a38a02f61befd68233353b494009137fcea6cd2c95623c12d47b
 contract_status: IMPLEMENTATION_AUTHORIZED
 implementation_scope: true
 result: PLANNED
@@ -378,3 +378,15 @@ requirements:
     dependencies: [.github/agent-context/office-platform-it-expert.md, Platform IT chat session]
     completion_rule: The office-card contract test requires distinct start and end declarations with story ID, intended outcome, evidence summary, blocker status, and ordering before the next story.
     residual_risk: Repository tests can enforce agent instructions but cannot reconstruct commentary omitted before this rule was loaded.
+  - requirement_id: WC100-R032
+    source: Sections 7.5 and 13
+    observable_outcome: The full test runner preserves embedded source, executable top-level shell scripts and identical test outcomes without a post-copy metadata mutation layer, with comparable before/after build timing.
+    component_owner: Docker test runner
+    evidence_class: performance
+    test_path_or_plan: tests/pipeline/test_ci_validation_efficiency.py::test_full_runner_avoids_post_copy_metadata_mutation and exact-image standalone/Compose smoke execution
+    initial_state: expected-fail
+    result: PLANNED
+    evidence_refs: [architecture/reference/dockerfiles/Dockerfile.test-runner, tests/pipeline/test_ci_validation_efficiency.py, test-results/wc100/docker-remediation]
+    dependencies: [Docker BuildKit, full test-runner image, baseline precheck evidence]
+    completion_rule: The Docker contract test, standalone and Compose smoke tests pass; the same WC-100 qualification outcomes pass; and measured stage and wall timings are reported without extrapolation.
+    residual_risk: Local cache and host load make one before/after sample unsuitable as a hosted-CI performance guarantee.

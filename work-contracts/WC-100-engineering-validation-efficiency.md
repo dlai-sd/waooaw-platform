@@ -254,6 +254,15 @@ Qualification scripts and CI jobs consume an explicit image digest supplied by t
 test job that silently invokes a rebuild, substitutes another tag or cannot report the consumed image
 fails. A deterministic test verifies that changing each input class invalidates reuse.
 
+### 7.5 Docker Layer Mutation Efficiency
+
+The full multi-stack test runner must preserve its embedded repository source and executable top-level
+shell scripts while avoiding a post-copy metadata mutation that copies up the complete source layer.
+The remediation changes only the Docker runner definition and its direct contract evidence; it must
+not change application code, test selection, coverage thresholds, gate outcomes or authority. Evidence
+must compare the same runner build stages before and after the change and prove both standalone-image
+and Compose-mounted execution remain successful.
+
 ## 8. WC100-04 - Change-Aware CI
 
 ### 8.1 Dependency Manifest
@@ -554,6 +563,7 @@ row begins `PLANNED`; only raw executable evidence bound to the exact candidate 
 | WC100-R029 | Section 16 | Respect every stop condition and exclude compaction, peer review and unrelated process changes | Changed-file/scope audit | PLANNED |
 | WC100-R030 | Section 17 | Execute the Platform IT Expert handoff sequence without redesigning safety or authority boundaries | Milestone trace and author-review evidence | PLANNED |
 | WC100-R031 | Sections 5.5 and 17 | Declare each story start with its identifier and intended outcome, then declare its end with concise evidence and any blocker in running chat commentary | Deterministic office-card contract test and session story-boundary evidence | PLANNED |
+| WC100-R032 | Sections 7.5 and 13 | Preserve embedded source, executable shell scripts and test outcomes while replacing the full runner's post-copy metadata mutation with a measured Docker-layer equivalent | Dockerfile contract test, standalone/Compose smoke tests and comparable before/after build timings | PLANNED |
 
 ## 19. Solution Architect Author Review
 
