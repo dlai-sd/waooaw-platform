@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import signal
 import shutil
 import subprocess
 import threading
@@ -22,6 +23,8 @@ INFRASTRUCTURE_MARKERS = (
     "temporary failure",
     "timed out",
 )
+ACTIVE_PROCESSES: set[subprocess.Popen[str]] = set()
+ACTIVE_PROCESSES_LOCK = threading.Lock()
 
 
 @dataclass(frozen=True)
@@ -95,6 +98,49 @@ def _write_bounded(path: Path, chunks: list[str]) -> None:
     path.write_bytes(encoded)
 
 
+def _run_command(command: tuple[str, ...], environment: dict[str, str]) -> subprocess.CompletedProcess[str]:
+    process = subprocess.Popen(  # noqa: S603
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=environment,
+        start_new_session=True,
+    )
+    with ACTIVE_PROCESSES_LOCK:
+        ACTIVE_PROCESSES.add(process)
+    try:
+        stdout, stderr = process.communicate()
+    finally:
+        with ACTIVE_PROCESSES_LOCK:
+            ACTIVE_PROCESSES.discard(process)
+    return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+
+
+def _terminate_active_processes() -> None:
+    with ACTIVE_PROCESSES_LOCK:
+        processes = tuple(ACTIVE_PROCESSES)
+    for process in processes:
+        if process.poll() is None:
+            try:
+                os.killpg(process.pid, signal.SIGTERM)
+            except ProcessLookupError:
+                continue
+
+
+def _cleanup_compose_projects(nodes: list[PrecheckNode]) -> None:
+    docker = shutil.which("docker")
+    if docker is None:
+        return
+    for node in nodes:
+        subprocess.run(  # noqa: S603
+            [docker, "compose", "-p", f"wc100-{node.name}-{os.getpid()}", "down", "--remove-orphans"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+
 def _run_node(node: PrecheckNode, artifact_dir: Path, heavy_slots: threading.Semaphore) -> dict[str, object]:
     node_dir = artifact_dir / f"{node.name}.tmp"
     node_dir.mkdir(parents=True, exist_ok=True)
@@ -118,13 +164,7 @@ def _run_node(node: PrecheckNode, artifact_dir: Path, heavy_slots: threading.Sem
     with heavy_slots if node.heavy else _NullContext():
         while attempts <= node.transient_retries:
             attempts += 1
-            completed = subprocess.run(  # noqa: S603
-                node.command,
-                check=False,
-                capture_output=True,
-                text=True,
-                env=environment,
-            )
+            completed = _run_command(node.command, environment)
             stdout_chunks.append(completed.stdout)
             stderr_chunks.append(completed.stderr)
             return_code = completed.returncode
@@ -232,11 +272,19 @@ def run_prechecks(
                 runnable.append(node)
             pending.remove(name)
         if mode == "parallel" and len(runnable) > 1:
-            with ThreadPoolExecutor(max_workers=len(runnable), thread_name_prefix="wc100-precheck") as executor:
+            executor = ThreadPoolExecutor(max_workers=len(runnable), thread_name_prefix="wc100-precheck")
+            try:
                 futures = {node.name: executor.submit(_run_node, node, artifact_dir, heavy_slots) for node in runnable}
                 for name in ready:
                     if name in futures:
                         results[name] = futures[name].result()
+            except (KeyboardInterrupt, SystemExit):
+                _terminate_active_processes()
+                _cleanup_compose_projects(runnable)
+                executor.shutdown(wait=True, cancel_futures=True)
+                raise
+            else:
+                executor.shutdown(wait=True)
         else:
             for node in runnable:
                 results[node.name] = _run_node(node, artifact_dir, heavy_slots)

@@ -3,6 +3,9 @@ import sys
 import time
 from pathlib import Path
 
+import pytest
+
+import precheck_orchestrator
 from precheck_orchestrator import PrecheckNode, run_prechecks
 
 
@@ -110,6 +113,44 @@ def test_cancellation_cannot_produce_passing_aggregate(tmp_path: Path) -> None:
 
     assert manifest["passed"] is False
     assert manifest["nodes"][0]["classification"] == "cancelled"
+
+
+def test_interrupt_terminates_workers_and_cleans_compose(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    terminated: list[str] = []
+    cleaned: list[str] = []
+
+    class InterruptingFuture:
+        def result(self) -> object:
+            raise KeyboardInterrupt
+
+    class InterruptingExecutor:
+        def __init__(self, **unused: object) -> None:
+            pass
+
+        def submit(self, function: object, *arguments: object) -> InterruptingFuture:
+            return InterruptingFuture()
+
+        def shutdown(self, *, wait: bool, cancel_futures: bool = False) -> None:
+            assert wait is True
+            assert cancel_futures is True
+
+    monkeypatch.setattr(precheck_orchestrator, "ThreadPoolExecutor", InterruptingExecutor)
+    monkeypatch.setattr(precheck_orchestrator, "_terminate_active_processes", lambda: terminated.append("workers"))
+    monkeypatch.setattr(
+        precheck_orchestrator,
+        "_cleanup_compose_projects",
+        lambda nodes: cleaned.extend(node.name for node in nodes),
+    )
+
+    with pytest.raises(KeyboardInterrupt):
+        run(
+            [python_node("one", "pass"), python_node("two", "pass")],
+            tmp_path,
+            preflight=lambda: (True, []),
+        )
+
+    assert terminated == ["workers"]
+    assert cleaned == ["one", "two"]
 
 
 def test_transient_infrastructure_retry_is_bounded(tmp_path: Path) -> None:
