@@ -25,6 +25,7 @@ scripts/verify_runner_image.sh test test-runner "$runner_image_id"
 
 docker compose --profile test run --rm --user root \
   -e WC100_BASE_SHA="$base_sha" -e WC100_HEAD_SHA="$commit_sha" test-runner sh -lc '
+  set -eu
   python scripts/validate_requirement_ledger.py \
     --ledger work-contracts/WC-100-requirements.yaml \
     --contract work-contracts/WC-100-engineering-validation-efficiency.md

@@ -45,6 +45,13 @@ def test_validation_lifecycle_trace_is_ordered() -> None:
     assert positions == sorted(positions)
 
 
+def test_qualification_container_fails_fast() -> None:
+    source = QUALIFICATION.read_text(encoding="utf-8")
+    container_commands = source.split("test-runner sh -lc '", maxsplit=1)[1]
+
+    assert container_commands.lstrip().startswith("set -eu\n")
+
+
 def test_changed_file_scope() -> None:
     allowed = (
         ".github/agent-context/office-platform-it-expert.md",
