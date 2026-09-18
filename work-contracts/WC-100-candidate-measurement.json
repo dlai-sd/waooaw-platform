@@ -1,0 +1,203 @@
+{
+  "evidence_classes": {
+    "baseline": "completed-github-ci",
+    "candidate_hosted_wall_time": "untested-until-pr-ci",
+    "candidate_selection": "local-deterministic-git-replay"
+  },
+  "limitations": [
+    "Candidate hosted wall time is unavailable until this branch runs in GitHub Actions.",
+    "Proposed gate counts do not predict elapsed-time savings.",
+    "WC100-04C remains disabled pending at least 20 Shadow samples and separate Founder approval."
+  ],
+  "measurement_phase": "candidate-shadow-plan",
+  "policy_version": "wc100-shadow-v1",
+  "samples": [
+    {
+      "change_class": "web-only",
+      "changed_path_count": 6,
+      "classification_reasons": [
+        "direct owner web: web/app/api/auth/keycloak-logout/route.test.ts",
+        "direct owner web: web/app/api/auth/keycloak-logout/route.ts",
+        "direct owner web: web/components/auth/SignOutCommand.test.tsx",
+        "direct owner web: web/components/auth/SignOutCommand.tsx",
+        "direct owner web: web/tests/e2e/fixtures/f1-services.mjs",
+        "direct owner web: web/tests/e2e/wc094-auth-session-readiness.spec.ts"
+      ],
+      "head_sha": "5bc1d129307540a28e78c1a12eeb4ab3876c6636",
+      "pr": 436,
+      "proposed_components": [
+        "web"
+      ],
+      "proposed_full": false,
+      "proposed_gate_count": 4,
+      "proposed_gates": [
+        "build:web",
+        "dep-scan",
+        "sast:javascript",
+        "test-web"
+      ]
+    },
+    {
+      "change_class": "business-platform",
+      "changed_path_count": 3,
+      "classification_reasons": [
+        "direct owner business-platform: tests/business-platform.Tests/Conversation/PortalInteractionServiceTests.cs",
+        "direct owner business-platform: tests/business-platform.Tests/Conversation/PortalInteractionsControllerTests.cs",
+        "direct owner business-platform: tests/business-platform.Tests/ProfessionalCatalogTests.cs"
+      ],
+      "head_sha": "e753d8172fb65154bf9ba3ad75b6b3b7380944bd",
+      "pr": 442,
+      "proposed_components": [
+        "agent-runtime-adapter-digital-marketing",
+        "billing-engine",
+        "business-platform",
+        "professional-runtime",
+        "web"
+      ],
+      "proposed_full": false,
+      "proposed_gate_count": 15,
+      "proposed_gates": [
+        "build:agent-runtime-adapter-digital-marketing",
+        "build:billing-engine",
+        "build:business-platform",
+        "build:professional-runtime",
+        "build:web",
+        "dep-scan",
+        "release-qualification",
+        "sast:csharp",
+        "sast:javascript",
+        "sast:python",
+        "spec-lint",
+        "test-dotnet:business-platform",
+        "test-python:billing-engine",
+        "test-python:professional-runtime",
+        "test-web"
+      ]
+    },
+    {
+      "change_class": "python-service",
+      "changed_path_count": 1,
+      "classification_reasons": [
+        "direct owner professional-runtime: tests/professional-runtime/test_professional_evaluation_adapters.py"
+      ],
+      "head_sha": "04f77611eec2c91840caac4a96dc231c6ea7476e",
+      "pr": 438,
+      "proposed_components": [
+        "agent-runtime-adapter-digital-marketing",
+        "professional-runtime",
+        "web"
+      ],
+      "proposed_full": false,
+      "proposed_gate_count": 9,
+      "proposed_gates": [
+        "build:agent-runtime-adapter-digital-marketing",
+        "build:professional-runtime",
+        "build:web",
+        "dep-scan",
+        "sast:javascript",
+        "sast:python",
+        "spec-lint",
+        "test-python:professional-runtime",
+        "test-web"
+      ]
+    },
+    {
+      "change_class": "shared-contract",
+      "changed_path_count": 3,
+      "classification_reasons": [
+        "unknown path: architecture/reference/components/identity-boundary.md",
+        "direct owner web: web/app/layout.tsx",
+        "direct owner web: web/components/auth/AuthSessionProvider.tsx"
+      ],
+      "head_sha": "fc5e107d71f94ca770627e45b0393a328bd13a68",
+      "pr": 433,
+      "proposed_components": [
+        "agent-runtime-adapter-digital-marketing",
+        "ai-runtime",
+        "billing-engine",
+        "business-platform",
+        "constitutional-engine",
+        "professional-runtime",
+        "web"
+      ],
+      "proposed_full": true,
+      "proposed_gate_count": 14,
+      "proposed_gates": [
+        "build",
+        "secrets",
+        "test-dotnet",
+        "test-python",
+        "test-web",
+        "spec-lint",
+        "sast",
+        "dep-scan",
+        "license-check",
+        "release-qualification",
+        "constitutional-commit-gate",
+        "requirement-ledger",
+        "author-review-gate",
+        "authorization-tier-check"
+      ]
+    },
+    {
+      "change_class": "pipeline-global",
+      "changed_path_count": 9,
+      "classification_reasons": [
+        "unknown path: .github/pull_request_template.md",
+        "global trigger: .github/workflows/ci.yaml",
+        "global trigger: .github/workflows/project-automation.yaml",
+        "global trigger: scripts/prepare_pr_body.py",
+        "global trigger: scripts/run_release_qualification.sh",
+        "unknown path: tests/pipeline/test_ci_prechecks.py",
+        "unknown path: tests/pipeline/test_goal006_release_simulator.py",
+        "unknown path: tests/pipeline/test_goal006_terraform_foundations.py",
+        "unknown path: tests/pipeline/test_prepare_pr_body.py"
+      ],
+      "head_sha": "3a6f40a8c681f7ba4ea7755f80a25ebb0106d425",
+      "pr": 430,
+      "proposed_components": [
+        "agent-runtime-adapter-digital-marketing",
+        "ai-runtime",
+        "billing-engine",
+        "business-platform",
+        "constitutional-engine",
+        "professional-runtime",
+        "web"
+      ],
+      "proposed_full": true,
+      "proposed_gate_count": 14,
+      "proposed_gates": [
+        "build",
+        "secrets",
+        "test-dotnet",
+        "test-python",
+        "test-web",
+        "spec-lint",
+        "sast",
+        "dep-scan",
+        "license-check",
+        "release-qualification",
+        "constitutional-commit-gate",
+        "requirement-ledger",
+        "author-review-gate",
+        "authorization-tier-check"
+      ]
+    }
+  ],
+  "schema": "waooaw.wc100-measurement/v1",
+  "summary": {
+    "baseline_wall_seconds": {
+      "maximum": 370,
+      "median": 278,
+      "minimum": 261
+    },
+    "candidate_proposed_gate_count": {
+      "maximum": 15,
+      "median": 14,
+      "minimum": 4
+    },
+    "change_aware_false_negatives": "pending Shadow comparison against completed PR CI",
+    "sample_size": 5,
+    "unsupported_savings_claims": false
+  }
+}

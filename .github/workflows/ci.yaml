@@ -53,6 +53,7 @@ jobs:
           echo "head_sha=$head_sha" >> "$GITHUB_OUTPUT"
           mkdir -p test-results/wc100
           git diff --name-only --find-renames "$base_sha" "$head_sha" > test-results/wc100/changed-files.txt
+          git diff --name-status --find-renames "$base_sha" "$head_sha" > test-results/wc100/changed-files.status
       - name: Build validation runner once (C-080)
         id: runner-build
         run: |
@@ -81,6 +82,7 @@ jobs:
                 --policy validation/engineering-validation.yaml \
                 --base "$BASE_SHA" --head "$HEAD_SHA" \
                 --event "$EVENT_NAME" \
+                --changed-file-list test-results/wc100/changed-files.status \
                 --output test-results/wc100/change-impact.json
               python scripts/validate_requirement_ledger.py \
                 --repository-root /workspace \
@@ -97,6 +99,7 @@ jobs:
           path: |
             test-results/wc100/change-impact.json
             test-results/wc100/changed-files.txt
+            test-results/wc100/changed-files.status
             ${{ runner.temp }}/build-evidence/validation-plan.json
           if-no-files-found: error
           retention-days: 90

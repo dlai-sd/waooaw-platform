@@ -2,7 +2,7 @@ from pathlib import Path
 
 import yaml
 
-from validation_policy import classify_paths, compare_shadow, validate_policy, validate_selection_manifest
+from validation_policy import classify_paths, compare_shadow, parse_name_status, validate_policy, validate_selection_manifest
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -63,6 +63,12 @@ def test_docs_only_and_renamed_paths_are_reasoned() -> None:
     assert docs["skipped_gates"]
     assert "business-platform" in renamed["selected_components"]
     assert "web" in renamed["selected_components"]
+
+
+def test_name_status_parser_keeps_deleted_and_renamed_paths() -> None:
+    paths = parse_name_status("D\tweb/deleted.ts\nR100\tweb/old.ts\tsrc/business-platform/New.cs\n")
+
+    assert paths == ["web/deleted.ts", "web/old.ts", "src/business-platform/New.cs"]
 
 
 def test_enforced_mode_requires_founder_activation() -> None:

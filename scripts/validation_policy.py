@@ -205,8 +205,12 @@ def changed_paths(base_sha: str, head_sha: str) -> list[str]:
         capture_output=True,
         text=True,
     )
+    return parse_name_status(completed.stdout)
+
+
+def parse_name_status(content: str) -> list[str]:
     paths: list[str] = []
-    for line in completed.stdout.splitlines():
+    for line in content.splitlines():
         fields = line.split("\t")
         paths.extend(fields[1:])
     return paths
@@ -219,6 +223,7 @@ def main() -> int:
     parser.add_argument("--head", required=True)
     parser.add_argument("--event", choices=("pull_request", "push", "release"), default="pull_request")
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--changed-file-list", type=Path, help="git diff --name-status input generated outside the runner")
     arguments = parser.parse_args()
     loaded = yaml.safe_load(arguments.policy.read_text(encoding="utf-8"))
     if not isinstance(loaded, dict):
@@ -230,7 +235,11 @@ def main() -> int:
         return 1
     manifest = classify_paths(
         loaded,
-        changed_paths(arguments.base, arguments.head),
+        (
+            parse_name_status(arguments.changed_file_list.read_text(encoding="utf-8"))
+            if arguments.changed_file_list is not None
+            else changed_paths(arguments.base, arguments.head)
+        ),
         base_sha=arguments.base,
         head_sha=arguments.head,
         event=arguments.event,
