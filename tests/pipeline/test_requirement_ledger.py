@@ -23,7 +23,7 @@ def load_ledger() -> dict[str, object]:
 def test_wc100_ledger_is_complete() -> None:
     requirement_ids = contract_requirement_ids(CONTRACT.read_text(encoding="utf-8"))
 
-    assert requirement_ids == [f"WC100-R{number:03d}" for number in range(1, 31)]
+    assert requirement_ids == [f"WC100-R{number:03d}" for number in range(1, 33)]
     assert validate_ledger(load_ledger(), requirement_ids) == []
 
 

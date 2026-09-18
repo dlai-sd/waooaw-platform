@@ -144,6 +144,15 @@ missing requirement IDs, missing source/test/evidence references, invalid result
 claims containing unresolved rows. Work Contracts that contain no implementation scope may declare
 the gate not applicable with a machine-readable reason.
 
+### 5.5 Running Commentary Story Boundaries
+
+While executing stories in any Work Component, the Platform IT Expert must declare the story start
+in running chat commentary before story execution begins, naming the story identifier and intended
+outcome. After completing or stopping that story, and before starting another story, it must declare
+the story end in running chat commentary with a concise summary of the evidence produced and any
+remaining blocker. A planning statement, task-list status change or final response does not
+substitute for either boundary declaration.
+
 ## 6. WC100-02 - Bounded Parallel Prechecks
 
 ### 6.1 Execution Model
@@ -245,6 +254,15 @@ Qualification scripts and CI jobs consume an explicit image digest supplied by t
 test job that silently invokes a rebuild, substitutes another tag or cannot report the consumed image
 fails. A deterministic test verifies that changing each input class invalidates reuse.
 
+### 7.5 Docker Layer Mutation Efficiency
+
+The full multi-stack test runner must preserve its embedded repository source and executable top-level
+shell scripts while avoiding a post-copy metadata mutation that copies up the complete source layer.
+The remediation changes only the Docker runner definition and its direct contract evidence; it must
+not change application code, test selection, coverage thresholds, gate outcomes or authority. Evidence
+must compare the same runner build stages before and after the change and prove both standalone-image
+and Compose-mounted execution remain successful.
+
 ## 8. WC100-04 - Change-Aware CI
 
 ### 8.1 Dependency Manifest
@@ -327,6 +345,7 @@ Expected implementation surfaces are:
 | Dependency manifest and classifier | Direct/reverse ownership, global triggers, fail-closed path handling and reasoning output | High |
 | Work Contract template and validator | Requirement-to-evidence ledger and pre-implementation completeness gate | Medium |
 | QA/author-review aggregation | Validate direct evidence coverage, exact-head bindings and unresolved rows | Medium |
+| Platform IT Expert office card | Require explicit story start/end commentary boundaries for every Work Component | Low |
 
 No application business behavior, service API, database schema, customer data or cloud runtime is
 intended to change. Discovery that such a change is necessary stops the affected milestone for
@@ -497,7 +516,8 @@ After explicit current-session authorization, the Platform IT Expert must:
    final applicable aggregate check;
 8. distinguish code, coverage, infrastructure, security, metadata and acceptance failures in evidence;
 9. perform author review against every normative clause and repair all findings; and
-10. submit an unmerged PR with exact-head evidence for Founder review.
+10. declare each story start and end in running chat commentary as required by Section 5.5; and
+11. submit an unmerged PR with exact-head evidence for Founder review.
 
 The implementer may choose language-level concurrency and manifest formats consistent with existing
 repository patterns. It may not redesign the safety principles, selection semantics, evidence trust
@@ -542,6 +562,8 @@ row begins `PLANNED`; only raw executable evidence bound to the exact candidate 
 | WC100-R028 | Section 15 | Satisfy every completion condition at one exact implementation head without claiming WC100-04C early | Final ledger and exact-head author review | PLANNED |
 | WC100-R029 | Section 16 | Respect every stop condition and exclude compaction, peer review and unrelated process changes | Changed-file/scope audit | PLANNED |
 | WC100-R030 | Section 17 | Execute the Platform IT Expert handoff sequence without redesigning safety or authority boundaries | Milestone trace and author-review evidence | PLANNED |
+| WC100-R031 | Sections 5.5 and 17 | Declare each story start with its identifier and intended outcome, then declare its end with concise evidence and any blocker in running chat commentary | Deterministic office-card contract test and session story-boundary evidence | PLANNED |
+| WC100-R032 | Sections 7.5 and 13 | Preserve embedded source, executable shell scripts and test outcomes while replacing the full runner's post-copy metadata mutation with a measured Docker-layer equivalent | Dockerfile contract test, standalone/Compose smoke tests and comparable before/after build timings | PLANNED |
 
 ## 19. Solution Architect Author Review
 

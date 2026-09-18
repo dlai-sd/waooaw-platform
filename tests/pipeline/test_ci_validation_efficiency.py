@@ -6,6 +6,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 CI_PATH = ROOT / ".github/workflows/ci.yaml"
 RELEASE_QUALIFICATION_PATH = ROOT / "scripts/run_release_qualification.sh"
+TEST_RUNNER_PATH = ROOT / "architecture/reference/dockerfiles/Dockerfile.test-runner"
 
 
 def load_ci() -> dict[str, object]:
@@ -29,6 +30,21 @@ def test_runner_images_are_verified_before_consumption() -> None:
     assert source.count("id: runner-build") >= 3
     assert source.count("scripts/verify_runner_image.sh") >= 3
     assert "WAOOAW_TEST_RUNNER_IMAGE_ID" in source
+
+
+def test_test_runner_contains_wc100_nested_docker_tools() -> None:
+    source = TEST_RUNNER_PATH.read_text(encoding="utf-8")
+
+    assert "    docker.io \\\n" in source
+    assert "    jq \\\n" in source
+
+
+def test_full_runner_avoids_post_copy_metadata_mutation() -> None:
+    source = TEST_RUNNER_PATH.read_text(encoding="utf-8")
+
+    assert "COPY --chown=waooaw:waooaw . /workspace/" in source
+    assert "COPY --link --chown=waooaw:waooaw --chmod=0755 scripts/*.sh /workspace/scripts/" in source
+    assert "RUN chmod +x scripts/*.sh" not in source
 
 
 def test_release_qualification_accepts_exact_runner_without_hidden_rebuild() -> None:
