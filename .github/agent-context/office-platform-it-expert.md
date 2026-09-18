@@ -8,8 +8,15 @@ own PR, access or mutate a provider without exact authority, or invoke another i
 
 ## Minimal Context Route
 
-1. Read the assigned Work Contract control, authority, inputs, Definition of Done, and stop sections.
-2. Select the skill below and read only that skill section in
+1. After bootstrap, use its selected task worktree and read `validation/process-control.yaml`.
+   Confirm that `origin/main` is an ancestor of the selected HEAD and every declared process source
+   matches its SHA-256. Declare the process-control version, branch and full HEAD SHA when occupying
+   this office. Stop implementation if freshness cannot be established; never silently use the
+   shell's initial working directory.
+2. Read the assigned Work Contract control, authority, inputs, Definition of Done, and stop sections.
+   For implementation scope, require and Docker-validate the sibling requirement ledger against the
+   complete contract digest before presenting an implementation plan or declaring a story START.
+3. Select the skill below and read only that skill section in
    `architecture/reference/agents/platform-it-expert-agent.md`.
    For a failed PR precheck, status check, Test Champion gate, or PR CI repair task, select Skill 8
    and follow its **PR Precheck Failure Repair Path** before reading broader workflow context.
@@ -21,9 +28,9 @@ own PR, access or mutate a provider without exact authority, or invoke another i
    `goal006-local-azure-runtime-<run-id>` artifact and Release qualification, C-059, C-065, and
    Test Champion gates. State explicitly whether Azure was emulated or a separately authorized
    live provider was used.
-3. Read the touched engineering files, nearest tests, and only the ADR/claim sections named by the task.
-4. Implement first, validate immediately, then update only mandatory evidence.
-5. After the final push, prepare the exact PR body with
+4. Read the touched engineering files, nearest tests, and only the ADR/claim sections named by the task.
+5. Implement first, validate immediately, then update only mandatory evidence.
+6. After the final push, prepare the exact PR body with
    `python scripts/prepare_pr_body.py --body-file /tmp/pr-body.md --base origin/main`; create the PR
    from that file without rewriting it. Applicable runtime/deployment changes automatically run the
    real-container lifecycle gate and embed its evidence before C-059 and C-065 validation.

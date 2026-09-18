@@ -153,6 +153,21 @@ the story end in running chat commentary with a concise summary of the evidence 
 remaining blocker. A planning statement, task-list status change or final response does not
 substitute for either boundary declaration.
 
+### 5.6 Bootstrap And Office Process Intake
+
+Bootstrap remains the first session action. Immediately after reading the bootstrap protocol and
+before loading platform status or occupying an office, the agent resolves the task-owning worktree,
+verifies that its HEAD contains the refreshed authoritative integration baseline, loads the versioned
+compact process-control manifest, and verifies each declared process source against its exact SHA-256.
+Missing, stale or contradictory process controls block implementation rather than silently falling
+back to the shell's initial working directory.
+
+When Platform IT Expert occupies its office, it declares the process-control version, selected branch
+and full HEAD SHA. For an implementation Work Contract, it validates the complete digest-bound sibling
+requirement ledger in the repository Docker runner before presenting an implementation plan or
+declaring the first story start. This intake check does not replace current-session implementation
+authority, story commentary, executable evidence, full CI, author review or Founder review.
+
 ## 6. WC100-02 - Bounded Parallel Prechecks
 
 ### 6.1 Execution Model
@@ -517,7 +532,8 @@ After explicit current-session authorization, the Platform IT Expert must:
 8. distinguish code, coverage, infrastructure, security, metadata and acceptance failures in evidence;
 9. perform author review against every normative clause and repair all findings; and
 10. declare each story start and end in running chat commentary as required by Section 5.5; and
-11. submit an unmerged PR with exact-head evidence for Founder review.
+11. complete the bootstrap and office process intake required by Section 5.6; and
+12. submit an unmerged PR with exact-head evidence for Founder review.
 
 The implementer may choose language-level concurrency and manifest formats consistent with existing
 repository patterns. It may not redesign the safety principles, selection semantics, evidence trust
@@ -564,6 +580,7 @@ row begins `PLANNED`; only raw executable evidence bound to the exact candidate 
 | WC100-R030 | Section 17 | Execute the Platform IT Expert handoff sequence without redesigning safety or authority boundaries | Milestone trace and author-review evidence | PLANNED |
 | WC100-R031 | Sections 5.5 and 17 | Declare each story start with its identifier and intended outcome, then declare its end with concise evidence and any blocker in running chat commentary | Deterministic office-card contract test and session story-boundary evidence | PLANNED |
 | WC100-R032 | Sections 7.5 and 13 | Preserve embedded source, executable shell scripts and test outcomes while replacing the full runner's post-copy metadata mutation with a measured Docker-layer equivalent | Dockerfile contract test, standalone/Compose smoke tests and comparable before/after build timings | PLANNED |
+| WC100-R033 | Sections 5.6 and 17 | Keep bootstrap first, then verify the task worktree and digest-bound inherited process baseline; declare that baseline at office occupancy and validate the implementation ledger before planning or story execution | Process manifest and deterministic bootstrap/office/template contract tests | PLANNED |
 
 ## 19. Solution Architect Author Review
 

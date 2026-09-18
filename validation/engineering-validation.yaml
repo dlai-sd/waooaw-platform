@@ -58,6 +58,7 @@ components:
     depends_on: [business-platform, professional-runtime]
 global_triggers:
   - .github/agent-context/office-platform-it-expert.md
+  - constitution/BOOTSTRAP.md
   - .github/workflows/**
   - docker-compose*.yml
   - requirements*.txt
@@ -72,6 +73,8 @@ global_triggers:
   - scripts/run_release_qualification.sh
   - scripts/run_wc100_qualification.sh
   - tests/pipeline/test_platform_it_story_commentary.py
+  - tests/pipeline/test_platform_it_process_intake.py
+  - validation/process-control.yaml
   - architecture/reference/dockerfiles/**
   - release/**
   - infrastructure/terraform/**

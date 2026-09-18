@@ -36,6 +36,7 @@ def test_test_runner_contains_wc100_nested_docker_tools() -> None:
     source = TEST_RUNNER_PATH.read_text(encoding="utf-8")
 
     assert "    docker.io \\\n" in source
+    assert "    docker-compose-v2 \\\n" in source
     assert "    jq \\\n" in source
 
 
