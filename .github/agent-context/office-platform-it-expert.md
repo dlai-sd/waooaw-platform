@@ -90,7 +90,7 @@ lint, build, test, security, author-review, or Test Champion results.
    pending checks, and untested stages, and never call a pending PR merge-ready.
 
 Before any costly Docker qualification, run the cheap execution preflight separately: use the selected
-worktree's absolute path, confirm its exact HEAD, Docker CLI/daemon/Compose/Buildx and `jq`, Docker socket
+worktree's absolute path, confirm its exact HEAD, `bash`, Docker CLI/daemon/Compose/Buildx and `jq`, Docker socket
 access, writable `HOME` and output directory, and Git safe-directory access. Invoke the preparation
 command from step 6 with `--preflight-only` before its full run. Mount the selected worktree
 and Git common directory at their original absolute paths for nested Docker. Mount writable output

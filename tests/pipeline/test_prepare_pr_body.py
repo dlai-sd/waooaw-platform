@@ -291,7 +291,7 @@ def test_execution_preflight_checks_tools_only_when_gates_will_run(monkeypatch, 
     try:
         execution_preflight(tmp_path, tmp_path / "pr-body.md", tmp_path, HEAD, HEAD, require_docker=True)
     except ValueError as error:
-        assert "docker, jq" in str(error)
+        assert "bash, docker, jq" in str(error)
     else:
         raise AssertionError("missing costly-run tools were accepted")
 

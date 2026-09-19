@@ -84,7 +84,7 @@ def execution_preflight(
         failures.append("git cannot read the worktree; configure its exact path as a safe.directory")
 
     if require_docker:
-        required_tools = ("docker", "jq")
+        required_tools = ("bash", "docker", "jq")
         missing = [tool for tool in required_tools if shutil.which(tool) is None]
         if missing:
             failures.append(f"required executables are unavailable: {', '.join(missing)}")

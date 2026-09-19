@@ -275,8 +275,8 @@ C-059 and C-065 before PR creation. Applicable runtime/deployment changes also r
 Professional Runtime delayed-Temporal lifecycle gate and embed its JSON evidence. Submit that exact
 prepared file without rewriting it. Do not open the PR first and repair its body after CI starts.
 
-Before costly qualification, separately verify the absolute selected worktree and HEAD, Docker
-CLI/daemon/Compose/Buildx and `jq`, Docker socket access, writable `HOME` and output directory, and
+Before costly qualification, separately verify the absolute selected worktree and HEAD, `bash`,
+Docker CLI/daemon/Compose/Buildx and `jq`, Docker socket access, writable `HOME` and output directory, and
 Git safe-directory access by running the preparation command above with `--preflight-only`. Nested
 Docker mounts preserve the selected worktree and Git common
 directory at their original absolute paths. Mount writable output directories rather than individual
