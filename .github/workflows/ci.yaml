@@ -617,9 +617,9 @@ jobs:
           scripts/verify_runner_image.sh test-ts test-runner-ts '${{ steps.runner-build.outputs.image_id }}'
           docker compose --profile test-ts run --rm test-runner-ts sh -lc '
             cd web &&
-            pnpm tsc --noEmit &&
-            pnpm eslint . --max-warnings 0 &&
-            pnpm jest --coverage --coverageThreshold='"'"'{"global":{"lines":90,"branches":80,"functions":90,"statements":90}}'"'"'
+            ../node_modules/.bin/tsc --noEmit &&
+            ../node_modules/.bin/eslint . --max-warnings 0 &&
+            ../node_modules/.bin/jest --runInBand --coverage --coverageDirectory=/workspace/coverage --coverageThreshold='"'"'{"global":{"lines":90,"branches":80,"functions":90,"statements":90}}'"'"'
           '
         # C-076: 90% line/function/statement floor is constitutional minimum
 
@@ -800,7 +800,7 @@ jobs:
         run: |
           scripts/verify_runner_image.sh test-ts test-runner-ts '${{ steps.runner-build.outputs.ts_image_id }}'
           docker compose --profile test-ts run --rm test-runner-ts sh -lc '
-            cd web && pnpm audit --audit-level high
+            pnpm audit --audit-level high
           '
 
   # ─── License compliance ───────────────────────────────────────────────────

@@ -17,7 +17,8 @@
 FROM mcr.microsoft.com/playwright:v1.62.1-noble
 
 # Security: run as non-root with writable browser and font caches.
-RUN groupadd -r waooaw && useradd -m -r -g waooaw waooaw
+RUN (getent group 1000 >/dev/null || groupadd --gid 1000 waooaw) \
+    && (getent passwd 1000 >/dev/null || useradd --uid 1000 --gid 1000 --create-home waooaw)
 
 WORKDIR /workspace
 
@@ -44,24 +45,17 @@ ENV PATH=$PATH:/usr/local/dotnet
 # authoritative environment, not a per-session setup step.
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 RUN npm install --global pnpm@9.15.9
-COPY web/package.json web/pnpm-lock.yaml /tmp/waooaw-web/
-RUN cd /tmp/waooaw-web \
-    && pnpm install --frozen-lockfile \
-    && rm -rf /tmp/waooaw-web
+COPY --chown=waooaw:waooaw web/package.json web/pnpm-lock.yaml /opt/waooaw-web/
+RUN cd /opt/waooaw-web && pnpm install --frozen-lockfile
+ENV NODE_PATH=/opt/waooaw-web/node_modules \
+    PATH=/opt/waooaw-web/node_modules/.bin:$PATH
 
 # Python test dependencies — installed to system Python (no venv per C-080)
 # This file is the venv replacement — the image IS the isolated environment.
 COPY requirements-test.txt /workspace/requirements-test.txt
 RUN pip install --break-system-packages --no-cache-dir -r requirements-test.txt
 
-# Copy project files with ownership set at copy-time — eliminates slow post-copy chown layer
-# bind mount in docker-compose.yml overrides this for local dev
-COPY --chown=waooaw:waooaw . /workspace/
-
-# Preserve the standalone image contract without copying up the complete source layer.
-COPY --link --chown=waooaw:waooaw --chmod=0755 scripts/*.sh /workspace/scripts/
-
-USER waooaw
+USER 1000:1000
 
 # Default: run all constitutional CCTs
 CMD ["python3", "-m", "pytest", "tests/constitutional/", "-v", "--tb=short"]

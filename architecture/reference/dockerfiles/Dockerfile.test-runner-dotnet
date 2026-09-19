@@ -5,9 +5,13 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0-noble
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends python3 python3-pip \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && (getent group 1000 >/dev/null || groupadd --gid 1000 waooaw) \
+    && (getent passwd 1000 >/dev/null || useradd --uid 1000 --gid 1000 --create-home waooaw)
 
 WORKDIR /workspace
+ENV DOTNET_CLI_HOME=/tmp/dotnet \
+    NUGET_PACKAGES=/opt/nuget/packages
 
 COPY requirements-test.txt /workspace/requirements-test.txt
 RUN pip install --break-system-packages --no-cache-dir -r requirements-test.txt
@@ -16,10 +20,11 @@ COPY src/constitutional-engine/constitutional-engine.csproj src/constitutional-e
 COPY src/business-platform/business-platform.csproj src/business-platform/
 COPY tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj tests/constitutional-engine.Tests/
 COPY tests/business-platform.Tests/business-platform.Tests.csproj tests/business-platform.Tests/
-RUN --mount=type=cache,target=/root/.nuget/packages \
-    dotnet restore tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj && \
-    dotnet restore tests/business-platform.Tests/business-platform.Tests.csproj
+RUN mkdir -p /opt/nuget/packages /tmp/dotnet \
+    && chown -R 1000:1000 /opt/nuget /tmp/dotnet /workspace
 
-COPY . /workspace/
+USER 1000:1000
+RUN dotnet restore tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj \
+    && dotnet restore tests/business-platform.Tests/business-platform.Tests.csproj
 
 CMD ["dotnet", "test"]

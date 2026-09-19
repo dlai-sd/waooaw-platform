@@ -3,18 +3,20 @@
 
 FROM node:20-bookworm-slim
 
+ENV COREPACK_HOME=/opt/corepack
+
 WORKDIR /workspace
 
-RUN corepack enable \
+RUN mkdir -p "$COREPACK_HOME" \
+	&& corepack enable \
 	&& corepack prepare pnpm@9.15.9 --activate \
-	&& chmod a+x /root \
-	&& chmod -R a+rX /root/.cache/node/corepack
+	&& chmod -R a+rX "$COREPACK_HOME"
 
-COPY web/package.json web/pnpm-lock.yaml /workspace/web/
-RUN --mount=type=cache,target=/pnpm/store \
-	cd web && pnpm install --frozen-lockfile
+COPY --chown=node:node web/package.json web/pnpm-lock.yaml /workspace/
+RUN --mount=type=cache,target=/home/node/.local/share/pnpm/store,uid=1000,gid=1000 \
+	pnpm install --frozen-lockfile \
+	&& mkdir -p coverage test-results
 
-COPY web /workspace/web/
-RUN chmod -R a+rX /workspace/web
+USER node
 
-CMD ["pnpm", "--dir", "web", "test"]
+CMD ["sh", "-lc", "cd web && ../node_modules/.bin/jest --runInBand"]
