@@ -2,6 +2,33 @@ namespace Waooaw.BusinessPlatform.Tests;
 
 internal static class RepositoryPaths
 {
+    public static string Root()
+    {
+        var roots = new[]
+        {
+            Environment.GetEnvironmentVariable("GITHUB_WORKSPACE"),
+            Directory.GetCurrentDirectory(),
+            AppContext.BaseDirectory,
+        };
+
+        foreach (var root in roots.Where(value => !string.IsNullOrWhiteSpace(value)).Distinct())
+        {
+            for (
+                var directory = new DirectoryInfo(root!);
+                directory is not null;
+                directory = directory.Parent
+            )
+            {
+                if (Directory.Exists(Path.Combine(directory.FullName, "constitution")))
+                {
+                    return directory.FullName;
+                }
+            }
+        }
+
+        throw new InvalidOperationException("Repository root not found");
+    }
+
     public static string Resolve(string relativePath)
     {
         var roots = new[]
@@ -14,7 +41,11 @@ internal static class RepositoryPaths
         var searched = new List<string>();
         foreach (var root in roots.Where(value => !string.IsNullOrWhiteSpace(value)).Distinct())
         {
-            for (var directory = new DirectoryInfo(root!); directory is not null; directory = directory.Parent)
+            for (
+                var directory = new DirectoryInfo(root!);
+                directory is not null;
+                directory = directory.Parent
+            )
             {
                 var candidate = Path.Combine(directory.FullName, relativePath);
                 searched.Add(candidate);
@@ -26,6 +57,7 @@ internal static class RepositoryPaths
         }
 
         throw new FileNotFoundException(
-            $"Repository file '{relativePath}' was not found. Searched: {string.Join(", ", searched)}");
+            $"Repository file '{relativePath}' was not found. Searched: {string.Join(", ", searched)}"
+        );
     }
 }

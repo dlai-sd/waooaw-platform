@@ -84,9 +84,7 @@ public sealed class WorkloadIdentityClientTests : IDisposable
 
     private static string FindRepositoryRoot()
     {
-        var path = new DirectoryInfo(AppContext.BaseDirectory);
-        while (path is not null && !Directory.Exists(Path.Combine(path.FullName, "constitution"))) path = path.Parent;
-        return path?.FullName ?? throw new InvalidOperationException("Repository root not found");
+        return RepositoryPaths.Root();
     }
 
     private static byte[] Decode(string value) => Convert.FromBase64String(

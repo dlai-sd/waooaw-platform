@@ -57,6 +57,9 @@ sqlalchemy>=2.0                 # SQLAlchemy for wallet integration tests
 aiosqlite>=0.19                 # Async SQLite driver (test_markup.py, billing-engine integration tests)
 temporalio>=1.0                 # Temporal SDK for professional-runtime session tests
 apscheduler>=3.10               # APScheduler — used by reconciliation/scheduler.py (AsyncIOScheduler)
+pydantic-settings>=2.5          # Billing Engine settings imported by validation tests
+azure-identity>=1.19            # Trust-layer OAuth Vault import contract
+azure-keyvault-secrets>=4.9     # Trust-layer Key Vault client import contract
 
 # ── Coverage reporting ───────────────────────────────────────────────────────
 coverage[toml]>=7.5

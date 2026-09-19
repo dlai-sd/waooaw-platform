@@ -67,8 +67,7 @@ jobs:
         run: |
           docker compose --profile test-dotnet run --rm test-runner-dotnet sh -lc '
             dotnet build "${{ matrix.project }}" \
-              '"'"'-p:BaseIntermediateOutputPath=/tmp/obj/$(MSBuildProjectName)/'"'"' \
-              '"'"'-p:BaseOutputPath=/tmp/bin/$(MSBuildProjectName)/'"'"' \
+              --artifacts-path /tmp/artifacts/${{ strategy.job-index }} \
               -warnaserror /p:TreatWarningsAsErrors=true
           '
 
@@ -165,7 +164,7 @@ jobs:
         run: docker compose --profile test-ts run --rm test-runner-ts sh -lc 'cd web && ../node_modules/.bin/biome format --write=false .'
 
       - name: TypeScript strict type check
-        run: docker compose --profile test-ts run --rm test-runner-ts sh -lc 'cd web && ../node_modules/.bin/tsc --noEmit'
+        run: docker compose --profile test-ts run --rm test-runner-ts sh -lc 'cd web && ../node_modules/.bin/tsc --noEmit --incremental false'
 
       - name: Check for 'any' type (forbidden — C-072)
         run: |

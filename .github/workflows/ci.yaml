@@ -379,6 +379,8 @@ jobs:
             runner: test-runner-dotnet
     steps:
       - uses: actions/checkout@v4
+      - name: Resolve Docker socket group for Testcontainers
+        run: echo "DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)" >> "$GITHUB_ENV"
       - name: Build .NET Docker test runner (C-080)
         id: runner-build
         run: |
@@ -408,23 +410,20 @@ jobs:
             '${{ matrix.profile }}' '${{ matrix.runner }}' '${{ steps.runner-build.outputs.image_id }}'
           docker compose --profile ${{ matrix.profile }} run --rm ${{ matrix.runner }} sh -lc '
             dotnet restore "${{ matrix.tests }}" \
-              '"'"'-p:BaseIntermediateOutputPath=/tmp/obj/$(MSBuildProjectName)/'"'"' \
-              '"'"'-p:BaseOutputPath=/tmp/bin/$(MSBuildProjectName)/'"'"' &&
+              --artifacts-path /tmp/artifacts/${{ matrix.service }} &&
             dotnet build "${{ matrix.tests }}" --no-restore -warnaserror \
-              '"'"'-p:BaseIntermediateOutputPath=/tmp/obj/$(MSBuildProjectName)/'"'"' \
-              '"'"'-p:BaseOutputPath=/tmp/bin/$(MSBuildProjectName)/'"'"' &&
+              --artifacts-path /tmp/artifacts/${{ matrix.service }} &&
             dotnet test "${{ matrix.tests }}" \
               --no-build \
-              '"'"'-p:BaseIntermediateOutputPath=/tmp/obj/$(MSBuildProjectName)/'"'"' \
-              '"'"'-p:BaseOutputPath=/tmp/bin/$(MSBuildProjectName)/'"'"' \
+              --artifacts-path /tmp/artifacts/${{ matrix.service }} \
               --settings tests/coverage.runsettings \
               --collect:"XPlat Code Coverage" \
-              --results-directory ./coverage/${{ matrix.service }}
+              --results-directory ./test-results/coverage/${{ matrix.service }}
           '
 
       - name: Check coverage ≥90% (C-076)
         run: |
-          coverage_file="$(find ./coverage/${{ matrix.service }} -name coverage.cobertura.xml -print -quit)"
+          coverage_file="$(find ./test-results/coverage/${{ matrix.service }} -name coverage.cobertura.xml -print -quit)"
           if [[ -z "$coverage_file" ]]; then
             echo "Cobertura coverage report not found" >&2
             exit 1
@@ -443,7 +442,7 @@ jobs:
         uses: codecov/codecov-action@v4
         continue-on-error: true  # geo-restricted runners must not break the gate
         with:
-          directory: ./coverage/${{ matrix.service }}
+          directory: ./test-results/coverage/${{ matrix.service }}
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
@@ -470,6 +469,8 @@ jobs:
               -p providers -p pii -p pse -p rag -m main -m transcription
     steps:
       - uses: actions/checkout@v4
+      - name: Resolve Docker socket group for Testcontainers
+        run: echo "DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)" >> "$GITHUB_ENV"
       - name: Build constitutional Docker test runner (C-080)
         id: runner-build
         run: |
@@ -637,9 +638,9 @@ jobs:
           scripts/verify_runner_image.sh test-ts test-runner-ts '${{ steps.runner-build.outputs.image_id }}'
           docker compose --profile test-ts run --rm test-runner-ts sh -lc '
             cd web &&
-            ../node_modules/.bin/tsc --noEmit &&
+            ../node_modules/.bin/tsc --noEmit --incremental false &&
             ../node_modules/.bin/eslint . --max-warnings 0 &&
-            ../node_modules/.bin/jest --runInBand --coverage --coverageDirectory=/workspace/coverage --coverageThreshold='"'"'{"global":{"lines":90,"branches":80,"functions":90,"statements":90}}'"'"'
+            ../node_modules/.bin/jest --runInBand --coverage --coverageDirectory=/workspace/test-results/coverage/web --coverageThreshold='"'"'{"global":{"lines":90,"branches":80,"functions":90,"statements":90}}'"'"'
           '
         # C-076: 90% line/function/statement floor is constitutional minimum
 

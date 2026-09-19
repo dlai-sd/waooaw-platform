@@ -29,21 +29,21 @@ runners:
     docker_socket: true
 
 commands:
-  build-constitutional-engine: {shell: "dotnet build src/constitutional-engine --no-restore -p:BaseIntermediateOutputPath=/tmp/obj/constitutional-engine/ -p:BaseOutputPath=/tmp/bin/constitutional-engine/"}
-  build-business-platform: {shell: "dotnet build src/business-platform --no-restore -p:BaseIntermediateOutputPath=/tmp/obj/business-platform/ -p:BaseOutputPath=/tmp/bin/business-platform/"}
+  build-constitutional-engine: {shell: "dotnet build src/constitutional-engine --artifacts-path /tmp/artifacts/constitutional-engine --no-restore"}
+  build-business-platform: {shell: "dotnet build src/business-platform --artifacts-path /tmp/artifacts/business-platform --no-restore"}
   build-professional-runtime: {shell: "python -m compileall -q src/professional-runtime"}
   build-ai-runtime: {shell: "python -m compileall -q src/ai-runtime src/trust-layer"}
   build-billing-engine: {shell: "python -m compileall -q src/billing-engine"}
   build-agent-adapter: {shell: "python -m compileall -q src/agent-adapters"}
-  build-web: {shell: "cd web && pnpm tsc --noEmit"}
-  test-constitutional-engine: {shell: "dotnet test tests/constitutional-engine.Tests --no-restore -p:BaseIntermediateOutputPath=/tmp/obj/constitutional-engine.Tests/ -p:BaseOutputPath=/tmp/bin/constitutional-engine.Tests/"}
-  test-business-platform: {shell: "dotnet test tests/business-platform.Tests --no-restore -p:BaseIntermediateOutputPath=/tmp/obj/business-platform.Tests/ -p:BaseOutputPath=/tmp/bin/business-platform.Tests/"}
+  build-web: {shell: "cd web && pnpm tsc --noEmit --incremental false"}
+  test-constitutional-engine: {shell: "dotnet test tests/constitutional-engine.Tests --artifacts-path /tmp/artifacts/constitutional-engine"}
+  test-business-platform: {shell: "dotnet test tests/business-platform.Tests --artifacts-path /tmp/artifacts/business-platform"}
   test-professional-runtime: {shell: "pytest tests/professional-runtime -q"}
   test-ai-runtime: {shell: "pytest tests/ai-runtime tests/trust-layer -q"}
   test-billing-engine: {shell: "pytest tests/billing-engine tests/pipeline/test_billing_ce_validator.py -q"}
   test-web: {shell: "cd web && pnpm jest --runInBand"}
   spec-lint: {shell: "python scripts/validation_control/docker_policy.py --repository /workspace"}
-  sast-csharp: {shell: "dotnet build --no-restore -p:TreatWarningsAsErrors=true -p:BaseIntermediateOutputPath=/tmp/obj/sast/ -p:BaseOutputPath=/tmp/bin/sast/"}
+  sast-csharp: {shell: "dotnet build --artifacts-path /tmp/artifacts/sast --no-restore -p:TreatWarningsAsErrors=true"}
   sast-python: {shell: "bandit -r src -f json -o test-results/bandit.json"}
   sast-javascript: {shell: "cd web && pnpm exec biome lint ."}
   dependency-scan: {shell: "pip-audit -r requirements-test.txt --strict"}
@@ -79,7 +79,7 @@ gates:
     command_id: test-constitutional-engine
     evidence_class: coverage
     resources: *dotnet_resources
-    artifacts: &dotnet_artifacts {native: [test-results/**/*.trx, coverage/**/*.xml], common: test-results/validation/test-dotnet.json}
+    artifacts: &dotnet_artifacts {native: [test-results/**/*.trx, test-results/coverage/**/*.xml], common: test-results/validation/test-dotnet.json}
   test-dotnet:constitutional-engine: {<<: *dotnet_test, gate_id: "test-dotnet:constitutional-engine", command_id: test-constitutional-engine}
   test-dotnet:business-platform: {<<: *dotnet_test, gate_id: "test-dotnet:business-platform", command_id: test-business-platform}
   test-python: &python_test
@@ -87,7 +87,7 @@ gates:
     gate_id: test-python
     command_id: test-professional-runtime
     evidence_class: coverage
-    artifacts: &python_artifacts {native: [test-results/**/*.xml, coverage/**/*.xml], common: test-results/validation/test-python.json}
+    artifacts: &python_artifacts {native: [test-results/**/*.xml, test-results/coverage/**/*.xml], common: test-results/validation/test-python.json}
   test-python:professional-runtime: {<<: *python_test, gate_id: "test-python:professional-runtime", command_id: test-professional-runtime}
   test-python:ai-runtime: {<<: *python_test, gate_id: "test-python:ai-runtime", command_id: test-ai-runtime}
   test-python:billing-engine: {<<: *python_test, gate_id: "test-python:billing-engine", command_id: test-billing-engine}
@@ -98,7 +98,7 @@ gates:
     command_id: test-web
     evidence_class: coverage
     resources: *typescript_resources
-    artifacts: {native: [test-results/**/*.xml, coverage/**], common: test-results/validation/test-web.json}
+    artifacts: {native: [test-results/**/*.xml, test-results/coverage/**], common: test-results/validation/test-web.json}
   spec-lint: {<<: *python_static, gate_id: spec-lint, command_id: spec-lint, evidence_class: contract}
   sast: &security_gate {<<: *python_static, gate_id: sast, command_id: sast-python, evidence_class: security, artifacts: {native: [test-results/**/*.json], common: test-results/validation/security.json}}
   sast:csharp: {<<: *security_gate, gate_id: "sast:csharp", runner_id: dotnet, command_id: sast-csharp, resources: *dotnet_resources}

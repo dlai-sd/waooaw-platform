@@ -27,7 +27,7 @@ def test_stack_runners_are_non_root_bounded_and_source_mounted() -> None:
     assert ".:/workspace:ro" in COMPOSE["services"]["test-runner-dotnet"]["volumes"]
     typescript_volumes = COMPOSE["services"]["test-runner-ts"]["volumes"]
     assert "./web:/workspace/web:ro" in typescript_volumes
-    assert "./coverage:/workspace/coverage" in typescript_volumes
+    assert "./test-results:/workspace/test-results" in typescript_volumes
     assert all(":/workspace/web/" not in volume for volume in typescript_volumes)
     assert all(":/workspace/web/" not in volume for volume in COMPOSE["services"]["test-runner"]["volumes"])
 
@@ -62,3 +62,18 @@ def test_dotnet_cache_path_is_aligned() -> None:
     assert "NUGET_PACKAGES=/opt/nuget/packages" in dockerfile
     assert "wc102_nuget_cache:/opt/nuget/packages" in volumes
     assert "/tmp/nuget" not in str(COMPOSE["services"]["test-runner-dotnet"])
+
+
+def test_dotnet_native_and_process_fixtures_use_bounded_executable_tmpfs() -> None:
+    runner = COMPOSE["services"]["test-runner-dotnet"]
+
+    assert runner["tmpfs"] == ["/tmp:size=2g,mode=1777,exec"]
+
+
+def test_contract_workflow_starts_services_and_blocks_on_failure() -> None:
+    workflow = (ROOT / ".github/workflows/integration-tests.yaml").read_text(encoding="utf-8")
+    contract_job = workflow.split("  contract-rest:", maxsplit=1)[1].split("\n  seed-prompts-contract:", maxsplit=1)[0]
+
+    assert "docker compose up --detach --wait" in contract_job
+    assert "business-platform professional-runtime" in contract_job
+    assert "continue-on-error: true" not in contract_job

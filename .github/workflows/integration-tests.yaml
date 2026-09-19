@@ -81,6 +81,8 @@ jobs:
         ports: ["5432:5432"]
     steps:
       - uses: actions/checkout@v4
+      - name: Resolve Docker socket group for Testcontainers
+        run: echo "DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)" >> "$GITHUB_ENV"
       - name: Run DB migrations
         run: |
           docker run --rm --network host \
@@ -102,8 +104,7 @@ jobs:
           docker compose --profile test-dotnet run --rm \
             -e DATABASE_URL test-runner-dotnet sh -lc '
               dotnet test tests/integration/constitutional-engine \
-                '"'"'-p:BaseIntermediateOutputPath=/tmp/obj/$(MSBuildProjectName)/'"'"' \
-                '"'"'-p:BaseOutputPath=/tmp/bin/$(MSBuildProjectName)/'"'"' \
+                --artifacts-path /tmp/artifacts/integration-constitutional-engine \
                 --logger "junit;LogFileName=test-results/ce-integration.xml"
             '
         continue-on-error: false
@@ -124,8 +125,11 @@ jobs:
     needs: service-integration
     steps:
       - uses: actions/checkout@v4
-      - name: Build Docker contract test runner
-        run: docker compose --profile test-python build test-runner-python
+      - name: Build Docker contract environment
+        run: |
+          docker compose --profile test-python build test-runner-python business-platform professional-runtime
+      - name: Start required contract services
+        run: docker compose up --detach --wait --wait-timeout 180 business-platform professional-runtime
       - name: Fuzz Business Platform OpenAPI
         run: |
           docker compose --profile test-python run --rm test-runner-python \
@@ -135,7 +139,6 @@ jobs:
             --max-examples 100 \
             --report junit \
             --report-junit-path test-results/schemathesis-bp.xml
-        continue-on-error: true  # Advisory until service is deployed in CI
       - name: Fuzz Professional Runtime OpenAPI
         run: |
           docker compose --profile test-python run --rm test-runner-python \
@@ -145,7 +148,9 @@ jobs:
             --max-examples 100 \
             --report junit \
             --report-junit-path test-results/schemathesis-pr.xml
-        continue-on-error: true
+      - name: Stop contract services
+        if: always()
+        run: docker compose down --volumes --remove-orphans
 
   # ─── seed-prompts.py contract test (C-059, ADR-028) ──────────────────────
   seed-prompts-contract:

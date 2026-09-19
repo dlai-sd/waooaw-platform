@@ -125,9 +125,7 @@ public sealed class AuthenticatedActivationBillingGatewayIntegrationTests : IDis
 
     private static string FindRepositoryRoot()
     {
-        var path = new DirectoryInfo(AppContext.BaseDirectory);
-        while (path is not null && !Directory.Exists(Path.Combine(path.FullName, "constitution"))) path = path.Parent;
-        return path?.FullName ?? throw new InvalidOperationException("Repository root not found");
+        return RepositoryPaths.Root();
     }
 
     public void Dispose()
