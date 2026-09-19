@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using Waooaw.BusinessPlatform.Infrastructure;
 
@@ -159,7 +160,38 @@ public sealed class ConversationRequestException(string message) : Exception(mes
 public sealed class ConversationCursorOptions
 {
     public string HmacKey { get; set; } = string.Empty;
+    public string CursorHmacKey { get; set; } = string.Empty;
     public string[] PreviousHmacKeys { get; set; } = [];
+
+    public string EffectiveHmacKey => string.IsNullOrWhiteSpace(CursorHmacKey) ? HmacKey : CursorHmacKey;
+}
+
+public sealed class ConversationCursorOptionsValidator : IValidateOptions<ConversationCursorOptions>
+{
+    public ValidateOptionsResult Validate(string? name, ConversationCursorOptions options)
+    {
+        var errors = new List<string>();
+        if (options.EffectiveHmacKey.Length < 32)
+            errors.Add("Conversation:CursorHmacKey must contain at least 32 characters.");
+        if (options.PreviousHmacKeys.Any(key => string.IsNullOrWhiteSpace(key) || key.Length < 32))
+            errors.Add("Conversation:PreviousHmacKeys must contain keys of at least 32 characters.");
+        return errors.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(errors);
+    }
+}
+
+public sealed class ConversationCursorHealthCheck(
+    IOptions<ConversationCursorOptions> options,
+    IValidateOptions<ConversationCursorOptions> validator) : IHealthCheck
+{
+    public Task<HealthCheckResult> CheckHealthAsync(
+        HealthCheckContext context,
+        CancellationToken cancellationToken = default)
+    {
+        var result = validator.Validate(Options.DefaultName, options.Value);
+        return Task.FromResult(result.Succeeded
+            ? HealthCheckResult.Healthy()
+            : HealthCheckResult.Unhealthy("Conversation cursor signing configuration is invalid."));
+    }
 }
 
 public interface IConversationExecutionGateway
@@ -253,13 +285,13 @@ public sealed class ConversationCursorCodec
 
     public ConversationCursorCodec(IOptions<ConversationCursorOptions> options)
     {
-        var configuredKey = options.Value.HmacKey;
-        if (string.IsNullOrWhiteSpace(configuredKey) || configuredKey.Length < 32)
+        var effectiveKey = options.Value.EffectiveHmacKey;
+        if (string.IsNullOrWhiteSpace(effectiveKey) || effectiveKey.Length < 32)
         {
             throw new InvalidOperationException("Conversation:CursorHmacKey must contain at least 32 characters.");
         }
 
-        _key = Encoding.UTF8.GetBytes(configuredKey);
+        _key = Encoding.UTF8.GetBytes(effectiveKey);
         if (options.Value.PreviousHmacKeys.Any(key => string.IsNullOrWhiteSpace(key) || key.Length < 32))
         {
             throw new InvalidOperationException("Conversation:PreviousHmacKeys must contain keys of at least 32 characters.");

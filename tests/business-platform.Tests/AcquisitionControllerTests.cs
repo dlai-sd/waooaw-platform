@@ -28,9 +28,17 @@ public sealed class AcquisitionControllerTests
         var gateway = new RecordingRelationshipConstitutionalGateway();
         var relationships = new EmploymentRelationshipService(
             factory, gateway, NullLogger<EmploymentRelationshipService>.Instance);
+        var startsAt = DateTimeOffset.UtcNow;
+        var trialId = Guid.NewGuid();
+        var trialOwners = new TrialOwnerGatewayStub
+        {
+            Wbe = new(trialId, startsAt, startsAt.AddDays(14)),
+            Pr = new(trialId, "TRIAL_DEMONSTRATING", startsAt.AddDays(14)),
+        };
+        var trials = new RelationshipTrialService(factory, relationships, trialOwners);
         var membership = new CustomerWorkspaceMembership(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), ["OWNER"]);
         await SeedAdmissionAsync(factory, membership.TenantId);
-        var controller = Controller(factory, Catalog(), relationships, membership);
+        var controller = Controller(factory, Catalog(), relationships, membership, trials);
         var key = Guid.NewGuid();
         var request = ValidRequest(intent);
 
@@ -44,8 +52,9 @@ public sealed class AcquisitionControllerTests
 
         Assert.Equal(createdBody.RelationshipId, replayedBody.RelationshipId);
         Assert.True(replayedBody.Replayed);
-        Assert.Equal(1, gateway.CallCount);
-        var evidence = JsonSerializer.SerializeToElement(gateway.LastActionParameters);
+        Assert.Equal(3, gateway.CallCount);
+        var evidence = JsonSerializer.SerializeToElement(
+            Assert.Single(gateway.Calls, call => call.ActionType == "ADMIT_EMPLOYMENT_RELATIONSHIP").ActionParameters);
         Assert.Equal(intent, evidence.GetProperty("acquisition_intent").GetString());
         Assert.Equal("1.0.0", evidence.GetProperty("disclosure_revision").GetString());
         Assert.Equal("2026-07-18", evidence.GetProperty("terms_version").GetString());
@@ -55,6 +64,11 @@ public sealed class AcquisitionControllerTests
         Assert.Equal(membership.TenantId, relationship.TenantId);
         Assert.Equal(membership.AccountId, relationship.InitiatingParticipantId);
         Assert.Equal(membership.AccountId, participant.ParticipantId);
+        Assert.Equal(
+            intent == "TRIAL" ? EmploymentRelationshipState.TrialActive : EmploymentRelationshipState.Configuring,
+            relationship.State);
+        Assert.Equal(intent == "TRIAL" ? 1 : 0, trialOwners.WbeCalls);
+        Assert.Equal(intent == "TRIAL" ? 1 : 0, trialOwners.PrCalls);
     }
 
     [Fact]
@@ -152,6 +166,9 @@ public sealed class AcquisitionControllerTests
             ProfessionalVersion = "1.0.0",
             OwnerSubjectId = Guid.NewGuid(),
             State = AgentAdmissionState.Active,
+            AdmissionContentDigest = "sha256:" + new string('a', 64),
+            EvidenceSetDigest = "sha256:" + new string('b', 64),
+            ArtifactDigest = "sha256:" + new string('c', 64),
         });
         await db.SaveChangesAsync();
     }
@@ -160,9 +177,10 @@ public sealed class AcquisitionControllerTests
         InMemoryEmploymentRelationshipFactory factory,
         IProfessionalCatalog catalog,
         EmploymentRelationshipService relationships,
-        CustomerWorkspaceMembership? membership)
+        CustomerWorkspaceMembership? membership,
+        RelationshipTrialService? trials = null)
     {
-        var controller = new AcquisitionController(factory, catalog, relationships)
+        var controller = new AcquisitionController(factory, catalog, relationships, trials)
         {
             ControllerContext = new ControllerContext
             {

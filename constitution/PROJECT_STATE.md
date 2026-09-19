@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 177
-**Last Updated:** 2026-09-18 (WC-100 ENGINEERING QUALIFICATION CHECKPOINT)
+**State Revision:** 179
+**Last Updated:** 2026-09-19 (WC-099 ITERATION 3 QUALIFICATION SAFEGUARDS CHECKPOINT)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-080 - Agent Runtime Adapter Contract v1 |
 | Latest merge | PR #442 merged to `main` as `b7472535` |
-| Active delivery | WC-100 Engineering Validation Efficiency, WC-098 Customer Registration Readiness, WC-097 Marketplace Acquisition Experience, WC-089 DMA Release 1, WC-093 public/auth experience finalization, WC-085 brokered authentication follow-up and WC-088 Customer Multi-Agent And Skill Journey; P3-EX11 remains plan-only |
+| Active delivery | WC-099 post-Demo correction, WC-100 Engineering Validation Efficiency, WC-098 Customer Registration Readiness, WC-097 Marketplace Acquisition Experience, WC-089 DMA Release 1, WC-093 public/auth experience finalization, WC-085 brokered authentication follow-up and WC-088 Customer Multi-Agent And Skill Journey; P3-EX11 remains plan-only |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 
@@ -51,6 +51,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | WC-096 conversational customer portal | ENGINEERING QUALIFIED CHECKPOINT - Founder-authorized contract `d231a8ae` and milestones through `ecc846c7` deliver DF-001 through DF-009: canonical Marketplace routes/intents, disclosure and continuation, one persistent customer shell, accessible icon rail, authoritative My Agents cards, participant-bound durable Portal Guide interactions, generated channel-neutral clients and a contextual Guide/professional conversation dock. Docker evidence passes 714 BP tests, 356 Web tests, lint, TypeScript, production build, OpenAPI with zero errors and SQLFluff; complete PostgreSQL initialization and an application-role RLS probe show owner tenant `1` row and other tenant `0`. Desktop/360px WC-096 browser acceptance passes client navigation, dashboard, Guide continuity, relationship isolation, focus, accessibility and responsive geometry; professional conversation and authoritative offline reconciliation checks pass. Trial entitlement/payment remain explicit later lifecycle steps. No deployment, provider/mobile-device acceptance, customer traffic, UAT, Production, PR approval or merge is claimed. |
 | WC-097 marketplace acquisition experience | ENGINEERING QUALIFIED CHECKPOINT - Milestone `17808018` replaces the compliance-led Marketplace card with an image-free WAOOAW offer, projects the canonical authenticated `/marketplace/{slug}` route from Business Platform, and keeps Trial/Hire review in the persistent customer shell with concise Terms and Privacy consent. Docker evidence passes 8 BP tests, 21 focused Web tests, TypeScript, lint, production build and OpenAPI with zero errors; six Chromium Trial/Hire journeys pass at 1440x900, 768x1024 and 360x800 with no horizontal overflow or serious/critical axe findings. DF-012 checkout/payment, deployment, UAT, Production, PR approval and merge are not claimed. |
 | WC-098 customer registration readiness | ENGINEERING QUALIFIED CHECKPOINT - Work Contract `67759834` governs WC098-R01 through R10 / D01 through D09. Product commit `b9f738e1` and evidence `a756c9ea` establish issuer-plus-subject actor continuity, masked broker-verified email, deterministic dark/light preferences, disabled optional SMS, one registration title owner, safe typed recovery, actionable bounded provider retry and generated-client alignment. Docker evidence passes 734 BP tests, 361 Web tests, production build, lint, type, OpenAPI, audit and fixed high/critical image scan; eight Chromium checks pass at 360x800 and 1440x900 with no overflow or serious/critical axe findings. D09 exact Demo deployment/Azure correlation and Founder acceptance remain unclaimed; cloud mutation, customer traffic, SMS vendor/spend, PR approval and merge remain prohibited or Founder-reserved. |
+| WC-099 post-Demo correction | ENGINEERING QUALIFIED CANDIDATE - Iteration 2 candidate `64cbce45` delegates Marketplace Trial/Hire to canonical lifecycle owners, enforces exact DMA offerability, requests fresh Google account selection, fails Guide startup/readiness for invalid cursor material, and repairs Guide/portal geometry. Iteration 3 milestone `c8fecd61` adds fail-fast worktree/HEAD and Docker preflight, schema-v3 exact evidence binding, bounded non-runtime evidence reuse, and durable Platform IT Expert costly-run rules; 45 focused Docker tests and all 36 ledger rows pass. Existing product evidence includes 803 BP tests, 386 Web tests, 30 deployment tests, a 52-route production build and 29 WC-099 browser checks with 36 intentional project skips. R-014/R-020 remain blocked pending Founder merge and separately authorized work-component deployment; no cloud mutation, Demo acceptance, Production readiness, approval or merge is claimed. |
 | WC-100 engineering validation efficiency | ENGINEERING QUALIFIED CANDIDATE - WC100-01 through WC100-04A are implemented on `ib/100/engineering-validation-efficiency`. Exact-head Docker qualification passes 61 focused ledger, orchestration, immutable-image, classifier and handoff tests with lint/format checks; current full PR CI remains authoritative. Hosted security/regression evidence, the 20-PR Shadow evaluation, candidate hosted timing, Founder review/merge and any WC100-04C activation remain open or Founder-reserved. |
 | Production | PLAN ONLY - code-prepared; protected environments, authorized plan, traffic and final acceptance remain Founder-reserved |
 
@@ -88,7 +89,7 @@ downstream membership and browser account-switch qualification remain open; CB-0
 
 ## Next Authorized Action
 
-Submit WC-100 as an unmerged Shadow-mode PR for Founder review and hosted full-CI evidence; do not
+Submit WC-099 Iterations 2 and 3 as one unmerged implementation PR for Founder review; do not deploy it to Demo without separate work-component authority. Submit WC-100 as an unmerged Shadow-mode PR for Founder review and hosted full-CI evidence; do not
 activate selected PR execution before the required Shadow window and separate Founder approval.
 Submit WC-097 for Founder review and merge. Submit the WC-085 brokered authentication follow-up for Founder review, trusted build and Demo
 deployment before real-account acceptance. Submit the engineering-qualified WC-088 Customer

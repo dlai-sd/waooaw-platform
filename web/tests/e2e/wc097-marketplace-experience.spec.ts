@@ -56,13 +56,13 @@ test('WC097-A01-A07: professional offer stays in the customer shell through Tria
   await expect(shell).toBeVisible();
   const shellElement = await shell.elementHandle();
   await expect(page.getByRole('heading', { name: 'Digital Marketing Professional' })).toBeVisible();
-  await expect(page.getByText('Evidence-backed plans')).toBeVisible();
+  await expect(page.getByText('Builds evidence-backed digital marketing plans for lawful local service businesses.')).toBeVisible();
   await expect(page.getByText('DIGITAL_MARKETING_LOCAL_SERVICE')).toHaveCount(0);
   await expect(page.getByText(/Eligibility depends only/)).toHaveCount(0);
-  await expect(page.getByRole('link', { name: /Hire/ })).toHaveAttribute('href', /intent=hire/);
+  await expect(page.getByRole('link', { name: /Hire/ }).first()).toHaveAttribute('href', /intent=hire/);
   await page.screenshot({ path: testInfo.outputPath('marketplace-card.png'), fullPage: true });
 
-  await page.getByRole('link', { name: /Start trial/ }).click();
+  await page.getByRole('link', { name: /Start trial/ }).first().click();
 
   await expect(page).toHaveURL(/\/marketplace\/digital-marketing\?.*intent=trial/);
   expect(await shellElement?.evaluate((element) => element.isConnected)).toBe(true);
@@ -85,7 +85,7 @@ test('WC097-A04-A07: Hire review preserves intent and the customer shell', async
   await expectShellReady(page);
   const shellElement = await page.locator('.app-shell-customer:visible').elementHandle();
 
-  await page.getByRole('link', { name: /Hire/ }).click();
+  await page.getByRole('link', { name: /Hire/ }).first().click();
 
   await expect(page).toHaveURL(/\/marketplace\/digital-marketing\?.*intent=hire/);
   expect(await shellElement?.evaluate((element) => element.isConnected)).toBe(true);

@@ -81,6 +81,9 @@ def test_private_credential_seeding_preserves_existing_values() -> None:
     assert 'goal006-credential-schema="$CREDENTIAL_SCHEMA"' in seeder
     assert 'echo "credential_status name=$name status=preserved"' in seeder
     assert 'echo "credential_status name=$name status=created"' in seeder
+    assert 'status=invalid-length' in WORKFLOW
+    assert 'test "$name" != "conversation-cursor-hmac"' in seeder
+    assert 'jq -r ".value | length"' in seeder
     assert seeder.index("az keyvault secret show") < seeder.index("/dev/urandom")
 
 

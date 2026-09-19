@@ -6,7 +6,7 @@
 |---|---|
 | Office | Solution Architect (INST-005) |
 | Assigned by | Founder instruction in the 2026-09-18 continuous working conversation |
-| Status | DRAFT FOR FOUNDER REVIEW - IMPLEMENTATION NOT AUTHORIZED |
+| Status | ITERATION 2 IMPLEMENTATION AUTHORIZED - LOCAL ENGINEERING QUALIFIED |
 | Delivery shape | One atomic remediation iteration; partial defect closure is not completion |
 | Trigger | Founder Demo acceptance findings after WC-095 through WC-098 deployment |
 | Scope owners | Web Application, Business Platform, Demo environment configuration |
@@ -560,3 +560,100 @@ The contract stays within INST-005 Decision Space:
 
 **Solution Architect disposition:** READY FOR FOUNDER CONTRACT REVIEW. IMPLEMENTATION REMAINS
 UNAUTHORIZED UNTIL THE FOUNDER EXPLICITLY AUTHORIZES IT FOR A CURRENT SESSION.
+
+## 17. Iteration 2 - Post-Demo Correction And Final Handoff
+
+### 17.1 Authority And Delivery Decision - 2026-09-19
+
+The Founder authorized WC-099 implementation for the current continuous working conversation on
+2026-09-19. This authorization supersedes only the implementation-authority statements above; it
+does not authorize Demo or other cloud mutation, merge, Production traffic, or scope reduction.
+
+The Founder requires one final unmerged implementation PR containing this iteration and its local
+test evidence. Incremental Demo deployment is prohibited because Demo deployment is a mature,
+costly work-component operation. Actual-cloud R-014 and R-020 evidence remains separately gated
+after Founder merge and an explicitly authorized work-component deployment.
+
+### 17.2 Post-Deployment Evidence And Corrected Causes
+
+The merged PR #453 candidate was deployed to Demo and produced two acquisition `409` responses and
+two Guide `500` responses during direct acceptance. Retained runtime evidence established:
+
+1. Marketplace Trial and Hire both stopped at generic relationship admission and did not invoke the
+   canonical WC-057/WC-058 Trial or Hire lifecycle. The similarly named Marketplace continuation
+   introduced by WC-096 was a parallel shortcut, not the lifecycle owner.
+2. Marketplace publication came from a static professional manifest while continuation separately
+   queried active admission. This allowed a professional/version to be advertised even when that
+   exact Founder-approved version was not offerable.
+3. The effective Demo `Conversation:CursorHmacKey` value was shorter than the service's required
+   32 characters. Secret-reference existence and container health therefore did not prove Guide
+   readiness.
+4. WAOOAW and Keycloak logout did not prove termination of the upstream Google browser session, so
+   the next brokered login could silently reuse the prior Google account.
+5. Guide viewport composition allowed the timeline to push the composer/error state out of view,
+   and its launcher remained visible while open and could collide with Emergency Stop.
+
+### 17.3 Iteration 2 Normative Requirements
+
+| Requirement | Normative outcome | Direct executable evidence |
+|---|---|---|
+| WC099-R024 | Marketplace Trial reuses the canonical relationship Trial service: admission, `INTERVIEWING`, both authoritative trial owners, then `TRIAL_ACTIVE`. Replay creates no duplicate relationship, binding, owner workflow, transition or evidence. | Focused BP integration test asserting state, owner calls, binding, evidence and replay counts. |
+| WC099-R025 | Marketplace Hire reuses the canonical employment lifecycle and enters `CONFIGURING`; it must not report employment active, create payment obligation, or bypass contract proposal, acceptance, payment and activation gates. | Focused BP integration test asserting lifecycle state, next route, zero Trial-owner calls, replay and unchanged commercial gates. |
+| WC099-R026 | A Marketplace offer exists only when catalog type/version, active admission type/version, runtime image identity, customer disclosure and lifecycle binding all name the same exact Founder-approved DMA version. Any missing or mismatched element fails closed and is not shown as offerable. | Exact-match and each-field mismatch tests at catalog projection and continuation; rendered release-manifest drift check. |
+| WC099-R027 | Logout clears WAOOAW, NextAuth and Keycloak state. The next explicit brokered Google login requests a fresh upstream account choice, with no extra WAOOAW status screen and no automatic reuse caused by retained local state. | Route/component tests plus clean-browser logout-to-second-login redirect assertion proving upstream account-selection parameters and no stale WAOOAW session. |
+| WC099-R028 | Missing or shorter-than-32-character effective cursor HMAC material fails startup/readiness before traffic; a valid secret reference passes without disclosing the value. | BP options/startup negative tests and Docker-rendered environment/readiness tests for missing, short and valid values. |
+| WC099-R029 | Only Guide messages scroll. Header, truthful error/recovery state and composer remain visible at default zoom, 200% zoom, 360x800, 390x844 and required desktop widths. | Component and Playwright geometry assertions with long English, Hindi and Urdu content. |
+| WC099-R030 | The Guide launcher is absent while Guide is open and neither launcher nor pane overlaps Emergency Stop, account controls or the active page action. | Component state assertion and desktop/mobile bounding-box assertions. |
+| WC099-R031 | Authenticated portal pages use exactly two customer-facing text sizes; page and card titles are 2pt larger than body/control text, with letter spacing zero and one body-text line of top space before page content. | Computed-style assertions across Marketplace, My Agents, Alerts, Settings, Profile and relationship views. |
+| WC099-R032 | Marketplace removes search, Apply and the heading divider. Marketplace and My Agents use compact cards with two complete cards per laptop row and one complete card per narrow-screen row; no card is clipped or nested. | DOM absence assertions plus 1280x720, 1440x900, 360x800 and 390x844 grid/geometry screenshots. |
+
+### 17.4 Implementation Boundaries
+
+Marketplace is an acquisition adapter, not a third employment lifecycle. It may resolve the exact
+offer and invoke existing lifecycle owners, but it may not duplicate Trial, contract, payment,
+activation or evidence rules. Existing deprecated Hire compatibility endpoints remain compatibility
+adapters and are not a basis for new behavior.
+
+The authoritative DMA version is one value carried unchanged across catalog publication, active
+admission, runtime image/manifest, disclosure and relationship lifecycle. No newest-version,
+fallback-version or display-only interpretation is allowed. A disagreement is an unavailable offer,
+not a warning.
+
+No schema migration, new aggregate, new identity model, direct Google integration, hardcoded secret,
+manual cloud secret repair or incremental Demo deployment is authorized by this iteration.
+
+### 17.5 Iteration 2 Completion Rule
+
+WC-099 may be presented in the final implementation PR only when WC099-R024 through WC099-R032 have
+direct local executable evidence at one exact head and all still-applicable R-001 through R-023
+local gates pass. Actual-cloud rows remain explicitly `BLOCKED-PENDING-FOUNDER-MERGE-AND-AUTHORIZED-
+WORK-COMPONENT-DEPLOYMENT`; they are not inferred from local tests. The PR must identify any such
+blocked evidence plainly and must not claim WC-099 complete, Demo accepted, or Production ready.
+
+## 18. Iteration 3 - Qualification Execution Safeguards
+
+### 18.1 Trigger And Boundary - 2026-09-19
+
+Repeated WC-099 qualification attempts spent substantial Docker time on harness defects before
+reaching product assertions: wrong-worktree mounts, unavailable Docker capabilities, unwritable
+paths, Git ownership rejection, and stale evidence. The Founder directed these lessons into the
+Platform IT Expert execution contract and PR preparation tool before final PR handoff. This
+iteration changes qualification orchestration and evidence validation only; it does not change the
+customer journey, deployed services, cloud state, or the blocked status of R-014, R-020, or R-021.
+
+### 18.2 Iteration 3 Normative Requirements
+
+| Requirement | Normative outcome | Direct executable evidence |
+|---|---|---|
+| WC099-R033 | PR preparation fails before any costly gate when the selected absolute worktree or expected HEAD is wrong, `HOME` or the output directory is unwritable, Git cannot read the worktree, or required Docker CLI/daemon/Compose/Buildx, socket access, or `jq` is unavailable. | Focused `test_prepare_pr_body.py` preflight tests plus exact-command preparation evidence. |
+| WC099-R034 | Platform IT Expert qualification uses the selected worktree and Git common directory at their original absolute paths, mounts writable output directories rather than atomically replaced files, and runs focused checks before full qualification. | `test_agent_operating_policy.py` assertions against the quick-start card and canonical agent specification. |
+| WC099-R035 | Reusable precheck evidence is accepted only when passed and bound to the exact base, HEAD, changed-file digest, gate graph, configuration digest, and runner command graph. | `test_prepare_pr_body.py` and `test_precheck_orchestrator.py` schema-v3 identity assertions. |
+| WC099-R036 | A failed qualification preserves the first causal stage and reruns only that stage after repair. Runtime evidence may cross only an ancestor-to-descendant change containing no runtime-trigger path; runtime-affecting or unrelated commits invalidate it. | Precheck dependency/failure tests and runtime-evidence descendant/rejection tests. |
+
+### 18.3 Iteration 3 Completion Rule
+
+R-033 through R-036 pass when their focused Docker test set succeeds and the final PR preparation
+invocation supplies the explicit worktree and HEAD contract. Existing exact-head product evidence is
+not reclassified as proof for a different source candidate. Any gate invalidated by the final diff
+must run once; a still-valid retained stage is reused rather than rerun. Generated qualification
+directories and local runtime material remain outside the commit.

@@ -60,6 +60,14 @@ def test_runtime_evidence_is_required_and_rejects_stale_commit() -> None:
     assert "RUNTIME_EVIDENCE_INVALID: commit_sha must equal 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'" in violations
 
 
+def test_runtime_evidence_survives_documentation_only_descendant() -> None:
+    evidence_head = "d" * 40
+    retained = {**EVIDENCE, "commit_sha": evidence_head, "runtime_image": f"goal006-professional-runtime-lifecycle:{evidence_head[:12]}"}
+
+    assert validate_runtime_evidence(body(retained), HEAD, True, ["docs/runtime-evidence.md"]) == []
+    assert validate_runtime_evidence(body(retained), HEAD, True, ["src/professional-runtime/main.py"])
+
+
 def test_runtime_evidence_rejects_missing_dependency_and_log_proof() -> None:
     incomplete = {
         **EVIDENCE,

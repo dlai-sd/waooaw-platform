@@ -191,6 +191,7 @@ public sealed class SkillVersionTestFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
     {
+        builder.UseSetting("Conversation:CursorHmacKey", new string('c', 32));
         builder.ConfigureTestServices(services =>
         {
             services.AddAuthentication(o =>

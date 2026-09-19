@@ -95,6 +95,7 @@ internal sealed class SubscriptionsTestFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
     {
+        builder.UseSetting("Conversation:CursorHmacKey", new string('c', 32));
         builder.ConfigureTestServices(services =>
         {
             // Replace JWT with test auth scheme

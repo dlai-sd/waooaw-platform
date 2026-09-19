@@ -73,6 +73,7 @@ public sealed class OwnerGatewayCoverageTests(OwnerGatewayIdentityFixture fixtur
                     ["BillingEngine:OpsAuthToken"] = "test-ops-token",
                     ["ProfessionalRuntime:VoiceBaseUrl"] = "https://runtime.test",
                     ["Voice:ProfessionalRuntimeJwtSecret"] = new string('v', 32),
+                    ["Conversation:CursorHmacKey"] = new string('c', 32),
                     ["ConnectionStrings:DefaultConnection"] = "Host=database;Database=bp;Username=bp",
                 }));
         });

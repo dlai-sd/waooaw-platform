@@ -41,9 +41,12 @@ export function PersistentConversationDock({ locale = 'en-IN' }: { locale?: stri
     if (!open) return;
     const handleSheetKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setOpen(false);
-        localStorage.setItem('waooaw:conversation-open', 'false');
-        (lastOpener.current ?? openButton.current)?.focus();
+        setDockOpen(false);
+        requestAnimationFrame(() => {
+          const opener = lastOpener.current;
+          if (opener?.isConnected) opener.focus();
+          else openButton.current?.focus();
+        });
         return;
       }
       if (event.key !== 'Tab' || !window.matchMedia('(max-width: 899px)').matches) return;
@@ -108,6 +111,15 @@ export function PersistentConversationDock({ locale = 'en-IN' }: { locale?: stri
     if (value) requestAnimationFrame(() => closeButton.current?.focus());
   }
 
+  function closeDock() {
+    setDockOpen(false);
+    requestAnimationFrame(() => {
+      const opener = lastOpener.current;
+      if (opener?.isConnected) opener.focus();
+      else openButton.current?.focus();
+    });
+  }
+
   function setBoundedWidth(nextWidth: number) {
     const boundedWidth = Math.min(560, Math.max(320, nextWidth));
     setWidth(boundedWidth);
@@ -123,7 +135,7 @@ export function PersistentConversationDock({ locale = 'en-IN' }: { locale?: stri
     dragStart.current = { pointerX: event.clientX, width };
   }
 
-  return <><button aria-controls="persistent-conversation" aria-expanded={open} aria-label={context.action} className="conversation-launcher" data-surface={context.surface} onClick={(event) => { lastOpener.current = event.currentTarget; setDockOpen(true); }} ref={openButton} type="button"><MessageSquare aria-hidden="true" size={19} /><span><small>{context.label}</small>{context.action}</span><PanelRightOpen aria-hidden="true" size={18} /></button><aside aria-label={context.relationshipId ? 'Professional conversation' : 'WAOOAW Guide'} className="persistent-conversation" data-open={open} id="persistent-conversation" ref={dock} style={{ '--guide-width': `${width}px` } as CSSProperties}><div aria-label="Resize Guide" aria-orientation="vertical" aria-valuemax={560} aria-valuemin={320} aria-valuenow={width} className="conversation-resizer" onKeyDown={(event) => {
+  return <>{!open ? <button aria-controls="persistent-conversation" aria-expanded="false" aria-label={context.action} className="conversation-launcher" data-surface={context.surface} onClick={(event) => { lastOpener.current = event.currentTarget; setDockOpen(true); }} ref={openButton} type="button"><MessageSquare aria-hidden="true" size={19} /><span><small>{context.label}</small>{context.action}</span><PanelRightOpen aria-hidden="true" size={18} /></button> : null}<aside aria-label={context.relationshipId ? 'Professional conversation' : 'WAOOAW Guide'} className="persistent-conversation" data-open={open} id="persistent-conversation" ref={dock} style={{ '--guide-width': `${width}px` } as CSSProperties}><div aria-label="Resize Guide" aria-orientation="vertical" aria-valuemax={560} aria-valuemin={320} aria-valuenow={width} className="conversation-resizer" onKeyDown={(event) => {
     const direction = document.documentElement.dir === 'rtl' ? -1 : 1;
     if (event.key === 'Home') setBoundedWidth(320);
     else if (event.key === 'End') setBoundedWidth(560);
@@ -131,7 +143,7 @@ export function PersistentConversationDock({ locale = 'en-IN' }: { locale?: stri
     else if (event.key === 'ArrowRight') setBoundedWidth(width - 16 * direction);
     else return;
     event.preventDefault();
-  }} onMouseDown={startMouseResize} onPointerDown={startResize} role="separator" tabIndex={0} /><button aria-label="Close conversation" className="icon-command conversation-close" onClick={() => setDockOpen(false)} ref={closeButton} type="button"><PanelRightClose aria-hidden="true" size={20} /></button>{context.relationshipId ? <ConversationExperience key={context.relationshipId} relationshipId={context.relationshipId} /> : <PortalGuideExperience currentSurface={context.surface} locale={locale} />}</aside>{open ? <button aria-label="Close conversation overlay" className="conversation-scrim" onClick={() => setDockOpen(false)} type="button" /> : null}</>;
+  }} onMouseDown={startMouseResize} onPointerDown={startResize} role="separator" tabIndex={0} /><button aria-label="Close conversation" className="icon-command conversation-close" onClick={closeDock} ref={closeButton} type="button"><PanelRightClose aria-hidden="true" size={20} /></button>{context.relationshipId ? <ConversationExperience key={context.relationshipId} relationshipId={context.relationshipId} /> : <PortalGuideExperience currentSurface={context.surface} locale={locale} />}</aside>{open ? <button aria-label="Close conversation overlay" className="conversation-scrim" onClick={closeDock} type="button" /> : null}</>;
 }
 
 export function ConversationContextAction() {

@@ -25,6 +25,7 @@ internal sealed class RecordingRelationshipConstitutionalGateway : IRelationship
     public int? FailOnCall { get; set; }
     public string? LastActionType { get; private set; }
     public object? LastActionParameters { get; private set; }
+    public List<(string ActionType, object ActionParameters)> Calls { get; } = [];
 
     public Task<Guid> AuthorizeAndRecordAsync(
         Guid tenantId,
@@ -38,6 +39,7 @@ internal sealed class RecordingRelationshipConstitutionalGateway : IRelationship
         CallCount += 1;
         LastActionType = actionType;
         LastActionParameters = actionParameters;
+        Calls.Add((actionType, actionParameters));
         if (FailNext || CallCount == FailOnCall)
         {
             FailNext = false;

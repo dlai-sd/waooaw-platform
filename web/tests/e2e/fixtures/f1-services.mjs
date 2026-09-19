@@ -259,7 +259,11 @@ const server = createServer(async (request, response) => {
   }
 
   if (request.method === 'GET' && url.pathname === '/api/v1/professionals/marketplace') {
-    json(response, { schemaVersion: '1.0.0', producedAt: '2026-08-12T10:00:00Z', items: [{ professionalType: 'DIGITAL_MARKETING_LOCAL_SERVICE', version: '1.0.0', displayName: 'Digital Marketing Professional', disclosurePath: '/marketplace/digital-marketing', availableIntents: ['TRIAL', 'HIRE'], suitability: ['Builds evidence-backed digital marketing plans for lawful local service businesses.', 'Connects marketing activity to customer-confirmed business outcomes and measures.'], eligibility: { eligible: true, explanation: 'Available to this organization.' }, indicativePrice: { currency: 'INR', amountInrPaise: 249900, cadence: 'MONTHLY', qualification: 'Final terms follow configuration.' }, offerabilityState: 'OFFERABLE', trialTerms: '14-day trial; no paid API calls or external actions.', nextAction: 'VIEW_DISCLOSURE' }] });
+    const sharedOffer = { availableIntents: ['TRIAL', 'HIRE'], eligibility: { eligible: true, explanation: 'Available to this organization.' }, indicativePrice: { currency: 'INR', amountInrPaise: 249900, cadence: 'MONTHLY', qualification: 'Final terms follow configuration.' }, offerabilityState: 'OFFERABLE', trialTerms: '14-day trial; no paid API calls or external actions.', nextAction: 'VIEW_DISCLOSURE' };
+    json(response, { schemaVersion: '1.0.0', producedAt: '2026-08-12T10:00:00Z', items: [
+      { ...sharedOffer, professionalType: 'DIGITAL_MARKETING_LOCAL_SERVICE', version: '1.0.0', displayName: 'Digital Marketing Professional', disclosurePath: '/marketplace/digital-marketing', suitability: ['Builds evidence-backed digital marketing plans for lawful local service businesses.'] },
+      { ...sharedOffer, professionalType: 'PRIVATE_TUTOR', version: '1.0.0', displayName: 'Private Tutor', disclosurePath: '/marketplace/private-tutor', suitability: ['Builds structured learning plans with clear progress reviews.'] },
+    ] });
     return;
   }
 

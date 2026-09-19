@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -29,7 +30,24 @@ def runtime_gate_required(changed_files: list[str]) -> bool:
     return any(path == prefix or path.startswith(prefix) for path in changed_files for prefix in RUNTIME_GATE_PATHS)
 
 
-def validate_runtime_evidence(body: str, head: str, required: bool) -> list[str]:
+def runtime_evidence_commit(body: str) -> str | None:
+    match = RUNTIME_EVIDENCE_SECTION.search(body)
+    if match is None:
+        return None
+    try:
+        evidence = json.loads(match.group("json"))
+    except json.JSONDecodeError:
+        return None
+    commit_sha = evidence.get("commit_sha")
+    return commit_sha if isinstance(commit_sha, str) else None
+
+
+def validate_runtime_evidence(
+    body: str,
+    head: str,
+    required: bool,
+    intervening_files: list[str] | None = None,
+) -> list[str]:
     match = RUNTIME_EVIDENCE_SECTION.search(body)
     if match is None:
         return ["RUNTIME_EVIDENCE_MISSING: run scripts/prepare_pr_body.py"] if required else []
@@ -39,10 +57,10 @@ def validate_runtime_evidence(body: str, head: str, required: bool) -> list[str]
         return [f"RUNTIME_EVIDENCE_INVALID_JSON: {error}"]
 
     violations: list[str] = []
+    evidence_head = str(evidence.get("commit_sha", ""))
     expected = {
         "schema": "waooaw.goal006-runtime-lifecycle/v1",
         "passed": True,
-        "commit_sha": head,
         "initial_http_status": 503,
         "recovered_http_status": 200,
         "interrupted_http_status": 503,
@@ -51,6 +69,8 @@ def validate_runtime_evidence(body: str, head: str, required: bool) -> list[str]
     for field, value in expected.items():
         if evidence.get(field) != value:
             violations.append(f"RUNTIME_EVIDENCE_INVALID: {field} must equal {value!r}")
+    if evidence_head != head and (intervening_files is None or runtime_gate_required(intervening_files)):
+        violations.append(f"RUNTIME_EVIDENCE_INVALID: commit_sha must equal {head!r}")
     if evidence.get("initial_health", {}).get("temporalConnected") is not False:
         violations.append("RUNTIME_EVIDENCE_INVALID: initial Temporal state must be disconnected")
     if evidence.get("recovered_health", {}).get("temporalConnected") is not True:
@@ -65,8 +85,8 @@ def validate_runtime_evidence(body: str, head: str, required: bool) -> list[str]
     for field in ("temporal_image", "postgres_image"):
         if DIGEST_IMAGE.fullmatch(str(evidence.get(field, ""))) is None:
             violations.append(f"RUNTIME_EVIDENCE_INVALID: {field} must be digest-pinned")
-    if not str(evidence.get("runtime_image", "")).endswith(f":{head[:12]}"):
-        violations.append("RUNTIME_EVIDENCE_INVALID: runtime image must identify the reviewed commit")
+    if not str(evidence.get("runtime_image", "")).endswith(f":{evidence_head[:12]}"):
+        violations.append("RUNTIME_EVIDENCE_INVALID: runtime image must identify the evidence commit")
     if SHA256.fullmatch(str(evidence.get("professional_runtime_log_sha256", ""))) is None:
         violations.append("RUNTIME_EVIDENCE_INVALID: runtime log SHA-256 is required")
     return violations
@@ -90,10 +110,26 @@ def main() -> int:
     arguments = parser.parse_args()
     try:
         required = runtime_gate_required(changed_files(arguments.base, arguments.head))
+        body = arguments.pr_body_file.read_text(encoding="utf-8")
+        evidence_head = runtime_evidence_commit(body)
+        intervening_files = None
+        if evidence_head is not None and evidence_head != arguments.head:
+            git_executable = shutil.which("git")
+            if git_executable is None:
+                raise OSError("git executable is required to validate runtime evidence ancestry")
+            ancestor = subprocess.run(  # noqa: S603
+                [git_executable, "merge-base", "--is-ancestor", evidence_head, arguments.head],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            if ancestor.returncode == 0:
+                intervening_files = changed_files(evidence_head, arguments.head)
         violations = validate_runtime_evidence(
-            arguments.pr_body_file.read_text(encoding="utf-8"),
+            body,
             arguments.head,
             required,
+            intervening_files,
         )
     except (OSError, subprocess.CalledProcessError) as error:
         violations = [f"RUNTIME_EVIDENCE_UNREADABLE: {error}"]

@@ -230,6 +230,8 @@ def run_prechecks(
     head_sha: str,
     changed_file_digest: str,
     graph_version: str,
+    configuration_digest: str,
+    runner_digest: str,
     artifact_dir: Path,
     max_heavy: int | None = None,
     force_serial: bool = False,
@@ -319,12 +321,14 @@ def run_prechecks(
     ordered_results = [results[name] for name in names]
     failures = [result for result in ordered_results if result["status"] != "PASS"]
     return {
-        "schema": "waooaw.pr-prechecks/v2",
+        "schema": "waooaw.pr-prechecks/v3",
         "passed": not failures,
         "base_sha": base_sha,
         "commit_sha": head_sha,
         "changed_file_digest": changed_file_digest,
         "graph_version": graph_version,
+        "configuration_digest": configuration_digest,
+        "runner_digest": runner_digest,
         "mode": mode,
         "max_heavy": max_heavy,
         "reuse_enabled": reuse_enabled,

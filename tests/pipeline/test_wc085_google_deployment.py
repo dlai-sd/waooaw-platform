@@ -29,6 +29,7 @@ def test_google_recreated_only_in_demo_with_external_credentials() -> None:
     assert 'trustEmail                = true' in google
     assert 'storeToken                = false' in google
     assert 'defaultScope = "openid email profile"' in google
+    assert 'prompt       = "select_account"' in google
     assert 'GOOGLE_CLIENT_SECRET:?Google client secret is required' in workload
     assert 'defaultRoles = ["customer"]' in workload
     assert 'value = local.service_urls.identity_edge' in workload
@@ -104,8 +105,8 @@ def test_business_platform_uses_dedicated_stock_identity_reader() -> None:
 def test_demo_seeder_provisions_dedicated_identity_reader_secret_at_runtime() -> None:
     workflow = (ROOT / ".github/workflows/environment-deployment.yaml").read_text()
 
-    assert 'credential_names="constitutional-engine business-platform professional-runtime ai-runtime web billing-engine bp-identity-reader-client-secret identity-hmac-active continuity-envelope-hmac"' in workflow
-    assert "for name in constitutional-engine business-platform professional-runtime ai-runtime web billing-engine bp-identity-reader-client-secret identity-hmac-active continuity-envelope-hmac; do" in workflow
+    assert 'credential_names="constitutional-engine business-platform professional-runtime ai-runtime web billing-engine bp-identity-reader-client-secret identity-hmac-active continuity-envelope-hmac conversation-cursor-hmac"' in workflow
+    assert "for name in constitutional-engine business-platform professional-runtime ai-runtime web billing-engine bp-identity-reader-client-secret identity-hmac-active continuity-envelope-hmac conversation-cursor-hmac; do" in workflow
     assert 'credential=$(head -c 48 /dev/urandom | base64 | tr -d "\\n")' in workflow
     assert 'bp-identity-reader-client-secret' not in (ROOT / "docker-compose.yml").read_text()
 

@@ -26,6 +26,8 @@ def run(nodes: list[PrecheckNode], artifact_dir: Path, **options: object) -> dic
         head_sha="h" * 40,
         changed_file_digest="d" * 64,
         graph_version="test-v1",
+        configuration_digest="c" * 64,
+        runner_digest="r" * 64,
         artifact_dir=artifact_dir,
         **options,
     )
@@ -54,11 +56,13 @@ def test_independent_gates_run_concurrently(tmp_path: Path) -> None:
 def test_manifest_binds_inputs_and_node_results(tmp_path: Path) -> None:
     manifest = run([python_node("gate", "print('ok')")], tmp_path, preflight=lambda: (True, []))
 
-    assert manifest["schema"] == "waooaw.pr-prechecks/v2"
+    assert manifest["schema"] == "waooaw.pr-prechecks/v3"
     assert manifest["base_sha"] == "b" * 40
     assert manifest["commit_sha"] == "h" * 40
     assert manifest["changed_file_digest"] == "d" * 64
     assert manifest["graph_version"] == "test-v1"
+    assert manifest["configuration_digest"] == "c" * 64
+    assert manifest["runner_digest"] == "r" * 64
     assert manifest["passed"] is True
     assert manifest["nodes"][0]["stdout_artifact"].endswith("gate.stdout.log")
 

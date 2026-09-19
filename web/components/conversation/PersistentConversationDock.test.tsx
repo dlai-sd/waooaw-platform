@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ConversationContextAction, PersistentConversationDock, routeContext } from './PersistentConversationDock';
 
 const mockUsePathname = jest.fn();
@@ -14,16 +14,17 @@ describe('PersistentConversationDock', () => {
     window.matchMedia = jest.fn().mockReturnValue({ matches: false });
   });
 
-  it('opens the persistent Guide scope for portal routes and restores focus on Escape', () => {
+  it('opens the persistent Guide scope without a competing launcher and restores focus on Escape', async () => {
     render(<PersistentConversationDock />);
 
     const launcher = screen.getByRole('button', { name: /Ask about professionals/ });
     expect(screen.getByText('Guide MARKETPLACE')).toBeInTheDocument();
     fireEvent.click(launcher);
-    expect(launcher).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.queryByRole('button', { name: /Ask about professionals/ })).not.toBeInTheDocument();
     expect(screen.getByRole('complementary', { name: 'WAOOAW Guide' })).toHaveAttribute('data-open', 'true');
     fireEvent.keyDown(window, { key: 'Escape' });
-    expect(launcher).toHaveFocus();
+    const restoredLauncher = screen.getByRole('button', { name: /Ask about professionals/ });
+    await waitFor(() => expect(restoredLauncher).toHaveFocus());
     expect(localStorage.getItem('waooaw:conversation-open')).toBe('false');
   });
 
@@ -36,14 +37,14 @@ describe('PersistentConversationDock', () => {
     expect(screen.getByRole('complementary', { name: 'Professional conversation' })).toBeInTheDocument();
   });
 
-  it('opens from the contextual top-bar command', () => {
+  it('opens from the contextual top-bar command', async () => {
     render(<><ConversationContextAction /><PersistentConversationDock /></>);
 
     const contextualAction = screen.getAllByRole('button', { name: /Ask about professionals/ })[0];
     fireEvent.click(contextualAction);
     expect(screen.getByRole('complementary', { name: 'WAOOAW Guide' })).toHaveAttribute('data-open', 'true');
     fireEvent.keyDown(window, { key: 'Escape' });
-    expect(contextualAction).toHaveFocus();
+    await waitFor(() => expect(contextualAction).toHaveFocus());
   });
 
   it('resizes the desktop Guide with bounded keyboard controls', () => {

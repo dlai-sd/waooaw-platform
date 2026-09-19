@@ -36,6 +36,7 @@ locals {
       clientId     = "$${GOOGLE_CLIENT_ID}"
       clientSecret = "$${GOOGLE_CLIENT_SECRET}"
       defaultScope = "openid email profile"
+      prompt       = "select_account"
       syncMode     = "IMPORT"
     }
   }] : []

@@ -80,6 +80,7 @@ def test_provider_runtime_configuration_is_minimal_and_deferred_providers_are_hi
 
     assert set(providers) == {"google", "facebook"}
     assert all(not provider["enabled"] for provider in providers.values())
+    assert providers["google"]["config"]["prompt"] == "select_account"
     assert providers["facebook"]["config"]["defaultScope"] == "email public_profile"
     assert "business_management" not in json.dumps(providers["facebook"])
     assert all(client.get("attributes", {}).get("pkce.code.challenge.method") == "S256"
