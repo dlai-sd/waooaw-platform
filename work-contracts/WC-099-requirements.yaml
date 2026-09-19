@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-099
 contract_path: work-contracts/WC-099-demo-customer-journey-and-application-shell-remediation.md
-contract_digest: befd1ec23970c40b104a1e308e2c239a49520227489720e689e582562e8bf523
+contract_digest: df32401b7e39f3fb0844ea7293297c11d88f3d979c9f7dcac65771d714eb5c7d
 contract_status: IMPLEMENTATION_AUTHORIZED
 implementation_scope: true
 result: QUALIFIED
@@ -119,8 +119,8 @@ requirements:
     residual_risk: None in local browser evidence.
   - <<: *completed
     requirement_id: WC099-R012
-    source: Section 7, D-008
-    observable_outcome: Application pages use the 32, 24, and 20 pixel hierarchy without clipping.
+    source: Section 17.3, WC099-R031 (supersedes Section 7, D-008 sizing)
+    observable_outcome: Application pages use the corrected two-size portal typography without clipping.
     component_owner: Web visual system
     test_path_or_plan: web/tests/e2e/wc099-demo-remediation.spec.ts
     evidence_refs: [test-results/wc099/obligation-ledger.json, web/tests/e2e/wc099-demo-remediation.spec.ts]
@@ -149,7 +149,7 @@ requirements:
     evidence_refs: []
     dependencies: [exact candidate Demo deployment, WC099-R013]
     completion_rule: Authorized Demo history and send smoke passes with sanitized evidence.
-    residual_risk: Active Demo currently runs the older image.
+    residual_risk: BLOCKED-PENDING-FOUNDER-MERGE-AND-AUTHORIZED-WORK-COMPONENT-DEPLOYMENT; Active Demo currently runs the older image.
   - <<: *completed
     requirement_id: WC099-R015
     source: Section 7, D-009
@@ -210,7 +210,7 @@ requirements:
     evidence_refs: []
     dependencies: [WC099-R001 through WC099-R019, WC099-R022, WC099-R023, exact candidate Demo deployment]
     completion_rule: The complete ordered journey passes at one exact source and image tuple.
-    residual_risk: Active Demo currently runs the older image.
+    residual_risk: BLOCKED-PENDING-FOUNDER-MERGE-AND-AUTHORIZED-WORK-COMPONENT-DEPLOYMENT; Active Demo currently runs the older image.
   - <<: *completed
     requirement_id: WC099-R021
     source: Section 7, D-002 promotion gate
@@ -244,3 +244,93 @@ requirements:
     dependencies: [Final exact candidate diff]
     completion_rule: Final schema, storage, and persistence assertions prove only existing authoritative records change.
     residual_risk: Final committed diff scan must be repeated before handoff.
+  - <<: *completed
+    requirement_id: WC099-R024
+    source: Section 17.3
+    observable_outcome: Marketplace Trial delegates to the canonical Trial lifecycle and replay creates no duplicate authoritative state.
+    component_owner: Business Platform acquisition
+    evidence_class: local Docker integration
+    test_path_or_plan: tests/business-platform.Tests/AcquisitionControllerTests.cs and EmploymentRelationshipServiceTests.cs
+    dependencies: [Canonical RelationshipTrialService, exact admission]
+    completion_rule: State, owner calls, evidence, binding and replay counts pass in the full Business Platform suite.
+    residual_risk: Actual-Demo Trial remains in WC099-R020.
+  - <<: *completed
+    requirement_id: WC099-R025
+    source: Section 17.3
+    observable_outcome: Marketplace Hire enters canonical CONFIGURING without bypassing contract, payment or activation gates.
+    component_owner: Business Platform acquisition
+    evidence_class: local Docker integration
+    test_path_or_plan: tests/business-platform.Tests/AcquisitionControllerTests.cs and EmploymentRelationshipServiceTests.cs
+    dependencies: [Canonical employment lifecycle, commercial gates]
+    completion_rule: Lifecycle state, continuation route, zero Trial-owner calls and replay assertions pass.
+    residual_risk: Actual-Demo Hire remains in WC099-R020.
+  - <<: *completed
+    requirement_id: WC099-R026
+    source: Section 17.3
+    observable_outcome: Marketplace publication and continuation require exact catalog, admission, runtime, disclosure and lifecycle version agreement.
+    component_owner: Business Platform catalog and acquisition
+    evidence_class: local Docker integration
+    test_path_or_plan: tests/business-platform.Tests/ProfessionalsControllerTests.cs and AcquisitionControllerTests.cs
+    dependencies: [DMA catalog, active admission, runtime image identity]
+    completion_rule: Exact match passes and every missing or mismatched field fails closed.
+    residual_risk: Rendered exact-release proof remains part of WC099-R020.
+  - <<: *completed
+    requirement_id: WC099-R027
+    source: Section 17.3
+    observable_outcome: A post-logout Google login requests fresh upstream account selection without a stale WAOOAW session.
+    component_owner: Web auth and Keycloak broker
+    evidence_class: local source and browser fixture
+    test_path_or_plan: tests/identity-foundation/test_identity_artifacts.py, tests/pipeline/test_wc085_google_deployment.py and web/tests/e2e/wc099-demo-remediation.spec.ts
+    dependencies: [Keycloak Google broker, NextAuth logout]
+    completion_rule: Realm, Terraform and clean-browser redirect assertions prove prompt=select_account.
+    residual_risk: Real-provider acceptance remains in WC099-R020 and WC099-R021.
+  - <<: *completed
+    requirement_id: WC099-R028
+    source: Section 17.3
+    observable_outcome: Missing or short effective cursor HMAC material fails startup/readiness and deployment repairs invalid retained material without disclosure.
+    component_owner: Business Platform and environment deployment
+    evidence_class: local Docker integration
+    test_path_or_plan: tests/business-platform.Tests/RelationshipEvaluationControllerTests.cs and tests/pipeline/test_goal006_demo_deployment_workflow.py
+    dependencies: [Key Vault binding, Conversation options]
+    completion_rule: Missing, short, valid, canonical binding and invalid-length rotation tests pass.
+    residual_risk: Exact deployed-candidate consumption remains in WC099-R014.
+  - <<: *completed
+    requirement_id: WC099-R029
+    source: Section 17.3
+    observable_outcome: Only Guide messages scroll while header, recovery state and composer remain visible at all required sizes and zoom.
+    component_owner: Web Guide workspace
+    evidence_class: local browser fixture
+    test_path_or_plan: web/components/conversation/PortalGuideExperience.test.tsx and web/tests/e2e/wc099-demo-remediation.spec.ts
+    dependencies: [Persistent conversation dock]
+    completion_rule: Timeline-only scrolling and sibling composer/error geometry pass across the required viewport matrix.
+    residual_risk: None in local browser evidence.
+  - <<: *completed
+    requirement_id: WC099-R030
+    source: Section 17.3
+    observable_outcome: The Guide launcher is absent while open and launcher/pane do not overlap Emergency Stop or customer controls.
+    component_owner: Web Guide workspace and shell
+    evidence_class: local browser fixture
+    test_path_or_plan: web/components/conversation/PersistentConversationDock.test.tsx and web/tests/e2e/wc099-demo-remediation.spec.ts
+    dependencies: [Persistent conversation dock, Emergency Stop]
+    completion_rule: Component state, focus restoration and desktop/mobile bounding-box assertions pass.
+    residual_risk: None in local browser evidence.
+  - <<: *completed
+    requirement_id: WC099-R031
+    source: Section 17.3
+    observable_outcome: Portal pages expose exactly two text sizes, titles 2pt larger than body text, zero letter spacing and one body line of top space.
+    component_owner: Web visual system
+    evidence_class: local browser fixture
+    test_path_or_plan: web/tests/e2e/wc099-demo-remediation.spec.ts
+    dependencies: [Application typography CSS]
+    completion_rule: Computed styles pass across every named portal route and required viewport.
+    residual_risk: None in local browser evidence.
+  - <<: *completed
+    requirement_id: WC099-R032
+    source: Section 17.3
+    observable_outcome: Marketplace omits search, Apply and divider; Marketplace and My Agents show complete compact two-column or narrow one-column cards.
+    component_owner: Web Marketplace and My Agents
+    evidence_class: local browser fixture
+    test_path_or_plan: web/__tests__/app/application/marketplace/page.test.tsx and web/tests/e2e/wc099-demo-remediation.spec.ts
+    dependencies: [Marketplace and relationship projections]
+    completion_rule: DOM absence and unclipped grid geometry pass at 1280x720, 1440x900, 360x800 and 390x844.
+    residual_risk: None in local browser evidence.
