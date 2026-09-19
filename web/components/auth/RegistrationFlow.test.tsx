@@ -2,6 +2,7 @@
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { signIn } from 'next-auth/react';
 import { RegistrationFlow } from './RegistrationFlow';
 import { getIdentityMessages } from '@/lib/identity-messages';
 
@@ -10,6 +11,7 @@ const originalFetch = global.fetch;
 const replace = jest.fn();
 const refresh = jest.fn();
 jest.mock('next/navigation', () => ({ useRouter: () => ({ replace, refresh }) }));
+jest.mock('next-auth/react', () => ({ signIn: jest.fn() }));
 const draftKey = 'waooaw:identity:registration-draft';
 const baseRegistration = {
   registrationId, state: 'PROFILE_COMPLETION_REQUIRED', nextAction: 'COMPLETE_PROFILE', authenticationPath: 'GOOGLE',
@@ -94,6 +96,19 @@ describe('F2 registration flow', () => {
     fireEvent.click(screen.getByRole('button', { name: getIdentityMessages('en').restartSignIn }));
     expect(replace).toHaveBeenCalledWith('/login?returnTo=%2Fsettings');
     expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('reauthenticates directly when registration requires a fresh session', async () => {
+    global.fetch = jest.fn(() => jsonResponse({ code: 'IDENTITY_STEP_UP_REQUIRED' }, 403));
+    render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} returnTo="/marketplace/digital-marketing?intent=trial" />);
+
+    expect(await screen.findByText(getIdentityMessages('en').freshSignInRequired)).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: getIdentityMessages('en').continueSecurely }));
+
+    expect(signIn).toHaveBeenCalledWith('keycloak-google', {
+      callbackUrl: '/register?returnTo=%2Fmarketplace%2Fdigital-marketing%3Fintent%3Dtrial',
+    }, { max_age: '0', prompt: 'select_account' });
+    expect(replace).not.toHaveBeenCalled();
   });
 
   it('restarts sign-in when an in-progress registration is no longer accessible', async () => {

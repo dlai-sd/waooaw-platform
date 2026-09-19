@@ -37,6 +37,8 @@ export function ProtectedAppShell({ children, identitySession, locale = 'en', me
   const pathname = usePathname();
   const [navigationExpanded, setNavigationExpanded] = useState(false);
   const navigationToggle = useRef<HTMLButtonElement>(null);
+  const accountDrawer = useRef<HTMLDetailsElement>(null);
+  const accountToggle = useRef<HTMLElement>(null);
   const portal = portalMessages[locale];
   const registeredCustomer = identitySession !== undefined;
   const customerLinks = [
@@ -65,6 +67,24 @@ export function ProtectedAppShell({ children, identitySession, locale = 'en', me
     window.addEventListener('keydown', collapse);
     return () => window.removeEventListener('keydown', collapse);
   }, [navigationExpanded]);
+  useEffect(() => {
+    function dismissAccountDrawer(event: PointerEvent) {
+      const drawer = accountDrawer.current;
+      if (drawer?.open && event.target instanceof Node && !drawer.contains(event.target)) drawer.open = false;
+    }
+    function closeAccountDrawer(event: KeyboardEvent) {
+      const drawer = accountDrawer.current;
+      if (event.key !== 'Escape' || !drawer?.open) return;
+      drawer.open = false;
+      accountToggle.current?.focus();
+    }
+    document.addEventListener('pointerdown', dismissAccountDrawer);
+    window.addEventListener('keydown', closeAccountDrawer);
+    return () => {
+      document.removeEventListener('pointerdown', dismissAccountDrawer);
+      window.removeEventListener('keydown', closeAccountDrawer);
+    };
+  }, []);
 
   function toggleNavigation() {
     setNavigationExpanded((expanded) => {
@@ -72,7 +92,7 @@ export function ProtectedAppShell({ children, identitySession, locale = 'en', me
       return !expanded;
     });
   }
-  const accountDrawer = variant === 'customer' ? <details className="account-drawer"><summary className="icon-command" aria-label="Account"><CircleUserRound aria-hidden="true" size={20} /></summary><div><p className="section-label">Account</p>{identitySession ? <p className="account-assurance"><ShieldCheck aria-hidden="true" size={17} />Account security: {portal.verified}</p> : null}<Link href="/profile"><UserRound aria-hidden="true" size={18} />Profile</Link><Link href="/profile#billing"><CreditCard aria-hidden="true" size={18} />Billing</Link><Link href="/settings"><Settings aria-hidden="true" size={18} />Settings</Link><AccountSwitchCommand label="Switch account" /><SignOutCommand label="Sign out" /></div></details> : null;
+  const accountControl = variant === 'customer' ? <details className="account-drawer" ref={accountDrawer}><summary className="icon-command" aria-label="Account" ref={accountToggle}><CircleUserRound aria-hidden="true" size={20} /></summary><div><p className="section-label">Account</p>{identitySession ? <p className="account-assurance"><ShieldCheck aria-hidden="true" size={17} />Account security: {portal.verified}</p> : null}<Link href="/profile"><UserRound aria-hidden="true" size={18} />Profile</Link><Link href="/profile#billing"><CreditCard aria-hidden="true" size={18} />Billing</Link><Link href="/settings"><Settings aria-hidden="true" size={18} />Settings</Link><AccountSwitchCommand label="Switch account" /><SignOutCommand label="Sign out" /></div></details> : null;
 
   const sideNavigation = (
     <aside className="side-navigation" data-expanded={navigationExpanded} id="customer-navigation">
@@ -102,7 +122,7 @@ export function ProtectedAppShell({ children, identitySession, locale = 'en', me
   return (
     <>
     <AppShell
-      applicationControls={<div className="application-controls">{variant === 'founder' ? <span className="role-label"><ShieldCheck aria-hidden="true" size={17} /> {messages.founder}</span> : null}{accountDrawer}</div>}
+      applicationControls={<div className="application-controls">{variant === 'founder' ? <span className="role-label"><ShieldCheck aria-hidden="true" size={17} /> {messages.founder}</span> : null}{accountControl}</div>}
       bottomNavigation={bottomNavigation}
       conversationWorkspace={variant === 'customer' && registeredCustomer ? <PersistentConversationDock locale={locale} /> : null}
       messages={messages}

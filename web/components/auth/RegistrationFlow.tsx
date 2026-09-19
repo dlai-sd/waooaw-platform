@@ -4,6 +4,7 @@
 // Constitutional basis: C-049 (Honest Limitation), C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
 import { ArrowRight, CheckCircle2, LoaderCircle, Mail, Smartphone } from 'lucide-react';
+import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { RegistrationProgress } from '@/components/auth/RegistrationProgress';
@@ -14,7 +15,7 @@ import type { SupportedLocale } from '@/lib/preferences';
 
 type Draft = { displayName: string; businessName: string; businessDomain: string };
 type Command = Record<string, string> & { action: string };
-type ErrorKind = '' | 'expired' | 'rejected' | 'restart' | 'unavailable';
+type ErrorKind = '' | 'expired' | 'rejected' | 'restart' | 'step-up' | 'unavailable';
 const draftKey = 'waooaw:identity:registration-draft';
 
 export function RegistrationFlow({ locale, messages, returnTo = '/home' }: { locale: SupportedLocale; messages: IdentityMessages; returnTo?: string }) {
@@ -52,6 +53,10 @@ export function RegistrationFlow({ locale, messages, returnTo = '/home' }: { loc
         if (code === 'IDENTITY_CHALLENGE_EXPIRED') {
           setChallenge(undefined);
           setError('expired');
+          return;
+        }
+        if (code === 'IDENTITY_STEP_UP_REQUIRED') {
+          setError('step-up');
           return;
         }
         if (response.status === 403 || code === 'IDENTITY_ACTION_DENIED') {
@@ -124,6 +129,7 @@ export function RegistrationFlow({ locale, messages, returnTo = '/home' }: { loc
   }
 
   const errorMessage = error === 'rejected' ? messages.signInRejected
+    : error === 'step-up' ? messages.freshSignInRequired
     : error === 'restart' ? messages.registrationLost
       : error === 'expired' ? messages.verificationExpired
         : error === 'unavailable' ? messages.unavailable : '';
@@ -144,7 +150,7 @@ export function RegistrationFlow({ locale, messages, returnTo = '/home' }: { loc
     <p className="eyebrow">Secure access</p>
     <h1 id="auth-dialog-title">{error ? 'Sign in could not be completed' : messages.resolvingTitle}</h1>
     <p>{errorMessage || messages.resolvingDescription}</p>
-    <div aria-live="polite" className="identity-status">{pending ? <><LoaderCircle aria-hidden="true" className="spin" /> {messages.resolvingDescription}</> : error === 'rejected' || error === 'restart' ? <button className="primary-command" type="button" onClick={() => router.replace(`/login?returnTo=${encodeURIComponent(returnTo)}`)}>{messages.restartSignIn}</button> : <button className="primary-command" type="button" onClick={() => void command({ action: 'start', languagePreference: locale })}>{messages.retry}</button>}</div>
+    <div aria-live="polite" className="identity-status">{pending ? <><LoaderCircle aria-hidden="true" className="spin" /> {messages.resolvingDescription}</> : error === 'step-up' ? <button className="primary-command" type="button" onClick={() => void signIn('keycloak-google', { callbackUrl: `/register?returnTo=${encodeURIComponent(returnTo)}` }, { max_age: '0', prompt: 'select_account' })}>{messages.continueSecurely}</button> : error === 'rejected' || error === 'restart' ? <button className="primary-command" type="button" onClick={() => router.replace(`/login?returnTo=${encodeURIComponent(returnTo)}`)}>{messages.restartSignIn}</button> : <button className="primary-command" type="button" onClick={() => void command({ action: 'start', languagePreference: locale })}>{messages.retry}</button>}</div>
   </>;
 
   const action = registration.nextAction;
