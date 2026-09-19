@@ -20,11 +20,15 @@ COPY src/constitutional-engine/constitutional-engine.csproj src/constitutional-e
 COPY src/business-platform/business-platform.csproj src/business-platform/
 COPY tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj tests/constitutional-engine.Tests/
 COPY tests/business-platform.Tests/business-platform.Tests.csproj tests/business-platform.Tests/
-RUN mkdir -p /opt/nuget/packages /tmp/dotnet \
-    && chown -R 1000:1000 /opt/nuget /tmp/dotnet /workspace
+RUN mkdir -p /opt/nuget/packages /opt/dotnet-tools /tmp/dotnet \
+    && chown -R 1000:1000 /opt/nuget /opt/dotnet-tools /tmp/dotnet /workspace
 
 USER 1000:1000
 RUN dotnet restore tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj \
-    && dotnet restore tests/business-platform.Tests/business-platform.Tests.csproj
+    && dotnet restore tests/business-platform.Tests/business-platform.Tests.csproj \
+    && dotnet tool install --tool-path /opt/dotnet-tools csharpier --version 1.3.0 \
+    && dotnet tool install --tool-path /opt/dotnet-tools dotnet-stryker --version 4.9.0
+
+ENV PATH="/opt/dotnet-tools:${PATH}"
 
 CMD ["dotnet", "test"]

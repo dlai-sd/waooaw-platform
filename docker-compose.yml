@@ -65,6 +65,7 @@ services:
     cpus: 2.0
     mem_limit: 4g
     pids_limit: 512
+    extra_hosts: ["host.docker.internal:host-gateway"]
     environment:
       DATABASE_URL: postgresql://waooaw:${POSTGRES_PASSWORD:-changeme}@postgres:5432/waooaw_test
       PYTHONPATH: /workspace
@@ -90,6 +91,7 @@ services:
     cpus: 2.0
     mem_limit: 4g
     pids_limit: 512
+    extra_hosts: ["host.docker.internal:host-gateway"]
     profiles:
       - test-dotnet
 

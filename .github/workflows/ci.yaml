@@ -75,9 +75,11 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
         run: |
           scripts/verify_runner_image.sh test test-runner '${{ steps.runner-build.outputs.image_id }}'
-          docker compose --profile test run --rm --user root \
+          docker compose --profile test run --rm \
             -e BASE_SHA -e HEAD_SHA -e EVENT_NAME test-runner sh -lc '
-              git config --global --add safe.directory /workspace
+              export GIT_CONFIG_COUNT=1
+              export GIT_CONFIG_KEY_0=safe.directory
+              export GIT_CONFIG_VALUE_0=/workspace
               python scripts/validation_policy.py \
                 --policy validation/engineering-validation.yaml \
                 --base "$BASE_SHA" --head "$HEAD_SHA" \
@@ -361,8 +363,8 @@ jobs:
           - service: business-platform
             source: src/business-platform/business-platform.csproj
             tests: tests/business-platform.Tests/business-platform.Tests.csproj
-            profile: test
-            runner: test-runner
+            profile: test-dotnet
+            runner: test-runner-dotnet
     steps:
       - uses: actions/checkout@v4
       - name: Build .NET Docker test runner (C-080)
@@ -392,11 +394,17 @@ jobs:
         run: |
           scripts/verify_runner_image.sh \
             '${{ matrix.profile }}' '${{ matrix.runner }}' '${{ steps.runner-build.outputs.image_id }}'
-          docker compose --profile ${{ matrix.profile }} run --rm --user root ${{ matrix.runner }} sh -lc '
-            dotnet restore "${{ matrix.tests }}" &&
-            dotnet build "${{ matrix.tests }}" --no-restore -warnaserror &&
+          docker compose --profile ${{ matrix.profile }} run --rm ${{ matrix.runner }} sh -lc '
+            dotnet restore "${{ matrix.tests }}" \
+              '"'"'-p:BaseIntermediateOutputPath=/tmp/obj/$(MSBuildProjectName)/'"'"' \
+              '"'"'-p:BaseOutputPath=/tmp/bin/$(MSBuildProjectName)/'"'"' &&
+            dotnet build "${{ matrix.tests }}" --no-restore -warnaserror \
+              '"'"'-p:BaseIntermediateOutputPath=/tmp/obj/$(MSBuildProjectName)/'"'"' \
+              '"'"'-p:BaseOutputPath=/tmp/bin/$(MSBuildProjectName)/'"'"' &&
             dotnet test "${{ matrix.tests }}" \
               --no-build \
+              '"'"'-p:BaseIntermediateOutputPath=/tmp/obj/$(MSBuildProjectName)/'"'"' \
+              '"'"'-p:BaseOutputPath=/tmp/bin/$(MSBuildProjectName)/'"'"' \
               --settings tests/coverage.runsettings \
               --collect:"XPlat Code Coverage" \
               --results-directory ./coverage/${{ matrix.service }}
@@ -476,7 +484,7 @@ jobs:
       - name: Ruff in Docker (C-080)
         run: |
           scripts/verify_runner_image.sh test-python test-runner-python '${{ steps.runner-build.outputs.image_id }}'
-          docker compose --profile test-python run --rm --user root test-runner-python sh -lc '
+          docker compose --profile test-python run --rm test-runner-python sh -lc '
             ruff check "${{ matrix.source }}" "${{ matrix.tests }}" &&
             ruff format --check "${{ matrix.source }}" "${{ matrix.tests }}"
           '
@@ -484,7 +492,7 @@ jobs:
       - name: mypy in Docker (C-080)
         if: always()
         run: |
-          docker compose --profile test-python run --rm --user root test-runner-python sh -lc '
+          docker compose --profile test-python run --rm test-runner-python sh -lc '
             cd "${{ matrix.source }}" &&
             MYPYPATH="${{ matrix.mypy_path }}" \
               mypy --strict --namespace-packages --explicit-package-bases ${{ matrix.mypy_targets }}
@@ -493,7 +501,7 @@ jobs:
       - name: pytest and constitutional coverage in Docker (C-076, C-080)
         if: always()
         run: |
-          docker compose --profile test-python run --rm --user root test-runner-python sh -lc '
+          docker compose --profile test-python run --rm test-runner-python sh -lc '
             mkdir -p coverage/${{ matrix.service }} &&
             pytest "${{ matrix.tests }}" \
               --cov="${{ matrix.source }}" \
@@ -629,13 +637,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
       - name: Spectral lint — OpenAPI contracts
         run: |
-          npx --yes @stoplight/spectral-cli@6.15.0 lint \
+          docker run --rm --user 1000:1000 -v "$PWD:/workspace:ro" -w /workspace \
+            stoplight/spectral:6.15.0 lint \
             --fail-severity error \
             architecture/reference/api-specs/business-platform.openapi.yaml \
             architecture/reference/api-specs/professional-runtime.openapi.yaml
@@ -767,7 +772,7 @@ jobs:
       - name: pip-audit — Python dependencies
         run: |
           scripts/verify_runner_image.sh test-python test-runner-python '${{ steps.runner-build.outputs.python_image_id }}'
-          docker compose --profile test-python run --rm --user root test-runner-python sh -lc '
+          docker compose --profile test-python run --rm test-runner-python sh -lc '
             pip-audit -r src/professional-runtime/requirements.txt --strict &&
             sed -e "/^--extra-index-url/d" \
                 -e "s/torch==2.13.0+cpu/torch==2.13.0/" \
@@ -780,7 +785,7 @@ jobs:
       - name: dotnet vulnerable — .NET dependencies
         run: |
           scripts/verify_runner_image.sh test-dotnet test-runner-dotnet '${{ steps.runner-build.outputs.dotnet_image_id }}'
-          docker compose --profile test-dotnet run --rm --user root test-runner-dotnet sh -lc '
+          docker compose --profile test-dotnet run --rm test-runner-dotnet sh -lc '
             audit_dotnet_project() {
               dotnet restore "$1" --nologo >/dev/null
               if ! output="$(dotnet list "$1" package --vulnerable --include-transitive 2>&1)"; then
@@ -810,16 +815,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+      - name: Build Python license runner
+        run: docker compose --profile test-python build test-runner-python
 
       - name: pip-licenses — check Python dependency licenses
         run: |
-          pip install pip-licenses
-          pip install -r src/professional-runtime/requirements.txt -q
-          pip install -r src/ai-runtime/requirements.txt -q
-          pip-licenses --fail-on="GPL;AGPL;LGPL"
+          docker compose --profile test-python run --rm test-runner-python sh -lc '
+            pip install --target /tmp/license-env -r src/professional-runtime/requirements.txt -q &&
+            sed -e "/^--extra-index-url/d" \
+                -e "s/torch==2.13.0+cpu/torch==2.13.0/" \
+                src/ai-runtime/requirements.txt > /tmp/ai-runtime-license.txt &&
+            pip install --target /tmp/license-env -r /tmp/ai-runtime-license.txt -q &&
+            PYTHONPATH=/tmp/license-env pip-licenses --fail-on="GPL;AGPL;LGPL"
+          '
         continue-on-error: true  # Advisory only — does not block PR (LGPL can be acceptable)
 
   # ─── Constitutional commit gate (C-059 — Implementation Traceability) ─────
@@ -835,17 +843,23 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Build constitutional validation runner
+        run: docker compose --profile test-python build test-runner-python
 
       - name: Validate commit messages (C-059)
         run: |
           BASE="${{ github.event.pull_request.base.sha }}"
           HEAD="${{ github.event.pull_request.head.sha }}"
+          mkdir -p test-results
           gh pr view ${{ github.event.pull_request.number }} \
-            --json body --jq .body --repo ${{ github.repository }} > /tmp/pr-body.md
-          python scripts/validate_c059.py \
-            --pr-body-file /tmp/pr-body.md \
-            --base "$BASE" \
-            --head "$HEAD"
+            --json body --jq .body --repo ${{ github.repository }} > test-results/pr-body.md
+          docker compose --profile test-python run --rm \
+            -e BASE -e HEAD test-runner-python sh -lc '
+              python scripts/validate_c059.py \
+                --pr-body-file test-results/pr-body.md \
+                --base "$BASE" \
+                --head "$HEAD"
+            '
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -860,6 +874,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Build constitutional validation runner
+        run: docker compose --profile test-python build test-runner-python
 
       - name: Validate author review evidence
         env:
@@ -869,15 +885,19 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPOSITORY: ${{ github.repository }}
         run: |
+          mkdir -p test-results
           for attempt in 1 2 3; do
-            gh pr view "$PR_NUMBER" --json body --jq .body --repo "$REPOSITORY" > /tmp/pr-body.md
-            if python scripts/validate_author_review.py \
-                --pr-body-file /tmp/pr-body.md \
-                --head "$HEAD_SHA" && \
-              python scripts/validate_runtime_lifecycle_evidence.py \
-                --pr-body-file /tmp/pr-body.md \
-                --base "$BASE_SHA" \
-                --head "$HEAD_SHA"; then
+            gh pr view "$PR_NUMBER" --json body --jq .body --repo "$REPOSITORY" > test-results/pr-body.md
+            if docker compose --profile test-python run --rm \
+              -e HEAD_SHA -e BASE_SHA test-runner-python sh -lc '
+                python scripts/validate_author_review.py \
+                  --pr-body-file test-results/pr-body.md \
+                  --head "$HEAD_SHA" &&
+                python scripts/validate_runtime_lifecycle_evidence.py \
+                  --pr-body-file test-results/pr-body.md \
+                  --base "$BASE_SHA" \
+                  --head "$HEAD_SHA"
+              '; then
               exit 0
             fi
             if [ "$attempt" -eq 3 ]; then
