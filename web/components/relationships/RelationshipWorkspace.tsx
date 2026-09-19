@@ -306,7 +306,7 @@ export function RelationshipWorkspace({
 
       <nav className="workspace-nav" aria-label="Relationship workspace views">
         {['Plan', 'Needs your attention', 'Work', 'Results', 'Usage & budget', 'Rights & control'].map((label) => (
-          <a key={label} href={`#${label.toLowerCase().replaceAll(' ', '-').replace('&', 'and')}`}>
+          <a key={label} href={`#${label.toLowerCase().replaceAll(' ', '-').replaceAll('&', 'and')}`}>
             {label}
           </a>
         ))}

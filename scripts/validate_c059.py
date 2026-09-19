@@ -58,7 +58,14 @@ def validate_commit(subject: str, body: str) -> list[str]:
 
 def read_commits(base: str, head: str) -> list[tuple[str, str]]:
     result = subprocess.run(  # noqa: S603
-        ["git", "log", f"{base}..{head}", "--format=%s%x1f%b%x1e"],  # noqa: S607
+        [
+            "git",
+            "-c",
+            f"safe.directory={Path.cwd().resolve()}",
+            "log",
+            f"{base}..{head}",
+            "--format=%s%x1f%b%x1e",
+        ],  # noqa: S607
         check=True,
         capture_output=True,
         text=True,

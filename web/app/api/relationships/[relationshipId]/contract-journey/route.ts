@@ -24,8 +24,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!accessToken) return NextResponse.json({ title: 'Secure sign in is required.' }, { status: 401 });
   const { relationshipId } = await params;
   const body = await request.json();
+  if (body.action !== 'activate' && (!Number.isInteger(body.version) || body.version < 1))
+    return NextResponse.json({ title: 'Contract request is invalid.' }, { status: 400 });
   const relationshipRoot = `${businessPlatformUrl}/api/v1/employment/relationships/${encodeURIComponent(relationshipId)}`;
-  const contractRoot = `${relationshipRoot}/contracts/${body.version}`;
+  const contractRoot = `${relationshipRoot}/contracts/${encodeURIComponent(String(body.version))}`;
   const target =
     body.action === 'accept'
       ? `${contractRoot}/accept`

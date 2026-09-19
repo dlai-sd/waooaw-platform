@@ -79,6 +79,7 @@ def test_python_audit_builds_use_bounded_executable_tmpfs() -> None:
 def test_full_runner_fixtures_use_bounded_executable_tmpfs() -> None:
     runner = COMPOSE["services"]["test-runner"]
 
+    assert (ROOT / ".deepeval").is_dir()
     assert runner["tmpfs"] == [
         "/tmp:size=2g,mode=1777,exec",
         "/workspace/.deepeval:size=16m,mode=1770",

@@ -19,7 +19,7 @@ internal static class RepositoryPaths
                 directory = directory.Parent
             )
             {
-                if (Directory.Exists(Path.Combine(directory.FullName, "constitution")))
+                if (Directory.Exists(Path.Join(directory.FullName, "constitution")))
                 {
                     return directory.FullName;
                 }

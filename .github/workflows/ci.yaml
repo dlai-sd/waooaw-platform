@@ -406,6 +406,8 @@ jobs:
 
       - name: Restore, build, and test in Docker (C-076, C-080)
         run: |
+          mkdir -p ./test-results/coverage/${{ matrix.service }}
+          chmod 0777 ./test-results/coverage/${{ matrix.service }}
           scripts/verify_runner_image.sh \
             '${{ matrix.profile }}' '${{ matrix.runner }}' '${{ steps.runner-build.outputs.image_id }}'
           docker compose --profile ${{ matrix.profile }} run --rm ${{ matrix.runner }} sh -lc '
@@ -510,15 +512,16 @@ jobs:
       - name: pytest and constitutional coverage in Docker (C-076, C-080)
         if: always()
         run: |
+          mkdir -p ./test-results/coverage/${{ matrix.service }}
+          chmod 0777 ./test-results/coverage/${{ matrix.service }}
           docker compose --profile test-python run --rm test-runner-python sh -lc '
-            mkdir -p coverage/${{ matrix.service }} &&
             pytest "${{ matrix.tests }}" \
               --cov="${{ matrix.source }}" \
               --cov-branch \
-              --cov-report=xml:coverage/${{ matrix.service }}/coverage.xml \
-              --cov-report=json:coverage/${{ matrix.service }}/coverage.json \
+              --cov-report=xml:test-results/coverage/${{ matrix.service }}/coverage.xml \
+              --cov-report=json:test-results/coverage/${{ matrix.service }}/coverage.json \
               --cov-fail-under=0 &&
-            python -c "import json, sys; data=json.load(open(\"coverage/${{ matrix.service }}/coverage.json\")); totals=data[\"totals\"]; lines=totals[\"covered_lines\"]*100/totals[\"num_statements\"]; branches=100 if totals[\"num_branches\"] == 0 else totals[\"covered_branches\"]*100/totals[\"num_branches\"]; print(json.dumps({\"service\": \"${{ matrix.service }}\", \"line_coverage\": lines, \"branch_coverage\": branches, \"minimum_lines\": 90, \"minimum_branches\": 80})); sys.exit(0 if lines >= 90 and branches >= 80 else 1)"
+            python -c "import json, sys; data=json.load(open(\"test-results/coverage/${{ matrix.service }}/coverage.json\")); totals=data[\"totals\"]; lines=totals[\"covered_lines\"]*100/totals[\"num_statements\"]; branches=100 if totals[\"num_branches\"] == 0 else totals[\"covered_branches\"]*100/totals[\"num_branches\"]; print(json.dumps({\"service\": \"${{ matrix.service }}\", \"line_coverage\": lines, \"branch_coverage\": branches, \"minimum_lines\": 90, \"minimum_branches\": 80})); sys.exit(0 if lines >= 90 and branches >= 80 else 1)"
           '
 
       - name: Upload coverage
@@ -526,7 +529,7 @@ jobs:
         uses: codecov/codecov-action@v4
         continue-on-error: true  # geo-restricted runners must not break the gate
         with:
-          files: coverage/${{ matrix.service }}/coverage.xml
+          files: test-results/coverage/${{ matrix.service }}/coverage.xml
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
@@ -535,7 +538,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: python-coverage-${{ matrix.service }}-${{ github.run_id }}
-          path: coverage/${{ matrix.service }}/
+          path: test-results/coverage/${{ matrix.service }}/
           if-no-files-found: error
           retention-days: 90
 
@@ -631,6 +634,8 @@ jobs:
 
       - name: Type check, lint, and test in Docker (C-076, C-080)
         run: |
+          mkdir -p ./test-results/coverage/web
+          chmod 0777 ./test-results/coverage/web
           scripts/verify_runner_image.sh test-ts test-runner-ts '${{ steps.runner-build.outputs.image_id }}'
           docker compose --profile test-ts run --rm test-runner-ts sh -lc '
             cd web &&
@@ -782,12 +787,12 @@ jobs:
         run: |
           scripts/verify_runner_image.sh test-python test-runner-python '${{ steps.runner-build.outputs.python_image_id }}'
           docker compose --profile test-python run --rm test-runner-python sh -lc '
-            pip-audit -r src/professional-runtime/requirements.txt --strict &&
+            pip-audit -r src/professional-runtime/requirements.txt --strict --cache-dir /tmp/pip-audit-cache &&
             sed -e "/^--extra-index-url/d" \
                 -e "s/torch==2.13.0+cpu/torch==2.13.0/" \
                 src/ai-runtime/requirements.txt > /tmp/ai-runtime-audit.txt &&
-            pip-audit -r /tmp/ai-runtime-audit.txt --strict &&
-            pip-audit -r src/billing-engine/requirements.txt --strict
+            pip-audit -r /tmp/ai-runtime-audit.txt --strict --cache-dir /tmp/pip-audit-cache &&
+            pip-audit -r src/billing-engine/requirements.txt --strict --cache-dir /tmp/pip-audit-cache
           '
         continue-on-error: false  # Fail on any vulnerability
 
@@ -863,9 +868,10 @@ jobs:
           gh pr view ${{ github.event.pull_request.number }} \
             --json body --jq .body --repo ${{ github.repository }} > test-results/pr-body.md
           docker compose --profile test-python run --rm \
-            -e BASE -e HEAD test-runner-python sh -lc '
+            -v "$PWD/test-results/pr-body.md:/tmp/pr-body.md:ro" \
+            -e BASE="$BASE" -e HEAD="$HEAD" test-runner-python sh -lc '
               python scripts/validate_c059.py \
-                --pr-body-file test-results/pr-body.md \
+                --pr-body-file /tmp/pr-body.md \
                 --base "$BASE" \
                 --head "$HEAD"
             '
@@ -898,12 +904,13 @@ jobs:
           for attempt in 1 2 3; do
             gh pr view "$PR_NUMBER" --json body --jq .body --repo "$REPOSITORY" > test-results/pr-body.md
             if docker compose --profile test-python run --rm \
+              -v "$PWD/test-results/pr-body.md:/tmp/pr-body.md:ro" \
               -e HEAD_SHA -e BASE_SHA test-runner-python sh -lc '
                 python scripts/validate_author_review.py \
-                  --pr-body-file test-results/pr-body.md \
+                  --pr-body-file /tmp/pr-body.md \
                   --head "$HEAD_SHA" &&
                 python scripts/validate_runtime_lifecycle_evidence.py \
-                  --pr-body-file test-results/pr-body.md \
+                  --pr-body-file /tmp/pr-body.md \
                   --base "$BASE_SHA" \
                   --head "$HEAD_SHA"
               '; then
