@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 179
-**Last Updated:** 2026-09-19 (WC-099 ITERATION 3 QUALIFICATION SAFEGUARDS CHECKPOINT)
+**State Revision:** 180
+**Last Updated:** 2026-09-19 (WC-102 ENGINEERING QUALIFIED CHECKPOINT)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-080 - Agent Runtime Adapter Contract v1 |
 | Latest merge | PR #442 merged to `main` as `b7472535` |
-| Active delivery | WC-099 post-Demo correction, WC-100 Engineering Validation Efficiency, WC-098 Customer Registration Readiness, WC-097 Marketplace Acquisition Experience, WC-089 DMA Release 1, WC-093 public/auth experience finalization, WC-085 brokered authentication follow-up and WC-088 Customer Multi-Agent And Skill Journey; P3-EX11 remains plan-only |
+| Active delivery | WC-102 Docker-Only Validation Control Plane, WC-099 post-Demo correction, WC-100 Engineering Validation Efficiency, WC-098 Customer Registration Readiness, WC-097 Marketplace Acquisition Experience, WC-089 DMA Release 1, WC-093 public/auth experience finalization, WC-085 brokered authentication follow-up and WC-088 Customer Multi-Agent And Skill Journey; P3-EX11 remains plan-only |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 
@@ -53,6 +53,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | WC-098 customer registration readiness | ENGINEERING QUALIFIED CHECKPOINT - Work Contract `67759834` governs WC098-R01 through R10 / D01 through D09. Product commit `b9f738e1` and evidence `a756c9ea` establish issuer-plus-subject actor continuity, masked broker-verified email, deterministic dark/light preferences, disabled optional SMS, one registration title owner, safe typed recovery, actionable bounded provider retry and generated-client alignment. Docker evidence passes 734 BP tests, 361 Web tests, production build, lint, type, OpenAPI, audit and fixed high/critical image scan; eight Chromium checks pass at 360x800 and 1440x900 with no overflow or serious/critical axe findings. D09 exact Demo deployment/Azure correlation and Founder acceptance remain unclaimed; cloud mutation, customer traffic, SMS vendor/spend, PR approval and merge remain prohibited or Founder-reserved. |
 | WC-099 post-Demo correction | ENGINEERING QUALIFIED CANDIDATE - Iteration 2 candidate `64cbce45` delegates Marketplace Trial/Hire to canonical lifecycle owners, enforces exact DMA offerability, requests fresh Google account selection, fails Guide startup/readiness for invalid cursor material, and repairs Guide/portal geometry. Iteration 3 milestone `c8fecd61` adds fail-fast worktree/HEAD and Docker preflight, schema-v3 exact evidence binding, bounded non-runtime evidence reuse, and durable Platform IT Expert costly-run rules; 45 focused Docker tests and all 36 ledger rows pass. Existing product evidence includes 803 BP tests, 386 Web tests, 30 deployment tests, a 52-route production build and 29 WC-099 browser checks with 36 intentional project skips. R-014/R-020 remain blocked pending Founder merge and separately authorized work-component deployment; no cloud mutation, Demo acceptance, Production readiness, approval or merge is claimed. |
 | WC-100 engineering validation efficiency | ENGINEERING QUALIFIED CANDIDATE - WC100-01 through WC100-04A are implemented on `ib/100/engineering-validation-efficiency`. Exact-head Docker qualification passes 61 focused ledger, orchestration, immutable-image, classifier and handoff tests with lint/format checks; current full PR CI remains authoritative. Hosted security/regression evidence, the 20-PR Shadow evaluation, candidate hosted timing, Founder review/merge and any WC100-04C activation remain open or Founder-reserved. |
+| WC-102 Docker-only validation control plane | ENGINEERING QUALIFIED CANDIDATE - WC102-00 through WC102-07 are implemented on `ib/102/docker-only-validation-control-plane`; exact implementation candidate `aedeb776` passes all component, quality, security, dependency, control-plane and release qualification gates. The 26-row obligation ledger, five-class measurements, Shadow comparison, rollback record and INST-010 author review pass. Full CI remains authoritative; the 20-sample Shadow activation floor, selective enforcement, Founder review and merge remain open or Founder-reserved. |
 | Production | PLAN ONLY - code-prepared; protected environments, authorized plan, traffic and final acceptance remain Founder-reserved |
 
 ### Checkpoint Context
@@ -89,7 +90,7 @@ downstream membership and browser account-switch qualification remain open; CB-0
 
 ## Next Authorized Action
 
-Submit WC-099 Iterations 2 and 3 as one unmerged implementation PR for Founder review; do not deploy it to Demo without separate work-component authority. Submit WC-100 as an unmerged Shadow-mode PR for Founder review and hosted full-CI evidence; do not
+Submit WC-102 as an unmerged Shadow-mode PR for Founder review; do not activate selective PR execution before the 20-sample Shadow floor and separate Founder approval. Submit WC-099 Iterations 2 and 3 as one unmerged implementation PR for Founder review; do not deploy it to Demo without separate work-component authority. Submit WC-100 as an unmerged Shadow-mode PR for Founder review and hosted full-CI evidence; do not
 activate selected PR execution before the required Shadow window and separate Founder approval.
 Submit WC-097 for Founder review and merge. Submit the WC-085 brokered authentication follow-up for Founder review, trusted build and Demo
 deployment before real-account acceptance. Submit the engineering-qualified WC-088 Customer
