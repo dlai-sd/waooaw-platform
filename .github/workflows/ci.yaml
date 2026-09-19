@@ -25,7 +25,7 @@ env:
 jobs:
 
   validation-plan:
-    name: WC-100 validation plan (Shadow)
+    name: WC-102 validation plan (Shadow)
     runs-on: ubuntu-latest
     outputs:
       release_required: ${{ steps.plan.outputs.release_required }}
@@ -51,9 +51,9 @@ jobs:
           fi
           echo "base_sha=$base_sha" >> "$GITHUB_OUTPUT"
           echo "head_sha=$head_sha" >> "$GITHUB_OUTPUT"
-          mkdir -p test-results/wc100
-          git diff --name-only --find-renames "$base_sha" "$head_sha" > test-results/wc100/changed-files.txt
-          git diff --name-status --find-renames "$base_sha" "$head_sha" > test-results/wc100/changed-files.status
+          mkdir -p test-results/wc102
+          git diff --name-only --find-renames "$base_sha" "$head_sha" > test-results/wc102/changed-files.txt
+          git diff --name-status --find-renames "$base_sha" "$head_sha" > test-results/wc102/changed-files.status
       - name: Build validation runner once (C-080)
         id: runner-build
         run: |
@@ -84,24 +84,34 @@ jobs:
                 --policy validation/engineering-validation.yaml \
                 --base "$BASE_SHA" --head "$HEAD_SHA" \
                 --event "$EVENT_NAME" \
-                --changed-file-list test-results/wc100/changed-files.status \
-                --output test-results/wc100/change-impact.json
+                --changed-file-list test-results/wc102/changed-files.status \
+                --output test-results/wc102/change-impact.json
+              python scripts/validation_control/orchestrator.py \
+                --selection test-results/wc102/change-impact.json \
+                --mode focused --head "$HEAD_SHA" \
+                --output test-results/wc102/focused-plan.json
+              python scripts/validation_control/orchestrator.py \
+                --selection test-results/wc102/change-impact.json \
+                --mode qualification --head "$HEAD_SHA" \
+                --output test-results/wc102/qualification-plan.json
               python scripts/validate_requirement_ledger.py \
                 --repository-root /workspace \
-                --changed-file-list test-results/wc100/changed-files.txt
+                --changed-file-list test-results/wc102/changed-files.txt
             '
           release_required=$(jq -r '.selected_prechecks | index("release_qualification") != null' \
-            test-results/wc100/change-impact.json)
+            test-results/wc102/change-impact.json)
           echo "release_required=$release_required" >> "$GITHUB_OUTPUT"
       - name: Retain Shadow selection and validation evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: wc100-validation-plan-${{ github.run_id }}
+          name: wc102-validation-plan-${{ github.run_id }}
           path: |
-            test-results/wc100/change-impact.json
-            test-results/wc100/changed-files.txt
-            test-results/wc100/changed-files.status
+            test-results/wc102/change-impact.json
+            test-results/wc102/changed-files.txt
+            test-results/wc102/changed-files.status
+            test-results/wc102/focused-plan.json
+            test-results/wc102/qualification-plan.json
             ${{ runner.temp }}/build-evidence/validation-plan.json
           if-no-files-found: error
           retention-days: 90

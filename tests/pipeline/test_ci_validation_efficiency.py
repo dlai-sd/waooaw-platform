@@ -43,8 +43,8 @@ def test_test_runner_contains_wc100_nested_docker_tools() -> None:
 def test_full_runner_avoids_post_copy_metadata_mutation() -> None:
     source = TEST_RUNNER_PATH.read_text(encoding="utf-8")
 
-    assert "COPY --chown=waooaw:waooaw . /workspace/" in source
-    assert "COPY --link --chown=waooaw:waooaw --chmod=0755 scripts/*.sh /workspace/scripts/" in source
+    assert "COPY --chown=waooaw:waooaw web/package.json web/pnpm-lock.yaml /opt/waooaw-web/" in source
+    assert "COPY --chown=waooaw:waooaw . /workspace/" not in source
     assert "RUN chmod +x scripts/*.sh" not in source
 
 
@@ -86,7 +86,7 @@ def test_shadow_mode_keeps_full_ci_authoritative() -> None:
     ci = load_ci()
 
     assert "validation/engineering-validation.yaml" in source
-    assert "WC-100 validation plan (Shadow)" in source
+    assert "WC-102 validation plan (Shadow)" in source
     assert ci["jobs"]["build"]["if"] == "github.event_name == 'pull_request'"
     assert "validation-plan" in ci["jobs"]["qa-campaign"]["needs"]
     assert "build" in ci["jobs"]["qa-campaign"]["needs"]

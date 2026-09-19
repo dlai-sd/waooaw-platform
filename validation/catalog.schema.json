@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://waooaw.com/schemas/validation-catalog-v1.json",
+  "type": "object",
+  "required": ["schema", "version", "mode", "runners", "commands", "gates", "full_gates", "components", "global_triggers"],
+  "properties": {
+    "schema": {"const": "waooaw.validation-catalog/v1"},
+    "version": {"type": "string", "minLength": 1},
+    "mode": {"enum": ["shadow", "enforced"]},
+    "runners": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["compose_service", "profile", "dockerfile", "docker_socket"],
+        "properties": {
+          "compose_service": {"type": "string"},
+          "profile": {"type": "string"},
+          "dockerfile": {"type": "string"},
+          "docker_socket": {"type": "boolean"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "commands": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["shell"],
+        "properties": {"shell": {"type": "string", "minLength": 1}},
+        "additionalProperties": false
+      }
+    },
+    "gates": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/gate"}
+    },
+    "full_gates": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true},
+    "components": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["component_id", "paths", "gates", "reverse_dependencies"],
+        "properties": {
+          "component_id": {"type": "string"},
+          "paths": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+          "gates": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true},
+          "reverse_dependencies": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+        },
+        "additionalProperties": false
+      }
+    },
+    "global_triggers": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "documentation_only": {"type": "array", "items": {"type": "string"}},
+    "enforced_activation": {"type": "object"},
+    "prechecks": {"type": "object"},
+    "release_full_inventory": {"type": "boolean"},
+    "main_full_inventory": {"type": "boolean"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "gate": {
+      "type": "object",
+      "required": ["gate_id", "runner_id", "command_id", "evidence_class", "resources", "retry_policy", "artifacts", "global_trigger"],
+      "properties": {
+        "gate_id": {"type": "string"},
+        "runner_id": {"type": "string"},
+        "command_id": {"type": "string"},
+        "evidence_class": {"enum": ["static", "unit", "coverage", "integration", "contract", "browser", "security", "CCT", "release"]},
+        "resources": {
+          "type": "object",
+          "required": ["cpus", "memory_mb", "timeout_seconds", "docker_socket", "concurrency_class"],
+          "properties": {
+            "cpus": {"type": "number", "exclusiveMinimum": 0},
+            "memory_mb": {"type": "integer", "minimum": 128},
+            "timeout_seconds": {"type": "integer", "minimum": 1},
+            "docker_socket": {"type": "boolean"},
+            "concurrency_class": {"type": "string"}
+          },
+          "additionalProperties": false
+        },
+        "retry_policy": {"enum": ["none", "transient-infrastructure-once"]},
+        "artifacts": {
+          "type": "object",
+          "required": ["native", "common"],
+          "properties": {
+            "native": {"type": "array", "items": {"type": "string"}},
+            "common": {"type": "string"}
+          },
+          "additionalProperties": false
+        },
+        "global_trigger": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -14,7 +14,7 @@ from pathlib import Path
 
 import yaml
 
-SCHEMA = "waooaw.engineering-validation-policy/v1"
+SCHEMA = "waooaw.validation-catalog/v1"
 SELECTION_SCHEMA = "waooaw.change-impact/v1"
 
 
@@ -34,9 +34,9 @@ def _cycles(components: dict[str, dict[str, object]]) -> list[str]:
         if component in visited:
             return
         visiting.add(component)
-        dependencies = components.get(component, {}).get("depends_on", [])
+        dependencies = components.get(component, {}).get("reverse_dependencies", [])
         if not isinstance(dependencies, list):
-            cycles.append(f"{component} has invalid dependencies")
+            cycles.append(f"{component} has invalid reverse dependencies")
         else:
             for dependency in dependencies:
                 if isinstance(dependency, str):
@@ -60,6 +60,27 @@ def validate_policy(policy: dict[str, object]) -> list[str]:
         return [*violations, "COMPONENTS_MISSING"]
     for cycle in _cycles(components):
         violations.append(f"DEPENDENCY_CYCLE: {cycle}")
+    gates = policy.get("gates")
+    commands = policy.get("commands")
+    runners = policy.get("runners")
+    if not isinstance(gates, dict) or not isinstance(commands, dict) or not isinstance(runners, dict):
+        violations.append("CATALOG_DEFINITIONS_MISSING")
+    else:
+        referenced = set(policy.get("full_gates", []))
+        for component_id, component in components.items():
+            if component.get("component_id") != component_id:
+                violations.append(f"COMPONENT_ID_MISMATCH: {component_id}")
+            referenced.update(component.get("gates", []))
+        for gate_id in sorted(referenced):
+            gate = gates.get(gate_id)
+            if not isinstance(gate, dict):
+                violations.append(f"GATE_UNDEFINED: {gate_id}")
+            elif gate.get("gate_id") != gate_id:
+                violations.append(f"GATE_ID_MISMATCH: {gate_id}")
+            elif gate.get("command_id") not in commands:
+                violations.append(f"COMMAND_UNDEFINED: {gate_id}")
+            elif gate.get("runner_id") not in runners:
+                violations.append(f"RUNNER_UNDEFINED: {gate_id}")
     if policy.get("mode") == "enforced":
         activation = policy.get("enforced_activation")
         if not isinstance(activation, dict) or activation.get("founder_approved") is not True:
@@ -121,11 +142,12 @@ def classify_paths(
         changed = True
         while changed:
             changed = False
-            for component, definition in components.items():
-                dependencies = definition.get("depends_on", [])
-                if component not in selected and isinstance(dependencies, list) and selected.intersection(dependencies):
-                    selected.add(component)
-                    changed = True
+            for component in list(selected):
+                reverse_dependencies = components[component].get("reverse_dependencies", [])
+                if isinstance(reverse_dependencies, list):
+                    additions = set(reverse_dependencies) - selected
+                    selected.update(additions)
+                    changed = changed or bool(additions)
 
     selected_components = sorted(components) if force_full else sorted(selected)
     selected_gates = (
