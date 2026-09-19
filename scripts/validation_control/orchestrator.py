@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 from typing import Any, Literal
@@ -13,9 +14,13 @@ import yaml
 Mode = Literal["focused", "qualification"]
 
 
-def build_execution_plan(catalog: dict[str, Any], gate_ids: list[str], *, mode: Mode, head_sha: str) -> dict[str, Any]:
+def build_execution_plan(
+    catalog: dict[str, Any], gate_ids: list[str], *, mode: Mode, head_sha: str, run_id: str
+) -> dict[str, Any]:
     if len(head_sha) != 40:
         raise ValueError("head_sha must be a full 40-character commit")
+    if not run_id:
+        raise ValueError("run_id is required for execution isolation")
     gates = catalog.get("gates")
     commands = catalog.get("commands")
     runners = catalog.get("runners")
@@ -55,6 +60,7 @@ def build_execution_plan(catalog: dict[str, Any], gate_ids: list[str], *, mode: 
         "authoritative": False,
         "requires_clean_commit": mode == "qualification",
         "head_sha": head_sha,
+        "execution_namespace": "wc102-" + hashlib.sha256(f"{run_id}:{mode}:{head_sha}".encode()).hexdigest()[:16],
         "nodes": nodes,
     }
 
@@ -65,6 +71,7 @@ def main() -> int:
     parser.add_argument("--selection", type=Path, required=True)
     parser.add_argument("--mode", choices=("focused", "qualification"), required=True)
     parser.add_argument("--head", required=True)
+    parser.add_argument("--run-id", required=True)
     parser.add_argument("--output", type=Path, required=True)
     arguments = parser.parse_args()
 
@@ -75,7 +82,7 @@ def main() -> int:
     selected_gates = selection.get("selected_gates")
     if not isinstance(selected_gates, list) or not all(isinstance(gate, str) for gate in selected_gates):
         raise ValueError("selection selected_gates must be a string list")
-    plan = build_execution_plan(catalog, selected_gates, mode=arguments.mode, head_sha=arguments.head)
+    plan = build_execution_plan(catalog, selected_gates, mode=arguments.mode, head_sha=arguments.head, run_id=arguments.run_id)
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
     arguments.output.write_text(json.dumps(plan, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps(plan, sort_keys=True))

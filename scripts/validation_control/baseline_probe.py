@@ -21,9 +21,7 @@ def collect_baseline(repository: Path) -> dict[str, Any]:
     integration = (repository / ".github/workflows/integration-tests.yaml").read_text()
     dotnet_runner = (repository / "architecture/reference/dockerfiles/Dockerfile.test-runner-dotnet").read_text()
 
-    workflow_text = "\n".join(
-        path.read_text() for path in sorted((repository / ".github/workflows").glob("*.y*ml"))
-    )
+    workflow_text = "\n".join(path.read_text() for path in sorted((repository / ".github/workflows").glob("*.y*ml")))
     host_invocations = HOST_TEST_PATTERN.findall(integration)
 
     return {

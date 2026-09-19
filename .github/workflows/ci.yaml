@@ -76,7 +76,7 @@ jobs:
         run: |
           scripts/verify_runner_image.sh test test-runner '${{ steps.runner-build.outputs.image_id }}'
           docker compose --profile test run --rm \
-            -e BASE_SHA -e HEAD_SHA -e EVENT_NAME test-runner sh -lc '
+            -e BASE_SHA -e HEAD_SHA -e EVENT_NAME -e GITHUB_RUN_ID -e GITHUB_RUN_ATTEMPT test-runner sh -lc '
               export GIT_CONFIG_COUNT=1
               export GIT_CONFIG_KEY_0=safe.directory
               export GIT_CONFIG_VALUE_0=/workspace
@@ -89,10 +89,12 @@ jobs:
               python scripts/validation_control/orchestrator.py \
                 --selection test-results/wc102/change-impact.json \
                 --mode focused --head "$HEAD_SHA" \
+                --run-id "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-focused" \
                 --output test-results/wc102/focused-plan.json
               python scripts/validation_control/orchestrator.py \
                 --selection test-results/wc102/change-impact.json \
                 --mode qualification --head "$HEAD_SHA" \
+                --run-id "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-qualification" \
                 --output test-results/wc102/qualification-plan.json
               python scripts/validate_requirement_ledger.py \
                 --repository-root /workspace \

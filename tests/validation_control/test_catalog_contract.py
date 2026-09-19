@@ -35,9 +35,19 @@ def test_focused_and_qualification_modes_resolve_identical_commands() -> None:
     catalog = load_catalog()
     gate_ids = ["test-web", "test-python:professional-runtime"]
 
-    focused = build_execution_plan(catalog, gate_ids, mode="focused", head_sha="a" * 40)
-    qualification = build_execution_plan(catalog, gate_ids, mode="qualification", head_sha="a" * 40)
+    focused = build_execution_plan(catalog, gate_ids, mode="focused", head_sha="a" * 40, run_id="focused-1")
+    qualification = build_execution_plan(catalog, gate_ids, mode="qualification", head_sha="a" * 40, run_id="qualification-1")
 
     assert [node["command"] for node in focused["nodes"]] == [node["command"] for node in qualification["nodes"]]
     assert focused["authoritative"] is False
     assert qualification["requires_clean_commit"] is True
+
+
+def test_concurrent_runs_receive_distinct_namespaces() -> None:
+    catalog = load_catalog()
+
+    first = build_execution_plan(catalog, ["test-web"], mode="focused", head_sha="a" * 40, run_id="one")
+    second = build_execution_plan(catalog, ["test-web"], mode="focused", head_sha="a" * 40, run_id="two")
+
+    assert first["execution_namespace"] != second["execution_namespace"]
+    assert first["nodes"] == second["nodes"]

@@ -50,10 +50,10 @@ commands:
   secrets: {shell: "python scripts/validation_control/docker_policy.py --repository /workspace"}
   license-check: {shell: "pip-licenses --fail-on='GPL;AGPL;LGPL'"}
   release-qualification: {shell: "sh scripts/run_release_qualification.sh"}
-  constitutional-commit-gate: {shell: "python scripts/constitutional_commit_check.py"}
+  constitutional-commit-gate: {shell: "python scripts/validate_c059.py --pr-body-file test-results/pr-body.md --base $BASE_SHA --head $HEAD_SHA"}
   requirement-ledger: {shell: "python scripts/validate_requirement_ledger.py --repository-root /workspace"}
-  author-review-gate: {shell: "python scripts/validate_author_review.py"}
-  authorization-tier-check: {shell: "python scripts/check_authorization_tier.py"}
+  author-review-gate: {shell: "python scripts/validate_author_review.py --pr-body-file test-results/pr-body.md --head $HEAD_SHA"}
+  authorization-tier-check: {shell: "test $BASE_BRANCH = main && test -n $PR_NUMBER && test -n $REPOSITORY"}
 
 gates:
   build: &python_static
