@@ -1,0 +1,3 @@
+shared_selector_ms=942
+exit_code=0
+execution=full-ci-remains-authoritative
