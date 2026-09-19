@@ -1,11 +1,12 @@
-// Implements: WC-096 §4.3 Marketplace And Disclosure
-// Constitutional basis: C-005, C-023, C-026, C-049, C-059, C-063
+// Implements: work-contracts/WC-099-demo-customer-journey-and-application-shell-remediation.md R-005, R-006
+// constitutional_basis: C-023, C-026, C-049, C-059, C-063
 
+using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using System.Text.Json;
-using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -18,35 +19,26 @@ namespace Waooaw.BusinessPlatform.Tests;
 
 public sealed class AcquisitionControllerTests
 {
-    [Fact]
-    public async Task AcceptedExactDisclosureCreatesOneBoundRelationshipAndReplays()
+    [Theory]
+    [InlineData("TRIAL")]
+    [InlineData("HIRE")]
+    public async Task AcceptedDisclosureUsesResolvedMembershipAndReplaysExactlyOnce(string intent)
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
         var gateway = new RecordingRelationshipConstitutionalGateway();
-        var relationships = new EmploymentRelationshipService(factory, gateway, NullLogger<EmploymentRelationshipService>.Instance);
-        var tenantId = Guid.NewGuid();
-        var participantId = Guid.NewGuid();
-        var admission = new AgentAdmission
-        {
-            TenantId = Guid.NewGuid(),
-            ProfessionalTypeId = "DIGITAL_MARKETING_LOCAL_SERVICE",
-            ProfessionalVersion = "1.0.0",
-            OwnerSubjectId = Guid.NewGuid(),
-            State = AgentAdmissionState.Active,
-        };
-        await using (var seed = factory.CreateDbContext())
-        {
-            seed.AgentAdmissions.Add(admission);
-            await seed.SaveChangesAsync();
-        }
-        var controller = Controller(factory, Catalog(), relationships, tenantId, participantId);
+        var relationships = new EmploymentRelationshipService(
+            factory, gateway, NullLogger<EmploymentRelationshipService>.Instance);
+        var membership = new CustomerWorkspaceMembership(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), ["OWNER"]);
+        await SeedAdmissionAsync(factory, membership.TenantId);
+        var controller = Controller(factory, Catalog(), relationships, membership);
         var key = Guid.NewGuid();
-        var request = new ContinueAcquisitionRequest(
-            "DIGITAL_MARKETING_LOCAL_SERVICE", "1.0.0", "TRIAL", "1.0.0", "2026-07-18", "ACCEPT_DISCLOSURE");
+        var request = ValidRequest(intent);
 
-        var created = Assert.IsType<ObjectResult>(await controller.ContinueAsync(request, key, Guid.NewGuid(), CancellationToken.None));
+        var created = Assert.IsType<ObjectResult>(await controller.ContinueAsync(
+            request, key, Guid.NewGuid(), CancellationToken.None));
         Assert.Equal(StatusCodes.Status201Created, created.StatusCode);
-        var replayed = Assert.IsType<OkObjectResult>(await controller.ContinueAsync(request, key, Guid.NewGuid(), CancellationToken.None));
+        var replayed = Assert.IsType<OkObjectResult>(await controller.ContinueAsync(
+            request, key, Guid.NewGuid(), CancellationToken.None));
         var createdBody = Assert.IsType<AcquisitionContinuationResponse>(created.Value);
         var replayedBody = Assert.IsType<AcquisitionContinuationResponse>(replayed.Value);
 
@@ -54,22 +46,29 @@ public sealed class AcquisitionControllerTests
         Assert.True(replayedBody.Replayed);
         Assert.Equal(1, gateway.CallCount);
         var evidence = JsonSerializer.SerializeToElement(gateway.LastActionParameters);
-        Assert.Equal("TRIAL", evidence.GetProperty("acquisition_intent").GetString());
+        Assert.Equal(intent, evidence.GetProperty("acquisition_intent").GetString());
         Assert.Equal("1.0.0", evidence.GetProperty("disclosure_revision").GetString());
         Assert.Equal("2026-07-18", evidence.GetProperty("terms_version").GetString());
+        await using var db = factory.CreateDbContext();
+        var relationship = Assert.Single(await db.EmploymentRelationships.ToListAsync());
+        var participant = Assert.Single(await db.RelationshipParticipants.ToListAsync());
+        Assert.Equal(membership.TenantId, relationship.TenantId);
+        Assert.Equal(membership.AccountId, relationship.InitiatingParticipantId);
+        Assert.Equal(membership.AccountId, participant.ParticipantId);
     }
 
     [Fact]
-    public async Task StaleOrUnacceptedDisclosureCreatesNoRelationship()
+    public async Task StaleDisclosureCreatesNoRelationship()
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
         var gateway = new RecordingRelationshipConstitutionalGateway();
-        var relationships = new EmploymentRelationshipService(factory, gateway, NullLogger<EmploymentRelationshipService>.Instance);
-        var controller = Controller(factory, Catalog(), relationships, Guid.NewGuid(), Guid.NewGuid());
+        var relationships = new EmploymentRelationshipService(
+            factory, gateway, NullLogger<EmploymentRelationshipService>.Instance);
+        var membership = new CustomerWorkspaceMembership(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), ["OWNER"]);
+        var controller = Controller(factory, Catalog(), relationships, membership);
 
         var result = await controller.ContinueAsync(
-            new ContinueAcquisitionRequest(
-                "DIGITAL_MARKETING_LOCAL_SERVICE", "1.0.0", "HIRE", "0.9.0", "2026-07-18", "ACCEPT_DISCLOSURE"),
+            ValidRequest("HIRE") with { DisclosureRevision = "0.9.0" },
             Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None);
 
         Assert.Equal(StatusCodes.Status409Conflict, Assert.IsType<ObjectResult>(result).StatusCode);
@@ -78,12 +77,90 @@ public sealed class AcquisitionControllerTests
         Assert.Empty(db.EmploymentRelationships);
     }
 
+    [Fact]
+    public async Task MissingActiveAdmissionCreatesNoRelationship()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var gateway = new RecordingRelationshipConstitutionalGateway();
+        var relationships = new EmploymentRelationshipService(
+            factory, gateway, NullLogger<EmploymentRelationshipService>.Instance);
+        var membership = new CustomerWorkspaceMembership(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), ["OWNER"]);
+        var controller = Controller(factory, Catalog(), relationships, membership);
+
+        var result = await controller.ContinueAsync(
+            ValidRequest("HIRE"), Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None);
+
+        Assert.Equal(StatusCodes.Status409Conflict, Assert.IsType<ObjectResult>(result).StatusCode);
+        Assert.Equal(0, gateway.CallCount);
+        await using var db = factory.CreateDbContext();
+        Assert.Empty(db.EmploymentRelationships);
+    }
+
+    [Fact]
+    public async Task ConstitutionalEvidenceDenialCreatesNoRelationship()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var gateway = new Mock<IRelationshipConstitutionalGateway>();
+        gateway.Setup(value => value.AuthorizeAndRecordAsync(
+                It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<Guid>(), It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ConstitutionalActionDeniedException("Denied by policy."));
+        var relationships = new EmploymentRelationshipService(
+            factory, gateway.Object, NullLogger<EmploymentRelationshipService>.Instance);
+        var membership = new CustomerWorkspaceMembership(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), ["OWNER"]);
+        await SeedAdmissionAsync(factory, membership.TenantId);
+        var controller = Controller(factory, Catalog(), relationships, membership);
+
+        var result = await controller.ContinueAsync(
+            ValidRequest("HIRE"), Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None);
+
+        Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<ObjectResult>(result).StatusCode);
+        await using var db = factory.CreateDbContext();
+        Assert.Empty(db.EmploymentRelationships);
+    }
+
+    [Fact]
+    public async Task MissingResolvedMembershipCannotFallBackToBrowserIdentityClaims()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var gateway = new RecordingRelationshipConstitutionalGateway();
+        var relationships = new EmploymentRelationshipService(
+            factory, gateway, NullLogger<EmploymentRelationshipService>.Instance);
+        var controller = Controller(factory, Catalog(), relationships, membership: null);
+
+        var result = await controller.ContinueAsync(
+            ValidRequest("TRIAL"), Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None);
+
+        Assert.IsType<ForbidResult>(result);
+        Assert.Equal(0, gateway.CallCount);
+        await using var db = factory.CreateDbContext();
+        Assert.Empty(db.EmploymentRelationships);
+    }
+
+    private static ContinueAcquisitionRequest ValidRequest(string intent) => new(
+        "DIGITAL_MARKETING_LOCAL_SERVICE", "1.0.0", intent, "1.0.0", "2026-07-18", "ACCEPT_DISCLOSURE");
+
+    private static async Task SeedAdmissionAsync(
+        InMemoryEmploymentRelationshipFactory factory,
+        Guid tenantId)
+    {
+        await using var db = factory.CreateDbContext();
+        db.AgentAdmissions.Add(new AgentAdmission
+        {
+            TenantId = tenantId,
+            ProfessionalTypeId = "DIGITAL_MARKETING_LOCAL_SERVICE",
+            ProfessionalVersion = "1.0.0",
+            OwnerSubjectId = Guid.NewGuid(),
+            State = AgentAdmissionState.Active,
+        });
+        await db.SaveChangesAsync();
+    }
+
     private static AcquisitionController Controller(
         InMemoryEmploymentRelationshipFactory factory,
         IProfessionalCatalog catalog,
         EmploymentRelationshipService relationships,
-        Guid tenantId,
-        Guid participantId)
+        CustomerWorkspaceMembership? membership)
     {
         var controller = new AcquisitionController(factory, catalog, relationships)
         {
@@ -92,11 +169,15 @@ public sealed class AcquisitionControllerTests
                 HttpContext = new DefaultHttpContext
                 {
                     User = new ClaimsPrincipal(new ClaimsIdentity(
-                        [new Claim("participant_id", participantId.ToString())], "Test")),
+                        [new Claim("sub", "google-oauth2|customer-subject")], "Test")),
                 },
             },
         };
-        controller.HttpContext.Items[TenantIsolationMiddleware.TenantIdItemKey] = tenantId.ToString();
+        if (membership is not null)
+        {
+            controller.HttpContext.Items[TenantIsolationMiddleware.TenantIdItemKey] = membership.TenantId.ToString();
+            controller.HttpContext.Items[CustomerMembershipMiddleware.MembershipItem] = membership;
+        }
         return controller;
     }
 

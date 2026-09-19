@@ -98,15 +98,15 @@ describe('F2 registration flow', () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
-  it('reauthenticates directly when registration requires a fresh session', async () => {
+  it.each(['trial', 'hire'] as const)('reauthenticates directly when %s registration requires a fresh session', async (intent) => {
     global.fetch = jest.fn(() => jsonResponse({ code: 'IDENTITY_STEP_UP_REQUIRED' }, 403));
-    render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} returnTo="/marketplace/digital-marketing?intent=trial" />);
+    render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} returnTo={`/marketplace?professionalType=DIGITAL_MARKETING&version=3.1.0&intent=${intent}`} />);
 
     expect(await screen.findByText(getIdentityMessages('en').freshSignInRequired)).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: getIdentityMessages('en').continueSecurely }));
 
     expect(signIn).toHaveBeenCalledWith('keycloak-google', {
-      callbackUrl: '/register?returnTo=%2Fmarketplace%2Fdigital-marketing%3Fintent%3Dtrial',
+      callbackUrl: `/register?returnTo=%2Fmarketplace%3FprofessionalType%3DDIGITAL_MARKETING%26version%3D3.1.0%26intent%3D${intent}`,
     }, { max_age: '0', prompt: 'select_account' });
     expect(replace).not.toHaveBeenCalled();
   });
