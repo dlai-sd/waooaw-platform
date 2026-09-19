@@ -12,37 +12,53 @@ const articleSlugs = new Set(listPublishedArticles().map(({ slug }) => slug));
 const protectedFamilies = new Set(['home', 'relationships', 'marketplace', 'alerts', 'settings', 'profile', 'founder']);
 
 function contentSecurityPolicy(nonce: string): string {
-	return `default-src 'self'; script-src 'self' 'nonce-${nonce}' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`;
+  return `default-src 'self'; script-src 'self' 'nonce-${nonce}' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`;
 }
 
 function publicResponse(request: NextRequest, nonce: string): NextResponse {
-	const requestHeaders = new Headers(request.headers);
-	requestHeaders.set('x-nonce', nonce);
-	requestHeaders.set('Content-Security-Policy', contentSecurityPolicy(nonce));
-	return NextResponse.next({ request: { headers: requestHeaders } });
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-nonce', nonce);
+  requestHeaders.set('Content-Security-Policy', contentSecurityPolicy(nonce));
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 function secure(response: NextResponse, nonce: string): NextResponse {
-	response.headers.set('Content-Security-Policy', contentSecurityPolicy(nonce));
-	return response;
+  response.headers.set('Content-Security-Policy', contentSecurityPolicy(nonce));
+  return response;
 }
 
 export default async function middleware(request: NextRequest, event: NextFetchEvent) {
-	const nonce = crypto.randomUUID();
-	const [, family, slug, extra] = request.nextUrl.pathname.split('/');
-	if (family === 'professionals' && slug !== 'mine') {
-		if (extra || (slug && !professionalSlugs.has(slug))) return secure(new NextResponse('Not found', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Robots-Tag': 'noindex, nofollow' } }), nonce);
-		return secure(publicResponse(request, nonce), nonce);
-	}
-	if (family === 'blogs') {
-		if (extra || (slug && !articleSlugs.has(slug))) return secure(new NextResponse('Not found', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Robots-Tag': 'noindex, nofollow' } }), nonce);
-		return secure(publicResponse(request, nonce), nonce);
-	}
-	if (protectedFamilies.has(family)) {
-		const authResponse = await protectedMiddleware(request as NextRequestWithAuth, event);
-		return secure(authResponse instanceof NextResponse ? authResponse : publicResponse(request, nonce), nonce);
-	}
-	return secure(publicResponse(request, nonce), nonce);
+  const nonce = crypto.randomUUID();
+  const [, family, slug, extra] = request.nextUrl.pathname.split('/');
+  if (family === 'professionals' && slug !== 'mine') {
+    if (extra || (slug && !professionalSlugs.has(slug)))
+      return secure(
+        new NextResponse('Not found', {
+          status: 404,
+          headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Robots-Tag': 'noindex, nofollow' },
+        }),
+        nonce
+      );
+    return secure(publicResponse(request, nonce), nonce);
+  }
+  if (family === 'blogs') {
+    if (extra || (slug && !articleSlugs.has(slug)))
+      return secure(
+        new NextResponse('Not found', {
+          status: 404,
+          headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Robots-Tag': 'noindex, nofollow' },
+        }),
+        nonce
+      );
+    return secure(publicResponse(request, nonce), nonce);
+  }
+  if (protectedFamilies.has(family)) {
+    const authResponse = await protectedMiddleware(request as NextRequestWithAuth, event);
+    return secure(authResponse instanceof NextResponse ? authResponse : publicResponse(request, nonce), nonce);
+  }
+  return secure(publicResponse(request, nonce), nonce);
 }
 
-export const config = { matcher: ['/((?!api|_next/static|_next/image|favicon.ico|sw.js|workbox-|manifest.webmanifest).*)'] };
+export const config = {
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|sw.js|workbox-|manifest.webmanifest).*)'],
+};

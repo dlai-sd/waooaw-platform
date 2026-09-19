@@ -63,10 +63,14 @@ describe('WC-078 professional journey showcase content', () => {
       expect(content.heroSubtitle.trim().length).toBeGreaterThan(0);
       expect(content.finalMessage.trim().length).toBeGreaterThan(0);
       expect(content.accessibleSummary.trim().length).toBeGreaterThan(0);
-      expect(Object.keys(content.railLabels).sort()).toEqual(['business', 'goals', 'ways-of-working', 'working'].sort());
+      expect(Object.keys(content.railLabels).sort()).toEqual(
+        ['business', 'goals', 'ways-of-working', 'working'].sort()
+      );
       expect(Object.values(content.railLabels).every((label) => label.trim().length > 0)).toBe(true);
       expect(content.stories).toHaveLength(2);
-      expect(content.stories.map((story) => story.id).sort()).toEqual(['agricultural-advisor', 'digital-marketing-professional'].sort());
+      expect(content.stories.map((story) => story.id).sort()).toEqual(
+        ['agricultural-advisor', 'digital-marketing-professional'].sort()
+      );
       const stageIds = new Set<string>();
       for (const story of content.stories) {
         expect(story.selectorLabel.trim().length).toBeGreaterThan(0);
@@ -95,9 +99,11 @@ describe('WC-078 professional journey showcase content', () => {
       if (!isAllowedFallback(content.heroTitle)) expect(content.heroTitle).not.toBe(english.heroTitle);
       if (!isAllowedFallback(content.heroSubtitle)) expect(content.heroSubtitle).not.toBe(english.heroSubtitle);
       if (!isAllowedFallback(content.finalMessage)) expect(content.finalMessage).not.toBe(english.finalMessage);
-      if (!isAllowedFallback(content.accessibleSummary)) expect(content.accessibleSummary).not.toBe(english.accessibleSummary);
+      if (!isAllowedFallback(content.accessibleSummary))
+        expect(content.accessibleSummary).not.toBe(english.accessibleSummary);
       for (const railId of Object.keys(content.railLabels) as (keyof typeof content.railLabels)[]) {
-        if (!isAllowedFallback(content.railLabels[railId])) expect(content.railLabels[railId]).not.toBe(english.railLabels[railId]);
+        if (!isAllowedFallback(content.railLabels[railId]))
+          expect(content.railLabels[railId]).not.toBe(english.railLabels[railId]);
       }
       content.stories.forEach((story, storyIndex) => {
         const englishStory = english.stories[storyIndex];

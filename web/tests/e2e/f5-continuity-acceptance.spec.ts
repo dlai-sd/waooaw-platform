@@ -7,11 +7,26 @@ import { encode } from 'next-auth/jwt';
 
 const secret = 'playwright-only-not-a-runtime-secret';
 const bpUrl = 'http://127.0.0.1:5001';
+type Handoff = {
+  handoffId: string;
+  continuityEnvelope: { idempotencyKey: string } & Record<string, unknown>;
+};
 
 async function addSession(context: BrowserContext, projectName: string) {
   const accessToken = `fixture-access-token-${projectName}`;
-  const value = await encode({ secret, maxAge: 3600, token: { accessToken, accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600, founder: false, sub: `fixture-user-${projectName}` } });
-  await context.addCookies([{ name: 'next-auth.session-token', value, domain: '127.0.0.1', httpOnly: true, path: '/', sameSite: 'Lax' }]);
+  const value = await encode({
+    secret,
+    maxAge: 3600,
+    token: {
+      accessToken,
+      accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+      founder: false,
+      sub: `fixture-user-${projectName}`,
+    },
+  });
+  await context.addCookies([
+    { name: 'next-auth.session-token', value, domain: '127.0.0.1', httpOnly: true, path: '/', sameSite: 'Lax' },
+  ]);
   return accessToken;
 }
 
@@ -19,17 +34,34 @@ function headers(accessToken: string, idempotencyKey?: string) {
   return { Authorization: `Bearer ${accessToken}`, ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}) };
 }
 
-async function prepare(request: APIRequestContext, accessToken: string, relationshipId: string, idempotencyKey: string, targetChannel = 'WEB') {
+async function prepare(
+  request: APIRequestContext,
+  accessToken: string,
+  relationshipId: string,
+  idempotencyKey: string,
+  targetChannel = 'WEB'
+) {
   return request.post(`${bpUrl}/api/v1/employment/relationships/${relationshipId}/handoffs`, {
-    headers: headers(accessToken, idempotencyKey), data: { targetChannel },
+    headers: headers(accessToken, idempotencyKey),
+    data: { targetChannel },
   });
 }
 
-async function activate(request: APIRequestContext, accessToken: string, relationshipId: string, handoff: any, targetConversationId = 'web-conversation', extraHeaders = {}) {
-  return request.post(`${bpUrl}/api/v1/employment/relationships/${relationshipId}/handoffs/${handoff.handoffId}/activate`, {
-    headers: { ...headers(accessToken, handoff.continuityEnvelope.idempotencyKey), ...extraHeaders },
-    data: { targetConversationId, continuityEnvelope: handoff.continuityEnvelope },
-  });
+async function activate(
+  request: APIRequestContext,
+  accessToken: string,
+  relationshipId: string,
+  handoff: Handoff,
+  targetConversationId = 'web-conversation',
+  extraHeaders: Record<string, string> = {}
+) {
+  return request.post(
+    `${bpUrl}/api/v1/employment/relationships/${relationshipId}/handoffs/${handoff.handoffId}/activate`,
+    {
+      headers: { ...headers(accessToken, handoff.continuityEnvelope.idempotencyKey), ...extraHeaders },
+      data: { targetConversationId, continuityEnvelope: handoff.continuityEnvelope },
+    }
+  );
 }
 
 test.beforeEach(async ({ context }, testInfo) => {
@@ -37,8 +69,15 @@ test.beforeEach(async ({ context }, testInfo) => {
   await addSession(context, testInfo.project.name);
 });
 
-test('UX-CONT-01 UX-CONT-02: prepared source remains active and evidenced activation renders target content', async ({ context, page, request }, testInfo) => {
-  test.skip(!['chromium-expanded', 'chromium-compact-360'].includes(testInfo.project.name), 'Required F5 viewports only.');
+test('UX-CONT-01 UX-CONT-02: prepared source remains active and evidenced activation renders target content', async ({
+  context,
+  page,
+  request,
+}, testInfo) => {
+  test.skip(
+    !['chromium-expanded', 'chromium-compact-360'].includes(testInfo.project.name),
+    'Required F5 viewports only.'
+  );
   const accessToken = await addSession(context, testInfo.project.name);
   const relationshipId = `relationship-handoff-${testInfo.project.name}`;
   const preparedResponse = await prepare(request, accessToken, relationshipId, 'prepare-and-activate');
@@ -53,18 +92,24 @@ test('UX-CONT-01 UX-CONT-02: prepared source remains active and evidenced activa
   await page.goto(`/relationships/${relationshipId}`);
   await expect(page.getByRole('heading', { level: 1, name: 'DIGITAL_MARKETING relationship' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Emergency Stop' })).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
-  const contained = await page.locator('.workspace-nav, .workspace-family, .evidence-window').evaluateAll((elements) => elements.every((element) => {
-    const bounds = element.getBoundingClientRect();
-    return bounds.left >= 0 && bounds.right <= innerWidth;
-  }));
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(
+    true
+  );
+  const contained = await page.locator('.workspace-nav, .workspace-family, .evidence-window').evaluateAll((elements) =>
+    elements.every((element) => {
+      const bounds = element.getBoundingClientRect();
+      return bounds.left >= 0 && bounds.right <= innerWidth;
+    })
+  );
   expect(contained).toBe(true);
   const axe = await new AxeBuilder({ page }).analyze();
   expect(axe.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious')).toEqual([]);
   await expect(page).toHaveScreenshot('f5-activated-relationship.png', { fullPage: true, animations: 'disabled' });
 });
 
-test('UX-CONT-03 UX-CONT-04: timeout preserves source and replay is exact or conflicts without mutation', async ({ request }, testInfo) => {
+test('UX-CONT-03 UX-CONT-04: timeout preserves source and replay is exact or conflicts without mutation', async ({
+  request,
+}, testInfo) => {
   const accessToken = `fixture-access-token-${testInfo.project.name}`;
   const relationshipId = `relationship-replay-${testInfo.project.name}`;
   const firstResponse = await prepare(request, accessToken, relationshipId, 'stable-replay');
@@ -80,13 +125,17 @@ test('UX-CONT-03 UX-CONT-04: timeout preserves source and replay is exact or con
   expect((await divergent.json()).code).toBe('IDEMPOTENCY_CONFLICT');
 });
 
-test('UX-CONT-05: downgrade and cross-tenant attempts disclose no relationship content', async ({ request }, testInfo) => {
+test('UX-CONT-05: downgrade and cross-tenant attempts disclose no relationship content', async ({
+  request,
+}, testInfo) => {
   const accessToken = `fixture-access-token-${testInfo.project.name}`;
   const relationshipId = `relationship-denial-${testInfo.project.name}`;
   const prepared = await (await prepare(request, accessToken, relationshipId, 'denial')).json();
   for (const response of [
     await activate(request, accessToken, relationshipId, prepared, 'downgrade'),
-    await activate(request, accessToken, relationshipId, prepared, 'web-conversation', { 'X-Fixture-Tenant': 'foreign' }),
+    await activate(request, accessToken, relationshipId, prepared, 'web-conversation', {
+      'X-Fixture-Tenant': 'foreign',
+    }),
   ]) {
     expect(response.status()).toBe(404);
     const body = await response.text();
@@ -95,12 +144,16 @@ test('UX-CONT-05: downgrade and cross-tenant attempts disclose no relationship c
   }
 });
 
-test('UX-CONT-06 UX-RES-02: Stop preempts handoff and reconnect cannot claim or release continuity', async ({ page, request }, testInfo) => {
+test('UX-CONT-06 UX-RES-02: Stop preempts handoff and reconnect cannot claim or release continuity', async ({
+  page,
+  request,
+}, testInfo) => {
   const accessToken = `fixture-access-token-${testInfo.project.name}`;
   const relationshipId = `relationship-stopped-${testInfo.project.name}`;
   const prepared = await (await prepare(request, accessToken, relationshipId, 'stop-preempts')).json();
   const stopped = await request.post(`${bpUrl}/api/v1/employment/relationships/${relationshipId}/emergency-stop`, {
-    headers: headers(accessToken), data: { correlationId: 'c0000000-0000-4000-8000-000000000001' },
+    headers: headers(accessToken),
+    data: { correlationId: 'c0000000-0000-4000-8000-000000000001' },
   });
   expect(stopped.ok()).toBe(true);
   expect((await activate(request, accessToken, relationshipId, prepared)).status()).toBe(409);

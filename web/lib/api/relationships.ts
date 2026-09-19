@@ -23,8 +23,23 @@ export interface RelationshipEvaluationProjection {
   nextContextQuestion?: string | null;
   trial?: { trialId: string; startsAt: string; expiresAt: string; status: string } | null;
   goals: Array<{ goalId: string; goal: string; measure: string; status: string; reviewCadenceMonths: number }>;
-  skills: Array<{ configurationId: string; skillId: string; skillVersion: string; subjectVersion: string; applicability: string; applicabilityReason?: string | null; authorityState: string; status: string }>;
-  decisionSpace?: { version: number; budgetCeilingInrPaise: number; authorityBoundaries: unknown[]; stopConditions: unknown[]; reviewCadenceMonths: number } | null;
+  skills: Array<{
+    configurationId: string;
+    skillId: string;
+    skillVersion: string;
+    subjectVersion: string;
+    applicability: string;
+    applicabilityReason?: string | null;
+    authorityState: string;
+    status: string;
+  }>;
+  decisionSpace?: {
+    version: number;
+    budgetCeilingInrPaise: number;
+    authorityBoundaries: unknown[];
+    stopConditions: unknown[];
+    reviewCadenceMonths: number;
+  } | null;
 }
 
 export interface ContractJourneyProjection {
@@ -42,7 +57,19 @@ export interface ContractJourneyProjection {
     limitations: string[];
     authorityTerms: string[];
     stopTerms: string[];
-    priceTax: { currency: string; grossAmountInrPaise: number; gstAmountInrPaise: number; cadence: string; subscriptionTerms: string; adSpendTreatment: string; cancellationAndRefundTerms: string; offeringId?: string; bundleTier?: string; quoteVersion?: string; renewalConsequence?: string };
+    priceTax: {
+      currency: string;
+      grossAmountInrPaise: number;
+      gstAmountInrPaise: number;
+      cadence: string;
+      subscriptionTerms: string;
+      adSpendTreatment: string;
+      cancellationAndRefundTerms: string;
+      offeringId?: string;
+      bundleTier?: string;
+      quoteVersion?: string;
+      renewalConsequence?: string;
+    };
   };
 }
 
@@ -50,13 +77,10 @@ const businessPlatformUrl = process.env.BUSINESS_PLATFORM_URL ?? 'http://localho
 
 export async function listEmploymentRelationships(
   accessToken: string,
-  cursor?: string,
+  cursor?: string
 ): Promise<EmploymentRelationshipCollectionV1> {
   const api = new EmploymentApi(new Configuration({ basePath: businessPlatformUrl, accessToken }));
-  return api.listEmploymentRelationships(
-    { cursor, limit: 24 },
-    { cache: 'no-store' },
-  );
+  return api.listEmploymentRelationships({ cursor, limit: 24 }, { cache: 'no-store' });
 }
 
 async function authorizedGet(path: string, accessToken: string): Promise<unknown> {
@@ -87,21 +111,26 @@ export async function getRelationshipTimeline(relationshipId: string, accessToke
 
 export async function getRelationshipEvaluation(
   relationshipId: string,
-  accessToken: string,
+  accessToken: string
 ): Promise<RelationshipEvaluationProjection> {
   const api = new RelationshipWorkspaceApi(new Configuration({ basePath: businessPlatformUrl, accessToken }));
   return api.getRelationshipEvaluation(
     { relationshipId },
-    { cache: 'no-store' },
+    { cache: 'no-store' }
   ) as unknown as Promise<RelationshipEvaluationProjection>;
 }
 
 export async function getContractJourney(
-  relationshipId: string, accessToken: string,
+  relationshipId: string,
+  accessToken: string
 ): Promise<ContractJourneyProjection | null> {
-  const response = await fetch(`${businessPlatformUrl}/api/v1/employment/relationships/${encodeURIComponent(relationshipId)}/contract-journey`, {
-    headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store',
-  });
+  const response = await fetch(
+    `${businessPlatformUrl}/api/v1/employment/relationships/${encodeURIComponent(relationshipId)}/contract-journey`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: 'no-store',
+    }
+  );
   if (response.status === 204) return null;
   if (!response.ok) throw new Error(`Business Platform request failed with ${response.status}.`);
   return response.json() as Promise<ContractJourneyProjection>;

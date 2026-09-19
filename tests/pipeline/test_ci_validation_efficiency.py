@@ -43,8 +43,8 @@ def test_test_runner_contains_wc100_nested_docker_tools() -> None:
 def test_full_runner_avoids_post_copy_metadata_mutation() -> None:
     source = TEST_RUNNER_PATH.read_text(encoding="utf-8")
 
-    assert "COPY --chown=waooaw:waooaw . /workspace/" in source
-    assert "COPY --link --chown=waooaw:waooaw --chmod=0755 scripts/*.sh /workspace/scripts/" in source
+    assert "COPY --chown=waooaw:waooaw web/package.json web/pnpm-lock.yaml /opt/waooaw-web/" in source
+    assert "COPY --chown=waooaw:waooaw . /workspace/" not in source
     assert "RUN chmod +x scripts/*.sh" not in source
 
 
@@ -86,7 +86,8 @@ def test_shadow_mode_keeps_full_ci_authoritative() -> None:
     ci = load_ci()
 
     assert "validation/engineering-validation.yaml" in source
-    assert "WC-100 validation plan (Shadow)" in source
+    assert "WC-102 validation plan (Shadow)" in source
+    assert "chmod 0777 test-results/wc102" in source
     assert ci["jobs"]["build"]["if"] == "github.event_name == 'pull_request'"
     assert "validation-plan" in ci["jobs"]["qa-campaign"]["needs"]
     assert "build" in ci["jobs"]["qa-campaign"]["needs"]
@@ -98,3 +99,5 @@ def test_language_tests_use_docker_runners() -> None:
     assert "docker compose --profile test-python run" in source
     assert "docker compose --profile test-dotnet run" in source
     assert "docker compose --profile test-ts run" in source
+    assert "export COVERAGE_FILE=/tmp/.coverage" in source
+    assert 'export BaseIntermediateOutputPath="/tmp/dependency-audit/$project_name/obj/"' in source

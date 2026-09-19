@@ -13,5 +13,9 @@ export default async function FounderLayout({ children }: { children: ReactNode 
   if (!session?.authenticated) redirect('/login');
   if (!session.founder) redirect('/403');
   const { messages } = await getRequestI18n();
-  return <ProtectedAppShell messages={messages} variant="founder">{children}</ProtectedAppShell>;
+  return (
+    <ProtectedAppShell messages={messages} variant="founder">
+      {children}
+    </ProtectedAppShell>
+  );
 }

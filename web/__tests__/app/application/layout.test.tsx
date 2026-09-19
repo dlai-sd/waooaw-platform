@@ -11,7 +11,9 @@ jest.mock('@/lib/i18n-server', () => ({ getRequestI18n: jest.fn() }));
 jest.mock('@/lib/server-auth', () => ({ getServerAccessToken: jest.fn() }));
 jest.mock('@/components/shell/ProtectedAppShell', () => ({
   ProtectedAppShell: ({ children, identitySession }: { children: React.ReactNode; identitySession?: unknown }) => (
-    <div data-has-membership={identitySession !== undefined} data-testid="application-shell">{children}</div>
+    <div data-has-membership={identitySession !== undefined} data-testid="application-shell">
+      {children}
+    </div>
   ),
 }));
 
@@ -19,7 +21,9 @@ beforeEach(() => {
   jest.clearAllMocks();
   jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
   jest.mocked(getRequestI18n).mockResolvedValue({ locale: 'en', messages: {} } as never);
-  jest.mocked(redirect).mockImplementation(() => { throw new Error('NEXT_REDIRECT'); });
+  jest.mocked(redirect).mockImplementation(() => {
+    throw new Error('NEXT_REDIRECT');
+  });
 });
 
 it('admits an authenticated visitor without creating workspace membership', async () => {

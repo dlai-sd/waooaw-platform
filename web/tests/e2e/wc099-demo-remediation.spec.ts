@@ -9,23 +9,33 @@ import { supportedLocales } from '../../lib/preferences';
 const secret = 'playwright-only-not-a-runtime-secret';
 
 async function addSession(context: BrowserContext, projectName: string) {
-  const value = await encode({ secret, maxAge: 3600, token: {
-    accessToken: `fixture-access-token-wc099-${projectName}`,
-    accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
-    founder: false,
-    sub: `fixture-user-wc099-${projectName}`,
-  } });
-  await context.addCookies([{ name: 'next-auth.session-token', value, domain: '127.0.0.1', httpOnly: true, path: '/', sameSite: 'Lax' }]);
+  const value = await encode({
+    secret,
+    maxAge: 3600,
+    token: {
+      accessToken: `fixture-access-token-wc099-${projectName}`,
+      accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+      founder: false,
+      sub: `fixture-user-wc099-${projectName}`,
+    },
+  });
+  await context.addCookies([
+    { name: 'next-auth.session-token', value, domain: '127.0.0.1', httpOnly: true, path: '/', sameSite: 'Lax' },
+  ]);
 }
 
 async function expectNoOverflow(page: Page) {
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(
+    true
+  );
 }
 
 async function expectPortalTypography(page: Page) {
   const metrics = await page.locator('.app-shell-customer:visible').evaluate((shell) => {
     const visibleText = [...shell.querySelectorAll<HTMLElement>('*')].filter((element) => {
-      const hasDirectText = [...element.childNodes].some((node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim());
+      const hasDirectText = [...element.childNodes].some(
+        (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim()
+      );
       const bounds = element.getBoundingClientRect();
       return hasDirectText && bounds.width > 0 && bounds.height > 0;
     });
@@ -37,27 +47,42 @@ async function expectPortalTypography(page: Page) {
       bodySize: Number.parseFloat(getComputedStyle(body).fontSize),
       titleSize: Number.parseFloat(getComputedStyle(title).fontSize),
       sizes: [...new Set(visibleText.map((element) => Number.parseFloat(getComputedStyle(element).fontSize)))],
-      letterSpacing: [...new Set(visibleText.map((element) => {
-        const spacing = getComputedStyle(element).letterSpacing;
-        return spacing === 'normal' ? 0 : Number.parseFloat(spacing);
-      }))],
+      letterSpacing: [
+        ...new Set(
+          visibleText.map((element) => {
+            const spacing = getComputedStyle(element).letterSpacing;
+            return spacing === 'normal' ? 0 : Number.parseFloat(spacing);
+          })
+        ),
+      ],
       topPadding: Number.parseFloat(getComputedStyle(content).paddingTop),
     };
   });
   expect(metrics.sizes).toEqual(expect.arrayContaining([metrics.bodySize, metrics.titleSize]));
   expect(metrics.sizes).toHaveLength(2);
-  expect(metrics.titleSize - metrics.bodySize).toBeCloseTo(2 * 96 / 72, 2);
+  expect(metrics.titleSize - metrics.bodySize).toBeCloseTo((2 * 96) / 72, 2);
   expect(metrics.letterSpacing).toEqual([0]);
   expect(metrics.topPadding).toBeCloseTo(metrics.bodySize, 2);
 }
 
 async function expectCardGrid(cards: Locator, columns: 1 | 2) {
   await expect.poll(() => cards.count()).toBeGreaterThanOrEqual(2);
-  const boxes = await cards.evaluateAll((items) => items.map((item) => {
-    const bounds = item.getBoundingClientRect();
-    return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height, viewportWidth: document.documentElement.clientWidth, contentFits: item.scrollHeight <= item.clientHeight + 1 };
-  }));
-  expect(boxes.every(({ x, width, viewportWidth, contentFits }) => x >= 0 && x + width <= viewportWidth && contentFits)).toBe(true);
+  const boxes = await cards.evaluateAll((items) =>
+    items.map((item) => {
+      const bounds = item.getBoundingClientRect();
+      return {
+        x: bounds.x,
+        y: bounds.y,
+        width: bounds.width,
+        height: bounds.height,
+        viewportWidth: document.documentElement.clientWidth,
+        contentFits: item.scrollHeight <= item.clientHeight + 1,
+      };
+    })
+  );
+  expect(
+    boxes.every(({ x, width, viewportWidth, contentFits }) => x >= 0 && x + width <= viewportWidth && contentFits)
+  ).toBe(true);
   if (columns === 2) {
     for (let index = 0; index < boxes.length; index += 2) {
       if (boxes[index + 1]) expect(Math.abs(boxes[index].y - boxes[index + 1].y)).toBeLessThanOrEqual(1);
@@ -67,13 +92,23 @@ async function expectCardGrid(cards: Locator, columns: 1 | 2) {
   }
 }
 
-function expectNoIntersection(first: { x: number; y: number; width: number; height: number }, second: { x: number; y: number; width: number; height: number }) {
-  expect(first.x + first.width <= second.x || second.x + second.width <= first.x
-    || first.y + first.height <= second.y || second.y + second.height <= first.y).toBe(true);
+function expectNoIntersection(
+  first: { x: number; y: number; width: number; height: number },
+  second: { x: number; y: number; width: number; height: number }
+) {
+  expect(
+    first.x + first.width <= second.x ||
+      second.x + second.width <= first.x ||
+      first.y + first.height <= second.y ||
+      second.y + second.height <= first.y
+  ).toBe(true);
 }
 
 async function attachScreenshot(page: Page, testInfo: TestInfo, name: string) {
-  await testInfo.attach(name, { body: await page.screenshot({ animations: 'disabled', fullPage: true }), contentType: 'image/png' });
+  await testInfo.attach(name, {
+    body: await page.screenshot({ animations: 'disabled', fullPage: true }),
+    contentType: 'image/png',
+  });
 }
 
 test.beforeEach(async ({ context }) => {
@@ -102,22 +137,30 @@ test('R-001 R-002 R-003: disclosure precedes provider handoff and cancel is iner
   await attachScreenshot(page, testInfo, 'login-after-disclosure-cancel');
 });
 
-test('R-003: logout and second login request explicit Google account selection', async ({ context, page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'chromium-expanded', 'One clean Chromium broker-boundary journey proves the account switch contract.');
+test('R-003: logout and second login request explicit Google account selection', async ({
+  context,
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== 'chromium-expanded',
+    'One clean Chromium broker-boundary journey proves the account switch contract.'
+  );
   await addSession(context, testInfo.project.name);
   await page.goto('/home');
   await page.waitForURL('**/professionals/mine');
   await page.locator('summary[aria-label="Account"]').first().click();
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page).toHaveURL('http://127.0.0.1:3000/');
-  await expect.poll(async () => context.cookies()).toEqual(expect.not.arrayContaining([
-    expect.objectContaining({ name: 'next-auth.session-token' }),
-  ]));
+  await expect
+    .poll(async () => context.cookies())
+    .toEqual(expect.not.arrayContaining([expect.objectContaining({ name: 'next-auth.session-token' })]));
 
   await page.route('**/api/auth/signin/keycloak-google?**', async (route) => {
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify({ url: 'http://localhost:8080/realms/waooaw/protocol/openid-connect/auth?prompt=select_account' }),
+      body: JSON.stringify({
+        url: 'http://localhost:8080/realms/waooaw/protocol/openid-connect/auth?prompt=select_account',
+      }),
     });
   });
   await page.route('http://localhost:8080/realms/waooaw/protocol/openid-connect/auth?**', async (route) => {
@@ -133,25 +176,39 @@ test('R-003: logout and second login request explicit Google account selection',
 });
 
 for (const intent of ['trial', 'hire'] as const) {
-  test(`R-003 R-005 R-006: stale registration authentication reauthenticates without losing ${intent} intent`, async ({ context, page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'chromium-expanded', 'One Chromium broker-boundary journey per acquisition intent proves fresh-auth continuation parameters.');
+  test(`R-003 R-005 R-006: stale registration authentication reauthenticates without losing ${intent} intent`, async ({
+    context,
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== 'chromium-expanded',
+      'One Chromium broker-boundary journey per acquisition intent proves fresh-auth continuation parameters.'
+    );
     const acquisitionTarget = `/marketplace?professionalType=DIGITAL_MARKETING&version=3.1.0&intent=${intent}`;
     await addSession(context, testInfo.project.name);
-    await page.route('**/api/identity/registration', async (route) => route.fulfill({
-      status: 403,
-      contentType: 'application/json',
-      body: JSON.stringify({ code: 'IDENTITY_STEP_UP_REQUIRED' }),
-    }));
-    await page.route('**/api/auth/signin/keycloak-google?**', async (route) => route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({ url: 'http://localhost:8080/realms/waooaw/protocol/openid-connect/auth?prompt=select_account&max_age=0' }),
-    }));
+    await page.route('**/api/identity/registration', async (route) =>
+      route.fulfill({
+        status: 403,
+        contentType: 'application/json',
+        body: JSON.stringify({ code: 'IDENTITY_STEP_UP_REQUIRED' }),
+      })
+    );
+    await page.route('**/api/auth/signin/keycloak-google?**', async (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          url: 'http://localhost:8080/realms/waooaw/protocol/openid-connect/auth?prompt=select_account&max_age=0',
+        }),
+      })
+    );
     await page.route('http://localhost:8080/realms/waooaw/protocol/openid-connect/auth?**', async (route) => {
       await route.fulfill({ contentType: 'text/html', body: '<title>Test identity provider</title>' });
     });
 
     await page.goto(`/register?returnTo=${encodeURIComponent(acquisitionTarget)}`);
-    await expect(page.getByText('For your security, sign in again to continue. Your account was not changed.')).toBeVisible();
+    await expect(
+      page.getByText('For your security, sign in again to continue. Your account was not changed.')
+    ).toBeVisible();
     const brokerRequest = page.waitForRequest((request) => request.url().includes('/api/auth/signin/keycloak-google'));
     await page.getByRole('button', { name: 'Continue securely' }).click();
 
@@ -159,14 +216,23 @@ for (const intent of ['trial', 'hire'] as const) {
     const requestUrl = new URL(request.url());
     expect(requestUrl.searchParams.get('prompt')).toBe('select_account');
     expect(requestUrl.searchParams.get('max_age')).toBe('0');
-    expect(new URLSearchParams(request.postData() ?? '').get('callbackUrl'))
-      .toBe(`/register?returnTo=${encodeURIComponent(acquisitionTarget)}`);
-    await expect(page).toHaveURL(/localhost:8080\/realms\/waooaw\/protocol\/openid-connect\/auth\?prompt=select_account&max_age=0/);
+    expect(new URLSearchParams(request.postData() ?? '').get('callbackUrl')).toBe(
+      `/register?returnTo=${encodeURIComponent(acquisitionTarget)}`
+    );
+    await expect(page).toHaveURL(
+      /localhost:8080\/realms\/waooaw\/protocol\/openid-connect\/auth\?prompt=select_account&max_age=0/
+    );
   });
 }
 
-test('R-010: account menu dismisses outside and on Escape while restoring focus', async ({ context, page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'chromium-expanded', 'One Chromium interaction journey proves native account-menu dismissal.');
+test('R-010: account menu dismisses outside and on Escape while restoring focus', async ({
+  context,
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== 'chromium-expanded',
+    'One Chromium interaction journey proves native account-menu dismissal.'
+  );
   await addSession(context, testInfo.project.name);
   await page.goto('/marketplace');
   const account = page.locator('summary[aria-label="Account"]').first();
@@ -191,21 +257,28 @@ for (const acquisition of [
     test.setTimeout(60_000);
     await addSession(context, testInfo.project.name);
     await page.goto('/marketplace');
-    const result = await page.evaluate(async (body) => {
-      const response = await fetch('/api/acquisition/continue', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      return { ok: response.ok, status: response.status, body: await response.json() as { relationshipId?: string } };
-    }, {
-      professionalType: 'DIGITAL_MARKETING_LOCAL_SERVICE',
-      professionalVersion: '1.0.0',
-      intent: acquisition.intent,
-      disclosureRevision: '1.0.0',
-      termsVersion: '2026-07-18',
-      idempotencyKey: acquisition.relationshipId,
-    });
+    const result = await page.evaluate(
+      async (body) => {
+        const response = await fetch('/api/acquisition/continue', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        return {
+          ok: response.ok,
+          status: response.status,
+          body: (await response.json()) as { relationshipId?: string },
+        };
+      },
+      {
+        professionalType: 'DIGITAL_MARKETING_LOCAL_SERVICE',
+        professionalVersion: '1.0.0',
+        intent: acquisition.intent,
+        disclosureRevision: '1.0.0',
+        termsVersion: '2026-07-18',
+        idempotencyKey: acquisition.relationshipId,
+      }
+    );
     expect(result.ok, JSON.stringify(result.body)).toBe(true);
     expect(result.body.relationshipId).toBe(acquisition.relationshipId);
     await page.goto('/professionals/mine');
@@ -213,15 +286,26 @@ for (const acquisition of [
     await expect(page).toHaveURL(/\/professionals\/mine$/, { timeout: 20_000 });
     const acquiredAgent = page.getByRole('heading', { name: acquisition.displayName });
     await expect(acquiredAgent).toBeVisible();
-    await expect(acquiredAgent.locator('xpath=ancestor::li[1]').getByRole('link', { name: 'View work' }))
-      .toHaveAttribute('href', `/relationships/${acquisition.relationshipId}`);
+    await expect(
+      acquiredAgent.locator('xpath=ancestor::li[1]').getByRole('link', { name: 'View work' })
+    ).toHaveAttribute('href', `/relationships/${acquisition.relationshipId}`);
   });
 }
 
-test('R-008 R-009 R-010 R-011 R-012 R-017 R-018: desktop shell geometry is stable', async ({ context, page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'chromium-expanded', 'Desktop geometry is normalized in expanded Chromium across contract widths.');
+test('R-008 R-009 R-010 R-011 R-012 R-017 R-018: desktop shell geometry is stable', async ({
+  context,
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== 'chromium-expanded',
+    'Desktop geometry is normalized in expanded Chromium across contract widths.'
+  );
   await addSession(context, testInfo.project.name);
-  for (const viewport of [{ width: 1280, height: 720 }, { width: 1440, height: 900 }, { width: 1920, height: 1080 }]) {
+  for (const viewport of [
+    { width: 1280, height: 720 },
+    { width: 1440, height: 900 },
+    { width: 1920, height: 1080 },
+  ]) {
     await page.setViewportSize(viewport);
     await page.goto('/marketplace');
     const collapse = page.getByRole('button', { name: 'Collapse navigation' });
@@ -245,7 +329,10 @@ test('R-008 R-009 R-010 R-011 R-012 R-017 R-018: desktop shell geometry is stabl
     await expectPortalTypography(page);
     await expect(page.getByRole('search')).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Apply' })).toHaveCount(0);
-    await expectCardGrid(page.locator('section[aria-labelledby="marketplace-title"]:visible').first().locator('.marketplace-grid > li'), 2);
+    await expectCardGrid(
+      page.locator('section[aria-labelledby="marketplace-title"]:visible').first().locator('.marketplace-grid > li'),
+      2
+    );
     const launcherBox = await page.locator('.conversation-launcher:visible').boundingBox();
     const stopBox = await page.locator('.stop-control:visible').boundingBox();
     if (!launcherBox || !stopBox) throw new Error('Persistent control geometry is missing.');
@@ -257,8 +344,14 @@ test('R-008 R-009 R-010 R-011 R-012 R-017 R-018: desktop shell geometry is stabl
   }
 });
 
-test('R-009 R-012: every application route preserves shell origin and typography', async ({ context, page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'chromium-expanded', 'The route-wide desktop matrix is normalized once at 1440x900.');
+test('R-009 R-012: every application route preserves shell origin and typography', async ({
+  context,
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== 'chromium-expanded',
+    'The route-wide desktop matrix is normalized once at 1440x900.'
+  );
   await addSession(context, testInfo.project.name);
   for (const [name, path] of [
     ['home-destination', '/home'],
@@ -288,7 +381,10 @@ test('R-009 R-012: every application route preserves shell origin and typography
 });
 
 test('R-017: every supported locale survives route changes and reload', async ({ context, page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'chromium-expanded', 'One Chromium matrix proves all server-rendered locale cookies and directions.');
+  test.skip(
+    testInfo.project.name !== 'chromium-expanded',
+    'One Chromium matrix proves all server-rendered locale cookies and directions.'
+  );
   await addSession(context, testInfo.project.name);
   await page.goto('/marketplace');
   for (const locale of supportedLocales) {
@@ -304,8 +400,14 @@ test('R-017: every supported locale survives route changes and reload', async ({
   }
 });
 
-test('R-031 R-032: Marketplace and My Agents keep complete two-column and narrow single-column cards', async ({ context, page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'chromium-expanded', 'One Chromium viewport matrix proves the responsive card contract.');
+test('R-031 R-032: Marketplace and My Agents keep complete two-column and narrow single-column cards', async ({
+  context,
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== 'chromium-expanded',
+    'One Chromium viewport matrix proves the responsive card contract.'
+  );
   await addSession(context, testInfo.project.name);
   for (const viewport of [
     { width: 1280, height: 720, columns: 2 as const },
@@ -318,7 +420,11 @@ test('R-031 R-032: Marketplace and My Agents keep complete two-column and narrow
     const marketplace = page.locator('section[aria-labelledby="marketplace-title"]:visible').first();
     await expect(page.getByRole('search')).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Apply' })).toHaveCount(0);
-    expect(await marketplace.locator('.marketplace-heading').evaluate((element) => getComputedStyle(element).borderBottomWidth)).toBe('0px');
+    expect(
+      await marketplace
+        .locator('.marketplace-heading')
+        .evaluate((element) => getComputedStyle(element).borderBottomWidth)
+    ).toBe('0px');
     await expectCardGrid(marketplace.locator('.marketplace-grid > li'), viewport.columns);
     await expectPortalTypography(page);
     await expectNoOverflow(page);
@@ -363,13 +469,30 @@ test('R-015: Guide is a bounded desktop pane with pointer and keyboard resize', 
   await attachScreenshot(page, testInfo, 'guide-desktop-pane');
 });
 
-test('R-014 R-016 R-017 R-018 R-023: compact Guide contains focus, persists truth, and restores its opener', async ({ context, page }, testInfo) => {
+test('R-014 R-016 R-017 R-018 R-023: compact Guide contains focus, persists truth, and restores its opener', async ({
+  context,
+  page,
+}, testInfo) => {
   await addSession(context, testInfo.project.name);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   for (const testCase of [
-    { viewport: { width: 360, height: 800 }, locale: 'hi', message: '\u092e\u0947\u0930\u0947 \u0921\u093f\u091c\u093f\u091f\u0932 \u092a\u0947\u0936\u0947\u0935\u0930 \u0915\u093e \u0915\u093e\u092e \u0914\u0930 \u0905\u0917\u0932\u0947 \u0938\u0924\u094d\u092f\u093e\u092a\u0928 \u0915\u0947 \u0915\u0926\u092e \u0915\u0939\u093e\u0902 \u0926\u093f\u0916\u093e\u0908 \u0926\u0947\u0902\u0917\u0947?' },
-    { viewport: { width: 390, height: 844 }, locale: 'ur', message: '\u0645\u06cc\u0631\u06d2 \u0688\u062c\u06cc\u0679\u0644 \u067e\u06cc\u0634\u06c1 \u0648\u0631 \u06a9\u0627 \u06a9\u0627\u0645 \u0627\u0648\u0631 \u0627\u06af\u0644\u06d2 \u062a\u0635\u062f\u06cc\u0642\u06cc \u0645\u0631\u0627\u062d\u0644 \u06a9\u06c1\u0627\u06ba \u0646\u0638\u0631 \u0622\u0626\u06cc\u06ba \u06af\u06d2\u061f' },
-    { viewport: { width: 768, height: 1024 }, locale: 'en', message: 'Where can I review my professional work and the next verification steps?' },
+    {
+      viewport: { width: 360, height: 800 },
+      locale: 'hi',
+      message:
+        '\u092e\u0947\u0930\u0947 \u0921\u093f\u091c\u093f\u091f\u0932 \u092a\u0947\u0936\u0947\u0935\u0930 \u0915\u093e \u0915\u093e\u092e \u0914\u0930 \u0905\u0917\u0932\u0947 \u0938\u0924\u094d\u092f\u093e\u092a\u0928 \u0915\u0947 \u0915\u0926\u092e \u0915\u0939\u093e\u0902 \u0926\u093f\u0916\u093e\u0908 \u0926\u0947\u0902\u0917\u0947?',
+    },
+    {
+      viewport: { width: 390, height: 844 },
+      locale: 'ur',
+      message:
+        '\u0645\u06cc\u0631\u06d2 \u0688\u062c\u06cc\u0679\u0644 \u067e\u06cc\u0634\u06c1 \u0648\u0631 \u06a9\u0627 \u06a9\u0627\u0645 \u0627\u0648\u0631 \u0627\u06af\u0644\u06d2 \u062a\u0635\u062f\u06cc\u0642\u06cc \u0645\u0631\u0627\u062d\u0644 \u06a9\u06c1\u0627\u06ba \u0646\u0638\u0631 \u0622\u0626\u06cc\u06ba \u06af\u06d2\u061f',
+    },
+    {
+      viewport: { width: 768, height: 1024 },
+      locale: 'en',
+      message: 'Where can I review my professional work and the next verification steps?',
+    },
   ] as const) {
     const { viewport, locale, message } = testCase;
     await page.setViewportSize(viewport);
@@ -403,14 +526,18 @@ test('R-014 R-016 R-017 R-018 R-023: compact Guide contains focus, persists trut
     await expect(messageInput).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(currentOpener).toBeFocused();
-    await expect(page.locator(viewport.width < 768 ? '.bottom-navigation:visible' : '.side-navigation:visible').last()).toBeVisible();
+    await expect(
+      page.locator(viewport.width < 768 ? '.bottom-navigation:visible' : '.side-navigation:visible').last()
+    ).toBeVisible();
     await expect(page.locator('.stop-control:visible').last()).toBeVisible();
     const closedLauncherBox = await currentOpener.boundingBox();
     const closedStopBox = await page.locator('.stop-control:visible').last().boundingBox();
     if (!closedLauncherBox || !closedStopBox) throw new Error('Compact persistent control geometry is missing.');
     expectNoIntersection(closedLauncherBox, closedStopBox);
     await currentOpener.click();
-    await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = '200%';
+    });
     if (viewport.width === 360 && testInfo.project.name.startsWith('chromium')) {
       await page.route('**/api/interactions/portal', async (route) => {
         if (route.request().method() === 'POST') await route.fulfill({ status: 503, body: '{}' });
@@ -418,10 +545,16 @@ test('R-014 R-016 R-017 R-018 R-023: compact Guide contains focus, persists trut
       });
       await page.getByLabel('Ask the Guide').fill('Show a recoverable Guide failure');
       await page.getByRole('button', { name: 'Send' }).click();
-      await expect(page.locator('.conversation-error[role="alert"]')).toHaveText('The Guide response is unresolved. Refresh before retrying.');
+      await expect(page.locator('.conversation-error[role="alert"]')).toHaveText(
+        'The Guide response is unresolved. Refresh before retrying.'
+      );
     }
-    for (const control of [page.locator('.portal-guide textarea:visible').last(), page.getByRole('button', { name: 'Send' }).last(), page.locator('.conversation-error[role="alert"]')]) {
-      if (await control.count() === 0) continue;
+    for (const control of [
+      page.locator('.portal-guide textarea:visible').last(),
+      page.getByRole('button', { name: 'Send' }).last(),
+      page.locator('.conversation-error[role="alert"]'),
+    ]) {
+      if ((await control.count()) === 0) continue;
       const controlBox = await control.boundingBox();
       expect(controlBox?.x).toBeGreaterThanOrEqual(0);
       expect((controlBox?.x ?? 0) + (controlBox?.width ?? 0)).toBeLessThanOrEqual(viewport.width);
@@ -437,7 +570,9 @@ test('R-014 R-016 R-017 R-018 R-023: compact Guide contains focus, persists trut
     expect(axe.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious')).toEqual([]);
     await attachScreenshot(page, testInfo, `compact-guide-${viewport.width}x${viewport.height}`);
     await page.unroute('**/api/interactions/portal');
-    await page.evaluate(() => { document.documentElement.style.fontSize = ''; });
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = '';
+    });
     await page.locator('.conversation-close:visible').last().click();
     await expect(guide).toBeHidden();
   }

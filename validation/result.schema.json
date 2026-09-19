@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://waooaw.com/schemas/validation-result-v1.json",
+  "type": "object",
+  "required": ["schema_version", "base_sha", "head_sha", "runner_digest", "component", "gate", "command_id", "started_at", "duration_ms", "exit_code", "result", "failure_class", "first_cause", "raw_artifacts", "reuse"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "base_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "head_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "runner_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "component": {"type": "string", "minLength": 1},
+    "gate": {"type": "string", "minLength": 1},
+    "command_id": {"type": "string", "minLength": 1},
+    "started_at": {"type": "string", "format": "date-time"},
+    "duration_ms": {"type": "integer", "minimum": 0},
+    "exit_code": {"type": "integer"},
+    "result": {"enum": ["PASS", "FAIL", "BLOCKED", "NOT_APPLICABLE"]},
+    "failure_class": {"enum": ["assertion", "compile", "coverage", "security", "infrastructure", "configuration", "none"]},
+    "first_cause": {"type": "string", "maxLength": 512},
+    "raw_artifacts": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+    "reuse": {
+      "type": "object",
+      "required": ["reused", "trust_source", "invalidation_reason"],
+      "properties": {
+        "reused": {"type": "boolean"},
+        "trust_source": {"type": "string"},
+        "invalidation_reason": {"type": "string"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -17,11 +17,17 @@ class IntersectionObserverStub implements IntersectionObserver {
   readonly rootMargin = '';
   readonly thresholds: readonly number[] = [];
   private readonly callback: IntersectionObserverCallback;
-  constructor(callback: IntersectionObserverCallback) { this.callback = callback; }
-  observe(target: Element) { this.callback([{ isIntersecting: true, target } as IntersectionObserverEntry], this); }
+  constructor(callback: IntersectionObserverCallback) {
+    this.callback = callback;
+  }
+  observe(target: Element) {
+    this.callback([{ isIntersecting: true, target } as IntersectionObserverEntry], this);
+  }
   unobserve() {}
   disconnect() {}
-  takeRecords(): IntersectionObserverEntry[] { return []; }
+  takeRecords(): IntersectionObserverEntry[] {
+    return [];
+  }
 }
 
 function stubMatchMedia(reduced: boolean) {
@@ -42,8 +48,9 @@ describe('public acquisition components', () => {
     document.cookie = 'waooaw_consent=; Max-Age=0; Path=/';
     window.localStorage.clear();
     document.documentElement.style.removeProperty('--announcement-offset');
-    global.fetch = jest.fn(async () => ({ ok: true } as Response));
-    (global as unknown as { IntersectionObserver: typeof IntersectionObserver }).IntersectionObserver = IntersectionObserverStub as unknown as typeof IntersectionObserver;
+    global.fetch = jest.fn(async () => ({ ok: true }) as Response);
+    (global as unknown as { IntersectionObserver: typeof IntersectionObserver }).IntersectionObserver =
+      IntersectionObserverStub as unknown as typeof IntersectionObserver;
     (global as unknown as { ResizeObserver: typeof ResizeObserver }).ResizeObserver = class {
       observe() {}
       unobserve() {}
@@ -55,7 +62,9 @@ describe('public acquisition components', () => {
   it('renders the exact approved hero copy and four professional orbit cards', () => {
     const content = getProfessionalJourneyContent('en');
     expect(content.heroTitle).toBe('Grow your business with WAOOAW AI professionals');
-    expect(content.heroSubtitle).toBe('Guide the work in just ten minutes a day. Spend more time growing your business.');
+    expect(content.heroSubtitle).toBe(
+      'Guide the work in just ten minutes a day. Spend more time growing your business.'
+    );
     const { container } = render(<ProfessionalJourneyShowcase content={content} />);
     expect(container.querySelectorAll('.orbit-card')).toHaveLength(4);
     expect(container.querySelectorAll('.orbit-card.front')).toHaveLength(1);
@@ -109,7 +118,10 @@ describe('public acquisition components', () => {
   it('links every admitted professional to a public detail page', () => {
     render(<PublicCatalogue professionals={listPublicProfessionals()} />);
     expect(screen.getAllByRole('article')).toHaveLength(4);
-    expect(screen.getAllByRole('link', { name: /View scope and limits/i })[0]).toHaveAttribute('href', '/professionals/digital-marketing');
+    expect(screen.getAllByRole('link', { name: /View scope and limits/i })[0]).toHaveAttribute(
+      'href',
+      '/professionals/digital-marketing'
+    );
   });
 
   it('shows role, domain, one outcome, and a truthful publication label on preview cards', () => {
@@ -119,12 +131,26 @@ describe('public acquisition components', () => {
     expect(article).toHaveTextContent('Audience growth and customer acquisition');
     expect(article.querySelectorAll('li')).toHaveLength(1);
     expect(article).toHaveTextContent('Published');
-    expect(screen.getByRole('link', { name: /View scope and limits/i })).toHaveAttribute('href', '/professionals/digital-marketing');
+    expect(screen.getByRole('link', { name: /View scope and limits/i })).toHaveAttribute(
+      'href',
+      '/professionals/digital-marketing'
+    );
   });
 
   it('reserves a header offset that reflects the announcement bar and clears it on dismissal', () => {
     jest.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ height: 48 } as DOMRect);
-    render(<AnnouncementBar announcement={{ enabled: true, headline: 'Planned maintenance', detail: 'this weekend.', ctaLabel: '', href: '', revision: 'r1' }} />);
+    render(
+      <AnnouncementBar
+        announcement={{
+          enabled: true,
+          headline: 'Planned maintenance',
+          detail: 'this weekend.',
+          ctaLabel: '',
+          href: '',
+          revision: 'r1',
+        }}
+      />
+    );
     expect(screen.getByRole('region', { name: 'Announcement' })).toBeVisible();
     expect(document.documentElement.style.getPropertyValue('--announcement-offset')).toBe('48px');
     const dismissButton = screen.getByRole('button', { name: 'Dismiss announcement' });
@@ -133,27 +159,57 @@ describe('public acquisition components', () => {
     expect(screen.queryByRole('region', { name: 'Announcement' })).not.toBeInTheDocument();
     expect(document.documentElement.style.getPropertyValue('--announcement-offset')).toBe('0px');
     expect(document.activeElement).toBe(document.body);
-    expect(JSON.parse(window.localStorage.getItem('waooaw-announcement') ?? '{}')).toEqual({ campaignRevision: 'r1', dismissed: true });
+    expect(JSON.parse(window.localStorage.getItem('waooaw-announcement') ?? '{}')).toEqual({
+      campaignRevision: 'r1',
+      dismissed: true,
+    });
   });
 
   it('keeps the announcement dismissed only for the stored campaign revision', () => {
     jest.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ height: 48 } as DOMRect);
-    const { rerender } = render(<AnnouncementBar announcement={{ enabled: true, headline: 'Notice', detail: '', ctaLabel: '', href: '', revision: 'r1' }} />);
+    const { rerender } = render(
+      <AnnouncementBar
+        announcement={{ enabled: true, headline: 'Notice', detail: '', ctaLabel: '', href: '', revision: 'r1' }}
+      />
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss announcement' }));
-    rerender(<AnnouncementBar announcement={{ enabled: true, headline: 'Notice', detail: '', ctaLabel: '', href: '', revision: 'r1' }} />);
+    rerender(
+      <AnnouncementBar
+        announcement={{ enabled: true, headline: 'Notice', detail: '', ctaLabel: '', href: '', revision: 'r1' }}
+      />
+    );
     expect(screen.queryByRole('region', { name: 'Announcement' })).not.toBeInTheDocument();
-    rerender(<AnnouncementBar announcement={{ enabled: true, headline: 'New notice', detail: '', ctaLabel: '', href: '', revision: 'r2' }} />);
+    rerender(
+      <AnnouncementBar
+        announcement={{ enabled: true, headline: 'New notice', detail: '', ctaLabel: '', href: '', revision: 'r2' }}
+      />
+    );
     expect(screen.getByRole('region', { name: 'Announcement' })).toBeVisible();
   });
 
   it('renders no announcement and no stored offset when the campaign is disabled', () => {
-    render(<AnnouncementBar announcement={{ enabled: false, headline: '', detail: '', ctaLabel: '', href: '', revision: 'r1' }} />);
+    render(
+      <AnnouncementBar
+        announcement={{ enabled: false, headline: '', detail: '', ctaLabel: '', href: '', revision: 'r1' }}
+      />
+    );
     expect(screen.queryByRole('region', { name: 'Announcement' })).not.toBeInTheDocument();
     expect(document.documentElement.style.getPropertyValue('--announcement-offset')).toBe('0px');
   });
 
   it('renders distinct announcement copy and a trial CTA', () => {
-    render(<AnnouncementBar announcement={{ enabled: true, headline: 'Try WAOOAW AI Agents free for 7 days', detail: 'no card required, no commitment.', ctaLabel: 'Start your free trial', href: '/register', revision: 'r1' }} />);
+    render(
+      <AnnouncementBar
+        announcement={{
+          enabled: true,
+          headline: 'Try WAOOAW AI Agents free for 7 days',
+          detail: 'no card required, no commitment.',
+          ctaLabel: 'Start your free trial',
+          href: '/register',
+          revision: 'r1',
+        }}
+      />
+    );
     expect(screen.getByText('Try WAOOAW AI Agents free for 7 days').tagName).toBe('STRONG');
     expect(screen.getByText(/no card required, no commitment/)).toBeVisible();
     expect(screen.getByRole('link', { name: /Start your free trial/ })).toHaveAttribute('href', '/register');
@@ -161,13 +217,22 @@ describe('public acquisition components', () => {
 
   it('renders the company identity and grievance contact in the public footer', () => {
     render(<PublicFooter />);
-    expect(screen.getByText('\u00a9 2026 DLAI Satellite Data (OPC) Pvt Ltd \u00b7 CIN: U62090PN2024OPC230499 \u00b7 Viman Nagar, Pune 411014')).toBeVisible();
+    expect(
+      screen.getByText(
+        '\u00a9 2026 DLAI Satellite Data (OPC) Pvt Ltd \u00b7 CIN: U62090PN2024OPC230499 \u00b7 Viman Nagar, Pune 411014'
+      )
+    ).toBeVisible();
     expect(screen.getByText(/Grievance Officer: Yogesh Khandge/)).toBeVisible();
     expect(screen.getAllByRole('link', { name: 'customersupport@dlaisd.com' })).not.toHaveLength(0);
   });
 
   it('reaches cookie preferences through a normal footer control after a decision is saved', async () => {
-    render(<><ConsentController /><CookiePreferencesTrigger /></>);
+    render(
+      <>
+        <ConsentController />
+        <CookiePreferencesTrigger />
+      </>
+    );
     await waitFor(() => expect(screen.getByRole('complementary', { name: 'Cookie preferences' })).toBeVisible());
     fireEvent.click(screen.getByRole('button', { name: 'Reject optional' }));
     expect(screen.queryByRole('complementary', { name: 'Cookie preferences' })).not.toBeInTheDocument();
@@ -178,10 +243,31 @@ describe('public acquisition components', () => {
   });
 
   it('names Yashus, DLAI Satellite Data, and WAOOAW with their roles in Platform DNA', () => {
-    render(<section className="platform-dna"><dl><div><dt>Yashus</dt><dd>Product and experience foundation</dd></div><div><dt>DLAI Satellite Data</dt><dd>Technology and operating company</dd></div><div><dt>WAOOAW</dt><dd>Constitutionally governed digital professionals</dd></div></dl></section>);
+    render(
+      <section className="platform-dna">
+        <dl>
+          <div>
+            <dt>Yashus</dt>
+            <dd>Product and experience foundation</dd>
+          </div>
+          <div>
+            <dt>DLAI Satellite Data</dt>
+            <dd>Technology and operating company</dd>
+          </div>
+          <div>
+            <dt>WAOOAW</dt>
+            <dd>Constitutionally governed digital professionals</dd>
+          </div>
+        </dl>
+      </section>
+    );
     expect(screen.getByText('Yashus').nextElementSibling).toHaveTextContent('Product and experience foundation');
-    expect(screen.getByText('DLAI Satellite Data').nextElementSibling).toHaveTextContent('Technology and operating company');
-    expect(screen.getByText('WAOOAW').nextElementSibling).toHaveTextContent('Constitutionally governed digital professionals');
+    expect(screen.getByText('DLAI Satellite Data').nextElementSibling).toHaveTextContent(
+      'Technology and operating company'
+    );
+    expect(screen.getByText('WAOOAW').nextElementSibling).toHaveTextContent(
+      'Constitutionally governed digital professionals'
+    );
   });
   it('offers equally direct accept and reject choices', async () => {
     render(<ConsentController />);
@@ -195,7 +281,6 @@ describe('public acquisition components', () => {
     expect(decodeURIComponent(document.cookie)).toContain('"advertising":true');
   });
 
-
   it('persists granular consent choices', async () => {
     render(<ConsentController />);
     await waitFor(() => expect(screen.getByRole('complementary', { name: 'Cookie preferences' })).toBeVisible());
@@ -208,9 +293,14 @@ describe('public acquisition components', () => {
 
   it('renders public information with safe structured contact data', () => {
     const sections = [['How it works', 'A governed public answer.']] as const;
-    const { rerender } = render(<InformationPage contact path="/contact" sections={sections} summary="Contact summary" title="Contact" />);
+    const { rerender } = render(
+      <InformationPage contact path="/contact" sections={sections} summary="Contact summary" title="Contact" />
+    );
     expect(screen.getByRole('heading', { name: 'How it works' })).toBeVisible();
-    expect(screen.getByRole('link', { name: /Email customersupport@dlaisd.com/ })).toHaveAttribute('href', 'mailto:customersupport@dlaisd.com');
+    expect(screen.getByRole('link', { name: /Email customersupport@dlaisd.com/ })).toHaveAttribute(
+      'href',
+      'mailto:customersupport@dlaisd.com'
+    );
     expect(document.querySelector('script[type="application/ld+json"]')?.textContent).toContain('ContactPoint');
     rerender(<InformationPage path="/about" sections={sections} summary="About summary" title="About" />);
     expect(screen.queryByRole('link', { name: /Email customersupport@dlaisd.com/ })).not.toBeInTheDocument();

@@ -14,8 +14,17 @@ jest.mock('next/navigation', () => ({ useRouter: () => ({ replace, refresh }) })
 jest.mock('next-auth/react', () => ({ signIn: jest.fn() }));
 const draftKey = 'waooaw:identity:registration-draft';
 const baseRegistration = {
-  registrationId, state: 'PROFILE_COMPLETION_REQUIRED', nextAction: 'COMPLETE_PROFILE', authenticationPath: 'GOOGLE',
-  providerLabel: 'google', emailVerified: true, mobileVerified: false, maskedEmail: 'a***@example.com', profile: {}, expiresAt: new Date(), updatedAt: new Date(),
+  registrationId,
+  state: 'PROFILE_COMPLETION_REQUIRED',
+  nextAction: 'COMPLETE_PROFILE',
+  authenticationPath: 'GOOGLE',
+  providerLabel: 'google',
+  emailVerified: true,
+  mobileVerified: false,
+  maskedEmail: 'a***@example.com',
+  profile: {},
+  expiresAt: new Date(),
+  updatedAt: new Date(),
 };
 
 function jsonResponse(body: unknown, status = 200) {
@@ -26,7 +35,10 @@ describe('F2 registration flow', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     sessionStorage.clear();
-    Object.defineProperty(crypto, 'randomUUID', { configurable: true, value: jest.fn(() => '11111111-1111-4111-8111-111111111111') });
+    Object.defineProperty(crypto, 'randomUUID', {
+      configurable: true,
+      value: jest.fn(() => '11111111-1111-4111-8111-111111111111'),
+    });
   });
 
   afterEach(() => {
@@ -36,7 +48,10 @@ describe('F2 registration flow', () => {
   });
 
   it('restores and updates only non-secret profile draft fields', async () => {
-    sessionStorage.setItem('waooaw:identity:registration-draft', JSON.stringify({ displayName: 'Asha', businessName: 'Field Co', businessDomain: 'Agriculture' }));
+    sessionStorage.setItem(
+      'waooaw:identity:registration-draft',
+      JSON.stringify({ displayName: 'Asha', businessName: 'Field Co', businessDomain: 'Agriculture' })
+    );
     global.fetch = jest.fn(() => jsonResponse(baseRegistration));
     render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} />);
 
@@ -47,16 +62,30 @@ describe('F2 registration flow', () => {
 
     const profileForm = screen.getByLabelText('Your name').closest('form');
     expect(profileForm).not.toBeNull();
-    fireEvent.submit(profileForm!);
+    if (!profileForm) throw new Error('Profile form is required');
+    fireEvent.submit(profileForm);
     await waitFor(() => expect(jest.mocked(fetch)).toHaveBeenCalledTimes(2));
     const profileCommand = JSON.parse(String(jest.mocked(fetch).mock.calls[1][1]?.body));
     expect(profileCommand).toMatchObject({ action: 'profile', businessName: 'Field Works' });
   });
 
   it('never persists a one-time code and clears the challenge after confirmation', async () => {
-    const verificationRequired = { ...baseRegistration, state: 'EMAIL_VERIFICATION_REQUIRED', nextAction: 'VERIFY_EMAIL', emailVerified: false };
-    const challenge = { challengeId: '22222222-2222-4222-8222-222222222222', purpose: 'EMAIL', state: 'PENDING', maskedDestination: 'a***@example.com', expiresAt: new Date(), resendAfter: new Date() };
-    global.fetch = jest.fn()
+    const verificationRequired = {
+      ...baseRegistration,
+      state: 'EMAIL_VERIFICATION_REQUIRED',
+      nextAction: 'VERIFY_EMAIL',
+      emailVerified: false,
+    };
+    const challenge = {
+      challengeId: '22222222-2222-4222-8222-222222222222',
+      purpose: 'EMAIL',
+      state: 'PENDING',
+      maskedDestination: 'a***@example.com',
+      expiresAt: new Date(),
+      resendAfter: new Date(),
+    };
+    global.fetch = jest
+      .fn()
       .mockImplementationOnce(() => jsonResponse(verificationRequired))
       .mockImplementationOnce(() => jsonResponse(challenge))
       .mockImplementationOnce(() => jsonResponse(baseRegistration));
@@ -73,7 +102,8 @@ describe('F2 registration flow', () => {
   });
 
   it('reuses the idempotency key when retrying an uncertain start outcome', async () => {
-    global.fetch = jest.fn()
+    global.fetch = jest
+      .fn()
       .mockImplementationOnce(() => Promise.reject(new Error('network unavailable')))
       .mockImplementationOnce(() => jsonResponse(baseRegistration));
     render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} />);
@@ -98,26 +128,46 @@ describe('F2 registration flow', () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
-  it.each(['trial', 'hire'] as const)('reauthenticates directly when %s registration requires a fresh session', async (intent) => {
-    global.fetch = jest.fn(() => jsonResponse({ code: 'IDENTITY_STEP_UP_REQUIRED' }, 403));
-    render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} returnTo={`/marketplace?professionalType=DIGITAL_MARKETING&version=3.1.0&intent=${intent}`} />);
+  it.each(['trial', 'hire'] as const)(
+    'reauthenticates directly when %s registration requires a fresh session',
+    async (intent) => {
+      global.fetch = jest.fn(() => jsonResponse({ code: 'IDENTITY_STEP_UP_REQUIRED' }, 403));
+      render(
+        <RegistrationFlow
+          locale="en"
+          messages={getIdentityMessages('en')}
+          returnTo={`/marketplace?professionalType=DIGITAL_MARKETING&version=3.1.0&intent=${intent}`}
+        />
+      );
 
-    expect(await screen.findByText(getIdentityMessages('en').freshSignInRequired)).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: getIdentityMessages('en').continueSecurely }));
+      expect(await screen.findByText(getIdentityMessages('en').freshSignInRequired)).toBeVisible();
+      fireEvent.click(screen.getByRole('button', { name: getIdentityMessages('en').continueSecurely }));
 
-    expect(signIn).toHaveBeenCalledWith('keycloak-google', {
-      callbackUrl: `/register?returnTo=%2Fmarketplace%3FprofessionalType%3DDIGITAL_MARKETING%26version%3D3.1.0%26intent%3D${intent}`,
-    }, { max_age: '0', prompt: 'select_account' });
-    expect(replace).not.toHaveBeenCalled();
-  });
+      expect(signIn).toHaveBeenCalledWith(
+        'keycloak-google',
+        {
+          callbackUrl: `/register?returnTo=%2Fmarketplace%3FprofessionalType%3DDIGITAL_MARKETING%26version%3D3.1.0%26intent%3D${intent}`,
+        },
+        { max_age: '0', prompt: 'select_account' }
+      );
+      expect(replace).not.toHaveBeenCalled();
+    }
+  );
 
   it('restarts sign-in when an in-progress registration is no longer accessible', async () => {
-    global.fetch = jest.fn()
+    global.fetch = jest
+      .fn()
       .mockImplementationOnce(() => jsonResponse(baseRegistration))
-      .mockImplementationOnce(() => jsonResponse({ code: 'IDENTITY_RESOURCE_NOT_ACCESSIBLE', correlationId: '11111111-1111-4111-8111-111111111111' }, 404));
+      .mockImplementationOnce(() =>
+        jsonResponse(
+          { code: 'IDENTITY_RESOURCE_NOT_ACCESSIBLE', correlationId: '11111111-1111-4111-8111-111111111111' },
+          404
+        )
+      );
     render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} returnTo="/settings" />);
     const profileForm = (await screen.findByLabelText('Your name')).closest('form');
-    fireEvent.submit(profileForm!);
+    if (!profileForm) throw new Error('Profile form is required');
+    fireEvent.submit(profileForm);
 
     expect(await screen.findByText(getIdentityMessages('en').registrationLost)).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: getIdentityMessages('en').restartSignIn }));
@@ -126,9 +176,22 @@ describe('F2 registration flow', () => {
   });
 
   it('returns an expired email challenge to the resend form', async () => {
-    const verificationRequired = { ...baseRegistration, state: 'EMAIL_VERIFICATION_REQUIRED', nextAction: 'VERIFY_EMAIL', emailVerified: false };
-    const challenge = { challengeId: '22222222-2222-4222-8222-222222222222', purpose: 'EMAIL', state: 'PENDING', maskedDestination: 'a***@example.com', expiresAt: new Date(), resendAfter: new Date() };
-    global.fetch = jest.fn()
+    const verificationRequired = {
+      ...baseRegistration,
+      state: 'EMAIL_VERIFICATION_REQUIRED',
+      nextAction: 'VERIFY_EMAIL',
+      emailVerified: false,
+    };
+    const challenge = {
+      challengeId: '22222222-2222-4222-8222-222222222222',
+      purpose: 'EMAIL',
+      state: 'PENDING',
+      maskedDestination: 'a***@example.com',
+      expiresAt: new Date(),
+      resendAfter: new Date(),
+    };
+    global.fetch = jest
+      .fn()
       .mockImplementationOnce(() => jsonResponse(verificationRequired))
       .mockImplementationOnce(() => jsonResponse(challenge))
       .mockImplementationOnce(() => jsonResponse({ code: 'IDENTITY_CHALLENGE_EXPIRED' }, 410));
@@ -143,11 +206,13 @@ describe('F2 registration flow', () => {
   });
 
   it('shows verified broker email read-only and keeps unbudgeted SMS disabled', async () => {
-    global.fetch = jest.fn(() => jsonResponse({
-      ...baseRegistration,
-      state: 'REGISTRATION_COMPLETION_REQUIRED',
-      nextAction: 'COMPLETE_REGISTRATION',
-    }));
+    global.fetch = jest.fn(() =>
+      jsonResponse({
+        ...baseRegistration,
+        state: 'REGISTRATION_COMPLETION_REQUIRED',
+        nextAction: 'COMPLETE_REGISTRATION',
+      })
+    );
     render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} />);
 
     expect(await screen.findByLabelText('Verified email')).toHaveValue('a***@example.com');
@@ -159,18 +224,22 @@ describe('F2 registration flow', () => {
     expect(screen.queryByLabelText('Mobile number')).not.toBeInTheDocument();
   });
 
-  it.each(['COMPLETE_REGISTRATION', 'CONTINUE_TO_DEFAULT_TARGET', 'NONE'])('requires confirmation before leaving %s', async (nextAction) => {
-    sessionStorage.setItem(draftKey, '{"displayName":"Asha"}');
-    global.fetch = jest.fn()
-      .mockImplementationOnce(() => jsonResponse({ ...baseRegistration, nextAction }))
-      .mockImplementationOnce(() => jsonResponse({ handoffConfirmed: true }));
-    render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} />);
-    fireEvent.click(await screen.findByRole('button', { name: getIdentityMessages('en').complete }));
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('/home'));
-    expect(refresh).toHaveBeenCalledTimes(1);
-    expect(sessionStorage.getItem(draftKey)).toBeNull();
-    expect(JSON.parse(String(jest.mocked(fetch).mock.calls[1][1]?.body)).action).toBe('complete');
-  });
+  it.each(['COMPLETE_REGISTRATION', 'CONTINUE_TO_DEFAULT_TARGET', 'NONE'])(
+    'requires confirmation before leaving %s',
+    async (nextAction) => {
+      sessionStorage.setItem(draftKey, '{"displayName":"Asha"}');
+      global.fetch = jest
+        .fn()
+        .mockImplementationOnce(() => jsonResponse({ ...baseRegistration, nextAction }))
+        .mockImplementationOnce(() => jsonResponse({ handoffConfirmed: true }));
+      render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} />);
+      fireEvent.click(await screen.findByRole('button', { name: getIdentityMessages('en').complete }));
+      await waitFor(() => expect(replace).toHaveBeenCalledWith('/home'));
+      expect(refresh).toHaveBeenCalledTimes(1);
+      expect(sessionStorage.getItem(draftKey)).toBeNull();
+      expect(JSON.parse(String(jest.mocked(fetch).mock.calls[1][1]?.body)).action).toBe('complete');
+    }
+  );
 
   it('dispatches a server-confirmed returning session', async () => {
     sessionStorage.setItem(draftKey, '{"displayName":"Asha"}');
@@ -181,9 +250,15 @@ describe('F2 registration flow', () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
-  it.each([{}, null, { handoffConfirmed: false }, { accountReference: 'other-account', defaultTarget: 'APPLICATION_HOME' }])('retains the draft and refuses unconfirmed completion: %p', async (body) => {
+  it.each([
+    {},
+    null,
+    { handoffConfirmed: false },
+    { accountReference: 'other-account', defaultTarget: 'APPLICATION_HOME' },
+  ])('retains the draft and refuses unconfirmed completion: %p', async (body) => {
     sessionStorage.setItem(draftKey, '{"displayName":"Asha"}');
-    global.fetch = jest.fn()
+    global.fetch = jest
+      .fn()
       .mockImplementationOnce(() => jsonResponse({ ...baseRegistration, nextAction: 'COMPLETE_REGISTRATION' }))
       .mockImplementationOnce(() => jsonResponse(body));
     render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} />);
@@ -196,7 +271,8 @@ describe('F2 registration flow', () => {
 
   it('shows a finite safe error and retries completion with the same key', async () => {
     sessionStorage.setItem(draftKey, '{"displayName":"Asha"}');
-    global.fetch = jest.fn()
+    global.fetch = jest
+      .fn()
       .mockImplementationOnce(() => jsonResponse({ ...baseRegistration, nextAction: 'COMPLETE_REGISTRATION' }))
       .mockImplementationOnce(() => jsonResponse({ title: 'private-token other-account' }, 503))
       .mockImplementationOnce(() => jsonResponse({ handoffConfirmed: true }));
@@ -208,16 +284,25 @@ describe('F2 registration flow', () => {
     expect(replace).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: getIdentityMessages('en').complete }));
     await waitFor(() => expect(replace).toHaveBeenCalledTimes(1));
-    const commands = jest.mocked(fetch).mock.calls.slice(1).map(([, init]) => JSON.parse(String(init?.body)));
+    const commands = jest
+      .mocked(fetch)
+      .mock.calls.slice(1)
+      .map(([, init]) => JSON.parse(String(init?.body)));
     expect(commands[0].idempotencyKey).toBe(commands[1].idempotencyKey);
   });
 
   it('aborts an unmounted completion and ignores even a late confirmed reply', async () => {
     sessionStorage.setItem(draftKey, '{"displayName":"Asha"}');
     let resolveCompletion!: (response: Response) => void;
-    global.fetch = jest.fn()
+    global.fetch = jest
+      .fn()
       .mockImplementationOnce(() => jsonResponse({ ...baseRegistration, nextAction: 'COMPLETE_REGISTRATION' }))
-      .mockImplementationOnce(() => new Promise<Response>((resolve) => { resolveCompletion = resolve; }));
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveCompletion = resolve;
+          })
+      );
     const view = render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} />);
     fireEvent.click(await screen.findByRole('button', { name: getIdentityMessages('en').complete }));
     const signal = jest.mocked(fetch).mock.calls[1][1]?.signal;
@@ -231,7 +316,12 @@ describe('F2 registration flow', () => {
   it('aborts a pending handoff when another tab signs out', async () => {
     sessionStorage.setItem(draftKey, '{"displayName":"Asha"}');
     let resolveStart!: (response: Response) => void;
-    global.fetch = jest.fn(() => new Promise<Response>((resolve) => { resolveStart = resolve; }));
+    global.fetch = jest.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveStart = resolve;
+        })
+    );
     render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} />);
     const signal = jest.mocked(fetch).mock.calls[0][1]?.signal;
 
@@ -255,8 +345,14 @@ describe('F2 registration flow', () => {
 
   it('discards a superseded start reply', async () => {
     let resolveStart!: (response: Response) => void;
-    global.fetch = jest.fn()
-      .mockImplementationOnce(() => new Promise<Response>((resolve) => { resolveStart = resolve; }))
+    global.fetch = jest
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveStart = resolve;
+          })
+      )
       .mockImplementationOnce(() => jsonResponse(baseRegistration));
     const view = render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} />);
     const signal = jest.mocked(fetch).mock.calls[0][1]?.signal;
@@ -269,17 +365,23 @@ describe('F2 registration flow', () => {
   });
 
   it('ends a stalled completion after the bounded client deadline', async () => {
-    global.fetch = jest.fn()
+    global.fetch = jest
+      .fn()
       .mockImplementationOnce(() => jsonResponse({ ...baseRegistration, nextAction: 'COMPLETE_REGISTRATION' }))
-      .mockImplementationOnce((_url, init) => new Promise((_resolve, reject) => {
-        init.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
-      }));
+      .mockImplementationOnce(
+        (_url, init) =>
+          new Promise((_resolve, reject) => {
+            init.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+          })
+      );
     render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} />);
     const completeButton = await screen.findByRole('button', { name: getIdentityMessages('en').complete });
     jest.useFakeTimers();
     fireEvent.click(completeButton);
     expect(completeButton).toBeDisabled();
-    await act(async () => { jest.advanceTimersByTime(20_000); });
+    await act(async () => {
+      jest.advanceTimersByTime(20_000);
+    });
     expect(completeButton).not.toBeDisabled();
     expect(screen.getByRole('alert')).toHaveTextContent(getIdentityMessages('en').unavailable);
     expect(replace).not.toHaveBeenCalled();

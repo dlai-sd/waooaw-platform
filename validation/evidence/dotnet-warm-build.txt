@@ -1,0 +1,3 @@
+dotnet_warm_build_ms=50016
+exit_code=0
+cache_state=warm

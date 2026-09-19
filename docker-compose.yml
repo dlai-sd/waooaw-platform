@@ -53,11 +53,24 @@ services:
       context: .
       dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner-python
     volumes:
-      - .:/workspace
+      - .:/workspace:ro
+      - ./test-results:/workspace/test-results
       - /var/run/docker.sock:/var/run/docker.sock
+    group_add: ["${DOCKER_GID:-0}"]
+    read_only: true
+    tmpfs: ["/tmp:size=1g,mode=1777,exec"]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    cpus: 2.0
+    mem_limit: 4g
+    pids_limit: 512
+    extra_hosts: ["host.docker.internal:host-gateway"]
     environment:
       DATABASE_URL: postgresql://waooaw:${POSTGRES_PASSWORD:-changeme}@postgres:5432/waooaw_test
       PYTHONPATH: /workspace
+      PYTEST_ADDOPTS: -o cache_dir=/tmp/pytest_cache
+      HYPOTHESIS_STORAGE_DIRECTORY: /tmp/hypothesis
+      RUFF_CACHE_DIR: /tmp/ruff_cache
     profiles:
       - test-python
 
@@ -66,11 +79,21 @@ services:
       context: .
       dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner-dotnet
     volumes:
-      - .:/workspace
+      - .:/workspace:ro
+      - ./test-results:/workspace/test-results
+      - wc102_nuget_cache:/opt/nuget/packages
       - /var/run/docker.sock:/var/run/docker.sock
+    group_add: ["${DOCKER_GID:-0}"]
+    read_only: true
+    tmpfs: ["/tmp:size=2g,mode=1777,exec"]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    cpus: 2.0
+    mem_limit: 4g
+    pids_limit: 512
+    extra_hosts: ["host.docker.internal:host-gateway"]
     environment:
-      DOTNET_CLI_HOME: /tmp/dotnet
-      NUGET_PACKAGES: /tmp/nuget
+      GITHUB_WORKSPACE: /workspace
     profiles:
       - test-dotnet
 
@@ -78,6 +101,16 @@ services:
     build:
       context: .
       dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner-ts
+    volumes:
+      - ./web:/workspace/web:ro
+      - ./test-results:/workspace/test-results
+    read_only: true
+    tmpfs: ["/tmp:size=1g,mode=1777"]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    cpus: 2.0
+    mem_limit: 4g
+    pids_limit: 512
     profiles:
       - test-ts
 
@@ -91,8 +124,17 @@ services:
       context: .
       dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner
     volumes:
-      - .:/workspace                    # bind mount for local dev — code changes reflected immediately
+      - .:/workspace:ro                 # source is current but cannot become retained correctness state
+      - ./test-results:/workspace/test-results
       - /var/run/docker.sock:/var/run/docker.sock  # testcontainers: access to Docker daemon
+    group_add: ["${DOCKER_GID:-0}"]
+    read_only: true
+    tmpfs: ["/tmp:size=2g,mode=1777,exec", "/workspace/.deepeval:size=16m,mode=1770"]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    cpus: 2.0
+    mem_limit: 6g
+    pids_limit: 768
     environment:
       DATABASE_URL: postgresql://waooaw:${POSTGRES_PASSWORD:-changeme}@postgres:5432/waooaw_test
       PYTHONPATH: /workspace
@@ -1285,6 +1327,7 @@ services:
 volumes:
   postgres_data:
   ollama_data:      # Persists downloaded models across restarts (ADR-029 — LOCAL tier)
+  wc102_nuget_cache:
 
 networks:
   default:

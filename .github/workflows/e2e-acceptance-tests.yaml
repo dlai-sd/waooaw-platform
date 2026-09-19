@@ -25,26 +25,11 @@ jobs:
 
   # ─── Playwright setup ────────────────────────────────────────────────────
   install:
-    name: Install Playwright
+    name: Build Playwright runner
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v3
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-          cache-dependency-path: web/pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-        working-directory: web
-      - run: pnpm exec playwright install --with-deps chromium firefox
-        working-directory: web
-      - uses: actions/cache@v4
-        with:
-          path: web/node_modules/.pnpm
-          key: playwright-${{ hashFiles('web/pnpm-lock.yaml') }}
+      - run: docker compose --profile test build test-runner
 
   # ─── Accessibility tests (WCAG 2.1 AA — C-042 constitutional UX standard) ──
   accessibility:
@@ -53,28 +38,24 @@ jobs:
     needs: install
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v3
-        with: { version: 9 }
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-          cache-dependency-path: web/pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-        working-directory: web
-      - run: pnpm exec playwright install --with-deps chromium
-        working-directory: web
+      - name: Build Playwright runner
+        run: docker compose --profile test build test-runner
       - name: Run axe-playwright accessibility tests
-        run: pnpm exec playwright test tests/accessibility/ --reporter=html
-        working-directory: web
         env:
           BASE_URL: ${{ env.BASE_URL }}
+        run: |
+          docker compose --profile test run --rm -e BASE_URL \
+            -e PLAYWRIGHT_HTML_OUTPUT_DIR=/workspace/test-results/playwright-report \
+            test-runner sh -lc '
+              cd web && playwright test tests/accessibility/ \
+                --reporter=html --output=/tmp/playwright-accessibility
+            '
       - name: Upload accessibility report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: accessibility-report
-          path: web/playwright-report/
+          path: test-results/playwright-report/
 
   # ─── AS-001: DMA — Dr. Mehta acceptance scenario ────────────────────────
   as-001-dma:
@@ -82,28 +63,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Install
-        # C-080: Test dependencies in test-runner Docker image (requirements-test.txt)
-        # Tests run via: docker compose run --rm test-runner pytest
-        run: echo 'C-080 compliant — tests run in Docker test-runner'
+      - name: Build Python acceptance runner
+        run: docker compose --profile test-python build test-runner-python
       - name: Run AS-001
-        run: |
-          pytest tests/acceptance/test_as001_dma_dr_mehta.py \
-            -v --tb=short \
-            --junit-xml=results/as-001.xml \
-            -m "acceptance"
         env:
           WAOOAW_API_URL: ${{ env.BASE_URL }}
           WAOOAW_TEST_TOKEN: ${{ secrets.QA_TEST_TOKEN }}
           LLM_TEST_MODE: "grade_a_required"
+        run: |
+          docker compose --profile test-python run --rm \
+            -e WAOOAW_API_URL -e WAOOAW_TEST_TOKEN -e LLM_TEST_MODE \
+            test-runner-python pytest tests/acceptance/test_as001_dma_dr_mehta.py \
+              -v --tb=short --junit-xml=test-results/as-001.xml -m "acceptance"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: as-001-results
-          path: results/
+          path: test-results/
 
   # ─── AS-003: Trading — Rahul NIFTY FO scenario ──────────────────────────
   as-003-trading:
@@ -111,27 +87,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Install
-        # C-080: Test dependencies in test-runner Docker image (requirements-test.txt)
-        # Tests run via: docker compose run --rm test-runner pytest
-        run: echo 'C-080 compliant — tests run in Docker test-runner'
+      - name: Build Python acceptance runner
+        run: docker compose --profile test-python build test-runner-python
       - name: Run AS-003 + Emergency Stop constitutional test
-        run: |
-          pytest tests/acceptance/test_as003_trading_rahul.py \
-            -v --tb=short \
-            --junit-xml=results/as-003.xml \
-            -m "acceptance"
         env:
           WAOOAW_API_URL: ${{ env.BASE_URL }}
           WAOOAW_TEST_TOKEN: ${{ secrets.QA_TEST_TOKEN }}
+        run: |
+          docker compose --profile test-python run --rm \
+            -e WAOOAW_API_URL -e WAOOAW_TEST_TOKEN \
+            test-runner-python pytest tests/acceptance/test_as003_trading_rahul.py \
+              -v --tb=short --junit-xml=test-results/as-003.xml -m "acceptance"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: as-003-results
-          path: results/
+          path: test-results/
 
   # ─── AS-005: Agricultural — Suresh Vidarbha scenario ────────────────────
   as-005-agricultural:
@@ -139,28 +110,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Install
-        # C-080: Test dependencies in test-runner Docker image (requirements-test.txt)
-        # Tests run via: docker compose run --rm test-runner pytest
-        run: echo 'C-080 compliant — tests run in Docker test-runner'
+      - name: Build Python acceptance runner
+        run: docker compose --profile test-python build test-runner-python
       - name: Run AS-005 with regional language assertions
-        run: |
-          pytest tests/acceptance/test_as005_agri_suresh.py \
-            -v --tb=short \
-            --junit-xml=results/as-005.xml \
-            -m "acceptance"
         env:
           WAOOAW_API_URL: ${{ env.BASE_URL }}
           WAOOAW_TEST_TOKEN: ${{ secrets.QA_TEST_TOKEN }}
           TEST_LANGUAGE: "mr"   # Marathi — C-042 vocabulary assertion active
+        run: |
+          docker compose --profile test-python run --rm \
+            -e WAOOAW_API_URL -e WAOOAW_TEST_TOKEN -e TEST_LANGUAGE \
+            test-runner-python pytest tests/acceptance/test_as005_agri_suresh.py \
+              -v --tb=short --junit-xml=test-results/as-005.xml -m "acceptance"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: as-005-results
-          path: results/
+          path: test-results/
 
   # ─── PSE Failover scenario ────────────────────────────────────────────────
   as-pse-failover:
@@ -168,22 +134,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Install
-        # C-080: Test dependencies in test-runner Docker image (requirements-test.txt)
-        # Tests run via: docker compose run --rm test-runner pytest
-        run: echo 'C-080 compliant — tests run in Docker test-runner'
+      - name: Build Python acceptance runner
+        run: docker compose --profile test-python build test-runner-python
       - name: PSE circuit-breaker + fallback test
-        run: |
-          pytest tests/acceptance/test_as_pse_failover.py \
-            -v --tb=short \
-            --junit-xml=results/as-pse.xml
         env:
           WAOOAW_API_URL: ${{ env.BASE_URL }}
           WAOOAW_TEST_TOKEN: ${{ secrets.QA_TEST_TOKEN }}
           PSE_TEST_INJECT_RATE_LIMIT: "true"   # Simulates Gemini 429
+        run: |
+          docker compose --profile test-python run --rm \
+            -e WAOOAW_API_URL -e WAOOAW_TEST_TOKEN -e PSE_TEST_INJECT_RATE_LIMIT \
+            test-runner-python pytest tests/acceptance/test_as_pse_failover.py \
+              -v --tb=short --junit-xml=test-results/as-pse.xml
 
   # ─── Emergency Stop E2E — constitutional floor (C-001) ──────────────────
   emergency-stop-e2e:
@@ -191,22 +153,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Install
-        # C-080: Test dependencies in test-runner Docker image (requirements-test.txt)
-        # Tests run via: docker compose run --rm test-runner pytest
-        run: echo 'C-080 compliant — tests run in Docker test-runner'
+      - name: Build Python constitutional runner
+        run: docker compose --profile test-python build test-runner-python
       - name: Emergency Stop latency test (10 runs, P99 assertion)
-        run: |
-          pytest tests/constitutional/test_cct_ho_01_emergency_stop_latency.py \
-            -v --tb=short \
-            -k "e2e" \
-            --junit-xml=results/emergency-stop-e2e.xml
         env:
           WAOOAW_WS_URL: ${{ secrets.QA_WS_URL || 'ws://localhost:5003/emergency-stop' }}
           WAOOAW_TEST_TOKEN: ${{ secrets.QA_TEST_TOKEN }}
+        run: |
+          docker compose --profile test-python run --rm \
+            -e WAOOAW_WS_URL -e WAOOAW_TEST_TOKEN \
+            test-runner-python pytest tests/constitutional/test_cct_ho_01_emergency_stop_latency.py \
+              -v --tb=short -k "e2e" \
+              --junit-xml=test-results/emergency-stop-e2e.xml
 
   # ─── Allure report aggregation ───────────────────────────────────────────
   report:

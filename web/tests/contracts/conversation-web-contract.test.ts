@@ -21,7 +21,10 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
     const identity = readFileSync(join(root, 'lib/api/generated/apis/IdentityApi.ts'), 'utf8');
     const employment = readFileSync(join(root, 'lib/api/generated/apis/EmploymentApi.ts'), 'utf8');
     const workspace = readFileSync(join(root, 'lib/api/generated/apis/RelationshipWorkspaceApi.ts'), 'utf8');
-    const relationshipPayload = readFileSync(join(root, 'lib/api/generated/models/RelationshipTypedCommandPayloadV1.ts'), 'utf8');
+    const relationshipPayload = readFileSync(
+      join(root, 'lib/api/generated/models/RelationshipTypedCommandPayloadV1.ts'),
+      'utf8'
+    );
     const verifyGoalPayload = readFileSync(join(root, 'lib/api/generated/models/VerifyGoalPayloadV1.ts'), 'utf8');
     const voice = readFileSync(join(root, 'lib/api/generated/apis/VoiceContributionsApi.ts'), 'utf8');
     const notifications = readFileSync(join(root, 'lib/api/generated/apis/NotificationsApi.ts'), 'utf8');
@@ -48,7 +51,18 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
     expect(script).toContain('node scripts/normalize-generated-api.mjs');
     expect(script).toContain('pnpm exec prettier --write lib/api/generated');
     expect(script).not.toContain('--skip-validate-spec');
-    expect(generatedApis).toEqual(['BillingApi.ts', 'ConfigurationApi.ts', 'ConversationApi.ts', 'EmploymentApi.ts', 'IdentityApi.ts', 'NotificationsApi.ts', 'ProfessionalsApi.ts', 'RelationshipWorkspaceApi.ts', 'VoiceContributionsApi.ts', 'index.ts']);
+    expect(generatedApis).toEqual([
+      'BillingApi.ts',
+      'ConfigurationApi.ts',
+      'ConversationApi.ts',
+      'EmploymentApi.ts',
+      'IdentityApi.ts',
+      'NotificationsApi.ts',
+      'ProfessionalsApi.ts',
+      'RelationshipWorkspaceApi.ts',
+      'VoiceContributionsApi.ts',
+      'index.ts',
+    ]);
     expect(version).toBe('7.17.0');
     for (const operation of [
       'listPortalInteractionMessages',
@@ -59,7 +73,8 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
       'updateConversationReadPosition',
       'streamConversation',
       'cancelConversationExecution',
-    ]) expect(generated).toContain(`async ${operation}(`);
+    ])
+      expect(generated).toContain(`async ${operation}(`);
     expect(generated.match(/token\("BearerAuth", \[\]\)/g)).toHaveLength(8);
     expect(identity).toContain('token("BearerAuth", [])');
     expect(identity).toContain('token("PreAccountBearerAuth", [])');
@@ -76,32 +91,58 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
       'activateRelationshipHandoff',
       'stopEmploymentRelationship',
       'releaseEmploymentRelationshipStop',
-    ]) expect(employment).toContain(`async ${operation}(`);
+    ])
+      expect(employment).toContain(`async ${operation}(`);
     expect(employment.match(/token\("BearerAuth", \[\]\)/g)?.length).toBeGreaterThanOrEqual(4);
     for (const operation of [
-      'getRelationshipWorkspace', 'getRelationshipWorkspaceChanges', 'getRelationshipPlan',
-      'getRelationshipAttention', 'getRelationshipWork', 'getRelationshipResults',
-      'getRelationshipUsageBudget', 'getRelationshipRightsControls', 'submitRelationshipCommand',
-      'getRelationshipCommand', 'listRelationshipEvidence', 'getRelationshipEvidence',
-      'requestRelationshipEvidenceExport', 'getRelationshipEvidenceExport',
-    ]) expect(workspace).toContain(`async ${operation}(`);
+      'getRelationshipWorkspace',
+      'getRelationshipWorkspaceChanges',
+      'getRelationshipPlan',
+      'getRelationshipAttention',
+      'getRelationshipWork',
+      'getRelationshipResults',
+      'getRelationshipUsageBudget',
+      'getRelationshipRightsControls',
+      'submitRelationshipCommand',
+      'getRelationshipCommand',
+      'listRelationshipEvidence',
+      'getRelationshipEvidence',
+      'requestRelationshipEvidenceExport',
+      'getRelationshipEvidenceExport',
+    ])
+      expect(workspace).toContain(`async ${operation}(`);
     expect(workspace).toContain('The version of the OpenAPI document: 1.10.0');
     expect(relationshipPayload).not.toMatch(/\b(instanceOfVerifyGoalPayloadV1|VerifyGoalPayloadV1FromJSON),/);
     expect(verifyGoalPayload).not.toContain('import { mapValues } from "../runtime";');
     for (const operation of [
-      'createVoiceContributionSession', 'getVoiceContributionSession',
-      'uploadVoiceContributionAudio', 'getVoiceContributionTranscript',
-      'submitVoiceContributionCorrection', 'sendVoiceContribution',
-      'cancelVoiceContributionSession', 'requestVoicePayloadErasure',
-    ]) expect(voice).toContain(`async ${operation}(`);
+      'createVoiceContributionSession',
+      'getVoiceContributionSession',
+      'uploadVoiceContributionAudio',
+      'getVoiceContributionTranscript',
+      'submitVoiceContributionCorrection',
+      'sendVoiceContribution',
+      'cancelVoiceContributionSession',
+      'requestVoicePayloadErasure',
+    ])
+      expect(voice).toContain(`async ${operation}(`);
     for (const operation of [
-      'getOfferableProfessionalVersions', 'browseMarketplaceProfessionals', 'discoverProfessionals',
-      'getProfessionalDisclosure', 'createAgentAdmissionDraft',
-      'putAgentAdmissionRevision', 'validateAgentAdmission', 'getAgentAdmissionFindings',
-      'submitAgentAdmission', 'approveAgentAdmission', 'rejectAgentAdmission',
-      'activateAgentAdmission', 'suspendAgentAdmission', 'supersedeAgentAdmission',
+      'getOfferableProfessionalVersions',
+      'browseMarketplaceProfessionals',
+      'discoverProfessionals',
+      'getProfessionalDisclosure',
+      'createAgentAdmissionDraft',
+      'putAgentAdmissionRevision',
+      'validateAgentAdmission',
+      'getAgentAdmissionFindings',
+      'submitAgentAdmission',
+      'approveAgentAdmission',
+      'rejectAgentAdmission',
+      'activateAgentAdmission',
+      'suspendAgentAdmission',
+      'supersedeAgentAdmission',
       'retireAgentAdmission',
-    ]) expect(professionals).toContain(`async ${operation}(`);
+    ])
+      expect(professionals).toContain(`async ${operation}(`);
     expect(professionals.match(/token\("BearerAuth", \[\]\)/g)).toHaveLength(15);
 
     for (const model of [
@@ -124,7 +165,8 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
       'AgentAdmissionValidation',
       'AgentAdmissionFinding',
       'OfferableProfessionalVersion',
-    ]) expect(statSync(join(root, `lib/api/generated/models/${model}.ts`)).isFile()).toBe(true);
+    ])
+      expect(statSync(join(root, `lib/api/generated/models/${model}.ts`)).isFile()).toBe(true);
   });
 
   it('does not generate prohibited browser, PR, provider, or unrelated API surfaces', () => {
@@ -152,9 +194,9 @@ describe('F3/F4/F5/F6 generated client and browser boundary contract', () => {
     const css = readFileSync(join(root, 'app/globals.css'), 'utf8');
 
     expect(css).toContain('@media (max-width: 599px)');
-    expect(css).toMatch(/\.workspace-shell \{ width: 100%; min-width: 0;/);
-    expect(css).toMatch(/\.conversation-timeline, \.conversation-composer \{ width: 100%; min-width: 0;/);
-    expect(css).toMatch(/\.conversation-message \{ width: 100%; \}/);
-    expect(css).toMatch(/\.send-command, \.cancel-command \{ width: 100%; \}/);
+    expect(css).toMatch(/\.workspace-shell\s*\{\s*width:\s*100%;\s*min-width:\s*0;/);
+    expect(css).toMatch(/\.conversation-timeline,\s*\.conversation-composer\s*\{\s*width:\s*100%;\s*min-width:\s*0;/);
+    expect(css).toMatch(/\.conversation-message\s*\{\s*width:\s*100%;\s*\}/);
+    expect(css).toMatch(/\.send-command,\s*\.cancel-command\s*\{\s*width:\s*100%;\s*\}/);
   });
 });

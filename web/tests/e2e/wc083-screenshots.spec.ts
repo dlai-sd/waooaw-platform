@@ -25,7 +25,9 @@ async function dismissConsent(page: Page) {
 async function waitForBrandLogo(page: Page) {
   const logo = page.getByRole('img', { name: 'WAOOAW' });
   await expect(logo).toBeVisible();
-  await expect.poll(() => logo.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+  await expect
+    .poll(() => logo.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0))
+    .toBe(true);
   await logo.evaluate((image: HTMLImageElement) => image.decode());
 }
 

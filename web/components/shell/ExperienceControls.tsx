@@ -6,18 +6,36 @@
 import { Languages, Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { Messages } from '@/lib/i18n';
-import { resolveLocale, resolveTheme, supportedLocales, type SupportedLocale, type ThemePreference } from '@/lib/preferences';
+import {
+  resolveLocale,
+  resolveTheme,
+  supportedLocales,
+  type SupportedLocale,
+  type ThemePreference,
+} from '@/lib/preferences';
 
 const localeNames: Record<SupportedLocale, string> = {
-  en: 'English', hi: 'हिन्दी', mr: 'मराठी', ta: 'தமிழ்', te: 'తెలుగు', kn: 'ಕನ್ನಡ',
-  gu: 'ગુજરાતી', bn: 'বাংলা', ml: 'മലയാളം', pa: 'ਪੰਜਾਬੀ', ur: 'اردو',
+  en: 'English',
+  hi: 'हिन्दी',
+  mr: 'मराठी',
+  ta: 'தமிழ்',
+  te: 'తెలుగు',
+  kn: 'ಕನ್ನಡ',
+  gu: 'ગુજરાતી',
+  bn: 'বাংলা',
+  ml: 'മലയാളം',
+  pa: 'ਪੰਜਾਬੀ',
+  ur: 'اردو',
 };
 
 function setPreference(name: string, value: string) {
   document.cookie = `${name}=${value}; Path=/; Max-Age=31536000; SameSite=Lax`;
 }
 
-export function ExperienceControls({ messages, reload = () => window.location.reload() }: {
+export function ExperienceControls({
+  messages,
+  reload = () => window.location.reload(),
+}: {
   messages: Pick<Messages, 'darkTheme' | 'language' | 'lightTheme'>;
   reload?: () => void;
 }) {
@@ -47,11 +65,24 @@ export function ExperienceControls({ messages, reload = () => window.location.re
       <label className="select-control">
         <Languages aria-hidden="true" size={18} />
         <span className="visually-hidden">{messages.language}</span>
-        <select aria-label={messages.language} value={locale} onChange={(event) => changeLocale(event.target.value as SupportedLocale)}>
-          {supportedLocales.map((option) => <option key={option} value={option}>{localeNames[option]}</option>)}
+        <select
+          aria-label={messages.language}
+          value={locale}
+          onChange={(event) => changeLocale(event.target.value as SupportedLocale)}
+        >
+          {supportedLocales.map((option) => (
+            <option key={option} value={option}>
+              {localeNames[option]}
+            </option>
+          ))}
         </select>
       </label>
-      <button className="icon-command" type="button" onClick={toggleTheme} aria-label={theme === 'dark' ? messages.lightTheme : messages.darkTheme}>
+      <button
+        className="icon-command"
+        type="button"
+        onClick={toggleTheme}
+        aria-label={theme === 'dark' ? messages.lightTheme : messages.darkTheme}
+      >
         {theme === 'dark' ? <Sun aria-hidden="true" size={19} /> : <Moon aria-hidden="true" size={19} />}
       </button>
     </div>

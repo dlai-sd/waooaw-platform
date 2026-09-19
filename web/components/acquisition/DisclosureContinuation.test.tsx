@@ -14,14 +14,16 @@ describe('DisclosureContinuation', () => {
   });
 
   it('requires explicit acceptance and preserves the exact offer binding', () => {
-    render(<DisclosureContinuation
-      disclosureRevision="1.0.0"
-      initialIntent="trial"
-      professionalType="DIGITAL_MARKETING_LOCAL_SERVICE"
-      professionalVersion="1.0.0"
-      termsVersion="2026-07-18"
-      trialAvailable
-    />);
+    render(
+      <DisclosureContinuation
+        disclosureRevision="1.0.0"
+        initialIntent="trial"
+        professionalType="DIGITAL_MARKETING_LOCAL_SERVICE"
+        professionalVersion="1.0.0"
+        termsVersion="2026-07-18"
+        trialAvailable
+      />
+    );
 
     const continueButton = screen.getByRole('button', { name: 'Continue to trial' });
     expect(continueButton).toBeDisabled();
@@ -32,7 +34,9 @@ describe('DisclosureContinuation', () => {
     fireEvent.click(continueButton);
 
     const registrationUrl = new URL(push.mock.calls[0][0], 'https://waooaw.test');
-    const returnTo = new URL(registrationUrl.searchParams.get('returnTo')!, 'https://waooaw.test');
+    const returnToValue = registrationUrl.searchParams.get('returnTo');
+    expect(returnToValue).not.toBeNull();
+    const returnTo = new URL(returnToValue ?? '', 'https://waooaw.test');
     expect(registrationUrl.pathname).toBe('/register');
     expect(Object.fromEntries(returnTo.searchParams)).toEqual({
       professionalType: 'DIGITAL_MARKETING_LOCAL_SERVICE',
@@ -45,13 +49,15 @@ describe('DisclosureContinuation', () => {
   });
 
   it('offers a no-state-change path back to Marketplace', () => {
-    render(<DisclosureContinuation
-      disclosureRevision="1.0.0"
-      professionalType="DIGITAL_MARKETING_LOCAL_SERVICE"
-      professionalVersion="1.0.0"
-      termsVersion="2026-07-18"
-      trialAvailable
-    />);
+    render(
+      <DisclosureContinuation
+        disclosureRevision="1.0.0"
+        professionalType="DIGITAL_MARKETING_LOCAL_SERVICE"
+        professionalVersion="1.0.0"
+        termsVersion="2026-07-18"
+        trialAvailable
+      />
+    );
 
     expect(screen.getByRole('link', { name: 'Not now' })).toHaveAttribute('href', '/marketplace');
     expect(push).not.toHaveBeenCalled();

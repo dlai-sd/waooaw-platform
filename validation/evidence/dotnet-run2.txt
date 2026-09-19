@@ -1,0 +1,3 @@
+dotnet_run2_ms=25870
+exit_code=0
+cache_state=ephemeral-tmp-nuget

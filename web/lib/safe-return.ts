@@ -3,7 +3,12 @@
 
 const allowedPath = /^\/(home|profile|settings|professionals\/mine|relationships\/[0-9a-f-]+)$/i;
 const marketplaceParameters = new Set([
-  'professionalType', 'version', 'intent', 'disclosureRevision', 'termsVersion', 'idempotencyKey',
+  'professionalType',
+  'version',
+  'intent',
+  'disclosureRevision',
+  'termsVersion',
+  'idempotencyKey',
 ]);
 
 export function safeReturnTarget(value: string | string[] | undefined, fallback = '/home'): string {
@@ -26,7 +31,11 @@ export function safeReturnTarget(value: string | string[] | undefined, fallback 
     if (intent !== null && intent !== 'trial' && intent !== 'hire') return fallback;
     if (disclosureRevision !== null && !/^[0-9]+\.[0-9]+\.[0-9]+$/.test(disclosureRevision)) return fallback;
     if (termsVersion !== null && !/^\d{4}-\d{2}-\d{2}$/.test(termsVersion)) return fallback;
-    if (idempotencyKey !== null && !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotencyKey)) return fallback;
+    if (
+      idempotencyKey !== null &&
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotencyKey)
+    )
+      return fallback;
     return value;
   } catch {
     return fallback;
@@ -35,7 +44,8 @@ export function safeReturnTarget(value: string | string[] | undefined, fallback 
 
 export function safePublicReturnTarget(value: string | undefined): string {
   if (!value || /[\\%\s]/.test(value)) return '/';
-  const publicPath = /^\/(?:professionals(?:\/(?!mine(?:[/?#]|$))[a-z0-9-]+)?|blogs(?:\/[a-z0-9-]+)?|about|contact|careers|press|constitution|privacy|terms|cookies|refund|grievance)?$/;
+  const publicPath =
+    /^\/(?:professionals(?:\/(?!mine(?:[/?#]|$))[a-z0-9-]+)?|blogs(?:\/[a-z0-9-]+)?|about|contact|careers|press|constitution|privacy|terms|cookies|refund|grievance)?$/;
   const [path, fragment] = value.split('#');
   if (!publicPath.test(path)) return '/';
   return fragment && /^[a-zA-Z][a-zA-Z0-9_-]{0,99}$/.test(fragment) ? `${path}#${fragment}` : path;

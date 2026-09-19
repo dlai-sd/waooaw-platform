@@ -13,14 +13,24 @@ const professional: ProfessionalDisclosure = {
   eligibility: { eligible: true, explanation: 'Suitable for lawful local growth.' },
   skills: [
     { skillId: 'RESEARCH', displayName: 'Market research', applicableInTrial: true },
-    { skillId: 'PUBLISH', displayName: 'Publishing', applicableInTrial: false, activationCondition: 'Requires contract authority' },
+    {
+      skillId: 'PUBLISH',
+      displayName: 'Publishing',
+      applicableInTrial: false,
+      activationCondition: 'Requires contract authority',
+    },
   ],
   limitations: ['No guaranteed outcome'],
   authorityNeeds: ['Approval before publishing'],
   customerRights: ['Stop at any time'],
   trial: { available: true, durationDays: 14, paidApiCallsAllowed: false, externalActionsAllowed: false },
   evidencePosture: 'Every claim links to retained evidence.',
-  indicativePrice: { currency: 'INR', amountInrPaise: 100000, cadence: 'MONTH', qualification: 'Final price follows configuration.' },
+  indicativePrice: {
+    currency: 'INR',
+    amountInrPaise: 100000,
+    cadence: 'MONTH',
+    qualification: 'Final price follows configuration.',
+  },
 };
 
 describe('ProfessionalComparison', () => {
@@ -35,7 +45,7 @@ describe('ProfessionalComparison', () => {
     expect(screen.getByText('Requires contract authority')).toBeVisible();
     expect(screen.getByRole('link', { name: 'Interview this professional' })).toHaveAttribute(
       'href',
-      '/login?professional=DIGITAL_MARKETING_LOCAL_SERVICE',
+      '/login?professional=DIGITAL_MARKETING_LOCAL_SERVICE'
     );
   });
 

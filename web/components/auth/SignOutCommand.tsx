@@ -32,16 +32,40 @@ export function SignOutCommand({ label }: { label: string }) {
     });
     if (!response.ok) throw new Error('Sign out request was denied.');
     const result: unknown = await response.json();
-    if (!result || typeof result !== 'object' || !('logoutPath' in result) || typeof result.logoutPath !== 'string'
-      || !result.logoutPath.startsWith('/api/auth/keycloak-logout?nonce=')) {
+    if (
+      !result ||
+      typeof result !== 'object' ||
+      !('logoutPath' in result) ||
+      typeof result.logoutPath !== 'string' ||
+      !result.logoutPath.startsWith('/api/auth/keycloak-logout?nonce=')
+    ) {
       throw new Error('Sign out response was invalid.');
     }
     window.location.assign(result.logoutPath);
   }
 
-  return <button aria-label={label} className="account-command" type="button" onClick={() => void signOut()}><LogOut aria-hidden="true" size={19} /><span>{label}</span></button>;
+  return (
+    <button aria-label={label} className="account-command" type="button" onClick={() => void signOut()}>
+      <LogOut aria-hidden="true" size={19} />
+      <span>{label}</span>
+    </button>
+  );
 }
 
 export function AccountSwitchCommand({ label }: { label: string }) {
-  return <button aria-label={label} className="account-command" type="button" onClick={() => { clearProtectedClientState(); announceIdentitySessionChange('ACCOUNT_SWITCH'); void signIn('keycloak', { callbackUrl: '/home' }, { prompt: 'select_account' }); }}><RefreshCw aria-hidden="true" size={19} /><span>{label}</span></button>;
+  return (
+    <button
+      aria-label={label}
+      className="account-command"
+      type="button"
+      onClick={() => {
+        clearProtectedClientState();
+        announceIdentitySessionChange('ACCOUNT_SWITCH');
+        void signIn('keycloak', { callbackUrl: '/home' }, { prompt: 'select_account' });
+      }}
+    >
+      <RefreshCw aria-hidden="true" size={19} />
+      <span>{label}</span>
+    </button>
+  );
 }

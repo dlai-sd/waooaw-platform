@@ -1,0 +1,9 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-101
+contract_path: work-contracts/WC-101-docker-only-validation-architecture.md
+contract_digest: f3081240d55be4bc92d23737ba38da2621fa24ceb9c8ce7138d2a04e6807028c
+contract_status: FOUNDER_ACCEPTED
+implementation_scope: false
+result: NOT_APPLICABLE
+not_applicable_reason: WC-101 is an architecture-only contract that explicitly authorizes no implementation.
+requirements: []

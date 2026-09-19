@@ -14,7 +14,12 @@ export interface ProfessionalDisclosure extends ProfessionalDiscoveryResult {
   customerRouteSlug: string;
   disclosureRevision: string;
   termsVersion: string;
-  skills: Array<{ skillId: string; displayName: string; applicableInTrial: boolean; activationCondition?: string | null }>;
+  skills: Array<{
+    skillId: string;
+    displayName: string;
+    applicableInTrial: boolean;
+    activationCondition?: string | null;
+  }>;
   limitations: string[];
   authorityNeeds: string[];
   customerRights: string[];
@@ -27,13 +32,10 @@ const businessPlatformUrl = process.env.BUSINESS_PLATFORM_URL ?? 'http://localho
 
 export async function browseMarketplaceProfessionals(
   accessToken: string,
-  filters: { cursor?: string; professionalType?: string; q?: string } = {},
+  filters: { cursor?: string; professionalType?: string; q?: string } = {}
 ): Promise<ProfessionalMarketplacePageV1> {
   const api = new ProfessionalsApi(new Configuration({ basePath: businessPlatformUrl, accessToken }));
-  return api.browseMarketplaceProfessionals(
-    { ...filters, limit: 24 },
-    { cache: 'no-store' },
-  );
+  return api.browseMarketplaceProfessionals({ ...filters, limit: 24 }, { cache: 'no-store' });
 }
 
 async function getJson(path: string): Promise<unknown> {
@@ -49,5 +51,7 @@ export async function discoverProfessionals(outcome: string): Promise<Profession
 }
 
 export async function getProfessionalDisclosure(professionalType: string): Promise<ProfessionalDisclosure> {
-  return getJson(`/api/v1/professionals/${encodeURIComponent(professionalType)}/disclosure`) as Promise<ProfessionalDisclosure>;
+  return getJson(
+    `/api/v1/professionals/${encodeURIComponent(professionalType)}/disclosure`
+  ) as Promise<ProfessionalDisclosure>;
 }

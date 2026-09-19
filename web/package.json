@@ -38,6 +38,9 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.2",
+    "@biomejs/biome": "1.9.4",
+    "@commitlint/cli": "19.6.1",
+    "@commitlint/config-conventional": "19.6.0",
     "@openapitools/openapi-generator-cli": "^2.18.4",
     "@playwright/test": "1.62.1",
     "@testing-library/jest-dom": "6.9.1",

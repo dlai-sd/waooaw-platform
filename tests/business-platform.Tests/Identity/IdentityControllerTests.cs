@@ -175,10 +175,7 @@ internal static class IdentityTestHelpers
 public sealed class IdentityProviderProjectionTests
 {
     private static string EnvironmentManifestPath(string environment) =>
-        Path.GetFullPath(Path.Combine(
-            AppContext.BaseDirectory,
-            "../../../../../infrastructure/identity-config/environments",
-            $"{environment}.json"));
+        RepositoryPaths.Resolve($"infrastructure/identity-config/environments/{environment}.json");
 
     [Fact]
     public void F2_GetProviders_ReturnsOrderedReadinessWithoutSecrets()
@@ -310,7 +307,7 @@ public sealed class IdentityProviderProjectionTests
     public void F2_IdentityEnvironment_DemoOverlayClearsLocalProviderReadiness()
     {
         var manifestPath = Path.GetFullPath(EnvironmentManifestPath("demo"));
-        var root = Path.GetFullPath("../../..", Path.GetDirectoryName(manifestPath)!);
+        var root = RepositoryPaths.Root();
         var configuration = new ConfigurationBuilder()
             .AddJsonFile(Path.GetFullPath("src/business-platform/appsettings.json", root))
             .Build();

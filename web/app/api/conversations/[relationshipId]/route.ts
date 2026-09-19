@@ -1,7 +1,7 @@
 // Implements: architecture/reference/ux/wc-034-implementation-decomposition.md §F3 Conversation Core
 // Constitutional basis: C-023 (Evidence First), C-026 (Tenant Isolation), C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { conversationProblem, createConversationApi } from '@/lib/api/conversation';
 import { accessTokenFromRequest } from '@/lib/server-auth';
 
@@ -22,7 +22,7 @@ function optionalQuery(request: NextRequest, name: string): string | undefined {
 function sessionRequired() {
   return NextResponse.json(
     { code: 'CONVERSATION_SESSION_REQUIRED', title: 'Secure sign in is required.' },
-    { status: 401 },
+    { status: 401 }
   );
 }
 
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (cursor && afterCursor) {
     return NextResponse.json(
       { code: 'CONVERSATION_REQUEST_INVALID', title: 'Conversation request is invalid.' },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (error instanceof InvalidConversationRequest) {
       return NextResponse.json(
         { code: 'CONVERSATION_REQUEST_INVALID', title: 'Conversation request is invalid.' },
-        { status: 400 },
+        { status: 400 }
       );
     }
     const problem = await conversationProblem(error);
@@ -71,47 +71,55 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const { relationshipId } = await params;
 
   try {
-    const body = await request.json() as CommandBody;
+    const body = (await request.json()) as CommandBody;
     const action = requiredString(body, 'action');
     const idempotencyKey = requiredString(body, 'idempotencyKey');
     const api = createConversationApi(accessToken);
 
     switch (action) {
       case 'send':
-        return NextResponse.json(await api.sendConversationMessage({
-          relationshipId,
-          idempotencyKey,
-          sendConversationMessageRequestV1: {
-            schemaVersion: '1.0',
-            clientMessageId: requiredString(body, 'clientMessageId'),
-            skillId: requiredString(body, 'skillId'),
-            content: [{ schemaVersion: '1.0', blockType: 'TEXT', text: requiredString(body, 'text') }],
-            locale: requiredString(body, 'locale'),
-            expectedCursor: typeof body.expectedCursor === 'string' ? body.expectedCursor : undefined,
-          },
-        }));
+        return NextResponse.json(
+          await api.sendConversationMessage({
+            relationshipId,
+            idempotencyKey,
+            sendConversationMessageRequestV1: {
+              schemaVersion: '1.0',
+              clientMessageId: requiredString(body, 'clientMessageId'),
+              skillId: requiredString(body, 'skillId'),
+              content: [{ schemaVersion: '1.0', blockType: 'TEXT', text: requiredString(body, 'text') }],
+              locale: requiredString(body, 'locale'),
+              expectedCursor: typeof body.expectedCursor === 'string' ? body.expectedCursor : undefined,
+            },
+          })
+        );
       case 'retry':
-        return NextResponse.json(await api.retryConversationMessage({
-          relationshipId,
-          messageId: requiredString(body, 'messageId'),
-          idempotencyKey,
-        }));
+        return NextResponse.json(
+          await api.retryConversationMessage({
+            relationshipId,
+            messageId: requiredString(body, 'messageId'),
+            idempotencyKey,
+          })
+        );
       case 'read':
-        return NextResponse.json(await api.updateConversationReadPosition({
-          relationshipId,
-          idempotencyKey,
-          updateConversationReadPositionRequestV1: {
-            schemaVersion: '1.0',
-            lastVisibleMessageId: requiredString(body, 'lastVisibleMessageId'),
-            authoritativeCursor: requiredString(body, 'authoritativeCursor'),
-          },
-        }));
+        return NextResponse.json(
+          await api.updateConversationReadPosition({
+            relationshipId,
+            idempotencyKey,
+            updateConversationReadPositionRequestV1: {
+              schemaVersion: '1.0',
+              lastVisibleMessageId: requiredString(body, 'lastVisibleMessageId'),
+              authoritativeCursor: requiredString(body, 'authoritativeCursor'),
+            },
+          })
+        );
       case 'cancel':
-        return NextResponse.json(await api.cancelConversationExecution({
-          relationshipId,
-          executionId: requiredString(body, 'executionId'),
-          idempotencyKey,
-        }));
+        return NextResponse.json(
+          await api.cancelConversationExecution({
+            relationshipId,
+            executionId: requiredString(body, 'executionId'),
+            idempotencyKey,
+          })
+        );
       default:
         throw new InvalidConversationRequest();
     }
@@ -119,7 +127,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (error instanceof InvalidConversationRequest || error instanceof SyntaxError) {
       return NextResponse.json(
         { code: 'CONVERSATION_REQUEST_INVALID', title: 'Conversation request is invalid.' },
-        { status: 400 },
+        { status: 400 }
       );
     }
     const problem = await conversationProblem(error);

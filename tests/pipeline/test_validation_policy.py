@@ -35,7 +35,7 @@ def test_classifier_direct_reverse_and_unknown_paths() -> None:
 
 def test_classifier_failure_modes_select_full() -> None:
     policy = load_policy()
-    policy["components"]["constitutional-engine"]["depends_on"] = ["web"]
+    policy["components"]["web"]["reverse_dependencies"] = ["constitutional-engine"]
 
     result = classify_paths(policy, ["src/constitutional-engine/Program.cs"])
 

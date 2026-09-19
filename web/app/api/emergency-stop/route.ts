@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { accessTokenFromRequest } from '@/lib/server-auth';
 import { EmploymentApi } from '@/lib/api/generated/apis/EmploymentApi';
 import { Configuration, ResponseError } from '@/lib/api/generated/runtime';

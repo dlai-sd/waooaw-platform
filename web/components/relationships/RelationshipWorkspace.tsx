@@ -1,4 +1,9 @@
-import type { ContractJourneyProjection, EmploymentRelationship, RelationshipEvaluationProjection, RelationshipTimelineEntry } from '@/lib/api/relationships';
+import type {
+  ContractJourneyProjection,
+  EmploymentRelationship,
+  RelationshipEvaluationProjection,
+  RelationshipTimelineEntry,
+} from '@/lib/api/relationships';
 import type { RelationshipWorkspaceViews } from '@/lib/api/relationship-workspace';
 import { RelationshipEvaluation } from './RelationshipEvaluation';
 import { ContractJourney } from './ContractJourney';
@@ -21,7 +26,14 @@ interface RelationshipWorkspaceProps {
 
 const stateLabel = (state: string) => state.replaceAll('_', ' ').toLowerCase();
 
-export function RelationshipWorkspace({ relationship, relationships = [], timeline, views, evaluation, contractJourney = null }: RelationshipWorkspaceProps) {
+export function RelationshipWorkspace({
+  relationship,
+  relationships = [],
+  timeline,
+  views,
+  evaluation,
+  contractJourney = null,
+}: RelationshipWorkspaceProps) {
   const live = relationship.state === 'ACTIVE';
   const performance = views.performance.current;
 
@@ -32,13 +44,36 @@ export function RelationshipWorkspace({ relationship, relationships = [], timeli
           <p className="brand">WAOOAW</p>
           <h1>{relationship.professionalType} relationship</h1>
         </div>
-        <span className={`state-banner ${live ? 'live' : 'trial'}`}>{live ? 'Live' : 'Evaluation'} · {relationship.state}</span>
+        <span className={`state-banner ${live ? 'live' : 'trial'}`}>
+          {live ? 'Live' : 'Evaluation'} · {relationship.state}
+        </span>
       </header>
 
       <aside className="relationship-switcher" aria-label="Your agents">
         <p className="section-label">My Agents</p>
         <nav aria-label="Switch expert">
-          {relationships.length ? relationships.map((item) => <a aria-label={item.professionalDisplayName} aria-current={item.relationshipId === relationship.relationshipId ? 'page' : undefined} key={item.relationshipId} href={`/relationships/${item.relationshipId}`}><strong>{item.professionalDisplayName}</strong><span>{stateLabel(item.lifecycleState)}</span></a>) : <a aria-label={relationship.professionalType} aria-current="page" href={`/relationships/${relationship.relationshipId}`}><strong>{relationship.professionalType}</strong><span>{stateLabel(relationship.state)}</span></a>}
+          {relationships.length ? (
+            relationships.map((item) => (
+              <a
+                aria-label={item.professionalDisplayName}
+                aria-current={item.relationshipId === relationship.relationshipId ? 'page' : undefined}
+                key={item.relationshipId}
+                href={`/relationships/${item.relationshipId}`}
+              >
+                <strong>{item.professionalDisplayName}</strong>
+                <span>{stateLabel(item.lifecycleState)}</span>
+              </a>
+            ))
+          ) : (
+            <a
+              aria-label={relationship.professionalType}
+              aria-current="page"
+              href={`/relationships/${relationship.relationshipId}`}
+            >
+              <strong>{relationship.professionalType}</strong>
+              <span>{stateLabel(relationship.state)}</span>
+            </a>
+          )}
         </nav>
       </aside>
 
@@ -48,70 +83,319 @@ export function RelationshipWorkspace({ relationship, relationships = [], timeli
           <h2 id="relationship-summary-title">Current constitutional state</h2>
         </div>
         <dl className="state-grid">
-          <div><dt>State</dt><dd>{relationship.state.replaceAll('_', ' ')}</dd></div>
-          <div><dt>Version</dt><dd>{relationship.stateVersion}</dd></div>
-          <div><dt>Evidence events</dt><dd>{timeline.length}</dd></div>
-          <div><dt>Last updated</dt><dd>{new Date(relationship.updatedAt).toLocaleString('en-IN')}</dd></div>
+          <div>
+            <dt>State</dt>
+            <dd>{relationship.state.replaceAll('_', ' ')}</dd>
+          </div>
+          <div>
+            <dt>Version</dt>
+            <dd>{relationship.stateVersion}</dd>
+          </div>
+          <div>
+            <dt>Evidence events</dt>
+            <dd>{timeline.length}</dd>
+          </div>
+          <div>
+            <dt>Last updated</dt>
+            <dd>{new Date(relationship.updatedAt).toLocaleString('en-IN')}</dd>
+          </div>
         </dl>
       </section>
 
       <RelationshipEvaluation evaluation={evaluation} />
-      <SkillDecisionControls relationshipId={relationship.relationshipId} workspaceVersion={views.workspace.workspaceVersion} skills={evaluation.skills} />
+      <SkillDecisionControls
+        relationshipId={relationship.relationshipId}
+        workspaceVersion={views.workspace.workspaceVersion}
+        skills={evaluation.skills}
+      />
 
       <ContractJourney relationshipId={relationship.relationshipId} journey={contractJourney} />
 
       <section className="lifecycle-panel" aria-labelledby="lifecycle-title">
         <div className="lifecycle-heading">
-          <div><p className="section-label">Customer lifecycle</p><h2 id="lifecycle-title">From configuration to operations</h2></div>
+          <div>
+            <p className="section-label">Customer lifecycle</p>
+            <h2 id="lifecycle-title">From configuration to operations</h2>
+          </div>
           <span className="currency-state">{stateLabel(views.configuration.currencyState)}</span>
         </div>
         <ol className="lifecycle-steps">
           {views.configuration.items.map((item) => (
-            <li key={item.stepKey} data-state={item.state.toLowerCase()}><span>{item.stepKey === 'ONBOARD' ? '1' : '2'}</span><div><strong>{item.label}</strong><small>{item.summary ?? stateLabel(item.state)}</small></div></li>
+            <li key={item.stepKey} data-state={item.state.toLowerCase()}>
+              <span>{item.stepKey === 'ONBOARD' ? '1' : '2'}</span>
+              <div>
+                <strong>{item.label}</strong>
+                <small>{item.summary ?? stateLabel(item.state)}</small>
+              </div>
+            </li>
           ))}
-          <li data-state={views.goals.activeGoals.every((goal) => goal.verificationStatus === 'VERIFIED') && views.goals.activeGoals.length ? 'complete' : 'locked'}><span>3</span><div><strong>Goal Verification</strong><small>{views.goals.activeGoals.length ? `${views.goals.activeGoals.filter((goal) => goal.verificationStatus === 'VERIFIED').length} of ${views.goals.activeGoals.length} verified` : 'No active goals'}</small></div></li>
-          <li data-state={views.businessOutcomes.currencyState.toLowerCase()}><span>4</span><div><strong>Business Outcomes</strong><small>{views.businessOutcomes.items.length ? `${views.businessOutcomes.items.length} traced outcomes` : 'No supported outcomes available'}</small></div></li>
-          <li data-state={views.operations.eligibilityState.toLowerCase()}><span>5</span><div><strong>Operations</strong><small>{stateLabel(views.operations.eligibilityState)}</small></div></li>
+          <li
+            data-state={
+              views.goals.activeGoals.every((goal) => goal.verificationStatus === 'VERIFIED') &&
+              views.goals.activeGoals.length
+                ? 'complete'
+                : 'locked'
+            }
+          >
+            <span>3</span>
+            <div>
+              <strong>Goal Verification</strong>
+              <small>
+                {views.goals.activeGoals.length
+                  ? `${views.goals.activeGoals.filter((goal) => goal.verificationStatus === 'VERIFIED').length} of ${views.goals.activeGoals.length} verified`
+                  : 'No active goals'}
+              </small>
+            </div>
+          </li>
+          <li data-state={views.businessOutcomes.currencyState.toLowerCase()}>
+            <span>4</span>
+            <div>
+              <strong>Business Outcomes</strong>
+              <small>
+                {views.businessOutcomes.items.length
+                  ? `${views.businessOutcomes.items.length} traced outcomes`
+                  : 'No supported outcomes available'}
+              </small>
+            </div>
+          </li>
+          <li data-state={views.operations.eligibilityState.toLowerCase()}>
+            <span>5</span>
+            <div>
+              <strong>Operations</strong>
+              <small>{stateLabel(views.operations.eligibilityState)}</small>
+            </div>
+          </li>
         </ol>
         <nav className="relationship-context-nav" aria-label="Relationship context">
-          {['Needs your attention', 'Plan', 'Work', 'Results', 'Usage & budget', 'Rights & control', 'Evidence'].map((label) => (
-            <a key={label} href={`#${label.toLowerCase().replaceAll(' ', '-').replaceAll('&', 'and')}`}>{label}</a>
-          ))}
+          {['Needs your attention', 'Plan', 'Work', 'Results', 'Usage & budget', 'Rights & control', 'Evidence'].map(
+            (label) => (
+              <a key={label} href={`#${label.toLowerCase().replaceAll(' ', '-').replaceAll('&', 'and')}`}>
+                {label}
+              </a>
+            )
+          )}
           <OpenConversationCommand label="Conversation" />
         </nav>
       </section>
 
       <section className="lifecycle-details" aria-label="Lifecycle actions">
-          <section><h3>Onboard</h3><OnboardForm relationshipId={relationship.relationshipId} summary={views.configuration.items.find((item) => item.stepKey === 'ONBOARD')?.summary} /></section>
-          <section><h3>Induct</h3><p>Continue the agent-led induction in the persistent professional conversation. The confirmed context remains server-owned and shared across supported channels.</p><OpenConversationCommand label="Continue induction" /></section>
-          <section><h3>Goals</h3>{views.goals.activeGoals.length ? <ul className="decision-list">{views.goals.activeGoals.map((goal) => <li key={goal.goalId}><span><strong>{goal.skillLabel}</strong><small>{goal.measure} · {goal.frequency}</small></span><b>{stateLabel(goal.verificationStatus)}</b></li>)}</ul> : <p>No active goals are available.</p>}<GoalVerificationControls goals={views.goals.activeGoals} relationshipId={relationship.relationshipId} workspaceVersion={views.workspace.workspaceVersion} /></section>
-          <section><h3>Operations eligibility</h3><p><strong>{stateLabel(views.operations.eligibilityState)}</strong></p>{views.operations.blockedReasons?.length ? <ul>{views.operations.blockedReasons.map((reason) => <li key={reason}>{reason}</li>)}</ul> : <p>No server-reported blockers.</p>}</section>
-            <section><h3>Performance</h3>{performance ? <><p>{performance.skillId} · {new Date(performance.periodStart).toLocaleDateString('en-IN')} to {new Date(performance.periodEnd).toLocaleDateString('en-IN')}</p><dl className="state-grid"><div><dt>Work delivery</dt><dd>{stateLabel(performance.workDelivery.state)}</dd></div><div><dt>Agent quality</dt><dd>{stateLabel(performance.agentQuality.state)}</dd></div><div><dt>Constitutional performance</dt><dd>{stateLabel(performance.constitutionalPerformance.state)}</dd></div><div><dt>Commercial usage</dt><dd>{stateLabel(performance.commercialUsage.state)}</dd></div><div><dt>Business outcome</dt><dd>{stateLabel(performance.customerBusinessOutcome.state)}</dd></div><div><dt>Customer assessment</dt><dd>{stateLabel(performance.customerAssessment.state)}</dd></div><div><dt>Trust and autonomy</dt><dd>{stateLabel(performance.trustAutonomy.state)}</dd></div></dl>{performance.customerBusinessOutcome.attributionLimits ? <p><strong>Attribution limit:</strong> {performance.customerBusinessOutcome.attributionLimits}</p> : null}<p><strong>Recommendation:</strong> {stateLabel(performance.recommendation)}</p>{performance.reassessmentRequired ? <p className="empty-meaning"><strong>Reassessment required:</strong> affected work remains locked until a later review establishes current readiness.</p> : null}{performance.customerResponse ? <p><strong>Your recorded decision:</strong> {stateLabel(performance.customerResponse.decision)}</p> : <PerformanceReviewControls relationshipId={relationship.relationshipId} workspaceVersion={views.workspace.workspaceVersion} review={performance} />}</> : <p>No completed review window is available.</p>}</section>
+        <section>
+          <h3>Onboard</h3>
+          <OnboardForm
+            relationshipId={relationship.relationshipId}
+            summary={views.configuration.items.find((item) => item.stepKey === 'ONBOARD')?.summary}
+          />
+        </section>
+        <section>
+          <h3>Induct</h3>
+          <p>
+            Continue the agent-led induction in the persistent professional conversation. The confirmed context remains
+            server-owned and shared across supported channels.
+          </p>
+          <OpenConversationCommand label="Continue induction" />
+        </section>
+        <section>
+          <h3>Goals</h3>
+          {views.goals.activeGoals.length ? (
+            <ul className="decision-list">
+              {views.goals.activeGoals.map((goal) => (
+                <li key={goal.goalId}>
+                  <span>
+                    <strong>{goal.skillLabel}</strong>
+                    <small>
+                      {goal.measure} · {goal.frequency}
+                    </small>
+                  </span>
+                  <b>{stateLabel(goal.verificationStatus)}</b>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No active goals are available.</p>
+          )}
+          <GoalVerificationControls
+            goals={views.goals.activeGoals}
+            relationshipId={relationship.relationshipId}
+            workspaceVersion={views.workspace.workspaceVersion}
+          />
+        </section>
+        <section>
+          <h3>Operations eligibility</h3>
+          <p>
+            <strong>{stateLabel(views.operations.eligibilityState)}</strong>
+          </p>
+          {views.operations.blockedReasons?.length ? (
+            <ul>
+              {views.operations.blockedReasons.map((reason) => (
+                <li key={reason}>{reason}</li>
+              ))}
+            </ul>
+          ) : (
+            <p>No server-reported blockers.</p>
+          )}
+        </section>
+        <section>
+          <h3>Performance</h3>
+          {performance ? (
+            <>
+              <p>
+                {performance.skillId} · {new Date(performance.periodStart).toLocaleDateString('en-IN')} to{' '}
+                {new Date(performance.periodEnd).toLocaleDateString('en-IN')}
+              </p>
+              <dl className="state-grid">
+                <div>
+                  <dt>Work delivery</dt>
+                  <dd>{stateLabel(performance.workDelivery.state)}</dd>
+                </div>
+                <div>
+                  <dt>Agent quality</dt>
+                  <dd>{stateLabel(performance.agentQuality.state)}</dd>
+                </div>
+                <div>
+                  <dt>Constitutional performance</dt>
+                  <dd>{stateLabel(performance.constitutionalPerformance.state)}</dd>
+                </div>
+                <div>
+                  <dt>Commercial usage</dt>
+                  <dd>{stateLabel(performance.commercialUsage.state)}</dd>
+                </div>
+                <div>
+                  <dt>Business outcome</dt>
+                  <dd>{stateLabel(performance.customerBusinessOutcome.state)}</dd>
+                </div>
+                <div>
+                  <dt>Customer assessment</dt>
+                  <dd>{stateLabel(performance.customerAssessment.state)}</dd>
+                </div>
+                <div>
+                  <dt>Trust and autonomy</dt>
+                  <dd>{stateLabel(performance.trustAutonomy.state)}</dd>
+                </div>
+              </dl>
+              {performance.customerBusinessOutcome.attributionLimits ? (
+                <p>
+                  <strong>Attribution limit:</strong> {performance.customerBusinessOutcome.attributionLimits}
+                </p>
+              ) : null}
+              <p>
+                <strong>Recommendation:</strong> {stateLabel(performance.recommendation)}
+              </p>
+              {performance.reassessmentRequired ? (
+                <p className="empty-meaning">
+                  <strong>Reassessment required:</strong> affected work remains locked until a later review establishes
+                  current readiness.
+                </p>
+              ) : null}
+              {performance.customerResponse ? (
+                <p>
+                  <strong>Your recorded decision:</strong> {stateLabel(performance.customerResponse.decision)}
+                </p>
+              ) : (
+                <PerformanceReviewControls
+                  relationshipId={relationship.relationshipId}
+                  workspaceVersion={views.workspace.workspaceVersion}
+                  review={performance}
+                />
+              )}
+            </>
+          ) : (
+            <p>No completed review window is available.</p>
+          )}
+        </section>
       </section>
 
       <nav className="workspace-nav" aria-label="Relationship workspace views">
         {['Plan', 'Needs your attention', 'Work', 'Results', 'Usage & budget', 'Rights & control'].map((label) => (
-          <a key={label} href={`#${label.toLowerCase().replaceAll(' ', '-').replace('&', 'and')}`}>{label}</a>
+          <a key={label} href={`#${label.toLowerCase().replaceAll(' ', '-').replaceAll('&', 'and')}`}>
+            {label}
+          </a>
         ))}
       </nav>
 
-      <section className="workspace-family attention-family" id="needs-your-attention" aria-labelledby="attention-title">
-        <div><p className="section-label">Needs your attention</p><h2 id="attention-title">Decisions in authoritative order</h2></div>
+      <section
+        className="workspace-family attention-family"
+        id="needs-your-attention"
+        aria-labelledby="attention-title"
+      >
+        <div>
+          <p className="section-label">Needs your attention</p>
+          <h2 id="attention-title">Decisions in authoritative order</h2>
+        </div>
         <span className="currency-state">{stateLabel(views.attention.currencyState)}</span>
-        {views.attention.items.length === 0 ? <p className="empty-meaning">Nothing currently requires your response.</p> : (
-          <ol>{views.attention.items.map((item) => <li key={item.attentionItemId}><strong>{item.reason}</strong><span>{item.consequence}</span></li>)}</ol>
+        {views.attention.items.length === 0 ? (
+          <p className="empty-meaning">Nothing currently requires your response.</p>
+        ) : (
+          <ol>
+            {views.attention.items.map((item) => (
+              <li key={item.attentionItemId}>
+                <strong>{item.reason}</strong>
+                <span>{item.consequence}</span>
+              </li>
+            ))}
+          </ol>
         )}
       </section>
 
       <div className="workspace-families">
-        <section className="workspace-family" id="plan"><p className="section-label">Plan</p><h2>Goals and priority work</h2><span className="currency-state">{stateLabel(views.plan.currencyState)}</span><p>{views.plan.goals?.length ? views.plan.goals.join(' · ') : 'Plan details are not yet authoritatively available.'}</p></section>
-        <section className="workspace-family" id="work"><p className="section-label">Work</p><h2>Execution and deliverables</h2><span className="currency-state">{stateLabel(views.work.currencyState)}</span><p>{views.work.items.length ? `${views.work.items.length} work items` : 'Execution facts are not yet authoritatively available.'}</p></section>
-        <section className="workspace-family" id="results"><p className="section-label">Results</p><h2>Business outcomes</h2><span className="currency-state">{stateLabel(views.results.currencyState)}</span><p>{views.results.outcomes.length ? `${views.results.outcomes.length} evidenced outcomes` : 'No supported business outcome is available yet.'}</p></section>
-        <section className="workspace-family" id="usage-and-budget"><p className="section-label">Usage &amp; budget</p><h2>Commercial truth</h2><span className="currency-state">{stateLabel(views.usageBudget.currencyState)}</span><dl><div><dt>Actual</dt><dd>{views.usageBudget.actualAmount}</dd></div><div><dt>Forecast</dt><dd>{views.usageBudget.forecastRange}</dd></div></dl></section>
-        <section className="workspace-family" id="rights-and-control"><p className="section-label">Rights &amp; control</p><h2>Scope, authority and lifecycle</h2><span className="currency-state">{stateLabel(views.rightsControls.currencyState)}</span><p>{stateLabel(views.rightsControls.lifecycleState)} · Emergency Stop {views.rightsControls.emergencyStopReachable ? 'available' : 'unavailable'}</p></section>
+        <section className="workspace-family" id="plan">
+          <p className="section-label">Plan</p>
+          <h2>Goals and priority work</h2>
+          <span className="currency-state">{stateLabel(views.plan.currencyState)}</span>
+          <p>
+            {views.plan.goals?.length
+              ? views.plan.goals.join(' · ')
+              : 'Plan details are not yet authoritatively available.'}
+          </p>
+        </section>
+        <section className="workspace-family" id="work">
+          <p className="section-label">Work</p>
+          <h2>Execution and deliverables</h2>
+          <span className="currency-state">{stateLabel(views.work.currencyState)}</span>
+          <p>
+            {views.work.items.length
+              ? `${views.work.items.length} work items`
+              : 'Execution facts are not yet authoritatively available.'}
+          </p>
+        </section>
+        <section className="workspace-family" id="results">
+          <p className="section-label">Results</p>
+          <h2>Business outcomes</h2>
+          <span className="currency-state">{stateLabel(views.results.currencyState)}</span>
+          <p>
+            {views.results.outcomes.length
+              ? `${views.results.outcomes.length} evidenced outcomes`
+              : 'No supported business outcome is available yet.'}
+          </p>
+        </section>
+        <section className="workspace-family" id="usage-and-budget">
+          <p className="section-label">Usage &amp; budget</p>
+          <h2>Commercial truth</h2>
+          <span className="currency-state">{stateLabel(views.usageBudget.currencyState)}</span>
+          <dl>
+            <div>
+              <dt>Actual</dt>
+              <dd>{views.usageBudget.actualAmount}</dd>
+            </div>
+            <div>
+              <dt>Forecast</dt>
+              <dd>{views.usageBudget.forecastRange}</dd>
+            </div>
+          </dl>
+        </section>
+        <section className="workspace-family" id="rights-and-control">
+          <p className="section-label">Rights &amp; control</p>
+          <h2>Scope, authority and lifecycle</h2>
+          <span className="currency-state">{stateLabel(views.rightsControls.currencyState)}</span>
+          <p>
+            {stateLabel(views.rightsControls.lifecycleState)} · Emergency Stop{' '}
+            {views.rightsControls.emergencyStopReachable ? 'available' : 'unavailable'}
+          </p>
+        </section>
       </div>
 
-      <div id="evidence"><EvidenceWindow relationshipId={relationship.relationshipId} evidence={views.evidence} /></div>
+      <div id="evidence">
+        <EvidenceWindow relationshipId={relationship.relationshipId} evidence={views.evidence} />
+      </div>
 
       <section className="timeline" aria-labelledby="timeline-title">
         <p className="section-label">Evidence timeline</p>
@@ -125,7 +409,6 @@ export function RelationshipWorkspace({ relationship, relationships = [], timeli
           ))}
         </ol>
       </section>
-
     </main>
   );
 }

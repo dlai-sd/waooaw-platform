@@ -10,9 +10,26 @@ import { defaultLocale, directionForLocale, resolveLocale, type SupportedLocale 
 export default function GlobalError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
   const [locale, setLocale] = useState<SupportedLocale>(defaultLocale);
   useEffect(() => {
-    const localeCookie = document.cookie.split('; ').find((cookie) => cookie.startsWith('waooaw-locale='))?.split('=')[1];
+    const localeCookie = document.cookie
+      .split('; ')
+      .find((cookie) => cookie.startsWith('waooaw-locale='))
+      ?.split('=')[1];
     setLocale(resolveLocale(localeCookie ? decodeURIComponent(localeCookie) : undefined));
   }, []);
   const messages = globalErrorMessages[locale];
-  return <html dir={directionForLocale(locale)} lang={locale}><body><main className="system-page"><section className="state-view"><h1>{messages.globalErrorTitle}</h1><p>{messages.globalErrorDescription}</p><button className="primary-command" type="button" onClick={reset}>{messages.tryAgain}</button></section></main></body></html>;
+  return (
+    <html dir={directionForLocale(locale)} lang={locale}>
+      <body>
+        <main className="system-page">
+          <section className="state-view">
+            <h1>{messages.globalErrorTitle}</h1>
+            <p>{messages.globalErrorDescription}</p>
+            <button className="primary-command" type="button" onClick={reset}>
+              {messages.tryAgain}
+            </button>
+          </section>
+        </main>
+      </body>
+    </html>
+  );
 }

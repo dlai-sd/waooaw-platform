@@ -10,7 +10,11 @@ jest.mock('next-auth/react', () => ({
 
 describe('AuthSessionProvider', () => {
   it('refreshes the brokered session every five minutes', () => {
-    render(<AuthSessionProvider><span>Protected content</span></AuthSessionProvider>);
+    render(
+      <AuthSessionProvider>
+        <span>Protected content</span>
+      </AuthSessionProvider>
+    );
 
     expect(screen.getByText('Protected content')).toBeInTheDocument();
     expect(mockSessionProvider).toHaveBeenCalledWith(expect.objectContaining({ refetchInterval: 300 }));

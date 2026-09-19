@@ -16,17 +16,41 @@ export default async function ApplicationHomePage() {
   if (identity.kind === 'registration-required') redirect('/marketplace');
   if (identity.kind === 'expired' || identity.kind === 'unauthorized') redirect('/login');
   if (identity.kind === 'step-up') {
-    return <StateView actionHref="/login" actionLabel={messages.retrySecureSignIn} kind="forbidden" title={messages.accessNotPermitted} description={messages.accessNotPermittedDescription} />;
+    return (
+      <StateView
+        actionHref="/login"
+        actionLabel={messages.retrySecureSignIn}
+        kind="forbidden"
+        title={messages.accessNotPermitted}
+        description={messages.accessNotPermittedDescription}
+      />
+    );
   }
   if (identity.kind === 'unavailable') {
-    return <StateView actionHref="/home" actionLabel={messages.tryAgain} kind="error" title={messages.globalErrorTitle} description={messages.globalErrorDescription} />;
+    return (
+      <StateView
+        actionHref="/home"
+        actionLabel={messages.tryAgain}
+        kind="error"
+        title={messages.globalErrorTitle}
+        description={messages.globalErrorDescription}
+      />
+    );
   }
 
-  let relationships;
+  let relationships: Awaited<ReturnType<typeof listEmploymentRelationships>>;
   try {
     relationships = await listEmploymentRelationships(accessToken);
   } catch {
-    return <StateView actionHref="/home" actionLabel={messages.tryAgain} kind="error" title={messages.globalErrorTitle} description={messages.globalErrorDescription} />;
+    return (
+      <StateView
+        actionHref="/home"
+        actionLabel={messages.tryAgain}
+        kind="error"
+        title={messages.globalErrorTitle}
+        description={messages.globalErrorDescription}
+      />
+    );
   }
   redirect(relationships.items.length > 0 ? '/professionals/mine' : '/marketplace');
 }

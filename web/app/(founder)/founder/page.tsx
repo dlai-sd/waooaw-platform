@@ -4,5 +4,5 @@
 import { OfferabilityWorkbench } from '@/components/founder/OfferabilityWorkbench';
 
 export default function FounderHomePage() {
-	return <OfferabilityWorkbench />;
+  return <OfferabilityWorkbench />;
 }

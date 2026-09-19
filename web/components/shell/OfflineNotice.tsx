@@ -21,8 +21,8 @@ export function OfflineNotice() {
   }, []);
 
   return offline ? (
-    <div className="offline-notice" role="status">
+    <output className="offline-notice">
       <WifiOff aria-hidden="true" size={18} /> You are offline. No changes will be sent.
-    </div>
+    </output>
   ) : null;
 }

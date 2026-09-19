@@ -1,0 +1,60 @@
+{
+  "schema": "waooaw.wc102-shadow-ledger/v1",
+  "base_sha": "ff09197debf331a75d8f50bb6a817a683544ed33",
+  "head_sha": "aedeb77683be7966ff636dc3cb9d6a29ca249e3a",
+  "catalog_version": "wc102-shadow-v1",
+  "authoritative_source": "full exact-head qualification",
+  "full_qualification_result": "PASS",
+  "comparisons": [
+    {
+      "change_class": "web-only",
+      "changed_path": "web/components/AuthProvider.tsx",
+      "selected_components": ["web"],
+      "expected_gate": "test-web",
+      "expected_gate_selected": true,
+      "false_negatives": [],
+      "result": "PASS"
+    },
+    {
+      "change_class": "business-platform",
+      "changed_path": "src/business-platform/Services/AgentAdmissionValidator.cs",
+      "selected_components": ["agent-runtime-adapter-digital-marketing", "billing-engine", "business-platform", "professional-runtime", "web"],
+      "expected_gate": "test-dotnet:business-platform",
+      "expected_gate_selected": true,
+      "false_negatives": [],
+      "result": "PASS"
+    },
+    {
+      "change_class": "python-service",
+      "changed_path": "src/professional-runtime/activities/execution_loop.py",
+      "selected_components": ["agent-runtime-adapter-digital-marketing", "professional-runtime", "web"],
+      "expected_gate": "test-python:professional-runtime",
+      "expected_gate_selected": true,
+      "false_negatives": [],
+      "result": "PASS"
+    },
+    {
+      "change_class": "shared-contract",
+      "changed_path": "architecture/reference/api-specs/business-platform.openapi.yaml",
+      "selected_components": ["agent-runtime-adapter-digital-marketing", "billing-engine", "business-platform", "professional-runtime", "web"],
+      "expected_gate": "spec-lint",
+      "expected_gate_selected": true,
+      "false_negatives": [],
+      "result": "PASS"
+    },
+    {
+      "change_class": "pipeline-global",
+      "changed_path": ".github/workflows/ci.yaml",
+      "selected_components": ["agent-runtime-adapter-digital-marketing", "ai-runtime", "billing-engine", "business-platform", "constitutional-engine", "professional-runtime", "web"],
+      "full_fallback": true,
+      "skipped_gates": [],
+      "false_negatives": [],
+      "result": "PASS"
+    }
+  ],
+  "represented_samples": 5,
+  "unresolved_false_negatives_in_represented_samples": 0,
+  "activation_minimum_samples": 20,
+  "activation_eligible": false,
+  "selective_enforcement": false
+}

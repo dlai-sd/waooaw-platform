@@ -6,7 +6,11 @@ import { AuthBrand } from './AuthBrand';
 import { getMessages } from '@/lib/i18n';
 import { resolveLocale } from '@/lib/preferences';
 
-export function AuthBoundary({ failed = false, intent = 'login', retry }: {
+export function AuthBoundary({
+  failed = false,
+  intent = 'login',
+  retry,
+}: {
   failed?: boolean;
   intent?: 'login' | 'register';
   retry?: () => void;
@@ -23,19 +27,26 @@ export function AuthBoundary({ failed = false, intent = 'login', retry }: {
 
   return (
     <section className="auth-view auth-boundary" aria-busy={!unavailable}>
-      {unavailable
-        ? <><p className="eyebrow">{messages.secureAccess}</p><h1 id="auth-dialog-title">{messages.authErrorTitle}</h1></>
-        : <AuthBrand
-            subtitle={intent === 'register' ? 'Start your professional journey.' : 'Welcome back.'}
-            title={intent === 'register' ? 'Create your WAOOAW account' : 'Log in to WAOOAW'}
-          />}
+      {unavailable ? (
+        <>
+          <p className="eyebrow">{messages.secureAccess}</p>
+          <h1 id="auth-dialog-title">{messages.authErrorTitle}</h1>
+        </>
+      ) : (
+        <AuthBrand
+          subtitle={intent === 'register' ? 'Start your professional journey.' : 'Welcome back.'}
+          title={intent === 'register' ? 'Create your WAOOAW account' : 'Log in to WAOOAW'}
+        />
+      )}
       <div role={unavailable ? 'alert' : 'status'} aria-live="polite">
         {!unavailable && <LoaderCircle className="auth-loading-icon" aria-hidden="true" size={24} />}
         <p>{unavailable ? messages.authErrorDescription : messages.loadingDescription}</p>
       </div>
-      {unavailable && <button className="secondary-command" type="button" onClick={retry ?? (() => location.reload())}>
-        <RotateCcw aria-hidden="true" size={18} /> {messages.tryAgain}
-      </button>}
+      {unavailable && (
+        <button className="secondary-command" type="button" onClick={retry ?? (() => location.reload())}>
+          <RotateCcw aria-hidden="true" size={18} /> {messages.tryAgain}
+        </button>
+      )}
     </section>
   );
 }

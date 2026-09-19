@@ -12,22 +12,55 @@ const identityProviderDelayMs = Number.parseInt(process.env.IDENTITY_PROVIDER_DE
 
 const governedCards = [
   {
-    schemaVersion: '1.0', cardId: 'card-plan', cardType: 'PLAN', owner: 'SHARED', state: 'ACTIVE',
-    effect: 'Sets the next agreed outcome.', goal: 'Increase qualified enquiries', progressState: 'ON_TRACK',
-    commands: [{ commandId: 'VIEW_PLAN', label: 'View plan', availability: 'AVAILABLE', unavailableReason: 'Plan workspace is not available in this release.' }],
+    schemaVersion: '1.0',
+    cardId: 'card-plan',
+    cardType: 'PLAN',
+    owner: 'SHARED',
+    state: 'ACTIVE',
+    effect: 'Sets the next agreed outcome.',
+    goal: 'Increase qualified enquiries',
+    progressState: 'ON_TRACK',
+    commands: [
+      {
+        commandId: 'VIEW_PLAN',
+        label: 'View plan',
+        availability: 'AVAILABLE',
+        unavailableReason: 'Plan workspace is not available in this release.',
+      },
+    ],
   },
   {
-    schemaVersion: '1.0', cardId: 'card-action', cardType: 'ACTION', owner: 'CUSTOMER', state: 'READY',
-    effect: 'Starts approved customer work.', goal: 'Approve the brief', commands: [],
+    schemaVersion: '1.0',
+    cardId: 'card-action',
+    cardType: 'ACTION',
+    owner: 'CUSTOMER',
+    state: 'READY',
+    effect: 'Starts approved customer work.',
+    goal: 'Approve the brief',
+    commands: [],
   },
   {
-    schemaVersion: '1.0', cardId: 'card-deliverable', cardType: 'DELIVERABLE', owner: 'PROFESSIONAL', state: 'DRAFT',
-    effect: 'Makes the draft available for review.', title: 'Campaign brief', deliverableState: 'REVIEW', commands: [],
+    schemaVersion: '1.0',
+    cardId: 'card-deliverable',
+    cardType: 'DELIVERABLE',
+    owner: 'PROFESSIONAL',
+    state: 'DRAFT',
+    effect: 'Makes the draft available for review.',
+    title: 'Campaign brief',
+    deliverableState: 'REVIEW',
+    commands: [],
   },
   {
-    schemaVersion: '1.0', cardId: 'card-decision', cardType: 'DECISION', owner: 'SHARED', state: 'OPEN',
-    effect: 'Changes the approved campaign direction.', decisionState: 'CUSTOMER_INPUT_REQUIRED',
-    authorityImpact: 'No work starts before selection.', alternatives: [{ alternativeId: 'A', label: 'Continue', effect: 'Uses the approved brief.' }], commands: [],
+    schemaVersion: '1.0',
+    cardId: 'card-decision',
+    cardType: 'DECISION',
+    owner: 'SHARED',
+    state: 'OPEN',
+    effect: 'Changes the approved campaign direction.',
+    decisionState: 'CUSTOMER_INPUT_REQUIRED',
+    authorityImpact: 'No work starts before selection.',
+    alternatives: [{ alternativeId: 'A', label: 'Continue', effect: 'Uses the approved brief.' }],
+    commands: [],
   },
 ];
 
@@ -35,26 +68,57 @@ function relationship(relationshipId) {
   return {
     relationshipId,
     professionalType: relationshipId === 'relationship-second' ? 'PRIVATE_TUTOR' : 'DIGITAL_MARKETING',
-    state: relationshipId === 'relationship-contract' || relationshipId === 'relationship-discounted' ? 'CONTRACT_PENDING_ACCEPTANCE' : 'ACTIVE', stateVersion: 2,
-    createdAt: '2026-08-08T10:00:00.000Z', updatedAt: '2026-08-09T10:00:00.000Z',
+    state:
+      relationshipId === 'relationship-contract' || relationshipId === 'relationship-discounted'
+        ? 'CONTRACT_PENDING_ACCEPTANCE'
+        : 'ACTIVE',
+    stateVersion: 2,
+    createdAt: '2026-08-08T10:00:00.000Z',
+    updatedAt: '2026-08-09T10:00:00.000Z',
   };
 }
 
 function message(relationshipId, overrides = {}) {
   return {
-    schemaVersion: '1.0', messageId: `message-${relationshipId}`, relationshipId, sequence: 1,
-    actor: 'PROFESSIONAL', channel: 'WEB',
+    schemaVersion: '1.0',
+    messageId: `message-${relationshipId}`,
+    relationshipId,
+    sequence: 1,
+    actor: 'PROFESSIONAL',
+    channel: 'WEB',
     content: [{ schemaVersion: '1.0', blockType: 'TEXT', text: 'Here is the current plan.' }],
-    cards: governedCards, deliveryState: 'ACCEPTED', processingState: 'RUNNING', evidenceState: 'PENDING',
-    partial: true, completionReason: 'PARTIAL_FAILURE', acceptedAt: '2026-08-10T09:00:00.000Z', ...overrides,
+    cards: governedCards,
+    deliveryState: 'ACCEPTED',
+    processingState: 'RUNNING',
+    evidenceState: 'PENDING',
+    partial: true,
+    completionReason: 'PARTIAL_FAILURE',
+    acceptedAt: '2026-08-10T09:00:00.000Z',
+    ...overrides,
   };
 }
 
 function initialMessages(relationshipId) {
   if (relationshipId === primaryRelationshipId) return [message(primaryRelationshipId)];
-  if (relationshipId === 'relationship-evidence') return [message(relationshipId, { cards: [], partial: false, processingState: 'COMPLETED' })];
-  if (relationshipId === 'relationship-stream') return [message(relationshipId, { cards: [], content: [{ schemaVersion: '1.0', blockType: 'TEXT', text: 'Draft response retained.' }] })];
-  if (relationshipId === 'relationship-retry') return [message(relationshipId, { cards: [], partial: false, deliveryState: 'UNRESOLVED', processingState: 'FAILED', evidenceState: 'FAILED' })];
+  if (relationshipId === 'relationship-evidence')
+    return [message(relationshipId, { cards: [], partial: false, processingState: 'COMPLETED' })];
+  if (relationshipId === 'relationship-stream')
+    return [
+      message(relationshipId, {
+        cards: [],
+        content: [{ schemaVersion: '1.0', blockType: 'TEXT', text: 'Draft response retained.' }],
+      }),
+    ];
+  if (relationshipId === 'relationship-retry')
+    return [
+      message(relationshipId, {
+        cards: [],
+        partial: false,
+        deliveryState: 'UNRESOLVED',
+        processingState: 'FAILED',
+        evidenceState: 'FAILED',
+      }),
+    ];
   return [];
 }
 
@@ -72,7 +136,27 @@ function acquisitionsFor(scope) {
 }
 
 function relationshipSummary(relationshipId, professionalType, professionalDisplayName, lifecycleState = 'ACTIVE') {
-  return { relationshipId, professionalType, professionalVersion: '1.0.0', professionalDisplayName, lifecycleState, trialStatus: lifecycleState === 'TRIAL_ACTIVE' ? 'ACTIVE' : undefined, currentGoalSummary: 'Increase qualified enquiries', unreadState: 'ACTION_REQUIRED', availabilityState: 'AVAILABLE', currencyState: 'CURRENT', configurationState: 'COMPLETE', enabledSkillCount: 3, pendingSkillCount: 1, currentWorkSummary: 'Preparing current work.', performanceSummary: 'Review requires customer attention.', billingSummary: 'No current billing amount is available in this summary.', nextActionLabel: 'View work', lastAuthoritativelyConfirmedAt: '2026-08-12T09:55:00Z', resumeTarget: { surface: 'CONVERSATION', relationshipId } };
+  return {
+    relationshipId,
+    professionalType,
+    professionalVersion: '1.0.0',
+    professionalDisplayName,
+    lifecycleState,
+    trialStatus: lifecycleState === 'TRIAL_ACTIVE' ? 'ACTIVE' : undefined,
+    currentGoalSummary: 'Increase qualified enquiries',
+    unreadState: 'ACTION_REQUIRED',
+    availabilityState: 'AVAILABLE',
+    currencyState: 'CURRENT',
+    configurationState: 'COMPLETE',
+    enabledSkillCount: 3,
+    pendingSkillCount: 1,
+    currentWorkSummary: 'Preparing current work.',
+    performanceSummary: 'Review requires customer attention.',
+    billingSummary: 'No current billing amount is available in this summary.',
+    nextActionLabel: 'View work',
+    lastAuthoritativelyConfirmedAt: '2026-08-12T09:55:00Z',
+    resumeTarget: { surface: 'CONVERSATION', relationshipId },
+  };
 }
 
 function continuityFor(scope, relationshipId) {
@@ -99,29 +183,45 @@ function portalMessagesFor(scope) {
 function timeline(scope, relationshipId) {
   const messages = messagesFor(scope, relationshipId);
   return {
-    schemaVersion: '1.0', relationshipId, items: messages,
+    schemaVersion: '1.0',
+    relationshipId,
+    items: messages,
     authoritativeCursor: `cursor-${relationshipId}-${messages.length}`,
-    hasMore: false, serverTime: '2026-08-10T10:01:00.000Z',
+    hasMore: false,
+    serverTime: '2026-08-10T10:01:00.000Z',
   };
 }
 
 function event(relationshipId, eventType, overrides = {}) {
   return {
-    schemaVersion: '1.0', eventId: `event-${relationshipId}-${eventType}`, eventType, relationshipId,
-    sequence: 2, occurredAt: '2026-08-10T10:01:00.000Z', data: {}, ...overrides,
+    schemaVersion: '1.0',
+    eventId: `event-${relationshipId}-${eventType}`,
+    eventType,
+    relationshipId,
+    sequence: 2,
+    occurredAt: '2026-08-10T10:01:00.000Z',
+    data: {},
+    ...overrides,
   };
 }
 
 function sendEvent(scope, relationshipId, payload) {
-  for (const response of streamClients.get(scopeKey(scope, relationshipId)) ?? []) response.write(`data: ${JSON.stringify(payload)}\n\n`);
+  for (const response of streamClients.get(scopeKey(scope, relationshipId)) ?? [])
+    response.write(`data: ${JSON.stringify(payload)}\n\n`);
 }
 
 function readBody(request) {
   return new Promise((resolve, reject) => {
     let body = '';
-    request.on('data', (chunk) => { body += chunk; });
+    request.on('data', (chunk) => {
+      body += chunk;
+    });
     request.on('end', () => {
-      try { resolve(body ? JSON.parse(body) : {}); } catch (error) { reject(error); }
+      try {
+        resolve(body ? JSON.parse(body) : {});
+      } catch (error) {
+        reject(error);
+      }
     });
     request.on('error', reject);
   });
@@ -140,38 +240,82 @@ const server = createServer(async (request, response) => {
   const relationshipMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)$/);
   const timelineMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/timeline$/);
   const messagesMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/conversation\/messages$/);
-  const retryMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/conversation\/messages\/([^/]+)\/retry$/);
+  const retryMatch = url.pathname.match(
+    /^\/api\/v1\/employment\/relationships\/([^/]+)\/conversation\/messages\/([^/]+)\/retry$/
+  );
   const readMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/conversation\/read-position$/);
   const streamMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/conversation\/stream$/);
-  const cancelMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/conversation\/executions\/([^/]+)$/);
-  const workspaceMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace(?:\/(plan|attention|work|results|usage-budget|rights-controls|evidence))?$/);
-  const configurationMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/configuration$/);
+  const cancelMatch = url.pathname.match(
+    /^\/api\/v1\/employment\/relationships\/([^/]+)\/conversation\/executions\/([^/]+)$/
+  );
+  const workspaceMatch = url.pathname.match(
+    /^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace(?:\/(plan|attention|work|results|usage-budget|rights-controls|evidence))?$/
+  );
+  const configurationMatch = url.pathname.match(
+    /^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/configuration$/
+  );
   const goalsMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/goals$/);
-  const outcomesMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/business-outcomes$/);
-  const performanceMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/performance$/);
+  const outcomesMatch = url.pathname.match(
+    /^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/business-outcomes$/
+  );
+  const performanceMatch = url.pathname.match(
+    /^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/performance$/
+  );
   const operationsMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/operations$/);
-  const workspaceCommandMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/commands$/);
-  const onboardMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/configuration\/onboard$/);
+  const workspaceCommandMatch = url.pathname.match(
+    /^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/commands$/
+  );
+  const onboardMatch = url.pathname.match(
+    /^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace\/configuration\/onboard$/
+  );
   const alertMutationMatch = url.pathname.match(/^\/api\/v1\/notifications\/alerts\/([^/]+)\/(read|acknowledge)$/);
   const evaluationMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/evaluation$/);
   const contractJourneyMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/contract-journey$/);
-  const contractAcceptMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/contracts\/([^/]+)\/accept$/);
-  const onboardingOrderMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/contracts\/([^/]+)\/payments\/onboarding-order$/);
+  const contractAcceptMatch = url.pathname.match(
+    /^\/api\/v1\/employment\/relationships\/([^/]+)\/contracts\/([^/]+)\/accept$/
+  );
+  const onboardingOrderMatch = url.pathname.match(
+    /^\/api\/v1\/employment\/relationships\/([^/]+)\/contracts\/([^/]+)\/payments\/onboarding-order$/
+  );
   const activationMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/activation$/);
   const prepareHandoffMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/handoffs$/);
-  const activateHandoffMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/handoffs\/([^/]+)\/activate$/);
+  const activateHandoffMatch = url.pathname.match(
+    /^\/api\/v1\/employment\/relationships\/([^/]+)\/handoffs\/([^/]+)\/activate$/
+  );
   const stopRelationshipMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/emergency-stop$/);
-  const voiceCreateMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions$/);
-  const voiceSessionMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions\/([^/]+)$/);
-  const voiceAudioMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions\/([^/]+)\/audio$/);
-  const voiceTranscriptMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions\/([^/]+)\/transcript$/);
-  const voiceCorrectionMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions\/([^/]+)\/correction$/);
-  const voiceSendMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions\/([^/]+)\/send$/);
-  const voiceCancelMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions\/([^/]+)\/cancel$/);
+  const voiceCreateMatch = url.pathname.match(
+    /^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions$/
+  );
+  const voiceSessionMatch = url.pathname.match(
+    /^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions\/([^/]+)$/
+  );
+  const voiceAudioMatch = url.pathname.match(
+    /^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions\/([^/]+)\/audio$/
+  );
+  const voiceTranscriptMatch = url.pathname.match(
+    /^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions\/([^/]+)\/transcript$/
+  );
+  const voiceCorrectionMatch = url.pathname.match(
+    /^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions\/([^/]+)\/correction$/
+  );
+  const voiceSendMatch = url.pathname.match(
+    /^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions\/([^/]+)\/send$/
+  );
+  const voiceCancelMatch = url.pathname.match(
+    /^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions\/([^/]+)\/cancel$/
+  );
 
   if (request.method === 'GET' && url.pathname === '/api/v1/customer-portal/interactions/portal/messages') {
     const items = portalMessagesFor(scope);
-    json(response, { schemaVersion: '1.0', scope: 'PORTAL', contextId: '77777777-7777-4777-8777-777777777777', items, authoritativeCursor: `portal-cursor-${items.length}`, hasMore: false, serverTime: '2026-08-12T10:00:00Z' });
+    json(response, {
+      schemaVersion: '1.0',
+      scope: 'PORTAL',
+      contextId: '77777777-7777-4777-8777-777777777777',
+      items,
+      authoritativeCursor: `portal-cursor-${items.length}`,
+      hasMore: false,
+      serverTime: '2026-08-12T10:00:00Z',
+    });
     return;
   }
 
@@ -179,10 +323,47 @@ const server = createServer(async (request, response) => {
     const body = await readBody(request);
     const items = portalMessagesFor(scope);
     const acceptedAt = '2026-08-12T10:01:00Z';
-    const customerMessage = { schemaVersion: '1.0', messageId: body.clientMessageId, sequence: items.length + 1, actor: 'CUSTOMER', content: body.content, capabilities: [], currentSurface: body.currentSurface, clientMessageId: body.clientMessageId, acceptedAt };
-    const guideMessage = { schemaVersion: '1.0', messageId: `guide-${body.clientMessageId}`, sequence: items.length + 2, actor: 'GUIDE', content: [{ schemaVersion: '1.0', blockType: 'TEXT', text: 'I can help you navigate and explain this portal. Relationship work remains with the selected professional.' }], capabilities: [{ capabilityType: 'NAVIGATE', label: 'Open My Agents', destination: '/professionals/mine' }], currentSurface: body.currentSurface, acceptedAt };
+    const customerMessage = {
+      schemaVersion: '1.0',
+      messageId: body.clientMessageId,
+      sequence: items.length + 1,
+      actor: 'CUSTOMER',
+      content: body.content,
+      capabilities: [],
+      currentSurface: body.currentSurface,
+      clientMessageId: body.clientMessageId,
+      acceptedAt,
+    };
+    const guideMessage = {
+      schemaVersion: '1.0',
+      messageId: `guide-${body.clientMessageId}`,
+      sequence: items.length + 2,
+      actor: 'GUIDE',
+      content: [
+        {
+          schemaVersion: '1.0',
+          blockType: 'TEXT',
+          text: 'I can help you navigate and explain this portal. Relationship work remains with the selected professional.',
+        },
+      ],
+      capabilities: [{ capabilityType: 'NAVIGATE', label: 'Open My Agents', destination: '/professionals/mine' }],
+      currentSurface: body.currentSurface,
+      acceptedAt,
+    };
     items.push(customerMessage, guideMessage);
-    json(response, { schemaVersion: '1.0', scope: 'PORTAL', outcome: 'ACCEPTED', customerMessage, guideMessage, authoritativeCursor: `portal-cursor-${items.length}`, replayed: false }, 202);
+    json(
+      response,
+      {
+        schemaVersion: '1.0',
+        scope: 'PORTAL',
+        outcome: 'ACCEPTED',
+        customerMessage,
+        guideMessage,
+        authoritativeCursor: `portal-cursor-${items.length}`,
+        replayed: false,
+      },
+      202
+    );
     return;
   }
 
@@ -190,12 +371,26 @@ const server = createServer(async (request, response) => {
     if (identityProviderDelayMs > 0) {
       await new Promise((resolve) => setTimeout(resolve, identityProviderDelayMs));
     }
-    json(response, { providers: [
-      { id: 'GOOGLE', displayName: 'Google', authenticationPath: 'GOOGLE', availability: 'AVAILABLE' },
-      { id: 'FACEBOOK', displayName: 'Facebook', authenticationPath: 'META', availability: 'AVAILABLE' },
-      { id: 'APPLE', displayName: 'Apple', authenticationPath: 'APPLE', availability: 'UNAVAILABLE', unavailableReason: 'NOT_CONFIGURED' },
-      { id: 'EMAIL', displayName: 'Email', authenticationPath: 'CREDENTIAL', availability: 'UNAVAILABLE', unavailableReason: 'NOT_CONFIGURED' },
-    ] });
+    json(response, {
+      providers: [
+        { id: 'GOOGLE', displayName: 'Google', authenticationPath: 'GOOGLE', availability: 'AVAILABLE' },
+        { id: 'FACEBOOK', displayName: 'Facebook', authenticationPath: 'META', availability: 'AVAILABLE' },
+        {
+          id: 'APPLE',
+          displayName: 'Apple',
+          authenticationPath: 'APPLE',
+          availability: 'UNAVAILABLE',
+          unavailableReason: 'NOT_CONFIGURED',
+        },
+        {
+          id: 'EMAIL',
+          displayName: 'Email',
+          authenticationPath: 'CREDENTIAL',
+          availability: 'UNAVAILABLE',
+          unavailableReason: 'NOT_CONFIGURED',
+        },
+      ],
+    });
     return;
   }
 
@@ -204,7 +399,18 @@ const server = createServer(async (request, response) => {
       json(response, { code: 'IDENTITY_ACTION_DENIED' }, 403);
       return;
     }
-    json(response, { accountReference: 'account-fixture', roles: ['OWNER'], capabilities: ['READ_ACCOUNT', 'MANAGE_ROUTINE_ACTIONS', 'HIRE_PROFESSIONAL'], assuranceLevel: 'AAL2_ACCOUNT', authenticationPath: 'PORTAL', emailVerified: true, mobileVerified: false, authenticatedAt: '2026-08-12T09:00:00Z', expiresAt: '2099-08-12T10:00:00Z', nextAction: 'NONE' });
+    json(response, {
+      accountReference: 'account-fixture',
+      roles: ['OWNER'],
+      capabilities: ['READ_ACCOUNT', 'MANAGE_ROUTINE_ACTIONS', 'HIRE_PROFESSIONAL'],
+      assuranceLevel: 'AAL2_ACCOUNT',
+      authenticationPath: 'PORTAL',
+      emailVerified: true,
+      mobileVerified: false,
+      authenticatedAt: '2026-08-12T09:00:00Z',
+      expiresAt: '2099-08-12T10:00:00Z',
+      nextAction: 'NONE',
+    });
     return;
   }
 
@@ -214,35 +420,93 @@ const server = createServer(async (request, response) => {
   }
 
   if (request.method === 'GET' && url.pathname === '/api/v1/identity/profile') {
-    json(response, { schemaVersion: '1.0.0', displayName: 'Asha Rao', organizationDisplayName: 'Acme Clinic', email: 'as***@example.test', emailVerified: true, mobileVerified: false, activeRole: 'OWNER', switchableAccounts: [], updatedAt: '2026-08-12T10:00:00Z' });
+    json(response, {
+      schemaVersion: '1.0.0',
+      displayName: 'Asha Rao',
+      organizationDisplayName: 'Acme Clinic',
+      email: 'as***@example.test',
+      emailVerified: true,
+      mobileVerified: false,
+      activeRole: 'OWNER',
+      switchableAccounts: [],
+      updatedAt: '2026-08-12T10:00:00Z',
+    });
     return;
   }
 
   if (request.method === 'PUT' && url.pathname === '/api/v1/identity/profile') {
     const body = await readBody(request);
-    json(response, { schemaVersion: '1.0.0', displayName: body.displayName, organizationDisplayName: body.organizationDisplayName, email: 'as***@example.test', emailVerified: true, mobileVerified: false, activeRole: 'OWNER', switchableAccounts: [], updatedAt: '2026-08-12T10:05:00Z' });
+    json(response, {
+      schemaVersion: '1.0.0',
+      displayName: body.displayName,
+      organizationDisplayName: body.organizationDisplayName,
+      email: 'as***@example.test',
+      emailVerified: true,
+      mobileVerified: false,
+      activeRole: 'OWNER',
+      switchableAccounts: [],
+      updatedAt: '2026-08-12T10:05:00Z',
+    });
     return;
   }
 
   if (request.method === 'GET' && url.pathname === '/api/v1/identity/settings') {
-    json(response, { schemaVersion: '1.0.0', locale: 'en-IN', theme: 'SYSTEM', timestampVisibility: 'RELATIVE', notificationPreferences: { approvalRequests: ['WEB'], maturityReports: ['EMAIL'], monthlyNarratives: ['EMAIL'], selfGovernanceAlerts: ['WEB', 'EMAIL'] }, availableSecurityActions: ['STEP_UP', 'CHANGE_PASSWORDLESS_METHODS'], updatedAt: '2026-08-12T10:00:00Z' });
+    json(response, {
+      schemaVersion: '1.0.0',
+      locale: 'en-IN',
+      theme: 'SYSTEM',
+      timestampVisibility: 'RELATIVE',
+      notificationPreferences: {
+        approvalRequests: ['WEB'],
+        maturityReports: ['EMAIL'],
+        monthlyNarratives: ['EMAIL'],
+        selfGovernanceAlerts: ['WEB', 'EMAIL'],
+      },
+      availableSecurityActions: ['STEP_UP', 'CHANGE_PASSWORDLESS_METHODS'],
+      updatedAt: '2026-08-12T10:00:00Z',
+    });
     return;
   }
 
   if (request.method === 'PUT' && url.pathname === '/api/v1/identity/settings') {
     const body = await readBody(request);
-    json(response, { ...body, availableSecurityActions: ['STEP_UP', 'CHANGE_PASSWORDLESS_METHODS'], updatedAt: '2026-08-12T10:05:00Z' });
+    json(response, {
+      ...body,
+      availableSecurityActions: ['STEP_UP', 'CHANGE_PASSWORDLESS_METHODS'],
+      updatedAt: '2026-08-12T10:05:00Z',
+    });
     return;
   }
 
   if (request.method === 'GET' && url.pathname === '/api/v1/identity/login-methods') {
-    json(response, { schemaVersion: '1.0.0', items: [{ provider: 'GOOGLE', state: 'ACTIVE', maskedIdentifier: 'as***@example.test' }, { provider: 'EMAIL', state: 'AVAILABLE_TO_LINK' }] });
+    json(response, {
+      schemaVersion: '1.0.0',
+      items: [
+        { provider: 'GOOGLE', state: 'ACTIVE', maskedIdentifier: 'as***@example.test' },
+        { provider: 'EMAIL', state: 'AVAILABLE_TO_LINK' },
+      ],
+    });
     return;
   }
 
   if (request.method === 'GET' && url.pathname === '/api/v1/employment/relationships') {
-    const acquired = [...acquisitionsFor(scope).values()].map(({ relationshipId, intent }) => relationshipSummary(relationshipId, 'DIGITAL_MARKETING_LOCAL_SERVICE', `Digital Marketing ${intent === 'TRIAL' ? 'Trial' : 'Hire'}`, intent === 'TRIAL' ? 'TRIAL_ACTIVE' : 'CONTRACT_PENDING_ACCEPTANCE'));
-    json(response, { schemaVersion: '1.0.0', producedAt: '2026-08-12T10:00:00Z', items: [relationshipSummary(primaryRelationshipId, 'DIGITAL_MARKETING', 'Mira'), relationshipSummary('relationship-second', 'PRIVATE_TUTOR', 'Arun'), ...acquired] });
+    const acquired = [...acquisitionsFor(scope).values()].map(({ relationshipId, intent }) =>
+      relationshipSummary(
+        relationshipId,
+        'DIGITAL_MARKETING_LOCAL_SERVICE',
+        `Digital Marketing ${intent === 'TRIAL' ? 'Trial' : 'Hire'}`,
+        intent === 'TRIAL' ? 'TRIAL_ACTIVE' : 'CONTRACT_PENDING_ACCEPTANCE'
+      )
+    );
+    json(response, {
+      schemaVersion: '1.0.0',
+      producedAt: '2026-08-12T10:00:00Z',
+      items: [
+        relationshipSummary(primaryRelationshipId, 'DIGITAL_MARKETING', 'Mira'),
+        relationshipSummary('relationship-second', 'PRIVATE_TUTOR', 'Arun'),
+        ...acquired,
+      ],
+    });
     return;
   }
 
@@ -252,40 +516,163 @@ const server = createServer(async (request, response) => {
     const acquisitions = acquisitionsFor(scope);
     const prior = acquisitions.get(idempotencyKey);
     const intent = body.intent;
-    const relationshipId = prior?.relationshipId ?? (intent === 'TRIAL' ? '11111111-1111-4111-8111-111111111111' : '22222222-2222-4222-8222-222222222222');
+    const relationshipId =
+      prior?.relationshipId ??
+      (intent === 'TRIAL' ? '11111111-1111-4111-8111-111111111111' : '22222222-2222-4222-8222-222222222222');
     if (!prior) acquisitions.set(idempotencyKey, { relationshipId, intent });
-    json(response, { relationshipId, intent, status: 'READY', resumePath: `/relationships/${relationshipId}`, replayed: Boolean(prior) });
+    json(response, {
+      relationshipId,
+      intent,
+      status: 'READY',
+      resumePath: `/relationships/${relationshipId}`,
+      replayed: Boolean(prior),
+    });
     return;
   }
 
   if (request.method === 'GET' && url.pathname === '/api/v1/professionals/marketplace') {
-    const sharedOffer = { availableIntents: ['TRIAL', 'HIRE'], eligibility: { eligible: true, explanation: 'Available to this organization.' }, indicativePrice: { currency: 'INR', amountInrPaise: 249900, cadence: 'MONTHLY', qualification: 'Final terms follow configuration.' }, offerabilityState: 'OFFERABLE', trialTerms: '14-day trial; no paid API calls or external actions.', nextAction: 'VIEW_DISCLOSURE' };
-    json(response, { schemaVersion: '1.0.0', producedAt: '2026-08-12T10:00:00Z', items: [
-      { ...sharedOffer, professionalType: 'DIGITAL_MARKETING_LOCAL_SERVICE', version: '1.0.0', displayName: 'Digital Marketing Professional', disclosurePath: '/marketplace/digital-marketing', suitability: ['Builds evidence-backed digital marketing plans for lawful local service businesses.'] },
-      { ...sharedOffer, professionalType: 'PRIVATE_TUTOR', version: '1.0.0', displayName: 'Private Tutor', disclosurePath: '/marketplace/private-tutor', suitability: ['Builds structured learning plans with clear progress reviews.'] },
-    ] });
+    const sharedOffer = {
+      availableIntents: ['TRIAL', 'HIRE'],
+      eligibility: { eligible: true, explanation: 'Available to this organization.' },
+      indicativePrice: {
+        currency: 'INR',
+        amountInrPaise: 249900,
+        cadence: 'MONTHLY',
+        qualification: 'Final terms follow configuration.',
+      },
+      offerabilityState: 'OFFERABLE',
+      trialTerms: '14-day trial; no paid API calls or external actions.',
+      nextAction: 'VIEW_DISCLOSURE',
+    };
+    json(response, {
+      schemaVersion: '1.0.0',
+      producedAt: '2026-08-12T10:00:00Z',
+      items: [
+        {
+          ...sharedOffer,
+          professionalType: 'DIGITAL_MARKETING_LOCAL_SERVICE',
+          version: '1.0.0',
+          displayName: 'Digital Marketing Professional',
+          disclosurePath: '/marketplace/digital-marketing',
+          suitability: ['Builds evidence-backed digital marketing plans for lawful local service businesses.'],
+        },
+        {
+          ...sharedOffer,
+          professionalType: 'PRIVATE_TUTOR',
+          version: '1.0.0',
+          displayName: 'Private Tutor',
+          disclosurePath: '/marketplace/private-tutor',
+          suitability: ['Builds structured learning plans with clear progress reviews.'],
+        },
+      ],
+    });
     return;
   }
 
   if (request.method === 'GET' && url.pathname === '/api/v1/professionals/DIGITAL_MARKETING_LOCAL_SERVICE/disclosure') {
-    json(response, { professionalType: 'DIGITAL_MARKETING_LOCAL_SERVICE', projectionVersion: '1.0.0', customerRouteSlug: 'digital-marketing', disclosureRevision: '1.0.0', termsVersion: '2026-07-18', displayName: 'Digital Marketing Professional', suitability: ['Builds evidence-backed digital marketing plans for lawful local service businesses.', 'Connects marketing activity to customer-confirmed business outcomes and measures.'], skills: [{ skillId: 'CUSTOMER_PROFILING', displayName: 'Customer Profiling', applicableInTrial: true }, { skillId: 'MARKET_RESEARCH', displayName: 'Market Research and Maturity Scoring', applicableInTrial: true }, { skillId: 'CONTENT_STRATEGY', displayName: 'Content Strategy', applicableInTrial: true }], limitations: ['Trial outputs are demonstrations and do not publish, spend, message third parties, or mutate provider state.', 'Recommendations do not guarantee customer acquisition, revenue, ranking, or campaign results.'], authorityNeeds: ['Live work requires approved scope and budget.'], customerRights: ['Inspect evidence and proposed authority before commitment.', 'Correct context, decline, choose not now, exit, or use Emergency Stop.'], trial: { available: true, durationDays: 14, paidApiCallsAllowed: false, externalActionsAllowed: false }, evidencePosture: 'Evidence-backed', indicativePrice: { currency: 'INR', amountInrPaise: 249900, cadence: 'MONTHLY', qualification: 'Final terms follow configuration.' }, eligibility: { eligible: true, explanation: 'Available to this organization.' } });
+    json(response, {
+      professionalType: 'DIGITAL_MARKETING_LOCAL_SERVICE',
+      projectionVersion: '1.0.0',
+      customerRouteSlug: 'digital-marketing',
+      disclosureRevision: '1.0.0',
+      termsVersion: '2026-07-18',
+      displayName: 'Digital Marketing Professional',
+      suitability: [
+        'Builds evidence-backed digital marketing plans for lawful local service businesses.',
+        'Connects marketing activity to customer-confirmed business outcomes and measures.',
+      ],
+      skills: [
+        { skillId: 'CUSTOMER_PROFILING', displayName: 'Customer Profiling', applicableInTrial: true },
+        { skillId: 'MARKET_RESEARCH', displayName: 'Market Research and Maturity Scoring', applicableInTrial: true },
+        { skillId: 'CONTENT_STRATEGY', displayName: 'Content Strategy', applicableInTrial: true },
+      ],
+      limitations: [
+        'Trial outputs are demonstrations and do not publish, spend, message third parties, or mutate provider state.',
+        'Recommendations do not guarantee customer acquisition, revenue, ranking, or campaign results.',
+      ],
+      authorityNeeds: ['Live work requires approved scope and budget.'],
+      customerRights: [
+        'Inspect evidence and proposed authority before commitment.',
+        'Correct context, decline, choose not now, exit, or use Emergency Stop.',
+      ],
+      trial: { available: true, durationDays: 14, paidApiCallsAllowed: false, externalActionsAllowed: false },
+      evidencePosture: 'Evidence-backed',
+      indicativePrice: {
+        currency: 'INR',
+        amountInrPaise: 249900,
+        cadence: 'MONTHLY',
+        qualification: 'Final terms follow configuration.',
+      },
+      eligibility: { eligible: true, explanation: 'Available to this organization.' },
+    });
     return;
   }
 
   if (request.method === 'GET' && url.pathname === '/api/v1/notifications/alerts') {
-    json(response, { schemaVersion: '1.0.0', producedAt: '2026-08-12T10:00:00Z', items: [{ alertId: 'alert-action-1', version: '1', alertType: 'ACTIONABLE', severity: 'HIGH', source: 'RELATIONSHIP_ATTENTION', relationshipId: primaryRelationshipId, occurredAt: '2026-08-12T09:30:00Z', dueMeaning: 'Review the pending relationship decision.', readState: 'UNREAD', destination: { surface: 'WORK', relationshipId: primaryRelationshipId }, availableAction: 'ACKNOWLEDGE' }, { alertId: 'alert-info-1', version: '1', alertType: 'INFORMATIONAL', severity: 'LOW', source: 'RESULT', relationshipId: primaryRelationshipId, occurredAt: '2026-08-11T09:30:00Z', readState: 'READ', destination: { surface: 'RESULTS', relationshipId: primaryRelationshipId }, availableAction: 'NONE' }] });
+    json(response, {
+      schemaVersion: '1.0.0',
+      producedAt: '2026-08-12T10:00:00Z',
+      items: [
+        {
+          alertId: 'alert-action-1',
+          version: '1',
+          alertType: 'ACTIONABLE',
+          severity: 'HIGH',
+          source: 'RELATIONSHIP_ATTENTION',
+          relationshipId: primaryRelationshipId,
+          occurredAt: '2026-08-12T09:30:00Z',
+          dueMeaning: 'Review the pending relationship decision.',
+          readState: 'UNREAD',
+          destination: { surface: 'WORK', relationshipId: primaryRelationshipId },
+          availableAction: 'ACKNOWLEDGE',
+        },
+        {
+          alertId: 'alert-info-1',
+          version: '1',
+          alertType: 'INFORMATIONAL',
+          severity: 'LOW',
+          source: 'RESULT',
+          relationshipId: primaryRelationshipId,
+          occurredAt: '2026-08-11T09:30:00Z',
+          readState: 'READ',
+          destination: { surface: 'RESULTS', relationshipId: primaryRelationshipId },
+          availableAction: 'NONE',
+        },
+      ],
+    });
     return;
   }
 
   if (request.method === 'POST' && alertMutationMatch) {
     const body = await readBody(request);
-    json(response, { alertId: decodeURIComponent(alertMutationMatch[1]), version: String(Number(body.expectedAlertVersion) + 1), alertType: 'ACTIONABLE', severity: 'HIGH', source: 'RELATIONSHIP_ATTENTION', relationshipId: primaryRelationshipId, occurredAt: '2026-08-12T09:30:00Z', dueMeaning: 'Review the pending relationship decision.', readState: alertMutationMatch[2] === 'acknowledge' ? 'ACKNOWLEDGED' : 'READ', destination: { surface: 'WORK', relationshipId: primaryRelationshipId }, availableAction: alertMutationMatch[2] === 'acknowledge' ? 'NONE' : 'ACKNOWLEDGE' });
+    json(response, {
+      alertId: decodeURIComponent(alertMutationMatch[1]),
+      version: String(Number(body.expectedAlertVersion) + 1),
+      alertType: 'ACTIONABLE',
+      severity: 'HIGH',
+      source: 'RELATIONSHIP_ATTENTION',
+      relationshipId: primaryRelationshipId,
+      occurredAt: '2026-08-12T09:30:00Z',
+      dueMeaning: 'Review the pending relationship decision.',
+      readState: alertMutationMatch[2] === 'acknowledge' ? 'ACKNOWLEDGED' : 'READ',
+      destination: { surface: 'WORK', relationshipId: primaryRelationshipId },
+      availableAction: alertMutationMatch[2] === 'acknowledge' ? 'NONE' : 'ACKNOWLEDGE',
+    });
     return;
   }
 
   if (request.method === 'PUT' && onboardMatch) {
     await readBody(request);
-    json(response, { sectionType: 'CONFIGURATION', currencyState: 'CURRENT', provenance: { source: 'BUSINESS_PLATFORM', producedAt: '2026-08-12T10:05:00Z' }, lifecyclePhase: 'INDUCT', items: [{ stepKey: 'ONBOARD', label: 'Onboard', state: 'COMPLETE', summary: 'Presentation preferences saved.' }, { stepKey: 'INDUCT', label: 'Induct', state: 'CURRENT', summary: 'Continue in conversation.' }] });
+    json(response, {
+      sectionType: 'CONFIGURATION',
+      currencyState: 'CURRENT',
+      provenance: { source: 'BUSINESS_PLATFORM', producedAt: '2026-08-12T10:05:00Z' },
+      lifecyclePhase: 'INDUCT',
+      items: [
+        { stepKey: 'ONBOARD', label: 'Onboard', state: 'COMPLETE', summary: 'Presentation preferences saved.' },
+        { stepKey: 'INDUCT', label: 'Induct', state: 'CURRENT', summary: 'Continue in conversation.' },
+      ],
+    });
     return;
   }
 
@@ -293,53 +680,133 @@ const server = createServer(async (request, response) => {
     const relationshipId = decodeURIComponent(voiceCreateMatch[1]);
     const body = await readBody(request);
     const sessionId = `voice-${relationshipId}`;
-    voiceSessions.set(scopeKey(scope, sessionId), { relationshipId, locale: body.locale, version: 1, text: 'Please review this governed voice draft.' });
-    json(response, {
-      schemaVersion: '1.0.0', sessionId, relationshipId, state: 'CAPTURE_PENDING', locale: body.locale,
-      allowedCommands: ['UPLOAD', 'CANCEL'], createdAt: '2026-08-12T10:00:00Z', updatedAt: '2026-08-12T10:00:00Z',
-    }, 201);
+    voiceSessions.set(scopeKey(scope, sessionId), {
+      relationshipId,
+      locale: body.locale,
+      version: 1,
+      text: 'Please review this governed voice draft.',
+    });
+    json(
+      response,
+      {
+        schemaVersion: '1.0.0',
+        sessionId,
+        relationshipId,
+        state: 'CAPTURE_PENDING',
+        locale: body.locale,
+        allowedCommands: ['UPLOAD', 'CANCEL'],
+        createdAt: '2026-08-12T10:00:00Z',
+        updatedAt: '2026-08-12T10:00:00Z',
+      },
+      201
+    );
     return;
   }
   if (request.method === 'GET' && voiceSessionMatch) {
     const sessionId = decodeURIComponent(voiceSessionMatch[2]);
     const session = voiceSessions.get(scopeKey(scope, sessionId));
-    if (!session) { json(response, { title: 'not_authorized' }, 404); return; }
-    json(response, { schemaVersion: '1.0.0', sessionId, relationshipId: session.relationshipId, state: 'REVIEW_REQUIRED', locale: session.locale, confidenceBand: 'REVIEW', allowedCommands: ['CORRECT', 'SEND', 'CANCEL'], createdAt: '2026-08-12T10:00:00Z', updatedAt: '2026-08-12T10:01:00Z' });
+    if (!session) {
+      json(response, { title: 'not_authorized' }, 404);
+      return;
+    }
+    json(response, {
+      schemaVersion: '1.0.0',
+      sessionId,
+      relationshipId: session.relationshipId,
+      state: 'REVIEW_REQUIRED',
+      locale: session.locale,
+      confidenceBand: 'REVIEW',
+      allowedCommands: ['CORRECT', 'SEND', 'CANCEL'],
+      createdAt: '2026-08-12T10:00:00Z',
+      updatedAt: '2026-08-12T10:01:00Z',
+    });
     return;
   }
   if (request.method === 'POST' && voiceAudioMatch) {
     const sessionId = decodeURIComponent(voiceAudioMatch[2]);
-    if (!voiceSessions.has(scopeKey(scope, sessionId))) { json(response, { title: 'not_authorized' }, 404); return; }
+    if (!voiceSessions.has(scopeKey(scope, sessionId))) {
+      json(response, { title: 'not_authorized' }, 404);
+      return;
+    }
     request.resume();
-    request.on('end', () => json(response, { schemaVersion: '1.0.0', sessionId, state: 'REVIEW_REQUIRED', receiptId: '44444444-4444-4444-8444-444444444444', acceptedAt: '2026-08-12T10:01:00Z' }, 202));
+    request.on('end', () =>
+      json(
+        response,
+        {
+          schemaVersion: '1.0.0',
+          sessionId,
+          state: 'REVIEW_REQUIRED',
+          receiptId: '44444444-4444-4444-8444-444444444444',
+          acceptedAt: '2026-08-12T10:01:00Z',
+        },
+        202
+      )
+    );
     return;
   }
   if (request.method === 'GET' && voiceTranscriptMatch) {
     const sessionId = decodeURIComponent(voiceTranscriptMatch[2]);
     const session = voiceSessions.get(scopeKey(scope, sessionId));
-    if (!session) { json(response, { title: 'not_authorized' }, 404); return; }
-    json(response, { schemaVersion: '1.0.0', sessionId, state: 'REVIEW_REQUIRED', locale: session.locale, confidenceBand: 'REVIEW', text: session.text, version: session.version });
+    if (!session) {
+      json(response, { title: 'not_authorized' }, 404);
+      return;
+    }
+    json(response, {
+      schemaVersion: '1.0.0',
+      sessionId,
+      state: 'REVIEW_REQUIRED',
+      locale: session.locale,
+      confidenceBand: 'REVIEW',
+      text: session.text,
+      version: session.version,
+    });
     return;
   }
   if (request.method === 'PUT' && voiceCorrectionMatch) {
     const sessionId = decodeURIComponent(voiceCorrectionMatch[2]);
     const session = voiceSessions.get(scopeKey(scope, sessionId));
-    if (!session) { json(response, { title: 'not_authorized' }, 404); return; }
+    if (!session) {
+      json(response, { title: 'not_authorized' }, 404);
+      return;
+    }
     const body = await readBody(request);
     session.text = body.correctedText;
     session.version += 1;
-    json(response, { schemaVersion: '1.0.0', sessionId, state: 'READY_TO_SEND', version: session.version, recordedAt: '2026-08-12T10:02:00Z' });
+    json(response, {
+      schemaVersion: '1.0.0',
+      sessionId,
+      state: 'READY_TO_SEND',
+      version: session.version,
+      recordedAt: '2026-08-12T10:02:00Z',
+    });
     return;
   }
   if (request.method === 'POST' && voiceSendMatch) {
     const sessionId = decodeURIComponent(voiceSendMatch[2]);
     const session = voiceSessions.get(scopeKey(scope, sessionId));
-    if (!session) { json(response, { title: 'not_authorized' }, 404); return; }
-    json(response, { schemaVersion: '1.0.0', sessionId, contributionId: '55555555-5555-4555-8555-555555555555', state: 'RECORDED', evidenceReference: '66666666-6666-4666-8666-666666666666', reconciliationRequired: false, outcomeAt: '2026-08-12T10:03:00Z' });
+    if (!session) {
+      json(response, { title: 'not_authorized' }, 404);
+      return;
+    }
+    json(response, {
+      schemaVersion: '1.0.0',
+      sessionId,
+      contributionId: '55555555-5555-4555-8555-555555555555',
+      state: 'RECORDED',
+      evidenceReference: '66666666-6666-4666-8666-666666666666',
+      reconciliationRequired: false,
+      outcomeAt: '2026-08-12T10:03:00Z',
+    });
     return;
   }
   if (request.method === 'POST' && voiceCancelMatch) {
-    json(response, { schemaVersion: '1.0.0', sessionId: decodeURIComponent(voiceCancelMatch[2]), state: 'CANCELLED', reconciliationRequired: false, outcomeAt: '2026-08-12T10:03:00Z' });
+    json(response, {
+      schemaVersion: '1.0.0',
+      sessionId: decodeURIComponent(voiceCancelMatch[2]),
+      state: 'CANCELLED',
+      reconciliationRequired: false,
+      outcomeAt: '2026-08-12T10:03:00Z',
+    });
     return;
   }
 
@@ -355,7 +822,11 @@ const server = createServer(async (request, response) => {
     const prior = [...state.handoffs.values()].find((handoff) => handoff.idempotencyKey === idempotencyKey);
     if (prior) {
       if (prior.requestHash !== JSON.stringify(body)) {
-        json(response, { code: 'IDEMPOTENCY_CONFLICT', title: 'The handoff request differs from the committed request.' }, 409);
+        json(
+          response,
+          { code: 'IDEMPOTENCY_CONFLICT', title: 'The handoff request differs from the committed request.' },
+          409
+        );
         return;
       }
       json(response, { ...prior.response, replayed: true });
@@ -363,14 +834,30 @@ const server = createServer(async (request, response) => {
     }
     const handoffId = `handoff-${state.handoffs.size + 1}`;
     const envelope = {
-      schemaVersion: '1.0', tenantId: 'fixture-tenant', relationshipId,
-      participantId: 'fixture-participant', participantRole: 'EMPLOYER', sourceChannel: 'WHATSAPP',
-      sourceConversationId: 'whatsapp-conversation', targetChannel: body.targetChannel,
-      assuranceLevel: 'TIER_4_PORTAL_FRESH', authorityVersion: 2,
-      continuityCheckpointId: `checkpoint-${state.handoffs.size + 1}`, idempotencyKey,
-      expiresAt: '2026-08-10T10:15:00.000Z', integritySignature: 'fixture-valid-signature',
+      schemaVersion: '1.0',
+      tenantId: 'fixture-tenant',
+      relationshipId,
+      participantId: 'fixture-participant',
+      participantRole: 'EMPLOYER',
+      sourceChannel: 'WHATSAPP',
+      sourceConversationId: 'whatsapp-conversation',
+      targetChannel: body.targetChannel,
+      assuranceLevel: 'TIER_4_PORTAL_FRESH',
+      authorityVersion: 2,
+      continuityCheckpointId: `checkpoint-${state.handoffs.size + 1}`,
+      idempotencyKey,
+      expiresAt: '2026-08-10T10:15:00.000Z',
+      integritySignature: 'fixture-valid-signature',
     };
-    const prepared = { handoffId, relationshipId, status: 'PREPARED', sourceBinding: { status: 'ACTIVE' }, targetBinding: { status: 'PREPARED' }, continuityEnvelope: envelope, replayed: false };
+    const prepared = {
+      handoffId,
+      relationshipId,
+      status: 'PREPARED',
+      sourceBinding: { status: 'ACTIVE' },
+      targetBinding: { status: 'PREPARED' },
+      continuityEnvelope: envelope,
+      replayed: false,
+    };
     state.handoffs.set(handoffId, { idempotencyKey, requestHash: JSON.stringify(body), response: prepared });
     json(response, prepared, 201);
     return;
@@ -391,14 +878,23 @@ const server = createServer(async (request, response) => {
       return;
     }
     if (body.targetConversationId === 'timeout') {
-      json(response, { code: 'HANDOFF_OUTCOME_UNKNOWN', title: 'Activation is unresolved; the source remains authoritative.' }, 503);
+      json(
+        response,
+        { code: 'HANDOFF_OUTCOME_UNKNOWN', title: 'Activation is unresolved; the source remains authoritative.' },
+        503
+      );
       return;
     }
     if (body.targetConversationId === 'downgrade' || request.headers['x-fixture-tenant'] === 'foreign') {
       json(response, { code: 'HANDOFF_NOT_FOUND', title: 'The relationship or handoff is unavailable.' }, 404);
       return;
     }
-    handoff.response = { ...handoff.response, status: 'COMMITTED', targetBinding: { status: 'ACTIVE' }, resolutionEvidenceId: 'evidence-handoff-committed' };
+    handoff.response = {
+      ...handoff.response,
+      status: 'COMMITTED',
+      targetBinding: { status: 'ACTIVE' },
+      resolutionEvidenceId: 'evidence-handoff-committed',
+    };
     json(response, handoff.response);
     return;
   }
@@ -406,7 +902,14 @@ const server = createServer(async (request, response) => {
   if (request.method === 'GET' && evaluationMatch) {
     const relationshipId = decodeURIComponent(evaluationMatch[1]);
     const state = continuityFor(scope, relationshipId);
-    json(response, { relationshipId, lifecycleState: state.stopped ? 'STOPPED_EMERGENCY' : relationship(relationshipId).state, interviewState: 'AVAILABLE', context: [], goals: [], skills: [] });
+    json(response, {
+      relationshipId,
+      lifecycleState: state.stopped ? 'STOPPED_EMERGENCY' : relationship(relationshipId).state,
+      interviewState: 'AVAILABLE',
+      context: [],
+      goals: [],
+      skills: [],
+    });
     return;
   }
 
@@ -418,12 +921,29 @@ const server = createServer(async (request, response) => {
       return;
     }
     json(response, {
-      contractId: 'ca57bbd1-62eb-48ab-bd78-2a23053f6551', version: 2, contractHash: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-      relationshipState: 'CONTRACT_PENDING_ACCEPTANCE', acceptanceState: 'PENDING', paymentState: 'NOT_STARTED', activationState: 'NOT_STARTED',
+      contractId: 'ca57bbd1-62eb-48ab-bd78-2a23053f6551',
+      version: 2,
+      contractHash: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      relationshipState: 'CONTRACT_PENDING_ACCEPTANCE',
+      acceptanceState: 'PENDING',
+      paymentState: 'NOT_STARTED',
+      activationState: 'NOT_STARTED',
       document: {
-        professionalDisplayName: 'Digital Marketing Professional', rights: ['Inspect evidence', 'Choose not now without penalty'], obligations: ['Provide accurate context'],
-        limitations: ['Cannot publish or spend without authority'], authorityTerms: ['No publishing'], stopTerms: ['Emergency Stop remains available'],
-        priceTax: { currency: 'INR', grossAmountInrPaise: 118000, gstAmountInrPaise: 18000, cadence: 'MONTHLY', subscriptionTerms: 'Monthly subscription', adSpendTreatment: 'Ad spend is separate', cancellationAndRefundTerms: 'Cancel before renewal; captured charges follow the stated refund policy' },
+        professionalDisplayName: 'Digital Marketing Professional',
+        rights: ['Inspect evidence', 'Choose not now without penalty'],
+        obligations: ['Provide accurate context'],
+        limitations: ['Cannot publish or spend without authority'],
+        authorityTerms: ['No publishing'],
+        stopTerms: ['Emergency Stop remains available'],
+        priceTax: {
+          currency: 'INR',
+          grossAmountInrPaise: 118000,
+          gstAmountInrPaise: 18000,
+          cadence: 'MONTHLY',
+          subscriptionTerms: 'Monthly subscription',
+          adSpendTreatment: 'Ad spend is separate',
+          cancellationAndRefundTerms: 'Cancel before renewal; captured charges follow the stated refund policy',
+        },
       },
     });
     return;
@@ -439,9 +959,27 @@ const server = createServer(async (request, response) => {
     await readBody(request);
     const relationshipId = decodeURIComponent(onboardingOrderMatch[1]);
     if (relationshipId === 'relationship-discounted') {
-      json(response, { outcomeKind: 'FULLY_DISCOUNTED', payableInrPaise: 0, listPriceInrPaise: 118000, discountInrPaise: 118000, taxInrPaise: 0, renewalConsequence: 'Renews at the accepted monthly price after the Demo period.', commercialOutcomeReference: 'zero-price-outcome', commercialEvidenceId: '11111111-1111-4111-8111-111111111111' });
+      json(response, {
+        outcomeKind: 'FULLY_DISCOUNTED',
+        payableInrPaise: 0,
+        listPriceInrPaise: 118000,
+        discountInrPaise: 118000,
+        taxInrPaise: 0,
+        renewalConsequence: 'Renews at the accepted monthly price after the Demo period.',
+        commercialOutcomeReference: 'zero-price-outcome',
+        commercialEvidenceId: '11111111-1111-4111-8111-111111111111',
+      });
     } else {
-      json(response, { outcomeKind: 'PROVIDER_CONFIGURATION_PENDING', reasonCode: 'PAYMENT_PROVIDER_CONFIGURATION_PENDING', title: 'Razorpay configuration is pending. No payment was started.', customerSafeNextAction: 'Razorpay configuration is pending. No payment was started.' }, 503);
+      json(
+        response,
+        {
+          outcomeKind: 'PROVIDER_CONFIGURATION_PENDING',
+          reasonCode: 'PAYMENT_PROVIDER_CONFIGURATION_PENDING',
+          title: 'Razorpay configuration is pending. No payment was started.',
+          customerSafeNextAction: 'Razorpay configuration is pending. No payment was started.',
+        },
+        503
+      );
     }
     return;
   }
@@ -454,17 +992,57 @@ const server = createServer(async (request, response) => {
 
   if (request.method === 'GET' && configurationMatch) {
     const relationshipId = decodeURIComponent(configurationMatch[1]);
-    json(response, { sectionType: 'CONFIGURATION', currencyState: 'CURRENT', provenance: { owner: 'BP', sourceProjectionVersion: 'fixture-1', producedAt: '2026-08-12T10:00:00Z' }, availableCommands: [], lifecyclePhase: 'GOAL_VERIFICATION', items: [{ stepKey: 'ONBOARD', label: 'Onboard', state: 'VERIFIED', summary: 'Presentation preferences confirmed.' }, { stepKey: 'INDUCT', label: 'Induct', state: 'VERIFIED', summary: 'Business context confirmed.', continuationTarget: { surface: 'CONVERSATION', relationshipId } }] });
+    json(response, {
+      sectionType: 'CONFIGURATION',
+      currencyState: 'CURRENT',
+      provenance: { owner: 'BP', sourceProjectionVersion: 'fixture-1', producedAt: '2026-08-12T10:00:00Z' },
+      availableCommands: [],
+      lifecyclePhase: 'GOAL_VERIFICATION',
+      items: [
+        { stepKey: 'ONBOARD', label: 'Onboard', state: 'VERIFIED', summary: 'Presentation preferences confirmed.' },
+        {
+          stepKey: 'INDUCT',
+          label: 'Induct',
+          state: 'VERIFIED',
+          summary: 'Business context confirmed.',
+          continuationTarget: { surface: 'CONVERSATION', relationshipId },
+        },
+      ],
+    });
     return;
   }
 
   if (request.method === 'GET' && goalsMatch) {
-    json(response, { sectionType: 'GOALS', currencyState: 'CURRENT', provenance: { owner: 'BP', sourceProjectionVersion: 'fixture-1', producedAt: '2026-08-12T10:00:00Z' }, availableCommands: [], activeGoals: [{ goalId: 'goal-1', goalVersion: '1', skillId: 'CAMPAIGN_PLANNING', skillLabel: 'Campaign planning', measure: 'Qualified enquiries', frequency: 'MONTHLY', verificationStatus: 'PENDING_CUSTOMER', status: 'ACTIVE' }], history: [] });
+    json(response, {
+      sectionType: 'GOALS',
+      currencyState: 'CURRENT',
+      provenance: { owner: 'BP', sourceProjectionVersion: 'fixture-1', producedAt: '2026-08-12T10:00:00Z' },
+      availableCommands: [],
+      activeGoals: [
+        {
+          goalId: 'goal-1',
+          goalVersion: '1',
+          skillId: 'CAMPAIGN_PLANNING',
+          skillLabel: 'Campaign planning',
+          measure: 'Qualified enquiries',
+          frequency: 'MONTHLY',
+          verificationStatus: 'PENDING_CUSTOMER',
+          status: 'ACTIVE',
+        },
+      ],
+      history: [],
+    });
     return;
   }
 
   if (request.method === 'GET' && outcomesMatch) {
-    json(response, { sectionType: 'BUSINESS_OUTCOMES', currencyState: 'UNAVAILABLE', provenance: { owner: 'BP', sourceProjectionVersion: 'unavailable-1', producedAt: '2026-08-12T10:00:00Z' }, availableCommands: [], items: [] });
+    json(response, {
+      sectionType: 'BUSINESS_OUTCOMES',
+      currencyState: 'UNAVAILABLE',
+      provenance: { owner: 'BP', sourceProjectionVersion: 'unavailable-1', producedAt: '2026-08-12T10:00:00Z' },
+      availableCommands: [],
+      items: [],
+    });
     return;
   }
 
@@ -472,7 +1050,44 @@ const server = createServer(async (request, response) => {
     const relationshipId = decodeURIComponent(performanceMatch[1]);
     const second = relationshipId === 'relationship-second';
     const dimension = (state, summary, extra = {}) => ({ state, summary, evidenceState: 'RECORDED', ...extra });
-    json(response, { sectionType: 'PERFORMANCE', currencyState: 'CURRENT', provenance: { owner: 'BP', sourceProjectionVersion: `performance-${relationshipId}`, producedAt: '2026-09-01T10:00:00Z' }, availableCommands: [{ commandKind: 'RESPOND_TO_PERFORMANCE_REVIEW', availability: 'AVAILABLE' }], current: { reviewId: second ? '22222222-2222-4222-8222-222222222222' : '11111111-1111-4111-8111-111111111111', agentInstanceId: second ? 'second-agent-instance' : 'primary-agent-instance', skillId: second ? 'TUTORING_PLAN' : 'MARKET_RESEARCH', skillVersion: '1.0.0', revision: 1, policyVersion: 'review-policy-1', periodStart: '2026-08-01T00:00:00Z', periodEnd: '2026-08-31T00:00:00Z', sourceVersions: { professionalRuntime: 'pr-17', constitutionalEngine: 'ce-9' }, workDelivery: dimension('DELIVERED', 'Planned work was delivered.'), agentQuality: dimension('GOOD', 'Quality checks passed.'), constitutionalPerformance: dimension('CONFORMANT', 'Evidence is complete.'), commercialUsage: dimension('WITHIN_ALLOWANCE', 'Usage stayed within the allowance.'), customerBusinessOutcome: dimension(second ? 'IMPROVED' : 'POOR', second ? 'Learning outcome improved.' : 'External outcome did not improve.', { attributionLimits: 'No causal guarantee' }), customerAssessment: dimension('CUSTOMER_REVIEW_REQUIRED', 'Customer decision is required.'), trustAutonomy: dimension('UNCHANGED', 'No autonomy increase is authorized.'), recommendation: 'REASSESSMENT_REQUIRED', evidenceId: '33333333-3333-4333-8333-333333333333', createdAt: '2026-09-01T10:00:00Z', customerResponse: null, reassessmentRequired: true }, history: [] });
+    json(response, {
+      sectionType: 'PERFORMANCE',
+      currencyState: 'CURRENT',
+      provenance: {
+        owner: 'BP',
+        sourceProjectionVersion: `performance-${relationshipId}`,
+        producedAt: '2026-09-01T10:00:00Z',
+      },
+      availableCommands: [{ commandKind: 'RESPOND_TO_PERFORMANCE_REVIEW', availability: 'AVAILABLE' }],
+      current: {
+        reviewId: second ? '22222222-2222-4222-8222-222222222222' : '11111111-1111-4111-8111-111111111111',
+        agentInstanceId: second ? 'second-agent-instance' : 'primary-agent-instance',
+        skillId: second ? 'TUTORING_PLAN' : 'MARKET_RESEARCH',
+        skillVersion: '1.0.0',
+        revision: 1,
+        policyVersion: 'review-policy-1',
+        periodStart: '2026-08-01T00:00:00Z',
+        periodEnd: '2026-08-31T00:00:00Z',
+        sourceVersions: { professionalRuntime: 'pr-17', constitutionalEngine: 'ce-9' },
+        workDelivery: dimension('DELIVERED', 'Planned work was delivered.'),
+        agentQuality: dimension('GOOD', 'Quality checks passed.'),
+        constitutionalPerformance: dimension('CONFORMANT', 'Evidence is complete.'),
+        commercialUsage: dimension('WITHIN_ALLOWANCE', 'Usage stayed within the allowance.'),
+        customerBusinessOutcome: dimension(
+          second ? 'IMPROVED' : 'POOR',
+          second ? 'Learning outcome improved.' : 'External outcome did not improve.',
+          { attributionLimits: 'No causal guarantee' }
+        ),
+        customerAssessment: dimension('CUSTOMER_REVIEW_REQUIRED', 'Customer decision is required.'),
+        trustAutonomy: dimension('UNCHANGED', 'No autonomy increase is authorized.'),
+        recommendation: 'REASSESSMENT_REQUIRED',
+        evidenceId: '33333333-3333-4333-8333-333333333333',
+        createdAt: '2026-09-01T10:00:00Z',
+        customerResponse: null,
+        reassessmentRequired: true,
+      },
+      history: [],
+    });
     return;
   }
 
@@ -482,12 +1097,33 @@ const server = createServer(async (request, response) => {
       json(response, { title: 'Unsupported fixture command.' }, 423);
       return;
     }
-    json(response, { schemaVersion: '1.0', commandId: '44444444-4444-4444-8444-444444444444', commandKind: body.payload.commandKind, status: 'COMPLETED', acceptedAt: '2026-09-01T10:05:00Z', replayed: false }, 202);
+    json(
+      response,
+      {
+        schemaVersion: '1.0',
+        commandId: '44444444-4444-4444-8444-444444444444',
+        commandKind: body.payload.commandKind,
+        status: 'COMPLETED',
+        acceptedAt: '2026-09-01T10:05:00Z',
+        replayed: false,
+      },
+      202
+    );
     return;
   }
 
   if (request.method === 'GET' && operationsMatch) {
-    json(response, { sectionType: 'OPERATIONS', currencyState: 'CURRENT', provenance: { owner: 'BP', sourceProjectionVersion: 'fixture-1', producedAt: '2026-08-12T10:00:00Z' }, availableCommands: [], eligibilityState: 'LOCKED', requiredGoalIds: ['goal-1'], verifiedGoalIds: [], blockedReasons: ['Customer goal verification is required.'], reassessmentRequired: false });
+    json(response, {
+      sectionType: 'OPERATIONS',
+      currencyState: 'CURRENT',
+      provenance: { owner: 'BP', sourceProjectionVersion: 'fixture-1', producedAt: '2026-08-12T10:00:00Z' },
+      availableCommands: [],
+      eligibilityState: 'LOCKED',
+      requiredGoalIds: ['goal-1'],
+      verifiedGoalIds: [],
+      blockedReasons: ['Customer goal verification is required.'],
+      reassessmentRequired: false,
+    });
     return;
   }
 
@@ -495,29 +1131,75 @@ const server = createServer(async (request, response) => {
     const relationshipId = decodeURIComponent(workspaceMatch[1]);
     const family = workspaceMatch[2];
     const lifecycleState = continuityFor(scope, relationshipId).stopped ? 'STOPPED_EMERGENCY' : 'ACTIVE';
-    const provenance = { owner: family === 'usage-budget' ? 'WBE' : family === 'work' ? 'PR' : family === 'results' ? 'DMA' : 'BP', sourceProjectionVersion: 'fixture-1', producedAt: '2026-08-10T10:00:00Z' };
-    const common = { currencyState: family === 'attention' || family === 'rights-controls' ? 'CURRENT' : 'UNAVAILABLE', provenance, availableCommands: [] };
+    const provenance = {
+      owner: family === 'usage-budget' ? 'WBE' : family === 'work' ? 'PR' : family === 'results' ? 'DMA' : 'BP',
+      sourceProjectionVersion: 'fixture-1',
+      producedAt: '2026-08-10T10:00:00Z',
+    };
+    const common = {
+      currencyState: family === 'attention' || family === 'rights-controls' ? 'CURRENT' : 'UNAVAILABLE',
+      provenance,
+      availableCommands: [],
+    };
     const responses = {
       plan: { ...common, sectionType: 'PLAN', planId: '5f33925b-fb0c-4366-8414-7f85309639b9', goals: [] },
       attention: { ...common, sectionType: 'ATTENTION', items: [] },
       work: { ...common, sectionType: 'WORK', items: [] },
       results: { ...common, sectionType: 'RESULTS', outcomes: [] },
-      'usage-budget': { ...common, sectionType: 'USAGE_BUDGET', actualAmount: 'Unavailable', forecastRange: 'Unavailable', thresholdState: 'UNAVAILABLE', wbeProjectionVersion: 'unavailable-1' },
-      'rights-controls': { ...common, sectionType: 'RIGHTS_CONTROLS', scopeVersion: '1', authorityVersion: '1', lifecycleState, emergencyStopReachable: true },
-      evidence: { schemaVersion: '1.0', relationshipId, items: [], authoritativeCursor: `evidence:${relationshipId}:00000001`, hasMore: false },
+      'usage-budget': {
+        ...common,
+        sectionType: 'USAGE_BUDGET',
+        actualAmount: 'Unavailable',
+        forecastRange: 'Unavailable',
+        thresholdState: 'UNAVAILABLE',
+        wbeProjectionVersion: 'unavailable-1',
+      },
+      'rights-controls': {
+        ...common,
+        sectionType: 'RIGHTS_CONTROLS',
+        scopeVersion: '1',
+        authorityVersion: '1',
+        lifecycleState,
+        emergencyStopReachable: true,
+      },
+      evidence: {
+        schemaVersion: '1.0',
+        relationshipId,
+        items: [],
+        authoritativeCursor: `evidence:${relationshipId}:00000001`,
+        hasMore: false,
+      },
     };
-    json(response, family ? responses[family] : {
-      schemaVersion: '1.0', relationshipId, workspaceVersion: 'fixture-1', snapshotState: 'PARTIAL', currencyState: 'CURRENT',
-      authoritativeCursor: `workspace:${relationshipId}:00000001`, producedAt: '2026-08-10T10:00:00Z',
-      context: { relationshipId, lifecycleState, policySelection: { f4Pol01: 'A', f4Pol02: 'A', f4Pol03: 'B', f4Pol04: 'A', f4Pol05: 'B', f4Pol06: 'A' } }, sections: [],
-    });
+    json(
+      response,
+      family
+        ? responses[family]
+        : {
+            schemaVersion: '1.0',
+            relationshipId,
+            workspaceVersion: 'fixture-1',
+            snapshotState: 'PARTIAL',
+            currencyState: 'CURRENT',
+            authoritativeCursor: `workspace:${relationshipId}:00000001`,
+            producedAt: '2026-08-10T10:00:00Z',
+            context: {
+              relationshipId,
+              lifecycleState,
+              policySelection: { f4Pol01: 'A', f4Pol02: 'A', f4Pol03: 'B', f4Pol04: 'A', f4Pol05: 'B', f4Pol06: 'A' },
+            },
+            sections: [],
+          }
+    );
     return;
   }
 
   if (request.method === 'GET' && relationshipMatch) {
     const relationshipId = decodeURIComponent(relationshipMatch[1]);
     const state = continuityFor(scope, relationshipId);
-    json(response, { ...relationship(relationshipId), state: state.stopped ? 'STOPPED_EMERGENCY' : relationship(relationshipId).state });
+    json(response, {
+      ...relationship(relationshipId),
+      state: state.stopped ? 'STOPPED_EMERGENCY' : relationship(relationshipId).state,
+    });
     return;
   }
   if (request.method === 'GET' && timelineMatch) {
@@ -532,30 +1214,56 @@ const server = createServer(async (request, response) => {
     const relationshipId = decodeURIComponent(messagesMatch[1]);
     const body = await readBody(request);
     if (relationshipId === 'relationship-unknown') {
-      json(response, { code: 'CONVERSATION_EXECUTION_UNAVAILABLE', title: 'The send outcome is unknown. Reconnect before retrying.' }, 503);
+      json(
+        response,
+        {
+          code: 'CONVERSATION_EXECUTION_UNAVAILABLE',
+          title: 'The send outcome is unknown. Reconnect before retrying.',
+        },
+        503
+      );
       return;
     }
     const accepted = message(relationshipId, {
-      messageId: body.clientMessageId, actor: 'CUSTOMER', content: body.content, cards: [],
-      deliveryState: 'ACCEPTED', processingState: 'QUEUED', evidenceState: 'PENDING', partial: false,
-      completionReason: undefined, clientMessageId: body.clientMessageId,
+      messageId: body.clientMessageId,
+      actor: 'CUSTOMER',
+      content: body.content,
+      cards: [],
+      deliveryState: 'ACCEPTED',
+      processingState: 'QUEUED',
+      evidenceState: 'PENDING',
+      partial: false,
+      completionReason: undefined,
+      clientMessageId: body.clientMessageId,
     });
     const currentMessages = messagesFor(scope, relationshipId);
     const existingIndex = currentMessages.findIndex(({ clientMessageId }) => clientMessageId === body.clientMessageId);
-    const nextMessages = existingIndex < 0
-      ? [...currentMessages, accepted]
-      : currentMessages.map((current, index) => index === existingIndex ? accepted : current);
+    const nextMessages =
+      existingIndex < 0
+        ? [...currentMessages, accepted]
+        : currentMessages.map((current, index) => (index === existingIndex ? accepted : current));
     setMessages(scope, relationshipId, nextMessages);
     json(response, {
-      schemaVersion: '1.0', outcome: 'ACCEPTED', message: accepted, executionId,
-      authoritativeCursor: `cursor-${relationshipId}-${nextMessages.length}`, replayed: existingIndex >= 0,
+      schemaVersion: '1.0',
+      outcome: 'ACCEPTED',
+      message: accepted,
+      executionId,
+      authoritativeCursor: `cursor-${relationshipId}-${nextMessages.length}`,
+      replayed: existingIndex >= 0,
     });
     return;
   }
   if (request.method === 'POST' && retryMatch) {
     const relationshipId = decodeURIComponent(retryMatch[1]);
     const existing = messagesFor(scope, relationshipId)[0];
-    json(response, { schemaVersion: '1.0', outcome: 'REPLAYED', message: existing, executionId, authoritativeCursor: `cursor-${relationshipId}-1`, replayed: true });
+    json(response, {
+      schemaVersion: '1.0',
+      outcome: 'REPLAYED',
+      message: existing,
+      executionId,
+      authoritativeCursor: `cursor-${relationshipId}-1`,
+      replayed: true,
+    });
     return;
   }
   if (request.method === 'PUT' && readMatch) {
@@ -564,22 +1272,42 @@ const server = createServer(async (request, response) => {
   }
   if (request.method === 'GET' && streamMatch) {
     const relationshipId = decodeURIComponent(streamMatch[1]);
-    response.writeHead(200, { 'Cache-Control': 'no-store', 'Content-Type': 'text/event-stream; charset=utf-8', Connection: 'keep-alive' });
-    response.write(`data: ${JSON.stringify(event(relationshipId, 'heartbeat', { data: { serverTime: '2026-08-10T10:01:00.000Z' } }))}\n\n`);
+    response.writeHead(200, {
+      'Cache-Control': 'no-store',
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      Connection: 'keep-alive',
+    });
+    response.write(
+      `data: ${JSON.stringify(event(relationshipId, 'heartbeat', { data: { serverTime: '2026-08-10T10:01:00.000Z' } }))}\n\n`
+    );
     const clientKey = scopeKey(scope, relationshipId);
     const clients = streamClients.get(clientKey) ?? new Set();
     clients.add(response);
     streamClients.set(clientKey, clients);
     request.on('close', () => clients.delete(response));
     if (relationshipId === 'relationship-stream') {
-      setTimeout(() => sendEvent(scope, relationshipId, event(relationshipId, 'response.delta', { executionId, data: { contentIndex: 0, appendText: 'A governed draft update.', partial: true } })), 150);
+      setTimeout(
+        () =>
+          sendEvent(
+            scope,
+            relationshipId,
+            event(relationshipId, 'response.delta', {
+              executionId,
+              data: { contentIndex: 0, appendText: 'A governed draft update.', partial: true },
+            })
+          ),
+        150
+      );
     }
     return;
   }
   if (request.method === 'DELETE' && cancelMatch) {
     const relationshipId = decodeURIComponent(cancelMatch[1]);
     const current = messagesFor(scope, relationshipId)[0];
-    if (current) setMessages(scope, relationshipId, [{ ...current, processingState: 'CANCELLED', partial: true, completionReason: 'CANCELLED' }]);
+    if (current)
+      setMessages(scope, relationshipId, [
+        { ...current, processingState: 'CANCELLED', partial: true, completionReason: 'CANCELLED' },
+      ]);
     json(response, { schemaVersion: '1.0', state: 'CANCELLED', partial: true });
     sendEvent(scope, relationshipId, event(relationshipId, 'stream.cancelled', { executionId }));
     return;
@@ -587,7 +1315,9 @@ const server = createServer(async (request, response) => {
   if (request.method === 'POST' && url.pathname === '/__fixtures/conversations/relationship-evidence/record-evidence') {
     const relationshipId = 'relationship-evidence';
     const current = messagesFor(scope, relationshipId)[0];
-    setMessages(scope, relationshipId, [{ ...current, evidenceState: 'RECORDED', evidenceRecordId: 'evidence-confirmed-1' }]);
+    setMessages(scope, relationshipId, [
+      { ...current, evidenceState: 'RECORDED', evidenceRecordId: 'evidence-confirmed-1' },
+    ]);
     json(response, { recorded: true });
     sendEvent(scope, relationshipId, event(relationshipId, 'message.completed', { executionId }));
     return;
@@ -605,8 +1335,11 @@ const server = createServer(async (request, response) => {
     }
     continuityFor(scope, relationshipId).stopped = true;
     json(response, {
-      ...relationship(relationshipId), state: 'STOPPED_EMERGENCY', stateVersion: 3,
-      affectedSessions: ['runtime-owned-session'], confirmedAt: '2026-08-10T10:02:00.000Z',
+      ...relationship(relationshipId),
+      state: 'STOPPED_EMERGENCY',
+      stateVersion: 3,
+      affectedSessions: ['runtime-owned-session'],
+      confirmedAt: '2026-08-10T10:02:00.000Z',
     });
     sendEvent(scope, relationshipId, event(relationshipId, 'stop.applied', { executionId }));
     return;
@@ -617,21 +1350,16 @@ const server = createServer(async (request, response) => {
 const identityServer = createServer((request, response) => {
   const url = new URL(request.url ?? '/', 'http://localhost:8080');
   const redirectTarget = url.searchParams.get('post_logout_redirect_uri');
-  let redirectOrigin;
-  try {
-    redirectOrigin = new URL(redirectTarget ?? '').origin;
-  } catch {
-    redirectOrigin = undefined;
-  }
-  if (!/^\/realms\/[^/]+\/protocol\/openid-connect\/logout$/.test(url.pathname)
-    || !redirectTarget
-    || redirectOrigin !== 'http://127.0.0.1:3000') {
+  if (
+    !/^\/realms\/[^/]+\/protocol\/openid-connect\/logout$/.test(url.pathname) ||
+    redirectTarget !== 'http://127.0.0.1:3000/'
+  ) {
     response.statusCode = 400;
     response.end('Invalid test identity logout request.');
     return;
   }
   response.statusCode = 302;
-  response.setHeader('Location', redirectTarget);
+  response.setHeader('Location', 'http://127.0.0.1:3000/');
   response.end();
 });
 

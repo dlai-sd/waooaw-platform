@@ -1,0 +1,77 @@
+{
+  "schema": "waooaw.wc102-candidate-measurements/v1",
+  "base_sha": "ff09197debf331a75d8f50bb6a817a683544ed33",
+  "candidate_sha": "aedeb77683be7966ff636dc3cb9d6a29ca249e3a",
+  "baseline": "validation/evidence/wc102-baseline.json",
+  "evidence_class": "local-exact-image-candidate",
+  "samples": [
+    {
+      "change_class": "web-only",
+      "cold_build_ms": 120309,
+      "warm_build_ms": 765,
+      "execution_ms": [2486, 2454],
+      "execution_range_ms": [2454, 2486],
+      "selector_ms": 615,
+      "command": "cd web && ../node_modules/.bin/jest config/public-config.test.ts --runInBand",
+      "cache_state": "warm BuildKit runner; read-only bind-mounted source",
+      "exit_codes": [0, 0]
+    },
+    {
+      "change_class": "business-platform",
+      "cold_build_ms": 274920,
+      "warm_build_ms": 866,
+      "execution_ms": [32848, 30246],
+      "execution_range_ms": [30246, 32848],
+      "selector_ms": 609,
+      "command": "dotnet test tests/business-platform.Tests --artifacts-path /tmp/artifacts/business-platform-focus --filter AgentAdmissionValidatorTests",
+      "cache_state": "warm persistent NuGet cache; disposable /tmp build artifacts",
+      "exit_codes": [0, 0]
+    },
+    {
+      "change_class": "python-service",
+      "cold_build_ms": 170511,
+      "warm_build_ms": 1535,
+      "execution_ms": [6110, 6077],
+      "execution_range_ms": [6077, 6110],
+      "selector_ms": 619,
+      "command": "pytest tests/validation_control/test_baseline_probe.py -q",
+      "cache_state": "warm BuildKit runner; read-only bind-mounted source",
+      "exit_codes": [0, 0]
+    },
+    {
+      "change_class": "shared-contract",
+      "selector_ms": 606,
+      "selected_component_count": 5,
+      "full_qualification_result": "PASS",
+      "exit_codes": [0]
+    },
+    {
+      "change_class": "pipeline-global",
+      "selector_ms": 617,
+      "selected_component_count": 7,
+      "full_fallback": true,
+      "full_qualification_result": "PASS",
+      "exit_codes": [0]
+    }
+  ],
+  "sample_size": {
+    "cold_builds_per_stack": 1,
+    "warm_builds_per_stack": 1,
+    "focused_executions_per_stack": 2,
+    "selector_runs_per_change_class": 1
+  },
+  "discarded_samples": [
+    {
+      "change_class": "business-platform",
+      "count": 4,
+      "reason": "Measurement probes used a nonexistent project path or combined --no-restore with a new disposable artifacts path; commands failed before test execution and were excluded."
+    }
+  ],
+  "limitations": [
+    "Local dev-container timing does not predict hosted CI or release duration.",
+    "Cold and warm build samples are single observations.",
+    "Focused and selector results are non-authoritative; exact-head qualification remains required."
+  ],
+  "unsupported_savings_claims": false,
+  "captured_at": "2026-09-19"
+}

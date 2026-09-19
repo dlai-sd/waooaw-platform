@@ -7,7 +7,13 @@ import { usePathname } from 'next/navigation';
 import { marketingConfig } from '@/config/marketing';
 import { optionalConsent, parseConsentCookie } from '@/lib/consent';
 
-type EventName = 'public_page_viewed' | 'professional_viewed' | 'registration_started' | 'hire_journey_started' | 'contact_invoked' | 'consent_updated';
+type EventName =
+  | 'public_page_viewed'
+  | 'professional_viewed'
+  | 'registration_started'
+  | 'hire_journey_started'
+  | 'contact_invoked'
+  | 'consent_updated';
 type OptionalConsent = ReturnType<typeof optionalConsent>;
 type SessionContext = { id: string; expiresAt: number; attribution: Record<string, string> };
 
@@ -24,12 +30,16 @@ function randomId(): string {
 }
 
 function privacySignal(): boolean {
-  return navigator.doNotTrack === '1' || (navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl === true;
+  return (
+    navigator.doNotTrack === '1' ||
+    (navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl === true
+  );
 }
 
 function readSession(consent: OptionalConsent): SessionContext {
   const now = Date.now();
-  const fallback = { id: memorySessionId ??= randomId(), expiresAt: now, attribution: {} };
+  if (!memorySessionId) memorySessionId = randomId();
+  const fallback = { id: memorySessionId, expiresAt: now, attribution: {} };
   if (!consent.analytics && !consent.advertising) return fallback;
   try {
     const stored = JSON.parse(sessionStorage.getItem(sessionKey) ?? '') as SessionContext;
@@ -37,16 +47,22 @@ function readSession(consent: OptionalConsent): SessionContext {
   } catch {
     // Invalid or expired acquisition context is replaced, never repaired with untrusted values.
   }
-  const attribution = Object.fromEntries(['utm_source', 'utm_medium', 'utm_campaign'].flatMap((key) => {
-    const value = new URLSearchParams(location.search).get(key);
-    return value && boundedValue.test(value) ? [[key, value]] : [];
-  }));
+  const attribution = Object.fromEntries(
+    ['utm_source', 'utm_medium', 'utm_campaign'].flatMap((key) => {
+      const value = new URLSearchParams(location.search).get(key);
+      return value && boundedValue.test(value) ? [[key, value]] : [];
+    })
+  );
   const session = { id: randomId(), expiresAt: now + marketingConfig.attributionWindowMinutes * 60_000, attribution };
   sessionStorage.setItem(sessionKey, JSON.stringify(session));
   return session;
 }
 
-export function recordAcquisitionEvent(eventName: EventName, consent: OptionalConsent, data: Record<string, string | boolean> = {}) {
+export function recordAcquisitionEvent(
+  eventName: EventName,
+  consent: OptionalConsent,
+  data: Record<string, string | boolean> = {}
+) {
   const session = readSession(consent);
   const eventId = randomId();
   void fetch('/api/acquisition/events', {
@@ -84,12 +100,15 @@ export function AcquisitionController() {
       if (!link) return;
       const next = currentConsent();
       if (!next.analytics && !next.advertising) return;
-      if (link.href.startsWith('mailto:')) recordAcquisitionEvent('contact_invoked', next, { contact_intent: pathname.slice(1) || 'home' });
+      if (link.href.startsWith('mailto:'))
+        recordAcquisitionEvent('contact_invoked', next, { contact_intent: pathname.slice(1) || 'home' });
       else if (link.pathname === '/register') {
         const professional = new URL(link.href).searchParams.get('professional');
-        recordAcquisitionEvent(professional ? 'hire_journey_started' : 'registration_started', next, professional
-          ? { entry_route: pathname, professional_type: professional }
-          : { entry_route: pathname });
+        recordAcquisitionEvent(
+          professional ? 'hire_journey_started' : 'registration_started',
+          next,
+          professional ? { entry_route: pathname, professional_type: professional } : { entry_route: pathname }
+        );
       }
     };
     document.addEventListener('click', onClick);

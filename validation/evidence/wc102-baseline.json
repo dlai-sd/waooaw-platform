@@ -1,0 +1,66 @@
+{
+  "schema": "waooaw.wc102-baseline/v1",
+  "base_sha": "ff09197debf331a75d8f50bb6a817a683544ed33",
+  "captured_at": "2026-09-19",
+  "evidence_class": "local-exact-image-baseline",
+  "samples": [
+    {
+      "change_class": "web-only",
+      "cold_build_ms": 196713,
+      "warm_build_ms": 29191,
+      "execution_ms": [3303, 3079],
+      "command": "pnpm --dir web exec jest config/public-config.test.ts --runInBand",
+      "cache_state": "BuildKit warm; source baked into runner",
+      "exit_codes": [0, 0]
+    },
+    {
+      "change_class": "business-platform",
+      "cold_build_ms": 232433,
+      "warm_build_ms": 50016,
+      "execution_ms": [47680, 25870],
+      "command": "dotnet test business-platform.Tests --filter AgentAdmissionValidatorTests",
+      "cache_state": "NuGet path disposable; host bin/obj persisted between runs",
+      "exit_codes": [0, 0]
+    },
+    {
+      "change_class": "python-service",
+      "cold_build_ms": 129458,
+      "warm_build_ms": 6872,
+      "execution_ms": [7441, 5481],
+      "command": "pytest tests/validation_control/test_baseline_probe.py -q",
+      "cache_state": "BuildKit warm; source baked into runner",
+      "exit_codes": [0, 0]
+    },
+    {
+      "change_class": "shared-contract",
+      "selector_ms": 942,
+      "selected_component_count": 5,
+      "execution": "current full CI remains authoritative",
+      "exit_codes": [0]
+    },
+    {
+      "change_class": "pipeline-global",
+      "selector_ms": 694,
+      "full_fallback": true,
+      "execution": "complete gate inventory required",
+      "exit_codes": [0]
+    }
+  ],
+  "first_failure": {
+    "class": "assertion",
+    "source": "initial Docker baseline characterization",
+    "message": "expected five host invocations; measured four",
+    "rerun_result": "PASS"
+  },
+  "baseline_corrections": [
+    "PR #454 added one Shadow selector before WC-102 implementation",
+    "The selector lacks the WC-102 catalog schema and complete gate contracts",
+    "No baseline timing is extrapolated to hosted CI or release duration"
+  ],
+  "unsupported_savings_claims": false,
+  "sample_size": {
+    "runner_builds_per_stack": 2,
+    "focused_executions_per_stack": 2,
+    "selector_runs_per_non_runtime_class": 1
+  }
+}

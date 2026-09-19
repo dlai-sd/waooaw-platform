@@ -8,12 +8,25 @@ import { encode } from 'next-auth/jwt';
 const secret = 'playwright-only-not-a-runtime-secret';
 
 async function addSession(context: BrowserContext, projectName: string) {
-  const value = await encode({ secret, maxAge: 3600, token: { accessToken: `fixture-access-token-${projectName}`, accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600, founder: false, sub: `fixture-user-${projectName}` } });
-  await context.addCookies([{ name: 'next-auth.session-token', value, domain: '127.0.0.1', httpOnly: true, path: '/', sameSite: 'Lax' }]);
+  const value = await encode({
+    secret,
+    maxAge: 3600,
+    token: {
+      accessToken: `fixture-access-token-${projectName}`,
+      accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+      founder: false,
+      sub: `fixture-user-${projectName}`,
+    },
+  });
+  await context.addCookies([
+    { name: 'next-auth.session-token', value, domain: '127.0.0.1', httpOnly: true, path: '/', sameSite: 'Lax' },
+  ]);
 }
 
 async function expectIntegrity(page: Page) {
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(
+    true
+  );
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious')).toEqual([]);
 }
@@ -23,9 +36,13 @@ test.beforeEach(async ({ context }, testInfo) => {
   await addSession(context, testInfo.project.name);
 });
 
-test('WC096-A04 A07: My Agents uses direct authoritative cards without document navigation or side frames', async ({ page }) => {
+test('WC096-A04 A07: My Agents uses direct authoritative cards without document navigation or side frames', async ({
+  page,
+}) => {
   const documents: string[] = [];
-  page.on('request', (request) => { if (request.resourceType() === 'document') documents.push(request.url()); });
+  page.on('request', (request) => {
+    if (request.resourceType() === 'document') documents.push(request.url());
+  });
   await page.goto('/marketplace');
   await page.getByRole('link', { name: 'My Agents' }).first().click();
 
@@ -33,7 +50,10 @@ test('WC096-A04 A07: My Agents uses direct authoritative cards without document 
   await expect(page.getByRole('heading', { name: 'Mira' })).toBeVisible();
   await expect(page.getByText('3 enabled · 1 pending')).toBeVisible();
   await expect(page.getByText('No evidenced performance summary is available yet.')).toBeVisible();
-  await expect(page.getByRole('link', { name: /View work/ })).toHaveAttribute('href', '/relationships/relationship-active');
+  await expect(page.getByRole('link', { name: /View work/ })).toHaveAttribute(
+    'href',
+    '/relationships/relationship-active'
+  );
   await expect(page.getByRole('complementary', { name: 'Getting started' })).toHaveCount(0);
   expect(documents).toHaveLength(1);
   await expectIntegrity(page);
@@ -70,10 +90,12 @@ test('WC096-A06 A08 A13: compact conversation sheet and rail are keyboard access
   await page.keyboard.press('Enter');
   const dock = page.getByRole('complementary', { name: 'WAOOAW Guide' });
   await expect(dock).toBeVisible();
-  await expect.poll(async () => {
-    const box = await dock.boundingBox();
-    return Boolean(box && box.x >= 0 && box.x + box.width <= 360);
-  }).toBe(true);
+  await expect
+    .poll(async () => {
+      const box = await dock.boundingBox();
+      return Boolean(box && box.x >= 0 && box.x + box.width <= 360);
+    })
+    .toBe(true);
   await page.keyboard.press('Escape');
   await expect(action).toBeFocused();
   await expect(page.getByRole('navigation', { name: 'Customer mobile navigation' })).toBeVisible();

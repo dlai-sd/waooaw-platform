@@ -1,0 +1,3 @@
+dotnet_cold_build_ms=232433
+exit_code=0
+cache_state=no-cache

@@ -13,7 +13,10 @@ import type { PortalInteractionSurfaceV1 } from '@/lib/api/generated/models/Port
 
 const draftKey = 'waooaw:conversation:portal:draft';
 
-export function PortalGuideExperience({ currentSurface, locale = 'en-IN' }: {
+export function PortalGuideExperience({
+  currentSurface,
+  locale = 'en-IN',
+}: {
   currentSurface: PortalInteractionSurfaceV1;
   locale?: string;
 }) {
@@ -33,7 +36,9 @@ export function PortalGuideExperience({ currentSurface, locale = 'en-IN' }: {
         setMessages(page.items);
         setCursor(page.authoritativeCursor);
       })
-      .catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Guide conversation is unavailable.'))
+      .catch((caught: unknown) =>
+        setError(caught instanceof Error ? caught.message : 'Guide conversation is unavailable.')
+      )
       .finally(() => setLoading(false));
   }, []);
 
@@ -53,8 +58,12 @@ export function PortalGuideExperience({ currentSurface, locale = 'en-IN' }: {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          idempotencyKey: crypto.randomUUID(), clientMessageId: crypto.randomUUID(), text,
-          locale, currentSurface, expectedCursor: cursor || undefined,
+          idempotencyKey: crypto.randomUUID(),
+          clientMessageId: crypto.randomUUID(),
+          text,
+          locale,
+          currentSurface,
+          expectedCursor: cursor || undefined,
         }),
       });
       if (!response.ok) throw new Error('The Guide response is unresolved. Refresh before retrying.');
@@ -71,15 +80,69 @@ export function PortalGuideExperience({ currentSurface, locale = 'en-IN' }: {
 
   return (
     <section className="portal-guide" aria-labelledby="portal-guide-title">
-      <header><h2 id="portal-guide-title">WAOOAW Guide</h2><span>{currentSurface.replaceAll('_', ' ').toLowerCase()}</span></header>
-      <p className="scope-disclosure">Navigation and explanations only. The Guide cannot act as an employed professional.</p>
+      <header>
+        <h2 id="portal-guide-title">WAOOAW Guide</h2>
+        <span>{currentSurface.replaceAll('_', ' ').toLowerCase()}</span>
+      </header>
+      <p className="scope-disclosure">
+        Navigation and explanations only. The Guide cannot act as an employed professional.
+      </p>
       <div className="portal-guide-timeline" aria-busy={loading} aria-live="polite">
-        {loading ? <p><LoaderCircle aria-hidden="true" className="spin" size={18} /> Loading Guide…</p> : null}
-        {!loading && messages.length === 0 ? <p>Ask where to find agents, alerts, billing or account settings.</p> : null}
-        {messages.map((message) => <article className={`guide-message guide-message-${message.actor.toLowerCase()}`} key={message.messageId}><strong>{message.actor === 'CUSTOMER' ? 'You' : 'WAOOAW Guide'}</strong>{message.content.map((block, index) => <p key={`${message.messageId}-${index}`}>{block.text}</p>)}{message.capabilities.map((capability) => <Link className="secondary-link" href={capability.destination} key={`${message.messageId}-${capability.destination}`}>{capability.label}</Link>)}</article>)}
+        {loading ? (
+          <p>
+            <LoaderCircle aria-hidden="true" className="spin" size={18} /> Loading Guide…
+          </p>
+        ) : null}
+        {!loading && messages.length === 0 ? (
+          <p>Ask where to find agents, alerts, billing or account settings.</p>
+        ) : null}
+        {messages.map((message) => (
+          <article className={`guide-message guide-message-${message.actor.toLowerCase()}`} key={message.messageId}>
+            <strong>{message.actor === 'CUSTOMER' ? 'You' : 'WAOOAW Guide'}</strong>
+            {message.content.map((block, index) => (
+              <p key={`${message.messageId}-${index}`}>{block.text}</p>
+            ))}
+            {message.capabilities.map((capability) => (
+              <Link
+                className="secondary-link"
+                href={capability.destination}
+                key={`${message.messageId}-${capability.destination}`}
+              >
+                {capability.label}
+              </Link>
+            ))}
+          </article>
+        ))}
       </div>
-      {error ? <p className="conversation-error" role="alert">{error}</p> : null}
-      <form onSubmit={(event) => { event.preventDefault(); void send(); }}><label htmlFor="portal-guide-draft">Ask the Guide</label><textarea id="portal-guide-draft" maxLength={4000} onChange={(event) => updateDraft(event.target.value)} placeholder="Where can I review my agents?" rows={3} value={draft} /><button className="send-command" disabled={!draft.trim() || sending} type="submit">{sending ? <LoaderCircle aria-hidden="true" className="spin" size={18} /> : <Send aria-hidden="true" size={18} />}Send</button></form>
+      {error ? (
+        <p className="conversation-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          void send();
+        }}
+      >
+        <label htmlFor="portal-guide-draft">Ask the Guide</label>
+        <textarea
+          id="portal-guide-draft"
+          maxLength={4000}
+          onChange={(event) => updateDraft(event.target.value)}
+          placeholder="Where can I review my agents?"
+          rows={3}
+          value={draft}
+        />
+        <button className="send-command" disabled={!draft.trim() || sending} type="submit">
+          {sending ? (
+            <LoaderCircle aria-hidden="true" className="spin" size={18} />
+          ) : (
+            <Send aria-hidden="true" size={18} />
+          )}
+          Send
+        </button>
+      </form>
     </section>
   );
 }

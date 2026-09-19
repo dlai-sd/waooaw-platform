@@ -1,7 +1,7 @@
 // Implements: architecture/reference/ux/hybrid-ui-acceptance-contract.md §F1 Acceptance Matrix
 // Constitutional basis: C-001 (Human Override), C-042 (Vocabulary Mandate), C-059 (Implementation Traceability)
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { signIn } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import { AppShell } from './AppShell';
@@ -27,19 +27,35 @@ describe('F1 shell primitives', () => {
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ schemaVersion: '1.0', scope: 'PORTAL', contextId: 'context-1', items: [], authoritativeCursor: 'cursor-0', hasMore: false, serverTime: '2026-08-10T12:00:00Z' }),
+      json: async () => ({
+        schemaVersion: '1.0',
+        scope: 'PORTAL',
+        contextId: 'context-1',
+        items: [],
+        authoritativeCursor: 'cursor-0',
+        hasMore: false,
+        serverTime: '2026-08-10T12:00:00Z',
+      }),
     } as Response);
   });
 
   it('composes public navigation without authenticated controls', () => {
-    render(<AppShell messages={messages.en} variant="public"><p>Public content</p></AppShell>);
+    render(
+      <AppShell messages={messages.en} variant="public">
+        <p>Public content</p>
+      </AppShell>
+    );
     expect(screen.getByRole('navigation', { name: messages.en.publicNavigation })).toBeVisible();
     expect(screen.getByRole('link', { name: messages.en.register })).toHaveAttribute('href', '/register');
     expect(screen.queryByRole('button', { name: /Emergency Stop/i })).not.toBeInTheDocument();
   });
 
   it('keeps the full customer portal visible for an authenticated visitor', () => {
-    render(<ProtectedAppShell messages={messages.en} variant="customer"><p>Visitor content</p></ProtectedAppShell>);
+    render(
+      <ProtectedAppShell messages={messages.en} variant="customer">
+        <p>Visitor content</p>
+      </ProtectedAppShell>
+    );
     expect(screen.getByRole('navigation', { name: messages.en.customerNavigation })).toBeVisible();
     expect(screen.getByRole('navigation', { name: messages.en.customerMobileNavigation })).toBeVisible();
     expect(screen.getAllByRole('link', { name: 'My Agents' })).toHaveLength(2);
@@ -51,7 +67,15 @@ describe('F1 shell primitives', () => {
   });
 
   it('composes registered customer navigation with persistent Stop', () => {
-    const { container } = render(<ProtectedAppShell identitySession={{ assuranceLevel: 'AAL2_ACCOUNT' } as never} messages={messages.en} variant="customer"><p>Customer content</p></ProtectedAppShell>);
+    const { container } = render(
+      <ProtectedAppShell
+        identitySession={{ assuranceLevel: 'AAL2_ACCOUNT' } as never}
+        messages={messages.en}
+        variant="customer"
+      >
+        <p>Customer content</p>
+      </ProtectedAppShell>
+    );
     expect(screen.getAllByRole('link', { name: 'My Agents' })).toHaveLength(2);
     expect(screen.getAllByRole('link', { name: 'My Agents' })[0]).toHaveAttribute('href', '/professionals/mine');
     expect(screen.getAllByRole('link', { name: 'Marketplace' })).toHaveLength(2);
@@ -67,7 +91,11 @@ describe('F1 shell primitives', () => {
 
   it('uses client navigation with active state and an accessible persisted rail', () => {
     jest.mocked(usePathname).mockReturnValue('/marketplace');
-    render(<ProtectedAppShell messages={messages.en} variant="customer"><p>Marketplace</p></ProtectedAppShell>);
+    render(
+      <ProtectedAppShell messages={messages.en} variant="customer">
+        <p>Marketplace</p>
+      </ProtectedAppShell>
+    );
 
     expect(screen.getAllByRole('link', { name: 'Marketplace' })[0]).toHaveAttribute('aria-current', 'page');
     const toggle = screen.getByRole('button', { name: 'Expand navigation' });
@@ -79,13 +107,25 @@ describe('F1 shell primitives', () => {
   });
 
   it('passes an approved active Stop context to the constitutional control', () => {
-    render(<ProtectedAppShell messages={messages.en} stopContext={{ contractId: 'contract-1', activeSessionIds: ['session-1'] }} variant="customer"><p>Active work</p></ProtectedAppShell>);
+    render(
+      <ProtectedAppShell
+        messages={messages.en}
+        stopContext={{ contractId: 'contract-1', activeSessionIds: ['session-1'] }}
+        variant="customer"
+      >
+        <p>Active work</p>
+      </ProtectedAppShell>
+    );
     expect(screen.getByRole('button', { name: 'Emergency Stop' })).toBeEnabled();
   });
 
   it('uses authenticated relationship scope when the runtime owns active session discovery', () => {
     jest.mocked(usePathname).mockReturnValue('/relationships/relationship-1');
-    render(<ProtectedAppShell messages={messages.en} variant="customer"><p>Relationship</p></ProtectedAppShell>);
+    render(
+      <ProtectedAppShell messages={messages.en} variant="customer">
+        <p>Relationship</p>
+      </ProtectedAppShell>
+    );
     expect(screen.getByRole('button', { name: 'Emergency Stop' })).toBeEnabled();
   });
 
@@ -119,7 +159,14 @@ describe('F1 shell primitives', () => {
     const { rerender } = render(<StateView kind="loading" title="Loading" description="Preparing" />);
     expect(screen.getByRole('heading', { name: 'Loading' })).toBeVisible();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
-    rerender(<StateView actionLabel={messages.en.returnHome} kind="forbidden" title="Access not permitted" description="Not allowed" />);
+    rerender(
+      <StateView
+        actionLabel={messages.en.returnHome}
+        kind="forbidden"
+        title="Access not permitted"
+        description="Not allowed"
+      />
+    );
     expect(screen.getByRole('link', { name: messages.en.returnHome })).toHaveAttribute('href', '/');
   });
 
@@ -135,7 +182,7 @@ describe('F1 shell primitives', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue with Apple' }));
 
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'Apple integration is coming soon. Meanwhile use your Google or Meta account.',
+      'Apple integration is coming soon. Meanwhile use your Google or Meta account.'
     );
     expect(signIn).not.toHaveBeenCalled();
   });

@@ -13,7 +13,11 @@ import { getServerAccessToken } from '@/lib/server-auth';
 function alertHref(destination: CustomerPortalDestinationV1): string {
   if (destination.relationshipId) return `/relationships/${encodeURIComponent(destination.relationshipId)}`;
   const routes: Partial<Record<CustomerPortalDestinationV1['surface'], string>> = {
-    MARKETPLACE: '/marketplace', ALERTS: '/alerts', BILLING: '/profile', PROFILE: '/profile', SETTINGS: '/settings',
+    MARKETPLACE: '/marketplace',
+    ALERTS: '/alerts',
+    BILLING: '/profile',
+    PROFILE: '/profile',
+    SETTINGS: '/settings',
   };
   return routes[destination.surface] ?? '/home';
 }
@@ -22,26 +26,69 @@ export default async function AlertsPage() {
   const { locale, messages } = await getRequestI18n();
   const accessToken = await getServerAccessToken();
   if (!accessToken) {
-    return <StateView actionHref="/login" actionLabel="Sign in" kind="error" title="Alerts unavailable" description="Sign in again to view alerts for your organization." />;
+    return (
+      <StateView
+        actionHref="/login"
+        actionLabel="Sign in"
+        kind="error"
+        title="Alerts unavailable"
+        description="Sign in again to view alerts for your organization."
+      />
+    );
   }
 
   try {
     const identity = await getIdentitySession(accessToken);
     if (identity.kind === 'registration-required') {
-      return <StateView actionHref="/marketplace" actionLabel="Browse Marketplace" kind="empty" title="No alerts yet" description="Relationship decisions and activity will appear here after you try or hire a WAOOAW AI Agent." />;
+      return (
+        <StateView
+          actionHref="/marketplace"
+          actionLabel="Browse Marketplace"
+          kind="empty"
+          title="No alerts yet"
+          description="Relationship decisions and activity will appear here after you try or hire a WAOOAW AI Agent."
+        />
+      );
     }
     if (identity.kind !== 'ready') throw new Error('Customer identity is unavailable.');
     const page = await listCustomerAlerts(accessToken);
     if (page.items.length === 0) {
-      return <StateView actionHref="/home" actionLabel={messages.returnHome} kind="empty" title="No alerts" description="There are no current alerts for your authorized relationships." />;
+      return (
+        <StateView
+          actionHref="/home"
+          actionLabel={messages.returnHome}
+          kind="empty"
+          title="No alerts"
+          description="There are no current alerts for your authorized relationships."
+        />
+      );
     }
     return (
       <section className="portal-page" aria-labelledby="alerts-title">
-        <header className="portal-heading"><p className="eyebrow">Customer activity</p><h1 id="alerts-title">{portalMessages[locale].alerts}</h1><p>Opening or acknowledging an alert does not approve or complete its underlying action.</p></header>
-        <AlertFeed initialAlerts={page.items.map((alert) => ({ ...alert, occurredAt: alert.occurredAt.toISOString(), href: alertHref(alert.destination) }))} locale={locale} />
+        <header className="portal-heading">
+          <p className="eyebrow">Customer activity</p>
+          <h1 id="alerts-title">{portalMessages[locale].alerts}</h1>
+          <p>Opening or acknowledging an alert does not approve or complete its underlying action.</p>
+        </header>
+        <AlertFeed
+          initialAlerts={page.items.map((alert) => ({
+            ...alert,
+            occurredAt: alert.occurredAt.toISOString(),
+            href: alertHref(alert.destination),
+          }))}
+          locale={locale}
+        />
       </section>
     );
   } catch {
-    return <StateView actionHref="/home" actionLabel={messages.returnHome} kind="error" title="Alerts unavailable" description="The current server-owned alert feed could not be retrieved. No browser-generated alerts are shown." />;
+    return (
+      <StateView
+        actionHref="/home"
+        actionLabel={messages.returnHome}
+        kind="error"
+        title="Alerts unavailable"
+        description="The current server-owned alert feed could not be retrieved. No browser-generated alerts are shown."
+      />
+    );
   }
 }

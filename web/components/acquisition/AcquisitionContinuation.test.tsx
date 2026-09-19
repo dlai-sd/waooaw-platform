@@ -14,23 +14,38 @@ const props: AcquisitionContinuationProps = {
 };
 
 describe('AcquisitionContinuation', () => {
-  beforeEach(() => { jest.clearAllMocks(); });
-  afterEach(() => { global.fetch = originalFetch; });
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
 
   it('submits the accepted binding and follows only the server resume path', async () => {
-    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ resumePath: '/relationships/22222222-2222-4222-8222-222222222222' }) });
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ resumePath: '/relationships/22222222-2222-4222-8222-222222222222' }),
+    });
     render(<AcquisitionContinuation {...props} />);
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/relationships/22222222-2222-4222-8222-222222222222'));
-    expect(jest.mocked(fetch)).toHaveBeenCalledWith('/api/acquisition/continue', expect.objectContaining({
-      method: 'POST', body: JSON.stringify(props),
-    }));
+    expect(jest.mocked(fetch)).toHaveBeenCalledWith(
+      '/api/acquisition/continue',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify(props),
+      })
+    );
   });
 
   it('makes an uncertain outcome retryable without changing the idempotency key', async () => {
-    global.fetch = jest.fn()
+    global.fetch = jest
+      .fn()
       .mockResolvedValueOnce({ ok: false, json: async () => ({ title: 'Unavailable' }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ resumePath: '/relationships/22222222-2222-4222-8222-222222222222' }) });
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ resumePath: '/relationships/22222222-2222-4222-8222-222222222222' }),
+      });
     render(<AcquisitionContinuation {...props} />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));

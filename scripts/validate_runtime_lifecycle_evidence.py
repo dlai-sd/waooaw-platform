@@ -94,7 +94,14 @@ def validate_runtime_evidence(
 
 def changed_files(base: str, head: str) -> list[str]:
     result = subprocess.run(  # noqa: S603
-        ["git", "diff", "--name-only", f"{base}..{head}"],  # noqa: S607
+        [
+            "git",
+            "-c",
+            f"safe.directory={Path.cwd().resolve()}",
+            "diff",
+            "--name-only",
+            f"{base}..{head}",
+        ],  # noqa: S607
         check=True,
         capture_output=True,
         text=True,
@@ -118,7 +125,15 @@ def main() -> int:
             if git_executable is None:
                 raise OSError("git executable is required to validate runtime evidence ancestry")
             ancestor = subprocess.run(  # noqa: S603
-                [git_executable, "merge-base", "--is-ancestor", evidence_head, arguments.head],
+                [
+                    git_executable,
+                    "-c",
+                    f"safe.directory={Path.cwd().resolve()}",
+                    "merge-base",
+                    "--is-ancestor",
+                    evidence_head,
+                    arguments.head,
+                ],
                 check=False,
                 capture_output=True,
                 text=True,

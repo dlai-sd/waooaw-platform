@@ -13,11 +13,13 @@ describe('auth transition diagnostics', () => {
 
     expect(correlationId).toMatch(/^[0-9a-f-]{36}$/);
     expect(records).toHaveLength(3);
-    expect(records).toEqual(expect.arrayContaining([
-      expect.objectContaining({ correlationId, stage: 'ROUTE_REQUESTED', reasonCode: 'OK' }),
-      expect.objectContaining({ correlationId, stage: 'BROKER_REDIRECT_REQUESTED', reasonCode: 'OK' }),
-      expect.objectContaining({ correlationId, stage: 'SESSION_RESOLVED', reasonCode: 'OK' }),
-    ]));
+    expect(records).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ correlationId, stage: 'ROUTE_REQUESTED', reasonCode: 'OK' }),
+        expect.objectContaining({ correlationId, stage: 'BROKER_REDIRECT_REQUESTED', reasonCode: 'OK' }),
+        expect.objectContaining({ correlationId, stage: 'SESSION_RESOLVED', reasonCode: 'OK' }),
+      ])
+    );
     expect(Object.keys(records[0] as object).sort()).toEqual(['correlationId', 'durationMs', 'reasonCode', 'stage']);
     expect(sessionStorage.getItem('waooaw:auth-transition')).toBeNull();
   });

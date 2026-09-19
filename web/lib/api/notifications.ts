@@ -10,12 +10,6 @@ function createNotificationsApi(accessToken: string): NotificationsApi {
   return new NotificationsApi(new Configuration({ basePath: businessPlatformUrl, accessToken }));
 }
 
-export async function listCustomerAlerts(
-  accessToken: string,
-  cursor?: string,
-): Promise<CustomerAlertPageV1> {
-  return createNotificationsApi(accessToken).listCustomerAlerts(
-    { cursor, limit: 40 },
-    { cache: 'no-store' },
-  );
+export async function listCustomerAlerts(accessToken: string, cursor?: string): Promise<CustomerAlertPageV1> {
+  return createNotificationsApi(accessToken).listCustomerAlerts({ cursor, limit: 40 }, { cache: 'no-store' });
 }

@@ -16,12 +16,14 @@ test.beforeEach(async ({ context }) => {
   ]);
 });
 
-test('WC083-AUTH-01: a public auth command opens a route-backed dialog and Escape restores the portal', async ({ page }) => {
+test('WC083-AUTH-01: a public auth command opens a route-backed dialog and Escape restores the portal', async ({
+  page,
+}) => {
   await page.goto('/');
   const desktopLogin = page.getByRole('link', { name: 'Log in' });
   const compactRegister = page.locator('a.secondary-link[href="/register"]').first();
-  const trigger = await desktopLogin.isVisible() ? desktopLogin : compactRegister;
-  const dialogName = await desktopLogin.isVisible() ? 'Log in to WAOOAW' : 'Create your WAOOAW account';
+  const trigger = (await desktopLogin.isVisible()) ? desktopLogin : compactRegister;
+  const dialogName = (await desktopLogin.isVisible()) ? 'Log in to WAOOAW' : 'Create your WAOOAW account';
   await trigger.focus();
   await trigger.click();
 
@@ -41,8 +43,8 @@ test('WC092-AUTH-01: launch state keeps the public page visible before the auth 
   await page.goto('/');
   const desktopLogin = page.getByRole('link', { name: 'Log in' });
   const compactRegister = page.locator('a.secondary-link[href="/register"]').first();
-  const trigger = await desktopLogin.isVisible() ? desktopLogin : compactRegister;
-  const dialogName = await desktopLogin.isVisible() ? 'Log in to WAOOAW' : 'Create your WAOOAW account';
+  const trigger = (await desktopLogin.isVisible()) ? desktopLogin : compactRegister;
+  const dialogName = (await desktopLogin.isVisible()) ? 'Log in to WAOOAW' : 'Create your WAOOAW account';
 
   await trigger.click();
 
@@ -93,7 +95,12 @@ test('WC092-AUTH-02: policy denial offers fresh sign-in without a retry loop', a
   const value = await encode({
     secret: nextAuthSecret,
     maxAge: 3600,
-    token: { accessToken: `fixture-policy-denied-${testInfo.project.name}`, accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600, founder: false, sub: 'fixture-user' },
+    token: {
+      accessToken: `fixture-policy-denied-${testInfo.project.name}`,
+      accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+      founder: false,
+      sub: 'fixture-user',
+    },
   });
   await context.addCookies([{ name: 'next-auth.session-token', value, httpOnly: true, sameSite: 'Lax', url: baseURL }]);
 
@@ -106,7 +113,10 @@ test('WC092-AUTH-02: policy denial offers fresh sign-in without a retry loop', a
   await expect(page).toHaveURL(/\/login\?returnTo=%2Fsettings$/);
 });
 
-test('WC083-AUTH-04: modal is accessible, reduced-motion safe, responsive, and RTL-aware', async ({ context, page }) => {
+test('WC083-AUTH-04: modal is accessible, reduced-motion safe, responsive, and RTL-aware', async ({
+  context,
+  page,
+}) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 360, height: 800 });
   await context.addCookies([
@@ -124,14 +134,21 @@ test('WC083-AUTH-04: modal is accessible, reduced-motion safe, responsive, and R
   const bounds = await dialog.boundingBox();
   expect(bounds?.x).toBeGreaterThanOrEqual(0);
   expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(360);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
-  await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(
+    false
+  );
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '200%';
+  });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(
+    false
+  );
   const signInLink = dialog.locator('a[href^="/login"]');
   await signInLink.scrollIntoViewIfNeeded();
   await expect(signInLink).toBeVisible();
   expect(await dialog.evaluate((element) => getComputedStyle(element).overflowY)).toBe('auto');
-  const blocking = (await new AxeBuilder({ page }).include('.auth-dialog').analyze()).violations
-    .filter((violation) => violation.impact === 'critical' || violation.impact === 'serious');
+  const blocking = (await new AxeBuilder({ page }).include('.auth-dialog').analyze()).violations.filter(
+    (violation) => violation.impact === 'critical' || violation.impact === 'serious'
+  );
   expect(blocking).toEqual([]);
 });

@@ -25,7 +25,7 @@ env:
 jobs:
 
   validation-plan:
-    name: WC-100 validation plan (Shadow)
+    name: WC-102 validation plan (Shadow)
     runs-on: ubuntu-latest
     outputs:
       release_required: ${{ steps.plan.outputs.release_required }}
@@ -51,9 +51,9 @@ jobs:
           fi
           echo "base_sha=$base_sha" >> "$GITHUB_OUTPUT"
           echo "head_sha=$head_sha" >> "$GITHUB_OUTPUT"
-          mkdir -p test-results/wc100
-          git diff --name-only --find-renames "$base_sha" "$head_sha" > test-results/wc100/changed-files.txt
-          git diff --name-status --find-renames "$base_sha" "$head_sha" > test-results/wc100/changed-files.status
+          mkdir -p test-results/wc102
+          git diff --name-only --find-renames "$base_sha" "$head_sha" > test-results/wc102/changed-files.txt
+          git diff --name-status --find-renames "$base_sha" "$head_sha" > test-results/wc102/changed-files.status
       - name: Build validation runner once (C-080)
         id: runner-build
         run: |
@@ -74,32 +74,47 @@ jobs:
           HEAD_SHA: ${{ steps.range.outputs.head_sha }}
           EVENT_NAME: ${{ github.event_name }}
         run: |
+          chmod 0777 test-results/wc102
           scripts/verify_runner_image.sh test test-runner '${{ steps.runner-build.outputs.image_id }}'
-          docker compose --profile test run --rm --user root \
-            -e BASE_SHA -e HEAD_SHA -e EVENT_NAME test-runner sh -lc '
-              git config --global --add safe.directory /workspace
+          docker compose --profile test run --rm \
+            -e BASE_SHA -e HEAD_SHA -e EVENT_NAME -e GITHUB_RUN_ID -e GITHUB_RUN_ATTEMPT test-runner sh -lc '
+              export GIT_CONFIG_COUNT=1
+              export GIT_CONFIG_KEY_0=safe.directory
+              export GIT_CONFIG_VALUE_0=/workspace
               python scripts/validation_policy.py \
                 --policy validation/engineering-validation.yaml \
                 --base "$BASE_SHA" --head "$HEAD_SHA" \
                 --event "$EVENT_NAME" \
-                --changed-file-list test-results/wc100/changed-files.status \
-                --output test-results/wc100/change-impact.json
+                --changed-file-list test-results/wc102/changed-files.status \
+                --output test-results/wc102/change-impact.json
+              python scripts/validation_control/orchestrator.py \
+                --selection test-results/wc102/change-impact.json \
+                --mode focused --head "$HEAD_SHA" \
+                --run-id "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-focused" \
+                --output test-results/wc102/focused-plan.json
+              python scripts/validation_control/orchestrator.py \
+                --selection test-results/wc102/change-impact.json \
+                --mode qualification --head "$HEAD_SHA" \
+                --run-id "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-qualification" \
+                --output test-results/wc102/qualification-plan.json
               python scripts/validate_requirement_ledger.py \
                 --repository-root /workspace \
-                --changed-file-list test-results/wc100/changed-files.txt
+                --changed-file-list test-results/wc102/changed-files.txt
             '
           release_required=$(jq -r '.selected_prechecks | index("release_qualification") != null' \
-            test-results/wc100/change-impact.json)
+            test-results/wc102/change-impact.json)
           echo "release_required=$release_required" >> "$GITHUB_OUTPUT"
       - name: Retain Shadow selection and validation evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: wc100-validation-plan-${{ github.run_id }}
+          name: wc102-validation-plan-${{ github.run_id }}
           path: |
-            test-results/wc100/change-impact.json
-            test-results/wc100/changed-files.txt
-            test-results/wc100/changed-files.status
+            test-results/wc102/change-impact.json
+            test-results/wc102/changed-files.txt
+            test-results/wc102/changed-files.status
+            test-results/wc102/focused-plan.json
+            test-results/wc102/qualification-plan.json
             ${{ runner.temp }}/build-evidence/validation-plan.json
           if-no-files-found: error
           retention-days: 90
@@ -361,10 +376,12 @@ jobs:
           - service: business-platform
             source: src/business-platform/business-platform.csproj
             tests: tests/business-platform.Tests/business-platform.Tests.csproj
-            profile: test
-            runner: test-runner
+            profile: test-dotnet
+            runner: test-runner-dotnet
     steps:
       - uses: actions/checkout@v4
+      - name: Resolve Docker socket group for Testcontainers
+        run: echo "DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)" >> "$GITHUB_ENV"
       - name: Build .NET Docker test runner (C-080)
         id: runner-build
         run: |
@@ -390,21 +407,26 @@ jobs:
 
       - name: Restore, build, and test in Docker (C-076, C-080)
         run: |
+          mkdir -p ./test-results/coverage/${{ matrix.service }}
+          chmod 0777 ./test-results/coverage/${{ matrix.service }}
           scripts/verify_runner_image.sh \
             '${{ matrix.profile }}' '${{ matrix.runner }}' '${{ steps.runner-build.outputs.image_id }}'
-          docker compose --profile ${{ matrix.profile }} run --rm --user root ${{ matrix.runner }} sh -lc '
-            dotnet restore "${{ matrix.tests }}" &&
-            dotnet build "${{ matrix.tests }}" --no-restore -warnaserror &&
+          docker compose --profile ${{ matrix.profile }} run --rm ${{ matrix.runner }} sh -lc '
+            dotnet restore "${{ matrix.tests }}" \
+              --artifacts-path /tmp/artifacts/${{ matrix.service }} &&
+            dotnet build "${{ matrix.tests }}" --no-restore -warnaserror \
+              --artifacts-path /tmp/artifacts/${{ matrix.service }} &&
             dotnet test "${{ matrix.tests }}" \
               --no-build \
+              --artifacts-path /tmp/artifacts/${{ matrix.service }} \
               --settings tests/coverage.runsettings \
               --collect:"XPlat Code Coverage" \
-              --results-directory ./coverage/${{ matrix.service }}
+              --results-directory ./test-results/coverage/${{ matrix.service }}
           '
 
       - name: Check coverage ≥90% (C-076)
         run: |
-          coverage_file="$(find ./coverage/${{ matrix.service }} -name coverage.cobertura.xml -print -quit)"
+          coverage_file="$(find ./test-results/coverage/${{ matrix.service }} -name coverage.cobertura.xml -print -quit)"
           if [[ -z "$coverage_file" ]]; then
             echo "Cobertura coverage report not found" >&2
             exit 1
@@ -423,7 +445,7 @@ jobs:
         uses: codecov/codecov-action@v4
         continue-on-error: true  # geo-restricted runners must not break the gate
         with:
-          directory: ./coverage/${{ matrix.service }}
+          directory: ./test-results/coverage/${{ matrix.service }}
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
@@ -437,19 +459,15 @@ jobs:
           - service: professional-runtime
             source: src/professional-runtime
             tests: tests/professional-runtime
-            mypy_targets: >-
-              -p routers -p workflows -p professionals -m main -m private_server
-              -m relationship_workspace -m constitutional_gateway -m evaluation_workflow
-              -m intent_crystallizer -m mtls_protocol -m session_executor
-              -m skill_resolver -m workload_identity
+            mypy_path: /workspace/src/professional-runtime
           - service: ai-runtime
             source: src/ai-runtime
             tests: tests/ai-runtime
-            mypy_path: /workspace/src/trust-layer
-            mypy_targets: >-
-              -p providers -p pii -p pse -p rag -m main -m transcription
+            mypy_path: /workspace/src/ai-runtime:/workspace/src/trust-layer
     steps:
       - uses: actions/checkout@v4
+      - name: Resolve Docker socket group for Testcontainers
+        run: echo "DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)" >> "$GITHUB_ENV"
       - name: Build constitutional Docker test runner (C-080)
         id: runner-build
         run: |
@@ -476,7 +494,7 @@ jobs:
       - name: Ruff in Docker (C-080)
         run: |
           scripts/verify_runner_image.sh test-python test-runner-python '${{ steps.runner-build.outputs.image_id }}'
-          docker compose --profile test-python run --rm --user root test-runner-python sh -lc '
+          docker compose --profile test-python run --rm test-runner-python sh -lc '
             ruff check "${{ matrix.source }}" "${{ matrix.tests }}" &&
             ruff format --check "${{ matrix.source }}" "${{ matrix.tests }}"
           '
@@ -484,24 +502,28 @@ jobs:
       - name: mypy in Docker (C-080)
         if: always()
         run: |
-          docker compose --profile test-python run --rm --user root test-runner-python sh -lc '
-            cd "${{ matrix.source }}" &&
+          docker compose --profile test-python run --rm test-runner-python sh -lc '
+            cd /tmp &&
             MYPYPATH="${{ matrix.mypy_path }}" \
-              mypy --strict --namespace-packages --explicit-package-bases ${{ matrix.mypy_targets }}
+              mypy --strict --explicit-package-bases \
+                $(find "/workspace/${{ matrix.source }}" -name "*.py" -type f | sort) \
+                --config-file /workspace/pyproject.toml
           '
 
       - name: pytest and constitutional coverage in Docker (C-076, C-080)
         if: always()
         run: |
-          docker compose --profile test-python run --rm --user root test-runner-python sh -lc '
-            mkdir -p coverage/${{ matrix.service }} &&
+          mkdir -p ./test-results/coverage/${{ matrix.service }}
+          chmod 0777 ./test-results/coverage/${{ matrix.service }}
+          docker compose --profile test-python run --rm test-runner-python sh -lc '
+            export COVERAGE_FILE=/tmp/.coverage
             pytest "${{ matrix.tests }}" \
               --cov="${{ matrix.source }}" \
               --cov-branch \
-              --cov-report=xml:coverage/${{ matrix.service }}/coverage.xml \
-              --cov-report=json:coverage/${{ matrix.service }}/coverage.json \
+              --cov-report=xml:test-results/coverage/${{ matrix.service }}/coverage.xml \
+              --cov-report=json:test-results/coverage/${{ matrix.service }}/coverage.json \
               --cov-fail-under=0 &&
-            python -c "import json, sys; data=json.load(open(\"coverage/${{ matrix.service }}/coverage.json\")); totals=data[\"totals\"]; lines=totals[\"covered_lines\"]*100/totals[\"num_statements\"]; branches=100 if totals[\"num_branches\"] == 0 else totals[\"covered_branches\"]*100/totals[\"num_branches\"]; print(json.dumps({\"service\": \"${{ matrix.service }}\", \"line_coverage\": lines, \"branch_coverage\": branches, \"minimum_lines\": 90, \"minimum_branches\": 80})); sys.exit(0 if lines >= 90 and branches >= 80 else 1)"
+            python -c "import json, sys; data=json.load(open(\"test-results/coverage/${{ matrix.service }}/coverage.json\")); totals=data[\"totals\"]; lines=totals[\"covered_lines\"]*100/totals[\"num_statements\"]; branches=100 if totals[\"num_branches\"] == 0 else totals[\"covered_branches\"]*100/totals[\"num_branches\"]; print(json.dumps({\"service\": \"${{ matrix.service }}\", \"line_coverage\": lines, \"branch_coverage\": branches, \"minimum_lines\": 90, \"minimum_branches\": 80})); sys.exit(0 if lines >= 90 and branches >= 80 else 1)"
           '
 
       - name: Upload coverage
@@ -509,7 +531,7 @@ jobs:
         uses: codecov/codecov-action@v4
         continue-on-error: true  # geo-restricted runners must not break the gate
         with:
-          files: coverage/${{ matrix.service }}/coverage.xml
+          files: test-results/coverage/${{ matrix.service }}/coverage.xml
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
@@ -518,7 +540,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: python-coverage-${{ matrix.service }}-${{ github.run_id }}
-          path: coverage/${{ matrix.service }}/
+          path: test-results/coverage/${{ matrix.service }}/
           if-no-files-found: error
           retention-days: 90
 
@@ -614,12 +636,14 @@ jobs:
 
       - name: Type check, lint, and test in Docker (C-076, C-080)
         run: |
+          mkdir -p ./test-results/coverage/web
+          chmod 0777 ./test-results/coverage/web
           scripts/verify_runner_image.sh test-ts test-runner-ts '${{ steps.runner-build.outputs.image_id }}'
           docker compose --profile test-ts run --rm test-runner-ts sh -lc '
             cd web &&
-            pnpm tsc --noEmit &&
-            pnpm eslint . --max-warnings 0 &&
-            pnpm jest --coverage --coverageThreshold='"'"'{"global":{"lines":90,"branches":80,"functions":90,"statements":90}}'"'"'
+            ../node_modules/.bin/tsc --noEmit --incremental false &&
+            ../node_modules/.bin/eslint . --max-warnings 0 &&
+            ../node_modules/.bin/jest --runInBand --coverage --coverageDirectory=/workspace/test-results/coverage/web --coverageThreshold='"'"'{"global":{"lines":90,"branches":80,"functions":90,"statements":90}}'"'"'
           '
         # C-076: 90% line/function/statement floor is constitutional minimum
 
@@ -629,13 +653,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
       - name: Spectral lint — OpenAPI contracts
         run: |
-          npx --yes @stoplight/spectral-cli@6.15.0 lint \
+          docker run --rm --user 1000:1000 -v "$PWD:/workspace:ro" -w /workspace \
+            stoplight/spectral:6.15.0 lint \
             --fail-severity error \
             architecture/reference/api-specs/business-platform.openapi.yaml \
             architecture/reference/api-specs/professional-runtime.openapi.yaml
@@ -767,21 +788,23 @@ jobs:
       - name: pip-audit — Python dependencies
         run: |
           scripts/verify_runner_image.sh test-python test-runner-python '${{ steps.runner-build.outputs.python_image_id }}'
-          docker compose --profile test-python run --rm --user root test-runner-python sh -lc '
-            pip-audit -r src/professional-runtime/requirements.txt --strict &&
+          docker compose --profile test-python run --rm test-runner-python sh -lc '
+            pip-audit -r src/professional-runtime/requirements.txt --strict --cache-dir /tmp/pip-audit-cache &&
             sed -e "/^--extra-index-url/d" \
                 -e "s/torch==2.13.0+cpu/torch==2.13.0/" \
                 src/ai-runtime/requirements.txt > /tmp/ai-runtime-audit.txt &&
-            pip-audit -r /tmp/ai-runtime-audit.txt --strict &&
-            pip-audit -r src/billing-engine/requirements.txt --strict
+            pip-audit -r /tmp/ai-runtime-audit.txt --strict --cache-dir /tmp/pip-audit-cache &&
+            pip-audit -r src/billing-engine/requirements.txt --strict --cache-dir /tmp/pip-audit-cache
           '
         continue-on-error: false  # Fail on any vulnerability
 
       - name: dotnet vulnerable — .NET dependencies
         run: |
           scripts/verify_runner_image.sh test-dotnet test-runner-dotnet '${{ steps.runner-build.outputs.dotnet_image_id }}'
-          docker compose --profile test-dotnet run --rm --user root test-runner-dotnet sh -lc '
+          docker compose --profile test-dotnet run --rm test-runner-dotnet sh -lc '
             audit_dotnet_project() {
+              project_name="$(basename "$1")"
+              export BaseIntermediateOutputPath="/tmp/dependency-audit/$project_name/obj/"
               dotnet restore "$1" --nologo >/dev/null
               if ! output="$(dotnet list "$1" package --vulnerable --include-transitive 2>&1)"; then
                 printf "%s\n" "$output"
@@ -800,7 +823,7 @@ jobs:
         run: |
           scripts/verify_runner_image.sh test-ts test-runner-ts '${{ steps.runner-build.outputs.ts_image_id }}'
           docker compose --profile test-ts run --rm test-runner-ts sh -lc '
-            cd web && pnpm audit --audit-level high
+            pnpm audit --audit-level high
           '
 
   # ─── License compliance ───────────────────────────────────────────────────
@@ -810,16 +833,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+      - name: Build Python license runner
+        run: docker compose --profile test-python build test-runner-python
 
       - name: pip-licenses — check Python dependency licenses
         run: |
-          pip install pip-licenses
-          pip install -r src/professional-runtime/requirements.txt -q
-          pip install -r src/ai-runtime/requirements.txt -q
-          pip-licenses --fail-on="GPL;AGPL;LGPL"
+          docker compose --profile test-python run --rm test-runner-python sh -lc '
+            pip install --target /tmp/license-env -r src/professional-runtime/requirements.txt -q &&
+            sed -e "/^--extra-index-url/d" \
+                -e "s/torch==2.13.0+cpu/torch==2.13.0/" \
+                src/ai-runtime/requirements.txt > /tmp/ai-runtime-license.txt &&
+            pip install --target /tmp/license-env -r /tmp/ai-runtime-license.txt -q &&
+            PYTHONPATH=/tmp/license-env pip-licenses --fail-on="GPL;AGPL;LGPL"
+          '
         continue-on-error: true  # Advisory only — does not block PR (LGPL can be acceptable)
 
   # ─── Constitutional commit gate (C-059 — Implementation Traceability) ─────
@@ -835,17 +861,24 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Build constitutional validation runner
+        run: docker compose --profile test-python build test-runner-python
 
       - name: Validate commit messages (C-059)
         run: |
           BASE="${{ github.event.pull_request.base.sha }}"
           HEAD="${{ github.event.pull_request.head.sha }}"
+          mkdir -p test-results
           gh pr view ${{ github.event.pull_request.number }} \
-            --json body --jq .body --repo ${{ github.repository }} > /tmp/pr-body.md
-          python scripts/validate_c059.py \
-            --pr-body-file /tmp/pr-body.md \
-            --base "$BASE" \
-            --head "$HEAD"
+            --json body --jq .body --repo ${{ github.repository }} > test-results/pr-body.md
+          docker compose --profile test-python run --rm \
+            -v "$PWD/test-results/pr-body.md:/tmp/pr-body.md:ro" \
+            -e BASE="$BASE" -e HEAD="$HEAD" test-runner-python sh -lc '
+              python scripts/validate_c059.py \
+                --pr-body-file /tmp/pr-body.md \
+                --base "$BASE" \
+                --head "$HEAD"
+            '
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -860,6 +893,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Build constitutional validation runner
+        run: docker compose --profile test-python build test-runner-python
 
       - name: Validate author review evidence
         env:
@@ -869,15 +904,20 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPOSITORY: ${{ github.repository }}
         run: |
+          mkdir -p test-results
           for attempt in 1 2 3; do
-            gh pr view "$PR_NUMBER" --json body --jq .body --repo "$REPOSITORY" > /tmp/pr-body.md
-            if python scripts/validate_author_review.py \
-                --pr-body-file /tmp/pr-body.md \
-                --head "$HEAD_SHA" && \
-              python scripts/validate_runtime_lifecycle_evidence.py \
-                --pr-body-file /tmp/pr-body.md \
-                --base "$BASE_SHA" \
-                --head "$HEAD_SHA"; then
+            gh pr view "$PR_NUMBER" --json body --jq .body --repo "$REPOSITORY" > test-results/pr-body.md
+            if docker compose --profile test-python run --rm \
+              -v "$PWD/test-results/pr-body.md:/tmp/pr-body.md:ro" \
+              -e HEAD_SHA -e BASE_SHA test-runner-python sh -lc '
+                python scripts/validate_author_review.py \
+                  --pr-body-file /tmp/pr-body.md \
+                  --head "$HEAD_SHA" &&
+                python scripts/validate_runtime_lifecycle_evidence.py \
+                  --pr-body-file /tmp/pr-body.md \
+                  --base "$BASE_SHA" \
+                  --head "$HEAD_SHA"
+              '; then
               exit 0
             fi
             if [ "$attempt" -eq 3 ]; then

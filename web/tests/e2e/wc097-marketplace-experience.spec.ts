@@ -8,8 +8,19 @@ import { encode } from 'next-auth/jwt';
 const secret = 'playwright-only-not-a-runtime-secret';
 
 async function addSession(context: BrowserContext, projectName: string) {
-  const value = await encode({ secret, maxAge: 3600, token: { accessToken: `fixture-access-token-${projectName}`, accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600, founder: false, sub: `fixture-user-${projectName}` } });
-  await context.addCookies([{ name: 'next-auth.session-token', value, domain: '127.0.0.1', httpOnly: true, path: '/', sameSite: 'Lax' }]);
+  const value = await encode({
+    secret,
+    maxAge: 3600,
+    token: {
+      accessToken: `fixture-access-token-${projectName}`,
+      accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+      founder: false,
+      sub: `fixture-user-${projectName}`,
+    },
+  });
+  await context.addCookies([
+    { name: 'next-auth.session-token', value, domain: '127.0.0.1', httpOnly: true, path: '/', sameSite: 'Lax' },
+  ]);
 }
 
 async function expectIntegrity(page: Page) {
@@ -19,10 +30,16 @@ async function expectIntegrity(page: Page) {
     return [...document.querySelectorAll<HTMLElement>('body *')]
       .filter((element) => {
         const bounds = element.getBoundingClientRect();
-        return getComputedStyle(element).visibility !== 'hidden'
-          && (bounds.right > viewportWidth + 1 || bounds.left < -1);
+        return (
+          getComputedStyle(element).visibility !== 'hidden' && (bounds.right > viewportWidth + 1 || bounds.left < -1)
+        );
       })
-      .map((element) => ({ className: element.className, left: element.getBoundingClientRect().left, right: element.getBoundingClientRect().right, tagName: element.tagName }));
+      .map((element) => ({
+        className: element.className,
+        left: element.getBoundingClientRect().left,
+        right: element.getBoundingClientRect().right,
+        tagName: element.tagName,
+      }));
   });
   expect(overflow, 'elements must remain within the viewport').toEqual([]);
   const results = await new AxeBuilder({ page }).analyze();
@@ -46,9 +63,13 @@ test.beforeEach(async ({ context }, testInfo) => {
   await addSession(context, testInfo.project.name);
 });
 
-test('WC097-A01-A07: professional offer stays in the customer shell through Trial review', async ({ page }, testInfo) => {
+test('WC097-A01-A07: professional offer stays in the customer shell through Trial review', async ({
+  page,
+}, testInfo) => {
   const documents: string[] = [];
-  page.on('request', (request) => { if (request.resourceType() === 'document') documents.push(request.url()); });
+  page.on('request', (request) => {
+    if (request.resourceType() === 'document') documents.push(request.url());
+  });
   await page.goto('/marketplace');
   await expectShellReady(page);
 
@@ -56,13 +77,18 @@ test('WC097-A01-A07: professional offer stays in the customer shell through Tria
   await expect(shell).toBeVisible();
   const shellElement = await shell.elementHandle();
   await expect(page.getByRole('heading', { name: 'Digital Marketing Professional' })).toBeVisible();
-  await expect(page.getByText('Builds evidence-backed digital marketing plans for lawful local service businesses.')).toBeVisible();
+  await expect(
+    page.getByText('Builds evidence-backed digital marketing plans for lawful local service businesses.')
+  ).toBeVisible();
   await expect(page.getByText('DIGITAL_MARKETING_LOCAL_SERVICE')).toHaveCount(0);
   await expect(page.getByText(/Eligibility depends only/)).toHaveCount(0);
   await expect(page.getByRole('link', { name: /Hire/ }).first()).toHaveAttribute('href', /intent=hire/);
   await page.screenshot({ path: testInfo.outputPath('marketplace-card.png'), fullPage: true });
 
-  await page.getByRole('link', { name: /Start trial/ }).first().click();
+  await page
+    .getByRole('link', { name: /Start trial/ })
+    .first()
+    .click();
 
   await expect(page).toHaveURL(/\/marketplace\/digital-marketing\?.*intent=trial/);
   expect(await shellElement?.evaluate((element) => element.isConnected)).toBe(true);
@@ -80,7 +106,9 @@ test('WC097-A01-A07: professional offer stays in the customer shell through Tria
 
 test('WC097-A04-A07: Hire review preserves intent and the customer shell', async ({ page }, testInfo) => {
   const documents: string[] = [];
-  page.on('request', (request) => { if (request.resourceType() === 'document') documents.push(request.url()); });
+  page.on('request', (request) => {
+    if (request.resourceType() === 'document') documents.push(request.url());
+  });
   await page.goto('/marketplace');
   await expectShellReady(page);
   const shellElement = await page.locator('.app-shell-customer:visible').elementHandle();

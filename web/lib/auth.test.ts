@@ -24,7 +24,7 @@ describe('Browser session projection', () => {
     const session = projectSession(
       { expires: '2099-01-01', user: {} } as Session,
       { accessToken: 'secret-bearer-token', accessTokenExpiresAt: 101, founder: false },
-      100,
+      100
     );
     expect(session.authenticated).toBe(true);
     expect(session).not.toHaveProperty('accessToken');
@@ -47,12 +47,15 @@ describe('Browser session projection', () => {
     const jwt = authOptions.callbacks?.jwt;
     const expiresAt = Math.floor(Date.now() / 1000) + 60;
     expect(jwt).toBeDefined();
+    if (!jwt) throw new Error('JWT callback is required');
 
-    const token = await jwt!({
+    const token = await jwt({
       token: {},
       account: {
-        access_token: 'secret-bearer-token', expires_at: expiresAt,
-        refresh_token: 'server-held-refresh-token', id_token: 'server-held-id-token',
+        access_token: 'secret-bearer-token',
+        expires_at: expiresAt,
+        refresh_token: 'server-held-refresh-token',
+        id_token: 'server-held-id-token',
       },
       profile: { realm_access: { roles: ['founder'] } },
     } as never);
@@ -69,8 +72,9 @@ describe('Browser session projection', () => {
   it('purges expired bearer and Founder state during session evaluation', async () => {
     const jwt = authOptions.callbacks?.jwt;
     expect(jwt).toBeDefined();
+    if (!jwt) throw new Error('JWT callback is required');
 
-    const token = await jwt!({
+    const token = await jwt({
       token: { accessToken: 'expired-bearer-token', accessTokenExpiresAt: 1, founder: true },
       account: null,
     } as never);
@@ -93,22 +97,25 @@ describe('Browser session projection', () => {
     });
     Object.defineProperty(globalThis, 'fetch', { configurable: true, value: refresh });
     const jwt = authOptions.callbacks?.jwt;
+    if (!jwt) throw new Error('JWT callback is required');
 
-    const token = await jwt!({
+    const token = await jwt({
       token: {
-        accessToken: 'expired-bearer-token', accessTokenExpiresAt: 1,
-        refreshToken: 'server-held-refresh-token', founder: false,
+        accessToken: 'expired-bearer-token',
+        accessTokenExpiresAt: 1,
+        refreshToken: 'server-held-refresh-token',
+        founder: false,
       },
       account: null,
     } as never);
 
     expect(refresh).toHaveBeenCalledWith(
       'http://localhost:8080/realms/waooaw/protocol/openid-connect/token',
-      expect.objectContaining({ method: 'POST', cache: 'no-store' }),
+      expect.objectContaining({ method: 'POST', cache: 'no-store' })
     );
     const request = refresh.mock.calls[0][1] as RequestInit;
     expect(String(request.body)).toBe(
-      'grant_type=refresh_token&refresh_token=server-held-refresh-token&client_id=waooaw-web&client_secret=local-development-only',
+      'grant_type=refresh_token&refresh_token=server-held-refresh-token&client_id=waooaw-web&client_secret=local-development-only'
     );
     expect(token).toMatchObject({
       accessToken: 'renewed-bearer-token',
@@ -127,11 +134,14 @@ describe('Browser session projection', () => {
       value: jest.fn().mockResolvedValue({ ok: false }),
     });
     const jwt = authOptions.callbacks?.jwt;
+    if (!jwt) throw new Error('JWT callback is required');
 
-    const token = await jwt!({
+    const token = await jwt({
       token: {
-        accessToken: 'expired-bearer-token', accessTokenExpiresAt: 1,
-        refreshToken: 'rejected-refresh-token', founder: true,
+        accessToken: 'expired-bearer-token',
+        accessTokenExpiresAt: 1,
+        refreshToken: 'rejected-refresh-token',
+        founder: true,
       },
       account: null,
     } as never);
@@ -151,8 +161,9 @@ describe('Browser session projection', () => {
       }),
     });
     const jwt = authOptions.callbacks?.jwt;
+    if (!jwt) throw new Error('JWT callback is required');
 
-    const token = await jwt!({
+    const token = await jwt({
       token: { accessToken: 'expired', accessTokenExpiresAt: 1, refreshToken: 'refresh', founder: true },
       account: null,
     } as never);
@@ -165,16 +176,22 @@ describe('Browser session projection', () => {
 
 describe('Keycloak broker configuration', () => {
   it('keeps broker aliases in server-owned provider configuration', () => {
-    const providers = authOptions.providers as Array<{ id: string; authorization?: { params?: Record<string, string> } }>;
+    const providers = authOptions.providers as Array<{
+      id: string;
+      authorization?: { params?: Record<string, string> };
+    }>;
 
     expect(providers.find((provider) => provider.id === 'keycloak-google')?.authorization?.params).toEqual({
-      scope: 'openid profile email', kc_idp_hint: 'google',
+      scope: 'openid profile email',
+      kc_idp_hint: 'google',
     });
     expect(providers.find((provider) => provider.id === 'keycloak-facebook')?.authorization?.params).toEqual({
-      scope: 'openid profile email', kc_idp_hint: 'facebook',
+      scope: 'openid profile email',
+      kc_idp_hint: 'facebook',
     });
     expect(providers.find((provider) => provider.id === 'keycloak-apple')?.authorization?.params).toEqual({
-      scope: 'openid profile email', kc_idp_hint: 'apple',
+      scope: 'openid profile email',
+      kc_idp_hint: 'apple',
     });
   });
 
@@ -187,12 +204,14 @@ describe('Keycloak broker configuration', () => {
   });
 
   it('requires an explicit opt-in for a secretless public PKCE client', () => {
-    expect(keycloakClientConfig({
-      KEYCLOAK_PUBLIC_CLIENT: 'true',
-      KEYCLOAK_CLIENT_ID: 'waooaw-web-preview',
-      KEYCLOAK_CLIENT_SECRET: 'must-not-be-used',
-      KEYCLOAK_ISSUER: 'https://demo.example/realms/waooaw',
-    })).toEqual({
+    expect(
+      keycloakClientConfig({
+        KEYCLOAK_PUBLIC_CLIENT: 'true',
+        KEYCLOAK_CLIENT_ID: 'waooaw-web-preview',
+        KEYCLOAK_CLIENT_SECRET: 'must-not-be-used',
+        KEYCLOAK_ISSUER: 'https://demo.example/realms/waooaw',
+      })
+    ).toEqual({
       clientId: 'waooaw-web-preview',
       clientSecret: '',
       issuer: 'https://demo.example/realms/waooaw',

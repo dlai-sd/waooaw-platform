@@ -86,7 +86,7 @@ def test_ci_has_deterministic_spec_and_fixable_vulnerability_gates() -> None:
     workflow = CI_WORKFLOW.read_text(encoding="utf-8")
     spectral = (REPO_ROOT / ".spectral.yaml").read_text(encoding="utf-8")
     assert "spectral:oas" in spectral
-    assert "@stoplight/spectral-cli@6.15.0" in workflow
+    assert "stoplight/spectral:6.15.0" in workflow
     assert "bufbuild/buf:1.72.0" in workflow
     assert "Detect affected image" not in workflow
     assert "steps.affected.outputs.build" not in workflow

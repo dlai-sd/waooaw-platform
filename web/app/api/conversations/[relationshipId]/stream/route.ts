@@ -1,7 +1,7 @@
 // Implements: architecture/reference/components/conversation-core.md §3.3 Stream
 // Constitutional basis: C-026 (Tenant Isolation), C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { openConversationStream } from '@/lib/api/conversation';
 import { accessTokenFromRequest } from '@/lib/server-auth';
 
@@ -9,7 +9,10 @@ export const dynamic = 'force-dynamic';
 
 function streamProblem(status: number) {
   if (status === 410) {
-    return { code: 'CONVERSATION_CURSOR_EXPIRED', title: 'Conversation stream history expired. Reconcile the timeline.' };
+    return {
+      code: 'CONVERSATION_CURSOR_EXPIRED',
+      title: 'Conversation stream history expired. Reconcile the timeline.',
+    };
   }
   if (status === 423) {
     return { code: 'CONVERSATION_STOPPED', title: 'Conversation execution is stopped.' };
@@ -22,7 +25,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (!accessToken) {
     return NextResponse.json(
       { code: 'CONVERSATION_SESSION_REQUIRED', title: 'Secure sign in is required.' },
-      { status: 401 },
+      { status: 401 }
     );
   }
   const { relationshipId } = await params;
@@ -32,14 +35,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       relationshipId,
       accessToken,
       request.headers.get('Last-Event-ID'),
-      request.signal,
+      request.signal
     );
     if (!upstream.ok || !upstream.body) {
       const status = upstream.status >= 400 && upstream.status < 600 ? upstream.status : 503;
-      return NextResponse.json(
-        streamProblem(status),
-        { status, headers: { 'Cache-Control': 'no-store' } },
-      );
+      return NextResponse.json(streamProblem(status), { status, headers: { 'Cache-Control': 'no-store' } });
     }
 
     return new Response(upstream.body, {
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   } catch {
     return NextResponse.json(
       { code: 'CONVERSATION_EXECUTION_UNAVAILABLE', title: 'Conversation stream is unavailable.' },
-      { status: 503, headers: { 'Cache-Control': 'no-store' } },
+      { status: 503, headers: { 'Cache-Control': 'no-store' } }
     );
   }
 }

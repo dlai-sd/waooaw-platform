@@ -40,12 +40,25 @@ describe('conversation server boundary', () => {
   });
 
   it('forwards timeline cursors through the authenticated generated client', async () => {
-    listConversationMessages.mockResolvedValue({ schemaVersion: '1.0', items: [], authoritativeCursor: 'cursor', hasMore: false });
+    listConversationMessages.mockResolvedValue({
+      schemaVersion: '1.0',
+      items: [],
+      authoritativeCursor: 'cursor',
+      hasMore: false,
+    });
     const { GET } = await import('./[relationshipId]/route');
-    const response = await GET(new NextRequest(`http://localhost/api/conversations/${relationshipId}?afterCursor=prior&limit=40`), params);
+    const response = await GET(
+      new NextRequest(`http://localhost/api/conversations/${relationshipId}?afterCursor=prior&limit=40`),
+      params
+    );
 
     expect(response.status).toBe(200);
-    expect(listConversationMessages).toHaveBeenCalledWith({ relationshipId, cursor: undefined, afterCursor: 'prior', limit: 40 });
+    expect(listConversationMessages).toHaveBeenCalledWith({
+      relationshipId,
+      cursor: undefined,
+      afterCursor: 'prior',
+      limit: 40,
+    });
     expect(response.headers.get('Cache-Control')).toBe('no-store');
   });
 
@@ -68,11 +81,16 @@ describe('conversation server boundary', () => {
     const response = await POST(request, params);
 
     expect(response.status).toBe(200);
-    expect(sendConversationMessage).toHaveBeenCalledWith(expect.objectContaining({
-      relationshipId,
-      idempotencyKey: replayIdentity,
-      sendConversationMessageRequestV1: expect.objectContaining({ clientMessageId: '51885e4d-53ac-4abf-ad77-58cd127a3dc4', skillId: 'campaign_planning' }),
-    }));
+    expect(sendConversationMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        relationshipId,
+        idempotencyKey: replayIdentity,
+        sendConversationMessageRequestV1: expect.objectContaining({
+          clientMessageId: '51885e4d-53ac-4abf-ad77-58cd127a3dc4',
+          skillId: 'campaign_planning',
+        }),
+      })
+    );
   });
 
   it('rejects send without an explicit Skill identity', async () => {
@@ -93,16 +111,23 @@ describe('conversation server boundary', () => {
   });
 
   it('proxies SSE with resume identity and strips upstream private headers', async () => {
-    openConversationStream.mockResolvedValue(new Response('event: heartbeat\ndata: {}\n\n', {
-      headers: { 'Content-Type': 'text/event-stream', 'X-Internal-Provider': 'private' },
-    }));
+    openConversationStream.mockResolvedValue(
+      new Response('event: heartbeat\ndata: {}\n\n', {
+        headers: { 'Content-Type': 'text/event-stream', 'X-Internal-Provider': 'private' },
+      })
+    );
     const { GET } = await import('./[relationshipId]/stream/route');
     const request = new NextRequest(`http://localhost/api/conversations/${relationshipId}/stream`, {
       headers: { 'Last-Event-ID': 'event-17' },
     });
     const response = await GET(request, params);
 
-    expect(openConversationStream).toHaveBeenCalledWith(relationshipId, 'server-token', 'event-17', expect.any(AbortSignal));
+    expect(openConversationStream).toHaveBeenCalledWith(
+      relationshipId,
+      'server-token',
+      'event-17',
+      expect.any(AbortSignal)
+    );
     expect(response.headers.get('Content-Type')).toContain('text/event-stream');
     expect(response.headers.get('X-Internal-Provider')).toBeNull();
     expect(response.headers.get('Cache-Control')).toContain('no-store');

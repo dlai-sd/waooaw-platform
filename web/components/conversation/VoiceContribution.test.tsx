@@ -11,10 +11,18 @@ class RecorderMock {
   ondataavailable: ((event: BlobEvent) => void) | null = null;
   onstop: (() => void) | null = null;
 
-  constructor() { RecorderMock.latest = this; }
-  start() { this.state = 'recording'; }
-  pause() { this.state = 'paused'; }
-  resume() { this.state = 'recording'; }
+  constructor() {
+    RecorderMock.latest = this;
+  }
+  start() {
+    this.state = 'recording';
+  }
+  pause() {
+    this.state = 'paused';
+  }
+  resume() {
+    this.state = 'recording';
+  }
   stop() {
     this.state = 'inactive';
     this.ondataavailable?.({ data: new Blob(['voice'], { type: this.mimeType }) } as BlobEvent);
@@ -25,7 +33,16 @@ class RecorderMock {
 const textFallbackId = 'text-fallback';
 
 function renderVoice(stopped = false) {
-  return render(<><textarea id={textFallbackId} /><VoiceContribution relationshipId={relationshipId} relationshipStopped={stopped} textFallbackId={textFallbackId} /></>);
+  return render(
+    <>
+      <textarea id={textFallbackId} />
+      <VoiceContribution
+        relationshipId={relationshipId}
+        relationshipStopped={stopped}
+        textFallbackId={textFallbackId}
+      />
+    </>
+  );
 }
 
 function jsonResponse(body: unknown, status: number) {
@@ -41,7 +58,10 @@ async function startAndStop() {
 }
 
 beforeEach(() => {
-  Object.defineProperty(globalThis.crypto, 'randomUUID', { configurable: true, value: jest.fn(() => '33333333-3333-4333-8333-333333333333') });
+  Object.defineProperty(globalThis.crypto, 'randomUUID', {
+    configurable: true,
+    value: jest.fn(() => '33333333-3333-4333-8333-333333333333'),
+  });
   Object.defineProperty(global, 'MediaRecorder', { configurable: true, value: RecorderMock });
   Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: jest.fn(() => 'blob:test') });
   Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: jest.fn() });
@@ -53,7 +73,9 @@ beforeEach(() => {
 });
 
 it('returns focus to text when microphone permission is denied', async () => {
-  navigator.mediaDevices.getUserMedia = jest.fn(async () => { throw new DOMException('Permission denied', 'NotAllowedError'); });
+  navigator.mediaDevices.getUserMedia = jest.fn(async () => {
+    throw new DOMException('Permission denied', 'NotAllowedError');
+  });
   renderVoice();
   fireEvent.click(screen.getByRole('checkbox'));
   fireEvent.click(screen.getByRole('button', { name: 'Record' }));
@@ -63,15 +85,28 @@ it('returns focus to text when microphone permission is denied', async () => {
 });
 
 it('never sends until transcript review and explicit send', async () => {
-  const fetchMock = jest.fn()
+  const fetchMock = jest
+    .fn()
     .mockResolvedValueOnce(jsonResponse({ sessionId: '11111111-1111-1111-1111-111111111111' }, 201))
     .mockResolvedValueOnce(jsonResponse({ state: 'TRANSCRIBING' }, 202))
-    .mockResolvedValueOnce(jsonResponse({
-      schemaVersion: '1.0.0', sessionId: '11111111-1111-1111-1111-111111111111', state: 'REVIEW_REQUIRED',
-      locale: 'en-IN', confidenceBand: 'REVIEW', text: 'review me', version: 1,
-    }, 200))
+    .mockResolvedValueOnce(
+      jsonResponse(
+        {
+          schemaVersion: '1.0.0',
+          sessionId: '11111111-1111-1111-1111-111111111111',
+          state: 'REVIEW_REQUIRED',
+          locale: 'en-IN',
+          confidenceBand: 'REVIEW',
+          text: 'review me',
+          version: 1,
+        },
+        200
+      )
+    )
     .mockResolvedValueOnce(jsonResponse({ version: 2 }, 200))
-    .mockResolvedValueOnce(jsonResponse({ state: 'RECORDED', evidenceReference: '22222222-2222-2222-2222-222222222222' }, 200));
+    .mockResolvedValueOnce(
+      jsonResponse({ state: 'RECORDED', evidenceReference: '22222222-2222-2222-2222-222222222222' }, 200)
+    );
   global.fetch = fetchMock;
   renderVoice();
 
@@ -112,14 +147,20 @@ it('supports pause, resume, timer progress, and active Stop', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
   act(() => jest.advanceTimersByTime(2000));
   expect(screen.getByLabelText(/Recording duration 0:02/)).toBeVisible();
-  view.rerender(<><textarea id={textFallbackId} /><VoiceContribution relationshipId={relationshipId} relationshipStopped textFallbackId={textFallbackId} /></>);
+  view.rerender(
+    <>
+      <textarea id={textFallbackId} />
+      <VoiceContribution relationshipId={relationshipId} relationshipStopped textFallbackId={textFallbackId} />
+    </>
+  );
   await screen.findByText(/Emergency Stop is active/);
   expect(RecorderMock.latest.state).toBe('inactive');
   jest.useRealTimers();
 });
 
 it('cancels an active recording without resurrecting playback', async () => {
-  const fetchMock = jest.fn()
+  const fetchMock = jest
+    .fn()
     .mockResolvedValueOnce(jsonResponse({ sessionId: '11111111-1111-1111-1111-111111111111' }, 201))
     .mockResolvedValueOnce(jsonResponse({ state: 'CANCELLED' }, 200));
   global.fetch = fetchMock;
@@ -135,7 +176,9 @@ it('cancels an active recording without resurrecting playback', async () => {
 });
 
 it('retains the page-local draft while offline and retries with the same audio', async () => {
-  global.fetch = jest.fn().mockResolvedValueOnce(jsonResponse({ sessionId: '11111111-1111-1111-1111-111111111111' }, 201));
+  global.fetch = jest
+    .fn()
+    .mockResolvedValueOnce(jsonResponse({ sessionId: '11111111-1111-1111-1111-111111111111' }, 201));
   renderVoice();
   await startAndStop();
   Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
@@ -147,7 +190,8 @@ it('retains the page-local draft while offline and retries with the same audio',
 });
 
 it('reports upload and transcript failures without enabling send', async () => {
-  const fetchMock = jest.fn()
+  const fetchMock = jest
+    .fn()
     .mockResolvedValueOnce(jsonResponse({ sessionId: '11111111-1111-1111-1111-111111111111' }, 201))
     .mockResolvedValueOnce(jsonResponse({ title: 'Media could not be accepted.' }, 415));
   global.fetch = fetchMock;
@@ -157,23 +201,43 @@ it('reports upload and transcript failures without enabling send', async () => {
   await screen.findByText('Media could not be accepted.');
 
   fetchMock.mockResolvedValueOnce(jsonResponse({ state: 'TRANSCRIBING' }, 202));
-  fetchMock.mockResolvedValueOnce(jsonResponse({
-    schemaVersion: '1.0.0', sessionId: '11111111-1111-1111-1111-111111111111', state: 'TRANSCRIBING',
-    locale: 'en-IN', confidenceBand: 'UNAVAILABLE', version: 1,
-  }, 200));
+  fetchMock.mockResolvedValueOnce(
+    jsonResponse(
+      {
+        schemaVersion: '1.0.0',
+        sessionId: '11111111-1111-1111-1111-111111111111',
+        state: 'TRANSCRIBING',
+        locale: 'en-IN',
+        confidenceBand: 'UNAVAILABLE',
+        version: 1,
+      },
+      200
+    )
+  );
   fireEvent.click(screen.getByRole('button', { name: 'Reconcile or retry' }));
   await screen.findByText(/Transcription is not ready/);
   expect(screen.queryByRole('button', { name: 'Send voice contribution' })).not.toBeInTheDocument();
 });
 
 it('keeps low-confidence send disabled when correction fails', async () => {
-  const fetchMock = jest.fn()
+  const fetchMock = jest
+    .fn()
     .mockResolvedValueOnce(jsonResponse({ sessionId: '11111111-1111-1111-1111-111111111111' }, 201))
     .mockResolvedValueOnce(jsonResponse({ state: 'TRANSCRIBING' }, 202))
-    .mockResolvedValueOnce(jsonResponse({
-      schemaVersion: '1.0.0', sessionId: '11111111-1111-1111-1111-111111111111', state: 'REVIEW_REQUIRED',
-      locale: 'en-IN', confidenceBand: 'LOW', text: 'uncertain', version: 1,
-    }, 200))
+    .mockResolvedValueOnce(
+      jsonResponse(
+        {
+          schemaVersion: '1.0.0',
+          sessionId: '11111111-1111-1111-1111-111111111111',
+          state: 'REVIEW_REQUIRED',
+          locale: 'en-IN',
+          confidenceBand: 'LOW',
+          text: 'uncertain',
+          version: 1,
+        },
+        200
+      )
+    )
     .mockResolvedValueOnce(jsonResponse({ title: 'Transcript version changed.' }, 409));
   global.fetch = fetchMock;
   renderVoice();
@@ -187,13 +251,24 @@ it('keeps low-confidence send disabled when correction fails', async () => {
 });
 
 it('requires recorded evidence and reports failed or unresolved sends', async () => {
-  const fetchMock = jest.fn()
+  const fetchMock = jest
+    .fn()
     .mockResolvedValueOnce(jsonResponse({ sessionId: '11111111-1111-1111-1111-111111111111' }, 201))
     .mockResolvedValueOnce(jsonResponse({ state: 'TRANSCRIBING' }, 202))
-    .mockResolvedValueOnce(jsonResponse({
-      schemaVersion: '1.0.0', sessionId: '11111111-1111-1111-1111-111111111111', state: 'READY_TO_SEND',
-      locale: 'en-IN', confidenceBand: 'HIGH', text: 'confirmed', version: 1,
-    }, 200))
+    .mockResolvedValueOnce(
+      jsonResponse(
+        {
+          schemaVersion: '1.0.0',
+          sessionId: '11111111-1111-1111-1111-111111111111',
+          state: 'READY_TO_SEND',
+          locale: 'en-IN',
+          confidenceBand: 'HIGH',
+          text: 'confirmed',
+          version: 1,
+        },
+        200
+      )
+    )
     .mockResolvedValueOnce(jsonResponse({ state: 'UNKNOWN' }, 200));
   global.fetch = fetchMock;
   renderVoice();

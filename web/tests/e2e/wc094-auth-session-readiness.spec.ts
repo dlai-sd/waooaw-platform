@@ -40,7 +40,10 @@ test('WC094-A03: Login and Register project the same available brokers', async (
   await expect(page.getByRole('button', { name: 'Sign up with Facebook' })).toBeEnabled();
 });
 
-test('WC094-A01: logout clears WAOOAW state and returns through Keycloak to the homepage', async ({ context, page }) => {
+test('WC094-A01: logout clears WAOOAW state and returns through Keycloak to the homepage', async ({
+  context,
+  page,
+}) => {
   await addSession(context);
   let logoutContinuationStatus: number | undefined;
   page.on('response', (response) => {
@@ -63,13 +66,21 @@ test('WC094-A01: logout clears WAOOAW state and returns through Keycloak to the 
   await expect.poll(() => logoutContinuationStatus).toBe(303);
   await expect(page).toHaveURL(`${baseURL}/`);
   await expect(page.getByRole('heading', { name: 'Grow your business with WAOOAW AI professionals' })).toBeVisible();
-  await expect.poll(async () => context.cookies()).toEqual(expect.not.arrayContaining([
-    expect.objectContaining({ name: 'next-auth.session-token' }),
-    expect.objectContaining({ name: 'waooaw-theme' }),
-  ]));
-  await expect.poll(() => page.evaluate(() => ({
-    localWaaoawKeys: Object.keys(localStorage).filter((key) => key.startsWith('waooaw:')),
-    sessionWaaoawKeys: Object.keys(sessionStorage).filter((key) => key.startsWith('waooaw:')),
-    unrelated: localStorage.getItem('unrelated-preference'),
-  }))).toEqual({ localWaaoawKeys: [], sessionWaaoawKeys: [], unrelated: 'preserve' });
+  await expect
+    .poll(async () => context.cookies())
+    .toEqual(
+      expect.not.arrayContaining([
+        expect.objectContaining({ name: 'next-auth.session-token' }),
+        expect.objectContaining({ name: 'waooaw-theme' }),
+      ])
+    );
+  await expect
+    .poll(() =>
+      page.evaluate(() => ({
+        localWaaoawKeys: Object.keys(localStorage).filter((key) => key.startsWith('waooaw:')),
+        sessionWaaoawKeys: Object.keys(sessionStorage).filter((key) => key.startsWith('waooaw:')),
+        unrelated: localStorage.getItem('unrelated-preference'),
+      }))
+    )
+    .toEqual({ localWaaoawKeys: [], sessionWaaoawKeys: [], unrelated: 'preserve' });
 });

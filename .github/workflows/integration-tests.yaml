@@ -35,30 +35,33 @@ jobs:
         ports: ["5432:5432"]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
       - name: Run DB migrations on test DB
         run: |
-          for f in infrastructure/postgres/init/*.sql; do
-            PGPASSWORD=testpassword psql -h localhost -U waooaw -d waooaw_test -f "$f"
-          done
-      - name: Install test dependencies
-        # C-080: pip install for pytest replaced — tests run via Docker test-runner
-        run: echo 'C-080: docker compose run --rm test-runner pytest'
+          docker run --rm --network host \
+            -e PGPASSWORD=testpassword \
+            -v "$PWD/infrastructure/postgres/init:/sql:ro" \
+            postgres:16-alpine sh -lc '
+              for file in /sql/*.sql; do
+                psql -h 127.0.0.1 -U waooaw -d waooaw_test -f "$file"
+              done
+            '
+      - name: Build Python integration runner
+        run: docker compose --profile test-python build test-runner-python
       - name: Multi-tenant isolation tests
-        run: |
-          pytest tests/integration/test_multi_tenant_*.py \
-            -v --tb=short \
-            --junit-xml=results/multi-tenant.xml
         env:
-          DATABASE_URL: postgresql://waooaw:testpassword@localhost:5432/waooaw_test
+          DATABASE_URL: postgresql://waooaw:testpassword@host.docker.internal:5432/waooaw_test
+        run: |
+          docker compose --profile test-python run --rm \
+            -e DATABASE_URL test-runner-python \
+            pytest tests/integration/test_multi_tenant_*.py \
+              -v --tb=short \
+              --junit-xml=test-results/multi-tenant.xml
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: multi-tenant-results
-          path: results/
+          path: test-results/
 
   # ─── Service integration tests (BP ↔ CE, PR ↔ CE) ───────────────────────────
   service-integration:
@@ -78,34 +81,42 @@ jobs:
         ports: ["5432:5432"]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.x'
+      - name: Resolve Docker socket group for Testcontainers
+        run: echo "DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)" >> "$GITHUB_ENV"
       - name: Run DB migrations
         run: |
-          for f in infrastructure/postgres/init/*.sql; do
-            PGPASSWORD=testpassword psql -h localhost -U waooaw -d waooaw_test -f "$f"
-          done
-      - name: BP + CE integration tests (.NET)
+          docker run --rm --network host \
+            -e PGPASSWORD=testpassword \
+            -v "$PWD/infrastructure/postgres/init:/sql:ro" \
+            postgres:16-alpine sh -lc '
+              for file in /sql/*.sql; do
+                psql -h 127.0.0.1 -U waooaw -d waooaw_test -f "$file"
+              done
+            '
+      - name: Build integration runners
         run: |
-          dotnet test tests/integration/constitutional-engine \
-            --no-build \
-            --logger "junit;LogFileName=ce-integration.xml"
+          docker compose --profile test-dotnet build test-runner-dotnet
+          docker compose --profile test-python build test-runner-python
+      - name: BP + CE integration tests (.NET)
         env:
-          DATABASE_URL: "Host=localhost;Port=5432;Database=waooaw_test;Username=waooaw;Password=testpassword"
+          DATABASE_URL: "Host=host.docker.internal;Port=5432;Database=waooaw_test;Username=waooaw;Password=testpassword"
+        run: |
+          docker compose --profile test-dotnet run --rm \
+            -e DATABASE_URL test-runner-dotnet sh -lc '
+              dotnet test tests/integration/constitutional-engine \
+                --artifacts-path /tmp/artifacts/integration-constitutional-engine \
+                --logger "junit;LogFileName=test-results/ce-integration.xml"
+            '
         continue-on-error: false
       - name: PR + AIR integration tests (Python)
-        run: |
-          # C-080: pip install for pytest replaced by Docker test-runner
-          echo 'C-080: use docker compose run --rm test-runner pytest'
-          pytest tests/integration/test_pr_ce_*.py tests/integration/test_air_pse_*.py \
-            -v --tb=short \
-            --junit-xml=results/service-integration.xml
         env:
-          DATABASE_URL: postgresql://waooaw:testpassword@localhost:5432/waooaw_test
+          DATABASE_URL: postgresql://waooaw:testpassword@host.docker.internal:5432/waooaw_test
+        run: |
+          docker compose --profile test-python run --rm \
+            -e DATABASE_URL test-runner-python \
+            pytest tests/integration/test_pr_ce_*.py tests/integration/test_air_pse_*.py \
+              -v --tb=short \
+              --junit-xml=test-results/service-integration.xml
 
   # ─── REST contract tests — Schemathesis OpenAPI fuzzing ───────────────────
   contract-rest:
@@ -114,30 +125,32 @@ jobs:
     needs: service-integration
     steps:
       - uses: actions/checkout@v4
-      - name: Build Docker contract test runner
-        run: docker compose --profile test-python build test-runner-python
+      - name: Build Docker contract environment
+        run: |
+          docker compose --profile test-python build test-runner-python business-platform professional-runtime
+      - name: Start required contract services
+        run: docker compose up --detach --wait --wait-timeout 180 business-platform professional-runtime
       - name: Fuzz Business Platform OpenAPI
         run: |
-          mkdir -p results
           docker compose --profile test-python run --rm test-runner-python \
             schemathesis run architecture/reference/api-specs/business-platform.openapi.yaml \
             --url http://business-platform:5001 \
             --checks all \
             --max-examples 100 \
             --report junit \
-            --report-junit-path results/schemathesis-bp.xml
-        continue-on-error: true  # Advisory until service is deployed in CI
+            --report-junit-path test-results/schemathesis-bp.xml
       - name: Fuzz Professional Runtime OpenAPI
         run: |
-          mkdir -p results
           docker compose --profile test-python run --rm test-runner-python \
             schemathesis run architecture/reference/api-specs/professional-runtime.openapi.yaml \
             --url http://professional-runtime:5003 \
             --checks all \
             --max-examples 100 \
             --report junit \
-            --report-junit-path results/schemathesis-pr.xml
-        continue-on-error: true
+            --report-junit-path test-results/schemathesis-pr.xml
+      - name: Stop contract services
+        if: always()
+        run: docker compose down --volumes --remove-orphans
 
   # ─── seed-prompts.py contract test (C-059, ADR-028) ──────────────────────
   seed-prompts-contract:
@@ -145,24 +158,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+      - name: Build Python contract runner
+        run: docker compose --profile test-python build test-runner-python
       - name: Dry-run seed-prompts.py
-        run: python scripts/seed-prompts.py --dry-run
+        run: docker compose --profile test-python run --rm test-runner-python python scripts/seed-prompts.py --dry-run
       - name: Verify PROMPT markers parse correctly
         run: |
-          python -c "
-          import subprocess, sys
-          result = subprocess.run(['python', 'scripts/seed-prompts.py', '--dry-run'],
-                                  capture_output=True, text=True)
-          if result.returncode != 0:
-              print('seed-prompts dry-run FAILED:')
-              print(result.stderr)
-              sys.exit(1)
-          print('seed-prompts dry-run PASSED')
-          print(result.stdout)
-          "
+          docker compose --profile test-python run --rm test-runner-python sh -lc '
+            output=$(python scripts/seed-prompts.py --dry-run) || {
+              echo "seed-prompts dry-run FAILED" >&2
+              exit 1
+            }
+            echo "seed-prompts dry-run PASSED"
+            printf "%s\n" "$output"
+          '
 
   # ─── Prompt injection security suite (C-062, C-071) ─────────────────────
   prompt-injection:
@@ -170,16 +179,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Install dependencies
-        # C-080: pip install for pytest replaced — tests run via Docker test-runner
-        run: echo 'C-080: docker compose run --rm test-runner pytest'
+      - name: Build Python security runner
+        run: docker compose --profile test-python build test-runner-python
       - name: Run prompt injection suite
         run: |
-          pytest tests/security/test_prompt_injection.py \
-            -v --tb=short \
-            --junit-xml=results/prompt-injection.xml
+          docker compose --profile test-python run --rm test-runner-python \
+            pytest tests/security/test_prompt_injection.py \
+              -v --tb=short \
+              --junit-xml=test-results/prompt-injection.xml
         # This tests the PSE C-062 evaluator logic directly (unit-level)
         # Full DAST prompt injection runs in E2E workflow against live service

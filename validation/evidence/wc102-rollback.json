@@ -1,0 +1,30 @@
+{
+  "schema": "waooaw.wc102-rollback/v1",
+  "qualified_candidate_sha": "5b201dd4640947564b6c54ac597d838105ecc129",
+  "mode": "full-clean-qualification",
+  "required_gates": [
+    "build",
+    "secrets",
+    "test-dotnet",
+    "test-python",
+    "test-web",
+    "spec-lint",
+    "sast",
+    "dep-scan",
+    "license-check",
+    "release-qualification",
+    "constitutional-commit-gate",
+    "requirement-ledger",
+    "author-review-gate",
+    "authorization-tier-check"
+  ],
+  "serial_orchestration": true,
+  "reuse_prior_results": false,
+  "discard_incompatible_evidence": true,
+  "stale_evidence_rejected": true,
+  "validation": {
+    "result": "PASS",
+    "test": "tests/validation_control/test_qualification.py::test_rollback_restores_full_clean_inventory_and_discards_newer_evidence"
+  },
+  "selective_enforcement": false
+}

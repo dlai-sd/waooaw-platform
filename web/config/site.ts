@@ -32,9 +32,33 @@ export const siteConfig = {
     { href: '/about', label: 'About' },
   ],
   footerGroups: [
-    { label: 'Platform', links: [{ href: '/professionals', label: 'Professionals' }, { href: '/blogs', label: 'Insights' }, { href: '/constitution', label: 'Constitution' }] },
-    { label: 'Company', links: [{ href: '/about', label: 'About' }, { href: '/careers', label: 'Careers' }, { href: '/press', label: 'Press' }, { href: '/contact', label: 'Contact' }] },
-    { label: 'Legal', links: [{ href: '/privacy', label: 'Privacy' }, { href: '/terms', label: 'Terms' }, { href: '/cookies', label: 'Cookies' }, { href: '/refund', label: 'Refunds' }, { href: '/grievance', label: 'Grievance' }] },
+    {
+      label: 'Platform',
+      links: [
+        { href: '/professionals', label: 'Professionals' },
+        { href: '/blogs', label: 'Insights' },
+        { href: '/constitution', label: 'Constitution' },
+      ],
+    },
+    {
+      label: 'Company',
+      links: [
+        { href: '/about', label: 'About' },
+        { href: '/careers', label: 'Careers' },
+        { href: '/press', label: 'Press' },
+        { href: '/contact', label: 'Contact' },
+      ],
+    },
+    {
+      label: 'Legal',
+      links: [
+        { href: '/privacy', label: 'Privacy' },
+        { href: '/terms', label: 'Terms' },
+        { href: '/cookies', label: 'Cookies' },
+        { href: '/refund', label: 'Refunds' },
+        { href: '/grievance', label: 'Grievance' },
+      ],
+    },
   ],
 } as const;
 
