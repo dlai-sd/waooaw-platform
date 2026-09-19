@@ -156,6 +156,7 @@ def test_platform_it_policy_defines_costly_run_contract() -> None:
         normalized = " ".join(policy.lower().split())
         assert '--expected-worktree "$PWD"' in policy
         assert '--expected-head "$(git rev-parse HEAD)"' in policy
+        assert "--preflight-only" in policy
         assert "original absolute paths" in normalized
         assert "writable output directories" in normalized
         assert "first causal" in normalized

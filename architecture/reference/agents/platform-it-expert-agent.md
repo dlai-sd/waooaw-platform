@@ -277,7 +277,8 @@ prepared file without rewriting it. Do not open the PR first and repair its body
 
 Before costly qualification, separately verify the absolute selected worktree and HEAD, Docker
 CLI/daemon/Compose/Buildx and `jq`, Docker socket access, writable `HOME` and output directory, and
-Git safe-directory access. Nested Docker mounts preserve the selected worktree and Git common
+Git safe-directory access by running the preparation command above with `--preflight-only`. Nested
+Docker mounts preserve the selected worktree and Git common
 directory at their original absolute paths. Mount writable output directories rather than individual
 atomically replaced files. Run focused checks before full qualification. Preserve the first causal
 failure and rerun only that failed stage after repair. Retained evidence is reusable only when the

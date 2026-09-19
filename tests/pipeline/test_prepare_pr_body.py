@@ -234,6 +234,7 @@ def test_prepare_pr_body_uses_requirement_ledger_validator() -> None:
     source = (ROOT / "scripts/prepare_pr_body.py").read_text(encoding="utf-8")
 
     assert "validate_changed_ledgers" in source
+    assert '"--preflight-only"' in source
 
 
 def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path) -> None:
@@ -305,6 +306,18 @@ def test_execution_preflight_rejects_wrong_head(monkeypatch, tmp_path: Path) -> 
         assert "local HEAD" in str(error)
     else:
         raise AssertionError("wrong HEAD was accepted")
+
+
+def test_execution_preflight_rejects_tracked_worktree_changes(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr("prepare_pr_body.git", lambda *arguments: " M scripts/prepare_pr_body.py")
+
+    try:
+        execution_preflight(tmp_path, tmp_path / "pr-body.md", tmp_path, HEAD, HEAD, require_docker=False)
+    except ValueError as error:
+        assert "tracked worktree changes" in str(error)
+    else:
+        raise AssertionError("dirty tracked worktree was accepted")
 
 
 def test_execution_preflight_checks_each_docker_capability(monkeypatch, tmp_path: Path) -> None:

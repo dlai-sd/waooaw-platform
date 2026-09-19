@@ -77,7 +77,9 @@ def execution_preflight(
         failures.append(f"PR body output directory is not writable: {output_dir}")
 
     try:
-        git("status", "--porcelain")
+        tracked_changes = git("status", "--porcelain", "--untracked-files=no")
+        if tracked_changes:
+            failures.append("tracked worktree changes must be committed before PR preparation")
     except subprocess.CalledProcessError:
         failures.append("git cannot read the worktree; configure its exact path as a safe.directory")
 
@@ -385,6 +387,11 @@ def main() -> int:
     parser.add_argument("--expected-worktree", required=True, type=Path)
     parser.add_argument("--expected-head", required=True)
     parser.add_argument(
+        "--preflight-only",
+        action="store_true",
+        help="validate the execution environment without reading remote state or running gates",
+    )
+    parser.add_argument(
         "--allow-unpushed-head",
         action="store_true",
         help="bind an existing PR body before push; rerun without this flag immediately after push",
@@ -418,8 +425,11 @@ def main() -> int:
             arguments.expected_worktree,
             arguments.expected_head,
             local_head,
-            require_docker=arguments.precheck_evidence_file is None,
+            require_docker=arguments.preflight_only or arguments.precheck_evidence_file is None,
         )
+        if arguments.preflight_only:
+            print(f"PR execution preflight passed for {repository_root} at {local_head}")
+            return 0
         remote_head = authoritative_remote_head(arguments.remote)
         head = preparation_head(local_head, remote_head, arguments.allow_unpushed_head)
         body = arguments.body_file.read_text(encoding="utf-8")
