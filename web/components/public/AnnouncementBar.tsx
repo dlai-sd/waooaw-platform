@@ -24,7 +24,9 @@ function readDismissal(): Dismissal | null {
     const raw = window.localStorage.getItem(storageKey);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<Dismissal>;
-    return parsed.dismissed === true && typeof parsed.campaignRevision === 'string' ? { campaignRevision: parsed.campaignRevision, dismissed: true } : null;
+    return parsed.dismissed === true && typeof parsed.campaignRevision === 'string'
+      ? { campaignRevision: parsed.campaignRevision, dismissed: true }
+      : null;
   } catch {
     return null;
   }
@@ -43,7 +45,10 @@ export function AnnouncementBar({ announcement }: { announcement: PublicAnnounce
 
   useEffect(() => {
     function updateOffset() {
-      document.documentElement.style.setProperty('--announcement-offset', visible && barRef.current ? `${barRef.current.getBoundingClientRect().height}px` : '0px');
+      document.documentElement.style.setProperty(
+        '--announcement-offset',
+        visible && barRef.current ? `${barRef.current.getBoundingClientRect().height}px` : '0px'
+      );
     }
     updateOffset();
     if (!visible) return undefined;
@@ -54,14 +59,27 @@ export function AnnouncementBar({ announcement }: { announcement: PublicAnnounce
   if (!visible) return null;
 
   function dismiss() {
-    window.localStorage.setItem(storageKey, JSON.stringify({ campaignRevision: announcement.revision, dismissed: true }));
+    window.localStorage.setItem(
+      storageKey,
+      JSON.stringify({ campaignRevision: announcement.revision, dismissed: true })
+    );
     setDismissed(true);
   }
 
   return (
-    <div className="announcement-bar" ref={barRef} role="region" aria-label="Announcement">
-      <p><strong>{announcement.headline}</strong><span> &mdash; {announcement.detail}</span>{announcement.href && announcement.ctaLabel ? <a href={announcement.href}>{announcement.ctaLabel} <span aria-hidden="true">&rarr;</span></a> : null}</p>
-      <button aria-label="Dismiss announcement" className="announcement-dismiss" onClick={dismiss} type="button"><X aria-hidden="true" size={18} /></button>
-    </div>
+    <section className="announcement-bar" ref={barRef} aria-label="Announcement">
+      <p>
+        <strong>{announcement.headline}</strong>
+        <span> &mdash; {announcement.detail}</span>
+        {announcement.href && announcement.ctaLabel ? (
+          <a href={announcement.href}>
+            {announcement.ctaLabel} <span aria-hidden="true">&rarr;</span>
+          </a>
+        ) : null}
+      </p>
+      <button aria-label="Dismiss announcement" className="announcement-dismiss" onClick={dismiss} type="button">
+        <X aria-hidden="true" size={18} />
+      </button>
+    </section>
   );
 }

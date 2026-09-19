@@ -13,15 +13,48 @@ import { StructuredData } from './StructuredData';
 async function legalSource(sourceFile: string): Promise<string> {
   const candidates = [join(process.cwd(), 'legal', sourceFile), join(process.cwd(), '..', 'legal', sourceFile)];
   for (const candidate of candidates) {
-    try { return await readFile(candidate, 'utf8'); } catch { /* Try the development or standalone location. */ }
+    try {
+      return await readFile(candidate, 'utf8');
+    } catch {
+      /* Try the development or standalone location. */
+    }
   }
   throw new Error(`Approved legal source unavailable: ${sourceFile}`);
 }
 
-export async function LegalPage({ effectiveDate, path, sourceFile, summary, title }: { effectiveDate: string; path: string; sourceFile: string; summary: string; title: string }) {
+export async function LegalPage({
+  effectiveDate,
+  path,
+  sourceFile,
+  summary,
+  title,
+}: { effectiveDate: string; path: string; sourceFile: string; summary: string; title: string }) {
   const source = projectPublicLegalSource(await legalSource(sourceFile), sourceFile);
-  return <article className="public-document legal-document"><StructuredData value={breadcrumbData(title, path)} /><header><p className="eyebrow">Version 1.0 - Effective {effectiveDate}</p><h1>{title}</h1><p>{summary}</p></header><div className="legal-source"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: ({ href, children }) => {
-    const publicHref = href?.startsWith('mailto:') ? `mailto:${siteConfig.contactEmail}` : href;
-    return <a href={publicHref} rel={publicHref?.startsWith('http') ? 'noreferrer' : undefined}>{children}</a>;
-  } }}>{source}</ReactMarkdown></div></article>;
+  return (
+    <article className="public-document legal-document">
+      <StructuredData value={breadcrumbData(title, path)} />
+      <header>
+        <p className="eyebrow">Version 1.0 - Effective {effectiveDate}</p>
+        <h1>{title}</h1>
+        <p>{summary}</p>
+      </header>
+      <div className="legal-source">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            a: ({ href, children }) => {
+              const publicHref = href?.startsWith('mailto:') ? `mailto:${siteConfig.contactEmail}` : href;
+              return (
+                <a href={publicHref} rel={publicHref?.startsWith('http') ? 'noreferrer' : undefined}>
+                  {children}
+                </a>
+              );
+            },
+          }}
+        >
+          {source}
+        </ReactMarkdown>
+      </div>
+    </article>
+  );
 }

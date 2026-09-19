@@ -28,15 +28,16 @@ export type IdentitySessionResult =
 export async function getIdentitySession(accessToken: string): Promise<IdentitySessionResult> {
   try {
     const session = await createIdentityApi(accessToken).getIdentitySession({ cache: 'no-store' });
-    return session.expiresAt.getTime() > Date.now()
-      ? { kind: 'ready', session }
-      : { kind: 'expired' };
+    return session.expiresAt.getTime() > Date.now() ? { kind: 'ready', session } : { kind: 'expired' };
   } catch (error) {
     if (error instanceof ResponseError) {
       if (error.response.status === 401) return { kind: 'unauthorized' };
       if (error.response.status === 403) return { kind: 'step-up' };
       if (error.response.status === 409) {
-        const problem = await error.response.clone().json().catch(() => undefined) as { code?: unknown } | undefined;
+        const problem = (await error.response
+          .clone()
+          .json()
+          .catch(() => undefined)) as { code?: unknown } | undefined;
         if (problem?.code === 'REGISTRATION_REQUIRED') return { kind: 'registration-required' };
       }
     }
@@ -57,10 +58,34 @@ export async function listCustomerLoginMethods(accessToken: string): Promise<Cus
 }
 
 const unavailableProviders: IdentityProvider[] = [
-  { id: 'GOOGLE', displayName: 'Google', authenticationPath: 'GOOGLE', availability: 'UNAVAILABLE', unavailableReason: 'TEMPORARILY_UNAVAILABLE' },
-  { id: 'FACEBOOK', displayName: 'Facebook', authenticationPath: 'META', availability: 'UNAVAILABLE', unavailableReason: 'TEMPORARILY_UNAVAILABLE' },
-  { id: 'APPLE', displayName: 'Apple', authenticationPath: 'APPLE', availability: 'UNAVAILABLE', unavailableReason: 'TEMPORARILY_UNAVAILABLE' },
-  { id: 'EMAIL', displayName: 'Email', authenticationPath: 'CREDENTIAL', availability: 'UNAVAILABLE', unavailableReason: 'TEMPORARILY_UNAVAILABLE' },
+  {
+    id: 'GOOGLE',
+    displayName: 'Google',
+    authenticationPath: 'GOOGLE',
+    availability: 'UNAVAILABLE',
+    unavailableReason: 'TEMPORARILY_UNAVAILABLE',
+  },
+  {
+    id: 'FACEBOOK',
+    displayName: 'Facebook',
+    authenticationPath: 'META',
+    availability: 'UNAVAILABLE',
+    unavailableReason: 'TEMPORARILY_UNAVAILABLE',
+  },
+  {
+    id: 'APPLE',
+    displayName: 'Apple',
+    authenticationPath: 'APPLE',
+    availability: 'UNAVAILABLE',
+    unavailableReason: 'TEMPORARILY_UNAVAILABLE',
+  },
+  {
+    id: 'EMAIL',
+    displayName: 'Email',
+    authenticationPath: 'CREDENTIAL',
+    availability: 'UNAVAILABLE',
+    unavailableReason: 'TEMPORARILY_UNAVAILABLE',
+  },
 ];
 
 export async function listIdentityProviders(): Promise<IdentityProvider[]> {
@@ -70,6 +95,7 @@ export async function listIdentityProviders(): Promise<IdentityProvider[]> {
       const signal = typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(12_000) : undefined;
       return (await api.listIdentityProviders({ cache: 'no-store', ...(signal ? { signal } : {}) })).providers;
     } catch (error) {
+      // biome-ignore lint/suspicious/noConsole: Provider readiness failures must remain observable until structured server logging is available.
       console.warn('Identity provider readiness projection unavailable.', {
         attempt,
         error: error instanceof Error ? error.name : 'UnknownError',

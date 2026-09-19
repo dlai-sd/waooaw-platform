@@ -17,7 +17,11 @@ interface PerformanceReviewControlsProps {
   review: PerformanceReviewWindowV1;
 }
 
-export function PerformanceReviewControls({ relationshipId, workspaceVersion, review }: PerformanceReviewControlsProps) {
+export function PerformanceReviewControls({
+  relationshipId,
+  workspaceVersion,
+  review,
+}: PerformanceReviewControlsProps) {
   const [decision, setDecision] = useState<(typeof decisions)[number][0]>('CONTINUE_CURRENT_MANDATE');
   const [reason, setReason] = useState('');
   const [message, setMessage] = useState('');
@@ -48,22 +52,36 @@ export function PerformanceReviewControls({ relationshipId, workspaceVersion, re
         },
       }),
     });
-    setMessage(response.ok
-      ? 'Review decision recorded. Refreshing will show the authoritative state.'
-      : 'Review decision could not be recorded. Refresh the relationship and try again.');
+    setMessage(
+      response.ok
+        ? 'Review decision recorded. Refreshing will show the authoritative state.'
+        : 'Review decision could not be recorded. Refresh the relationship and try again.'
+    );
   }
 
-  return <fieldset className="performance-review-controls">
-    <legend>Your review decision</legend>
-    <label>Decision
-      <select value={decision} onChange={(event) => setDecision(event.target.value as typeof decision)}>
-        {decisions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-      </select>
-    </label>
-    {decision !== 'CONTINUE_CURRENT_MANDATE' ? <label>Reason
-      <textarea maxLength={500} required value={reason} onChange={(event) => setReason(event.target.value)} />
-    </label> : null}
-    <button className="primary-command" onClick={() => void submit()} type="button">Record review decision</button>
-    <p role="status">{message}</p>
-  </fieldset>;
+  return (
+    <fieldset className="performance-review-controls">
+      <legend>Your review decision</legend>
+      <label>
+        Decision
+        <select value={decision} onChange={(event) => setDecision(event.target.value as typeof decision)}>
+          {decisions.map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
+      {decision !== 'CONTINUE_CURRENT_MANDATE' ? (
+        <label>
+          Reason
+          <textarea maxLength={500} required value={reason} onChange={(event) => setReason(event.target.value)} />
+        </label>
+      ) : null}
+      <button className="primary-command" onClick={() => void submit()} type="button">
+        Record review decision
+      </button>
+      <output>{message}</output>
+    </fieldset>
+  );
 }

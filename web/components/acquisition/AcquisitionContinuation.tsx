@@ -31,7 +31,12 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
         body: JSON.stringify(props),
       });
       const result = await response.json();
-      if (!response.ok || typeof result.resumePath !== 'string' || !/^\/relationships\/[0-9a-f-]+$/i.test(result.resumePath)) throw new Error();
+      if (
+        !response.ok ||
+        typeof result.resumePath !== 'string' ||
+        !/^\/relationships\/[0-9a-f-]+$/i.test(result.resumePath)
+      )
+        throw new Error();
       router.replace(result.resumePath);
     } catch {
       setFailed(true);
@@ -46,11 +51,27 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return <section className="portal-status" aria-live="polite">
-    {failed ? <>
-      <h2>We could not continue yet</h2>
-      <p>No trial, contract, payment, or live work was started. You can safely retry the same request.</p>
-      <div className="command-row"><button className="primary-command" onClick={() => void continueAcquisition()} type="button">Try again</button><Link className="text-command" href="/marketplace">Cancel</Link></div>
-    </> : <><LoaderCircle aria-hidden="true" className="spin" /><p>Preparing your {props.intent === 'trial' ? 'trial' : 'hiring'} workspace...</p></>}
-  </section>;
+  return (
+    <section className="portal-status" aria-live="polite">
+      {failed ? (
+        <>
+          <h2>We could not continue yet</h2>
+          <p>No trial, contract, payment, or live work was started. You can safely retry the same request.</p>
+          <div className="command-row">
+            <button className="primary-command" onClick={() => void continueAcquisition()} type="button">
+              Try again
+            </button>
+            <Link className="text-command" href="/marketplace">
+              Cancel
+            </Link>
+          </div>
+        </>
+      ) : (
+        <>
+          <LoaderCircle aria-hidden="true" className="spin" />
+          <p>Preparing your {props.intent === 'trial' ? 'trial' : 'hiring'} workspace...</p>
+        </>
+      )}
+    </section>
+  );
 }

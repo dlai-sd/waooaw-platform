@@ -3,8 +3,12 @@ import { ConversationContextAction, PersistentConversationDock, routeContext } f
 
 const mockUsePathname = jest.fn();
 jest.mock('next/navigation', () => ({ usePathname: () => mockUsePathname() }));
-jest.mock('./ConversationExperience', () => ({ ConversationExperience: ({ relationshipId }: { relationshipId: string }) => <div>Professional {relationshipId}</div> }));
-jest.mock('./PortalGuideExperience', () => ({ PortalGuideExperience: ({ currentSurface }: { currentSurface: string }) => <div>Guide {currentSurface}</div> }));
+jest.mock('./ConversationExperience', () => ({
+  ConversationExperience: ({ relationshipId }: { relationshipId: string }) => <div>Professional {relationshipId}</div>,
+}));
+jest.mock('./PortalGuideExperience', () => ({
+  PortalGuideExperience: ({ currentSurface }: { currentSurface: string }) => <div>Guide {currentSurface}</div>,
+}));
 
 describe('PersistentConversationDock', () => {
   beforeEach(() => {
@@ -38,7 +42,12 @@ describe('PersistentConversationDock', () => {
   });
 
   it('opens from the contextual top-bar command', async () => {
-    render(<><ConversationContextAction /><PersistentConversationDock /></>);
+    render(
+      <>
+        <ConversationContextAction />
+        <PersistentConversationDock />
+      </>
+    );
 
     const contextualAction = screen.getAllByRole('button', { name: /Ask about professionals/ })[0];
     fireEvent.click(contextualAction);

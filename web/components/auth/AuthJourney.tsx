@@ -27,7 +27,8 @@ export function AuthJourney({ children }: { children: ReactNode }) {
       if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
       const link = event.target instanceof Element ? event.target.closest('a') : null;
       if (!link || link.target === '_blank' || link.origin !== location.origin) return;
-      if (!['/login', '/register'].includes(link.pathname) || ['/login', '/register'].includes(location.pathname)) return;
+      if (!['/login', '/register'].includes(link.pathname) || ['/login', '/register'].includes(location.pathname))
+        return;
       event.preventDefault();
       beginAuthTransition();
       journey.current = {
@@ -42,12 +43,18 @@ export function AuthJourney({ children }: { children: ReactNode }) {
     return () => document.removeEventListener('click', capture, true);
   }, [router]);
 
-  return <AuthJourneyContext.Provider value={{
-    current: journey.current,
-    launching,
-    cancelLaunch,
-    completeLaunch,
-  }}>{children}</AuthJourneyContext.Provider>;
+  return (
+    <AuthJourneyContext.Provider
+      value={{
+        current: journey.current,
+        launching,
+        cancelLaunch,
+        completeLaunch,
+      }}
+    >
+      {children}
+    </AuthJourneyContext.Provider>
+  );
 }
 
 export function useAuthJourney() {

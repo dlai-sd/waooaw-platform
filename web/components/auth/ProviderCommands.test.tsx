@@ -7,9 +7,27 @@ jest.mock('next-auth/react', () => ({ signIn: jest.fn() }));
 
 const providers: IdentityProvider[] = [
   { id: 'GOOGLE', displayName: 'Google', authenticationPath: 'GOOGLE', availability: 'AVAILABLE' },
-  { id: 'FACEBOOK', displayName: 'Facebook', authenticationPath: 'META', availability: 'UNAVAILABLE', unavailableReason: 'NOT_CONFIGURED' },
-  { id: 'APPLE', displayName: 'Apple', authenticationPath: 'APPLE', availability: 'UNAVAILABLE', unavailableReason: 'NOT_CONFIGURED' },
-  { id: 'EMAIL', displayName: 'Email', authenticationPath: 'CREDENTIAL', availability: 'UNAVAILABLE', unavailableReason: 'NOT_CONFIGURED' },
+  {
+    id: 'FACEBOOK',
+    displayName: 'Facebook',
+    authenticationPath: 'META',
+    availability: 'UNAVAILABLE',
+    unavailableReason: 'NOT_CONFIGURED',
+  },
+  {
+    id: 'APPLE',
+    displayName: 'Apple',
+    authenticationPath: 'APPLE',
+    availability: 'UNAVAILABLE',
+    unavailableReason: 'NOT_CONFIGURED',
+  },
+  {
+    id: 'EMAIL',
+    displayName: 'Email',
+    authenticationPath: 'CREDENTIAL',
+    availability: 'UNAVAILABLE',
+    unavailableReason: 'NOT_CONFIGURED',
+  },
 ];
 
 describe('ProviderCommands', () => {
@@ -21,7 +39,11 @@ describe('ProviderCommands', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Log in with Google' }));
 
     expect(screen.getByRole('dialog', { name: 'Continue to Google' })).toBeVisible();
-    expect(screen.getByText(/WAOOAW will receive your name, email address, profile information and Google account identifier/)).toBeVisible();
+    expect(
+      screen.getByText(
+        /WAOOAW will receive your name, email address, profile information and Google account identifier/
+      )
+    ).toBeVisible();
     expect(screen.getByText(/WAOOAW does not receive your Google password/)).toBeVisible();
     expect(screen.getByRole('link', { name: 'Privacy Notice' })).toHaveAttribute('href', '/privacy');
     expect(signIn).not.toHaveBeenCalled();
@@ -67,19 +89,26 @@ describe('ProviderCommands', () => {
   });
 
   it('keeps an unsupported provider non-actionable even when projected as available', () => {
-    render(<ProviderCommands callbackUrl="/register" intent="register" providers={[
-      { id: 'APPLE', displayName: 'Apple', authenticationPath: 'APPLE', availability: 'AVAILABLE' },
-    ]} />);
+    render(
+      <ProviderCommands
+        callbackUrl="/register"
+        intent="register"
+        providers={[{ id: 'APPLE', displayName: 'Apple', authenticationPath: 'APPLE', availability: 'AVAILABLE' }]}
+      />
+    );
 
     expect(screen.getByRole('button', { name: 'Sign up with Apple (Unavailable)' })).toBeDisabled();
   });
 
   it('restores provider controls when sign-in cannot start', async () => {
     jest.mocked(signIn).mockRejectedValueOnce(new Error('navigation unavailable'));
-    render(<ProviderCommands callbackUrl="/login" intent="login" providers={[
-      providers[0],
-      { ...providers[1], availability: 'AVAILABLE', unavailableReason: undefined },
-    ]} />);
+    render(
+      <ProviderCommands
+        callbackUrl="/login"
+        intent="login"
+        providers={[providers[0], { ...providers[1], availability: 'AVAILABLE', unavailableReason: undefined }]}
+      />
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Log in with Google' }));
     fireEvent.click(screen.getByRole('button', { name: 'Continue to Google' }));
@@ -91,7 +120,18 @@ describe('ProviderCommands', () => {
 
   it('offers an actionable retry when provider readiness is temporarily unavailable', () => {
     const reload = jest.fn();
-    render(<ProviderCommands callbackUrl="/register" intent="register" providers={providers.map((provider) => ({ ...provider, availability: 'UNAVAILABLE', unavailableReason: 'TEMPORARILY_UNAVAILABLE' }))} reload={reload} />);
+    render(
+      <ProviderCommands
+        callbackUrl="/register"
+        intent="register"
+        providers={providers.map((provider) => ({
+          ...provider,
+          availability: 'UNAVAILABLE',
+          unavailableReason: 'TEMPORARILY_UNAVAILABLE',
+        }))}
+        reload={reload}
+      />
+    );
 
     expect(screen.getByText('Sign-in services are still starting.')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));

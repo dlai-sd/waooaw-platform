@@ -78,10 +78,10 @@ class ActInput:
     """Input to the ACT activity."""
 
     reasoning_id: str
-    proposed_action: dict[str, Any] = field(default_factory=dict)
     session_id: str
     contract_id: str
     decision_space_id: str
+    proposed_action: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -137,7 +137,7 @@ async def sense(sense_input: SenseInput) -> SenseOutput:
         # Stub: simulate observation collection
         await asyncio.sleep(0.01)  # Minimal latency
         context = {
-            "timestamp": activity.info().started_at.isoformat() if activity.info().started_at else None,
+            "timestamp": activity.info().started_time.isoformat(),
             "session_id": sense_input.session_id,
             "decision_space_id": sense_input.decision_space_id,
         }
@@ -311,9 +311,9 @@ async def act(act_input: ActInput) -> ActOutput:
 
         # Stub: simulate action execution
         await asyncio.sleep(0.04)
-        action_result = {
+        action_result: dict[str, Any] = {
             "status": "success",
-            "execution_timestamp": activity.info().started_at.isoformat() if activity.info().started_at else None,
+            "execution_timestamp": activity.info().started_time.isoformat(),
             "resource_id": str(uuid.uuid4()),
             "details": {},
         }
@@ -378,7 +378,7 @@ async def record(record_input: RecordInput) -> RecordOutput:
 
         # Stub: simulate Constitutional Engine gRPC call and evidence persistence
         await asyncio.sleep(0.05)  # Simulate RPC latency (~50-80ms per spec)
-        persisted_at = activity.info().started_at.isoformat() if activity.info().started_at else None
+        persisted_at = activity.info().started_time.isoformat()
 
         result = RecordOutput(evidence_record_id=evidence_record_id, persisted_at=persisted_at, status="recorded")
 

@@ -456,17 +456,11 @@ jobs:
           - service: professional-runtime
             source: src/professional-runtime
             tests: tests/professional-runtime
-            mypy_targets: >-
-              -p routers -p workflows -p professionals -m main -m private_server
-              -m relationship_workspace -m constitutional_gateway -m evaluation_workflow
-              -m intent_crystallizer -m mtls_protocol -m session_executor
-              -m skill_resolver -m workload_identity
+            mypy_path: /workspace/src/professional-runtime
           - service: ai-runtime
             source: src/ai-runtime
             tests: tests/ai-runtime
-            mypy_path: /workspace/src/trust-layer
-            mypy_targets: >-
-              -p providers -p pii -p pse -p rag -m main -m transcription
+            mypy_path: /workspace/src/ai-runtime:/workspace/src/trust-layer
     steps:
       - uses: actions/checkout@v4
       - name: Resolve Docker socket group for Testcontainers
@@ -506,9 +500,11 @@ jobs:
         if: always()
         run: |
           docker compose --profile test-python run --rm test-runner-python sh -lc '
-            cd "${{ matrix.source }}" &&
+            cd /tmp &&
             MYPYPATH="${{ matrix.mypy_path }}" \
-              mypy --strict --namespace-packages --explicit-package-bases ${{ matrix.mypy_targets }}
+              mypy --strict --explicit-package-bases \
+                $(find "/workspace/${{ matrix.source }}" -name "*.py" -type f | sort) \
+                --config-file /workspace/pyproject.toml
           '
 
       - name: pytest and constitutional coverage in Docker (C-076, C-080)

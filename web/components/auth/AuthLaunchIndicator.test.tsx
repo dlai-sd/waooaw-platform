@@ -8,8 +8,12 @@ jest.mock('./AuthJourney', () => ({ useAuthJourney: jest.fn() }));
 
 describe('AuthLaunchIndicator', () => {
   beforeAll(() => {
-    HTMLDialogElement.prototype.showModal = function showModal() { this.setAttribute('open', ''); };
-    HTMLDialogElement.prototype.close = function close() { this.removeAttribute('open'); };
+    HTMLDialogElement.prototype.showModal = function showModal() {
+      this.setAttribute('open', '');
+    };
+    HTMLDialogElement.prototype.close = function close() {
+      this.removeAttribute('open');
+    };
   });
 
   beforeEach(() => {

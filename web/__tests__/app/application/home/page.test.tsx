@@ -15,7 +15,9 @@ beforeEach(() => {
   jest.clearAllMocks();
   jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
   jest.mocked(getRequestI18n).mockResolvedValue({ messages: {} } as never);
-  jest.mocked(redirect).mockImplementation(() => { throw new Error('NEXT_REDIRECT'); });
+  jest.mocked(redirect).mockImplementation(() => {
+    throw new Error('NEXT_REDIRECT');
+  });
 });
 
 it('sends an authenticated visitor to Marketplace', async () => {
@@ -38,7 +40,9 @@ it('sends a registered customer without relationships to Marketplace', async () 
 
 it('sends a registered customer with retained relationships to My Agents', async () => {
   jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'ready', session: {} as never });
-  jest.mocked(listEmploymentRelationships).mockResolvedValue({ items: [{ relationshipId: 'relationship-1' }] } as never);
+  jest
+    .mocked(listEmploymentRelationships)
+    .mockResolvedValue({ items: [{ relationshipId: 'relationship-1' }] } as never);
 
   await expect(ApplicationHomePage()).rejects.toThrow('NEXT_REDIRECT');
 

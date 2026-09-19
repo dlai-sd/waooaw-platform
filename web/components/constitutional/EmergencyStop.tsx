@@ -26,9 +26,11 @@ export function EmergencyStop({ contractId, activeSessionIds }: EmergencyStopPro
       });
       if (response.ok) {
         setStatus('confirmed');
-        window.dispatchEvent(new CustomEvent('waooaw:relationship-stopped', {
-          detail: { relationshipId: contractId },
-        }));
+        window.dispatchEvent(
+          new CustomEvent('waooaw:relationship-stopped', {
+            detail: { relationshipId: contractId },
+          })
+        );
       } else {
         setStatus('failed');
       }
@@ -37,15 +39,15 @@ export function EmergencyStop({ contractId, activeSessionIds }: EmergencyStopPro
     }
   }
 
-  const message = !ready
-    ? 'No active work to stop'
-    : status === 'stopping'
+  const message = ready
+    ? status === 'stopping'
       ? 'Stopping active work…'
       : status === 'confirmed'
         ? 'Emergency Stop confirmed'
         : status === 'failed'
           ? 'Stop not confirmed. Try again.'
-          : 'Emergency Stop';
+          : 'Emergency Stop'
+    : 'No active work to stop';
 
   return (
     <div className="stop-control" aria-live="polite">

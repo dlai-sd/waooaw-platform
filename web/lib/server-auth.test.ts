@@ -31,14 +31,16 @@ it('exposes persisted chunked cookies through the request API NextAuth consumes'
     { name: '__Secure-next-auth.session-token.1', value: 'second' },
   ];
   jest.mocked(cookies).mockResolvedValue({ getAll: () => persistedCookies } as never);
-  jest.mocked(headers).mockResolvedValue(new Headers({
-    cookie: '__Secure-next-auth.session-token.0=first; __Secure-next-auth.session-token.1=second',
-  }) as never);
+  jest.mocked(headers).mockResolvedValue(
+    new Headers({
+      cookie: '__Secure-next-auth.session-token.0=first; __Secure-next-auth.session-token.1=second',
+    }) as never
+  );
   jest.mocked(getToken).mockResolvedValue({ accessToken: 'access-token' });
   jest.mocked(activeAccessToken).mockReturnValue('access-token');
 
   await expect(getServerAccessToken()).resolves.toBe('access-token');
 
-  const request = jest.mocked(getToken).mock.calls.at(-1)![0].req as NextRequest;
+  const request = jest.mocked(getToken).mock.calls.at(-1)?.[0].req as NextRequest;
   expect(request.cookies.getAll()).toEqual(persistedCookies);
 });

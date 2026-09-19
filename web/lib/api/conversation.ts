@@ -17,7 +17,10 @@ export async function conversationProblem(error: unknown): Promise<{ status: num
     const body = await error.response.json().catch(() => undefined);
     return {
       status: error.response.status,
-      body: body ?? { code: 'CONVERSATION_EXECUTION_UNAVAILABLE', title: 'Conversation request could not be completed.' },
+      body: body ?? {
+        code: 'CONVERSATION_EXECUTION_UNAVAILABLE',
+        title: 'Conversation request could not be completed.',
+      },
     };
   }
   return {
@@ -30,7 +33,7 @@ export async function openConversationStream(
   relationshipId: string,
   accessToken: string,
   lastEventId: string | null,
-  signal: AbortSignal,
+  signal: AbortSignal
 ): Promise<Response> {
   const headers = new Headers({
     Accept: 'text/event-stream',
@@ -40,6 +43,6 @@ export async function openConversationStream(
 
   return fetch(
     `${businessPlatformUrl}/api/v1/employment/relationships/${encodeURIComponent(relationshipId)}/conversation/stream`,
-    { cache: 'no-store', headers, signal },
+    { cache: 'no-store', headers, signal }
   );
 }

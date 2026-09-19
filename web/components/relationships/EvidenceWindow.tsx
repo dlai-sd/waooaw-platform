@@ -4,7 +4,10 @@ import { useState } from 'react';
 import type { RelationshipEvidencePageV1 } from '@/lib/api/generated/models/RelationshipEvidencePageV1';
 import { RelationshipEvidenceExportOutcomeV1FromJSON } from '@/lib/api/generated/models/RelationshipEvidenceExportOutcomeV1';
 
-export function EvidenceWindow({ relationshipId, evidence }: {
+export function EvidenceWindow({
+  relationshipId,
+  evidence,
+}: {
   relationshipId: string;
   evidence: RelationshipEvidencePageV1;
 }) {
@@ -32,13 +35,24 @@ export function EvidenceWindow({ relationshipId, evidence }: {
       <p className="section-label">Evidence</p>
       <div className="evidence-window-heading">
         <h2 id="evidence-window-title">Customer evidence window</h2>
-        <button type="button" onClick={requestExport}>Export evidence</button>
+        <button type="button" onClick={requestExport}>
+          Export evidence
+        </button>
       </div>
       <p className="currency-state">Participant observation unresolved</p>
-      {status && <p role="status">{status}</p>}
+      {status && <output>{status}</output>}
       {downloadUrl && <a href={downloadUrl}>Download evidence export</a>}
-      {evidence.items.length === 0 ? <p className="empty-meaning">No customer-visible evidence is recorded yet.</p> : (
-        <ol>{evidence.items.map((item) => <li key={item.evidenceId}><span>{item.subject}</span><strong>{item.state.toLowerCase()}</strong></li>)}</ol>
+      {evidence.items.length === 0 ? (
+        <p className="empty-meaning">No customer-visible evidence is recorded yet.</p>
+      ) : (
+        <ol>
+          {evidence.items.map((item) => (
+            <li key={item.evidenceId}>
+              <span>{item.subject}</span>
+              <strong>{item.state.toLowerCase()}</strong>
+            </li>
+          ))}
+        </ol>
       )}
     </section>
   );

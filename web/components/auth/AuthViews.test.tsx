@@ -12,13 +12,21 @@ jest.mock('@/lib/api/identity', () => ({ getIdentitySession: jest.fn(), listIden
 jest.mock('@/lib/i18n-server', () => ({ getRequestI18n: jest.fn() }));
 jest.mock('@/lib/server-auth', () => ({ getServerAccessToken: jest.fn() }));
 jest.mock('./ProviderCommands', () => ({
-  ProviderCommands: ({ callbackUrl, intent, providers }: { callbackUrl: string; intent: string; providers: IdentityProvider[] }) => (
-    <div data-testid="provider-commands" data-callback-url={callbackUrl} data-intent={intent}>{providers.length} providers</div>
+  ProviderCommands: ({
+    callbackUrl,
+    intent,
+    providers,
+  }: { callbackUrl: string; intent: string; providers: IdentityProvider[] }) => (
+    <div data-testid="provider-commands" data-callback-url={callbackUrl} data-intent={intent}>
+      {providers.length} providers
+    </div>
   ),
 }));
 jest.mock('./RegistrationFlow', () => ({
   RegistrationFlow: ({ locale, returnTo }: { locale: string; returnTo: string }) => (
-    <div data-testid="registration-flow" data-return-to={returnTo}>{locale}</div>
+    <div data-testid="registration-flow" data-return-to={returnTo}>
+      {locale}
+    </div>
   ),
 }));
 
@@ -41,7 +49,9 @@ beforeEach(() => {
   } as Awaited<ReturnType<typeof getRequestI18n>>);
   jest.mocked(listIdentityProviders).mockResolvedValue(providers);
   jest.mocked(getServerAccessToken).mockResolvedValue(undefined);
-  jest.mocked(redirect).mockImplementation(() => { throw new Error('NEXT_REDIRECT'); });
+  jest.mocked(redirect).mockImplementation(() => {
+    throw new Error('NEXT_REDIRECT');
+  });
 });
 
 describe('authentication views', () => {
@@ -66,8 +76,9 @@ describe('authentication views', () => {
     jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
     jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'registration-required' });
 
-    await expect(LoginView({ searchParams: Promise.resolve({ returnTo: '/settings' }) }))
-      .rejects.toThrow('NEXT_REDIRECT');
+    await expect(LoginView({ searchParams: Promise.resolve({ returnTo: '/settings' }) })).rejects.toThrow(
+      'NEXT_REDIRECT'
+    );
 
     expect(redirect).toHaveBeenCalledWith('/marketplace');
     expect(listIdentityProviders).not.toHaveBeenCalled();
@@ -84,8 +95,9 @@ describe('authentication views', () => {
     jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
     jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'ready', session: {} as never });
 
-    await expect(LoginView({ searchParams: Promise.resolve({ returnTo: '/settings' }) }))
-      .rejects.toThrow('NEXT_REDIRECT');
+    await expect(LoginView({ searchParams: Promise.resolve({ returnTo: '/settings' }) })).rejects.toThrow(
+      'NEXT_REDIRECT'
+    );
 
     expect(redirect).toHaveBeenCalledWith('/settings');
     expect(listIdentityProviders).not.toHaveBeenCalled();
@@ -95,8 +107,9 @@ describe('authentication views', () => {
     jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
     jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'unavailable' });
 
-    await expect(LoginView({ searchParams: Promise.resolve({ returnTo: '/settings' }) }))
-      .rejects.toThrow('NEXT_REDIRECT');
+    await expect(LoginView({ searchParams: Promise.resolve({ returnTo: '/settings' }) })).rejects.toThrow(
+      'NEXT_REDIRECT'
+    );
 
     expect(redirect).toHaveBeenCalledWith('/settings');
     expect(listIdentityProviders).not.toHaveBeenCalled();

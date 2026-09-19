@@ -18,19 +18,28 @@ describe('relationship contract journey proxy', () => {
   afterEach(() => jest.restoreAllMocks());
 
   it('reconciles one exact checkout intent through the authenticated BP read', async () => {
-    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(JSON.stringify({
-      outcomeKind: 'CAPTURED', checkoutIntentId,
-    }), { status: 200 }));
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          outcomeKind: 'CAPTURED',
+          checkoutIntentId,
+        }),
+        { status: 200 }
+      )
+    );
     const { GET } = await import('./relationships/[relationshipId]/contract-journey/route');
 
-    const response = await GET(new NextRequest(
-      `http://localhost/api/relationships/${relationshipId}/contract-journey?checkoutIntentId=${checkoutIntentId}`,
-    ), params);
+    const response = await GET(
+      new NextRequest(
+        `http://localhost/api/relationships/${relationshipId}/contract-journey?checkoutIntentId=${checkoutIntentId}`
+      ),
+      params
+    );
 
     expect(response.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledWith(
       `http://localhost:5001/api/v1/employment/relationships/${relationshipId}/checkout-intents/${checkoutIntentId}`,
-      expect.objectContaining({ cache: 'no-store' }),
+      expect.objectContaining({ cache: 'no-store' })
     );
     const headers = new Headers(fetchMock.mock.calls[0][1]?.headers);
     expect(headers.get('Authorization')).toBe('Bearer server-token');

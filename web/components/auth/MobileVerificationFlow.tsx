@@ -20,7 +20,11 @@ export function MobileVerificationFlow({ messages, returnTo }: { messages: Ident
     const idempotencyKey = keys.current.get(action) ?? crypto.randomUUID();
     keys.current.set(action, idempotencyKey);
     try {
-      const response = await fetch('/api/identity/account', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, idempotencyKey, ...fields }) });
+      const response = await fetch('/api/identity/account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, idempotencyKey, ...fields }),
+      });
       const body = await response.json();
       if (!response.ok) throw new Error(typeof body.title === 'string' ? body.title : messages.unavailable);
       keys.current.delete(action);
@@ -33,16 +37,68 @@ export function MobileVerificationFlow({ messages, returnTo }: { messages: Ident
     }
   }
 
-  return <div className="registration-flow">
-    {error ? <p className="identity-error" role="alert">{error}</p> : null}
-    {!challenge ? <form className="identity-form" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); void command('mobile-start', { mobile: String(form.get('mobile') ?? '') }); }}>
-      <label>{messages.mobile}<input autoComplete="tel" name="mobile" pattern="^\+[1-9][0-9]{7,14}$" required type="tel" /></label>
-      <button className="primary-command" disabled={pending} type="submit">{messages.sendCode} <Smartphone aria-hidden="true" size={18} /></button>
-    </form> : <form className="identity-form" onSubmit={(event) => { event.preventDefault(); const formElement = event.currentTarget; const form = new FormData(formElement); void command('mobile-confirm', { challengeId: challenge.challengeId, code: String(form.get('code') ?? '') }).finally(() => formElement.reset()); }}>
-      <p>{messages.verificationSent} <strong>{challenge.maskedDestination}</strong>.</p>
-      <label>{messages.code}<input autoComplete="one-time-code" inputMode="numeric" maxLength={6} minLength={6} name="code" pattern="[0-9]{6}" required /></label>
-      <button className="primary-command" disabled={pending} type="submit">{messages.verifyCode} <CheckCircle2 aria-hidden="true" size={18} /></button>
-    </form>}
-    {pending ? <span aria-live="polite" className="identity-pending"><LoaderCircle aria-hidden="true" className="spin" size={18} /> {messages.working}</span> : null}
-  </div>;
+  return (
+    <div className="registration-flow">
+      {error ? (
+        <p className="identity-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+      {challenge ? (
+        <form
+          className="identity-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const formElement = event.currentTarget;
+            const form = new FormData(formElement);
+            void command('mobile-confirm', {
+              challengeId: challenge.challengeId,
+              code: String(form.get('code') ?? ''),
+            }).finally(() => formElement.reset());
+          }}
+        >
+          <p>
+            {messages.verificationSent} <strong>{challenge.maskedDestination}</strong>.
+          </p>
+          <label>
+            {messages.code}
+            <input
+              autoComplete="one-time-code"
+              inputMode="numeric"
+              maxLength={6}
+              minLength={6}
+              name="code"
+              pattern="[0-9]{6}"
+              required
+            />
+          </label>
+          <button className="primary-command" disabled={pending} type="submit">
+            {messages.verifyCode} <CheckCircle2 aria-hidden="true" size={18} />
+          </button>
+        </form>
+      ) : (
+        <form
+          className="identity-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const form = new FormData(event.currentTarget);
+            void command('mobile-start', { mobile: String(form.get('mobile') ?? '') });
+          }}
+        >
+          <label>
+            {messages.mobile}
+            <input autoComplete="tel" name="mobile" pattern="^\+[1-9][0-9]{7,14}$" required type="tel" />
+          </label>
+          <button className="primary-command" disabled={pending} type="submit">
+            {messages.sendCode} <Smartphone aria-hidden="true" size={18} />
+          </button>
+        </form>
+      )}
+      {pending ? (
+        <span aria-live="polite" className="identity-pending">
+          <LoaderCircle aria-hidden="true" className="spin" size={18} /> {messages.working}
+        </span>
+      ) : null}
+    </div>
+  );
 }

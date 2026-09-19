@@ -11,7 +11,9 @@ import { getRequestI18n } from '@/lib/i18n-server';
 import { safeReturnTarget } from '@/lib/safe-return';
 import { getServerAccessToken } from '@/lib/server-auth';
 
-export async function RegisterView({ searchParams }: { searchParams?: Promise<{ returnTo?: string | string[] }> } = {}) {
+export async function RegisterView({
+  searchParams,
+}: { searchParams?: Promise<{ returnTo?: string | string[] }> } = {}) {
   const accessToken = await getServerAccessToken();
   const resolvedSearchParams = await searchParams;
   const { locale } = await getRequestI18n();
@@ -22,12 +24,19 @@ export async function RegisterView({ searchParams }: { searchParams?: Promise<{ 
     return (
       <section className="auth-view auth-entry-view identity-view">
         <AuthBrand subtitle="Start your professional journey." title="Create your WAOOAW account" />
-        <ProviderCommands callbackUrl={`/register?returnTo=${encodeURIComponent(returnTo)}`} intent="register" providers={providers} />
+        <ProviderCommands
+          callbackUrl={`/register?returnTo=${encodeURIComponent(returnTo)}`}
+          intent="register"
+          providers={providers}
+        />
         <p className="auth-legal">
           {messages.legalPrefix} <Link href="/terms">{messages.terms}</Link> {messages.legalAnd}{' '}
           <Link href="/privacy">{messages.privacy}</Link>.
         </p>
-        <p className="auth-switch">{messages.existingAccount} <Link href={`/login?returnTo=${encodeURIComponent(returnTo)}`}>{messages.signIn}</Link></p>
+        <p className="auth-switch">
+          {messages.existingAccount}{' '}
+          <Link href={`/login?returnTo=${encodeURIComponent(returnTo)}`}>{messages.signIn}</Link>
+        </p>
       </section>
     );
   }

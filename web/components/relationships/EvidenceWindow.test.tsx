@@ -13,14 +13,22 @@ describe('EvidenceWindow', () => {
   it('offers the completed canonical export without claiming participant acknowledgement', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ schemaVersion: '1.0', exportId: 'export-1', status: 'COMPLETED', downloadUrl: 'https://evidence.example/export-1' }),
+      json: async () => ({
+        schemaVersion: '1.0',
+        exportId: 'export-1',
+        status: 'COMPLETED',
+        downloadUrl: 'https://evidence.example/export-1',
+      }),
     } as Response);
     render(<EvidenceWindow relationshipId={evidence.relationshipId} evidence={evidence} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Export evidence' }));
 
     expect(await screen.findByText('Export ready')).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Download evidence export' })).toHaveAttribute('href', 'https://evidence.example/export-1');
+    expect(screen.getByRole('link', { name: 'Download evidence export' })).toHaveAttribute(
+      'href',
+      'https://evidence.example/export-1'
+    );
     expect(screen.getByText('Participant observation unresolved')).toBeVisible();
   });
 

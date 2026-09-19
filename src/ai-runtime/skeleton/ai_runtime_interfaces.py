@@ -6,6 +6,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import Any
 from uuid import UUID
 
 
@@ -23,7 +24,7 @@ class IPSERouter(ABC):
     """
 
     @abstractmethod
-    async def route(self, request: InferenceRequest, jwt_claims: dict) -> LlmTierEnum:
+    async def route(self, request: InferenceRequest, jwt_claims: dict[str, Any]) -> LlmTierEnum:
         # Steward bypass: always FRONTIER (ADR-028)
         # Plan tier check: per ADR-028
         # Bundle ration check: WBE balance query per C-095 (after GOAL-PLATFORM-REGISTRY)

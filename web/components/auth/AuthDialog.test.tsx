@@ -16,8 +16,12 @@ describe('AuthDialog', () => {
   } as ReturnType<typeof useRouter>;
 
   beforeAll(() => {
-    HTMLDialogElement.prototype.showModal = function showModal() { this.setAttribute('open', ''); };
-    HTMLDialogElement.prototype.close = function close() { this.removeAttribute('open'); };
+    HTMLDialogElement.prototype.showModal = function showModal() {
+      this.setAttribute('open', '');
+    };
+    HTMLDialogElement.prototype.close = function close() {
+      this.removeAttribute('open');
+    };
   });
 
   beforeEach(() => {
@@ -30,7 +34,11 @@ describe('AuthDialog', () => {
     document.body.appendChild(trigger);
     trigger.focus();
 
-    const { unmount } = render(<AuthDialog><h1 id="auth-dialog-title">Log in</h1></AuthDialog>);
+    const { unmount } = render(
+      <AuthDialog>
+        <h1 id="auth-dialog-title">Log in</h1>
+      </AuthDialog>
+    );
     const dialog = screen.getByRole('dialog', { name: 'Log in' });
     expect(dialog).toHaveAttribute('open');
 
@@ -44,7 +52,12 @@ describe('AuthDialog', () => {
   });
 
   it('dismisses only when the backdrop itself is clicked', () => {
-    render(<AuthDialog><h1 id="auth-dialog-title">Register</h1><button type="button">Inside</button></AuthDialog>);
+    render(
+      <AuthDialog>
+        <h1 id="auth-dialog-title">Register</h1>
+        <button type="button">Inside</button>
+      </AuthDialog>
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Inside' }));
     expect(router.replace).not.toHaveBeenCalled();
 
@@ -57,7 +70,11 @@ describe('AuthDialog', () => {
     const trigger = document.createElement('button');
     document.body.append(main, trigger);
     trigger.focus();
-    const { unmount } = render(<AuthDialog><h1 id="auth-dialog-title">Log in</h1></AuthDialog>);
+    const { unmount } = render(
+      <AuthDialog>
+        <h1 id="auth-dialog-title">Log in</h1>
+      </AuthDialog>
+    );
     trigger.remove();
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(router.replace).toHaveBeenCalledWith('/', { scroll: false });

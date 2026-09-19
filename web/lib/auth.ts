@@ -16,7 +16,7 @@ export function keycloakClientConfig(environment: KeycloakEnvironment = process.
   const publicClient = environment.KEYCLOAK_PUBLIC_CLIENT === 'true';
   return {
     clientId: environment.KEYCLOAK_CLIENT_ID ?? 'waooaw-web',
-    clientSecret: publicClient ? '' : environment.KEYCLOAK_CLIENT_SECRET ?? 'local-development-only',
+    clientSecret: publicClient ? '' : (environment.KEYCLOAK_CLIENT_SECRET ?? 'local-development-only'),
     issuer: environment.KEYCLOAK_ISSUER ?? 'http://localhost:8080/realms/waooaw',
     ...(publicClient ? { client: { token_endpoint_auth_method: 'none' as const } } : {}),
   };
@@ -44,10 +44,10 @@ export function hasFounderClaim(profile: unknown): boolean {
 }
 
 export function activeAccessToken(token: JWT, nowSeconds = Math.floor(Date.now() / 1000)): string | undefined {
-  return typeof token.accessToken === 'string'
-    && token.accessToken.trim().length > 0
-    && typeof token.accessTokenExpiresAt === 'number'
-    && token.accessTokenExpiresAt > nowSeconds
+  return typeof token.accessToken === 'string' &&
+    token.accessToken.trim().length > 0 &&
+    typeof token.accessTokenExpiresAt === 'number' &&
+    token.accessTokenExpiresAt > nowSeconds
     ? token.accessToken
     : undefined;
 }
@@ -62,9 +62,9 @@ function accessTokenClaims(accessToken: string): unknown {
 }
 
 function purgeAuthentication(token: JWT): JWT {
-  delete token.accessToken;
-  delete token.accessTokenExpiresAt;
-  delete token.refreshToken;
+  Reflect.deleteProperty(token, 'accessToken');
+  Reflect.deleteProperty(token, 'accessTokenExpiresAt');
+  Reflect.deleteProperty(token, 'refreshToken');
   token.founder = false;
   return token;
 }
@@ -79,27 +79,27 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
   if (keycloakClient.clientSecret) body.set('client_secret', keycloakClient.clientSecret);
 
   try {
-    const response = await fetch(
-      `${keycloakClient.issuer.replace(/\/$/, '')}/protocol/openid-connect/token`,
-      {
-        method: 'POST',
-        headers: { 'content-type': 'application/x-www-form-urlencoded' },
-        body,
-        cache: 'no-store',
-      },
-    );
+    const response = await fetch(`${keycloakClient.issuer.replace(/\/$/, '')}/protocol/openid-connect/token`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body,
+      cache: 'no-store',
+    });
     if (!response.ok) return purgeAuthentication(token);
-    const refreshed = await response.json() as {
+    const refreshed = (await response.json()) as {
       access_token?: unknown;
       expires_in?: unknown;
       refresh_token?: unknown;
       id_token?: unknown;
     };
-    if (typeof refreshed.access_token !== 'string'
-      || refreshed.access_token.trim().length === 0
-      || typeof refreshed.expires_in !== 'number'
-      || !Number.isFinite(refreshed.expires_in)
-      || refreshed.expires_in <= 0) return purgeAuthentication(token);
+    if (
+      typeof refreshed.access_token !== 'string' ||
+      refreshed.access_token.trim().length === 0 ||
+      typeof refreshed.expires_in !== 'number' ||
+      !Number.isFinite(refreshed.expires_in) ||
+      refreshed.expires_in <= 0
+    )
+      return purgeAuthentication(token);
 
     token.accessToken = refreshed.access_token;
     token.accessTokenExpiresAt = Math.floor(Date.now() / 1000) + refreshed.expires_in;

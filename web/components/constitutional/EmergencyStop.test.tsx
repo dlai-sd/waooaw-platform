@@ -29,9 +29,14 @@ describe('EmergencyStop', () => {
     render(<EmergencyStop contractId="contract-1" activeSessionIds={[]} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Emergency Stop' }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/emergency-stop', expect.objectContaining({
-      body: JSON.stringify({ contractId: 'contract-1' }),
-    })));
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/emergency-stop',
+        expect.objectContaining({
+          body: JSON.stringify({ contractId: 'contract-1' }),
+        })
+      )
+    );
   });
 
   it('does not show confirmation when the stop request fails', async () => {

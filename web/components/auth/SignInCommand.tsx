@@ -9,5 +9,17 @@ import { useState } from 'react';
 
 export function SignInCommand({ callbackUrl = '/home', label }: { callbackUrl?: string; label: string }) {
   const [pending, setPending] = useState(false);
-  return <button className="primary-command" disabled={pending} type="button" onClick={() => { setPending(true); void signIn('keycloak', { callbackUrl }); }}>{label} <ArrowRight aria-hidden="true" size={18} /></button>;
+  return (
+    <button
+      className="primary-command"
+      disabled={pending}
+      type="button"
+      onClick={() => {
+        setPending(true);
+        void signIn('keycloak', { callbackUrl });
+      }}
+    >
+      {label} <ArrowRight aria-hidden="true" size={18} />
+    </button>
+  );
 }

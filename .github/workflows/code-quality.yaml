@@ -89,7 +89,11 @@ jobs:
       hashFiles('src/ai-runtime/pyproject.toml') != ''
     strategy:
       matrix:
-        service: [src/professional-runtime, src/ai-runtime]
+        include:
+          - service: src/professional-runtime
+            mypy_path: /workspace/src/professional-runtime
+          - service: src/ai-runtime
+            mypy_path: /workspace/src/ai-runtime:/workspace/src/trust-layer
     steps:
       - uses: actions/checkout@v4
       - name: Build Python quality runner
@@ -103,7 +107,14 @@ jobs:
         run: docker compose --profile test-python run --rm test-runner-python ruff format --check ${{ matrix.service }}
 
       - name: mypy strict type check
-        run: docker compose --profile test-python run --rm test-runner-python mypy --strict ${{ matrix.service }} --config-file pyproject.toml
+        run: |
+          docker compose --profile test-python run --rm test-runner-python sh -lc '
+            cd /tmp &&
+            MYPYPATH="${{ matrix.mypy_path }}" \
+              mypy --strict --explicit-package-bases \
+                $(find "/workspace/${{ matrix.service }}" -name "*.py" -type f | sort) \
+                --config-file /workspace/pyproject.toml
+          '
 
       - name: Bandit security scan
         run: |

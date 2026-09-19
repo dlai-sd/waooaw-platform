@@ -22,9 +22,9 @@ describe('identity provider projection', () => {
   afterEach(() => jest.restoreAllMocks());
 
   it('returns the Business Platform readiness projection', async () => {
-    const projection = jest.spyOn(IdentityApi.prototype, 'listIdentityProviders').mockResolvedValue({ providers: [
-      { id: 'GOOGLE', displayName: 'Google', authenticationPath: 'GOOGLE', availability: 'AVAILABLE' },
-    ] });
+    const projection = jest.spyOn(IdentityApi.prototype, 'listIdentityProviders').mockResolvedValue({
+      providers: [{ id: 'GOOGLE', displayName: 'Google', authenticationPath: 'GOOGLE', availability: 'AVAILABLE' }],
+    });
 
     await expect(listIdentityProviders()).resolves.toEqual([
       expect.objectContaining({ id: 'GOOGLE', availability: 'AVAILABLE' }),
@@ -33,7 +33,9 @@ describe('identity provider projection', () => {
   });
 
   it('fails closed when readiness cannot be obtained', async () => {
-    const projection = jest.spyOn(IdentityApi.prototype, 'listIdentityProviders').mockRejectedValue(new Error('unavailable'));
+    const projection = jest
+      .spyOn(IdentityApi.prototype, 'listIdentityProviders')
+      .mockRejectedValue(new Error('unavailable'));
 
     const providers = await listIdentityProviders();
 
@@ -44,12 +46,15 @@ describe('identity provider projection', () => {
   });
 
   it('recovers when the provider projection becomes available after a transient failure', async () => {
-    const projection = jest.spyOn(IdentityApi.prototype, 'listIdentityProviders')
+    const projection = jest
+      .spyOn(IdentityApi.prototype, 'listIdentityProviders')
       .mockRejectedValueOnce(new Error('cold start'))
-      .mockResolvedValueOnce({ providers: [
-        { id: 'GOOGLE', displayName: 'Google', authenticationPath: 'GOOGLE', availability: 'AVAILABLE' },
-        { id: 'FACEBOOK', displayName: 'Facebook', authenticationPath: 'META', availability: 'AVAILABLE' },
-      ] });
+      .mockResolvedValueOnce({
+        providers: [
+          { id: 'GOOGLE', displayName: 'Google', authenticationPath: 'GOOGLE', availability: 'AVAILABLE' },
+          { id: 'FACEBOOK', displayName: 'Facebook', authenticationPath: 'META', availability: 'AVAILABLE' },
+        ],
+      });
 
     await expect(listIdentityProviders()).resolves.toEqual([
       expect.objectContaining({ id: 'GOOGLE', availability: 'AVAILABLE' }),
@@ -70,9 +75,9 @@ describe('identity provider projection', () => {
     [403, 'step-up'],
     [503, 'unavailable'],
   ] as const)('maps HTTP %s to a truthful %s state', async (status, kind) => {
-    jest.spyOn(IdentityApi.prototype, 'getIdentitySession').mockRejectedValue(
-      new ResponseError({ status } as Response),
-    );
+    jest
+      .spyOn(IdentityApi.prototype, 'getIdentitySession')
+      .mockRejectedValue(new ResponseError({ status } as Response));
 
     await expect(getIdentitySession('access-token')).resolves.toEqual({ kind });
   });
@@ -82,7 +87,7 @@ describe('identity provider projection', () => {
       new ResponseError({
         status: 409,
         clone: () => ({ json: async () => ({ code: 'REGISTRATION_REQUIRED' }) }),
-      } as Response),
+      } as Response)
     );
 
     await expect(getIdentitySession('access-token')).resolves.toEqual({ kind: 'registration-required' });

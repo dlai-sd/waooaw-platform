@@ -10,17 +10,21 @@ const unavailableMessage = 'Apple integration is coming soon. Meanwhile use your
 export function AppleSignInCommand() {
   const [showUnavailable, setShowUnavailable] = useState(false);
 
-  return <div className="apple-sign-in">
-    <button
-      className="provider-command"
-      type="button"
-      aria-describedby={showUnavailable ? 'apple-integration-status' : undefined}
-      onClick={() => setShowUnavailable(true)}
-    >
-      Continue with Apple
-    </button>
-    {showUnavailable ? <p id="apple-integration-status" role="alert">
-      <strong>{unavailableMessage}</strong>
-    </p> : null}
-  </div>;
+  return (
+    <div className="apple-sign-in">
+      <button
+        className="provider-command"
+        type="button"
+        aria-describedby={showUnavailable ? 'apple-integration-status' : undefined}
+        onClick={() => setShowUnavailable(true)}
+      >
+        Continue with Apple
+      </button>
+      {showUnavailable ? (
+        <p id="apple-integration-status" role="alert">
+          <strong>{unavailableMessage}</strong>
+        </p>
+      ) : null}
+    </div>
+  );
 }

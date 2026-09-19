@@ -33,11 +33,15 @@ export function beginAuthTransition(): string {
 export function recordAuthTransition(stage: AuthTransitionStage, reasonCode = 'OK'): void {
   const transition = readTransition();
   if (!transition) return;
-  window.dispatchEvent(new CustomEvent('waooaw:auth-transition', { detail: {
-    correlationId: transition.correlationId,
-    durationMs: Math.max(0, performance.now() - transition.startedAt),
-    reasonCode,
-    stage,
-  } }));
+  window.dispatchEvent(
+    new CustomEvent('waooaw:auth-transition', {
+      detail: {
+        correlationId: transition.correlationId,
+        durationMs: Math.max(0, performance.now() - transition.startedAt),
+        reasonCode,
+        stage,
+      },
+    })
+  );
   if (stage === 'SESSION_RESOLVED') sessionStorage.removeItem(storageKey);
 }

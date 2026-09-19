@@ -23,7 +23,9 @@ function streamEvent(eventType: string, overrides: Record<string, unknown> = {})
 
 function pendingStream(signal?: AbortSignal | null, events: unknown[] = []) {
   const queued = events.map((event) => Buffer.from(`data: ${JSON.stringify(event)}\n\n`));
-  let pending: { resolve: (result: ReadableStreamReadResult<Uint8Array>) => void; reject: (reason: unknown) => void } | undefined;
+  let pending:
+    | { resolve: (result: ReadableStreamReadResult<Uint8Array>) => void; reject: (reason: unknown) => void }
+    | undefined;
   signal?.addEventListener('abort', () => pending?.reject(new DOMException('Aborted', 'AbortError')), { once: true });
   return {
     response: {
@@ -34,7 +36,9 @@ function pendingStream(signal?: AbortSignal | null, events: unknown[] = []) {
           read: () => {
             const value = queued.shift();
             if (value) return Promise.resolve({ done: false as const, value });
-            return new Promise<ReadableStreamReadResult<Uint8Array>>((resolve, reject) => { pending = { resolve, reject }; });
+            return new Promise<ReadableStreamReadResult<Uint8Array>>((resolve, reject) => {
+              pending = { resolve, reject };
+            });
           },
         }),
       },
@@ -62,10 +66,12 @@ function statusResponse(status: number) {
 
 function installFetch(
   apiHandler: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>,
-  streamHandler: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response> = async (_input, init) => streamResponse(init?.signal),
+  streamHandler: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response> = async (_input, init) =>
+    streamResponse(init?.signal)
 ): FetchMock {
   const mock = jest.fn((input: RequestInfo | URL, init?: RequestInit) => {
-    if (String(input).endsWith('/skill-decisions')) return jsonResponse({ skills: [{ skillId: 'campaign_planning', skillVersion: '1.0.0' }] });
+    if (String(input).endsWith('/skill-decisions'))
+      return jsonResponse({ skills: [{ skillId: 'campaign_planning', skillVersion: '1.0.0' }] });
     return String(input).endsWith('/stream') ? streamHandler(input, init) : apiHandler(input, init);
   }) as FetchMock;
   global.fetch = mock;
@@ -73,7 +79,9 @@ function installFetch(
 }
 
 function apiCalls(mock: FetchMock) {
-  return mock.mock.calls.filter(([input]) => !String(input).endsWith('/stream') && !String(input).endsWith('/skill-decisions'));
+  return mock.mock.calls.filter(
+    ([input]) => !String(input).endsWith('/stream') && !String(input).endsWith('/skill-decisions')
+  );
 }
 
 function streamCalls(mock: FetchMock) {
@@ -100,7 +108,14 @@ const planCard = {
   owner: 'SHARED' as const,
   state: 'ACTIVE',
   effect: 'Sets the next agreed outcome.',
-  commands: [{ commandId: 'VIEW_PLAN', label: 'View plan', availability: 'AVAILABLE' as const, unavailableReason: 'Plan workspace is not available in this release.' }],
+  commands: [
+    {
+      commandId: 'VIEW_PLAN',
+      label: 'View plan',
+      availability: 'AVAILABLE' as const,
+      unavailableReason: 'Plan workspace is not available in this release.',
+    },
+  ],
   goal: 'Increase qualified enquiries',
   progressState: 'ON_TRACK',
 };
@@ -108,18 +123,36 @@ const planCard = {
 const governedCards = [
   { ...planCard, cardId: 'e2d02f31-b25f-46e7-bec5-a0cb206c02e1' },
   {
-    schemaVersion: '1.0' as const, cardId: 'ecb34c35-1b38-44c5-afdb-d5dac78aed9f', cardType: 'ACTION' as const,
-    owner: 'CUSTOMER' as const, state: 'READY', effect: 'Starts approved customer work.', commands: [], goal: 'Approve the brief',
+    schemaVersion: '1.0' as const,
+    cardId: 'ecb34c35-1b38-44c5-afdb-d5dac78aed9f',
+    cardType: 'ACTION' as const,
+    owner: 'CUSTOMER' as const,
+    state: 'READY',
+    effect: 'Starts approved customer work.',
+    commands: [],
+    goal: 'Approve the brief',
   },
   {
-    schemaVersion: '1.0' as const, cardId: '71383a2e-6957-4108-b4dd-0739f59d6c87', cardType: 'DELIVERABLE' as const,
-    owner: 'PROFESSIONAL' as const, state: 'DRAFT', effect: 'Makes the draft available for review.', commands: [],
-    title: 'Campaign brief', deliverableState: 'REVIEW',
+    schemaVersion: '1.0' as const,
+    cardId: '71383a2e-6957-4108-b4dd-0739f59d6c87',
+    cardType: 'DELIVERABLE' as const,
+    owner: 'PROFESSIONAL' as const,
+    state: 'DRAFT',
+    effect: 'Makes the draft available for review.',
+    commands: [],
+    title: 'Campaign brief',
+    deliverableState: 'REVIEW',
   },
   {
-    schemaVersion: '1.0' as const, cardId: '7c2dbe82-da1c-42cd-8700-dad182132b99', cardType: 'DECISION' as const,
-    owner: 'SHARED' as const, state: 'OPEN', effect: 'Changes the approved campaign direction.', commands: [],
-    decisionState: 'CUSTOMER_INPUT_REQUIRED', authorityImpact: 'No work starts before selection.',
+    schemaVersion: '1.0' as const,
+    cardId: '7c2dbe82-da1c-42cd-8700-dad182132b99',
+    cardType: 'DECISION' as const,
+    owner: 'SHARED' as const,
+    state: 'OPEN',
+    effect: 'Changes the approved campaign direction.',
+    commands: [],
+    decisionState: 'CUSTOMER_INPUT_REQUIRED',
+    authorityImpact: 'No work starts before selection.',
     alternatives: [{ alternativeId: 'A', label: 'Continue', effect: 'Uses the current approved brief.' }],
   },
 ];
@@ -175,7 +208,8 @@ describe('ConversationExperience', () => {
     Object.defineProperty(global, 'TextDecoder', { configurable: true, value: NodeTextDecoder });
     Object.defineProperty(global.crypto, 'randomUUID', {
       configurable: true,
-      value: jest.fn()
+      value: jest
+        .fn()
         .mockReturnValueOnce('51885e4d-53ac-4abf-ad77-58cd127a3dc4')
         .mockReturnValueOnce('f5bc4af1-bb1a-45f9-b979-71f0dfc8379e')
         .mockReturnValue('d075fa11-75c2-4b6e-9a87-510421293a66'),
@@ -197,15 +231,20 @@ describe('ConversationExperience', () => {
     expect(screen.getByRole('article', { name: 'plan card' })).toHaveTextContent('Increase qualified enquiries');
     expect(screen.getByRole('article', { name: 'action card' })).toHaveTextContent('Approve the brief');
     expect(screen.getByRole('article', { name: 'deliverable card' })).toHaveTextContent('Campaign brief');
-    expect(screen.getByRole('article', { name: 'decision card' })).toHaveTextContent('No work starts before selection.');
+    expect(screen.getByRole('article', { name: 'decision card' })).toHaveTextContent(
+      'No work starts before selection.'
+    );
     expect(screen.getByRole('button', { name: 'View plan' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'View plan' })).toHaveAttribute('title', 'Plan workspace is not available in this release.');
+    expect(screen.getByRole('button', { name: 'View plan' })).toHaveAttribute(
+      'title',
+      'Plan workspace is not available in this release.'
+    );
   });
 
   it('never reports recorded evidence without a non-null evidence record identity', async () => {
-    installFetch(() => jsonResponse(timeline([
-      message({ evidenceState: 'RECORDED', evidenceRecordId: undefined, cards: [] }),
-    ])));
+    installFetch(() =>
+      jsonResponse(timeline([message({ evidenceState: 'RECORDED', evidenceRecordId: undefined, cards: [] })]))
+    );
     render(<ConversationExperience relationshipId={relationshipId} />);
 
     expect(await screen.findByText('Evidence pending verification')).toBeVisible();
@@ -213,17 +252,25 @@ describe('ConversationExperience', () => {
   });
 
   it('reconciles before sending one UUID-identified contribution through same-origin BFF', async () => {
-    const fetchMock = jest.fn()
+    const fetchMock = jest
+      .fn()
       .mockImplementationOnce(() => jsonResponse(timeline([])))
       .mockImplementationOnce(() => jsonResponse(timeline([])))
-      .mockImplementationOnce(() => jsonResponse({
-        schemaVersion: '1.0',
-        outcome: 'ACCEPTED',
-        message: message({ actor: 'CUSTOMER', clientMessageId: '51885e4d-53ac-4abf-ad77-58cd127a3dc4', cards: [], partial: false }),
-        executionId: '3ead2d21-f908-40b5-9510-b1e77f516d7e',
-        authoritativeCursor: 'authoritative-cursor-0002',
-        replayed: false,
-      }));
+      .mockImplementationOnce(() =>
+        jsonResponse({
+          schemaVersion: '1.0',
+          outcome: 'ACCEPTED',
+          message: message({
+            actor: 'CUSTOMER',
+            clientMessageId: '51885e4d-53ac-4abf-ad77-58cd127a3dc4',
+            cards: [],
+            partial: false,
+          }),
+          executionId: '3ead2d21-f908-40b5-9510-b1e77f516d7e',
+          authoritativeCursor: 'authoritative-cursor-0002',
+          replayed: false,
+        })
+      );
     const requestMock = installFetch(fetchMock);
     render(<ConversationExperience relationshipId={relationshipId} />);
 
@@ -236,13 +283,15 @@ describe('ConversationExperience', () => {
     const sendCall = apiCalls(requestMock)[2];
     expect(sendCall[0]).toBe(`/api/conversations/${relationshipId}`);
     expect(sendCall[0]).not.toMatch(/5001|professional-runtime|provider/i);
-    expect(JSON.parse(String(sendCall[1]?.body))).toEqual(expect.objectContaining({
-      action: 'send',
-      clientMessageId: '51885e4d-53ac-4abf-ad77-58cd127a3dc4',
-      idempotencyKey: 'f5bc4af1-bb1a-45f9-b979-71f0dfc8379e',
-      skillId: 'campaign_planning',
-      text: 'Please summarize today.',
-    }));
+    expect(JSON.parse(String(sendCall[1]?.body))).toEqual(
+      expect.objectContaining({
+        action: 'send',
+        clientMessageId: '51885e4d-53ac-4abf-ad77-58cd127a3dc4',
+        idempotencyKey: 'f5bc4af1-bb1a-45f9-b979-71f0dfc8379e',
+        skillId: 'campaign_planning',
+        text: 'Please summarize today.',
+      })
+    );
     expect(await screen.findByRole('button', { name: 'Cancel response' })).toBeVisible();
   });
 
@@ -252,7 +301,9 @@ describe('ConversationExperience', () => {
     const requestMock = installFetch(fetchMock);
     render(<ConversationExperience relationshipId={relationshipId} />);
 
-    fireEvent.change(await screen.findByLabelText('Message your professional'), { target: { value: 'Queue this safely.' } });
+    fireEvent.change(await screen.findByLabelText('Message your professional'), {
+      target: { value: 'Queue this safely.' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 
     expect(await screen.findByRole('button', { name: 'Queued' })).toBeDisabled();
@@ -261,32 +312,45 @@ describe('ConversationExperience', () => {
 
     fetchMock
       .mockImplementationOnce(() => jsonResponse(timeline([])))
-      .mockImplementationOnce(() => jsonResponse({
-        schemaVersion: '1.0', outcome: 'ACCEPTED', message: message({ actor: 'CUSTOMER', cards: [], partial: false }),
-        authoritativeCursor: 'authoritative-cursor-0002', replayed: false,
-      }));
+      .mockImplementationOnce(() =>
+        jsonResponse({
+          schemaVersion: '1.0',
+          outcome: 'ACCEPTED',
+          message: message({ actor: 'CUSTOMER', cards: [], partial: false }),
+          authoritativeCursor: 'authoritative-cursor-0002',
+          replayed: false,
+        })
+      );
     setOnline(true);
-      await act(async () => window.dispatchEvent(new Event('online')));
+    await act(async () => window.dispatchEvent(new Event('online')));
 
     await waitFor(() => expect(apiCalls(requestMock)).toHaveLength(3));
     expect(apiCalls(requestMock)[1][0]).toContain('afterCursor=authoritative-cursor-0001');
-    expect(JSON.parse(String(apiCalls(requestMock)[2][1]?.body))).toEqual(expect.objectContaining({
-      idempotencyKey: 'f5bc4af1-bb1a-45f9-b979-71f0dfc8379e',
-      text: 'Queue this safely.',
-    }));
+    expect(JSON.parse(String(apiCalls(requestMock)[2][1]?.body))).toEqual(
+      expect.objectContaining({
+        idempotencyKey: 'f5bc4af1-bb1a-45f9-b979-71f0dfc8379e',
+        text: 'Queue this safely.',
+      })
+    );
     await waitFor(() => expect(localStorage.getItem(`waooaw:conversation:${relationshipId}:outbox`)).toBeNull());
   });
 
   it('reuses the original retry identity only after timeline reconciliation', async () => {
     const unresolved = message({ deliveryState: 'UNRESOLVED', processingState: 'FAILED', cards: [], partial: false });
     localStorage.setItem(`waooaw:conversation:${relationshipId}:retry:${messageId}`, 'original-idempotency-key');
-    const fetchMock = jest.fn()
+    const fetchMock = jest
+      .fn()
       .mockImplementationOnce(() => jsonResponse(timeline([unresolved])))
       .mockImplementationOnce(() => jsonResponse(timeline([unresolved])))
-      .mockImplementationOnce(() => jsonResponse({
-        schemaVersion: '1.0', outcome: 'REPLAYED', message: unresolved,
-        authoritativeCursor: 'authoritative-cursor-0001', replayed: true,
-      }));
+      .mockImplementationOnce(() =>
+        jsonResponse({
+          schemaVersion: '1.0',
+          outcome: 'REPLAYED',
+          message: unresolved,
+          authoritativeCursor: 'authoritative-cursor-0001',
+          replayed: true,
+        })
+      );
     const requestMock = installFetch(fetchMock);
     render(<ConversationExperience relationshipId={relationshipId} />);
 
@@ -295,20 +359,33 @@ describe('ConversationExperience', () => {
     await waitFor(() => expect(apiCalls(requestMock)).toHaveLength(3));
     expect(apiCalls(requestMock)[1][0]).toContain('afterCursor=authoritative-cursor-0001');
     expect(JSON.parse(String(apiCalls(requestMock)[2][1]?.body))).toEqual({
-      action: 'retry', messageId, idempotencyKey: 'original-idempotency-key',
+      action: 'retry',
+      messageId,
+      idempotencyKey: 'original-idempotency-key',
     });
   });
 
   it('cancels an active execution and preserves the ordinary Emergency Stop boundary', async () => {
-    const fetchMock = jest.fn()
+    const fetchMock = jest
+      .fn()
       .mockImplementationOnce(() => jsonResponse(timeline([])))
       .mockImplementationOnce(() => jsonResponse(timeline([])))
-      .mockImplementationOnce(() => jsonResponse({
-        schemaVersion: '1.0', outcome: 'ACCEPTED', message: message({ cards: [], partial: false }),
-        executionId: '3ead2d21-f908-40b5-9510-b1e77f516d7e', authoritativeCursor: 'authoritative-cursor-0002', replayed: false,
-      }))
+      .mockImplementationOnce(() =>
+        jsonResponse({
+          schemaVersion: '1.0',
+          outcome: 'ACCEPTED',
+          message: message({ cards: [], partial: false }),
+          executionId: '3ead2d21-f908-40b5-9510-b1e77f516d7e',
+          authoritativeCursor: 'authoritative-cursor-0002',
+          replayed: false,
+        })
+      )
       .mockImplementationOnce(() => jsonResponse({ schemaVersion: '1.0', state: 'CANCELLED', partial: true }))
-      .mockImplementationOnce(() => jsonResponse(timeline([message({ processingState: 'CANCELLED', partial: true, completionReason: 'CANCELLED' })])));
+      .mockImplementationOnce(() =>
+        jsonResponse(
+          timeline([message({ processingState: 'CANCELLED', partial: true, completionReason: 'CANCELLED' })])
+        )
+      );
     const requestMock = installFetch(fetchMock);
     render(<ConversationExperience relationshipId={relationshipId} />);
 
@@ -317,20 +394,33 @@ describe('ConversationExperience', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Cancel response' }));
 
     await waitFor(() => expect(apiCalls(requestMock)).toHaveLength(5));
-    expect(JSON.parse(String(apiCalls(requestMock)[3][1]?.body))).toEqual(expect.objectContaining({
-      action: 'cancel', executionId: '3ead2d21-f908-40b5-9510-b1e77f516d7e',
-    }));
-    expect(localStorage.getItem(`waooaw:conversation:${relationshipId}:cancel:3ead2d21-f908-40b5-9510-b1e77f516d7e`)).not.toBeNull();
+    expect(JSON.parse(String(apiCalls(requestMock)[3][1]?.body))).toEqual(
+      expect.objectContaining({
+        action: 'cancel',
+        executionId: '3ead2d21-f908-40b5-9510-b1e77f516d7e',
+      })
+    );
+    expect(
+      localStorage.getItem(`waooaw:conversation:${relationshipId}:cancel:3ead2d21-f908-40b5-9510-b1e77f516d7e`)
+    ).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Cancel response' })).toBeVisible();
     expect(requestMock.mock.calls.some(([url]) => String(url).includes('emergency-stop'))).toBe(false);
   });
 
   it('stops stream rendering on stop.applied and paginates older canonical messages', async () => {
-    const older = message({ messageId: '341d3a3d-a1d9-4941-a64b-fe3c95513348', sequence: 1, cards: [], partial: false });
+    const older = message({
+      messageId: '341d3a3d-a1d9-4941-a64b-fe3c95513348',
+      sequence: 1,
+      cards: [],
+      partial: false,
+    });
     const newer = message({ sequence: 2, cards: [], partial: false });
-    const fetchMock = jest.fn()
+    const fetchMock = jest
+      .fn()
       .mockImplementationOnce(() => jsonResponse(timeline([newer], { nextCursor: 'older-page-cursor' })))
-      .mockImplementationOnce(() => jsonResponse(timeline([older], { authoritativeCursor: 'authoritative-cursor-0001' })));
+      .mockImplementationOnce(() =>
+        jsonResponse(timeline([older], { authoritativeCursor: 'authoritative-cursor-0001' }))
+      );
     const stream = controllableStream();
     const requestMock = installFetch(fetchMock, async (_input, init) => stream.response(init?.signal));
     render(<ConversationExperience relationshipId={relationshipId} />);
@@ -382,7 +472,8 @@ describe('ConversationExperience', () => {
       text: 'Saved contribution',
     };
     localStorage.setItem(`waooaw:conversation:${relationshipId}:outbox`, JSON.stringify(contribution));
-    const fetchMock = jest.fn()
+    const fetchMock = jest
+      .fn()
       .mockImplementationOnce(() => jsonResponse(timeline([])))
       .mockImplementationOnce(() => jsonResponse({ title: 'Evidence could not be confirmed.' }, 503));
     installFetch(fetchMock);
@@ -395,7 +486,8 @@ describe('ConversationExperience', () => {
   });
 
   it('advances read position when the timeline identifies an unread boundary', async () => {
-    const fetchMock = jest.fn()
+    const fetchMock = jest
+      .fn()
       .mockImplementationOnce(() => jsonResponse(timeline([message()], { unreadBoundaryMessageId: messageId })))
       .mockImplementationOnce(() => jsonResponse({ schemaVersion: '1.0' }));
     const requestMock = installFetch(fetchMock);
@@ -403,22 +495,31 @@ describe('ConversationExperience', () => {
 
     expect(await screen.findByText('Unread messages')).toBeVisible();
     await waitFor(() => expect(apiCalls(requestMock)).toHaveLength(2));
-    expect(JSON.parse(String(apiCalls(requestMock)[1][1]?.body))).toEqual(expect.objectContaining({
-      action: 'read',
-      lastVisibleMessageId: messageId,
-      authoritativeCursor: 'authoritative-cursor-0001',
-    }));
+    expect(JSON.parse(String(apiCalls(requestMock)[1][1]?.body))).toEqual(
+      expect.objectContaining({
+        action: 'read',
+        lastVisibleMessageId: messageId,
+        authoritativeCursor: 'authoritative-cursor-0001',
+      })
+    );
   });
 
   it('parses typed heartbeat and delta events while preserving Last-Event-ID', async () => {
     localStorage.setItem(`waooaw:conversation:${relationshipId}:stream-cursor`, 'event-before-reload');
-    const fetchMock = jest.fn()
+    const fetchMock = jest
+      .fn()
       .mockImplementationOnce(() => jsonResponse(timeline()))
       .mockImplementationOnce(() => jsonResponse(timeline()));
-    const requestMock = installFetch(fetchMock, async (_input, init) => streamResponse(init?.signal, [
-      streamEvent('heartbeat', { eventId: 'heartbeat-1' }),
-      streamEvent('response.delta', { eventId: 'delta-2', executionId: 'active-execution', data: { contentIndex: 0, appendText: 'Draft text', partial: true } }),
-    ]));
+    const requestMock = installFetch(fetchMock, async (_input, init) =>
+      streamResponse(init?.signal, [
+        streamEvent('heartbeat', { eventId: 'heartbeat-1' }),
+        streamEvent('response.delta', {
+          eventId: 'delta-2',
+          executionId: 'active-execution',
+          data: { contentIndex: 0, appendText: 'Draft text', partial: true },
+        }),
+      ])
+    );
     render(<ConversationExperience relationshipId={relationshipId} />);
     expect(await screen.findByText('Professional response updating: Draft text')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancel response' })).toBeVisible();
@@ -448,7 +549,7 @@ describe('ConversationExperience', () => {
   it('restores stopped state on 423 without retrying the stream', async () => {
     const requestMock = installFetch(
       () => jsonResponse(timeline()),
-      async () => statusResponse(423),
+      async () => statusResponse(423)
     );
     render(<ConversationExperience relationshipId={relationshipId} />);
 
@@ -463,25 +564,42 @@ describe('ConversationExperience', () => {
       ...governedCards[1],
       commands: [{ commandId: 'RETRY_MESSAGE', label: 'Retry governed work', availability: 'AVAILABLE' as const }],
     };
-    const unresolved = message({ deliveryState: 'UNRESOLVED', processingState: 'FAILED', cards: [retryCard], partial: false });
+    const unresolved = message({
+      deliveryState: 'UNRESOLVED',
+      processingState: 'FAILED',
+      cards: [retryCard],
+      partial: false,
+    });
     localStorage.setItem(`waooaw:conversation:${relationshipId}:retry:${messageId}`, 'original-idempotency-key');
-    const fetchMock = jest.fn()
+    const fetchMock = jest
+      .fn()
       .mockImplementationOnce(() => jsonResponse(timeline([unresolved])))
       .mockImplementationOnce(() => jsonResponse(timeline([unresolved])))
-      .mockImplementationOnce(() => jsonResponse({ schemaVersion: '1.0', outcome: 'REPLAYED', message: unresolved, authoritativeCursor: 'cursor', replayed: true }));
+      .mockImplementationOnce(() =>
+        jsonResponse({
+          schemaVersion: '1.0',
+          outcome: 'REPLAYED',
+          message: unresolved,
+          authoritativeCursor: 'cursor',
+          replayed: true,
+        })
+      );
     const requestMock = installFetch(fetchMock);
     render(<ConversationExperience relationshipId={relationshipId} />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Retry governed work' }));
     await waitFor(() => expect(apiCalls(requestMock)).toHaveLength(3));
     expect(JSON.parse(String(apiCalls(requestMock)[2][1]?.body))).toEqual({
-      action: 'retry', messageId, idempotencyKey: 'original-idempotency-key',
+      action: 'retry',
+      messageId,
+      idempotencyKey: 'original-idempotency-key',
     });
   });
 
   it('restores active execution after reload and clears cancellation only on a terminal event', async () => {
     const stream = controllableStream();
-    const fetchMock = jest.fn()
+    const fetchMock = jest
+      .fn()
       .mockImplementationOnce(() => jsonResponse(timeline([message({ processingState: 'RUNNING', cards: [] })])))
       .mockImplementationOnce(() => jsonResponse(timeline([message({ processingState: 'RUNNING', cards: [] })])))
       .mockImplementationOnce(() => jsonResponse({ schemaVersion: '1.0', state: 'CANCELLED', partial: true }))
@@ -492,23 +610,40 @@ describe('ConversationExperience', () => {
     await screen.findByText('Here is the current plan.');
     await act(async () => stream.push(streamEvent('processing.started', { executionId: 'reloaded-execution' })));
     fireEvent.click(await screen.findByRole('button', { name: 'Cancel response' }));
-    await waitFor(() => expect(localStorage.getItem(`waooaw:conversation:${relationshipId}:cancel:reloaded-execution`)).not.toBeNull());
+    await waitFor(() =>
+      expect(localStorage.getItem(`waooaw:conversation:${relationshipId}:cancel:reloaded-execution`)).not.toBeNull()
+    );
     expect(screen.getByRole('button', { name: 'Cancel response' })).toBeVisible();
 
-    await act(async () => stream.push(streamEvent('stream.cancelled', { eventId: 'terminal-event', executionId: 'reloaded-execution' })));
+    await act(async () =>
+      stream.push(streamEvent('stream.cancelled', { eventId: 'terminal-event', executionId: 'reloaded-execution' }))
+    );
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Cancel response' })).not.toBeInTheDocument());
     expect(localStorage.getItem(`waooaw:conversation:${relationshipId}:cancel:reloaded-execution`)).toBeNull();
   });
 
   it('rejects retry without its original identity and preserves cancellation identity after failure', async () => {
-    const unresolved = message({ deliveryState: 'FAILED', processingState: 'FAILED', evidenceState: 'FAILED', cards: [], partial: false });
-    const fetchMock = jest.fn()
+    const unresolved = message({
+      deliveryState: 'FAILED',
+      processingState: 'FAILED',
+      evidenceState: 'FAILED',
+      cards: [],
+      partial: false,
+    });
+    const fetchMock = jest
+      .fn()
       .mockImplementationOnce(() => jsonResponse(timeline([unresolved])))
       .mockImplementationOnce(() => jsonResponse(timeline([])))
-      .mockImplementationOnce(() => jsonResponse({
-        schemaVersion: '1.0', outcome: 'ACCEPTED', message: message({ cards: [], partial: false }),
-        executionId: '3ead2d21-f908-40b5-9510-b1e77f516d7e', authoritativeCursor: 'authoritative-cursor-0002', replayed: false,
-      }))
+      .mockImplementationOnce(() =>
+        jsonResponse({
+          schemaVersion: '1.0',
+          outcome: 'ACCEPTED',
+          message: message({ cards: [], partial: false }),
+          executionId: '3ead2d21-f908-40b5-9510-b1e77f516d7e',
+          authoritativeCursor: 'authoritative-cursor-0002',
+          replayed: false,
+        })
+      )
       .mockImplementationOnce(() => jsonResponse({}, 503));
     installFetch(fetchMock);
     render(<ConversationExperience relationshipId={relationshipId} />);
@@ -516,10 +651,14 @@ describe('ConversationExperience', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Retry original message' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Retry identity is unavailable on this device.');
 
-    fireEvent.change(screen.getByLabelText('Message your professional'), { target: { value: 'Start cancellable work.' } });
+    fireEvent.change(screen.getByLabelText('Message your professional'), {
+      target: { value: 'Start cancellable work.' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Cancel response' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('The conversation outcome is unknown.');
-    expect(localStorage.getItem(`waooaw:conversation:${relationshipId}:cancel:3ead2d21-f908-40b5-9510-b1e77f516d7e`)).not.toBeNull();
+    expect(
+      localStorage.getItem(`waooaw:conversation:${relationshipId}:cancel:3ead2d21-f908-40b5-9510-b1e77f516d7e`)
+    ).not.toBeNull();
   });
 });

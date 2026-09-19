@@ -10,7 +10,13 @@ type StateViewProps = {
   title: string;
 } & ({ actionLabel?: never; kind: 'loading' } | { actionLabel: string; kind: Exclude<StateKind, 'loading'> });
 
-const icons = { empty: Inbox, error: AlertTriangle, forbidden: AlertTriangle, loading: LoaderCircle, 'not-found': AlertTriangle };
+const icons = {
+  empty: Inbox,
+  error: AlertTriangle,
+  forbidden: AlertTriangle,
+  loading: LoaderCircle,
+  'not-found': AlertTriangle,
+};
 
 export function StateView(props: StateViewProps) {
   const { actionHref = '/', description, kind, title } = props;
@@ -20,7 +26,11 @@ export function StateView(props: StateViewProps) {
       <Icon aria-hidden="true" className={kind === 'loading' ? 'spin' : undefined} size={32} />
       <h1>{title}</h1>
       <p>{description}</p>
-      {kind === 'loading' ? null : <a href={actionHref}><ArrowLeft aria-hidden="true" size={18} /> {props.actionLabel}</a>}
+      {kind === 'loading' ? null : (
+        <a href={actionHref}>
+          <ArrowLeft aria-hidden="true" size={18} /> {props.actionLabel}
+        </a>
+      )}
     </section>
   );
 }

@@ -8,6 +8,14 @@ import { AppShell } from '@/components/shell/AppShell';
 import { getRequestI18n } from '@/lib/i18n-server';
 
 export default async function PublicLayout({ children }: { children: ReactNode }) {
-	const { messages } = await getRequestI18n();
-	return <><AppShell messages={messages} variant="public">{children}</AppShell><ConsentController /><AcquisitionController /></>;
+  const { messages } = await getRequestI18n();
+  return (
+    <>
+      <AppShell messages={messages} variant="public">
+        {children}
+      </AppShell>
+      <ConsentController />
+      <AcquisitionController />
+    </>
+  );
 }

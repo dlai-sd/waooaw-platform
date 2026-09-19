@@ -44,7 +44,21 @@ export async function getRelationshipWorkspaceViews(
   const configurationApi = new ConfigurationApi(clientConfiguration);
   const request = { relationshipId };
   const noStore = { cache: 'no-store' as const };
-  const [workspace, configuration, goals, businessOutcomes, performance, operations, plan, attention, work, results, usageBudget, rightsControls, evidence] = await Promise.all([
+  const [
+    workspace,
+    configuration,
+    goals,
+    businessOutcomes,
+    performance,
+    operations,
+    plan,
+    attention,
+    work,
+    results,
+    usageBudget,
+    rightsControls,
+    evidence,
+  ] = await Promise.all([
     workspaceApi.getRelationshipWorkspace(request, noStore),
     configurationApi.getRelationshipConfiguration(request, noStore),
     workspaceApi.getRelationshipGoals(request, noStore),
@@ -59,5 +73,19 @@ export async function getRelationshipWorkspaceViews(
     workspaceApi.getRelationshipRightsControls(request, noStore),
     workspaceApi.listRelationshipEvidence({ ...request, limit: 40 }, noStore),
   ]);
-  return { workspace, configuration, goals, businessOutcomes, performance, operations, plan, attention, work, results, usageBudget, rightsControls, evidence };
+  return {
+    workspace,
+    configuration,
+    goals,
+    businessOutcomes,
+    performance,
+    operations,
+    plan,
+    attention,
+    work,
+    results,
+    usageBudget,
+    rightsControls,
+    evidence,
+  };
 }

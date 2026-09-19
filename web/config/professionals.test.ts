@@ -9,9 +9,7 @@ describe('public professional catalogue', () => {
 
     expect(professionals).toHaveLength(4);
     expect(professionals).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ slug: 'digital-marketing', publicationState: 'published' }),
-      ]),
+      expect.arrayContaining([expect.objectContaining({ slug: 'digital-marketing', publicationState: 'published' })])
     );
     expect(professionals.every(({ approvalReference, modifiedAt }) => approvalReference && modifiedAt)).toBe(true);
   });

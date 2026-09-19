@@ -7,12 +7,20 @@ import { dispatchAcquisitionEvent, type AcquisitionEvent } from '@/lib/marketing
 import { resolveLocale } from '@/lib/preferences';
 
 function cookieValue(cookieHeader: string | null, name: string): string | undefined {
-  return cookieHeader?.split(';').map((part) => part.trim()).find((part) => part.startsWith(`${name}=`))?.slice(name.length + 1);
+  return cookieHeader
+    ?.split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${name}=`))
+    ?.slice(name.length + 1);
 }
 
 export async function POST(request: Request) {
   let input: unknown;
-  try { input = await request.json(); } catch { return NextResponse.json({ error: 'INVALID_EVENT' }, { status: 400 }); }
+  try {
+    input = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'INVALID_EVENT' }, { status: 400 });
+  }
   const result = validateAcquisitionEvent(input);
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
   const requestUrl = new URL(request.url);
@@ -20,7 +28,12 @@ export async function POST(request: Request) {
   let publicRoute: string;
   try {
     const referrerUrl = new URL(referrer ?? '');
-    if (referrerUrl.origin !== requestUrl.origin || referrerUrl.pathname.startsWith('/api/') || referrerUrl.pathname.startsWith('/admin/')) throw new Error('invalid acquisition context');
+    if (
+      referrerUrl.origin !== requestUrl.origin ||
+      referrerUrl.pathname.startsWith('/api/') ||
+      referrerUrl.pathname.startsWith('/admin/')
+    )
+      throw new Error('invalid acquisition context');
     publicRoute = referrerUrl.pathname;
   } catch {
     return NextResponse.json({ error: 'INVALID_CONTEXT' }, { status: 400 });
@@ -28,7 +41,8 @@ export async function POST(request: Request) {
   const privacySignal = request.headers.get('dnt') === '1' || request.headers.get('sec-gpc') === '1';
   const cookieHeader = request.headers.get('cookie');
   const consent = optionalConsent(parseConsentCookie(cookieHeader), privacySignal);
-  if (!consent.analytics && !consent.advertising && result.event.event_name !== 'consent_updated') return NextResponse.json({ error: 'CONSENT_REQUIRED' }, { status: 403 });
+  if (!consent.analytics && !consent.advertising && result.event.event_name !== 'consent_updated')
+    return NextResponse.json({ error: 'CONSENT_REQUIRED' }, { status: 403 });
   const event = {
     ...result.event,
     event_id: result.event.event_id as string,
@@ -37,7 +51,10 @@ export async function POST(request: Request) {
     timestamp: new Date().toISOString(),
     route_id: publicRoute,
     locale: resolveLocale(cookieValue(cookieHeader, 'waooaw-locale')),
-    environment: process.env.WAOOAW_ENVIRONMENT === 'production' || process.env.WAOOAW_ENVIRONMENT === 'uat' ? process.env.WAOOAW_ENVIRONMENT : 'demo',
+    environment:
+      process.env.WAOOAW_ENVIRONMENT === 'production' || process.env.WAOOAW_ENVIRONMENT === 'uat'
+        ? process.env.WAOOAW_ENVIRONMENT
+        : 'demo',
     consent,
   } satisfies AcquisitionEvent;
   await dispatchAcquisitionEvent(event);

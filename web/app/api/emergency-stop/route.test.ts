@@ -12,7 +12,8 @@ describe('Emergency Stop server boundary', () => {
   });
 
   it('delegates confirmation to the relationship-wide Stop orchestrator', async () => {
-    global.fetch = jest.fn()
+    global.fetch = jest
+      .fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ state: 'STOPPED_EMERGENCY' }), { status: 200 }));
     const { POST } = await import('./route');
     const request = new NextRequest('http://localhost/api/emergency-stop', {
@@ -26,11 +27,13 @@ describe('Emergency Stop server boundary', () => {
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/v1/employment/relationships/5f33925b-fb0c-4366-8414-7f85309639b9/emergency-stop'),
-      expect.objectContaining({ method: 'POST' }));
+      expect.objectContaining({ method: 'POST' })
+    );
   });
 
   it('does not claim confirmation when relationship Stop remains unresolved', async () => {
-    global.fetch = jest.fn()
+    global.fetch = jest
+      .fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ title: 'Evidence unavailable' }), { status: 503 }));
     const { POST } = await import('./route');
     const request = new NextRequest('http://localhost/api/emergency-stop', {

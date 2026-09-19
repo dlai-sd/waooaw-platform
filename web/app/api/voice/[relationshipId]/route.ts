@@ -1,7 +1,7 @@
 // Implements: architecture/reference/components/wc062-voice-solution-contract.md
 // Constitutional basis: C-023, C-026, C-042, C-059, C-063
 
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { createVoiceApi, voiceProblem } from '@/lib/api/voice';
 import {
   CreateVoiceContributionSessionRequestV1LocaleEnum,
@@ -37,7 +37,10 @@ function sessionRequired() {
 }
 
 function invalidRequest() {
-  return NextResponse.json({ code: 'VOICE_REQUEST_INVALID', title: 'Voice contribution request is invalid.' }, { status: 400 });
+  return NextResponse.json(
+    { code: 'VOICE_REQUEST_INVALID', title: 'Voice contribution request is invalid.' },
+    { status: 400 }
+  );
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ relationshipId: string }> }) {
@@ -48,9 +51,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (!sessionId) return invalidRequest();
   try {
     const api = createVoiceApi(accessToken);
-    const result = request.nextUrl.searchParams.get('resource') === 'transcript'
-      ? await api.getVoiceContributionTranscript({ relationshipId, sessionId })
-      : await api.getVoiceContributionSession({ relationshipId, sessionId });
+    const result =
+      request.nextUrl.searchParams.get('resource') === 'transcript'
+        ? await api.getVoiceContributionTranscript({ relationshipId, sessionId })
+        : await api.getVoiceContributionSession({ relationshipId, sessionId });
     return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     const problem = await voiceProblem(error);
@@ -68,45 +72,65 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       const form = await request.formData();
       const audio = form.get('audio');
       if (!(audio instanceof Blob)) throw new InvalidVoiceRequest();
-      return NextResponse.json(await api.uploadVoiceContributionAudio({
-        relationshipId,
-        sessionId: requiredString(Object.fromEntries(form), 'sessionId'),
-        idempotencyKey: requiredString(Object.fromEntries(form), 'idempotencyKey'),
-        audio,
-      }), { status: 202 });
+      return NextResponse.json(
+        await api.uploadVoiceContributionAudio({
+          relationshipId,
+          sessionId: requiredString(Object.fromEntries(form), 'sessionId'),
+          idempotencyKey: requiredString(Object.fromEntries(form), 'idempotencyKey'),
+          audio,
+        }),
+        { status: 202 }
+      );
     }
 
-    const body = await request.json() as CommandBody;
+    const body = (await request.json()) as CommandBody;
     const action = requiredString(body, 'action');
     const idempotencyKey = requiredString(body, 'idempotencyKey');
     switch (action) {
       case 'create':
-        return NextResponse.json(await api.createVoiceContributionSession({
-          relationshipId,
-          idempotencyKey,
-          createVoiceContributionSessionRequestV1: { schemaVersion: '1.0.0', locale: requiredLocale(body) },
-        }), { status: 201 });
+        return NextResponse.json(
+          await api.createVoiceContributionSession({
+            relationshipId,
+            idempotencyKey,
+            createVoiceContributionSessionRequestV1: { schemaVersion: '1.0.0', locale: requiredLocale(body) },
+          }),
+          { status: 201 }
+        );
       case 'correct':
-        return NextResponse.json(await api.submitVoiceContributionCorrection({
-          relationshipId,
-          sessionId: requiredString(body, 'sessionId'),
-          idempotencyKey,
-          voiceCorrectionRequestV1: { schemaVersion: '1.0.0', expectedVersion: requiredInteger(body, 'expectedVersion'), correctedText: requiredString(body, 'correctedText') },
-        }));
+        return NextResponse.json(
+          await api.submitVoiceContributionCorrection({
+            relationshipId,
+            sessionId: requiredString(body, 'sessionId'),
+            idempotencyKey,
+            voiceCorrectionRequestV1: {
+              schemaVersion: '1.0.0',
+              expectedVersion: requiredInteger(body, 'expectedVersion'),
+              correctedText: requiredString(body, 'correctedText'),
+            },
+          })
+        );
       case 'send':
-        return NextResponse.json(await api.sendVoiceContribution({
-          relationshipId,
-          sessionId: requiredString(body, 'sessionId'),
-          idempotencyKey,
-          sendVoiceContributionRequestV1: { schemaVersion: '1.0.0', acceptedTranscriptVersion: requiredInteger(body, 'acceptedTranscriptVersion'), explicitSend: true },
-        }));
+        return NextResponse.json(
+          await api.sendVoiceContribution({
+            relationshipId,
+            sessionId: requiredString(body, 'sessionId'),
+            idempotencyKey,
+            sendVoiceContributionRequestV1: {
+              schemaVersion: '1.0.0',
+              acceptedTranscriptVersion: requiredInteger(body, 'acceptedTranscriptVersion'),
+              explicitSend: true,
+            },
+          })
+        );
       case 'cancel':
-        return NextResponse.json(await api.cancelVoiceContributionSession({
-          relationshipId,
-          sessionId: requiredString(body, 'sessionId'),
-          idempotencyKey,
-          cancelVoiceContributionRequestV1: { schemaVersion: '1.0.0' },
-        }));
+        return NextResponse.json(
+          await api.cancelVoiceContributionSession({
+            relationshipId,
+            sessionId: requiredString(body, 'sessionId'),
+            idempotencyKey,
+            cancelVoiceContributionRequestV1: { schemaVersion: '1.0.0' },
+          })
+        );
       default:
         throw new InvalidVoiceRequest();
     }

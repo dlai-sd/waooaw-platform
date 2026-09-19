@@ -2,7 +2,7 @@
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
 import { getToken } from 'next-auth/jwt';
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 
 const sessionCookie = /^(?:(?:__Secure-|__Host-)?next-auth\.|waooaw[.-])/i;
 const logoutContinuationCookie = 'waooaw.logout-continuation';
@@ -48,7 +48,10 @@ function clearSessionCookies(response: NextResponse, request: NextRequest) {
 export async function POST(request: NextRequest) {
   const applicationOrigin = new URL(process.env.NEXTAUTH_URL ?? request.nextUrl.origin).origin;
   if (!isSameOriginSubmission(request, applicationOrigin)) {
-    return NextResponse.json({ code: 'IDENTITY_ACTION_DENIED', title: 'Sign out request was denied.' }, { status: 403 });
+    return NextResponse.json(
+      { code: 'IDENTITY_ACTION_DENIED', title: 'Sign out request was denied.' },
+      { status: 403 }
+    );
   }
 
   if (request.headers.get('accept')?.includes('application/json')) {
@@ -73,7 +76,10 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const nonce = request.nextUrl.searchParams.get('nonce');
   if (!nonce || request.cookies.get(logoutContinuationCookie)?.value !== nonce) {
-    return NextResponse.json({ code: 'IDENTITY_ACTION_DENIED', title: 'Sign out request was denied.' }, { status: 403 });
+    return NextResponse.json(
+      { code: 'IDENTITY_ACTION_DENIED', title: 'Sign out request was denied.' },
+      { status: 403 }
+    );
   }
 
   const applicationOrigin = new URL(process.env.NEXTAUTH_URL ?? request.nextUrl.origin).origin;

@@ -3,7 +3,14 @@
 
 import type { IdentityNextAction } from '@/lib/api/generated/models/IdentityNextAction';
 
-const letters = ['W', 'A', 'O', 'O', 'A', 'W'] as const;
+const letters = [
+  { id: 'waooaw-1', label: 'W' },
+  { id: 'waooaw-2', label: 'A' },
+  { id: 'waooaw-3', label: 'O' },
+  { id: 'waooaw-4', label: 'O' },
+  { id: 'waooaw-5', label: 'A' },
+  { id: 'waooaw-6', label: 'W' },
+] as const;
 
 const progressState: Record<IdentityNextAction, { active: number; label: string }> = {
   COMPLETE_PROFILE: { active: 1, label: 'Profile details' },
@@ -18,14 +25,27 @@ const progressState: Record<IdentityNextAction, { active: number; label: string 
 export function RegistrationProgress({ action, pending }: { action: IdentityNextAction; pending: boolean }) {
   const progress = progressState[action];
   return (
-    <div aria-label={`Registration progress: ${progress.label}`} className="registration-progress" data-pending={pending || undefined} role="status">
+    <output
+      aria-label={`Registration progress: ${progress.label}`}
+      className="registration-progress"
+      data-pending={pending || undefined}
+    >
       <ol aria-hidden="true">
-        {letters.map((letter, index) => {
-          const state = progress.active === 6 || index < progress.active ? 'complete' : index === progress.active ? 'active' : 'upcoming';
-          return <li data-state={state} key={`${letter}-${index}`}>{letter}</li>;
+        {letters.map(({ id, label }, index) => {
+          const state =
+            progress.active === 6 || index < progress.active
+              ? 'complete'
+              : index === progress.active
+                ? 'active'
+                : 'upcoming';
+          return (
+            <li data-state={state} key={id}>
+              {label}
+            </li>
+          );
         })}
       </ol>
       <span>{progress.label}</span>
-    </div>
+    </output>
   );
 }

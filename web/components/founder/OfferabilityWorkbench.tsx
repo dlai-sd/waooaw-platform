@@ -4,7 +4,7 @@
 // Constitutional basis: C-023, C-049, C-059, C-063
 
 import { AlertTriangle, CheckCircle2, LoaderCircle, Scale } from 'lucide-react';
-import { FormEvent, useRef, useState } from 'react';
+import { type FormEvent, useRef, useState } from 'react';
 import type { RelationshipOfferabilityDecision } from '@/lib/api/generated/models/RelationshipOfferabilityDecision';
 
 const formatMoney = (paise: number) =>
@@ -56,7 +56,13 @@ export function OfferabilityWorkbench() {
         <p>Price one approved professional offering against current owner evidence.</p>
       </header>
 
-      <form className="offerability-form" onSubmit={evaluate} onChange={() => { idempotencyKey.current = null; }}>
+      <form
+        className="offerability-form"
+        onSubmit={evaluate}
+        onChange={() => {
+          idempotencyKey.current = null;
+        }}
+      >
         <label>
           Relationship ID
           <input name="relationshipId" type="text" inputMode="text" required />
@@ -82,7 +88,11 @@ export function OfferabilityWorkbench() {
           <input name="priceRupees" type="number" min="0.01" step="0.01" required />
         </label>
         <button className="primary-command" type="submit" disabled={pending}>
-          {pending ? <LoaderCircle className="spin" aria-hidden="true" size={18} /> : <Scale aria-hidden="true" size={18} />}
+          {pending ? (
+            <LoaderCircle className="spin" aria-hidden="true" size={18} />
+          ) : (
+            <Scale aria-hidden="true" size={18} />
+          )}
           {pending ? 'Evaluating' : 'Evaluate offer'}
         </button>
       </form>
@@ -91,20 +101,44 @@ export function OfferabilityWorkbench() {
         {error ? (
           <div className="offerability-failure" role="alert">
             <AlertTriangle aria-hidden="true" size={24} />
-            <div><strong>Decision unavailable</strong><p>{error.replaceAll('_', ' ')}</p></div>
+            <div>
+              <strong>Decision unavailable</strong>
+              <p>{error.replaceAll('_', ' ')}</p>
+            </div>
           </div>
         ) : null}
         {decision ? (
           <div className={`offerability-decision disposition-${decision.disposition.toLowerCase()}`}>
-            {decision.disposition === 'ALLOW' ? <CheckCircle2 aria-hidden="true" size={28} /> : <AlertTriangle aria-hidden="true" size={28} />}
+            {decision.disposition === 'ALLOW' ? (
+              <CheckCircle2 aria-hidden="true" size={28} />
+            ) : (
+              <AlertTriangle aria-hidden="true" size={28} />
+            )}
             <div>
               <p className="decision-label">{decision.disposition}</p>
               <h2>{formatMoney(decision.directContributionPaise)} direct contribution</h2>
-              {decision.reasons.length ? <ul>{decision.reasons.map((reason) => <li key={reason}>{reason.replaceAll('_', ' ')}</li>)}</ul> : <p>No blocking conditions.</p>}
+              {decision.reasons.length ? (
+                <ul>
+                  {decision.reasons.map((reason) => (
+                    <li key={reason}>{reason.replaceAll('_', ' ')}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p>No blocking conditions.</p>
+              )}
               <dl>
-                <div><dt>Policy</dt><dd>{decision.policyVersion}</dd></div>
-                <div><dt>Evidence</dt><dd>{decision.evidenceId}</dd></div>
-                <div><dt>Expires</dt><dd>{new Date(decision.expiresAt).toLocaleString()}</dd></div>
+                <div>
+                  <dt>Policy</dt>
+                  <dd>{decision.policyVersion}</dd>
+                </div>
+                <div>
+                  <dt>Evidence</dt>
+                  <dd>{decision.evidenceId}</dd>
+                </div>
+                <div>
+                  <dt>Expires</dt>
+                  <dd>{new Date(decision.expiresAt).toLocaleString()}</dd>
+                </div>
               </dl>
             </div>
           </div>

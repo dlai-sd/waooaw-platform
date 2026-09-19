@@ -8,12 +8,25 @@ import { encode } from 'next-auth/jwt';
 const secret = 'playwright-only-not-a-runtime-secret';
 
 async function addSession(context: BrowserContext, projectName: string) {
-  const value = await encode({ secret, maxAge: 3600, token: { accessToken: `fixture-access-token-${projectName}`, accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600, founder: false, sub: `fixture-user-${projectName}` } });
-  await context.addCookies([{ name: 'next-auth.session-token', value, domain: '127.0.0.1', httpOnly: true, path: '/', sameSite: 'Lax' }]);
+  const value = await encode({
+    secret,
+    maxAge: 3600,
+    token: {
+      accessToken: `fixture-access-token-${projectName}`,
+      accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+      founder: false,
+      sub: `fixture-user-${projectName}`,
+    },
+  });
+  await context.addCookies([
+    { name: 'next-auth.session-token', value, domain: '127.0.0.1', httpOnly: true, path: '/', sameSite: 'Lax' },
+  ]);
 }
 
 async function expectIntegrity(page: Page) {
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(
+    true
+  );
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious')).toEqual([]);
 }
@@ -30,7 +43,10 @@ test('WC084-PORTAL-01: customer can navigate server-owned portal summaries', asy
   await expectIntegrity(page);
 
   await page.goto('/marketplace');
-  const marketplaceOffer = page.locator('.marketplace-offer').filter({ has: page.getByRole('heading', { name: 'Digital Marketing Professional' }) }).first();
+  const marketplaceOffer = page
+    .locator('.marketplace-offer')
+    .filter({ has: page.getByRole('heading', { name: 'Digital Marketing Professional' }) })
+    .first();
   await expect(marketplaceOffer.getByRole('heading', { name: 'Digital Marketing Professional' })).toBeVisible();
   await expect(marketplaceOffer.getByText('14-day trial; no paid API calls or external actions.')).toBeVisible();
   await marketplaceOffer.getByRole('link', { name: 'Start trial' }).click();
@@ -89,7 +105,9 @@ test('WC084-PORTAL-04: compact RTL and 200 percent reflow preserve navigation', 
   await page.setViewportSize({ width: 360, height: 800 });
   await page.goto('/home');
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
-  await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '200%';
+  });
   await expect(page.locator('nav.bottom-navigation')).toBeVisible();
   await expectIntegrity(page);
 });

@@ -6,5 +6,13 @@
 import { cookiePreferencesReopenEvent } from './ConsentController';
 
 export function CookiePreferencesTrigger() {
-  return <button className="footer-cookie-trigger" onClick={() => window.dispatchEvent(new Event(cookiePreferencesReopenEvent))} type="button">Cookie preferences</button>;
+  return (
+    <button
+      className="footer-cookie-trigger"
+      onClick={() => window.dispatchEvent(new Event(cookiePreferencesReopenEvent))}
+      type="button"
+    >
+      Cookie preferences
+    </button>
+  );
 }

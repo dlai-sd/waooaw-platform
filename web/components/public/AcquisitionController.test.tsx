@@ -11,7 +11,7 @@ describe('public acquisition controller', () => {
   beforeEach(() => {
     document.cookie = `${consentCookieName}=; Max-Age=0; Path=/`;
     sessionStorage.clear();
-    global.fetch = jest.fn(async () => ({ ok: true } as Response));
+    global.fetch = jest.fn(async () => ({ ok: true }) as Response);
   });
 
   it('creates no optional storage or request before consent', () => {
@@ -23,11 +23,20 @@ describe('public acquisition controller', () => {
   it('emits minimized consent, page, and contact events after consent', async () => {
     const preference = createConsentPreference(true, false);
     document.cookie = `${consentCookieName}=${encodeURIComponent(JSON.stringify(preference))}; Path=/`;
-    render(<><AcquisitionController /><a href="mailto:customersupport@dlaisd.com" onClick={(event) => event.preventDefault()}>Contact</a></>);
+    render(
+      <>
+        <AcquisitionController />
+        <a href="mailto:customersupport@dlaisd.com" onClick={(event) => event.preventDefault()}>
+          Contact
+        </a>
+      </>
+    );
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
     fireEvent.click(document.querySelector('a') as HTMLAnchorElement);
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
-    const bodies = jest.mocked(fetch).mock.calls.map(([, request]) => JSON.parse(String(request?.body)) as Record<string, unknown>);
+    const bodies = jest
+      .mocked(fetch)
+      .mock.calls.map(([, request]) => JSON.parse(String(request?.body)) as Record<string, unknown>);
     expect(bodies.map((body) => body.event_name)).toEqual(['public_page_viewed', 'contact_invoked']);
     expect(bodies[1]).not.toHaveProperty('email');
     expect(sessionStorage.getItem('waooaw:acquisition:session')).toContain('expiresAt');
@@ -43,12 +52,20 @@ describe('public acquisition controller', () => {
   it('distinguishes registration from a professional hire journey', async () => {
     const preference = createConsentPreference(true, false);
     document.cookie = `${consentCookieName}=${encodeURIComponent(JSON.stringify(preference))}; Path=/`;
-    render(<><AcquisitionController /><Link href="/register">Register</Link><Link href="/register?professional=digital-marketing">Hire</Link></>);
+    render(
+      <>
+        <AcquisitionController />
+        <Link href="/register">Register</Link>
+        <Link href="/register?professional=digital-marketing">Hire</Link>
+      </>
+    );
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
     fireEvent.click(document.querySelector('a[href="/register"]') as HTMLAnchorElement);
     fireEvent.click(document.querySelector('a[href*="professional="]') as HTMLAnchorElement);
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
-    const bodies = jest.mocked(fetch).mock.calls.map(([, request]) => JSON.parse(String(request?.body)) as Record<string, unknown>);
+    const bodies = jest
+      .mocked(fetch)
+      .mock.calls.map(([, request]) => JSON.parse(String(request?.body)) as Record<string, unknown>);
     expect(bodies.slice(1).map((body) => body.event_name)).toEqual(['registration_started', 'hire_journey_started']);
     expect(bodies[2]).toMatchObject({ entry_route: '/contact', professional_type: 'digital-marketing' });
   });

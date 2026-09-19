@@ -39,28 +39,41 @@ export function GoalVerificationControls({ relationshipId, workspaceVersion, goa
         },
       }),
     });
-    setMessage(response.ok
-      ? 'Goal verification recorded.'
-      : 'Goal verification could not be recorded. Re-authentication or refreshed data may be required.');
+    setMessage(
+      response.ok
+        ? 'Goal verification recorded.'
+        : 'Goal verification could not be recorded. Re-authentication or refreshed data may be required.'
+    );
   }
 
   const pendingGoals = goals.filter((goal) => goal.verificationStatus !== 'VERIFIED');
   if (!pendingGoals.length) return null;
-  return <div className="goal-verification-controls">
-    {pendingGoals.map((goal) => <fieldset key={goal.goalId}>
-      <legend>{goal.skillLabel}</legend>
-      <label>Correction reason
-        <input
-          maxLength={500}
-          onChange={(event) => setCorrectionReasons((current) => ({ ...current, [goal.goalId]: event.target.value }))}
-          value={correctionReasons[goal.goalId] ?? ''}
-        />
-      </label>
-      <div className="command-row">
-        <button className="primary-command" onClick={() => void decide(goal, 'VERIFIED')} type="button">Verify goal</button>
-        <button className="secondary-link" onClick={() => void decide(goal, 'CHANGES_REQUESTED')} type="button">Request changes</button>
-      </div>
-    </fieldset>)}
-    <p role="status">{message}</p>
-  </div>;
+  return (
+    <div className="goal-verification-controls">
+      {pendingGoals.map((goal) => (
+        <fieldset key={goal.goalId}>
+          <legend>{goal.skillLabel}</legend>
+          <label>
+            Correction reason
+            <input
+              maxLength={500}
+              onChange={(event) =>
+                setCorrectionReasons((current) => ({ ...current, [goal.goalId]: event.target.value }))
+              }
+              value={correctionReasons[goal.goalId] ?? ''}
+            />
+          </label>
+          <div className="command-row">
+            <button className="primary-command" onClick={() => void decide(goal, 'VERIFIED')} type="button">
+              Verify goal
+            </button>
+            <button className="secondary-link" onClick={() => void decide(goal, 'CHANGES_REQUESTED')} type="button">
+              Request changes
+            </button>
+          </div>
+        </fieldset>
+      ))}
+      <output>{message}</output>
+    </div>
+  );
 }

@@ -41,36 +41,84 @@ const stages: readonly JourneyStageId[] = ['opening', 'business', 'goals', 'agre
 const g6Locales: readonly SupportedLocale[] = ['ur', 'hi', 'ta'];
 const consentStates: readonly ScreenshotConsent[] = ['banner', 'preferences-open'];
 
-function baseCase(overrides: Partial<ScreenshotCase> & Pick<ScreenshotCase, 'group' | 'id' | 'viewport'>): ScreenshotCase {
-  return { zoom: 'default', locale: 'en', theme: 'light', motion: 'normal', announcement: 'visible', consent: 'closed', ...overrides };
+function baseCase(
+  overrides: Partial<ScreenshotCase> & Pick<ScreenshotCase, 'group' | 'id' | 'viewport'>
+): ScreenshotCase {
+  return {
+    zoom: 'default',
+    locale: 'en',
+    theme: 'light',
+    motion: 'normal',
+    announcement: 'visible',
+    consent: 'closed',
+    ...overrides,
+  };
 }
 
 const g1: ScreenshotCase[] = viewports.flatMap((viewport) =>
-  themes.map((theme) => baseCase({ group: 'G1', id: `G1-${viewport.width}x${viewport.height}-${theme}`, viewport, theme })));
+  themes.map((theme) =>
+    baseCase({ group: 'G1', id: `G1-${viewport.width}x${viewport.height}-${theme}`, viewport, theme })
+  )
+);
 
 const g2: ScreenshotCase[] = viewports.map((viewport) =>
-  baseCase({ group: 'G2', id: `G2-${viewport.width}x${viewport.height}-200pct`, viewport, zoom: '200%' }));
+  baseCase({ group: 'G2', id: `G2-${viewport.width}x${viewport.height}-200pct`, viewport, zoom: '200%' })
+);
 
 const g3: ScreenshotCase[] = viewports.map((viewport) =>
-  baseCase({ group: 'G3', id: `G3-${viewport.width}x${viewport.height}-reduced`, viewport, motion: 'reduced' }));
+  baseCase({ group: 'G3', id: `G3-${viewport.width}x${viewport.height}-reduced`, viewport, motion: 'reduced' })
+);
 
 const g4: ScreenshotCase[] = professionals.flatMap((professional) =>
-  stages.map((stage) => baseCase({ group: 'G4', id: `G4-${professional}-${stage}-expanded`, viewport: expandedViewport, professional, stage })));
+  stages.map((stage) =>
+    baseCase({
+      group: 'G4',
+      id: `G4-${professional}-${stage}-expanded`,
+      viewport: expandedViewport,
+      professional,
+      stage,
+    })
+  )
+);
 
 const g5: ScreenshotCase[] = professionals.flatMap((professional) =>
-  stages.map((stage) => baseCase({ group: 'G5', id: `G5-${professional}-${stage}-compact`, viewport: compactViewport, professional, stage })));
+  stages.map((stage) =>
+    baseCase({ group: 'G5', id: `G5-${professional}-${stage}-compact`, viewport: compactViewport, professional, stage })
+  )
+);
 
 const g6: ScreenshotCase[] = g6Locales.flatMap((locale) =>
-  [expandedViewport, compactViewport].map((viewport) => baseCase({ group: 'G6', id: `G6-${locale}-${viewport.width}x${viewport.height}`, viewport, locale })));
+  [expandedViewport, compactViewport].map((viewport) =>
+    baseCase({ group: 'G6', id: `G6-${locale}-${viewport.width}x${viewport.height}`, viewport, locale })
+  )
+);
 
 const g7: ScreenshotCase[] = viewports.map((viewport) =>
-  baseCase({ group: 'G7', id: `G7-${viewport.width}x${viewport.height}-dismissed`, viewport, announcement: 'dismissed' }));
+  baseCase({
+    group: 'G7',
+    id: `G7-${viewport.width}x${viewport.height}-dismissed`,
+    viewport,
+    announcement: 'dismissed',
+  })
+);
 
 const g8: ScreenshotCase[] = consentStates.flatMap((consent) =>
-  viewports.map((viewport) => baseCase({ group: 'G8', id: `G8-${viewport.width}x${viewport.height}-${consent}`, viewport, consent })));
+  viewports.map((viewport) =>
+    baseCase({ group: 'G8', id: `G8-${viewport.width}x${viewport.height}-${consent}`, viewport, consent })
+  )
+);
 
 /** Section 11.1 deterministic 54-case manifest. WC-07 declares this array; WC-08 generates, hashes, and indexes captures. */
-export const wc078ScreenshotManifest: readonly ScreenshotCase[] = [...g1, ...g2, ...g3, ...g4, ...g5, ...g6, ...g7, ...g8];
+export const wc078ScreenshotManifest: readonly ScreenshotCase[] = [
+  ...g1,
+  ...g2,
+  ...g3,
+  ...g4,
+  ...g5,
+  ...g6,
+  ...g7,
+  ...g8,
+];
 
 /** G9 adds no capture; it applies the dedicated collision assertion to this exact G8 360px consent-banner case. */
 export const wc078CollisionCaseId = 'G8-360x800-banner';

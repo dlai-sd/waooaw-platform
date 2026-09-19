@@ -4,5 +4,5 @@
 import { LoginView } from '@/components/auth/LoginView';
 
 export default function LoginPage({ searchParams }: { searchParams?: Promise<{ returnTo?: string | string[] }> }) {
-	return <LoginView searchParams={searchParams} />;
+  return <LoginView searchParams={searchParams} />;
 }

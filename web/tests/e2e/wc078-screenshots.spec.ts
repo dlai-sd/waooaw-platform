@@ -25,7 +25,9 @@ import { wc078CollisionCaseId, wc078ScreenshotManifest } from './wc078-screensho
 
 const baseURL = process.env.BASE_URL ?? 'http://127.0.0.1:3000';
 const repoRoot = path.resolve(__dirname, '..', '..', '..');
-const evidenceDir = process.env.WC078_EVIDENCE_DIR ? path.resolve(process.env.WC078_EVIDENCE_DIR) : path.join(repoRoot, 'test-results', 'wc078');
+const evidenceDir = process.env.WC078_EVIDENCE_DIR
+  ? path.resolve(process.env.WC078_EVIDENCE_DIR)
+  : path.join(repoRoot, 'test-results', 'wc078');
 const screenshotDir = path.join(evidenceDir, 'screenshots');
 
 type CaseRecord = Readonly<{
@@ -63,15 +65,25 @@ function resolveHeadSha(): string {
 }
 
 async function configureAnnouncementState(page: Page, announcement: ScreenshotCase['announcement']): Promise<void> {
-  await page.addInitScript(({ dismissed, revision }) => {
-    if (dismissed) localStorage.setItem('waooaw-announcement', JSON.stringify({ campaignRevision: revision, dismissed: true }));
-    else localStorage.removeItem('waooaw-announcement');
-  }, { dismissed: announcement === 'dismissed', revision: siteConfig.announcement.revision });
+  await page.addInitScript(
+    ({ dismissed, revision }) => {
+      if (dismissed)
+        localStorage.setItem('waooaw-announcement', JSON.stringify({ campaignRevision: revision, dismissed: true }));
+      else localStorage.removeItem('waooaw-announcement');
+    },
+    { dismissed: announcement === 'dismissed', revision: siteConfig.announcement.revision }
+  );
 }
 
 async function applyConsentCookie(page: Page, consent: ScreenshotConsent): Promise<void> {
   if (consent === 'banner') return; // no cookie: the real first-visit banner renders unprompted
-  const value = JSON.stringify({ policyVersion: marketingConfig.policyVersion, necessary: true, analytics: false, advertising: false, updatedAt: new Date().toISOString() });
+  const value = JSON.stringify({
+    policyVersion: marketingConfig.policyVersion,
+    necessary: true,
+    analytics: false,
+    advertising: false,
+    updatedAt: new Date().toISOString(),
+  });
   await page.context().addCookies([{ name: consentCookieName, value: encodeURIComponent(value), url: baseURL }]);
 }
 
@@ -88,7 +100,8 @@ async function establishJourneyState(page: Page, kase: ScreenshotCase): Promise<
     const legacyProfessionals = ['agricultural-advisor', 'digital-marketing-professional'] as const;
     const legacyStages = ['opening', 'business', 'goals', 'agreement', 'ready', 'working'] as const;
     const scenes = ['agricultural-advisory', 'digital-marketing', 'private-tutoring', 'trading-advisory'] as const;
-    const caseIndex = legacyProfessionals.indexOf(kase.professional) * legacyStages.length + legacyStages.indexOf(kase.stage);
+    const caseIndex =
+      legacyProfessionals.indexOf(kase.professional) * legacyStages.length + legacyStages.indexOf(kase.stage);
     const targetIndex = caseIndex % scenes.length;
     for (let index = 0; index < targetIndex; index += 1) {
       await page.getByRole('button', { name: 'Next professional' }).click();
@@ -124,7 +137,10 @@ test.beforeAll(async () => {
 
 for (const kase of wc078ScreenshotManifest) {
   test(kase.id, async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'chromium-expanded', 'WC-08 screenshot manifest captures run once on a single deterministic Chromium project');
+    test.skip(
+      testInfo.project.name !== 'chromium-expanded',
+      'WC-08 screenshot manifest captures run once on a single deterministic Chromium project'
+    );
 
     await page.context().clearCookies();
     await page.context().addCookies([
@@ -146,8 +162,12 @@ for (const kase of wc078ScreenshotManifest) {
       await reopenConsentPreferences(page);
     }
     if (kase.zoom === '200%') {
-      await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
-      notes.push('200% zoom reproduced via root font-size scaling, the existing reflow-test technique in wc078-public-acquisition.spec.ts');
+      await page.evaluate(() => {
+        document.documentElement.style.fontSize = '200%';
+      });
+      notes.push(
+        '200% zoom reproduced via root font-size scaling, the existing reflow-test technique in wc078-public-acquisition.spec.ts'
+      );
     }
 
     await establishJourneyState(page, kase);
@@ -162,8 +182,16 @@ for (const kase of wc078ScreenshotManifest) {
 
     if (kase.id === wc078CollisionCaseId) {
       const overlapDetected = await assertNoFixedControlOverlap(page);
-      collectedG9 = { case_id: kase.id, assertion: 'fixed-control-geometric-overlap', overlap_detected: overlapDetected, result: overlapDetected ? 'FAIL' : 'PASS' };
-      expect(overlapDetected, 'G9: announcement and consent fixed controls must not geometrically overlap at 360px').toBe(false);
+      collectedG9 = {
+        case_id: kase.id,
+        assertion: 'fixed-control-geometric-overlap',
+        overlap_detected: overlapDetected,
+        result: overlapDetected ? 'FAIL' : 'PASS',
+      };
+      expect(
+        overlapDetected,
+        'G9: announcement and consent fixed controls must not geometrically overlap at 360px'
+      ).toBe(false);
     }
 
     collectedCases.push({
@@ -193,7 +221,8 @@ test.afterAll(async () => {
   for (const viewport of ['360x800', '768x1024', '1440x900']) {
     const banner = collectedCases.find((record) => record.id === `G8-${viewport}-banner`);
     const preferences = collectedCases.find((record) => record.id === `G8-${viewport}-preferences-open`);
-    if (banner && preferences) expect(preferences.sha256, `${viewport} consent states must be visually distinct`).not.toBe(banner.sha256);
+    if (banner && preferences)
+      expect(preferences.sha256, `${viewport} consent states must be visually distinct`).not.toBe(banner.sha256);
   }
   const index = {
     schema_version: '1.0',
