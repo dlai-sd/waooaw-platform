@@ -11,16 +11,16 @@ if [ -z "${WAOOAW_TEST_RUNNER_IMAGE_ID:-}" ]; then
   WAOOAW_TEST_RUNNER_IMAGE_ID=$(scripts/runner_image_id.sh test test-runner)
 fi
 scripts/verify_runner_image.sh test test-runner "$WAOOAW_TEST_RUNNER_IMAGE_ID"
-docker compose run --rm test-runner pytest -q \
-  tests/test_wc012_dry_run.py \
-  tests/pipeline/test_goal006_data_recovery.py \
-  tests/pipeline/test_goal006_qualification.py \
-  tests/pipeline/test_goal006_release_manifest.py \
-  tests/pipeline/test_goal006_release_simulator.py \
-  tests/pipeline/test_goal006_six_member_packaging.py \
-  tests/pipeline/test_goal006_terraform_foundations.py \
-  tests/pipeline/test_billing_ce_validator.py \
-  tests/pipeline/test_wc091_environment_readiness.py -rA
+docker compose run --rm test-runner sh -lc 'cd /tmp && pytest -q \
+  /workspace/tests/test_wc012_dry_run.py \
+  /workspace/tests/pipeline/test_goal006_data_recovery.py \
+  /workspace/tests/pipeline/test_goal006_qualification.py \
+  /workspace/tests/pipeline/test_goal006_release_manifest.py \
+  /workspace/tests/pipeline/test_goal006_release_simulator.py \
+  /workspace/tests/pipeline/test_goal006_six_member_packaging.py \
+  /workspace/tests/pipeline/test_goal006_terraform_foundations.py \
+  /workspace/tests/pipeline/test_billing_ce_validator.py \
+  /workspace/tests/pipeline/test_wc091_environment_readiness.py -rA'
 scripts/test-wc059-postgres.sh
 bash scripts/run_wc091_demo_data_verification.sh
 scripts/verify_runner_image.sh test test-runner "$WAOOAW_TEST_RUNNER_IMAGE_ID"
