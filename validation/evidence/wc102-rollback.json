@@ -1,6 +1,6 @@
 {
   "schema": "waooaw.wc102-rollback/v1",
-  "qualified_candidate_sha": "aedeb77683be7966ff636dc3cb9d6a29ca249e3a",
+  "qualified_candidate_sha": "a270f0ec2fdac9d3bc2767b93952ed1b20a0cafb",
   "mode": "full-clean-qualification",
   "required_gates": [
     "build",
