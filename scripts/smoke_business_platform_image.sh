@@ -42,6 +42,7 @@ docker run --detach --name "$app_container" \
   --env Keycloak__RequireHttpsMetadata=true \
   --env Identity__Hmac__ActiveVersion=v1 \
   --env Identity__Hmac__Key="$hmac_key" \
+  --env Conversation__CursorHmacKey="$hmac_key" \
   --env IdentityBrokerRead__Enabled=true \
   --env IdentityBrokerRead__ActorIssuer=https://identity.invalid/realms/waooaw \
   --env IdentityBrokerRead__PrivateOrigin=https://keycloak.private.invalid \
