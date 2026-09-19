@@ -76,6 +76,12 @@ def test_python_audit_builds_use_bounded_executable_tmpfs() -> None:
     assert runner["tmpfs"] == ["/tmp:size=1g,mode=1777,exec"]
 
 
+def test_full_runner_fixtures_use_bounded_executable_tmpfs() -> None:
+    runner = COMPOSE["services"]["test-runner"]
+
+    assert runner["tmpfs"] == ["/tmp:size=2g,mode=1777,exec"]
+
+
 def test_contract_workflow_starts_services_and_blocks_on_failure() -> None:
     workflow = (ROOT / ".github/workflows/integration-tests.yaml").read_text(encoding="utf-8")
     contract_job = workflow.split("  contract-rest:", maxsplit=1)[1].split("\n  seed-prompts-contract:", maxsplit=1)[0]
