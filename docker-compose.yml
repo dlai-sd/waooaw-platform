@@ -58,7 +58,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     group_add: ["${DOCKER_GID:-0}"]
     read_only: true
-    tmpfs: ["/tmp:size=1g,mode=1777"]
+    tmpfs: ["/tmp:size=1g,mode=1777,exec"]
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     cpus: 2.0

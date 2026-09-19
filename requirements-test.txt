@@ -32,7 +32,7 @@ psycopg2-binary>=2.9            # PostgreSQL for integration tests
 aiosqlite>=0.20                 # SQLite async driver for in-memory test engines
 asyncpg>=0.29                   # PostgreSQL async driver
 pgvector==0.3.5                 # AI Runtime RAG import contract
-transformers==5.5.0             # AI Runtime retriever import contract
+transformers==5.10.0            # AI Runtime retriever import contract
 
 # ── Contract testing ─────────────────────────────────────────────────────────
 jsonschema>=4.23                 # JSON Schema validation for versioned agent admission contracts
