@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -38,6 +39,70 @@ RUNTIME_EVIDENCE_SECTION = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 VALIDATION_POLICY_PATH = Path(__file__).resolve().parents[1] / "validation/engineering-validation.yaml"
+PRECHECK_GRAPH_VERSION = "wc100-prechecks-v2"
+PRECHECK_CONFIGURATION_PATHS = (
+    Path(__file__),
+    Path(__file__).with_name("precheck_orchestrator.py"),
+    VALIDATION_POLICY_PATH,
+    Path(__file__).resolve().parents[1] / "docker-compose.yml",
+    Path(__file__).with_name("run_release_qualification.sh"),
+)
+
+
+def execution_preflight(
+    repository_root: Path,
+    body_file: Path,
+    expected_worktree: Path,
+    expected_head: str,
+    local_head: str,
+    *,
+    require_docker: bool,
+) -> None:
+    """Reject execution-contract defects before starting any costly gate."""
+    failures: list[str] = []
+    if not expected_worktree.is_absolute():
+        failures.append("--expected-worktree must be an absolute path")
+    elif repository_root.resolve() != expected_worktree.resolve():
+        failures.append(
+            f"selected worktree is {repository_root.resolve()}, expected {expected_worktree.resolve()}"
+        )
+    if local_head != expected_head:
+        failures.append(f"local HEAD is {local_head}, expected {expected_head}")
+
+    home = Path(os.environ.get("HOME", ""))
+    if not home.is_absolute() or not home.is_dir() or not os.access(home, os.W_OK):
+        failures.append("HOME must name an existing writable absolute directory")
+    output_dir = body_file.expanduser().resolve().parent
+    if not output_dir.is_dir() or not os.access(output_dir, os.W_OK):
+        failures.append(f"PR body output directory is not writable: {output_dir}")
+
+    try:
+        git("status", "--porcelain")
+    except subprocess.CalledProcessError:
+        failures.append("git cannot read the worktree; configure its exact path as a safe.directory")
+
+    if require_docker:
+        required_tools = ("docker", "jq")
+        missing = [tool for tool in required_tools if shutil.which(tool) is None]
+        if missing:
+            failures.append(f"required executables are unavailable: {', '.join(missing)}")
+        else:
+            docker = shutil.which("docker")
+            assert docker is not None
+            for label, command in (
+                ("Docker daemon", (docker, "info")),
+                ("Docker Compose", (docker, "compose", "version")),
+                ("Docker Buildx", (docker, "buildx", "version")),
+            ):
+                completed = subprocess.run(command, check=False, capture_output=True, text=True)  # noqa: S603
+                if completed.returncode != 0:
+                    failures.append(f"{label} is unavailable")
+            socket = Path("/var/run/docker.sock")
+            if socket.exists() and not os.access(socket, os.R_OK | os.W_OK):
+                failures.append(f"Docker socket is not readable and writable: {socket}")
+
+    if failures:
+        raise ValueError("execution preflight: " + "; ".join(failures))
 
 
 def git(*arguments: str) -> str:
@@ -110,8 +175,22 @@ def load_runtime_evidence(evidence_file: Path, head: str) -> dict[str, object]:
 
 
 def validate_runtime_evidence_head(evidence: dict[str, object], head: str) -> dict[str, object]:
-    if evidence.get("commit_sha") != head:
-        raise ValueError("runtime lifecycle evidence is not bound to the selected branch HEAD")
+    evidence_head = str(evidence.get("commit_sha", ""))
+    if evidence_head != head:
+        git_executable = shutil.which("git")
+        if git_executable is None:
+            raise ValueError("git executable is required to validate runtime evidence ancestry")
+        ancestor = subprocess.run(  # noqa: S603
+            [git_executable, "merge-base", "--is-ancestor", evidence_head, head],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if ancestor.returncode != 0:
+            raise ValueError("runtime lifecycle evidence is not an ancestor of the selected branch HEAD")
+        intervening_files = git("diff", "--name-only", f"{evidence_head}..{head}").splitlines()
+        if runtime_gate_required(intervening_files):
+            raise ValueError("runtime lifecycle evidence predates runtime-affecting changes")
     return evidence
 
 
@@ -148,29 +227,63 @@ def changed_files_digest(changed_files: list[str]) -> str:
     return hashlib.sha256("\n".join(sorted(changed_files)).encode()).hexdigest()
 
 
+def configuration_digest() -> str:
+    digest = hashlib.sha256()
+    for path in PRECHECK_CONFIGURATION_PATHS:
+        digest.update(str(path.relative_to(Path(__file__).resolve().parents[1])).encode())
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def runner_digest(nodes: list[PrecheckNode]) -> str:
+    graph = [
+        {
+            "name": node.name,
+            "command": node.command,
+            "heavy": node.heavy,
+            "dependencies": node.dependencies,
+            "transient_retries": node.transient_retries,
+        }
+        for node in nodes
+    ]
+    return hashlib.sha256(json.dumps(graph, sort_keys=True).encode()).hexdigest()
+
+
 def validate_precheck_evidence(
     evidence: dict[str, object],
     base_sha: str,
     head: str,
     changed_file_digest: str,
-    graph_version: str = "wc100-prechecks-v1",
+    expected_configuration_digest: str,
+    expected_runner_digest: str,
+    graph_version: str = PRECHECK_GRAPH_VERSION,
 ) -> dict[str, object]:
     if evidence.get("passed") is not True:
         raise ValueError("precheck evidence must report passed=true")
     if evidence.get("base_sha") != base_sha or evidence.get("commit_sha") != head:
         raise ValueError("precheck evidence is not bound to the selected base and branch HEAD")
-    if evidence.get("schema") != "waooaw.pr-prechecks/v2":
+    if evidence.get("schema") != "waooaw.pr-prechecks/v3":
         raise ValueError("precheck evidence schema is not trusted")
     if evidence.get("changed_file_digest") != changed_file_digest:
         raise ValueError("precheck evidence is not bound to the selected changed files")
     if evidence.get("graph_version") != graph_version:
         raise ValueError("precheck evidence is not bound to the current gate graph")
+    if evidence.get("configuration_digest") != expected_configuration_digest:
+        raise ValueError("precheck evidence is not bound to the current gate configuration")
+    if evidence.get("runner_digest") != expected_runner_digest:
+        raise ValueError("precheck evidence is not bound to the current runner graph")
     return evidence
 
 
-def run_ci_prechecks(base: str, head: str, changed_files: list[str]) -> dict[str, object]:
-    repository_root = Path(git("rev-parse", "--show-toplevel"))
-    git_common_dir = Path(git("rev-parse", "--path-format=absolute", "--git-common-dir"))
+def precheck_nodes(
+    repository_root: Path,
+    git_common_dir: Path,
+    base: str,
+    head: str,
+    changed_files: list[str],
+) -> list[PrecheckNode]:
     docker = shutil.which("docker")
     if docker is None:
         raise ValueError("docker executable is required for PR prechecks")
@@ -230,13 +343,21 @@ def run_ci_prechecks(base: str, head: str, changed_files: list[str]) -> dict[str
                 heavy=True,
             )
         )
-    changed_file_digest = changed_files_digest(changed_files)
+    return nodes
+
+
+def run_ci_prechecks(base: str, head: str, changed_files: list[str]) -> dict[str, object]:
+    repository_root = Path(git("rev-parse", "--show-toplevel"))
+    git_common_dir = Path(git("rev-parse", "--path-format=absolute", "--git-common-dir"))
+    nodes = precheck_nodes(repository_root, git_common_dir, base, head, changed_files)
     return run_prechecks(
         nodes,
         base_sha=git("rev-parse", base),
         head_sha=head,
-        changed_file_digest=changed_file_digest,
-        graph_version="wc100-prechecks-v1",
+        changed_file_digest=changed_files_digest(changed_files),
+        graph_version=PRECHECK_GRAPH_VERSION,
+        configuration_digest=configuration_digest(),
+        runner_digest=runner_digest(nodes),
         artifact_dir=repository_root / "test-results/wc100/prechecks" / head,
     )
 
@@ -261,6 +382,8 @@ def main() -> int:
     parser.add_argument("--body-file", required=True, type=Path)
     parser.add_argument("--base", default="origin/main")
     parser.add_argument("--remote", default="origin")
+    parser.add_argument("--expected-worktree", required=True, type=Path)
+    parser.add_argument("--expected-head", required=True)
     parser.add_argument(
         "--allow-unpushed-head",
         action="store_true",
@@ -287,19 +410,42 @@ def main() -> int:
     try:
         if arguments.update_pr is not None and not arguments.allow_unpushed_head:
             raise ValueError("--update-pr requires --allow-unpushed-head")
+        repository_root = Path(git("rev-parse", "--show-toplevel"))
         local_head = git("rev-parse", "HEAD")
+        execution_preflight(
+            repository_root,
+            arguments.body_file,
+            arguments.expected_worktree,
+            arguments.expected_head,
+            local_head,
+            require_docker=arguments.precheck_evidence_file is None,
+        )
         remote_head = authoritative_remote_head(arguments.remote)
         head = preparation_head(local_head, remote_head, arguments.allow_unpushed_head)
         body = arguments.body_file.read_text(encoding="utf-8")
         changed_files = git("diff", "--name-only", f"{arguments.base}..{head}").splitlines()
         changed_file_digest = changed_files_digest(changed_files)
         base_sha = git("rev-parse", arguments.base)
-        ledger_violations = validate_changed_ledgers(Path(git("rev-parse", "--show-toplevel")), changed_files)
+        ledger_violations = validate_changed_ledgers(repository_root, changed_files)
         if ledger_violations:
             raise ValueError("requirement ledger: " + "; ".join(ledger_violations))
         if arguments.precheck_evidence_file:
+            nodes = precheck_nodes(
+                repository_root,
+                Path(git("rev-parse", "--path-format=absolute", "--git-common-dir")),
+                arguments.base,
+                head,
+                changed_files,
+            )
             evidence = json.loads(arguments.precheck_evidence_file.read_text(encoding="utf-8"))
-            validate_precheck_evidence(evidence, base_sha, head, changed_file_digest)
+            validate_precheck_evidence(
+                evidence,
+                base_sha,
+                head,
+                changed_file_digest,
+                configuration_digest(),
+                runner_digest(nodes),
+            )
         else:
             evidence = run_ci_prechecks(arguments.base, head, changed_files)
             arguments.body_file.with_suffix(".precheck-evidence.json").write_text(

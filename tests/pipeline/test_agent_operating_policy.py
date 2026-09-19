@@ -146,3 +146,16 @@ def test_author_review_is_required_and_machine_enforced() -> None:
     assert "python scripts/validate_runtime_lifecycle_evidence.py" in workflow
     assert "HEAD_SHA: ${{ github.event.pull_request.head.sha }}" in workflow
     assert "- author-review-gate" in workflow
+
+
+def test_platform_it_policy_defines_costly_run_contract() -> None:
+    quick_start = (ROOT / ".github/agent-context/office-platform-it-expert.md").read_text(encoding="utf-8")
+    canonical = (ROOT / "architecture/reference/agents/platform-it-expert-agent.md").read_text(encoding="utf-8")
+
+    for policy in (quick_start, canonical):
+        normalized = " ".join(policy.lower().split())
+        assert '--expected-worktree "$PWD"' in policy
+        assert '--expected-head "$(git rev-parse HEAD)"' in policy
+        assert "original absolute paths" in normalized
+        assert "writable output directories" in normalized
+        assert "first causal" in normalized

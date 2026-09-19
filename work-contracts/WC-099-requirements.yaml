@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-099
 contract_path: work-contracts/WC-099-demo-customer-journey-and-application-shell-remediation.md
-contract_digest: df32401b7e39f3fb0844ea7293297c11d88f3d979c9f7dcac65771d714eb5c7d
+contract_digest: 232ce716dfe59e9fe03667f7e7386af51e524d7a05dad5928926fa09f2d7bef8
 contract_status: IMPLEMENTATION_AUTHORIZED
 implementation_scope: true
 result: QUALIFIED
@@ -334,3 +334,43 @@ requirements:
     dependencies: [Marketplace and relationship projections]
     completion_rule: DOM absence and unclipped grid geometry pass at 1280x720, 1440x900, 360x800 and 390x844.
     residual_risk: None in local browser evidence.
+  - <<: *completed
+    requirement_id: WC099-R033
+    source: Section 18.2
+    observable_outcome: PR preparation rejects execution-contract defects before starting costly gates.
+    component_owner: PR preparation automation
+    evidence_class: local Docker unit test
+    test_path_or_plan: tests/pipeline/test_prepare_pr_body.py
+    dependencies: [Docker CLI and daemon, selected Git worktree]
+    completion_rule: Wrong worktree, wrong HEAD, missing tools, inaccessible Docker, unsafe Git and unwritable path cases fail in preflight.
+    residual_risk: Host-specific resource exhaustion remains detectable but cannot be eliminated by static preflight.
+  - <<: *completed
+    requirement_id: WC099-R034
+    source: Section 18.2
+    observable_outcome: Platform IT Expert guidance mandates absolute nested-Docker mounts, writable output directories and focused-first qualification.
+    component_owner: Platform IT Expert operating policy
+    evidence_class: local Docker policy test
+    test_path_or_plan: tests/pipeline/test_agent_operating_policy.py
+    dependencies: [.github/agent-context/office-platform-it-expert.md, architecture/reference/agents/platform-it-expert-agent.md]
+    completion_rule: Both policy surfaces expose the same mandatory costly-run safeguards.
+    residual_risk: Human command entry remains subject to enforcement by the preparation preflight.
+  - <<: *completed
+    requirement_id: WC099-R035
+    source: Section 18.2
+    observable_outcome: Reused precheck evidence is bound to exact source, gate configuration and runner graph identity.
+    component_owner: PR preparation automation
+    evidence_class: local Docker unit test
+    test_path_or_plan: tests/pipeline/test_prepare_pr_body.py and tests/pipeline/test_precheck_orchestrator.py
+    dependencies: [Engineering validation policy, precheck graph]
+    completion_rule: Schema-v3 evidence rejects any base, HEAD, changed-file, graph, configuration or runner mismatch.
+    residual_risk: Mutable external image tags remain governed by the existing release qualification image controls.
+  - <<: *completed
+    requirement_id: WC099-R036
+    source: Section 18.2
+    observable_outcome: Qualification reports the first causal failure and reuses runtime evidence only across non-runtime descendant commits.
+    component_owner: Precheck and runtime evidence validation
+    evidence_class: local Docker unit test
+    test_path_or_plan: tests/pipeline/test_precheck_orchestrator.py and tests/pipeline/test_validate_runtime_lifecycle_evidence.py
+    dependencies: [Runtime trigger classifier, Git ancestry]
+    completion_rule: Dependency failure, runtime-changing descendant and unrelated commit cases reject reuse; documentation-only descendants pass.
+    residual_risk: Incorrect path classification is controlled by the versioned validation policy and focused classifier tests.

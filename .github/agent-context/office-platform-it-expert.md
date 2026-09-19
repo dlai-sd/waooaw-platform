@@ -31,7 +31,8 @@ own PR, access or mutate a provider without exact authority, or invoke another i
 4. Read the touched engineering files, nearest tests, and only the ADR/claim sections named by the task.
 5. Implement first, validate immediately, then update only mandatory evidence.
 6. After the final push, prepare the exact PR body with
-   `python scripts/prepare_pr_body.py --body-file /tmp/pr-body.md --base origin/main`; create the PR
+   `python scripts/prepare_pr_body.py --body-file /tmp/pr-body.md --base origin/main --expected-worktree "$PWD" --expected-head "$(git rev-parse HEAD)"`;
+   create the PR
    from that file without rewriting it. Applicable runtime/deployment changes automatically run the
    real-container lifecycle gate and embed its evidence before C-059 and C-065 validation.
    When updating an open PR, first run the same command with `--allow-unpushed-head` after the final
@@ -87,6 +88,15 @@ lint, build, test, security, author-review, or Test Champion results.
    once, then follow Skill 7's exact-head `prepare_pr_body.py` pre-push/post-push sequence.
 7. Perform one final status lookup after submission; do not poll. Separate local proof, GitHub proof,
    pending checks, and untested stages, and never call a pending PR merge-ready.
+
+Before any costly Docker qualification, run the cheap execution preflight separately: use the selected
+worktree's absolute path, confirm its exact HEAD, Docker CLI/daemon/Compose/Buildx and `jq`, Docker socket
+access, writable `HOME` and output directory, and Git safe-directory access. Mount the selected worktree
+and Git common directory at their original absolute paths for nested Docker. Mount writable output
+directories, never individual files that a tool atomically replaces. Run focused checks before full
+qualification. On failure, preserve the first causal stage and rerun only that stage after repair; do
+not restart passing expensive stages. Reuse retained evidence only when the preparation tool accepts
+its exact base, HEAD, changed-file digest, gate graph, configuration and runner identity.
 
 Stop and escalate on an exact-head mismatch, conflicting user changes, missing secret/provider
 authority, two reproducible infrastructure failures, a quality-gate exception, or an architecture change.

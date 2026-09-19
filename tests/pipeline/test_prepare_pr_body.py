@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+from types import SimpleNamespace
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -9,12 +10,15 @@ from prepare_pr_body import (  # noqa: E402
     add_runtime_evidence,
     business_platform_gate_required,
     changed_files_digest,
+    configuration_digest,
     expected_pr_labels,
+    execution_preflight,
     load_runtime_evidence,
     preparation_head,
     prepare_body,
     release_qualification_gate_required,
     run_ci_prechecks,
+    runner_digest,
     validate_precheck_evidence,
 )
 from validate_author_review import validate_author_review  # noqa: E402
@@ -153,18 +157,20 @@ def test_expected_pr_labels_include_lifecycle_and_branch_tier() -> None:
 def test_precheck_evidence_must_match_base_and_head() -> None:
     digest = changed_files_digest(["scripts/example.py"])
     evidence = {
-        "schema": "waooaw.pr-prechecks/v2",
+        "schema": "waooaw.pr-prechecks/v3",
         "passed": True,
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": digest,
-        "graph_version": "wc100-prechecks-v1",
+        "graph_version": "wc100-prechecks-v2",
+        "configuration_digest": "c" * 64,
+        "runner_digest": "r" * 64,
     }
-    assert validate_precheck_evidence(evidence, "b" * 40, HEAD, digest) == evidence
+    assert validate_precheck_evidence(evidence, "b" * 40, HEAD, digest, "c" * 64, "r" * 64) == evidence
 
     for base_sha, head in (("c" * 40, HEAD), ("b" * 40, "d" * 40)):
         try:
-            validate_precheck_evidence(evidence, base_sha, head, digest)
+            validate_precheck_evidence(evidence, base_sha, head, digest, "c" * 64, "r" * 64)
         except ValueError as error:
             assert "selected base and branch HEAD" in str(error)
         else:
@@ -173,21 +179,55 @@ def test_precheck_evidence_must_match_base_and_head() -> None:
 
 def test_precheck_evidence_rejects_changed_files_or_graph_version() -> None:
     evidence = {
-        "schema": "waooaw.pr-prechecks/v2",
+        "schema": "waooaw.pr-prechecks/v3",
         "passed": True,
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": "d" * 64,
-        "graph_version": "wc100-prechecks-v1",
+        "graph_version": "wc100-prechecks-v2",
+        "configuration_digest": "c" * 64,
+        "runner_digest": "r" * 64,
     }
 
-    for digest, graph_version in (("e" * 64, "wc100-prechecks-v1"), ("d" * 64, "stale")):
+    for digest, graph_version in (("e" * 64, "wc100-prechecks-v2"), ("d" * 64, "stale")):
         try:
-            validate_precheck_evidence(evidence, "b" * 40, HEAD, digest, graph_version)
+            validate_precheck_evidence(
+                evidence,
+                "b" * 40,
+                HEAD,
+                digest,
+                "c" * 64,
+                "r" * 64,
+                graph_version,
+            )
         except ValueError as error:
             assert "changed files" in str(error) or "gate graph" in str(error)
         else:
             raise AssertionError("stale precheck evidence was accepted")
+
+
+def test_precheck_evidence_rejects_configuration_or_runner_mismatch() -> None:
+    evidence = {
+        "schema": "waooaw.pr-prechecks/v3",
+        "passed": True,
+        "base_sha": "b" * 40,
+        "commit_sha": HEAD,
+        "changed_file_digest": "d" * 64,
+        "graph_version": "wc100-prechecks-v2",
+        "configuration_digest": "c" * 64,
+        "runner_digest": "r" * 64,
+    }
+
+    for config, runner, expected in (
+        ("x" * 64, "r" * 64, "configuration"),
+        ("c" * 64, "x" * 64, "runner"),
+    ):
+        try:
+            validate_precheck_evidence(evidence, "b" * 40, HEAD, "d" * 64, config, runner)
+        except ValueError as error:
+            assert expected in str(error)
+        else:
+            raise AssertionError(f"stale {expected} identity was accepted")
 
 
 def test_prepare_pr_body_uses_requirement_ledger_validator() -> None:
@@ -214,4 +254,74 @@ def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path)
     assert run_ci_prechecks("origin/main", HEAD, ["src/business-platform/Program.cs", ".github/workflows/ci.yaml"])["passed"]
     nodes = captured["nodes"]
     assert [node.name for node in nodes] == ["gitleaks", "business_platform", "release_qualification"]
-    assert captured["graph_version"] == "wc100-prechecks-v1"
+    assert captured["graph_version"] == "wc100-prechecks-v2"
+    assert captured["configuration_digest"] == configuration_digest()
+    assert captured["runner_digest"] == runner_digest(nodes)
+
+
+def test_execution_preflight_rejects_wrong_worktree_before_docker(monkeypatch, tmp_path: Path) -> None:
+    repository_root = tmp_path / "selected"
+    repository_root.mkdir()
+    body_file = tmp_path / "pr-body.md"
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr("prepare_pr_body.git", lambda *arguments: "")
+
+    try:
+        execution_preflight(
+            repository_root,
+            body_file,
+            tmp_path / "other",
+            HEAD,
+            HEAD,
+            require_docker=False,
+        )
+    except ValueError as error:
+        assert "selected worktree" in str(error)
+    else:
+        raise AssertionError("wrong worktree was accepted")
+
+
+def test_execution_preflight_checks_tools_only_when_gates_will_run(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr("prepare_pr_body.git", lambda *arguments: "")
+    monkeypatch.setattr("prepare_pr_body.shutil.which", lambda executable: None)
+
+    execution_preflight(tmp_path, tmp_path / "pr-body.md", tmp_path, HEAD, HEAD, require_docker=False)
+    try:
+        execution_preflight(tmp_path, tmp_path / "pr-body.md", tmp_path, HEAD, HEAD, require_docker=True)
+    except ValueError as error:
+        assert "docker, jq" in str(error)
+    else:
+        raise AssertionError("missing costly-run tools were accepted")
+
+
+def test_execution_preflight_rejects_wrong_head(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr("prepare_pr_body.git", lambda *arguments: "")
+
+    try:
+        execution_preflight(tmp_path, tmp_path / "pr-body.md", tmp_path, "b" * 40, HEAD, require_docker=False)
+    except ValueError as error:
+        assert "local HEAD" in str(error)
+    else:
+        raise AssertionError("wrong HEAD was accepted")
+
+
+def test_execution_preflight_checks_each_docker_capability(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr("prepare_pr_body.git", lambda *arguments: "")
+    monkeypatch.setattr("prepare_pr_body.shutil.which", lambda executable: f"/usr/bin/{executable}")
+
+    for failing_subcommand, expected in (("info", "daemon"), ("compose", "Compose"), ("buildx", "Buildx")):
+        monkeypatch.setattr(
+            "prepare_pr_body.subprocess.run",
+            lambda command, failing=failing_subcommand, **unused: SimpleNamespace(
+                returncode=1 if command[1] == failing else 0
+            ),
+        )
+        try:
+            execution_preflight(tmp_path, tmp_path / "pr-body.md", tmp_path, HEAD, HEAD, require_docker=True)
+        except ValueError as error:
+            assert expected in str(error)
+        else:
+            raise AssertionError(f"unavailable Docker {failing_subcommand} was accepted")

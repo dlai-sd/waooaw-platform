@@ -629,3 +629,31 @@ direct local executable evidence at one exact head and all still-applicable R-00
 local gates pass. Actual-cloud rows remain explicitly `BLOCKED-PENDING-FOUNDER-MERGE-AND-AUTHORIZED-
 WORK-COMPONENT-DEPLOYMENT`; they are not inferred from local tests. The PR must identify any such
 blocked evidence plainly and must not claim WC-099 complete, Demo accepted, or Production ready.
+
+## 18. Iteration 3 - Qualification Execution Safeguards
+
+### 18.1 Trigger And Boundary - 2026-09-19
+
+Repeated WC-099 qualification attempts spent substantial Docker time on harness defects before
+reaching product assertions: wrong-worktree mounts, unavailable Docker capabilities, unwritable
+paths, Git ownership rejection, and stale evidence. The Founder directed these lessons into the
+Platform IT Expert execution contract and PR preparation tool before final PR handoff. This
+iteration changes qualification orchestration and evidence validation only; it does not change the
+customer journey, deployed services, cloud state, or the blocked status of R-014, R-020, or R-021.
+
+### 18.2 Iteration 3 Normative Requirements
+
+| Requirement | Normative outcome | Direct executable evidence |
+|---|---|---|
+| WC099-R033 | PR preparation fails before any costly gate when the selected absolute worktree or expected HEAD is wrong, `HOME` or the output directory is unwritable, Git cannot read the worktree, or required Docker CLI/daemon/Compose/Buildx, socket access, or `jq` is unavailable. | Focused `test_prepare_pr_body.py` preflight tests plus exact-command preparation evidence. |
+| WC099-R034 | Platform IT Expert qualification uses the selected worktree and Git common directory at their original absolute paths, mounts writable output directories rather than atomically replaced files, and runs focused checks before full qualification. | `test_agent_operating_policy.py` assertions against the quick-start card and canonical agent specification. |
+| WC099-R035 | Reusable precheck evidence is accepted only when passed and bound to the exact base, HEAD, changed-file digest, gate graph, configuration digest, and runner command graph. | `test_prepare_pr_body.py` and `test_precheck_orchestrator.py` schema-v3 identity assertions. |
+| WC099-R036 | A failed qualification preserves the first causal stage and reruns only that stage after repair. Runtime evidence may cross only an ancestor-to-descendant change containing no runtime-trigger path; runtime-affecting or unrelated commits invalidate it. | Precheck dependency/failure tests and runtime-evidence descendant/rejection tests. |
+
+### 18.3 Iteration 3 Completion Rule
+
+R-033 through R-036 pass when their focused Docker test set succeeds and the final PR preparation
+invocation supplies the explicit worktree and HEAD contract. Existing exact-head product evidence is
+not reclassified as proof for a different source candidate. Any gate invalidated by the final diff
+must run once; a still-valid retained stage is reused rather than rerun. Generated qualification
+directories and local runtime material remain outside the commit.

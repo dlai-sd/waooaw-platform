@@ -269,11 +269,20 @@ pytest tests/ -v --cov=src --cov-report=xml
 **Mandatory PR structure (per `.github/pull_request_template.md`):**
 
 After final author review and the final push, populate the template, then run
-`python scripts/prepare_pr_body.py --body-file /tmp/pr-body.md --base origin/main`. The preparer
+`python scripts/prepare_pr_body.py --body-file /tmp/pr-body.md --base origin/main --expected-worktree "$PWD" --expected-head "$(git rev-parse HEAD)"`. The preparer
 refuses an unpushed or stale branch, binds Author Review to the authoritative remote SHA, and runs
 C-059 and C-065 before PR creation. Applicable runtime/deployment changes also run the exact-image
 Professional Runtime delayed-Temporal lifecycle gate and embed its JSON evidence. Submit that exact
 prepared file without rewriting it. Do not open the PR first and repair its body after CI starts.
+
+Before costly qualification, separately verify the absolute selected worktree and HEAD, Docker
+CLI/daemon/Compose/Buildx and `jq`, Docker socket access, writable `HOME` and output directory, and
+Git safe-directory access. Nested Docker mounts preserve the selected worktree and Git common
+directory at their original absolute paths. Mount writable output directories rather than individual
+atomically replaced files. Run focused checks before full qualification. Preserve the first causal
+failure and rerun only that failed stage after repair. Retained evidence is reusable only when the
+preparer validates its base, HEAD or permitted non-runtime descendant, changed-file digest, gate
+configuration, and runner graph.
 
 ```markdown
 ## IB Reference
