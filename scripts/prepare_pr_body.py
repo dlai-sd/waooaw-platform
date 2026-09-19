@@ -319,20 +319,20 @@ def precheck_nodes(
                     docker,
                     "compose",
                     "--profile",
-                    "test",
+                    "test-dotnet",
                     "run",
                     "--rm",
-                    "--user",
-                    "root",
-                    "test-runner",
+                    "test-runner-dotnet",
                     "sh",
                     "-lc",
-                    "dotnet restore tests/business-platform.Tests/business-platform.Tests.csproj && "
+                    "dotnet restore tests/business-platform.Tests/business-platform.Tests.csproj "
+                    "--artifacts-path /tmp/artifacts/business-platform-precheck && "
                     "dotnet build tests/business-platform.Tests/business-platform.Tests.csproj "
-                    "--no-restore -warnaserror && "
+                    "--artifacts-path /tmp/artifacts/business-platform-precheck --no-restore -warnaserror && "
                     "dotnet test tests/business-platform.Tests/business-platform.Tests.csproj "
+                    "--artifacts-path /tmp/artifacts/business-platform-precheck "
                     "--no-build --settings tests/coverage.runsettings --collect:'XPlat Code Coverage' "
-                    "--results-directory ./coverage/business-platform",
+                    "--results-directory /workspace/test-results/coverage/business-platform",
                 ),
                 heavy=True,
             )

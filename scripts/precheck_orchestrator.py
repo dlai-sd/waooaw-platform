@@ -181,6 +181,9 @@ def _run_node(node: PrecheckNode, artifact_dir: Path, heavy_slots: threading.Sem
             "COMPOSE_PROJECT_NAME": f"wc100-{node.name}-{os.getpid()}",
         }
     )
+    docker_socket = Path("/var/run/docker.sock")
+    if docker_socket.exists():
+        environment["DOCKER_GID"] = str(docker_socket.stat().st_gid)
     started_at = utc_now()
     stdout_chunks: list[str] = []
     stderr_chunks: list[str] = []
