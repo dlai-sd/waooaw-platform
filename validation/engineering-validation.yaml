@@ -44,7 +44,7 @@ commands:
   test-web: {shell: "cd web && pnpm jest --runInBand"}
   spec-lint: {shell: "python scripts/validation_control/docker_policy.py --repository /workspace"}
   sast-csharp: {shell: "dotnet build src/constitutional-engine/constitutional-engine.csproj --artifacts-path /tmp/artifacts/sast/constitutional-engine -p:TreatWarningsAsErrors=true && dotnet build src/business-platform/business-platform.csproj --artifacts-path /tmp/artifacts/sast/business-platform -p:TreatWarningsAsErrors=true"}
-  sast-python: {shell: "bandit -r src -f json -o test-results/bandit.json"}
+  sast-python: {shell: "bandit -r src -c pyproject.toml -lll -f json -o test-results/bandit.json"}
   sast-javascript: {shell: "cd web && pnpm exec biome lint ."}
   dependency-scan: {shell: "pip-audit --cache-dir /tmp/pip-audit-cache -r requirements-test.txt --strict"}
   secrets: {shell: "python scripts/validation_control/docker_policy.py --repository /workspace"}
