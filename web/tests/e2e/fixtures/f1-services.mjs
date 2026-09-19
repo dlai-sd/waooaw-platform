@@ -7,6 +7,7 @@ const scopedTimelines = new Map();
 const portalTimelines = new Map();
 const continuityStates = new Map();
 const voiceSessions = new Map();
+const acquisitionStates = new Map();
 const identityProviderDelayMs = Number.parseInt(process.env.IDENTITY_PROVIDER_DELAY_MS ?? '0', 10) || 0;
 
 const governedCards = [
@@ -63,6 +64,15 @@ function scopeFor(request) {
 
 function scopeKey(scope, relationshipId) {
   return `${scope}:${relationshipId}`;
+}
+
+function acquisitionsFor(scope) {
+  if (!acquisitionStates.has(scope)) acquisitionStates.set(scope, new Map());
+  return acquisitionStates.get(scope);
+}
+
+function relationshipSummary(relationshipId, professionalType, professionalDisplayName, lifecycleState = 'ACTIVE') {
+  return { relationshipId, professionalType, professionalVersion: '1.0.0', professionalDisplayName, lifecycleState, trialStatus: lifecycleState === 'TRIAL_ACTIVE' ? 'ACTIVE' : undefined, currentGoalSummary: 'Increase qualified enquiries', unreadState: 'ACTION_REQUIRED', availabilityState: 'AVAILABLE', currencyState: 'CURRENT', configurationState: 'COMPLETE', enabledSkillCount: 3, pendingSkillCount: 1, currentWorkSummary: 'Preparing current work.', performanceSummary: 'Review requires customer attention.', billingSummary: 'No current billing amount is available in this summary.', nextActionLabel: 'View work', lastAuthoritativelyConfirmedAt: '2026-08-12T09:55:00Z', resumeTarget: { surface: 'CONVERSATION', relationshipId } };
 }
 
 function continuityFor(scope, relationshipId) {
@@ -231,8 +241,20 @@ const server = createServer(async (request, response) => {
   }
 
   if (request.method === 'GET' && url.pathname === '/api/v1/employment/relationships') {
-    const summary = (relationshipId, professionalType, professionalDisplayName) => ({ relationshipId, professionalType, professionalVersion: '1.0.0', professionalDisplayName, lifecycleState: 'ACTIVE', currentGoalSummary: 'Increase qualified enquiries', unreadState: 'ACTION_REQUIRED', availabilityState: 'AVAILABLE', currencyState: 'CURRENT', configurationState: 'COMPLETE', enabledSkillCount: 3, pendingSkillCount: 1, currentWorkSummary: 'Preparing current work.', performanceSummary: 'Review requires customer attention.', billingSummary: 'No current billing amount is available in this summary.', nextActionLabel: 'View work', lastAuthoritativelyConfirmedAt: '2026-08-12T09:55:00Z', resumeTarget: { surface: 'CONVERSATION', relationshipId } });
-    json(response, { schemaVersion: '1.0.0', producedAt: '2026-08-12T10:00:00Z', items: [summary(primaryRelationshipId, 'DIGITAL_MARKETING', 'Mira'), summary('relationship-second', 'PRIVATE_TUTOR', 'Arun')] });
+    const acquired = [...acquisitionsFor(scope).values()].map(({ relationshipId, intent }) => relationshipSummary(relationshipId, 'DIGITAL_MARKETING_LOCAL_SERVICE', `Digital Marketing ${intent === 'TRIAL' ? 'Trial' : 'Hire'}`, intent === 'TRIAL' ? 'TRIAL_ACTIVE' : 'CONTRACT_PENDING_ACCEPTANCE'));
+    json(response, { schemaVersion: '1.0.0', producedAt: '2026-08-12T10:00:00Z', items: [relationshipSummary(primaryRelationshipId, 'DIGITAL_MARKETING', 'Mira'), relationshipSummary('relationship-second', 'PRIVATE_TUTOR', 'Arun'), ...acquired] });
+    return;
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/v1/acquisition/continuations') {
+    const body = await readBody(request);
+    const idempotencyKey = request.headers['idempotency-key'];
+    const acquisitions = acquisitionsFor(scope);
+    const prior = acquisitions.get(idempotencyKey);
+    const intent = body.intent;
+    const relationshipId = prior?.relationshipId ?? (intent === 'TRIAL' ? '11111111-1111-4111-8111-111111111111' : '22222222-2222-4222-8222-222222222222');
+    if (!prior) acquisitions.set(idempotencyKey, { relationshipId, intent });
+    json(response, { relationshipId, intent, status: 'READY', resumePath: `/relationships/${relationshipId}`, replayed: Boolean(prior) });
     return;
   }
 

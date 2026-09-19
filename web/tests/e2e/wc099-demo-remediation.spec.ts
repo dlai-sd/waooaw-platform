@@ -4,6 +4,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext, type Page, type TestInfo } from '@playwright/test';
 import { encode } from 'next-auth/jwt';
+import { supportedLocales } from '../../lib/preferences';
 
 const secret = 'playwright-only-not-a-runtime-secret';
 
@@ -51,6 +52,71 @@ test('R-001 R-002 R-003: disclosure precedes provider handoff and cancel is iner
   await attachScreenshot(page, testInfo, 'login-after-disclosure-cancel');
 });
 
+test('R-003: logout and second login request explicit Google account selection', async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-expanded', 'One clean Chromium broker-boundary journey proves the account switch contract.');
+  await addSession(context, testInfo.project.name);
+  await page.goto('/home');
+  await page.waitForURL('**/professionals/mine');
+  await page.locator('summary[aria-label="Account"]').first().click();
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page).toHaveURL('http://127.0.0.1:3000/');
+  await expect.poll(async () => context.cookies()).toEqual(expect.not.arrayContaining([
+    expect.objectContaining({ name: 'next-auth.session-token' }),
+  ]));
+
+  await page.route('**/api/auth/signin/keycloak-google?**', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ url: 'http://localhost:8080/realms/waooaw/protocol/openid-connect/auth?prompt=select_account' }),
+    });
+  });
+  await page.route('http://localhost:8080/realms/waooaw/protocol/openid-connect/auth?**', async (route) => {
+    await route.fulfill({ contentType: 'text/html', body: '<title>Test identity provider</title>' });
+  });
+  await page.goto('/login');
+  await page.getByRole('button', { name: 'Log in with Google' }).click();
+  const brokerRequest = page.waitForRequest((request) => request.url().includes('/api/auth/signin/keycloak-google'));
+  await page.getByRole('button', { name: 'Continue to Google' }).click();
+
+  expect(new URL((await brokerRequest).url()).searchParams.get('prompt')).toBe('select_account');
+  await expect(page).toHaveURL(/localhost:8080\/realms\/waooaw\/protocol\/openid-connect\/auth\?prompt=select_account/);
+});
+
+for (const acquisition of [
+  { intent: 'trial', relationshipId: '11111111-1111-4111-8111-111111111111', displayName: 'Digital Marketing Trial' },
+  { intent: 'hire', relationshipId: '22222222-2222-4222-8222-222222222222', displayName: 'Digital Marketing Hire' },
+] as const) {
+  test(`R-007: ${acquisition.intent} appears in My Agents without refresh`, async ({ context, page }, testInfo) => {
+    test.setTimeout(60_000);
+    await addSession(context, testInfo.project.name);
+    await page.goto('/marketplace');
+    const result = await page.evaluate(async (body) => {
+      const response = await fetch('/api/acquisition/continue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      return { ok: response.ok, status: response.status, body: await response.json() as { relationshipId?: string } };
+    }, {
+      professionalType: 'DIGITAL_MARKETING_LOCAL_SERVICE',
+      professionalVersion: '1.0.0',
+      intent: acquisition.intent,
+      disclosureRevision: '1.0.0',
+      termsVersion: '2026-07-18',
+      idempotencyKey: acquisition.relationshipId,
+    });
+    expect(result.ok, JSON.stringify(result.body)).toBe(true);
+    expect(result.body.relationshipId).toBe(acquisition.relationshipId);
+    await page.goto('/professionals/mine');
+
+    await expect(page).toHaveURL(/\/professionals\/mine$/, { timeout: 20_000 });
+    const acquiredAgent = page.getByRole('heading', { name: acquisition.displayName });
+    await expect(acquiredAgent).toBeVisible();
+    await expect(acquiredAgent.locator('xpath=ancestor::li[1]').getByRole('link', { name: 'View work' }))
+      .toHaveAttribute('href', `/relationships/${acquisition.relationshipId}`);
+  });
+}
+
 test('R-008 R-009 R-010 R-011 R-012 R-017 R-018: desktop shell geometry is stable', async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium-expanded', 'Desktop geometry is normalized in expanded Chromium across contract widths.');
   await addSession(context, testInfo.project.name);
@@ -75,12 +141,60 @@ test('R-008 R-009 R-010 R-011 R-012 R-017 R-018: desktop shell geometry is stabl
     await account.click();
     await expect(page.locator('.account-assurance:visible').first()).toHaveText('Account security: Verified');
     await expect(page.locator('body')).not.toContainText('AAL2_ACCOUNT');
-    const headingSizes = await page.locator('h1, h2, h3').evaluateAll((headings) => headings.map((heading) => [heading.tagName, getComputedStyle(heading).fontSize]));
+    const headingSizes = await page.locator('h1:visible, h2:visible, h3:visible').evaluateAll((headings) => headings.map((heading) => [heading.tagName, getComputedStyle(heading).fontSize]));
     for (const [tag, size] of headingSizes) expect(size).toBe(tag === 'H1' ? '32px' : tag === 'H2' ? '24px' : '20px');
     await expectNoOverflow(page);
     await attachScreenshot(page, testInfo, `shell-${viewport.width}x${viewport.height}`);
     await page.keyboard.press('Escape');
     await expect(rail).toHaveAttribute('data-expanded', 'false');
+  }
+});
+
+test('R-009 R-012: every application route preserves shell origin and typography', async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-expanded', 'The route-wide desktop matrix is normalized once at 1440x900.');
+  await addSession(context, testInfo.project.name);
+  for (const [name, path] of [
+    ['home-destination', '/home'],
+    ['marketplace', '/marketplace'],
+    ['my-agents', '/professionals/mine'],
+    ['alerts', '/alerts'],
+    ['settings', '/settings'],
+    ['profile', '/profile'],
+    ['relationship', '/relationships/relationship-active'],
+  ] as const) {
+    await page.goto(path);
+    const rail = page.locator('.side-navigation:visible');
+    const content = page.locator('.main-content:visible');
+    const account = page.locator('.account-drawer summary:visible');
+    const collapsed = await Promise.all([content.boundingBox(), account.boundingBox()]);
+    await page.getByRole('button', { name: 'Expand navigation' }).click();
+    await expect(rail).toHaveAttribute('data-expanded', 'true');
+    const expanded = await Promise.all([content.boundingBox(), account.boundingBox()]);
+    expect(Math.abs((expanded[0]?.x ?? 0) - (collapsed[0]?.x ?? 0))).toBeLessThanOrEqual(1);
+    expect(Math.abs((expanded[1]?.x ?? 0) - (collapsed[1]?.x ?? 0))).toBeLessThanOrEqual(1);
+    const headingSizes = await page.locator('h1:visible, h2:visible, h3:visible').evaluateAll((headings) => headings.map((heading) => [heading.tagName, getComputedStyle(heading).fontSize]));
+    for (const [tag, size] of headingSizes) expect(size).toBe(tag === 'H1' ? '32px' : tag === 'H2' ? '24px' : '20px');
+    await expectNoOverflow(page);
+    await attachScreenshot(page, testInfo, `route-${name}`);
+    await page.keyboard.press('Escape');
+    await expect(rail).toHaveAttribute('data-expanded', 'false');
+  }
+});
+
+test('R-017: every supported locale survives route changes and reload', async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-expanded', 'One Chromium matrix proves all server-rendered locale cookies and directions.');
+  await addSession(context, testInfo.project.name);
+  await page.goto('/marketplace');
+  for (const locale of supportedLocales) {
+    await page.locator('.side-navigation:visible .experience-controls select').selectOption(locale);
+    await expect(page.locator('html')).toHaveAttribute('lang', locale);
+    await expect(page.locator('html')).toHaveAttribute('dir', locale === 'ur' ? 'rtl' : 'ltr');
+    await page.goto('/alerts');
+    await expect(page.locator('html')).toHaveAttribute('lang', locale);
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('lang', locale);
+    await expect(page.locator('html')).toHaveAttribute('dir', locale === 'ur' ? 'rtl' : 'ltr');
+    await page.goto('/marketplace');
   }
 });
 
@@ -147,9 +261,21 @@ test('R-014 R-016 R-017 R-018 R-023: compact Guide contains focus, persists trut
     await expect(currentOpener).toBeFocused();
     await expect(page.locator('.bottom-navigation:visible').last()).toBeVisible();
     await expect(page.locator('.stop-control:visible').last()).toBeVisible();
+    await currentOpener.click();
+    await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
+    for (const control of [page.locator('.portal-guide textarea:visible').last(), page.getByRole('button', { name: 'Send' }).last()]) {
+      const controlBox = await control.boundingBox();
+      expect(controlBox?.x).toBeGreaterThanOrEqual(0);
+      expect((controlBox?.x ?? 0) + (controlBox?.width ?? 0)).toBeLessThanOrEqual(viewport.width);
+      expect(controlBox?.y).toBeGreaterThanOrEqual(0);
+      expect((controlBox?.y ?? 0) + (controlBox?.height ?? 0)).toBeLessThanOrEqual(viewport.height);
+    }
     await expectNoOverflow(page);
     const axe = await new AxeBuilder({ page }).analyze();
     expect(axe.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious')).toEqual([]);
     await attachScreenshot(page, testInfo, `compact-guide-${viewport.width}x${viewport.height}`);
+    await page.evaluate(() => { document.documentElement.style.fontSize = ''; });
+    await page.locator('.conversation-close:visible').last().click();
+    await expect(guide).toBeHidden();
   }
 });

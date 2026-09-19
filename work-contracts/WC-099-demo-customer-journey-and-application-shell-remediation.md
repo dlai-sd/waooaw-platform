@@ -288,29 +288,29 @@ head/image tuple. A substitute test or aggregate suite count cannot close a row.
 
 | Requirement | Defect trace | Owning surface | Required executable evidence |
 |---|---|---|---|
-| R-001 First login reaches provider selection or a specific recoverable state without an unexplained retry | D-001 | Web auth route, provider command and identity projection boundary | Focused state/timing tests plus clean-browser Chromium, Firefox and WebKit journey; retained failure reason evidence |
-| R-002 WAOOAW disclosure appears before first Google handoff and cancel performs no handoff | D-002 | Web auth UI | Unit assertions for exact scope-purpose content and explicit continue/cancel; browser network assertion that cancel launches no provider request |
-| R-003 Explicit post-logout/account-switch login permits Google account selection | D-003 | Web auth command and Keycloak launch contract | Browser journey proving logout, second login and account-choice prompt/selection intent; no stale WAOOAW session |
-| R-004 `/home` never displays unexplained blank shell | D-004 | Authenticated home/layout | Direct-load, refresh, client-transition, zero/one/many relationship and upstream-unavailable browser tests with visible-state assertions |
-| R-005 Trial continuation uses resolved internal membership and succeeds once | D-005, D-006 | BP middleware/acquisition | Focused integration test with non-GUID external subject and valid internal account; HTTP success plus one relationship/instance/evidence result |
-| R-006 Hire continuation uses the same corrected identity boundary without weakening commercial gates | D-005, D-006 | BP acquisition | Focused integration tests for valid hire, missing disclosure/admission/evidence denial and replay; no duplicate obligation |
-| R-007 Resulting Trial/Hire appears in My Agents without refresh or unrelated navigation | D-005, D-006 | BP projection and Web My Agents | End-to-end Trial and Hire journeys asserting returned relationship identity and visible list item |
-| R-008 Authenticated desktop has no horizontal top menu and rail reaches both viewport edges | D-007 | Web shell | Desktop semantic and screenshot assertions at 1280x720, 1440x900 and 1920x1080 |
-| R-009 Route changes and rail expansion do not move content origin, logo or user control | D-007 | Web shell/navigation | Pixel/geometry assertions before/after every primary route and rail mode; maximum 1px rendering tolerance |
-| R-010 Logo, primary links, language/theme and user controls follow Section 5.4 placement | D-007, D-011 | Web shell/navigation/account | DOM-order, keyboard-order, accessible-name and screenshot assertions in compact/expanded, LTR/RTL and light/dark states |
-| R-011 Assurance is plain-language account detail, not separate top chrome | D-011 | Web account menu | Component and browser assertions; customer-visible DOM contains no `AAL2_ACCOUNT` |
-| R-012 Application typography uses 32/24/20px hierarchy without clipping | D-008 | Web visual system/application pages | Computed-style and screenshot assertions on Home destination, Marketplace, My Agents, Alerts, Settings, Profile and relationship views |
-| R-013 Guide configuration is valid before Demo traffic | D-010 | Environment renderer and BP startup/readiness | Docker-rendered environment tests; exact candidate startup/readiness with secret reference and no secret disclosure; negative missing/short-key tests |
-| R-014 Guide history and send work after deployment | D-009, D-010 | BP conversation and Web Guide | Persistence/reload integration test and authorized Demo smoke test showing successful GET/POST without logging content or secrets |
-| R-015 Guide is a resizable non-overlapping desktop pane | D-009 | Web Guide workspace | Pointer and keyboard resize tests at min/default/max widths; geometry assertions against account menu, content actions and Emergency Stop |
-| R-016 Compact Guide is accessible and keeps composer/actions visible | D-009 | Web Guide workspace | 360x800 and 390x844 Chromium/Firefox/WebKit tests; focus trap/restore, keyboard, 200% zoom, long Hindi and Urdu text |
-| R-017 Theme and language remain durable after relocation | D-007, D-008 | Web preferences and shell | Existing preference tests plus route/reload browser tests for every supported locale option, RTL, light and dark |
-| R-018 Emergency Stop remains persistently reachable in all shell/Guide/account states | D-007, D-009 | Web shell and Stop control | CCT-HO-02 plus desktop/mobile geometry, keyboard and z-order assertions |
-| R-019 No regression to tenant, participant, relationship or conversation isolation | D-003, D-005, D-006, D-009, D-010 | BP and Web server boundaries | Two-tenant/two-participant hostile integration tests; unauthorized IDs remain non-enumerating |
-| R-020 One exact release passes the whole Founder acceptance journey | D-001 through D-011 | Integrated candidate | Clean-profile Login -> disclosure -> registration/resume -> Trial -> My Agents -> Guide -> logout -> account selection -> Hire journey, with screenshots and sanitized endpoint outcomes |
-| R-021 UAT/Production provider handoff identifies approved WAOOAW brand and public identity origin | D-002 promotion gate; Founder-deferred for Demo | Identity/public-origin configuration and authorized provider setup | Before UAT/Production traffic: rendered-origin/configuration proof plus authorized clean-browser provider screenshot/semantic assertion; incidental cloud hostname is absent as application identity |
-| R-022 Cursor-key rotation preserves conversation truth | D-009, D-010 | Environment catalog, BP conversation and Web recovery | Current/prior/retired key tests proving overlap or explicit reconciliation, complete reload and zero message loss/duplication |
-| R-023 No unintended persistence model is added | D-002, D-005, D-006, D-009, D-010 | BP acquisition/conversation and Web presentation state | Schema-diff/migration assertion, browser-storage inspection, and persistence tests proving only existing authoritative records change |
+| WC099-R001 | D-001 | Web auth route, provider command and identity projection boundary | First login reaches provider selection or a specific recoverable state without an unexplained retry; focused state/timing tests plus clean-browser Chromium, Firefox and WebKit journey; retained failure reason evidence |
+| WC099-R002 | D-002 | Web auth UI | WAOOAW disclosure appears before first Google handoff and cancel performs no handoff; unit assertions for exact scope-purpose content and explicit continue/cancel; browser network assertion that cancel launches no provider request |
+| WC099-R003 | D-003 | Web auth command and Keycloak launch contract | Explicit post-logout/account-switch login permits Google account selection; browser journey proving logout, second login and account-choice prompt/selection intent; no stale WAOOAW session |
+| WC099-R004 | D-004 | Authenticated home/layout | `/home` never displays unexplained blank shell; direct-load, refresh, client-transition, zero/one/many relationship and upstream-unavailable browser tests with visible-state assertions |
+| WC099-R005 | D-005, D-006 | BP middleware/acquisition | Trial continuation uses resolved internal membership and succeeds once; focused integration test with non-GUID external subject and valid internal account; HTTP success plus one relationship/instance/evidence result |
+| WC099-R006 | D-005, D-006 | BP acquisition | Hire continuation uses the same corrected identity boundary without weakening commercial gates; focused integration tests for valid hire, missing disclosure/admission/evidence denial and replay; no duplicate obligation |
+| WC099-R007 | D-005, D-006 | BP projection and Web My Agents | Resulting Trial/Hire appears in My Agents without refresh or unrelated navigation; end-to-end Trial and Hire journeys asserting returned relationship identity and visible list item |
+| WC099-R008 | D-007 | Web shell | Authenticated desktop has no horizontal top menu and rail reaches both viewport edges; desktop semantic and screenshot assertions at 1280x720, 1440x900 and 1920x1080 |
+| WC099-R009 | D-007 | Web shell/navigation | Route changes and rail expansion do not move content origin, logo or user control; pixel/geometry assertions before/after every primary route and rail mode; maximum 1px rendering tolerance |
+| WC099-R010 | D-007, D-011 | Web shell/navigation/account | Logo, primary links, language/theme and user controls follow Section 5.4 placement; DOM-order, keyboard-order, accessible-name and screenshot assertions in compact/expanded, LTR/RTL and light/dark states |
+| WC099-R011 | D-011 | Web account menu | Assurance is plain-language account detail, not separate top chrome; component and browser assertions; customer-visible DOM contains no `AAL2_ACCOUNT` |
+| WC099-R012 | D-008 | Web visual system/application pages | Application typography uses 32/24/20px hierarchy without clipping; computed-style and screenshot assertions on Home destination, Marketplace, My Agents, Alerts, Settings, Profile and relationship views |
+| WC099-R013 | D-010 | Environment renderer and BP startup/readiness | Guide configuration is valid before Demo traffic; Docker-rendered environment tests; exact candidate startup/readiness with secret reference and no secret disclosure; negative missing/short-key tests |
+| WC099-R014 | D-009, D-010 | BP conversation and Web Guide | Guide history and send work after deployment; persistence/reload integration test and authorized Demo smoke test showing successful GET/POST without logging content or secrets |
+| WC099-R015 | D-009 | Web Guide workspace | Guide is a resizable non-overlapping desktop pane; pointer and keyboard resize tests at min/default/max widths; geometry assertions against account menu, content actions and Emergency Stop |
+| WC099-R016 | D-009 | Web Guide workspace | Compact Guide is accessible and keeps composer/actions visible; 360x800 and 390x844 Chromium/Firefox/WebKit tests; focus trap/restore, keyboard, 200% zoom, long Hindi and Urdu text |
+| WC099-R017 | D-007, D-008 | Web preferences and shell | Theme and language remain durable after relocation; existing preference tests plus route/reload browser tests for every supported locale option, RTL, light and dark |
+| WC099-R018 | D-007, D-009 | Web shell and Stop control | Emergency Stop remains persistently reachable in all shell/Guide/account states; CCT-HO-02 plus desktop/mobile geometry, keyboard and z-order assertions |
+| WC099-R019 | D-003, D-005, D-006, D-009, D-010 | BP and Web server boundaries | No regression to tenant, participant, relationship or conversation isolation; two-tenant/two-participant hostile integration tests; unauthorized IDs remain non-enumerating |
+| WC099-R020 | D-001 through D-011 | Integrated candidate | One exact release passes the whole Founder acceptance journey; clean-profile Login -> disclosure -> registration/resume -> Trial -> My Agents -> Guide -> logout -> account selection -> Hire journey, with screenshots and sanitized endpoint outcomes |
+| WC099-R021 | D-002 promotion gate; Founder-deferred for Demo | Identity/public-origin configuration and authorized provider setup | UAT/Production provider handoff identifies approved WAOOAW brand and public identity origin; before UAT/Production traffic: rendered-origin/configuration proof plus authorized clean-browser provider screenshot/semantic assertion; incidental cloud hostname is absent as application identity |
+| WC099-R022 | D-009, D-010 | Environment catalog, BP conversation and Web recovery | Cursor-key rotation preserves conversation truth; current/prior/retired key tests proving overlap or explicit reconciliation, complete reload and zero message loss/duplication |
+| WC099-R023 | D-002, D-005, D-006, D-009, D-010 | BP acquisition/conversation and Web presentation state | No unintended persistence model is added; schema-diff/migration assertion, browser-storage inspection, and persistence tests proving only existing authoritative records change |
 
 ## 8. Required Visual State Matrix
 
@@ -363,14 +363,15 @@ inspection alone is insufficient.
 | WC099-02 Identity and acquisition repair | D-001 through D-006 | Disclosure/account selection/home behavior pass; Trial and Hire create exactly one authorized relationship and appear in My Agents |
 | WC099-03 Stable shell and typography | D-007, D-008 and D-011 | Founder-directed rail/account composition and all R-008 through R-012/R-017/R-018 checks pass |
 | WC099-04 Guide workspace and readiness | D-009 and D-010 | Secret-backed readiness, persisted interaction, resizable pane and compact accessibility checks pass |
-| WC099-05 Integrated qualification | Entire Demo contract at one exact head and image tuple | R-001 through R-020 and R-022 through R-023 pass; R-021 carries only the recorded Demo variance; full affected suites, visual matrix, security checks and author review pass |
-| WC099-06 Founder handoff | One unmerged PR with exact evidence package | No partial/deferred/untested row except the exact R-021 Demo variance; Founder receives PR for review and merge |
+| WC099-05 Integrated qualification | Qualify the implementation candidate locally, then deploy its signed merge commit to Demo | Local gates pass before the implementation PR; R-014 and R-020 pass only after Founder merge and exact-main Demo deployment |
+| WC099-06 Founder handoff | Two-stage Founder-approved delivery: implementation PR, then evidence-only closure PR | Founder merges the implementation PR; the signed main candidate is deployed and qualified; a closure PR records the exact Demo evidence with no partial/deferred/untested row except R-021 |
 
 Milestones permit controlled implementation and review but do not permit separate completion claims.
-The implementation PR is not ready while any defect or requirement remains partial, deferred,
-untested, substituted or known-failing, except R-021 with the exact
-`FOUNDER-DEFERRED-NOT-APPLICABLE-TO-DEMO` status. That status cannot authorize UAT or Production
-traffic.
+The Founder approved this two-stage delivery sequence on 2026-09-18 because the deployment workflow
+accepts only a signed artifact from current `main`. The implementation PR may therefore carry R-014
+and R-020 as `BLOCKED` pending its Founder merge. WC-099 is not complete until the evidence-only
+closure PR records those rows as `PASS`; only R-021 may retain the exact
+`FOUNDER-DEFERRED-NOT-APPLICABLE-TO-DEMO` status. That status cannot authorize UAT or Production traffic.
 
 ## 11. Qualification And Evidence Package
 
@@ -417,9 +418,9 @@ WC-099 is complete only when all of the following are true at one exact candidat
 7. The full visual, accessibility, security, isolation, replay, build and regression gates pass.
 8. The complete Founder acceptance journey R-020 passes in an environment explicitly authorized for
    that execution.
-9. The PR contains the exact evidence package and no secrets or customer PII.
-10. The implementing agent performs author review and hands one unmerged PR to the Founder. The agent
-    does not self-approve, self-merge or claim Production readiness.
+9. The evidence-only closure PR contains the exact evidence package and no secrets or customer PII.
+10. The implementing agent performs author review and hands both unmerged PR stages to the Founder.
+   The agent does not self-approve, self-merge or claim Production readiness.
 11. D-002's WAOOAW disclosure is proved in Demo. Provider branding/public-origin acceptance remains
    pending under R-021 and must be proved by its authorized owner before UAT or Production traffic;
    repository changes alone cannot satisfy that promotion gate.
