@@ -1,7 +1,7 @@
 // Implements: work-contracts/WC-097-marketplace-acquisition-experience.md A01-A03
 // Constitutional basis: C-049 (Honest Limitation), C-059 (Implementation Traceability)
 
-import { ArrowRight, BadgeCheck, BarChart3, Clock3, Search, ShieldCheck, Sparkles, Target } from 'lucide-react';
+import { ArrowRight, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { AcquisitionContinuation } from '@/components/acquisition/AcquisitionContinuation';
 import { StateView } from '@/components/system/StateView';
@@ -47,17 +47,12 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
     const page = await browseMarketplaceProfessionals(accessToken, filters);
     return (
       <section className="portal-page" aria-labelledby="marketplace-title">
-        <header className="portal-heading">
+        <header className="portal-heading marketplace-heading">
           <p className="eyebrow">Find a professional</p>
           <h1 id="marketplace-title">{portalMessages[locale].marketplace}</h1>
           <p>Choose a professional whose skills and approach fit the outcome you want.</p>
         </header>
         {continuation}
-        <form className="portal-filter" role="search">
-          <label htmlFor="marketplace-search">Search</label>
-          <div><Search aria-hidden="true" size={18} /><input id="marketplace-search" name="q" defaultValue={filters.q} placeholder="Name or capability" /></div>
-          <button className="secondary-link" type="submit">Apply</button>
-        </form>
         {page.items.length === 0 ? (
           <StateView actionHref="/marketplace" actionLabel="Clear filters" kind="empty" title="No professionals found" description="No published professional currently matches these filters." />
         ) : (
@@ -69,9 +64,7 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
                   <div><p className="eyebrow">Growth professional</p><h2>{professional.displayName}</h2></div>
                   <span className="offer-available"><span aria-hidden="true" />Available now</span>
                 </header>
-                <p className="offer-promise">A focused digital marketing partner for local businesses ready to grow with clarity.</p>
-                {professional.suitability?.length ? <ul className="offer-outcomes">{professional.suitability.map((item, index) => <li key={item}>{index === 0 ? <Target aria-hidden="true" size={19} /> : <BarChart3 aria-hidden="true" size={19} />}<span>{item}</span></li>)}</ul> : null}
-                <div className="offer-trust-line"><span><ShieldCheck aria-hidden="true" size={17} />Evidence-backed plans</span>{professional.trialTerms ? <span><Clock3 aria-hidden="true" size={17} />Trial available</span> : null}<span><BadgeCheck aria-hidden="true" size={17} />You stay in control</span></div>
+                {professional.suitability?.[0] ? <p className="offer-promise">{professional.suitability[0]}</p> : null}
                 <div className="offer-commercial">
                   {professional.indicativePrice ? <p><span>From</span><strong>{new Intl.NumberFormat(locale, { style: 'currency', currency: professional.indicativePrice.currency }).format(professional.indicativePrice.amountInrPaise / 100)}</strong><span>/ {professional.indicativePrice.cadence.toLowerCase()}</span></p> : <p>Price available during review</p>}
                   {professional.trialTerms ? <p><strong>{professional.trialTerms}</strong></p> : null}

@@ -4,6 +4,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using Waooaw.BusinessPlatform.Controllers;
 using Waooaw.BusinessPlatform.Infrastructure;
@@ -281,6 +282,35 @@ public sealed class RelationshipEvaluationControllerTests
             Options.Create(new ConversationCursorOptions { HmacKey = "short" })));
         Assert.Throws<InvalidOperationException>(() => new ConversationCursorCodec(
             Options.Create(new ConversationCursorOptions { HmacKey = " " })));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("short")]
+    public async Task ConversationCursor_InvalidEffectiveKeyFailsValidationAndReadiness(string hmacKey)
+    {
+        var options = Options.Create(new ConversationCursorOptions { HmacKey = hmacKey });
+        var validator = new ConversationCursorOptionsValidator();
+
+        Assert.True(validator.Validate(Options.DefaultName, options.Value).Failed);
+        var health = await new ConversationCursorHealthCheck(options, validator)
+            .CheckHealthAsync(new HealthCheckContext());
+
+        Assert.Equal(HealthStatus.Unhealthy, health.Status);
+        Assert.Equal("Conversation cursor signing configuration is invalid.", health.Description);
+    }
+
+    [Fact]
+    public async Task ConversationCursor_ValidEffectiveKeyPassesValidationAndReadiness()
+    {
+        var options = Options.Create(new ConversationCursorOptions { HmacKey = new string('k', 32) });
+        var validator = new ConversationCursorOptionsValidator();
+
+        Assert.True(validator.Validate(Options.DefaultName, options.Value).Succeeded);
+        var health = await new ConversationCursorHealthCheck(options, validator)
+            .CheckHealthAsync(new HealthCheckContext());
+
+        Assert.Equal(HealthStatus.Healthy, health.Status);
     }
 
     [Fact]

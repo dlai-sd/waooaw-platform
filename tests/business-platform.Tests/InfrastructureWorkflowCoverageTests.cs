@@ -106,6 +106,7 @@ public sealed class InfrastructureWorkflowCoverageTests
                     ["IdentityEnvironment:Keycloak:Issuer"] = "http://keycloak:8080/realms/waooaw",
                     ["Keycloak:Authority"] = "https://identity.example.test/realms/waooaw",
                     ["Keycloak:RequireHttpsMetadata"] = "true",
+                    ["Conversation:CursorHmacKey"] = new string('c', 32),
                 }));
         });
         using var client = factory.CreateClient();

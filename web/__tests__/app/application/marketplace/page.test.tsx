@@ -73,6 +73,8 @@ it('uses the canonical disclosure route and preserves each available intent', as
   expect(document.querySelector('a[href*="digital-marketing-local-service"]')).not.toBeInTheDocument();
   expect(screen.queryByText('DIGITAL_MARKETING_LOCAL_SERVICE')).not.toBeInTheDocument();
   expect(screen.queryByText(/Eligibility depends only/)).not.toBeInTheDocument();
-  expect(screen.getByText('Evidence-backed plans')).toBeInTheDocument();
+  expect(screen.getByText('Build an evidence-backed marketing plan.')).toBeInTheDocument();
   expect(screen.getByText('14-day governed trial')).toBeInTheDocument();
+  expect(screen.queryByRole('search')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Apply' })).not.toBeInTheDocument();
 });

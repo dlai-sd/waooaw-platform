@@ -3,6 +3,7 @@
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 using System.Text;
 using Waooaw.BusinessPlatform.Infrastructure;
@@ -16,10 +17,14 @@ namespace Waooaw.BusinessPlatform.Controllers;
 public sealed class ProfessionalsController : ControllerBase
 {
     private readonly IProfessionalCatalog _catalog;
+    private readonly IDbContextFactory<EmploymentRelationshipDbContext> _dbFactory;
 
-    public ProfessionalsController(IProfessionalCatalog catalog)
+    public ProfessionalsController(
+        IProfessionalCatalog catalog,
+        IDbContextFactory<EmploymentRelationshipDbContext> dbFactory)
     {
         _catalog = catalog;
+        _dbFactory = dbFactory;
     }
 
     [HttpGet]
@@ -50,13 +55,17 @@ public sealed class ProfessionalsController : ControllerBase
     }
 
     [HttpGet("marketplace")]
-    [CustomerIdentityRoute]
-    public IActionResult BrowseMarketplace(
+    [CustomerIdentityRoute(requiresMembership: true)]
+    public async Task<IActionResult> BrowseMarketplace(
         [FromQuery] string? cursor,
         [FromQuery] int limit = 20,
         [FromQuery] string? professionalType = null,
-        [FromQuery(Name = "q")] string? query = null)
+        [FromQuery(Name = "q")] string? query = null,
+        CancellationToken cancellationToken = default)
     {
+        if (!HttpContext.Items.TryGetValue(CustomerMembershipMiddleware.MembershipItem, out var value)
+            || value is not CustomerWorkspaceMembership membership)
+            return Forbid();
         if (limit is < 1 or > 100
             || professionalType is { Length: > 100 }
             || query is { Length: > 120 })
@@ -70,7 +79,22 @@ public sealed class ProfessionalsController : ControllerBase
             return Problem(statusCode: StatusCodes.Status400BadRequest,
                 title: "Invalid marketplace cursor");
 
-        var listings = _catalog.Browse(professionalType, query);
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var activeVersions = await db.AgentAdmissions.AsNoTracking()
+            .Where(value => value.TenantId == membership.TenantId
+                && value.State == AgentAdmissionState.Active
+                && value.AdmissionContentDigest != null
+                && value.EvidenceSetDigest != null
+                && value.ArtifactDigest != null)
+            .Select(value => new { value.ProfessionalTypeId, value.ProfessionalVersion })
+            .ToArrayAsync(cancellationToken);
+        var offerable = activeVersions
+            .Select(value => (value.ProfessionalTypeId, value.ProfessionalVersion))
+            .ToHashSet();
+        var listings = _catalog.Browse(professionalType, query)
+            .Where(disclosure => offerable.Contains(
+                (disclosure.ProfessionalType, disclosure.ProjectionVersion)))
+            .ToArray();
         var page = listings.Skip(offset).Take(limit + 1).ToArray();
         var items = page.Take(limit).Select(disclosure => new
         {

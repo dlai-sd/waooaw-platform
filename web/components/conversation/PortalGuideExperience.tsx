@@ -71,17 +71,15 @@ export function PortalGuideExperience({ currentSurface, locale = 'en-IN' }: {
 
   return (
     <section className="portal-guide" aria-labelledby="portal-guide-title">
-      <div className="portal-guide-scroll">
-        <header><p className="section-label">Portal scope</p><h2 id="portal-guide-title">WAOOAW Guide</h2><span>{currentSurface.replaceAll('_', ' ').toLowerCase()}</span></header>
-        <p className="scope-disclosure">Navigation and explanations only. The Guide cannot act as an employed professional.</p>
-        <div className="portal-guide-timeline" aria-busy={loading} aria-live="polite">
-          {loading ? <p><LoaderCircle aria-hidden="true" className="spin" size={18} /> Loading Guide…</p> : null}
-          {!loading && messages.length === 0 ? <p>Ask where to find agents, alerts, billing or account settings.</p> : null}
-          {messages.map((message) => <article className={`guide-message guide-message-${message.actor.toLowerCase()}`} key={message.messageId}><strong>{message.actor === 'CUSTOMER' ? 'You' : 'WAOOAW Guide'}</strong>{message.content.map((block, index) => <p key={`${message.messageId}-${index}`}>{block.text}</p>)}{message.capabilities.map((capability) => <Link className="secondary-link" href={capability.destination} key={`${message.messageId}-${capability.destination}`}>{capability.label}</Link>)}</article>)}
-        </div>
+      <header><h2 id="portal-guide-title">WAOOAW Guide</h2><span>{currentSurface.replaceAll('_', ' ').toLowerCase()}</span></header>
+      <p className="scope-disclosure">Navigation and explanations only. The Guide cannot act as an employed professional.</p>
+      <div className="portal-guide-timeline" aria-busy={loading} aria-live="polite">
+        {loading ? <p><LoaderCircle aria-hidden="true" className="spin" size={18} /> Loading Guide…</p> : null}
+        {!loading && messages.length === 0 ? <p>Ask where to find agents, alerts, billing or account settings.</p> : null}
+        {messages.map((message) => <article className={`guide-message guide-message-${message.actor.toLowerCase()}`} key={message.messageId}><strong>{message.actor === 'CUSTOMER' ? 'You' : 'WAOOAW Guide'}</strong>{message.content.map((block, index) => <p key={`${message.messageId}-${index}`}>{block.text}</p>)}{message.capabilities.map((capability) => <Link className="secondary-link" href={capability.destination} key={`${message.messageId}-${capability.destination}`}>{capability.label}</Link>)}</article>)}
       </div>
-      <form onSubmit={(event) => { event.preventDefault(); void send(); }}><label htmlFor="portal-guide-draft">Ask the Guide</label><textarea id="portal-guide-draft" maxLength={4000} onChange={(event) => updateDraft(event.target.value)} placeholder="Where can I review my agents?" rows={3} value={draft} /><button className="send-command" disabled={!draft.trim() || sending} type="submit">{sending ? <LoaderCircle aria-hidden="true" className="spin" size={18} /> : <Send aria-hidden="true" size={18} />}Send</button></form>
       {error ? <p className="conversation-error" role="alert">{error}</p> : null}
+      <form onSubmit={(event) => { event.preventDefault(); void send(); }}><label htmlFor="portal-guide-draft">Ask the Guide</label><textarea id="portal-guide-draft" maxLength={4000} onChange={(event) => updateDraft(event.target.value)} placeholder="Where can I review my agents?" rows={3} value={draft} /><button className="send-command" disabled={!draft.trim() || sending} type="submit">{sending ? <LoaderCircle aria-hidden="true" className="spin" size={18} /> : <Send aria-hidden="true" size={18} />}Send</button></form>
     </section>
   );
 }

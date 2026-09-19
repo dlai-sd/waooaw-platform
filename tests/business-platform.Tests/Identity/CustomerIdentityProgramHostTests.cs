@@ -127,6 +127,7 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
             ["IdentityEnvironment:Keycloak:JwksUri"] = _configuration.ActorIssuer + "/protocol/openid-connect/certs",
             ["Identity:Hmac:Key"] = "synthetic-program-test-hmac-key-at-least-32-characters",
             ["ChannelContinuity:EnvelopeHmacKey"] = Convert.ToBase64String(new byte[32]),
+            ["Conversation:CursorHmacKey"] = "synthetic-program-test-cursor-key-at-least-32-characters",
         };
         if (brokerEnabled)
         {
@@ -184,8 +185,7 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
         var token = Token();
         Assert.DoesNotContain(new JwtSecurityTokenHandler().ReadJwtToken(token).Claims, claim => claim.Type == "tenant_id");
         using var marketplace = await SendAsync(HttpMethod.Get, "/api/v1/professionals/marketplace", token);
-        var marketplaceBody = await ExpectAsync(marketplace, HttpStatusCode.OK);
-        Assert.Equal("1.0.0", marketplaceBody.GetProperty("schemaVersion").GetString());
+        Assert.Equal(HttpStatusCode.Forbidden, marketplace.StatusCode);
         using var relationships = await SendAsync(HttpMethod.Get, "/api/v1/employment/relationships", token);
         Assert.Equal(HttpStatusCode.Forbidden, relationships.StatusCode);
         using var unresolved = await SendAsync(HttpMethod.Get, "/api/v1/identity/session", token);

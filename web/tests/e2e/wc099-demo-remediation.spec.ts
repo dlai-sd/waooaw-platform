@@ -1,8 +1,8 @@
-// Implements: work-contracts/WC-099-demo-customer-journey-and-application-shell-remediation.md R-001–R-018, R-020, R-023
+// Implements: work-contracts/WC-099-demo-customer-journey-and-application-shell-remediation.md R-001–R-018, R-020, R-023, R-029–R-032
 // Constitutional basis: C-001, C-023, C-049, C-059, C-063
 
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type BrowserContext, type Page, type TestInfo } from '@playwright/test';
+import { expect, test, type BrowserContext, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { encode } from 'next-auth/jwt';
 import { supportedLocales } from '../../lib/preferences';
 
@@ -20,6 +20,56 @@ async function addSession(context: BrowserContext, projectName: string) {
 
 async function expectNoOverflow(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+}
+
+async function expectPortalTypography(page: Page) {
+  const metrics = await page.locator('.app-shell-customer:visible').evaluate((shell) => {
+    const visibleText = [...shell.querySelectorAll<HTMLElement>('*')].filter((element) => {
+      const hasDirectText = [...element.childNodes].some((node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim());
+      const bounds = element.getBoundingClientRect();
+      return hasDirectText && bounds.width > 0 && bounds.height > 0;
+    });
+    const body = visibleText.find((element) => !element.closest('h1, h2, h3'));
+    const title = visibleText.find((element) => element.closest('h1, h2, h3'));
+    const content = shell.querySelector<HTMLElement>('.portal-page, .workspace-shell, .content-page, .state-view');
+    if (!body || !title || !content) throw new Error('Portal typography evidence target is missing.');
+    return {
+      bodySize: Number.parseFloat(getComputedStyle(body).fontSize),
+      titleSize: Number.parseFloat(getComputedStyle(title).fontSize),
+      sizes: [...new Set(visibleText.map((element) => Number.parseFloat(getComputedStyle(element).fontSize)))],
+      letterSpacing: [...new Set(visibleText.map((element) => {
+        const spacing = getComputedStyle(element).letterSpacing;
+        return spacing === 'normal' ? 0 : Number.parseFloat(spacing);
+      }))],
+      topPadding: Number.parseFloat(getComputedStyle(content).paddingTop),
+    };
+  });
+  expect(metrics.sizes).toEqual(expect.arrayContaining([metrics.bodySize, metrics.titleSize]));
+  expect(metrics.sizes).toHaveLength(2);
+  expect(metrics.titleSize - metrics.bodySize).toBeCloseTo(2 * 96 / 72, 2);
+  expect(metrics.letterSpacing).toEqual([0]);
+  expect(metrics.topPadding).toBeCloseTo(metrics.bodySize, 2);
+}
+
+async function expectCardGrid(cards: Locator, columns: 1 | 2) {
+  await expect.poll(() => cards.count()).toBeGreaterThanOrEqual(2);
+  const boxes = await cards.evaluateAll((items) => items.map((item) => {
+    const bounds = item.getBoundingClientRect();
+    return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height, viewportWidth: document.documentElement.clientWidth, contentFits: item.scrollHeight <= item.clientHeight + 1 };
+  }));
+  expect(boxes.every(({ x, width, viewportWidth, contentFits }) => x >= 0 && x + width <= viewportWidth && contentFits)).toBe(true);
+  if (columns === 2) {
+    for (let index = 0; index < boxes.length; index += 2) {
+      if (boxes[index + 1]) expect(Math.abs(boxes[index].y - boxes[index + 1].y)).toBeLessThanOrEqual(1);
+    }
+  } else {
+    expect(boxes.every((box) => Math.abs(box.x - boxes[0].x) <= 1)).toBe(true);
+  }
+}
+
+function expectNoIntersection(first: { x: number; y: number; width: number; height: number }, second: { x: number; y: number; width: number; height: number }) {
+  expect(first.x + first.width <= second.x || second.x + second.width <= first.x
+    || first.y + first.height <= second.y || second.y + second.height <= first.y).toBe(true);
 }
 
 async function attachScreenshot(page: Page, testInfo: TestInfo, name: string) {
@@ -192,8 +242,14 @@ test('R-008 R-009 R-010 R-011 R-012 R-017 R-018: desktop shell geometry is stabl
     await account.click();
     await expect(page.locator('.account-assurance:visible').first()).toHaveText('Account security: Verified');
     await expect(page.locator('body')).not.toContainText('AAL2_ACCOUNT');
-    const headingSizes = await page.locator('h1:visible, h2:visible, h3:visible').evaluateAll((headings) => headings.map((heading) => [heading.tagName, getComputedStyle(heading).fontSize]));
-    for (const [tag, size] of headingSizes) expect(size).toBe(tag === 'H1' ? '32px' : tag === 'H2' ? '24px' : '20px');
+    await expectPortalTypography(page);
+    await expect(page.getByRole('search')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Apply' })).toHaveCount(0);
+    await expectCardGrid(page.locator('section[aria-labelledby="marketplace-title"]:visible').first().locator('.marketplace-grid > li'), 2);
+    const launcherBox = await page.locator('.conversation-launcher:visible').boundingBox();
+    const stopBox = await page.locator('.stop-control:visible').boundingBox();
+    if (!launcherBox || !stopBox) throw new Error('Persistent control geometry is missing.');
+    expectNoIntersection(launcherBox, stopBox);
     await expectNoOverflow(page);
     await attachScreenshot(page, testInfo, `shell-${viewport.width}x${viewport.height}`);
     await page.keyboard.press('Escape');
@@ -223,8 +279,7 @@ test('R-009 R-012: every application route preserves shell origin and typography
     const expanded = await Promise.all([content.boundingBox(), account.boundingBox()]);
     expect(Math.abs((expanded[0]?.x ?? 0) - (collapsed[0]?.x ?? 0))).toBeLessThanOrEqual(1);
     expect(Math.abs((expanded[1]?.x ?? 0) - (collapsed[1]?.x ?? 0))).toBeLessThanOrEqual(1);
-    const headingSizes = await page.locator('h1:visible, h2:visible, h3:visible').evaluateAll((headings) => headings.map((heading) => [heading.tagName, getComputedStyle(heading).fontSize]));
-    for (const [tag, size] of headingSizes) expect(size).toBe(tag === 'H1' ? '32px' : tag === 'H2' ? '24px' : '20px');
+    await expectPortalTypography(page);
     await expectNoOverflow(page);
     await attachScreenshot(page, testInfo, `route-${name}`);
     await page.keyboard.press('Escape');
@@ -249,6 +304,35 @@ test('R-017: every supported locale survives route changes and reload', async ({
   }
 });
 
+test('R-031 R-032: Marketplace and My Agents keep complete two-column and narrow single-column cards', async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-expanded', 'One Chromium viewport matrix proves the responsive card contract.');
+  await addSession(context, testInfo.project.name);
+  for (const viewport of [
+    { width: 1280, height: 720, columns: 2 as const },
+    { width: 1440, height: 900, columns: 2 as const },
+    { width: 360, height: 800, columns: 1 as const },
+    { width: 390, height: 844, columns: 1 as const },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/marketplace');
+    const marketplace = page.locator('section[aria-labelledby="marketplace-title"]:visible').first();
+    await expect(page.getByRole('search')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Apply' })).toHaveCount(0);
+    expect(await marketplace.locator('.marketplace-heading').evaluate((element) => getComputedStyle(element).borderBottomWidth)).toBe('0px');
+    await expectCardGrid(marketplace.locator('.marketplace-grid > li'), viewport.columns);
+    await expectPortalTypography(page);
+    await expectNoOverflow(page);
+    await attachScreenshot(page, testInfo, `marketplace-grid-${viewport.width}x${viewport.height}`);
+
+    await page.goto('/professionals/mine');
+    const myAgents = page.locator('section[aria-labelledby="my-experts-title"]:visible').first();
+    await expectCardGrid(myAgents.locator('.agent-dashboard > li'), viewport.columns);
+    await expectPortalTypography(page);
+    await expectNoOverflow(page);
+    await attachScreenshot(page, testInfo, `my-agents-grid-${viewport.width}x${viewport.height}`);
+  }
+});
+
 test('R-015: Guide is a bounded desktop pane with pointer and keyboard resize', async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium-expanded', 'Desktop pane geometry is normalized once at 1440x900.');
   await addSession(context, testInfo.project.name);
@@ -257,6 +341,7 @@ test('R-015: Guide is a bounded desktop pane with pointer and keyboard resize', 
   const guide = page.getByRole('complementary', { name: 'WAOOAW Guide' });
   const separator = page.getByRole('separator', { name: 'Resize Guide' });
   await expect(guide).toBeVisible();
+  await expect(page.locator('.conversation-launcher')).toHaveCount(0);
   expect((await guide.boundingBox())?.width).toBe(400);
   await separator.press('Home');
   expect((await guide.boundingBox())?.width).toBe(320);
@@ -271,7 +356,10 @@ test('R-015: Guide is a bounded desktop pane with pointer and keyboard resize', 
   expect((await guide.boundingBox())?.width).toBe(480);
   const accountBox = await page.locator('.account-drawer summary').boundingBox();
   const guideBox = await guide.boundingBox();
+  const stopBox = await page.locator('.stop-control:visible').boundingBox();
   expect((accountBox?.x ?? 0) + (accountBox?.width ?? 0)).toBeLessThanOrEqual(guideBox?.x ?? 0);
+  if (!guideBox || !stopBox) throw new Error('Guide control geometry is missing.');
+  expectNoIntersection(guideBox, stopBox);
   await attachScreenshot(page, testInfo, 'guide-desktop-pane');
 });
 
@@ -296,6 +384,7 @@ test('R-014 R-016 R-017 R-018 R-023: compact Guide contains focus, persists trut
     await opener.click();
     const guide = page.getByRole('complementary', { name: 'WAOOAW Guide' });
     await expect(guide).toBeVisible();
+    await expect(page.locator('.conversation-launcher')).toHaveCount(0);
     const box = await guide.boundingBox();
     expect(box?.x).toBeGreaterThanOrEqual(0);
     expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(viewport.width);
@@ -316,19 +405,38 @@ test('R-014 R-016 R-017 R-018 R-023: compact Guide contains focus, persists trut
     await expect(currentOpener).toBeFocused();
     await expect(page.locator(viewport.width < 768 ? '.bottom-navigation:visible' : '.side-navigation:visible').last()).toBeVisible();
     await expect(page.locator('.stop-control:visible').last()).toBeVisible();
+    const closedLauncherBox = await currentOpener.boundingBox();
+    const closedStopBox = await page.locator('.stop-control:visible').last().boundingBox();
+    if (!closedLauncherBox || !closedStopBox) throw new Error('Compact persistent control geometry is missing.');
+    expectNoIntersection(closedLauncherBox, closedStopBox);
     await currentOpener.click();
     await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
-    for (const control of [page.locator('.portal-guide textarea:visible').last(), page.getByRole('button', { name: 'Send' }).last()]) {
+    if (viewport.width === 360 && testInfo.project.name.startsWith('chromium')) {
+      await page.route('**/api/interactions/portal', async (route) => {
+        if (route.request().method() === 'POST') await route.fulfill({ status: 503, body: '{}' });
+        else await route.continue();
+      });
+      await page.getByLabel('Ask the Guide').fill('Show a recoverable Guide failure');
+      await page.getByRole('button', { name: 'Send' }).click();
+      await expect(page.locator('.conversation-error[role="alert"]')).toHaveText('The Guide response is unresolved. Refresh before retrying.');
+    }
+    for (const control of [page.locator('.portal-guide textarea:visible').last(), page.getByRole('button', { name: 'Send' }).last(), page.locator('.conversation-error[role="alert"]')]) {
+      if (await control.count() === 0) continue;
       const controlBox = await control.boundingBox();
       expect(controlBox?.x).toBeGreaterThanOrEqual(0);
       expect((controlBox?.x ?? 0) + (controlBox?.width ?? 0)).toBeLessThanOrEqual(viewport.width);
       expect(controlBox?.y).toBeGreaterThanOrEqual(0);
       expect((controlBox?.y ?? 0) + (controlBox?.height ?? 0)).toBeLessThanOrEqual(viewport.height);
     }
+    const timeline = page.locator('.portal-guide-timeline:visible').last();
+    const composer = page.locator('.portal-guide form:visible').last();
+    expect(await timeline.evaluate((element) => getComputedStyle(element).overflowY)).toBe('auto');
+    expect(await composer.evaluate((element) => element.parentElement?.classList.contains('portal-guide'))).toBe(true);
     await expectNoOverflow(page);
     const axe = await new AxeBuilder({ page }).analyze();
     expect(axe.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious')).toEqual([]);
     await attachScreenshot(page, testInfo, `compact-guide-${viewport.width}x${viewport.height}`);
+    await page.unroute('**/api/interactions/portal');
     await page.evaluate(() => { document.documentElement.style.fontSize = ''; });
     await page.locator('.conversation-close:visible').last().click();
     await expect(guide).toBeHidden();

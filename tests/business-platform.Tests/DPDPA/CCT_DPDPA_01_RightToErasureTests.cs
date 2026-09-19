@@ -72,6 +72,7 @@ public sealed class CCT_DPDPA_01_RightToErasureTests : IClassFixture<WebApplicat
     {
         return _factory.WithWebHostBuilder(builder =>
         {
+            builder.UseSetting("Conversation:CursorHmacKey", new string('c', 32));
             builder.ConfigureTestServices(services =>
             {
                 // Replace JWT auth with test handler that grants founder role
@@ -140,6 +141,7 @@ public sealed class CCT_DPDPA_01_RightToErasureTests : IClassFixture<WebApplicat
         // Use a factory that auth handler will not grant founder role to
         var nonFounderFactory = _factory.WithWebHostBuilder(builder =>
         {
+            builder.UseSetting("Conversation:CursorHmacKey", new string('c', 32));
             builder.ConfigureTestServices(services =>
             {
                 services.AddAuthentication("Test")

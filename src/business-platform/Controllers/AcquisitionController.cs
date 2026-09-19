@@ -30,7 +30,8 @@ public sealed record AcquisitionContinuationResponse(
 public sealed class AcquisitionController(
     IDbContextFactory<EmploymentRelationshipDbContext> dbFactory,
     IProfessionalCatalog catalog,
-    EmploymentRelationshipService relationships) : ControllerBase
+    EmploymentRelationshipService relationships,
+    RelationshipTrialService? trials = null) : ControllerBase
 {
     [HttpPost]
     [CustomerIdentityRoute(requiresMembership: true)]
@@ -58,9 +59,13 @@ public sealed class AcquisitionController(
 
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var admissionId = await db.AgentAdmissions.AsNoTracking()
-            .Where(value => value.State == AgentAdmissionState.Active
+            .Where(value => value.TenantId == tenantId
+                && value.State == AgentAdmissionState.Active
                 && value.ProfessionalTypeId == disclosure.ProfessionalType
-                && value.ProfessionalVersion == disclosure.ProjectionVersion)
+                && value.ProfessionalVersion == disclosure.ProjectionVersion
+                && value.AdmissionContentDigest != null
+                && value.EvidenceSetDigest != null
+                && value.ArtifactDigest != null)
             .OrderByDescending(value => value.UpdatedAt)
             .Select(value => (Guid?)value.AdmissionId)
             .FirstOrDefaultAsync(cancellationToken);
@@ -75,6 +80,30 @@ public sealed class AcquisitionController(
                 new RelationshipAcquisitionEvidence(
                     intent, disclosure.DisclosureRevision, disclosure.TermsVersion, DateTimeOffset.UtcNow),
                 cancellationToken);
+            var lifecycleCorrelationId = correlationId ?? idempotencyKey.Value;
+            if (result.Relationship.State == EmploymentRelationshipState.Discovered)
+            {
+                await relationships.TransitionAsync(
+                    tenantId, result.Relationship.RelationshipId, participantId,
+                    RelationshipParticipantRole.Evaluator, EmploymentRelationshipState.Interviewing,
+                    lifecycleCorrelationId, false, cancellationToken);
+            }
+            if (intent == "TRIAL")
+            {
+                if (trials is null)
+                    return Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Trial owners unavailable");
+                await trials.StartAsync(
+                    tenantId, result.Relationship.RelationshipId, participantId,
+                    lifecycleCorrelationId, cancellationToken);
+            }
+            else if (result.Relationship.State is EmploymentRelationshipState.Discovered
+                or EmploymentRelationshipState.Interviewing)
+            {
+                await relationships.TransitionAsync(
+                    tenantId, result.Relationship.RelationshipId, participantId,
+                    RelationshipParticipantRole.Evaluator, EmploymentRelationshipState.Configuring,
+                    lifecycleCorrelationId, false, cancellationToken);
+            }
             var response = new AcquisitionContinuationResponse(
                 result.Relationship.RelationshipId, intent, "READY",
                 $"/relationships/{result.Relationship.RelationshipId}", !result.Created);

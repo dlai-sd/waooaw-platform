@@ -22,6 +22,12 @@ describe('PortalGuideExperience', () => {
 
     expect(screen.getByText(/cannot act as an employed professional/)).toBeVisible();
     await screen.findByText(/Ask where to find agents/);
+    const guide = screen.getByRole('region', { name: 'WAOOAW Guide' });
+    const timeline = guide.querySelector('.portal-guide-timeline');
+    const composer = screen.getByLabelText('Ask the Guide').closest('form');
+    expect(timeline).toBeTruthy();
+    expect(composer?.parentElement).toBe(guide);
+    expect(timeline?.contains(composer)).toBe(false);
     fireEvent.change(screen.getByLabelText('Ask the Guide'), { target: { value: 'Show billing' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 
