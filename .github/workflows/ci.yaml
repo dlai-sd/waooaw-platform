@@ -74,6 +74,7 @@ jobs:
           HEAD_SHA: ${{ steps.range.outputs.head_sha }}
           EVENT_NAME: ${{ github.event_name }}
         run: |
+          chmod 0777 test-results/wc102
           scripts/verify_runner_image.sh test test-runner '${{ steps.runner-build.outputs.image_id }}'
           docker compose --profile test run --rm \
             -e BASE_SHA -e HEAD_SHA -e EVENT_NAME -e GITHUB_RUN_ID -e GITHUB_RUN_ATTEMPT test-runner sh -lc '
@@ -515,6 +516,7 @@ jobs:
           mkdir -p ./test-results/coverage/${{ matrix.service }}
           chmod 0777 ./test-results/coverage/${{ matrix.service }}
           docker compose --profile test-python run --rm test-runner-python sh -lc '
+            export COVERAGE_FILE=/tmp/.coverage
             pytest "${{ matrix.tests }}" \
               --cov="${{ matrix.source }}" \
               --cov-branch \
@@ -801,6 +803,8 @@ jobs:
           scripts/verify_runner_image.sh test-dotnet test-runner-dotnet '${{ steps.runner-build.outputs.dotnet_image_id }}'
           docker compose --profile test-dotnet run --rm test-runner-dotnet sh -lc '
             audit_dotnet_project() {
+              project_name="$(basename "$1")"
+              export BaseIntermediateOutputPath="/tmp/dependency-audit/$project_name/obj/"
               dotnet restore "$1" --nologo >/dev/null
               if ! output="$(dotnet list "$1" package --vulnerable --include-transitive 2>&1)"; then
                 printf "%s\n" "$output"

@@ -87,6 +87,7 @@ def test_shadow_mode_keeps_full_ci_authoritative() -> None:
 
     assert "validation/engineering-validation.yaml" in source
     assert "WC-102 validation plan (Shadow)" in source
+    assert "chmod 0777 test-results/wc102" in source
     assert ci["jobs"]["build"]["if"] == "github.event_name == 'pull_request'"
     assert "validation-plan" in ci["jobs"]["qa-campaign"]["needs"]
     assert "build" in ci["jobs"]["qa-campaign"]["needs"]
@@ -98,3 +99,5 @@ def test_language_tests_use_docker_runners() -> None:
     assert "docker compose --profile test-python run" in source
     assert "docker compose --profile test-dotnet run" in source
     assert "docker compose --profile test-ts run" in source
+    assert "export COVERAGE_FILE=/tmp/.coverage" in source
+    assert 'export BaseIntermediateOutputPath="/tmp/dependency-audit/$project_name/obj/"' in source
