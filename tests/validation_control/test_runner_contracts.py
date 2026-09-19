@@ -79,7 +79,10 @@ def test_python_audit_builds_use_bounded_executable_tmpfs() -> None:
 def test_full_runner_fixtures_use_bounded_executable_tmpfs() -> None:
     runner = COMPOSE["services"]["test-runner"]
 
-    assert runner["tmpfs"] == ["/tmp:size=2g,mode=1777,exec"]
+    assert runner["tmpfs"] == [
+        "/tmp:size=2g,mode=1777,exec",
+        "/workspace/.deepeval:size=16m,mode=1770",
+    ]
 
 
 def test_contract_workflow_starts_services_and_blocks_on_failure() -> None:

@@ -128,7 +128,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock  # testcontainers: access to Docker daemon
     group_add: ["${DOCKER_GID:-0}"]
     read_only: true
-    tmpfs: ["/tmp:size=2g,mode=1777,exec"]
+    tmpfs: ["/tmp:size=2g,mode=1777,exec", "/workspace/.deepeval:size=16m,mode=1770"]
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     cpus: 2.0
