@@ -40,7 +40,7 @@ public sealed class AcquisitionController(
         [FromHeader(Name = "X-Correlation-ID")] Guid? correlationId,
         CancellationToken cancellationToken)
     {
-        if (!TryGetTenantId(out var tenantId) || !TryGetParticipantId(out var participantId)) return Forbid();
+        if (!TryGetMembership(out var tenantId, out var participantId)) return Forbid();
         if (!idempotencyKey.HasValue || idempotencyKey == Guid.Empty)
             return Problem(statusCode: StatusCodes.Status400BadRequest, title: "Idempotency key is required");
 
@@ -90,16 +90,15 @@ public sealed class AcquisitionController(
         }
     }
 
-    private bool TryGetTenantId(out Guid tenantId)
+    private bool TryGetMembership(out Guid tenantId, out Guid participantId)
     {
         tenantId = Guid.Empty;
-        return HttpContext.Items.TryGetValue(TenantIsolationMiddleware.TenantIdItemKey, out var value)
-            && Guid.TryParse(value?.ToString(), out tenantId);
-    }
-
-    private bool TryGetParticipantId(out Guid participantId)
-    {
-        var value = User.FindFirst("participant_id")?.Value ?? User.FindFirst("sub")?.Value;
-        return Guid.TryParse(value, out participantId);
+        participantId = Guid.Empty;
+        if (!HttpContext.Items.TryGetValue(CustomerMembershipMiddleware.MembershipItem, out var value)
+            || value is not CustomerWorkspaceMembership membership)
+            return false;
+        tenantId = membership.TenantId;
+        participantId = membership.AccountId;
+        return tenantId != Guid.Empty && participantId != Guid.Empty;
     }
 }

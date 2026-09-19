@@ -1,34 +1,32 @@
 # WC-099 Implementation Author Review
 
-Status: **BLOCKED, NOT COMPLETE**
+Status: **LOCAL IMPLEMENTATION QUALIFIED; R-014 AND R-020 BLOCKED PENDING FOUNDER MERGE AND ONE DEMO DEPLOYMENT**
 
-The implementation diff was reviewed against WC-099 Sections 5 through 14 and R-001 through R-023. It stays within the authorized Web, Business Platform, Demo readiness and Terraform surfaces. No API shape, schema migration, durable disclosure record, new service, identity model, relationship aggregate or conversation protocol was introduced.
+Implementation candidate `7765370b` was reviewed against WC-099 Sections 5 through 14 and R-001 through R-023. The diff remains inside Web authentication/shell and Business Platform acquisition. It adds no API shape, schema migration, generated client, durable disclosure record, service, identity model, relationship aggregate or conversation protocol.
 
 ## Verified Local Evidence
 
-- Web unit/coverage: 63 suites, 381 tests passed; aggregate statements 90.01%, branches 79.9%.
-- Business Platform: 793 tests passed in Docker with Testcontainers and the Docker socket mounted.
-- Environment readiness: 20 tests passed in Docker; missing/short cursor key and canonical secret wiring are covered.
-- WC-099 Playwright: 12 passed, 8 intentional project skips across Chromium, Firefox and WebKit. Required desktop widths, 360x800, 390x844, disclosure/no-handoff, RTL, dark theme, axe, focus containment/restoration, keyboard/pointer resize, Guide persistence, typography and Emergency Stop reachability are directly asserted.
-- Lint, TypeScript and Next.js production build passed. No OpenAPI/generated-client drift check applies because no public contract changed.
-- No migration or schema file changed.
+- Web coverage: 64 suites and 386 tests passed in Docker; 91.14% statements, 81.15% branches and 94.04% lines.
+- Business Platform: 799 tests passed in Docker with Testcontainers and the Docker socket mounted. AcquisitionController contributes six direct tests covering Trial/Hire membership identity, replay, stale disclosure, missing admission, constitutional evidence denial and missing membership.
+- Environment readiness: 20 tests passed in Docker. Canonical secret-reference rendering and missing/short cursor-key failure are covered without retaining a secret value.
+- WC-099 Playwright: 28 passed with 32 intentional project skips. The matrix covers Chromium, Firefox and WebKit; 360x800, 390x844, 768x1024, 1280x720, 1440x900 and 1920x1080; all named routes; all supported locales; long Hindi and Urdu; RTL; reduced motion; 200% zoom; axe; focus wrap/restoration; account dismissal; pointer/keyboard Guide resize; persisted Guide truth; Trial/Hire projection; and Emergency Stop reachability.
+- TypeScript, ESLint and the 52-page Next.js production build passed in Docker.
+- No migration, schema, OpenAPI or generated-client file changed, so no contract regeneration applies.
 
 ## Findings
 
-1. **Blocker: R-014 and R-020 cannot pass at this candidate.** Read-only Azure inspection shows active Demo Web revision `ca-demo-web--0000045` at image digest `sha256:10c380...`; Business Platform is `ca-demo-business-platform--0000040` at `sha256:8d5271...`. Neither contains the uncommitted implementation. Deployment mutation was not authorized, so an exact-candidate Demo journey was not executed.
-2. **R-021 remains `FOUNDER-DEFERRED-NOT-APPLICABLE-TO-DEMO`.** It is mandatory before UAT or Production traffic.
-3. **R-007 remains partial.** Local projection behavior is exercised, but the exact Trial and Hire no-refresh browser journey has not run against the integrated candidate.
-4. **The pre-existing F1/WC-096 aggregate is not clean.** A serial Chromium run produced seven failures in public baseline/performance/routing and a duplicate transition-tree locator. The reviewed public screenshot was coherent and outside the WC-099 authenticated-shell boundary, so baselines were not rewritten and unrelated tests were not weakened.
-5. **The first broad .NET run was invalid, not evidence.** It omitted `/var/run/docker.sock`, causing 107 Testcontainers failures. The corrected repository-standard Docker-on-worktree run passed 793/793 and supersedes it.
+1. **R-014 is blocked only on actual-cloud proof.** Local Guide GET/POST persistence and reload pass, and R-013 readiness is locally qualified. The required sanitized Demo GET/POST smoke must run after the Founder merges this implementation and the signed main artifact is deployed once.
+2. **R-020 is blocked only on the complete actual-cloud journey.** The local component journey passes, but no signed-main artifact containing `7765370b` exists yet. Login through Hire must be executed once against that final Demo release.
+3. **R-021 remains `FOUNDER-DEFERRED-NOT-APPLICABLE-TO-DEMO`.** It remains mandatory before UAT or Production traffic.
+4. No other requirement is partial, substituted or untested locally. The obligation ledger identifies direct owning source and executable evidence for each row.
 
 ## Normative Review Disposition
 
-- Identity/disclosure clauses: implemented locally; active-Demo proof pending.
-- Stable shell/account/typography clauses: implemented and directly browser-tested locally.
-- Compact/mobile and Guide workspace clauses: implemented and directly browser-tested locally.
-- Data/persistence clauses: no new authority or schema; cursor rotation and presentation-state boundaries tested locally.
-- Security/privacy/failure clauses: bounded telemetry fields, no token/PII/query logging, fail-closed key validation, focus behavior and no-handoff cancel are tested locally.
-- Qualification/DoD clauses: not satisfied because exact-candidate Demo deployment/journey and a clean affected legacy browser aggregate are absent.
-- Rollback/post-deployment clauses: repository changes remain independently deployable by Web, Business Platform and Demo configuration; no deployment or rollback was performed.
+- Identity/disclosure: locally qualified, including stale Trial/Hire step-up with safe target preservation.
+- Membership/acquisition: locally qualified at the owning AcquisitionController; external broker subject cannot become internal account identity.
+- Stable shell/account/typography: locally qualified across routes, states and required desktop widths.
+- Compact/intermediate/Guide: locally qualified across required dimensions, engines, languages, zoom, motion and accessibility states.
+- Data/security: no new persistence model or public contract; replay, isolation, cursor rotation, fail-closed readiness and presentation-state boundaries pass.
+- Delivery: ready for the implementation PR stage defined by WC099-05/WC099-06. WC-099 itself is not complete and no Demo, UAT or Production readiness is claimed.
 
-Author Review Result: **BLOCKED**. Do not label WC-099 complete, approve, merge, or promote to UAT/Production from this evidence.
+Author Review Result: **READY FOR FOUNDER REVIEW OF THE IMPLEMENTATION PR**. Do not self-approve or self-merge. After Founder merge, perform one signed-main Demo deployment and create the evidence-only closure PR for R-014/R-020.

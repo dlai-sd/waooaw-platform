@@ -82,6 +82,57 @@ test('R-003: logout and second login request explicit Google account selection',
   await expect(page).toHaveURL(/localhost:8080\/realms\/waooaw\/protocol\/openid-connect\/auth\?prompt=select_account/);
 });
 
+for (const intent of ['trial', 'hire'] as const) {
+  test(`R-003 R-005 R-006: stale registration authentication reauthenticates without losing ${intent} intent`, async ({ context, page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'chromium-expanded', 'One Chromium broker-boundary journey per acquisition intent proves fresh-auth continuation parameters.');
+    const acquisitionTarget = `/marketplace?professionalType=DIGITAL_MARKETING&version=3.1.0&intent=${intent}`;
+    await addSession(context, testInfo.project.name);
+    await page.route('**/api/identity/registration', async (route) => route.fulfill({
+      status: 403,
+      contentType: 'application/json',
+      body: JSON.stringify({ code: 'IDENTITY_STEP_UP_REQUIRED' }),
+    }));
+    await page.route('**/api/auth/signin/keycloak-google?**', async (route) => route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ url: 'http://localhost:8080/realms/waooaw/protocol/openid-connect/auth?prompt=select_account&max_age=0' }),
+    }));
+    await page.route('http://localhost:8080/realms/waooaw/protocol/openid-connect/auth?**', async (route) => {
+      await route.fulfill({ contentType: 'text/html', body: '<title>Test identity provider</title>' });
+    });
+
+    await page.goto(`/register?returnTo=${encodeURIComponent(acquisitionTarget)}`);
+    await expect(page.getByText('For your security, sign in again to continue. Your account was not changed.')).toBeVisible();
+    const brokerRequest = page.waitForRequest((request) => request.url().includes('/api/auth/signin/keycloak-google'));
+    await page.getByRole('button', { name: 'Continue securely' }).click();
+
+    const request = await brokerRequest;
+    const requestUrl = new URL(request.url());
+    expect(requestUrl.searchParams.get('prompt')).toBe('select_account');
+    expect(requestUrl.searchParams.get('max_age')).toBe('0');
+    expect(new URLSearchParams(request.postData() ?? '').get('callbackUrl'))
+      .toBe(`/register?returnTo=${encodeURIComponent(acquisitionTarget)}`);
+    await expect(page).toHaveURL(/localhost:8080\/realms\/waooaw\/protocol\/openid-connect\/auth\?prompt=select_account&max_age=0/);
+  });
+}
+
+test('R-010: account menu dismisses outside and on Escape while restoring focus', async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-expanded', 'One Chromium interaction journey proves native account-menu dismissal.');
+  await addSession(context, testInfo.project.name);
+  await page.goto('/marketplace');
+  const account = page.locator('summary[aria-label="Account"]').first();
+  const drawer = page.locator('details.account-drawer').first();
+
+  await account.click();
+  await expect(drawer).toHaveAttribute('open', '');
+  await page.mouse.click(400, 400);
+  await expect(drawer).not.toHaveAttribute('open', '');
+
+  await account.click();
+  await page.keyboard.press('Escape');
+  await expect(drawer).not.toHaveAttribute('open', '');
+  await expect(account).toBeFocused();
+});
+
 for (const acquisition of [
   { intent: 'trial', relationshipId: '11111111-1111-4111-8111-111111111111', displayName: 'Digital Marketing Trial' },
   { intent: 'hire', relationshipId: '22222222-2222-4222-8222-222222222222', displayName: 'Digital Marketing Hire' },
@@ -226,14 +277,21 @@ test('R-015: Guide is a bounded desktop pane with pointer and keyboard resize', 
 
 test('R-014 R-016 R-017 R-018 R-023: compact Guide contains focus, persists truth, and restores its opener', async ({ context, page }, testInfo) => {
   await addSession(context, testInfo.project.name);
-  for (const viewport of [{ width: 360, height: 800 }, { width: 390, height: 844 }]) {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (const testCase of [
+    { viewport: { width: 360, height: 800 }, locale: 'hi', message: '\u092e\u0947\u0930\u0947 \u0921\u093f\u091c\u093f\u091f\u0932 \u092a\u0947\u0936\u0947\u0935\u0930 \u0915\u093e \u0915\u093e\u092e \u0914\u0930 \u0905\u0917\u0932\u0947 \u0938\u0924\u094d\u092f\u093e\u092a\u0928 \u0915\u0947 \u0915\u0926\u092e \u0915\u0939\u093e\u0902 \u0926\u093f\u0916\u093e\u0908 \u0926\u0947\u0902\u0917\u0947?' },
+    { viewport: { width: 390, height: 844 }, locale: 'ur', message: '\u0645\u06cc\u0631\u06d2 \u0688\u062c\u06cc\u0679\u0644 \u067e\u06cc\u0634\u06c1 \u0648\u0631 \u06a9\u0627 \u06a9\u0627\u0645 \u0627\u0648\u0631 \u0627\u06af\u0644\u06d2 \u062a\u0635\u062f\u06cc\u0642\u06cc \u0645\u0631\u0627\u062d\u0644 \u06a9\u06c1\u0627\u06ba \u0646\u0638\u0631 \u0622\u0626\u06cc\u06ba \u06af\u06d2\u061f' },
+    { viewport: { width: 768, height: 1024 }, locale: 'en', message: 'Where can I review my professional work and the next verification steps?' },
+  ] as const) {
+    const { viewport, locale, message } = testCase;
     await page.setViewportSize(viewport);
     await context.addCookies([
-      { name: 'waooaw-locale', value: 'ur', domain: '127.0.0.1', path: '/' },
+      { name: 'waooaw-locale', value: locale, domain: '127.0.0.1', path: '/' },
       { name: 'waooaw-theme', value: 'dark', domain: '127.0.0.1', path: '/' },
     ]);
     await page.goto('/marketplace');
-    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+    await expect(page.locator('html')).toHaveAttribute('lang', locale);
+    await expect(page.locator('html')).toHaveAttribute('dir', locale === 'ur' ? 'rtl' : 'ltr');
     const opener = page.locator('.conversation-launcher:visible').last();
     await opener.click();
     const guide = page.getByRole('complementary', { name: 'WAOOAW Guide' });
@@ -241,25 +299,22 @@ test('R-014 R-016 R-017 R-018 R-023: compact Guide contains focus, persists trut
     const box = await guide.boundingBox();
     expect(box?.x).toBeGreaterThanOrEqual(0);
     expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(viewport.width);
-    await page.getByLabel('Ask the Guide').fill('Where is my work?');
+    await page.getByLabel('Ask the Guide').fill(message);
     await page.getByRole('button', { name: 'Send' }).click();
     await expect(page.getByText(/Relationship work remains with the selected professional/).last()).toBeVisible();
     await page.reload();
-    await expect(page.getByText('Where is my work?').last()).toBeVisible();
+    await expect(page.getByText(message).last()).toBeVisible();
     await page.locator('.conversation-close:visible').last().click();
     const currentOpener = page.locator('.conversation-launcher:visible').last();
     await currentOpener.click();
-    const close = page.locator('.conversation-close:visible').last();
     const separator = page.locator('.conversation-resizer').last();
     const messageInput = page.locator('.portal-guide textarea:visible').last();
-    await close.focus();
+    await separator.focus();
     await page.keyboard.press('Shift+Tab');
     await expect(messageInput).toBeFocused();
-    await page.keyboard.press('Tab');
-    await expect(close).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(currentOpener).toBeFocused();
-    await expect(page.locator('.bottom-navigation:visible').last()).toBeVisible();
+    await expect(page.locator(viewport.width < 768 ? '.bottom-navigation:visible' : '.side-navigation:visible').last()).toBeVisible();
     await expect(page.locator('.stop-control:visible').last()).toBeVisible();
     await currentOpener.click();
     await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
