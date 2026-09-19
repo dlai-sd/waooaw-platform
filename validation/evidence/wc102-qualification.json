@@ -1,8 +1,8 @@
 {
   "schema": "waooaw.wc102-qualification/v1",
   "base_sha": "ff09197debf331a75d8f50bb6a817a683544ed33",
-  "head_sha": "a270f0ec2fdac9d3bc2767b93952ed1b20a0cafb",
-  "observed_head": "a270f0ec2fdac9d3bc2767b93952ed1b20a0cafb",
+  "head_sha": "72970bd64ad21c82c5226a6185e74a2b2d97e3cc",
+  "observed_head": "72970bd64ad21c82c5226a6185e74a2b2d97e3cc",
   "exact_head": true,
   "clean_state": true,
   "mode": "qualification",
@@ -29,10 +29,10 @@
     "authorization-tier-check"
   ],
   "runner_digests": {
-    "python": "sha256:3cfdeeb995e985ddfbb77206ace2988dd3c45a8f85f6dac6b0b59f8db8c8a542",
-    "dotnet": "sha256:81931e6e735cb268ffa9030dbfb1c7e99e4126092cfd2af1badc2b6613aa5f40",
-    "typescript": "sha256:993a935547626d6464c4781d440be9b5ea0593f2272aa2b3ed5b3ea3cdcf3898",
-    "full": "sha256:706fd8f242ccfa0a83b1a7e9e031053e11426737b93271d075adf62b9968ef8d"
+    "python": "sha256:0c5b65e1cbb6bbdb410f9ecca24d038488237b6b22ffa08f06180fc02440b88c",
+    "dotnet": "sha256:d25b7b268d43be0f7efb42a2d767398bae15b3baff43fdb7a8d1e4c20fdf44c2",
+    "typescript": "sha256:3248a99cbd243d0d8ad094c0b0079cd2d2c8b00c53709030b6b60c673db470ce",
+    "full": "sha256:e65c7bf324de47c08c547aa92fdeafe10b4869d96be1e8ea8562599627adbc83"
   },
   "outcomes": {
     "constitutional_engine": {"result": "PASS", "tests": 193},
@@ -41,9 +41,9 @@
     "ai_runtime_and_trust_layer": {"result": "PASS", "tests": 114},
     "billing": {"result": "PASS", "tests": 413, "delegated_postgresql_skips": 3},
     "billing_postgresql_qualification": {"result": "PASS", "tests": 3},
-    "wc102_control_suite": {"result": "PASS", "tests": 52},
+    "wc102_control_suite": {"result": "PASS", "tests": 90},
     "web": {"result": "PASS", "suites": 64, "tests": 386},
-    "web_coverage": {"result": "PASS", "lines_percent": 93.56, "branches_percent": 80.77, "functions_percent": 90.43},
+    "web_coverage": {"result": "PASS", "lines_percent": 93.56, "branches_percent": 80.76, "functions_percent": 90.43},
     "ruff": {"result": "PASS"},
     "python_format": {"result": "PASS"},
     "mypy_professional_runtime": {"result": "PASS", "files": 24},
