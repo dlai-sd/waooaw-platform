@@ -1,0 +1,247 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-102
+contract_path: work-contracts/WC-102-docker-only-validation-control-plane.md
+contract_digest: 08f47ba7bee07eb2d9273fcc8fd76c1dbc009975d061b6fb0595d3e363e93a4e
+contract_status: IMPLEMENTATION_AUTHORIZED
+implementation_scope: true
+result: DONE
+row_defaults: &row_defaults
+  initial_state: new
+  result: PASS
+  dependencies: [Docker Compose, validation catalog, exact-head qualification]
+  residual_risk: Hosted runner timing and repository settings remain environment-controlled external state.
+requirements:
+  - <<: *row_defaults
+    requirement_id: WC102-R001
+    source: Section 10
+    observable_outcome: Tests and test-language tooling execute through non-root Docker runners with prohibited host patterns rejected.
+    component_owner: Docker policy and CI workflows
+    evidence_class: contract
+    test_path_or_plan: tests/validation_control/test_docker_policy.py
+    completion_rule: Positive and negative Docker-only policy fixtures pass.
+    evidence_refs: [tests/validation_control/test_docker_policy.py, validation/evidence/wc102-qualification.json]
+  - <<: *row_defaults
+    requirement_id: WC102-R002
+    source: Section 10
+    observable_outcome: Existing quality, coverage, security, CCT, review, and release authority remains unchanged.
+    component_owner: CI gate topology
+    evidence_class: contract
+    test_path_or_plan: tests/pipeline/test_ci_validation_efficiency.py and full exact-head qualification
+    completion_rule: Gate-equivalence checks and all preserved thresholds pass.
+    evidence_refs: [.github/workflows/ci.yaml, validation/evidence/wc102-qualification.json]
+  - <<: *row_defaults
+    requirement_id: WC102-R003
+    source: Section 10
+    observable_outcome: Python, .NET, TypeScript, and full qualification runners have separate immutable runtime boundaries.
+    component_owner: Docker runner definitions
+    evidence_class: integration
+    test_path_or_plan: tests/validation_control/test_runner_contracts.py
+    completion_rule: Compose and image-content assertions pass for every runner.
+    evidence_refs: [tests/validation_control/test_runner_contracts.py, docker-compose.yml]
+  - <<: *row_defaults
+    requirement_id: WC102-R004
+    source: Section 10
+    observable_outcome: Code-only edits do not change or rebuild an unchanged runner identity.
+    component_owner: Runner identity calculator
+    evidence_class: unit
+    test_path_or_plan: tests/validation_control/test_identity.py::test_runner_identity_excludes_source_tests_and_fixtures
+    completion_rule: Source and test inputs are rejected from runner identity while environment inputs invalidate it.
+    evidence_refs: [tests/validation_control/test_identity.py, validation/evidence/wc102-candidate-measurements.json]
+  - <<: *row_defaults
+    requirement_id: WC102-R005
+    source: Section 10
+    observable_outcome: Runner, evidence, and candidate identities remain distinct and invalidate on every authority input.
+    component_owner: Validation identity model
+    evidence_class: security
+    test_path_or_plan: tests/validation_control/test_identity.py
+    completion_rule: Distinction, completeness, and per-input invalidation tests pass.
+    evidence_refs: [tests/validation_control/test_identity.py, validation/evidence/wc102-qualification.json]
+  - <<: *row_defaults
+    requirement_id: WC102-R006
+    source: Section 10
+    observable_outcome: Focused and qualification plans resolve the same catalogued commands and thresholds.
+    component_owner: Validation orchestrator
+    evidence_class: contract
+    test_path_or_plan: tests/validation_control/test_catalog_contract.py::test_focused_and_qualification_modes_resolve_identical_commands
+    completion_rule: Mode parity assertion passes from one catalog.
+    evidence_refs: [tests/validation_control/test_catalog_contract.py, validation/engineering-validation.yaml]
+  - <<: *row_defaults
+    requirement_id: WC102-R007
+    source: Section 10
+    observable_outcome: Focused PASS is non-authoritative and cannot substitute for qualification.
+    component_owner: Validation trust boundary
+    evidence_class: security
+    test_path_or_plan: tests/validation_control/test_catalog_contract.py and tests/validation_control/test_shadow.py
+    completion_rule: Focused and Shadow plans remain non-authoritative in positive and negative fixtures.
+    evidence_refs: [tests/validation_control/test_catalog_contract.py, tests/validation_control/test_shadow.py, validation/evidence/wc102-shadow-comparison.json]
+  - <<: *row_defaults
+    requirement_id: WC102-R008
+    source: Section 10
+    observable_outcome: Test containers use disposable writable state and repeated runs cannot pass from stale state.
+    component_owner: Docker runner isolation
+    evidence_class: integration
+    test_path_or_plan: tests/validation_control/test_runner_contracts.py and full release qualification
+    completion_rule: Read-only source, disposable tmpfs, database, browser, filesystem, and process isolation checks pass.
+    evidence_refs: [tests/validation_control/test_runner_contracts.py, validation/evidence/wc102-qualification.json]
+  - <<: *row_defaults
+    requirement_id: WC102-R009
+    source: Section 10
+    observable_outcome: Dependency and build caches improve execution without becoming PASS authority.
+    component_owner: Runner cache contracts
+    evidence_class: integration
+    test_path_or_plan: tests/validation_control/test_identity.py and candidate warm measurements
+    completion_rule: Cache identity mismatch invalidates evidence and warm runs still execute selected tests.
+    evidence_refs: [tests/validation_control/test_identity.py, validation/evidence/wc102-candidate-measurements.json]
+  - <<: *row_defaults
+    requirement_id: WC102-R010
+    source: Section 10
+    observable_outcome: One validated catalog owns path, dependency, gate, command, runner, and evidence selection.
+    component_owner: Validation catalog
+    evidence_class: contract
+    test_path_or_plan: tests/validation_control/test_catalog_contract.py and tests/pipeline/test_validation_policy.py
+    completion_rule: Catalog schema and duplicate-source prohibition tests pass.
+    evidence_refs: [validation/engineering-validation.yaml, tests/validation_control/test_catalog_contract.py, tests/pipeline/test_validation_policy.py]
+  - <<: *row_defaults
+    requirement_id: WC102-R011
+    source: Section 10
+    observable_outcome: Exact changed paths select direct owners and transitive reverse dependencies.
+    component_owner: Change-impact classifier
+    evidence_class: unit
+    test_path_or_plan: tests/pipeline/test_validation_policy.py::test_classifier_direct_reverse_and_unknown_paths
+    completion_rule: Representative component and shared-contract selector tests pass.
+    evidence_refs: [tests/pipeline/test_validation_policy.py, validation/evidence/wc102-shadow-comparison.json]
+  - <<: *row_defaults
+    requirement_id: WC102-R012
+    source: Section 10
+    observable_outcome: Renames, deletions, cycles, unknown paths, malformed policy, and selector errors fail closed.
+    component_owner: Change-impact classifier
+    evidence_class: security
+    test_path_or_plan: tests/pipeline/test_validation_policy.py
+    completion_rule: All negative and failure-mode fixtures select full validation or reject input.
+    evidence_refs: [tests/pipeline/test_validation_policy.py]
+  - <<: *row_defaults
+    requirement_id: WC102-R013
+    source: Section 10
+    observable_outcome: Every required node emits validated native artifacts and a common result envelope.
+    component_owner: Result adapter and aggregator
+    evidence_class: integration
+    test_path_or_plan: tests/validation_control/test_results.py
+    completion_rule: Complete envelopes pass and missing, stale, malformed, or artifact-free results fail.
+    evidence_refs: [tests/validation_control/test_results.py, validation/evidence/wc102-qualification.json]
+  - <<: *row_defaults
+    requirement_id: WC102-R014
+    source: Section 10
+    observable_outcome: Failure output retains the bounded earliest causal class while redacting sensitive content.
+    component_owner: Result adapter and aggregator
+    evidence_class: security
+    test_path_or_plan: tests/validation_control/test_results.py::test_aggregate_reports_earliest_causal_failure
+    completion_rule: Multi-failure, redaction, and log-bound assertions pass.
+    evidence_refs: [tests/validation_control/test_results.py]
+  - <<: *row_defaults
+    requirement_id: WC102-R015
+    source: Section 10
+    observable_outcome: Deterministic failures are not retried and transient retry policy remains bounded.
+    component_owner: Validation catalog and orchestrator
+    evidence_class: contract
+    test_path_or_plan: tests/validation_control/test_catalog_contract.py and validation catalog schema
+    completion_rule: Every node resolves an explicit bounded retry policy and deterministic nodes resolve none.
+    evidence_refs: [validation/engineering-validation.yaml, tests/validation_control/test_catalog_contract.py]
+  - <<: *row_defaults
+    requirement_id: WC102-R016
+    source: Section 10
+    observable_outcome: Runners are non-root with CPU, memory, PID, timeout, and namespace limits.
+    component_owner: Docker runner contracts
+    evidence_class: security
+    test_path_or_plan: tests/validation_control/test_runner_contracts.py and tests/validation_control/test_catalog_contract.py
+    completion_rule: Identity, resource, timeout, and namespace assertions pass.
+    evidence_refs: [tests/validation_control/test_runner_contracts.py, tests/validation_control/test_catalog_contract.py]
+  - <<: *row_defaults
+    requirement_id: WC102-R017
+    source: Section 10
+    observable_outcome: Docker socket access is absent from TypeScript and limited to catalogued Testcontainers-capable runners.
+    component_owner: Docker runner contracts
+    evidence_class: security
+    test_path_or_plan: tests/validation_control/test_runner_contracts.py::test_socket_is_absent_from_typescript_runner_and_bounded_elsewhere
+    completion_rule: Compose and unauthorized-access assertions pass.
+    evidence_refs: [tests/validation_control/test_runner_contracts.py, docker-compose.yml]
+  - <<: *row_defaults
+    requirement_id: WC102-R018
+    source: Section 10
+    observable_outcome: Concurrent runs receive isolated namespaces without shared writable-state collision.
+    component_owner: Validation orchestrator
+    evidence_class: integration
+    test_path_or_plan: tests/validation_control/test_catalog_contract.py::test_concurrent_runs_receive_distinct_namespaces
+    completion_rule: Parallel and serial plans retain equivalent nodes and distinct namespaces.
+    evidence_refs: [tests/validation_control/test_catalog_contract.py]
+  - <<: *row_defaults
+    requirement_id: WC102-R019
+    source: Section 10
+    observable_outcome: Business Platform uses the lean .NET runner with persistent NuGet reuse and disposable outputs.
+    component_owner: .NET runner
+    evidence_class: performance
+    test_path_or_plan: tests/validation_control/test_runner_contracts.py::test_dotnet_cache_path_is_aligned and candidate measurements
+    completion_rule: Runner selection, cache alignment, and two warm focused executions pass.
+    evidence_refs: [tests/validation_control/test_runner_contracts.py, validation/evidence/wc102-candidate-measurements.json]
+  - <<: *row_defaults
+    requirement_id: WC102-R020
+    source: Section 10
+    observable_outcome: Web source edits execute from a read-only bind mount without rebuilding the TypeScript runner.
+    component_owner: TypeScript runner
+    evidence_class: performance
+    test_path_or_plan: tests/validation_control/test_runner_contracts.py and candidate measurements
+    completion_rule: Source mount and two warm Web focused executions pass with unchanged runner identity.
+    evidence_refs: [tests/validation_control/test_runner_contracts.py, validation/evidence/wc102-candidate-measurements.json]
+  - <<: *row_defaults
+    requirement_id: WC102-R021
+    source: Section 10
+    observable_outcome: Integration and contract workflows start required services and block when a dependency is unavailable.
+    component_owner: CI workflows
+    evidence_class: integration
+    test_path_or_plan: tests/validation_control/test_runner_contracts.py::test_contract_workflow_starts_services_and_blocks_on_failure
+    completion_rule: Service-start topology and unavailable-service negative fixture pass.
+    evidence_refs: [tests/validation_control/test_runner_contracts.py, .github/workflows/ci.yaml]
+  - <<: *row_defaults
+    requirement_id: WC102-R022
+    source: Section 10
+    observable_outcome: Shadow selection records no unresolved omitted failing gate across all required representative change classes.
+    component_owner: Shadow comparator
+    evidence_class: integration
+    test_path_or_plan: tests/validation_control/test_shadow.py
+    completion_rule: Five-class comparison and omitted-failure negative tests pass with selective enforcement disabled.
+    evidence_refs: [tests/validation_control/test_shadow.py, validation/evidence/wc102-shadow-comparison.json]
+  - <<: *row_defaults
+    requirement_id: WC102-R023
+    source: Section 10
+    observable_outcome: Main and release events retain the complete required validation inventory.
+    component_owner: CI and release workflows
+    evidence_class: contract
+    test_path_or_plan: workflow topology tests and exact-head release qualification
+    completion_rule: Full-inventory assertions and release qualification pass.
+    evidence_refs: [.github/workflows/ci.yaml, validation/engineering-validation.yaml, validation/evidence/wc102-qualification.json]
+  - <<: *row_defaults
+    requirement_id: WC102-R024
+    source: Section 10
+    observable_outcome: Rollback restores full clean qualification and rejects stale or incompatible evidence.
+    component_owner: Qualification rollback
+    evidence_class: integration
+    test_path_or_plan: tests/validation_control/test_qualification.py::test_rollback_restores_full_clean_inventory_and_discards_newer_evidence
+    completion_rule: Rollback manifest restores all full gates without prior-result reuse.
+    evidence_refs: [tests/validation_control/test_qualification.py, validation/evidence/wc102-rollback.json]
+  - <<: *row_defaults
+    requirement_id: WC102-R025
+    source: Section 10
+    observable_outcome: Baseline and candidate measurements report samples, ranges, cache state, limitations, and no extrapolated savings.
+    component_owner: Measurement evidence
+    evidence_class: performance
+    test_path_or_plan: Baseline and candidate measurement schema inspection
+    completion_rule: All five change classes are represented and unsupported_savings_claims is false.
+    evidence_refs: [validation/evidence/wc102-baseline.json, validation/evidence/wc102-candidate-measurements.json]
+  - <<: *row_defaults
+    requirement_id: WC102-R026
+    source: Section 10
+    observable_outcome: One exact candidate has direct PASS evidence for every WC-102 obligation before Founder handoff.
+    component_owner: Platform IT Expert handoff
+    evidence_class: contract
+    test_path_or_plan: requirement ledger validator, qualification manifest, and exact-head author review
+    completion_rule: Complete DONE ledger validates and author review records no unresolved finding at the qualified candidate.
+    evidence_refs: [validation/evidence/wc102-qualification.json, reviews/R-143-wc102-platform-it-expert-author-review.md, work-contracts/WC-102-requirements.yaml]
