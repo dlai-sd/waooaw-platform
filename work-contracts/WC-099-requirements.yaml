@@ -4,7 +4,7 @@ contract_path: work-contracts/WC-099-demo-customer-journey-and-application-shell
 contract_digest: befd1ec23970c40b104a1e308e2c239a49520227489720e689e582562e8bf523
 contract_status: IMPLEMENTATION_AUTHORIZED
 implementation_scope: true
-result: PLANNED
+result: QUALIFIED
 requirements:
   - &completed
     requirement_id: WC099-R001
@@ -53,7 +53,7 @@ requirements:
     observable_outcome: Trial uses resolved internal membership and creates exactly one relationship, instance, and evidence result.
     component_owner: Business Platform acquisition
     evidence_class: local Docker integration
-    test_path_or_plan: tests/business-platform.Tests/EmploymentRelationshipsControllerTests.cs
+    test_path_or_plan: tests/business-platform.Tests/AcquisitionControllerTests.cs
     dependencies: [Customer membership middleware]
     completion_rule: Non-GUID external subject integration and replay tests pass.
     residual_risk: Active-Demo Trial remains part of WC099-R007 and WC099-R020.
@@ -63,7 +63,7 @@ requirements:
     observable_outcome: Hire uses resolved membership while preserving disclosure, admission, evidence, and replay gates.
     component_owner: Business Platform acquisition
     evidence_class: local Docker integration
-    test_path_or_plan: tests/business-platform.Tests/EmploymentRelationshipsControllerTests.cs and RelationshipEvaluationControllerTests.cs
+    test_path_or_plan: tests/business-platform.Tests/AcquisitionControllerTests.cs and EmploymentRelationshipServiceTests.cs
     dependencies: [Customer membership middleware, commercial gates]
     completion_rule: Valid, denied, and replay integration cases pass without duplicates.
     residual_risk: Active-Demo Hire remains part of WC099-R007 and WC099-R020.
@@ -136,7 +136,7 @@ requirements:
     test_path_or_plan: tests/pipeline/test_wc091_environment_readiness.py and Business Platform startup tests
     dependencies: [Demo secret catalog, Key Vault binding]
     completion_rule: Render, exact-candidate startup, readiness, and negative key tests pass without secret disclosure.
-    residual_risk: Active-Demo secret consumption is covered by WC099-R014.
+    residual_risk: Exact deployed-candidate secret consumption is proved with WC099-R014 after Founder merge.
   - <<: *completed
     requirement_id: WC099-R014
     source: Section 7, D-009 and D-010
