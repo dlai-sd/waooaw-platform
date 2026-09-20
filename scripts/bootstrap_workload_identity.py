@@ -68,12 +68,8 @@ def _write_private_key(path: Path, key: Any) -> None:
     path.chmod(0o600)
 
 
-def _write_certificate(
-    path: Path, certificate: x509.Certificate, chain: tuple[x509.Certificate, ...] = ()
-) -> None:
-    path.write_bytes(b"".join(
-        value.public_bytes(serialization.Encoding.PEM) for value in (certificate, *chain)
-    ))
+def _write_certificate(path: Path, certificate: x509.Certificate, chain: tuple[x509.Certificate, ...] = ()) -> None:
+    path.write_bytes(b"".join(value.public_bytes(serialization.Encoding.PEM) for value in (certificate, *chain)))
     path.chmod(0o644)
 
 
@@ -157,9 +153,7 @@ def bootstrap(registry_path: Path, environment: str, output: Path) -> dict[str, 
 
     root_key = _generate_ec_key(ec.SECP384R1())
     root_name = _name(f"WAOOAW {environment} ephemeral root")
-    root = _ca_certificate(
-        root_name, root_name, root_key.public_key(), root_key, now, timedelta(days=ROOT_LIFETIME_DAYS), 1
-    )
+    root = _ca_certificate(root_name, root_name, root_key.public_key(), root_key, now, timedelta(days=ROOT_LIFETIME_DAYS), 1)
     intermediate_key = _generate_ec_key(ec.SECP384R1())
     intermediate = _ca_certificate(
         _name(f"WAOOAW {environment} workload intermediate"),

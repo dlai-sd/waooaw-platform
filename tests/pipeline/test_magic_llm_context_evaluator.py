@@ -213,6 +213,25 @@ class TestContextBuilderFrozenRegistry:
         assert "ConstitutionalDbContext" in frozen_block
 
 
+class TestContextBuilderPublicSignatures:
+    def test_extracts_constructor_with_nested_default_value(self):
+        builder = ContextBuilder(repo_root=REPO_ROOT)
+
+        signatures = builder._extract_public_signatures(
+            'public sealed class Worker { public Worker(string value = Build("(")) {} }'
+        )
+
+        assert signatures["public_constructors"] == ['string value = Build("(")']
+
+    def test_unterminated_constructor_like_input_is_ignored(self):
+        builder = ContextBuilder(repo_root=REPO_ROOT)
+        content = "public 0(" + "'" * 20_000
+
+        signatures = builder._extract_public_signatures(content)
+
+        assert signatures["public_constructors"] == []
+
+
 # ── ResponseEvaluator tests (§8) ──────────────────────────────────────────────
 
 class TestResponseEvaluatorFormatGate:

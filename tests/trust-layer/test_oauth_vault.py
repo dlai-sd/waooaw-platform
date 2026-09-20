@@ -17,8 +17,7 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src" / "trust-layer"))
 
 # Patch Azure SDK at module level before importing oauth_vault — prevents real AKV connections.
-with patch("azure.identity.DefaultAzureCredential"), \
-     patch("azure.keyvault.secrets.SecretClient"):
+with patch("azure.identity.DefaultAzureCredential"), patch("azure.keyvault.secrets.SecretClient"):
     from oauth_vault.main import app
     from oauth_vault.models import TokenData
 
@@ -88,10 +87,8 @@ class TestCCTVault01TokenNotInLogs:
 
         assert resp.status_code == 201
         full_log = " ".join(r.getMessage() for r in caplog.records)
-        assert "SUPER_SECRET_TOKEN_12345" not in full_log, \
-            "access_token must never appear in logs (ADR-014, OWASP A02)"
-        assert "SUPER_REFRESH_TOKEN_67890" not in full_log, \
-            "refresh_token must never appear in logs (ADR-014)"
+        assert "SUPER_SECRET_TOKEN_12345" not in full_log, "access_token must never appear in logs (ADR-014, OWASP A02)"
+        assert "SUPER_REFRESH_TOKEN_67890" not in full_log, "refresh_token must never appear in logs (ADR-014)"
 
     def test_retrieve_does_not_log_access_token(self, caplog):
         token_data = _make_token_data(access_token="RETRIEVE_SECRET_999")
@@ -106,8 +103,7 @@ class TestCCTVault01TokenNotInLogs:
 
         assert resp.status_code == 200
         full_log = " ".join(r.getMessage() for r in caplog.records)
-        assert "RETRIEVE_SECRET_999" not in full_log, \
-            "retrieved access_token must not appear in any log record (ADR-014)"
+        assert "RETRIEVE_SECRET_999" not in full_log, "retrieved access_token must not appear in any log record (ADR-014)"
 
     def test_error_path_does_not_log_token(self, caplog):
         """Exception handler must not log token fragments from stack traces."""
@@ -124,8 +120,7 @@ class TestCCTVault01TokenNotInLogs:
         assert resp.status_code == 500
         assert resp.json() == {"error": "VAULT_ERROR", "code": "TOKEN_UNAVAILABLE"}
         full_log = " ".join(r.getMessage() for r in caplog.records)
-        assert "LEAKED_SECRET_abc" not in full_log, \
-            "exception message with token fragment must not appear in logs (ADR-014)"
+        assert "LEAKED_SECRET_abc" not in full_log, "exception message with token fragment must not appear in logs (ADR-014)"
 
 
 # ─── CCT-VAULT-02: Revoke calls CE before AKV delete ─────────────────────────
@@ -158,8 +153,7 @@ class TestCCTVault02RevokeCEFirst:
         _reset()
 
         assert resp.status_code == 200
-        assert call_order == ["CE", "AKV"], \
-            "CE must be called before AKV delete (C-003 Evidence First requirement)"
+        assert call_order == ["CE", "AKV"], "CE must be called before AKV delete (C-003 Evidence First requirement)"
 
     def test_revoke_blocked_when_ce_unavailable(self):
         """Revoke must fail with 503 if CE cannot record evidence (C-003 non-negotiable)."""
@@ -235,8 +229,7 @@ class TestCCTVault03RefreshTriggered:
 
             await scheduler.run_once()
 
-        assert refresh_called, \
-            "Provider refresh endpoint must be called for EXPIRING_SOON token (ADR-021 §3)"
+        assert refresh_called, "Provider refresh endpoint must be called for EXPIRING_SOON token (ADR-021 §3)"
         vault_mock.store_token.assert_called_once()
 
     @pytest.mark.asyncio
@@ -375,8 +368,7 @@ class TestVaultClientUnit:
     """Direct unit tests for VaultClient methods. Mocks Azure SDK at the instance level."""
 
     def _make_vault_client(self) -> VaultClient:
-        with patch("azure.identity.DefaultAzureCredential"), \
-             patch("azure.keyvault.secrets.SecretClient"):
+        with patch("azure.identity.DefaultAzureCredential"), patch("azure.keyvault.secrets.SecretClient"):
             return VaultClient("test-kv")
 
     @pytest.mark.asyncio
@@ -392,11 +384,16 @@ class TestVaultClientUnit:
     async def test_retrieve_token_success(self):
         vc = self._make_vault_client()
         secret_mock = MagicMock()
-        secret_mock.value = json.dumps({
-            "access_token": "tok_unit", "refresh_token": None,
-            "expires_at": None, "provider_name": "meta",
-            "contract_id": "ctr-001", "extra_data": {},
-        })
+        secret_mock.value = json.dumps(
+            {
+                "access_token": "tok_unit",
+                "refresh_token": None,
+                "expires_at": None,
+                "provider_name": "meta",
+                "contract_id": "ctr-001",
+                "extra_data": {},
+            }
+        )
         vc._client.get_secret = MagicMock(return_value=secret_mock)
         result = await vc.retrieve_token("providers/ctr-001/meta")
         assert result is not None
@@ -545,7 +542,6 @@ class TestTokensRetrievePaths:
 
 
 # ─── Scheduler edge-case coverage (refresh_scheduler.py) ─────────────────────
-
 
 
 class TestSchedulerEdgeCases:

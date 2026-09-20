@@ -45,11 +45,17 @@ def build_execution_plan(
                 "gate_id": gate_id,
                 "runner_id": runner_id,
                 "compose_service": runner["compose_service"],
+                "profile": runner["profile"],
                 "command_id": command_id,
                 "command": command["shell"],
+                "execution": command.get("execution", "container"),
+                "runner_required": command.get("runner_required", True),
+                "tool_digest": command.get("tool_digest"),
                 "resources": gate["resources"],
                 "retry_policy": gate["retry_policy"],
                 "artifacts": gate["artifacts"],
+                "environment": gate.get("environment", []),
+                "runner_manifest": f"test-results/wc104/runner-manifests/{runner_id}.json",
             }
         )
 
@@ -73,13 +79,14 @@ def main() -> int:
     parser.add_argument("--head", required=True)
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--all-gates", action="store_true")
     arguments = parser.parse_args()
 
     catalog = yaml.safe_load(arguments.catalog.read_text(encoding="utf-8"))
     selection = json.loads(arguments.selection.read_text(encoding="utf-8"))
     if not isinstance(catalog, dict) or not isinstance(selection, dict):
         raise ValueError("catalog and selection roots must be mappings")
-    selected_gates = selection.get("selected_gates")
+    selected_gates = list(catalog.get("gates", {})) if arguments.all_gates else selection.get("selected_gates")
     if not isinstance(selected_gates, list) or not all(isinstance(gate, str) for gate in selected_gates):
         raise ValueError("selection selected_gates must be a string list")
     plan = build_execution_plan(catalog, selected_gates, mode=arguments.mode, head_sha=arguments.head, run_id=arguments.run_id)

@@ -1,0 +1,61 @@
+name: Use immutable validation runner
+description: Pull and verify the WC-104 runner digest supplied for this workflow.
+inputs:
+  runner-id:
+    description: Canonical runner identifier
+    required: true
+  token:
+    description: GitHub token used for GHCR and attestation verification
+    required: true
+outputs:
+  image_id:
+    description: Locally verified Docker image ID for the supplied OCI digest
+    value: ${{ steps.consume.outputs.image_id }}
+runs:
+  using: composite
+  steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: wc104-runner-${{ inputs.runner-id }}
+        path: test-results/wc104/runner-manifests
+    - uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ inputs.token }}
+    - name: Verify and pull immutable runner
+      id: consume
+      shell: bash
+      env:
+        RUNNER_ID: ${{ inputs.runner-id }}
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        manifest="test-results/wc104/runner-manifests/$RUNNER_ID.json"
+        image=$(PYTHONPATH=scripts python3 scripts/validation_control/runner_supply.py \
+          validate --runner "$RUNNER_ID" --output "$manifest" | jq -r '.image')
+        gh attestation verify "oci://$image" --repo "$GITHUB_REPOSITORY" >/dev/null
+        pull_started=$(date +%s%3N)
+        docker pull "$image"
+        pull_duration_ms=$(($(date +%s%3N) - pull_started))
+        startup_started=$(date +%s%3N)
+        docker run --rm --entrypoint=true "$image"
+        startup_duration_ms=$(($(date +%s%3N) - startup_started))
+        image_id=$(docker image inspect "$image" --format '{{.Id}}')
+        [[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]]
+        echo "image_id=$image_id" >> "$GITHUB_OUTPUT"
+        variable=$(tr '[:lower:]' '[:upper:]' <<< "WAOOAW_RUNNER_${RUNNER_ID}_IMAGE")
+        echo "$variable=$image" >> "$GITHUB_ENV"
+        telemetry="test-results/wc104/consumer-${GITHUB_JOB}-${RUNNER_ID}-${RANDOM}.json"
+        jq -n \
+          --arg runner_id "$RUNNER_ID" --arg job "$GITHUB_JOB" --arg image "$image" \
+          --argjson pull_duration_ms "$pull_duration_ms" --argjson startup_duration_ms "$startup_duration_ms" \
+          '{schema:"waooaw.runner-consumer/v1",runner_id:$runner_id,consumer_job:$job,image:$image,consumer_build_count:0,pull_duration_ms:$pull_duration_ms,startup_duration_ms:$startup_duration_ms}' \
+          > "$telemetry"
+        echo "telemetry=$telemetry" >> "$GITHUB_OUTPUT"
+        echo "artifact_name=wc104-consumer-${GITHUB_JOB}-${RUNNER_ID}-${RANDOM}" >> "$GITHUB_OUTPUT"
+    - uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.consume.outputs.artifact_name }}
+        path: ${{ steps.consume.outputs.telemetry }}
+        if-no-files-found: error
+        retention-days: 90

@@ -14,18 +14,20 @@ builder.Services.AddSingleton<IClaimEvaluator, C049HonestLimitationEvaluator>();
 builder.Services.AddSingleton<IClaimEvaluator, C062AiSecurityEvaluator>();
 builder.Services.AddSingleton<IClaimEvaluator, AgentAdmissionTransitionEvaluator>();
 builder.Services.AddSingleton<EvaluatorRegistry>();
-builder.Services
-    .AddGrpcHealthChecks()
-    .AddCheck("constitutional-engine", () =>
-        Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy());
+builder
+    .Services.AddGrpcHealthChecks()
+    .AddCheck(
+        "constitutional-engine",
+        () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy()
+    );
 
 // ── Audit Sink DbContext — WORM evidence records (ADR-044) ───────────────────
 // Required for WriteAuditSinkRecordAsync on every ValidateAction call (C-059).
-var auditSinkConn = builder.Configuration.GetConnectionString("AuditSink")
+var auditSinkConn =
+    builder.Configuration.GetConnectionString("AuditSink")
     ?? builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Host=localhost;Database=waooaw_ce;Username=ce_service_role;";
-builder.Services.AddDbContextFactory<AuditSinkDbContext>(opts =>
-    opts.UseNpgsql(auditSinkConn));
+builder.Services.AddDbContextFactory<AuditSinkDbContext>(opts => opts.UseNpgsql(auditSinkConn));
 
 var app = builder.Build();
 app.MapGrpcService<ConstitutionalEngineService>();

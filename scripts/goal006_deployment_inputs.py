@@ -88,8 +88,7 @@ def create_inputs(
     if not isinstance(secret_uris, Mapping) or set(secret_uris) != RELEASE_MEMBERS:
         raise ValueError("key_vault_secret_uris must contain exactly the seven release members")
     if not all(
-        (parsed := parse_key_vault_url(value)) is not None
-        and re.fullmatch(r"/secrets/[^/]+", parsed.path) is not None
+        (parsed := parse_key_vault_url(value)) is not None and re.fullmatch(r"/secrets/[^/]+", parsed.path) is not None
         for value in secret_uris.values()
     ):
         raise ValueError("every Key Vault runtime reference must be a versionless secret URI")
@@ -102,9 +101,10 @@ def create_inputs(
     ):
         raise ValueError("every Key Vault RBAC scope must be a secret resource ID")
     dma_admission_content_digest = configuration.get("dma_admission_content_digest")
-    if not isinstance(dma_admission_content_digest, str) or re.fullmatch(
-        r"sha256:[0-9a-f]{64}", dma_admission_content_digest
-    ) is None:
+    if (
+        not isinstance(dma_admission_content_digest, str)
+        or re.fullmatch(r"sha256:[0-9a-f]{64}", dma_admission_content_digest) is None
+    ):
         raise ValueError("dma_admission_content_digest must be an immutable sha256 digest")
     for field in ("planned_incremental_monthly_cost_inr", "cumulative_one_time_cost_inr"):
         value = configuration.get(field)

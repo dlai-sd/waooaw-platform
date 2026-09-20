@@ -101,9 +101,7 @@ def _parameters(path: Path) -> dict[str, Any]:
     return {key: item.get("value") for key, item in document.get("parameters", {}).items()}
 
 
-def validate_bootstrap_manifest(
-    repository_root: Path, manifest_path: Path, environment: str = "demo"
-) -> list[str]:
+def validate_bootstrap_manifest(repository_root: Path, manifest_path: Path, environment: str = "demo") -> list[str]:
     violations: list[str] = []
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if environment not in ALLOWED_ENVIRONMENTS:
@@ -163,9 +161,7 @@ def validate_bootstrap_manifest(
         violations.append("PREREQUISITE_ENVIRONMENT_INVALID")
     if prerequisite_parameters.get("monthlyBudgetInr") != 10000:
         violations.append("MONTHLY_BUDGET_INVALID")
-    if prerequisite_parameters.get("runnerResourceGroupName") != parameters.get(
-        "runnerResourceGroupName"
-    ):
+    if prerequisite_parameters.get("runnerResourceGroupName") != parameters.get("runnerResourceGroupName"):
         violations.append("PREREQUISITE_RESOURCE_GROUP_MISMATCH")
     if prerequisite_parameters.get("stateStorageAccountId") != EXPECTED_STATE_ID:
         violations.append("PREREQUISITE_STATE_STORAGE_ID_INVALID")
@@ -179,8 +175,7 @@ def validate_bootstrap_manifest(
         or parameters.get("githubAppInstallationId") == "PENDING"
         or not str(parameters.get("githubAppId", "")).isdigit()
         or not str(parameters.get("githubAppInstallationId", "")).isdigit()
-        or
-        parameters.get("githubAppKeyName") == "PENDING"
+        or parameters.get("githubAppKeyName") == "PENDING"
         or parameters.get("githubAppKeyVersion") == "PENDING"
     ):
         violations.append("GITHUB_APP_KEY_NOT_CONFIGURED")
@@ -218,9 +213,7 @@ def validate_bootstrap_manifest(
         if not item_path.is_file():
             continue
         try:
-            item_network = ipaddress.ip_network(
-                str(_parameters(item_path)["runnerVnetAddressPrefix"])
-            )
+            item_network = ipaddress.ip_network(str(_parameters(item_path)["runnerVnetAddressPrefix"]))
         except (KeyError, ValueError):
             violations.append(f"{item_environment}:NETWORK_BOUNDARY_INVALID")
             continue
@@ -228,23 +221,21 @@ def validate_bootstrap_manifest(
             violations.append("CROSS_ENVIRONMENT_NETWORK_OVERLAP")
         observed_networks.append(item_network)
 
-    template_text = (repository_root / "infrastructure/deployment-stacks/goal006-runner/main.bicep").read_text(
-        encoding="utf-8"
-    )
+    template_text = (repository_root / "infrastructure/deployment-stacks/goal006-runner/main.bicep").read_text(encoding="utf-8")
     for term in sorted(REQUIRED_TEMPLATE_TERMS):
         if term not in template_text:
             violations.append(f"TEMPLATE_CONTRACT_MISSING:{term}")
     if 'test "$RUNNER_ACTIVATION_STATE" = "ACTIVE" && exit 64 || exit 0' in template_text:
         violations.append("RECONCILER_PLACEHOLDER_PROHIBITED")
-    subscription_text = (
-        repository_root / "infrastructure/deployment-stacks/goal006-runner/subscription.bicep"
-    ).read_text(encoding="utf-8")
+    subscription_text = (repository_root / "infrastructure/deployment-stacks/goal006-runner/subscription.bicep").read_text(
+        encoding="utf-8"
+    )
     for term in sorted(REQUIRED_SUBSCRIPTION_TERMS):
         if term not in subscription_text:
             violations.append(f"SUBSCRIPTION_CONTRACT_MISSING:{term}")
-    prerequisite_text = (
-        repository_root / "infrastructure/deployment-stacks/goal006-runner/prerequisites.bicep"
-    ).read_text(encoding="utf-8")
+    prerequisite_text = (repository_root / "infrastructure/deployment-stacks/goal006-runner/prerequisites.bicep").read_text(
+        encoding="utf-8"
+    )
     for term in sorted(REQUIRED_PREREQUISITE_TERMS):
         if term not in prerequisite_text:
             violations.append(f"PREREQUISITE_CONTRACT_MISSING:{term}")
@@ -261,9 +252,7 @@ def main() -> int:
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--environment", choices=ALLOWED_ENVIRONMENTS, required=True)
     args = parser.parse_args()
-    violations = validate_bootstrap_manifest(
-        args.repository_root, args.manifest, args.environment
-    )
+    violations = validate_bootstrap_manifest(args.repository_root, args.manifest, args.environment)
     print(json.dumps({"passed": not violations, "violations": violations}, sort_keys=True))
     return 0 if not violations else 1
 

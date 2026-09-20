@@ -150,35 +150,41 @@ public sealed class AgentAdmissionOutbox
 
 public static class AgentAdmissionStateCodec
 {
-    public static string ToDatabase(AgentAdmissionState state) => state switch
-    {
-        AgentAdmissionState.Draft => "DRAFT",
-        AgentAdmissionState.Validating => "VALIDATING",
-        AgentAdmissionState.RemediationRequired => "REMEDIATION_REQUIRED",
-        AgentAdmissionState.Validated => "VALIDATED",
-        AgentAdmissionState.ReadyForReview => "READY_FOR_REVIEW",
-        AgentAdmissionState.Approved => "APPROVED",
-        AgentAdmissionState.Active => "ACTIVE",
-        AgentAdmissionState.Suspended => "SUSPENDED",
-        AgentAdmissionState.Superseded => "SUPERSEDED",
-        AgentAdmissionState.Retired => "RETIRED",
-        AgentAdmissionState.Rejected => "REJECTED",
-        _ => throw new ArgumentOutOfRangeException(nameof(state)),
-    };
+    public static string ToDatabase(AgentAdmissionState state) =>
+        state switch
+        {
+            AgentAdmissionState.Draft => "DRAFT",
+            AgentAdmissionState.Validating => "VALIDATING",
+            AgentAdmissionState.RemediationRequired => "REMEDIATION_REQUIRED",
+            AgentAdmissionState.Validated => "VALIDATED",
+            AgentAdmissionState.ReadyForReview => "READY_FOR_REVIEW",
+            AgentAdmissionState.Approved => "APPROVED",
+            AgentAdmissionState.Active => "ACTIVE",
+            AgentAdmissionState.Suspended => "SUSPENDED",
+            AgentAdmissionState.Superseded => "SUPERSEDED",
+            AgentAdmissionState.Retired => "RETIRED",
+            AgentAdmissionState.Rejected => "REJECTED",
+            _ => throw new ArgumentOutOfRangeException(nameof(state)),
+        };
 
-    public static AgentAdmissionState FromDatabase(string state) => state switch
-    {
-        "DRAFT" => AgentAdmissionState.Draft,
-        "VALIDATING" => AgentAdmissionState.Validating,
-        "REMEDIATION_REQUIRED" => AgentAdmissionState.RemediationRequired,
-        "VALIDATED" => AgentAdmissionState.Validated,
-        "READY_FOR_REVIEW" => AgentAdmissionState.ReadyForReview,
-        "APPROVED" => AgentAdmissionState.Approved,
-        "ACTIVE" => AgentAdmissionState.Active,
-        "SUSPENDED" => AgentAdmissionState.Suspended,
-        "SUPERSEDED" => AgentAdmissionState.Superseded,
-        "RETIRED" => AgentAdmissionState.Retired,
-        "REJECTED" => AgentAdmissionState.Rejected,
-        _ => throw new ArgumentOutOfRangeException(nameof(state), state, "Unknown admission state."),
-    };
+    public static AgentAdmissionState FromDatabase(string state) =>
+        state switch
+        {
+            "DRAFT" => AgentAdmissionState.Draft,
+            "VALIDATING" => AgentAdmissionState.Validating,
+            "REMEDIATION_REQUIRED" => AgentAdmissionState.RemediationRequired,
+            "VALIDATED" => AgentAdmissionState.Validated,
+            "READY_FOR_REVIEW" => AgentAdmissionState.ReadyForReview,
+            "APPROVED" => AgentAdmissionState.Approved,
+            "ACTIVE" => AgentAdmissionState.Active,
+            "SUSPENDED" => AgentAdmissionState.Suspended,
+            "SUPERSEDED" => AgentAdmissionState.Superseded,
+            "RETIRED" => AgentAdmissionState.Retired,
+            "REJECTED" => AgentAdmissionState.Rejected,
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(state),
+                state,
+                "Unknown admission state."
+            ),
+        };
 }

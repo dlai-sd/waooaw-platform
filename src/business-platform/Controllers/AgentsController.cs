@@ -1,7 +1,7 @@
 // Implements: architecture/reference/components/business-platform.md §1 Employment Manager
 // constitutional_basis: C-023, C-038, C-059
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Waooaw.BusinessPlatform.Services;
 
 namespace Waooaw.BusinessPlatform.Controllers;
@@ -19,7 +19,8 @@ public sealed class AgentsController : ControllerBase
 
     public AgentsController(
         EmploymentRelationshipService relationshipService,
-        ILogger<AgentsController> logger)
+        ILogger<AgentsController> logger
+    )
     {
         _relationshipService = relationshipService;
         _logger = logger;
@@ -34,9 +35,16 @@ public sealed class AgentsController : ControllerBase
     [HttpPost("agents/hire")]
     public async Task<IActionResult> HireAgentAsync(
         [FromBody] HireAgentRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
-        if (!LegacyEmploymentCompatibility.TryGetIdentity(HttpContext, out var tenantId, out var participantId))
+        if (
+            !LegacyEmploymentCompatibility.TryGetIdentity(
+                HttpContext,
+                out var tenantId,
+                out var participantId
+            )
+        )
         {
             return Forbid();
         }
@@ -49,30 +57,47 @@ public sealed class AgentsController : ControllerBase
                 request.ContractId,
                 request.ProfessionalType,
                 Guid.NewGuid(),
-                cancellationToken);
-            LegacyEmploymentCompatibility.AddDeprecationHeaders(Response, result.Relationship.RelationshipId);
+                cancellationToken
+            );
+            LegacyEmploymentCompatibility.AddDeprecationHeaders(
+                Response,
+                result.Relationship.RelationshipId
+            );
             var admittedAt = result.Relationship.CreatedAt;
-            return Ok(new
-            {
-                contract_id = request.ContractId,
-                relationship_id = result.Relationship.RelationshipId,
-                professional_type = request.ProfessionalType,
-                skill_id = request.SkillId,
-                decision_space_version = request.DecisionSpaceVersion,
-                approved_budget_inr_paise = request.ApprovedBudgetInrPaise,
-                billing_cycle_anchor_day = request.BillingCycleAnchorDay,
-                pro_rata_billing_start_date = admittedAt,
-                state = "EVALUATION",
-            });
+            return Ok(
+                new
+                {
+                    contract_id = request.ContractId,
+                    relationship_id = result.Relationship.RelationshipId,
+                    professional_type = request.ProfessionalType,
+                    skill_id = request.SkillId,
+                    decision_space_version = request.DecisionSpaceVersion,
+                    approved_budget_inr_paise = request.ApprovedBudgetInrPaise,
+                    billing_cycle_anchor_day = request.BillingCycleAnchorDay,
+                    pro_rata_billing_start_date = admittedAt,
+                    state = "EVALUATION",
+                }
+            );
         }
         catch (ConstitutionalActionDeniedException exception)
         {
-            return Problem(statusCode: StatusCodes.Status403Forbidden, title: "Constitutional authorization denied", detail: exception.Message);
+            return Problem(
+                statusCode: StatusCodes.Status403Forbidden,
+                title: "Constitutional authorization denied",
+                detail: exception.Message
+            );
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            _logger.LogError(exception, "Legacy hire adapter failed for contract {ContractId}", request.ContractId);
-            return Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Constitutional evidence unavailable");
+            _logger.LogError(
+                exception,
+                "Legacy hire adapter failed for contract {ContractId}",
+                request.ContractId
+            );
+            return Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "Constitutional evidence unavailable"
+            );
         }
     }
 }

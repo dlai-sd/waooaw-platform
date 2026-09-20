@@ -206,14 +206,26 @@ def test_ci_build_and_scan_matrices_contain_exactly_seven_release_members() -> N
 
 def test_ci_audits_billing_dependencies_and_release_qualification_has_no_provider_authority() -> None:
     ci_text = CI_PATH.read_text(encoding="utf-8")
+    catalog_text = Path("validation/engineering-validation.yaml").read_text(encoding="utf-8")
+    dependency_runner = Path("scripts/validation_control/run_dependency_scan_gate.sh").read_text(encoding="utf-8")
     release_runner = Path("scripts/run_release_qualification.sh").read_text(encoding="utf-8")
     workflow = yaml.safe_load(ci_text)
     release_job = workflow["jobs"]["release-qualification"]
     release_job_text = json.dumps(release_job)
-    assert "pip-audit -r src/billing-engine/requirements.txt --strict" in ci_text
-    assert release_job["permissions"] == {"contents": "read"}
-    assert "scripts/run_release_qualification.sh" in release_job_text
+    execute_step = next(step for step in release_job["steps"] if step.get("id") == "runner-build")
+    enforce_step = next(
+        step for step in release_job["steps"] if step.get("name") == "Enforce catalog release qualification result"
+    )
+    assert "pip-audit -r src/billing-engine/requirements.txt --strict" in dependency_runner
+    assert release_job["permissions"] == {"contents": "read", "packages": "read", "attestations": "read"}
+    assert "gate-id\": \"release-qualification" in release_job_text
+    assert "release-qualification: {shell: \"sh scripts/run_release_qualification.sh\"" in catalog_text
+    assert execute_step["continue-on-error"] is True
+    assert "steps.runner-build.outcome != 'success'" in enforce_step["if"]
+    assert enforce_step["run"] == "exit 1"
     assert "scripts/test-wc059-postgres.sh" in release_runner
     assert "scripts/goal006_release_simulator.py" in release_runner
-    for prohibited in ("azure/login", "az login", "terraform apply", "secrets.", "continue-on-error"):
+    assert release_job_text.count("secrets.") == 1
+    assert "secrets.GITHUB_TOKEN" in release_job_text
+    for prohibited in ("azure/login", "az login", "terraform apply"):
         assert prohibited not in release_job_text + release_runner

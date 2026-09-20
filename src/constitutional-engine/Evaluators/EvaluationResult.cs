@@ -5,10 +5,12 @@
 namespace Waooaw.ConstitutionalEngine.Evaluators;
 
 /// <summary>Verdict returned by a constitutional claim evaluator.</summary>
-public enum EvaluationVerdict { Allow, Deny, Escalate }
+public enum EvaluationVerdict
+{
+    Allow,
+    Deny,
+    Escalate,
+}
 
 /// <summary>Result of a single constitutional claim evaluation.</summary>
-public sealed record EvaluationResult(
-    string ClaimId,
-    EvaluationVerdict Verdict,
-    string Reason);
+public sealed record EvaluationResult(string ClaimId, EvaluationVerdict Verdict, string Reason);

@@ -142,8 +142,7 @@ def test_author_review_is_required_and_machine_enforced() -> None:
 
     assert "author-review-gate:" in workflow
     assert "name: C-065 Author Review Gate" in workflow
-    assert "python scripts/validate_author_review.py" in workflow
-    assert "python scripts/validate_runtime_lifecycle_evidence.py" in workflow
+    assert "gate-id: author-review-gate" in workflow
     assert "HEAD_SHA: ${{ github.event.pull_request.head.sha }}" in workflow
     assert "- author-review-gate" in workflow
 

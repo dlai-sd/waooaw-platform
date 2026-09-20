@@ -94,14 +94,14 @@ def validate_runtime_evidence(
 
 def changed_files(base: str, head: str) -> list[str]:
     result = subprocess.run(  # noqa: S603
-        [
+        [  # noqa: S607
             "git",
             "-c",
             f"safe.directory={Path.cwd().resolve()}",
             "diff",
             "--name-only",
             f"{base}..{head}",
-        ],  # noqa: S607
+        ],
         check=True,
         capture_output=True,
         text=True,

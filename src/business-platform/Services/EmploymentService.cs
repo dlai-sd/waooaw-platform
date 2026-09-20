@@ -1,11 +1,11 @@
 // Implements: architecture/reference/components/business-platform.md §1 Employment Manager
 // constitutional_basis: C-023, C-038, C-059
-using Microsoft.AspNetCore.Mvc;
-using Waooaw.BusinessPlatform.Controllers;
-using Waooaw.ConstitutionalEngine.Grpc;
 using Grpc.Net.Client;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Waooaw.BusinessPlatform.Controllers;
+using Waooaw.ConstitutionalEngine.Grpc;
 
 namespace Waooaw.BusinessPlatform.Services;
 
@@ -16,10 +16,7 @@ namespace Waooaw.BusinessPlatform.Services;
 /// <summary>
 /// Result returned by <see cref="EmploymentService.RegisterCustomerAsync"/>.
 /// </summary>
-public sealed record RegisterCustomerResult(
-    bool Success,
-    Guid? CustomerId,
-    string? DenialReason);
+public sealed record RegisterCustomerResult(bool Success, Guid? CustomerId, string? DenialReason);
 
 /// <summary>
 /// Result returned by <see cref="EmploymentService.HireAgentAsync"/>.
@@ -29,7 +26,8 @@ public sealed record HireAgentResult(
     bool Success,
     Guid? AgentId,
     DateTimeOffset? ProRataBillingStartDate,
-    string? DenialReason);
+    string? DenialReason
+);
 
 /// <summary>
 /// Implements the Employment Manager component (§1).
@@ -59,10 +57,12 @@ public sealed class EmploymentService
     /// </summary>
     private ConstitutionalService.ConstitutionalServiceClient CreateCeClient()
     {
-        var url = _config["ConstitutionalEngine:GrpcUrl"]
+        var url =
+            _config["ConstitutionalEngine:GrpcUrl"]
             ?? throw new InvalidOperationException(
-                "ConstitutionalEngine:GrpcUrl is not configured. " +
-                "Add it to appsettings.json or environment variables.");
+                "ConstitutionalEngine:GrpcUrl is not configured. "
+                    + "Add it to appsettings.json or environment variables."
+            );
 
         var channel = GrpcChannel.ForAddress(url);
         return new ConstitutionalService.ConstitutionalServiceClient(channel);
@@ -71,8 +71,8 @@ public sealed class EmploymentService
     /// <summary>
     /// Minimal JSON string escaping to prevent injection in action parameters.
     /// </summary>
-    private static string EscapeJson(string value)
-        => value
+    private static string EscapeJson(string value) =>
+        value
             .Replace("\\", "\\\\")
             .Replace("\"", "\\\"")
             .Replace("\n", "\\n")
@@ -87,7 +87,8 @@ public sealed class EmploymentService
     /// </summary>
     public async Task<RegisterCustomerResult> RegisterCustomerAsync(
         RegisterCustomerRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         // ── Step 1: CE.ValidateAction (C-023 — must precede every state change) ──
         ValidateActionResponse ceResponse;
@@ -100,12 +101,14 @@ public sealed class EmploymentService
             ceResponse = await ceClient.ValidateActionAsync(
                 new ValidateActionRequest
                 {
-                    ContractId           = string.Empty,   // no contract yet for new customer
-                    ActionType           = "REGISTER_CUSTOMER",
-                    ActionParameters     = $"{{\"email\":\"{EscapeJson(request.Email)}\",\"name\":\"{EscapeJson(request.Name)}\"}}",
+                    ContractId = string.Empty, // no contract yet for new customer
+                    ActionType = "REGISTER_CUSTOMER",
+                    ActionParameters =
+                        $"{{\"email\":\"{EscapeJson(request.Email)}\",\"name\":\"{EscapeJson(request.Name)}\"}}",
                     DecisionSpaceVersion = 1,
                 },
-                cancellationToken: cts.Token);
+                cancellationToken: cts.Token
+            );
         }
         catch (Exception ex)
         {
@@ -113,7 +116,8 @@ public sealed class EmploymentService
             _logger.LogError(
                 ex,
                 "CE.ValidateAction failed for RegisterCustomer — Operation failed: {Context}",
-                $"email={request.Email}");
+                $"email={request.Email}"
+            );
             throw;
         }
 
@@ -125,7 +129,8 @@ public sealed class EmploymentService
                 "CE denied RegisterCustomer for email={Email}. Decision={Decision} Reason={Reason}",
                 request.Email,
                 ceResponse.Decision,
-                ceResponse.Reason);
+                ceResponse.Reason
+            );
 
             return new RegisterCustomerResult(false, null, ceResponse.Reason);
         }
@@ -137,7 +142,8 @@ public sealed class EmploymentService
         _logger.LogInformation(
             "Customer registered successfully. CustomerId={CustomerId} Email={Email}",
             customerId,
-            request.Email);
+            request.Email
+        );
 
         return new RegisterCustomerResult(true, customerId, null);
     }
@@ -152,7 +158,8 @@ public sealed class EmploymentService
     /// </summary>
     public async Task<HireAgentResult> HireAgentAsync(
         HireAgentRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         // ── Step 1: CE.ValidateAction (C-023 — precondition, outside any DB TX) ──
         ValidateActionResponse ceResponse;
@@ -166,23 +173,26 @@ public sealed class EmploymentService
             // Build action parameters as a minimal JSON object.
             // All values are escaped to prevent injection (C-059).
             var actionParameters =
-                $"{{" +
-                $"\"contractId\":\"{EscapeJson(request.ContractId)}\"," +
-                $"\"professionalType\":\"{EscapeJson(request.ProfessionalType)}\"," +
-                $"\"skillId\":\"{EscapeJson(request.SkillId)}\"," +
-                $"\"approvedBudgetInrPaise\":\"{request.ApprovedBudgetInrPaise}\"," +
-                $"\"billingCycleAnchorDay\":\"{EscapeJson(request.BillingCycleAnchorDay)}\"" +
-                $"}}";
+                $"{{"
+                + $"\"contractId\":\"{EscapeJson(request.ContractId)}\","
+                + $"\"professionalType\":\"{EscapeJson(request.ProfessionalType)}\","
+                + $"\"skillId\":\"{EscapeJson(request.SkillId)}\","
+                + $"\"approvedBudgetInrPaise\":\"{request.ApprovedBudgetInrPaise}\","
+                + $"\"billingCycleAnchorDay\":\"{EscapeJson(request.BillingCycleAnchorDay)}\""
+                + $"}}";
 
             ceResponse = await ceClient.ValidateActionAsync(
                 new ValidateActionRequest
                 {
-                    ContractId           = request.ContractId,
-                    ActionType           = "HIRE_AGENT",
-                    ActionParameters     = actionParameters,
-                    DecisionSpaceVersion = int.TryParse(request.DecisionSpaceVersion, out var dsvE) ? dsvE : 1,
+                    ContractId = request.ContractId,
+                    ActionType = "HIRE_AGENT",
+                    ActionParameters = actionParameters,
+                    DecisionSpaceVersion = int.TryParse(request.DecisionSpaceVersion, out var dsvE)
+                        ? dsvE
+                        : 1,
                 },
-                cancellationToken: cts.Token);
+                cancellationToken: cts.Token
+            );
         }
         catch (Exception ex)
         {
@@ -190,7 +200,8 @@ public sealed class EmploymentService
             _logger.LogError(
                 ex,
                 "CE.ValidateAction failed for HireAgent — Operation failed: {Context}",
-                $"contractId={request.ContractId} professionalType={request.ProfessionalType}");
+                $"contractId={request.ContractId} professionalType={request.ProfessionalType}"
+            );
             throw;
         }
 
@@ -199,12 +210,13 @@ public sealed class EmploymentService
         if (ceResponse.Decision != ValidationDecision.Allow)
         {
             _logger.LogWarning(
-                "CE denied HireAgent. ContractId={ContractId} ProfessionalType={ProfessionalType} " +
-                "Decision={Decision} Reason={Reason}",
+                "CE denied HireAgent. ContractId={ContractId} ProfessionalType={ProfessionalType} "
+                    + "Decision={Decision} Reason={Reason}",
                 request.ContractId,
                 request.ProfessionalType,
                 ceResponse.Decision,
-                ceResponse.Reason);
+                ceResponse.Reason
+            );
 
             return new HireAgentResult(false, null, null, ceResponse.Reason);
         }
@@ -219,12 +231,13 @@ public sealed class EmploymentService
         var agentId = Guid.NewGuid();
 
         _logger.LogInformation(
-            "Agent hired successfully. AgentId={AgentId} ContractId={ContractId} " +
-            "ProfessionalType={ProfessionalType} ProRataBillingStartDate={ProRataBillingStartDate}",
+            "Agent hired successfully. AgentId={AgentId} ContractId={ContractId} "
+                + "ProfessionalType={ProfessionalType} ProRataBillingStartDate={ProRataBillingStartDate}",
             agentId,
             request.ContractId,
             request.ProfessionalType,
-            proRataBillingStartDate);
+            proRataBillingStartDate
+        );
 
         // C-038: ProRataBillingStartDate is always populated on success.
         return new HireAgentResult(true, agentId, proRataBillingStartDate, null);

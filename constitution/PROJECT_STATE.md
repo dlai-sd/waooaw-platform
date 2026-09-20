@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 183
-**Last Updated:** 2026-09-20 (WC-104 CORRECTIVE SPECIFICATION CHECKPOINT)
+**State Revision:** 191
+**Last Updated:** 2026-09-20 (WC-104 VALIDATION EFFICIENCY CHECKPOINT)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-080 - Agent Runtime Adapter Contract v1 |
 | Latest merge | PR #457 merged to `main` as `502f70b5` |
-| Active delivery | WC-103 Multi-Tenant Authentication Journeys and WC-104 End-to-End Docker Runner Supply are specification-ready and implementation-gated; WC-104 corrects unresolved WC-102 runner distribution, cache, catalog execution, evidence reuse and hosted measurement gaps without activating selective enforcement; other bounded delivery remains unchanged |
+| Active delivery | WC-104 End-to-End Docker Runner Supply is Founder-authorized and in progress on `wc/104-docker-runner-supply-main`; immutable runner supply, static-first preparation, scoped local prechecks, verified per-gate evidence carry-forward, hosted telemetry validation and catalog-owned Web/.NET/Python CI execution are implemented locally without activating selective enforcement; WC-103 remains specification-ready and implementation-gated; other bounded delivery remains unchanged |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 
@@ -54,6 +54,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | WC-099 post-Demo correction | ENGINEERING QUALIFIED CANDIDATE - Iteration 2 candidate `64cbce45` delegates Marketplace Trial/Hire to canonical lifecycle owners, enforces exact DMA offerability, requests fresh Google account selection, fails Guide startup/readiness for invalid cursor material, and repairs Guide/portal geometry. Iteration 3 milestone `c8fecd61` adds fail-fast worktree/HEAD and Docker preflight, schema-v3 exact evidence binding, bounded non-runtime evidence reuse, and durable Platform IT Expert costly-run rules; 45 focused Docker tests and all 36 ledger rows pass. Existing product evidence includes 803 BP tests, 386 Web tests, 30 deployment tests, a 52-route production build and 29 WC-099 browser checks with 36 intentional project skips. R-014/R-020 remain blocked pending Founder merge and separately authorized work-component deployment; no cloud mutation, Demo acceptance, Production readiness, approval or merge is claimed. |
 | WC-100 engineering validation efficiency | ENGINEERING QUALIFIED CANDIDATE - WC100-01 through WC100-04A are implemented on `ib/100/engineering-validation-efficiency`. Exact-head Docker qualification passes 61 focused ledger, orchestration, immutable-image, classifier and handoff tests with lint/format checks; current full PR CI remains authoritative. Hosted security/regression evidence, the 20-PR Shadow evaluation, candidate hosted timing, Founder review/merge and any WC100-04C activation remain open or Founder-reserved. |
 | WC-102 Docker-only validation control plane | ENGINEERING QUALIFIED CANDIDATE - WC102-00 through WC102-07 are implemented on `ib/102/docker-only-validation-control-plane`; exact implementation candidate `a270f0ec` passes all component, quality, security, dependency, control-plane and release qualification gates. The 26-row obligation ledger, five-class measurements, Shadow comparison, rollback record and INST-010 author review pass. Full CI remains authoritative; the 20-sample Shadow activation floor, selective enforcement, Founder review and merge remain open or Founder-reserved. |
+| WC-104 end-to-end Docker runner supply | IN-PROGRESS / PARTIALLY QUALIFIED - Founder-authorized milestones through `4cd3a4db` establish four canonical narrow runner identities, one serialized GHCR producer path, digest/provenance-verifying consumers, catalog-owned execution across local preparation/PR/main, static-first authority checks, dependency-scoped local prechecks, verified per-gate cross-head evidence carry-forward, frozen authoritative gate equivalence and executable clean rollback. A bounded Docker milestone suite passes 170 tests in 5.99 seconds, its focused R017-R019 subset passes 63 tests in 2.76 seconds, Compose rendering and focused Ruff checks pass, and R014 isolation retains 39 passing tests. The exact `eb33e533` rollback clean-built all four runners once and attempted all 43 gates serially with no registry or prior-result reuse; 16 passed and 27 exposed PR-bound metadata, inherited repository/environment blockers or subsequently repaired orchestration defects. The validated 19-row ledger records twelve local PASS rows, six hosted-evidence blockers and R016 blocked pending a passing clean rehearsal and dependency closure. The candidate retains the complete 16-image Compose build result (211/211 BuildKit steps), and author review R-144 passes for `4cd3a4db`. Hosted PR/main evidence, PR submission and Founder review/merge remain; no hosted or completion claim is made. |
 | Production | PLAN ONLY - code-prepared; protected environments, authorized plan, traffic and final acceptance remain Founder-reserved |
 
 ### Checkpoint Context
@@ -90,12 +91,12 @@ downstream membership and browser account-switch qualification remain open; CB-0
 
 ## Next Authorized Action
 
-Submit WC-103's authentication specification and WC-104's corrective Docker runner-supply
-specification for Founder review. Neither specification authorizes implementation. Do not change
-workflows, scripts, Dockerfiles, registry state, providers, migrations or deployments under these
-contracts without explicit current-session Founder authorization. WC-104 implementation must close
-every defect and ledger row as one end-to-end work component; full PR, `main` and release validation
-remain authoritative, and selective enforcement remains separately Founder-gated.
+Continue the Founder-authorized WC-104 implementation without activating selective enforcement.
+Complete workflow/catalog convergence, hosted PR and `main` measurements, rollback rehearsal,
+exact requirement-ledger closure and author review before presenting WC-104 as complete; image
+publication remains limited to the authorized validation-runner workflow, and Founder review/merge
+remain reserved. Submit WC-103's authentication specification for Founder review; WC-103 remains
+implementation-gated.
 
 Submit WC-102 as an unmerged Shadow-mode PR for Founder review; do not activate selective PR execution before the 20-sample Shadow floor and separate Founder approval. Submit WC-099 Iterations 2 and 3 as one unmerged implementation PR for Founder review; do not deploy it to Demo without separate work-component authority. Submit WC-100 as an unmerged Shadow-mode PR for Founder review and hosted full-CI evidence; do not
 activate selected PR execution before the required Shadow window and separate Founder approval.

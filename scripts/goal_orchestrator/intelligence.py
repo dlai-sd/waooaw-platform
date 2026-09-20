@@ -19,12 +19,14 @@ Dialogue without repo investigation is a C-059 violation (no evidence).
 
 Every method commits its evidence record BEFORE returning (C-059).
 """
+
 from __future__ import annotations
 import json
 import re
 import time
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
+from collections.abc import Callable
 
 from magic_llm.orchestration import (
     FounderDecisionBrief,
@@ -33,7 +35,6 @@ from magic_llm.orchestration import (
     JourneyMonitorInput,
     MonitorSignal,
     ResearchRecord,
-    ResearchQueryRequest,
     RoutingDecisionRecord,
     RoutingRequest,
 )
@@ -43,15 +44,16 @@ REPO_ROOT = Path(__file__).parent.parent.parent
 
 # ── Security: sanitize founder input before LLM injection ────────────────────
 _INJECTION_PATTERNS = re.compile(
-    r'(ignore\s+(all\s+)?previous\s+instructions?'
-    r'|forget\s+everything'
-    r'|system\s*:\s*|<\s*/?system\s*>'
-    r'|<\s*/?INST\s*>'
-    r'|\[INST\]|\[/INST\]'
-    r'|###\s*instruction'
-    r'|you\s+are\s+now)',
-    re.IGNORECASE
+    r"(ignore\s+(all\s+)?previous\s+instructions?"
+    r"|forget\s+everything"
+    r"|system\s*:\s*|<\s*/?system\s*>"
+    r"|<\s*/?INST\s*>"
+    r"|\[INST\]|\[/INST\]"
+    r"|###\s*instruction"
+    r"|you\s+are\s+now)",
+    re.IGNORECASE,
 )
+
 
 def _sanitize_input(raw: str) -> str:
     """
@@ -65,7 +67,9 @@ def _sanitize_input(raw: str) -> str:
     sanitized = _INJECTION_PATTERNS.sub("[REDACTED]", raw)
     return sanitized[:500]  # hard truncation prevents token-stuffing
 
+
 # ── Repo investigation — mandatory before any goal dialogue ──────────────────
+
 
 def _investigate_repo(goal_input: str) -> dict[str, str]:
     """
@@ -98,7 +102,7 @@ def _investigate_repo(goal_input: str) -> dict[str, str]:
         context["AGENT-ENTRY (Platform Status)"] = m.group(1)[:600] if m else content[:400]
 
     # 3. If the goal mentions a WC number, load that Work Contract
-    wc_match = re.search(r'\bWC-?(\d{1,3})\b', goal_input, re.IGNORECASE)
+    wc_match = re.search(r"\bWC-?(\d{1,3})\b", goal_input, re.IGNORECASE)
     if wc_match:
         wc_num = wc_match.group(1).zfill(3)
         wc_dir = REPO_ROOT / "work-contracts"
@@ -108,7 +112,7 @@ def _investigate_repo(goal_input: str) -> dict[str, str]:
             context[f"WORK CONTRACT WC-{wc_num}"] = content[:2000]
 
     # 4. If the goal mentions IB items, load the relevant backlog entry
-    ib_match = re.search(r'\bIB-(\d{3})\b', goal_input, re.IGNORECASE)
+    ib_match = re.search(r"\bIB-(\d{3})\b", goal_input, re.IGNORECASE)
     if ib_match:
         ib_id = f"IB-{ib_match.group(1)}"
         backlog = REPO_ROOT / "constitution" / "INSTITUTIONAL_BACKLOG.md"
@@ -186,6 +190,7 @@ class GOIntelligence:
           - Always cites the spec/claim that creates the block
         """
         import os as _os
+
         repo_context = _investigate_repo(raw_input)
 
         # Fast-path: check blocking conditions without LLM
@@ -201,13 +206,13 @@ class GOIntelligence:
             blockers.append("autonomous_halt=true — execution halted by constitution")
             next_steps.append("Set autonomous_halt=false in PROJECT_STATE.md once prerequisites are met")
 
-        platform_phase_match = None
         import re as _re
-        pm = _re.search(r'platform_phase:\s*(\w+)', " ".join(repo_context.values()))
+
+        pm = _re.search(r"platform_phase:\s*(\w+)", " ".join(repo_context.values()))
         if pm:
             phase = pm.group(1).strip("\"'")
             if phase == "SPEC":
-                blockers.append(f"platform_phase=SPEC — implementation not authorized")
+                blockers.append("platform_phase=SPEC — implementation not authorized")
                 next_steps.append("Founder must authorize implementation by setting platform_phase=IMPLEMENTATION")
 
         if blockers:
@@ -240,7 +245,11 @@ class GOIntelligence:
                         execution_plan_reference="",
                     )
                     response = self._llm.invoke(llm_req)
-                    chat_response = response.raw_output.strip() if response.raw_output else self._default_block_message(raw_input, blockers, next_steps)
+                    chat_response = (
+                        response.raw_output.strip()
+                        if response.raw_output
+                        else self._default_block_message(raw_input, blockers, next_steps)
+                    )
                 except Exception:
                     chat_response = self._default_block_message(raw_input, blockers, next_steps)
             else:
@@ -263,21 +272,23 @@ class GOIntelligence:
         }
 
         # Evidence First — record this validation (C-059)
-        self._write({
-            "record_type": "GoalValidation",
-            "raw_input": raw_input,
-            "verdict": verdict,
-            "blockers": blockers,
-            "repo_files": list(repo_context.keys()),
-            "produced_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        })
+        self._write(
+            {
+                "record_type": "GoalValidation",
+                "raw_input": raw_input,
+                "verdict": verdict,
+                "blockers": blockers,
+                "repo_files": list(repo_context.keys()),
+                "produced_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            }
+        )
 
         return result
 
     @staticmethod
     def _default_block_message(raw_input: str, blockers: list, next_steps: list) -> str:
         return (
-            f"I've reviewed the repository state against your request: \"{raw_input[:80]}\".\n\n"
+            f'I\'ve reviewed the repository state against your request: "{raw_input[:80]}".\n\n'
             f"Before this can proceed, there is a prerequisite to address: {blockers[0]}.\n\n"
             f"What needs to happen first: {next_steps[0] if next_steps else 'review the constitution/PROJECT_STATE.md for the blocking condition'}.\n\n"
             "This check runs before any action is triggered — it saves API costs and prevents failed runs. "
@@ -338,7 +349,9 @@ class GOIntelligence:
                 print(f"  [GO] routing LLM invoke attempt {_attempt} failed ({type(_inv_err).__name__}: {_inv_err})")
                 if _attempt == 2:
                     raise
-                import time as _t; _t.sleep(2)
+                import time as _t
+
+                _t.sleep(2)
         parsed = response.parsed_artifacts if response and response.status == "accepted" else {}
         record_id = f"UR-{req.registrant_id}-{int(time.time())}"
 
@@ -348,17 +361,19 @@ class GOIntelligence:
             intent=parsed.get("intent", req.raw_input[:200]),
             success_criteria_draft=parsed.get("success_criteria_draft", []),
             constitutional_implications=parsed.get("constitutional_implications", [])
-                + [f"REPO BLOCKER: {b}" for b in parsed.get("repo_blockers", [])],
+            + [f"REPO BLOCKER: {b}" for b in parsed.get("repo_blockers", [])],
             clarification_needed=parsed.get("clarification_needed", False),
             clarifications=parsed.get("clarifications", []),
             related_goals=parsed.get("related_goals", req.related_goal_ids),
         )
 
         # Evidence First — commit before returning (C-059)
-        self._write({
-            **record.to_dict(),
-            "repo_context_files": list(repo_context.keys()),  # audit trail
-        })
+        self._write(
+            {
+                **record.to_dict(),
+                "repo_context_files": list(repo_context.keys()),  # audit trail
+            }
+        )
         return record
 
     # ── Point 2: GEOM G-4 — Routing Intelligence ─────────────────────────────
@@ -411,7 +426,9 @@ class GOIntelligence:
                 print(f"  [GO] routing LLM invoke attempt {_attempt} failed ({type(_inv_err).__name__}: {_inv_err})")
                 if _attempt == 2:
                     raise
-                import time as _t; _t.sleep(2)
+                import time as _t
+
+                _t.sleep(2)
         parsed = response.parsed_artifacts if response and response.status == "accepted" else {}
 
         record = RoutingDecisionRecord(
@@ -463,7 +480,7 @@ class GOIntelligence:
     def expert_informed_redesign(
         self,
         goal_id: str,
-        research_record_id: Optional[str],
+        research_record_id: str | None,
     ) -> str:
         """L3 redesign — Enterprise Architect revises Engineering Proposal.
         Phase 2: triggers EEM Step 03 restart with research context.
@@ -480,8 +497,8 @@ class GOIntelligence:
         self,
         goal_id: str,
         l1_ids: list[str],
-        l2_id: Optional[str],
-        l3_id: Optional[str],
+        l2_id: str | None,
+        l3_id: str | None,
     ) -> FounderDecisionBrief:
         """Cat. 13 — Assembles 3-option Founder decision brief.
         Phase 2: Gemini 2.5 Pro with full evidence package.

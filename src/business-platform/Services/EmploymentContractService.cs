@@ -20,14 +20,16 @@ public sealed record EmploymentContractCommercialTerms(
     string OfferingId = "LEGACY",
     string BundleTier = "LEGACY",
     string QuoteVersion = "LEGACY",
-    string RenewalConsequence = "Accepted renewal terms apply.");
+    string RenewalConsequence = "Accepted renewal terms apply."
+);
 
 public sealed record EmploymentContractGoal(
     string Goal,
     string? Baseline,
     string Measure,
     string? DecisionThreshold,
-    string? EvidenceSource);
+    string? EvidenceSource
+);
 
 public sealed record EmploymentContractSkill(
     string SkillId,
@@ -35,7 +37,8 @@ public sealed record EmploymentContractSkill(
     string AuthorityState,
     string Applicability,
     string? ApplicabilityReason,
-    string Status);
+    string Status
+);
 
 public sealed record EmploymentContractDocument(
     string AeecVersion,
@@ -51,16 +54,19 @@ public sealed record EmploymentContractDocument(
     IReadOnlyList<EmploymentContractGoal> Goals,
     IReadOnlyList<EmploymentContractSkill> Skills,
     EmploymentContractCommercialTerms PriceTax,
-    string EvidencePosture);
+    string EvidencePosture
+);
 
 public sealed record EmploymentContractComposition(
     EmploymentContractVersion Contract,
     EmploymentContractDocument Document,
-    bool Created);
+    bool Created
+);
 
 public sealed class EmploymentContractService(
     IDbContextFactory<EmploymentRelationshipDbContext> dbFactory,
-    IProfessionalCatalog professionalCatalog)
+    IProfessionalCatalog professionalCatalog
+)
 {
     private const string AeecVersion = "1.0";
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -73,35 +79,61 @@ public sealed class EmploymentContractService(
         Guid relationshipId,
         Guid actorParticipantId,
         EmploymentContractCommercialTerms commercialTerms,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         ValidateCommercialTerms(commercialTerms);
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        var relationship = await db.EmploymentRelationships.AsNoTracking().SingleOrDefaultAsync(
-            item => item.TenantId == tenantId && item.RelationshipId == relationshipId,
-            cancellationToken) ?? throw new KeyNotFoundException("Relationship not found.");
+        var relationship =
+            await db
+                .EmploymentRelationships.AsNoTracking()
+                .SingleOrDefaultAsync(
+                    item => item.TenantId == tenantId && item.RelationshipId == relationshipId,
+                    cancellationToken
+                )
+            ?? throw new KeyNotFoundException("Relationship not found.");
         if (relationship.State == EmploymentRelationshipState.StoppedEmergency)
-            throw new ConstitutionalActionDeniedException("Contract presentation is blocked by Emergency Stop.");
-        var decisionSpace = await db.DecisionSpaceSnapshots.AsNoTracking()
-            .Where(item => item.TenantId == tenantId && item.RelationshipId == relationshipId)
-            .OrderByDescending(item => item.Version)
-            .FirstOrDefaultAsync(cancellationToken)
-            ?? throw new InvalidOperationException("An accepted Decision Space snapshot is required before contract composition.");
-        var disclosure = professionalCatalog.GetDisclosure(relationship.ProfessionalType)
-            ?? throw new InvalidOperationException("The professional disclosure required for contract composition is unavailable.");
-        var goals = await db.RelationshipGoals.AsNoTracking()
-            .Where(item => item.TenantId == tenantId
+            throw new ConstitutionalActionDeniedException(
+                "Contract presentation is blocked by Emergency Stop."
+            );
+        var decisionSpace =
+            await db
+                .DecisionSpaceSnapshots.AsNoTracking()
+                .Where(item => item.TenantId == tenantId && item.RelationshipId == relationshipId)
+                .OrderByDescending(item => item.Version)
+                .FirstOrDefaultAsync(cancellationToken)
+            ?? throw new InvalidOperationException(
+                "An accepted Decision Space snapshot is required before contract composition."
+            );
+        var disclosure =
+            professionalCatalog.GetDisclosure(relationship.ProfessionalType)
+            ?? throw new InvalidOperationException(
+                "The professional disclosure required for contract composition is unavailable."
+            );
+        var goals = await db
+            .RelationshipGoals.AsNoTracking()
+            .Where(item =>
+                item.TenantId == tenantId
                 && item.RelationshipId == relationshipId
-                && item.Status == "ACCEPTED")
+                && item.Status == "ACCEPTED"
+            )
             .OrderBy(item => item.Goal)
             .ThenBy(item => item.GoalId)
             .Select(item => new EmploymentContractGoal(
-                item.Goal, item.Baseline, item.Measure, item.DecisionThreshold, item.EvidenceSource))
+                item.Goal,
+                item.Baseline,
+                item.Measure,
+                item.DecisionThreshold,
+                item.EvidenceSource
+            ))
             .ToListAsync(cancellationToken);
-        var skills = await db.RelationshipSkillConfigurations.AsNoTracking()
-            .Where(item => item.TenantId == tenantId
+        var skills = await db
+            .RelationshipSkillConfigurations.AsNoTracking()
+            .Where(item =>
+                item.TenantId == tenantId
                 && item.RelationshipId == relationshipId
-                && (item.Status == "ACCEPTED" || item.Status == "DEFERRED"))
+                && (item.Status == "ACCEPTED" || item.Status == "DEFERRED")
+            )
             .OrderBy(item => item.SkillId)
             .ThenBy(item => item.SkillVersion)
             .Select(item => new EmploymentContractSkill(
@@ -110,7 +142,8 @@ public sealed class EmploymentContractService(
                 item.AuthorityState,
                 item.Applicability,
                 item.ApplicabilityReason,
-                item.Status))
+                item.Status
+            ))
             .ToListAsync(cancellationToken);
 
         var authorityBoundaries = DeserializeSortedStrings(decisionSpace.AuthorityBoundariesJson);
@@ -119,10 +152,12 @@ public sealed class EmploymentContractService(
             AeecVersion,
             relationship.ProfessionalType,
             disclosure.DisplayName,
-            Sort(disclosure.CustomerRights.Concat([
-                "Inspect and export the governing contract and material evidence.",
-                "Decline, choose not now, cancel, or exit without concealed consequences.",
-            ])),
+            Sort(
+                disclosure.CustomerRights.Concat([
+                    "Inspect and export the governing contract and material evidence.",
+                    "Decline, choose not now, cancel, or exit without concealed consequences.",
+                ])
+            ),
             [
                 "Provide accurate business context and identify corrections promptly.",
                 "Keep credentials and delegated access within the accepted authority scope.",
@@ -130,9 +165,11 @@ public sealed class EmploymentContractService(
             ],
             Sort(disclosure.Limitations),
             Sort(disclosure.AuthorityNeeds.Concat(authorityBoundaries)),
-            Sort(stopConditions.Concat([
-                "Emergency Stop remains available and halts consequential progression until authorized release or termination.",
-            ])),
+            Sort(
+                stopConditions.Concat([
+                    "Emergency Stop remains available and halts consequential progression until authorized release or termination.",
+                ])
+            ),
             decisionSpace.ReviewCadenceMonths,
             decisionSpace.BudgetCeilingInrPaise,
             goals,
@@ -149,29 +186,47 @@ public sealed class EmploymentContractService(
                 QuoteVersion = commercialTerms.QuoteVersion.Trim(),
                 RenewalConsequence = commercialTerms.RenewalConsequence.Trim(),
             },
-            disclosure.EvidencePosture);
+            disclosure.EvidencePosture
+        );
         var documentJson = JsonSerializer.Serialize(document, JsonOptions);
         var contractHash = Hash(documentJson);
-        var existing = await db.EmploymentContractVersions.AsNoTracking().SingleOrDefaultAsync(
-            item => item.TenantId == tenantId
-                && item.RelationshipId == relationshipId
-                && item.ContractHash == contractHash,
-            cancellationToken);
+        var existing = await db
+            .EmploymentContractVersions.AsNoTracking()
+            .SingleOrDefaultAsync(
+                item =>
+                    item.TenantId == tenantId
+                    && item.RelationshipId == relationshipId
+                    && item.ContractHash == contractHash,
+                cancellationToken
+            );
         if (existing is not null)
         {
-            return new EmploymentContractComposition(existing, DeserializeDocument(existing.ConfigurationSnapshotJson), false);
+            return new EmploymentContractComposition(
+                existing,
+                DeserializeDocument(existing.ConfigurationSnapshotJson),
+                false
+            );
         }
 
-        var domainScheduleJson = JsonSerializer.Serialize(new
-        {
-            professionalType = relationship.ProfessionalType,
-            goals,
-            skills,
-        }, JsonOptions);
-        var version = (await db.EmploymentContractVersions
-            .Where(item => item.TenantId == tenantId && item.RelationshipId == relationshipId)
-            .Select(item => (int?)item.Version)
-            .MaxAsync(cancellationToken) ?? 0) + 1;
+        var domainScheduleJson = JsonSerializer.Serialize(
+            new
+            {
+                professionalType = relationship.ProfessionalType,
+                goals,
+                skills,
+            },
+            JsonOptions
+        );
+        var version =
+            (
+                await db
+                    .EmploymentContractVersions.Where(item =>
+                        item.TenantId == tenantId && item.RelationshipId == relationshipId
+                    )
+                    .Select(item => (int?)item.Version)
+                    .MaxAsync(cancellationToken)
+                ?? 0
+            ) + 1;
         var contract = new EmploymentContractVersion
         {
             TenantId = tenantId,
@@ -193,27 +248,40 @@ public sealed class EmploymentContractService(
         Guid tenantId,
         Guid relationshipId,
         int version,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        return await db.EmploymentContractVersions.AsNoTracking().SingleOrDefaultAsync(
-            item => item.TenantId == tenantId
-                && item.RelationshipId == relationshipId
-                && item.Version == version,
-            cancellationToken);
+        return await db
+            .EmploymentContractVersions.AsNoTracking()
+            .SingleOrDefaultAsync(
+                item =>
+                    item.TenantId == tenantId
+                    && item.RelationshipId == relationshipId
+                    && item.Version == version,
+                cancellationToken
+            );
     }
 
     public async Task<EmploymentContractComposition?> GetLatestAsync(
-        Guid tenantId, Guid relationshipId, CancellationToken cancellationToken)
+        Guid tenantId,
+        Guid relationshipId,
+        CancellationToken cancellationToken
+    )
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        var contract = await db.EmploymentContractVersions.AsNoTracking()
+        var contract = await db
+            .EmploymentContractVersions.AsNoTracking()
             .Where(item => item.TenantId == tenantId && item.RelationshipId == relationshipId)
             .OrderByDescending(item => item.Version)
             .FirstOrDefaultAsync(cancellationToken);
         return contract is null
             ? null
-            : new EmploymentContractComposition(contract, DeserializeDocument(contract.ConfigurationSnapshotJson), false);
+            : new EmploymentContractComposition(
+                contract,
+                DeserializeDocument(contract.ConfigurationSnapshotJson),
+                false
+            );
     }
 
     private static EmploymentContractDocument DeserializeDocument(string json) =>
@@ -224,7 +292,8 @@ public sealed class EmploymentContractService(
         Sort(JsonSerializer.Deserialize<IReadOnlyList<string>>(json, JsonOptions) ?? []);
 
     private static IReadOnlyList<string> Sort(IEnumerable<string> values) =>
-        values.Select(value => value.Trim())
+        values
+            .Select(value => value.Trim())
             .Where(value => value.Length > 0)
             .Distinct(StringComparer.Ordinal)
             .OrderBy(value => value, StringComparer.Ordinal)
@@ -240,17 +309,23 @@ public sealed class EmploymentContractService(
         if (terms.GrossAmountInrPaise <= 0)
             throw new ArgumentOutOfRangeException(nameof(terms), "Gross amount must be positive.");
         if (terms.GstAmountInrPaise < 0 || terms.GstAmountInrPaise > terms.GrossAmountInrPaise)
-            throw new ArgumentOutOfRangeException(nameof(terms), "GST must be between zero and the gross amount.");
-        if (string.IsNullOrWhiteSpace(terms.Cadence)
+            throw new ArgumentOutOfRangeException(
+                nameof(terms),
+                "GST must be between zero and the gross amount."
+            );
+        if (
+            string.IsNullOrWhiteSpace(terms.Cadence)
             || string.IsNullOrWhiteSpace(terms.SubscriptionTerms)
             || string.IsNullOrWhiteSpace(terms.AdSpendTreatment)
             || string.IsNullOrWhiteSpace(terms.CancellationAndRefundTerms)
             || string.IsNullOrWhiteSpace(terms.OfferingId)
             || string.IsNullOrWhiteSpace(terms.BundleTier)
             || string.IsNullOrWhiteSpace(terms.QuoteVersion)
-            || string.IsNullOrWhiteSpace(terms.RenewalConsequence))
+            || string.IsNullOrWhiteSpace(terms.RenewalConsequence)
+        )
             throw new ArgumentException(
                 "Complete offering, quote, renewal, subscription, ad-spend, and cancellation terms are required.",
-                nameof(terms));
+                nameof(terms)
+            );
     }
 }

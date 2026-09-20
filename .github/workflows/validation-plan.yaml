@@ -1,0 +1,115 @@
+name: Validation Plan
+
+on:
+  workflow_call:
+    outputs:
+      release_required:
+        description: Whether the selected change requires release qualification
+        value: ${{ jobs.plan.outputs.release_required }}
+
+jobs:
+  plan:
+    name: WC-102 validation plan (Shadow)
+    runs-on: ubuntu-latest
+    outputs:
+      release_required: ${{ steps.plan.outputs.release_required }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Resolve exact validation range
+        id: range
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BASE_SHA: ${{ github.event.before }}
+          PUSH_HEAD_SHA: ${{ github.sha }}
+        run: |
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            base_sha=$PR_BASE_SHA
+            head_sha=$PR_HEAD_SHA
+          elif [[ "$EVENT_NAME" == "schedule" || "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            head_sha=$PUSH_HEAD_SHA
+            base_sha=$(git rev-parse "$head_sha^")
+          else
+            base_sha=$PUSH_BASE_SHA
+            head_sha=$PUSH_HEAD_SHA
+          fi
+          echo "base_sha=$base_sha" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$head_sha" >> "$GITHUB_OUTPUT"
+          mkdir -p test-results/wc102
+          git diff --name-only --find-renames "$base_sha" "$head_sha" > test-results/wc102/changed-files.txt
+          git diff --name-status --find-renames "$base_sha" "$head_sha" > test-results/wc102/changed-files.status
+      - name: Resolve immutable validation runner (C-080)
+        uses: ./.github/actions/use-validation-runner
+        id: runner-build
+        with:
+          runner-id: full
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Record immutable validation runner evidence
+        run: |
+          scripts/record_build_evidence.sh \
+            "$RUNNER_TEMP/build-evidence/validation-plan.json" 'test-runner-validation-plan' \
+            '${{ steps.range.outputs.base_sha }}' '${{ steps.range.outputs.head_sha }}' \
+            '${{ steps.runner-build.outputs.image_id }}' '' \
+            '["change-impact","requirement-ledger"]' 'workflow_build'
+      - name: Compute Shadow selection and validate changed ledgers
+        id: plan
+        env:
+          BASE_SHA: ${{ steps.range.outputs.base_sha }}
+          HEAD_SHA: ${{ steps.range.outputs.head_sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          chmod 0777 test-results/wc102
+          scripts/verify_runner_image.sh test test-runner '${{ steps.runner-build.outputs.image_id }}'
+          docker compose --profile test run --rm \
+            -e BASE_SHA -e HEAD_SHA -e EVENT_NAME -e GITHUB_RUN_ID -e GITHUB_RUN_ATTEMPT test-runner sh -lc '
+              export GIT_CONFIG_COUNT=1
+              export GIT_CONFIG_KEY_0=safe.directory
+              export GIT_CONFIG_VALUE_0=/workspace
+              python scripts/validation_policy.py \
+                --policy validation/engineering-validation.yaml \
+                --base "$BASE_SHA" --head "$HEAD_SHA" \
+                --event "$EVENT_NAME" \
+                --changed-file-list test-results/wc102/changed-files.status \
+                --output test-results/wc102/change-impact.json
+              python scripts/validation_control/orchestrator.py \
+                --selection test-results/wc102/change-impact.json \
+                --mode focused --head "$HEAD_SHA" \
+                --run-id "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-focused" \
+                --output test-results/wc102/focused-plan.json
+              python scripts/validation_control/orchestrator.py \
+                --selection test-results/wc102/change-impact.json \
+                --mode qualification --head "$HEAD_SHA" \
+                --run-id "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-qualification" \
+                --all-gates \
+                --output test-results/wc102/qualification-plan.json
+              python scripts/validate_requirement_ledger.py \
+                --repository-root /workspace \
+                --changed-file-list test-results/wc102/changed-files.txt
+            '
+          release_required=$(jq -r '.selected_prechecks | index("release_qualification") != null' \
+            test-results/wc102/change-impact.json)
+          echo "release_required=$release_required" >> "$GITHUB_OUTPUT"
+      - name: Retain Shadow selection and validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wc102-validation-plan-${{ github.run_id }}
+          path: |
+            test-results/wc102/change-impact.json
+            test-results/wc102/changed-files.txt
+            test-results/wc102/changed-files.status
+            test-results/wc102/focused-plan.json
+            test-results/wc102/qualification-plan.json
+            ${{ runner.temp }}/build-evidence/validation-plan.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Retain complete catalog execution plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: wc104-qualification-plan-${{ github.run_id }}
+          path: test-results/wc102/qualification-plan.json
+          if-no-files-found: error
+          retention-days: 90

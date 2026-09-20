@@ -4,6 +4,7 @@
 """
 Sprint state operations: parse, gate checks, spec validation, integrity checks.
 """
+
 from __future__ import annotations
 
 import inspect
@@ -23,10 +24,7 @@ def parse_sprint_state() -> dict:
     Returns only the 5 control-panel fields. Task progress is in the WC file.
     """
     content = STATE_FILE.read_text(encoding="utf-8")
-    match = re.search(
-        r"## SPRINT_STATE_MACHINE.*?```yaml\n(.*?)```",
-        content, re.DOTALL
-    )
+    match = re.search(r"## SPRINT_STATE_MACHINE.*?```yaml\n(.*?)```", content, re.DOTALL)
     if not match:
         raise ValueError("SPRINT_STATE_MACHINE block not found in PROJECT_STATE.md")
 
@@ -65,9 +63,15 @@ def parse_wc_tasks(sprint: str) -> dict[str, list[str]]:
     task_id_pat = re.compile(r"^WC\d+-\d+[a-z]?$")
     # ADR-041: 7-state task machine — map new statuses to canonical buckets
     known_statuses = {
-        "pending", "done", "failed", "in-progress",
-        "failed_structural", "failed_transient", "failed_terminal",
-        "skipped_cascade", "skipped_idempotent",
+        "pending",
+        "done",
+        "failed",
+        "in-progress",
+        "failed_structural",
+        "failed_transient",
+        "failed_terminal",
+        "skipped_cascade",
+        "skipped_idempotent",
     }
 
     result: dict[str, list[str]] = {"pending": [], "done": [], "failed": []}
@@ -88,8 +92,7 @@ def parse_wc_tasks(sprint: str) -> dict[str, list[str]]:
             status = "pending"
         if status in ("done", "skipped_idempotent"):
             result["done"].append(task_id)
-        elif status in ("failed", "failed_structural", "failed_transient",
-                        "failed_terminal", "skipped_cascade"):
+        elif status in ("failed", "failed_structural", "failed_transient", "failed_terminal", "skipped_cascade"):
             result["failed"].append(task_id)
         else:
             # pending, in-progress (container-killed mid-task) → re-runnable
@@ -106,11 +109,7 @@ def update_task_status(sprint: str, task_id: str, status: str) -> None:
     wc_file = _find_wc_file(sprint)
     content = wc_file.read_text(encoding="utf-8")
 
-    completed_at = (
-        datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
-        if status == "done"
-        else "—"
-    )
+    completed_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ") if status == "done" else "—"
 
     lines = content.splitlines(keepends=True)
     updated = False
@@ -165,8 +164,9 @@ def check_platform_phase_gate(state: dict) -> None:
         sys.exit(0)
 
     if phase != "IMPLEMENTATION":
-        record_evidence("platform_phase_gate_blocked", platform_phase=phase,
-                        reason=f"platform_phase={phase}, not IMPLEMENTATION.")
+        record_evidence(
+            "platform_phase_gate_blocked", platform_phase=phase, reason=f"platform_phase={phase}, not IMPLEMENTATION."
+        )
         set_output("halt", "true")
         set_output("result", "SKIPPED")
         print(f"  HALT: platform_phase={phase}. Must be IMPLEMENTATION to execute.")
@@ -185,8 +185,7 @@ def run_spec_validation() -> None:
     # Check 1: SPRINT_STATE_MACHINE health
     try:
         state = parse_sprint_state()
-        print(f"  ✓ SPRINT_STATE_MACHINE parseable: phase={state.get('platform_phase')}, "
-              f"sprint={state.get('current_sprint')}")
+        print(f"  ✓ SPRINT_STATE_MACHINE parseable: phase={state.get('platform_phase')}, sprint={state.get('current_sprint')}")
     except Exception as e:
         issues.append(f"SPRINT_STATE_MACHINE parse error: {e}")
         state = {}
@@ -201,8 +200,9 @@ def run_spec_validation() -> None:
 
     # Check 3: build_sprint_index.py can run without errors
     try:
-        result = run([sys.executable, "scripts/build_sprint_index.py", "--dry-run", "--no-copilotignore"],
-                    check=False, capture=True)
+        result = run(
+            [sys.executable, "scripts/build_sprint_index.py", "--dry-run", "--no-copilotignore"], check=False, capture=True
+        )
         if result.returncode == 0 or "token budget" in result.stdout.lower():
             print("  ✓ Sprint index builder: parseable")
         else:
@@ -241,7 +241,7 @@ def update_sprint_state(**kwargs) -> None:
     pairs = []
     for k, v in kwargs.items():
         pairs += [k, f'"{v}"' if " " in str(v) else str(v)]
-    run([sys.executable, "scripts/sprint_state.py", "set"] + pairs)
+    run([sys.executable, "scripts/sprint_state.py", "set", *pairs])
 
 
 def run_runner_integrity_checks(
@@ -287,9 +287,18 @@ def run_runner_integrity_checks(
     # Note: TASK_HANDLERS may be empty at startup — groomer injects entries at runtime.
     else:
         supported_gates = {
-            "dotnet_build", "dotnet_test", "py_compile", "ruff", "pytest",
-            "sqlfluff", "yamllint", "terraform_validate", "openapi_ts_generate",
-            "wc034_f3_validate", "tsc", "ts_test",
+            "dotnet_build",
+            "dotnet_test",
+            "py_compile",
+            "ruff",
+            "pytest",
+            "sqlfluff",
+            "yamllint",
+            "terraform_validate",
+            "openapi_ts_generate",
+            "wc034_f3_validate",
+            "tsc",
+            "ts_test",
         }
         for task_id, handler in handlers.items():
             if not isinstance(handler, dict):
@@ -298,16 +307,11 @@ def run_runner_integrity_checks(
             for st in subtasks:
                 gate = getattr(st, "compile_gate", "")
                 if gate and gate not in supported_gates:
-                    errors.append(
-                        f"Unsupported compile gate '{gate}' in {task_id}/{getattr(st, 'id', 'subtask')}"
-                    )
+                    errors.append(f"Unsupported compile gate '{gate}' in {task_id}/{getattr(st, 'id', 'subtask')}")
 
     parser = namespace.get("parse_llm_files")
     if callable(parser):
-        probe = (
-            '<file path="src/_integrity_probe.txt">ok</file>'
-            '<file path="constitution/should-never-pass.md">blocked</file>'
-        )
+        probe = '<file path="src/_integrity_probe.txt">ok</file><file path="constitution/should-never-pass.md">blocked</file>'
         parsed = parser(probe)
         if "src/_integrity_probe.txt" not in parsed:
             errors.append("parse_llm_files failed to parse valid probe block")
@@ -331,12 +335,16 @@ def write_run_heartbeat(run_id: str, sprint: str) -> None:
     """
     _HEARTBEAT_PATH.parent.mkdir(exist_ok=True)
     _HEARTBEAT_PATH.write_text(
-        json.dumps({
-            "status": "OPEN",
-            "run_id": run_id,
-            "sprint": sprint,
-            "started_at": datetime.now(tz=timezone.utc).isoformat(),
-        }, ensure_ascii=False) + "\n",
+        json.dumps(
+            {
+                "status": "OPEN",
+                "run_id": run_id,
+                "sprint": sprint,
+                "started_at": datetime.now(tz=timezone.utc).isoformat(),
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
         encoding="utf-8",
     )
 
@@ -349,13 +357,17 @@ def close_run_heartbeat(run_id: str, sprint: str, result: str) -> None:
     """
     _HEARTBEAT_PATH.parent.mkdir(exist_ok=True)
     _HEARTBEAT_PATH.write_text(
-        json.dumps({
-            "status": "CLOSED",
-            "run_id": run_id,
-            "sprint": sprint,
-            "result": result,
-            "closed_at": datetime.now(tz=timezone.utc).isoformat(),
-        }, ensure_ascii=False) + "\n",
+        json.dumps(
+            {
+                "status": "CLOSED",
+                "run_id": run_id,
+                "sprint": sprint,
+                "result": result,
+                "closed_at": datetime.now(tz=timezone.utc).isoformat(),
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
         encoding="utf-8",
     )
 

@@ -22,12 +22,11 @@ Usage:
   ptr = assembler.refresh(ptr, new_files=["src/constitutional-engine/*.cs"])
   task_ptr = assembler.extract_task_ptr(ptr, spec_sections=["§ValidateAction"])
 """
+
 from __future__ import annotations
 
 import json
 import re
-import sys
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
@@ -35,10 +34,13 @@ REPO_ROOT = Path(__file__).parent.parent.parent
 
 # Reuse existing extractors from platform_type_registry.py
 _ptr_mod = None
+
+
 def _ptr():
     global _ptr_mod
     if _ptr_mod is None:
         import importlib.util
+
         spec = importlib.util.spec_from_file_location(
             "platform_type_registry",
             str(REPO_ROOT / "scripts" / "platform_type_registry.py"),
@@ -51,6 +53,7 @@ def _ptr():
 
 # ── Layer 1: Current compiled state ──────────────────────────────────────────
 
+
 def _scan_dotnet_types(scope_dirs: list[Path]) -> dict[str, Any]:
     """Extract types from all .cs files in scope."""
     types: dict[str, Any] = {}
@@ -61,7 +64,7 @@ def _scan_dotnet_types(scope_dirs: list[Path]) -> dict[str, Any]:
                 content = cs_file.read_text(encoding="utf-8", errors="ignore")
                 extracted = ptr.extract_dotnet_types(content)
                 types.update(extracted)
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
     return types
 
@@ -84,7 +87,7 @@ def _scan_dotnet_packages(scope_dirs: list[Path]) -> dict[str, str]:
                     name = m.group(1)
                     version = m.group(2) or "latest"
                     packages[name] = version
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
     return packages
 
@@ -105,7 +108,7 @@ def _scan_python_types(scope_dirs: list[Path]) -> dict[str, Any]:
                 module = str(rel).replace("/", ".").replace(".py", "")
                 for k, v in extracted.items():
                     types[f"{module}.{k}"] = v
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
     return types
 
@@ -125,7 +128,7 @@ def _scan_python_packages(repo_root: Path) -> dict[str, str]:
                 m = re.match(r"^([A-Za-z0-9_\-\.]+)([>=<!~].*)?$", line)
                 if m:
                     packages[m.group(1)] = (m.group(2) or "").strip() or "latest"
-        except Exception:
+        except Exception:  # noqa: S110
             pass
 
     # pyproject.toml — simple regex (avoids toml dependency)
@@ -138,7 +141,7 @@ def _scan_python_packages(repo_root: Path) -> dict[str, str]:
                 content,
             ):
                 packages[m.group(1)] = m.group(2).strip()
-        except Exception:
+        except Exception:  # noqa: S110
             pass
 
     return packages
@@ -156,7 +159,7 @@ def _scan_typescript_packages(scope_dirs: list[Path]) -> dict[str, str]:
                 for section in ("dependencies", "devDependencies", "peerDependencies"):
                     for name, version in data.get(section, {}).items():
                         packages[name] = version
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
     return packages
 
@@ -173,7 +176,7 @@ def _scan_typescript_types(scope_dirs: list[Path]) -> dict[str, Any]:
                 content = ts_file.read_text(encoding="utf-8", errors="ignore")
                 extracted = ptr.extract_typescript_types(content)
                 types.update(extracted)
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
     return types
 
@@ -194,12 +197,13 @@ def _scan_terraform_resources(scope_dirs: list[Path]) -> dict[str, Any]:
                     content,
                 ):
                     providers[m.group(1)] = f"{m.group(2)} {m.group(3)}"
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
     return {"providers": providers, "resources": resources}
 
 
 # ── PTR 2.0 Assembler class ───────────────────────────────────────────────────
+
 
 class PTR2Assembler:
     """
@@ -225,7 +229,8 @@ class PTR2Assembler:
         else:
             # Default: src/ + scripts/ + web/ (exclude tests for brevity)
             scope_dirs = [
-                d for d in [
+                d
+                for d in [
                     self._root / "src",
                     self._root / "scripts",
                     self._root / "web",
@@ -287,7 +292,7 @@ class PTR2Assembler:
                 elif suffix == ".tf":
                     tf_data = _scan_terraform_resources([f.parent])
                     ptr["terraform"]["resources"].update(tf_data["resources"])
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
         ptr["_meta"]["last_refreshed"] = __import__("datetime").datetime.utcnow().isoformat()
         return ptr
@@ -311,10 +316,7 @@ class PTR2Assembler:
         all_types = stack_data.get("types", {})
 
         # Filter to relevant types
-        relevant = {
-            k: v for k, v in all_types.items()
-            if any(t in k for t in type_names_mentioned)
-        }
+        relevant = {k: v for k, v in all_types.items() if any(t in k for t in type_names_mentioned)}
 
         # If under limit, add most recently added types as context
         if len(relevant) < max_types:
@@ -383,7 +385,7 @@ class PTR2Assembler:
                         content,
                     ):
                         using_map[class_m.group(1)] = namespace
-                except Exception:
+                except Exception:  # noqa: S110
                     pass
         return using_map
 
@@ -401,6 +403,7 @@ class PTR2Assembler:
 # ── Convenience function for sprint runner ────────────────────────────────────
 
 _default_assembler: PTR2Assembler | None = None
+
 
 def get_assembler() -> PTR2Assembler:
     global _default_assembler

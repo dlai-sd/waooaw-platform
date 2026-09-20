@@ -16,20 +16,23 @@ public sealed record ChannelContinuityIdentity(
     string ConversationId,
     string ExternalSubjectHash,
     string AuthenticationAssurance,
-    DateTimeOffset AuthenticatedAt);
+    DateTimeOffset AuthenticatedAt
+);
 
 public sealed record PrepareChannelHandoff(
     string TargetChannel,
     string TargetConversationId,
     string CommandPurpose,
     Guid CorrelationId,
-    Guid IdempotencyKey);
+    Guid IdempotencyKey
+);
 
 public sealed record ActivateChannelHandoff(
     string TargetConversationId,
     Guid CorrelationId,
     Guid IdempotencyKey,
-    NeutralContinuityEnvelope Envelope);
+    NeutralContinuityEnvelope Envelope
+);
 
 public sealed record NeutralContinuityEnvelope(
     string SchemaVersion,
@@ -51,7 +54,8 @@ public sealed record NeutralContinuityEnvelope(
     Guid EvidenceCommitmentId,
     Guid ContinuityCheckpointId,
     DateTimeOffset IssuedAt,
-    string IntegritySignature);
+    string IntegritySignature
+);
 
 public sealed record ChannelHandoffResult(
     Guid HandoffId,
@@ -62,9 +66,11 @@ public sealed record ChannelHandoffResult(
     NeutralContinuityEnvelope ContinuityEnvelope,
     bool Replayed,
     Guid? ResolutionEvidenceId = null,
-    DateTimeOffset? CommittedAt = null);
+    DateTimeOffset? CommittedAt = null
+);
 
 public sealed class ChannelContinuityConflictException(string message) : Exception(message);
+
 public sealed class ChannelContinuityLockedException(string message) : Exception(message);
 
 public sealed class ChannelContinuityOptions
@@ -82,14 +88,17 @@ public sealed class ChannelContinuityService
     public ChannelContinuityService(
         IDbContextFactory<EmploymentRelationshipDbContext> dbFactory,
         IRelationshipConstitutionalGateway constitutionalGateway,
-        Microsoft.Extensions.Options.IOptions<ChannelContinuityOptions> options)
+        Microsoft.Extensions.Options.IOptions<ChannelContinuityOptions> options
+    )
     {
         _dbFactory = dbFactory;
         _constitutionalGateway = constitutionalGateway;
         _hmacKey = Convert.FromBase64String(options.Value.EnvelopeHmacKey);
         if (_hmacKey.Length < 32)
         {
-            throw new InvalidOperationException("Continuity envelope HMAC key must contain at least 256 bits.");
+            throw new InvalidOperationException(
+                "Continuity envelope HMAC key must contain at least 256 bits."
+            );
         }
     }
 
@@ -98,60 +107,98 @@ public sealed class ChannelContinuityService
         Guid relationshipId,
         ChannelContinuityIdentity sourceIdentity,
         PrepareChannelHandoff request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         ValidateChannel(request.TargetChannel);
         ValidateText(request.TargetConversationId, 256, nameof(request.TargetConversationId));
         ValidateText(request.CommandPurpose, 64, nameof(request.CommandPurpose));
 
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
-        var relationship = await db.EmploymentRelationships.SingleOrDefaultAsync(
-            value => value.TenantId == tenantId && value.RelationshipId == relationshipId,
-            cancellationToken) ?? throw new KeyNotFoundException("Employment relationship was not found.");
+        var relationship =
+            await db.EmploymentRelationships.SingleOrDefaultAsync(
+                value => value.TenantId == tenantId && value.RelationshipId == relationshipId,
+                cancellationToken
+            ) ?? throw new KeyNotFoundException("Employment relationship was not found.");
         EnsureNotStopped(relationship);
 
-        var participant = await db.RelationshipParticipants.AsNoTracking().SingleOrDefaultAsync(
-            value => value.TenantId == tenantId
-                && value.RelationshipId == relationshipId
-                && value.ParticipantId == sourceIdentity.ParticipantId
-                && value.Status == "ACTIVE",
-            cancellationToken) ?? throw new ConstitutionalActionDeniedException(
-                "Handoff requires an active same-tenant participant binding.");
-        var sourceBinding = await db.ChannelBindings.SingleOrDefaultAsync(
-            value => value.TenantId == tenantId
-                && value.RelationshipId == relationshipId
-                && value.ParticipantId == sourceIdentity.ParticipantId
-                && value.Channel == sourceIdentity.Channel
-                && value.ConversationId == sourceIdentity.ConversationId
-                && value.Status == "ACTIVE",
-            cancellationToken) ?? throw new ConstitutionalActionDeniedException(
-                "Authenticated source channel is not actively bound to this relationship.");
+        var participant =
+            await db
+                .RelationshipParticipants.AsNoTracking()
+                .SingleOrDefaultAsync(
+                    value =>
+                        value.TenantId == tenantId
+                        && value.RelationshipId == relationshipId
+                        && value.ParticipantId == sourceIdentity.ParticipantId
+                        && value.Status == "ACTIVE",
+                    cancellationToken
+                )
+            ?? throw new ConstitutionalActionDeniedException(
+                "Handoff requires an active same-tenant participant binding."
+            );
+        var sourceBinding =
+            await db.ChannelBindings.SingleOrDefaultAsync(
+                value =>
+                    value.TenantId == tenantId
+                    && value.RelationshipId == relationshipId
+                    && value.ParticipantId == sourceIdentity.ParticipantId
+                    && value.Channel == sourceIdentity.Channel
+                    && value.ConversationId == sourceIdentity.ConversationId
+                    && value.Status == "ACTIVE",
+                cancellationToken
+            )
+            ?? throw new ConstitutionalActionDeniedException(
+                "Authenticated source channel is not actively bound to this relationship."
+            );
 
-        var materialHash = HashMaterial(request.TargetChannel, request.TargetConversationId, request.CommandPurpose);
-        var replay = await db.ContinuityCheckpoints.AsNoTracking().SingleOrDefaultAsync(
-            value => value.TenantId == tenantId
-                && value.RelationshipId == relationshipId
-                && value.IdempotencyKey == request.IdempotencyKey,
-            cancellationToken);
+        var materialHash = HashMaterial(
+            request.TargetChannel,
+            request.TargetConversationId,
+            request.CommandPurpose
+        );
+        var replay = await db
+            .ContinuityCheckpoints.AsNoTracking()
+            .SingleOrDefaultAsync(
+                value =>
+                    value.TenantId == tenantId
+                    && value.RelationshipId == relationshipId
+                    && value.IdempotencyKey == request.IdempotencyKey,
+                cancellationToken
+            );
         if (replay is not null)
         {
-            if (!CryptographicOperations.FixedTimeEquals(
-                    Convert.FromHexString(replay.MaterialRequestHash), Convert.FromHexString(materialHash)))
+            if (
+                !CryptographicOperations.FixedTimeEquals(
+                    Convert.FromHexString(replay.MaterialRequestHash),
+                    Convert.FromHexString(materialHash)
+                )
+            )
             {
-                throw new ChannelContinuityConflictException("Idempotency key was reused with divergent handoff material.");
+                throw new ChannelContinuityConflictException(
+                    "Idempotency key was reused with divergent handoff material."
+                );
             }
 
             return await LoadResultAsync(db, replay, true, cancellationToken);
         }
 
-        var authoritySnapshotId = relationship.AuthoritySnapshotId
-            ?? throw new ConstitutionalActionDeniedException("Current relationship authority is unresolved.");
+        var authoritySnapshotId =
+            relationship.AuthoritySnapshotId
+            ?? throw new ConstitutionalActionDeniedException(
+                "Current relationship authority is unresolved."
+            );
         var checkpointId = Guid.NewGuid();
         var targetBindingId = Guid.NewGuid();
         var causalMarker = Guid.NewGuid();
-        var sequenceNumber = (await db.ContinuityCheckpoints
-            .Where(value => value.TenantId == tenantId && value.RelationshipId == relationshipId)
-            .MaxAsync(value => (long?)value.SequenceNumber, cancellationToken) ?? 0) + 1;
+        var sequenceNumber =
+            (
+                await db
+                    .ContinuityCheckpoints.Where(value =>
+                        value.TenantId == tenantId && value.RelationshipId == relationshipId
+                    )
+                    .MaxAsync(value => (long?)value.SequenceNumber, cancellationToken)
+                ?? 0
+            ) + 1;
         var preparedAt = DateTimeOffset.UtcNow;
         var evidenceId = await _constitutionalGateway.AuthorizeAndRecordAsync(
             tenantId,
@@ -169,15 +216,31 @@ public sealed class ChannelContinuityService
                 command_purpose = request.CommandPurpose,
                 idempotency_key = request.IdempotencyKey,
             },
-            cancellationToken);
+            cancellationToken
+        );
 
         var unsignedEnvelope = new NeutralContinuityEnvelope(
-            "1.0.0", tenantId, relationshipId, sourceIdentity.ParticipantId,
-            RelationshipRoleCodec.ToDatabase(participant.Role), sourceIdentity.AuthenticationAssurance,
-            authoritySnapshotId, sourceIdentity.Channel, sourceIdentity.ConversationId,
-            request.TargetChannel, request.TargetConversationId, request.CommandPurpose,
-            request.CorrelationId, causalMarker, sequenceNumber, request.IdempotencyKey,
-            evidenceId, checkpointId, preparedAt, string.Empty);
+            "1.0.0",
+            tenantId,
+            relationshipId,
+            sourceIdentity.ParticipantId,
+            RelationshipRoleCodec.ToDatabase(participant.Role),
+            sourceIdentity.AuthenticationAssurance,
+            authoritySnapshotId,
+            sourceIdentity.Channel,
+            sourceIdentity.ConversationId,
+            request.TargetChannel,
+            request.TargetConversationId,
+            request.CommandPurpose,
+            request.CorrelationId,
+            causalMarker,
+            sequenceNumber,
+            request.IdempotencyKey,
+            evidenceId,
+            checkpointId,
+            preparedAt,
+            string.Empty
+        );
         var envelope = unsignedEnvelope with { IntegritySignature = Sign(unsignedEnvelope) };
         var targetBinding = new ChannelBinding
         {
@@ -201,7 +264,10 @@ public sealed class ChannelContinuityService
             SourceBindingId = sourceBinding.BindingId,
             TargetBindingId = targetBindingId,
             ContinuityEnvelopeHash = HashText(Canonicalize(unsignedEnvelope)),
-            ContinuityEnvelopeJson = JsonSerializer.Serialize(envelope, new JsonSerializerOptions(JsonSerializerDefaults.Web)),
+            ContinuityEnvelopeJson = JsonSerializer.Serialize(
+                envelope,
+                new JsonSerializerOptions(JsonSerializerDefaults.Web)
+            ),
             MaterialRequestHash = materialHash,
             CausalMarker = causalMarker,
             SequenceNumber = sequenceNumber,
@@ -214,7 +280,14 @@ public sealed class ChannelContinuityService
         db.ContinuityCheckpoints.Add(checkpoint);
         await db.SaveChangesAsync(cancellationToken);
         return new ChannelHandoffResult(
-            checkpointId, relationshipId, checkpoint.Status, sourceBinding, targetBinding, envelope, false);
+            checkpointId,
+            relationshipId,
+            checkpoint.Status,
+            sourceBinding,
+            targetBinding,
+            envelope,
+            false
+        );
     }
 
     public async Task<ChannelHandoffResult> ActivateAsync(
@@ -223,18 +296,24 @@ public sealed class ChannelContinuityService
         Guid handoffId,
         ChannelContinuityIdentity targetIdentity,
         ActivateChannelHandoff request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
-        var relationship = await db.EmploymentRelationships.SingleOrDefaultAsync(
-            value => value.TenantId == tenantId && value.RelationshipId == relationshipId,
-            cancellationToken) ?? throw new KeyNotFoundException("Employment relationship was not found.");
+        var relationship =
+            await db.EmploymentRelationships.SingleOrDefaultAsync(
+                value => value.TenantId == tenantId && value.RelationshipId == relationshipId,
+                cancellationToken
+            ) ?? throw new KeyNotFoundException("Employment relationship was not found.");
         EnsureNotStopped(relationship);
-        var checkpoint = await db.ContinuityCheckpoints.SingleOrDefaultAsync(
-            value => value.TenantId == tenantId
-                && value.RelationshipId == relationshipId
-                && value.CheckpointId == handoffId,
-            cancellationToken) ?? throw new KeyNotFoundException("Channel handoff was not found.");
+        var checkpoint =
+            await db.ContinuityCheckpoints.SingleOrDefaultAsync(
+                value =>
+                    value.TenantId == tenantId
+                    && value.RelationshipId == relationshipId
+                    && value.CheckpointId == handoffId,
+                cancellationToken
+            ) ?? throw new KeyNotFoundException("Channel handoff was not found.");
 
         if (checkpoint.Status is not ("PREPARED" or "COMMITTED"))
         {
@@ -244,45 +323,71 @@ public sealed class ChannelContinuityService
         {
             throw new ChannelContinuityConflictException("Channel handoff has expired.");
         }
-        if (!Verify(request.Envelope)
+        if (
+            !Verify(request.Envelope)
             || request.Envelope.ContinuityCheckpointId != handoffId
             || request.Envelope.TenantId != tenantId
             || request.Envelope.RelationshipId != relationshipId
             || request.Envelope.IdempotencyKey != request.IdempotencyKey
             || !CryptographicOperations.FixedTimeEquals(
                 Convert.FromHexString(checkpoint.ContinuityEnvelopeHash),
-                Convert.FromHexString(HashText(Canonicalize(request.Envelope with { IntegritySignature = string.Empty })))))
+                Convert.FromHexString(
+                    HashText(
+                        Canonicalize(request.Envelope with { IntegritySignature = string.Empty })
+                    )
+                )
+            )
+        )
         {
-            throw new ConstitutionalActionDeniedException("Continuity envelope verification failed.");
+            throw new ConstitutionalActionDeniedException(
+                "Continuity envelope verification failed."
+            );
         }
 
         var targetBinding = await db.ChannelBindings.SingleAsync(
             value => value.TenantId == tenantId && value.BindingId == checkpoint.TargetBindingId,
-            cancellationToken);
+            cancellationToken
+        );
         var sourceBinding = await db.ChannelBindings.SingleAsync(
             value => value.TenantId == tenantId && value.BindingId == checkpoint.SourceBindingId,
-            cancellationToken);
+            cancellationToken
+        );
         var now = DateTimeOffset.UtcNow;
-        if (targetIdentity.ParticipantId != request.Envelope.ParticipantId
+        if (
+            targetIdentity.ParticipantId != request.Envelope.ParticipantId
             || targetIdentity.ConversationId != request.TargetConversationId
             || targetIdentity.ConversationId != targetBinding.ConversationId
             || targetIdentity.Channel != targetBinding.Channel
             || targetIdentity.AuthenticatedAt > now
             || now - targetIdentity.AuthenticatedAt > FreshAuthenticationWindow
-            || AssuranceRank(targetIdentity.AuthenticationAssurance) < AssuranceRank(request.Envelope.AuthenticationAssurance))
+            || AssuranceRank(targetIdentity.AuthenticationAssurance)
+                < AssuranceRank(request.Envelope.AuthenticationAssurance)
+        )
         {
-            throw new ConstitutionalActionDeniedException("Fresh target-channel authentication does not match the prepared handoff.");
+            throw new ConstitutionalActionDeniedException(
+                "Fresh target-channel authentication does not match the prepared handoff."
+            );
         }
-        var hasCurrentRole = await db.RelationshipParticipants.AsNoTracking().AnyAsync(
-            value => value.TenantId == tenantId
-                && value.RelationshipId == relationshipId
-                && value.ParticipantId == targetIdentity.ParticipantId
-                && value.Status == "ACTIVE"
-                && RelationshipRoleCodec.ToDatabase(value.Role) == request.Envelope.ParticipantRole,
-            cancellationToken);
-        if (!hasCurrentRole || relationship.AuthoritySnapshotId != request.Envelope.AuthoritySnapshotId)
+        var hasCurrentRole = await db
+            .RelationshipParticipants.AsNoTracking()
+            .AnyAsync(
+                value =>
+                    value.TenantId == tenantId
+                    && value.RelationshipId == relationshipId
+                    && value.ParticipantId == targetIdentity.ParticipantId
+                    && value.Status == "ACTIVE"
+                    && RelationshipRoleCodec.ToDatabase(value.Role)
+                        == request.Envelope.ParticipantRole,
+                cancellationToken
+            );
+        if (
+            !hasCurrentRole
+            || relationship.AuthoritySnapshotId != request.Envelope.AuthoritySnapshotId
+        )
         {
-            throw new ConstitutionalActionDeniedException("Participant role or relationship authority changed during handoff.");
+            throw new ConstitutionalActionDeniedException(
+                "Participant role or relationship authority changed during handoff."
+            );
         }
         if (checkpoint.Status == "COMMITTED")
         {
@@ -302,7 +407,8 @@ public sealed class ChannelContinuityService
                 target_binding_id = targetBinding.BindingId,
                 target_assurance = targetIdentity.AuthenticationAssurance,
             },
-            cancellationToken);
+            cancellationToken
+        );
 
         var committedAt = DateTimeOffset.UtcNow;
         targetBinding.Status = "ACTIVE";
@@ -313,30 +419,58 @@ public sealed class ChannelContinuityService
         checkpoint.ResolvedAt = committedAt;
         await db.SaveChangesAsync(cancellationToken);
         return new ChannelHandoffResult(
-            checkpoint.CheckpointId, relationshipId, checkpoint.Status, sourceBinding, targetBinding,
-            request.Envelope, false, evidenceId, committedAt);
+            checkpoint.CheckpointId,
+            relationshipId,
+            checkpoint.Status,
+            sourceBinding,
+            targetBinding,
+            request.Envelope,
+            false,
+            evidenceId,
+            committedAt
+        );
     }
 
     private async Task<ChannelHandoffResult> LoadResultAsync(
         EmploymentRelationshipDbContext db,
         ContinuityCheckpoint checkpoint,
         bool replayed,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
-        var source = await db.ChannelBindings.AsNoTracking().SingleAsync(
-            value => value.TenantId == checkpoint.TenantId && value.BindingId == checkpoint.SourceBindingId,
-            cancellationToken);
-        var target = await db.ChannelBindings.AsNoTracking().SingleAsync(
-            value => value.TenantId == checkpoint.TenantId && value.BindingId == checkpoint.TargetBindingId,
-            cancellationToken);
+        var source = await db
+            .ChannelBindings.AsNoTracking()
+            .SingleAsync(
+                value =>
+                    value.TenantId == checkpoint.TenantId
+                    && value.BindingId == checkpoint.SourceBindingId,
+                cancellationToken
+            );
+        var target = await db
+            .ChannelBindings.AsNoTracking()
+            .SingleAsync(
+                value =>
+                    value.TenantId == checkpoint.TenantId
+                    && value.BindingId == checkpoint.TargetBindingId,
+                cancellationToken
+            );
         var envelope = checkpoint.ContinuityEnvelopeJson is null
             ? throw new InvalidOperationException("Persisted continuity envelope is unavailable.")
             : JsonSerializer.Deserialize<NeutralContinuityEnvelope>(
-                checkpoint.ContinuityEnvelopeJson, new JsonSerializerOptions(JsonSerializerDefaults.Web))
-                ?? throw new InvalidOperationException("Persisted continuity envelope is invalid.");
+                checkpoint.ContinuityEnvelopeJson,
+                new JsonSerializerOptions(JsonSerializerDefaults.Web)
+            ) ?? throw new InvalidOperationException("Persisted continuity envelope is invalid.");
         return new ChannelHandoffResult(
-            checkpoint.CheckpointId, checkpoint.RelationshipId, checkpoint.Status, source, target,
-            envelope, replayed, checkpoint.ResolutionEvidenceId, checkpoint.ResolvedAt);
+            checkpoint.CheckpointId,
+            checkpoint.RelationshipId,
+            checkpoint.Status,
+            source,
+            target,
+            envelope,
+            replayed,
+            checkpoint.ResolutionEvidenceId,
+            checkpoint.ResolvedAt
+        );
     }
 
     private string Sign(NeutralContinuityEnvelope envelope)
@@ -348,18 +482,26 @@ public sealed class ChannelContinuityService
     private bool Verify(NeutralContinuityEnvelope envelope)
     {
         var supplied = Encoding.ASCII.GetBytes(envelope.IntegritySignature);
-        var expected = Encoding.ASCII.GetBytes(Sign(envelope with { IntegritySignature = string.Empty }));
-        return supplied.Length == expected.Length && CryptographicOperations.FixedTimeEquals(supplied, expected);
+        var expected = Encoding.ASCII.GetBytes(
+            Sign(envelope with { IntegritySignature = string.Empty })
+        );
+        return supplied.Length == expected.Length
+            && CryptographicOperations.FixedTimeEquals(supplied, expected);
     }
 
     private static string Canonicalize(NeutralContinuityEnvelope envelope)
     {
         using var stream = new MemoryStream();
-        using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions
-        {
-            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            Indented = false,
-        }))
+        using (
+            var writer = new Utf8JsonWriter(
+                stream,
+                new JsonWriterOptions
+                {
+                    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+                    Indented = false,
+                }
+            )
+        )
         {
             writer.WriteStartObject();
             writer.WriteString("authenticationAssurance", envelope.AuthenticationAssurance);
@@ -386,33 +528,45 @@ public sealed class ChannelContinuityService
         return Encoding.UTF8.GetString(stream.ToArray());
     }
 
-    private static string HashMaterial(params string[] values) => HashText(string.Join('\u001f', values));
-    private static string HashText(string value) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
-    private static string Base64Url(byte[] value) => Convert.ToBase64String(value).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+    private static string HashMaterial(params string[] values) =>
+        HashText(string.Join('\u001f', values));
+
+    private static string HashText(string value) =>
+        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
+
+    private static string Base64Url(byte[] value) =>
+        Convert.ToBase64String(value).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
     private static void ValidateChannel(string channel)
     {
-        if (channel is not ("WHATSAPP" or "WEB")) throw new ArgumentException("Unsupported relationship channel.");
+        if (channel is not ("WHATSAPP" or "WEB"))
+            throw new ArgumentException("Unsupported relationship channel.");
     }
 
     private static void ValidateText(string value, int maximumLength, string name)
     {
         if (string.IsNullOrWhiteSpace(value) || value.Length > maximumLength)
-            throw new ArgumentException($"{name} must contain 1 to {maximumLength} characters.", name);
+            throw new ArgumentException(
+                $"{name} must contain 1 to {maximumLength} characters.",
+                name
+            );
     }
 
     private static void EnsureNotStopped(EmploymentRelationship relationship)
     {
         if (relationship.State == EmploymentRelationshipState.StoppedEmergency)
-            throw new ChannelContinuityLockedException("Relationship is stopped; channel handoff is locked.");
+            throw new ChannelContinuityLockedException(
+                "Relationship is stopped; channel handoff is locked."
+            );
     }
 
-    private static int AssuranceRank(string assurance) => assurance switch
-    {
-        "TIER_1_PHONE_IDENTITY" => 1,
-        "TIER_2_EXPLICIT_CONFIRMATION" => 2,
-        "TIER_3_MPIN" => 3,
-        "TIER_4_PORTAL_FRESH" => 4,
-        _ => 0,
-    };
+    private static int AssuranceRank(string assurance) =>
+        assurance switch
+        {
+            "TIER_1_PHONE_IDENTITY" => 1,
+            "TIER_2_EXPLICIT_CONFIRMATION" => 2,
+            "TIER_3_MPIN" => 3,
+            "TIER_4_PORTAL_FRESH" => 4,
+            _ => 0,
+        };
 }

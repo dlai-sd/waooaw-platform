@@ -27,14 +27,14 @@ Architecture note (post-refactor):
     runner/llm_codegen.py  — LLM call (call_llm_via_magiclm), file parse/write/validate
     runner/task_executor.py — execute_with_llm, flag_spec_gap
 
-  WC011–WC015 are complete. All sprint handling now via groom_sprint.py → SubTaskDef → execute_with_llm.
+WC011-WC015 are complete. All sprint handling now via groom_sprint.py → SubTaskDef → execute_with_llm.
 """
+
 from __future__ import annotations
 
 import os
 import subprocess
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent.parent
@@ -44,12 +44,13 @@ EVIDENCE_LOG = REPO_ROOT / "logs" / "bootstrap-evidence.jsonl"
 # TaskDecomposer — sub-task decomposition for multi-layer sprint tasks (IB-021 / WC-019)
 # Implements: architecture/reference/pipeline/dependency-graph-task-decomposition.md
 # constitutional_basis: C-084 (Step Dependency), C-086 (Pre-Execution Simulation)
-import importlib.util as _ilu
-import sys as _sys
+import importlib.util as _ilu  # noqa: E402
+import sys as _sys  # noqa: E402
+
 _td_path = str(Path(__file__).parent / "task_decomposer.py")
 _td_spec = _ilu.spec_from_file_location("task_decomposer", _td_path)
 _td_mod = _ilu.module_from_spec(_td_spec)
-_td_mod.__file__ = _td_path          # required for Path(__file__) inside task_decomposer
+_td_mod.__file__ = _td_path  # required for Path(__file__) inside task_decomposer
 _sys.modules["task_decomposer"] = _td_mod
 _td_spec.loader.exec_module(_td_mod)
 SubTaskDef = _td_mod.SubTaskDef
@@ -72,34 +73,47 @@ _runner_pkg = str(Path(__file__).parent)
 if _runner_pkg not in _sys.path:
     _sys.path.insert(0, _runner_pkg)
 
-from runner.state import _MONITOR_SIGNAL, _INFRA_ERROR_TASKS          # shared mutable state
-from runner.git_ops import run, git, gh, set_output, record_evidence  # shell helpers
-from runner.sprint_ops import (                                         # sprint lifecycle
-    parse_sprint_state, check_platform_phase_gate, update_sprint_state, run_runner_integrity_checks,
-    parse_wc_tasks, update_task_status,
+from runner.state import _MONITOR_SIGNAL, _INFRA_ERROR_TASKS  # shared mutable state  # noqa: E402
+from runner.git_ops import run, git, gh, set_output, record_evidence  # shell helpers  # noqa: E402
+from runner.sprint_ops import (  # sprint lifecycle  # noqa: E402
+    parse_sprint_state,
+    check_platform_phase_gate,
+    update_sprint_state,
+    run_runner_integrity_checks,
+    parse_wc_tasks,
+    update_task_status,
     write_run_heartbeat,
 )
-# Namespace injection — required by run_runner_integrity_checks(globals())  # noqa: F401
-from runner.system_prompts import (                                     # noqa: F401
-    _build_system_prompt, _TASK_STACK_MAP,
-    CONSTITUTIONAL_SYSTEM_PROMPT, get_branch_context,
+
+# Namespace injection — required by run_runner_integrity_checks(globals())
+from runner.system_prompts import (  # noqa: E402, F401
+    _build_system_prompt,
+    _TASK_STACK_MAP,
+    CONSTITUTIONAL_SYSTEM_PROMPT,
+    get_branch_context,
 )
-from runner.llm_codegen import (                                        # noqa: F401
+from runner.llm_codegen import (  # noqa: E402, F401
     call_llm_via_magiclm,
-    parse_llm_files, write_llm_files, validate_written_files,
+    parse_llm_files,
+    write_llm_files,
+    validate_written_files,
 )
-from runner.task_executor import execute_with_llm, flag_spec_gap        # noqa: F401
+from runner.task_executor import execute_with_llm, flag_spec_gap  # noqa: E402, F401
 
 # ── Sprint scaffold gate (C-069) ──────────────────────────────────────────────
 # SCAFFOLD_TASKS: explicitly declared — never inferred from position.
 # If a scaffold task fails, all downstream tasks cannot compile. The monitor uses this
 # to distinguish CASCADE_PIPELINE_BUG from SPEC_GAP_GENUINE.
-SCAFFOLD_TASKS: frozenset[str] = frozenset({
-    "WC016-01", "WC017-01", "WC018-01",
-})
+SCAFFOLD_TASKS: frozenset[str] = frozenset(
+    {
+        "WC016-01",
+        "WC017-01",
+        "WC018-01",
+    }
+)
 
 TASK_HANDLERS = {
-        "WC027-01a": {
+    "WC027-01a": {
         "subtasks": [
             SubTaskDef(
                 id="WC027-01aa",
@@ -249,7 +263,7 @@ TASK_HANDLERS = {
             ),
         ]
     },
-        "WC027-01b": {
+    "WC027-01b": {
         "subtasks": [
             SubTaskDef(
                 id="WC027-01ba",
@@ -395,33 +409,33 @@ TASK_HANDLERS = {
             ),
         ]
     },
-        "WC027-02": {
+    "WC027-02": {
         "subtasks": [
             SubTaskDef(
-                id='WC027-02a',
-                description='Write pytest tests for test_markup.py per WC scope specification',
+                id="WC027-02a",
+                description="Write pytest tests for test_markup.py per WC scope specification",
                 type="udcp",
-                depends_on=['WC027-01ba'],
-                compile_gate='ruff',
-                service_dir='',
-                wc_task_id='WC027-02',
-                stack='python',
+                depends_on=["WC027-01ba"],
+                compile_gate="ruff",
+                service_dir="",
+                wc_task_id="WC027-02",
+                stack="python",
                 force_greenfield=True,  # existing EA mock must be replaced entirely
                 output_files=[
-                    'tests/billing-engine/test_markup.py',
+                    "tests/billing-engine/test_markup.py",
                 ],
                 inject_source_files=[
-                    'src/billing-engine/markup/models.py',
-                    'src/billing-engine/markup/bundle_engine.py',
-                    'src/billing-engine/markup/router.py',
-                    'src/billing-engine/main.py',
-                    'src/billing-engine/skeleton/wbe_interfaces.py',
+                    "src/billing-engine/markup/models.py",
+                    "src/billing-engine/markup/bundle_engine.py",
+                    "src/billing-engine/markup/router.py",
+                    "src/billing-engine/main.py",
+                    "src/billing-engine/skeleton/wbe_interfaces.py",
                 ],
                 spec_sections={
-                    'work-contracts/WC-027-wbe-s3-markup-engine.md': 'WC027-02',
+                    "work-contracts/WC-027-wbe-s3-markup-engine.md": "WC027-02",
                 },
-                constitutional_check='TEST PASS — write pytest tests exactly as described in the WC scope:\n`tests/billing-engine/test_markup.py` — test: cost_floor reads `bundle_profiles.cost_floor_paise` (not recomputed), derive_price formula uses margin-on-revenue `floor / (1 - margin/100)`, `POST /pricing/validate` 200 path (APPROVED, `pricing_floor_log` row written), `POST /pricing/validate` 422 path (REJECTED — body includes `minimum_compliant_price_paise`, `pricing_floor_log` row written), `GET /pricing/thread-catalog` response shape, ≥90% line coverage; **property-based tests using `hypothesis`**: `@given` strategy on `derive_price(cost_floor_paise, margin_pct)` covering zero margin, near-10\n\nC-097: property-based testing required — use hypothesis @given for all financial math.\nC-059: verify audit log row written for APPROVED and REJECTED pricing outcomes.\nC-073: # Implements: header required at top of test file.\nUse pytest-asyncio for async tests. Mock Redis/DB with pytest fixtures.\nNever use % string formatting — use f-strings only.',
-                model_hint='reasoning',
+                constitutional_check="TEST PASS — write pytest tests exactly as described in the WC scope:\n`tests/billing-engine/test_markup.py` — test: cost_floor reads `bundle_profiles.cost_floor_paise` (not recomputed), derive_price formula uses margin-on-revenue `floor / (1 - margin/100)`, `POST /pricing/validate` 200 path (APPROVED, `pricing_floor_log` row written), `POST /pricing/validate` 422 path (REJECTED — body includes `minimum_compliant_price_paise`, `pricing_floor_log` row written), `GET /pricing/thread-catalog` response shape, ≥90% line coverage; **property-based tests using `hypothesis`**: `@given` strategy on `derive_price(cost_floor_paise, margin_pct)` covering zero margin, near-10\n\nC-097: property-based testing required — use hypothesis @given for all financial math.\nC-059: verify audit log row written for APPROVED and REJECTED pricing outcomes.\nC-073: # Implements: header required at top of test file.\nUse pytest-asyncio for async tests. Mock Redis/DB with pytest fixtures.\nNever use % string formatting — use f-strings only.",
+                model_hint="reasoning",
                 max_tokens=8000,
             ),
             SubTaskDef(
@@ -480,30 +494,30 @@ TASK_HANDLERS = {
             ),
         ]
     },
-        "WC028-01": {
+    "WC028-01": {
         "subtasks": [
             SubTaskDef(
-                id='WC028-01a',
-                description='Implement meter usage recording, depletion projection, and daily threshold scanning with multi-scope alert policy enforcement for billing runway visibility.',
+                id="WC028-01a",
+                description="Implement meter usage recording, depletion projection, and daily threshold scanning with multi-scope alert policy enforcement for billing runway visibility.",
                 type="llm",
                 depends_on=[],
-                compile_gate='py_compile',
-                service_dir='src/billing-engine',
-                wc_task_id='WC028-01',
-                stack='python',
+                compile_gate="py_compile",
+                service_dir="src/billing-engine",
+                wc_task_id="WC028-01",
+                stack="python",
                 output_files=[
-                    'src/billing-engine/meter/service.py',
-                    'src/billing-engine/meter/alert_policy.py',
+                    "src/billing-engine/meter/service.py",
+                    "src/billing-engine/meter/alert_policy.py",
                 ],
                 inject_source_files=[
-                    'src/billing-engine/skeleton/__init__.py',
-                    'src/billing-engine/skeleton/wbe_interfaces.py',
+                    "src/billing-engine/skeleton/__init__.py",
+                    "src/billing-engine/skeleton/wbe_interfaces.py",
                 ],
                 spec_sections={
-                    'work-contracts/WC-028-wbe-s4-meter-alert-engine.md': 'WC028-01',
+                    "work-contracts/WC-028-wbe-s4-meter-alert-engine.md": "WC028-01",
                 },
-                constitutional_check='Implement IMeterService.record_usage(), IMeterService.project_depletion(), IMeterService.run_daily_scan() from wbe_interfaces.py skeleton. Implement MeterService.check_thresholds(customer_id) → list[AlertFired] as concrete helper (NOT abstract; called directly by tests on concrete class). Define ThresholdRule and ThresholdPolicy dataclasses in alert_policy.py with Scope 3 runway thresholds: RUNWAY_P2 (≤30d), RUNWAY_P1 (≤14d), RUNWAY_P0 (≤7d), RUNWAY_CRITICAL (≤3d), RUNWAY_EMERGENCY (≤1d). Define singletons CUSTOMER_BUCKET_POLICY, AGENCY_POLICY, PROCUREMENT_POLICY. C-043 (AlertFired structure), C-088 (billing_profiles validation), C-089 (margin floor), C-091 (Thread Catalog), §2.3a (scope 1+2+3 ladder), ADR-034 (Redis cache for wallet balance). Threshold logic: compute pct_consumed from platform_cost_ledger.marked_up_cost_inr_paise vs (consumed + wallet_buckets.balance_paise); deduplicate alerts via meter_alert_log; respect quiet_hours_ist and bypass_quiet_hours flag; resolve provider_account_id via thread_catalog.provider_accounts lookup; use 7d rolling average for depletion projection.',
-                model_hint='reasoning',
+                constitutional_check="Implement IMeterService.record_usage(), IMeterService.project_depletion(), IMeterService.run_daily_scan() from wbe_interfaces.py skeleton. Implement MeterService.check_thresholds(customer_id) → list[AlertFired] as concrete helper (NOT abstract; called directly by tests on concrete class). Define ThresholdRule and ThresholdPolicy dataclasses in alert_policy.py with Scope 3 runway thresholds: RUNWAY_P2 (≤30d), RUNWAY_P1 (≤14d), RUNWAY_P0 (≤7d), RUNWAY_CRITICAL (≤3d), RUNWAY_EMERGENCY (≤1d). Define singletons CUSTOMER_BUCKET_POLICY, AGENCY_POLICY, PROCUREMENT_POLICY. C-043 (AlertFired structure), C-088 (billing_profiles validation), C-089 (margin floor), C-091 (Thread Catalog), §2.3a (scope 1+2+3 ladder), ADR-034 (Redis cache for wallet balance). Threshold logic: compute pct_consumed from platform_cost_ledger.marked_up_cost_inr_paise vs (consumed + wallet_buckets.balance_paise); deduplicate alerts via meter_alert_log; respect quiet_hours_ist and bypass_quiet_hours flag; resolve provider_account_id via thread_catalog.provider_accounts lookup; use 7d rolling average for depletion projection.",
+                model_hint="reasoning",
                 max_tokens=8000,
             ),
             SubTaskDef(
@@ -574,31 +588,31 @@ TASK_HANDLERS = {
             ),
         ]
     },
-        "WC028-02": {
+    "WC028-02": {
         "subtasks": [
             SubTaskDef(
-                id='WC028-02a',
-                description='Implement WhatsApp notification stub for customer alerts and meter status endpoint with daily scan scheduling.',
+                id="WC028-02a",
+                description="Implement WhatsApp notification stub for customer alerts and meter status endpoint with daily scan scheduling.",
                 type="llm",
-                depends_on=['WC028-01a'],
-                compile_gate='py_compile',
-                service_dir='src/billing-engine',
-                wc_task_id='WC028-02',
-                stack='python',
+                depends_on=["WC028-01a"],
+                compile_gate="py_compile",
+                service_dir="src/billing-engine",
+                wc_task_id="WC028-02",
+                stack="python",
                 output_files=[
-                    'src/billing-engine/meter/whatsapp_notifier.py',
-                    'src/billing-engine/meter/router.py',
-                    'src/billing-engine/main.py',
+                    "src/billing-engine/meter/whatsapp_notifier.py",
+                    "src/billing-engine/meter/router.py",
+                    "src/billing-engine/main.py",
                 ],
                 inject_source_files=[
-                    'src/billing-engine/skeleton/__init__.py',
-                    'src/billing-engine/skeleton/wbe_interfaces.py',
+                    "src/billing-engine/skeleton/__init__.py",
+                    "src/billing-engine/skeleton/wbe_interfaces.py",
                 ],
                 spec_sections={
-                    'work-contracts/WC-028-wbe-s4-meter-alert-engine.md': 'WC028-02',
+                    "work-contracts/WC-028-wbe-s4-meter-alert-engine.md": "WC028-02",
                 },
-                constitutional_check='Implement IWalletService, IMarkupEngine, IMeterService from wbe_interfaces.py skeleton (C-088, C-089, C-090, C-091, C-038, C-048, C-051); WhatsAppNotifier.send() raises NotImplementedError with TODO→ADR-023; IMeterService.run_daily_scan() and IMeterService.project_depletion() per §surface.endpoints; FastAPI router: GET /meter/{customer_id}/status returns UsageStatus, POST /meter/daily-scan triggers run_daily_scan(); mount in main.py; ADR-034 (Redis SLA ≤50ms p99 for get_bucket_balance)',
-                model_hint='auto',
+                constitutional_check="Implement IWalletService, IMarkupEngine, IMeterService from wbe_interfaces.py skeleton (C-088, C-089, C-090, C-091, C-038, C-048, C-051); WhatsAppNotifier.send() raises NotImplementedError with TODO→ADR-023; IMeterService.run_daily_scan() and IMeterService.project_depletion() per §surface.endpoints; FastAPI router: GET /meter/{customer_id}/status returns UsageStatus, POST /meter/daily-scan triggers run_daily_scan(); mount in main.py; ADR-034 (Redis SLA ≤50ms p99 for get_bucket_balance)",
+                model_hint="auto",
                 max_tokens=4000,
             ),
             SubTaskDef(
@@ -665,30 +679,30 @@ TASK_HANDLERS = {
             ),
         ]
     },
-        "WC028-03": {
+    "WC028-03": {
         "subtasks": [
             SubTaskDef(
-                id='WC028-03a',
-                description='Write pytest tests for test_meter.py per WC scope specification',
+                id="WC028-03a",
+                description="Write pytest tests for test_meter.py per WC scope specification",
                 type="llm",
-                depends_on=['WC028-02a'],
-                compile_gate='ruff',
-                service_dir='',
-                wc_task_id='WC028-03',
-                stack='python',
+                depends_on=["WC028-02a"],
+                compile_gate="ruff",
+                service_dir="",
+                wc_task_id="WC028-03",
+                stack="python",
                 output_files=[
-                    'tests/billing-engine/test_meter.py',
+                    "tests/billing-engine/test_meter.py",
                 ],
                 inject_source_files=[
-                    'src/billing-engine/main.py',
-                    'src/billing-engine/skeleton/__init__.py',
-                    'src/billing-engine/skeleton/wbe_interfaces.py',
+                    "src/billing-engine/main.py",
+                    "src/billing-engine/skeleton/__init__.py",
+                    "src/billing-engine/skeleton/wbe_interfaces.py",
                 ],
                 spec_sections={
-                    'work-contracts/WC-028-wbe-s4-meter-alert-engine.md': 'WC028-03',
+                    "work-contracts/WC-028-wbe-s4-meter-alert-engine.md": "WC028-03",
                 },
-                constitutional_check='TEST PASS — write pytest tests exactly as described in the WC scope:\n`tests/billing-engine/test_meter.py` — test: threshold fires at correct % (30% remaining triggers WARN_30), no double-fire within 24h deduplication window, quiet hours suppress WhatsApp (23:00–06:00 IST, notifications queued), procurement runway P0 escalation at ≤7 days, agency NULL quota produces no alert, `POST /meter/daily-scan` calls check_thresholds for all customers, `CCT-BILLINGLOOP-01` scenario: AD wallet hits zero → `alerts_sent == 1` type `AD_WALLET_BELOW_MINIMUM` — ≥90% line coverage\n\nC-097: property-based testing required — use hypothesis @given for all financial math.\nC-059: verify audit log row written for APPROVED and REJECTED pricing outcomes.\nC-073: # Implements: header required at top of test file.\nUse pytest-asyncio for async tests. Mock Redis/DB with pytest fixtures.\nNever use % string formatting — use f-strings only.',
-                model_hint='auto',
+                constitutional_check="TEST PASS — write pytest tests exactly as described in the WC scope:\n`tests/billing-engine/test_meter.py` — test: threshold fires at correct % (30% remaining triggers WARN_30), no double-fire within 24h deduplication window, quiet hours suppress WhatsApp (23:00–06:00 IST, notifications queued), procurement runway P0 escalation at ≤7 days, agency NULL quota produces no alert, `POST /meter/daily-scan` calls check_thresholds for all customers, `CCT-BILLINGLOOP-01` scenario: AD wallet hits zero → `alerts_sent == 1` type `AD_WALLET_BELOW_MINIMUM` — ≥90% line coverage\n\nC-097: property-based testing required — use hypothesis @given for all financial math.\nC-059: verify audit log row written for APPROVED and REJECTED pricing outcomes.\nC-073: # Implements: header required at top of test file.\nUse pytest-asyncio for async tests. Mock Redis/DB with pytest fixtures.\nNever use % string formatting — use f-strings only.",
+                model_hint="auto",
                 max_tokens=12000,
             ),
             SubTaskDef(
@@ -747,30 +761,30 @@ TASK_HANDLERS = {
             ),
         ]
     },
-        "WC029-01a": {
+    "WC029-01a": {
         "subtasks": [
             SubTaskDef(
-                id='WC029-01aa',
-                description='Implement SQLAlchemy ORM models for provider accounts and platform cost ledger, Pydantic response models for runway status and cost records, and a ProcurementService to record costs, project runway via 7-day rolling average, and trigger founder action alerts when balance thresholds are breached.',
+                id="WC029-01aa",
+                description="Implement SQLAlchemy ORM models for provider accounts and platform cost ledger, Pydantic response models for runway status and cost records, and a ProcurementService to record costs, project runway via 7-day rolling average, and trigger founder action alerts when balance thresholds are breached.",
                 type="llm",
                 depends_on=[],
-                compile_gate='py_compile',
-                service_dir='src/billing-engine',
-                wc_task_id='WC029-01a',
-                stack='python',
+                compile_gate="py_compile",
+                service_dir="src/billing-engine",
+                wc_task_id="WC029-01a",
+                stack="python",
                 output_files=[
-                    'src/billing-engine/procurement/models.py',
-                    'src/billing-engine/procurement/service.py',
+                    "src/billing-engine/procurement/models.py",
+                    "src/billing-engine/procurement/service.py",
                 ],
                 inject_source_files=[
-                    'src/billing-engine/skeleton/__init__.py',
-                    'src/billing-engine/skeleton/wbe_interfaces.py',
+                    "src/billing-engine/skeleton/__init__.py",
+                    "src/billing-engine/skeleton/wbe_interfaces.py",
                 ],
                 spec_sections={
-                    'work-contracts/WC-029-wbe-s5-platform-procurement.md': 'WC029-01a',
+                    "work-contracts/WC-029-wbe-s5-platform-procurement.md": "WC029-01a",
                 },
-                constitutional_check='Models: ProviderAccount (maps institutional.provider_accounts), PlatformCostLedgerEntry (maps institutional.platform_cost_ledger with provider_account_id UUID FK); Response models: ProviderRunwayStatus, CostRecordRequest. Service: ProcurementService (concrete, no ABC) with record_cost() [append-only per C-007], project_runway() [7d rolling avg formula], check_and_alert() [reads PROCUREMENT_POLICY, calls FounderActionGenerator.maybe_create]. Constitutional: C-007 (non-idempotency), C-088 (billing profile), C-043 (threshold breach), C-090 (pricing). ADR: ADR-034 (cache strategy).',
-                model_hint='reasoning',
+                constitutional_check="Models: ProviderAccount (maps institutional.provider_accounts), PlatformCostLedgerEntry (maps institutional.platform_cost_ledger with provider_account_id UUID FK); Response models: ProviderRunwayStatus, CostRecordRequest. Service: ProcurementService (concrete, no ABC) with record_cost() [append-only per C-007], project_runway() [7d rolling avg formula], check_and_alert() [reads PROCUREMENT_POLICY, calls FounderActionGenerator.maybe_create]. Constitutional: C-007 (non-idempotency), C-088 (billing profile), C-043 (threshold breach), C-090 (pricing). ADR: ADR-034 (cache strategy).",
+                model_hint="reasoning",
                 max_tokens=8000,
             ),
             SubTaskDef(
@@ -834,31 +848,31 @@ TASK_HANDLERS = {
             ),
         ]
     },
-        "WC029-01b": {
+    "WC029-01b": {
         "subtasks": [
             SubTaskDef(
-                id='WC029-01ba',
-                description='Reads FOUNDER-ACTIONS.md, extracts max FA number via regex, checks for duplicate provider+priority entries, and appends idempotent new FA table rows under P0/P1/P2 sections; exposes FastAPI endpoints for runway status retrieval, cost recording, and margin reporting at /platform/procurement prefix.',
+                id="WC029-01ba",
+                description="Reads FOUNDER-ACTIONS.md, extracts max FA number via regex, checks for duplicate provider+priority entries, and appends idempotent new FA table rows under P0/P1/P2 sections; exposes FastAPI endpoints for runway status retrieval, cost recording, and margin reporting at /platform/procurement prefix.",
                 type="llm",
-                depends_on=['WC029-01aa'],
-                compile_gate='py_compile',
-                service_dir='src/billing-engine',
-                wc_task_id='WC029-01b',
-                stack='python',
+                depends_on=["WC029-01aa"],
+                compile_gate="py_compile",
+                service_dir="src/billing-engine",
+                wc_task_id="WC029-01b",
+                stack="python",
                 output_files=[
-                    'src/billing-engine/procurement/founder_action.py',
-                    'src/billing-engine/procurement/router.py',
-                    'src/billing-engine/main.py',
+                    "src/billing-engine/procurement/founder_action.py",
+                    "src/billing-engine/procurement/router.py",
+                    "src/billing-engine/main.py",
                 ],
                 inject_source_files=[
-                    'src/billing-engine/skeleton/__init__.py',
-                    'src/billing-engine/skeleton/wbe_interfaces.py',
+                    "src/billing-engine/skeleton/__init__.py",
+                    "src/billing-engine/skeleton/wbe_interfaces.py",
                 ],
                 spec_sections={
-                    'work-contracts/WC-029-wbe-s5-platform-procurement.md': 'WC029-01b',
+                    "work-contracts/WC-029-wbe-s5-platform-procurement.md": "WC029-01b",
                 },
-                constitutional_check='ABC class: IWalletService (get_bucket_balance, reserve, release, activate_subscription, renew), IMarkupEngine (cost_floor, derive_price, validate_price), IMeterService (record_usage, project_depletion, run_daily_scan). Skeleton method stubs: FounderActionGenerator.maybe_create(provider, days_remaining, priority) → Optional[str]. Router endpoints: GET /status → list[ProviderRunwayStatus], POST /record-cost body CostRecordRequest, GET /margin/report (ops-auth deferred). C-077 procurement runway, C-088 billing profile gate, C-089 margin floor enforcement, C-090 renewal price check, C-091 thread catalog, C-038 request shape, C-043 threshold breach, C-048 response shape, C-051 error handling. ADR-034 Redis cache. Mount in main.py via FastAPI app.include_router().',
-                model_hint='auto',
+                constitutional_check="ABC class: IWalletService (get_bucket_balance, reserve, release, activate_subscription, renew), IMarkupEngine (cost_floor, derive_price, validate_price), IMeterService (record_usage, project_depletion, run_daily_scan). Skeleton method stubs: FounderActionGenerator.maybe_create(provider, days_remaining, priority) → Optional[str]. Router endpoints: GET /status → list[ProviderRunwayStatus], POST /record-cost body CostRecordRequest, GET /margin/report (ops-auth deferred). C-077 procurement runway, C-088 billing profile gate, C-089 margin floor enforcement, C-090 renewal price check, C-091 thread catalog, C-038 request shape, C-043 threshold breach, C-048 response shape, C-051 error handling. ADR-034 Redis cache. Mount in main.py via FastAPI app.include_router().",
+                model_hint="auto",
                 max_tokens=4000,
             ),
             SubTaskDef(
@@ -925,30 +939,30 @@ TASK_HANDLERS = {
             ),
         ]
     },
-        "WC029-02": {
+    "WC029-02": {
         "subtasks": [
             SubTaskDef(
-                id='WC029-02a',
-                description='Write pytest tests for test_procurement.py per WC scope specification',
+                id="WC029-02a",
+                description="Write pytest tests for test_procurement.py per WC scope specification",
                 type="llm",
-                depends_on=['WC029-01ba'],
-                compile_gate='ruff',
-                service_dir='',
-                wc_task_id='WC029-02',
-                stack='python',
+                depends_on=["WC029-01ba"],
+                compile_gate="ruff",
+                service_dir="",
+                wc_task_id="WC029-02",
+                stack="python",
                 output_files=[
-                    'tests/billing-engine/test_procurement.py',
+                    "tests/billing-engine/test_procurement.py",
                 ],
                 inject_source_files=[
-                    'src/billing-engine/main.py',
-                    'src/billing-engine/skeleton/__init__.py',
-                    'src/billing-engine/skeleton/wbe_interfaces.py',
+                    "src/billing-engine/main.py",
+                    "src/billing-engine/skeleton/__init__.py",
+                    "src/billing-engine/skeleton/wbe_interfaces.py",
                 ],
                 spec_sections={
-                    'work-contracts/WC-029-wbe-s5-platform-procurement.md': 'WC029-02',
+                    "work-contracts/WC-029-wbe-s5-platform-procurement.md": "WC029-02",
                 },
-                constitutional_check='TEST PASS — write pytest tests exactly as described in the WC scope:\n`tests/billing-engine/test_procurement.py` — test: `record_cost` writes one row to `platform_cost_ledger` (verify via DB query), `record_cost` called twice for same event writes TWO rows (append-only — no dedup at DB level), `project_runway` formula (balance / 7d_avg_burn = days), FA auto-created at ≤30d threshold (P2) via `maybe_create`, FA upgraded to P1 at ≤14d and P0 at ≤7d, second `maybe_create` same provider+priority → no duplicate entry in FA file (idempotency), `GET /platform/procurement/status` → 200 list with `days_remaining`; use `tmp_path` pytest fixture for FA file — do NOT modify\n\nC-097: property-based testing required — use hypothesis @given for all financial math.\nC-059: verify audit log row written for APPROVED and REJECTED pricing outcomes.\nC-073: # Implements: header required at top of test file.\nUse pytest-asyncio for async tests. Mock Redis/DB with pytest fixtures.\nNever use % string formatting — use f-strings only.',
-                model_hint='auto',
+                constitutional_check="TEST PASS — write pytest tests exactly as described in the WC scope:\n`tests/billing-engine/test_procurement.py` — test: `record_cost` writes one row to `platform_cost_ledger` (verify via DB query), `record_cost` called twice for same event writes TWO rows (append-only — no dedup at DB level), `project_runway` formula (balance / 7d_avg_burn = days), FA auto-created at ≤30d threshold (P2) via `maybe_create`, FA upgraded to P1 at ≤14d and P0 at ≤7d, second `maybe_create` same provider+priority → no duplicate entry in FA file (idempotency), `GET /platform/procurement/status` → 200 list with `days_remaining`; use `tmp_path` pytest fixture for FA file — do NOT modify\n\nC-097: property-based testing required — use hypothesis @given for all financial math.\nC-059: verify audit log row written for APPROVED and REJECTED pricing outcomes.\nC-073: # Implements: header required at top of test file.\nUse pytest-asyncio for async tests. Mock Redis/DB with pytest fixtures.\nNever use % string formatting — use f-strings only.",
+                model_hint="auto",
                 max_tokens=12000,
             ),
             SubTaskDef(
@@ -1007,28 +1021,26 @@ TASK_HANDLERS = {
             ),
         ]
     },
-        "WC030-01a": {
+    "WC030-01a": {
         "subtasks": [
             SubTaskDef(
-                id='WC030-01aa',
-                description='Reconcile billing data by verifying consumed bucket reservations against platform cost ledger, detecting balance discrepancies, and generating margin reports for financial audit and operator control.',
+                id="WC030-01aa",
+                description="Reconcile billing data by verifying consumed bucket reservations against platform cost ledger, detecting balance discrepancies, and generating margin reports for financial audit and operator control.",
                 type="llm",
                 depends_on=[],
-                compile_gate='py_compile',
-                service_dir='src/billing-engine',
-                wc_task_id='WC030-01a',
-                stack='python',
+                compile_gate="py_compile",
+                service_dir="src/billing-engine",
+                wc_task_id="WC030-01a",
+                stack="python",
                 output_files=[
-                    'src/billing-engine/reconciliation/service.py',
+                    "src/billing-engine/reconciliation/service.py",
                 ],
-                inject_source_files=[
-        
-                ],
+                inject_source_files=[],
                 spec_sections={
-                    'work-contracts/WC-030-wbe-s6-reconciliation.md': 'WC030-01a',
+                    "work-contracts/WC-030-wbe-s6-reconciliation.md": "WC030-01a",
                 },
-                constitutional_check='ReconciliationService.run_daily_audit(date) — verify consumed bucket_reservations have matching platform_cost_ledger entries, emit C-023 evidence; ReconciliationService.run_self_audit() — compute expected wallet bucket balance and halt billing via Redis wbe:billing_halted if discrepancy exceeds ±1 paise, call FounderActionGenerator.maybe_create; ReconciliationService.generate_margin_report(date) — calculate margin percentage from reservation revenue vs platform cost ledger; ReconciliationService.clear_halt() — remove Redis wbe:billing_halted flag (ops-only, no audit tracking)',
-                model_hint='reasoning',
+                constitutional_check="ReconciliationService.run_daily_audit(date) — verify consumed bucket_reservations have matching platform_cost_ledger entries, emit C-023 evidence; ReconciliationService.run_self_audit() — compute expected wallet bucket balance and halt billing via Redis wbe:billing_halted if discrepancy exceeds ±1 paise, call FounderActionGenerator.maybe_create; ReconciliationService.generate_margin_report(date) — calculate margin percentage from reservation revenue vs platform cost ledger; ReconciliationService.clear_halt() — remove Redis wbe:billing_halted flag (ops-only, no audit tracking)",
+                model_hint="reasoning",
                 max_tokens=8000,
             ),
             SubTaskDef(
@@ -1089,31 +1101,29 @@ TASK_HANDLERS = {
             ),
         ]
     },
-        "WC030-01b": {
+    "WC030-01b": {
         "subtasks": [
             SubTaskDef(
-                id='WC030-01ba',
-                description='Schedule daily reconciliation audits at 02:00 and 06:00 Asia/Kolkata using AsyncIOScheduler with Redis-based idempotency, expose audit status and manual trigger endpoints via FastAPI, and enforce billing halt checks in wallet reservations during audit operations.',
+                id="WC030-01ba",
+                description="Schedule daily reconciliation audits at 02:00 and 06:00 Asia/Kolkata using AsyncIOScheduler with Redis-based idempotency, expose audit status and manual trigger endpoints via FastAPI, and enforce billing halt checks in wallet reservations during audit operations.",
                 type="llm",
-                depends_on=['WC030-01aa'],
-                compile_gate='py_compile',
-                service_dir='src/billing-engine',
-                wc_task_id='WC030-01b',
-                stack='python',
+                depends_on=["WC030-01aa"],
+                compile_gate="py_compile",
+                service_dir="src/billing-engine",
+                wc_task_id="WC030-01b",
+                stack="python",
                 output_files=[
-                    'src/billing-engine/reconciliation/scheduler.py',
-                    'src/billing-engine/reconciliation/router.py',
-                    'src/billing-engine/main.py',
-                    'src/billing-engine/wallet/service.py',
+                    "src/billing-engine/reconciliation/scheduler.py",
+                    "src/billing-engine/reconciliation/router.py",
+                    "src/billing-engine/main.py",
+                    "src/billing-engine/wallet/service.py",
                 ],
-                inject_source_files=[
-        
-                ],
+                inject_source_files=[],
                 spec_sections={
-                    'work-contracts/WC-030-wbe-s6-reconciliation.md': 'WC030-01b',
+                    "work-contracts/WC-030-wbe-s6-reconciliation.md": "WC030-01b",
                 },
                 constitutional_check='Implement create_scheduler() -> AsyncIOScheduler in src/billing-engine/reconciliation/scheduler.py; implement ReconciliationRouter with GET /status, POST /run-now (ops-auth), GET /platform/margin/report (ops-auth) in src/billing-engine/reconciliation/router.py; integrate scheduler.start()/scheduler.shutdown() additively into existing lifespan context manager in src/billing-engine/main.py; modify WalletService.reserve() to accept injected redis.Redis client and check wbe:billing_halted key before DB writes in src/billing-engine/wallet/service.py. Redis keys: wbe:audit_in_progress:{YYYY-MM-DD} (TTL=4h), wbe:billing_halted. Timezone: zoneinfo.ZoneInfo(\'Asia/Kolkata\'). HTTP client: httpx.AsyncClient POST to {settings.WBE_INTERNAL_BASE_URL}/meter/daily-scan. Exception: HTTPException(503, detail={"code": "BILLING_INTEGRITY_HALT", ...}). Dependencies: C-001 (audit scheduling), C-002 (idempotency), C-003 (ops-auth), C-004 (billing halt enforcement).',
-                model_hint='reasoning',
+                model_hint="reasoning",
                 max_tokens=8000,
             ),
             SubTaskDef(
@@ -1183,28 +1193,28 @@ TASK_HANDLERS = {
             ),
         ]
     },
-        "WC030-03": {
+    "WC030-03": {
         "subtasks": [
             SubTaskDef(
-                id='WC030-03a',
-                description='Write pytest tests for test_reconciliation.py per WC scope specification',
+                id="WC030-03a",
+                description="Write pytest tests for test_reconciliation.py per WC scope specification",
                 type="llm",
-                depends_on=['WC030-01ba'],
-                compile_gate='ruff',
-                service_dir='',
-                wc_task_id='WC030-03',
-                stack='python',
+                depends_on=["WC030-01ba"],
+                compile_gate="ruff",
+                service_dir="",
+                wc_task_id="WC030-03",
+                stack="python",
                 output_files=[
-                    'tests/billing-engine/test_reconciliation.py',
+                    "tests/billing-engine/test_reconciliation.py",
                 ],
                 inject_source_files=[
-                    'src/billing-engine/main.py',
+                    "src/billing-engine/main.py",
                 ],
                 spec_sections={
-                    'work-contracts/WC-030-wbe-s6-reconciliation.md': 'WC030-03',
+                    "work-contracts/WC-030-wbe-s6-reconciliation.md": "WC030-03",
                 },
-                constitutional_check='TEST PASS — write pytest tests exactly as described in the WC scope:\n`tests/billing-engine/test_reconciliation.py` — test: clean `run_self_audit()` → `billing_halted=False`; manually corrupt `balance_paise` in DB (add 2 paise via direct SQL, bypassing ORM) → `run_self_audit()` → `billing_halted=True` + Redis `wbe:billing_halted` set + FA created; `POST /wallet/.../reserve` while halted → HTTP 503 `BILLING_INTEGRITY_HALT`; `clear_halt()` + `run_self_audit()` (fix balance first) → billing resumes; `run_daily_audit` with matched cost-to-reservation → zero unlinked; margin report arithmetic (`margin_pct = (revenue-cost)/revenue`); scheduler idempotency (Redis `wbe:\n\nC-097: property-based testing required — use hypothesis @given for all financial math.\nC-059: verify audit log row written for APPROVED and REJECTED pricing outcomes.\nC-073: # Implements: header required at top of test file.\nUse pytest-asyncio for async tests. Mock Redis/DB with pytest fixtures.\nNever use % string formatting — use f-strings only.',
-                model_hint='auto',
+                constitutional_check="TEST PASS — write pytest tests exactly as described in the WC scope:\n`tests/billing-engine/test_reconciliation.py` — test: clean `run_self_audit()` → `billing_halted=False`; manually corrupt `balance_paise` in DB (add 2 paise via direct SQL, bypassing ORM) → `run_self_audit()` → `billing_halted=True` + Redis `wbe:billing_halted` set + FA created; `POST /wallet/.../reserve` while halted → HTTP 503 `BILLING_INTEGRITY_HALT`; `clear_halt()` + `run_self_audit()` (fix balance first) → billing resumes; `run_daily_audit` with matched cost-to-reservation → zero unlinked; margin report arithmetic (`margin_pct = (revenue-cost)/revenue`); scheduler idempotency (Redis `wbe:\n\nC-097: property-based testing required — use hypothesis @given for all financial math.\nC-059: verify audit log row written for APPROVED and REJECTED pricing outcomes.\nC-073: # Implements: header required at top of test file.\nUse pytest-asyncio for async tests. Mock Redis/DB with pytest fixtures.\nNever use % string formatting — use f-strings only.",
+                model_hint="auto",
                 max_tokens=12000,
             ),
             SubTaskDef(
@@ -1616,6 +1626,7 @@ TASK_HANDLERS = {
 
 # ── ADR-041 P1a: SKIPPED_IDEMPOTENT helper ───────────────────────────────────
 
+
 def _all_outputs_present_and_compile(subtasks: list) -> bool:
     """Return True if every output_file from all subtasks exists, passes
     py_compile + ruff, pytest -x (full execution for test files), and contains
@@ -1628,6 +1639,7 @@ def _all_outputs_present_and_compile(subtasks: list) -> bool:
     """
     import py_compile
     import subprocess
+
     _FILLER_MARKER = "# [WAOOAW_LOGIC_FILLER_START]"
     py_files: list = []
     for st in subtasks:
@@ -1645,9 +1657,11 @@ def _all_outputs_present_and_compile(subtasks: list) -> bool:
                 py_files.append(rel_path)
     # ruff check — matches response_evaluator._compile_python style gate
     if py_files:
-        ruff = subprocess.run(
+        ruff = subprocess.run(  # noqa: S603
             ["python3", "-m", "ruff", "check"] + [str(REPO_ROOT / f) for f in py_files],
-            capture_output=True, text=True, cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
         )
         if ruff.returncode != 0:
             return False
@@ -1655,11 +1669,26 @@ def _all_outputs_present_and_compile(subtasks: list) -> bool:
     # C-080: run tests inside Docker test-runner, never host Python.
     test_files = [f for f in py_files if f.startswith("tests/") or "/tests/" in f]
     if test_files:
-        test_run = subprocess.run(
-            ["docker", "compose", "--profile", "test", "run", "--rm", "test-runner",
-             "python3", "-m", "pytest", "-x", "-q", "--tb=short"]
-            + test_files,
-            capture_output=True, text=True, cwd=REPO_ROOT,
+        test_run = subprocess.run(  # noqa: S603
+            [  # noqa: S607
+                "docker",
+                "compose",
+                "--profile",
+                "test",
+                "run",
+                "--rm",
+                "test-runner",
+                "python3",
+                "-m",
+                "pytest",
+                "-x",
+                "-q",
+                "--tb=short",
+                *test_files,
+            ],
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
             timeout=120,
         )
         if test_run.returncode != 0:
@@ -1668,6 +1697,7 @@ def _all_outputs_present_and_compile(subtasks: list) -> bool:
 
 
 # ── Main execution ────────────────────────────────────────────────────────────
+
 
 def main() -> int:
     dry_run = os.environ.get("DRY_RUN", "false").lower() == "true"
@@ -1689,7 +1719,7 @@ def main() -> int:
         set_output("halt", "false")
         return 1
 
-    print(f"\nSprint state:")
+    print("\nSprint state:")
     print(f"  platform_phase    : {state.get('platform_phase', 'SPEC')}")
     print(f"  autonomous_halt   : {state.get('autonomous_halt', 'true')}")
     print(f"  current_sprint    : {state.get('current_sprint', '')}")
@@ -1725,9 +1755,21 @@ def main() -> int:
                 f"Action: Review workflow runs, fix root cause, reset consecutive_failures: 0\n"
                 f"Constitutional basis: C-001 (Human Override)"
             )
-            gh(["issue", "create", "--title", title, "--body", body,
-                "--label", "type:constitutional-blocker,status:blocked",
-                "--repo", github_repo], check=False)
+            gh(
+                [
+                    "issue",
+                    "create",
+                    "--title",
+                    title,
+                    "--body",
+                    body,
+                    "--label",
+                    "type:constitutional-blocker,status:blocked",
+                    "--repo",
+                    github_repo,
+                ],
+                check=False,
+            )
         set_output("result", "FAILED")
         return 1
 
@@ -1780,7 +1822,9 @@ def main() -> int:
                 ahead = run(["git", "rev-list", "--count", f"origin/main..origin/{branch}"], check=False, capture=True)
                 if ahead.returncode == 0 and int(ahead.stdout.strip() or "0") > 0:
                     branch_has_work = True
-                    print(f"  Branch freshness guard: {branch} has {ahead.stdout.strip()} commit(s) ahead of main — preserving completed work")
+                    print(
+                        f"  Branch freshness guard: {branch} has {ahead.stdout.strip()} commit(s) ahead of main — preserving completed work"
+                    )
 
             if branch_has_work:
                 # Resume from the existing branch — don't discard completed work.
@@ -1797,19 +1841,23 @@ def main() -> int:
                 # every sprint run — fresh-start or not. Without this, the sprint branch
                 # carries stale script versions that silently override the workflow PIPELINE SYNC.
                 print(f"  Branch main-merge (fresh-start resume): merging origin/main into {branch}")
-                _merge_fs = git(["merge", "origin/main", "--no-edit",
-                                 "-m", f"chore: merge main pipeline fixes into {branch}"], check=False)
+                _merge_fs = git(
+                    ["merge", "origin/main", "--no-edit", "-m", f"chore: merge main pipeline fixes into {branch}"], check=False
+                )
                 if _merge_fs.returncode != 0:
-                    for _cf in ["pyproject.toml", "scripts/task_decomposer.py",
-                                "scripts/autonomous_sprint_runner.py",
-                                "scripts/magic_llm/context_builder.py",
-                                "scripts/magic_llm/response_evaluator.py",
-                                "scripts/goal_orchestrator/goal_executor.py",
-                                "scripts/sprint_retry_advisor.py"]:
+                    for _cf in [
+                        "pyproject.toml",
+                        "scripts/task_decomposer.py",
+                        "scripts/autonomous_sprint_runner.py",
+                        "scripts/magic_llm/context_builder.py",
+                        "scripts/magic_llm/response_evaluator.py",
+                        "scripts/goal_orchestrator/goal_executor.py",
+                        "scripts/sprint_retry_advisor.py",
+                    ]:
                         git(["checkout", "origin/main", "--", _cf], check=False)
                     git(["add", "-A"], check=False)
                     git(["commit", "--no-edit"], check=False)
-                    print(f"  Branch main-merge: conflict resolved (took main's pipeline config)")
+                    print("  Branch main-merge: conflict resolved (took main's pipeline config)")
             else:
                 print(f"  Branch freshness guard: rebuilding {branch} from latest origin/main")
                 # Ensure we are not on the sprint branch before deleting/resetting it.
@@ -1842,42 +1890,46 @@ def main() -> int:
                 # Uses --no-ff to preserve sprint history; conflicts resolved in favour of main
                 # for pipeline config files (pyproject.toml, scripts/) since those are canonical.
                 print(f"  Branch main-merge: merging origin/main into {branch} to pick up pipeline fixes")
-                merge = git(["merge", "origin/main", "--no-edit",
-                             "-m", f"chore: merge main pipeline fixes into {branch}"], check=False)
+                merge = git(
+                    ["merge", "origin/main", "--no-edit", "-m", f"chore: merge main pipeline fixes into {branch}"], check=False
+                )
                 if merge.returncode != 0:
                     # Auto-resolve conflicts: always take main's version of pipeline config files.
                     # These are canonical — the sprint branch should never diverge from main's pipeline.
-                    for config_file in ["pyproject.toml", "scripts/task_decomposer.py",
-                                        "scripts/autonomous_sprint_runner.py",
-                                        "scripts/magic_llm/context_builder.py",
-                                        "scripts/magic_llm/response_evaluator.py",
-                                        "scripts/goal_orchestrator/goal_executor.py",
-                                        "scripts/sprint_retry_advisor.py"]:
+                    for config_file in [
+                        "pyproject.toml",
+                        "scripts/task_decomposer.py",
+                        "scripts/autonomous_sprint_runner.py",
+                        "scripts/magic_llm/context_builder.py",
+                        "scripts/magic_llm/response_evaluator.py",
+                        "scripts/goal_orchestrator/goal_executor.py",
+                        "scripts/sprint_retry_advisor.py",
+                    ]:
                         git(["checkout", "origin/main", "--", config_file], check=False)
                     git(["add", "-A"], check=False)
                     # git merge --continue does NOT accept --no-edit; use git commit instead
                     git(["commit", "--no-edit"], check=False)
-                    print(f"  Branch main-merge: conflict resolved (took main's pipeline config)")
+                    print("  Branch main-merge: conflict resolved (took main's pipeline config)")
             else:
                 # Branch may already exist locally (local dev or resume run) — try checkout first
                 local_check = git(["checkout", branch], check=False)
                 if local_check.returncode != 0:
                     git(["checkout", "-b", branch])
 
-        record_evidence("AUTONOMOUS_SPRINT_STARTED", sprint=sprint,
-                        branch=branch, tasks=tasks)
+        record_evidence("AUTONOMOUS_SPRINT_STARTED", sprint=sprint, branch=branch, tasks=tasks)
 
         # P0 Fix 1b: Restore frozen-artifacts.json from sprint branch if present.
         # This ensures constructor signatures from prior runs are available to ContextBuilder.
         frozen_registry_path = REPO_ROOT / "sprint-context" / "frozen-artifacts.json"
         if not frozen_registry_path.exists() and (REPO_ROOT / "sprint-context").is_dir():
-            print(f"  INFO: frozen-artifacts.json not found — fresh ContextBuilder registry will be built")
+            print("  INFO: frozen-artifacts.json not found — fresh ContextBuilder registry will be built")
         elif frozen_registry_path.exists():
             import json as _json
+
             try:
                 frozen = _json.loads(frozen_registry_path.read_text())
                 print(f"  Frozen registry restored: {len(frozen)} artifact(s) available for ContextBuilder")
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
         update_sprint_state(sprint_status="IN_PROGRESS")
         # ADR-041 P2a: write OPEN heartbeat so container kills are detectable
@@ -1887,7 +1939,7 @@ def main() -> int:
     # ── Step 6: Execute each task ─────────────────────────────────────────
     tasks_done = []
     tasks_not_implemented = []
-    infra_error_tasks = _INFRA_ERROR_TASKS   # populated by execute_with_llm on pure API failures
+    infra_error_tasks = _INFRA_ERROR_TASKS  # populated by execute_with_llm on pure API failures
     # Accumulate all completed subtask IDs across task boundaries for cross-task
     # depends_on resolution. WC013-03a depends_on WC013-02a — without this,
     # WC013-03a is always BLOCKED because completed[] starts fresh each chain.
@@ -1901,9 +1953,7 @@ def main() -> int:
     for prior_task_id in tasks_done_state:
         prior_handler = TASK_HANDLERS.get(prior_task_id)
         if isinstance(prior_handler, dict) and "subtasks" in prior_handler:
-            all_completed_subtask_ids.extend(
-                [st.id for st in prior_handler["subtasks"]]
-            )
+            all_completed_subtask_ids.extend([st.id for st in prior_handler["subtasks"]])
     if all_completed_subtask_ids:
         print(f"  Cross-session subtask IDs seeded: {all_completed_subtask_ids}")
     # RC#1: scaffold task for this run = first queued task that is in SCAFFOLD_TASKS.
@@ -1914,9 +1964,9 @@ def main() -> int:
         if handler is None:
             # P1-04: explicit NOT_IMPLEMENTED — not silent skip
             print(f"  ⚠️  TASK_NOT_IMPLEMENTED: {task}")
-            print(f"       This task requires LLM code generation (IB-020).")
-            print(f"       Runner does not yet have code generation capability.")
-            print(f"       Action: Implement IB-020 (ADR-030) before this sprint can execute.")
+            print("       This task requires LLM code generation (IB-020).")
+            print("       Runner does not yet have code generation capability.")
+            print("       Action: Implement IB-020 (ADR-030) before this sprint can execute.")
             tasks_not_implemented.append(task)
             continue
         if dry_run:
@@ -1925,8 +1975,8 @@ def main() -> int:
         try:
             # FA-021 gate: WC015 requires GCP Vertex AI SA key in Key Vault / env
             if task.startswith("WC015") and not os.environ.get("GOOGLE_VERTEX_SA_KEY"):
-                print(f"  ❌ FA-021 gate: WC015 requires GOOGLE_VERTEX_SA_KEY in environment.")
-                print(f"     See FOUNDER-ACTION.md T1-02. Set secret in Azure Key Vault first.")
+                print("  ❌ FA-021 gate: WC015 requires GOOGLE_VERTEX_SA_KEY in environment.")
+                print("     See FOUNDER-ACTION.md T1-02. Set secret in Azure Key Vault first.")
                 tasks_not_implemented.append(task)
                 continue
             # Route through TaskDecomposer if task is a dict with subtasks (IB-021 / WC-019)
@@ -1952,7 +2002,9 @@ def main() -> int:
                 # ADR-041 P0a: mark in-progress before any LLM call so container kills are detectable
                 update_task_status(sprint, task, "in-progress")
                 success = _execute_task_decomposed(
-                    task, handler["subtasks"], _MONITOR_SIGNAL,
+                    task,
+                    handler["subtasks"],
+                    _MONITOR_SIGNAL,
                     infra_error_tasks=infra_error_tasks,
                     dry_run=dry_run,
                     prior_completed=all_completed_subtask_ids,
@@ -1981,15 +2033,16 @@ def main() -> int:
                 update_task_status(sprint, task, "failed_structural")
                 # RC#1: Halt on scaffold failure (C-084 Step Dependency Ordering)
                 if task == scaffold_run_task:
-                    print(f"  HALT: scaffold task {task} failed — downstream tasks cannot build. "
-                          f"Stopping sprint. (C-084)")
+                    print(f"  HALT: scaffold task {task} failed — downstream tasks cannot build. Stopping sprint. (C-084)")
                     break
                 # C-084 2.0: task-level fair-sweep — do NOT halt on non-scaffold failures.
                 # WC012-03 and WC012-04 have their own deterministic data layers and
                 # independent subtasks. They do not depend on WC012-02 at the task level.
                 # Continue — branch context gives next task full state from prior completed work.
-                print(f"  CONTINUE: task {task} failed — proceeding with remaining independent tasks "
-                      f"(C-084 2.0 fair-sweep). Next run retries failed tasks. (C-077 + C-084)")
+                print(
+                    f"  CONTINUE: task {task} failed — proceeding with remaining independent tasks "
+                    f"(C-084 2.0 fair-sweep). Next run retries failed tasks. (C-077 + C-084)"
+                )
         except Exception as exc:
             print(f"  FAILED: {task}: {exc}")
             # RC#1 / chain halt on exception too
@@ -2018,7 +2071,7 @@ def main() -> int:
     else:
         # Infrastructure failures do not count toward spec consecutive_failures.
         if all_infra_errors:
-            print(f"  INFRA_ERROR: transient infrastructure failure (spec failure counter unchanged)")
+            print("  INFRA_ERROR: transient infrastructure failure (spec failure counter unchanged)")
         else:
             failures_new = failures + 1
             update_sprint_state(consecutive_failures=str(failures_new))
@@ -2027,9 +2080,7 @@ def main() -> int:
     git(["add", "work-contracts/", "logs/"], check=False)
     diff = git(["diff", "--cached", "--quiet"], check=False)
     if diff.returncode != 0:
-        git(["commit", "-m",
-             f"chore(pm): {sprint} tasks done: {', '.join(tasks_done)}\n\n"
-             f"IB: IB-009\nConstitutional: C-059"])
+        git(["commit", "-m", f"chore(pm): {sprint} tasks done: {', '.join(tasks_done)}\n\nIB: IB-009\nConstitutional: C-059"])
 
     # ── Push sprint branch using App installation token (workflows scope) ────
     # GITHUB_TOKEN (Actions default) cannot push branches containing .github/workflows/
@@ -2037,20 +2088,22 @@ def main() -> int:
     # Registry entry: SPRINT_BRANCH_PUSH GH_WORKFLOW_SCOPE — 3 runs blocked (2026-07-29).
     def _get_push_token() -> str:
         """Return App installation token if credentials available, else GITHUB_TOKEN."""
-        app_id  = os.environ.get("GH-APP-ID", "")
+        app_id = os.environ.get("GH-APP-ID", "")
         inst_id = os.environ.get("GH-APP-INSTALLATION-ID", "")
         pem_key = os.environ.get("GH-APP-PRIVATE-KEY", "")
         if app_id and inst_id and pem_key:
             try:
-                import importlib.util as _ilu  # noqa: E401 (inner scope)
+                import importlib.util as _ilu
                 import sys as _sys
+
                 _scripts = str(REPO_ROOT / "scripts")
                 if _scripts not in _sys.path:
                     _sys.path.insert(0, _scripts)
                 _s = _ilu.spec_from_file_location(
-                    "autonomous_sprint_reviewer",
-                    str(REPO_ROOT / "scripts" / "autonomous_sprint_reviewer.py"))
-                _m = _ilu.module_from_spec(_s); _s.loader.exec_module(_m)
+                    "autonomous_sprint_reviewer", str(REPO_ROOT / "scripts" / "autonomous_sprint_reviewer.py")
+                )
+                _m = _ilu.module_from_spec(_s)
+                _s.loader.exec_module(_m)
                 token = _m.generate_installation_token(app_id, inst_id, pem_key)
                 if token:
                     print("  PUSH: using App installation token (workflows scope) ✓")
@@ -2063,15 +2116,23 @@ def main() -> int:
 
     def _git_push_with_token(token: str, extra_args: list[str]) -> subprocess.CompletedProcess:
         """Configure git to use the given token for a single push, then push."""
-        repo_url = f"https://x-access-token:{token}@github.com/{os.environ.get('GITHUB_REPOSITORY', 'dlai-sd/waooaw-platform')}.git"
-        env_with_url = {**os.environ, "GIT_REMOTE_URL": repo_url}
+        repo_url = (
+            f"https://x-access-token:{token}@github.com/{os.environ.get('GITHUB_REPOSITORY', 'dlai-sd/waooaw-platform')}.git"
+        )
         # Temporarily override origin URL for this push only
         run(["git", "remote", "set-url", "origin", repo_url], check=False)
-        result = run(["git", "push"] + extra_args + ["origin", branch], check=False, capture=True)
+        result = run(["git", "push", *extra_args, "origin", branch], check=False, capture=True)
         # Restore origin to HTTPS without token
-        run(["git", "remote", "set-url", "origin",
-             f"https://github.com/{os.environ.get('GITHUB_REPOSITORY', 'dlai-sd/waooaw-platform')}.git"],
-            check=False)
+        run(
+            [
+                "git",
+                "remote",
+                "set-url",
+                "origin",
+                f"https://github.com/{os.environ.get('GITHUB_REPOSITORY', 'dlai-sd/waooaw-platform')}.git",
+            ],
+            check=False,
+        )
         return result
 
     push = _git_push_with_token(push_token, ["-u"])
@@ -2098,14 +2159,14 @@ def main() -> int:
     if _MONITOR_SIGNAL.get("file_costs"):
         total_cost = sum(_MONITOR_SIGNAL["file_costs"].values())
         print("\n  ╔══════════════════════════════════════════════════════╗")
-        print(  "  ║           LLM COST SUMMARY (C-077 FinOps)           ║")
-        print(  "  ╠══════════════════════════════════════════════════════╣")
+        print("  ║           LLM COST SUMMARY (C-077 FinOps)           ║")
+        print("  ╠══════════════════════════════════════════════════════╣")
         for key, cost in sorted(_MONITOR_SIGNAL["file_costs"].items(), key=lambda x: -x[1]):
             label = key[:48].ljust(48)
             print(f"  ║  {label}  ₹{cost:>7.4f} ║")
-        print(  "  ╠══════════════════════════════════════════════════════╣")
+        print("  ╠══════════════════════════════════════════════════════╣")
         print(f"  ║  {'TOTAL'.ljust(48)}  ₹{total_cost:>7.4f} ║")
-        print(  "  ╚══════════════════════════════════════════════════════╝")
+        print("  ╚══════════════════════════════════════════════════════╝")
         _MONITOR_SIGNAL["total_cost_inr"] = total_cost
 
     # ── Step 8.1: Emit monitor signal BEFORE any early returns in PR section ──
@@ -2123,15 +2184,21 @@ def main() -> int:
     signal_path = Path("sprint-context/monitor-signal.json")
     signal_path.parent.mkdir(exist_ok=True)
     import json as _json
+
     signal_path.write_text(_json.dumps(_MONITOR_SIGNAL, indent=2))
     print(f"  📡 Monitor signal emitted: {signal_path}")
     git(["add", "-f", str(signal_path)], check=False)  # -f: signal_path is in .gitignore
     sig_diff = git(["diff", "--cached", "--quiet"], check=False)
     if sig_diff.returncode != 0:
-        git(["commit", "-m",
-             f"chore(signal): {sprint} run {os.environ.get('GITHUB_RUN_ID', 'local')} — {run_result}\n\n"
-             f"Constitutional: C-069 — observable state for complete_sprint step"],
-            check=False)
+        git(
+            [
+                "commit",
+                "-m",
+                f"chore(signal): {sprint} run {os.environ.get('GITHUB_RUN_ID', 'local')} — {run_result}\n\n"
+                f"Constitutional: C-069 — observable state for complete_sprint step",
+            ],
+            check=False,
+        )
         _git_push_with_token(push_token, ["-f"])
         print("  📡 Monitor signal pushed to sprint branch ✓")
 
@@ -2139,9 +2206,7 @@ def main() -> int:
         set_output("result", run_result)
         return 0
 
-    existing = gh(["pr", "list", "--head", branch,
-                   "--json", "number", "--jq", ".[0].number",
-                   "--repo", github_repo], check=False)
+    existing = gh(["pr", "list", "--head", branch, "--json", "number", "--jq", ".[0].number", "--repo", github_repo], check=False)
     existing_num = existing.stdout.strip() if existing.returncode == 0 else ""
 
     # Never open an empty PR — a PR with no code commits is noise (C-077 FinOps)
@@ -2162,15 +2227,29 @@ def main() -> int:
             f"Bootstrap evidence: logs/bootstrap-evidence.jsonl\n"
             f"Run ID: {os.environ.get('GITHUB_RUN_ID', 'local')}"
         )
-        result = gh(["pr", "create",
-                     "--title", pr_title,
-                     "--body", pr_body,
-                     "--base", "main",
-                     "--head", branch,
-                     "--label", "tier:2-feature",
-                     "--label", "status:pr-open",
-                     "--label", "awaiting:review",
-                     "--repo", github_repo], check=False)
+        result = gh(
+            [
+                "pr",
+                "create",
+                "--title",
+                pr_title,
+                "--body",
+                pr_body,
+                "--base",
+                "main",
+                "--head",
+                branch,
+                "--label",
+                "tier:2-feature",
+                "--label",
+                "status:pr-open",
+                "--label",
+                "awaiting:review",
+                "--repo",
+                github_repo,
+            ],
+            check=False,
+        )
         if result.returncode != 0:
             print(f"  WARN: gh pr create failed (rc={result.returncode}): {result.stderr[:300]}")
         pr_num = result.stdout.strip().split("/")[-1] if result.returncode == 0 else ""
@@ -2185,12 +2264,15 @@ def main() -> int:
         set_output("result", run_result)
         set_output("halt_reason", f"Tasks {tasks_not_implemented} require IB-020 LLM code generation — not yet implemented")
         print(f"\n  ⚠️  {len(tasks_not_implemented)} task(s) require IB-020 (runner code generation).")
-        print(f"  Sprint cannot advance until IB-020 is implemented.")
-        print(f"  Issue #12 tracks this: github.com/dlai-sd/waooaw-platform/issues/12")
+        print("  Sprint cannot advance until IB-020 is implemented.")
+        print("  Issue #12 tracks this: github.com/dlai-sd/waooaw-platform/issues/12")
     elif not tasks_done and all_infra_errors:
         # Every task failed due to API infrastructure (timeout/rate-limit/server error)
         set_output("result", run_result)
-        set_output("halt_reason", "All tasks failed due to API timeouts or rate limits. No spec gap. Next cron run will retry automatically.")
+        set_output(
+            "halt_reason",
+            "All tasks failed due to API timeouts or rate limits. No spec gap. Next cron run will retry automatically.",
+        )
         print("\n  ⚠️  INFRA_ERROR: all tasks failed due to API failures, not spec issues.")
         print("  Cron will retry. No founder action required.")
     else:

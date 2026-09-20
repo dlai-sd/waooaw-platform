@@ -20,6 +20,7 @@ What it does:
 Use this to validate a thinking config change locally in ~2 minutes
 before triggering an 15-minute CI run.
 """
+
 from __future__ import annotations
 import os
 import sys
@@ -40,11 +41,13 @@ os.environ.setdefault("GITHUB_REPO", "dlai-sd/waooaw-platform")
 
 # ── Import runner ──────────────────────────────────────────────────────────────
 print("Loading runner...")
-from autonomous_sprint_runner import (   # type: ignore[import]
-    TASK_HANDLERS, parse_llm_files, _build_system_prompt,
-    get_branch_context, REPO_ROOT as _REPO,
+from autonomous_sprint_runner import (  # type: ignore[import]  # noqa: E402
+    TASK_HANDLERS,
+    parse_llm_files,
+    get_branch_context,
+    REPO_ROOT as _REPO,
 )
-from runner.llm_codegen import _call_llm_direct
+from runner.llm_codegen import _call_llm_direct  # noqa: E402
 
 # ── Select task ────────────────────────────────────────────────────────────────
 task_id = sys.argv[1] if len(sys.argv) > 1 else "WC012-02"
@@ -64,7 +67,8 @@ if not callable(handler):
 # ── Extract spec from handler lambda ──────────────────────────────────────────
 # The handler is: lambda: execute_with_llm(task_id, description, spec_sections, check, hint, max_tokens)
 # We need to extract these args. Inspect the closure.
-import inspect
+import inspect  # noqa: E402
+
 closure = inspect.getclosurevars(handler)
 # execute_with_llm is called inside the lambda — get its args from __code__
 # Simpler: just import and call with introspection via the source
@@ -78,7 +82,7 @@ if start == -1:
     start = source.find(f"'{task_id}': lambda")
 
 # Extract until the closing ),
-block = source[start:start+2000]
+block = source[start : start + 2000]
 lines = block.splitlines()[:30]
 print(f"\nHandler definition for {task_id}:")
 for line in lines:
@@ -91,13 +95,14 @@ print("─" * 60)
 
 # ── Build spec content (same as execute_with_llm does) ────────────────────────
 # Parse out spec_sections, constitutional_check, model_hint, max_tokens from source
-import re
+import re  # noqa: E402
 
 # Extract the execute_with_llm call args from the lambda
 spec_match = re.search(
     rf'"{re.escape(task_id)}": lambda[^,]+execute_with_llm\(\s*'
     r'"[^"]+",\s*"([^"]+)",\s*\{([^}]+)\},\s*"([^"]+)"',
-    source, re.DOTALL
+    source,
+    re.DOTALL,
 )
 
 if not spec_match:
@@ -114,7 +119,7 @@ spec_sections: dict[str, str] = dict(spec_pairs)
 
 # Build spec content
 spec_lines = [f"# Spec context for {task_id}"]
-for file_path, section in spec_sections.items():
+for file_path, _section in spec_sections.items():
     full_path = _REPO / file_path
     if full_path.is_file():
         content = full_path.read_text(encoding="utf-8", errors="replace")
@@ -133,7 +138,7 @@ if branch_context:
 # ── Run the actual call ────────────────────────────────────────────────────────
 print()
 print("─" * 60)
-print(f"Calling LLM now... (this takes 1-3 minutes)")
+print("Calling LLM now... (this takes 1-3 minutes)")
 print("─" * 60)
 
 response = _call_llm_direct(

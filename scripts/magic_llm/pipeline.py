@@ -10,6 +10,7 @@ Phase 1 scope:
 
 Every invocation records a MagicLLMDecisionRecord BEFORE returning results (C-059).
 """
+
 from __future__ import annotations
 import json
 import os
@@ -18,9 +19,9 @@ import time
 import urllib.parse
 import urllib.request
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
+from collections.abc import Callable
 
 from .types import (
     FailureClassification,
@@ -43,11 +44,11 @@ _GEMINI_CATS = {
 
 # ── Model routing (extends ADR-030 §Model Routing) ──────────────────────────────────
 _ANTHROPIC_MODEL = "claude-sonnet-4-6"
-_ANTHROPIC_HAIKU  = "claude-haiku-4-5"
+_ANTHROPIC_HAIKU = "claude-haiku-4-5"
 
 # ADR-033: Gemini Flash for Cat. 7-13 (Orchestration + Semantic)
-_GEMINI_FLASH  = "gemini-2.0-flash"
-_GEMINI_REGION = "asia-south1"   # Mumbai — DPDPA India data residency
+_GEMINI_FLASH = "gemini-2.0-flash"
+_GEMINI_REGION = "asia-south1"  # Mumbai — DPDPA India data residency
 
 _ANTHROPIC_CATS = {
     TaskCategory.DEEP_REASONING,
@@ -59,28 +60,28 @@ _ANTHROPIC_CATS = {
 }
 
 # Cost estimates in INR (approximate, for C-077 tracking)
-_COST_PER_1K_INPUT  = {
+_COST_PER_1K_INPUT = {
     "claude-sonnet-4-6": 0.24,
-    "claude-haiku-4-5":  0.02,   # current Haiku model
+    "claude-haiku-4-5": 0.02,  # current Haiku model
     "claude-haiku-20240307": 0.02,  # legacy alias
-    "gemini-2.0-flash": 0.007,   # ADR-033: 34× cheaper than Sonnet
+    "gemini-2.0-flash": 0.007,  # ADR-033: 34x cheaper than Sonnet
 }
 _COST_PER_1K_OUTPUT = {
     "claude-sonnet-4-6": 1.20,
-    "claude-haiku-4-5":  0.10,
+    "claude-haiku-4-5": 0.10,
     "claude-haiku-20240307": 0.10,
     "gemini-2.0-flash": 0.021,
 }
 # Cached input costs 1/10th (O-02: prompt caching)
 _COST_PER_1K_CACHED = {
     "claude-sonnet-4-6": 0.024,
-    "claude-haiku-4-5":  0.002,
+    "claude-haiku-4-5": 0.002,
     "claude-haiku-20240307": 0.002,
-    "gemini-2.0-flash": 0.001,   # Gemini context caching (Phase 3)
+    "gemini-2.0-flash": 0.001,  # Gemini context caching (Phase 3)
 }
 
 
-def _task_complexity_score(request: "MagicLLMRequest") -> int:
+def _task_complexity_score(request: MagicLLMRequest) -> int:
     """
     O-01: Task complexity score determines model + thinking budget.
     Prevents over-spending Sonnet on boilerplate tasks.
@@ -90,13 +91,25 @@ def _task_complexity_score(request: "MagicLLMRequest") -> int:
     HIGH (80+):   Sonnet, thinking on — constitutional logic, CCT gates, security
     """
     score = 0
-    score += len(request.context_sections) * 8          # more spec = more complex
+    score += len(request.context_sections) * 8  # more spec = more complex
     score += len(request.ptr_snapshot.get("types", {})) * 2  # more types = more context
 
     desc = (request.task_description or "").lower()
     # High-stakes markers
-    if any(kw in desc for kw in ["cct", "constitutional", "evidence first", "emergency stop",
-                                  "evaluator", "security", "c-041", "c-023", "c-001"]):
+    if any(
+        kw in desc
+        for kw in [
+            "cct",
+            "constitutional",
+            "evidence first",
+            "emergency stop",
+            "evaluator",
+            "security",
+            "c-041",
+            "c-023",
+            "c-001",
+        ]
+    ):
         score += 30
     # CCT gate in spec
     if any("cct" in s.lower() for s in request.context_sections):
@@ -106,8 +119,7 @@ def _task_complexity_score(request: "MagicLLMRequest") -> int:
     if "test_" in desc and len(request.context_sections) >= 7:
         score += 20
     # Scaffold / boilerplate markers
-    if any(kw in desc for kw in ["scaffold", "project", "csproj", "setup", "wiring",
-                                  "skeleton", "hello world", "placeholder"]):
+    if any(kw in desc for kw in ["scaffold", "project", "csproj", "setup", "wiring", "skeleton", "hello world", "placeholder"]):
         score -= 20  # boilerplate penalty
     return max(0, score)
 
@@ -118,10 +130,10 @@ def _thinking_budget(complexity: int) -> int:
     Avoids burning 8K thinking tokens on simple tasks.
     """
     if complexity >= 80:
-        return 8000   # HIGH: full budget
+        return 8000  # HIGH: full budget
     if complexity >= 40:
-        return 3000   # MEDIUM: reduced budget (saves ~60% of thinking cost)
-    return 0          # LOW: no thinking (Haiku, no thinking mode)
+        return 3000  # MEDIUM: reduced budget (saves ~60% of thinking cost)
+    return 0  # LOW: no thinking (Haiku, no thinking mode)
 
 
 class MagicLLMPipeline:
@@ -138,13 +150,14 @@ class MagicLLMPipeline:
 
     def __init__(
         self,
-        goal_register_writer: Optional[Callable[[dict], str]] = None,
-        api_key: Optional[str] = None,
-        vertex_sa_key_json: Optional[str] = None,
+        goal_register_writer: Callable[[dict], str] | None = None,
+        api_key: str | None = None,
+        vertex_sa_key_json: str | None = None,
     ) -> None:
         # Normalize writer: accept both (record) and (goal_id, record) signatures.
         # Fixes the 'write_record() missing 1 required positional argument: record' error.
         _raw_writer = goal_register_writer or self._default_file_writer
+
         def _normalized_writer(record: dict) -> str:
             try:
                 return _raw_writer(record)  # new signature: (record,)
@@ -153,15 +166,13 @@ class MagicLLMPipeline:
                     return _raw_writer(record.get("goal_id", ""), record)  # old: (goal_id, record)
                 except Exception:
                     return ""
+
         self._write_record = _normalized_writer
         self._api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
         # ADR-033: Gemini Vertex AI SA key (JSON string)
-        self._vertex_sa_key_json = (
-            vertex_sa_key_json
-            or os.environ.get("GOOGLE_VERTEX_SA_KEY", "")
-        )
+        self._vertex_sa_key_json = vertex_sa_key_json or os.environ.get("GOOGLE_VERTEX_SA_KEY", "")
         # Token cache: (access_token, expiry_timestamp)
-        self._vertex_token_cache: Optional[tuple[str, float]] = None
+        self._vertex_token_cache: tuple[str, float] | None = None
 
     # ── Public API ───────────────────────────────────────────────────────────
 
@@ -208,9 +219,7 @@ class MagicLLMPipeline:
         cost = self._estimate_cost(model, in_tok, out_tok)
 
         # ⑥ Response Evaluator
-        status, gates, failure_class, failure_detail = self._evaluate(
-            raw_response, request
-        )
+        status, gates, failure_class, failure_detail = self._evaluate(raw_response, request)
 
         response = MagicLLMResponse(
             request_id=str(uuid.uuid4()),
@@ -261,16 +270,14 @@ class MagicLLMPipeline:
         goal_id: str,
         failure_evidence: dict,
         attempt: int,
-        original_request: Optional[MagicLLMRequest] = None,
+        original_request: MagicLLMRequest | None = None,
     ) -> MagicLLMResponse:
         """L1 Cascade retry — enhanced context from RetryAdvisor."""
         if original_request is None:
             raise ValueError("original_request required for retry")
 
         correction = self._classify_retry(failure_evidence)
-        enhanced_sections = list(original_request.context_sections) + [
-            f"## RETRY CORRECTION (attempt {attempt})\n{correction}"
-        ]
+        enhanced_sections = [*list(original_request.context_sections), f"## RETRY CORRECTION (attempt {attempt})\n{correction}"]
         retry_req = MagicLLMRequest(
             goal_id=goal_id,
             institution_id=original_request.institution_id,
@@ -291,17 +298,16 @@ class MagicLLMPipeline:
         goal_id: str,
         research_record: Any,  # ResearchRecord
         attempt: int,
-        original_request: Optional[MagicLLMRequest] = None,
+        original_request: MagicLLMRequest | None = None,
     ) -> MagicLLMResponse:
         """L2 Cascade retry — research findings injected into context."""
         if original_request is None:
             raise ValueError("original_request required for research retry")
 
-        research_section = (
-            "## INDUSTRY RESEARCH FINDINGS (Level 2 Remediation)\n"
-            + "\n".join(research_record.recommendations[:3])
+        research_section = "## INDUSTRY RESEARCH FINDINGS (Level 2 Remediation)\n" + "\n".join(
+            research_record.recommendations[:3]
         )
-        enhanced_sections = list(original_request.context_sections) + [research_section]
+        enhanced_sections = [*list(original_request.context_sections), research_section]
         retry_req = MagicLLMRequest(
             goal_id=goal_id,
             institution_id=original_request.institution_id,
@@ -320,7 +326,7 @@ class MagicLLMPipeline:
 
     # ── Private: Model Selector (②) ──────────────────────────────────────────
 
-    def _select_model(self, category: TaskCategory, request: "MagicLLMRequest" = None) -> tuple[str, float]:
+    def _select_model(self, category: TaskCategory, request: MagicLLMRequest = None) -> tuple[str, float]:
         """O-01: Returns (model_name, temperature) using task complexity scoring.
         ADR-033: Cat. 7-13 always use Gemini Flash.
         Industry Item 10: skeleton phase → Haiku (10x cheaper); logic/test → Sonnet.
@@ -330,15 +336,19 @@ class MagicLLMPipeline:
             return _GEMINI_FLASH, 0.1
 
         # Anthropic for engineering categories (Cat. 1-6)
-        if category in (TaskCategory.CODE_GENERATION, TaskCategory.TEST_GENERATION,
-                        TaskCategory.DEEP_REASONING, TaskCategory.DESIGN_CONTRACTS):
+        if category in (
+            TaskCategory.CODE_GENERATION,
+            TaskCategory.TEST_GENERATION,
+            TaskCategory.DEEP_REASONING,
+            TaskCategory.DESIGN_CONTRACTS,
+        ):
             if request is not None:
                 desc = (request.task_description or "").lower()
                 is_skeleton = "skeleton" in desc or "SKELETON PHASE" in " ".join(request.context_sections)
 
                 # DEEP_REASONING = explicit model_hint="reasoning" from task — always Sonnet.
                 # GoalExecutor packs everything into one context_sections entry, so complexity
-                # scoring returns ~8 (1 section × 8) regardless of actual complexity.
+                # scoring returns ~8 (1 section x 8) regardless of actual complexity.
                 # "reasoning" is an explicit override — skip scoring, use Sonnet directly.
                 if category == TaskCategory.DEEP_REASONING and not is_skeleton:
                     return _ANTHROPIC_MODEL, 0.0
@@ -351,15 +361,15 @@ class MagicLLMPipeline:
                 context_chars = sum(len(s) for s in (request.context_sections or []))
                 attempt_idx = getattr(request, "cascade_level", 0) or 0
                 if attempt_idx >= 2 and context_chars > 20_000:
-                    return _ANTHROPIC_MODEL, 0.0   # retry exhaustion on non-trivial context → Sonnet
+                    return _ANTHROPIC_MODEL, 0.0  # retry exhaustion on non-trivial context → Sonnet
                 # Cost-aware tiering: SKELETON phase → always Haiku (signatures only, no reasoning needed)
                 # LOGIC/TEST phase → Sonnet when complexity is high, Haiku otherwise
                 if is_skeleton:
                     return _ANTHROPIC_HAIKU, 0.0  # skeleton: cheap model always
                 if complexity >= 80:
                     return _ANTHROPIC_MODEL, 0.0  # HIGH complexity → Sonnet
-                return _ANTHROPIC_HAIKU, 0.0      # LOW/MEDIUM → Haiku (10x cheaper)
-            return _ANTHROPIC_MODEL, 0.0           # fallback if no request
+                return _ANTHROPIC_HAIKU, 0.0  # LOW/MEDIUM → Haiku (10x cheaper)
+            return _ANTHROPIC_MODEL, 0.0  # fallback if no request
         return _ANTHROPIC_HAIKU, 0.0
 
     # ── Private: Context Builder (③) ─────────────────────────────────────────
@@ -384,7 +394,7 @@ class MagicLLMPipeline:
             # at write time. LLM generates code content only — do not generate these lines.
             parts.append(
                 "## CONSTITUTIONAL OBLIGATIONS\n"
-                "Output format: <file path=\"relative/path/to/file.ext\">...content...</file>\n"
+                'Output format: <file path="relative/path/to/file.ext">...content...</file>\n'
                 "Do NOT add '# Implements:' or '# constitutional_basis:' headers — "
                 "the platform framework injects them automatically.\n"
             )
@@ -488,6 +498,7 @@ class MagicLLMPipeline:
         Token cached in-memory for 55 minutes (expires at 60, refreshed early).
         """
         import time as _time
+
         now = _time.time()
 
         # Return cached token if still valid
@@ -508,6 +519,7 @@ class MagicLLMPipeline:
 
         try:
             import jwt as _jwt  # PyJWT
+
             payload = {
                 "iss": sa["client_email"],
                 "scope": "https://www.googleapis.com/auth/cloud-platform",
@@ -520,10 +532,12 @@ class MagicLLMPipeline:
             raise RuntimeError(f"Failed to sign SA JWT: {exc}") from exc
 
         # Exchange JWT for access token
-        body = urllib.parse.urlencode({
-            "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
-            "assertion": signed_jwt,
-        }).encode("utf-8")
+        body = urllib.parse.urlencode(
+            {
+                "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+                "assertion": signed_jwt,
+            }
+        ).encode("utf-8")
         req = urllib.request.Request(
             "https://oauth2.googleapis.com/token",
             data=body,
@@ -531,7 +545,8 @@ class MagicLLMPipeline:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
+            response = urllib.request.urlopen(req, timeout=30)  # noqa: S310
+            with response as resp:
                 token_data = json.loads(resp.read().decode("utf-8"))
         except Exception as exc:
             raise RuntimeError(f"Token exchange failed: {exc}") from exc
@@ -565,15 +580,18 @@ class MagicLLMPipeline:
             f"https://{_GEMINI_REGION}-aiplatform.googleapis.com/v1/projects/{project_id}"
             f"/locations/{_GEMINI_REGION}/publishers/google/models/{_GEMINI_FLASH}:generateContent"
         )
-        body = json.dumps({
-            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-            "generationConfig": {
-                "maxOutputTokens": max_tokens,
-                "temperature": 0.1,
-            },
-        }).encode("utf-8")
+        body = json.dumps(
+            {
+                "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+                "generationConfig": {
+                    "maxOutputTokens": max_tokens,
+                    "temperature": 0.1,
+                },
+            }
+        ).encode("utf-8")
         req = urllib.request.Request(
-            url, data=body,
+            url,
+            data=body,
             headers={
                 "Authorization": f"Bearer {token}",
                 "Content-Type": "application/json",
@@ -581,7 +599,8 @@ class MagicLLMPipeline:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=300) as resp:
+            response = urllib.request.urlopen(req, timeout=300)  # noqa: S310
+            with response as resp:
                 data = json.loads(resp.read().decode("utf-8"))
         except Exception as exc:
             print(f"  [MagicLLM] Gemini API call failed: {exc}")
@@ -636,28 +655,27 @@ class MagicLLMPipeline:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=300) as resp:
+            response = urllib.request.urlopen(req, timeout=300)  # noqa: S310
+            with response as resp:
                 data = json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             err_body = ""
             try:
                 err_body = exc.read().decode("utf-8", errors="replace")
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
             print(f"  [MagicLLM] API call failed: HTTP {exc.code} {exc.reason} — {err_body[:300]}")
             # Billing / quota errors are unrecoverable — halt immediately rather than retry.
             if "credit balance" in err_body or "quota" in err_body.lower() or "billing" in err_body.lower():
-                raise RuntimeError(f"API_BILLING_ERROR: {err_body[:200]}")
+                raise RuntimeError(f"API_BILLING_ERROR: {err_body[:200]}") from exc
             return None, 0, 0
         except Exception as exc:
             print(f"  [MagicLLM] API call failed: {exc}")
             return None, 0, 0
 
-        in_tok  = data.get("usage", {}).get("input_tokens", 0)
+        in_tok = data.get("usage", {}).get("input_tokens", 0)
         out_tok = data.get("usage", {}).get("output_tokens", 0)
-        text_blocks = [
-            b["text"] for b in data.get("content", []) if b.get("type") == "text"
-        ]
+        text_blocks = [b["text"] for b in data.get("content", []) if b.get("type") == "text"]
         return "\n".join(text_blocks) if text_blocks else None, in_tok, out_tok
 
     # ── Private: Response Evaluator (⑥) ──────────────────────────────────────
@@ -666,7 +684,7 @@ class MagicLLMPipeline:
         self,
         raw: str | None,
         request: MagicLLMRequest,
-    ) -> tuple[str, dict[str, bool], Optional[FailureClassification], Optional[str]]:
+    ) -> tuple[str, dict[str, bool], FailureClassification | None, str | None]:
         """Runs quality gates. Returns (status, gates_dict, failure_class, detail)."""
         gates: dict[str, bool] = {}
 
@@ -676,7 +694,7 @@ class MagicLLMPipeline:
 
         # Format gate
         if request.expected_output_format == "xml_file_blocks":
-            has_files = bool(re.search(r'<file\s+path=', raw))
+            has_files = bool(re.search(r"<file\s+path=", raw))
             gates[QualityGate.FORMAT] = has_files
             if not has_files:
                 return "retry_needed", gates, FailureClassification.FORMAT_FAILURE, "no <file> blocks found"
@@ -697,8 +715,12 @@ class MagicLLMPipeline:
             has_implements = ("# Implements:" in raw) or ("// Implements:" in raw)
             gates[QualityGate.ANNOTATION] = has_implements
             if not has_implements:
-                return "retry_needed", gates, FailureClassification.ANNOTATION_MISSING, \
-                       "missing # Implements: or // Implements: header (C-073)"
+                return (
+                    "retry_needed",
+                    gates,
+                    FailureClassification.ANNOTATION_MISSING,
+                    "missing # Implements: or // Implements: header (C-073)",
+                )
 
         return "accepted", gates, None, None
 
@@ -719,7 +741,7 @@ class MagicLLMPipeline:
         if fc == FailureClassification.ANNOTATION_MISSING:
             return "C-073 Fix: Every file must begin with:\n# Implements: <spec-path> §<section>\n# constitutional_basis: C-NNN"
         if fc == FailureClassification.FORMAT_FAILURE:
-            return "FORMAT Fix: Respond with XML file blocks only: <file path=\"...\">...content...</file>"
+            return 'FORMAT Fix: Respond with XML file blocks only: <file path="...">...content...</file>'
         return f"GENERIC Fix: Previous attempt failed with: {fc}. Review spec sections carefully."
 
     # ── Private: Artifact Parser ──────────────────────────────────────────────
@@ -743,7 +765,7 @@ class MagicLLMPipeline:
 
     def _estimate_cost(self, model: str, in_tok: int, out_tok: int) -> float:
         """Estimates cost in INR for C-077 tracking."""
-        r_in  = _COST_PER_1K_INPUT.get(model, 0)
+        r_in = _COST_PER_1K_INPUT.get(model, 0)
         r_out = _COST_PER_1K_OUTPUT.get(model, 0)
         return round((int(in_tok) / 1000) * r_in + (int(out_tok) / 1000) * r_out, 4)
 

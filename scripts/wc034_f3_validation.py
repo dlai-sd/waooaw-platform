@@ -20,9 +20,20 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 GENERATED_EVIDENCE_ROOT = REPO_ROOT / "web" / "test-results"
 ACCEPTANCE_IDS = [
-    "UX-CONV-01", "UX-CONV-02", "UX-CONV-03", "UX-CONV-04", "UX-CONV-05",
-    "UX-CONV-06", "UX-CONV-07", "CCT-UX-HO-01", "CCT-UX-HO-02", "CCT-UX-HO-03",
-    "CCT-UX-EF-01", "CCT-UX-EF-02", "UX-PWA-03", "UX-RES-01",
+    "UX-CONV-01",
+    "UX-CONV-02",
+    "UX-CONV-03",
+    "UX-CONV-04",
+    "UX-CONV-05",
+    "UX-CONV-06",
+    "UX-CONV-07",
+    "CCT-UX-HO-01",
+    "CCT-UX-HO-02",
+    "CCT-UX-HO-03",
+    "CCT-UX-EF-01",
+    "CCT-UX-EF-02",
+    "UX-PWA-03",
+    "UX-RES-01",
 ]
 
 
@@ -40,7 +51,15 @@ PYTHON = (*DOCKER, "--profile", "test-python", "run", "--rm", "test-runner-pytho
 CHECKS = {
     "bp": Check(
         "BP conversation unit and coverage",
-        (*MULTI_STACK, "dotnet", "test", "tests/business-platform.Tests/business-platform.Tests.csproj", "--filter", "FullyQualifiedName~Conversation", "--collect:XPlat Code Coverage"),
+        (
+            *MULTI_STACK,
+            "dotnet",
+            "test",
+            "tests/business-platform.Tests/business-platform.Tests.csproj",
+            "--filter",
+            "FullyQualifiedName~Conversation",
+            "--collect:XPlat Code Coverage",
+        ),
         ("CCT-UX-EF-01", "CCT-UX-EF-02", "CCT-UX-HO-02", "CCT-UX-HO-03"),
     ),
     "pr": Check(
@@ -74,7 +93,18 @@ CHECKS = {
     ),
     "browser": Check(
         "Fixture-backed Chromium compact and expanded acceptance",
-        (*MULTI_STACK, "pnpm", "--dir", "web", "exec", "playwright", "test", "tests/e2e/f3-conversation-acceptance.spec.ts", "--project=chromium-expanded", "--project=chromium-compact-360"),
+        (
+            *MULTI_STACK,
+            "pnpm",
+            "--dir",
+            "web",
+            "exec",
+            "playwright",
+            "test",
+            "tests/e2e/f3-conversation-acceptance.spec.ts",
+            "--project=chromium-expanded",
+            "--project=chromium-compact-360",
+        ),
         tuple(ACCEPTANCE_IDS),
     ),
 }

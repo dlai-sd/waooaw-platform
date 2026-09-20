@@ -9,6 +9,7 @@ base obligations + selected stack expert block.
 get_branch_context() scans the sprint branch and injects EXTEND-NOT-REPLACE
 context into every LLM call.
 """
+
 from __future__ import annotations
 
 import os
@@ -227,24 +228,24 @@ Next.js 14 App Router, React 18, Tailwind CSS 3.x, Radix UI, Prisma, SWR, Zod.
 
 # Stack selection map — keyed by stack name
 _STACK_EXPERTS: dict[str, str] = {
-    "dotnet":     _EXPERT_DOTNET,
-    "python":     _EXPERT_PYTHON,
-    "terraform":  _EXPERT_TERRAFORM,
+    "dotnet": _EXPERT_DOTNET,
+    "python": _EXPERT_PYTHON,
+    "terraform": _EXPERT_TERRAFORM,
     "typescript": _EXPERT_TYPESCRIPT,
 }
 
 # Task-prefix → stack mapping (extend as new sprints are planned)
 _TASK_STACK_MAP: dict[str, str] = {
-    "WC012": "dotnet",     # Constitutional Engine (.NET 9 gRPC)
-    "WC013": "dotnet",     # Business Platform skeleton
-    "WC014": "python",     # Temporal workers
-    "WC015": "python",     # FastAPI services / RAG
+    "WC012": "dotnet",  # Constitutional Engine (.NET 9 gRPC)
+    "WC013": "dotnet",  # Business Platform skeleton
+    "WC014": "python",  # Temporal workers
+    "WC015": "python",  # FastAPI services / RAG
     "WC016": "terraform",  # Infrastructure
-    "WC017": "typescript", # Web (Next.js)
-    "WC018": "dotnet",     # Integration tests
-    "WC025": "python",     # Wallet & Billing Engine (WBE)
-    "WC026": "python",     # WBE Wallet Engine (buckets, reserve, release)
-    "WC027": "python",     # WBE future sprints
+    "WC017": "typescript",  # Web (Next.js)
+    "WC018": "dotnet",  # Integration tests
+    "WC025": "python",  # Wallet & Billing Engine (WBE)
+    "WC026": "python",  # WBE Wallet Engine (buckets, reserve, release)
+    "WC027": "python",  # WBE future sprints
     "WC028": "python",
     "WC029": "python",
     "WC030": "python",
@@ -365,15 +366,28 @@ def get_branch_context(service_dir: str = "src/constitutional-engine") -> str:
                         break
                     continue
 
-                if any(stripped.startswith(kw) for kw in (
-                    "namespace ", "public ", "internal ", "protected ", "private ",
-                    "// Implements:", "// constitutional_basis:", "interface ", "record ",
-                    "sealed class", "abstract class", "static class",
-                )):
+                if any(
+                    stripped.startswith(kw)
+                    for kw in (
+                        "namespace ",
+                        "public ",
+                        "internal ",
+                        "protected ",
+                        "private ",
+                        "// Implements:",
+                        "// constitutional_basis:",
+                        "interface ",
+                        "record ",
+                        "sealed class",
+                        "abstract class",
+                        "static class",
+                    )
+                ):
                     important_lines.append(line)
                     # Detect start of multi-line record/positional constructor
                     if re.match(r".*\brecord\b.*\($", stripped) or (
-                        stripped.startswith("public sealed record") and "(" in stripped
+                        stripped.startswith("public sealed record")
+                        and "(" in stripped
                         and stripped.count("(") > stripped.count(")")
                     ):
                         in_record_signature = True

@@ -4,23 +4,26 @@
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import hashlib
 import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 from pathlib import Path
 
 import yaml
 
-from precheck_orchestrator import PrecheckNode, run_prechecks
+from precheck_orchestrator import EVIDENCE_FILE_NAME, PrecheckNode, run_prechecks
 from validate_author_review import SECTION, validate_author_review
 from validate_c059 import read_commits, validate_commit, validate_pr_body
 from validate_requirement_ledger import validate_changed_ledgers
 from validate_runtime_lifecycle_evidence import runtime_gate_required
-from validation_policy import classify_paths
+from validation_policy import classify_paths, validate_policy
+from validation_control.local_catalog_gate import gate_execution_identity
 
 AUTHOR_REVIEW = """## Author Review
 
@@ -39,14 +42,45 @@ RUNTIME_EVIDENCE_SECTION = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 VALIDATION_POLICY_PATH = Path(__file__).resolve().parents[1] / "validation/engineering-validation.yaml"
-PRECHECK_GRAPH_VERSION = "wc100-prechecks-v2"
+PRECHECK_GRAPH_VERSION = "wc104-prechecks-v4"
 PRECHECK_CONFIGURATION_PATHS = (
     Path(__file__),
     Path(__file__).with_name("precheck_orchestrator.py"),
+    Path(__file__).parent / "validation_control/local_catalog_gate.py",
+    Path(__file__).parent / "validation_control/catalog_execution.py",
+    Path(__file__).parent / "validation_control/orchestrator.py",
+    Path(__file__).parent / "validation_control/runner_supply.py",
+    Path(__file__).parent / "validation_control/run_gitleaks_gate.sh",
     VALIDATION_POLICY_PATH,
     Path(__file__).resolve().parents[1] / "docker-compose.yml",
     Path(__file__).with_name("run_release_qualification.sh"),
 )
+
+
+def probe_atomic_output(path: Path) -> None:
+    """Prove that a final output can be created and atomically replaced."""
+    resolved = path.expanduser().resolve()
+    parent = resolved.parent
+    if not parent.is_dir() or not os.access(parent, os.W_OK):
+        raise ValueError(f"output directory is not writable: {parent}")
+    if resolved.exists():
+        writable_bits = stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
+        if resolved.stat().st_mode & writable_bits == 0 or not os.access(resolved, os.W_OK):
+            raise ValueError(f"output file is not writable: {resolved}")
+
+    temporary = parent / f".{resolved.name}.wc104-probe-{os.getpid()}.tmp"
+    replacement = parent / f".{resolved.name}.wc104-probe-{os.getpid()}"
+    try:
+        with temporary.open("x", encoding="utf-8") as handle:
+            handle.write("wc104-output-probe\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        temporary.replace(replacement)
+    except OSError as error:
+        raise ValueError(f"output does not support atomic replacement: {resolved}") from error
+    finally:
+        temporary.unlink(missing_ok=True)
+        replacement.unlink(missing_ok=True)
 
 
 def execution_preflight(
@@ -63,18 +97,20 @@ def execution_preflight(
     if not expected_worktree.is_absolute():
         failures.append("--expected-worktree must be an absolute path")
     elif repository_root.resolve() != expected_worktree.resolve():
-        failures.append(
-            f"selected worktree is {repository_root.resolve()}, expected {expected_worktree.resolve()}"
-        )
+        failures.append(f"selected worktree is {repository_root.resolve()}, expected {expected_worktree.resolve()}")
     if local_head != expected_head:
         failures.append(f"local HEAD is {local_head}, expected {expected_head}")
 
     home = Path(os.environ.get("HOME", ""))
     if not home.is_absolute() or not home.is_dir() or not os.access(home, os.W_OK):
         failures.append("HOME must name an existing writable absolute directory")
-    output_dir = body_file.expanduser().resolve().parent
-    if not output_dir.is_dir() or not os.access(output_dir, os.W_OK):
-        failures.append(f"PR body output directory is not writable: {output_dir}")
+    for output in (body_file, body_file.with_suffix(".precheck-evidence.json")):
+        try:
+            probe_atomic_output(output)
+        except ValueError as error:
+            failures.append(str(error))
+    if failures:
+        raise ValueError("execution preflight: " + "; ".join(failures))
 
     try:
         tracked_changes = git("status", "--porcelain", "--untracked-files=no")
@@ -207,6 +243,31 @@ def selected_prechecks(changed_files: list[str]) -> set[str]:
     return set(selected)
 
 
+def validate_static_repository(repository_root: Path) -> list[str]:
+    violations: list[str] = []
+    try:
+        loaded = yaml.safe_load(VALIDATION_POLICY_PATH.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError) as error:
+        violations.append(f"validation catalog cannot be loaded: {error}")
+    else:
+        if not isinstance(loaded, dict):
+            violations.append("validation catalog root must be a mapping")
+        else:
+            violations.extend(f"validation catalog: {violation}" for violation in validate_policy(loaded))
+
+    compose = subprocess.run(
+        ["docker", "compose", "config", "--quiet"],  # noqa: S607
+        cwd=repository_root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if compose.returncode != 0:
+        detail = compose.stderr.strip() or compose.stdout.strip() or "configuration is invalid"
+        violations.append(f"Docker Compose: {detail}")
+    return violations
+
+
 def business_platform_gate_required(changed_files: list[str]) -> bool:
     return "business_platform" in selected_prechecks(changed_files)
 
@@ -247,10 +308,29 @@ def runner_digest(nodes: list[PrecheckNode]) -> str:
             "heavy": node.heavy,
             "dependencies": node.dependencies,
             "transient_retries": node.transient_retries,
+            "catalog_version": node.catalog_version,
+            "gate_id": node.gate_id,
+            "command_id": node.command_id,
+            "gate_implementation_digest": node.gate_implementation_digest,
+            "runner_digest": node.runner_digest,
+            "environment_digest": node.environment_digest,
+            "input_digest": node.input_digest,
+            "input_patterns": node.input_patterns,
         }
         for node in nodes
     ]
     return hashlib.sha256(json.dumps(graph, sort_keys=True).encode()).hexdigest()
+
+
+def gate_input_digest(head: str, patterns: tuple[str, ...]) -> str:
+    entries: list[tuple[str, str]] = []
+    for line in git("ls-tree", "-r", "--full-tree", head).splitlines():
+        metadata, separator, path = line.partition("\t")
+        fields = metadata.split()
+        if separator and len(fields) == 3 and any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns):
+            entries.append((path, metadata))
+    payload = {"patterns": patterns, "entries": sorted(entries)}
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
 def validate_precheck_evidence(
@@ -266,7 +346,7 @@ def validate_precheck_evidence(
         raise ValueError("precheck evidence must report passed=true")
     if evidence.get("base_sha") != base_sha or evidence.get("commit_sha") != head:
         raise ValueError("precheck evidence is not bound to the selected base and branch HEAD")
-    if evidence.get("schema") != "waooaw.pr-prechecks/v3":
+    if evidence.get("schema") != "waooaw.pr-prechecks/v4":
         raise ValueError("precheck evidence schema is not trusted")
     if evidence.get("changed_file_digest") != changed_file_digest:
         raise ValueError("precheck evidence is not bound to the selected changed files")
@@ -286,63 +366,49 @@ def precheck_nodes(
     head: str,
     changed_files: list[str],
 ) -> list[PrecheckNode]:
-    docker = shutil.which("docker")
-    if docker is None:
-        raise ValueError("docker executable is required for PR prechecks")
     applicable_prechecks = selected_prechecks(changed_files)
-    nodes = [
-        PrecheckNode(
-            name="gitleaks",
-            command=(
-                docker,
-                "run",
-                "--rm",
-                "-v",
-                f"{repository_root}:/repo:ro",
-                "-v",
-                f"{git_common_dir}:{git_common_dir}:ro",
-                "zricethezav/gitleaks:v8.28.0",
-                "git",
-                "/repo",
-                "--log-opts",
-                f"{base}..{head}",
-                "--no-banner",
-                "--redact",
-            ),
-        )
-    ]
-    if "business_platform" in applicable_prechecks:
+    loaded = yaml.safe_load(VALIDATION_POLICY_PATH.read_text(encoding="utf-8"))
+    precheck_config = loaded.get("prechecks") if isinstance(loaded, dict) else None
+    if not isinstance(precheck_config, dict):
+        raise ValueError("validation catalog prechecks must be a mapping")
+    python = shutil.which("python3")
+    if python is None:
+        raise ValueError("python3 executable is required for PR prechecks")
+    local_executor = repository_root / "scripts/validation_control/local_catalog_gate.py"
+    nodes: list[PrecheckNode] = []
+    for name in ("gitleaks", "business_platform", "release_qualification"):
+        if name not in applicable_prechecks:
+            continue
+        config = precheck_config.get(name)
+        gate_id = config.get("gate") if isinstance(config, dict) else None
+        if not isinstance(gate_id, str) or not gate_id:
+            raise ValueError(f"validation catalog precheck {name} has no gate")
+        input_patterns_value = config.get("inputs")
+        if not isinstance(input_patterns_value, list) or not all(
+            isinstance(pattern, str) and pattern for pattern in input_patterns_value
+        ):
+            raise ValueError(f"validation catalog precheck {name} has no declared inputs")
+        input_patterns = tuple(input_patterns_value)
+        identity = gate_execution_identity(repository_root, gate_id, head)
         nodes.append(
             PrecheckNode(
-                name="business_platform",
+                name=name,
                 command=(
-                    docker,
-                    "compose",
-                    "--profile",
-                    "test-dotnet",
-                    "run",
-                    "--rm",
-                    "test-runner-dotnet",
-                    "sh",
-                    "-lc",
-                    "dotnet restore tests/business-platform.Tests/business-platform.Tests.csproj "
-                    "--artifacts-path /tmp/artifacts/business-platform-precheck && "
-                    "dotnet build tests/business-platform.Tests/business-platform.Tests.csproj "
-                    "--artifacts-path /tmp/artifacts/business-platform-precheck --no-restore -warnaserror && "
-                    "dotnet test tests/business-platform.Tests/business-platform.Tests.csproj "
-                    "--artifacts-path /tmp/artifacts/business-platform-precheck "
-                    "--no-build --settings tests/coverage.runsettings --collect:'XPlat Code Coverage' "
-                    "--results-directory /workspace/test-results/coverage/business-platform",
+                    python,
+                    str(local_executor),
+                    "--gate",
+                    gate_id,
+                    "--base",
+                    base,
+                    "--head",
+                    head,
+                    "--git-common-dir",
+                    str(git_common_dir),
                 ),
-                heavy=True,
-            )
-        )
-    if "release_qualification" in applicable_prechecks:
-        nodes.append(
-            PrecheckNode(
-                name="release_qualification",
-                command=(str(repository_root / "scripts/run_release_qualification.sh"),),
-                heavy=True,
+                heavy=name != "gitleaks",
+                input_digest=gate_input_digest(head, input_patterns),
+                input_patterns=input_patterns,
+                **identity,
             )
         )
     return nodes
@@ -352,6 +418,8 @@ def run_ci_prechecks(base: str, head: str, changed_files: list[str]) -> dict[str
     repository_root = Path(git("rev-parse", "--show-toplevel"))
     git_common_dir = Path(git("rev-parse", "--path-format=absolute", "--git-common-dir"))
     nodes = precheck_nodes(repository_root, git_common_dir, base, head, changed_files)
+    artifact_dir = repository_root / "test-results/wc100/prechecks" / head
+    prior_evidence = sorted(path for path in artifact_dir.parent.glob(f"*/{EVIDENCE_FILE_NAME}") if path.parent != artifact_dir)
     return run_prechecks(
         nodes,
         base_sha=git("rev-parse", base),
@@ -360,7 +428,8 @@ def run_ci_prechecks(base: str, head: str, changed_files: list[str]) -> dict[str
         graph_version=PRECHECK_GRAPH_VERSION,
         configuration_digest=configuration_digest(),
         runner_digest=runner_digest(nodes),
-        artifact_dir=repository_root / "test-results/wc100/prechecks" / head,
+        artifact_dir=artifact_dir,
+        reuse_evidence_paths=prior_evidence,
     )
 
 
@@ -439,6 +508,13 @@ def main() -> int:
         ledger_violations = validate_changed_ledgers(repository_root, changed_files)
         if ledger_violations:
             raise ValueError("requirement ledger: " + "; ".join(ledger_violations))
+        body = prepare_body(body, head)
+        violations = validate_prepared_body(body, arguments.base, head)
+        if violations:
+            raise ValueError("static PR validation: " + "; ".join(violations))
+        repository_violations = validate_static_repository(repository_root)
+        if repository_violations:
+            raise ValueError("static repository validation: " + "; ".join(repository_violations))
         if arguments.precheck_evidence_file:
             nodes = precheck_nodes(
                 repository_root,
@@ -475,7 +551,6 @@ def main() -> int:
                 else run_runtime_gate(arguments.body_file, head)
             )
             body = add_runtime_evidence(body, evidence)
-        body = prepare_body(body, head)
         violations = validate_prepared_body(body, arguments.base, head)
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         print(f"PR body preparation failed: {error}", file=sys.stderr)

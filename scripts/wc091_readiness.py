@@ -21,13 +21,9 @@ OUTCOMES = (
 def evaluate(rendered: dict[str, Any], evidence: dict[str, Any]) -> dict[str, str]:
     expected_bindings = {binding["id"] for binding in rendered["secretBindings"]}
     valid_metadata = {
-        item["id"] for item in evidence.get("secretMetadata", [])
-        if item.get("enabled") is True and item.get("expired") is False
+        item["id"] for item in evidence.get("secretMetadata", []) if item.get("enabled") is True and item.get("expired") is False
     }
-    configuration_ready = (
-        evidence.get("renderDigest") == rendered["renderDigest"]
-        and expected_bindings.issubset(valid_metadata)
-    )
+    configuration_ready = evidence.get("renderDigest") == rendered["renderDigest"] and expected_bindings.issubset(valid_metadata)
     generations = evidence.get("demoGenerations", [])
     data_ready = (
         rendered["environment"] == "demo"

@@ -5,6 +5,7 @@
 Repository-level path constants and ADR-030 write-boundary enforcement.
 All runner modules import from here — single source of truth for paths.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

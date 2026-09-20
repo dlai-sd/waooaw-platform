@@ -32,11 +32,7 @@ def write_dependency_closed_openapi_slice(
     source = yaml.safe_load(source_path.read_text(encoding="utf-8"))
     paths: dict[str, dict[str, Any]] = {}
     for path, path_item in source.get("paths", {}).items():
-        selected = {
-            key: deepcopy(value)
-            for key, value in path_item.items()
-            if key in PATH_ITEM_FIELDS
-        }
+        selected = {key: deepcopy(value) for key, value in path_item.items() if key in PATH_ITEM_FIELDS}
         for method, operation in path_item.items():
             if (
                 method.lower() in HTTP_METHODS
@@ -112,22 +108,14 @@ def write_dependency_closed_openapi_slice(
     selected_components: dict[str, dict[str, Any]] = {}
     for category, components in source_components.items():
         required_names = required_components.get(category, set())
-        selected = {
-            name: deepcopy(component)
-            for name, component in components.items()
-            if name in required_names
-        }
+        selected = {name: deepcopy(component) for name, component in components.items() if name in required_names}
         if selected:
             selected_components[category] = selected
 
     sliced: dict[str, Any] = {
         "openapi": source["openapi"],
         "info": deepcopy(source["info"]),
-        "tags": [
-            deepcopy(tag)
-            for tag in source.get("tags", [])
-            if tag.get("name") in selected_tags
-        ],
+        "tags": [deepcopy(tag) for tag in source.get("tags", []) if tag.get("name") in selected_tags],
         "paths": paths,
         "components": selected_components,
     }

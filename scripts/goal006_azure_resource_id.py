@@ -5,9 +5,7 @@ from __future__ import annotations
 import argparse
 
 
-def canonical_container_app_id(
-    resource_id: str, *, expected_resource_group: str, expected_name: str
-) -> str:
+def canonical_container_app_id(resource_id: str, *, expected_resource_group: str, expected_name: str) -> str:
     """Return the AzureRM-canonical ID for a top-level Container App."""
     segments = resource_id.split("/")
     if len(segments) != 9 or segments[0] != "":
@@ -22,26 +20,18 @@ def canonical_container_app_id(
     }
     for position, expected in expected_segments.items():
         if segments[position].casefold() != expected.casefold():
-            raise ValueError(
-                f"Container App resource ID segment {position} must be {expected}"
-            )
+            raise ValueError(f"Container App resource ID segment {position} must be {expected}")
 
     for position in (2, 4, 8):
         if not segments[position]:
-            raise ValueError(
-                f"Container App resource ID segment {position} must not be empty"
-            )
+            raise ValueError(f"Container App resource ID segment {position} must not be empty")
 
     if segments[4].casefold() != expected_resource_group.casefold():
         raise ValueError("Container App resource group does not match the expected resource group")
     if segments[8].casefold() != expected_name.casefold():
         raise ValueError("Container App name does not match the expected name")
 
-    return (
-        f"/subscriptions/{segments[2]}"
-        f"/resourceGroups/{segments[4]}"
-        f"/providers/Microsoft.App/containerApps/{segments[8]}"
-    )
+    return f"/subscriptions/{segments[2]}/resourceGroups/{segments[4]}/providers/Microsoft.App/containerApps/{segments[8]}"
 
 
 def main() -> int:

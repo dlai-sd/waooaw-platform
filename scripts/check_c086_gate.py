@@ -22,8 +22,14 @@ REPO_ROOT = Path(__file__).parent.parent
 
 # Tasks that use callable handlers (legacy path) — no simulation required
 LEGACY_TASKS = {
-    "WC011-01", "WC011-02", "WC011-03", "WC011-04", "WC011-05", "WC011-07",
-    "WC012-01", "WC012-02",
+    "WC011-01",
+    "WC011-02",
+    "WC011-03",
+    "WC011-04",
+    "WC011-05",
+    "WC011-07",
+    "WC012-01",
+    "WC012-02",
 }
 
 
@@ -84,10 +90,7 @@ def main() -> int:
             continue
 
         # Find matching SIM-PL-002 file (case-insensitive filename search)
-        matches = (
-            list(sim_dir.glob(f"SIM-PL-002-{task}-*.md")) or
-            list(sim_dir.glob(f"SIM-PL-002-{task.lower()}-*.md"))
-        )
+        matches = list(sim_dir.glob(f"SIM-PL-002-{task}-*.md")) or list(sim_dir.glob(f"SIM-PL-002-{task.lower()}-*.md"))
 
         if not matches:
             print(f"  ❌ C-086: {task} — no simulation found")

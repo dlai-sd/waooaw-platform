@@ -15,14 +15,16 @@ public sealed record ContinueAcquisitionRequest(
     string Intent,
     string DisclosureRevision,
     string TermsVersion,
-    string Acceptance);
+    string Acceptance
+);
 
 public sealed record AcquisitionContinuationResponse(
     Guid RelationshipId,
     string Intent,
     string Status,
     string ResumePath,
-    bool Replayed);
+    bool Replayed
+);
 
 [ApiController]
 [Authorize]
@@ -31,7 +33,8 @@ public sealed class AcquisitionController(
     IDbContextFactory<EmploymentRelationshipDbContext> dbFactory,
     IProfessionalCatalog catalog,
     EmploymentRelationshipService relationships,
-    RelationshipTrialService? trials = null) : ControllerBase
+    RelationshipTrialService? trials = null
+) : ControllerBase
 {
     [HttpPost]
     [CustomerIdentityRoute(requiresMembership: true)]
@@ -39,83 +42,156 @@ public sealed class AcquisitionController(
         [FromBody] ContinueAcquisitionRequest request,
         [FromHeader(Name = "Idempotency-Key")] Guid? idempotencyKey,
         [FromHeader(Name = "X-Correlation-ID")] Guid? correlationId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
-        if (!TryGetMembership(out var tenantId, out var participantId)) return Forbid();
+        if (!TryGetMembership(out var tenantId, out var participantId))
+            return Forbid();
         if (!idempotencyKey.HasValue || idempotencyKey == Guid.Empty)
-            return Problem(statusCode: StatusCodes.Status400BadRequest, title: "Idempotency key is required");
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Idempotency key is required"
+            );
 
         var intent = request.Intent.Trim().ToUpperInvariant();
         var disclosure = catalog.GetDisclosure(request.ProfessionalType);
-        if (request.Acceptance != "ACCEPT_DISCLOSURE"
+        if (
+            request.Acceptance != "ACCEPT_DISCLOSURE"
             || intent is not ("TRIAL" or "HIRE")
             || disclosure is null
             || !disclosure.Eligibility.Eligible
-            || !string.Equals(disclosure.ProjectionVersion, request.ProfessionalVersion, StringComparison.Ordinal)
-            || !string.Equals(disclosure.DisclosureRevision, request.DisclosureRevision, StringComparison.Ordinal)
-            || !string.Equals(disclosure.TermsVersion, request.TermsVersion, StringComparison.Ordinal)
-            || (intent == "TRIAL" && !disclosure.Trial.Available))
-            return Problem(statusCode: StatusCodes.Status409Conflict, title: "Acquisition disclosure is stale or invalid");
+            || !string.Equals(
+                disclosure.ProjectionVersion,
+                request.ProfessionalVersion,
+                StringComparison.Ordinal
+            )
+            || !string.Equals(
+                disclosure.DisclosureRevision,
+                request.DisclosureRevision,
+                StringComparison.Ordinal
+            )
+            || !string.Equals(
+                disclosure.TermsVersion,
+                request.TermsVersion,
+                StringComparison.Ordinal
+            )
+            || (intent == "TRIAL" && !disclosure.Trial.Available)
+        )
+            return Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: "Acquisition disclosure is stale or invalid"
+            );
 
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        var admissionId = await db.AgentAdmissions.AsNoTracking()
-            .Where(value => value.TenantId == tenantId
+        var admissionId = await db
+            .AgentAdmissions.AsNoTracking()
+            .Where(value =>
+                value.TenantId == tenantId
                 && value.State == AgentAdmissionState.Active
                 && value.ProfessionalTypeId == disclosure.ProfessionalType
                 && value.ProfessionalVersion == disclosure.ProjectionVersion
                 && value.AdmissionContentDigest != null
                 && value.EvidenceSetDigest != null
-                && value.ArtifactDigest != null)
+                && value.ArtifactDigest != null
+            )
             .OrderByDescending(value => value.UpdatedAt)
             .Select(value => (Guid?)value.AdmissionId)
             .FirstOrDefaultAsync(cancellationToken);
         if (!admissionId.HasValue)
-            return Problem(statusCode: StatusCodes.Status409Conflict, title: "Professional is not currently available");
+            return Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: "Professional is not currently available"
+            );
 
         try
         {
             var result = await relationships.AdmitFromAcquisitionAsync(
-                tenantId, participantId, idempotencyKey.Value, disclosure.ProfessionalType,
-                admissionId.Value, disclosure.ProjectionVersion, correlationId ?? Guid.NewGuid(),
+                tenantId,
+                participantId,
+                idempotencyKey.Value,
+                disclosure.ProfessionalType,
+                admissionId.Value,
+                disclosure.ProjectionVersion,
+                correlationId ?? Guid.NewGuid(),
                 new RelationshipAcquisitionEvidence(
-                    intent, disclosure.DisclosureRevision, disclosure.TermsVersion, DateTimeOffset.UtcNow),
-                cancellationToken);
+                    intent,
+                    disclosure.DisclosureRevision,
+                    disclosure.TermsVersion,
+                    DateTimeOffset.UtcNow
+                ),
+                cancellationToken
+            );
             var lifecycleCorrelationId = correlationId ?? idempotencyKey.Value;
             if (result.Relationship.State == EmploymentRelationshipState.Discovered)
             {
                 await relationships.TransitionAsync(
-                    tenantId, result.Relationship.RelationshipId, participantId,
-                    RelationshipParticipantRole.Evaluator, EmploymentRelationshipState.Interviewing,
-                    lifecycleCorrelationId, false, cancellationToken);
+                    tenantId,
+                    result.Relationship.RelationshipId,
+                    participantId,
+                    RelationshipParticipantRole.Evaluator,
+                    EmploymentRelationshipState.Interviewing,
+                    lifecycleCorrelationId,
+                    false,
+                    cancellationToken
+                );
             }
             if (intent == "TRIAL")
             {
                 if (trials is null)
-                    return Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Trial owners unavailable");
+                    return Problem(
+                        statusCode: StatusCodes.Status503ServiceUnavailable,
+                        title: "Trial owners unavailable"
+                    );
                 await trials.StartAsync(
-                    tenantId, result.Relationship.RelationshipId, participantId,
-                    lifecycleCorrelationId, cancellationToken);
+                    tenantId,
+                    result.Relationship.RelationshipId,
+                    participantId,
+                    lifecycleCorrelationId,
+                    cancellationToken
+                );
             }
-            else if (result.Relationship.State is EmploymentRelationshipState.Discovered
-                or EmploymentRelationshipState.Interviewing)
+            else if (
+                result.Relationship.State
+                is EmploymentRelationshipState.Discovered
+                    or EmploymentRelationshipState.Interviewing
+            )
             {
                 await relationships.TransitionAsync(
-                    tenantId, result.Relationship.RelationshipId, participantId,
-                    RelationshipParticipantRole.Evaluator, EmploymentRelationshipState.Configuring,
-                    lifecycleCorrelationId, false, cancellationToken);
+                    tenantId,
+                    result.Relationship.RelationshipId,
+                    participantId,
+                    RelationshipParticipantRole.Evaluator,
+                    EmploymentRelationshipState.Configuring,
+                    lifecycleCorrelationId,
+                    false,
+                    cancellationToken
+                );
             }
             var response = new AcquisitionContinuationResponse(
-                result.Relationship.RelationshipId, intent, "READY",
-                $"/relationships/{result.Relationship.RelationshipId}", !result.Created);
-            return result.Created ? StatusCode(StatusCodes.Status201Created, response) : Ok(response);
+                result.Relationship.RelationshipId,
+                intent,
+                "READY",
+                $"/relationships/{result.Relationship.RelationshipId}",
+                !result.Created
+            );
+            return result.Created
+                ? StatusCode(StatusCodes.Status201Created, response)
+                : Ok(response);
         }
         catch (ConstitutionalActionDeniedException exception)
         {
-            return Problem(statusCode: StatusCodes.Status403Forbidden, title: "Constitutional authorization denied", detail: exception.Message);
+            return Problem(
+                statusCode: StatusCodes.Status403Forbidden,
+                title: "Constitutional authorization denied",
+                detail: exception.Message
+            );
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            return Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Acquisition continuation unavailable");
+            return Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "Acquisition continuation unavailable"
+            );
         }
     }
 
@@ -123,8 +199,12 @@ public sealed class AcquisitionController(
     {
         tenantId = Guid.Empty;
         participantId = Guid.Empty;
-        if (!HttpContext.Items.TryGetValue(CustomerMembershipMiddleware.MembershipItem, out var value)
-            || value is not CustomerWorkspaceMembership membership)
+        if (
+            !HttpContext.Items.TryGetValue(
+                CustomerMembershipMiddleware.MembershipItem,
+                out var value
+            ) || value is not CustomerWorkspaceMembership membership
+        )
             return false;
         tenantId = membership.TenantId;
         participantId = membership.AccountId;

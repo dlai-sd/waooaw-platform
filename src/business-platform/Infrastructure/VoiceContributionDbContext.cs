@@ -110,11 +110,20 @@ public sealed class VoiceContributionDbContext : DbContext
         ConfigureTombstone(modelBuilder.Entity<VoiceErasureTombstone>());
     }
 
-    private static void ConfigureSession(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<VoiceContributionSession> entity)
+    private static void ConfigureSession(
+        Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<VoiceContributionSession> entity
+    )
     {
         entity.ToTable("voice_contribution_sessions", "business");
         entity.HasKey(value => value.SessionId);
-        entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.SessionId }).IsUnique();
+        entity
+            .HasIndex(value => new
+            {
+                value.TenantId,
+                value.RelationshipId,
+                value.SessionId,
+            })
+            .IsUnique();
         entity.HasIndex(value => new { value.TenantId, value.ContributionId }).IsUnique();
         entity.Property(value => value.SessionId).HasColumnName("session_id");
         entity.Property(value => value.TenantId).HasColumnName("tenant_id");
@@ -125,15 +134,21 @@ public sealed class VoiceContributionDbContext : DbContext
         entity.Property(value => value.State).HasColumnName("state").IsConcurrencyToken();
         entity.Property(value => value.SelectedLocale).HasColumnName("selected_locale");
         entity.Property(value => value.ConsentVersion).HasColumnName("consent_version");
-        entity.Property(value => value.CurrentTranscriptVersion).HasColumnName("current_transcript_version");
-        entity.Property(value => value.AcceptedTranscriptId).HasColumnName("accepted_transcript_id");
+        entity
+            .Property(value => value.CurrentTranscriptVersion)
+            .HasColumnName("current_transcript_version");
+        entity
+            .Property(value => value.AcceptedTranscriptId)
+            .HasColumnName("accepted_transcript_id");
         entity.Property(value => value.EvidenceReference).HasColumnName("evidence_reference");
         entity.Property(value => value.CreatedAt).HasColumnName("created_at");
         entity.Property(value => value.UpdatedAt).HasColumnName("updated_at");
         entity.Property(value => value.ExpiresAt).HasColumnName("expires_at");
     }
 
-    private static void ConfigureAudio(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<VoiceAudioPayload> entity)
+    private static void ConfigureAudio(
+        Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<VoiceAudioPayload> entity
+    )
     {
         entity.ToTable("voice_audio_payloads", "business");
         entity.HasKey(value => value.AudioPayloadId);
@@ -154,18 +169,29 @@ public sealed class VoiceContributionDbContext : DbContext
         entity.Property(value => value.ErasedAt).HasColumnName("erased_at");
     }
 
-    private static void ConfigureTranscript(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<VoiceTranscriptVersion> entity)
+    private static void ConfigureTranscript(
+        Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<VoiceTranscriptVersion> entity
+    )
     {
         entity.ToTable("voice_transcript_versions", "business");
         entity.HasKey(value => value.TranscriptId);
-        entity.HasIndex(value => new { value.TenantId, value.SessionId, value.Version }).IsUnique();
+        entity
+            .HasIndex(value => new
+            {
+                value.TenantId,
+                value.SessionId,
+                value.Version,
+            })
+            .IsUnique();
         entity.Property(value => value.TranscriptId).HasColumnName("transcript_id");
         entity.Property(value => value.TenantId).HasColumnName("tenant_id");
         entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
         entity.Property(value => value.SessionId).HasColumnName("session_id");
         entity.Property(value => value.AudioPayloadId).HasColumnName("audio_payload_id");
         entity.Property(value => value.Version).HasColumnName("version");
-        entity.Property(value => value.PredecessorTranscriptId).HasColumnName("predecessor_transcript_id");
+        entity
+            .Property(value => value.PredecessorTranscriptId)
+            .HasColumnName("predecessor_transcript_id");
         entity.Property(value => value.Source).HasColumnName("source");
         entity.Property(value => value.Locale).HasColumnName("locale");
         entity.Property(value => value.LocaleSource).HasColumnName("locale_source");
@@ -178,18 +204,22 @@ public sealed class VoiceContributionDbContext : DbContext
         entity.Property(value => value.ErasedAt).HasColumnName("erased_at");
     }
 
-    private static void ConfigureIdempotency(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<VoiceIdempotencyOutcome> entity)
+    private static void ConfigureIdempotency(
+        Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<VoiceIdempotencyOutcome> entity
+    )
     {
         entity.ToTable("voice_idempotency_outcomes", "business");
         entity.HasKey(value => value.OutcomeId);
-        entity.HasIndex(value => new
-        {
-            value.TenantId,
-            value.RelationshipId,
-            value.ActorParticipantId,
-            value.Operation,
-            value.IdempotencyKey,
-        }).IsUnique();
+        entity
+            .HasIndex(value => new
+            {
+                value.TenantId,
+                value.RelationshipId,
+                value.ActorParticipantId,
+                value.Operation,
+                value.IdempotencyKey,
+            })
+            .IsUnique();
         entity.Property(value => value.OutcomeId).HasColumnName("outcome_id");
         entity.Property(value => value.TenantId).HasColumnName("tenant_id");
         entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
@@ -198,15 +228,27 @@ public sealed class VoiceContributionDbContext : DbContext
         entity.Property(value => value.Operation).HasColumnName("operation");
         entity.Property(value => value.IdempotencyKey).HasColumnName("idempotency_key");
         entity.Property(value => value.RequestSha256).HasColumnName("request_sha256");
-        entity.Property(value => value.ResponseJson).HasColumnName("response_json").HasColumnType("jsonb");
+        entity
+            .Property(value => value.ResponseJson)
+            .HasColumnName("response_json")
+            .HasColumnType("jsonb");
         entity.Property(value => value.CreatedAt).HasColumnName("created_at");
     }
 
-    private static void ConfigureTombstone(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<VoiceErasureTombstone> entity)
+    private static void ConfigureTombstone(
+        Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<VoiceErasureTombstone> entity
+    )
     {
         entity.ToTable("voice_erasure_tombstones", "business");
         entity.HasKey(value => value.TombstoneId);
-        entity.HasIndex(value => new { value.TenantId, value.ContributionId, value.Scope }).IsUnique();
+        entity
+            .HasIndex(value => new
+            {
+                value.TenantId,
+                value.ContributionId,
+                value.Scope,
+            })
+            .IsUnique();
         entity.Property(value => value.TombstoneId).HasColumnName("tombstone_id");
         entity.Property(value => value.TenantId).HasColumnName("tenant_id");
         entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");

@@ -32,6 +32,7 @@ Examples
   ANTHROPIC_API_KEY=sk-... docker compose run --rm udcp-runner \\
       python scripts/udcp_cli.py --task-id WC027-01a --mode live
 """
+
 from __future__ import annotations
 
 import argparse
@@ -101,6 +102,7 @@ def _mock_llm_fn(
 
 # ── Scope text resolution ─────────────────────────────────────────────────────
 
+
 def _load_scope(scope_arg: str | None, task_id: str, wc_file: str | None) -> str:
     """
     Resolve scope text from:
@@ -135,14 +137,12 @@ def _load_scope(scope_arg: str | None, task_id: str, wc_file: str | None) -> str
                 if len(parts) >= 2:
                     return parts[1]  # scope column
 
-    print(
-        _c(_YELLOW, f"  WARN: could not auto-resolve scope for {task_id}. "
-           "Pass --scope <text> or --wc <path>.")
-    )
+    print(_c(_YELLOW, f"  WARN: could not auto-resolve scope for {task_id}. Pass --scope <text> or --wc <path>."))
     return f"Implement {task_id}"
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
+
 
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
@@ -152,26 +152,31 @@ def _parse_args() -> argparse.Namespace:
     )
     p.add_argument("--task-id", required=True, help="e.g. WC027-01a")
     p.add_argument(
-        "--mode", choices=["dry", "mock", "live"], default="dry",
+        "--mode",
+        choices=["dry", "mock", "live"],
+        default="dry",
         help="dry=scaffold only | mock=stub LLM | live=real API (default: dry)",
     )
     p.add_argument("--scope", default=None, help="Scope text, or @path/to/file.txt")
     p.add_argument("--wc", default=None, help="Path to work-contract markdown (optional)")
     p.add_argument("--sprint-id", default="", help="Sprint ID (e.g. WC-027)")
     p.add_argument(
-        "--model", default="reasoning",
+        "--model",
+        default="reasoning",
         choices=["reasoning", "auto", "haiku", "sonnet"],
         help="Model hint (live mode only, default: reasoning)",
     )
     p.add_argument("--max-tokens", type=int, default=8000)
     p.add_argument(
-        "--extra-context", action="append", default=[],
+        "--extra-context",
+        action="append",
+        default=[],
         metavar="FILE",
-        help="Append content of FILE to scope text (repeat for multiple). "
-             "Use to pass prior-task output as context.",
+        help="Append content of FILE to scope text (repeat for multiple). Use to pass prior-task output as context.",
     )
     p.add_argument(
-        "--show-prompt", action="store_true",
+        "--show-prompt",
+        action="store_true",
         help="In dry mode: print the full scaffold content to stdout",
     )
     return p.parse_args()

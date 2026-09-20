@@ -8,11 +8,16 @@ namespace Waooaw.BusinessPlatform.Controllers;
 
 internal static class LegacyEmploymentCompatibility
 {
-    public static bool TryGetIdentity(HttpContext context, out Guid tenantId, out Guid participantId)
+    public static bool TryGetIdentity(
+        HttpContext context,
+        out Guid tenantId,
+        out Guid participantId
+    )
     {
         tenantId = default;
         participantId = default;
-        var participant = context.User.FindFirstValue("participant_id")
+        var participant =
+            context.User.FindFirstValue("participant_id")
             ?? context.User.FindFirstValue(ClaimTypes.NameIdentifier);
         return context.Items.TryGetValue(TenantIsolationMiddleware.TenantIdItemKey, out var tenant)
             && tenant is string tenantText
@@ -23,6 +28,7 @@ internal static class LegacyEmploymentCompatibility
     public static void AddDeprecationHeaders(HttpResponse response, Guid relationshipId)
     {
         response.Headers["Deprecation"] = "true";
-        response.Headers.Link = $"</api/v1/employment/relationships/{relationshipId}>; rel=\"successor-version\"";
+        response.Headers.Link =
+            $"</api/v1/employment/relationships/{relationshipId}>; rel=\"successor-version\"";
     }
 }

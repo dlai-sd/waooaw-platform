@@ -192,9 +192,7 @@ def validate_registry_manifest(
     return sorted(violations)
 
 
-def create_registry_manifest(
-    digest_directory: Path, evidence_directory: Path, source_commit: str, run_id: str
-) -> dict[str, Any]:
+def create_registry_manifest(digest_directory: Path, evidence_directory: Path, source_commit: str, run_id: str) -> dict[str, Any]:
     digest_files = {path.stem: path for path in digest_directory.glob("*.digest")}
     if set(digest_files) != RELEASE_MEMBERS:
         raise ValueError("digest directory must contain exactly the seven release-member digest files")
@@ -205,22 +203,10 @@ def create_registry_manifest(
     scan_files = {path.stem.removeprefix("trivy-"): path for path in evidence_directory.glob("trivy-*.sarif")}
     if set(scan_files) != RELEASE_MEMBERS:
         raise ValueError("evidence directory must contain exactly the seven release-member SARIF files")
-    sbom_files = {
-        path.name.removesuffix(".sbom.json"): path for path in evidence_directory.glob("*.sbom.json")
-    }
-    provenance_files = {
-        path.name.removesuffix(".provenance.json"): path
-        for path in evidence_directory.glob("*.provenance.json")
-    }
-    signature_files = {
-        path.name.removesuffix(".signature.jsonl"): path
-        for path in evidence_directory.glob("*.signature.jsonl")
-    }
-    if (
-        set(sbom_files) != RELEASE_MEMBERS
-        or set(provenance_files) != RELEASE_MEMBERS
-        or set(signature_files) != RELEASE_MEMBERS
-    ):
+    sbom_files = {path.name.removesuffix(".sbom.json"): path for path in evidence_directory.glob("*.sbom.json")}
+    provenance_files = {path.name.removesuffix(".provenance.json"): path for path in evidence_directory.glob("*.provenance.json")}
+    signature_files = {path.name.removesuffix(".signature.jsonl"): path for path in evidence_directory.glob("*.signature.jsonl")}
+    if set(sbom_files) != RELEASE_MEMBERS or set(provenance_files) != RELEASE_MEMBERS or set(signature_files) != RELEASE_MEMBERS:
         raise ValueError("evidence directory must contain exactly seven registry SBOM, provenance and signature files")
     for member in RELEASE_MEMBERS:
         _validate_scan(scan_files[member])
@@ -294,9 +280,7 @@ def main() -> int:
         return 0 if not violations else 1
     if None in (args.digest_directory, args.evidence_directory, args.output, args.source_commit, args.run_id):
         parser.error("creation requires digest_directory, evidence_directory, output, --source-commit and --run-id")
-    manifest = create_registry_manifest(
-        args.digest_directory, args.evidence_directory, args.source_commit, args.run_id
-    )
+    manifest = create_registry_manifest(args.digest_directory, args.evidence_directory, args.source_commit, args.run_id)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return 0

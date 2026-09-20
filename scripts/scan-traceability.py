@@ -24,7 +24,6 @@ import argparse
 import json
 import re
 import subprocess
-import sys
 from collections import defaultdict
 from pathlib import Path
 
@@ -38,32 +37,39 @@ CLAIMS_DIR = REPO_ROOT / "knowledge" / "claims"
 # Patterns that indicate constitutional annotation in source files
 ANNOTATION_PATTERNS = [
     # Python decorator
-    re.compile(r'@constitutional\s*\(\s*claims\s*=\s*\[([^\]]+)\]', re.MULTILINE),
+    re.compile(r"@constitutional\s*\(\s*claims\s*=\s*\[([^\]]+)\]", re.MULTILINE),
     # Python file header
-    re.compile(r'#\s*constitutional_basis:\s*([C\d\s,\-]+)', re.MULTILINE),
+    re.compile(r"#\s*constitutional_basis:\s*([C\d\s,\-]+)", re.MULTILINE),
     # .NET attribute
-    re.compile(r'\[ConstitutionalClaim\s*\(\s*claims\s*:\s*new\s*\[\]\s*\{([^}]+)\}', re.MULTILINE),
+    re.compile(r"\[ConstitutionalClaim\s*\(\s*claims\s*:\s*new\s*\[\]\s*\{([^}]+)\}", re.MULTILINE),
     # .NET file header
-    re.compile(r'//\s*constitutional_basis:\s*([C\d\s,\-]+)', re.MULTILINE),
+    re.compile(r"//\s*constitutional_basis:\s*([C\d\s,\-]+)", re.MULTILINE),
     # TypeScript JSDoc
-    re.compile(r'@constitutional\s+([C\d\s,\-]+)', re.MULTILINE),
+    re.compile(r"@constitutional\s+([C\d\s,\-]+)", re.MULTILINE),
     # SQL file header
-    re.compile(r'--\s*constitutional_basis:\s*([C\d\s,\-]+)', re.MULTILINE),
+    re.compile(r"--\s*constitutional_basis:\s*([C\d\s,\-]+)", re.MULTILINE),
 ]
 
 # Files that must have constitutional annotations
 MUST_ANNOTATE_PATTERNS = [
-    "*.cs",    # .NET source
-    "*.py",    # Python source (not tests)
-    "*.tsx",   # TypeScript React components
-    "*.ts",    # TypeScript
-    "*.sql",   # DB migrations
+    "*.cs",  # .NET source
+    "*.py",  # Python source (not tests)
+    "*.tsx",  # TypeScript React components
+    "*.ts",  # TypeScript
+    "*.sql",  # DB migrations
 ]
 
 # Files/dirs to skip
 SKIP_PATTERNS = [
-    "node_modules", ".venv", "__pycache__", ".git",
-    "dist", "build", ".next", "*.test.*", "*.spec.*",
+    "node_modules",
+    ".venv",
+    "__pycache__",
+    ".git",
+    "dist",
+    "build",
+    ".next",
+    "*.test.*",
+    "*.spec.*",
     "conftest.py",  # Test config — no constitutional annotation required
 ]
 
@@ -72,8 +78,11 @@ def get_changed_files() -> list[Path]:
     """Get list of changed files in this PR vs main."""
     try:
         result = subprocess.run(
-            ["git", "diff", "--name-only", "origin/main...HEAD"],
-            capture_output=True, text=True, cwd=REPO_ROOT, check=True
+            ["git", "diff", "--name-only", "origin/main...HEAD"],  # noqa: S607
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
+            check=True,
         )
         return [REPO_ROOT / f for f in result.stdout.strip().splitlines() if f]
     except subprocess.CalledProcessError:
@@ -92,7 +101,7 @@ def extract_claims_from_file(path: Path) -> set[str]:
         for match in pattern.finditer(content):
             raw = match.group(1)
             # Extract individual C-NNN references
-            found = re.findall(r'C-\d{3}', raw)
+            found = re.findall(r"C-\d{3}", raw)
             claims.update(found)
     return claims
 
@@ -107,9 +116,9 @@ def has_constitutional_header(path: Path) -> bool:
     # Check for file-level header (first 15 lines)
     first_lines = "\n".join(content.splitlines()[:15])
     header_patterns = [
-        r'constitutional_basis:',
-        r'@constitutional',
-        r'ConstitutionalClaim',
+        r"constitutional_basis:",
+        r"@constitutional",
+        r"ConstitutionalClaim",
     ]
     return any(re.search(p, first_lines) for p in header_patterns)
 
@@ -117,9 +126,9 @@ def has_constitutional_header(path: Path) -> bool:
 def is_skipped(path: Path) -> bool:
     """Check if a path should be skipped."""
     parts = path.parts
-    return any(skip in parts for skip in SKIP_PATTERNS) or \
-           any(path.name.endswith(skip.lstrip("*")) for skip in SKIP_PATTERNS
-               if skip.startswith("*."))
+    return any(skip in parts for skip in SKIP_PATTERNS) or any(
+        path.name.endswith(skip.lstrip("*")) for skip in SKIP_PATTERNS if skip.startswith("*.")
+    )
 
 
 def build_traceability_index(files: list[Path]) -> dict[str, list[str]]:
@@ -144,7 +153,7 @@ def get_amended_claims() -> list[str]:
     for f in changed:
         if CLAIMS_DIR in f.parents and f.suffix == ".md":
             # Extract claim ID from filename: C-041.md → C-041
-            match = re.match(r'(C-\d{3})\.md', f.name)
+            match = re.match(r"(C-\d{3})\.md", f.name)
             if match:
                 amended.append(match.group(1))
     return amended
@@ -166,14 +175,10 @@ def scan_src_files() -> list[Path]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="C-073 Constitutional Traceability Scanner")
-    parser.add_argument("--changed-only", action="store_true",
-                        help="Only scan files changed in this PR")
-    parser.add_argument("--claim", metavar="C-NNN",
-                        help="Find all files tagged with this claim ID")
-    parser.add_argument("--amended-claims", action="store_true",
-                        help="Detect claims changed in this PR and list tagged code")
-    parser.add_argument("--report", metavar="FILE",
-                        help="Write JSON traceability index to file")
+    parser.add_argument("--changed-only", action="store_true", help="Only scan files changed in this PR")
+    parser.add_argument("--claim", metavar="C-NNN", help="Find all files tagged with this claim ID")
+    parser.add_argument("--amended-claims", action="store_true", help="Detect claims changed in this PR and list tagged code")
+    parser.add_argument("--report", metavar="FILE", help="Write JSON traceability index to file")
     args = parser.parse_args()
 
     # ── Mode: find all files tagged with a specific claim ──────────────────
@@ -205,9 +210,11 @@ def main() -> None:
 
     # ── Mode: full scan or changed-only scan ────────────────────────────────
     if args.changed_only:
-        files = [f for f in get_changed_files()
-                 if f.exists() and not is_skipped(f)
-                 and f.suffix in {".cs", ".py", ".ts", ".tsx", ".sql"}]
+        files = [
+            f
+            for f in get_changed_files()
+            if f.exists() and not is_skipped(f) and f.suffix in {".cs", ".py", ".ts", ".tsx", ".sql"}
+        ]
         print(f"Scanning {len(files)} changed source file(s) for C-073 compliance...")
     else:
         files = scan_src_files()

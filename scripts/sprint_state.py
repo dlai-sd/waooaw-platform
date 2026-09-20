@@ -54,14 +54,14 @@ def set_field(content: str, key: str, value: str) -> str:
     # Pattern: key: <value_part> <whitespace> # optional comment
     # Use [ \t]* (not \s*) to prevent consuming newlines and stripping the closing ``` fence
     pattern = re.compile(
-        r'^(' + re.escape(key) + r':[ \t]*)([^\n#]*?)([ \t]*)(#[^\n]*)?$',
+        r"^(" + re.escape(key) + r":[ \t]*)([^\n#]*?)([ \t]*)(#[^\n]*)?$",
         re.MULTILINE,
     )
 
     def replacer(m: re.Match) -> str:
-        pfx = m.group(1)          # "key: "
+        pfx = m.group(1)  # "key: "
         padding = m.group(3) or "    "  # whitespace before comment
-        comment = m.group(4) or ""   # "# optional comment"
+        comment = m.group(4) or ""  # "# optional comment"
         return f"{pfx}{value}{padding}{comment}".rstrip()
 
     new_sm_part, n = pattern.subn(replacer, sm_part)
@@ -82,7 +82,7 @@ def cmd_set(args: argparse.Namespace) -> None:
         print(f"  set {key} = {value}")
 
     write_state_file(content)
-    print(f"✓ PROJECT_STATE.md updated ({len(args.pairs)//2} field(s))")
+    print(f"✓ PROJECT_STATE.md updated ({len(args.pairs) // 2} field(s))")
 
 
 def cmd_advance(args: argparse.Namespace) -> None:

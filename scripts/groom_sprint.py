@@ -49,13 +49,12 @@ _SCRIPTS = str(REPO_ROOT / "scripts")
 if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
 
-from runner.llm_codegen import call_llm_via_magiclm  # noqa: E402
 RUNNER_PATH = REPO_ROOT / "scripts" / "autonomous_sprint_runner.py"
-STATE_PATH  = REPO_ROOT / "scripts" / "sprint_state.py"
+STATE_PATH = REPO_ROOT / "scripts" / "sprint_state.py"
 PROJECT_STATE = REPO_ROOT / "constitution" / "PROJECT_STATE.md"
 
 # Injection anchors (must match strings added by this session)
-RUNNER_ANCHOR  = "# ── GROOMER INJECTION POINT — groom_sprint.py injects new sprint handlers here ──"
+RUNNER_ANCHOR = "# ── GROOMER INJECTION POINT — groom_sprint.py injects new sprint handlers here ──"
 MANIFEST_ANCHOR = "# ── GROOMER MANIFEST INJECTION POINT — groom_sprint.py injects new sprint manifest here ──"
 
 # Maps sprint WC prefix → service skeleton directory
@@ -79,6 +78,7 @@ _SERVICE_MAP: dict[str, tuple[str, str]] = {
 
 # ── Sprint resolution ──────────────────────────────────────────────────────────
 
+
 def _read_current_sprint() -> str:
     """Read current_sprint from PROJECT_STATE.md SPRINT_STATE_MACHINE."""
     text = PROJECT_STATE.read_text()
@@ -89,6 +89,7 @@ def _read_current_sprint() -> str:
 
 
 # ── WC table parsing ───────────────────────────────────────────────────────────
+
 
 def _find_wc_file(sprint_key: str) -> Path | None:
     """Find work-contracts/WC-NNN-*.md for the given sprint key (e.g. 'WC-027')."""
@@ -121,12 +122,14 @@ def _parse_wc_tasks(wc_file: Path, sprint_prefix: str) -> list[dict]:
     )
     for m in table_row.finditer(safe_text):
         scope = m.group(2).strip().replace(_PIPE_ESC, "|")
-        tasks.append({
-            "task_id": m.group(1).strip(),
-            "scope":      scope,
-            "model_hint": m.group(4).strip(),
-            "title":      scope[:80],
-        })
+        tasks.append(
+            {
+                "task_id": m.group(1).strip(),
+                "scope": scope,
+                "model_hint": m.group(4).strip(),
+                "title": scope[:80],
+            }
+        )
 
     if tasks:
         return tasks
@@ -138,24 +141,27 @@ def _parse_wc_tasks(wc_file: Path, sprint_prefix: str) -> list[dict]:
         if not m:
             continue
         task_id = m.group(1)
-        title   = m.group(2).strip()
+        title = m.group(2).strip()
 
-        def _field(name: str) -> str:
-            fm = re.search(r"\*\*" + re.escape(name) + r":\*\*\s*(.*?)(?=\n\*\*|\Z)", block, re.DOTALL)
+        def _field(name: str, source: str = block) -> str:
+            fm = re.search(r"\*\*" + re.escape(name) + r":\*\*\s*(.*?)(?=\n\*\*|\Z)", source, re.DOTALL)
             v = fm.group(1).strip() if fm else ""
             return re.sub(r"^`([^`]+)`$", r"\1", v)
 
-        tasks.append({
-            "task_id":    task_id,
-            "scope":      _field("Scope") or title,
-            "model_hint": _field("model_hint") or "auto",
-            "title":      title,
-        })
+        tasks.append(
+            {
+                "task_id": task_id,
+                "scope": _field("Scope") or title,
+                "model_hint": _field("model_hint") or "auto",
+                "title": title,
+            }
+        )
 
     return tasks
 
 
 # ── Already-groomed detection ──────────────────────────────────────────────────
+
 
 def _remove_groomed_entry(task_id: str) -> None:
     """Remove a corrupted task entry block from TASK_HANDLERS so it can be re-injected."""
@@ -170,8 +176,7 @@ def _remove_groomed_entry(task_id: str) -> None:
     # Find where this entry ends: next 8-space "WC task key or the injection anchor
     end = len(lines)
     for i in range(start + 1, len(lines)):
-        stripped = lines[i].lstrip()
-        if lines[i].startswith('        "WC') or lines[i].startswith('    # ──'):
+        if lines[i].startswith('        "WC') or lines[i].startswith("    # ──"):
             end = i
             break
     RUNNER_PATH.write_text("".join(lines[:start] + lines[end:]))
@@ -186,7 +191,7 @@ def _already_groomed(task_id: str) -> bool:
     if f'"{task_id}"' not in content and f"'{task_id}'" not in content:
         return False
     canonical_scaffold = f"{task_id}a"
-    if f'id="{canonical_scaffold}"' not in content and f"id=\'{canonical_scaffold}\'" not in content:
+    if f'id="{canonical_scaffold}"' not in content and f"id='{canonical_scaffold}'" not in content:
         print(f"  ⚠️  {task_id}: entry has non-canonical scaffold id — removing for re-groom")
         _remove_groomed_entry(task_id)
         return False
@@ -194,6 +199,7 @@ def _already_groomed(task_id: str) -> bool:
 
 
 # ── Skeleton reading ───────────────────────────────────────────────────────────
+
 
 def _read_skeleton(sprint_prefix: str) -> str:
     """Read all skeleton/*.py files for the service and return concatenated content."""
@@ -270,7 +276,8 @@ def _llm_call(prompt: str, system: str, api_key: str, max_tokens: int = 2048) ->
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
+        response = urllib.request.urlopen(req, timeout=60)  # noqa: S310
+        with response as resp:
             body = _json.loads(resp.read().decode())
         for block in body.get("content", []):
             if block.get("type") == "text":
@@ -285,8 +292,8 @@ def _strip_llm_fences(text: str) -> str:
     """Extract bare SubTaskDef literal from XML file-block envelope, fences, or plain output."""
     text = text.strip()
     if text.startswith("```"):
-        text = re.sub(r'^```\w*\n?', '', text)
-        text = re.sub(r'\n?```\s*$', '', text)
+        text = re.sub(r"^```\w*\n?", "", text)
+        text = re.sub(r"\n?```\s*$", "", text)
         text = text.strip()
     idx = text.find("SubTaskDef(")
     if idx > 0:
@@ -352,11 +359,12 @@ def _extract_output_files(subtaskdef_literal: str, include_tests: bool = False) 
     receives only implementation files.  Pass include_tests=True for test tasks where
     the scaffold itself produces test files that the polish pass must annotate.
     """
-    m = re.search(r'output_files\s*=\s*\[(.*?)\]', subtaskdef_literal, re.DOTALL)
+    m = re.search(r"output_files\s*=\s*\[(.*?)\]", subtaskdef_literal, re.DOTALL)
     if not m:
         return []
     return [
-        p for p in re.findall(r'["\']([^"\']+\.py)["\']', m.group(1))
+        p
+        for p in re.findall(r'["\']([^"\']+\.py)["\']', m.group(1))
         if (include_tests or not p.startswith("tests/")) and "skeleton" not in p
     ]
 
@@ -364,10 +372,7 @@ def _extract_output_files(subtaskdef_literal: str, include_tests: bool = False) 
 def _extract_scope_paths(scope: str) -> list[str]:
     """Extract explicit .py file paths from a WC task scope string (deterministic, no LLM)."""
     clean = scope.replace("`", "")
-    return [
-        p for p in re.findall(r"(?:src|tests)/[\w/._-]+\.py", clean)
-        if "skeleton" not in p
-    ]
+    return [p for p in re.findall(r"(?:src|tests)/[\w/._-]+\.py", clean) if "skeleton" not in p]
 
 
 def _derive_service_dir(output_files: list[str]) -> str:
@@ -396,6 +401,7 @@ def _list_skeleton_files(sprint_prefix: str) -> list[str]:
 def _parse_prose_response(text: str) -> tuple[str, str]:
     """Extract (description, constitutional_check) from LLM JSON prose response."""
     import json as _json
+
     text = re.sub(r"^```\w*\n?", "", text.strip())
     text = re.sub(r"\n?```\s*$", "", text).strip()
     try:
@@ -433,19 +439,19 @@ def _build_scaffold_subtaskdef(
 ) -> str:
     """Build SubTaskDef literal from structured data — zero LLM path generation."""
     compile_gate = "ruff" if is_test else "py_compile"
-    depends_on_str = f"[{repr(prior_subtask_id)}]" if prior_subtask_id else "[]"
-    files_str = "\n        ".join(f"{repr(f)}," for f in output_files)
-    inject_str = "\n        ".join(f"{repr(f)}," for f in inject_source_files)
+    depends_on_str = f"[{prior_subtask_id!r}]" if prior_subtask_id else "[]"
+    files_str = "\n        ".join(f"{f!r}," for f in output_files)
+    inject_str = "\n        ".join(f"{f!r}," for f in inject_source_files)
     return (
         f"SubTaskDef(\n"
-        f"    id={repr(task_id + 'a')},\n"
-        f"    description={repr(description)},\n"
-        f"    type=\"llm\",\n"
+        f"    id={task_id + 'a'!r},\n"
+        f"    description={description!r},\n"
+        f'    type="llm",\n'
         f"    depends_on={depends_on_str},\n"
-        f"    compile_gate={repr(compile_gate)},\n"
-        f"    service_dir={repr(service_dir)},\n"
-        f"    wc_task_id={repr(task_id)},\n"
-        f"    stack={repr(stack)},\n"
+        f"    compile_gate={compile_gate!r},\n"
+        f"    service_dir={service_dir!r},\n"
+        f"    wc_task_id={task_id!r},\n"
+        f"    stack={stack!r},\n"
         f"    output_files=[\n"
         f"        {files_str}\n"
         f"    ],\n"
@@ -453,10 +459,10 @@ def _build_scaffold_subtaskdef(
         f"        {inject_str}\n"
         f"    ],\n"
         f"    spec_sections={{\n"
-        f"        {repr('work-contracts/' + wc_filename)}: {repr(task_id)},\n"
+        f"        {'work-contracts/' + wc_filename!r}: {task_id!r},\n"
         f"    }},\n"
-        f"    constitutional_check={repr(constitutional_check)},\n"
-        f"    model_hint={repr(model_hint)},\n"
+        f"    constitutional_check={constitutional_check!r},\n"
+        f"    model_hint={model_hint!r},\n"
         f"    max_tokens={max_tokens},\n"
         f")"
     )
@@ -744,10 +750,16 @@ def _generate_subtask_chain(
 
     # Pass 1: scaffold (LLM for prose only; paths are deterministic)
     scaffold_literal = _generate_scaffold_subtaskdef(
-        task=task, stack=stack, service_dir=service_dir,
-        output_files=output_files, inject_source_files=inject_source_files,
-        prior_subtask_id=prior_subtask_id, wc_filename=wc_filename,
-        skeleton=skeleton, api_key=api_key, is_test=is_test,
+        task=task,
+        stack=stack,
+        service_dir=service_dir,
+        output_files=output_files,
+        inject_source_files=inject_source_files,
+        prior_subtask_id=prior_subtask_id,
+        wc_filename=wc_filename,
+        skeleton=skeleton,
+        api_key=api_key,
+        is_test=is_test,
     )
     if not scaffold_literal:
         return None
@@ -762,21 +774,31 @@ def _generate_subtask_chain(
 
     # Pass 2: polish (fully templated, no LLM call)
     polish_literal = _generate_polish_subtaskdef(
-        task_id=task_id, scaffold_output_files=scaffold_output_files,
-        service_dir=service_dir, wc_filename=wc_filename, stack=stack,
+        task_id=task_id,
+        scaffold_output_files=scaffold_output_files,
+        service_dir=service_dir,
+        wc_filename=wc_filename,
+        stack=stack,
         scaffold_id=scaffold_id,
     )
 
     # Pass 3: test/pytest-run (fully templated for both impl and test tasks)
     if is_test:
         test_literal = _generate_pytest_run_subtaskdef(
-            task_id=task_id, test_output_files=scaffold_output_files,
-            wc_filename=wc_filename, stack=stack, polish_id=f"{task_id}b",
+            task_id=task_id,
+            test_output_files=scaffold_output_files,
+            wc_filename=wc_filename,
+            stack=stack,
+            polish_id=f"{task_id}b",
         )
     else:
         test_literal = _generate_test_subtaskdef(
-            task=task, scaffold_output_files=scaffold_output_files,
-            service_dir=service_dir, wc_filename=wc_filename, stack=stack, api_key=api_key,
+            task=task,
+            scaffold_output_files=scaffold_output_files,
+            service_dir=service_dir,
+            wc_filename=wc_filename,
+            stack=stack,
+            api_key=api_key,
         )
         if not test_literal:
             print(f"  ❌ {task_id}: test SubTaskDef generation failed — cannot build complete chain")
@@ -791,6 +813,7 @@ def _generate_subtask_chain(
 
 # ── Validation ────────────────────────────────────────────────────────────────
 
+
 def _validate_generated_entry(code: str, task_id: str) -> bool:
     """
     Validate the generated TASK_HANDLERS entry.
@@ -802,7 +825,7 @@ def _validate_generated_entry(code: str, task_id: str) -> bool:
         print(f"  ❌ Validation: missing task_id key '{task_id}' in generated code")
         return False
     if "SubTaskDef(" not in code:
-        print(f"  ❌ Validation: no SubTaskDef( in generated code")
+        print("  ❌ Validation: no SubTaskDef( in generated code")
         return False
     if f'"{task_id}a"' not in code and f"'{task_id}a'" not in code:
         print(f"  ❌ Validation: missing scaffold subtask '{task_id}a' — id not normalised")
@@ -855,6 +878,7 @@ _entry = {{
 
 # ── Injection ─────────────────────────────────────────────────────────────────
 
+
 def _inject_task_handler(code: str) -> bool:
     """Inject the generated TASK_HANDLERS entry before the GROOMER INJECTION POINT anchor."""
     content = RUNNER_PATH.read_text()
@@ -890,10 +914,13 @@ def _inject_manifest_entry(sprint_key: str, task_ids: list[str]) -> bool:
 
 # ── Lint gate ─────────────────────────────────────────────────────────────────
 
+
 def _run_ruff(path: Path) -> bool:
-    result = subprocess.run(
-        ["python3", "-m", "ruff", "check", "--select", "E,F", "--ignore", "E501,F401,F811", str(path)],
-        capture_output=True, text=True, cwd=REPO_ROOT
+    result = subprocess.run(  # noqa: S603
+        ["python3", "-m", "ruff", "check", "--select", "E,F", "--ignore", "E501,F401,F811", str(path)],  # noqa: S607
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
     )
     if result.returncode != 0:
         print(f"  ⚠️  ruff warnings (non-blocking):\n{result.stdout[:500]}")
@@ -901,6 +928,7 @@ def _run_ruff(path: Path) -> bool:
 
 
 # ── Git commit ────────────────────────────────────────────────────────────────
+
 
 def _git_commit(sprint_key: str, dry_run: bool) -> None:
     if dry_run:
@@ -910,16 +938,16 @@ def _git_commit(sprint_key: str, dry_run: bool) -> None:
         ["git", "config", "user.email", "autonomy@waooaw.ai"],
         ["git", "config", "user.name", "WAOOAW Sprint Groomer"],
         ["git", "add", str(RUNNER_PATH)],
-        ["git", "commit", "--no-gpg-sign", "-m",
-         f"chore(pr): groom {sprint_key} SubTaskDefs from skeleton (ADR-036, C-059)"],
+        ["git", "commit", "--no-gpg-sign", "-m", f"chore(pr): groom {sprint_key} SubTaskDefs from skeleton (ADR-036, C-059)"],
         ["git", "push", "origin", "main"],
     ]:
-        r = subprocess.run(cmd, capture_output=True, text=True, cwd=REPO_ROOT)
+        r = subprocess.run(cmd, capture_output=True, text=True, cwd=REPO_ROOT)  # noqa: S603
         if r.returncode != 0 and "nothing to commit" not in r.stdout + r.stderr:
             print(f"  ⚠️  git cmd failed: {' '.join(cmd)}\n  {r.stderr[:200]}")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Groom sprint SubTaskDefs from WC + skeleton")
@@ -968,7 +996,7 @@ def main() -> int:
     skeleton_files = _list_skeleton_files(sprint_prefix)
     if not skeleton:
         print(f"  ⚠️  No skeleton found for {sprint_prefix} — grooming without blueprint")
-        print(f"  EA must produce skeleton before grooming can be skeleton-grounded (ADR-036)")
+        print("  EA must produce skeleton before grooming can be skeleton-grounded (ADR-036)")
 
     # 5. Get API key
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -1042,15 +1070,12 @@ def main() -> int:
 
     # 8. Compile gate (syntax check)
     if groomed_count > 0 and not args.dry_run:
-        r = subprocess.run(
-            ["python3", "-m", "py_compile", str(RUNNER_PATH)],
-            capture_output=True, text=True
-        )
+        r = subprocess.run(["python3", "-m", "py_compile", str(RUNNER_PATH)], capture_output=True, text=True)  # noqa: S603, S607
         if r.returncode != 0:
             print(f"  ❌ Syntax error after injection in {RUNNER_PATH.name}: {r.stderr[:300]}")
-            print(f"  CRITICAL: manual fix required — reverting is not possible in CI")
+            print("  CRITICAL: manual fix required — reverting is not possible in CI")
             return 1
-        print(f"  ✅ Syntax check passed for runner")
+        print("  ✅ Syntax check passed for runner")
 
     # 10. Commit to main
     if groomed_count > 0:

@@ -288,10 +288,7 @@ def validate_spec(slice_path: Path) -> dict[str, Any]:
             expects_idempotency = op_id in POST_WITH_IDEMPOTENCY
             has_idempotency = any(
                 isinstance(param, dict)
-                and (
-                    param.get("$ref", "").endswith("/IdempotencyKey")
-                    or param.get("name") == "Idempotency-Key"
-                )
+                and (param.get("$ref", "").endswith("/IdempotencyKey") or param.get("name") == "Idempotency-Key")
                 for param in parameters
             )
             _assert(expects_idempotency and has_idempotency, f"{op_id} must require Idempotency-Key")
@@ -324,7 +321,9 @@ def validate_spec(slice_path: Path) -> dict[str, Any]:
     _assert(mapping and len(mapping) == len(command_union.get("oneOf", [])), "Command discriminator mapping must be complete")
 
     command_request = spec["components"]["schemas"]["SubmitRelationshipCommandRequestV1"]
-    _assert(command_request.get("additionalProperties") is False, "SubmitRelationshipCommandRequestV1 must disallow untyped fallback")
+    _assert(
+        command_request.get("additionalProperties") is False, "SubmitRelationshipCommandRequestV1 must disallow untyped fallback"
+    )
 
     problem_codes = set(spec["components"]["schemas"]["RelationshipWorkspaceProblemCodeV1"]["enum"])
     _assert(problem_codes == EXPECTED_F4_CODES, "RelationshipWorkspaceProblemCodeV1 must match required F4 coverage")

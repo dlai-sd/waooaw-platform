@@ -26,11 +26,9 @@ Two-stage quality gate that sits BETWEEN LLM generation and file write:
 from __future__ import annotations
 
 import json
-import os
 import re
 import urllib.request
 from pathlib import Path
-from typing import Any
 
 REPO_ROOT = Path(__file__).parent.parent
 
@@ -154,9 +152,7 @@ def symbol_level_patch(
         return None
 
     # Parse error locations: file.cs(line,col): error CSxxxx: message
-    error_pattern = re.compile(
-        r"([^\s(]+\.cs)\((\d+),\d+\):\s*error\s+(CS\d+):\s*(.+)"
-    )
+    error_pattern = re.compile(r"([^\s(]+\.cs)\((\d+),\d+\):\s*error\s+(CS\d+):\s*(.+)")
 
     # Group errors by file
     errors_by_file: dict[str, list[tuple[int, str, str]]] = {}
@@ -183,7 +179,7 @@ def symbol_level_patch(
 
         # Collect all failing line ranges (merge overlapping windows)
         windows: list[tuple[int, int]] = []
-        for line_no, code, msg in errors:
+        for line_no, _code, _msg in errors:
             start = max(0, line_no - 15)
             end = min(len(lines), line_no + 15)
             windows.append((start, end))
@@ -195,11 +191,7 @@ def symbol_level_patch(
 
         for start, end in windows:
             region = "".join(lines[start:end])
-            error_summary = "; ".join(
-                f"line {ln}: {code} {msg}"
-                for ln, code, msg in errors
-                if start <= ln - 1 < end
-            )
+            error_summary = "; ".join(f"line {ln}: {code} {msg}" for ln, code, msg in errors if start <= ln - 1 < end)
             if not error_summary:
                 continue
 
@@ -214,7 +206,7 @@ def symbol_level_patch(
             try:
                 result = _call_haiku(prompt, api_key, max_tokens=800)
             except Exception as e:
-                print(f"  symbol_patch: Haiku failed for window {start+1}-{end} ({e})")
+                print(f"  symbol_patch: Haiku failed for window {start + 1}-{end} ({e})")
                 continue
 
             if not result:
@@ -228,7 +220,7 @@ def symbol_level_patch(
                     patch_lines += "\n"
                 patched_lines[start:end] = patch_lines.splitlines(keepends=True)
                 any_patched = True
-                print(f"  symbol_patch: {Path(file_path).name} lines {start+1}-{end} ✅ patched")
+                print(f"  symbol_patch: {Path(file_path).name} lines {start + 1}-{end} ✅ patched")
 
         if any_patched:
             patched_files[file_path] = "".join(patched_lines)
@@ -237,6 +229,7 @@ def symbol_level_patch(
 
 
 # ── Shared Haiku call ─────────────────────────────────────────────────────────
+
 
 def _call_haiku(prompt: str, api_key: str, max_tokens: int = 600) -> str | None:
     """Single Haiku call. ~$0.001. Used by both stages."""
@@ -257,12 +250,14 @@ def _call_haiku(prompt: str, api_key: str, max_tokens: int = 600) -> str | None:
         },
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
+    response = urllib.request.urlopen(req, timeout=30)  # noqa: S310
+    with response as resp:
         body = json.loads(resp.read().decode("utf-8"))
     return body["content"][0]["text"].strip() if body.get("content") else None
 
 
 # ── Utilities ─────────────────────────────────────────────────────────────────
+
 
 def _normalize_path(raw_path: str) -> str:
     """Convert absolute runner path to repo-relative."""

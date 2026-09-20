@@ -49,6 +49,7 @@ services:
   #   docker compose --profile test-python run --rm test-runner-python pytest tests/trust-layer/ tests/ai-runtime/ -v
   #   docker compose --profile test-python run --rm test-runner-python ruff check src/
   test-runner-python:
+    image: ${WAOOAW_RUNNER_PYTHON_IMAGE:-waooaw-platform-test-runner-python:local}
     build:
       context: .
       dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner-python
@@ -75,6 +76,7 @@ services:
       - test-python
 
   test-runner-dotnet:
+    image: ${WAOOAW_RUNNER_DOTNET_IMAGE:-waooaw-platform-test-runner-dotnet:local}
     build:
       context: .
       dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner-dotnet
@@ -98,11 +100,12 @@ services:
       - test-dotnet
 
   test-runner-ts:
+    image: ${WAOOAW_RUNNER_TYPESCRIPT_IMAGE:-waooaw-platform-test-runner-typescript:local}
     build:
       context: .
       dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner-ts
     volumes:
-      - ./web:/workspace/web:ro
+      - .:/workspace:ro
       - ./test-results:/workspace/test-results
     read_only: true
     tmpfs: ["/tmp:size=1g,mode=1777"]
@@ -120,6 +123,7 @@ services:
   # Usage:
   #   docker compose --profile test run --rm test-runner pytest tests/
   test-runner:
+    image: ${WAOOAW_RUNNER_FULL_IMAGE:-waooaw-platform-test-runner-full:local}
     build:
       context: .
       dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner
@@ -361,8 +365,8 @@ services:
 
   constitutional-engine:
     build:
-      context: ./src/constitutional-engine
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: src/constitutional-engine/Dockerfile
     ports:
       - "5002:5002"
     environment:
@@ -382,8 +386,8 @@ services:
 
   business-platform:
     build:
-      context: ./src/business-platform
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: src/business-platform/Dockerfile
     ports:
       - "5001:5001"
     environment:
@@ -435,8 +439,8 @@ services:
 
   professional-runtime:
     build:
-      context: ./src/professional-runtime
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: src/professional-runtime/Dockerfile
     ports:
       - "5003:5003"
     environment:
@@ -482,8 +486,8 @@ services:
 
   ai-runtime:
     build:
-      context: ./src/ai-runtime
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: src/ai-runtime/Dockerfile
     ports:
       - "5004:5004"
     environment:
@@ -611,8 +615,8 @@ services:
 
   billing-engine:
     build:
-      context: ./src/billing-engine
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: src/billing-engine/Dockerfile
     ports:
       - "8140:8140"
     environment:
@@ -1306,8 +1310,8 @@ services:
 
   web:
     build:
-      context: ./web
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: web/Dockerfile
     ports:
       - "3000:3000"
     environment:

@@ -45,12 +45,23 @@ def verify(issuer: str, web_url: str, api_url: str | None = None) -> dict[str, o
     opener = build_opener(NoRedirect(), HTTPCookieProcessor(http.cookiejar.CookieJar()))
     verifier = secrets.token_urlsafe(32)
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
-    target = issuer + "/protocol/openid-connect/auth?" + urlencode({
-        "client_id": "waooaw-web", "redirect_uri": web_url + "/api/auth/callback/keycloak-google",
-        "response_type": "code", "scope": "openid email profile", "kc_idp_hint": "google",
-        "code_challenge": challenge, "code_challenge_method": "S256",
-        "state": secrets.token_urlsafe(24), "nonce": secrets.token_urlsafe(24),
-    })
+    target = (
+        issuer
+        + "/protocol/openid-connect/auth?"
+        + urlencode(
+            {
+                "client_id": "waooaw-web",
+                "redirect_uri": web_url + "/api/auth/callback/keycloak-google",
+                "response_type": "code",
+                "scope": "openid email profile",
+                "kc_idp_hint": "google",
+                "code_challenge": challenge,
+                "code_challenge_method": "S256",
+                "state": secrets.token_urlsafe(24),
+                "nonce": secrets.token_urlsafe(24),
+            }
+        )
+    )
     for _attempt in range(5):
         if urlsplit(target).scheme != "https":
             raise ValueError("Broker requests require HTTPS")
@@ -76,10 +87,12 @@ def verify(issuer: str, web_url: str, api_url: str | None = None) -> dict[str, o
         if not any(provider["id"] == "GOOGLE" and provider["availability"] == "AVAILABLE" for provider in providers):
             raise ValueError("Google provider projection is not available")
     return {
-        "provider": "GOOGLE", "issuer": issuer,
+        "provider": "GOOGLE",
+        "issuer": issuer,
         "callback": issuer + "/broker/google/endpoint",
         "web_callback": web_url + "/api/auth/callback/keycloak-google",
-        "redirect_verified": True, "projection_verified": api_url is not None,
+        "redirect_verified": True,
+        "projection_verified": api_url is not None,
         "real_user_sign_in_verified": False,
     }
 

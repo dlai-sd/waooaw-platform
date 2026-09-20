@@ -8,7 +8,8 @@ namespace Waooaw.BusinessPlatform.Infrastructure;
 /// <summary>EF Core context for provider_configs table. BP-owned; PR/AIR read via internal API.</summary>
 public sealed class ProviderRegistryDbContext : DbContext
 {
-    public ProviderRegistryDbContext(DbContextOptions<ProviderRegistryDbContext> options) : base(options) { }
+    public ProviderRegistryDbContext(DbContextOptions<ProviderRegistryDbContext> options)
+        : base(options) { }
 
     public DbSet<ProviderConfig> ProviderConfigs => Set<ProviderConfig>();
 
@@ -20,9 +21,7 @@ public sealed class ProviderRegistryDbContext : DbContext
             e.HasKey(p => p.Id);
             e.HasIndex(p => new { p.TenantId, p.ProviderName }).IsUnique();
             e.Property(p => p.ScopeSet).HasColumnType("text[]");
-            e.Property(p => p.AuthMethod)
-             .HasConversion<string>()
-             .HasMaxLength(32);
+            e.Property(p => p.AuthMethod).HasConversion<string>().HasMaxLength(32);
         });
     }
 }
@@ -31,6 +30,7 @@ public sealed class ProviderRegistryDbContext : DbContext
 public sealed class ProviderConfig
 {
     public Guid Id { get; init; } = Guid.NewGuid();
+
     /// <summary>NULL = platform-level (e.g. OpenAI API key shared across platform).</summary>
     public Guid? TenantId { get; init; }
     public string ProviderName { get; init; } = string.Empty;

@@ -10,10 +10,7 @@ namespace Waooaw.BusinessPlatform.Workflows;
 
 // ─── Workflow input ──────────────────────────────────────────────────────────
 
-public sealed record TrialExpiryInput(
-    string         TrialId,
-    string         CustomerId,
-    DateTimeOffset ExpiresAt);
+public sealed record TrialExpiryInput(string TrialId, string CustomerId, DateTimeOffset ExpiresAt);
 
 public enum TrialExpiryOutcome
 {
@@ -46,7 +43,7 @@ public class TrialExpiryWorkflow
     public async Task<TrialExpiryOutcome> RunAsync(TrialExpiryInput input)
     {
         var reminderAt = input.ExpiresAt - TimeSpan.FromHours(48);
-        var now        = Workflow.UtcNow;
+        var now = Workflow.UtcNow;
 
         // Sleep until 48 h before expiry (may be zero if already past)
         if (reminderAt > now)
@@ -54,7 +51,8 @@ public class TrialExpiryWorkflow
 
         await Workflow.ExecuteActivityAsync(
             (TrialExpiryActivities a) => a.SendReminderAsync(input.CustomerId, input.TrialId),
-            ActivityOpts);
+            ActivityOpts
+        );
 
         // Sleep until expiry
         now = Workflow.UtcNow;
@@ -63,15 +61,20 @@ public class TrialExpiryWorkflow
 
         var status = await Workflow.ExecuteActivityAsync(
             (TrialExpiryActivities a) => a.CheckTrialStatusAsync(input.CustomerId, input.TrialId),
-            ActivityOpts);
+            ActivityOpts
+        );
 
-        if (status == "CONVERTED") return TrialExpiryOutcome.BillingConverted;
-        if (status == "EXPIRED") return TrialExpiryOutcome.Expired;
-        if (status != "ACTIVE") return TrialExpiryOutcome.Unresolved;
+        if (status == "CONVERTED")
+            return TrialExpiryOutcome.BillingConverted;
+        if (status == "EXPIRED")
+            return TrialExpiryOutcome.Expired;
+        if (status != "ACTIVE")
+            return TrialExpiryOutcome.Unresolved;
 
         var expiryStatus = await Workflow.ExecuteActivityAsync(
             (TrialExpiryActivities a) => a.MarkExpiredAsync(input.TrialId, input.CustomerId),
-            ActivityOpts);
+            ActivityOpts
+        );
         return expiryStatus switch
         {
             "EXPIRED" => TrialExpiryOutcome.Expired,
@@ -90,9 +93,9 @@ public class TrialExpiryWorkflow
 /// </summary>
 public sealed class TrialExpiryActivities
 {
-    private const string WbeClientName          = "WBE";
+    private const string WbeClientName = "WBE";
     private const string WbeTrialStatusBasePath = "/trial/status/";
-    private const string WbeTrialExpirePath     = "/trial/expire";
+    private const string WbeTrialExpirePath = "/trial/expire";
 
     private static readonly JsonSerializerOptions _jsonOpts = new(JsonSerializerDefaults.Web);
 
@@ -100,11 +103,12 @@ public sealed class TrialExpiryActivities
     private readonly ILogger<TrialExpiryActivities> _logger;
 
     public TrialExpiryActivities(
-        IHttpClientFactory              httpClientFactory,
-        ILogger<TrialExpiryActivities>  logger)
+        IHttpClientFactory httpClientFactory,
+        ILogger<TrialExpiryActivities> logger
+    )
     {
         _httpClientFactory = httpClientFactory;
-        _logger            = logger;
+        _logger = logger;
     }
 
     /// <summary>
@@ -116,24 +120,35 @@ public sealed class TrialExpiryActivities
     {
         _logger.LogInformation(
             "TrialExpiry: sending 48h reminder customer_id={CustomerId} trial_id={TrialId}",
-            customerId, trialId);
+            customerId,
+            trialId
+        );
 
         // WhatsApp reminder via WBE notification stub (full implementation in WC-034 scope)
         var client = _httpClientFactory.CreateClient(WbeClientName);
         try
         {
-            var payload = new { customer_id = customerId, trial_id = trialId, type = "TRIAL_EXPIRY_48H" };
+            var payload = new
+            {
+                customer_id = customerId,
+                trial_id = trialId,
+                type = "TRIAL_EXPIRY_48H",
+            };
             var response = await client.PostAsJsonAsync("/notifications/send", payload, _jsonOpts);
             _logger.LogInformation(
                 "TrialExpiry: reminder response={Status} customer_id={CustomerId}",
-                (int)response.StatusCode, customerId);
+                (int)response.StatusCode,
+                customerId
+            );
         }
         catch (Exception ex)
         {
             // Non-fatal: log but do not fail the workflow — reminder is best-effort
-            _logger.LogWarning(ex,
+            _logger.LogWarning(
+                ex,
                 "TrialExpiry: reminder send failed (non-fatal) customer_id={CustomerId}",
-                customerId);
+                customerId
+            );
         }
     }
 
@@ -144,8 +159,7 @@ public sealed class TrialExpiryActivities
     [Activity]
     public async Task<string> CheckTrialStatusAsync(string customerId, string trialId)
     {
-        _logger.LogInformation(
-            "TrialExpiry: checking trial status trial_id={TrialId}", trialId);
+        _logger.LogInformation("TrialExpiry: checking trial status trial_id={TrialId}", trialId);
 
         var client = _httpClientFactory.CreateClient(WbeClientName);
         try
@@ -155,7 +169,9 @@ public sealed class TrialExpiryActivities
             {
                 _logger.LogWarning(
                     "TrialExpiry: status check returned {Status} trial_id={TrialId}",
-                    (int)response.StatusCode, trialId);
+                    (int)response.StatusCode,
+                    trialId
+                );
                 return "UNKNOWN";
             }
 
@@ -163,13 +179,19 @@ public sealed class TrialExpiryActivities
             var status = result?.TrialId == trialId ? result.Status ?? "UNKNOWN" : "UNKNOWN";
 
             _logger.LogInformation(
-                "TrialExpiry: trial status={Status} trial_id={TrialId}", status, trialId);
+                "TrialExpiry: trial status={Status} trial_id={TrialId}",
+                status,
+                trialId
+            );
             return status;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex,
-                "TrialExpiry: status check failed, defaulting to UNKNOWN trial_id={TrialId}", trialId);
+            _logger.LogWarning(
+                ex,
+                "TrialExpiry: status check failed, defaulting to UNKNOWN trial_id={TrialId}",
+                trialId
+            );
             return "UNKNOWN";
         }
     }
@@ -183,7 +205,9 @@ public sealed class TrialExpiryActivities
     {
         _logger.LogInformation(
             "TrialExpiry: marking trial EXPIRED trial_id={TrialId} customer_id={CustomerId}",
-            trialId, customerId);
+            trialId,
+            customerId
+        );
 
         var client = _httpClientFactory.CreateClient(WbeClientName);
         try
@@ -192,16 +216,18 @@ public sealed class TrialExpiryActivities
             var response = await client.PostAsJsonAsync(WbeTrialExpirePath, payload, _jsonOpts);
             response.EnsureSuccessStatusCode();
             var result = await response.Content.ReadFromJsonAsync<WbeTrialStatusResult>(_jsonOpts);
-            if (result?.TrialId != trialId || result.Status is not ("EXPIRED" or "CONVERTED")) return "UNKNOWN";
+            if (result?.TrialId != trialId || result.Status is not ("EXPIRED" or "CONVERTED"))
+                return "UNKNOWN";
             _logger.LogInformation(
                 "TrialExpiry: expiry response={Status} trial_id={TrialId}",
-                (int)response.StatusCode, trialId);
+                (int)response.StatusCode,
+                trialId
+            );
             return result.Status;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
-                "TrialExpiry: MarkExpired failed trial_id={TrialId}", trialId);
+            _logger.LogError(ex, "TrialExpiry: MarkExpired failed trial_id={TrialId}", trialId);
             throw; // re-throw so Temporal retries the activity
         }
     }
@@ -210,5 +236,6 @@ public sealed class TrialExpiryActivities
 
     private sealed record WbeTrialStatusResult(
         [property: JsonPropertyName("trial_id")] string? TrialId,
-        [property: JsonPropertyName("status")] string? Status);
+        [property: JsonPropertyName("status")] string? Status
+    );
 }

@@ -11,7 +11,8 @@ namespace Waooaw.BusinessPlatform.Controllers;
 [Route("api/v1/identity/providers")]
 public sealed class IdentityProvidersController(
     IdentityProviderProjectionService providerProjectionService,
-    IConfiguration configuration) : ControllerBase
+    IConfiguration configuration
+) : ControllerBase
 {
     [AllowAnonymous]
     [HttpGet]
@@ -19,10 +20,17 @@ public sealed class IdentityProvidersController(
     {
         Response.Headers.CacheControl = "no-store";
         var brokerReadEnabled = configuration.GetValue<bool>("IdentityBrokerRead:Enabled");
-        var providers = providerProjectionService.GetProviders()
-            .Select(provider => provider.AuthenticationPath == "CREDENTIAL" || brokerReadEnabled
-                ? provider
-                : provider with { Availability = "UNAVAILABLE", UnavailableReason = "NOT_CONFIGURED" })
+        var providers = providerProjectionService
+            .GetProviders()
+            .Select(provider =>
+                provider.AuthenticationPath == "CREDENTIAL" || brokerReadEnabled
+                    ? provider
+                    : provider with
+                    {
+                        Availability = "UNAVAILABLE",
+                        UnavailableReason = "NOT_CONFIGURED",
+                    }
+            )
             .ToArray();
         return Ok(new IdentityProviderCollectionResponse(providers));
     }

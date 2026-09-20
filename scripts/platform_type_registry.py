@@ -39,12 +39,13 @@ from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).parent.parent
-PTR_PATH  = REPO_ROOT / "sprint-context" / "platform-type-registry.json"
+PTR_PATH = REPO_ROOT / "sprint-context" / "platform-type-registry.json"
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # .NET / C# extractor
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def extract_dotnet_types(cs_content: str) -> dict[str, Any]:
     """
@@ -57,12 +58,12 @@ def extract_dotnet_types(cs_content: str) -> dict[str, Any]:
     result: dict[str, Any] = {}
 
     # Extract namespace
-    ns_match = re.search(r'^namespace\s+([\w.]+)', cs_content, re.MULTILINE)
+    ns_match = re.search(r"^namespace\s+([\w.]+)", cs_content, re.MULTILINE)
     namespace = ns_match.group(1) if ns_match else ""
 
     # Extract record types: public sealed record Foo(string Bar, int Baz)
     for m in re.finditer(
-        r'public\s+(?:sealed\s+)?record\s+(\w+)\s*\(([^)]*)\)',
+        r"public\s+(?:sealed\s+)?record\s+(\w+)\s*\(([^)]*)\)",
         cs_content,
     ):
         type_name = m.group(1)
@@ -71,7 +72,7 @@ def extract_dotnet_types(cs_content: str) -> dict[str, Any]:
         for param in params_str.split(","):
             param = param.strip()
             # Match: type? name  or  type name  (with possible default)
-            pm = re.match(r'([\w.<>?\[\]]+\??)\s+(\w+)', param)
+            pm = re.match(r"([\w.<>?\[\]]+\??)\s+(\w+)", param)
             if pm:
                 properties[pm.group(2)] = pm.group(1)
         result[type_name] = {
@@ -84,14 +85,12 @@ def extract_dotnet_types(cs_content: str) -> dict[str, Any]:
 
     # Extract enum types
     for m in re.finditer(
-        r'public\s+enum\s+(\w+)\s*\{([^}]+)\}',
+        r"public\s+enum\s+(\w+)\s*\{([^}]+)\}",
         cs_content,
         re.DOTALL,
     ):
         enum_name = m.group(1)
-        values = [v.strip().split("//")[0].strip()
-                  for v in m.group(2).split(",")
-                  if v.strip()]
+        values = [v.strip().split("//")[0].strip() for v in m.group(2).split(",") if v.strip()]
         result[enum_name] = {
             "kind": "enum",
             "namespace": namespace,
@@ -100,7 +99,7 @@ def extract_dotnet_types(cs_content: str) -> dict[str, Any]:
 
     # Extract class types (sealed class, abstract class, regular class)
     for m in re.finditer(
-        r'public\s+(?:sealed\s+|abstract\s+|static\s+)?class\s+(\w+)',
+        r"public\s+(?:sealed\s+|abstract\s+|static\s+)?class\s+(\w+)",
         cs_content,
     ):
         class_name = m.group(1)
@@ -115,7 +114,7 @@ def extract_dotnet_types(cs_content: str) -> dict[str, Any]:
             _extract_methods_into(cs_content, class_name, result[class_name])
 
     # Extract interface types
-    for m in re.finditer(r'public\s+interface\s+(\w+)', cs_content):
+    for m in re.finditer(r"public\s+interface\s+(\w+)", cs_content):
         iface_name = m.group(1)
         if iface_name not in result:
             result[iface_name] = {
@@ -132,7 +131,7 @@ def _extract_public_props_into(cs_content: str, type_name: str, entry: dict) -> 
     """Extract public property declarations from a class body."""
     # Simplified: find public <type> <Name> { get; ... } patterns
     for pm in re.finditer(
-        r'public\s+([\w<>?\[\]]+)\s+(\w+)\s*\{[^}]*get[^}]*\}',
+        r"public\s+([\w<>?\[\]]+)\s+(\w+)\s*\{[^}]*get[^}]*\}",
         cs_content,
     ):
         prop_type = pm.group(1)
@@ -144,23 +143,26 @@ def _extract_public_props_into(cs_content: str, type_name: str, entry: dict) -> 
 def _extract_methods_into(cs_content: str, type_name: str, entry: dict) -> None:
     """Extract public method signatures (return type + name + params)."""
     for mm in re.finditer(
-        r'public\s+(?:static\s+|override\s+|async\s+|virtual\s+)*'
-        r'([\w<>?\[\]Task]+)\s+(\w+)\s*\(([^)]*)\)',
+        r"public\s+(?:static\s+|override\s+|async\s+|virtual\s+)*"
+        r"([\w<>?\[\]Task]+)\s+(\w+)\s*\(([^)]*)\)",
         cs_content,
     ):
         method_name = mm.group(2)
         if method_name in (type_name, "get", "set"):  # skip constructors / accessors
             continue
-        entry.setdefault("methods", []).append({
-            "name": method_name,
-            "return_type": mm.group(1),
-            "params": mm.group(3).strip(),
-        })
+        entry.setdefault("methods", []).append(
+            {
+                "name": method_name,
+                "return_type": mm.group(1),
+                "params": mm.group(3).strip(),
+            }
+        )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Python extractor
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def extract_python_types(py_content: str) -> dict[str, Any]:
     """
@@ -186,8 +188,7 @@ def extract_python_types(py_content: str) -> dict[str, Any]:
             kind = "pydantic_model"
         elif any("TypedDict" in b for b in bases):
             kind = "typed_dict"
-        elif any("dataclass" in ast.unparse(d) for d in node.decorator_list
-                 if hasattr(ast, "unparse")):
+        elif any("dataclass" in ast.unparse(d) for d in node.decorator_list if hasattr(ast, "unparse")):
             kind = "dataclass"
 
         fields: dict[str, str] = {}
@@ -220,6 +221,7 @@ def extract_python_types(py_content: str) -> dict[str, Any]:
 # TypeScript extractor
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def extract_typescript_types(ts_content: str) -> dict[str, Any]:
     """
     Parse TypeScript source and extract interface/type/class declarations.
@@ -228,23 +230,23 @@ def extract_typescript_types(ts_content: str) -> dict[str, Any]:
     result: dict[str, Any] = {}
 
     # Interfaces: interface Foo { bar: string; baz?: number }
-    for m in re.finditer(r'(?:export\s+)?interface\s+(\w+)\s*\{([^}]*)\}', ts_content, re.DOTALL):
+    for m in re.finditer(r"(?:export\s+)?interface\s+(\w+)\s*\{([^}]*)\}", ts_content, re.DOTALL):
         iface_name = m.group(1)
         props: dict[str, str] = {}
-        for pm in re.finditer(r'(\w+)\??\s*:\s*([\w<>|\[\]]+)', m.group(2)):
+        for pm in re.finditer(r"(\w+)\??\s*:\s*([\w<>|\[\]]+)", m.group(2)):
             props[pm.group(1)] = pm.group(2)
         result[iface_name] = {"kind": "interface", "properties": props}
 
     # Type aliases: export type Foo = { bar: string }
-    for m in re.finditer(r'(?:export\s+)?type\s+(\w+)\s*=\s*\{([^}]*)\}', ts_content, re.DOTALL):
+    for m in re.finditer(r"(?:export\s+)?type\s+(\w+)\s*=\s*\{([^}]*)\}", ts_content, re.DOTALL):
         type_name = m.group(1)
         props: dict[str, str] = {}
-        for pm in re.finditer(r'(\w+)\??\s*:\s*([\w<>|\[\]]+)', m.group(2)):
+        for pm in re.finditer(r"(\w+)\??\s*:\s*([\w<>|\[\]]+)", m.group(2)):
             props[pm.group(1)] = pm.group(2)
         result[type_name] = {"kind": "type_alias", "properties": props}
 
     # Enums
-    for m in re.finditer(r'(?:export\s+)?enum\s+(\w+)\s*\{([^}]+)\}', ts_content, re.DOTALL):
+    for m in re.finditer(r"(?:export\s+)?enum\s+(\w+)\s*\{([^}]+)\}", ts_content, re.DOTALL):
         enum_name = m.group(1)
         values = [v.strip().split("=")[0].strip() for v in m.group(2).split(",") if v.strip()]
         result[enum_name] = {"kind": "enum", "values": [v for v in values if v]}
@@ -255,6 +257,7 @@ def extract_typescript_types(ts_content: str) -> dict[str, Any]:
 # ══════════════════════════════════════════════════════════════════════════════
 # Terraform extractor
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def extract_terraform_outputs(tf_content: str) -> dict[str, Any]:
     """
@@ -271,7 +274,7 @@ def extract_terraform_outputs(tf_content: str) -> dict[str, Any]:
         output_name = m.group(1)
         body = m.group(2)
         desc_m = re.search(r'description\s*=\s*"([^"]+)"', body)
-        val_m  = re.search(r'value\s*=\s*(.+)', body)
+        val_m = re.search(r"value\s*=\s*(.+)", body)
         result[output_name] = {
             "kind": "terraform_output",
             "description": desc_m.group(1) if desc_m else "",
@@ -283,6 +286,7 @@ def extract_terraform_outputs(tf_content: str) -> dict[str, Any]:
 # ══════════════════════════════════════════════════════════════════════════════
 # Protobuf extractor
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _proto_to_csharp_name(snake_name: str) -> str:
     """Convert proto snake_case field name to C# PascalCase (matching Grpc.Tools output)."""
@@ -348,10 +352,10 @@ def extract_proto_types(proto_content: str) -> dict[str, Any]:
     namespace = ns_m.group(1) if ns_m else ""
 
     # ── Extract enum types ──────────────────────────────────────────────────
-    for m in re.finditer(r'enum\s+(\w+)\s*\{([^}]+)\}', proto_content, re.DOTALL):
+    for m in re.finditer(r"enum\s+(\w+)\s*\{([^}]+)\}", proto_content, re.DOTALL):
         enum_name = m.group(1)
         body = m.group(2)
-        raw_values = re.findall(r'^\s*([A-Z][A-Z0-9_]+)\s*=\s*\d+', body, re.MULTILINE)
+        raw_values = re.findall(r"^\s*([A-Z][A-Z0-9_]+)\s*=\s*\d+", body, re.MULTILINE)
         cs_values = _strip_enum_prefix(raw_values)
         result[enum_name] = {
             "kind": "proto_enum",
@@ -362,23 +366,23 @@ def extract_proto_types(proto_content: str) -> dict[str, Any]:
         }
 
     # ── Extract message types ───────────────────────────────────────────────
-    for m in re.finditer(r'message\s+(\w+)\s*\{([^}]+)\}', proto_content, re.DOTALL):
+    for m in re.finditer(r"message\s+(\w+)\s*\{([^}]+)\}", proto_content, re.DOTALL):
         msg_name = m.group(1)
         body = m.group(2)
         fields: dict[str, str] = {}
 
         # Match: [optional] <type> <name> = <number>
         for fm in re.finditer(
-            r'^\s*(optional\s+)?(repeated\s+)?(\w+)\s+(\w+)\s*=\s*\d+',
+            r"^\s*(optional\s+)?(repeated\s+)?(\w+)\s+(\w+)\s*=\s*\d+",
             body,
             re.MULTILINE,
         ):
             is_optional = fm.group(1) is not None
             is_repeated = fm.group(2) is not None
-            proto_type  = fm.group(3)
-            field_name  = fm.group(4)
-            cs_name     = _proto_to_csharp_name(field_name)
-            cs_type     = _proto_type_to_csharp(proto_type, optional=is_optional)
+            proto_type = fm.group(3)
+            field_name = fm.group(4)
+            cs_name = _proto_to_csharp_name(field_name)
+            cs_type = _proto_type_to_csharp(proto_type, optional=is_optional)
             if is_repeated:
                 cs_type = f"RepeatedField<{proto_type}>"
             fields[cs_name] = cs_type
@@ -388,8 +392,7 @@ def extract_proto_types(proto_content: str) -> dict[str, Any]:
             "namespace": namespace,
             "fields": fields,
             "note": (
-                f"Proto-generated C# class in namespace {namespace}. "
-                f"Use property names EXACTLY as listed — do NOT invent fields."
+                f"Proto-generated C# class in namespace {namespace}. Use property names EXACTLY as listed — do NOT invent fields."
             ),
         }
 
@@ -399,6 +402,7 @@ def extract_proto_types(proto_content: str) -> dict[str, Any]:
 # ══════════════════════════════════════════════════════════════════════════════
 # PTR read / write
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def load_ptr() -> dict:
     """Load the Platform Type Registry from disk. Returns empty dict if not found."""
@@ -499,8 +503,8 @@ def build_ptr_prompt_block(type_names: list[str], ptr: dict | None = None) -> st
             continue
         found_any = True
         entry = all_types[type_name]
-        kind  = entry.get("kind", "unknown")
-        ns    = entry.get("namespace", "")
+        kind = entry.get("kind", "unknown")
+        ns = entry.get("namespace", "")
         lines.append(f"## {type_name} ({kind}){f' — namespace: {ns}' if ns else ''}")
 
         if kind in ("record", "class") and "properties" in entry:
@@ -526,7 +530,7 @@ def build_ptr_prompt_block(type_names: list[str], ptr: dict | None = None) -> st
             for field_name, field_type in entry["fields"].items():
                 lines.append(f"  {field_name}: {field_type}")
 
-        if "methods" in entry and entry["methods"]:
+        if entry.get("methods"):
             for m in entry["methods"][:5]:  # cap at 5 for prompt size
                 if isinstance(m, dict):
                     lines.append(f"  Method: {m['return_type']} {m['name']}({m['params']})")
@@ -540,8 +544,11 @@ def build_ptr_prompt_block(type_names: list[str], ptr: dict | None = None) -> st
 
     lines.append("# ═══ END TYPE CONTRACT ═══\n")
     return "\n".join(lines)
+
+
 # Spec Contract Checker (C-032 gate)
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def check_spec_against_ptr(
     spec_content: str,
@@ -577,17 +584,24 @@ def check_spec_against_ptr(
         return []
 
     # Extract ctx.X and context.X references from spec markdown
-    ctx_refs = set(re.findall(r'ctx\.(\w+)', spec_content))
-    ctx_refs |= set(re.findall(r'context\.(\w+)', spec_content))
+    ctx_refs = set(re.findall(r"ctx\.(\w+)", spec_content))
+    ctx_refs |= set(re.findall(r"context\.(\w+)", spec_content))
 
     # Well-known non-property references to ignore
     ignore = {
         # Common method calls on EvaluationContext
-        "GetParameter", "FromRequest",
+        "GetParameter",
+        "FromRequest",
         # Standard C# / gRPC things often written as ctx.X in prose
-        "CancellationToken", "RequestHeaders", "Peer", "Host", "Method",
+        "CancellationToken",
+        "RequestHeaders",
+        "Peer",
+        "Host",
+        "Method",
         # Terraform / Python context references
-        "tenant_id", "request_id", "session_id",
+        "tenant_id",
+        "request_id",
+        "session_id",
     }
 
     gaps = []
@@ -603,7 +617,6 @@ def check_spec_against_ptr(
 
 
 if __name__ == "__main__":  # pragma: no cover
-    import sys
     print("Platform Type Registry — current state:")
     ptr = load_ptr()
     if not ptr:

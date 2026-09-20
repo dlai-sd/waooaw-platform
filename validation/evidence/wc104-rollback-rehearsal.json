@@ -1,0 +1,74 @@
+{
+  "schema": "waooaw.wc104-rollback-rehearsal/v1",
+  "authority": "diagnostic-local-only",
+  "base_sha": "a9b3cb93ba492d9ac887552e9bb3c8c09901c0a8",
+  "candidate_sha": "eb33e53310ba63473d353058e46241ec2e8343b6",
+  "passed": false,
+  "runner_builds": {
+    "python": 1,
+    "dotnet": 1,
+    "typescript": 1,
+    "full": 1
+  },
+  "registry_reuse": false,
+  "prior_result_reuse": false,
+  "serial_orchestration": true,
+  "required_gate_count": 43,
+  "attempted_gate_count": 43,
+  "passed_gate_count": 16,
+  "failed_gate_count": 27,
+  "passed_gates": [
+    "secrets",
+    "test-dotnet",
+    "test-python",
+    "test-web",
+    "sast",
+    "dep-scan:python",
+    "dep-scan:dotnet",
+    "dep-scan:typescript",
+    "quality:python:professional-runtime",
+    "quality:python:ai-runtime",
+    "quality:typescript",
+    "quality:sql",
+    "quality:proto",
+    "quality:observability",
+    "quality:traceability",
+    "security:prompt-injection"
+  ],
+  "failure_classes": {
+    "repaired_after_candidate": [
+      "build",
+      "quality:commitlint",
+      "quality:constitutional-naming",
+      "contract:seed-prompts",
+      "mutation:dotnet"
+    ],
+    "pr_bound_metadata_absent": [
+      "constitutional-commit-gate",
+      "requirement-ledger",
+      "author-review-gate",
+      "authorization-tier-check"
+    ],
+    "inherited_repository_or_environment_blocker": [
+      "spec-lint",
+      "license-check",
+      "release-qualification",
+      "quality:scripts",
+      "quality:dotnet:constitutional-engine",
+      "quality:dotnet:business-platform",
+      "mutation:python",
+      "integration:multi-tenant",
+      "integration:postgres-migrations",
+      "integration:dotnet",
+      "integration:python",
+      "contract:rest",
+      "e2e:accessibility",
+      "acceptance:as-001",
+      "acceptance:as-003",
+      "acceptance:as-005",
+      "acceptance:pse-failover",
+      "e2e:emergency-stop"
+    ]
+  },
+  "source_evidence": "test-results/wc104/rollback-eb33e533.json"
+}

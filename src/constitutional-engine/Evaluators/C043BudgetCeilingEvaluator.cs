@@ -62,27 +62,34 @@ public sealed class C043BudgetCeilingEvaluator : IClaimEvaluator
         {
             if (ctx.ProposedSpendInrPaise == 0L)
             {
-                return Task.FromResult(new EvaluationResult(
-                    ClaimIdValue,
-                    EvaluationVerdict.Allow,
-                    "BUDGET_WITHIN_CEILING: Zero proposed spend within a zero-approved ceiling."));
+                return Task.FromResult(
+                    new EvaluationResult(
+                        ClaimIdValue,
+                        EvaluationVerdict.Allow,
+                        "BUDGET_WITHIN_CEILING: Zero proposed spend within a zero-approved ceiling."
+                    )
+                );
             }
 
             _logger.LogWarning(
-                "C-043 DENY: Proposed spend with zero approved budget ceiling. " +
-                "ContractId={ContractId} SkillId={SkillId} SkillType={BudgetSkillType} " +
-                "ProposedSpendPaise={ProposedSpendPaise} DecisionSpaceVersion={DecisionSpaceVersion}",
+                "C-043 DENY: Proposed spend with zero approved budget ceiling. "
+                    + "ContractId={ContractId} SkillId={SkillId} SkillType={BudgetSkillType} "
+                    + "ProposedSpendPaise={ProposedSpendPaise} DecisionSpaceVersion={DecisionSpaceVersion}",
                 ctx.ContractId,
                 ctx.SkillId ?? "(none)",
                 ctx.BudgetSkillType,
                 ctx.ProposedSpendInrPaise,
-                ctx.DecisionSpaceVersion);
+                ctx.DecisionSpaceVersion
+            );
 
-            return Task.FromResult(new EvaluationResult(
-                ClaimIdValue,
-                EvaluationVerdict.Deny,
-                $"BUDGET_CEILING_REACHED: No approved budget ceiling is configured (0 paise). " +
-                $"Proposed spend of {ctx.ProposedSpendInrPaise} paise cannot proceed. Skill type: {ctx.BudgetSkillType}."));
+            return Task.FromResult(
+                new EvaluationResult(
+                    ClaimIdValue,
+                    EvaluationVerdict.Deny,
+                    $"BUDGET_CEILING_REACHED: No approved budget ceiling is configured (0 paise). "
+                        + $"Proposed spend of {ctx.ProposedSpendInrPaise} paise cannot proceed. Skill type: {ctx.BudgetSkillType}."
+                )
+            );
         }
 
         // ── C-043 core enforcement ───────────────────────────────────────────────────────────────
@@ -99,11 +106,11 @@ public sealed class C043BudgetCeilingEvaluator : IClaimEvaluator
             long headroomPaise = ctx.ApprovedBudgetInrPaise - ctx.CurrentSpendInrPaise;
 
             _logger.LogWarning(
-                "C-043 DENY: Budget ceiling reached. " +
-                "ContractId={ContractId} SkillId={SkillId} SkillType={BudgetSkillType} " +
-                "ApprovedPaise={ApprovedPaise} CurrentSpendPaise={CurrentSpendPaise} " +
-                "ProposedSpendPaise={ProposedSpendPaise} HeadroomPaise={HeadroomPaise} " +
-                "DecisionSpaceVersion={DecisionSpaceVersion}",
+                "C-043 DENY: Budget ceiling reached. "
+                    + "ContractId={ContractId} SkillId={SkillId} SkillType={BudgetSkillType} "
+                    + "ApprovedPaise={ApprovedPaise} CurrentSpendPaise={CurrentSpendPaise} "
+                    + "ProposedSpendPaise={ProposedSpendPaise} HeadroomPaise={HeadroomPaise} "
+                    + "DecisionSpaceVersion={DecisionSpaceVersion}",
                 ctx.ContractId,
                 ctx.SkillId ?? "(none)",
                 ctx.BudgetSkillType,
@@ -111,16 +118,20 @@ public sealed class C043BudgetCeilingEvaluator : IClaimEvaluator
                 ctx.CurrentSpendInrPaise,
                 ctx.ProposedSpendInrPaise,
                 headroomPaise,
-                ctx.DecisionSpaceVersion);
+                ctx.DecisionSpaceVersion
+            );
 
-            return Task.FromResult(new EvaluationResult(
-                ClaimIdValue,
-                EvaluationVerdict.Deny,
-                $"BUDGET_CEILING_REACHED: Proposed spend of {ctx.ProposedSpendInrPaise} paise " +
-                $"added to current spend of {ctx.CurrentSpendInrPaise} paise " +
-                $"({ctx.CurrentSpendInrPaise + ctx.ProposedSpendInrPaise} paise total) " +
-                $"would exceed the approved monthly ceiling of {ctx.ApprovedBudgetInrPaise} paise. " +
-                $"Remaining headroom: {headroomPaise} paise. Skill type: {ctx.BudgetSkillType}."));
+            return Task.FromResult(
+                new EvaluationResult(
+                    ClaimIdValue,
+                    EvaluationVerdict.Deny,
+                    $"BUDGET_CEILING_REACHED: Proposed spend of {ctx.ProposedSpendInrPaise} paise "
+                        + $"added to current spend of {ctx.CurrentSpendInrPaise} paise "
+                        + $"({ctx.CurrentSpendInrPaise + ctx.ProposedSpendInrPaise} paise total) "
+                        + $"would exceed the approved monthly ceiling of {ctx.ApprovedBudgetInrPaise} paise. "
+                        + $"Remaining headroom: {headroomPaise} paise. Skill type: {ctx.BudgetSkillType}."
+                )
+            );
         }
 
         // ── ALLOW — budget within approved ceiling ───────────────────────────────────────────────
@@ -128,11 +139,11 @@ public sealed class C043BudgetCeilingEvaluator : IClaimEvaluator
             ctx.ApprovedBudgetInrPaise - ctx.CurrentSpendInrPaise - ctx.ProposedSpendInrPaise;
 
         _logger.LogDebug(
-            "C-043 ALLOW: Proposed spend within budget ceiling. " +
-            "ContractId={ContractId} SkillId={SkillId} SkillType={BudgetSkillType} " +
-            "ApprovedPaise={ApprovedPaise} CurrentSpendPaise={CurrentSpendPaise} " +
-            "ProposedSpendPaise={ProposedSpendPaise} RemainingAfterProposedPaise={RemainingPaise} " +
-            "DecisionSpaceVersion={DecisionSpaceVersion}",
+            "C-043 ALLOW: Proposed spend within budget ceiling. "
+                + "ContractId={ContractId} SkillId={SkillId} SkillType={BudgetSkillType} "
+                + "ApprovedPaise={ApprovedPaise} CurrentSpendPaise={CurrentSpendPaise} "
+                + "ProposedSpendPaise={ProposedSpendPaise} RemainingAfterProposedPaise={RemainingPaise} "
+                + "DecisionSpaceVersion={DecisionSpaceVersion}",
             ctx.ContractId,
             ctx.SkillId ?? "(none)",
             ctx.BudgetSkillType,
@@ -140,11 +151,15 @@ public sealed class C043BudgetCeilingEvaluator : IClaimEvaluator
             ctx.CurrentSpendInrPaise,
             ctx.ProposedSpendInrPaise,
             remainingAfterProposedPaise,
-            ctx.DecisionSpaceVersion);
+            ctx.DecisionSpaceVersion
+        );
 
-        return Task.FromResult(new EvaluationResult(
-            ClaimIdValue,
-            EvaluationVerdict.Allow,
-            $"Budget ceiling not exceeded. Remaining after proposed spend: {remainingAfterProposedPaise} paise."));
+        return Task.FromResult(
+            new EvaluationResult(
+                ClaimIdValue,
+                EvaluationVerdict.Allow,
+                $"Budget ceiling not exceeded. Remaining after proposed spend: {remainingAfterProposedPaise} paise."
+            )
+        );
     }
 }

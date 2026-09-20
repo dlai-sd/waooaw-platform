@@ -39,9 +39,7 @@ TERMINAL_CONCLUSIONS = {
 ENVIRONMENT = re.compile(r"^(demo|uat|prod)$")
 RUN_NUMBER = re.compile(r"^[1-9][0-9]*$")
 KEY_VAULT_SECRET_NAME = re.compile(r"^[0-9A-Za-z-]{1,127}$")
-AZURE_CLIENT_ID = re.compile(
-    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-)
+AZURE_CLIENT_ID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 CLEANUP_EVIDENCE_PREFIX = "GOAL006_CLEANUP_RECORD_B64="
 
 
@@ -72,9 +70,7 @@ def runner_name(environment: str, run_id: str, run_attempt: str) -> str:
     return f"goal006-{environment}-{run_id}-{run_attempt}"
 
 
-def cleanup_evidence_blob_name(
-    environment: str, run_id: str, run_attempt: str
-) -> str:
+def cleanup_evidence_blob_name(environment: str, run_id: str, run_attempt: str) -> str:
     correlation_id(environment, run_id, run_attempt)
     return f"cleanup/{environment}/{run_id}/{run_attempt}.json"
 
@@ -140,12 +136,8 @@ class RunnerContext:
             "activation_state": "RUNNER_ACTIVATION_STATE",
         }
         values = {field: os.environ.get(variable, "").strip() for field, variable in names.items()}
-        values["evidence_container_url"] = os.environ.get(
-            "RUNNER_EVIDENCE_CONTAINER_URL", ""
-        ).strip()
-        values["evidence_writer_client_id"] = os.environ.get(
-            "EVIDENCE_WRITER_CLIENT_ID", ""
-        ).strip()
+        values["evidence_container_url"] = os.environ.get("RUNNER_EVIDENCE_CONTAINER_URL", "").strip()
+        values["evidence_writer_client_id"] = os.environ.get("EVIDENCE_WRITER_CLIENT_ID", "").strip()
         missing = sorted(variable for field, variable in names.items() if not values[field])
         if missing:
             raise LifecycleError("required environment is missing: " + ", ".join(missing))
@@ -174,9 +166,7 @@ class RunnerContext:
 
     @property
     def correlated_token_secret_name(self) -> str:
-        name = (
-            f"{self.token_secret_name}-{self.environment}-{self.run_id}-{self.run_attempt}"
-        )
+        name = f"{self.token_secret_name}-{self.environment}-{self.run_id}-{self.run_attempt}"
         if KEY_VAULT_SECRET_NAME.fullmatch(name) is None:
             raise LifecycleError("correlated runner token secret name is invalid")
         return name
@@ -407,9 +397,7 @@ def select_correlated_runner(
         item
         for item in runners
         if item.get("name") == expected_name
-        and required_labels.issubset(
-            {str(label.get("name")) for label in item.get("labels", [])}
-        )
+        and required_labels.issubset({str(label.get("name")) for label in item.get("labels", [])})
     ]
     if len(matches) > 1:
         raise LifecycleError("runner cleanup selector is ambiguous")
@@ -420,10 +408,7 @@ def deployment_job_is_terminal(jobs: list[Mapping[str, Any]], expected_name: str
     matches = [item for item in jobs if item.get("name") == expected_name]
     if len(matches) != 1:
         raise LifecycleError("private deployment job selector is ambiguous")
-    return (
-        matches[0].get("status") == "completed"
-        and matches[0].get("conclusion") in TERMINAL_CONCLUSIONS
-    )
+    return matches[0].get("status") == "completed" and matches[0].get("conclusion") in TERMINAL_CONCLUSIONS
 
 
 def _read_manifest(path: Path) -> dict[str, Any]:
@@ -437,10 +422,7 @@ def _execution_environment(execution: Mapping[str, Any]) -> dict[str, str]:
     containers = execution.get("properties", {}).get("template", {}).get("containers", [])
     if len(containers) != 1 or containers[0].get("name") != "runner":
         raise LifecycleError("ACA execution template is invalid")
-    return {
-        str(item.get("name")): str(item.get("value", ""))
-        for item in containers[0].get("env", [])
-    }
+    return {str(item.get("name")): str(item.get("value", "")) for item in containers[0].get("env", [])}
 
 
 def _put_runner_secret(api: JsonApi, context: RunnerContext, token: str) -> None:
@@ -494,15 +476,8 @@ def _start_execution(api: JsonApi, context: RunnerContext) -> str:
     containers = template.get("containers", [])
     if len(containers) != 1 or containers[0].get("name") != "runner":
         raise LifecycleError("runner job template is invalid")
-    override = {
-        name: json.loads(json.dumps(template[name]))
-        for name in ("containers", "initContainers")
-        if name in template
-    }
-    environment = {
-        str(item["name"]): item
-        for item in override["containers"][0].get("env", [])
-    }
+    override = {name: json.loads(json.dumps(template[name])) for name in ("containers", "initContainers") if name in template}
+    environment = {str(item["name"]): item for item in override["containers"][0].get("env", [])}
     for name, value in {
         "RUNNER_CORRELATION_ID": context.correlation,
         "RUNNER_NAME": context.runner_name,
@@ -529,10 +504,7 @@ def _start_execution(api: JsonApi, context: RunnerContext) -> str:
 def _assert_zero_active_executions(api: JsonApi, context: RunnerContext) -> None:
     response = api.request(
         "GET",
-        (
-            f"https://management.azure.com{context.job_resource_id}/executions"
-            "?api-version=2024-03-01"
-        ),
+        (f"https://management.azure.com{context.job_resource_id}/executions?api-version=2024-03-01"),
         resource=MANAGEMENT_RESOURCE,
     )
     active = [
@@ -544,15 +516,10 @@ def _assert_zero_active_executions(api: JsonApi, context: RunnerContext) -> None
         raise LifecycleError("active ACA runner execution already exists")
 
 
-def _find_correlated_execution(
-    api: JsonApi, context: RunnerContext, *, required: bool = True
-) -> str | None:
+def _find_correlated_execution(api: JsonApi, context: RunnerContext, *, required: bool = True) -> str | None:
     response = api.request(
         "GET",
-        (
-            f"https://management.azure.com{context.job_resource_id}/executions"
-            "?api-version=2024-03-01"
-        ),
+        (f"https://management.azure.com{context.job_resource_id}/executions?api-version=2024-03-01"),
         resource=MANAGEMENT_RESOURCE,
     )
     matches: list[str] = []
@@ -562,10 +529,7 @@ def _find_correlated_execution(
             continue
         execution = api.request(
             "GET",
-            (
-                f"https://management.azure.com{context.job_resource_id}/executions/"
-                f"{execution_name}?api-version=2024-03-01"
-            ),
+            (f"https://management.azure.com{context.job_resource_id}/executions/{execution_name}?api-version=2024-03-01"),
             resource=MANAGEMENT_RESOURCE,
         )
         if _execution_environment(execution).get("RUNNER_CORRELATION_ID") == context.correlation:
@@ -586,9 +550,7 @@ def start_runner(api: JsonApi, context: RunnerContext, manifest_path: Path) -> d
         context.app_key_id,
         lambda key_id, digest: key_vault_sign(api, key_id, digest),
     )
-    installation_token = validate_installation(
-        api, manifest, context.installation_id, app_jwt
-    )
+    installation_token = validate_installation(api, manifest, context.installation_id, app_jwt)
     runners = _github(
         api,
         "GET",
@@ -599,8 +561,7 @@ def start_runner(api: JsonApi, context: RunnerContext, manifest_path: Path) -> d
         item.get("name")
         for item in runners
         if str(item.get("name", "")).startswith(f"goal006-{context.environment}-")
-        or context.runner_label
-        in {str(label.get("name")) for label in item.get("labels", [])}
+        or context.runner_label in {str(label.get("name")) for label in item.get("labels", [])}
     ]
     if stale:
         raise LifecycleError("environment runner registration already exists")
@@ -658,9 +619,7 @@ def cleanup_runner(
         context.app_key_id,
         lambda key_id, digest: key_vault_sign(api, key_id, digest),
     )
-    installation_token = validate_installation(
-        api, manifest, context.installation_id, app_jwt
-    )
+    installation_token = validate_installation(api, manifest, context.installation_id, app_jwt)
     if private_job_conclusion not in TERMINAL_CONCLUSIONS:
         raise LifecycleError("private deployment job is not terminal")
 
@@ -682,17 +641,13 @@ def cleanup_runner(
     execution = None
     if execution_name:
         execution_url = (
-            f"https://management.azure.com{context.job_resource_id}/executions/"
-            f"{execution_name}?api-version=2024-03-01"
+            f"https://management.azure.com{context.job_resource_id}/executions/{execution_name}?api-version=2024-03-01"
         )
         execution = api.request("GET", execution_url, resource=MANAGEMENT_RESOURCE)
         execution_environment = _execution_environment(execution)
         if execution_environment.get("RUNNER_CORRELATION_ID") != context.correlation:
             raise LifecycleError("ACA execution correlation differs from lifecycle record")
-        if (
-            execution_environment.get("RUNNER_TOKEN_SECRET_NAME")
-            != context.correlated_token_secret_name
-        ):
+        if execution_environment.get("RUNNER_TOKEN_SECRET_NAME") != context.correlated_token_secret_name:
             raise LifecycleError("ACA execution token secret differs from cleanup context")
 
     if runner is not None:
@@ -721,11 +676,14 @@ def cleanup_runner(
             raise
 
     remaining = _github(api, "GET", runners_path, installation_token).get("runners", [])
-    if select_correlated_runner(
-        remaining,
-        expected_name=context.runner_name,
-        required_labels={context.runner_label, context.correlation},
-    ) is not None:
+    if (
+        select_correlated_runner(
+            remaining,
+            expected_name=context.runner_name,
+            required_labels={context.runner_label, context.correlation},
+        )
+        is not None
+    ):
         raise LifecycleError("correlated runner registration remains after cleanup")
     if execution is not None:
         refreshed_execution = api.request("GET", execution_url, resource=MANAGEMENT_RESOURCE)
@@ -821,10 +779,7 @@ def workflow_run_conclusion(
     context: RunnerContext,
     installation_token: str,
 ) -> str | None:
-    path = (
-        f"/repos/{context.repository}/actions/runs/{context.run_id}"
-        f"/attempts/{context.run_attempt}"
-    )
+    path = f"/repos/{context.repository}/actions/runs/{context.run_id}/attempts/{context.run_attempt}"
     try:
         run = _github(api, "GET", path, installation_token)
     except HttpStatusError as error:
@@ -845,10 +800,7 @@ def reconcile_runners(
     now: datetime | None = None,
 ) -> dict[str, Any]:
     observed_at = datetime.now(timezone.utc) if now is None else now.astimezone(timezone.utc)
-    executions_url = (
-        f"https://management.azure.com{context.job_resource_id}/executions"
-        "?api-version=2024-03-01"
-    )
+    executions_url = f"https://management.azure.com{context.job_resource_id}/executions?api-version=2024-03-01"
     response = api.request("GET", executions_url, resource=MANAGEMENT_RESOURCE)
     active = [
         item
@@ -883,10 +835,7 @@ def reconcile_runners(
         }
 
     execution_name = str(candidates[0].get("name", ""))
-    execution_url = (
-        f"https://management.azure.com{context.job_resource_id}/executions/"
-        f"{execution_name}?api-version=2024-03-01"
-    )
+    execution_url = f"https://management.azure.com{context.job_resource_id}/executions/{execution_name}?api-version=2024-03-01"
     execution = api.request("GET", execution_url, resource=MANAGEMENT_RESOURCE)
     environment = _execution_environment(execution)
     run_id = environment.get("GITHUB_WORKFLOW_RUN_ID", "")
@@ -915,9 +864,7 @@ def reconcile_runners(
         context.app_key_id,
         lambda key_id, digest: key_vault_sign(api, key_id, digest),
     )
-    installation_token = validate_installation(
-        api, manifest, context.installation_id, app_jwt
-    )
+    installation_token = validate_installation(api, manifest, context.installation_id, app_jwt)
     conclusion = workflow_run_conclusion(api, runner_context, installation_token)
     if conclusion is None and selected_is_active and age < timedelta(minutes=60):
         return {
@@ -960,9 +907,7 @@ def _write_record(path: Path, record: Mapping[str, Any]) -> None:
 
 
 def _cleanup_evidence_line(record: Mapping[str, Any]) -> str:
-    encoded = base64.b64encode(
-        json.dumps(record, separators=(",", ":"), sort_keys=True).encode("utf-8")
-    ).decode("ascii")
+    encoded = base64.b64encode(json.dumps(record, separators=(",", ":"), sort_keys=True).encode("utf-8")).decode("ascii")
     return CLEANUP_EVIDENCE_PREFIX + encoded
 
 
@@ -1007,11 +952,7 @@ def main() -> int:
         )
         _write_record(args.output, record)
         pointer = write_cleanup_evidence(
-            JsonApi(
-                lambda resource: azure_access_token(
-                    resource, context.evidence_writer_client_id
-                )
-            ),
+            JsonApi(lambda resource: azure_access_token(resource, context.evidence_writer_client_id)),
             context,
             record,
         )
@@ -1027,11 +968,7 @@ def main() -> int:
         )
         _write_record(args.output, record)
         pointer = write_cleanup_evidence(
-            JsonApi(
-                lambda resource: azure_access_token(
-                    resource, context.evidence_writer_client_id
-                )
-            ),
+            JsonApi(lambda resource: azure_access_token(resource, context.evidence_writer_client_id)),
             context,
             record,
         )

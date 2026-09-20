@@ -94,11 +94,9 @@ class Track1Scaffolder:
 
 # ── Module-level helpers ──────────────────────────────────────────────────────
 
+
 def _needs_router(interfaces: list[dict[str, Any]]) -> bool:
-    return any(
-        any("router." in d for d in iface.get("decorators", []))
-        for iface in interfaces
-    )
+    return any(any("router." in d for d in iface.get("decorators", [])) for iface in interfaces)
 
 
 def _render_function(iface: dict[str, Any]) -> list[str]:
@@ -158,6 +156,4 @@ def _compile_gate(source: str, label: str) -> None:
     try:
         compile(source, label, "exec")
     except SyntaxError as exc:
-        raise Track1ScaffoldError(
-            f"Track1 compile gate failed for '{label}': {exc}"
-        ) from exc
+        raise Track1ScaffoldError(f"Track1 compile gate failed for '{label}': {exc}") from exc

@@ -2,6 +2,8 @@ from pathlib import Path
 import sys
 from types import SimpleNamespace
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -14,11 +16,13 @@ from prepare_pr_body import (  # noqa: E402
     expected_pr_labels,
     execution_preflight,
     load_runtime_evidence,
+    main,
     preparation_head,
     prepare_body,
     release_qualification_gate_required,
     run_ci_prechecks,
     runner_digest,
+    validate_static_repository,
     validate_precheck_evidence,
 )
 from validate_author_review import validate_author_review  # noqa: E402
@@ -57,6 +61,82 @@ def test_prepare_body_requires_template_section() -> None:
         assert "Author Review" in str(error)
     else:
         raise AssertionError("missing Author Review section was accepted")
+
+
+@pytest.mark.parametrize(
+    ("ledger_violations", "body_violations", "repository_violations", "expected_calls"),
+    (
+        (["ledger invalid"], [], [], 0),
+        ([], ["C-059 or C-065 invalid"], [], 0),
+        ([], [], ["catalog or Compose invalid"], 0),
+        ([], [], [], 1),
+    ),
+)
+def test_main_runs_costly_prechecks_only_after_static_validation(
+    monkeypatch,
+    tmp_path: Path,
+    ledger_violations: list[str],
+    body_violations: list[str],
+    repository_violations: list[str],
+    expected_calls: int,
+) -> None:
+    body_file = tmp_path / "pr-body.md"
+    body_file.write_text("## Author Review\n\nPending.\n", encoding="utf-8")
+    costly_calls: list[tuple[object, ...]] = []
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "prepare_pr_body.py",
+            "--body-file",
+            str(body_file),
+            "--expected-worktree",
+            str(tmp_path),
+            "--expected-head",
+            HEAD,
+        ],
+    )
+    monkeypatch.setattr("prepare_pr_body.execution_preflight", lambda *args, **kwargs: None)
+    monkeypatch.setattr("prepare_pr_body.authoritative_remote_head", lambda remote: HEAD)
+    monkeypatch.setattr("prepare_pr_body.validate_changed_ledgers", lambda root, paths: ledger_violations)
+    monkeypatch.setattr("prepare_pr_body.validate_prepared_body", lambda body, base, head: body_violations)
+    monkeypatch.setattr("prepare_pr_body.validate_static_repository", lambda root: repository_violations)
+    monkeypatch.setattr(
+        "prepare_pr_body.run_ci_prechecks",
+        lambda *args: costly_calls.append(args) or {"passed": False, "first_causal_failure": "test", "nodes": []},
+    )
+
+    def fake_git(*arguments: str) -> str:
+        if arguments == ("rev-parse", "--show-toplevel"):
+            return str(tmp_path)
+        if arguments == ("rev-parse", "HEAD"):
+            return HEAD
+        if arguments == ("rev-parse", "origin/main"):
+            return "b" * 40
+        if arguments[:2] == ("diff", "--name-only"):
+            return ""
+        raise AssertionError(f"unexpected git arguments: {arguments}")
+
+    monkeypatch.setattr("prepare_pr_body.git", fake_git)
+
+    assert main() == 1
+    assert len(costly_calls) == expected_calls
+
+
+def test_static_repository_validation_reports_catalog_and_compose_failures(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(
+        "prepare_pr_body.yaml.safe_load",
+        lambda content: {"schema": "invalid"},
+    )
+    monkeypatch.setattr(
+        "prepare_pr_body.subprocess.run",
+        lambda *args, **kwargs: SimpleNamespace(returncode=1, stderr="invalid compose", stdout=""),
+    )
+
+    violations = validate_static_repository(tmp_path)
+
+    assert any("validation catalog" in violation for violation in violations)
+    assert "Docker Compose: invalid compose" in violations
 
 
 def test_preparation_head_rejects_unpushed_commit_by_default() -> None:
@@ -115,14 +195,18 @@ def test_business_platform_gate_covers_shared_runtime_and_deployment_paths() -> 
         "src/business-platform/Program.cs",
         "tests/business-platform.Tests/OwnerGatewayCoverageTests.cs",
         "infrastructure/postgres/init/029_identity.sql",
-        "infrastructure/terraform/phase2/modules/workload/main.tf",
         "architecture/reference/api-specs/business-platform.openapi.yaml",
     ):
         assert business_platform_gate_required([path])
 
 
 def test_business_platform_gate_ignores_unrelated_paths() -> None:
-    assert not business_platform_gate_required(["web/components/auth/LoginView.tsx"])
+    for path in (
+        "web/components/auth/LoginView.tsx",
+        "infrastructure/terraform/phase2/modules/workload/main.tf",
+        "reviews/R-144-wc104-platform-it-expert-author-review.md",
+    ):
+        assert not business_platform_gate_required([path])
 
 
 def test_release_qualification_gate_matches_ci_change_paths() -> None:
@@ -157,12 +241,12 @@ def test_expected_pr_labels_include_lifecycle_and_branch_tier() -> None:
 def test_precheck_evidence_must_match_base_and_head() -> None:
     digest = changed_files_digest(["scripts/example.py"])
     evidence = {
-        "schema": "waooaw.pr-prechecks/v3",
+        "schema": "waooaw.pr-prechecks/v4",
         "passed": True,
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": digest,
-        "graph_version": "wc100-prechecks-v2",
+        "graph_version": "wc104-prechecks-v4",
         "configuration_digest": "c" * 64,
         "runner_digest": "r" * 64,
     }
@@ -179,17 +263,17 @@ def test_precheck_evidence_must_match_base_and_head() -> None:
 
 def test_precheck_evidence_rejects_changed_files_or_graph_version() -> None:
     evidence = {
-        "schema": "waooaw.pr-prechecks/v3",
+        "schema": "waooaw.pr-prechecks/v4",
         "passed": True,
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": "d" * 64,
-        "graph_version": "wc100-prechecks-v2",
+        "graph_version": "wc104-prechecks-v4",
         "configuration_digest": "c" * 64,
         "runner_digest": "r" * 64,
     }
 
-    for digest, graph_version in (("e" * 64, "wc100-prechecks-v2"), ("d" * 64, "stale")):
+    for digest, graph_version in (("e" * 64, "wc104-prechecks-v4"), ("d" * 64, "stale")):
         try:
             validate_precheck_evidence(
                 evidence,
@@ -208,12 +292,12 @@ def test_precheck_evidence_rejects_changed_files_or_graph_version() -> None:
 
 def test_precheck_evidence_rejects_configuration_or_runner_mismatch() -> None:
     evidence = {
-        "schema": "waooaw.pr-prechecks/v3",
+        "schema": "waooaw.pr-prechecks/v4",
         "passed": True,
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": "d" * 64,
-        "graph_version": "wc100-prechecks-v2",
+        "graph_version": "wc104-prechecks-v4",
         "configuration_digest": "c" * 64,
         "runner_digest": "r" * 64,
     }
@@ -244,6 +328,17 @@ def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path)
         "prepare_pr_body.git", lambda *arguments: "b" * 40 if "--git-common-dir" not in arguments else str(tmp_path)
     )
     monkeypatch.setattr("prepare_pr_body.shutil.which", lambda executable: f"/usr/bin/{executable}")
+    monkeypatch.setattr(
+        "prepare_pr_body.gate_execution_identity",
+        lambda repository, gate, head: {
+            "catalog_version": "test",
+            "gate_id": gate,
+            "command_id": gate,
+            "gate_implementation_digest": "i" * 64,
+            "runner_digest": "r" * 64,
+            "environment_digest": "e" * 64,
+        },
+    )
 
     def capture(nodes, **arguments):
         captured["nodes"] = nodes
@@ -255,9 +350,37 @@ def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path)
     assert run_ci_prechecks("origin/main", HEAD, ["src/business-platform/Program.cs", ".github/workflows/ci.yaml"])["passed"]
     nodes = captured["nodes"]
     assert [node.name for node in nodes] == ["gitleaks", "business_platform", "release_qualification"]
-    assert captured["graph_version"] == "wc100-prechecks-v2"
+    assert [node.command[node.command.index("--gate") + 1] for node in nodes] == [
+        "precheck:gitleaks",
+        "test-dotnet:business-platform",
+        "release-qualification",
+    ]
+    assert all("docker compose" not in " ".join(node.command) for node in nodes)
+    assert all("run_release_qualification.sh" not in " ".join(node.command) for node in nodes)
+    assert captured["graph_version"] == "wc104-prechecks-v4"
     assert captured["configuration_digest"] == configuration_digest()
     assert captured["runner_digest"] == runner_digest(nodes)
+    assert nodes[0].runner_digest == "r" * 64
+
+
+def test_runner_digest_binds_every_per_node_authority_field() -> None:
+    from dataclasses import replace
+    from precheck_orchestrator import PrecheckNode
+
+    node = PrecheckNode(name="gate", command=("true",))
+    baseline = runner_digest([node])
+    mutations = (
+        {"catalog_version": "v2"},
+        {"gate_id": "gate:new"},
+        {"command_id": "command-new"},
+        {"gate_implementation_digest": "i" * 64},
+        {"runner_digest": "sha256:" + "r" * 64},
+        {"environment_digest": "e" * 64},
+        {"input_digest": "i" * 64},
+        {"input_patterns": ("src/**",)},
+    )
+
+    assert all(runner_digest([replace(node, **mutation)]) != baseline for mutation in mutations)
 
 
 def test_execution_preflight_rejects_wrong_worktree_before_docker(monkeypatch, tmp_path: Path) -> None:
@@ -308,6 +431,40 @@ def test_execution_preflight_rejects_wrong_head(monkeypatch, tmp_path: Path) -> 
         raise AssertionError("wrong HEAD was accepted")
 
 
+def test_execution_preflight_rejects_read_only_output_before_docker(monkeypatch, tmp_path: Path) -> None:
+    body_file = tmp_path / "pr-body.md"
+    body_file.write_text("body", encoding="utf-8")
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr("prepare_pr_body.git", lambda *arguments: "")
+    monkeypatch.setattr(
+        "prepare_pr_body.os.access",
+        lambda path, mode: Path(path) != body_file.resolve(),
+    )
+    docker_checked: list[str] = []
+    monkeypatch.setattr(
+        "prepare_pr_body.shutil.which",
+        lambda executable: docker_checked.append(executable) or f"/usr/bin/{executable}",
+    )
+
+    with pytest.raises(ValueError, match="output file is not writable"):
+        execution_preflight(tmp_path, body_file, tmp_path, HEAD, HEAD, require_docker=True)
+
+    assert docker_checked == []
+
+
+def test_execution_preflight_probes_body_and_evidence_atomic_replacement(monkeypatch, tmp_path: Path) -> None:
+    body_file = tmp_path / "pr-body.md"
+    body_file.write_text("body", encoding="utf-8")
+    probed: list[Path] = []
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr("prepare_pr_body.git", lambda *arguments: "")
+    monkeypatch.setattr("prepare_pr_body.probe_atomic_output", lambda path: probed.append(path))
+
+    execution_preflight(tmp_path, body_file, tmp_path, HEAD, HEAD, require_docker=False)
+
+    assert probed == [body_file, body_file.with_suffix(".precheck-evidence.json")]
+
+
 def test_execution_preflight_rejects_tracked_worktree_changes(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setattr("prepare_pr_body.git", lambda *arguments: " M scripts/prepare_pr_body.py")
@@ -328,9 +485,7 @@ def test_execution_preflight_checks_each_docker_capability(monkeypatch, tmp_path
     for failing_subcommand, expected in (("info", "daemon"), ("compose", "Compose"), ("buildx", "Buildx")):
         monkeypatch.setattr(
             "prepare_pr_body.subprocess.run",
-            lambda command, failing=failing_subcommand, **unused: SimpleNamespace(
-                returncode=1 if command[1] == failing else 0
-            ),
+            lambda command, failing=failing_subcommand, **unused: SimpleNamespace(returncode=1 if command[1] == failing else 0),
         )
         try:
             execution_preflight(tmp_path, tmp_path / "pr-body.md", tmp_path, HEAD, HEAD, require_docker=True)

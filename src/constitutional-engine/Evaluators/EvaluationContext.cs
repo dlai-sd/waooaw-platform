@@ -22,31 +22,35 @@ public sealed record EvaluationContext(
     long ApprovedBudgetInrPaise = 0,
     long CurrentSpendInrPaise = 0,
     long ProposedSpendInrPaise = 0,
-    string BudgetSkillType = "")
+    string BudgetSkillType = ""
+)
 {
     public string? GetParameter(string key)
     {
         try
         {
             using var doc = JsonDocument.Parse(
-                string.IsNullOrEmpty(ActionParameters) ? "{}" : ActionParameters);
-            return doc.RootElement.TryGetProperty(key, out var val)
-                ? val.GetString()
-                : null;
+                string.IsNullOrEmpty(ActionParameters) ? "{}" : ActionParameters
+            );
+            return doc.RootElement.TryGetProperty(key, out var val) ? val.GetString() : null;
         }
-        catch { return null; }
+        catch
+        {
+            return null;
+        }
     }
 
-    public static EvaluationContext FromRequest(
-        ValidateActionRequest request, string tenantId) => new(
-        ContractId:            request.ContractId,
-        ActionType:            request.ActionType,
-        ActionParameters:      request.ActionParameters,
-        DecisionSpaceVersion:  request.DecisionSpaceVersion,
-        TenantId:              tenantId,
-        SkillId:               request.HasSkillId ? request.SkillId : null,
-        ApprovedBudgetInrPaise: request.BudgetContext?.ApprovedMonthlyBudgetInrPaise ?? 0,
-        CurrentSpendInrPaise:   request.BudgetContext?.CurrentMonthSpendInrPaise ?? 0,
-        ProposedSpendInrPaise:  request.BudgetContext?.ProposedSpendInrPaise ?? 0,
-        BudgetSkillType:        request.BudgetContext?.SkillType ?? "");
+    public static EvaluationContext FromRequest(ValidateActionRequest request, string tenantId) =>
+        new(
+            ContractId: request.ContractId,
+            ActionType: request.ActionType,
+            ActionParameters: request.ActionParameters,
+            DecisionSpaceVersion: request.DecisionSpaceVersion,
+            TenantId: tenantId,
+            SkillId: request.HasSkillId ? request.SkillId : null,
+            ApprovedBudgetInrPaise: request.BudgetContext?.ApprovedMonthlyBudgetInrPaise ?? 0,
+            CurrentSpendInrPaise: request.BudgetContext?.CurrentMonthSpendInrPaise ?? 0,
+            ProposedSpendInrPaise: request.BudgetContext?.ProposedSpendInrPaise ?? 0,
+            BudgetSkillType: request.BudgetContext?.SkillType ?? ""
+        );
 }

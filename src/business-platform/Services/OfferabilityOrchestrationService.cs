@@ -22,7 +22,8 @@ public sealed record OfferabilityEvaluationRequest(
     string OfferingId,
     string AgentType,
     string BundleTier,
-    long ProposedPricePaise);
+    long ProposedPricePaise
+);
 
 public sealed record OwnerOfferabilityValidation(
     string Outcome,
@@ -31,12 +32,15 @@ public sealed record OwnerOfferabilityValidation(
     long ProposedPricePaise,
     long DirectContributionPaise,
     string ValidationVersion,
-    DateTimeOffset ProducedAt);
+    DateTimeOffset ProducedAt
+);
 
 public interface IOfferabilityOwnerGateway
 {
     Task<OwnerOfferabilityValidation?> ValidateAsync(
-        OfferabilityEvaluationRequest request, CancellationToken cancellationToken);
+        OfferabilityEvaluationRequest request,
+        CancellationToken cancellationToken
+    );
 }
 
 public sealed class OfferabilityIdempotencyConflictException : Exception;
@@ -44,25 +48,32 @@ public sealed class OfferabilityIdempotencyConflictException : Exception;
 public sealed class UnconfiguredOfferabilityOwnerGateway : IOfferabilityOwnerGateway
 {
     public Task<OwnerOfferabilityValidation?> ValidateAsync(
-        OfferabilityEvaluationRequest request, CancellationToken cancellationToken) =>
-        Task.FromResult<OwnerOfferabilityValidation?>(null);
+        OfferabilityEvaluationRequest request,
+        CancellationToken cancellationToken
+    ) => Task.FromResult<OwnerOfferabilityValidation?>(null);
 }
 
 public sealed class AuthenticatedOfferabilityOwnerGateway : IOfferabilityOwnerGateway, IDisposable
 {
-    private const string Route = "/internal/v1/relationships/{relationshipId}/offerability-validation";
+    private const string Route =
+        "/internal/v1/relationships/{relationshipId}/offerability-validation";
     private const string Operation = "validateRelationshipOfferability";
     private readonly WorkloadIdentityClient _identity;
     private readonly HttpClient _billingEngine;
 
-    public AuthenticatedOfferabilityOwnerGateway(WorkloadIdentityClient identity, Uri billingEngineBaseAddress)
+    public AuthenticatedOfferabilityOwnerGateway(
+        WorkloadIdentityClient identity,
+        Uri billingEngineBaseAddress
+    )
     {
         _identity = identity;
         _billingEngine = identity.CreateClient(billingEngineBaseAddress, "billing-engine");
     }
 
     public async Task<OwnerOfferabilityValidation?> ValidateAsync(
-        OfferabilityEvaluationRequest request, CancellationToken cancellationToken)
+        OfferabilityEvaluationRequest request,
+        CancellationToken cancellationToken
+    )
     {
         var body = new SortedDictionary<string, object?>(StringComparer.Ordinal)
         {
@@ -89,7 +100,8 @@ public sealed class AuthenticatedOfferabilityOwnerGateway : IOfferabilityOwnerGa
                 ["offering"] = request.OfferingId,
                 ["proposed_price_paise"] = request.ProposedPricePaise.ToString(),
             },
-            request.CorrelationId.ToString("D"));
+            request.CorrelationId.ToString("D")
+        );
         var envelope = _identity.Sign(
             context,
             _identity.GetAudience("billing-engine"),
@@ -98,9 +110,12 @@ public sealed class AuthenticatedOfferabilityOwnerGateway : IOfferabilityOwnerGa
             Operation,
             1,
             Convert.ToHexStringLower(SHA256.HashData(bodyBytes)),
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow
+        );
         using var message = new HttpRequestMessage(
-            HttpMethod.Post, Route.Replace("{relationshipId}", request.RelationshipId.ToString("D")))
+            HttpMethod.Post,
+            Route.Replace("{relationshipId}", request.RelationshipId.ToString("D"))
+        )
         {
             Content = new ByteArrayContent(bodyBytes),
         };
@@ -110,12 +125,17 @@ public sealed class AuthenticatedOfferabilityOwnerGateway : IOfferabilityOwnerGa
         try
         {
             using var response = await _billingEngine.SendAsync(message, cancellationToken);
-            if (!response.IsSuccessStatusCode) return null;
-            var result = await response.Content.ReadFromJsonAsync<WbeOfferabilityValidation>(cancellationToken);
-            if (result is null
+            if (!response.IsSuccessStatusCode)
+                return null;
+            var result = await response.Content.ReadFromJsonAsync<WbeOfferabilityValidation>(
+                cancellationToken
+            );
+            if (
+                result is null
                 || result.RelationshipId != request.RelationshipId
                 || !string.Equals(result.OfferingId, request.OfferingId, StringComparison.Ordinal)
-                || result.ProposedPricePaise != request.ProposedPricePaise)
+                || result.ProposedPricePaise != request.ProposedPricePaise
+            )
                 return null;
             return new OwnerOfferabilityValidation(
                 result.Outcome,
@@ -124,9 +144,11 @@ public sealed class AuthenticatedOfferabilityOwnerGateway : IOfferabilityOwnerGa
                 result.ProposedPricePaise,
                 result.DirectContributionPaise,
                 result.ValidationVersion,
-                result.ProducedAt);
+                result.ProducedAt
+            );
         }
-        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or JsonException)
+        catch (Exception exception)
+            when (exception is HttpRequestException or TaskCanceledException or JsonException)
         {
             return null;
         }
@@ -143,36 +165,46 @@ public sealed class AuthenticatedOfferabilityOwnerGateway : IOfferabilityOwnerGa
         [property: JsonPropertyName("proposedPricePaise")] long ProposedPricePaise,
         [property: JsonPropertyName("directContributionPaise")] long DirectContributionPaise,
         [property: JsonPropertyName("validationVersion")] string ValidationVersion,
-        [property: JsonPropertyName("producedAt")] DateTimeOffset ProducedAt);
+        [property: JsonPropertyName("producedAt")] DateTimeOffset ProducedAt
+    );
 }
 
 public sealed class OfferabilityOrchestrationService(
     IOfferabilityOwnerGateway owner,
     IRelationshipConstitutionalGateway constitutional,
     IDbContextFactory<EmploymentRelationshipDbContext> dbFactory,
-    OfferabilityService policy)
+    OfferabilityService policy
+)
 {
     private const string IdempotencyPurpose = "OFFERABILITY_EVALUATION";
     private static readonly TimeSpan OwnerFreshness = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan DecisionLifetime = TimeSpan.FromHours(24);
 
     public async Task<OfferabilityDecisionRecord> EvaluateAsync(
-        OfferabilityEvaluationRequest request, CancellationToken cancellationToken)
+        OfferabilityEvaluationRequest request,
+        CancellationToken cancellationToken
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(request.OfferingId);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.AgentType);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.BundleTier);
-        if (request.ProposedPricePaise <= 0) throw new ArgumentOutOfRangeException(nameof(request.ProposedPricePaise));
+        if (request.ProposedPricePaise <= 0)
+            throw new ArgumentOutOfRangeException(nameof(request.ProposedPricePaise));
 
-        var materialRequestHash = Convert.ToHexStringLower(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(
-            new SortedDictionary<string, object?>(StringComparer.Ordinal)
-            {
-                ["agent_type"] = request.AgentType,
-                ["bundle_tier"] = request.BundleTier,
-                ["offering_id"] = request.OfferingId,
-                ["proposed_price_paise"] = request.ProposedPricePaise,
-                ["relationship_state_version"] = request.RelationshipStateVersion,
-            })));
+        var materialRequestHash = Convert.ToHexStringLower(
+            SHA256.HashData(
+                JsonSerializer.SerializeToUtf8Bytes(
+                    new SortedDictionary<string, object?>(StringComparer.Ordinal)
+                    {
+                        ["agent_type"] = request.AgentType,
+                        ["bundle_tier"] = request.BundleTier,
+                        ["offering_id"] = request.OfferingId,
+                        ["proposed_price_paise"] = request.ProposedPricePaise,
+                        ["relationship_state_version"] = request.RelationshipStateVersion,
+                    }
+                )
+            )
+        );
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         long? lockKey = null;
         var connectionOpened = false;
@@ -180,25 +212,33 @@ public sealed class OfferabilityOrchestrationService(
         if (db.Database.ProviderName?.Contains("Npgsql", StringComparison.Ordinal) == true)
         {
             var lockMaterial = Encoding.UTF8.GetBytes(
-                $"{request.TenantId:D}:{IdempotencyPurpose}:{request.IdempotencyKey:D}");
+                $"{request.TenantId:D}:{IdempotencyPurpose}:{request.IdempotencyKey:D}"
+            );
             lockKey = BinaryPrimitives.ReadInt64BigEndian(SHA256.HashData(lockMaterial));
             await db.Database.OpenConnectionAsync(cancellationToken);
             connectionOpened = true;
             await db.Database.ExecuteSqlInterpolatedAsync(
                 $"SELECT pg_advisory_lock({lockKey.Value})",
-                cancellationToken);
+                cancellationToken
+            );
             lockAcquired = true;
         }
         try
         {
-            var reservation = await db.RelationshipIdempotency.SingleOrDefaultAsync(value =>
-                value.TenantId == request.TenantId
-                && value.Purpose == IdempotencyPurpose
-                && value.IdempotencyKey == request.IdempotencyKey.ToString("D"),
-                cancellationToken);
-            if (reservation is not null
-                && (reservation.RelationshipId != request.RelationshipId
-                    || reservation.MaterialRequestHash != materialRequestHash))
+            var reservation = await db.RelationshipIdempotency.SingleOrDefaultAsync(
+                value =>
+                    value.TenantId == request.TenantId
+                    && value.Purpose == IdempotencyPurpose
+                    && value.IdempotencyKey == request.IdempotencyKey.ToString("D"),
+                cancellationToken
+            );
+            if (
+                reservation is not null
+                && (
+                    reservation.RelationshipId != request.RelationshipId
+                    || reservation.MaterialRequestHash != materialRequestHash
+                )
+            )
                 throw new OfferabilityIdempotencyConflictException();
             if (reservation is null)
             {
@@ -213,12 +253,15 @@ public sealed class OfferabilityOrchestrationService(
                 db.RelationshipIdempotency.Add(reservation);
                 await db.SaveChangesAsync(cancellationToken);
             }
-            var existing = await db.OfferabilityDecisions.AsNoTracking()
-                .SingleOrDefaultAsync(value =>
-                    value.TenantId == request.TenantId
-                    && value.RelationshipId == request.RelationshipId
-                    && value.IdempotencyKey == request.IdempotencyKey,
-                    cancellationToken);
+            var existing = await db
+                .OfferabilityDecisions.AsNoTracking()
+                .SingleOrDefaultAsync(
+                    value =>
+                        value.TenantId == request.TenantId
+                        && value.RelationshipId == request.RelationshipId
+                        && value.IdempotencyKey == request.IdempotencyKey,
+                    cancellationToken
+                );
             if (existing is not null)
                 return existing.MaterialRequestHash == materialRequestHash
                     ? existing
@@ -226,7 +269,8 @@ public sealed class OfferabilityOrchestrationService(
 
             var validation = await owner.ValidateAsync(request, cancellationToken);
             var now = DateTimeOffset.UtcNow;
-            var isCurrent = validation is not null
+            var isCurrent =
+                validation is not null
                 && validation.ProducedAt <= now.AddMinutes(1)
                 && validation.ProducedAt >= now.Subtract(OwnerFreshness);
             var ownerVersions = validation is null
@@ -236,17 +280,20 @@ public sealed class OfferabilityOrchestrationService(
                     ["WBE"] = validation.ValidationVersion,
                     ["RELATIONSHIP"] = request.RelationshipStateVersion.ToString(),
                 };
-            var decision = policy.Evaluate(new OfferabilityInput(
-                request.OfferingId,
-                "FA-047-v1",
-                request.ProposedPricePaise,
-                validation?.CostFloorPaise ?? 0,
-                isCurrent,
-                false,
-                true,
-                validation?.Outcome == "APPROVED",
-                false,
-                ownerVersions));
+            var decision = policy.Evaluate(
+                new OfferabilityInput(
+                    request.OfferingId,
+                    "FA-047-v1",
+                    request.ProposedPricePaise,
+                    validation?.CostFloorPaise ?? 0,
+                    isCurrent,
+                    false,
+                    true,
+                    validation?.Outcome == "APPROVED",
+                    false,
+                    ownerVersions
+                )
+            );
             var evidenceId = await constitutional.AuthorizeAndRecordAsync(
                 request.TenantId,
                 request.RelationshipId,
@@ -264,7 +311,8 @@ public sealed class OfferabilityOrchestrationService(
                     decision.OwnerVersions,
                     decision.Reasons,
                 },
-                cancellationToken);
+                cancellationToken
+            );
             var record = new OfferabilityDecisionRecord
             {
                 TenantId = request.TenantId,
@@ -294,7 +342,8 @@ public sealed class OfferabilityOrchestrationService(
             {
                 await db.Database.ExecuteSqlInterpolatedAsync(
                     $"SELECT pg_advisory_unlock({lockKey!.Value})",
-                    CancellationToken.None);
+                    CancellationToken.None
+                );
             }
             if (connectionOpened)
             {

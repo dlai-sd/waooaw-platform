@@ -81,6 +81,19 @@ def validate_policy(policy: dict[str, object]) -> list[str]:
                 violations.append(f"COMMAND_UNDEFINED: {gate_id}")
             elif gate.get("runner_id") not in runners:
                 violations.append(f"RUNNER_UNDEFINED: {gate_id}")
+    prechecks = policy.get("prechecks")
+    if not isinstance(prechecks, dict):
+        violations.append("PRECHECKS_MISSING")
+    else:
+        for precheck_id, precheck in prechecks.items():
+            if not isinstance(precheck, dict):
+                violations.append(f"PRECHECK_INVALID: {precheck_id}")
+                continue
+            if not isinstance(gates, dict) or precheck.get("gate") not in gates:
+                violations.append(f"PRECHECK_GATE_UNDEFINED: {precheck_id}")
+            inputs = precheck.get("inputs")
+            if not isinstance(inputs, list) or not inputs or not all(isinstance(item, str) and item for item in inputs):
+                violations.append(f"PRECHECK_INPUTS_MISSING: {precheck_id}")
     if policy.get("mode") == "enforced":
         activation = policy.get("enforced_activation")
         if not isinstance(activation, dict) or activation.get("founder_approved") is not True:
@@ -138,30 +151,20 @@ def classify_paths(
             force_full = True
             reasons.append(f"unknown path: {path}")
 
-    if not force_full:
-        changed = True
-        while changed:
-            changed = False
-            for component in list(selected):
-                reverse_dependencies = components[component].get("reverse_dependencies", [])
-                if isinstance(reverse_dependencies, list):
-                    additions = set(reverse_dependencies) - selected
-                    selected.update(additions)
-                    changed = changed or bool(additions)
+    impacted = set(selected)
+    changed = True
+    while changed:
+        changed = False
+        for component in list(impacted):
+            reverse_dependencies = components[component].get("reverse_dependencies", [])
+            if isinstance(reverse_dependencies, list):
+                additions = set(reverse_dependencies) - impacted
+                impacted.update(additions)
+                changed = changed or bool(additions)
 
-    selected_components = sorted(components) if force_full else sorted(selected)
-    selected_gates = (
-        list(full_gates)
-        if force_full
-        else sorted(
-            {
-                gate
-                for component in selected_components
-                for gate in components[component].get("gates", [])
-                if isinstance(gate, str)
-            }
-        )
-    )
+    selected_components = sorted(components) if force_full else sorted(impacted)
+    impacted_gates = {gate for component in impacted for gate in components[component].get("gates", []) if isinstance(gate, str)}
+    selected_gates = list(full_gates) if force_full else sorted(impacted_gates)
     prechecks = policy.get("prechecks", {})
     selected_prechecks: list[str] = []
     if isinstance(prechecks, dict):
@@ -170,11 +173,12 @@ def classify_paths(
                 continue
             component_match = rule_value.get("components", [])
             gate_match = rule_value.get("gates", [])
+            path_match = rule_value.get("paths", [])
             if (
                 rule_value.get("always") is True
-                or force_full
-                or (isinstance(component_match, list) and selected.intersection(component_match))
-                or (isinstance(gate_match, list) and set(selected_gates).intersection(gate_match))
+                or (isinstance(component_match, list) and impacted.intersection(component_match))
+                or (isinstance(gate_match, list) and impacted_gates.intersection(gate_match))
+                or (isinstance(path_match, list) and any(_matches(path, path_match) for path in changed_paths))
             ):
                 selected_prechecks.append(precheck)
     changed_digest = hashlib.sha256("\n".join(sorted(changed_paths)).encode()).hexdigest()

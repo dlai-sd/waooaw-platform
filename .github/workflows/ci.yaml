@@ -24,100 +24,21 @@ env:
 
 jobs:
 
+  runner-supply:
+    uses: ./.github/workflows/validation-runner-supply.yaml
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+
   validation-plan:
-    name: WC-102 validation plan (Shadow)
-    runs-on: ubuntu-latest
-    outputs:
-      release_required: ${{ steps.plan.outputs.release_required }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Resolve exact validation range
-        id: range
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          PUSH_BASE_SHA: ${{ github.event.before }}
-          PUSH_HEAD_SHA: ${{ github.sha }}
-        run: |
-          if [[ "$EVENT_NAME" == "pull_request" ]]; then
-            base_sha=$PR_BASE_SHA
-            head_sha=$PR_HEAD_SHA
-          else
-            base_sha=$PUSH_BASE_SHA
-            head_sha=$PUSH_HEAD_SHA
-          fi
-          echo "base_sha=$base_sha" >> "$GITHUB_OUTPUT"
-          echo "head_sha=$head_sha" >> "$GITHUB_OUTPUT"
-          mkdir -p test-results/wc102
-          git diff --name-only --find-renames "$base_sha" "$head_sha" > test-results/wc102/changed-files.txt
-          git diff --name-status --find-renames "$base_sha" "$head_sha" > test-results/wc102/changed-files.status
-      - name: Build validation runner once (C-080)
-        id: runner-build
-        run: |
-          docker compose --profile test build test-runner
-          image_id=$(scripts/runner_image_id.sh test test-runner)
-          echo "image_id=$image_id" >> "$GITHUB_OUTPUT"
-      - name: Record immutable validation runner evidence
-        run: |
-          scripts/record_build_evidence.sh \
-            "$RUNNER_TEMP/build-evidence/validation-plan.json" 'test-runner-validation-plan' \
-            '${{ steps.range.outputs.base_sha }}' '${{ steps.range.outputs.head_sha }}' \
-            '${{ steps.runner-build.outputs.image_id }}' '' \
-            '["change-impact","requirement-ledger"]' 'workflow_build'
-      - name: Compute Shadow selection and validate changed ledgers
-        id: plan
-        env:
-          BASE_SHA: ${{ steps.range.outputs.base_sha }}
-          HEAD_SHA: ${{ steps.range.outputs.head_sha }}
-          EVENT_NAME: ${{ github.event_name }}
-        run: |
-          chmod 0777 test-results/wc102
-          scripts/verify_runner_image.sh test test-runner '${{ steps.runner-build.outputs.image_id }}'
-          docker compose --profile test run --rm \
-            -e BASE_SHA -e HEAD_SHA -e EVENT_NAME -e GITHUB_RUN_ID -e GITHUB_RUN_ATTEMPT test-runner sh -lc '
-              export GIT_CONFIG_COUNT=1
-              export GIT_CONFIG_KEY_0=safe.directory
-              export GIT_CONFIG_VALUE_0=/workspace
-              python scripts/validation_policy.py \
-                --policy validation/engineering-validation.yaml \
-                --base "$BASE_SHA" --head "$HEAD_SHA" \
-                --event "$EVENT_NAME" \
-                --changed-file-list test-results/wc102/changed-files.status \
-                --output test-results/wc102/change-impact.json
-              python scripts/validation_control/orchestrator.py \
-                --selection test-results/wc102/change-impact.json \
-                --mode focused --head "$HEAD_SHA" \
-                --run-id "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-focused" \
-                --output test-results/wc102/focused-plan.json
-              python scripts/validation_control/orchestrator.py \
-                --selection test-results/wc102/change-impact.json \
-                --mode qualification --head "$HEAD_SHA" \
-                --run-id "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-qualification" \
-                --output test-results/wc102/qualification-plan.json
-              python scripts/validate_requirement_ledger.py \
-                --repository-root /workspace \
-                --changed-file-list test-results/wc102/changed-files.txt
-            '
-          release_required=$(jq -r '.selected_prechecks | index("release_qualification") != null' \
-            test-results/wc102/change-impact.json)
-          echo "release_required=$release_required" >> "$GITHUB_OUTPUT"
-      - name: Retain Shadow selection and validation evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: wc102-validation-plan-${{ github.run_id }}
-          path: |
-            test-results/wc102/change-impact.json
-            test-results/wc102/changed-files.txt
-            test-results/wc102/changed-files.status
-            test-results/wc102/focused-plan.json
-            test-results/wc102/qualification-plan.json
-            ${{ runner.temp }}/build-evidence/validation-plan.json
-          if-no-files-found: error
-          retention-days: 90
+    needs: runner-supply
+    uses: ./.github/workflows/validation-plan.yaml
+    permissions:
+      contents: read
+      packages: read
+      attestations: read
 
   # ─── Build and scan all pull-request release images ──────────────────────
   build:
@@ -364,40 +285,38 @@ jobs:
   test-dotnet:
     name: .NET unit tests
     runs-on: ubuntu-latest
+    needs: [runner-supply, validation-plan]
     strategy:
       fail-fast: false
       matrix:
         include:
           - service: constitutional-engine
-            source: src/constitutional-engine/constitutional-engine.csproj
-            tests: tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj
-            profile: test-dotnet
-            runner: test-runner-dotnet
+            gate: test-dotnet:constitutional-engine
           - service: business-platform
-            source: src/business-platform/business-platform.csproj
-            tests: tests/business-platform.Tests/business-platform.Tests.csproj
-            profile: test-dotnet
-            runner: test-runner-dotnet
+            gate: test-dotnet:business-platform
     steps:
       - uses: actions/checkout@v4
       - name: Resolve Docker socket group for Testcontainers
         run: echo "DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)" >> "$GITHUB_ENV"
-      - name: Build .NET Docker test runner (C-080)
+      - name: Execute catalog .NET gate (C-076, C-080)
+        uses: ./.github/actions/run-validation-gate
         id: runner-build
-        run: |
-          docker compose --profile ${{ matrix.profile }} build ${{ matrix.runner }}
-          image_id=$(scripts/runner_image_id.sh '${{ matrix.profile }}' '${{ matrix.runner }}')
-          echo "image_id=$image_id" >> "$GITHUB_OUTPUT"
+        continue-on-error: true
+        with:
+          gate-id: ${{ matrix.gate }}
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Record immutable .NET runner evidence
+        if: always() && steps.runner-build.outputs.image_id != ''
         run: |
           scripts/record_build_evidence.sh \
             "$RUNNER_TEMP/build-evidence/${{ matrix.service }}.json" \
-            '${{ matrix.runner }}-${{ matrix.service }}' \
+            'test-runner-dotnet-${{ matrix.service }}' \
             '${{ github.event.pull_request.base.sha || github.event.before }}' \
             '${{ github.event.pull_request.head.sha || github.sha }}' \
             '${{ steps.runner-build.outputs.image_id }}' '' \
             '["dotnet-test","coverage"]' 'workflow_build'
       - name: Retain immutable .NET runner evidence
+        if: always() && steps.runner-build.outputs.image_id != ''
         uses: actions/upload-artifact@v4
         with:
           name: wc100-dotnet-runner-${{ matrix.service }}-${{ github.run_id }}
@@ -405,76 +324,43 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-      - name: Restore, build, and test in Docker (C-076, C-080)
-        run: |
-          mkdir -p ./test-results/coverage/${{ matrix.service }}
-          chmod 0777 ./test-results/coverage/${{ matrix.service }}
-          scripts/verify_runner_image.sh \
-            '${{ matrix.profile }}' '${{ matrix.runner }}' '${{ steps.runner-build.outputs.image_id }}'
-          docker compose --profile ${{ matrix.profile }} run --rm ${{ matrix.runner }} sh -lc '
-            dotnet restore "${{ matrix.tests }}" \
-              --artifacts-path /tmp/artifacts/${{ matrix.service }} &&
-            dotnet build "${{ matrix.tests }}" --no-restore -warnaserror \
-              --artifacts-path /tmp/artifacts/${{ matrix.service }} &&
-            dotnet test "${{ matrix.tests }}" \
-              --no-build \
-              --artifacts-path /tmp/artifacts/${{ matrix.service }} \
-              --settings tests/coverage.runsettings \
-              --collect:"XPlat Code Coverage" \
-              --results-directory ./test-results/coverage/${{ matrix.service }}
-          '
-
-      - name: Check coverage ≥90% (C-076)
-        run: |
-          coverage_file="$(find ./test-results/coverage/${{ matrix.service }} -name coverage.cobertura.xml -print -quit)"
-          if [[ -z "$coverage_file" ]]; then
-            echo "Cobertura coverage report not found" >&2
-            exit 1
-          fi
-          read -r line_rate branch_rate < <(
-            sed -n 's/.*<coverage line-rate="\([0-9.]*\)" branch-rate="\([0-9.]*\)".*/\1 \2/p' \
-              "$coverage_file" | head -n 1
-          )
-          awk -v lines="$line_rate" -v branches="$branch_rate" 'BEGIN {
-            printf "line_coverage=%.2f%% branch_coverage=%.2f%%\n", lines * 100, branches * 100
-            exit !(lines >= 0.90 && branches >= 0.80)
-          }'
-        # Failure = C-076 constitutional violation — blocks merge absolutely
-
       - name: Upload coverage
         uses: codecov/codecov-action@v4
+        if: always()
         continue-on-error: true  # geo-restricted runners must not break the gate
         with:
           directory: ./test-results/coverage/${{ matrix.service }}
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
+      - name: Enforce catalog .NET gate result
+        if: steps.runner-build.outcome != 'success'
+        run: exit 1
 
   # ─── Python unit tests ────────────────────────────────────────────────────
   test-python:
     name: Python unit tests + lint
     runs-on: ubuntu-latest
+    needs: [runner-supply, validation-plan]
     strategy:
       matrix:
         include:
           - service: professional-runtime
-            source: src/professional-runtime
-            tests: tests/professional-runtime
-            mypy_path: /workspace/src/professional-runtime
+            gate: test-python:professional-runtime
           - service: ai-runtime
-            source: src/ai-runtime
-            tests: tests/ai-runtime
-            mypy_path: /workspace/src/ai-runtime:/workspace/src/trust-layer
+            gate: test-python:ai-runtime
     steps:
       - uses: actions/checkout@v4
       - name: Resolve Docker socket group for Testcontainers
         run: echo "DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)" >> "$GITHUB_ENV"
-      - name: Build constitutional Docker test runner (C-080)
+      - name: Execute catalog Python gate (C-076, C-080)
+        uses: ./.github/actions/run-validation-gate
         id: runner-build
-        run: |
-          docker compose --profile test-python build test-runner-python
-          image_id=$(scripts/runner_image_id.sh test-python test-runner-python)
-          echo "image_id=$image_id" >> "$GITHUB_OUTPUT"
+        continue-on-error: true
+        with:
+          gate-id: ${{ matrix.gate }}
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Record immutable Python runner evidence
+        if: always() && steps.runner-build.outputs.image_id != ''
         run: |
           scripts/record_build_evidence.sh \
             "$RUNNER_TEMP/build-evidence/${{ matrix.service }}.json" \
@@ -484,47 +370,13 @@ jobs:
             '${{ steps.runner-build.outputs.image_id }}' '' \
             '["ruff","mypy","pytest","coverage"]' 'workflow_build'
       - name: Retain immutable Python runner evidence
+        if: always() && steps.runner-build.outputs.image_id != ''
         uses: actions/upload-artifact@v4
         with:
           name: wc100-python-runner-${{ matrix.service }}-${{ github.run_id }}
           path: ${{ runner.temp }}/build-evidence/${{ matrix.service }}.json
           if-no-files-found: error
           retention-days: 90
-
-      - name: Ruff in Docker (C-080)
-        run: |
-          scripts/verify_runner_image.sh test-python test-runner-python '${{ steps.runner-build.outputs.image_id }}'
-          docker compose --profile test-python run --rm test-runner-python sh -lc '
-            ruff check "${{ matrix.source }}" "${{ matrix.tests }}" &&
-            ruff format --check "${{ matrix.source }}" "${{ matrix.tests }}"
-          '
-
-      - name: mypy in Docker (C-080)
-        if: always()
-        run: |
-          docker compose --profile test-python run --rm test-runner-python sh -lc '
-            cd /tmp &&
-            MYPYPATH="${{ matrix.mypy_path }}" \
-              mypy --strict --explicit-package-bases \
-                $(find "/workspace/${{ matrix.source }}" -name "*.py" -type f | sort) \
-                --config-file /workspace/pyproject.toml
-          '
-
-      - name: pytest and constitutional coverage in Docker (C-076, C-080)
-        if: always()
-        run: |
-          mkdir -p ./test-results/coverage/${{ matrix.service }}
-          chmod 0777 ./test-results/coverage/${{ matrix.service }}
-          docker compose --profile test-python run --rm test-runner-python sh -lc '
-            export COVERAGE_FILE=/tmp/.coverage
-            pytest "${{ matrix.tests }}" \
-              --cov="${{ matrix.source }}" \
-              --cov-branch \
-              --cov-report=xml:test-results/coverage/${{ matrix.service }}/coverage.xml \
-              --cov-report=json:test-results/coverage/${{ matrix.service }}/coverage.json \
-              --cov-fail-under=0 &&
-            python -c "import json, sys; data=json.load(open(\"test-results/coverage/${{ matrix.service }}/coverage.json\")); totals=data[\"totals\"]; lines=totals[\"covered_lines\"]*100/totals[\"num_statements\"]; branches=100 if totals[\"num_branches\"] == 0 else totals[\"covered_branches\"]*100/totals[\"num_branches\"]; print(json.dumps({\"service\": \"${{ matrix.service }}\", \"line_coverage\": lines, \"branch_coverage\": branches, \"minimum_lines\": 90, \"minimum_branches\": 80})); sys.exit(0 if lines >= 90 and branches >= 80 else 1)"
-          '
 
       - name: Upload coverage
         if: always()
@@ -543,27 +395,33 @@ jobs:
           path: test-results/coverage/${{ matrix.service }}/
           if-no-files-found: error
           retention-days: 90
+      - name: Enforce catalog Python gate result
+        if: steps.runner-build.outcome != 'success'
+        run: exit 1
 
   release-qualification:
     name: Release qualification
     runs-on: ubuntu-latest
-    needs: validation-plan
+    needs: [runner-supply, validation-plan]
     permissions:
       contents: read
+      packages: read
+      attestations: read
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Build release qualification runner once (C-080)
+      - name: Execute catalog release qualification
         if: needs.validation-plan.outputs.release_required == 'true'
+        uses: ./.github/actions/run-validation-gate
         id: runner-build
-        run: |
-          docker compose --profile test build test-runner
-          image_id=$(scripts/runner_image_id.sh test test-runner)
-          echo "image_id=$image_id" >> "$GITHUB_OUTPUT"
+        continue-on-error: true
+        with:
+          gate-id: release-qualification
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Record immutable release runner evidence
-        if: needs.validation-plan.outputs.release_required == 'true'
+        if: always() && needs.validation-plan.outputs.release_required == 'true' && steps.runner-build.outputs.image_id != ''
         run: |
           scripts/record_build_evidence.sh \
             "$RUNNER_TEMP/build-evidence/release-qualification.json" \
@@ -573,19 +431,13 @@ jobs:
             '${{ steps.runner-build.outputs.image_id }}' '' \
             '["release-qualification"]' 'workflow_build'
       - name: Retain immutable release runner evidence
-        if: needs.validation-plan.outputs.release_required == 'true'
+        if: always() && needs.validation-plan.outputs.release_required == 'true' && steps.runner-build.outputs.image_id != ''
         uses: actions/upload-artifact@v4
         with:
           name: wc100-release-runner-${{ github.run_id }}
           path: ${{ runner.temp }}/build-evidence/release-qualification.json
           if-no-files-found: error
           retention-days: 90
-
-      - name: Run release qualification
-        if: needs.validation-plan.outputs.release_required == 'true'
-        env:
-          WAOOAW_TEST_RUNNER_IMAGE_ID: ${{ steps.runner-build.outputs.image_id }}
-        run: scripts/run_release_qualification.sh
 
       - name: Retain WC-091 Demo data evidence
         if: always() && needs.validation-plan.outputs.release_required == 'true'
@@ -604,20 +456,26 @@ jobs:
           path: goal006-local-azure-runtime/
           if-no-files-found: error
           retention-days: 90
+      - name: Enforce catalog release qualification result
+        if: needs.validation-plan.outputs.release_required == 'true' && steps.runner-build.outcome != 'success'
+        run: exit 1
 
   # ─── TypeScript tests ─────────────────────────────────────────────────────
   test-web:
     name: Web unit tests + type check
     runs-on: ubuntu-latest
+    needs: [runner-supply, validation-plan]
     steps:
       - uses: actions/checkout@v4
-      - name: Build TypeScript Docker test runner (C-080)
+      - name: Execute catalog web gate (C-076, C-080)
+        uses: ./.github/actions/run-validation-gate
         id: runner-build
-        run: |
-          docker compose --profile test-ts build test-runner-ts
-          image_id=$(scripts/runner_image_id.sh test-ts test-runner-ts)
-          echo "image_id=$image_id" >> "$GITHUB_OUTPUT"
+        continue-on-error: true
+        with:
+          gate-id: test-web
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Record immutable TypeScript runner evidence
+        if: always() && steps.runner-build.outputs.image_id != ''
         run: |
           scripts/record_build_evidence.sh \
             "$RUNNER_TEMP/build-evidence/web.json" \
@@ -627,49 +485,31 @@ jobs:
             '${{ steps.runner-build.outputs.image_id }}' '' \
             '["typecheck","eslint","jest","coverage"]' 'workflow_build'
       - name: Retain immutable TypeScript runner evidence
+        if: always() && steps.runner-build.outputs.image_id != ''
         uses: actions/upload-artifact@v4
         with:
           name: wc100-typescript-runner-${{ github.run_id }}
           path: ${{ runner.temp }}/build-evidence/web.json
           if-no-files-found: error
           retention-days: 90
-
-      - name: Type check, lint, and test in Docker (C-076, C-080)
-        run: |
-          mkdir -p ./test-results/coverage/web
-          chmod 0777 ./test-results/coverage/web
-          scripts/verify_runner_image.sh test-ts test-runner-ts '${{ steps.runner-build.outputs.image_id }}'
-          docker compose --profile test-ts run --rm test-runner-ts sh -lc '
-            cd web &&
-            ../node_modules/.bin/tsc --noEmit --incremental false &&
-            ../node_modules/.bin/eslint . --max-warnings 0 &&
-            ../node_modules/.bin/jest --runInBand --coverage --coverageDirectory=/workspace/test-results/coverage/web --coverageThreshold='"'"'{"global":{"lines":90,"branches":80,"functions":90,"statements":90}}'"'"'
-          '
-        # C-076: 90% line/function/statement floor is constitutional minimum
+      - name: Enforce catalog web gate result
+        if: steps.runner-build.outcome != 'success'
+        run: exit 1
 
   # ─── OpenAPI spec lint ────────────────────────────────────────────────────
   spec-lint:
     name: OpenAPI + Proto lint
     runs-on: ubuntu-latest
+    needs: [runner-supply, validation-plan]
     steps:
       - uses: actions/checkout@v4
-      - name: Spectral lint — OpenAPI contracts
-        run: |
-          docker run --rm --user 1000:1000 -v "$PWD:/workspace:ro" -w /workspace \
-            stoplight/spectral:6.15.0 lint \
-            --fail-severity error \
-            architecture/reference/api-specs/business-platform.openapi.yaml \
-            architecture/reference/api-specs/professional-runtime.openapi.yaml
-
-      - name: buf lint — Constitutional Service proto
-        run: |
-          docker run --rm -v "$PWD:/workspace" -w /workspace/architecture/reference/proto \
-            bufbuild/buf:1.72.0 format --diff --exit-code
-          docker run --rm -v "$PWD:/workspace" -w /workspace/architecture/reference/proto \
-            bufbuild/buf:1.72.0 lint
-          docker run --rm -v "$PWD:/workspace" -w /workspace/architecture/reference/proto \
-            bufbuild/buf:1.72.0 breaking \
-            --against 'https://github.com/${{ github.repository }}.git#branch=main,subdir=architecture/reference/proto'
+        with:
+          fetch-depth: 0
+      - name: Execute catalog specification lint
+        uses: ./.github/actions/run-validation-gate
+        with:
+          gate-id: spec-lint
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   # ─── Security — SAST ──────────────────────────────────────────────────────
   sast:
@@ -747,37 +587,63 @@ jobs:
   dep-scan:
     name: Dependency vulnerability scan
     runs-on: ubuntu-latest
+    needs: [runner-supply, validation-plan]
     steps:
       - uses: actions/checkout@v4
-      - name: Build dependency audit runners (C-080)
-        id: runner-build
-        run: |
-          docker compose --profile test-python build test-runner-python
-          docker compose --profile test-dotnet build test-runner-dotnet
-          docker compose --profile test-ts build test-runner-ts
-          echo "python_image_id=$(scripts/runner_image_id.sh test-python test-runner-python)" >> "$GITHUB_OUTPUT"
-          echo "dotnet_image_id=$(scripts/runner_image_id.sh test-dotnet test-runner-dotnet)" >> "$GITHUB_OUTPUT"
-          echo "ts_image_id=$(scripts/runner_image_id.sh test-ts test-runner-ts)" >> "$GITHUB_OUTPUT"
+      - name: Execute catalog Python dependency scan
+        uses: ./.github/actions/run-validation-gate
+        id: python-scan
+        continue-on-error: true
+        with:
+          gate-id: dep-scan:python
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Execute catalog .NET dependency scan
+        uses: ./.github/actions/run-validation-gate
+        id: dotnet-scan
+        continue-on-error: true
+        with:
+          gate-id: dep-scan:dotnet
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Execute catalog TypeScript dependency scan
+        uses: ./.github/actions/run-validation-gate
+        id: typescript-scan
+        continue-on-error: true
+        with:
+          gate-id: dep-scan:typescript
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Record immutable dependency runner evidence
+        if: always()
         run: |
-          scripts/record_build_evidence.sh \
-            "$RUNNER_TEMP/build-evidence/dependency-python.json" 'test-runner-python-dependencies' \
-            '${{ github.event.pull_request.base.sha || github.event.before }}' \
-            '${{ github.event.pull_request.head.sha || github.sha }}' \
-            '${{ steps.runner-build.outputs.python_image_id }}' '' '["pip-audit"]' 'workflow_build'
-          scripts/record_build_evidence.sh \
-            "$RUNNER_TEMP/build-evidence/dependency-dotnet.json" 'test-runner-dotnet-dependencies' \
-            '${{ github.event.pull_request.base.sha || github.event.before }}' \
-            '${{ github.event.pull_request.head.sha || github.sha }}' \
-            '${{ steps.runner-build.outputs.dotnet_image_id }}' '' '["dotnet-vulnerable"]' 'workflow_build'
-          scripts/record_build_evidence.sh \
-            "$RUNNER_TEMP/build-evidence/dependency-ts.json" 'test-runner-ts-dependencies' \
-            '${{ github.event.pull_request.base.sha || github.event.before }}' \
-            '${{ github.event.pull_request.head.sha || github.sha }}' \
-            '${{ steps.runner-build.outputs.ts_image_id }}' '' '["pnpm-audit"]' 'workflow_build'
+          if [[ -n '${{ steps.python-scan.outputs.image_id }}' ]]; then
+            scripts/record_build_evidence.sh \
+              "$RUNNER_TEMP/build-evidence/dependency-python.json" 'test-runner-python-dependencies' \
+              '${{ github.event.pull_request.base.sha || github.event.before }}' \
+              '${{ github.event.pull_request.head.sha || github.sha }}' \
+              '${{ steps.python-scan.outputs.image_id }}' '' '["pip-audit"]' 'workflow_build'
+          fi
+          if [[ -n '${{ steps.dotnet-scan.outputs.image_id }}' ]]; then
+            scripts/record_build_evidence.sh \
+              "$RUNNER_TEMP/build-evidence/dependency-dotnet.json" 'test-runner-dotnet-dependencies' \
+              '${{ github.event.pull_request.base.sha || github.event.before }}' \
+              '${{ github.event.pull_request.head.sha || github.sha }}' \
+              '${{ steps.dotnet-scan.outputs.image_id }}' '' '["dotnet-vulnerable"]' 'workflow_build'
+          fi
+          if [[ -n '${{ steps.typescript-scan.outputs.image_id }}' ]]; then
+            scripts/record_build_evidence.sh \
+              "$RUNNER_TEMP/build-evidence/dependency-ts.json" 'test-runner-ts-dependencies' \
+              '${{ github.event.pull_request.base.sha || github.event.before }}' \
+              '${{ github.event.pull_request.head.sha || github.sha }}' \
+              '${{ steps.typescript-scan.outputs.image_id }}' '' '["pnpm-audit"]' 'workflow_build'
+          fi
 
       - name: Retain immutable dependency runner evidence
+        if: >-
+          always() && (
+            steps.python-scan.outputs.image_id != '' ||
+            steps.dotnet-scan.outputs.image_id != '' ||
+            steps.typescript-scan.outputs.image_id != ''
+          )
         uses: actions/upload-artifact@v4
         with:
           name: wc100-dependency-runners-${{ github.run_id }}
@@ -785,68 +651,27 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-      - name: pip-audit — Python dependencies
-        run: |
-          scripts/verify_runner_image.sh test-python test-runner-python '${{ steps.runner-build.outputs.python_image_id }}'
-          docker compose --profile test-python run --rm test-runner-python sh -lc '
-            pip-audit -r src/professional-runtime/requirements.txt --strict --cache-dir /tmp/pip-audit-cache &&
-            sed -e "/^--extra-index-url/d" \
-                -e "s/torch==2.13.0+cpu/torch==2.13.0/" \
-                src/ai-runtime/requirements.txt > /tmp/ai-runtime-audit.txt &&
-            pip-audit -r /tmp/ai-runtime-audit.txt --strict --cache-dir /tmp/pip-audit-cache &&
-            pip-audit -r src/billing-engine/requirements.txt --strict --cache-dir /tmp/pip-audit-cache
-          '
-        continue-on-error: false  # Fail on any vulnerability
-
-      - name: dotnet vulnerable — .NET dependencies
-        run: |
-          scripts/verify_runner_image.sh test-dotnet test-runner-dotnet '${{ steps.runner-build.outputs.dotnet_image_id }}'
-          docker compose --profile test-dotnet run --rm test-runner-dotnet sh -lc '
-            audit_dotnet_project() {
-              project_name="$(basename "$1")"
-              export BaseIntermediateOutputPath="/tmp/dependency-audit/$project_name/obj/"
-              dotnet restore "$1" --nologo >/dev/null
-              if ! output="$(dotnet list "$1" package --vulnerable --include-transitive 2>&1)"; then
-                printf "%s\n" "$output"
-                return 1
-              fi
-              printf "%s\n" "$output"
-              if printf "%s\n" "$output" | grep -qi "has the following vulnerable packages"; then
-                return 1
-              fi
-            }
-            audit_dotnet_project src/constitutional-engine &&
-            audit_dotnet_project src/business-platform
-          '
-
-      - name: pnpm audit — Node.js dependencies
-        run: |
-          scripts/verify_runner_image.sh test-ts test-runner-ts '${{ steps.runner-build.outputs.ts_image_id }}'
-          docker compose --profile test-ts run --rm test-runner-ts sh -lc '
-            pnpm audit --audit-level high
-          '
+      - name: Enforce catalog dependency scan results
+        if: >-
+          steps.python-scan.outcome != 'success' ||
+          steps.dotnet-scan.outcome != 'success' ||
+          steps.typescript-scan.outcome != 'success'
+        run: exit 1
 
   # ─── License compliance ───────────────────────────────────────────────────
   # Prevents inadvertent use of GPL/AGPL licensed dependencies in commercial code.
   license-check:
     name: License compliance
     runs-on: ubuntu-latest
+    needs: [runner-supply, validation-plan]
     steps:
       - uses: actions/checkout@v4
-      - name: Build Python license runner
-        run: docker compose --profile test-python build test-runner-python
-
-      - name: pip-licenses — check Python dependency licenses
-        run: |
-          docker compose --profile test-python run --rm test-runner-python sh -lc '
-            pip install --target /tmp/license-env -r src/professional-runtime/requirements.txt -q &&
-            sed -e "/^--extra-index-url/d" \
-                -e "s/torch==2.13.0+cpu/torch==2.13.0/" \
-                src/ai-runtime/requirements.txt > /tmp/ai-runtime-license.txt &&
-            pip install --target /tmp/license-env -r /tmp/ai-runtime-license.txt -q &&
-            PYTHONPATH=/tmp/license-env pip-licenses --fail-on="GPL;AGPL;LGPL"
-          '
-        continue-on-error: true  # Advisory only — does not block PR (LGPL can be acceptable)
+      - name: Execute catalog license check
+        uses: ./.github/actions/run-validation-gate
+        continue-on-error: true  # Advisory only — LGPL can be acceptable
+        with:
+          gate-id: license-check
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   # ─── Constitutional commit gate (C-059 — Implementation Traceability) ─────
   # Every commit must reference an IB item or Fix issue AND a constitutional claim.
@@ -856,31 +681,30 @@ jobs:
   constitutional-commit-gate:
     name: C-059 Constitutional Commit Gate
     runs-on: ubuntu-latest
+    needs: [runner-supply, validation-plan]
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Build constitutional validation runner
-        run: docker compose --profile test-python build test-runner-python
-
-      - name: Validate commit messages (C-059)
-        run: |
-          BASE="${{ github.event.pull_request.base.sha }}"
-          HEAD="${{ github.event.pull_request.head.sha }}"
-          mkdir -p test-results
-          gh pr view ${{ github.event.pull_request.number }} \
-            --json body --jq .body --repo ${{ github.repository }} > test-results/pr-body.md
-          docker compose --profile test-python run --rm \
-            -v "$PWD/test-results/pr-body.md:/tmp/pr-body.md:ro" \
-            -e BASE="$BASE" -e HEAD="$HEAD" test-runner-python sh -lc '
-              python scripts/validate_c059.py \
-                --pr-body-file /tmp/pr-body.md \
-                --base "$BASE" \
-                --head "$HEAD"
-            '
+      - name: Stage C-059 inputs
         env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p test-results/wc104/c059
+          gh pr view "$PR_NUMBER" \
+            --json body --jq .body --repo "$REPOSITORY" > test-results/wc104/c059/pr-body.md
+          printf '%s\n' "$BASE_SHA" > test-results/wc104/c059/base-sha.txt
+          printf '%s\n' "$HEAD_SHA" > test-results/wc104/c059/head-sha.txt
+      - name: Execute catalog C-059 gate
+        uses: ./.github/actions/run-validation-gate
+        with:
+          gate-id: constitutional-commit-gate
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   # ─── Author review gate (C-065) ──────────────────────────────────────────
   # Review evidence is bound to the exact PR head. A later commit invalidates
@@ -888,45 +712,24 @@ jobs:
   author-review-gate:
     name: C-065 Author Review Gate
     runs-on: ubuntu-latest
+    needs: [runner-supply, validation-plan]
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Build constitutional validation runner
-        run: docker compose --profile test-python build test-runner-python
-
-      - name: Validate author review evidence
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          REPOSITORY: ${{ github.repository }}
-        run: |
-          mkdir -p test-results
-          for attempt in 1 2 3; do
-            gh pr view "$PR_NUMBER" --json body --jq .body --repo "$REPOSITORY" > test-results/pr-body.md
-            if docker compose --profile test-python run --rm \
-              -v "$PWD/test-results/pr-body.md:/tmp/pr-body.md:ro" \
-              -e HEAD_SHA -e BASE_SHA test-runner-python sh -lc '
-                python scripts/validate_author_review.py \
-                  --pr-body-file /tmp/pr-body.md \
-                  --head "$HEAD_SHA" &&
-                python scripts/validate_runtime_lifecycle_evidence.py \
-                  --pr-body-file /tmp/pr-body.md \
-                  --base "$BASE_SHA" \
-                  --head "$HEAD_SHA"
-              '; then
-              exit 0
-            fi
-            if [ "$attempt" -eq 3 ]; then
-              echo "C-065 failed after three metadata reads for PR head $HEAD_SHA" >&2
-              exit 1
-            fi
-            echo "PR metadata has not converged to $HEAD_SHA; retrying in 5 seconds"
-            sleep 5
-          done
+      - name: Execute catalog C-065 gate with bounded metadata refresh
+        uses: ./.github/actions/run-validation-gate
+        with:
+          gate-id: author-review-gate
+          token: ${{ secrets.GITHUB_TOKEN }}
+          pr-number: ${{ github.event.pull_request.number }}
+          repository: ${{ github.repository }}
+          metadata-directory: test-results/wc104/c065
+          base-sha: ${{ github.event.pull_request.base.sha }}
+          head-sha: ${{ github.event.pull_request.head.sha }}
+          attempts: "3"
+          retry-delay-seconds: "5"
 
   # ─── Authorization boundary check (C-066) ─────────────────────────────────
   # Every PR may run CI. Authorization to enter main is enforced by the
@@ -935,18 +738,25 @@ jobs:
   authorization-tier-check:
     name: C-066 Authorization Tier Check
     runs-on: ubuntu-latest
+    needs: [runner-supply, validation-plan]
     if: github.event_name == 'pull_request'
     steps:
-      - name: Verify Founder-controlled merge boundary
+      - uses: actions/checkout@v4
+      - name: Stage C-066 inputs
         env:
           BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPOSITORY: ${{ github.repository }}
         run: |
-          test "$BASE_BRANCH" = "main"
-          test -n "$PR_NUMBER"
-          test -n "$REPOSITORY"
-          echo "C-066 PASS: CI is authorized; Founder review and merge remain mandatory."
+          mkdir -p test-results/wc104/c066
+          printf '%s\n' "$BASE_BRANCH" > test-results/wc104/c066/base-branch.txt
+          printf '%s\n' "$PR_NUMBER" > test-results/wc104/c066/pr-number.txt
+          printf '%s\n' "$REPOSITORY" > test-results/wc104/c066/repository.txt
+      - name: Verify Founder-controlled merge boundary
+        uses: ./.github/actions/run-validation-gate
+        with:
+          gate-id: authorization-tier-check
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   # ─── Test Champion campaign verdict (INST-015; C-023/C-065/C-099) ─────────
   # Deterministically synthesizes every CI prerequisite. This job recommends

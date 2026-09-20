@@ -1,6 +1,7 @@
 schema: waooaw.validation-catalog/v1
 version: wc102-shadow-v1
 mode: shadow
+runner_supply: validation/runner-supply.json
 enforced_activation:
   founder_approved: false
   minimum_shadow_samples: 20
@@ -31,29 +32,59 @@ runners:
 commands:
   build-constitutional-engine: {shell: "dotnet build src/constitutional-engine --artifacts-path /tmp/artifacts/constitutional-engine --no-restore"}
   build-business-platform: {shell: "dotnet build src/business-platform --artifacts-path /tmp/artifacts/business-platform --no-restore"}
-  build-professional-runtime: {shell: "python -m compileall -q src/professional-runtime"}
-  build-ai-runtime: {shell: "python -m compileall -q src/ai-runtime src/trust-layer"}
-  build-billing-engine: {shell: "python -m compileall -q src/billing-engine"}
-  build-agent-adapter: {shell: "python -m compileall -q src/agent-adapters"}
-  build-web: {shell: "cd web && pnpm tsc --noEmit --incremental false"}
-  test-constitutional-engine: {shell: "dotnet test tests/constitutional-engine.Tests --artifacts-path /tmp/artifacts/constitutional-engine"}
-  test-business-platform: {shell: "dotnet test tests/business-platform.Tests --artifacts-path /tmp/artifacts/business-platform"}
-  test-professional-runtime: {shell: "pytest tests/professional-runtime -q"}
-  test-ai-runtime: {shell: "pytest tests/ai-runtime tests/trust-layer -q"}
+  build-professional-runtime: {shell: "PYTHONPYCACHEPREFIX=/tmp/pycache/professional-runtime python -m compileall -q src/professional-runtime"}
+  build-ai-runtime: {shell: "PYTHONPYCACHEPREFIX=/tmp/pycache/ai-runtime python -m compileall -q src/ai-runtime src/trust-layer"}
+  build-billing-engine: {shell: "PYTHONPYCACHEPREFIX=/tmp/pycache/billing-engine python -m compileall -q src/billing-engine"}
+  build-agent-adapter: {shell: "PYTHONPYCACHEPREFIX=/tmp/pycache/agent-adapters python -m compileall -q src/agent-adapters"}
+  build-web: {shell: "cp -a web /tmp/web && ln -s /opt/waooaw-web/node_modules /tmp/web/node_modules && cd /tmp/web && tsc --noEmit --incremental false"}
+  test-constitutional-engine: {shell: "sh scripts/validation_control/run_dotnet_test_gate.sh constitutional-engine tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj"}
+  test-business-platform: {shell: "sh scripts/validation_control/run_dotnet_test_gate.sh business-platform tests/business-platform.Tests/business-platform.Tests.csproj"}
+  test-professional-runtime: {shell: "sh scripts/validation_control/run_python_test_gate.sh professional-runtime src/professional-runtime /workspace/src/professional-runtime tests/professional-runtime"}
+  test-ai-runtime: {shell: "sh scripts/validation_control/run_python_test_gate.sh ai-runtime src/ai-runtime /workspace/src/ai-runtime:/workspace/src/trust-layer tests/ai-runtime tests/trust-layer"}
   test-billing-engine: {shell: "pytest tests/billing-engine tests/pipeline/test_billing_ce_validator.py -q"}
-  test-web: {shell: "cd web && pnpm jest --runInBand"}
-  spec-lint: {shell: "python scripts/validation_control/docker_policy.py --repository /workspace"}
+  test-web: {shell: "mkdir -p /workspace/test-results/coverage/web && cp -a web /tmp/web && ln -s /opt/waooaw-web/node_modules /tmp/web/node_modules && cd /tmp/web && tsc --noEmit --incremental false && eslint . --max-warnings 0 && jest --runInBand --coverage --coverageDirectory=/workspace/test-results/coverage/web --coverageThreshold='{\"global\":{\"lines\":90,\"branches\":80,\"functions\":90,\"statements\":90}}'"}
+  spec-lint: {shell: "sh scripts/validation_control/run_spec_lint_gate.sh"}
   sast-csharp: {shell: "dotnet build src/constitutional-engine/constitutional-engine.csproj --artifacts-path /tmp/artifacts/sast/constitutional-engine -p:TreatWarningsAsErrors=true && dotnet build src/business-platform/business-platform.csproj --artifacts-path /tmp/artifacts/sast/business-platform -p:TreatWarningsAsErrors=true"}
   sast-python: {shell: "bandit -r src -c pyproject.toml -lll -f json -o test-results/bandit.json"}
-  sast-javascript: {shell: "cd web && pnpm exec biome lint ."}
-  dependency-scan: {shell: "pip-audit --cache-dir /tmp/pip-audit-cache -r requirements-test.txt --strict"}
+  sast-javascript: {shell: "cd web && biome lint ."}
+  dependency-scan-python: {shell: "sh scripts/validation_control/run_dependency_scan_gate.sh python"}
+  dependency-scan-dotnet: {shell: "sh scripts/validation_control/run_dependency_scan_gate.sh dotnet"}
+  dependency-scan-typescript: {shell: "sh scripts/validation_control/run_dependency_scan_gate.sh typescript"}
   secrets: {shell: "python scripts/validation_control/docker_policy.py --repository /workspace"}
-  license-check: {shell: "pip-licenses --fail-on='GPL;AGPL;LGPL'"}
-  release-qualification: {shell: "sh scripts/run_release_qualification.sh"}
-  constitutional-commit-gate: {shell: "python scripts/validate_c059.py --pr-body-file test-results/pr-body.md --base $BASE_SHA --head $HEAD_SHA"}
+  license-check: {shell: "sh scripts/validation_control/run_license_check_gate.sh"}
+  release-qualification: {shell: "sh scripts/run_release_qualification.sh", execution: host}
+  constitutional-commit-gate: {shell: "sh scripts/validation_control/run_c059_gate.sh"}
   requirement-ledger: {shell: "python scripts/validate_requirement_ledger.py --repository-root /workspace"}
-  author-review-gate: {shell: "python scripts/validate_author_review.py --pr-body-file test-results/pr-body.md --head $HEAD_SHA"}
-  authorization-tier-check: {shell: "test $BASE_BRANCH = main && test -n $PR_NUMBER && test -n $REPOSITORY"}
+  author-review-gate: {shell: "sh scripts/validation_control/run_c065_gate.sh"}
+  authorization-tier-check: {shell: "sh scripts/validation_control/run_c066_gate.sh"}
+  quality-scripts: {shell: "ruff check scripts/ --config pyproject.toml && ruff format --check scripts/ && python scripts/seed-prompts.py --dry-run"}
+  quality-commitlint: {shell: "sh scripts/validation_control/run_commitlint_quality_gate.sh"}
+  quality-dotnet-constitutional-engine: {shell: "sh scripts/validation_control/run_dotnet_quality_gate.sh src/constitutional-engine constitutional-engine"}
+  quality-dotnet-business-platform: {shell: "sh scripts/validation_control/run_dotnet_quality_gate.sh src/business-platform business-platform"}
+  quality-python-professional-runtime: {shell: "sh scripts/validation_control/run_python_quality_gate.sh src/professional-runtime /workspace/src/professional-runtime"}
+  quality-python-ai-runtime: {shell: "sh scripts/validation_control/run_python_quality_gate.sh src/ai-runtime /workspace/src/ai-runtime:/workspace/src/trust-layer"}
+  quality-typescript: {shell: "sh scripts/validation_control/run_typescript_quality_gate.sh"}
+  quality-sql: {shell: "sqlfluff lint infrastructure/postgres/init/ --config .sqlfluff --format github-annotation --annotation-level warning || true"}
+  quality-proto: {shell: "sh scripts/validation_control/run_proto_quality_gate.sh"}
+  quality-observability: {shell: "sh scripts/validation_control/run_observability_quality_gate.sh"}
+  quality-traceability: {shell: "sh scripts/validation_control/run_traceability_quality_gate.sh"}
+  quality-constitutional-naming: {shell: "sh scripts/validation_control/run_constitutional_naming_gate.sh"}
+  mutation-dotnet: {shell: "sh scripts/validation_control/run_dotnet_mutation_gate.sh"}
+  mutation-python: {shell: "sh scripts/validation_control/run_python_mutation_gate.sh"}
+  integration-multi-tenant: {shell: "sh scripts/validation_control/run_multi_tenant_integration_gate.sh"}
+  integration-postgres-migrations: {shell: "sh scripts/validation_control/run_postgres_migrations.sh"}
+  integration-dotnet: {shell: "sh scripts/validation_control/run_dotnet_integration_gate.sh"}
+  integration-python: {shell: "sh scripts/validation_control/run_python_integration_gate.sh"}
+  contract-rest: {shell: "sh scripts/validation_control/run_rest_contract_gate.sh", execution: host}
+  contract-seed-prompts: {shell: "sh scripts/validation_control/run_seed_prompts_contract_gate.sh"}
+  security-prompt-injection: {shell: "sh scripts/validation_control/run_prompt_injection_gate.sh"}
+  e2e-accessibility: {shell: "sh scripts/validation_control/run_accessibility_gate.sh"}
+  acceptance-as-001: {shell: "sh scripts/validation_control/run_acceptance_gate.sh tests/acceptance/test_as001_dma_dr_mehta.py as-001 -m acceptance"}
+  acceptance-as-003: {shell: "sh scripts/validation_control/run_acceptance_gate.sh tests/acceptance/test_as003_trading_rahul.py as-003 -m acceptance"}
+  acceptance-as-005: {shell: "sh scripts/validation_control/run_acceptance_gate.sh tests/acceptance/test_as005_agri_suresh.py as-005 -m acceptance"}
+  acceptance-pse-failover: {shell: "sh scripts/validation_control/run_acceptance_gate.sh tests/acceptance/test_as_pse_failover.py as-pse"}
+  e2e-emergency-stop: {shell: "sh scripts/validation_control/run_acceptance_gate.sh tests/constitutional/test_cct_ho_01_emergency_stop_latency.py emergency-stop-e2e -k e2e"}
+  precheck-gitleaks: {shell: "sh scripts/validation_control/run_gitleaks_gate.sh", execution: host, runner_required: false, tool_digest: "sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854"}
 
 gates:
   build: &python_static
@@ -99,12 +130,14 @@ gates:
     evidence_class: coverage
     resources: *typescript_resources
     artifacts: {native: [test-results/**/*.xml, test-results/coverage/**], common: test-results/validation/test-web.json}
-  spec-lint: {<<: *python_static, gate_id: spec-lint, command_id: spec-lint, evidence_class: contract}
+  spec-lint: {<<: *python_static, gate_id: spec-lint, runner_id: full, command_id: spec-lint, evidence_class: contract, resources: {cpus: 2, memory_mb: 6144, timeout_seconds: 900, docker_socket: true, concurrency_class: full}}
   sast: &security_gate {<<: *python_static, gate_id: sast, command_id: sast-python, evidence_class: security, artifacts: {native: [test-results/**/*.json], common: test-results/validation/security.json}}
   sast:csharp: {<<: *security_gate, gate_id: "sast:csharp", runner_id: dotnet, command_id: sast-csharp, resources: *dotnet_resources}
   sast:python: {<<: *security_gate, gate_id: "sast:python", command_id: sast-python}
   sast:javascript: {<<: *security_gate, gate_id: sast:javascript, runner_id: typescript, command_id: sast-javascript, resources: *typescript_resources}
-  dep-scan: {<<: *security_gate, gate_id: dep-scan, command_id: dependency-scan}
+  dep-scan:python: {<<: *security_gate, gate_id: "dep-scan:python", command_id: dependency-scan-python}
+  dep-scan:dotnet: {<<: *security_gate, gate_id: "dep-scan:dotnet", runner_id: dotnet, command_id: dependency-scan-dotnet, resources: *dotnet_resources}
+  dep-scan:typescript: {<<: *security_gate, gate_id: "dep-scan:typescript", runner_id: typescript, command_id: dependency-scan-typescript, resources: *typescript_resources}
   secrets: {<<: *security_gate, gate_id: secrets, command_id: secrets, global_trigger: true}
   license-check: {<<: *security_gate, gate_id: license-check, command_id: license-check, global_trigger: true}
   release-qualification: {<<: *python_static, gate_id: release-qualification, runner_id: full, command_id: release-qualification, evidence_class: release, resources: {cpus: 2, memory_mb: 6144, timeout_seconds: 3600, docker_socket: true, concurrency_class: qualification}, global_trigger: true}
@@ -112,6 +145,34 @@ gates:
   requirement-ledger: {<<: *python_static, gate_id: requirement-ledger, command_id: requirement-ledger, evidence_class: contract, global_trigger: true}
   author-review-gate: {<<: *python_static, gate_id: author-review-gate, command_id: author-review-gate, evidence_class: contract, global_trigger: true}
   authorization-tier-check: {<<: *python_static, gate_id: authorization-tier-check, command_id: authorization-tier-check, evidence_class: CCT, global_trigger: true}
+  quality:scripts: {<<: *python_static, gate_id: "quality:scripts", command_id: quality-scripts, evidence_class: static, global_trigger: true}
+  quality:commitlint: {<<: *python_static, gate_id: "quality:commitlint", runner_id: typescript, command_id: quality-commitlint, evidence_class: contract, resources: *typescript_resources, global_trigger: true}
+  quality:dotnet:constitutional-engine: {<<: *python_static, gate_id: "quality:dotnet:constitutional-engine", runner_id: dotnet, command_id: quality-dotnet-constitutional-engine, resources: *dotnet_resources, global_trigger: true}
+  quality:dotnet:business-platform: {<<: *python_static, gate_id: "quality:dotnet:business-platform", runner_id: dotnet, command_id: quality-dotnet-business-platform, resources: *dotnet_resources, global_trigger: true}
+  quality:python:professional-runtime: {<<: *python_static, gate_id: "quality:python:professional-runtime", command_id: quality-python-professional-runtime, global_trigger: true}
+  quality:python:ai-runtime: {<<: *python_static, gate_id: "quality:python:ai-runtime", command_id: quality-python-ai-runtime, global_trigger: true}
+  quality:typescript: {<<: *python_static, gate_id: "quality:typescript", runner_id: typescript, command_id: quality-typescript, resources: *typescript_resources, global_trigger: true}
+  quality:sql: {<<: *python_static, gate_id: "quality:sql", command_id: quality-sql, global_trigger: true}
+  quality:proto: {<<: *python_static, gate_id: "quality:proto", command_id: quality-proto, global_trigger: true}
+  quality:observability: {<<: *python_static, gate_id: "quality:observability", command_id: quality-observability, evidence_class: security, global_trigger: true}
+  quality:traceability: {<<: *python_static, gate_id: "quality:traceability", command_id: quality-traceability, evidence_class: contract, global_trigger: true}
+  quality:constitutional-naming: {<<: *python_static, gate_id: "quality:constitutional-naming", command_id: quality-constitutional-naming, evidence_class: contract, global_trigger: true}
+  mutation:dotnet: {<<: *python_static, gate_id: "mutation:dotnet", runner_id: dotnet, command_id: mutation-dotnet, evidence_class: coverage, resources: {cpus: 2, memory_mb: 4096, timeout_seconds: 3600, docker_socket: true, concurrency_class: dotnet}, global_trigger: true}
+  mutation:python: {<<: *python_static, gate_id: "mutation:python", command_id: mutation-python, evidence_class: coverage, resources: {cpus: 2, memory_mb: 4096, timeout_seconds: 3600, docker_socket: true, concurrency_class: python}, global_trigger: true}
+  integration:multi-tenant: {<<: *python_test, gate_id: "integration:multi-tenant", command_id: integration-multi-tenant, environment: [DATABASE_URL], global_trigger: true}
+  integration:postgres-migrations: {<<: *python_static, gate_id: "integration:postgres-migrations", command_id: integration-postgres-migrations, evidence_class: integration, environment: [DATABASE_URL], global_trigger: true}
+  integration:dotnet: {<<: *dotnet_test, gate_id: "integration:dotnet", command_id: integration-dotnet, environment: [DATABASE_URL], global_trigger: true}
+  integration:python: {<<: *python_test, gate_id: "integration:python", command_id: integration-python, environment: [DATABASE_URL], global_trigger: true}
+  contract:rest: {<<: *python_test, gate_id: "contract:rest", command_id: contract-rest, evidence_class: contract, resources: {cpus: 2, memory_mb: 4096, timeout_seconds: 1800, docker_socket: true, concurrency_class: integration}, global_trigger: true}
+  contract:seed-prompts: {<<: *python_static, gate_id: "contract:seed-prompts", command_id: contract-seed-prompts, evidence_class: contract, global_trigger: true}
+  security:prompt-injection: {<<: *python_test, gate_id: "security:prompt-injection", command_id: security-prompt-injection, evidence_class: security, global_trigger: true}
+  e2e:accessibility: {<<: *python_static, gate_id: "e2e:accessibility", runner_id: full, command_id: e2e-accessibility, evidence_class: browser, resources: {cpus: 2, memory_mb: 6144, timeout_seconds: 1800, docker_socket: true, concurrency_class: browser}, artifacts: {native: [test-results/playwright-report/**], common: test-results/validation/e2e-accessibility.json}, environment: [BASE_URL, PLAYWRIGHT_HTML_OUTPUT_DIR], global_trigger: true}
+  acceptance:as-001: {<<: *python_test, gate_id: "acceptance:as-001", command_id: acceptance-as-001, evidence_class: integration, environment: [WAOOAW_API_URL, WAOOAW_TEST_TOKEN, LLM_TEST_MODE], global_trigger: true}
+  acceptance:as-003: {<<: *python_test, gate_id: "acceptance:as-003", command_id: acceptance-as-003, evidence_class: integration, environment: [WAOOAW_API_URL, WAOOAW_TEST_TOKEN], global_trigger: true}
+  acceptance:as-005: {<<: *python_test, gate_id: "acceptance:as-005", command_id: acceptance-as-005, evidence_class: integration, environment: [WAOOAW_API_URL, WAOOAW_TEST_TOKEN, TEST_LANGUAGE], global_trigger: true}
+  acceptance:pse-failover: {<<: *python_test, gate_id: "acceptance:pse-failover", command_id: acceptance-pse-failover, evidence_class: integration, environment: [WAOOAW_API_URL, WAOOAW_TEST_TOKEN, PSE_TEST_INJECT_RATE_LIMIT], global_trigger: true}
+  e2e:emergency-stop: {<<: *python_test, gate_id: "e2e:emergency-stop", command_id: e2e-emergency-stop, evidence_class: CCT, environment: [WAOOAW_WS_URL, WAOOAW_TEST_TOKEN], global_trigger: true}
+  precheck:gitleaks: {<<: *security_gate, gate_id: "precheck:gitleaks", command_id: precheck-gitleaks, global_trigger: true}
 
 full_gates:
   - build
@@ -121,49 +182,78 @@ full_gates:
   - test-web
   - spec-lint
   - sast
-  - dep-scan
+  - dep-scan:python
+  - dep-scan:dotnet
+  - dep-scan:typescript
   - license-check
   - release-qualification
   - constitutional-commit-gate
   - requirement-ledger
   - author-review-gate
   - authorization-tier-check
+  - quality:scripts
+  - quality:commitlint
+  - quality:dotnet:constitutional-engine
+  - quality:dotnet:business-platform
+  - quality:python:professional-runtime
+  - quality:python:ai-runtime
+  - quality:typescript
+  - quality:sql
+  - quality:proto
+  - quality:observability
+  - quality:traceability
+  - quality:constitutional-naming
+  - mutation:dotnet
+  - mutation:python
+  - integration:multi-tenant
+  - integration:postgres-migrations
+  - integration:dotnet
+  - integration:python
+  - contract:rest
+  - contract:seed-prompts
+  - security:prompt-injection
+  - e2e:accessibility
+  - acceptance:as-001
+  - acceptance:as-003
+  - acceptance:as-005
+  - acceptance:pse-failover
+  - e2e:emergency-stop
 
 components:
   constitutional-engine:
     component_id: constitutional-engine
     paths: [src/constitutional-engine/**, tests/constitutional-engine.Tests/**, architecture/reference/proto/**]
-    gates: [build:constitutional-engine, test-dotnet:constitutional-engine, spec-lint, sast:csharp, dep-scan]
+    gates: [build:constitutional-engine, test-dotnet:constitutional-engine, spec-lint, sast:csharp, "dep-scan:dotnet"]
     reverse_dependencies: [business-platform, professional-runtime, ai-runtime, billing-engine]
   business-platform:
     component_id: business-platform
     paths: [src/business-platform/**, tests/business-platform.Tests/**, infrastructure/postgres/init/**, architecture/reference/api-specs/business-platform.openapi.yaml]
-    gates: [build:business-platform, test-dotnet:business-platform, spec-lint, sast:csharp, dep-scan, release-qualification]
+    gates: [build:business-platform, test-dotnet:business-platform, spec-lint, sast:csharp, "dep-scan:dotnet", release-qualification]
     reverse_dependencies: [professional-runtime, billing-engine, web]
   professional-runtime:
     component_id: professional-runtime
     paths: [src/professional-runtime/**, tests/professional-runtime/**, architecture/reference/api-specs/professional-runtime.openapi.yaml]
-    gates: [build:professional-runtime, test-python:professional-runtime, spec-lint, sast:python, dep-scan]
+    gates: [build:professional-runtime, test-python:professional-runtime, spec-lint, sast:python, "dep-scan:python"]
     reverse_dependencies: [agent-runtime-adapter-digital-marketing, web]
   ai-runtime:
     component_id: ai-runtime
     paths: [src/ai-runtime/**, tests/ai-runtime/**, src/trust-layer/**, tests/trust-layer/**]
-    gates: [build:ai-runtime, test-python:ai-runtime, sast:python, dep-scan]
+    gates: [build:ai-runtime, test-python:ai-runtime, sast:python, "dep-scan:python"]
     reverse_dependencies: [agent-runtime-adapter-digital-marketing]
   billing-engine:
     component_id: billing-engine
     paths: [src/billing-engine/**, tests/billing-engine/**, tests/pipeline/test_billing_ce_validator.py]
-    gates: [build:billing-engine, test-python:billing-engine, sast:python, dep-scan, release-qualification]
+    gates: [build:billing-engine, test-python:billing-engine, sast:python, "dep-scan:python", release-qualification]
     reverse_dependencies: []
   agent-runtime-adapter-digital-marketing:
     component_id: agent-runtime-adapter-digital-marketing
     paths: [src/agent-adapters/**, tests/agent-adapters/**, tests/professional-runtime/test_dma_release_1_skills.py]
-    gates: [build:agent-runtime-adapter-digital-marketing, test-python:professional-runtime, sast:python, dep-scan]
+    gates: [build:agent-runtime-adapter-digital-marketing, test-python:professional-runtime, sast:python, "dep-scan:python"]
     reverse_dependencies: []
   web:
     component_id: web
     paths: [web/**]
-    gates: [build:web, test-web, sast:javascript, dep-scan]
+    gates: [build:web, test-web, sast:javascript, "dep-scan:typescript"]
     reverse_dependencies: []
 
 global_triggers:
@@ -174,6 +264,8 @@ global_triggers:
   - requirements*.txt
   - pyproject.toml
   - validation/**
+  - scripts/validation_control/gate_equivalence.py
+  - scripts/validation_control/wc104_rollback.py
   - scripts/prepare_pr_body.py
   - scripts/precheck_orchestrator.py
   - scripts/build_evidence.py
@@ -195,8 +287,49 @@ global_triggers:
   - work-contracts/**
 documentation_only: [README.md, CHANGELOG.md, docs/**]
 prechecks:
-  gitleaks: {always: true}
-  business_platform: {components: [business-platform]}
-  release_qualification: {gates: [release-qualification]}
+  gitleaks: {always: true, inputs: ["**"], gate: "precheck:gitleaks"}
+  business_platform:
+    components: [business-platform]
+    inputs:
+      - src/business-platform/**
+      - tests/business-platform.Tests/**
+      - infrastructure/postgres/init/**
+      - architecture/reference/api-specs/business-platform.openapi.yaml
+      - architecture/reference/dockerfiles/**
+      - docker-compose*.yml
+      - requirements*.txt
+      - validation/**
+      - scripts/validation_control/**
+    gate: "test-dotnet:business-platform"
+  release_qualification:
+    gates: [release-qualification]
+    inputs:
+      - .github/workflows/**
+      - architecture/reference/dockerfiles/**
+      - docker-compose*.yml
+      - infrastructure/**
+      - release/**
+      - requirements*.txt
+      - scripts/goal006_*.py
+      - scripts/run_goal006_*.sh
+      - scripts/run_release_qualification.sh
+      - scripts/validation_control/**
+      - src/business-platform/**
+      - tests/business-platform.Tests/**
+      - tests/pipeline/test_goal006_*.py
+      - tests/pipeline/test_wc091_*.py
+      - validation/**
+    paths:
+      - .github/workflows/**
+      - docker-compose*.yml
+      - infrastructure/terraform/**
+      - infrastructure/recovery/**
+      - infrastructure/environment-readiness/**
+      - release/**
+      - scripts/goal006_release_simulator.py
+      - scripts/run_release_qualification.sh
+      - tests/pipeline/test_goal006_*.py
+      - tests/pipeline/test_wc091_*.py
+    gate: release-qualification
 release_full_inventory: true
 main_full_inventory: true

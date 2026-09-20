@@ -37,10 +37,7 @@ def validate_inventory(environment: str, manifest: Mapping[str, Any], inventory:
     if environment not in {"demo", "uat", "prod"}:
         violations.append("ENVIRONMENT_INVALID")
         return sorted(set(violations))
-    expected = {
-        release_app_name(environment, member): image
-        for member, image in manifest.get("images", {}).items()
-    }
+    expected = {release_app_name(environment, member): image for member, image in manifest.get("images", {}).items()}
     expected.update(expected_dependencies(environment))
     actual: dict[str, Mapping[str, Any]] = {}
     for item in inventory:

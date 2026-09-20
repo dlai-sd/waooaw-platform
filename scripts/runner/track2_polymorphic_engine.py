@@ -41,23 +41,13 @@ class Track2PolymorphicEngine:
             for node in ast.walk(self.tree):
                 if isinstance(node, ast.ClassDef) and node.name == class_name:
                     for child in node.body:
-                        if (
-                            isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef))
-                            and child.name == target_name
-                        ):
+                        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)) and child.name == target_name:
                             return child
-            raise Track2SpliceError(
-                f"Method '{class_name}.{target_name}' not found in '{self.file_path}'"
-            )
+            raise Track2SpliceError(f"Method '{class_name}.{target_name}' not found in '{self.file_path}'")
         for node in ast.iter_child_nodes(self.tree):
-            if (
-                isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-                and node.name == target_name
-            ):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == target_name:
                 return node
-        raise Track2SpliceError(
-            f"Top-level function '{target_name}' not found in '{self.file_path}'"
-        )
+        raise Track2SpliceError(f"Top-level function '{target_name}' not found in '{self.file_path}'")
 
     def extract_node_for_llm(
         self,
@@ -102,8 +92,7 @@ class Track2PolymorphicEngine:
             actual = _signature_string(node)
             if actual != locked_signature.strip():
                 raise Track2SpliceError(
-                    f"Original signature does not match lock: "
-                    f"expected '{locked_signature.strip()}', found '{actual}'"
+                    f"Original signature does not match lock: expected '{locked_signature.strip()}', found '{actual}'"
                 )
 
         # Parse and validate the replacement node
@@ -112,10 +101,7 @@ class Track2PolymorphicEngine:
         except SyntaxError as exc:
             raise Track2SpliceError(f"new_logic parse error: {exc}") from exc
 
-        new_nodes = [
-            n for n in new_tree.body
-            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
-        ]
+        new_nodes = [n for n in new_tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
         if not new_nodes:
             raise Track2SpliceError("No function definition found in new_logic")
         new_node = new_nodes[0]
@@ -123,10 +109,7 @@ class Track2PolymorphicEngine:
         if locked_signature:
             new_sig = _signature_string(new_node)
             if new_sig != locked_signature.strip():
-                raise Track2SpliceError(
-                    f"LLM mutated signature: expected '{locked_signature.strip()}', "
-                    f"got '{new_sig}'"
-                )
+                raise Track2SpliceError(f"LLM mutated signature: expected '{locked_signature.strip()}', got '{new_sig}'")
 
         # Determine indentation of original function (from its def line)
         def_line_0 = node.lineno - 1  # 0-based
@@ -147,23 +130,15 @@ class Track2PolymorphicEngine:
                 replacement.append("\n")
 
         # Slice range: first decorator (or def line) through end of body
-        start_0 = (
-            node.decorator_list[0].lineno - 1
-            if node.decorator_list
-            else def_line_0
-        )
+        start_0 = node.decorator_list[0].lineno - 1 if node.decorator_list else def_line_0
         end_0 = node.end_lineno  # 1-based inclusive → 0-based exclusive for slicing
 
-        new_source = "".join(
-            self.source_lines[:start_0] + replacement + self.source_lines[end_0:]
-        )
+        new_source = "".join(self.source_lines[:start_0] + replacement + self.source_lines[end_0:])
 
         try:
             compile(new_source, str(self.file_path), "exec")
         except SyntaxError as exc:
-            raise Track2SpliceError(
-                f"Splice compile gate failed for '{self.file_path}': {exc}"
-            ) from exc
+            raise Track2SpliceError(f"Splice compile gate failed for '{self.file_path}': {exc}") from exc
 
         self.file_path.write_text(new_source, encoding="utf-8")
         self._reload()
@@ -175,9 +150,7 @@ class Track2PolymorphicEngine:
         self.source_lines = self.source.splitlines(keepends=True)
         self.tree = ast.parse(self.source, filename=str(self.file_path))
 
-    def _decorator_source_lines(
-        self, node: ast.FunctionDef | ast.AsyncFunctionDef
-    ) -> list[str]:
+    def _decorator_source_lines(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> list[str]:
         if not node.decorator_list:
             return []
         first_dec_0 = node.decorator_list[0].lineno - 1

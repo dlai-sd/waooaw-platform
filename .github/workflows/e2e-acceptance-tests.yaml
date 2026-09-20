@@ -23,33 +23,36 @@ env:
 
 jobs:
 
-  # ─── Playwright setup ────────────────────────────────────────────────────
-  install:
-    name: Build Playwright runner
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: docker compose --profile test build test-runner
+  runner-supply:
+    uses: ./.github/workflows/validation-runner-supply.yaml
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+
+  validation-plan:
+    needs: runner-supply
+    uses: ./.github/workflows/validation-plan.yaml
+    permissions:
+      contents: read
+      packages: read
+      attestations: read
 
   # ─── Accessibility tests (WCAG 2.1 AA — C-042 constitutional UX standard) ──
   accessibility:
     name: Accessibility — WCAG 2.1 AA
     runs-on: ubuntu-latest
-    needs: install
+    needs: [runner-supply, validation-plan]
     steps:
       - uses: actions/checkout@v4
-      - name: Build Playwright runner
-        run: docker compose --profile test build test-runner
-      - name: Run axe-playwright accessibility tests
+      - uses: ./.github/actions/run-validation-gate
         env:
           BASE_URL: ${{ env.BASE_URL }}
-        run: |
-          docker compose --profile test run --rm -e BASE_URL \
-            -e PLAYWRIGHT_HTML_OUTPUT_DIR=/workspace/test-results/playwright-report \
-            test-runner sh -lc '
-              cd web && playwright test tests/accessibility/ \
-                --reporter=html --output=/tmp/playwright-accessibility
-            '
+          PLAYWRIGHT_HTML_OUTPUT_DIR: /workspace/test-results/playwright-report
+        with:
+          gate-id: e2e:accessibility
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload accessibility report
         if: always()
         uses: actions/upload-artifact@v4
@@ -61,20 +64,17 @@ jobs:
   as-001-dma:
     name: AS-001 DMA — Dr. Mehta (Grade A required)
     runs-on: ubuntu-latest
+    needs: [runner-supply, validation-plan]
     steps:
       - uses: actions/checkout@v4
-      - name: Build Python acceptance runner
-        run: docker compose --profile test-python build test-runner-python
-      - name: Run AS-001
+      - uses: ./.github/actions/run-validation-gate
         env:
           WAOOAW_API_URL: ${{ env.BASE_URL }}
           WAOOAW_TEST_TOKEN: ${{ secrets.QA_TEST_TOKEN }}
           LLM_TEST_MODE: "grade_a_required"
-        run: |
-          docker compose --profile test-python run --rm \
-            -e WAOOAW_API_URL -e WAOOAW_TEST_TOKEN -e LLM_TEST_MODE \
-            test-runner-python pytest tests/acceptance/test_as001_dma_dr_mehta.py \
-              -v --tb=short --junit-xml=test-results/as-001.xml -m "acceptance"
+        with:
+          gate-id: acceptance:as-001
+          token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -85,19 +85,16 @@ jobs:
   as-003-trading:
     name: AS-003 Trading — Rahul (Grade A + Emergency Stop ≤250ms)
     runs-on: ubuntu-latest
+    needs: [runner-supply, validation-plan]
     steps:
       - uses: actions/checkout@v4
-      - name: Build Python acceptance runner
-        run: docker compose --profile test-python build test-runner-python
-      - name: Run AS-003 + Emergency Stop constitutional test
+      - uses: ./.github/actions/run-validation-gate
         env:
           WAOOAW_API_URL: ${{ env.BASE_URL }}
           WAOOAW_TEST_TOKEN: ${{ secrets.QA_TEST_TOKEN }}
-        run: |
-          docker compose --profile test-python run --rm \
-            -e WAOOAW_API_URL -e WAOOAW_TEST_TOKEN \
-            test-runner-python pytest tests/acceptance/test_as003_trading_rahul.py \
-              -v --tb=short --junit-xml=test-results/as-003.xml -m "acceptance"
+        with:
+          gate-id: acceptance:as-003
+          token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -108,20 +105,17 @@ jobs:
   as-005-agricultural:
     name: AS-005 Agricultural — Suresh (Grade A + C-042 Marathi)
     runs-on: ubuntu-latest
+    needs: [runner-supply, validation-plan]
     steps:
       - uses: actions/checkout@v4
-      - name: Build Python acceptance runner
-        run: docker compose --profile test-python build test-runner-python
-      - name: Run AS-005 with regional language assertions
+      - uses: ./.github/actions/run-validation-gate
         env:
           WAOOAW_API_URL: ${{ env.BASE_URL }}
           WAOOAW_TEST_TOKEN: ${{ secrets.QA_TEST_TOKEN }}
           TEST_LANGUAGE: "mr"   # Marathi — C-042 vocabulary assertion active
-        run: |
-          docker compose --profile test-python run --rm \
-            -e WAOOAW_API_URL -e WAOOAW_TEST_TOKEN -e TEST_LANGUAGE \
-            test-runner-python pytest tests/acceptance/test_as005_agri_suresh.py \
-              -v --tb=short --junit-xml=test-results/as-005.xml -m "acceptance"
+        with:
+          gate-id: acceptance:as-005
+          token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -132,39 +126,32 @@ jobs:
   as-pse-failover:
     name: AS-PSE — Provider failover (Gemini → Azure)
     runs-on: ubuntu-latest
+    needs: [runner-supply, validation-plan]
     steps:
       - uses: actions/checkout@v4
-      - name: Build Python acceptance runner
-        run: docker compose --profile test-python build test-runner-python
-      - name: PSE circuit-breaker + fallback test
+      - uses: ./.github/actions/run-validation-gate
         env:
           WAOOAW_API_URL: ${{ env.BASE_URL }}
           WAOOAW_TEST_TOKEN: ${{ secrets.QA_TEST_TOKEN }}
           PSE_TEST_INJECT_RATE_LIMIT: "true"   # Simulates Gemini 429
-        run: |
-          docker compose --profile test-python run --rm \
-            -e WAOOAW_API_URL -e WAOOAW_TEST_TOKEN -e PSE_TEST_INJECT_RATE_LIMIT \
-            test-runner-python pytest tests/acceptance/test_as_pse_failover.py \
-              -v --tb=short --junit-xml=test-results/as-pse.xml
+        with:
+          gate-id: acceptance:pse-failover
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   # ─── Emergency Stop E2E — constitutional floor (C-001) ──────────────────
   emergency-stop-e2e:
     name: Emergency Stop E2E — ≤250ms P99 (constitutional floor)
     runs-on: ubuntu-latest
+    needs: [runner-supply, validation-plan]
     steps:
       - uses: actions/checkout@v4
-      - name: Build Python constitutional runner
-        run: docker compose --profile test-python build test-runner-python
-      - name: Emergency Stop latency test (10 runs, P99 assertion)
+      - uses: ./.github/actions/run-validation-gate
         env:
           WAOOAW_WS_URL: ${{ secrets.QA_WS_URL || 'ws://localhost:5003/emergency-stop' }}
           WAOOAW_TEST_TOKEN: ${{ secrets.QA_TEST_TOKEN }}
-        run: |
-          docker compose --profile test-python run --rm \
-            -e WAOOAW_WS_URL -e WAOOAW_TEST_TOKEN \
-            test-runner-python pytest tests/constitutional/test_cct_ho_01_emergency_stop_latency.py \
-              -v --tb=short -k "e2e" \
-              --junit-xml=test-results/emergency-stop-e2e.xml
+        with:
+          gate-id: e2e:emergency-stop
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   # ─── Allure report aggregation ───────────────────────────────────────────
   report:

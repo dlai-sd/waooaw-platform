@@ -83,12 +83,23 @@ def verify(issuer: str, web_url: str) -> dict[str, object]:
         raise ValueError("Verification requires exact HTTPS endpoints")
     verifier = secrets.token_urlsafe(32)
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
-    target = issuer + "/protocol/openid-connect/auth?" + urlencode({
-        "client_id": "waooaw-web", "redirect_uri": web_url + "/api/auth/callback/keycloak-facebook",
-        "response_type": "code", "scope": "openid email profile", "kc_idp_hint": "facebook",
-        "code_challenge": challenge, "code_challenge_method": "S256",
-        "state": secrets.token_urlsafe(24), "nonce": secrets.token_urlsafe(24),
-    })
+    target = (
+        issuer
+        + "/protocol/openid-connect/auth?"
+        + urlencode(
+            {
+                "client_id": "waooaw-web",
+                "redirect_uri": web_url + "/api/auth/callback/keycloak-facebook",
+                "response_type": "code",
+                "scope": "openid email profile",
+                "kc_idp_hint": "facebook",
+                "code_challenge": challenge,
+                "code_challenge_method": "S256",
+                "state": secrets.token_urlsafe(24),
+                "nonce": secrets.token_urlsafe(24),
+            }
+        )
+    )
     for initiation_attempt in range(3):
         try:
             verify_redirect_chain(issuer, target)
@@ -97,7 +108,8 @@ def verify(issuer: str, web_url: str) -> dict[str, object]:
             if initiation_attempt == 2:
                 raise VerificationError("broker_transport_retries_exhausted") from error
     return {
-        "provider": "FACEBOOK", "issuer": issuer,
+        "provider": "FACEBOOK",
+        "issuer": issuer,
         "callback": issuer + "/broker/facebook/endpoint",
         "web_callback": web_url + "/api/auth/callback/keycloak-facebook",
         "redirect_verified": True,

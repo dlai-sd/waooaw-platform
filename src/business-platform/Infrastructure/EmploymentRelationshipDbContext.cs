@@ -559,47 +559,73 @@ public sealed class RelationshipEvidenceExport
 
 public sealed class EmploymentRelationshipDbContext : DbContext
 {
-    public EmploymentRelationshipDbContext(DbContextOptions<EmploymentRelationshipDbContext> options)
+    public EmploymentRelationshipDbContext(
+        DbContextOptions<EmploymentRelationshipDbContext> options
+    )
         : base(options) { }
 
     public DbSet<EmploymentRelationship> EmploymentRelationships => Set<EmploymentRelationship>();
-    public DbSet<RelationshipParticipant> RelationshipParticipants => Set<RelationshipParticipant>();
-    public DbSet<RelationshipStateHistory> RelationshipStateHistory => Set<RelationshipStateHistory>();
+    public DbSet<RelationshipParticipant> RelationshipParticipants =>
+        Set<RelationshipParticipant>();
+    public DbSet<RelationshipStateHistory> RelationshipStateHistory =>
+        Set<RelationshipStateHistory>();
     public DbSet<RelationshipIdempotency> RelationshipIdempotency => Set<RelationshipIdempotency>();
-    public DbSet<RelationshipContextPayload> RelationshipContextPayloads => Set<RelationshipContextPayload>();
-    public DbSet<ContextConfirmationEvent> ContextConfirmationEvents => Set<ContextConfirmationEvent>();
+    public DbSet<RelationshipContextPayload> RelationshipContextPayloads =>
+        Set<RelationshipContextPayload>();
+    public DbSet<ContextConfirmationEvent> ContextConfirmationEvents =>
+        Set<ContextConfirmationEvent>();
     public DbSet<RelationshipGoal> RelationshipGoals => Set<RelationshipGoal>();
-    public DbSet<RelationshipGoalDecision> RelationshipGoalDecisions => Set<RelationshipGoalDecision>();
-    public DbSet<RelationshipOnboardPreference> RelationshipOnboardPreferences => Set<RelationshipOnboardPreference>();
+    public DbSet<RelationshipGoalDecision> RelationshipGoalDecisions =>
+        Set<RelationshipGoalDecision>();
+    public DbSet<RelationshipOnboardPreference> RelationshipOnboardPreferences =>
+        Set<RelationshipOnboardPreference>();
     public DbSet<CustomerAlert> CustomerAlerts => Set<CustomerAlert>();
-    public DbSet<CustomerAlertIdempotency> CustomerAlertIdempotency => Set<CustomerAlertIdempotency>();
-    public DbSet<RelationshipSkillConfiguration> RelationshipSkillConfigurations => Set<RelationshipSkillConfiguration>();
-    public DbSet<RelationshipSkillDecision> RelationshipSkillDecisions => Set<RelationshipSkillDecision>();
+    public DbSet<CustomerAlertIdempotency> CustomerAlertIdempotency =>
+        Set<CustomerAlertIdempotency>();
+    public DbSet<RelationshipSkillConfiguration> RelationshipSkillConfigurations =>
+        Set<RelationshipSkillConfiguration>();
+    public DbSet<RelationshipSkillDecision> RelationshipSkillDecisions =>
+        Set<RelationshipSkillDecision>();
     public DbSet<DecisionSpaceSnapshot> DecisionSpaceSnapshots => Set<DecisionSpaceSnapshot>();
-    public DbSet<AgentSkillRuntimeBinding> AgentSkillRuntimeBindings => Set<AgentSkillRuntimeBinding>();
-    public DbSet<OperationalMandateSnapshot> OperationalMandateSnapshots => Set<OperationalMandateSnapshot>();
-    public DbSet<PerformanceReviewWindow> PerformanceReviewWindows => Set<PerformanceReviewWindow>();
-    public DbSet<PerformanceReviewResponse> PerformanceReviewResponses => Set<PerformanceReviewResponse>();
-    public DbSet<EmploymentContractVersion> EmploymentContractVersions => Set<EmploymentContractVersion>();
+    public DbSet<AgentSkillRuntimeBinding> AgentSkillRuntimeBindings =>
+        Set<AgentSkillRuntimeBinding>();
+    public DbSet<OperationalMandateSnapshot> OperationalMandateSnapshots =>
+        Set<OperationalMandateSnapshot>();
+    public DbSet<PerformanceReviewWindow> PerformanceReviewWindows =>
+        Set<PerformanceReviewWindow>();
+    public DbSet<PerformanceReviewResponse> PerformanceReviewResponses =>
+        Set<PerformanceReviewResponse>();
+    public DbSet<EmploymentContractVersion> EmploymentContractVersions =>
+        Set<EmploymentContractVersion>();
     public DbSet<ContractAcceptance> ContractAcceptances => Set<ContractAcceptance>();
     public DbSet<ActivationIntent> ActivationIntents => Set<ActivationIntent>();
-    public DbSet<RelationshipCheckoutIntent> RelationshipCheckoutIntents => Set<RelationshipCheckoutIntent>();
-    public DbSet<OfferabilityDecisionRecord> OfferabilityDecisions => Set<OfferabilityDecisionRecord>();
-    public DbSet<RelationshipTrialBinding> RelationshipTrialBindings => Set<RelationshipTrialBinding>();
+    public DbSet<RelationshipCheckoutIntent> RelationshipCheckoutIntents =>
+        Set<RelationshipCheckoutIntent>();
+    public DbSet<OfferabilityDecisionRecord> OfferabilityDecisions =>
+        Set<OfferabilityDecisionRecord>();
+    public DbSet<RelationshipTrialBinding> RelationshipTrialBindings =>
+        Set<RelationshipTrialBinding>();
     public DbSet<WhatsAppJourneyContact> WhatsAppJourneyContacts => Set<WhatsAppJourneyContact>();
     public DbSet<WhatsAppMessageReceipt> WhatsAppMessageReceipts => Set<WhatsAppMessageReceipt>();
     public DbSet<ChannelBinding> ChannelBindings => Set<ChannelBinding>();
     public DbSet<ContinuityCheckpoint> ContinuityCheckpoints => Set<ContinuityCheckpoint>();
-    public DbSet<DeliveryAcknowledgement> DeliveryAcknowledgements => Set<DeliveryAcknowledgement>();
-    public DbSet<ChannelMessageDeduplication> ChannelMessageDeduplications => Set<ChannelMessageDeduplication>();
-    public DbSet<RelationshipEvidenceExport> RelationshipEvidenceExports => Set<RelationshipEvidenceExport>();
+    public DbSet<DeliveryAcknowledgement> DeliveryAcknowledgements =>
+        Set<DeliveryAcknowledgement>();
+    public DbSet<ChannelMessageDeduplication> ChannelMessageDeduplications =>
+        Set<ChannelMessageDeduplication>();
+    public DbSet<RelationshipEvidenceExport> RelationshipEvidenceExports =>
+        Set<RelationshipEvidenceExport>();
     public DbSet<AgentAdmission> AgentAdmissions => Set<AgentAdmission>();
     public DbSet<AgentAdmissionRevision> AgentAdmissionRevisions => Set<AgentAdmissionRevision>();
-    public DbSet<AgentAdmissionValidation> AgentAdmissionValidations => Set<AgentAdmissionValidation>();
+    public DbSet<AgentAdmissionValidation> AgentAdmissionValidations =>
+        Set<AgentAdmissionValidation>();
     public DbSet<AgentAdmissionFinding> AgentAdmissionFindings => Set<AgentAdmissionFinding>();
-    public DbSet<AgentAdmissionAssertion> AgentAdmissionAssertions => Set<AgentAdmissionAssertion>();
-    public DbSet<AgentAdmissionTransition> AgentAdmissionTransitions => Set<AgentAdmissionTransition>();
-    public DbSet<AgentAdmissionIdempotency> AgentAdmissionIdempotency => Set<AgentAdmissionIdempotency>();
+    public DbSet<AgentAdmissionAssertion> AgentAdmissionAssertions =>
+        Set<AgentAdmissionAssertion>();
+    public DbSet<AgentAdmissionTransition> AgentAdmissionTransitions =>
+        Set<AgentAdmissionTransition>();
+    public DbSet<AgentAdmissionIdempotency> AgentAdmissionIdempotency =>
+        Set<AgentAdmissionIdempotency>();
     public DbSet<AgentAdmissionOutbox> AgentAdmissionOutbox => Set<AgentAdmissionOutbox>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -611,31 +637,56 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.ToTable("employment_relationships", "business");
             entity.HasKey(value => value.RelationshipId);
             entity.HasAlternateKey(value => new { value.TenantId, value.RelationshipId });
-            entity.HasIndex(value => new
-            {
-                value.TenantId,
-                value.InitiatingParticipantId,
-                value.ProfessionalType,
-                value.EvaluationIntentId,
-            }).IsUnique();
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.InitiatingParticipantId,
+                    value.ProfessionalType,
+                    value.EvaluationIntentId,
+                })
+                .IsUnique();
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.HasIndex(value => value.AgentInstanceId).IsUnique();
             entity.Property(value => value.AgentInstanceId).HasColumnName("agent_instance_id");
-            entity.Property(value => value.ProfessionalAdmissionId).HasColumnName("professional_admission_id");
+            entity
+                .Property(value => value.ProfessionalAdmissionId)
+                .HasColumnName("professional_admission_id");
             entity.Property(value => value.ProfessionalType).HasColumnName("professional_type");
-            entity.Property(value => value.ProfessionalVersion).HasColumnName("professional_version");
-            entity.Property(value => value.AgentInstanceMintedAt).HasColumnName("agent_instance_minted_at");
-            entity.Property(value => value.EvaluationIntentId).HasColumnName("evaluation_intent_id");
-            entity.Property(value => value.InitiatingParticipantId).HasColumnName("initiating_participant_id");
-            entity.Property(value => value.SourceRelationshipId).HasColumnName("source_relationship_id");
+            entity
+                .Property(value => value.ProfessionalVersion)
+                .HasColumnName("professional_version");
+            entity
+                .Property(value => value.AgentInstanceMintedAt)
+                .HasColumnName("agent_instance_minted_at");
+            entity
+                .Property(value => value.EvaluationIntentId)
+                .HasColumnName("evaluation_intent_id");
+            entity
+                .Property(value => value.InitiatingParticipantId)
+                .HasColumnName("initiating_participant_id");
+            entity
+                .Property(value => value.SourceRelationshipId)
+                .HasColumnName("source_relationship_id");
             entity.Property(value => value.ForkEvidenceId).HasColumnName("fork_evidence_id");
-            entity.Property(value => value.State).HasColumnName("state").HasConversion(
-                value => RelationshipStateCodec.ToDatabase(value),
-                value => RelationshipStateCodec.FromDatabase(value));
-            entity.Property(value => value.StateVersion).HasColumnName("state_version").IsConcurrencyToken();
-            entity.Property(value => value.AuthoritySnapshotId).HasColumnName("authority_snapshot_id");
-            entity.Property(value => value.AcceptedContractId).HasColumnName("accepted_contract_id");
+            entity
+                .Property(value => value.State)
+                .HasColumnName("state")
+                .HasConversion(
+                    value => RelationshipStateCodec.ToDatabase(value),
+                    value => RelationshipStateCodec.FromDatabase(value)
+                );
+            entity
+                .Property(value => value.StateVersion)
+                .HasColumnName("state_version")
+                .IsConcurrencyToken();
+            entity
+                .Property(value => value.AuthoritySnapshotId)
+                .HasColumnName("authority_snapshot_id");
+            entity
+                .Property(value => value.AcceptedContractId)
+                .HasColumnName("accepted_contract_id");
             entity.Property(value => value.ActivationId).HasColumnName("activation_id");
             entity.Property(value => value.StoppedAt).HasColumnName("stopped_at");
             entity.Property(value => value.CreatedAt).HasColumnName("created_at");
@@ -646,19 +697,32 @@ public sealed class EmploymentRelationshipDbContext : DbContext
         {
             entity.ToTable("agent_skill_runtime_bindings", "business");
             entity.HasKey(value => value.BindingId);
-            entity.HasIndex(value => new { value.TenantId, value.AdmissionId, value.SkillId, value.SkillVersion, value.ActivatedAt });
+            entity.HasIndex(value => new
+            {
+                value.TenantId,
+                value.AdmissionId,
+                value.SkillId,
+                value.SkillVersion,
+                value.ActivatedAt,
+            });
             entity.Property(value => value.BindingId).HasColumnName("binding_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.AdmissionId).HasColumnName("admission_id");
             entity.Property(value => value.SkillId).HasColumnName("skill_id");
             entity.Property(value => value.SkillVersion).HasColumnName("skill_version");
             entity.Property(value => value.ReleaseSequence).HasColumnName("release_sequence");
-            entity.Property(value => value.SpecificationRevision).HasColumnName("specification_revision");
-            entity.Property(value => value.SpecificationDigest).HasColumnName("specification_digest");
+            entity
+                .Property(value => value.SpecificationRevision)
+                .HasColumnName("specification_revision");
+            entity
+                .Property(value => value.SpecificationDigest)
+                .HasColumnName("specification_digest");
             entity.Property(value => value.PromptVersion).HasColumnName("prompt_version");
             entity.Property(value => value.PromptDigest).HasColumnName("prompt_digest");
             entity.Property(value => value.InputSchemaDigest).HasColumnName("input_schema_digest");
-            entity.Property(value => value.OutputSchemaDigest).HasColumnName("output_schema_digest");
+            entity
+                .Property(value => value.OutputSchemaDigest)
+                .HasColumnName("output_schema_digest");
             entity.Property(value => value.ActivatedAt).HasColumnName("activated_at");
             entity.Property(value => value.SupersededAt).HasColumnName("superseded_at");
         });
@@ -667,24 +731,44 @@ public sealed class EmploymentRelationshipDbContext : DbContext
         {
             entity.ToTable("operational_mandate_snapshots", "business");
             entity.HasKey(value => value.MandateId);
-            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.IdempotencyIdentity }).IsUnique();
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.IdempotencyIdentity,
+                })
+                .IsUnique();
             entity.Property(value => value.MandateId).HasColumnName("mandate_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
             entity.Property(value => value.AgentInstanceId).HasColumnName("agent_instance_id");
-            entity.Property(value => value.ActorParticipantId).HasColumnName("actor_participant_id");
+            entity
+                .Property(value => value.ActorParticipantId)
+                .HasColumnName("actor_participant_id");
             entity.Property(value => value.AdmissionId).HasColumnName("admission_id");
             entity.Property(value => value.RuntimeBindingId).HasColumnName("runtime_binding_id");
             entity.Property(value => value.ContractId).HasColumnName("contract_id");
-            entity.Property(value => value.DecisionSpaceSnapshotId).HasColumnName("decision_space_snapshot_id");
-            entity.Property(value => value.ConstitutionalEvidenceId).HasColumnName("constitutional_evidence_id");
-            entity.Property(value => value.IdempotencyIdentity).HasColumnName("idempotency_identity");
+            entity
+                .Property(value => value.DecisionSpaceSnapshotId)
+                .HasColumnName("decision_space_snapshot_id");
+            entity
+                .Property(value => value.ConstitutionalEvidenceId)
+                .HasColumnName("constitutional_evidence_id");
+            entity
+                .Property(value => value.IdempotencyIdentity)
+                .HasColumnName("idempotency_identity");
             entity.Property(value => value.SkillId).HasColumnName("skill_id");
             entity.Property(value => value.MandateDigest).HasColumnName("mandate_digest");
-            entity.Property(value => value.MandateJson).HasColumnName("mandate_json").HasColumnType("jsonb");
+            entity
+                .Property(value => value.MandateJson)
+                .HasColumnName("mandate_json")
+                .HasColumnType("jsonb");
             entity.Property(value => value.Deadline).HasColumnName("deadline");
             entity.Property(value => value.CreatedAt).HasColumnName("created_at");
-            entity.HasOne<EmploymentRelationship>().WithMany()
+            entity
+                .HasOne<EmploymentRelationship>()
+                .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
         });
@@ -693,7 +777,15 @@ public sealed class EmploymentRelationshipDbContext : DbContext
         {
             entity.ToTable("performance_review_windows", "business");
             entity.HasKey(value => value.ReviewId);
-            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.SkillId, value.Revision }).IsUnique();
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.SkillId,
+                    value.Revision,
+                })
+                .IsUnique();
             entity.Property(value => value.ReviewId).HasColumnName("review_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
@@ -704,18 +796,44 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.PolicyVersion).HasColumnName("policy_version");
             entity.Property(value => value.PeriodStart).HasColumnName("period_start");
             entity.Property(value => value.PeriodEnd).HasColumnName("period_end");
-            entity.Property(value => value.SourceVersionsJson).HasColumnName("source_versions_json").HasColumnType("jsonb");
-            entity.Property(value => value.WorkDeliveryJson).HasColumnName("work_delivery_json").HasColumnType("jsonb");
-            entity.Property(value => value.AgentQualityJson).HasColumnName("agent_quality_json").HasColumnType("jsonb");
-            entity.Property(value => value.ConstitutionalPerformanceJson).HasColumnName("constitutional_performance_json").HasColumnType("jsonb");
-            entity.Property(value => value.CommercialUsageJson).HasColumnName("commercial_usage_json").HasColumnType("jsonb");
-            entity.Property(value => value.CustomerBusinessOutcomeJson).HasColumnName("customer_business_outcome_json").HasColumnType("jsonb");
-            entity.Property(value => value.CustomerAssessmentJson).HasColumnName("customer_assessment_json").HasColumnType("jsonb");
-            entity.Property(value => value.TrustAutonomyJson).HasColumnName("trust_autonomy_json").HasColumnType("jsonb");
+            entity
+                .Property(value => value.SourceVersionsJson)
+                .HasColumnName("source_versions_json")
+                .HasColumnType("jsonb");
+            entity
+                .Property(value => value.WorkDeliveryJson)
+                .HasColumnName("work_delivery_json")
+                .HasColumnType("jsonb");
+            entity
+                .Property(value => value.AgentQualityJson)
+                .HasColumnName("agent_quality_json")
+                .HasColumnType("jsonb");
+            entity
+                .Property(value => value.ConstitutionalPerformanceJson)
+                .HasColumnName("constitutional_performance_json")
+                .HasColumnType("jsonb");
+            entity
+                .Property(value => value.CommercialUsageJson)
+                .HasColumnName("commercial_usage_json")
+                .HasColumnType("jsonb");
+            entity
+                .Property(value => value.CustomerBusinessOutcomeJson)
+                .HasColumnName("customer_business_outcome_json")
+                .HasColumnType("jsonb");
+            entity
+                .Property(value => value.CustomerAssessmentJson)
+                .HasColumnName("customer_assessment_json")
+                .HasColumnType("jsonb");
+            entity
+                .Property(value => value.TrustAutonomyJson)
+                .HasColumnName("trust_autonomy_json")
+                .HasColumnType("jsonb");
             entity.Property(value => value.Recommendation).HasColumnName("recommendation");
             entity.Property(value => value.EvidenceId).HasColumnName("evidence_id");
             entity.Property(value => value.CreatedAt).HasColumnName("created_at");
-            entity.HasOne<EmploymentRelationship>().WithMany()
+            entity
+                .HasOne<EmploymentRelationship>()
+                .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
         });
@@ -728,15 +846,20 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
             entity.Property(value => value.ParticipantId).HasColumnName("participant_id");
-            entity.Property(value => value.Role).HasColumnName("role").HasConversion(
-                value => RelationshipRoleCodec.ToDatabase(value),
-                value => RelationshipRoleCodec.FromDatabase(value));
+            entity
+                .Property(value => value.Role)
+                .HasColumnName("role")
+                .HasConversion(
+                    value => RelationshipRoleCodec.ToDatabase(value),
+                    value => RelationshipRoleCodec.FromDatabase(value)
+                );
             entity.Property(value => value.Status).HasColumnName("status");
             entity.Property(value => value.BoundEvidenceId).HasColumnName("bound_evidence_id");
             entity.Property(value => value.BoundAt).HasColumnName("bound_at");
             entity.Property(value => value.RevokedEvidenceId).HasColumnName("revoked_evidence_id");
             entity.Property(value => value.RevokedAt).HasColumnName("revoked_at");
-            entity.HasOne<EmploymentRelationship>()
+            entity
+                .HasOne<EmploymentRelationship>()
                 .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
@@ -746,51 +869,106 @@ public sealed class EmploymentRelationshipDbContext : DbContext
         {
             entity.ToTable("performance_review_responses", "business");
             entity.HasKey(value => value.ResponseId);
-            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.ReviewId, value.ResponseRevision }).IsUnique();
-            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.IdempotencyKey }).IsUnique();
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.ReviewId,
+                    value.ResponseRevision,
+                })
+                .IsUnique();
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.IdempotencyKey,
+                })
+                .IsUnique();
             entity.Property(value => value.ResponseId).HasColumnName("response_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
             entity.Property(value => value.ReviewId).HasColumnName("review_id");
             entity.Property(value => value.ReviewRevision).HasColumnName("review_revision");
             entity.Property(value => value.ResponseRevision).HasColumnName("response_revision");
-            entity.Property(value => value.ActorParticipantId).HasColumnName("actor_participant_id");
+            entity
+                .Property(value => value.ActorParticipantId)
+                .HasColumnName("actor_participant_id");
             entity.Property(value => value.Decision).HasColumnName("decision").HasMaxLength(48);
             entity.Property(value => value.Reason).HasColumnName("reason").HasMaxLength(500);
             entity.Property(value => value.IdempotencyKey).HasColumnName("idempotency_key");
-            entity.Property(value => value.MaterialRequestHash).HasColumnName("material_request_hash").HasMaxLength(64);
+            entity
+                .Property(value => value.MaterialRequestHash)
+                .HasColumnName("material_request_hash")
+                .HasMaxLength(64);
             entity.Property(value => value.EvidenceId).HasColumnName("evidence_id");
             entity.Property(value => value.OccurredAt).HasColumnName("occurred_at");
-            entity.HasOne<PerformanceReviewWindow>()
+            entity
+                .HasOne<PerformanceReviewWindow>()
                 .WithMany()
-                .HasForeignKey(value => new { value.TenantId, value.RelationshipId, value.ReviewId })
-                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId, value.ReviewId });
+                .HasForeignKey(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.ReviewId,
+                })
+                .HasPrincipalKey(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.ReviewId,
+                });
         });
 
         modelBuilder.Entity<RelationshipStateHistory>(entity =>
         {
             entity.ToTable("relationship_state_history", "business");
             entity.HasKey(value => value.HistoryId);
-            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.StateVersion }).IsUnique();
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.StateVersion,
+                })
+                .IsUnique();
             entity.Property(value => value.HistoryId).HasColumnName("history_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
             entity.Property(value => value.StateVersion).HasColumnName("state_version");
-            entity.Property(value => value.FromState).HasColumnName("from_state").HasConversion(
-                value => value.HasValue ? RelationshipStateCodec.ToDatabase(value.Value) : null,
-                value => value == null ? null : RelationshipStateCodec.FromDatabase(value));
-            entity.Property(value => value.ToState).HasColumnName("to_state").HasConversion(
-                value => RelationshipStateCodec.ToDatabase(value),
-                value => RelationshipStateCodec.FromDatabase(value));
-            entity.Property(value => value.ActorParticipantId).HasColumnName("actor_participant_id");
-            entity.Property(value => value.ActorRole).HasColumnName("actor_role").HasConversion(
-                value => RelationshipRoleCodec.ToDatabase(value),
-                value => RelationshipRoleCodec.FromDatabase(value));
-            entity.Property(value => value.AuthoritySnapshotId).HasColumnName("authority_snapshot_id");
+            entity
+                .Property(value => value.FromState)
+                .HasColumnName("from_state")
+                .HasConversion(
+                    value => value.HasValue ? RelationshipStateCodec.ToDatabase(value.Value) : null,
+                    value => value == null ? null : RelationshipStateCodec.FromDatabase(value)
+                );
+            entity
+                .Property(value => value.ToState)
+                .HasColumnName("to_state")
+                .HasConversion(
+                    value => RelationshipStateCodec.ToDatabase(value),
+                    value => RelationshipStateCodec.FromDatabase(value)
+                );
+            entity
+                .Property(value => value.ActorParticipantId)
+                .HasColumnName("actor_participant_id");
+            entity
+                .Property(value => value.ActorRole)
+                .HasColumnName("actor_role")
+                .HasConversion(
+                    value => RelationshipRoleCodec.ToDatabase(value),
+                    value => RelationshipRoleCodec.FromDatabase(value)
+                );
+            entity
+                .Property(value => value.AuthoritySnapshotId)
+                .HasColumnName("authority_snapshot_id");
             entity.Property(value => value.CorrelationId).HasColumnName("correlation_id");
             entity.Property(value => value.EvidenceId).HasColumnName("evidence_id");
             entity.Property(value => value.OccurredAt).HasColumnName("occurred_at");
-            entity.HasOne<EmploymentRelationship>()
+            entity
+                .HasOne<EmploymentRelationship>()
                 .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
@@ -800,18 +978,28 @@ public sealed class EmploymentRelationshipDbContext : DbContext
         {
             entity.ToTable("relationship_idempotency", "business");
             entity.HasKey(value => value.IdempotencyId);
-            entity.HasIndex(value => new { value.TenantId, value.Purpose, value.IdempotencyKey }).IsUnique();
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.Purpose,
+                    value.IdempotencyKey,
+                })
+                .IsUnique();
             entity.Property(value => value.IdempotencyId).HasColumnName("idempotency_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
             entity.Property(value => value.Purpose).HasColumnName("purpose");
             entity.Property(value => value.IdempotencyKey).HasColumnName("idempotency_key");
-            entity.Property(value => value.MaterialRequestHash).HasColumnName("material_request_hash");
+            entity
+                .Property(value => value.MaterialRequestHash)
+                .HasColumnName("material_request_hash");
             entity.Property(value => value.OutcomeReference).HasColumnName("outcome_reference");
             entity.Property(value => value.Status).HasColumnName("status");
             entity.Property(value => value.CreatedAt).HasColumnName("created_at");
             entity.Property(value => value.CompletedAt).HasColumnName("completed_at");
-            entity.HasOne<EmploymentRelationship>()
+            entity
+                .HasOne<EmploymentRelationship>()
                 .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
@@ -825,12 +1013,25 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.PreferenceId).HasColumnName("preference_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
-            entity.Property(value => value.PreferredAgentDisplayName).HasColumnName("preferred_agent_display_name").HasMaxLength(80);
-            entity.Property(value => value.ChatAppearance).HasColumnName("chat_appearance").HasMaxLength(24);
-            entity.Property(value => value.TimestampVisibility).HasColumnName("timestamp_visibility").HasMaxLength(16);
-            entity.Property(value => value.ThemePreference).HasColumnName("theme_preference").HasMaxLength(16);
+            entity
+                .Property(value => value.PreferredAgentDisplayName)
+                .HasColumnName("preferred_agent_display_name")
+                .HasMaxLength(80);
+            entity
+                .Property(value => value.ChatAppearance)
+                .HasColumnName("chat_appearance")
+                .HasMaxLength(24);
+            entity
+                .Property(value => value.TimestampVisibility)
+                .HasColumnName("timestamp_visibility")
+                .HasMaxLength(16);
+            entity
+                .Property(value => value.ThemePreference)
+                .HasColumnName("theme_preference")
+                .HasMaxLength(16);
             entity.Property(value => value.UpdatedAt).HasColumnName("updated_at");
-            entity.HasOne<EmploymentRelationship>()
+            entity
+                .HasOne<EmploymentRelationship>()
                 .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
@@ -840,7 +1041,12 @@ public sealed class EmploymentRelationshipDbContext : DbContext
         {
             entity.ToTable("customer_alerts", "business");
             entity.HasKey(value => value.AlertId);
-            entity.HasIndex(value => new { value.TenantId, value.OccurredAt, value.AlertId });
+            entity.HasIndex(value => new
+            {
+                value.TenantId,
+                value.OccurredAt,
+                value.AlertId,
+            });
             entity.Property(value => value.AlertId).HasColumnName("alert_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.Version).HasColumnName("version").IsConcurrencyToken();
@@ -849,25 +1055,51 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.Source).HasColumnName("source").HasMaxLength(32);
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
             entity.Property(value => value.OccurredAt).HasColumnName("occurred_at");
-            entity.Property(value => value.DueMeaning).HasColumnName("due_meaning").HasMaxLength(240);
+            entity
+                .Property(value => value.DueMeaning)
+                .HasColumnName("due_meaning")
+                .HasMaxLength(240);
             entity.Property(value => value.ReadState).HasColumnName("read_state").HasMaxLength(16);
-            entity.Property(value => value.DestinationSurface).HasColumnName("destination_surface").HasMaxLength(32);
-            entity.Property(value => value.DestinationSubjectId).HasColumnName("destination_subject_id").HasMaxLength(120);
-            entity.Property(value => value.AvailableAction).HasColumnName("available_action").HasMaxLength(16);
+            entity
+                .Property(value => value.DestinationSurface)
+                .HasColumnName("destination_surface")
+                .HasMaxLength(32);
+            entity
+                .Property(value => value.DestinationSubjectId)
+                .HasColumnName("destination_subject_id")
+                .HasMaxLength(120);
+            entity
+                .Property(value => value.AvailableAction)
+                .HasColumnName("available_action")
+                .HasMaxLength(16);
         });
 
         modelBuilder.Entity<CustomerAlertIdempotency>(entity =>
         {
             entity.ToTable("customer_alert_idempotency", "business");
             entity.HasKey(value => value.EntryId);
-            entity.HasIndex(value => new { value.TenantId, value.ActorSubject, value.IdempotencyKey, value.Operation }).IsUnique();
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.ActorSubject,
+                    value.IdempotencyKey,
+                    value.Operation,
+                })
+                .IsUnique();
             entity.Property(value => value.EntryId).HasColumnName("entry_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.AlertId).HasColumnName("alert_id");
-            entity.Property(value => value.ActorSubject).HasColumnName("actor_subject").HasMaxLength(256);
+            entity
+                .Property(value => value.ActorSubject)
+                .HasColumnName("actor_subject")
+                .HasMaxLength(256);
             entity.Property(value => value.IdempotencyKey).HasColumnName("idempotency_key");
             entity.Property(value => value.Operation).HasColumnName("operation").HasMaxLength(32);
-            entity.Property(value => value.RequestHash).HasColumnName("request_hash").HasMaxLength(64);
+            entity
+                .Property(value => value.RequestHash)
+                .HasColumnName("request_hash")
+                .HasMaxLength(64);
             entity.Property(value => value.CreatedAt).HasColumnName("created_at");
         });
 
@@ -875,23 +1107,49 @@ public sealed class EmploymentRelationshipDbContext : DbContext
         {
             entity.ToTable("offerability_decisions", "business");
             entity.HasKey(value => value.DecisionId);
-            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.ProducedAt });
-            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.IdempotencyKey }).IsUnique();
+            entity.HasIndex(value => new
+            {
+                value.TenantId,
+                value.RelationshipId,
+                value.ProducedAt,
+            });
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.IdempotencyKey,
+                })
+                .IsUnique();
             entity.Property(value => value.DecisionId).HasColumnName("decision_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
             entity.Property(value => value.IdempotencyKey).HasColumnName("idempotency_key");
-            entity.Property(value => value.MaterialRequestHash).HasColumnName("material_request_hash");
-            entity.Property(value => value.RelationshipStateVersion).HasColumnName("relationship_state_version");
+            entity
+                .Property(value => value.MaterialRequestHash)
+                .HasColumnName("material_request_hash");
+            entity
+                .Property(value => value.RelationshipStateVersion)
+                .HasColumnName("relationship_state_version");
             entity.Property(value => value.PolicyVersion).HasColumnName("policy_version");
             entity.Property(value => value.Disposition).HasColumnName("disposition");
-            entity.Property(value => value.DirectContributionAmount).HasColumnName("direct_contribution_amount");
-            entity.Property(value => value.OwnerVersionsJson).HasColumnName("owner_versions_json").HasColumnType("jsonb");
-            entity.Property(value => value.ReasonsJson).HasColumnName("reasons_json").HasColumnType("jsonb");
+            entity
+                .Property(value => value.DirectContributionAmount)
+                .HasColumnName("direct_contribution_amount");
+            entity
+                .Property(value => value.OwnerVersionsJson)
+                .HasColumnName("owner_versions_json")
+                .HasColumnType("jsonb");
+            entity
+                .Property(value => value.ReasonsJson)
+                .HasColumnName("reasons_json")
+                .HasColumnType("jsonb");
             entity.Property(value => value.EvidenceId).HasColumnName("evidence_id");
             entity.Property(value => value.ProducedAt).HasColumnName("produced_at");
             entity.Property(value => value.ExpiresAt).HasColumnName("expires_at");
-            entity.HasOne<EmploymentRelationship>().WithMany()
+            entity
+                .HasOne<EmploymentRelationship>()
+                .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
         });
@@ -900,12 +1158,20 @@ public sealed class EmploymentRelationshipDbContext : DbContext
         {
             entity.ToTable("relationship_context_payloads", "payload_store");
             entity.HasKey(value => value.PayloadReference);
-            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.FieldType });
+            entity.HasIndex(value => new
+            {
+                value.TenantId,
+                value.RelationshipId,
+                value.FieldType,
+            });
             entity.Property(value => value.PayloadReference).HasColumnName("payload_reference");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
             entity.Property(value => value.FieldType).HasColumnName("field_type");
-            entity.Property(value => value.ValueJson).HasColumnName("value_json").HasColumnType("jsonb");
+            entity
+                .Property(value => value.ValueJson)
+                .HasColumnName("value_json")
+                .HasColumnType("jsonb");
             entity.Property(value => value.Source).HasColumnName("source");
             entity.Property(value => value.Confidence).HasColumnName("confidence");
             entity.Property(value => value.ConfirmationStatus).HasColumnName("confirmation_status");
@@ -914,7 +1180,8 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.PayloadHash).HasColumnName("payload_hash");
             entity.Property(value => value.CreatedAt).HasColumnName("created_at");
             entity.Property(value => value.ErasedAt).HasColumnName("erased_at");
-            entity.HasOne<EmploymentRelationship>()
+            entity
+                .HasOne<EmploymentRelationship>()
                 .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
@@ -924,7 +1191,12 @@ public sealed class EmploymentRelationshipDbContext : DbContext
         {
             entity.ToTable("context_confirmation_events", "business");
             entity.HasKey(value => value.EventId);
-            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.OccurredAt });
+            entity.HasIndex(value => new
+            {
+                value.TenantId,
+                value.RelationshipId,
+                value.OccurredAt,
+            });
             entity.Property(value => value.EventId).HasColumnName("event_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
@@ -932,11 +1204,14 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.PayloadHash).HasColumnName("payload_hash");
             entity.Property(value => value.FieldType).HasColumnName("field_type");
             entity.Property(value => value.Action).HasColumnName("action");
-            entity.Property(value => value.ActorParticipantId).HasColumnName("actor_participant_id");
+            entity
+                .Property(value => value.ActorParticipantId)
+                .HasColumnName("actor_participant_id");
             entity.Property(value => value.CorrelationId).HasColumnName("correlation_id");
             entity.Property(value => value.EvidenceId).HasColumnName("evidence_id");
             entity.Property(value => value.OccurredAt).HasColumnName("occurred_at");
-            entity.HasOne<EmploymentRelationship>()
+            entity
+                .HasOne<EmploymentRelationship>()
                 .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
@@ -954,11 +1229,15 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.Measure).HasColumnName("measure");
             entity.Property(value => value.DecisionThreshold).HasColumnName("decision_threshold");
             entity.Property(value => value.EvidenceSource).HasColumnName("evidence_source");
-            entity.Property(value => value.ReviewCadenceMonths).HasColumnName("review_cadence_months");
+            entity
+                .Property(value => value.ReviewCadenceMonths)
+                .HasColumnName("review_cadence_months");
             entity.Property(value => value.Status).HasColumnName("status");
             entity.Property(value => value.CreatedAt).HasColumnName("created_at");
             entity.Property(value => value.UpdatedAt).HasColumnName("updated_at");
-            entity.HasOne<EmploymentRelationship>().WithMany()
+            entity
+                .HasOne<EmploymentRelationship>()
+                .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
         });
@@ -967,42 +1246,112 @@ public sealed class EmploymentRelationshipDbContext : DbContext
         {
             entity.ToTable("relationship_goal_decisions", "business");
             entity.HasKey(value => value.DecisionId);
-            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.GoalId, value.OccurredAt });
-            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.GoalId, value.DecisionId }).IsUnique();
-            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.IdempotencyKey }).IsUnique();
+            entity.HasIndex(value => new
+            {
+                value.TenantId,
+                value.RelationshipId,
+                value.GoalId,
+                value.OccurredAt,
+            });
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.GoalId,
+                    value.DecisionId,
+                })
+                .IsUnique();
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.IdempotencyKey,
+                })
+                .IsUnique();
             entity.Property(value => value.DecisionId).HasColumnName("decision_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
             entity.Property(value => value.GoalId).HasColumnName("goal_id");
-            entity.Property(value => value.GoalVersion).HasColumnName("goal_version").HasMaxLength(64);
+            entity
+                .Property(value => value.GoalVersion)
+                .HasColumnName("goal_version")
+                .HasMaxLength(64);
             entity.Property(value => value.SkillId).HasColumnName("skill_id").HasMaxLength(128);
-            entity.Property(value => value.SkillVersion).HasColumnName("skill_version").HasMaxLength(32);
+            entity
+                .Property(value => value.SkillVersion)
+                .HasColumnName("skill_version")
+                .HasMaxLength(32);
             entity.Property(value => value.Measure).HasColumnName("measure");
-            entity.Property(value => value.ReviewCadenceMonths).HasColumnName("review_cadence_months");
+            entity
+                .Property(value => value.ReviewCadenceMonths)
+                .HasColumnName("review_cadence_months");
             entity.Property(value => value.Decision).HasColumnName("decision").HasMaxLength(24);
-            entity.Property(value => value.CorrectionReason).HasColumnName("correction_reason").HasMaxLength(500);
+            entity
+                .Property(value => value.CorrectionReason)
+                .HasColumnName("correction_reason")
+                .HasMaxLength(500);
             entity.Property(value => value.PriorDecisionId).HasColumnName("prior_decision_id");
-            entity.Property(value => value.ActorParticipantId).HasColumnName("actor_participant_id");
-            entity.Property(value => value.ExpectedWorkspaceVersion).HasColumnName("expected_workspace_version").HasMaxLength(64);
-            entity.Property(value => value.ExpectedSubjectVersion).HasColumnName("expected_subject_version").HasMaxLength(64);
+            entity
+                .Property(value => value.ActorParticipantId)
+                .HasColumnName("actor_participant_id");
+            entity
+                .Property(value => value.ExpectedWorkspaceVersion)
+                .HasColumnName("expected_workspace_version")
+                .HasMaxLength(64);
+            entity
+                .Property(value => value.ExpectedSubjectVersion)
+                .HasColumnName("expected_subject_version")
+                .HasMaxLength(64);
             entity.Property(value => value.IdempotencyKey).HasColumnName("idempotency_key");
-            entity.Property(value => value.MaterialRequestHash).HasColumnName("material_request_hash").HasMaxLength(64);
+            entity
+                .Property(value => value.MaterialRequestHash)
+                .HasColumnName("material_request_hash")
+                .HasMaxLength(64);
             entity.Property(value => value.EvidenceId).HasColumnName("evidence_id");
             entity.Property(value => value.OccurredAt).HasColumnName("occurred_at");
-            entity.HasOne<EmploymentRelationship>().WithMany()
+            entity
+                .HasOne<EmploymentRelationship>()
+                .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
-            entity.HasOne<RelationshipGoal>().WithMany()
-                .HasForeignKey(value => new { value.TenantId, value.RelationshipId, value.GoalId })
-                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId, value.GoalId });
+            entity
+                .HasOne<RelationshipGoal>()
+                .WithMany()
+                .HasForeignKey(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.GoalId,
+                })
+                .HasPrincipalKey(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.GoalId,
+                });
         });
 
         modelBuilder.Entity<RelationshipSkillConfiguration>(entity =>
         {
             entity.ToTable("relationship_skill_configuration", "business");
             entity.HasKey(value => value.ConfigurationId);
-            entity.HasAlternateKey(value => new { value.TenantId, value.RelationshipId, value.ConfigurationId });
-            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.SkillId, value.SkillVersion }).IsUnique();
+            entity.HasAlternateKey(value => new
+            {
+                value.TenantId,
+                value.RelationshipId,
+                value.ConfigurationId,
+            });
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.SkillId,
+                    value.SkillVersion,
+                })
+                .IsUnique();
             entity.Property(value => value.ConfigurationId).HasColumnName("configuration_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
@@ -1011,11 +1360,15 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.GoalId).HasColumnName("goal_id");
             entity.Property(value => value.AuthorityState).HasColumnName("authority_state");
             entity.Property(value => value.Applicability).HasColumnName("applicability");
-            entity.Property(value => value.ApplicabilityReason).HasColumnName("applicability_reason");
+            entity
+                .Property(value => value.ApplicabilityReason)
+                .HasColumnName("applicability_reason");
             entity.Property(value => value.Status).HasColumnName("status");
             entity.Property(value => value.CreatedAt).HasColumnName("created_at");
             entity.Property(value => value.UpdatedAt).HasColumnName("updated_at");
-            entity.HasOne<EmploymentRelationship>().WithMany()
+            entity
+                .HasOne<EmploymentRelationship>()
+                .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
         });
@@ -1024,7 +1377,14 @@ public sealed class EmploymentRelationshipDbContext : DbContext
         {
             entity.ToTable("relationship_skill_decisions", "business");
             entity.HasKey(value => value.DecisionId);
-            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.IdempotencyKey }).IsUnique();
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.IdempotencyKey,
+                })
+                .IsUnique();
             entity.Property(value => value.DecisionId).HasColumnName("decision_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
@@ -1032,97 +1392,212 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.SkillId).HasColumnName("skill_id");
             entity.Property(value => value.SkillVersion).HasColumnName("skill_version");
             entity.Property(value => value.Decision).HasColumnName("decision");
-            entity.Property(value => value.ActorParticipantId).HasColumnName("actor_participant_id");
-            entity.Property(value => value.ExpectedWorkspaceVersion).HasColumnName("expected_workspace_version");
-            entity.Property(value => value.ExpectedSubjectVersion).HasColumnName("expected_subject_version");
+            entity
+                .Property(value => value.ActorParticipantId)
+                .HasColumnName("actor_participant_id");
+            entity
+                .Property(value => value.ExpectedWorkspaceVersion)
+                .HasColumnName("expected_workspace_version");
+            entity
+                .Property(value => value.ExpectedSubjectVersion)
+                .HasColumnName("expected_subject_version");
             entity.Property(value => value.IdempotencyKey).HasColumnName("idempotency_key");
-            entity.Property(value => value.MaterialRequestHash).HasColumnName("material_request_hash");
+            entity
+                .Property(value => value.MaterialRequestHash)
+                .HasColumnName("material_request_hash");
             entity.Property(value => value.EvidenceId).HasColumnName("evidence_id");
             entity.Property(value => value.OccurredAt).HasColumnName("occurred_at");
-            entity.HasOne<EmploymentRelationship>().WithMany()
+            entity
+                .HasOne<EmploymentRelationship>()
+                .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
-            entity.HasOne<RelationshipSkillConfiguration>().WithMany()
-                .HasForeignKey(value => new { value.TenantId, value.RelationshipId, value.ConfigurationId })
-                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId, value.ConfigurationId });
+            entity
+                .HasOne<RelationshipSkillConfiguration>()
+                .WithMany()
+                .HasForeignKey(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.ConfigurationId,
+                })
+                .HasPrincipalKey(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.ConfigurationId,
+                });
         });
 
         modelBuilder.Entity<DecisionSpaceSnapshot>(entity =>
         {
             entity.ToTable("decision_space_snapshots", "business");
             entity.HasKey(value => value.SnapshotId);
-            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.Version }).IsUnique();
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.Version,
+                })
+                .IsUnique();
             entity.Property(value => value.SnapshotId).HasColumnName("snapshot_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
             entity.Property(value => value.Version).HasColumnName("version");
-            entity.Property(value => value.BudgetCeilingInrPaise).HasColumnName("budget_ceiling_inr_paise");
-            entity.Property(value => value.AuthorityBoundariesJson).HasColumnName("authority_boundaries_json").HasColumnType("jsonb");
-            entity.Property(value => value.StopConditionsJson).HasColumnName("stop_conditions_json").HasColumnType("jsonb");
-            entity.Property(value => value.ReviewCadenceMonths).HasColumnName("review_cadence_months");
-            entity.Property(value => value.AcceptedEvidenceJson).HasColumnName("accepted_evidence_json").HasColumnType("jsonb");
-            entity.Property(value => value.CreatedByParticipantId).HasColumnName("created_by_participant_id");
+            entity
+                .Property(value => value.BudgetCeilingInrPaise)
+                .HasColumnName("budget_ceiling_inr_paise");
+            entity
+                .Property(value => value.AuthorityBoundariesJson)
+                .HasColumnName("authority_boundaries_json")
+                .HasColumnType("jsonb");
+            entity
+                .Property(value => value.StopConditionsJson)
+                .HasColumnName("stop_conditions_json")
+                .HasColumnType("jsonb");
+            entity
+                .Property(value => value.ReviewCadenceMonths)
+                .HasColumnName("review_cadence_months");
+            entity
+                .Property(value => value.AcceptedEvidenceJson)
+                .HasColumnName("accepted_evidence_json")
+                .HasColumnType("jsonb");
+            entity
+                .Property(value => value.CreatedByParticipantId)
+                .HasColumnName("created_by_participant_id");
             entity.Property(value => value.EvidenceId).HasColumnName("evidence_id");
             entity.Property(value => value.CreatedAt).HasColumnName("created_at");
-            entity.HasOne<EmploymentRelationship>().WithMany()
+            entity
+                .HasOne<EmploymentRelationship>()
+                .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
         });
 
-            modelBuilder.Entity<EmploymentContractVersion>(entity =>
+        modelBuilder.Entity<EmploymentContractVersion>(entity =>
+        {
+            entity.ToTable("employment_contract_versions", "business");
+            entity.HasKey(value => value.ContractId);
+            entity.HasAlternateKey(value => new
             {
-                entity.ToTable("employment_contract_versions", "business");
-                entity.HasKey(value => value.ContractId);
-                entity.HasAlternateKey(value => new
+                value.TenantId,
+                value.RelationshipId,
+                value.ContractId,
+                value.Version,
+                value.ContractHash,
+            });
+            entity
+                .HasIndex(value => new
                 {
                     value.TenantId,
                     value.RelationshipId,
-                    value.ContractId,
                     value.Version,
+                })
+                .IsUnique();
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
                     value.ContractHash,
-                });
-                entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.Version }).IsUnique();
-                entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.ContractHash }).IsUnique();
-                entity.Property(value => value.ContractId).HasColumnName("contract_id");
-                entity.Property(value => value.TenantId).HasColumnName("tenant_id");
-                entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
-                entity.Property(value => value.Version).HasColumnName("version");
-                entity.Property(value => value.ContractHash).HasColumnName("contract_hash").HasMaxLength(64).IsFixedLength();
-                entity.Property(value => value.AeecVersion).HasColumnName("aeec_version").HasMaxLength(32);
-                entity.Property(value => value.DomainSchedulePayloadReference).HasColumnName("domain_schedule_payload_reference");
-                entity.Property(value => value.DomainScheduleHash).HasColumnName("domain_schedule_hash").HasMaxLength(64).IsFixedLength();
-                entity.Property(value => value.ConfigurationSnapshotJson).HasColumnName("configuration_snapshot_json").HasColumnType("jsonb");
-                entity.Property(value => value.PriceTaxSummaryJson).HasColumnName("price_tax_summary_json").HasColumnType("jsonb");
-                entity.Property(value => value.State).HasColumnName("state").HasMaxLength(16);
-                entity.Property(value => value.CreatedByParticipantId).HasColumnName("created_by_participant_id");
-                entity.Property(value => value.CreatedAt).HasColumnName("created_at");
-                entity.HasOne<EmploymentRelationship>().WithMany()
+                })
+                .IsUnique();
+            entity.Property(value => value.ContractId).HasColumnName("contract_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.Version).HasColumnName("version");
+            entity
+                .Property(value => value.ContractHash)
+                .HasColumnName("contract_hash")
+                .HasMaxLength(64)
+                .IsFixedLength();
+            entity
+                .Property(value => value.AeecVersion)
+                .HasColumnName("aeec_version")
+                .HasMaxLength(32);
+            entity
+                .Property(value => value.DomainSchedulePayloadReference)
+                .HasColumnName("domain_schedule_payload_reference");
+            entity
+                .Property(value => value.DomainScheduleHash)
+                .HasColumnName("domain_schedule_hash")
+                .HasMaxLength(64)
+                .IsFixedLength();
+            entity
+                .Property(value => value.ConfigurationSnapshotJson)
+                .HasColumnName("configuration_snapshot_json")
+                .HasColumnType("jsonb");
+            entity
+                .Property(value => value.PriceTaxSummaryJson)
+                .HasColumnName("price_tax_summary_json")
+                .HasColumnType("jsonb");
+            entity.Property(value => value.State).HasColumnName("state").HasMaxLength(16);
+            entity
+                .Property(value => value.CreatedByParticipantId)
+                .HasColumnName("created_by_participant_id");
+            entity.Property(value => value.CreatedAt).HasColumnName("created_at");
+            entity
+                .HasOne<EmploymentRelationship>()
+                .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
-            });
+        });
 
         modelBuilder.Entity<ContractAcceptance>(entity =>
         {
             entity.ToTable("contract_acceptances", "business");
             entity.HasKey(value => value.AcceptanceId);
-            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.ContractId }).IsUnique();
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.ContractId,
+                })
+                .IsUnique();
             entity.Property(value => value.AcceptanceId).HasColumnName("acceptance_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
             entity.Property(value => value.ContractId).HasColumnName("contract_id");
             entity.Property(value => value.ContractVersion).HasColumnName("contract_version");
-            entity.Property(value => value.ContractHash).HasColumnName("contract_hash").HasMaxLength(64).IsFixedLength();
-            entity.Property(value => value.ContractHash).HasColumnName("contract_hash").HasMaxLength(64).IsFixedLength();
+            entity
+                .Property(value => value.ContractHash)
+                .HasColumnName("contract_hash")
+                .HasMaxLength(64)
+                .IsFixedLength();
+            entity
+                .Property(value => value.ContractHash)
+                .HasColumnName("contract_hash")
+                .HasMaxLength(64)
+                .IsFixedLength();
             entity.Property(value => value.ParticipantId).HasColumnName("participant_id");
-            entity.Property(value => value.ParticipantRole).HasColumnName("participant_role").HasConversion(
-                value => RelationshipRoleCodec.ToDatabase(value),
-                value => RelationshipRoleCodec.FromDatabase(value));
-            entity.Property(value => value.AuthenticationAssurance).HasColumnName("authentication_assurance").HasMaxLength(32);
-            entity.Property(value => value.AuthoritySnapshotId).HasColumnName("authority_snapshot_id");
-            entity.Property(value => value.ScopeConfirmationHash).HasColumnName("scope_confirmation_hash").HasMaxLength(64).IsFixedLength();
-            entity.Property(value => value.AcceptanceEvidenceId).HasColumnName("acceptance_evidence_id");
+            entity
+                .Property(value => value.ParticipantRole)
+                .HasColumnName("participant_role")
+                .HasConversion(
+                    value => RelationshipRoleCodec.ToDatabase(value),
+                    value => RelationshipRoleCodec.FromDatabase(value)
+                );
+            entity
+                .Property(value => value.AuthenticationAssurance)
+                .HasColumnName("authentication_assurance")
+                .HasMaxLength(32);
+            entity
+                .Property(value => value.AuthoritySnapshotId)
+                .HasColumnName("authority_snapshot_id");
+            entity
+                .Property(value => value.ScopeConfirmationHash)
+                .HasColumnName("scope_confirmation_hash")
+                .HasMaxLength(64)
+                .IsFixedLength();
+            entity
+                .Property(value => value.AcceptanceEvidenceId)
+                .HasColumnName("acceptance_evidence_id");
             entity.Property(value => value.AcceptedAt).HasColumnName("accepted_at");
-            entity.HasOne<EmploymentContractVersion>().WithMany()
+            entity
+                .HasOne<EmploymentContractVersion>()
+                .WithMany()
                 .HasForeignKey(value => new
                 {
                     value.TenantId,
@@ -1145,27 +1620,58 @@ public sealed class EmploymentRelationshipDbContext : DbContext
         {
             entity.ToTable("activation_intents", "business");
             entity.HasKey(value => value.ActivationIntentId);
-            entity.HasIndex(value => new
-            {
-                value.TenantId,
-                value.RelationshipId,
-                value.AcceptedContractId,
-                value.PaymentReference,
-            }).IsUnique();
-            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.CorrelationId }).IsUnique();
-            entity.Property(value => value.ActivationIntentId).HasColumnName("activation_intent_id");
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.AcceptedContractId,
+                    value.PaymentReference,
+                })
+                .IsUnique();
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.CorrelationId,
+                })
+                .IsUnique();
+            entity
+                .Property(value => value.ActivationIntentId)
+                .HasColumnName("activation_intent_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
-            entity.Property(value => value.AcceptedContractId).HasColumnName("accepted_contract_id");
-            entity.Property(value => value.ContractAcceptanceId).HasColumnName("contract_acceptance_id");
-            entity.Property(value => value.PaymentReference).HasColumnName("payment_reference").HasMaxLength(128);
+            entity
+                .Property(value => value.AcceptedContractId)
+                .HasColumnName("accepted_contract_id");
+            entity
+                .Property(value => value.ContractAcceptanceId)
+                .HasColumnName("contract_acceptance_id");
+            entity
+                .Property(value => value.PaymentReference)
+                .HasColumnName("payment_reference")
+                .HasMaxLength(128);
             entity.Property(value => value.CorrelationId).HasColumnName("correlation_id");
-            entity.Property(value => value.MaterialRequestHash).HasColumnName("material_request_hash").HasMaxLength(64).IsFixedLength();
-            entity.Property(value => value.ConflictingRequestHash).HasColumnName("conflicting_request_hash").HasMaxLength(64).IsFixedLength();
+            entity
+                .Property(value => value.MaterialRequestHash)
+                .HasColumnName("material_request_hash")
+                .HasMaxLength(64)
+                .IsFixedLength();
+            entity
+                .Property(value => value.ConflictingRequestHash)
+                .HasColumnName("conflicting_request_hash")
+                .HasMaxLength(64)
+                .IsFixedLength();
             entity.Property(value => value.Status).HasColumnName("status").HasMaxLength(24);
-            entity.Property(value => value.OutcomeSubscriptionId).HasColumnName("outcome_subscription_id");
+            entity
+                .Property(value => value.OutcomeSubscriptionId)
+                .HasColumnName("outcome_subscription_id");
             entity.Property(value => value.OutcomeEvidenceId).HasColumnName("outcome_evidence_id");
-            entity.Property(value => value.OutcomeJson).HasColumnName("outcome_json").HasColumnType("jsonb");
+            entity
+                .Property(value => value.OutcomeJson)
+                .HasColumnName("outcome_json")
+                .HasColumnType("jsonb");
             entity.Property(value => value.CreatedAt).HasColumnName("created_at");
             entity.Property(value => value.UpdatedAt).HasColumnName("updated_at");
             entity.Property(value => value.CompletedAt).HasColumnName("completed_at");
@@ -1182,17 +1688,32 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.ContractId).HasColumnName("contract_id");
             entity.Property(value => value.ContractVersion).HasColumnName("contract_version");
             entity.Property(value => value.ContractHash).HasColumnName("contract_hash");
-            entity.Property(value => value.ContractAcceptanceId).HasColumnName("contract_acceptance_id");
-            entity.Property(value => value.PaymentConsentEvidenceId).HasColumnName("payment_consent_evidence_id");
+            entity
+                .Property(value => value.ContractAcceptanceId)
+                .HasColumnName("contract_acceptance_id");
+            entity
+                .Property(value => value.PaymentConsentEvidenceId)
+                .HasColumnName("payment_consent_evidence_id");
             entity.Property(value => value.IdempotencyKey).HasColumnName("idempotency_key");
-            entity.Property(value => value.MaterialRequestHash).HasColumnName("material_request_hash").HasMaxLength(64).IsFixedLength();
+            entity
+                .Property(value => value.MaterialRequestHash)
+                .HasColumnName("material_request_hash")
+                .HasMaxLength(64)
+                .IsFixedLength();
             entity.Property(value => value.Status).HasColumnName("status").HasMaxLength(24);
-            entity.Property(value => value.OutcomeKind).HasColumnName("outcome_kind").HasMaxLength(48);
-            entity.Property(value => value.OutcomeJson).HasColumnName("outcome_json").HasColumnType("jsonb");
+            entity
+                .Property(value => value.OutcomeKind)
+                .HasColumnName("outcome_kind")
+                .HasMaxLength(48);
+            entity
+                .Property(value => value.OutcomeJson)
+                .HasColumnName("outcome_json")
+                .HasColumnType("jsonb");
             entity.Property(value => value.CreatedAt).HasColumnName("created_at");
             entity.Property(value => value.UpdatedAt).HasColumnName("updated_at");
             entity.Property(value => value.CompletedAt).HasColumnName("completed_at");
-            entity.HasOne<EmploymentRelationship>()
+            entity
+                .HasOne<EmploymentRelationship>()
                 .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
@@ -1215,7 +1736,9 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.UnresolvedOwner).HasColumnName("unresolved_owner");
             entity.Property(value => value.CreatedAt).HasColumnName("created_at");
             entity.Property(value => value.UpdatedAt).HasColumnName("updated_at");
-            entity.HasOne<EmploymentRelationship>().WithMany()
+            entity
+                .HasOne<EmploymentRelationship>()
+                .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
         });
@@ -1231,9 +1754,17 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.OptedInAt).HasColumnName("opted_in_at");
             entity.Property(value => value.LastInboundAt).HasColumnName("last_inbound_at");
             entity.Property(value => value.JourneyStage).HasColumnName("journey_stage");
-            entity.Property(value => value.PendingMediumRiskConfirmation).HasColumnName("pending_medium_risk_confirmation");
-            entity.Property(value => value.MpinHash).HasColumnName("mpin_hash").HasMaxLength(64).IsFixedLength();
-            entity.Property(value => value.MpinFailedAttempts).HasColumnName("mpin_failed_attempts");
+            entity
+                .Property(value => value.PendingMediumRiskConfirmation)
+                .HasColumnName("pending_medium_risk_confirmation");
+            entity
+                .Property(value => value.MpinHash)
+                .HasColumnName("mpin_hash")
+                .HasMaxLength(64)
+                .IsFixedLength();
+            entity
+                .Property(value => value.MpinFailedAttempts)
+                .HasColumnName("mpin_failed_attempts");
             entity.Property(value => value.MpinLockedUntil).HasColumnName("mpin_locked_until");
         });
 
@@ -1254,7 +1785,12 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.ToTable("channel_bindings", "business");
             entity.HasKey(value => value.BindingId);
             entity.HasAlternateKey(value => new { value.TenantId, value.BindingId });
-            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.Status });
+            entity.HasIndex(value => new
+            {
+                value.TenantId,
+                value.RelationshipId,
+                value.Status,
+            });
             entity.HasIndex(value => new { value.TenantId, value.ConversationId });
             entity.Property(value => value.BindingId).HasColumnName("binding_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
@@ -1262,17 +1798,25 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.ParticipantId).HasColumnName("participant_id");
             entity.Property(value => value.ParticipantRole).HasColumnName("participant_role");
             entity.Property(value => value.Channel).HasColumnName("channel");
-            entity.Property(value => value.ExternalSubjectHash).HasColumnName("external_subject_hash").HasMaxLength(64).IsFixedLength();
+            entity
+                .Property(value => value.ExternalSubjectHash)
+                .HasColumnName("external_subject_hash")
+                .HasMaxLength(64)
+                .IsFixedLength();
             entity.Property(value => value.ConversationId).HasColumnName("conversation_id");
             entity.Property(value => value.AssuranceLevel).HasColumnName("assurance_level");
             entity.Property(value => value.Status).HasColumnName("status");
-            entity.Property(value => value.PreparedEvidenceId).HasColumnName("prepared_evidence_id");
+            entity
+                .Property(value => value.PreparedEvidenceId)
+                .HasColumnName("prepared_evidence_id");
             entity.Property(value => value.BoundEvidenceId).HasColumnName("bound_evidence_id");
             entity.Property(value => value.RevokedEvidenceId).HasColumnName("revoked_evidence_id");
             entity.Property(value => value.CreatedAt).HasColumnName("created_at");
             entity.Property(value => value.BoundAt).HasColumnName("bound_at");
             entity.Property(value => value.RevokedAt).HasColumnName("revoked_at");
-            entity.HasOne<EmploymentRelationship>().WithMany()
+            entity
+                .HasOne<EmploymentRelationship>()
+                .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
         });
@@ -1282,35 +1826,90 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.ToTable("continuity_checkpoints", "business");
             entity.HasKey(value => value.CheckpointId);
             entity.HasAlternateKey(value => new { value.TenantId, value.CheckpointId });
-            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.IdempotencyKey }).IsUnique();
-            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.CausalMarker }).IsUnique();
-            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.SequenceNumber }).IsUnique();
-            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.Status });
-            entity.HasIndex(value => new { value.TenantId, value.TargetBindingId, value.Status });
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.IdempotencyKey,
+                })
+                .IsUnique();
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.CausalMarker,
+                })
+                .IsUnique();
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.SequenceNumber,
+                })
+                .IsUnique();
+            entity.HasIndex(value => new
+            {
+                value.TenantId,
+                value.RelationshipId,
+                value.Status,
+            });
+            entity.HasIndex(value => new
+            {
+                value.TenantId,
+                value.TargetBindingId,
+                value.Status,
+            });
             entity.Property(value => value.CheckpointId).HasColumnName("checkpoint_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
             entity.Property(value => value.SourceBindingId).HasColumnName("source_binding_id");
             entity.Property(value => value.TargetBindingId).HasColumnName("target_binding_id");
-            entity.Property(value => value.ContinuityEnvelopeHash).HasColumnName("continuity_envelope_hash").HasMaxLength(64).IsFixedLength();
-            entity.Property(value => value.ContinuityEnvelopeJson).HasColumnName("continuity_envelope").HasColumnType("jsonb");
-            entity.Property(value => value.MaterialRequestHash).HasColumnName("material_request_hash").HasMaxLength(64).IsFixedLength();
+            entity
+                .Property(value => value.ContinuityEnvelopeHash)
+                .HasColumnName("continuity_envelope_hash")
+                .HasMaxLength(64)
+                .IsFixedLength();
+            entity
+                .Property(value => value.ContinuityEnvelopeJson)
+                .HasColumnName("continuity_envelope")
+                .HasColumnType("jsonb");
+            entity
+                .Property(value => value.MaterialRequestHash)
+                .HasColumnName("material_request_hash")
+                .HasMaxLength(64)
+                .IsFixedLength();
             entity.Property(value => value.CausalMarker).HasColumnName("causal_marker");
             entity.Property(value => value.SequenceNumber).HasColumnName("sequence_number");
             entity.Property(value => value.IdempotencyKey).HasColumnName("idempotency_key");
             entity.Property(value => value.Status).HasColumnName("status");
-            entity.Property(value => value.PreparedEvidenceId).HasColumnName("prepared_evidence_id");
-            entity.Property(value => value.ResolutionEvidenceId).HasColumnName("resolution_evidence_id");
+            entity
+                .Property(value => value.PreparedEvidenceId)
+                .HasColumnName("prepared_evidence_id");
+            entity
+                .Property(value => value.ResolutionEvidenceId)
+                .HasColumnName("resolution_evidence_id");
             entity.Property(value => value.PreparedAt).HasColumnName("prepared_at");
-            entity.Property(value => value.ExpiresAt).HasColumnName("expires_at").ValueGeneratedOnAdd();
+            entity
+                .Property(value => value.ExpiresAt)
+                .HasColumnName("expires_at")
+                .ValueGeneratedOnAdd();
             entity.Property(value => value.ResolvedAt).HasColumnName("resolved_at");
-            entity.HasOne<EmploymentRelationship>().WithMany()
+            entity
+                .HasOne<EmploymentRelationship>()
+                .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
-            entity.HasOne<ChannelBinding>().WithMany()
+            entity
+                .HasOne<ChannelBinding>()
+                .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.SourceBindingId })
                 .HasPrincipalKey(value => new { value.TenantId, value.BindingId });
-            entity.HasOne<ChannelBinding>().WithMany()
+            entity
+                .HasOne<ChannelBinding>()
+                .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.TargetBindingId })
                 .HasPrincipalKey(value => new { value.TenantId, value.BindingId });
         });
@@ -1319,28 +1918,58 @@ public sealed class EmploymentRelationshipDbContext : DbContext
         {
             entity.ToTable("delivery_acknowledgements", "business");
             entity.HasKey(value => value.AcknowledgementId);
-            entity.HasIndex(value => new { value.TenantId, value.BindingId, value.MessageIdHash, value.AcknowledgementType }).IsUnique();
-            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.AcknowledgedAt });
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.BindingId,
+                    value.MessageIdHash,
+                    value.AcknowledgementType,
+                })
+                .IsUnique();
+            entity.HasIndex(value => new
+            {
+                value.TenantId,
+                value.RelationshipId,
+                value.AcknowledgedAt,
+            });
             entity.HasIndex(value => new { value.TenantId, value.CheckpointId });
-            entity.HasIndex(value => new { value.TenantId, value.BindingId, value.MessageIdHash });
+            entity.HasIndex(value => new
+            {
+                value.TenantId,
+                value.BindingId,
+                value.MessageIdHash,
+            });
             entity.Property(value => value.AcknowledgementId).HasColumnName("acknowledgement_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
             entity.Property(value => value.CheckpointId).HasColumnName("checkpoint_id");
             entity.Property(value => value.BindingId).HasColumnName("binding_id");
-            entity.Property(value => value.MessageIdHash).HasColumnName("message_id_hash").HasMaxLength(64).IsFixedLength();
-            entity.Property(value => value.AcknowledgementType).HasColumnName("acknowledgement_type");
+            entity
+                .Property(value => value.MessageIdHash)
+                .HasColumnName("message_id_hash")
+                .HasMaxLength(64)
+                .IsFixedLength();
+            entity
+                .Property(value => value.AcknowledgementType)
+                .HasColumnName("acknowledgement_type");
             entity.Property(value => value.AcknowledgedAt).HasColumnName("acknowledged_at");
             entity.Property(value => value.EvidenceId).HasColumnName("evidence_id");
             entity.Property(value => value.CreatedAt).HasColumnName("created_at");
-            entity.HasOne<EmploymentRelationship>().WithMany()
+            entity
+                .HasOne<EmploymentRelationship>()
+                .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
-            entity.HasOne<ContinuityCheckpoint>().WithMany()
+            entity
+                .HasOne<ContinuityCheckpoint>()
+                .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.CheckpointId })
                 .HasPrincipalKey(value => new { value.TenantId, value.CheckpointId })
                 .IsRequired(false);
-            entity.HasOne<ChannelBinding>().WithMany()
+            entity
+                .HasOne<ChannelBinding>()
+                .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.BindingId })
                 .HasPrincipalKey(value => new { value.TenantId, value.BindingId });
         });
@@ -1349,23 +1978,50 @@ public sealed class EmploymentRelationshipDbContext : DbContext
         {
             entity.ToTable("channel_message_deduplication", "business");
             entity.HasKey(value => value.DeduplicationId);
-            entity.HasIndex(value => new { value.TenantId, value.BindingId, value.ProviderMessageIdHash }).IsUnique();
-            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.ReceivedAt });
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.BindingId,
+                    value.ProviderMessageIdHash,
+                })
+                .IsUnique();
+            entity.HasIndex(value => new
+            {
+                value.TenantId,
+                value.RelationshipId,
+                value.ReceivedAt,
+            });
             entity.HasIndex(value => value.ExpiresAt);
             entity.Property(value => value.DeduplicationId).HasColumnName("deduplication_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
             entity.Property(value => value.BindingId).HasColumnName("binding_id");
-            entity.Property(value => value.ProviderMessageIdHash).HasColumnName("provider_message_id_hash").HasMaxLength(64).IsFixedLength();
-            entity.Property(value => value.MaterialMessageHash).HasColumnName("material_message_hash").HasMaxLength(64).IsFixedLength();
+            entity
+                .Property(value => value.ProviderMessageIdHash)
+                .HasColumnName("provider_message_id_hash")
+                .HasMaxLength(64)
+                .IsFixedLength();
+            entity
+                .Property(value => value.MaterialMessageHash)
+                .HasColumnName("material_message_hash")
+                .HasMaxLength(64)
+                .IsFixedLength();
             entity.Property(value => value.ReceivedAt).HasColumnName("received_at");
             entity.Property(value => value.OutcomeReference).HasColumnName("outcome_reference");
             entity.Property(value => value.Status).HasColumnName("status");
-            entity.Property(value => value.ExpiresAt).HasColumnName("expires_at").ValueGeneratedOnAdd();
-            entity.HasOne<EmploymentRelationship>().WithMany()
+            entity
+                .Property(value => value.ExpiresAt)
+                .HasColumnName("expires_at")
+                .ValueGeneratedOnAdd();
+            entity
+                .HasOne<EmploymentRelationship>()
+                .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
-            entity.HasOne<ChannelBinding>().WithMany()
+            entity
+                .HasOne<ChannelBinding>()
+                .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.BindingId })
                 .HasPrincipalKey(value => new { value.TenantId, value.BindingId });
         });
@@ -1374,20 +2030,34 @@ public sealed class EmploymentRelationshipDbContext : DbContext
         {
             entity.ToTable("relationship_evidence_exports", "business");
             entity.HasKey(value => value.ExportId);
-            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.IdempotencyKey }).IsUnique();
+            entity
+                .HasIndex(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.IdempotencyKey,
+                })
+                .IsUnique();
             entity.Property(value => value.ExportId).HasColumnName("export_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
             entity.Property(value => value.ParticipantId).HasColumnName("participant_id");
             entity.Property(value => value.ParticipantRole).HasColumnName("participant_role");
             entity.Property(value => value.IdempotencyKey).HasColumnName("idempotency_key");
-            entity.Property(value => value.MaterialRequestHash).HasColumnName("material_request_hash");
-            entity.Property(value => value.DocumentJson).HasColumnName("document_json").HasColumnType("jsonb");
+            entity
+                .Property(value => value.MaterialRequestHash)
+                .HasColumnName("material_request_hash");
+            entity
+                .Property(value => value.DocumentJson)
+                .HasColumnName("document_json")
+                .HasColumnType("jsonb");
             entity.Property(value => value.DocumentSha256).HasColumnName("document_sha256");
             entity.Property(value => value.EvidenceId).HasColumnName("evidence_id");
             entity.Property(value => value.CreatedAt).HasColumnName("created_at");
             entity.Property(value => value.ExpiresAt).HasColumnName("expires_at");
-            entity.HasOne<EmploymentRelationship>().WithMany()
+            entity
+                .HasOne<EmploymentRelationship>()
+                .WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
         });
@@ -1396,58 +2066,72 @@ public sealed class EmploymentRelationshipDbContext : DbContext
 
 public static class RelationshipStateCodec
 {
-    public static string ToDatabase(EmploymentRelationshipState value) => value switch
-    {
-        EmploymentRelationshipState.Discovered => "DISCOVERED",
-        EmploymentRelationshipState.Interviewing => "INTERVIEWING",
-        EmploymentRelationshipState.TrialActive => "TRIAL_ACTIVE",
-        EmploymentRelationshipState.Configuring => "CONFIGURING",
-        EmploymentRelationshipState.ContractPendingAcceptance => "CONTRACT_PENDING_ACCEPTANCE",
-        EmploymentRelationshipState.ContractAcceptedPendingPayment => "CONTRACT_ACCEPTED_PENDING_PAYMENT",
-        EmploymentRelationshipState.ActivationPending => "ACTIVATION_PENDING",
-        EmploymentRelationshipState.Active => "ACTIVE",
-        EmploymentRelationshipState.Paused => "PAUSED",
-        EmploymentRelationshipState.StoppedEmergency => "STOPPED_EMERGENCY",
-        EmploymentRelationshipState.Terminated => "TERMINATED",
-        _ => throw new ArgumentOutOfRangeException(nameof(value), value, "Unknown relationship state"),
-    };
+    public static string ToDatabase(EmploymentRelationshipState value) =>
+        value switch
+        {
+            EmploymentRelationshipState.Discovered => "DISCOVERED",
+            EmploymentRelationshipState.Interviewing => "INTERVIEWING",
+            EmploymentRelationshipState.TrialActive => "TRIAL_ACTIVE",
+            EmploymentRelationshipState.Configuring => "CONFIGURING",
+            EmploymentRelationshipState.ContractPendingAcceptance => "CONTRACT_PENDING_ACCEPTANCE",
+            EmploymentRelationshipState.ContractAcceptedPendingPayment =>
+                "CONTRACT_ACCEPTED_PENDING_PAYMENT",
+            EmploymentRelationshipState.ActivationPending => "ACTIVATION_PENDING",
+            EmploymentRelationshipState.Active => "ACTIVE",
+            EmploymentRelationshipState.Paused => "PAUSED",
+            EmploymentRelationshipState.StoppedEmergency => "STOPPED_EMERGENCY",
+            EmploymentRelationshipState.Terminated => "TERMINATED",
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(value),
+                value,
+                "Unknown relationship state"
+            ),
+        };
 
-    public static EmploymentRelationshipState FromDatabase(string value) => value switch
-    {
-        "DISCOVERED" => EmploymentRelationshipState.Discovered,
-        "INTERVIEWING" => EmploymentRelationshipState.Interviewing,
-        "TRIAL_ACTIVE" => EmploymentRelationshipState.TrialActive,
-        "CONFIGURING" => EmploymentRelationshipState.Configuring,
-        "CONTRACT_PENDING_ACCEPTANCE" => EmploymentRelationshipState.ContractPendingAcceptance,
-        "CONTRACT_ACCEPTED_PENDING_PAYMENT" => EmploymentRelationshipState.ContractAcceptedPendingPayment,
-        "ACTIVATION_PENDING" => EmploymentRelationshipState.ActivationPending,
-        "ACTIVE" => EmploymentRelationshipState.Active,
-        "PAUSED" => EmploymentRelationshipState.Paused,
-        "STOPPED_EMERGENCY" => EmploymentRelationshipState.StoppedEmergency,
-        "TERMINATED" => EmploymentRelationshipState.Terminated,
-        _ => throw new InvalidOperationException($"Unknown relationship state '{value}'"),
-    };
+    public static EmploymentRelationshipState FromDatabase(string value) =>
+        value switch
+        {
+            "DISCOVERED" => EmploymentRelationshipState.Discovered,
+            "INTERVIEWING" => EmploymentRelationshipState.Interviewing,
+            "TRIAL_ACTIVE" => EmploymentRelationshipState.TrialActive,
+            "CONFIGURING" => EmploymentRelationshipState.Configuring,
+            "CONTRACT_PENDING_ACCEPTANCE" => EmploymentRelationshipState.ContractPendingAcceptance,
+            "CONTRACT_ACCEPTED_PENDING_PAYMENT" =>
+                EmploymentRelationshipState.ContractAcceptedPendingPayment,
+            "ACTIVATION_PENDING" => EmploymentRelationshipState.ActivationPending,
+            "ACTIVE" => EmploymentRelationshipState.Active,
+            "PAUSED" => EmploymentRelationshipState.Paused,
+            "STOPPED_EMERGENCY" => EmploymentRelationshipState.StoppedEmergency,
+            "TERMINATED" => EmploymentRelationshipState.Terminated,
+            _ => throw new InvalidOperationException($"Unknown relationship state '{value}'"),
+        };
 }
 
 public static class RelationshipRoleCodec
 {
-    public static string ToDatabase(RelationshipParticipantRole value) => value switch
-    {
-        RelationshipParticipantRole.Evaluator => "EVALUATOR",
-        RelationshipParticipantRole.Employer => "EMPLOYER",
-        RelationshipParticipantRole.OutcomeOwner => "OUTCOME_OWNER",
-        RelationshipParticipantRole.RelationshipManager => "RELATIONSHIP_MANAGER",
-        RelationshipParticipantRole.ConstitutionalAuthority => "CONSTITUTIONAL_AUTHORITY",
-        _ => throw new ArgumentOutOfRangeException(nameof(value), value, "Unknown participant role"),
-    };
+    public static string ToDatabase(RelationshipParticipantRole value) =>
+        value switch
+        {
+            RelationshipParticipantRole.Evaluator => "EVALUATOR",
+            RelationshipParticipantRole.Employer => "EMPLOYER",
+            RelationshipParticipantRole.OutcomeOwner => "OUTCOME_OWNER",
+            RelationshipParticipantRole.RelationshipManager => "RELATIONSHIP_MANAGER",
+            RelationshipParticipantRole.ConstitutionalAuthority => "CONSTITUTIONAL_AUTHORITY",
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(value),
+                value,
+                "Unknown participant role"
+            ),
+        };
 
-    public static RelationshipParticipantRole FromDatabase(string value) => value switch
-    {
-        "EVALUATOR" => RelationshipParticipantRole.Evaluator,
-        "EMPLOYER" => RelationshipParticipantRole.Employer,
-        "OUTCOME_OWNER" => RelationshipParticipantRole.OutcomeOwner,
-        "RELATIONSHIP_MANAGER" => RelationshipParticipantRole.RelationshipManager,
-        "CONSTITUTIONAL_AUTHORITY" => RelationshipParticipantRole.ConstitutionalAuthority,
-        _ => throw new InvalidOperationException($"Unknown participant role '{value}'"),
-    };
+    public static RelationshipParticipantRole FromDatabase(string value) =>
+        value switch
+        {
+            "EVALUATOR" => RelationshipParticipantRole.Evaluator,
+            "EMPLOYER" => RelationshipParticipantRole.Employer,
+            "OUTCOME_OWNER" => RelationshipParticipantRole.OutcomeOwner,
+            "RELATIONSHIP_MANAGER" => RelationshipParticipantRole.RelationshipManager,
+            "CONSTITUTIONAL_AUTHORITY" => RelationshipParticipantRole.ConstitutionalAuthority,
+            _ => throw new InvalidOperationException($"Unknown participant role '{value}'"),
+        };
 }

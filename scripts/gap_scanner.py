@@ -12,11 +12,11 @@ Exit code 1 if any P1 gaps found (CI gate).
 
 Run: python3 scripts/gap_scanner.py [--report] [--component <id>]
 """
+
 from __future__ import annotations
 
 import sys
 import re
-import json
 from pathlib import Path
 from dataclasses import dataclass, field
 
@@ -97,21 +97,11 @@ def scan_agent(agent_spec_path: Path, signal_emitters: list[dict]) -> list[GapRe
     agent_name = agent_spec_path.stem
 
     if not pac:
-        gaps.append(GapResult(
-            agent_spec=agent_name,
-            component_id="ALL",
-            missing_pac_section=True,
-            priority="P1"
-        ))
+        gaps.append(GapResult(agent_spec=agent_name, component_id="ALL", missing_pac_section=True, priority="P1"))
         return gaps
 
     if not pac.get("base_spec_version"):
-        gaps.append(GapResult(
-            agent_spec=agent_name,
-            component_id="base_spec",
-            base_spec_version_missing=True,
-            priority="P1"
-        ))
+        gaps.append(GapResult(agent_spec=agent_name, component_id="base_spec", base_spec_version_missing=True, priority="P1"))
 
     for comp in signal_emitters:
         comp_id = comp.get("id", "")
@@ -124,36 +114,32 @@ def scan_agent(agent_spec_path: Path, signal_emitters: list[dict]) -> list[GapRe
                     # Get required channels from manifest
                     required = re.findall(r"channel:\s*([^\n]+)", manifest_text)
                     p1_channels = []
-                    for i, ch in enumerate(required):
+                    for _i, ch in enumerate(required):
                         # Check if next line has priority: P1
                         lines = manifest_text.split("\n")
                         for li, line in enumerate(lines):
                             if ch.strip() in line:
-                                next_lines = "\n".join(lines[li:li+3])
+                                next_lines = "\n".join(lines[li : li + 3])
                                 if "P1" in next_lines:
                                     p1_channels.append(ch.strip())
-                    gaps.append(GapResult(
-                        agent_spec=agent_name,
-                        component_id=comp_id,
-                        missing_signals=p1_channels[:3],
-                        priority="P1"
-                    ))
+                    gaps.append(
+                        GapResult(agent_spec=agent_name, component_id=comp_id, missing_signals=p1_channels[:3], priority="P1")
+                    )
     return gaps
 
 
 def main() -> int:
-    print(f"\n{'='*65}")
+    print(f"\n{'=' * 65}")
     print("  WAOOAW Platform-Agent Contract Gap Scanner")
-    print(f"{'='*65}")
+    print(f"{'=' * 65}")
 
     signal_emitters = _get_signal_emitters()
     print(f"\n  Signal-emitting components: {[c.get('id') for c in signal_emitters]}")
 
     agent_specs = [
-        p for p in AGENT_SPECS_DIR.glob("*.md")
-        if "AGENT-AUTHORING-GUIDE" not in p.name
-        and "AGENT-BASE-SPEC" not in p.name
-        and "CONSTITUTIONAL_DNA" not in p.name
+        p
+        for p in AGENT_SPECS_DIR.glob("*.md")
+        if "AGENT-AUTHORING-GUIDE" not in p.name and "AGENT-BASE-SPEC" not in p.name and "CONSTITUTIONAL_DNA" not in p.name
     ]
     print(f"  Agent specs to scan: {len(agent_specs)}")
 
@@ -165,16 +151,16 @@ def main() -> int:
             print(f"\n  ⚠️  {spec.stem}: {len(gaps)} gap(s)")
             for g in gaps:
                 if g.missing_pac_section:
-                    print(f"     P1 — MISSING PAC SECTION (entire ## Platform-Agent Contract section absent)")
+                    print("     P1 — MISSING PAC SECTION (entire ## Platform-Agent Contract section absent)")
                 elif g.base_spec_version_missing:
-                    print(f"     P1 — base_spec_version missing")
+                    print("     P1 — base_spec_version missing")
                 else:
                     print(f"     {g.priority} — {g.component_id}: missing signals {g.missing_signals}")
         else:
             print(f"\n  ✅  {spec.stem}: all required PAC handlers declared")
 
     p1_gaps = [g for g in all_gaps if g.priority == "P1"]
-    print(f"\n{'='*65}")
+    print(f"\n{'=' * 65}")
     print(f"  Total gaps: {len(all_gaps)}  |  P1 (blocking): {len(p1_gaps)}")
     if p1_gaps:
         print(f"  ⛔  {len(p1_gaps)} P1 gap(s) — CI gate FAIL")

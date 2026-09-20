@@ -35,9 +35,7 @@ def resolve_environment_config(
     identities = json.loads(identities_path.read_text(encoding="utf-8"))
     activation_state = _parameter(parameters, "activationState")
     if require_active and activation_state != "ACTIVE":
-        raise ValueError(
-            f"{environment} deployment is not ready: private runner activation state is {activation_state}"
-        )
+        raise ValueError(f"{environment} deployment is not ready: private runner activation state is {activation_state}")
 
     identity = identities.get(environment)
     if not isinstance(identity, Mapping):

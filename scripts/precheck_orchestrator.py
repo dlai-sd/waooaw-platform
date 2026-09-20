@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 """Run applicable PR prechecks as a bounded, evidence-producing DAG."""
 
+# Implements: work-contracts/WC-104-end-to-end-docker-runner-supply.md §4.6
+# Constitutional basis: C-023, C-059, C-065, C-071, C-080
+
 from __future__ import annotations
 
+import hashlib
+import fnmatch
+import json
 import os
 import signal
 import shutil
@@ -27,6 +33,9 @@ INFRASTRUCTURE_MARKERS = (
 ACTIVE_PROCESSES: set[subprocess.Popen[str]] = set()
 ACTIVE_PROCESSES_LOCK = threading.Lock()
 DEFAULT_PROGRESS_INTERVAL_SECONDS = 30.0
+EVIDENCE_FILE_NAME = "precheck-manifest.json"
+EVIDENCE_SCHEMA = "waooaw.pr-prechecks/v4"
+CARRY_FORWARD_SELECTOR_VERSION = "wc104-gate-inputs-v1"
 
 
 @dataclass(frozen=True)
@@ -38,6 +47,14 @@ class PrecheckNode:
     heavy: bool = False
     dependencies: tuple[str, ...] = ()
     transient_retries: int = 0
+    catalog_version: str = ""
+    gate_id: str = ""
+    command_id: str = ""
+    gate_implementation_digest: str = ""
+    runner_digest: str = ""
+    environment_digest: str = ""
+    input_digest: str = ""
+    input_patterns: tuple[str, ...] = ()
 
 
 def utc_now() -> str:
@@ -98,6 +115,173 @@ def _write_bounded(path: Path, chunks: list[str]) -> None:
     if len(encoded) > MAX_ARTIFACT_BYTES:
         encoded = encoded[:MAX_ARTIFACT_BYTES] + b"\n[artifact truncated]\n"
     path.write_bytes(encoded)
+
+
+def _sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _node_identity(node: PrecheckNode, identity_inputs: dict[str, str]) -> str:
+    normalized_command: list[str] = []
+    candidate_argument = False
+    for argument in node.command:
+        if candidate_argument:
+            normalized_command.append("<candidate>")
+            candidate_argument = False
+        else:
+            normalized_command.append(argument)
+            candidate_argument = argument in {"--base", "--head", "--git-common-dir"}
+    payload = {
+        "evidence_schema": EVIDENCE_SCHEMA,
+        "selector_version": CARRY_FORWARD_SELECTOR_VERSION,
+        "graph_version": identity_inputs["graph_version"],
+        "configuration_digest": identity_inputs["configuration_digest"],
+        "name": node.name,
+        "command": normalized_command,
+        "heavy": node.heavy,
+        "dependencies": node.dependencies,
+        "transient_retries": node.transient_retries,
+        "catalog_version": node.catalog_version,
+        "gate_id": node.gate_id,
+        "command_id": node.command_id,
+        "gate_implementation_digest": node.gate_implementation_digest,
+        "runner_digest": node.runner_digest,
+        "environment_digest": node.environment_digest,
+        "input_digest": node.input_digest,
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+
+
+def _node_authority(node: PrecheckNode) -> dict[str, str]:
+    return {
+        "catalog_version": node.catalog_version,
+        "gate_id": node.gate_id,
+        "command_id": node.command_id,
+        "gate_implementation_digest": node.gate_implementation_digest,
+        "runner_digest": node.runner_digest,
+        "environment_digest": node.environment_digest,
+        "input_digest": node.input_digest,
+        "selector_version": CARRY_FORWARD_SELECTOR_VERSION,
+        "evidence_schema": EVIDENCE_SCHEMA,
+    }
+
+
+def _load_reusable_results(
+    evidence_paths: list[Path],
+    artifact_dir: Path,
+    nodes: list[PrecheckNode],
+    identity_inputs: dict[str, str],
+    carry_forward_verifier: Callable[[str, str, tuple[str, ...]], tuple[bool, list[str]]] | None,
+) -> dict[str, dict[str, object]]:
+    reusable: dict[str, dict[str, object]] = {}
+    for evidence_path in evidence_paths:
+        if not evidence_path.is_file():
+            continue
+        try:
+            evidence_bytes = evidence_path.read_bytes()
+            evidence = json.loads(evidence_bytes)
+        except (OSError, json.JSONDecodeError):
+            continue
+        prior_nodes = evidence.get("nodes")
+        source_head = evidence.get("commit_sha")
+        if (
+            evidence.get("schema") != EVIDENCE_SCHEMA
+            or evidence.get("passed") is not True
+            or not isinstance(prior_nodes, list)
+            or not isinstance(source_head, str)
+            or len(source_head) != 40
+            or any(character not in "0123456789abcdef" for character in source_head)
+        ):
+            continue
+        prior_by_name = {item.get("name"): item for item in prior_nodes if isinstance(item, dict)}
+        for node in nodes:
+            if node.name in reusable:
+                continue
+            prior = prior_by_name.get(node.name)
+            if not isinstance(prior, dict) or prior.get("status") != "PASS":
+                continue
+            if prior.get("evidence_identity") != _node_identity(node, identity_inputs):
+                continue
+            changed_paths: list[str] = []
+            if source_head != identity_inputs["head_sha"]:
+                if carry_forward_verifier is None or not node.input_patterns or not node.input_digest:
+                    continue
+                verified, changed_paths = carry_forward_verifier(
+                    source_head,
+                    identity_inputs["head_sha"],
+                    node.input_patterns,
+                )
+                if not verified:
+                    continue
+            artifact_digests = prior.get("artifact_digests")
+            if not isinstance(artifact_digests, dict) or not artifact_digests:
+                continue
+            source_artifact_dir = evidence_path.parent
+            artifacts_verified = True
+            for path_text, expected_digest in artifact_digests.items():
+                path = Path(path_text)
+                if not path.is_relative_to(source_artifact_dir) or not path.is_file() or _sha256_file(path) != expected_digest:
+                    artifacts_verified = False
+                    break
+            if not artifacts_verified:
+                continue
+            reuse: dict[str, object] = {
+                "reused": True,
+                "trust_source": "local-exact-candidate",
+                "invalidation_reason": None,
+            }
+            if source_head != identity_inputs["head_sha"]:
+                reuse = {
+                    **reuse,
+                    "trust_source": "local-verified-carry-forward",
+                    "carry_forward": {
+                        "current_base_sha": identity_inputs["base_sha"],
+                        "current_head_sha": identity_inputs["head_sha"],
+                        "source_execution_head": source_head,
+                        "source_evidence_digest": hashlib.sha256(evidence_bytes).hexdigest(),
+                        "intervening_commit_range": f"{source_head}..{identity_inputs['head_sha']}",
+                        "intervening_changed_path_digest": hashlib.sha256("\n".join(sorted(changed_paths)).encode()).hexdigest(),
+                        "selector_version": CARRY_FORWARD_SELECTOR_VERSION,
+                        "non_intersection_proven": True,
+                    },
+                }
+            reusable[node.name] = {**prior, "attempts": 0, "reuse": reuse}
+    return reusable
+
+
+def git_carry_forward_verifier(
+    source_head: str,
+    current_head: str,
+    input_patterns: tuple[str, ...],
+) -> tuple[bool, list[str]]:
+    git = shutil.which("git")
+    if git is None:
+        return False, []
+    ancestor = subprocess.run(  # noqa: S603
+        [git, "merge-base", "--is-ancestor", source_head, current_head],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if ancestor.returncode != 0:
+        return False, []
+    changed = subprocess.run(  # noqa: S603
+        [git, "diff", "--name-only", f"{source_head}..{current_head}"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if changed.returncode != 0:
+        return False, []
+    changed_paths = changed.stdout.splitlines()
+    affected = any(any(fnmatch.fnmatchcase(path, pattern) for pattern in input_patterns) for path in changed_paths)
+    return not affected, changed_paths
+
+
+def _write_manifest_atomically(path: Path, manifest: dict[str, object]) -> None:
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    temporary.replace(path)
 
 
 def _run_command(
@@ -167,7 +351,12 @@ def _cleanup_compose_projects(nodes: list[PrecheckNode]) -> None:
         )
 
 
-def _run_node(node: PrecheckNode, artifact_dir: Path, heavy_slots: threading.Semaphore) -> dict[str, object]:
+def _run_node(
+    node: PrecheckNode,
+    artifact_dir: Path,
+    heavy_slots: threading.Semaphore,
+    evidence_identity: str,
+) -> dict[str, object]:
     node_dir = artifact_dir / f"{node.name}.tmp"
     node_dir.mkdir(parents=True, exist_ok=True)
     stdout_path = artifact_dir / f"{node.name}.stdout.log"
@@ -215,6 +404,17 @@ def _run_node(node: PrecheckNode, artifact_dir: Path, heavy_slots: threading.Sem
         "completed_at": utc_now(),
         "stdout_artifact": str(stdout_path),
         "stderr_artifact": str(stderr_path),
+        "artifact_digests": {
+            str(stdout_path): _sha256_file(stdout_path),
+            str(stderr_path): _sha256_file(stderr_path),
+        },
+        "authority": _node_authority(node),
+        "evidence_identity": evidence_identity,
+        "reuse": {
+            "reused": False,
+            "trust_source": "original-run",
+            "invalidation_reason": "not-reused",
+        },
     }
 
 
@@ -239,6 +439,8 @@ def run_prechecks(
     max_heavy: int | None = None,
     force_serial: bool = False,
     disable_reuse: bool = False,
+    reuse_evidence_paths: list[Path] | None = None,
+    carry_forward_verifier: Callable[[str, str, tuple[str, ...]], tuple[bool, list[str]]] | None = None,
     preflight: Callable[[], tuple[bool, list[str]]] = resource_preflight,
 ) -> dict[str, object]:
     """Execute a dependency graph and return complete immutable node evidence."""
@@ -257,8 +459,28 @@ def run_prechecks(
     if len(names) != len(set(names)):
         raise ValueError("precheck node names must be unique")
     node_by_name = {node.name: node for node in nodes}
-    results: dict[str, dict[str, object]] = {}
-    pending = set(names)
+    identity_inputs = {
+        "base_sha": base_sha,
+        "head_sha": head_sha,
+        "changed_file_digest": changed_file_digest,
+        "graph_version": graph_version,
+        "configuration_digest": configuration_digest,
+        "runner_digest": runner_digest,
+    }
+    evidence_path = artifact_dir / EVIDENCE_FILE_NAME
+    evidence_paths = [evidence_path, *(reuse_evidence_paths or [])]
+    results = (
+        _load_reusable_results(
+            evidence_paths,
+            artifact_dir,
+            nodes,
+            identity_inputs,
+            carry_forward_verifier or git_carry_forward_verifier,
+        )
+        if reuse_enabled
+        else {}
+    )
+    pending = set(names) - results.keys()
     heavy_slots = threading.Semaphore(max_heavy if mode == "parallel" else 1)
     while pending:
         ready = [
@@ -305,7 +527,16 @@ def run_prechecks(
         if mode == "parallel" and len(runnable) > 1:
             executor = ThreadPoolExecutor(max_workers=len(runnable), thread_name_prefix="wc100-precheck")
             try:
-                futures = {node.name: executor.submit(_run_node, node, artifact_dir, heavy_slots) for node in runnable}
+                futures = {
+                    node.name: executor.submit(
+                        _run_node,
+                        node,
+                        artifact_dir,
+                        heavy_slots,
+                        _node_identity(node, identity_inputs),
+                    )
+                    for node in runnable
+                }
                 for name in ready:
                     if name in futures:
                         results[name] = futures[name].result()
@@ -319,12 +550,17 @@ def run_prechecks(
                 executor.shutdown(wait=True)
         else:
             for node in runnable:
-                results[node.name] = _run_node(node, artifact_dir, heavy_slots)
+                results[node.name] = _run_node(
+                    node,
+                    artifact_dir,
+                    heavy_slots,
+                    _node_identity(node, identity_inputs),
+                )
 
     ordered_results = [results[name] for name in names]
     failures = [result for result in ordered_results if result["status"] != "PASS"]
-    return {
-        "schema": "waooaw.pr-prechecks/v3",
+    manifest = {
+        "schema": EVIDENCE_SCHEMA,
         "passed": not failures,
         "base_sha": base_sha,
         "commit_sha": head_sha,
@@ -335,7 +571,11 @@ def run_prechecks(
         "mode": mode,
         "max_heavy": max_heavy,
         "reuse_enabled": reuse_enabled,
+        "executed_count": sum(result.get("reuse", {}).get("reused") is not True for result in ordered_results),
+        "reused_count": sum(result.get("reuse", {}).get("reused") is True for result in ordered_results),
         "fallback_reasons": fallback_reasons,
         "first_causal_failure": failures[0]["name"] if failures else None,
         "nodes": ordered_results,
     }
+    _write_manifest_atomically(evidence_path, manifest)
+    return manifest

@@ -30,9 +30,7 @@ STALE_PROBE_AGE = timedelta(hours=1)
 
 def resolve_private_addresses(hostname: str) -> list[str]:
     try:
-        addresses = sorted(
-            {item[4][0] for item in socket.getaddrinfo(hostname, 443, type=socket.SOCK_STREAM)}
-        )
+        addresses = sorted({item[4][0] for item in socket.getaddrinfo(hostname, 443, type=socket.SOCK_STREAM)})
     except socket.gaierror as error:
         raise QualificationError(f"private DNS resolution failed for {hostname}") from error
     if not addresses or any(not ipaddress.ip_address(value).is_private for value in addresses):
@@ -49,29 +47,19 @@ def _run(arguments: Sequence[str], *, cwd: Path | None = None) -> str:
         text=True,
     )
     if result.returncode:
-        diagnostics = "\n".join(
-            value.strip() for value in (result.stderr, result.stdout) if value.strip()
-        )[-4000:]
+        diagnostics = "\n".join(value.strip() for value in (result.stderr, result.stdout) if value.strip())[-4000:]
         detail = f"\n{diagnostics}" if diagnostics else ""
-        raise QualificationError(
-            f"command failed ({result.returncode}): {arguments[0]} {arguments[1]}{detail}"
-        )
+        raise QualificationError(f"command failed ({result.returncode}): {arguments[0]} {arguments[1]}{detail}")
     return result.stdout
 
 
-def validate_workload_configuration(
-    configuration: Mapping[str, Any], *, now: datetime | None = None
-) -> None:
+def validate_workload_configuration(configuration: Mapping[str, Any], *, now: datetime | None = None) -> None:
     observed_at = datetime.now(timezone.utc) if now is None else now.astimezone(timezone.utc)
     if configuration.get("lease_state") != "ACTIVE":
         raise QualificationError("workload lease is not ACTIVE")
     try:
-        issued_at = datetime.fromisoformat(
-            str(configuration["lease_issued_at"]).replace("Z", "+00:00")
-        )
-        expires_at = datetime.fromisoformat(
-            str(configuration["lease_expires_at"]).replace("Z", "+00:00")
-        )
+        issued_at = datetime.fromisoformat(str(configuration["lease_issued_at"]).replace("Z", "+00:00"))
+        expires_at = datetime.fromisoformat(str(configuration["lease_expires_at"]).replace("Z", "+00:00"))
     except (KeyError, ValueError) as error:
         raise QualificationError("workload lease timestamps must be RFC3339") from error
     if issued_at.tzinfo is None or expires_at.tzinfo is None:
@@ -85,9 +73,7 @@ def validate_workload_configuration(
         if isinstance(value, bool) or not isinstance(value, int | float) or value < 0:
             raise QualificationError(f"{field} is invalid")
     evidence_digest = configuration.get("evidence_digest")
-    if not isinstance(evidence_digest, str) or re.fullmatch(
-        r"sha256:[0-9a-f]{64}", evidence_digest
-    ) is None:
+    if not isinstance(evidence_digest, str) or re.fullmatch(r"sha256:[0-9a-f]{64}", evidence_digest) is None:
         raise QualificationError("evidence_digest is invalid")
 
 
@@ -131,9 +117,7 @@ def reconcile_stale_probe_blobs(
         if not isinstance(properties, Mapping):
             raise QualificationError("stale probe properties are invalid")
         try:
-            modified_at = datetime.fromisoformat(
-                str(properties["lastModified"]).replace("Z", "+00:00")
-            )
+            modified_at = datetime.fromisoformat(str(properties["lastModified"]).replace("Z", "+00:00"))
         except (KeyError, ValueError) as error:
             raise QualificationError("stale probe timestamp is invalid") from error
         if modified_at.tzinfo is None:

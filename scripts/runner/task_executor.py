@@ -7,6 +7,7 @@ execute_with_llm() — 3-attempt retry loop with validation, symbol-level patchi
 execute_with_udcp() — UDCP orchestrator entry point for Python-stack tasks (ADR-039).
 flag_spec_gap()    — halt task and create GitHub Issue for EA/SA/Founder review.
 """
+
 from __future__ import annotations
 
 import importlib.util as _ilu
@@ -87,8 +88,12 @@ def execute_with_llm(
 
         try:
             response = call_llm_via_magiclm(
-                task_id, task_description, prompt_with_context,
-                constitutional_check, model_hint, max_tokens,
+                task_id,
+                task_description,
+                prompt_with_context,
+                constitutional_check,
+                model_hint,
+                max_tokens,
                 attempt=attempt,
             )
         except RuntimeError as infra_err:
@@ -98,12 +103,16 @@ def execute_with_llm(
                 print(f"  INFRA_TIMEOUT on attempt {attempt} — NOT a spec gap. Retrying in 30s.")
             elif err_str.startswith("RATE_LIMIT"):
                 print(f"  RATE_LIMIT on attempt {attempt} — backing off 60s before retry.")
-                import time; time.sleep(60)
+                import time
+
+                time.sleep(60)
             elif err_str.startswith("API_SERVER_ERROR"):
                 print(f"  API_SERVER_ERROR on attempt {attempt} — retrying in 30s.")
             else:
                 print(f"  INFRA_ERROR on attempt {attempt}: {err_str}")
-            import time; time.sleep(30)
+            import time
+
+            time.sleep(30)
             continue
 
         if not response:
@@ -124,8 +133,10 @@ def execute_with_llm(
                     if _scripts not in sys.path:
                         sys.path.insert(0, _scripts)
                     from codegen_self_review import pre_compile_review
+
                     try:
                         from ptr_assembler import get_assembler as _ga
+
                         _using_map = _ga().build_using_map()
                     except Exception:
                         _using_map = None
@@ -140,36 +151,53 @@ def execute_with_llm(
             failure_context = f"RUNNER_PIPELINE_BUG: {type(parse_exc).__name__}: {parse_exc}"
             print(f"  ❌ {failure_context}")
             _MONITOR_SIGNAL["task_results"][task_id] = {
-                "result": "PIPELINE_BUG", "error_type": type(parse_exc).__name__,
-                "build_error_snippet": str(parse_exc)[:200], "attempts": attempt, "spec_gap_issue": None,
+                "result": "PIPELINE_BUG",
+                "error_type": type(parse_exc).__name__,
+                "build_error_snippet": str(parse_exc)[:200],
+                "attempts": attempt,
+                "spec_gap_issue": None,
             }
             break
 
         if ok:
-            git(["add"] + written, check=False)
+            git(["add", *written], check=False)
             diff = git(["diff", "--cached", "--quiet"], check=False)
             if diff.returncode != 0:
-                git(["commit", "-m",
-                     f"feat: {task_id} — {task_description}\n\n"
-                     f"IB: IB-009\nConstitutional: C-059, C-073, C-076\nCCTs-added: per WC spec"])
+                git(
+                    [
+                        "commit",
+                        "-m",
+                        f"feat: {task_id} — {task_description}\n\n"
+                        f"IB: IB-009\nConstitutional: C-059, C-073, C-076\nCCTs-added: per WC spec",
+                    ]
+                )
             print(f"  ✅ {task_id} complete ({len(written)} files)")
             if attempt > 1 and failure_context.startswith("RETRY ADVISOR DIAGNOSIS:"):
                 try:
-                    _s = _ilu.spec_from_file_location("sprint_retry_advisor",
-                         str(REPO_ROOT / "scripts" / "sprint_retry_advisor.py"))
-                    _m = _ilu.module_from_spec(_s); _s.loader.exec_module(_m)
+                    _s = _ilu.spec_from_file_location(
+                        "sprint_retry_advisor", str(REPO_ROOT / "scripts" / "sprint_retry_advisor.py")
+                    )
+                    _m = _ilu.module_from_spec(_s)
+                    _s.loader.exec_module(_m)
                     _m.record_successful_fix(
                         error_snippet=build_error[:200] if build_error else "",
-                        fix_instruction=failure_context[failure_context.find("TARGETED FIX"):failure_context.find("TARGETED FIX")+400] if "TARGETED FIX" in failure_context else failure_context[:400],
+                        fix_instruction=failure_context[
+                            failure_context.find("TARGETED FIX") : failure_context.find("TARGETED FIX") + 400
+                        ]
+                        if "TARGETED FIX" in failure_context
+                        else failure_context[:400],
                         error_type=failure_context.split("\n")[0].replace("RETRY ADVISOR DIAGNOSIS:", "").strip(),
                         task_id=task_id,
                     )
-                    print(f"  LEARNING CACHE: fix recorded for future runs (C-069)")
-                except Exception:
+                    print("  LEARNING CACHE: fix recorded for future runs (C-069)")
+                except Exception:  # noqa: S110
                     pass
             _MONITOR_SIGNAL["task_results"][task_id] = {
-                "result": "SUCCESS", "error_type": None,
-                "build_error_snippet": None, "attempts": attempt, "spec_gap_issue": None,
+                "result": "SUCCESS",
+                "error_type": None,
+                "build_error_snippet": None,
+                "attempts": attempt,
+                "spec_gap_issue": None,
             }
             return True
         else:
@@ -177,6 +205,7 @@ def execute_with_llm(
             if api_key and attempt < max_attempts:
                 try:
                     from codegen_self_review import symbol_level_patch
+
                     patches = symbol_level_patch(build_error, api_key)
                     if patches:
                         print(f"  SYMBOL-PATCH: applying surgical fixes to {len(patches)} file(s)")
@@ -186,53 +215,57 @@ def execute_with_llm(
                         patch_written = list(patches.keys())
                         ok2, build_error2 = validate_written_files(patch_written)
                         if ok2:
-                            print(f"  SYMBOL-PATCH: ✅ compile error resolved — skipping full retry")
-                            git(["add"] + written + patch_written, check=False)
+                            print("  SYMBOL-PATCH: ✅ compile error resolved — skipping full retry")
+                            git(["add", *written, *patch_written], check=False)
                             diff = git(["diff", "--cached", "--quiet"], check=False)
                             if diff.returncode != 0:
-                                git(["commit", "-m",
-                                     f"feat: {task_id} — {task_description} (symbol-patched)\n\n"
-                                     f"IB: IB-009\nConstitutional: C-059, C-073, C-076\nCCTs-added: per WC spec"])
+                                git(
+                                    [
+                                        "commit",
+                                        "-m",
+                                        f"feat: {task_id} — {task_description} (symbol-patched)\n\n"
+                                        f"IB: IB-009\nConstitutional: C-059, C-073, C-076\nCCTs-added: per WC spec",
+                                    ]
+                                )
                             print(f"  ✅ {task_id} complete via symbol-patch ({len(written)} files)")
                             _MONITOR_SIGNAL["task_results"][task_id] = {
-                                "result": "SUCCESS", "error_type": None,
-                                "build_error_snippet": None, "attempts": attempt, "spec_gap_issue": None,
+                                "result": "SUCCESS",
+                                "error_type": None,
+                                "build_error_snippet": None,
+                                "attempts": attempt,
+                                "spec_gap_issue": None,
                             }
                             return True
                         else:
-                            print(f"  SYMBOL-PATCH: patch did not fully resolve — falling through to advisor")
+                            print("  SYMBOL-PATCH: patch did not fully resolve — falling through to advisor")
                             build_error = build_error2
                 except Exception as _sp_err:
                     print(f"  SYMBOL-PATCH: skipped ({_sp_err})")
 
             # Layer 1: Sprint Retry Advisor — classify error before next attempt
-            _spec_ra = _ilu.spec_from_file_location("sprint_retry_advisor",
-                        str(REPO_ROOT / "scripts" / "sprint_retry_advisor.py"))
+            _spec_ra = _ilu.spec_from_file_location(
+                "sprint_retry_advisor", str(REPO_ROOT / "scripts" / "sprint_retry_advisor.py")
+            )
             _mod_ra = _ilu.module_from_spec(_spec_ra)
             sys.modules.setdefault("sprint_retry_advisor", _mod_ra)
             _spec_ra.loader.exec_module(_mod_ra)
             diagnose_build_error = _mod_ra.diagnose_build_error
-            branch_cs_files = [
-                str(p.relative_to(REPO_ROOT))
-                for p in REPO_ROOT.glob("src/**/*.cs")
-            ]
+            branch_cs_files = [str(p.relative_to(REPO_ROOT)) for p in REPO_ROOT.glob("src/**/*.cs")]
             diagnosis = diagnose_build_error(task_id, build_error, written, branch_cs_files)
 
             if diagnosis.confidence < 0.30 and not diagnosis.should_retry:
                 print(f"  Retry Advisor: STOP_LOSS — confidence={diagnosis.confidence:.0%} < 30%; skipping remaining attempts")
                 failure_context = (
-                    f"RETRY ADVISOR: {diagnosis.error_type} — confidence below stop-loss threshold.\n"
-                    f"{build_error[:200]}"
+                    f"RETRY ADVISOR: {diagnosis.error_type} — confidence below stop-loss threshold.\n{build_error[:200]}"
                 )
                 break
 
             if not diagnosis.should_retry:
-                print(f"  Retry Advisor: {diagnosis.error_type} — skipping remaining attempts "
-                      f"(confidence={diagnosis.confidence:.0%})")
-                failure_context = (
-                    f"RETRY ADVISOR: {diagnosis.error_type} — unrecoverable without spec fix.\n"
-                    f"{build_error[:200]}"
+                print(
+                    f"  Retry Advisor: {diagnosis.error_type} — skipping remaining attempts "
+                    f"(confidence={diagnosis.confidence:.0%})"
                 )
+                failure_context = f"RETRY ADVISOR: {diagnosis.error_type} — unrecoverable without spec fix.\n{build_error[:200]}"
                 break
 
             failure_context = (
@@ -250,23 +283,31 @@ def execute_with_llm(
 
     if infra_failures == max_attempts:
         print(f"  ⚠️  INFRA_FAILURE: {task_id} — all {max_attempts} attempts were API failures (timeout/rate-limit).")
-        print(f"  This is NOT a spec gap. No issue created. Next cron run will retry automatically.")
+        print("  This is NOT a spec gap. No issue created. Next cron run will retry automatically.")
         _INFRA_ERROR_TASKS.append(task_id)
         _MONITOR_SIGNAL["task_results"][task_id] = {
-            "result": "INFRA_ERROR", "error_type": "API_TIMEOUT",
-            "build_error_snippet": None, "attempts": max_attempts, "spec_gap_issue": None,
+            "result": "INFRA_ERROR",
+            "error_type": "API_TIMEOUT",
+            "build_error_snippet": None,
+            "attempts": max_attempts,
+            "spec_gap_issue": None,
         }
         return False
     elif infra_failures > 0:
-        gap_desc = (f"{task_id} failed after {max_attempts} attempts ({infra_failures} API timeouts, "
-                    f"{max_attempts - infra_failures} build failures). Last build error: {failure_context[:200]}")
+        gap_desc = (
+            f"{task_id} failed after {max_attempts} attempts ({infra_failures} API timeouts, "
+            f"{max_attempts - infra_failures} build failures). Last build error: {failure_context[:200]}"
+        )
     else:
         if failure_context.startswith("RETRY ADVISOR DIAGNOSIS:"):
             print(f"  ⚠️  BUILD_FAILURE: {task_id} exhausted {max_attempts} attempts with actionable diagnosis.")
             print("  Routing to cascade for autonomous recovery (not spec-gap issue).")
             _MONITOR_SIGNAL["task_results"][task_id] = {
-                "result": "BUILD_FAILURE", "error_type": "RETRY_EXHAUSTED",
-                "build_error_snippet": failure_context[:200], "attempts": max_attempts, "spec_gap_issue": None,
+                "result": "BUILD_FAILURE",
+                "error_type": "RETRY_EXHAUSTED",
+                "build_error_snippet": failure_context[:200],
+                "attempts": max_attempts,
+                "spec_gap_issue": None,
             }
             return False
 
@@ -275,8 +316,8 @@ def execute_with_llm(
     flag_spec_gap(
         task_id=task_id,
         gap_description=gap_desc,
-        affected_spec=list(spec_sections.keys())[0] if spec_sections else "unknown",
-        constitutional_basis="C-059 (Traceability — implementation must match spec), C-076 (Coverage)"
+        affected_spec=next(iter(spec_sections.keys())) if spec_sections else "unknown",
+        constitutional_basis="C-059 (Traceability — implementation must match spec), C-076 (Coverage)",
     )
     return False
 
@@ -303,10 +344,14 @@ def flag_spec_gap(
     github_token = os.environ.get("GITHUB_TOKEN", "")
 
     workaround_note = (
-        f"\n## Workaround Considered (NOT Applied)\n\n{workaround}\n\n"
-        f"**This workaround was NOT implemented.** The agent does not have authority "
-        f"to make architectural decisions (C-065, C-066 Tier 3).\n"
-    ) if workaround else ""
+        (
+            f"\n## Workaround Considered (NOT Applied)\n\n{workaround}\n\n"
+            f"**This workaround was NOT implemented.** The agent does not have authority "
+            f"to make architectural decisions (C-065, C-066 Tier 3).\n"
+        )
+        if workaround
+        else ""
+    )
 
     title = f"spec-gap [{task_id}]: {gap_description[:80]}"
     body = (
@@ -315,9 +360,7 @@ def flag_spec_gap(
         f"**During task:** `{task_id}`\n"
         f"**Affected spec:** `{affected_spec}`\n"
         f"**Task status:** BLOCKED — will not retry until this issue is closed\n\n"
-        f"## Gap Description\n\n{gap_description}\n\n"
-        + workaround_note
-        + f"## Required Action (EA/SA or Founder)\n\n"
+        f"## Gap Description\n\n{gap_description}\n\n" + workaround_note + f"## Required Action (EA/SA or Founder)\n\n"
         f"1. Review the gap described above\n"
         f"2. Update `{affected_spec}` with the correct design decision\n"
         f"3. Open a PR for the spec change (branch: `spec-fix/{task_id.lower()}-gap`)\n"
@@ -325,29 +368,39 @@ def flag_spec_gap(
         f"5. **Close this issue** — the next sprint run will detect the closure and retry `{task_id}`\n\n"
         f"The implementation agent will automatically retry `{task_id}` when this issue is closed.\n\n"
         + (f"## Constitutional Basis\n\n{constitutional_basis}\n\n" if constitutional_basis else "")
-        + f"---\n_Auto-generated by `flag_spec_gap()` in `scripts/runner/task_executor.py`_"
+        + "---\n_Auto-generated by `flag_spec_gap()` in `scripts/runner/task_executor.py`_"
     )
 
     if github_repo and github_token:
-        result = gh([
-            "issue", "create",
-            "--repo", github_repo,
-            "--title", title,
-            "--body", body,
-            "--label", "awaiting:founder-approval",
-        ], check=False)
+        result = gh(
+            [
+                "issue",
+                "create",
+                "--repo",
+                github_repo,
+                "--title",
+                title,
+                "--body",
+                body,
+                "--label",
+                "awaiting:founder-approval",
+            ],
+            check=False,
+        )
         if result.returncode == 0:
             issue_url = result.stdout.strip()
             issue_num = issue_url.split("/")[-1] if "/" in issue_url else "?"
             print(f"  🔴 SPEC GAP — task HALTED. Issue #{issue_num} created.")
             print(f"     Gap: {gap_description[:80]}")
             print(f"     Spec: {affected_spec}")
-            print(f"     Fix the spec, close the issue, and the next sprint run retries.")
+            print("     Fix the spec, close the issue, and the next sprint run retries.")
             record_evidence("spec_gap_halt", task=task_id, issue=issue_num, gap=gap_description[:100])
             _MONITOR_SIGNAL["task_results"][task_id] = {
-                "result": "SPEC_GAP", "error_type": "BUILD_ERROR",
+                "result": "SPEC_GAP",
+                "error_type": "BUILD_ERROR",
                 "build_error_snippet": gap_description[:200],
-                "attempts": 3, "spec_gap_issue": issue_num,
+                "attempts": 3,
+                "spec_gap_issue": issue_num,
             }
             _MONITOR_SIGNAL["spec_gap_issues"].append(issue_num)
         else:
@@ -355,7 +408,7 @@ def flag_spec_gap(
             print(f"     Gap: {gap_description}")
             record_evidence("spec_gap_halt_no_issue", task=task_id, gap=gap_description[:100])
     else:
-        print(f"  🔴 SPEC GAP — task HALTED (no GitHub token for issue creation)")
+        print("  🔴 SPEC GAP — task HALTED (no GitHub token for issue creation)")
         print(f"     Gap: {gap_description}")
 
 
@@ -396,22 +449,32 @@ def execute_with_udcp(
             git(["add", *written], check=False)
             diff = git(["diff", "--cached", "--quiet"], check=False)
             if diff.returncode != 0:
-                git(["commit", "-m",
-                     f"feat: {task_id} — UDCP {result.track} track\n\n"
-                     f"IB: IB-009\nConstitutional: C-059, C-073, C-076, ADR-039\n"
-                     f"Files: {', '.join(written[:3])}"])
+                git(
+                    [
+                        "commit",
+                        "-m",
+                        f"feat: {task_id} — UDCP {result.track} track\n\n"
+                        f"IB: IB-009\nConstitutional: C-059, C-073, C-076, ADR-039\n"
+                        f"Files: {', '.join(written[:3])}",
+                    ]
+                )
         print(f"  ✅ {task_id} complete via UDCP {result.track} ({len(written)} files)")
         # task_results entry is provisional — compile gate in execute_subtask_chain may override it
         _MONITOR_SIGNAL["task_results"][task_id] = {
-            "result": "SUCCESS", "error_type": None,
-            "build_error_snippet": None, "attempts": result.attempts, "spec_gap_issue": None,
+            "result": "SUCCESS",
+            "error_type": None,
+            "build_error_snippet": None,
+            "attempts": result.attempts,
+            "spec_gap_issue": None,
         }
         return True, written
 
     print(f"  ❌ {task_id} UDCP failure: {result.error_type} — {result.error_snippet}")
     _MONITOR_SIGNAL["task_results"][task_id] = {
-        "result": "UDCP_FAILURE", "error_type": result.error_type,
-        "build_error_snippet": result.error_snippet, "attempts": result.attempts,
+        "result": "UDCP_FAILURE",
+        "error_type": result.error_type,
+        "build_error_snippet": result.error_snippet,
+        "attempts": result.attempts,
         "spec_gap_issue": None,
     }
     flag_spec_gap(

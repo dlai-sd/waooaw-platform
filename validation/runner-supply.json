@@ -1,0 +1,56 @@
+{
+  "schema": "waooaw.runner-supply/v1",
+  "runners": {
+    "python": {
+      "dockerfile": "architecture/reference/dockerfiles/Dockerfile.test-runner-python",
+      "base_image_digest": "sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e",
+      "system_packages": ["curl", "git", "postgresql-client"],
+      "build_arguments": {},
+      "platform": "linux/amd64",
+      "context_inputs": [
+        "architecture/reference/dockerfiles/Dockerfile.test-runner-python",
+        "requirements-test.txt"
+      ]
+    },
+    "dotnet": {
+      "dockerfile": "architecture/reference/dockerfiles/Dockerfile.test-runner-dotnet",
+      "base_image_digest": "sha256:d07d5770b2b74717bfe882250e981a4e7a756e0240fc4aefcc0ce93c1e8a9c36",
+      "system_packages": ["python3", "python3-pip"],
+      "build_arguments": {},
+      "platform": "linux/amd64",
+      "context_inputs": [
+        "architecture/reference/dockerfiles/Dockerfile.test-runner-dotnet",
+        "requirements-test.txt",
+        "src/constitutional-engine/constitutional-engine.csproj",
+        "src/business-platform/business-platform.csproj",
+        "tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj",
+        "tests/business-platform.Tests/business-platform.Tests.csproj"
+      ]
+    },
+    "typescript": {
+      "dockerfile": "architecture/reference/dockerfiles/Dockerfile.test-runner-ts",
+      "base_image_digest": "sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0",
+      "system_packages": [],
+      "build_arguments": {},
+      "platform": "linux/amd64",
+      "context_inputs": [
+        "architecture/reference/dockerfiles/Dockerfile.test-runner-ts",
+        "web/package.json",
+        "web/pnpm-lock.yaml"
+      ]
+    },
+    "full": {
+      "dockerfile": "architecture/reference/dockerfiles/Dockerfile.test-runner",
+      "base_image_digest": "sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e",
+      "system_packages": ["curl", "docker-buildx", "docker-compose-v2", "docker.io", "gh", "git", "jq", "python-is-python3", "python3", "python3-pip"],
+      "build_arguments": {},
+      "platform": "linux/amd64",
+      "context_inputs": [
+        "architecture/reference/dockerfiles/Dockerfile.test-runner",
+        "requirements-test.txt",
+        "web/package.json",
+        "web/pnpm-lock.yaml"
+      ]
+    }
+  }
+}

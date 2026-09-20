@@ -17,12 +17,14 @@ public interface IWhatsAppRegistrationEvidenceGateway
         string messageId,
         string phoneHmac,
         DateTimeOffset occurredAt,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken
+    );
 }
 
 public sealed class WhatsAppRegistrationEvidenceGateway(
     IConfiguration configuration,
-    ILogger<WhatsAppRegistrationEvidenceGateway> logger) : IWhatsAppRegistrationEvidenceGateway
+    ILogger<WhatsAppRegistrationEvidenceGateway> logger
+) : IWhatsAppRegistrationEvidenceGateway
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5);
 
@@ -31,10 +33,14 @@ public sealed class WhatsAppRegistrationEvidenceGateway(
         string messageId,
         string phoneHmac,
         DateTimeOffset occurredAt,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
-        var endpoint = configuration["ConstitutionalEngine:GrpcUrl"]
-            ?? throw new InvalidOperationException("ConstitutionalEngine:GrpcUrl is not configured.");
+        var endpoint =
+            configuration["ConstitutionalEngine:GrpcUrl"]
+            ?? throw new InvalidOperationException(
+                "ConstitutionalEngine:GrpcUrl is not configured."
+            );
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(Timeout);
         using var channel = GrpcChannel.ForAddress(endpoint);
@@ -50,24 +56,33 @@ public sealed class WhatsAppRegistrationEvidenceGateway(
                     ProfessionalId = "PHONE_IDENTITY",
                     ActionType = "WHATSAPP_AUTO_REGISTRATION",
                     State = EvidenceState.Approved,
-                    ProposedContent = JsonSerializer.Serialize(new
-                    {
-                        phoneHmac,
-                        optedIn = true,
-                        onboardingChannel = "WHATSAPP",
-                        occurredAt,
-                    }),
+                    ProposedContent = JsonSerializer.Serialize(
+                        new
+                        {
+                            phoneHmac,
+                            optedIn = true,
+                            onboardingChannel = "WHATSAPP",
+                            occurredAt,
+                        }
+                    ),
                     DecisionSpaceVersion = 1,
                     ConstitutionalBasis = "C-023; C-026; C-042; C-059; ADR-023",
                 },
                 new Metadata { { "x-tenant-id", tenantId.ToString("D") } },
-                cancellationToken: timeout.Token);
+                cancellationToken: timeout.Token
+            );
             if (!Guid.TryParse(evidence.EvidenceRecordId, out _))
-                throw new InvalidOperationException("Constitutional Engine returned an invalid evidence identifier.");
+                throw new InvalidOperationException(
+                    "Constitutional Engine returned an invalid evidence identifier."
+                );
         }
         catch (Exception exception)
         {
-            logger.LogError(exception, "WhatsApp registration evidence failed for tenant {TenantId}", tenantId);
+            logger.LogError(
+                exception,
+                "WhatsApp registration evidence failed for tenant {TenantId}",
+                tenantId
+            );
             throw;
         }
     }

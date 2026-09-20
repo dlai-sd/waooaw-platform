@@ -11,12 +11,14 @@ using Waooaw.BusinessPlatform.Services;
 namespace Waooaw.BusinessPlatform.Controllers;
 
 public sealed record RequestRelationshipEvidenceExport(string SchemaVersion, string Purpose);
+
 public sealed record RelationshipOnboardRequest(
     string SchemaVersion,
     string? PreferredAgentDisplayName,
     string? ChatAppearance,
     string? TimestampVisibility,
-    string? ThemePreference);
+    string? ThemePreference
+);
 
 [ApiController]
 [Authorize]
@@ -27,16 +29,28 @@ public sealed class RelationshipWorkspaceController(
     RelationshipEvidenceService? evidence = null,
     RelationshipConfigurationService? configuration = null,
     IOperationalMandateResolver? mandateResolver = null,
-    PerformanceReviewService? performanceReviews = null) : ControllerBase
+    PerformanceReviewService? performanceReviews = null
+) : ControllerBase
 {
     private static readonly string[] SectionTypes =
-        ["PLAN", "ATTENTION", "WORK", "RESULTS", "USAGE_BUDGET", "RIGHTS_CONTROLS"];
+    [
+        "PLAN",
+        "ATTENTION",
+        "WORK",
+        "RESULTS",
+        "USAGE_BUDGET",
+        "RIGHTS_CONTROLS",
+    ];
 
     [HttpGet]
-    public async Task<IActionResult> GetWorkspaceAsync(Guid relationshipId, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetWorkspaceAsync(
+        Guid relationshipId,
+        CancellationToken cancellationToken
+    )
     {
         var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
-        if (relationship is null) return NotFoundProblem();
+        if (relationship is null)
+            return NotFoundProblem();
         var now = DateTimeOffset.UtcNow;
         var version = $"relationship-{relationship.StateVersion}";
         var ownerContext = OwnerContext(relationship);
@@ -45,83 +59,158 @@ public sealed class RelationshipWorkspaceController(
         await Task.WhenAll(executionTask, commercialTask);
         var execution = await executionTask;
         var commercial = await commercialTask;
-        var configurationState = configuration is null ? null
+        var configurationState = configuration is null
+            ? null
             : await configuration.GetPortalConfigurationAsync(
-                relationship.TenantId, relationshipId, cancellationToken);
-        var goals = configuration is null ? []
-            : await configuration.GetPortalGoalsAsync(
-                relationship.TenantId, relationshipId, cancellationToken);
-        var activeGoals = goals.Where(item => NormalizeGoalStatus(item.Goal.Status) == "ACTIVE").ToArray();
-        var goalsVerified = activeGoals.Length > 0
-            && activeGoals.All(item => item.CurrentDecision?.Decision == "VERIFIED");
-        var mandateReadiness = mandateResolver is not null && TryGetParticipantId(out var participantId)
-            ? await mandateResolver.GetReadinessAsync(
-                relationship.TenantId, participantId, relationshipId, cancellationToken)
-            : new OperationalMandateReadiness(false, ["The admitted artifact and runtime binding coordinates are unavailable."]);
-        var sections = SectionTypes.Select(type => Section(type,
-            type switch
-            {
-                "ATTENTION" or "RIGHTS_CONTROLS" => "CURRENT",
-                "WORK" => execution?.State ?? "UNAVAILABLE",
-                "USAGE_BUDGET" => commercial?.CurrencyState ?? "UNAVAILABLE",
-                _ => "UNAVAILABLE",
-            },
-            type == "WORK" ? execution?.ProjectionVersion ?? version
-                : type == "USAGE_BUDGET" ? commercial?.ProjectionVersion ?? version
-                : version,
-            type == "WORK" ? execution?.ProducedAt ?? now
-                : type == "USAGE_BUDGET" ? commercial?.ProducedAt ?? now
-                : now));
-        return Ok(new
-        {
-            schemaVersion = "1.0", relationshipId, workspaceVersion = version,
-            snapshotState = "PARTIAL", currencyState = "CURRENT",
-            authoritativeCursor = Cursor(relationshipId, relationship.StateVersion), producedAt = now,
-            context = new
-            {
+                relationship.TenantId,
                 relationshipId,
-                agentInstanceId = relationship.AgentInstanceId,
-                professionalType = relationship.ProfessionalType,
-                professionalVersion = relationship.ProfessionalVersion,
-                lifecycleState = RelationshipStateCodec.ToDatabase(relationship.State),
-                policySelection = new { f4Pol01 = "A", f4Pol02 = "A", f4Pol03 = "B", f4Pol04 = "A", f4Pol05 = "B", f4Pol06 = "A" },
-            },
-            lifecycleProfile = LifecycleProfile(
-                relationship, configurationState, activeGoals.Length, goalsVerified,
-                execution, commercial, mandateReadiness, now),
-            sections,
-        });
+                cancellationToken
+            );
+        var goals = configuration is null
+            ? []
+            : await configuration.GetPortalGoalsAsync(
+                relationship.TenantId,
+                relationshipId,
+                cancellationToken
+            );
+        var activeGoals = goals
+            .Where(item => NormalizeGoalStatus(item.Goal.Status) == "ACTIVE")
+            .ToArray();
+        var goalsVerified =
+            activeGoals.Length > 0
+            && activeGoals.All(item => item.CurrentDecision?.Decision == "VERIFIED");
+        var mandateReadiness =
+            mandateResolver is not null && TryGetParticipantId(out var participantId)
+                ? await mandateResolver.GetReadinessAsync(
+                    relationship.TenantId,
+                    participantId,
+                    relationshipId,
+                    cancellationToken
+                )
+                : new OperationalMandateReadiness(
+                    false,
+                    ["The admitted artifact and runtime binding coordinates are unavailable."]
+                );
+        var sections = SectionTypes.Select(type =>
+            Section(
+                type,
+                type switch
+                {
+                    "ATTENTION" or "RIGHTS_CONTROLS" => "CURRENT",
+                    "WORK" => execution?.State ?? "UNAVAILABLE",
+                    "USAGE_BUDGET" => commercial?.CurrencyState ?? "UNAVAILABLE",
+                    _ => "UNAVAILABLE",
+                },
+                type == "WORK" ? execution?.ProjectionVersion ?? version
+                    : type == "USAGE_BUDGET" ? commercial?.ProjectionVersion ?? version
+                    : version,
+                type == "WORK" ? execution?.ProducedAt ?? now
+                    : type == "USAGE_BUDGET" ? commercial?.ProducedAt ?? now
+                    : now
+            )
+        );
+        return Ok(
+            new
+            {
+                schemaVersion = "1.0",
+                relationshipId,
+                workspaceVersion = version,
+                snapshotState = "PARTIAL",
+                currencyState = "CURRENT",
+                authoritativeCursor = Cursor(relationshipId, relationship.StateVersion),
+                producedAt = now,
+                context = new
+                {
+                    relationshipId,
+                    agentInstanceId = relationship.AgentInstanceId,
+                    professionalType = relationship.ProfessionalType,
+                    professionalVersion = relationship.ProfessionalVersion,
+                    lifecycleState = RelationshipStateCodec.ToDatabase(relationship.State),
+                    policySelection = new
+                    {
+                        f4Pol01 = "A",
+                        f4Pol02 = "A",
+                        f4Pol03 = "B",
+                        f4Pol04 = "A",
+                        f4Pol05 = "B",
+                        f4Pol06 = "A",
+                    },
+                },
+                lifecycleProfile = LifecycleProfile(
+                    relationship,
+                    configurationState,
+                    activeGoals.Length,
+                    goalsVerified,
+                    execution,
+                    commercial,
+                    mandateReadiness,
+                    now
+                ),
+                sections,
+            }
+        );
     }
 
     [HttpGet("changes")]
-    public async Task<IActionResult> GetChangesAsync(Guid relationshipId, [FromQuery] string? afterCursor,
-        CancellationToken cancellationToken)
+    public async Task<IActionResult> GetChangesAsync(
+        Guid relationshipId,
+        [FromQuery] string? afterCursor,
+        CancellationToken cancellationToken
+    )
     {
         var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
-        if (relationship is null) return NotFoundProblem();
-        return Ok(new { schemaVersion = "1.0", relationshipId,
-            authoritativeCursor = Cursor(relationshipId, relationship.StateVersion), items = Array.Empty<object>() });
+        if (relationship is null)
+            return NotFoundProblem();
+        return Ok(
+            new
+            {
+                schemaVersion = "1.0",
+                relationshipId,
+                authoritativeCursor = Cursor(relationshipId, relationship.StateVersion),
+                items = Array.Empty<object>(),
+            }
+        );
     }
 
     [HttpGet("plan")]
-    public async Task<IActionResult> GetPlanAsync(Guid relationshipId, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetPlanAsync(
+        Guid relationshipId,
+        CancellationToken cancellationToken
+    )
     {
         var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
-        if (relationship is null) return NotFoundProblem();
+        if (relationship is null)
+            return NotFoundProblem();
         var now = DateTimeOffset.UtcNow;
-        return Ok(new { sectionType = "PLAN", currencyState = "UNAVAILABLE",
-            provenance = Provenance("BP", $"relationship-{relationship.StateVersion}", now),
-            availableCommands = Array.Empty<object>(), planId = relationshipId, goals = Array.Empty<string>() });
+        return Ok(
+            new
+            {
+                sectionType = "PLAN",
+                currencyState = "UNAVAILABLE",
+                provenance = Provenance("BP", $"relationship-{relationship.StateVersion}", now),
+                availableCommands = Array.Empty<object>(),
+                planId = relationshipId,
+                goals = Array.Empty<string>(),
+            }
+        );
     }
 
     [HttpGet("configuration")]
-    public async Task<IActionResult> GetConfigurationAsync(Guid relationshipId, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetConfigurationAsync(
+        Guid relationshipId,
+        CancellationToken cancellationToken
+    )
     {
         var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
-        if (relationship is null) return NotFoundProblem();
-        if (configuration is null) return WorkspaceProblem(503, "RELATIONSHIP_WORKSPACE_DEPENDENCY_UNAVAILABLE");
+        if (relationship is null)
+            return NotFoundProblem();
+        if (configuration is null)
+            return WorkspaceProblem(503, "RELATIONSHIP_WORKSPACE_DEPENDENCY_UNAVAILABLE");
         var state = await configuration.GetPortalConfigurationAsync(
-            relationship.TenantId, relationshipId, cancellationToken);
+            relationship.TenantId,
+            relationshipId,
+            cancellationToken
+        );
         return Ok(ConfigurationResponse(relationship, state));
     }
 
@@ -130,25 +219,41 @@ public sealed class RelationshipWorkspaceController(
         Guid relationshipId,
         [FromBody] RelationshipOnboardRequest request,
         [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
-        if (relationship is null) return NotFoundProblem();
-        if (configuration is null) return WorkspaceProblem(503, "RELATIONSHIP_WORKSPACE_DEPENDENCY_UNAVAILABLE");
-        if (request.SchemaVersion != "1.0.0" || !Guid.TryParse(idempotencyKey, out var parsedKey)
+        if (relationship is null)
+            return NotFoundProblem();
+        if (configuration is null)
+            return WorkspaceProblem(503, "RELATIONSHIP_WORKSPACE_DEPENDENCY_UNAVAILABLE");
+        if (
+            request.SchemaVersion != "1.0.0"
+            || !Guid.TryParse(idempotencyKey, out var parsedKey)
             || request.PreferredAgentDisplayName is { Length: > 80 }
             || request.ChatAppearance is not (null or "CONSTITUTIONAL" or "COMPACT")
             || request.TimestampVisibility is not (null or "RELATIVE" or "ABSOLUTE")
-            || request.ThemePreference is not (null or "LIGHT" or "DARK"))
+            || request.ThemePreference is not (null or "LIGHT" or "DARK")
+        )
             return WorkspaceProblem(400, "RELATIONSHIP_WORKSPACE_REQUEST_INVALID");
-        var requestHash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(
-            System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(request))));
+        var requestHash = Convert.ToHexStringLower(
+            System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(request))
+            )
+        );
         try
         {
             var state = await configuration.UpdateOnboardAsync(
-                relationship.TenantId, relationshipId, parsedKey, requestHash,
-                request.PreferredAgentDisplayName?.Trim(), request.ChatAppearance,
-                request.TimestampVisibility, request.ThemePreference, cancellationToken);
+                relationship.TenantId,
+                relationshipId,
+                parsedKey,
+                requestHash,
+                request.PreferredAgentDisplayName?.Trim(),
+                request.ChatAppearance,
+                request.TimestampVisibility,
+                request.ThemePreference,
+                cancellationToken
+            );
             return Ok(ConfigurationResponse(relationship, state));
         }
         catch (RelationshipConfigurationConflictException)
@@ -166,25 +271,52 @@ public sealed class RelationshipWorkspaceController(
     }
 
     [HttpGet("attention")]
-    public async Task<IActionResult> GetAttentionAsync(Guid relationshipId, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetAttentionAsync(
+        Guid relationshipId,
+        CancellationToken cancellationToken
+    )
     {
         var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
-        if (relationship is null) return NotFoundProblem();
-        return Ok(new { sectionType = "ATTENTION", currencyState = "CURRENT",
-            provenance = Provenance("BP", $"relationship-{relationship.StateVersion}", DateTimeOffset.UtcNow),
-            availableCommands = Array.Empty<object>(), items = Array.Empty<object>() });
+        if (relationship is null)
+            return NotFoundProblem();
+        return Ok(
+            new
+            {
+                sectionType = "ATTENTION",
+                currencyState = "CURRENT",
+                provenance = Provenance(
+                    "BP",
+                    $"relationship-{relationship.StateVersion}",
+                    DateTimeOffset.UtcNow
+                ),
+                availableCommands = Array.Empty<object>(),
+                items = Array.Empty<object>(),
+            }
+        );
     }
 
     [HttpGet("goals")]
-    public async Task<IActionResult> GetGoalsAsync(Guid relationshipId, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetGoalsAsync(
+        Guid relationshipId,
+        CancellationToken cancellationToken
+    )
     {
         var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
-        if (relationship is null) return NotFoundProblem();
-        if (configuration is null) return WorkspaceProblem(503, "RELATIONSHIP_WORKSPACE_DEPENDENCY_UNAVAILABLE");
-        var goals = await configuration.GetPortalGoalsAsync(relationship.TenantId, relationshipId, cancellationToken);
-        var activeGoals = goals.Where(item => NormalizeGoalStatus(item.Goal.Status) == "ACTIVE")
-            .Select(GoalResponse).ToArray();
-        var history = goals.Where(item => NormalizeGoalStatus(item.Goal.Status) != "ACTIVE")
+        if (relationship is null)
+            return NotFoundProblem();
+        if (configuration is null)
+            return WorkspaceProblem(503, "RELATIONSHIP_WORKSPACE_DEPENDENCY_UNAVAILABLE");
+        var goals = await configuration.GetPortalGoalsAsync(
+            relationship.TenantId,
+            relationshipId,
+            cancellationToken
+        );
+        var activeGoals = goals
+            .Where(item => NormalizeGoalStatus(item.Goal.Status) == "ACTIVE")
+            .Select(GoalResponse)
+            .ToArray();
+        var history = goals
+            .Where(item => NormalizeGoalStatus(item.Goal.Status) != "ACTIVE")
             .Select(item => new
             {
                 goalId = item.Goal.GoalId,
@@ -200,244 +332,423 @@ public sealed class RelationshipWorkspaceController(
                 evidenceState = "PENDING",
                 changedAt = item.Goal.UpdatedAt,
                 changeReason = "Goal state changed in the relationship configuration.",
-            }).ToArray();
-        return Ok(new
-        {
-            sectionType = "GOALS",
-            currencyState = "CURRENT",
-            provenance = Provenance("BP", $"relationship-{relationship.StateVersion}", DateTimeOffset.UtcNow),
-            availableCommands = Array.Empty<object>(),
-            activeGoals,
-            history,
-        });
+            })
+            .ToArray();
+        return Ok(
+            new
+            {
+                sectionType = "GOALS",
+                currencyState = "CURRENT",
+                provenance = Provenance(
+                    "BP",
+                    $"relationship-{relationship.StateVersion}",
+                    DateTimeOffset.UtcNow
+                ),
+                availableCommands = Array.Empty<object>(),
+                activeGoals,
+                history,
+            }
+        );
     }
 
     [HttpGet("business-outcomes")]
-    public async Task<IActionResult> GetBusinessOutcomesAsync(Guid relationshipId, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetBusinessOutcomesAsync(
+        Guid relationshipId,
+        CancellationToken cancellationToken
+    )
     {
         var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
-        if (relationship is null) return NotFoundProblem();
-        return Ok(new
-        {
-            sectionType = "BUSINESS_OUTCOMES",
-            currencyState = "UNAVAILABLE",
-            provenance = Provenance("BP", $"relationship-{relationship.StateVersion}", DateTimeOffset.UtcNow),
-            availableCommands = Array.Empty<object>(),
-            items = Array.Empty<object>(),
-        });
+        if (relationship is null)
+            return NotFoundProblem();
+        return Ok(
+            new
+            {
+                sectionType = "BUSINESS_OUTCOMES",
+                currencyState = "UNAVAILABLE",
+                provenance = Provenance(
+                    "BP",
+                    $"relationship-{relationship.StateVersion}",
+                    DateTimeOffset.UtcNow
+                ),
+                availableCommands = Array.Empty<object>(),
+                items = Array.Empty<object>(),
+            }
+        );
     }
 
     [HttpGet("performance")]
-    public async Task<IActionResult> GetPerformanceAsync(Guid relationshipId, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetPerformanceAsync(
+        Guid relationshipId,
+        CancellationToken cancellationToken
+    )
     {
         var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
-        if (relationship is null) return NotFoundProblem();
+        if (relationship is null)
+            return NotFoundProblem();
         if (performanceReviews is null)
             return WorkspaceProblem(503, "RELATIONSHIP_WORKSPACE_DEPENDENCY_UNAVAILABLE");
         var reviews = await performanceReviews.ListAsync(
-            relationship.TenantId, relationshipId, cancellationToken);
-        return Ok(new
-        {
-            sectionType = "PERFORMANCE",
-            currencyState = reviews.Count > 0 ? "CURRENT" : "UNAVAILABLE",
-            provenance = Provenance("BP", reviews.Count > 0
-                ? $"performance-{reviews[0].ReviewId:D}" : "unavailable-1", DateTimeOffset.UtcNow),
-            availableCommands = reviews.Count > 0 ? new[] { new
+            relationship.TenantId,
+            relationshipId,
+            cancellationToken
+        );
+        return Ok(
+            new
             {
-                commandKind = "RESPOND_TO_PERFORMANCE_REVIEW",
-                availability = "AVAILABLE",
-            } } : Array.Empty<object>(),
-            current = reviews.FirstOrDefault(),
-            history = reviews.Skip(1).ToArray(),
-        });
+                sectionType = "PERFORMANCE",
+                currencyState = reviews.Count > 0 ? "CURRENT" : "UNAVAILABLE",
+                provenance = Provenance(
+                    "BP",
+                    reviews.Count > 0 ? $"performance-{reviews[0].ReviewId:D}" : "unavailable-1",
+                    DateTimeOffset.UtcNow
+                ),
+                availableCommands = reviews.Count > 0
+                    ? new[]
+                    {
+                        new
+                        {
+                            commandKind = "RESPOND_TO_PERFORMANCE_REVIEW",
+                            availability = "AVAILABLE",
+                        },
+                    }
+                    : Array.Empty<object>(),
+                current = reviews.FirstOrDefault(),
+                history = reviews.Skip(1).ToArray(),
+            }
+        );
     }
 
     [HttpGet("operations")]
-    public async Task<IActionResult> GetOperationsAsync(Guid relationshipId, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetOperationsAsync(
+        Guid relationshipId,
+        CancellationToken cancellationToken
+    )
     {
         var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
-        if (relationship is null) return NotFoundProblem();
-        if (configuration is null) return WorkspaceProblem(503, "RELATIONSHIP_WORKSPACE_DEPENDENCY_UNAVAILABLE");
+        if (relationship is null)
+            return NotFoundProblem();
+        if (configuration is null)
+            return WorkspaceProblem(503, "RELATIONSHIP_WORKSPACE_DEPENDENCY_UNAVAILABLE");
         var configurationTask = configuration.GetPortalConfigurationAsync(
-            relationship.TenantId, relationshipId, cancellationToken);
+            relationship.TenantId,
+            relationshipId,
+            cancellationToken
+        );
         var skillsTask = configuration.GetPortalSkillsAsync(
-            relationship.TenantId, relationshipId, cancellationToken);
+            relationship.TenantId,
+            relationshipId,
+            cancellationToken
+        );
         var goalsTask = configuration.GetPortalGoalsAsync(
-            relationship.TenantId, relationshipId, cancellationToken);
+            relationship.TenantId,
+            relationshipId,
+            cancellationToken
+        );
         var ownerContext = OwnerContext(relationship);
         var executionTask = owners.GetExecutionAsync(ownerContext, cancellationToken);
         var commercialTask = owners.GetCommercialAsync(ownerContext, cancellationToken);
-        var reviewsTask = performanceReviews?.ListAsync(
-            relationship.TenantId, relationshipId, cancellationToken)
+        var reviewsTask =
+            performanceReviews?.ListAsync(relationship.TenantId, relationshipId, cancellationToken)
             ?? Task.FromResult<IReadOnlyList<PerformanceReviewProjectionV1>>([]);
-        await Task.WhenAll(configurationTask, skillsTask, goalsTask, executionTask, commercialTask, reviewsTask);
+        await Task.WhenAll(
+            configurationTask,
+            skillsTask,
+            goalsTask,
+            executionTask,
+            commercialTask,
+            reviewsTask
+        );
         var configurationState = await configurationTask;
         var acceptedSkills = (await skillsTask).Where(item => item.Status == "ACCEPTED").ToArray();
         var goals = await goalsTask;
-        var requiredGoalIds = goals.Where(item => NormalizeGoalStatus(item.Goal.Status) == "ACTIVE")
-            .Select(item => item.Goal.GoalId).ToArray();
-        var activeGoals = goals.Where(item => NormalizeGoalStatus(item.Goal.Status) == "ACTIVE").ToArray();
-        var verifiedGoalIds = activeGoals.Where(item => item.CurrentDecision?.Decision == "VERIFIED")
-            .Select(item => item.Goal.GoalId).ToArray();
+        var requiredGoalIds = goals
+            .Where(item => NormalizeGoalStatus(item.Goal.Status) == "ACTIVE")
+            .Select(item => item.Goal.GoalId)
+            .ToArray();
+        var activeGoals = goals
+            .Where(item => NormalizeGoalStatus(item.Goal.Status) == "ACTIVE")
+            .ToArray();
+        var verifiedGoalIds = activeGoals
+            .Where(item => item.CurrentDecision?.Decision == "VERIFIED")
+            .Select(item => item.Goal.GoalId)
+            .ToArray();
         var execution = await executionTask;
         var commercial = await commercialTask;
         var currentReview = (await reviewsTask).FirstOrDefault();
-        var activeRelationship = relationship.State is EmploymentRelationshipState.Active
-            or EmploymentRelationshipState.TrialActive;
-        var skillsReady = acceptedSkills.Length > 0 && acceptedSkills.All(item =>
-            item.GoalId.HasValue && verifiedGoalIds.Contains(item.GoalId.Value));
+        var activeRelationship =
+            relationship.State
+            is EmploymentRelationshipState.Active
+                or EmploymentRelationshipState.TrialActive;
+        var skillsReady =
+            acceptedSkills.Length > 0
+            && acceptedSkills.All(item =>
+                item.GoalId.HasValue && verifiedGoalIds.Contains(item.GoalId.Value)
+            );
         var blockedReasons = new List<string>();
-        if (!activeRelationship) blockedReasons.Add("The relationship must be active before Operations is available.");
-        if (configurationState.Onboard is null) blockedReasons.Add("Onboarding preferences must be confirmed.");
-        if (!configurationState.InductComplete) blockedReasons.Add("Required induction context must be confirmed.");
-        if (acceptedSkills.Length == 0) blockedReasons.Add("At least one admitted Skill must be accepted.");
-        if (requiredGoalIds.Length == 0) blockedReasons.Add("At least one active goal must be customer-verified.");
+        if (!activeRelationship)
+            blockedReasons.Add("The relationship must be active before Operations is available.");
+        if (configurationState.Onboard is null)
+            blockedReasons.Add("Onboarding preferences must be confirmed.");
+        if (!configurationState.InductComplete)
+            blockedReasons.Add("Required induction context must be confirmed.");
+        if (acceptedSkills.Length == 0)
+            blockedReasons.Add("At least one admitted Skill must be accepted.");
+        if (requiredGoalIds.Length == 0)
+            blockedReasons.Add("At least one active goal must be customer-verified.");
         else if (verifiedGoalIds.Length != requiredGoalIds.Length)
             blockedReasons.Add("Customer verification is required for every active goal.");
         if (!skillsReady && acceptedSkills.Length > 0)
             blockedReasons.Add("Every accepted Skill must bind a current verified goal.");
-        if (execution?.State != "CURRENT") blockedReasons.Add("Professional Runtime readiness is not current.");
-        if (commercial?.CurrencyState != "CURRENT") blockedReasons.Add("Commercial readiness is not current.");
+        if (execution?.State != "CURRENT")
+            blockedReasons.Add("Professional Runtime readiness is not current.");
+        if (commercial?.CurrencyState != "CURRENT")
+            blockedReasons.Add("Commercial readiness is not current.");
         if (!relationship.AcceptedContractId.HasValue)
             blockedReasons.Add("An accepted employment contract is required.");
         if (!relationship.AuthoritySnapshotId.HasValue)
             blockedReasons.Add("A current authority snapshot is required.");
         if (currentReview?.ReassessmentRequired == true)
-            blockedReasons.Add("The current performance review requires reassessment before affected work can continue.");
-        var mandateReadiness = mandateResolver is not null && TryGetParticipantId(out var participantId)
-            ? await mandateResolver.GetReadinessAsync(
-                relationship.TenantId, participantId, relationshipId, cancellationToken)
-            : new OperationalMandateReadiness(false, ["The admitted artifact and runtime binding coordinates are unavailable."]);
+            blockedReasons.Add(
+                "The current performance review requires reassessment before affected work can continue."
+            );
+        var mandateReadiness =
+            mandateResolver is not null && TryGetParticipantId(out var participantId)
+                ? await mandateResolver.GetReadinessAsync(
+                    relationship.TenantId,
+                    participantId,
+                    relationshipId,
+                    cancellationToken
+                )
+                : new OperationalMandateReadiness(
+                    false,
+                    ["The admitted artifact and runtime binding coordinates are unavailable."]
+                );
         blockedReasons.AddRange(mandateReadiness.BlockedReasons);
         var eligible = blockedReasons.Count == 0;
-        return Ok(new
-        {
-            sectionType = "OPERATIONS",
-            currencyState = "CURRENT",
-            provenance = Provenance("BP", $"relationship-{relationship.StateVersion}", DateTimeOffset.UtcNow),
-            availableCommands = Array.Empty<object>(),
-            eligibilityState = eligible ? "ELIGIBLE" : "LOCKED",
-            requiredGoalIds,
-            verifiedGoalIds,
-            blockedReasons = blockedReasons.ToArray(),
-            reassessmentRequired = activeGoals.Any(item => item.HasPriorDecision && item.CurrentDecision is null)
-                || currentReview?.ReassessmentRequired == true,
-            dependentOutcomeIds = Array.Empty<Guid>(),
-            operationalMandate = (object?)null,
-        });
+        return Ok(
+            new
+            {
+                sectionType = "OPERATIONS",
+                currencyState = "CURRENT",
+                provenance = Provenance(
+                    "BP",
+                    $"relationship-{relationship.StateVersion}",
+                    DateTimeOffset.UtcNow
+                ),
+                availableCommands = Array.Empty<object>(),
+                eligibilityState = eligible ? "ELIGIBLE" : "LOCKED",
+                requiredGoalIds,
+                verifiedGoalIds,
+                blockedReasons = blockedReasons.ToArray(),
+                reassessmentRequired = activeGoals.Any(item =>
+                    item.HasPriorDecision && item.CurrentDecision is null
+                )
+                    || currentReview?.ReassessmentRequired == true,
+                dependentOutcomeIds = Array.Empty<Guid>(),
+                operationalMandate = (object?)null,
+            }
+        );
     }
 
     [HttpGet("work")]
-    public async Task<IActionResult> GetWorkAsync(Guid relationshipId, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetWorkAsync(
+        Guid relationshipId,
+        CancellationToken cancellationToken
+    )
     {
         var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
-        if (relationship is null) return NotFoundProblem();
-        var projection = await owners.GetExecutionAsync(OwnerContext(relationship), cancellationToken);
-        return Ok(new
-        {
-            sectionType = "WORK",
-            currencyState = projection?.State ?? "UNAVAILABLE",
-            provenance = Provenance("PR", projection?.ProjectionVersion ?? "unavailable-1",
-                projection?.ProducedAt ?? DateTimeOffset.UtcNow),
-            availableCommands = Array.Empty<object>(),
-            items = projection?.Items?.Select(item => new
+        if (relationship is null)
+            return NotFoundProblem();
+        var projection = await owners.GetExecutionAsync(
+            OwnerContext(relationship),
+            cancellationToken
+        );
+        return Ok(
+            new
             {
-                itemId = item.WorkItemId,
-                agentInstanceId = item.AgentInstanceId,
-                skillId = item.SkillId,
-                skillVersion = item.SkillVersion,
-                invocationId = item.InvocationId,
-                revision = item.Revision,
-                state = item.State,
-                effect = item.Effect,
-                resultRef = item.ResultRef,
-                updatedAt = item.UpdatedAt,
-            }).ToArray() ?? Array.Empty<object>(),
-        });
+                sectionType = "WORK",
+                currencyState = projection?.State ?? "UNAVAILABLE",
+                provenance = Provenance(
+                    "PR",
+                    projection?.ProjectionVersion ?? "unavailable-1",
+                    projection?.ProducedAt ?? DateTimeOffset.UtcNow
+                ),
+                availableCommands = Array.Empty<object>(),
+                items = projection
+                    ?.Items?.Select(item => new
+                    {
+                        itemId = item.WorkItemId,
+                        agentInstanceId = item.AgentInstanceId,
+                        skillId = item.SkillId,
+                        skillVersion = item.SkillVersion,
+                        invocationId = item.InvocationId,
+                        revision = item.Revision,
+                        state = item.State,
+                        effect = item.Effect,
+                        resultRef = item.ResultRef,
+                        updatedAt = item.UpdatedAt,
+                    })
+                    .ToArray()
+                    ?? Array.Empty<object>(),
+            }
+        );
     }
 
     [HttpGet("results")]
-    public async Task<IActionResult> GetResultsAsync(Guid relationshipId, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetResultsAsync(
+        Guid relationshipId,
+        CancellationToken cancellationToken
+    )
     {
         var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
-        if (relationship is null) return NotFoundProblem();
-        var projection = await owners.GetExecutionAsync(OwnerContext(relationship), cancellationToken);
-        var outcomes = projection?.Items?.Where(item => item.ResultRef is not null).Select(item => new
-        {
-            outcomeId = item.WorkItemId,
-            agentInstanceId = item.AgentInstanceId,
-            skillId = item.SkillId,
-            skillVersion = item.SkillVersion,
-            invocationId = item.InvocationId,
-            revision = item.Revision,
-            label = item.Effect,
-            attributionBasis = item.ResultRef,
-            updatedAt = item.UpdatedAt,
-        }).ToArray() ?? Array.Empty<object>();
-        return Ok(new
-        {
-            sectionType = "RESULTS",
-            currencyState = projection?.State ?? "UNAVAILABLE",
-            provenance = Provenance("PR", projection?.ProjectionVersion ?? "unavailable-1",
-                projection?.ProducedAt ?? DateTimeOffset.UtcNow),
-            availableCommands = Array.Empty<object>(),
-            outcomes,
-        });
+        if (relationship is null)
+            return NotFoundProblem();
+        var projection = await owners.GetExecutionAsync(
+            OwnerContext(relationship),
+            cancellationToken
+        );
+        var outcomes =
+            projection
+                ?.Items?.Where(item => item.ResultRef is not null)
+                .Select(item => new
+                {
+                    outcomeId = item.WorkItemId,
+                    agentInstanceId = item.AgentInstanceId,
+                    skillId = item.SkillId,
+                    skillVersion = item.SkillVersion,
+                    invocationId = item.InvocationId,
+                    revision = item.Revision,
+                    label = item.Effect,
+                    attributionBasis = item.ResultRef,
+                    updatedAt = item.UpdatedAt,
+                })
+                .ToArray()
+            ?? Array.Empty<object>();
+        return Ok(
+            new
+            {
+                sectionType = "RESULTS",
+                currencyState = projection?.State ?? "UNAVAILABLE",
+                provenance = Provenance(
+                    "PR",
+                    projection?.ProjectionVersion ?? "unavailable-1",
+                    projection?.ProducedAt ?? DateTimeOffset.UtcNow
+                ),
+                availableCommands = Array.Empty<object>(),
+                outcomes,
+            }
+        );
     }
 
     [HttpGet("usage-budget")]
-    public async Task<IActionResult> GetUsageBudgetAsync(Guid relationshipId, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetUsageBudgetAsync(
+        Guid relationshipId,
+        CancellationToken cancellationToken
+    )
     {
         var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
-        if (relationship is null) return NotFoundProblem();
-        var projection = await owners.GetCommercialAsync(OwnerContext(relationship), cancellationToken);
-        return Ok(new { sectionType = "USAGE_BUDGET", currencyState = projection?.CurrencyState ?? "UNAVAILABLE",
-            provenance = Provenance("WBE", projection?.ProjectionVersion ?? "unavailable-1",
-                projection?.ProducedAt ?? DateTimeOffset.UtcNow),
-            availableCommands = Array.Empty<object>(), actualAmount = projection?.Actuals ?? "Unavailable",
-            forecastRange = projection?.Forecast ?? "Unavailable",
-            thresholdState = projection?.Thresholds ?? "UNAVAILABLE",
-            wbeProjectionVersion = projection?.ProjectionVersion ?? "unavailable-1" });
+        if (relationship is null)
+            return NotFoundProblem();
+        var projection = await owners.GetCommercialAsync(
+            OwnerContext(relationship),
+            cancellationToken
+        );
+        return Ok(
+            new
+            {
+                sectionType = "USAGE_BUDGET",
+                currencyState = projection?.CurrencyState ?? "UNAVAILABLE",
+                provenance = Provenance(
+                    "WBE",
+                    projection?.ProjectionVersion ?? "unavailable-1",
+                    projection?.ProducedAt ?? DateTimeOffset.UtcNow
+                ),
+                availableCommands = Array.Empty<object>(),
+                actualAmount = projection?.Actuals ?? "Unavailable",
+                forecastRange = projection?.Forecast ?? "Unavailable",
+                thresholdState = projection?.Thresholds ?? "UNAVAILABLE",
+                wbeProjectionVersion = projection?.ProjectionVersion ?? "unavailable-1",
+            }
+        );
     }
 
     [HttpGet("rights-controls")]
-    public async Task<IActionResult> GetRightsControlsAsync(Guid relationshipId, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetRightsControlsAsync(
+        Guid relationshipId,
+        CancellationToken cancellationToken
+    )
     {
         var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
-        if (relationship is null) return NotFoundProblem();
-        var version = relationship.StateVersion.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        return Ok(new { sectionType = "RIGHTS_CONTROLS", currencyState = "CURRENT",
-            provenance = Provenance("BP", $"relationship-{version}", DateTimeOffset.UtcNow),
-            availableCommands = Array.Empty<object>(), scopeVersion = version, authorityVersion = version,
-            lifecycleState = RelationshipStateCodec.ToDatabase(relationship.State), emergencyStopReachable = true });
+        if (relationship is null)
+            return NotFoundProblem();
+        var version = relationship.StateVersion.ToString(
+            System.Globalization.CultureInfo.InvariantCulture
+        );
+        return Ok(
+            new
+            {
+                sectionType = "RIGHTS_CONTROLS",
+                currencyState = "CURRENT",
+                provenance = Provenance("BP", $"relationship-{version}", DateTimeOffset.UtcNow),
+                availableCommands = Array.Empty<object>(),
+                scopeVersion = version,
+                authorityVersion = version,
+                lifecycleState = RelationshipStateCodec.ToDatabase(relationship.State),
+                emergencyStopReachable = true,
+            }
+        );
     }
 
     [HttpPost("commands")]
-    public async Task<IActionResult> SubmitCommandAsync(Guid relationshipId, [FromBody] JsonElement command,
-        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey, CancellationToken cancellationToken)
+    public async Task<IActionResult> SubmitCommandAsync(
+        Guid relationshipId,
+        [FromBody] JsonElement command,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
+        CancellationToken cancellationToken
+    )
     {
         var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
-        if (relationship is null) return NotFoundProblem();
+        if (relationship is null)
+            return NotFoundProblem();
         if (!Guid.TryParse(idempotencyKey, out var parsedKey))
             return WorkspaceProblem(400, "RELATIONSHIP_WORKSPACE_REQUEST_INVALID");
-        if (command.ValueKind == JsonValueKind.Object
+        if (
+            command.ValueKind == JsonValueKind.Object
             && command.TryGetProperty("type", out _)
-            && !command.TryGetProperty("payload", out _))
+            && !command.TryGetProperty("payload", out _)
+        )
             return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_BLOCKED");
-        if (command.ValueKind != JsonValueKind.Object
+        if (
+            command.ValueKind != JsonValueKind.Object
             || !command.TryGetProperty("payload", out var payload)
             || payload.ValueKind != JsonValueKind.Object
-            || !TryGetString(payload, "commandKind", out var commandKind))
+            || !TryGetString(payload, "commandKind", out var commandKind)
+        )
             return WorkspaceProblem(400, "RELATIONSHIP_WORKSPACE_REQUEST_INVALID");
         if (commandKind is "SELECT_SKILL" or "UPDATE_SKILL" or "ACCEPT_SKILL" or "DEFER_SKILL")
             return await SubmitSkillCommandAsync(
-                relationship, command, payload, commandKind, parsedKey, cancellationToken);
+                relationship,
+                command,
+                payload,
+                commandKind,
+                parsedKey,
+                cancellationToken
+            );
         if (commandKind == "RESPOND_TO_PERFORMANCE_REVIEW")
             return await SubmitPerformanceReviewCommandAsync(
-                relationship, command, payload, parsedKey, cancellationToken);
-        if (commandKind != "VERIFY_GOAL") return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_BLOCKED");
-        if (configuration is null) return WorkspaceProblem(503, "RELATIONSHIP_WORKSPACE_DEPENDENCY_UNAVAILABLE");
-        if (!TryGetString(command, "schemaVersion", out var schemaVersion) || schemaVersion != "1.0"
+                relationship,
+                command,
+                payload,
+                parsedKey,
+                cancellationToken
+            );
+        if (commandKind != "VERIFY_GOAL")
+            return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_BLOCKED");
+        if (configuration is null)
+            return WorkspaceProblem(503, "RELATIONSHIP_WORKSPACE_DEPENDENCY_UNAVAILABLE");
+        if (
+            !TryGetString(command, "schemaVersion", out var schemaVersion)
+            || schemaVersion != "1.0"
             || !TryGetString(command, "expectedWorkspaceVersion", out var expectedWorkspaceVersion)
             || !TryGetString(command, "expectedSubjectVersion", out var expectedSubjectVersion)
             || !TryGetGuid(payload, "goalId", out var goalId)
@@ -447,27 +758,47 @@ public sealed class RelationshipWorkspaceController(
             || verificationDecision is not ("VERIFIED" or "CHANGES_REQUESTED")
             || correctionReason is { Length: > 500 }
             || (verificationDecision == "VERIFIED" && correctionReason is not null)
-            || (verificationDecision == "CHANGES_REQUESTED" && string.IsNullOrWhiteSpace(correctionReason)))
+            || (
+                verificationDecision == "CHANGES_REQUESTED"
+                && string.IsNullOrWhiteSpace(correctionReason)
+            )
+        )
             return WorkspaceProblem(400, "RELATIONSHIP_WORKSPACE_REQUEST_INVALID");
-        if (!TryGetParticipantId(out var actorParticipantId)) return NotFoundProblem();
+        if (!TryGetParticipantId(out var actorParticipantId))
+            return NotFoundProblem();
         var actorRole = await relationships.GetActiveRoleAsync(
-            relationship.TenantId, relationshipId, actorParticipantId, cancellationToken);
-        if (actorRole is not (RelationshipParticipantRole.Evaluator or RelationshipParticipantRole.Employer))
+            relationship.TenantId,
+            relationshipId,
+            actorParticipantId,
+            cancellationToken
+        );
+        if (
+            actorRole
+            is not (RelationshipParticipantRole.Evaluator or RelationshipParticipantRole.Employer)
+        )
             return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_BLOCKED");
-        if (!HasFreshAal3()) return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_ASSURANCE_REQUIRED");
+        if (!HasFreshAal3())
+            return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_ASSURANCE_REQUIRED");
 
-        var materialRequestHash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(
-            System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
-            {
-                schemaVersion,
-                expectedWorkspaceVersion,
-                expectedSubjectVersion,
-                commandKind,
-                goalId,
-                goalVersion,
-                verificationDecision,
-                correctionReason = correctionReason?.Trim(),
-            }))));
+        var materialRequestHash = Convert.ToHexStringLower(
+            System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(
+                    JsonSerializer.Serialize(
+                        new
+                        {
+                            schemaVersion,
+                            expectedWorkspaceVersion,
+                            expectedSubjectVersion,
+                            commandKind,
+                            goalId,
+                            goalVersion,
+                            verificationDecision,
+                            correctionReason = correctionReason?.Trim(),
+                        }
+                    )
+                )
+            )
+        );
         try
         {
             var result = await configuration.VerifyGoalAsync(
@@ -483,8 +814,10 @@ public sealed class RelationshipWorkspaceController(
                 verificationDecision,
                 correctionReason,
                 Guid.TryParse(User.FindFirstValue("correlation_id"), out var correlationId)
-                    ? correlationId : Guid.NewGuid(),
-                cancellationToken);
+                    ? correlationId
+                    : Guid.NewGuid(),
+                cancellationToken
+            );
             var receipt = new
             {
                 schemaVersion = "1.0",
@@ -496,8 +829,14 @@ public sealed class RelationshipWorkspaceController(
             };
             return result.Replayed ? Ok(receipt) : StatusCode(202, receipt);
         }
-        catch (ArgumentException) { return WorkspaceProblem(400, "RELATIONSHIP_WORKSPACE_REQUEST_INVALID"); }
-        catch (KeyNotFoundException) { return NotFoundProblem(); }
+        catch (ArgumentException)
+        {
+            return WorkspaceProblem(400, "RELATIONSHIP_WORKSPACE_REQUEST_INVALID");
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFoundProblem();
+        }
         catch (RelationshipConfigurationConflictException)
         {
             return WorkspaceProblem(409, "RELATIONSHIP_IDEMPOTENCY_CONFLICT");
@@ -513,12 +852,18 @@ public sealed class RelationshipWorkspaceController(
     }
 
     private async Task<IActionResult> SubmitPerformanceReviewCommandAsync(
-        EmploymentRelationship relationship, JsonElement command, JsonElement payload,
-        Guid idempotencyKey, CancellationToken cancellationToken)
+        EmploymentRelationship relationship,
+        JsonElement command,
+        JsonElement payload,
+        Guid idempotencyKey,
+        CancellationToken cancellationToken
+    )
     {
         if (performanceReviews is null)
             return WorkspaceProblem(503, "RELATIONSHIP_WORKSPACE_DEPENDENCY_UNAVAILABLE");
-        if (!TryGetString(command, "schemaVersion", out var schemaVersion) || schemaVersion != "1.0"
+        if (
+            !TryGetString(command, "schemaVersion", out var schemaVersion)
+            || schemaVersion != "1.0"
             || !TryGetString(command, "expectedWorkspaceVersion", out var expectedWorkspaceVersion)
             || expectedWorkspaceVersion != $"relationship-{relationship.StateVersion}"
             || !TryGetString(command, "expectedSubjectVersion", out var expectedSubjectVersion)
@@ -527,33 +872,60 @@ public sealed class RelationshipWorkspaceController(
             || !revisionElement.TryGetInt32(out var reviewRevision)
             || expectedSubjectVersion != $"performance-{reviewId:D}-{reviewRevision}"
             || !TryGetString(payload, "decision", out var decision)
-            || !TryGetOptionalString(payload, "reason", out var reason))
+            || !TryGetOptionalString(payload, "reason", out var reason)
+        )
             return WorkspaceProblem(400, "RELATIONSHIP_WORKSPACE_REQUEST_INVALID");
-        if (!TryGetParticipantId(out var actorParticipantId)) return NotFoundProblem();
+        if (!TryGetParticipantId(out var actorParticipantId))
+            return NotFoundProblem();
         var actorRole = await relationships.GetActiveRoleAsync(
-            relationship.TenantId, relationship.RelationshipId, actorParticipantId, cancellationToken);
-        if (actorRole is not (RelationshipParticipantRole.Evaluator or RelationshipParticipantRole.Employer))
+            relationship.TenantId,
+            relationship.RelationshipId,
+            actorParticipantId,
+            cancellationToken
+        );
+        if (
+            actorRole
+            is not (RelationshipParticipantRole.Evaluator or RelationshipParticipantRole.Employer)
+        )
             return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_BLOCKED");
-        if (!HasFreshAal3()) return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_ASSURANCE_REQUIRED");
-        var materialRequestHash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(
-            System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
-            {
-                schemaVersion,
-                expectedWorkspaceVersion,
-                expectedSubjectVersion,
-                commandKind = "RESPOND_TO_PERFORMANCE_REVIEW",
-                reviewId,
-                reviewRevision,
-                decision,
-                reason = reason?.Trim(),
-            }))));
+        if (!HasFreshAal3())
+            return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_ASSURANCE_REQUIRED");
+        var materialRequestHash = Convert.ToHexStringLower(
+            System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(
+                    JsonSerializer.Serialize(
+                        new
+                        {
+                            schemaVersion,
+                            expectedWorkspaceVersion,
+                            expectedSubjectVersion,
+                            commandKind = "RESPOND_TO_PERFORMANCE_REVIEW",
+                            reviewId,
+                            reviewRevision,
+                            decision,
+                            reason = reason?.Trim(),
+                        }
+                    )
+                )
+            )
+        );
         try
         {
             var result = await performanceReviews.RespondAsync(
-                relationship.TenantId, relationship.RelationshipId, actorParticipantId,
-                reviewId, reviewRevision, decision, reason, idempotencyKey, materialRequestHash,
+                relationship.TenantId,
+                relationship.RelationshipId,
+                actorParticipantId,
+                reviewId,
+                reviewRevision,
+                decision,
+                reason,
+                idempotencyKey,
+                materialRequestHash,
                 Guid.TryParse(User.FindFirstValue("correlation_id"), out var correlationId)
-                    ? correlationId : Guid.NewGuid(), cancellationToken);
+                    ? correlationId
+                    : Guid.NewGuid(),
+                cancellationToken
+            );
             var receipt = new
             {
                 schemaVersion = "1.0",
@@ -569,7 +941,10 @@ public sealed class RelationshipWorkspaceController(
         {
             return WorkspaceProblem(400, "RELATIONSHIP_WORKSPACE_REQUEST_INVALID");
         }
-        catch (KeyNotFoundException) { return NotFoundProblem(); }
+        catch (KeyNotFoundException)
+        {
+            return NotFoundProblem();
+        }
         catch (PerformanceReviewConflictException)
         {
             return WorkspaceProblem(409, "RELATIONSHIP_STATE_CONFLICT");
@@ -585,105 +960,220 @@ public sealed class RelationshipWorkspaceController(
     }
 
     private async Task<IActionResult> SubmitSkillCommandAsync(
-        EmploymentRelationship relationship, JsonElement command, JsonElement payload,
-        string commandKind, Guid idempotencyKey, CancellationToken cancellationToken)
+        EmploymentRelationship relationship,
+        JsonElement command,
+        JsonElement payload,
+        string commandKind,
+        Guid idempotencyKey,
+        CancellationToken cancellationToken
+    )
     {
-        if (configuration is null) return WorkspaceProblem(503, "RELATIONSHIP_WORKSPACE_DEPENDENCY_UNAVAILABLE");
-        if (!TryGetString(command, "schemaVersion", out var schemaVersion) || schemaVersion != "1.0"
+        if (configuration is null)
+            return WorkspaceProblem(503, "RELATIONSHIP_WORKSPACE_DEPENDENCY_UNAVAILABLE");
+        if (
+            !TryGetString(command, "schemaVersion", out var schemaVersion)
+            || schemaVersion != "1.0"
             || !TryGetString(command, "expectedWorkspaceVersion", out var expectedWorkspaceVersion)
             || !TryGetString(command, "expectedSubjectVersion", out var expectedSubjectVersion)
             || !TryGetGuid(payload, "configurationId", out var configurationId)
             || !TryGetString(payload, "skillId", out var skillId)
-            || !TryGetString(payload, "skillVersion", out var skillVersion))
+            || !TryGetString(payload, "skillVersion", out var skillVersion)
+        )
             return WorkspaceProblem(400, "RELATIONSHIP_WORKSPACE_REQUEST_INVALID");
-        if (!TryGetParticipantId(out var actorParticipantId)) return NotFoundProblem();
+        if (!TryGetParticipantId(out var actorParticipantId))
+            return NotFoundProblem();
         var actorRole = await relationships.GetActiveRoleAsync(
-            relationship.TenantId, relationship.RelationshipId, actorParticipantId, cancellationToken);
-        if (actorRole is not (RelationshipParticipantRole.Evaluator or RelationshipParticipantRole.Employer))
+            relationship.TenantId,
+            relationship.RelationshipId,
+            actorParticipantId,
+            cancellationToken
+        );
+        if (
+            actorRole
+            is not (RelationshipParticipantRole.Evaluator or RelationshipParticipantRole.Employer)
+        )
             return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_BLOCKED");
-        if (!HasFreshAal3()) return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_ASSURANCE_REQUIRED");
-        var requestHash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(
-            System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
-            {
-                schemaVersion, expectedWorkspaceVersion, expectedSubjectVersion, commandKind,
-                configurationId, skillId, skillVersion,
-            }))));
+        if (!HasFreshAal3())
+            return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_ASSURANCE_REQUIRED");
+        var requestHash = Convert.ToHexStringLower(
+            System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(
+                    JsonSerializer.Serialize(
+                        new
+                        {
+                            schemaVersion,
+                            expectedWorkspaceVersion,
+                            expectedSubjectVersion,
+                            commandKind,
+                            configurationId,
+                            skillId,
+                            skillVersion,
+                        }
+                    )
+                )
+            )
+        );
         try
         {
             var result = await configuration.DecideSkillAsync(
-                relationship.TenantId, relationship.RelationshipId, actorParticipantId, idempotencyKey,
-                requestHash, expectedWorkspaceVersion, expectedSubjectVersion, configurationId,
-                skillId, skillVersion, commandKind,
+                relationship.TenantId,
+                relationship.RelationshipId,
+                actorParticipantId,
+                idempotencyKey,
+                requestHash,
+                expectedWorkspaceVersion,
+                expectedSubjectVersion,
+                configurationId,
+                skillId,
+                skillVersion,
+                commandKind,
                 Guid.TryParse(User.FindFirstValue("correlation_id"), out var correlationId)
-                    ? correlationId : Guid.NewGuid(), cancellationToken);
-            var receipt = new { schemaVersion = "1.0", commandId = result.Decision.DecisionId,
-                commandKind, status = "COMPLETED", acceptedAt = result.Decision.OccurredAt,
-                replayed = result.Replayed };
+                    ? correlationId
+                    : Guid.NewGuid(),
+                cancellationToken
+            );
+            var receipt = new
+            {
+                schemaVersion = "1.0",
+                commandId = result.Decision.DecisionId,
+                commandKind,
+                status = "COMPLETED",
+                acceptedAt = result.Decision.OccurredAt,
+                replayed = result.Replayed,
+            };
             return result.Replayed ? Ok(receipt) : StatusCode(202, receipt);
         }
-        catch (ArgumentException) { return WorkspaceProblem(400, "RELATIONSHIP_WORKSPACE_REQUEST_INVALID"); }
-        catch (KeyNotFoundException) { return NotFoundProblem(); }
-        catch (RelationshipConfigurationConflictException) { return WorkspaceProblem(409, "RELATIONSHIP_IDEMPOTENCY_CONFLICT"); }
-        catch (RelationshipSkillVersionConflictException) { return WorkspaceProblem(409, "RELATIONSHIP_STATE_CONFLICT"); }
-        catch (ConstitutionalActionDeniedException) { return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_BLOCKED"); }
+        catch (ArgumentException)
+        {
+            return WorkspaceProblem(400, "RELATIONSHIP_WORKSPACE_REQUEST_INVALID");
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFoundProblem();
+        }
+        catch (RelationshipConfigurationConflictException)
+        {
+            return WorkspaceProblem(409, "RELATIONSHIP_IDEMPOTENCY_CONFLICT");
+        }
+        catch (RelationshipSkillVersionConflictException)
+        {
+            return WorkspaceProblem(409, "RELATIONSHIP_STATE_CONFLICT");
+        }
+        catch (ConstitutionalActionDeniedException)
+        {
+            return WorkspaceProblem(423, "RELATIONSHIP_WORKSPACE_BLOCKED");
+        }
     }
 
     [HttpGet("commands/{commandId:guid}")]
-    public async Task<IActionResult> GetCommandAsync(Guid relationshipId, Guid commandId, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetCommandAsync(
+        Guid relationshipId,
+        Guid commandId,
+        CancellationToken cancellationToken
+    )
     {
         var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
-        if (relationship is null) return NotFoundProblem();
+        if (relationship is null)
+            return NotFoundProblem();
         if (performanceReviews is not null)
         {
             var response = await performanceReviews.GetResponseAsync(
-                relationship.TenantId, relationshipId, commandId, cancellationToken);
-            if (response is not null) return Ok(new
-            {
-                schemaVersion = "1.0", commandId = response.ResponseId,
-                commandKind = "RESPOND_TO_PERFORMANCE_REVIEW", status = "COMPLETED", relationshipId,
-                steps = new[] { new { owner = "BP", status = "COMPLETED" } },
-                resolvedAt = response.OccurredAt,
-            });
+                relationship.TenantId,
+                relationshipId,
+                commandId,
+                cancellationToken
+            );
+            if (response is not null)
+                return Ok(
+                    new
+                    {
+                        schemaVersion = "1.0",
+                        commandId = response.ResponseId,
+                        commandKind = "RESPOND_TO_PERFORMANCE_REVIEW",
+                        status = "COMPLETED",
+                        relationshipId,
+                        steps = new[] { new { owner = "BP", status = "COMPLETED" } },
+                        resolvedAt = response.OccurredAt,
+                    }
+                );
         }
-        if (configuration is null) return NotFoundProblem();
+        if (configuration is null)
+            return NotFoundProblem();
         var skillDecision = await configuration.GetSkillDecisionAsync(
-            relationship.TenantId, relationshipId, commandId, cancellationToken);
-        if (skillDecision is not null) return Ok(new
-        {
-            schemaVersion = "1.0", commandId = skillDecision.DecisionId,
-            commandKind = skillDecision.Decision, status = "COMPLETED", relationshipId,
-            steps = new[] { new { owner = "BP", status = "COMPLETED" } },
-            resolvedAt = skillDecision.OccurredAt,
-        });
-        var decision = await configuration.GetGoalDecisionAsync(
-            relationship.TenantId, relationshipId, commandId, cancellationToken);
-        return decision is null ? NotFoundProblem() : Ok(new
-        {
-            schemaVersion = "1.0",
-            commandId = decision.DecisionId,
-            commandKind = "VERIFY_GOAL",
-            status = "COMPLETED",
+            relationship.TenantId,
             relationshipId,
-            steps = new[] { new { owner = "BP", status = "COMPLETED" } },
-            resolvedAt = decision.OccurredAt,
-        });
+            commandId,
+            cancellationToken
+        );
+        if (skillDecision is not null)
+            return Ok(
+                new
+                {
+                    schemaVersion = "1.0",
+                    commandId = skillDecision.DecisionId,
+                    commandKind = skillDecision.Decision,
+                    status = "COMPLETED",
+                    relationshipId,
+                    steps = new[] { new { owner = "BP", status = "COMPLETED" } },
+                    resolvedAt = skillDecision.OccurredAt,
+                }
+            );
+        var decision = await configuration.GetGoalDecisionAsync(
+            relationship.TenantId,
+            relationshipId,
+            commandId,
+            cancellationToken
+        );
+        return decision is null
+            ? NotFoundProblem()
+            : Ok(
+                new
+                {
+                    schemaVersion = "1.0",
+                    commandId = decision.DecisionId,
+                    commandKind = "VERIFY_GOAL",
+                    status = "COMPLETED",
+                    relationshipId,
+                    steps = new[] { new { owner = "BP", status = "COMPLETED" } },
+                    resolvedAt = decision.OccurredAt,
+                }
+            );
     }
 
     [HttpGet("evidence")]
-    public async Task<IActionResult> ListEvidenceAsync(Guid relationshipId, CancellationToken cancellationToken)
+    public async Task<IActionResult> ListEvidenceAsync(
+        Guid relationshipId,
+        CancellationToken cancellationToken
+    )
     {
-        if (evidence is null || !TryGetEvidenceContext(out var tenantId, out var participantId)) return NotFoundProblem();
+        if (evidence is null || !TryGetEvidenceContext(out var tenantId, out var participantId))
+            return NotFoundProblem();
         try
         {
-            var items = await evidence.ListAsync(tenantId, relationshipId, participantId, cancellationToken);
-            return Ok(new
-            {
-                schemaVersion = "1.0",
+            var items = await evidence.ListAsync(
+                tenantId,
                 relationshipId,
-                items = items.Select(value => new { evidenceId = value.EvidenceId, subject = value.Subject, state = value.State }),
-            });
+                participantId,
+                cancellationToken
+            );
+            return Ok(
+                new
+                {
+                    schemaVersion = "1.0",
+                    relationshipId,
+                    items = items.Select(value => new
+                    {
+                        evidenceId = value.EvidenceId,
+                        subject = value.Subject,
+                        state = value.State,
+                    }),
+                }
+            );
         }
-        catch (KeyNotFoundException) { return NotFoundProblem(); }
+        catch (KeyNotFoundException)
+        {
+            return NotFoundProblem();
+        }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             return WorkspaceProblem(503, "CONSTITUTIONAL_ENGINE_UNAVAILABLE");
@@ -691,26 +1181,43 @@ public sealed class RelationshipWorkspaceController(
     }
 
     [HttpGet("evidence/{evidenceId:guid}")]
-    public async Task<IActionResult> GetEvidenceAsync(Guid relationshipId, Guid evidenceId, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetEvidenceAsync(
+        Guid relationshipId,
+        Guid evidenceId,
+        CancellationToken cancellationToken
+    )
     {
-        if (evidence is null || !TryGetEvidenceContext(out var tenantId, out var participantId)) return NotFoundProblem();
+        if (evidence is null || !TryGetEvidenceContext(out var tenantId, out var participantId))
+            return NotFoundProblem();
         try
         {
             var item = await evidence.GetAsync(
-                tenantId, relationshipId, participantId, evidenceId, cancellationToken);
-            return item is null ? NotFoundProblem() : Ok(new
-            {
-                schemaVersion = "1.0",
-                evidenceId = item.EvidenceId,
-                subject = item.Subject,
-                state = item.State,
-                completeness = "CONSTITUTIONAL_PROOF_RETAINED",
-                payloadState = item.PayloadState,
-                payloadReference = item.PayloadReference,
-                erasedAt = item.ErasedAt,
-            });
+                tenantId,
+                relationshipId,
+                participantId,
+                evidenceId,
+                cancellationToken
+            );
+            return item is null
+                ? NotFoundProblem()
+                : Ok(
+                    new
+                    {
+                        schemaVersion = "1.0",
+                        evidenceId = item.EvidenceId,
+                        subject = item.Subject,
+                        state = item.State,
+                        completeness = "CONSTITUTIONAL_PROOF_RETAINED",
+                        payloadState = item.PayloadState,
+                        payloadReference = item.PayloadReference,
+                        erasedAt = item.ErasedAt,
+                    }
+                );
         }
-        catch (KeyNotFoundException) { return NotFoundProblem(); }
+        catch (KeyNotFoundException)
+        {
+            return NotFoundProblem();
+        }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             return WorkspaceProblem(503, "CONSTITUTIONAL_ENGINE_UNAVAILABLE");
@@ -718,22 +1225,51 @@ public sealed class RelationshipWorkspaceController(
     }
 
     [HttpPost("evidence-exports")]
-    public async Task<IActionResult> RequestEvidenceExportAsync(Guid relationshipId, [FromBody] RequestRelationshipEvidenceExport request,
-        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey, CancellationToken cancellationToken)
+    public async Task<IActionResult> RequestEvidenceExportAsync(
+        Guid relationshipId,
+        [FromBody] RequestRelationshipEvidenceExport request,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
+        CancellationToken cancellationToken
+    )
     {
-        if (evidence is null || !TryGetEvidenceContext(out var tenantId, out var participantId)) return NotFoundProblem();
-        if (request.SchemaVersion != "1.0" || !Guid.TryParse(idempotencyKey, out var parsedIdempotencyKey))
+        if (evidence is null || !TryGetEvidenceContext(out var tenantId, out var participantId))
+            return NotFoundProblem();
+        if (
+            request.SchemaVersion != "1.0"
+            || !Guid.TryParse(idempotencyKey, out var parsedIdempotencyKey)
+        )
             return WorkspaceProblem(400, "RELATIONSHIP_WORKSPACE_REQUEST_INVALID");
         try
         {
             var result = await evidence.CreateExportAsync(
-                tenantId, relationshipId, participantId, parsedIdempotencyKey, request.Purpose, cancellationToken);
-            var response = new { schemaVersion = "1.0", exportId = result.ExportId, status = result.Status, acceptedAt = result.AcceptedAt };
+                tenantId,
+                relationshipId,
+                participantId,
+                parsedIdempotencyKey,
+                request.Purpose,
+                cancellationToken
+            );
+            var response = new
+            {
+                schemaVersion = "1.0",
+                exportId = result.ExportId,
+                status = result.Status,
+                acceptedAt = result.AcceptedAt,
+            };
             return result.Replayed ? Ok(response) : StatusCode(202, response);
         }
-        catch (KeyNotFoundException) { return NotFoundProblem(); }
-        catch (ArgumentException) { return WorkspaceProblem(400, "RELATIONSHIP_WORKSPACE_REQUEST_INVALID"); }
-        catch (ChannelContinuityConflictException) { return WorkspaceProblem(409, "RELATIONSHIP_IDEMPOTENCY_CONFLICT"); }
+        catch (KeyNotFoundException)
+        {
+            return NotFoundProblem();
+        }
+        catch (ArgumentException)
+        {
+            return WorkspaceProblem(400, "RELATIONSHIP_WORKSPACE_REQUEST_INVALID");
+        }
+        catch (ChannelContinuityConflictException)
+        {
+            return WorkspaceProblem(409, "RELATIONSHIP_IDEMPOTENCY_CONFLICT");
+        }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             return WorkspaceProblem(503, "CONSTITUTIONAL_ENGINE_UNAVAILABLE");
@@ -741,63 +1277,106 @@ public sealed class RelationshipWorkspaceController(
     }
 
     [HttpGet("evidence-exports/{exportId:guid}")]
-    public async Task<IActionResult> GetEvidenceExportAsync(Guid relationshipId, Guid exportId, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetEvidenceExportAsync(
+        Guid relationshipId,
+        Guid exportId,
+        CancellationToken cancellationToken
+    )
     {
-        if (evidence is null || !TryGetEvidenceContext(out var tenantId, out var participantId)) return NotFoundProblem();
+        if (evidence is null || !TryGetEvidenceContext(out var tenantId, out var participantId))
+            return NotFoundProblem();
         try
         {
             var result = await evidence.GetExportAsync(
-                tenantId, relationshipId, participantId, exportId, cancellationToken);
-            if (result is null) return NotFoundProblem();
-            return Ok(new
-            {
-                schemaVersion = "1.0",
-                exportId = result.ExportId,
-                status = result.Status,
-                downloadAvailableUntil = result.ExpiresAt,
-                downloadUrl = result.DownloadUrl,
-                mediaType = "application/vnd.waooaw.relationship-evidence+json;version=1.0",
-                documentSha256 = result.DocumentSha256,
-                document = JsonSerializer.Deserialize<JsonElement>(result.DocumentJson),
-            });
+                tenantId,
+                relationshipId,
+                participantId,
+                exportId,
+                cancellationToken
+            );
+            if (result is null)
+                return NotFoundProblem();
+            return Ok(
+                new
+                {
+                    schemaVersion = "1.0",
+                    exportId = result.ExportId,
+                    status = result.Status,
+                    downloadAvailableUntil = result.ExpiresAt,
+                    downloadUrl = result.DownloadUrl,
+                    mediaType = "application/vnd.waooaw.relationship-evidence+json;version=1.0",
+                    documentSha256 = result.DocumentSha256,
+                    document = JsonSerializer.Deserialize<JsonElement>(result.DocumentJson),
+                }
+            );
         }
-        catch (KeyNotFoundException) { return NotFoundProblem(); }
+        catch (KeyNotFoundException)
+        {
+            return NotFoundProblem();
+        }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             return WorkspaceProblem(503, "CONSTITUTIONAL_ENGINE_UNAVAILABLE");
         }
     }
 
-    private async Task<IActionResult> UnavailableSectionAsync(Guid relationshipId, string sectionType,
-        string itemsProperty, CancellationToken cancellationToken)
+    private async Task<IActionResult> UnavailableSectionAsync(
+        Guid relationshipId,
+        string sectionType,
+        string itemsProperty,
+        CancellationToken cancellationToken
+    )
     {
         var relationship = await GetAuthorizedRelationshipAsync(relationshipId, cancellationToken);
-        if (relationship is null) return NotFoundProblem();
+        if (relationship is null)
+            return NotFoundProblem();
         var common = new Dictionary<string, object?>
         {
-            ["sectionType"] = sectionType, ["currencyState"] = "UNAVAILABLE",
-            ["provenance"] = Provenance(sectionType == "WORK" ? "PR" : "DMA", "unavailable-1", DateTimeOffset.UtcNow),
-            ["availableCommands"] = Array.Empty<object>(), [itemsProperty] = Array.Empty<object>(),
+            ["sectionType"] = sectionType,
+            ["currencyState"] = "UNAVAILABLE",
+            ["provenance"] = Provenance(
+                sectionType == "WORK" ? "PR" : "DMA",
+                "unavailable-1",
+                DateTimeOffset.UtcNow
+            ),
+            ["availableCommands"] = Array.Empty<object>(),
+            [itemsProperty] = Array.Empty<object>(),
         };
         return Ok(common);
     }
 
-    private async Task<EmploymentRelationship?> GetAuthorizedRelationshipAsync(Guid relationshipId, CancellationToken cancellationToken)
+    private async Task<EmploymentRelationship?> GetAuthorizedRelationshipAsync(
+        Guid relationshipId,
+        CancellationToken cancellationToken
+    )
     {
-        if (!HttpContext.Items.TryGetValue(TenantIsolationMiddleware.TenantIdItemKey, out var value)
-            || value is not string text || !Guid.TryParse(text, out var tenantId)) return null;
-        var participant = User.FindFirstValue("participant_id")
+        if (
+            !HttpContext.Items.TryGetValue(TenantIsolationMiddleware.TenantIdItemKey, out var value)
+            || value is not string text
+            || !Guid.TryParse(text, out var tenantId)
+        )
+            return null;
+        var participant =
+            User.FindFirstValue("participant_id")
             ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? User.FindFirstValue("sub");
-        if (!Guid.TryParse(participant, out var participantId)
-            || !await relationships.IsActiveParticipantAsync(tenantId, relationshipId, participantId, cancellationToken))
+        if (
+            !Guid.TryParse(participant, out var participantId)
+            || !await relationships.IsActiveParticipantAsync(
+                tenantId,
+                relationshipId,
+                participantId,
+                cancellationToken
+            )
+        )
             return null;
         return await relationships.GetAsync(tenantId, relationshipId, cancellationToken);
     }
 
     private RelationshipOwnerContext OwnerContext(EmploymentRelationship relationship)
     {
-        var actorSubject = User.FindFirstValue("participant_id")
+        var actorSubject =
+            User.FindFirstValue("participant_id")
             ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? User.FindFirstValue("sub")
             ?? "unknown";
@@ -810,17 +1389,22 @@ public sealed class RelationshipWorkspaceController(
             relationship.RelationshipId,
             relationship.StateVersion,
             correlationId,
-            relationship.AgentInstanceId);
+            relationship.AgentInstanceId
+        );
     }
 
     private bool TryGetEvidenceContext(out Guid tenantId, out Guid participantId)
     {
         tenantId = default;
         participantId = default;
-        var participant = User.FindFirstValue("participant_id")
+        var participant =
+            User.FindFirstValue("participant_id")
             ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? User.FindFirstValue("sub");
-        return HttpContext.Items.TryGetValue(TenantIsolationMiddleware.TenantIdItemKey, out var value)
+        return HttpContext.Items.TryGetValue(
+                TenantIsolationMiddleware.TenantIdItemKey,
+                out var value
+            )
             && value is string tenant
             && Guid.TryParse(tenant, out tenantId)
             && Guid.TryParse(participant, out participantId);
@@ -828,7 +1412,8 @@ public sealed class RelationshipWorkspaceController(
 
     private bool TryGetParticipantId(out Guid participantId)
     {
-        var participant = User.FindFirstValue("participant_id")
+        var participant =
+            User.FindFirstValue("participant_id")
             ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? User.FindFirstValue("sub");
         return Guid.TryParse(participant, out participantId);
@@ -836,8 +1421,14 @@ public sealed class RelationshipWorkspaceController(
 
     private bool HasFreshAal3()
     {
-        if (!string.Equals(User.FindFirstValue("authentication_assurance"), "AAL3_FRESH", StringComparison.Ordinal)
-            || !long.TryParse(User.FindFirstValue("auth_time"), out var unixTime)) return false;
+        if (
+            !string.Equals(
+                User.FindFirstValue("authentication_assurance"),
+                "AAL3_FRESH",
+                StringComparison.Ordinal
+            ) || !long.TryParse(User.FindFirstValue("auth_time"), out var unixTime)
+        )
+            return false;
         var age = DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeSeconds(unixTime);
         return age >= TimeSpan.FromSeconds(-30) && age <= TimeSpan.FromMinutes(5);
     }
@@ -850,11 +1441,17 @@ public sealed class RelationshipWorkspaceController(
             && !string.IsNullOrWhiteSpace(result = property.GetString()!);
     }
 
-    private static bool TryGetOptionalString(JsonElement value, string propertyName, out string? result)
+    private static bool TryGetOptionalString(
+        JsonElement value,
+        string propertyName,
+        out string? result
+    )
     {
         result = null;
-        if (!value.TryGetProperty(propertyName, out var property)) return true;
-        if (property.ValueKind != JsonValueKind.String) return false;
+        if (!value.TryGetProperty(propertyName, out var property))
+            return true;
+        if (property.ValueKind != JsonValueKind.String)
+            return false;
         result = property.GetString();
         return true;
     }
@@ -867,50 +1464,107 @@ public sealed class RelationshipWorkspaceController(
             && Guid.TryParse(property.GetString(), out result);
     }
 
-    private IActionResult NotFoundProblem() => WorkspaceProblem(404, "RELATIONSHIP_WORKSPACE_NOT_ACCESSIBLE");
+    private IActionResult NotFoundProblem() =>
+        WorkspaceProblem(404, "RELATIONSHIP_WORKSPACE_NOT_ACCESSIBLE");
 
-    private ObjectResult WorkspaceProblem(int status, string code) => StatusCode(status, new
-    {
-        type = $"https://waooaw.com/problems/{code.ToLowerInvariant().Replace('_', '-')}",
-        title = "The relationship workspace request could not be completed", status, code,
-        correlationId = User.FindFirstValue("correlation_id") ?? Guid.NewGuid().ToString(),
-    });
+    private ObjectResult WorkspaceProblem(int status, string code) =>
+        StatusCode(
+            status,
+            new
+            {
+                type = $"https://waooaw.com/problems/{code.ToLowerInvariant().Replace('_', '-')}",
+                title = "The relationship workspace request could not be completed",
+                status,
+                code,
+                correlationId = User.FindFirstValue("correlation_id") ?? Guid.NewGuid().ToString(),
+            }
+        );
 
     private static object Section(string type, string state, string version, DateTimeOffset now) =>
-        new { sectionType = type, currencyState = state,
-            provenance = Provenance(type is "USAGE_BUDGET" ? "WBE" : type is "WORK" ? "PR" : type is "RESULTS" ? "DMA" : "BP", version, now),
-            availableCommands = Array.Empty<object>() };
+        new
+        {
+            sectionType = type,
+            currencyState = state,
+            provenance = Provenance(
+                type is "USAGE_BUDGET" ? "WBE"
+                    : type is "WORK" ? "PR"
+                    : type is "RESULTS" ? "DMA"
+                    : "BP",
+                version,
+                now
+            ),
+            availableCommands = Array.Empty<object>(),
+        };
 
     private static object Provenance(string owner, string version, DateTimeOffset producedAt) =>
-        new { owner, sourceProjectionVersion = version, producedAt };
+        new
+        {
+            owner,
+            sourceProjectionVersion = version,
+            producedAt,
+        };
 
-    private static string Cursor(Guid relationshipId, int version) => $"workspace:{relationshipId:N}:{version:D8}";
+    private static string Cursor(Guid relationshipId, int version) =>
+        $"workspace:{relationshipId:N}:{version:D8}";
 
     private static object ConfigurationResponse(
         EmploymentRelationship relationship,
-        RelationshipConfigurationState state)
+        RelationshipConfigurationState state
+    )
     {
         var onboardState = state.Onboard is null ? "NOT_STARTED" : "VERIFIED";
-        var inductState = state.InductComplete ? "VERIFIED"
-            : state.ConfirmedContextCount > 0 ? "IN_PROGRESS" : "NOT_STARTED";
-        var lifecyclePhase = state.InductComplete ? "GOAL_VERIFICATION"
-            : state.Onboard is null ? "ONBOARD" : "INDUCT";
+        var inductState =
+            state.InductComplete ? "VERIFIED"
+            : state.ConfirmedContextCount > 0 ? "IN_PROGRESS"
+            : "NOT_STARTED";
+        var lifecyclePhase =
+            state.InductComplete ? "GOAL_VERIFICATION"
+            : state.Onboard is null ? "ONBOARD"
+            : "INDUCT";
         return new
         {
             sectionType = "CONFIGURATION",
             currencyState = "CURRENT",
-            provenance = Provenance("BP", $"relationship-{relationship.StateVersion}", state.ProducedAt),
+            provenance = Provenance(
+                "BP",
+                $"relationship-{relationship.StateVersion}",
+                state.ProducedAt
+            ),
             availableCommands = Array.Empty<object>(),
             lifecyclePhase,
             items = new object[]
             {
-                new { stepKey = "ONBOARD", label = "Onboard", state = onboardState,
-                    summary = state.Onboard is null ? "Choose relationship presentation preferences." : "Presentation preferences saved.",
-                    continuationTarget = new { surface = "CONFIGURATION", relationshipId = relationship.RelationshipId } },
-                new { stepKey = "INDUCT", label = "Induct", state = inductState,
-                    summary = state.InductComplete ? "Required business context confirmed." : "Continue the consultative induction conversation.",
-                    confirmedContextVersion = state.ConfirmedContextCount > 0 ? $"context-{state.ConfirmedContextCount}" : null,
-                    continuationTarget = new { surface = "CONVERSATION", relationshipId = relationship.RelationshipId } },
+                new
+                {
+                    stepKey = "ONBOARD",
+                    label = "Onboard",
+                    state = onboardState,
+                    summary = state.Onboard is null
+                        ? "Choose relationship presentation preferences."
+                        : "Presentation preferences saved.",
+                    continuationTarget = new
+                    {
+                        surface = "CONFIGURATION",
+                        relationshipId = relationship.RelationshipId,
+                    },
+                },
+                new
+                {
+                    stepKey = "INDUCT",
+                    label = "Induct",
+                    state = inductState,
+                    summary = state.InductComplete
+                        ? "Required business context confirmed."
+                        : "Continue the consultative induction conversation.",
+                    confirmedContextVersion = state.ConfirmedContextCount > 0
+                        ? $"context-{state.ConfirmedContextCount}"
+                        : null,
+                    continuationTarget = new
+                    {
+                        surface = "CONVERSATION",
+                        relationshipId = relationship.RelationshipId,
+                    },
+                },
             },
         };
     }
@@ -923,18 +1577,26 @@ public sealed class RelationshipWorkspaceController(
         ExecutionOwnerProjection? execution,
         CommercialOwnerProjection? commercial,
         OperationalMandateReadiness mandateReadiness,
-        DateTimeOffset producedAt)
+        DateTimeOffset producedAt
+    )
     {
         var onboardVerified = configuration?.Onboard is not null;
         var inductVerified = configuration?.InductComplete is true;
-        var goalState = !inductVerified ? "BLOCKED"
+        var goalState =
+            !inductVerified ? "BLOCKED"
             : activeGoalCount == 0 ? "NOT_STARTED"
-            : goalsVerified ? "VERIFIED" : "READY_FOR_CONFIRMATION";
+            : goalsVerified ? "VERIFIED"
+            : "READY_FOR_CONFIRMATION";
         var outcomeState = goalsVerified ? "VERIFIED" : "BLOCKED";
-        var active = relationship.State is EmploymentRelationshipState.Active
-            or EmploymentRelationshipState.TrialActive;
-        var ownerInputsReady = active && goalsVerified
-            && execution?.State == "CURRENT" && commercial?.CurrencyState == "CURRENT";
+        var active =
+            relationship.State
+            is EmploymentRelationshipState.Active
+                or EmploymentRelationshipState.TrialActive;
+        var ownerInputsReady =
+            active
+            && goalsVerified
+            && execution?.State == "CURRENT"
+            && commercial?.CurrencyState == "CURRENT";
         var operationsReady = ownerInputsReady && mandateReadiness.Ready;
         return new
         {
@@ -943,41 +1605,71 @@ public sealed class RelationshipWorkspaceController(
             producedAt,
             stages = new object[]
             {
-                LifecycleStage("ONBOARD", onboardVerified ? "VERIFIED" : "NOT_STARTED", "BP",
+                LifecycleStage(
+                    "ONBOARD",
+                    onboardVerified ? "VERIFIED" : "NOT_STARTED",
+                    "BP",
                     onboardVerified ? "onboard-current" : null,
                     "Customer presentation preferences are accepted.",
                     onboardVerified ? [] : ["Presentation preferences are not confirmed."],
-                    onboardVerified ? "Continue induction." : "Confirm presentation preferences."),
-                LifecycleStage("INDUCT", inductVerified ? "VERIFIED"
-                        : configuration?.ConfirmedContextCount > 0 ? "IN_PROGRESS" : "NOT_STARTED", "BP",
+                    onboardVerified ? "Continue induction." : "Confirm presentation preferences."
+                ),
+                LifecycleStage(
+                    "INDUCT",
+                    inductVerified ? "VERIFIED"
+                        : configuration?.ConfirmedContextCount > 0 ? "IN_PROGRESS"
+                        : "NOT_STARTED",
+                    "BP",
                     inductVerified ? $"context-{configuration!.ConfirmedContextCount}" : null,
                     "Required business context fields are explicitly confirmed.",
                     inductVerified ? [] : ["Required business context remains unconfirmed."],
-                    inductVerified ? "Review goals." : "Continue the induction conversation."),
-                LifecycleStage("GOAL_VERIFICATION", goalState, "BP",
+                    inductVerified ? "Review goals." : "Continue the induction conversation."
+                ),
+                LifecycleStage(
+                    "GOAL_VERIFICATION",
+                    goalState,
+                    "BP",
                     goalsVerified ? $"goals-{activeGoalCount}-verified" : null,
                     "Every active Skill has a current customer-verified goal and authority snapshot.",
                     goalsVerified ? [] : ["Every active goal must be verified."],
-                    goalsVerified ? "Review business outcomes." : "Verify each active goal."),
-                LifecycleStage("BUSINESS_OUTCOMES", outcomeState, "BP",
+                    goalsVerified ? "Review business outcomes." : "Verify each active goal."
+                ),
+                LifecycleStage(
+                    "BUSINESS_OUTCOMES",
+                    outcomeState,
+                    "BP",
                     goalsVerified ? $"outcomes-{activeGoalCount}-verified" : null,
                     "Outcome measures, attribution boundaries and review cadence are customer-verified.",
                     goalsVerified ? [] : ["Verified goal outcome definitions are required."],
-                    goalsVerified ? "Check operational eligibility." : "Complete goal verification."),
-                LifecycleStage("OPERATIONS", operationsReady ? "VERIFIED" : "BLOCKED", "BP",
+                    goalsVerified ? "Check operational eligibility." : "Complete goal verification."
+                ),
+                LifecycleStage(
+                    "OPERATIONS",
+                    operationsReady ? "VERIFIED" : "BLOCKED",
+                    "BP",
                     operationsReady ? $"relationship-{relationship.StateVersion}" : null,
                     "Relationship, goals, owner truth and a complete immutable mandate are current.",
-                    operationsReady ? [] : ownerInputsReady
-                        ? mandateReadiness.BlockedReasons.ToArray()
+                    operationsReady ? []
+                        : ownerInputsReady ? mandateReadiness.BlockedReasons.ToArray()
                         : ["One or more operational dependencies are not current."],
-                    operationsReady ? "Continue governed work." : "Resolve the named lifecycle dependencies."),
+                    operationsReady
+                        ? "Continue governed work."
+                        : "Resolve the named lifecycle dependencies."
+                ),
             },
         };
     }
 
     private static object LifecycleStage(
-        string stage, string state, string owner, string? outputRevision,
-        string completionCriteria, string[] blockerReasons, string nextAuthorizedAction) => new
+        string stage,
+        string state,
+        string owner,
+        string? outputRevision,
+        string completionCriteria,
+        string[] blockerReasons,
+        string nextAuthorizedAction
+    ) =>
+        new
         {
             stage,
             state,
@@ -991,28 +1683,31 @@ public sealed class RelationshipWorkspaceController(
             nextAuthorizedAction,
         };
 
-    private static object GoalResponse(RelationshipPortalGoal item) => new
-    {
-        goalId = item.Goal.GoalId,
-        goalVersion = RelationshipConfigurationService.GetGoalVersion(item.Goal),
-        skillId = item.SkillId,
-        skillLabel = item.SkillLabel,
-        measure = item.Goal.Measure,
-        frequency = $"EVERY_{item.Goal.ReviewCadenceMonths}_MONTHS",
-        baseline = item.Goal.Baseline,
-        attributionBoundary = item.Goal.DecisionThreshold,
-        verificationStatus = item.CurrentDecision?.Decision ?? "PENDING_CUSTOMER",
-        customerVerifiedAt = item.CurrentDecision?.Decision == "VERIFIED"
-            ? item.CurrentDecision.OccurredAt : (DateTimeOffset?)null,
-        status = NormalizeGoalStatus(item.Goal.Status),
-        evidenceState = item.CurrentDecision is null ? "PENDING" : "RECORDED",
-    };
+    private static object GoalResponse(RelationshipPortalGoal item) =>
+        new
+        {
+            goalId = item.Goal.GoalId,
+            goalVersion = RelationshipConfigurationService.GetGoalVersion(item.Goal),
+            skillId = item.SkillId,
+            skillLabel = item.SkillLabel,
+            measure = item.Goal.Measure,
+            frequency = $"EVERY_{item.Goal.ReviewCadenceMonths}_MONTHS",
+            baseline = item.Goal.Baseline,
+            attributionBoundary = item.Goal.DecisionThreshold,
+            verificationStatus = item.CurrentDecision?.Decision ?? "PENDING_CUSTOMER",
+            customerVerifiedAt = item.CurrentDecision?.Decision == "VERIFIED"
+                ? item.CurrentDecision.OccurredAt
+                : (DateTimeOffset?)null,
+            status = NormalizeGoalStatus(item.Goal.Status),
+            evidenceState = item.CurrentDecision is null ? "PENDING" : "RECORDED",
+        };
 
-    private static string NormalizeGoalStatus(string status) => status.ToUpperInvariant() switch
-    {
-        "SUPERSEDED" => "SUPERSEDED",
-        "RETIRED" => "RETIRED",
-        "BLOCKED" => "BLOCKED",
-        _ => "ACTIVE",
-    };
+    private static string NormalizeGoalStatus(string status) =>
+        status.ToUpperInvariant() switch
+        {
+            "SUPERSEDED" => "SUPERSEDED",
+            "RETIRED" => "RETIRED",
+            "BLOCKED" => "BLOCKED",
+            _ => "ACTIVE",
+        };
 }

@@ -9,9 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-CONVENTIONAL_COMMIT = re.compile(
-    r"^(feat|fix|constitutional|cct|chore|refactor|security|docs|agent)\([^)]+\):\s+.+"
-)
+CONVENTIONAL_COMMIT = re.compile(r"^(feat|fix|constitutional|cct|chore|refactor|security|docs|agent)\([^)]+\):\s+.+")
 BLOCKING_TRACE_TYPES = {"feat", "fix", "constitutional", "cct"}
 TRACE_REFERENCE = re.compile(
     r"(?:IB:\s*IB-\d+|WC-\d+|FIX:\s*#?\d+|Constitutional:\s*(?:C|ADR|DP)-\d+)",
@@ -34,10 +32,7 @@ def validate_pr_body(body: str) -> list[str]:
     if not WORK_CONTRACT.search(metadata):
         violations.append("PR_MISSING_WORK_CONTRACT: add `Work Contract: WC-<number>`")
     if not CONSTITUTIONAL_BASIS.search(metadata):
-        violations.append(
-            "PR_MISSING_CONSTITUTIONAL_BASIS: add "
-            "`Constitutional Basis: C-<number> | ADR-<number> | DP-<number>`"
-        )
+        violations.append("PR_MISSING_CONSTITUTIONAL_BASIS: add `Constitutional Basis: C-<number> | ADR-<number> | DP-<number>`")
     return violations
 
 
@@ -49,23 +44,20 @@ def validate_commit(subject: str, body: str) -> list[str]:
         return [f"COMMIT_FORMAT_INVALID: {subject}"]
     commit_type = match.group(1)
     if commit_type in BLOCKING_TRACE_TYPES and not TRACE_REFERENCE.search(f"{subject}\n{body}"):
-        return [
-            f"COMMIT_TRACE_MISSING: {subject} (add IB, WC, FIX, or Constitutional reference "
-            "to subject or body)"
-        ]
+        return [f"COMMIT_TRACE_MISSING: {subject} (add IB, WC, FIX, or Constitutional reference to subject or body)"]
     return []
 
 
 def read_commits(base: str, head: str) -> list[tuple[str, str]]:
     result = subprocess.run(  # noqa: S603
-        [
+        [  # noqa: S607
             "git",
             "-c",
             f"safe.directory={Path.cwd().resolve()}",
             "log",
             f"{base}..{head}",
             "--format=%s%x1f%b%x1e",
-        ],  # noqa: S607
+        ],
         check=True,
         capture_output=True,
         text=True,

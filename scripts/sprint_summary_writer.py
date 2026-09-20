@@ -9,6 +9,7 @@ Writes: $GITHUB_STEP_SUMMARY (appends)
 
 Constitutional basis: C-077 (FinOps visibility), C-069 (observable state)
 """
+
 from __future__ import annotations
 
 import json
@@ -27,8 +28,8 @@ def main() -> int:
     signal = json.loads(signal_path.read_text())
     file_costs = signal.get("file_costs", {})
     tasks_done = signal.get("tasks_done", [])
-    tasks_req  = signal.get("tasks_requested", [])
-    subtasks   = signal.get("subtask_results", {})
+    tasks_req = signal.get("tasks_requested", [])
+    subtasks = signal.get("subtask_results", {})
 
     lines: list[str] = []
 

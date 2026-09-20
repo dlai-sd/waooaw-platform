@@ -9,5 +9,6 @@ public interface IClaimEvaluator
     string ClaimId { get; }
     Task<EvaluationResult> EvaluateAsync(
         EvaluationContext context,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 }

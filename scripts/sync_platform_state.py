@@ -38,32 +38,71 @@ def _render_updates(registry: dict) -> dict[Path, list[tuple[str, str]]]:
 
     return {
         REPO_ROOT / "README.md": [
-            (r"^Version:\s+.*$", f"Version:              v{state['version']} — {state['release_date']}: {implementation['work_contract']} DONE ({implementation['evidence']})"),
-            (r"^Constitutional Claims:.*$", f"Constitutional Claims: {claims['ratified']} ratified (gaps at {gaps}) | ADRs: {decisions['recorded']}"),
+            (
+                r"^Version:\s+.*$",
+                f"Version:              v{state['version']} — {state['release_date']}: {implementation['work_contract']} DONE ({implementation['evidence']})",
+            ),
+            (
+                r"^Constitutional Claims:.*$",
+                f"Constitutional Claims: {claims['ratified']} ratified (gaps at {gaps}) | ADRs: {decisions['recorded']}",
+            ),
             (r"^Gates:\s+.*$", f"Gates:                {state['gate']}"),
             (r"^Phase:\s+.*$", f"Phase:                {state['phase']} — {implementation['work_contract']} DONE"),
-            (r"^CCT inventory:\s+.*$", f"CCT inventory:        {ccts['institutional']} institutionally declared · {ccts['centrally_catalogued']} centrally catalogued · {unified}"),
-            (r"^Sprint Registry:\s+.*$", f"Sprint Registry:      SPRINT-REGISTRY.md — {sprints['recorded']} recorded ({sprints['closed']} closed · {sprints['active']} active · {sprints['blocked']} blocked)"),
+            (
+                r"^CCT inventory:\s+.*$",
+                f"CCT inventory:        {ccts['institutional']} institutionally declared · {ccts['centrally_catalogued']} centrally catalogued · {unified}",
+            ),
+            (
+                r"^Sprint Registry:\s+.*$",
+                f"Sprint Registry:      SPRINT-REGISTRY.md — {sprints['recorded']} recorded ({sprints['closed']} closed · {sprints['active']} active · {sprints['blocked']} blocked)",
+            ),
             (r"^Last sprint:\s+.*$", f"Last sprint:     {implementation['work_contract']} — {implementation['title']}"),
             (r"^Sprint status:\s+.*$", f"Sprint status:   DONE — {state['release_date']} · {implementation['evidence']}"),
         ],
         REPO_ROOT / "ARCHITECTURE.md": [
-            (r"^\*\*Platform Baseline:\*\*.*$", f"**Platform Baseline:** {state['version']} | **Architecture Record:** reconciled {state['as_of']} | **Gate:** {state['gate']} | **Phase:** {state['phase']}"),
+            (
+                r"^\*\*Platform Baseline:\*\*.*$",
+                f"**Platform Baseline:** {state['version']} | **Architecture Record:** reconciled {state['as_of']} | **Gate:** {state['gate']} | **Phase:** {state['phase']}",
+            ),
         ],
         REPO_ROOT / "constitution/AGENT-ENTRY.md": [
             (r"^AUTONOMOUS_HALT:.*$", f"AUTONOMOUS_HALT: {halt}"),
-            (r"^Version:\s+.*$", f"Version:    {state['version']}  |  Gate: {state['gate']}  |  Epoch: {epoch['number']} — {epoch['name']}  |  Phase: {state['phase']}"),
-            (r"^Last update:.*$", f"Last update: {state['as_of']} — {architecture['work_contract']} {architecture['title']} {architecture['status']}"),
-            (r"^Latest completed sprint:.*$", f"Latest completed sprint: {implementation['work_contract']} — {implementation['title']}"),
-            (r"^Latest EA work:.*$", f"Latest EA work: {architecture['work_contract']} — {architecture['title']} {architecture['status']}"),
-            (r"^Constitutional Claims:.*$", f"Constitutional Claims: {claims['ratified']} RATIFIED (gaps {gaps}) | ADRs: {decisions['recorded']} recorded"),
-            (r"^CCTs:.*$", f"CCTs: {ccts['institutional']} institutionally declared and {ccts['centrally_catalogued']} centrally catalogued; {unified} | WBE: {ccts['wbe_tests']['passed']}/{ccts['wbe_tests']['total']} passing"),
+            (
+                r"^Version:\s+.*$",
+                f"Version:    {state['version']}  |  Gate: {state['gate']}  |  Epoch: {epoch['number']} — {epoch['name']}  |  Phase: {state['phase']}",
+            ),
+            (
+                r"^Last update:.*$",
+                f"Last update: {state['as_of']} — {architecture['work_contract']} {architecture['title']} {architecture['status']}",
+            ),
+            (
+                r"^Latest completed sprint:.*$",
+                f"Latest completed sprint: {implementation['work_contract']} — {implementation['title']}",
+            ),
+            (
+                r"^Latest EA work:.*$",
+                f"Latest EA work: {architecture['work_contract']} — {architecture['title']} {architecture['status']}",
+            ),
+            (
+                r"^Constitutional Claims:.*$",
+                f"Constitutional Claims: {claims['ratified']} RATIFIED (gaps {gaps}) | ADRs: {decisions['recorded']} recorded",
+            ),
+            (
+                r"^CCTs:.*$",
+                f"CCTs: {ccts['institutional']} institutionally declared and {ccts['centrally_catalogued']} centrally catalogued; {unified} | WBE: {ccts['wbe_tests']['passed']}/{ccts['wbe_tests']['total']} passing",
+            ),
         ],
         REPO_ROOT / "SPRINT-REGISTRY.md": [
-            (r"^\*\*Last Updated:\*\*.*$", f"**Last Updated:** {state['as_of']} · **Version:** {state['version']} · **Work Contracts:** {sprints['recorded']} recorded ({sprints['closed']} closed · {sprints['active']} active · {sprints['blocked']} blocked)"),
+            (
+                r"^\*\*Last Updated:\*\*.*$",
+                f"**Last Updated:** {state['as_of']} · **Version:** {state['version']} · **Work Contracts:** {sprints['recorded']} recorded ({sprints['closed']} closed · {sprints['active']} active · {sprints['blocked']} blocked)",
+            ),
         ],
         REPO_ROOT / "constitution/PROJECT_STATE.md": [
-            (r"^\*\*Last Updated:\*\*.*$", f"**Last Updated:** {state['as_of']} ({architecture['work_contract']} {architecture['title']} {architecture['status']})"),
+            (
+                r"^\*\*Last Updated:\*\*.*$",
+                f"**Last Updated:** {state['as_of']} ({architecture['work_contract']} {architecture['title']} {architecture['status']})",
+            ),
         ],
     }
 

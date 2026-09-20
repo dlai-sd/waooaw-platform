@@ -20,6 +20,7 @@ C-065: This script is the REVIEWER. The runner is the author. Different tokens e
   short-lived installation token for PR approval — C-065 compliant (different identity
   from the GITHUB_TOKEN that opened the PR).
 """
+
 from __future__ import annotations
 
 import os
@@ -27,7 +28,7 @@ import re
 import subprocess
 import sys
 import time
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent.parent
@@ -36,6 +37,7 @@ REPO_ROOT = Path(__file__).parent.parent
 try:
     sys.path.insert(0, str(REPO_ROOT))
     from scripts.goal_orchestrator.goal_register_github import make_goal_register_writer
+
     _goal_register = make_goal_register_writer()
 except ImportError:
     _goal_register = None
@@ -43,7 +45,7 @@ except ImportError:
 
 def _goal_id_from_sprint(sprint: str) -> str:
     """Derive a Goal ID from the sprint name. WC-012 → GOAL-WC-012."""
-    return f"GOAL-{sprint}" if sprint.startswith("WC-") else f"GOAL-{sprint}"
+    return f"GOAL-{sprint}"
 
 
 def _check_skeleton_drift() -> list[str]:
@@ -66,7 +68,7 @@ def _check_skeleton_drift() -> list[str]:
 
 def run(cmd: list[str], env: dict | None = None) -> subprocess.CompletedProcess:
     merged_env = {**os.environ, **(env or {})}
-    return subprocess.run(cmd, capture_output=True, text=True, env=merged_env, cwd=REPO_ROOT)
+    return subprocess.run(cmd, capture_output=True, text=True, env=merged_env, cwd=REPO_ROOT)  # noqa: S603
 
 
 def generate_installation_token(app_id: str, installation_id: str, private_key_pem: str) -> str | None:
@@ -117,8 +119,9 @@ def _create_next_sprint_simulations(completed_sprint: str) -> None:
     Creating them post-merge ensures the gate passes on the next cron run autonomously.
     """
     import re as _re
+
     # Determine next sprint number: WC-012 → WC-013
-    m = _re.search(r'WC-?(\d+)', completed_sprint, _re.IGNORECASE)
+    m = _re.search(r"WC-?(\d+)", completed_sprint, _re.IGNORECASE)
     if not m:
         print(f"  WARN: Cannot determine next sprint from '{completed_sprint}'")
         return
@@ -129,12 +132,15 @@ def _create_next_sprint_simulations(completed_sprint: str) -> None:
     # Load TASK_HANDLERS to discover task IDs for the next sprint
     try:
         import sys as _sys
+
         _scripts = str(Path(__file__).parent)
         if _scripts not in _sys.path:
             _sys.path.insert(0, _scripts)
         import importlib.util as _ilu
-        _spec = _ilu.spec_from_file_location("autonomous_sprint_runner",
-                    str(Path(__file__).parent / "autonomous_sprint_runner.py"))
+
+        _spec = _ilu.spec_from_file_location(
+            "autonomous_sprint_runner", str(Path(__file__).parent / "autonomous_sprint_runner.py")
+        )
         # Don't execute — just parse TASK_HANDLERS keys from source
         source = (Path(__file__).parent / "autonomous_sprint_runner.py").read_text(encoding="utf-8")
         task_ids = _re.findall(rf'"{next_sprint_short}-(\d+)"', source)
@@ -149,7 +155,7 @@ def _create_next_sprint_simulations(completed_sprint: str) -> None:
     sim_dir = Path("simulation")
     sim_dir.mkdir(exist_ok=True)
     created: list[str] = []
-    today = __import__("datetime").date.today().isoformat()
+    today = datetime.now(timezone.utc).date().isoformat()
 
     for tid in task_ids:
         task_key = f"{next_sprint_short}-{tid}"
@@ -168,7 +174,7 @@ def _create_next_sprint_simulations(completed_sprint: str) -> None:
             f"its dependencies are satisfied by prior tasks in {next_sprint}.\n\n"
             f"## Verdict\n\n"
             f"**VERDICT: ✅ PASS**\n",
-            encoding="utf-8"
+            encoding="utf-8",
         )
         created.append(sim_path.name)
 
@@ -176,11 +182,17 @@ def _create_next_sprint_simulations(completed_sprint: str) -> None:
         run(["git", "add"] + [str(sim_dir / f) for f in created], check=False)
         diff = run(["git", "diff", "--cached", "--quiet"])
         if diff.returncode != 0:
-            run(["git", "commit", "-m",
-                 f"constitutional(simulation): {next_sprint} SIM-PL-002 auto-generated\n\n"
-                 f"Created by reviewer post-merge ({completed_sprint} complete).\n"
-                 f"C-086 gate pre-authorized for {next_sprint} run.\n"
-                 f"Tasks: {', '.join(created)}"])
+            run(
+                [
+                    "git",
+                    "commit",
+                    "-m",
+                    f"constitutional(simulation): {next_sprint} SIM-PL-002 auto-generated\n\n"
+                    f"Created by reviewer post-merge ({completed_sprint} complete).\n"
+                    f"C-086 gate pre-authorized for {next_sprint} run.\n"
+                    f"Tasks: {', '.join(created)}",
+                ]
+            )
             print(f"  ✅ {next_sprint} simulations created ({len(created)} tasks) — C-086 pre-cleared")
     else:
         print(f"  ✓ {next_sprint} simulations already exist — C-086 already clear")
@@ -210,12 +222,8 @@ def update_changelog(sprint: str, new_version: str) -> None:
     Inserts after the changelog header block (after the first `---` separator).
     """
     changelog = REPO_ROOT / "CHANGELOG.md"
-    today = date.today().isoformat()
-    entry = (
-        f"\n## [{new_version}] — {today}\n\n"
-        f"### Sprint Merge\n"
-        f"- **{sprint}** merged to main — autonomous sprint complete\n"
-    )
+    today = datetime.now(timezone.utc).date().isoformat()
+    entry = f"\n## [{new_version}] — {today}\n\n### Sprint Merge\n- **{sprint}** merged to main — autonomous sprint complete\n"
     if changelog.exists():
         content = changelog.read_text()
         idx = content.find("\n---\n")
@@ -229,13 +237,13 @@ def update_changelog(sprint: str, new_version: str) -> None:
 
 
 def main() -> int:
-    pr_number    = os.environ.get("PR_NUMBER", "").strip()
-    sprint       = os.environ.get("SPRINT", "unknown")
-    github_repo  = os.environ.get("GITHUB_REPO", "")
+    pr_number = os.environ.get("PR_NUMBER", "").strip()
+    sprint = os.environ.get("SPRINT", "unknown")
+    github_repo = os.environ.get("GITHUB_REPO", "")
     github_token = os.environ.get("GITHUB_TOKEN", "")  # author token (fallback only)
 
     # GitHub App credentials from Key Vault (via workflow OIDC fetch)
-    app_id          = os.environ.get("GH_APP_ID", "").strip()
+    app_id = os.environ.get("GH_APP_ID", "").strip()
     installation_id = os.environ.get("GH_APP_INSTALLATION_ID", "").strip()
     private_key_pem = os.environ.get("GH_APP_PRIVATE_KEY", "").strip()
 
@@ -259,28 +267,41 @@ def main() -> int:
     # vs credentials present but token generation failed (likely expired/invalid)
     # Silent advisory-only degradation is a constitutional violation — must notify.
     if app_id and installation_id and private_key_pem and not has_review_token:
-        print(f"  ⚠️  KEY VAULT CREDENTIAL ISSUE: GH App credentials present but token generation failed.")
-        print(f"  This may indicate expired private key or invalid installation ID.")
-        print(f"  Required action: rotate GH-APP-PRIVATE-KEY in Azure Key Vault (waooaw-dev-kv).")
+        print("  ⚠️  KEY VAULT CREDENTIAL ISSUE: GH App credentials present but token generation failed.")
+        print("  This may indicate expired private key or invalid installation ID.")
+        print("  Required action: rotate GH-APP-PRIVATE-KEY in Azure Key Vault (waooaw-dev-kv).")
         # Post to Sprint Dashboard so Founder is notified — not silent degradation
         if github_repo and github_token:
             from subprocess import run as _run
-            _run(["gh", "issue", "comment", "7",
-                  "--body", (
-                      "## ⚠️ Reviewer Credential Issue\n\n"
-                      "GitHub App token generation failed during PR review.\n"
-                      "Credentials are present in Key Vault but token is invalid.\n"
-                      "**Action required:** Rotate `GH-APP-PRIVATE-KEY` in `waooaw-dev-kv`.\n\n"
-                      f"Sprint: {sprint} | PR: #{pr_number}"
-                  ),
-                  "--repo", github_repo],
-                 capture_output=True, env={**os.environ, "GH_TOKEN": github_token})
-            print(f"  ℹ️  Credential issue posted to Sprint Dashboard (Issue #7)")
-    elif not app_id or not installation_id or not private_key_pem:
-        print(f"  ℹ️  GH App credentials not provisioned (FA-023) — running in advisory mode")
 
-    effective_token  = review_token or github_token
-    print(f"  Mode: {'FULL APPROVAL (GitHub App — C-065 compliant)' if has_review_token else 'ADVISORY (GitHub App token unavailable — using GITHUB_TOKEN, advisory comment only)'}")
+            _run(  # noqa: S603
+                [  # noqa: S607
+                    "gh",
+                    "issue",
+                    "comment",
+                    "7",
+                    "--body",
+                    (
+                        "## ⚠️ Reviewer Credential Issue\n\n"
+                        "GitHub App token generation failed during PR review.\n"
+                        "Credentials are present in Key Vault but token is invalid.\n"
+                        "**Action required:** Rotate `GH-APP-PRIVATE-KEY` in `waooaw-dev-kv`.\n\n"
+                        f"Sprint: {sprint} | PR: #{pr_number}"
+                    ),
+                    "--repo",
+                    github_repo,
+                ],
+                capture_output=True,
+                env={**os.environ, "GH_TOKEN": github_token},
+            )
+            print("  ℹ️  Credential issue posted to Sprint Dashboard (Issue #7)")
+    elif not app_id or not installation_id or not private_key_pem:
+        print("  ℹ️  GH App credentials not provisioned (FA-023) — running in advisory mode")
+
+    effective_token = review_token or github_token
+    print(
+        f"  Mode: {'FULL APPROVAL (GitHub App — C-065 compliant)' if has_review_token else 'ADVISORY (GitHub App token unavailable — using GITHUB_TOKEN, advisory comment only)'}"
+    )
     print("=" * 60)
 
     review_lines = [
@@ -338,9 +359,7 @@ def main() -> int:
 
     approved = False
     if has_review_token:
-        result = run(["gh", "pr", "review", pr_number,
-                      "--approve", "--body", review_body,
-                      "--repo", github_repo], env=env)
+        result = run(["gh", "pr", "review", pr_number, "--approve", "--body", review_body, "--repo", github_repo], env=env)
         if result.returncode == 0:
             print(f"  ✅ PR #{pr_number} APPROVED (C-065 compliant — GitHub App identity)")
             approved = True
@@ -348,21 +367,28 @@ def main() -> int:
             # ── EEM Step 14: PR Review Contribution Record → Goal Register ──
             goal_id = _goal_id_from_sprint(sprint)
             if _goal_register:
-                _goal_register.write_record(goal_id, {
-                    "record_type": "PR Review Contribution Record",
-                    "record_id": f"PRR-{sprint}-{pr_number}",
-                    "institution_id": "INST-010",
-                    "goal_id": goal_id,
-                    "eem_step": 14,
-                    "pr_number": pr_number,
-                    "verdict": "APPROVED",
-                    "reviewer_identity": "waooaw-reviewer GitHub App (C-065)",
-                    "review_dimensions": [
-                        "C-059 traceability headers", "No hardcoded secrets",
-                        "Branch naming", "Commit format", "WC scope", "CCT gates",
-                    ],
-                    "constitutional_basis": "C-065 · C-059 · C-066 Tier 2A",
-                })
+                _goal_register.write_record(
+                    goal_id,
+                    {
+                        "record_type": "PR Review Contribution Record",
+                        "record_id": f"PRR-{sprint}-{pr_number}",
+                        "institution_id": "INST-010",
+                        "goal_id": goal_id,
+                        "eem_step": 14,
+                        "pr_number": pr_number,
+                        "verdict": "APPROVED",
+                        "reviewer_identity": "waooaw-reviewer GitHub App (C-065)",
+                        "review_dimensions": [
+                            "C-059 traceability headers",
+                            "No hardcoded secrets",
+                            "Branch naming",
+                            "Commit format",
+                            "WC scope",
+                            "CCT gates",
+                        ],
+                        "constitutional_basis": "C-065 · C-059 · C-066 Tier 2A",
+                    },
+                )
                 _goal_register.update_goal_state(goal_id, "VALIDATED")
                 print(f"  ✓ Step 14 evidence record committed to Goal Register [{goal_id}]")
         else:
@@ -370,9 +396,9 @@ def main() -> int:
             has_review_token = False  # fall through to advisory
 
     if not has_review_token:
-        result = run(["gh", "pr", "comment", pr_number,
-                      "--body", review_body,
-                      "--repo", github_repo], env={"GH_TOKEN": github_token})
+        result = run(
+            ["gh", "pr", "comment", pr_number, "--body", review_body, "--repo", github_repo], env={"GH_TOKEN": github_token}
+        )
         if result.returncode == 0:
             print(f"  Advisory review comment posted on PR #{pr_number}")
         else:
@@ -380,10 +406,20 @@ def main() -> int:
 
     # Auto-merge + P1-03 race condition fix: use --rebase before advancing state
     if approved:
-        merge_result = run(["gh", "pr", "merge", pr_number,
-                            "--squash",
-                            "--subject", f"feat(infra): {sprint} — autonomous sprint complete",
-                            "--repo", github_repo], env={"GH_TOKEN": effective_token})
+        merge_result = run(
+            [
+                "gh",
+                "pr",
+                "merge",
+                pr_number,
+                "--squash",
+                "--subject",
+                f"feat(infra): {sprint} — autonomous sprint complete",
+                "--repo",
+                github_repo,
+            ],
+            env={"GH_TOKEN": effective_token},
+        )
         if merge_result.returncode == 0:
             print(f"  ✅ PR #{pr_number} MERGED to main (C-066 Tier 2A, C-065 GitHub App identity)")
             run(["git", "fetch", "origin", "main"])
@@ -398,26 +434,26 @@ def main() -> int:
             # ── EEM Step 15: Production Release Record → Goal Register ───────
             goal_id = _goal_id_from_sprint(sprint)
             if _goal_register:
-                _goal_register.write_record(goal_id, {
-                    "record_type": "Production Release Record",
-                    "record_id": f"REL-{sprint}-{pr_number}",
-                    "institution_id": "INST-010",
-                    "goal_id": goal_id,
-                    "eem_step": 15,
-                    "pr_number": pr_number,
-                    "version": new_ver,
-                    "deployment": "squash-merge to main",
-                    "health_check": "CI gates passed",
-                    "rollback_available": True,
-                    "constitutional_basis": "C-066 Tier 2A · C-001 (autonomous merge authorized)",
-                })
+                _goal_register.write_record(
+                    goal_id,
+                    {
+                        "record_type": "Production Release Record",
+                        "record_id": f"REL-{sprint}-{pr_number}",
+                        "institution_id": "INST-010",
+                        "goal_id": goal_id,
+                        "eem_step": 15,
+                        "pr_number": pr_number,
+                        "version": new_ver,
+                        "deployment": "squash-merge to main",
+                        "health_check": "CI gates passed",
+                        "rollback_available": True,
+                        "constitutional_basis": "C-066 Tier 2A · C-001 (autonomous merge authorized)",
+                    },
+                )
                 _goal_register.update_goal_state(goal_id, "COMPLETE")
                 print(f"  ✓ Step 15 evidence record committed to Goal Register [{goal_id}]")
 
-            adv = run([
-                "python3", "scripts/sprint_state.py",
-                "advance", "--current", sprint, "--ib", "IB-009"
-            ])
+            adv = run(["python3", "scripts/sprint_state.py", "advance", "--current", sprint, "--ib", "IB-009"])
             print(adv.stdout.strip() if adv.stdout else "  (no advance output)")
 
             # ── Action 0: Create SIM-PL-002 simulations for next sprint (C-086) ──
@@ -435,7 +471,7 @@ def main() -> int:
                 if seed_result.returncode == 0:
                     print(f"  ✓ Canonical Pattern Library seeded from {sprint}")
                 else:
-                    print(f"  WARN: Pattern seeder returned non-zero (non-blocking)")
+                    print("  WARN: Pattern seeder returned non-zero (non-blocking)")
             except Exception as e:
                 print(f"  WARN: Pattern seeder failed ({e}) — non-blocking")
 
@@ -448,6 +484,7 @@ def main() -> int:
                 if frozen_src.exists():
                     # Archive frozen artifacts for next sprint (prefix with completed sprint name)
                     import shutil
+
                     archive_dir = Path("sprint-context") / "cross-sprint-context"
                     archive_dir.mkdir(exist_ok=True)
                     archive_dest = archive_dir / f"{sprint}-frozen-artifacts.json"
@@ -460,22 +497,34 @@ def main() -> int:
                     shutil.copy2(learning_src, archive_learning)
                     print(f"  ✓ Learning cache archived for next sprint: {archive_learning.name}")
 
-                if (frozen_src.exists() or learning_src.exists()):
+                if frozen_src.exists() or learning_src.exists():
                     run(["git", "add", "sprint-context/cross-sprint-context/"], check=False)
                     diff2 = run(["git", "diff", "--cached", "--quiet"])
                     if diff2.returncode != 0:
-                        run(["git", "commit", "-m",
-                             f"chore(context): {sprint} cross-sprint context archived\n\n"
-                             "Constitutional: C-069 (Self-Improvement — Instinct 2 compounds)"])
-                        print(f"  ✓ Cross-sprint context committed (Instinct 2 compounds)")
+                        run(
+                            [
+                                "git",
+                                "commit",
+                                "-m",
+                                f"chore(context): {sprint} cross-sprint context archived\n\n"
+                                "Constitutional: C-069 (Self-Improvement — Instinct 2 compounds)",
+                            ]
+                        )
+                        print("  ✓ Cross-sprint context committed (Instinct 2 compounds)")
             except Exception as e:
                 print(f"  WARN: Cross-sprint handoff failed ({e}) — non-blocking")
             run(["git", "add", "constitution/PROJECT_STATE.md", "VERSION", "CHANGELOG.md"])
             diff = run(["git", "diff", "--cached", "--quiet"])
             if diff.returncode != 0:
-                run(["git", "commit", "-m",
-                     f"chore(release): {sprint} DONE — v{new_ver}\n\n"
-                     f"IB: IB-009\nConstitutional: C-066 Tier 2A (autonomous sprint cycle)"])
+                run(
+                    [
+                        "git",
+                        "commit",
+                        "-m",
+                        f"chore(release): {sprint} DONE — v{new_ver}\n\n"
+                        f"IB: IB-009\nConstitutional: C-066 Tier 2A (autonomous sprint cycle)",
+                    ]
+                )
                 push = run(["git", "push", "origin", "main"])
                 if push.returncode == 0:
                     print(f"  ✅ Sprint state advanced on main — v{new_ver} released")

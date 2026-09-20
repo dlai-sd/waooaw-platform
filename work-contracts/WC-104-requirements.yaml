@@ -1,10 +1,10 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-104
 contract_path: work-contracts/WC-104-end-to-end-docker-runner-supply.md
-contract_digest: 7d434f16cb04429df033bdc83b97fb813befcaf5b7715568a17bcdff9e27ed6e
-contract_status: IMPLEMENTATION_NOT_AUTHORIZED
+contract_digest: be3eb5c64e6b51fe3949e70d10d22e48be2b48c2f6b941efe0eacef839a5ba8f
+contract_status: IMPLEMENTATION_AUTHORIZED
 implementation_scope: true
-result: PLANNED
+result: QUALIFIED
 requirements:
   - requirement_id: WC104-R001
     source: Section 6; D01; WC104-S01
@@ -16,7 +16,8 @@ requirements:
     dependencies: GitHub Actions cache, runner context manifests and canonical runner identity
     completion_rule: The second job verifies remote cache import and rebuilds zero unchanged dependency steps while executing selected tests.
     residual_risk: GHA cache eviction can reduce speed but must only cause one clean rebuild.
-    result: PLANNED
+    result: BLOCKED
+    blocker_reason: Requires two independent hosted jobs; no hosted run is yet available for this candidate.
   - requirement_id: WC104-R002
     source: Section 6; D02; WC104-S02
     observable_outcome: One producer supplies an immutable digest to every consumer for each missing runner identity.
@@ -27,7 +28,8 @@ requirements:
     dependencies: GHCR, producer locking, trusted publication permissions and OCI manifest
     completion_rule: A hit builds zero times, a miss builds exactly once, every consumer records one digest and a duplicate producer fails.
     residual_risk: Registry outage must fail or use an explicit local-only fallback without weakening trust.
-    result: PLANNED
+    result: BLOCKED
+    blocker_reason: Hosted registry-hit and concurrent cache-miss evidence requires the PR workflow.
   - requirement_id: WC104-R003
     source: Section 6; D03; WC104-S01 through WC104-S03
     observable_outcome: Canonical identity resolves only to a matching immutable OCI digest with verified platform and provenance.
@@ -38,7 +40,8 @@ requirements:
     dependencies: Canonical identity serialization, GHCR metadata and trusted provenance verifier
     completion_rule: Only an exact verified mapping is consumed; every mismatch is a miss or bounded failure and never a mutable-tag fallback.
     residual_risk: Registry metadata or provenance service unavailability can block trusted consumption.
-    result: PLANNED
+    result: PASS
+    evidence_refs: [tests/validation_control/test_runner_supply.py, tests/validation_control/test_identity.py]
   - requirement_id: WC104-R004
     source: Section 6; D04; WC104-S02
     observable_outcome: Locked apt, pip, pnpm and NuGet BuildKit caches accelerate runner rebuilds without retaining correctness state.
@@ -49,7 +52,8 @@ requirements:
     dependencies: BuildKit cache mounts, lockfiles, deterministic installers and scoped cache namespaces
     completion_rule: Warm builds use cache and preserve exact dependency resolution; corrupt or invalid cache rebuilds and all tests still execute.
     residual_risk: External package availability can affect a required clean rebuild.
-    result: PLANNED
+    result: BLOCKED
+    blocker_reason: Cold, warm and corruption behavior across hosted BuildKit caches requires hosted execution.
   - requirement_id: WC104-R005
     source: Section 6; D05; WC104-S04
     observable_outcome: Single-stack gates consume lean runners and the full runner is limited to approved cross-stack or release gates.
@@ -60,7 +64,8 @@ requirements:
     dependencies: Complete catalog gate ownership and separated runner images
     completion_rule: No single-stack gate resolves the full runner and an introduced invalid mapping fails policy validation.
     residual_risk: Misclassified new cross-stack gates could select an inefficient runner until catalog review.
-    result: PLANNED
+    result: PASS
+    evidence_refs: [tests/validation_control/test_catalog_contract.py]
   - requirement_id: WC104-R006
     source: Section 6; D06; WC104-S01
     observable_outcome: Runner build contexts contain exactly declared environment inputs and exclude unrelated repository source.
@@ -71,7 +76,8 @@ requirements:
     dependencies: Canonical runner identity input model and deterministic context generation
     completion_rule: Unrelated source changes preserve context digest; every declared dependency input changes it; any omission fails closed.
     residual_risk: New dependency files require catalog and context schema maintenance.
-    result: PLANNED
+    result: PASS
+    evidence_refs: [tests/validation_control/test_runner_supply.py, tests/validation_control/test_identity.py]
   - requirement_id: WC104-R007
     source: Section 6; D07; WC104-S01 through WC104-S03
     observable_outcome: Dependency caches restore across fresh hosted machines while machine-local volumes remain non-authoritative.
@@ -82,7 +88,8 @@ requirements:
     dependencies: GHA cache scopes, BuildKit and runner identity namespaces
     completion_rule: A fresh job restores a compatible remote cache; absence or corruption causes one rebuild without skipped commands or reused verdicts.
     residual_risk: Cache quota and eviction remain GitHub-controlled performance variables.
-    result: PLANNED
+    result: BLOCKED
+    blocker_reason: Fresh hosted-machine restoration cannot be established from local Docker evidence.
   - requirement_id: WC104-R008
     source: Section 6; D08; WC104-S08
     observable_outcome: Executable tests detect duplicate builds, unsafe identity and cache-authority regressions.
@@ -93,7 +100,8 @@ requirements:
     dependencies: Observable build telemetry, registry adapter and workflow-plan parser
     completion_rule: Duplicate producers, consumer builds, mutable tags, provenance gaps, digest mismatch, source rebuilds and cache-authorized PASS each fail.
     residual_risk: Workflow behavior outside the modeled executor requires hosted corroboration.
-    result: PLANNED
+    result: PASS
+    evidence_refs: [tests/validation_control/test_runner_supply.py, tests/validation_control/test_local_catalog_gate.py, tests/validation_control/test_results.py]
   - requirement_id: WC104-R009
     source: Section 6; D09; WC104-S03
     observable_outcome: Local preparation, pull-request CI and main or release CI consume one OCI digest for one unchanged identity.
@@ -104,7 +112,8 @@ requirements:
     dependencies: Shared canonical resolver, GHCR digest and lifecycle trust policy
     completion_rule: All three lifecycle records contain the same canonical identity and OCI digest; untrusted local fallback is never published.
     residual_risk: Platform architecture differences legitimately produce distinct platform-qualified identities.
-    result: PLANNED
+    result: BLOCKED
+    blocker_reason: PR and main lifecycle manifests do not exist until hosted workflows run.
   - requirement_id: WC104-R010
     source: Section 6; D10; WC104-S05
     observable_outcome: The validation catalog generates commands and runner assignments executed by every lifecycle.
@@ -115,7 +124,8 @@ requirements:
     dependencies: Executable catalog plan and repository duplicate-command policy
     completion_rule: Every lifecycle executes the mutation and any duplicate hardcoded command or unmapped workflow job is rejected.
     residual_risk: GitHub permission and bootstrap syntax remain workflow-owned but cannot redefine validation semantics.
-    result: PLANNED
+    result: PASS
+    evidence_refs: [tests/validation_control/test_catalog_contract.py, tests/validation_control/test_runner_supply.py, tests/pipeline/test_prepare_pr_body.py]
   - requirement_id: WC104-R011
     source: Section 6; D11; WC104-S06
     observable_outcome: PR preparation automatically reuses only exact trusted per-gate evidence and reruns every invalidated gate.
@@ -126,7 +136,8 @@ requirements:
     dependencies: Immutable evidence store, complete trust tuple and per-gate invalidation graph
     completion_rule: An identical second run executes zero nodes; each input mutation reruns affected nodes and never reuses stale, failed or untrusted evidence.
     residual_risk: Evidence-store outage reduces speed by forcing execution but cannot authorize PASS.
-    result: PLANNED
+    result: PASS
+    evidence_refs: [tests/pipeline/test_precheck_orchestrator.py, tests/pipeline/test_prepare_pr_body.py]
   - requirement_id: WC104-R012
     source: Section 6; D12; WC104-S07
     observable_outcome: Invalid PR-body or evidence output configuration fails before any costly validation node starts.
@@ -137,7 +148,8 @@ requirements:
     dependencies: Final-path creation and atomic replacement probe
     completion_rule: Every invalid output fixture executes zero precheck nodes and emits one bounded configuration failure.
     residual_risk: Filesystem permissions may change after preflight and must still fail without corrupting prior output.
-    result: PLANNED
+    result: PASS
+    evidence_refs: [tests/pipeline/test_prepare_pr_body.py]
   - requirement_id: WC104-R013
     source: Section 6; D13; WC104-S08
     observable_outcome: Hosted PR and main measurements directly report runner production, cache and consumption behavior.
@@ -148,7 +160,8 @@ requirements:
     dependencies: Hosted workflow runs, immutable telemetry artifacts and exact identity binding
     completion_rule: Samples contain producer and consumer counts, cache source, pull/build/execute durations and exact identities with no unsupported extrapolation.
     residual_risk: Hosted fleet variation remains reportable and may prevent target attainment.
-    result: PLANNED
+    result: BLOCKED
+    blocker_reason: Three independent hosted PR and main samples per affected runner remain unavailable.
   - requirement_id: WC104-R014
     source: Section 6; cross-cutting isolation and security
     observable_outcome: Runner reuse preserves non-root disposable execution, read-only source, bounded resources and secret-safe evidence.
@@ -159,7 +172,8 @@ requirements:
     dependencies: WC-102 isolation controls and exact consumer manifests
     completion_rule: Every retained WC-102 isolation control passes and reuse introduces no writable shared correctness state.
     residual_risk: Testcontainers socket access remains a narrowly bounded privileged dependency.
-    result: PLANNED
+    result: PASS
+    evidence_refs: [tests/validation_control/test_runner_contracts.py, tests/validation_control/test_docker_policy.py, tests/validation_control/test_results.py]
   - requirement_id: WC104-R015
     source: Section 6; cross-cutting authority
     observable_outcome: Full PR, main and release validation retains every required gate, threshold and evidence class.
@@ -170,7 +184,8 @@ requirements:
     dependencies: Current authoritative workflows, catalog inventory and Shadow activation control
     completion_rule: Candidate coverage is equal or stronger, missing required gates fail and selective enforcement remains disabled pending separate approval.
     residual_risk: Repository branch-protection settings require independent read-only verification.
-    result: PLANNED
+    result: PASS
+    evidence_refs: [validation/authoritative-gate-baseline.yaml, tests/validation_control/test_gate_equivalence.py]
   - requirement_id: WC104-R016
     source: Section 6; all defects and stories
     observable_outcome: One exact candidate has direct evidence for every requirement and can roll back to full clean qualification.
@@ -178,7 +193,45 @@ requirements:
     evidence_class: Complete ledger, rollback and author review
     test_path_or_plan: Explicit-row ledger validation, exact-head qualification, rollback rehearsal and defect coverage audit.
     initial_state: new
-    dependencies: WC104-R001 through WC104-R015 and one frozen implementation candidate
+    dependencies: WC104-R001 through WC104-R015, WC104-R017 through WC104-R019 and one frozen implementation candidate
     completion_rule: Every row independently reports PASS with direct evidence, rollback passes and author review records no unresolved finding.
     residual_risk: Founder approval, merge and external service availability remain outside author qualification.
-    result: PLANNED
+    result: BLOCKED
+    blocker_reason: Author review R-144 passes for implementation commit 4cd3a4db, but the clean rehearsal traversed all gates without passing and hosted dependencies R001, R002, R004, R007, R009 and R013 remain blocked.
+    evidence_refs: [validation/evidence/wc104-rollback-rehearsal.json, reviews/R-144-wc104-platform-it-expert-author-review.md]
+  - requirement_id: WC104-R017
+    source: Section 6; D14; WC104-S09
+    observable_outcome: Deterministic authority, ledger, catalog, Compose and output defects stop before any costly validation node is constructed or executed.
+    component_owner: PR preparation static validation phase
+    evidence_class: Failure ordering and contract
+    test_path_or_plan: Inject invalid C-059 commit and body metadata, C-065 author review, requirement ledger, validation catalog, Compose configuration and output targets with a costly-node construction and process spy.
+    initial_state: expected-fail
+    dependencies: PR body rendering, commit metadata reader, author-review validator, requirement-ledger validator, validation policy and Compose parser
+    completion_rule: Every invalid fixture reports its specific violation with executed_count=0 and no costly node construction; one valid fixture reaches gate planning.
+    residual_risk: Static validation cannot replace execution of a selected behavioral gate after preflight succeeds.
+    result: PASS
+    evidence_refs: [scripts/prepare_pr_body.py, tests/pipeline/test_prepare_pr_body.py]
+  - requirement_id: WC104-R018
+    source: Section 6; D15; WC104-S10
+    observable_outcome: Local PR preparation runs only explicitly affected dependency-complete costly prechecks while hosted PR, main and release inventories remain unchanged.
+    component_owner: Change-impact policy and local precheck planner
+    evidence_class: Selection contract and authoritative equivalence
+    test_path_or_plan: Path-impact matrix covering evidence-only, review-only, component, release-owned, global-control, unknown-path and hosted push/release fixtures.
+    initial_state: expected-fail
+    dependencies: Versioned component ownership, reverse dependencies, gate input ownership and separate local/hosted selection modes
+    completion_rule: Evidence and review-only changes select no costly gate; component and release changes select exactly their declared costly gates; hosted full inventory and thresholds remain unchanged.
+    residual_risk: A missing path owner must fail closed to full hosted validation without silently broadening every local precheck.
+    result: PASS
+    evidence_refs: [scripts/validation_policy.py, validation/engineering-validation.yaml, validation/catalog.schema.json, tests/pipeline/test_validation_policy.py, tests/pipeline/test_prepare_pr_body.py]
+  - requirement_id: WC104-R019
+    source: Section 6; D16; WC104-S11
+    observable_outcome: Unaffected successful gate evidence is carried to a later exact head through a verifiable non-impact record instead of rerunning.
+    component_owner: Precheck evidence resolver and per-gate input model
+    evidence_class: Exact-candidate provenance and negative security
+    test_path_or_plan: Two-head execution/carry-forward fixture plus mutations of declared source inputs, command, runner, environment, policy, source evidence digest and intervening path proof.
+    initial_state: expected-fail
+    dependencies: Per-gate declared-input digest, immutable source evidence, Git commit range, path classifier and current-head carry-forward schema
+    completion_rule: An evidence-only successor executes zero unaffected costly nodes and emits current-head proof; every affected, stale, malformed or unverifiable mutation reruns only the affected gate.
+    residual_risk: Conservative ownership gaps must force execution rather than accept ancestor evidence.
+    result: PASS
+    evidence_refs: [scripts/precheck_orchestrator.py, scripts/prepare_pr_body.py, validation/engineering-validation.yaml, tests/pipeline/test_precheck_orchestrator.py, tests/pipeline/test_prepare_pr_body.py]

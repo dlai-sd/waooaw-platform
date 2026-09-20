@@ -50,11 +50,7 @@ def validate_bootstrap_oidc(
         (STATE_MANAGEMENT_ROLE, normalized_state_scope),
         (STATE_ROLE, normalized_state_scope),
         (STATE_RBAC_ROLE, normalized_state_scope),
-        *{
-            (role, scope)
-            for scope in normalized_environment_scopes
-            for role in ENVIRONMENT_ROLES
-        },
+        *{(role, scope) for scope in normalized_environment_scopes for role in ENVIRONMENT_ROLES},
         *{(role, normalized_runner_scope) for role in ENVIRONMENT_ROLES},
     }
 

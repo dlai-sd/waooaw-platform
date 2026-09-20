@@ -10,17 +10,20 @@ PR_TEMPLATE = ROOT / ".github" / "pull_request_template.md"
 def test_c059_accepts_markdown_formatted_pr_metadata() -> None:
     workflow = CI_WORKFLOW.read_text(encoding="utf-8")
 
-    assert "python scripts/validate_c059.py" in workflow
-    assert "--pr-body-file /tmp/pr-body.md" in workflow
+    assert "gate-id: constitutional-commit-gate" in workflow
+    assert "test-results/wc104/c059/pr-body.md" in workflow
     assert "PR_METADATA=" not in workflow
 
 
 def test_c066_uses_founder_merge_gate_instead_of_pr_labels() -> None:
     workflow = CI_WORKFLOW.read_text(encoding="utf-8")
+    gate = (ROOT / "scripts/validation_control/run_c066_gate.sh").read_text(encoding="utf-8")
 
     assert "Verify Founder-controlled merge boundary" in workflow
-    assert 'test "$BASE_BRANCH" = "main"' in workflow
-    assert "Founder review and merge remain mandatory" in workflow
+    assert "gate-id: authorization-tier-check" in workflow
+    assert "test-results/wc104/c066/base-branch.txt" in workflow
+    assert 'test "$base_branch" = "main"' in gate
+    assert "Founder review and merge remain mandatory" in gate
     assert "PR_LABELS" not in workflow
     assert "approved:sujay" not in workflow
     assert "approved:yogesh" not in workflow
@@ -64,6 +67,6 @@ def test_c065_retries_bounded_pr_metadata_convergence() -> None:
     workflow = CI_WORKFLOW.read_text(encoding="utf-8")
     gate = workflow[workflow.index("  author-review-gate:") : workflow.index("  authorization-tier-check:")]
 
-    assert "for attempt in 1 2 3" in gate
-    assert 'if [ "$attempt" -eq 3 ]' in gate
-    assert "retrying in 5 seconds" in gate
+    assert gate.count("uses: ./.github/actions/run-validation-gate") == 1
+    assert 'attempts: "3"' in gate
+    assert 'retry-delay-seconds: "5"' in gate

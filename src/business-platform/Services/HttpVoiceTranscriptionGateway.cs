@@ -14,7 +14,8 @@ namespace Waooaw.BusinessPlatform.Services;
 
 public sealed class HttpVoiceTranscriptionGateway(
     IHttpClientFactory httpClientFactory,
-    IConfiguration configuration) : IVoiceTranscriptionGateway
+    IConfiguration configuration
+) : IVoiceTranscriptionGateway
 {
     private sealed record StartRequest(
         string ContractVersion,
@@ -24,7 +25,8 @@ public sealed class HttpVoiceTranscriptionGateway(
         string MediaType,
         string ContentSha256,
         int DurationSeconds,
-        long SizeBytes);
+        long SizeBytes
+    );
 
     private sealed record OrchestrationResponse(
         string ContractVersion,
@@ -35,7 +37,8 @@ public sealed class HttpVoiceTranscriptionGateway(
         string? Transcript,
         string? ConfidenceBand,
         string? FailureCode,
-        DateTimeOffset UpdatedAt);
+        DateTimeOffset UpdatedAt
+    );
 
     public async Task<VoiceTranscriptionResult> TranscribeAsync(
         Guid tenantId,
@@ -43,45 +46,67 @@ public sealed class HttpVoiceTranscriptionGateway(
         Guid sessionId,
         VoiceMediaInspection inspection,
         string locale,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         if (!Guid.TryParse(inspection.PayloadReference, out var payloadReference))
             throw new VoiceUnavailableException();
 
         var secret = configuration["Voice:ProfessionalRuntimeJwtSecret"];
-        if (string.IsNullOrWhiteSpace(secret)) throw new VoiceUnavailableException();
+        if (string.IsNullOrWhiteSpace(secret))
+            throw new VoiceUnavailableException();
         var idempotencyKey = Guid.NewGuid();
         using var request = new HttpRequestMessage(
             HttpMethod.Post,
-            $"api/v1/internal/relationships/{relationshipId}/voice-orchestrations");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", CreateAssertion(secret, tenantId, relationshipId));
+            $"api/v1/internal/relationships/{relationshipId}/voice-orchestrations"
+        );
+        request.Headers.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            CreateAssertion(secret, tenantId, relationshipId)
+        );
         request.Headers.Add("Idempotency-Key", idempotencyKey.ToString());
         request.Headers.Add("X-Correlation-Id", Guid.NewGuid().ToString());
-        request.Content = JsonContent.Create(new StartRequest(
-            "1.0.0",
-            sessionId,
-            payloadReference,
-            locale,
-            inspection.DetectedMediaType,
-            inspection.ContentSha256,
-            Math.Max(1, (int)Math.Ceiling(inspection.DurationMilliseconds / 1000m)),
-            inspection.SizeBytes));
+        request.Content = JsonContent.Create(
+            new StartRequest(
+                "1.0.0",
+                sessionId,
+                payloadReference,
+                locale,
+                inspection.DetectedMediaType,
+                inspection.ContentSha256,
+                Math.Max(1, (int)Math.Ceiling(inspection.DurationMilliseconds / 1000m)),
+                inspection.SizeBytes
+            )
+        );
 
-        using var response = await httpClientFactory.CreateClient("VoiceProfessionalRuntime")
+        using var response = await httpClientFactory
+            .CreateClient("VoiceProfessionalRuntime")
             .SendAsync(request, cancellationToken);
         if (response.StatusCode is HttpStatusCode.Locked or HttpStatusCode.ServiceUnavailable)
             throw new VoiceUnavailableException();
-        if (!response.IsSuccessStatusCode) throw new VoiceUnavailableException();
-        var result = await response.Content.ReadFromJsonAsync<OrchestrationResponse>(cancellationToken)
+        if (!response.IsSuccessStatusCode)
+            throw new VoiceUnavailableException();
+        var result =
+            await response.Content.ReadFromJsonAsync<OrchestrationResponse>(cancellationToken)
             ?? throw new VoiceUnavailableException();
-        if (result.ContractVersion != "1.0.0" || result.State is not ("COMPLETED" or "REVIEW_REQUIRED")
-            || string.IsNullOrWhiteSpace(result.Transcript))
+        if (
+            result.ContractVersion != "1.0.0"
+            || result.State is not ("COMPLETED" or "REVIEW_REQUIRED")
+            || string.IsNullOrWhiteSpace(result.Transcript)
+        )
             throw new VoiceUnavailableException();
         return new VoiceTranscriptionResult(
             result.Transcript,
             result.Locale,
-            result.ConfidenceBand switch { "HIGH" => 0.95m, "REVIEW" => 0.80m, "LOW" => 0.50m, _ => 0m },
-            result.ContractVersion);
+            result.ConfidenceBand switch
+            {
+                "HIGH" => 0.95m,
+                "REVIEW" => 0.80m,
+                "LOW" => 0.50m,
+                _ => 0m,
+            },
+            result.ContractVersion
+        );
     }
 
     private static string CreateAssertion(string secret, Guid tenantId, Guid relationshipId)
@@ -99,13 +124,17 @@ public sealed class HttpVoiceTranscriptionGateway(
         };
         var credentials = new SigningCredentials(
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
-            SecurityAlgorithms.HmacSha256);
-        return new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(
-            issuer: "business-platform",
-            audience: "professional-runtime",
-            claims: claims,
-            notBefore: now.UtcDateTime,
-            expires: now.AddSeconds(30).UtcDateTime,
-            signingCredentials: credentials));
+            SecurityAlgorithms.HmacSha256
+        );
+        return new JwtSecurityTokenHandler().WriteToken(
+            new JwtSecurityToken(
+                issuer: "business-platform",
+                audience: "professional-runtime",
+                claims: claims,
+                notBefore: now.UtcDateTime,
+                expires: now.AddSeconds(30).UtcDateTime,
+                signingCredentials: credentials
+            )
+        );
     }
 }

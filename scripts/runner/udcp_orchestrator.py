@@ -23,9 +23,7 @@ _FILLER_START = "# [WAOOAW_LOGIC_FILLER_START]"
 _FILLER_END = "# [WAOOAW_LOGIC_FILLER_END]"
 
 # Track 2 LLM response marker
-_FUNC_BLOCK_RE = re.compile(
-    r"```python\s*((?:async\s+)?def\s.+?)```", re.DOTALL
-)
+_FUNC_BLOCK_RE = re.compile(r"```python\s*((?:async\s+)?def\s.+?)```", re.DOTALL)
 
 _IMPORT_LINE_RE = re.compile(r"^(import |from )", re.MULTILINE)
 
@@ -41,11 +39,7 @@ def _fix_b904(content: str) -> str:
         if isinstance(node, ast.ExceptHandler) and node.name:
             var = node.name
             for stmt in ast.walk(node):
-                if (
-                    isinstance(stmt, ast.Raise)
-                    and stmt.exc is not None
-                    and stmt.cause is None
-                ):
+                if isinstance(stmt, ast.Raise) and stmt.exc is not None and stmt.cause is None:
                     end = stmt.end_lineno - 1  # 0-indexed; handles multi-line raises
                     lines[end] = lines[end].rstrip("\n").rstrip() + f" from {var}\n"
     return "".join(lines)
@@ -99,7 +93,8 @@ def _ruff_normalization_check(content: str) -> str | None:
     try:
         result = subprocess.run(  # noqa: S603
             ["ruff", "check", "--select", "E402,B904", tf_path],  # noqa: S607
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         if result.returncode != 0:
             output = result.stdout.strip() or result.stderr.strip()
@@ -184,16 +179,8 @@ def _fix_ann201_asynccontextmanager(content: str) -> str:
 
 def _detect_invented_imports(scaffold_content: str, llm_content: str) -> list[str]:
     """Return import lines in llm_content absent from scaffold — these are LLM hallucinations."""
-    scaffold_imports = {
-        ln.strip()
-        for ln in scaffold_content.splitlines()
-        if ln.strip().startswith(("import ", "from "))
-    }
-    llm_imports = {
-        ln.strip()
-        for ln in llm_content.splitlines()
-        if ln.strip().startswith(("import ", "from "))
-    }
+    scaffold_imports = {ln.strip() for ln in scaffold_content.splitlines() if ln.strip().startswith(("import ", "from "))}
+    llm_imports = {ln.strip() for ln in llm_content.splitlines() if ln.strip().startswith(("import ", "from "))}
     return sorted(llm_imports - scaffold_imports)
 
 
@@ -205,15 +192,19 @@ def _normalize_and_write(path: Path, content: str, label: str, track: str) -> Ta
     ruff_err = _ruff_normalization_check(content)
     if ruff_err:
         return TaskResult(
-            success=False, error_type="NORMALIZATION_INCOMPLETE",
-            error_snippet=f"{label}: {ruff_err[:300]}", track=track,
+            success=False,
+            error_type="NORMALIZATION_INCOMPLETE",
+            error_snippet=f"{label}: {ruff_err[:300]}",
+            track=track,
         )
     try:
         compile(content, label, "exec")
     except SyntaxError as exc:
         return TaskResult(
-            success=False, error_type="COMPILE_GATE_FAILURE",
-            error_snippet=f"{label}: {exc}", track=track,
+            success=False,
+            error_type="COMPILE_GATE_FAILURE",
+            error_snippet=f"{label}: {exc}",
+            track=track,
         )
     path.write_text(content, encoding="utf-8")
     return None
@@ -281,28 +272,54 @@ class UDCPOrchestrator:
         track = "GREENFIELD" if force_greenfield else self.groom.detect_track(required_output_files or [])
 
         if track == "GREENFIELD":
-            return self._run_track1(task_id, scope_text, sprint_id, model_hint, max_tokens,
-                                    required_output_files=required_output_files,
-                                    inject_source_files=inject_source_files)
+            return self._run_track1(
+                task_id,
+                scope_text,
+                sprint_id,
+                model_hint,
+                max_tokens,
+                required_output_files=required_output_files,
+                inject_source_files=inject_source_files,
+            )
         elif track == "DIFFERENTIAL":
-            return self._run_track2(task_id, scope_text, sprint_id, model_hint, max_tokens,
-                                    required_output_files=required_output_files,
-                                    inject_source_files=inject_source_files)
+            return self._run_track2(
+                task_id,
+                scope_text,
+                sprint_id,
+                model_hint,
+                max_tokens,
+                required_output_files=required_output_files,
+                inject_source_files=inject_source_files,
+            )
         else:
             # MIXED: scaffold new files (Track 1), then patch existing files (Track 2).
-            r1 = self._run_track1(task_id, scope_text, sprint_id, model_hint, max_tokens,
-                                   skip_existing=True, required_output_files=required_output_files,
-                                   inject_source_files=inject_source_files)
+            r1 = self._run_track1(
+                task_id,
+                scope_text,
+                sprint_id,
+                model_hint,
+                max_tokens,
+                skip_existing=True,
+                required_output_files=required_output_files,
+                inject_source_files=inject_source_files,
+            )
             if not r1.success:
                 return r1
-            r2 = self._run_track2(task_id, scope_text, sprint_id, model_hint, max_tokens,
-                                   required_output_files=required_output_files,
-                                   inject_source_files=inject_source_files)
+            r2 = self._run_track2(
+                task_id,
+                scope_text,
+                sprint_id,
+                model_hint,
+                max_tokens,
+                required_output_files=required_output_files,
+                inject_source_files=inject_source_files,
+            )
             # GROOMING_ERROR on Track 2 means no existing-file methods found — non-fatal for MIXED
             if not r2.success and r2.error_type != "GROOMING_ERROR":
                 return r2
             return TaskResult(
-                success=True, track="MIXED",
+                success=True,
+                track="MIXED",
                 files_written=r1.files_written + r2.files_written,
             )
 
@@ -321,12 +338,13 @@ class UDCPOrchestrator:
     ) -> TaskResult:
         # 1. Generate TIS
         try:
-            tis = self.groom.generate_tis(task_id, scope_text, sprint_id,
-                                          required_output_files=required_output_files)
+            tis = self.groom.generate_tis(task_id, scope_text, sprint_id, required_output_files=required_output_files)
         except Exception as exc:
             return TaskResult(
-                success=False, error_type="GROOMING_ERROR",
-                error_snippet=str(exc)[:300], track="GREENFIELD",
+                success=False,
+                error_type="GROOMING_ERROR",
+                error_snippet=str(exc)[:300],
+                track="GREENFIELD",
             )
 
         # 2. PTR gate — reject invented imports before scaffold
@@ -334,16 +352,15 @@ class UDCPOrchestrator:
         ptr_errors = self.ptr.validate_tis(tis)
         if ptr_errors:
             return TaskResult(
-                success=False, error_type="PTR_GATE_FAILURE",
-                error_snippet="; ".join(ptr_errors[:5]), track="GREENFIELD",
+                success=False,
+                error_type="PTR_GATE_FAILURE",
+                error_snippet="; ".join(ptr_errors[:5]),
+                track="GREENFIELD",
             )
 
         # 3. Scaffold compilable stub files (skip existing files in MIXED-track)
         if skip_existing:
-            tis["target_artifacts"] = [
-                a for a in tis["target_artifacts"]
-                if not (self.repo_root / a["file_path"]).is_file()
-            ]
+            tis["target_artifacts"] = [a for a in tis["target_artifacts"] if not (self.repo_root / a["file_path"]).is_file()]
             if not tis["target_artifacts"]:
                 return TaskResult(success=True, track="MIXED", files_written=[])
 
@@ -352,26 +369,32 @@ class UDCPOrchestrator:
             # 4. Dry-run: render in memory — no write, no disk mutation
             if self.dry_run:
                 previews = scaffolder.scaffold_preview()
-                preview_text = "\n".join(
-                    f"=== {rp} ===\n{content}" for rp, content in previews.items()
-                )
+                preview_text = "\n".join(f"=== {rp} ===\n{content}" for rp, content in previews.items())
                 return TaskResult(
-                    success=True, track="GREENFIELD",
+                    success=True,
+                    track="GREENFIELD",
                     files_written=list(previews.keys()),
-                    dry_run=True, prompt_preview=preview_text,
+                    dry_run=True,
+                    prompt_preview=preview_text,
                 )
             written_paths = scaffolder.scaffold_artifacts()
         except Track1ScaffoldError as exc:
             return TaskResult(
-                success=False, error_type="SCAFFOLD_ERROR",
-                error_snippet=str(exc)[:300], track="GREENFIELD",
+                success=False,
+                error_type="SCAFFOLD_ERROR",
+                error_snippet=str(exc)[:300],
+                track="GREENFIELD",
             )
 
         # 4. Logic-fill LLM call for each scaffolded file
         filled_paths: list[str] = []
         for path in written_paths:
             result = self._fill_track1_logic(
-                task_id, path, scope_text, model_hint, max_tokens,
+                task_id,
+                path,
+                scope_text,
+                model_hint,
+                max_tokens,
                 inject_source_files=inject_source_files,
             )
             if not result.success:
@@ -379,7 +402,8 @@ class UDCPOrchestrator:
             filled_paths.extend(result.files_written)
 
         return TaskResult(
-            success=True, track="GREENFIELD",
+            success=True,
+            track="GREENFIELD",
             files_written=filled_paths,
         )
 
@@ -402,8 +426,10 @@ class UDCPOrchestrator:
                 from runner.llm_codegen import call_llm_for_udcp, parse_llm_files
             except ImportError:
                 return TaskResult(
-                    success=False, error_type="IMPORT_ERROR",
-                    error_snippet="call_llm_for_udcp not available", track="GREENFIELD",
+                    success=False,
+                    error_type="IMPORT_ERROR",
+                    error_snippet="call_llm_for_udcp not available",
+                    track="GREENFIELD",
                 )
             _call_llm = call_llm_for_udcp
             _parse = parse_llm_files
@@ -422,15 +448,8 @@ class UDCPOrchestrator:
                 _ref_block = "Reference files:\n" + "\n\n".join(_parts) + "\n\n"
 
         # Closed-world import budget: extract exactly what PTR-validated scaffold contains
-        _scaffold_imports = [
-            ln.strip()
-            for ln in scaffold_content.splitlines()
-            if ln.strip().startswith(("import ", "from "))
-        ]
-        _import_budget = (
-            "\n".join(f"  {ln}" for ln in _scaffold_imports)
-            if _scaffold_imports else "  (none)"
-        )
+        _scaffold_imports = [ln.strip() for ln in scaffold_content.splitlines() if ln.strip().startswith(("import ", "from "))]
+        _import_budget = "\n".join(f"  {ln}" for ln in _scaffold_imports) if _scaffold_imports else "  (none)"
 
         prompt = (
             f"Fill in the logic sections of the Python scaffold below.\n\n"
@@ -472,15 +491,19 @@ class UDCPOrchestrator:
 
         if not response:
             return TaskResult(
-                success=False, error_type="LLM_NO_RESPONSE",
-                error_snippet="call_llm_via_magiclm returned None", track="GREENFIELD",
+                success=False,
+                error_type="LLM_NO_RESPONSE",
+                error_snippet="call_llm_via_magiclm returned None",
+                track="GREENFIELD",
             )
 
         files = _parse(response)
         if not files:
             return TaskResult(
-                success=False, error_type="NO_FILE_BLOCKS",
-                error_snippet="LLM response contained no <file> blocks", track="GREENFIELD",
+                success=False,
+                error_type="NO_FILE_BLOCKS",
+                error_snippet="LLM response contained no <file> blocks",
+                track="GREENFIELD",
             )
 
         # Write each filled file through the normalization + compile gateway
@@ -489,18 +512,18 @@ class UDCPOrchestrator:
             invented = _detect_invented_imports(scaffold_content, content)
             if invented:
                 return TaskResult(
-                    success=False, error_type="LLM_IMPORT_VIOLATION",
-                    error_snippet=(
-                        f"{fpath}: LLM invented imports not in scaffold: "
-                        + "; ".join(invented[:5])
-                    ),
+                    success=False,
+                    error_type="LLM_IMPORT_VIOLATION",
+                    error_snippet=(f"{fpath}: LLM invented imports not in scaffold: " + "; ".join(invented[:5])),
                     track="GREENFIELD",
                 )
             # Boundary check: reject paths outside ALLOWED_WRITE_ROOTS (C-065)
             from runner.constants import ALLOWED_WRITE_ROOTS
+
             if not any(fpath.startswith(root) for root in ALLOWED_WRITE_ROOTS):
                 return TaskResult(
-                    success=False, error_type="WRITE_BOUNDARY_VIOLATION",
+                    success=False,
+                    error_type="WRITE_BOUNDARY_VIOLATION",
                     error_snippet=f"LLM returned path outside write boundary: {fpath}",
                     track="GREENFIELD",
                 )
@@ -509,7 +532,8 @@ class UDCPOrchestrator:
                 return fail
 
         return TaskResult(
-            success=True, track="GREENFIELD",
+            success=True,
+            track="GREENFIELD",
             files_written=list(files.keys()),
         )
 
@@ -526,18 +550,23 @@ class UDCPOrchestrator:
         inject_source_files: list[str] | None = None,
     ) -> TaskResult:
         try:
-            tmd = self.groom.generate_tmd(task_id, scope_text, sprint_id,
-                                          required_output_files=required_output_files)
+            tmd = self.groom.generate_tmd(task_id, scope_text, sprint_id, required_output_files=required_output_files)
         except Exception as exc:
             return TaskResult(
-                success=False, error_type="GROOMING_ERROR",
-                error_snippet=str(exc)[:300], track="DIFFERENTIAL",
+                success=False,
+                error_type="GROOMING_ERROR",
+                error_snippet=str(exc)[:300],
+                track="DIFFERENTIAL",
             )
 
         written: list[str] = []
         for artifact in tmd.get("impacted_artifacts", []):
             result = self._patch_artifact(
-                task_id, artifact, scope_text, model_hint, max_tokens,
+                task_id,
+                artifact,
+                scope_text,
+                model_hint,
+                max_tokens,
                 inject_source_files=inject_source_files,
             )
             if not result.success:
@@ -558,7 +587,8 @@ class UDCPOrchestrator:
         fp = self.repo_root / artifact["file_path"]
         if not fp.is_file():
             return TaskResult(
-                success=False, error_type="FILE_NOT_FOUND",
+                success=False,
+                error_type="FILE_NOT_FOUND",
                 error_snippet=f"Track 2 target not found: {artifact['file_path']}",
                 track="DIFFERENTIAL",
             )
@@ -574,8 +604,13 @@ class UDCPOrchestrator:
         written: list[str] = []
         for method_name in methods:
             result = self._patch_method(
-                task_id, engine, method_name, class_name,
-                scope_text, model_hint, max_tokens,
+                task_id,
+                engine,
+                method_name,
+                class_name,
+                scope_text,
+                model_hint,
+                max_tokens,
                 inject_source_files=inject_source_files,
             )
             if not result.success:
@@ -602,8 +637,10 @@ class UDCPOrchestrator:
                 from runner.llm_codegen import call_llm_for_udcp
             except ImportError:
                 return TaskResult(
-                    success=False, error_type="IMPORT_ERROR",
-                    error_snippet="call_llm_for_udcp not available", track="DIFFERENTIAL",
+                    success=False,
+                    error_type="IMPORT_ERROR",
+                    error_snippet="call_llm_for_udcp not available",
+                    track="DIFFERENTIAL",
                 )
             _call_llm = call_llm_for_udcp
 
@@ -612,10 +649,7 @@ class UDCPOrchestrator:
         # or if the file is a router file (APIRouter — never needs app init appended).
         # Exclude test files: a test file that imports/instantiates APIRouter for mocking
         # should NOT be treated as a router file — it needs real test content generated.
-        _is_router_file = (
-            not rel_path.startswith("tests/")
-            and ("router = APIRouter()" in existing or "= APIRouter(" in existing)
-        )
+        _is_router_file = not rel_path.startswith("tests/") and ("router = APIRouter()" in existing or "= APIRouter(" in existing)
         if "app = FastAPI()" in existing or "app.include_router(" in existing or _is_router_file:
             _reason = "already has FastAPI app init" if not _is_router_file else "is a router file"
             print(f"  APPEND SKIP: {rel_path} {_reason} — no-op")
@@ -642,11 +676,11 @@ class UDCPOrchestrator:
             f"No explanation. No file wrapper. Just the raw Python lines."
         )
 
-        response = _call_llm(task_id=task_id, prompt=prompt, model_hint=model_hint,
-                             max_tokens=max_tokens, attempt=1)
+        response = _call_llm(task_id=task_id, prompt=prompt, model_hint=model_hint, max_tokens=max_tokens, attempt=1)
         if not response:
-            return TaskResult(success=False, error_type="LLM_NO_RESPONSE",
-                              error_snippet="No response for module append", track="DIFFERENTIAL")
+            return TaskResult(
+                success=False, error_type="LLM_NO_RESPONSE", error_snippet="No response for module append", track="DIFFERENTIAL"
+            )
 
         # Strip code fences if present
         new_lines = re.sub(r"^```[a-z]*\n(.*)\n```$", r"\1", response.strip(), flags=re.DOTALL)
@@ -685,8 +719,10 @@ class UDCPOrchestrator:
                 from runner.llm_codegen import call_llm_for_udcp
             except ImportError:
                 return TaskResult(
-                    success=False, error_type="IMPORT_ERROR",
-                    error_snippet="call_llm_for_udcp not available", track="DIFFERENTIAL",
+                    success=False,
+                    error_type="IMPORT_ERROR",
+                    error_snippet="call_llm_for_udcp not available",
+                    track="DIFFERENTIAL",
                 )
             _call_llm = call_llm_for_udcp
 
@@ -694,8 +730,10 @@ class UDCPOrchestrator:
             node_source = engine.extract_node_for_llm(method_name, class_name)
         except Track2SpliceError as exc:
             return TaskResult(
-                success=False, error_type="EXTRACTION_ERROR",
-                error_snippet=str(exc)[:300], track="DIFFERENTIAL",
+                success=False,
+                error_type="EXTRACTION_ERROR",
+                error_snippet=str(exc)[:300],
+                track="DIFFERENTIAL",
             )
 
         target_label = f"{class_name}.{method_name}" if class_name else method_name
@@ -738,14 +776,17 @@ class UDCPOrchestrator:
 
         if not response:
             return TaskResult(
-                success=False, error_type="LLM_NO_RESPONSE",
-                error_snippet=f"No response for {target_label}", track="DIFFERENTIAL",
+                success=False,
+                error_type="LLM_NO_RESPONSE",
+                error_snippet=f"No response for {target_label}",
+                track="DIFFERENTIAL",
             )
 
         new_logic = _extract_function_block(response)
         if not new_logic:
             return TaskResult(
-                success=False, error_type="NO_FUNCTION_BLOCK",
+                success=False,
+                error_type="NO_FUNCTION_BLOCK",
                 error_snippet=f"Could not parse function block from LLM response for {target_label}",
                 track="DIFFERENTIAL",
             )
@@ -754,8 +795,10 @@ class UDCPOrchestrator:
             engine.splice_node_safely(method_name, new_logic, class_name)
         except Track2SpliceError as exc:
             return TaskResult(
-                success=False, error_type="SPLICE_ERROR",
-                error_snippet=str(exc)[:300], track="DIFFERENTIAL",
+                success=False,
+                error_type="SPLICE_ERROR",
+                error_snippet=str(exc)[:300],
+                track="DIFFERENTIAL",
             )
 
         # Normalize the full patched file so all tracks benefit from the same guarantees
@@ -769,9 +812,11 @@ class UDCPOrchestrator:
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _parse_llm_files_local(response: str) -> dict[str, str]:
     """Minimal <file path="...">...</file> parser used when llm_codegen is not on sys.path."""
     from runner.constants import ALLOWED_WRITE_ROOTS
+
     # Strip surrounding code fence — Haiku sometimes wraps file blocks in ```python ... ```
     stripped = re.sub(r"^```[a-z]*\n(.*)\n```$", r"\1", response.strip(), flags=re.DOTALL)
     files: dict[str, str] = {}

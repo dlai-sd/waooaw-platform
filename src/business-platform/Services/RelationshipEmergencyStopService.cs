@@ -14,19 +14,30 @@ public sealed record RelationshipEmergencyStopDispatch(Guid EvidenceId, DateTime
 public interface IRelationshipEmergencyStopGateway
 {
     Task<RelationshipEmergencyStopDispatch> StopAsync(
-        Guid tenantId, Guid relationshipId, Guid participantId,
-        IReadOnlyCollection<Guid> executionIds, CancellationToken cancellationToken);
+        Guid tenantId,
+        Guid relationshipId,
+        Guid participantId,
+        IReadOnlyCollection<Guid> executionIds,
+        CancellationToken cancellationToken
+    );
 }
 
-public sealed class GrpcRelationshipEmergencyStopGateway(
-    IConfiguration configuration) : IRelationshipEmergencyStopGateway
+public sealed class GrpcRelationshipEmergencyStopGateway(IConfiguration configuration)
+    : IRelationshipEmergencyStopGateway
 {
     public async Task<RelationshipEmergencyStopDispatch> StopAsync(
-        Guid tenantId, Guid relationshipId, Guid participantId,
-        IReadOnlyCollection<Guid> executionIds, CancellationToken cancellationToken)
+        Guid tenantId,
+        Guid relationshipId,
+        Guid participantId,
+        IReadOnlyCollection<Guid> executionIds,
+        CancellationToken cancellationToken
+    )
     {
-        var endpoint = configuration["ConstitutionalEngine:GrpcUrl"]
-            ?? throw new InvalidOperationException("ConstitutionalEngine:GrpcUrl is not configured.");
+        var endpoint =
+            configuration["ConstitutionalEngine:GrpcUrl"]
+            ?? throw new InvalidOperationException(
+                "ConstitutionalEngine:GrpcUrl is not configured."
+            );
         using var channel = GrpcChannel.ForAddress(endpoint);
         var client = new ConstitutionalService.ConstitutionalServiceClient(channel);
         var request = new EmergencyStopRequest
@@ -39,37 +50,65 @@ public sealed class GrpcRelationshipEmergencyStopGateway(
             request,
             new Metadata { { "x-tenant-id", tenantId.ToString("D") } },
             deadline: DateTime.UtcNow.AddMilliseconds(200),
-            cancellationToken: cancellationToken);
+            cancellationToken: cancellationToken
+        );
         if (!Guid.TryParse(response.EmergencyStopRecordId, out var evidenceId))
-            throw new InvalidOperationException("Constitutional Engine returned an invalid Stop evidence identifier.");
-        return new RelationshipEmergencyStopDispatch(evidenceId, response.RecordedAt.ToDateTimeOffset());
+            throw new InvalidOperationException(
+                "Constitutional Engine returned an invalid Stop evidence identifier."
+            );
+        return new RelationshipEmergencyStopDispatch(
+            evidenceId,
+            response.RecordedAt.ToDateTimeOffset()
+        );
     }
 }
 
 public sealed class RelationshipEmergencyStopService(
     IDbContextFactory<ConversationStoreDbContext> conversationFactory,
     EmploymentRelationshipService relationships,
-    IRelationshipEmergencyStopGateway gateway)
+    IRelationshipEmergencyStopGateway gateway
+)
 {
     public async Task<EmploymentRelationship?> StopAsync(
-        Guid tenantId, Guid relationshipId, Guid participantId,
-        RelationshipParticipantRole participantRole, Guid correlationId,
-        CancellationToken cancellationToken)
+        Guid tenantId,
+        Guid relationshipId,
+        Guid participantId,
+        RelationshipParticipantRole participantRole,
+        Guid correlationId,
+        CancellationToken cancellationToken
+    )
     {
         var existing = await relationships.GetAsync(tenantId, relationshipId, cancellationToken);
-        if (existing is null || existing.State == EmploymentRelationshipState.StoppedEmergency) return existing;
-        await using var conversations = await conversationFactory.CreateDbContextAsync(cancellationToken);
+        if (existing is null || existing.State == EmploymentRelationshipState.StoppedEmergency)
+            return existing;
+        await using var conversations = await conversationFactory.CreateDbContextAsync(
+            cancellationToken
+        );
         var terminalStates = new[] { "COMPLETED", "FAILED", "CANCELLED", "STOPPED" };
-        var executionIds = await conversations.Executions.AsNoTracking()
-            .Where(value => value.TenantId == tenantId
+        var executionIds = await conversations
+            .Executions.AsNoTracking()
+            .Where(value =>
+                value.TenantId == tenantId
                 && value.RelationshipId == relationshipId
-                && !terminalStates.Contains(value.ProcessingState))
+                && !terminalStates.Contains(value.ProcessingState)
+            )
             .Select(value => value.ExecutionId)
             .ToListAsync(cancellationToken);
         var dispatch = await gateway.StopAsync(
-            tenantId, relationshipId, participantId, executionIds, cancellationToken);
+            tenantId,
+            relationshipId,
+            participantId,
+            executionIds,
+            cancellationToken
+        );
         return await relationships.CommitEmergencyStopAsync(
-            tenantId, relationshipId, participantId, participantRole,
-            correlationId, dispatch.EvidenceId, cancellationToken);
+            tenantId,
+            relationshipId,
+            participantId,
+            participantRole,
+            correlationId,
+            dispatch.EvidenceId,
+            cancellationToken
+        );
     }
 }

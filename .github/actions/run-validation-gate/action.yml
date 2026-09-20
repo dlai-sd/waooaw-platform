@@ -1,0 +1,106 @@
+name: Run catalog validation gate
+description: Resolve and execute one validation gate from the immutable WC-104 catalog plan.
+inputs:
+  gate-id:
+    description: Validation catalog gate identifier
+    required: true
+  token:
+    description: GitHub token used for GHCR and attestation verification
+    required: true
+  pr-number:
+    description: Optional pull request number whose body is refreshed before each execution attempt
+    required: false
+    default: ""
+  repository:
+    description: Repository used to refresh optional pull request metadata
+    required: false
+    default: ""
+  metadata-directory:
+    description: Directory receiving optional PR body and commit-range inputs
+    required: false
+    default: ""
+  base-sha:
+    description: Base commit written to the optional metadata directory
+    required: false
+    default: ""
+  head-sha:
+    description: Head commit written to the optional metadata directory
+    required: false
+    default: ""
+  attempts:
+    description: Maximum catalog execution attempts
+    required: false
+    default: "1"
+  retry-delay-seconds:
+    description: Delay before refreshing metadata for a subsequent attempt
+    required: false
+    default: "0"
+outputs:
+  image_id:
+    description: Verified Docker image ID used by the gate
+    value: ${{ steps.runner.outputs.image_id }}
+runs:
+  using: composite
+  steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: wc104-qualification-plan-${{ github.run_id }}
+        path: test-results/wc104/catalog-plan
+    - name: Resolve catalog runner
+      id: gate
+      shell: bash
+      env:
+        GATE_ID: ${{ inputs.gate-id }}
+      run: |
+        plan=test-results/wc104/catalog-plan/qualification-plan.json
+        count=$(jq --arg gate "$GATE_ID" '[.nodes[] | select(.gate_id == $gate)] | length' "$plan")
+        [[ "$count" == 1 ]]
+        runner_id=$(jq -r --arg gate "$GATE_ID" '.nodes[] | select(.gate_id == $gate) | .runner_id' "$plan")
+        echo "runner_id=$runner_id" >> "$GITHUB_OUTPUT"
+    - uses: ./.github/actions/use-validation-runner
+      id: runner
+      with:
+        runner-id: ${{ steps.gate.outputs.runner_id }}
+        token: ${{ inputs.token }}
+    - name: Execute catalog command
+      shell: bash
+      env:
+        GATE_ID: ${{ inputs.gate-id }}
+        GH_TOKEN: ${{ inputs.token }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+        REPOSITORY: ${{ inputs.repository }}
+        METADATA_DIRECTORY: ${{ inputs.metadata-directory }}
+        BASE_SHA: ${{ inputs.base-sha }}
+        HEAD_SHA: ${{ inputs.head-sha }}
+        ATTEMPTS: ${{ inputs.attempts }}
+        RETRY_DELAY_SECONDS: ${{ inputs.retry-delay-seconds }}
+      run: |
+        [[ "$ATTEMPTS" =~ ^[1-9][0-9]*$ ]]
+        [[ "$RETRY_DELAY_SECONDS" =~ ^[0-9]+$ ]]
+        if [[ -n "$PR_NUMBER" ]]; then
+          [[ -n "$REPOSITORY" && -n "$METADATA_DIRECTORY" && -n "$BASE_SHA" && -n "$HEAD_SHA" ]]
+          mkdir -p "$METADATA_DIRECTORY"
+          printf '%s\n' "$BASE_SHA" > "$METADATA_DIRECTORY/base-sha.txt"
+          printf '%s\n' "$HEAD_SHA" > "$METADATA_DIRECTORY/head-sha.txt"
+        fi
+        for ((attempt = 1; attempt <= ATTEMPTS; attempt++)); do
+          if [[ -n "$PR_NUMBER" ]]; then
+            if ((attempt > 1)); then
+              echo "PR metadata has not converged; retrying in $RETRY_DELAY_SECONDS seconds"
+              sleep "$RETRY_DELAY_SECONDS"
+            fi
+            if ! gh pr view "$PR_NUMBER" --json body --jq .body --repo "$REPOSITORY" \
+              > "$METADATA_DIRECTORY/pr-body.md"; then
+              echo "Unable to refresh PR metadata for attempt $attempt" >&2
+              continue
+            fi
+          fi
+          if python3 scripts/validation_control/catalog_execution.py \
+            --plan test-results/wc104/catalog-plan/qualification-plan.json \
+            --gate "$GATE_ID" \
+            --image-id '${{ steps.runner.outputs.image_id }}'; then
+            exit 0
+          fi
+        done
+        echo "$GATE_ID failed after $ATTEMPTS attempts" >&2
+        exit 1

@@ -89,8 +89,12 @@ def validate_and_render(environment: str) -> dict[str, Any]:
         valid_host = (
             host.endswith(f".{environment}.waooaw.com")
             or (environment == "demo" and host.endswith(".azurecontainerapps.io") and host.startswith("ca-demo-"))
-            or (environment == "prod" and host.endswith(".waooaw.com")
-                and not host.endswith(".demo.waooaw.com") and not host.endswith(".uat.waooaw.com"))
+            or (
+                environment == "prod"
+                and host.endswith(".waooaw.com")
+                and not host.endswith(".demo.waooaw.com")
+                and not host.endswith(".uat.waooaw.com")
+            )
         )
         if not valid_host:
             raise ContractError(f"{name} references another environment")

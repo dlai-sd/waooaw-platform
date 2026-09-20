@@ -734,11 +734,13 @@ def test_local_rehearsal_is_offline_pinned_and_covers_the_full_goal006_path() ->
 
 def test_release_qualification_retains_docker_azure_cli_runtime_evidence() -> None:
     workflow = (REPO_ROOT / ".github/workflows/ci.yaml").read_text(encoding="utf-8")
+    catalog = (REPO_ROOT / "validation/engineering-validation.yaml").read_text(encoding="utf-8")
     release_runner = (REPO_ROOT / "scripts/run_release_qualification.sh").read_text(encoding="utf-8")
 
-    assert "scripts/run_release_qualification.sh" in workflow
+    assert "gate-id: release-qualification" in workflow
+    assert "release-qualification: {shell: \"sh scripts/run_release_qualification.sh\"" in catalog
     assert "bash scripts/run_goal006_local_azure_verification.sh" in release_runner
-    assert "GOAL006_EVIDENCE_DIR=goal006-local-azure-runtime" in release_runner
+    assert "GOAL006_EVIDENCE_DIR=${GOAL006_EVIDENCE_DIR:-goal006-local-azure-runtime}" in release_runner
     assert "goal006-local-azure-runtime-${{ github.run_id }}" in workflow
     assert "if-no-files-found: error" in workflow
 
