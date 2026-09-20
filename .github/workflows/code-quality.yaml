@@ -11,6 +11,8 @@ on:
     branches: [main]
   push:
     branches: [main]
+  schedule:
+    - cron: "0 0 * * 0"
 
 concurrency:
   group: code-quality-${{ github.ref }}
@@ -26,6 +28,14 @@ jobs:
       id-token: write
       attestations: write
 
+  validation-plan:
+    needs: runner-supply
+    uses: ./.github/workflows/validation-plan.yaml
+    permissions:
+      contents: read
+      packages: read
+      attestations: read
+
   # ─── Commit message format (C-059 + C-073 traceability) ──────────────────
   # G-05 FIX: commitlint enforces IB:/Constitutional:/CCTs-added: fields on
   # every commit message. Without this, the spec→code traceability chain breaks
@@ -33,283 +43,136 @@ jobs:
   commitlint:
     name: Commit message lint (C-059 traceability)
     runs-on: ubuntu-latest
-    needs: runner-supply
+    needs: [runner-supply, validation-plan]
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/use-validation-runner
+      - uses: ./.github/actions/run-validation-gate
         with:
-          runner-id: typescript
+          gate-id: quality:commitlint
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Validate PR commits
-        run: |
-          docker compose --profile test-ts run --rm test-runner-ts \
-            commitlint \
-              --from ${{ github.event.pull_request.base.sha }} \
-              --to ${{ github.event.pull_request.head.sha }} \
-              --verbose
-        # Note: commitlint checks conventional format. The C-059 extended fields
-        # (IB:, Constitutional:, CCTs-added:) are validated by the traceability
-        # scan job below — they are body fields, not subject fields.
+          pr-number: ${{ github.event.pull_request.number }}
+          repository: ${{ github.repository }}
+          metadata-directory: test-results/wc104/metadata
+          base-sha: ${{ github.event.pull_request.base.sha }}
+          head-sha: ${{ github.event.pull_request.head.sha }}
 
   # ─── .NET: CSharpier format + Roslyn analyzers ──────────────────────────
   dotnet-quality:
     name: .NET — CSharpier + analyzers + StyleCop
     runs-on: ubuntu-latest
-    needs: runner-supply
-    # hashFiles guard: skip before src/ service dirs exist (Sprint 011 scaffold PRs)
-    if: |
-      hashFiles('src/constitutional-engine/**/*.csproj') != '' ||
-      hashFiles('src/business-platform/**/*.csproj') != ''
+    needs: [runner-supply, validation-plan]
     strategy:
       matrix:
-        project: [src/constitutional-engine, src/business-platform]
+        include:
+          - project: src/constitutional-engine
+            gate: quality:dotnet:constitutional-engine
+          - project: src/business-platform
+            gate: quality:dotnet:business-platform
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/use-validation-runner
+      - uses: ./.github/actions/run-validation-gate
         with:
-          runner-id: dotnet
+          gate-id: ${{ matrix.gate }}
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Check formatting (CSharpier)
-        run: docker compose --profile test-dotnet run --rm test-runner-dotnet csharpier check ${{ matrix.project }}
-        # Fails if any file needs formatting — agents must run 'dotnet csharpier .' locally first
-
-      - name: Build with warnings-as-errors (Roslyn + StyleCop)
-        run: |
-          docker compose --profile test-dotnet run --rm test-runner-dotnet sh -lc '
-            dotnet build "${{ matrix.project }}" \
-              --artifacts-path /tmp/artifacts/${{ strategy.job-index }} \
-              -warnaserror /p:TreatWarningsAsErrors=true
-          '
-
-      - name: Check for known vulnerable packages
-        run: |
-          docker compose --profile test-dotnet run --rm test-runner-dotnet sh -lc '
-            dotnet list "${{ matrix.project }}" package --vulnerable --include-transitive \
-              '"'"'-p:BaseIntermediateOutputPath=/tmp/obj/$(MSBuildProjectName)/'"'"' \
-              2>&1 | grep -i "has the following vulnerable packages" && exit 1 || true
-          '
 
   # ─── Python: Ruff lint + format + mypy + bandit ─────────────────────────
   python-quality:
     name: Python — Ruff + mypy + bandit
     runs-on: ubuntu-latest
-    needs: runner-supply
-    # hashFiles guard: skip before Python service dirs exist
-    if: |
-      hashFiles('src/professional-runtime/pyproject.toml') != '' ||
-      hashFiles('src/ai-runtime/pyproject.toml') != ''
+    needs: [runner-supply, validation-plan]
     strategy:
       matrix:
         include:
           - service: src/professional-runtime
             mypy_path: /workspace/src/professional-runtime
+            gate: quality:python:professional-runtime
           - service: src/ai-runtime
             mypy_path: /workspace/src/ai-runtime:/workspace/src/trust-layer
+            gate: quality:python:ai-runtime
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/use-validation-runner
+      - uses: ./.github/actions/run-validation-gate
         with:
-          runner-id: python
+          gate-id: ${{ matrix.gate }}
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Ruff lint (catches bugs, style, security patterns)
-        run: docker compose --profile test-python run --rm test-runner-python ruff check ${{ matrix.service }} --output-format=github
-        # --output-format=github: inline annotations in PR
-
-      - name: Ruff format check (no diffs allowed)
-        run: docker compose --profile test-python run --rm test-runner-python ruff format --check ${{ matrix.service }}
-
-      - name: mypy strict type check
-        run: |
-          docker compose --profile test-python run --rm test-runner-python sh -lc '
-            cd /tmp &&
-            MYPYPATH="${{ matrix.mypy_path }}" \
-              mypy --strict --explicit-package-bases \
-                $(find "/workspace/${{ matrix.service }}" -name "*.py" -type f | sort) \
-                --config-file /workspace/pyproject.toml
-          '
-
-      - name: Bandit security scan
-        run: |
-          docker compose --profile test-python run --rm test-runner-python sh -lc '
-            bandit -r "${{ matrix.service }}" \
-              -c pyproject.toml -f json -o /tmp/bandit-results.json --exit-zero &&
-            python - <<'"'"'PY'"'"'
-          import json
-          import sys
-
-          with open("/tmp/bandit-results.json") as results_file:
-              results = json.load(results_file)
-          issues = [result for result in results.get("results", []) if result["issue_severity"] in ("HIGH", "CRITICAL")]
-          if issues:
-              print(f"SECURITY GATE FAILED: {len(issues)} HIGH/CRITICAL finding(s)")
-              sys.exit(1)
-          print("No HIGH/CRITICAL security findings")
-          PY
-          '
-
-      - name: Check no prompt_text in log calls (ADR-028 security rule)
-        run: |
-          docker compose --profile test-python run --rm test-runner-python sh -lc '
-            grep -rn "log.*prompt_text\|logger.*prompt_text\|print.*prompt_text" \
-              "${{ matrix.service }}" --include="*.py" &&
-              { echo "SECURITY VIOLATION: prompt_text found in log/print statement — ADR-028"; exit 1; } ||
-              echo "No prompt_text in log statements"
-          '
 
   # ─── Python: scripts/ quality ────────────────────────────────────────────
   scripts-quality:
     name: Python scripts — ruff + mypy
     runs-on: ubuntu-latest
-    needs: runner-supply
+    needs: [runner-supply, validation-plan]
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/use-validation-runner
+      - uses: ./.github/actions/run-validation-gate
         with:
-          runner-id: python
+          gate-id: quality:scripts
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Lint scripts
-        run: docker compose --profile test-python run --rm test-runner-python ruff check scripts/ --config pyproject.toml
-      - name: Format check scripts
-        run: docker compose --profile test-python run --rm test-runner-python ruff format --check scripts/
-      - name: seed-prompts.py dry-run (contract test)
-        run: docker compose --profile test-python run --rm test-runner-python python scripts/seed-prompts.py --dry-run
 
   # ─── TypeScript: Biome lint + format + type check ───────────────────────
   typescript-quality:
     name: TypeScript — Biome + tsc strict
     runs-on: ubuntu-latest
-    needs: runner-supply
+    needs: [runner-supply, validation-plan]
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/use-validation-runner
+      - uses: ./.github/actions/run-validation-gate
         with:
-          runner-id: typescript
+          gate-id: quality:typescript
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Biome lint (bugs + security + accessibility + performance)
-        run: docker compose --profile test-ts run --rm test-runner-ts sh -lc 'cd web && biome lint --reporter=github .'
-
-      - name: Biome format check
-        run: docker compose --profile test-ts run --rm test-runner-ts sh -lc 'cd web && biome format .'
-
-      - name: TypeScript strict type check
-        run: |
-          docker compose --profile test-ts run --rm test-runner-ts sh -lc '
-            cp -a web /tmp/web &&
-            ln -s /opt/waooaw-web/node_modules /tmp/web/node_modules &&
-            cd /tmp/web &&
-            tsc --noEmit --incremental false
-          '
-
-      - name: Check for 'any' type (forbidden — C-072)
-        run: |
-          grep -rn "as any\|: any\b" web/src --include="*.ts" --include="*.tsx" \
-            --exclude-dir=node_modules | grep -v "// biome-ignore" && \
-            echo "C-072 violation: 'any' type found in TypeScript source" && exit 1 || \
-            echo "✓ No 'any' types in production TypeScript"
-
-      - name: "Bundle size check (UX vocabulary: max 200KB home page)"
-        run: |
-          docker compose --profile test-ts run --rm test-runner-ts sh -lc '
-            cp -a web /tmp/web &&
-            ln -s /opt/waooaw-web/node_modules /tmp/web/node_modules &&
-            cd /tmp/web &&
-            next build 2>&1 | grep -E "First Load JS|Route" || true
-          '
-          # TODO: parse Next.js build output and fail if bundle > 250KB threshold
 
   # ─── SQL: sqlfluff ───────────────────────────────────────────────────────
   sql-quality:
     name: SQL — sqlfluff lint
     runs-on: ubuntu-latest
-    needs: runner-supply
+    needs: [runner-supply, validation-plan]
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/use-validation-runner
+      - uses: ./.github/actions/run-validation-gate
         with:
-          runner-id: python
+          gate-id: quality:sql
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Lint SQL migrations
-        run: |
-          docker compose --profile test-python run --rm test-runner-python \
-            sqlfluff lint infrastructure/postgres/init/ \
-              --config .sqlfluff \
-              --format github-annotation \
-              --annotation-level warning || true  # Advisory until existing files are formatted
 
   # ─── Proto: buf lint + format ────────────────────────────────────────────
   proto-quality:
     name: Proto — buf lint + breaking
     runs-on: ubuntu-latest
+    needs: [runner-supply, validation-plan]
     steps:
       - uses: actions/checkout@v4
-      - name: buf lint
-        uses: bufbuild/buf-action@v1
+      - uses: ./.github/actions/run-validation-gate
         with:
-          input: architecture/reference/proto
-      - name: buf format check
-        uses: bufbuild/buf-action@v1
-        with:
-          input: architecture/reference/proto
-          format: true
-          format_diff: true
+          gate-id: quality:proto
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   # ─── Security: OTel span tag audit (no PII in traces) ───────────────────
   observability-security:
     name: OTel span PII audit
     runs-on: ubuntu-latest
+    needs: [runner-supply, validation-plan]
     steps:
       - uses: actions/checkout@v4
-      - name: Scan for raw tenant_id/customer_data in OTel span tags
-        run: |
-          VIOLATIONS=0
-          # Look for common patterns that would put PII in traces
-          for pattern in \
-            'SetTag.*tenant_id[^_]' \
-            'SetTag.*customer_name' \
-            'SetTag.*email' \
-            'SetTag.*phone' \
-            'set_attribute.*tenant_id[^_]' \
-            'set_attribute.*customer_name'; do
-            MATCHES=$(grep -rn "$pattern" src/ --include="*.cs" --include="*.py" 2>/dev/null || true)
-            if [ -n "$MATCHES" ]; then
-              echo "OBSERVABILITY SECURITY VIOLATION: raw PII in OTel span tags"
-              echo "Pattern: $pattern"
-              echo "$MATCHES"
-              VIOLATIONS=$((VIOLATIONS + 1))
-            fi
-          done
-          [ "$VIOLATIONS" -eq 0 ] && echo "✓ No PII in OTel spans" || exit 1
+      - uses: ./.github/actions/run-validation-gate
+        with:
+          gate-id: quality:observability
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   # ─── C-073 Traceability annotation scan ─────────────────────────────────
   traceability-scan:
     name: C-073 Traceability scan (constitutional annotations)
     runs-on: ubuntu-latest
-    needs: runner-supply
+    needs: [runner-supply, validation-plan]
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0   # Full history needed for diff + claim amendment detection
-      - uses: ./.github/actions/use-validation-runner
+      - uses: ./.github/actions/run-validation-gate
         with:
-          runner-id: python
+          gate-id: quality:traceability
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Scan changed files for constitutional annotations
-        run: docker compose --profile test-python run --rm test-runner-python python scripts/scan-traceability.py --changed-only
-
-      - name: Detect amended constitutional claims → surface affected code
-        run: docker compose --profile test-python run --rm test-runner-python python scripts/scan-traceability.py --amended-claims
-
-      - name: Generate traceability report (PR artifact)
-        run: docker compose --profile test-python run --rm test-runner-python python scripts/scan-traceability.py --report test-results/traceability-report.json
-        continue-on-error: true
 
       - name: Upload traceability report
         if: always()
@@ -322,60 +185,34 @@ jobs:
   constitutional-naming:
     name: Constitutional naming audit
     runs-on: ubuntu-latest
+    needs: [runner-supply, validation-plan]
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Check changed files for constitutional naming conventions
-        run: |
-          # Get changed .cs and .py files in this PR
-          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD \
-            | grep -E '\.(cs|py)$' | head -30 || true)
-
-          if [ -z "$CHANGED" ]; then
-            echo "No .cs/.py files changed"
-            exit 0
-          fi
-
-          VIOLATIONS=0
-          for file in $CHANGED; do
-            [ -f "$file" ] || continue
-
-            # Check for generic names in constitutional code paths (warning only)
-            if grep -qE 'class.*Manager|class.*Helper|class.*Util|class.*Misc' "$file"; then
-              echo "WARNING: Generic class name in $file — consider constitutional naming (C-072)"
-            fi
-
-            # Check for hardcoded magic numbers that should be named constants
-            if grep -qE '[^_a-zA-Z]250[^ms]|[^_]40[^m]' "$file" 2>/dev/null; then
-              echo "INFO: Possible magic number in $file — ensure constitutional constants are named"
-            fi
-          done
-
-          echo "✓ Constitutional naming audit complete"
+      - uses: ./.github/actions/run-validation-gate
+        with:
+          gate-id: quality:constitutional-naming
+          token: ${{ secrets.GITHUB_TOKEN }}
+          pr-number: ${{ github.event.pull_request.number }}
+          repository: ${{ github.repository }}
+          metadata-directory: test-results/wc104/metadata
+          base-sha: ${{ github.event.pull_request.base.sha }}
+          head-sha: ${{ github.event.pull_request.head.sha }}
 
   # ─── Mutation testing (weekly — Sunday at midnight UTC) ─────────────────
   mutation-dotnet:
     name: Mutation testing — .NET (Stryker)
     runs-on: ubuntu-latest
-    needs: runner-supply
+    needs: [runner-supply, validation-plan]
     if: github.event_name == 'schedule'
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/use-validation-runner
+      - uses: ./.github/actions/run-validation-gate
         with:
-          runner-id: dotnet
+          gate-id: mutation:dotnet
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Run Stryker on CE (target ≥75% mutation score)
-        run: |
-          docker compose --profile test-dotnet run --rm test-runner-dotnet sh -lc '
-            cp -a src/constitutional-engine /tmp/constitutional-engine &&
-            cd /tmp/constitutional-engine &&
-            dotnet-stryker \
-              --threshold-high 80 --threshold-low 75 --threshold-break 65 \
-              --reporter json --output /workspace/test-results/stryker-ce-results
-          '
       - uses: actions/upload-artifact@v4
         with:
           name: stryker-results
@@ -384,24 +221,11 @@ jobs:
   mutation-python:
     name: Mutation testing — Python (mutmut)
     runs-on: ubuntu-latest
-    needs: runner-supply
+    needs: [runner-supply, validation-plan]
     if: github.event_name == 'schedule'
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/use-validation-runner
+      - uses: ./.github/actions/run-validation-gate
         with:
-          runner-id: python
+          gate-id: mutation:python
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Run mutmut on AI Runtime (target ≥65%)
-        run: |
-          docker compose --profile test-python run --rm test-runner-python sh -lc '
-            mkdir -p /tmp/mutation/src /tmp/mutation/tests/unit &&
-            cp -a src/ai-runtime /tmp/mutation/src/ai-runtime &&
-            cp -a tests/unit/ai-runtime /tmp/mutation/tests/unit/ai-runtime &&
-            cd /tmp/mutation/src/ai-runtime &&
-            mutmut run --paths-to-mutate=. --tests-dir=../../tests/unit/ai-runtime/ &&
-            mutmut results &&
-            SCORE=$(mutmut results | grep -oP "\d+(?=%)" | head -1) &&
-            [ "${SCORE:-0}" -ge 60 ] ||
-              { echo "Mutation score ${SCORE}% < 60% — C-072"; exit 1; }
-          '

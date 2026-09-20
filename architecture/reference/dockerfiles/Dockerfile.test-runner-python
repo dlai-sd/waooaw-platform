@@ -12,6 +12,8 @@
 # ADR-045 §2: dependency layers precede code layers.
 # ADR-045 §2: --mount=type=cache for pip (no re-download on incremental builds).
 
+FROM bufbuild/buf@sha256:65bd496a89c762ad7151ca9e7d885a45dacb3671a8e8ec39738b9f844d3405ea AS buf
+
 FROM python:3.12-slim-bookworm@sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e
 
 RUN groupadd --gid 1000 waooaw && useradd --uid 1000 --gid waooaw --create-home waooaw
@@ -23,6 +25,8 @@ RUN --mount=type=cache,id=wc104-python-apt-lists,target=/var/lib/apt/lists,shari
     apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl
+
+COPY --from=buf /usr/local/bin/buf /usr/local/bin/buf
 
 # Layer 3: install deps — busted only when requirements-test.txt changes
 COPY requirements-test.txt /workspace/requirements-test.txt

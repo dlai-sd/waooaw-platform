@@ -57,6 +57,20 @@ commands:
   requirement-ledger: {shell: "python scripts/validate_requirement_ledger.py --repository-root /workspace"}
   author-review-gate: {shell: "sh scripts/validation_control/run_c065_gate.sh"}
   authorization-tier-check: {shell: "sh scripts/validation_control/run_c066_gate.sh"}
+  quality-scripts: {shell: "ruff check scripts/ --config pyproject.toml && ruff format --check scripts/ && python scripts/seed-prompts.py --dry-run"}
+  quality-commitlint: {shell: "sh scripts/validation_control/run_commitlint_quality_gate.sh"}
+  quality-dotnet-constitutional-engine: {shell: "sh scripts/validation_control/run_dotnet_quality_gate.sh src/constitutional-engine constitutional-engine"}
+  quality-dotnet-business-platform: {shell: "sh scripts/validation_control/run_dotnet_quality_gate.sh src/business-platform business-platform"}
+  quality-python-professional-runtime: {shell: "sh scripts/validation_control/run_python_quality_gate.sh src/professional-runtime /workspace/src/professional-runtime"}
+  quality-python-ai-runtime: {shell: "sh scripts/validation_control/run_python_quality_gate.sh src/ai-runtime /workspace/src/ai-runtime:/workspace/src/trust-layer"}
+  quality-typescript: {shell: "sh scripts/validation_control/run_typescript_quality_gate.sh"}
+  quality-sql: {shell: "sqlfluff lint infrastructure/postgres/init/ --config .sqlfluff --format github-annotation --annotation-level warning || true"}
+  quality-proto: {shell: "sh scripts/validation_control/run_proto_quality_gate.sh"}
+  quality-observability: {shell: "sh scripts/validation_control/run_observability_quality_gate.sh"}
+  quality-traceability: {shell: "sh scripts/validation_control/run_traceability_quality_gate.sh"}
+  quality-constitutional-naming: {shell: "sh scripts/validation_control/run_constitutional_naming_gate.sh"}
+  mutation-dotnet: {shell: "sh scripts/validation_control/run_dotnet_mutation_gate.sh"}
+  mutation-python: {shell: "sh scripts/validation_control/run_python_mutation_gate.sh"}
 
 gates:
   build: &python_static
@@ -117,6 +131,20 @@ gates:
   requirement-ledger: {<<: *python_static, gate_id: requirement-ledger, command_id: requirement-ledger, evidence_class: contract, global_trigger: true}
   author-review-gate: {<<: *python_static, gate_id: author-review-gate, command_id: author-review-gate, evidence_class: contract, global_trigger: true}
   authorization-tier-check: {<<: *python_static, gate_id: authorization-tier-check, command_id: authorization-tier-check, evidence_class: CCT, global_trigger: true}
+  quality:scripts: {<<: *python_static, gate_id: "quality:scripts", command_id: quality-scripts, evidence_class: static, global_trigger: true}
+  quality:commitlint: {<<: *python_static, gate_id: "quality:commitlint", runner_id: typescript, command_id: quality-commitlint, evidence_class: contract, resources: *typescript_resources, global_trigger: true}
+  quality:dotnet:constitutional-engine: {<<: *python_static, gate_id: "quality:dotnet:constitutional-engine", runner_id: dotnet, command_id: quality-dotnet-constitutional-engine, resources: *dotnet_resources, global_trigger: true}
+  quality:dotnet:business-platform: {<<: *python_static, gate_id: "quality:dotnet:business-platform", runner_id: dotnet, command_id: quality-dotnet-business-platform, resources: *dotnet_resources, global_trigger: true}
+  quality:python:professional-runtime: {<<: *python_static, gate_id: "quality:python:professional-runtime", command_id: quality-python-professional-runtime, global_trigger: true}
+  quality:python:ai-runtime: {<<: *python_static, gate_id: "quality:python:ai-runtime", command_id: quality-python-ai-runtime, global_trigger: true}
+  quality:typescript: {<<: *python_static, gate_id: "quality:typescript", runner_id: typescript, command_id: quality-typescript, resources: *typescript_resources, global_trigger: true}
+  quality:sql: {<<: *python_static, gate_id: "quality:sql", command_id: quality-sql, global_trigger: true}
+  quality:proto: {<<: *python_static, gate_id: "quality:proto", command_id: quality-proto, global_trigger: true}
+  quality:observability: {<<: *python_static, gate_id: "quality:observability", command_id: quality-observability, evidence_class: security, global_trigger: true}
+  quality:traceability: {<<: *python_static, gate_id: "quality:traceability", command_id: quality-traceability, evidence_class: contract, global_trigger: true}
+  quality:constitutional-naming: {<<: *python_static, gate_id: "quality:constitutional-naming", command_id: quality-constitutional-naming, evidence_class: contract, global_trigger: true}
+  mutation:dotnet: {<<: *python_static, gate_id: "mutation:dotnet", runner_id: dotnet, command_id: mutation-dotnet, evidence_class: coverage, resources: {cpus: 2, memory_mb: 4096, timeout_seconds: 3600, docker_socket: true, concurrency_class: dotnet}, global_trigger: true}
+  mutation:python: {<<: *python_static, gate_id: "mutation:python", command_id: mutation-python, evidence_class: coverage, resources: {cpus: 2, memory_mb: 4096, timeout_seconds: 3600, docker_socket: true, concurrency_class: python}, global_trigger: true}
 
 full_gates:
   - build
@@ -135,6 +163,20 @@ full_gates:
   - requirement-ledger
   - author-review-gate
   - authorization-tier-check
+  - quality:scripts
+  - quality:commitlint
+  - quality:dotnet:constitutional-engine
+  - quality:dotnet:business-platform
+  - quality:python:professional-runtime
+  - quality:python:ai-runtime
+  - quality:typescript
+  - quality:sql
+  - quality:proto
+  - quality:observability
+  - quality:traceability
+  - quality:constitutional-naming
+  - mutation:dotnet
+  - mutation:python
 
 components:
   constitutional-engine:

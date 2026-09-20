@@ -138,7 +138,8 @@ def test_hosted_workflows_use_one_supply_graph_and_never_build_in_consumers() ->
 
 def test_reusable_validation_plan_preserves_consumer_contract() -> None:
     root = Path(__file__).resolve().parents[2]
-    workflow = yaml.safe_load((root / ".github/workflows/validation-plan.yaml").read_text(encoding="utf-8"))
+    source = (root / ".github/workflows/validation-plan.yaml").read_text(encoding="utf-8")
+    workflow = yaml.safe_load(source)
     plan = workflow["jobs"]["plan"]
     rendered = json.dumps(plan)
 
@@ -148,6 +149,67 @@ def test_reusable_validation_plan_preserves_consumer_contract() -> None:
     assert '"runner-id": "full"' in rendered
     assert "wc104-qualification-plan-${{ github.run_id }}" in rendered
     assert "--all-gates" in rendered
+    assert '[[ "$EVENT_NAME" == "schedule" ]]' in source
+    assert 'git rev-parse "$head_sha^"' in source
+
+
+def test_code_quality_jobs_execute_catalog_gates() -> None:
+    root = Path(__file__).resolve().parents[2]
+    workflow = yaml.safe_load((root / ".github/workflows/code-quality.yaml").read_text(encoding="utf-8"))
+    catalog = yaml.safe_load((root / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
+    jobs = workflow["jobs"]
+    catalog_jobs = {
+        "commitlint",
+        "dotnet-quality",
+        "python-quality",
+        "scripts-quality",
+        "typescript-quality",
+        "sql-quality",
+        "proto-quality",
+        "observability-security",
+        "traceability-scan",
+        "constitutional-naming",
+        "mutation-dotnet",
+        "mutation-python",
+    }
+
+    assert jobs["validation-plan"]["uses"] == "./.github/workflows/validation-plan.yaml"
+    for job_id in catalog_jobs:
+        rendered = json.dumps(jobs[job_id])
+        assert jobs[job_id]["needs"] == ["runner-supply", "validation-plan"], job_id
+        assert "./.github/actions/run-validation-gate" in rendered, job_id
+        assert "docker compose" not in rendered, job_id
+
+    assert workflow[True]["schedule"] == [{"cron": "0 0 * * 0"}]
+
+    expected_runners = {
+        "quality:commitlint": "typescript",
+        "quality:dotnet:constitutional-engine": "dotnet",
+        "quality:dotnet:business-platform": "dotnet",
+        "quality:python:professional-runtime": "python",
+        "quality:python:ai-runtime": "python",
+        "quality:scripts": "python",
+        "quality:typescript": "typescript",
+        "quality:sql": "python",
+        "quality:proto": "python",
+        "quality:observability": "python",
+        "quality:traceability": "python",
+        "quality:constitutional-naming": "python",
+        "mutation:dotnet": "dotnet",
+        "mutation:python": "python",
+    }
+    assert {gate: catalog["gates"][gate]["runner_id"] for gate in expected_runners} == expected_runners
+    rendered_workflow = json.dumps(workflow)
+    for gate_id in expected_runners:
+        assert gate_id in rendered_workflow
+
+    assert "|| true" in catalog["commands"]["quality-sql"]["shell"]
+    assert "test-results/traceability-report.json" in rendered_workflow
+    assert "test-results/stryker-ce-results/" in rendered_workflow
+    dotnet_mutation = (root / "scripts/validation_control/run_dotnet_mutation_gate.sh").read_text(encoding="utf-8")
+    python_mutation = (root / "scripts/validation_control/run_python_mutation_gate.sh").read_text(encoding="utf-8")
+    assert "--threshold-high 80 --threshold-low 75 --threshold-break 65" in dotnet_mutation
+    assert '"${score:-0}" -lt 60' in python_mutation
 
 
 def test_supply_workflow_serializes_producers_and_consumers_verify_digests() -> None:
@@ -340,10 +402,13 @@ def test_every_runner_base_is_digest_pinned_and_has_locked_package_caches() -> N
 
     for runner in config["runners"].values():
         dockerfile = (root / runner["dockerfile"]).read_text(encoding="utf-8")
-        first_from = next(line for line in dockerfile.splitlines() if line.startswith("FROM "))
-        assert "@sha256:" in first_from
+        from_lines = [line for line in dockerfile.splitlines() if line.startswith("FROM ")]
+        assert from_lines
+        assert all("@sha256:" in line for line in from_lines)
         if runner["system_packages"]:
             assert "target=/var/cache/apt,sharing=locked" in dockerfile
     assert "wc104-python-pip" in (root / config["runners"]["python"]["dockerfile"]).read_text()
     assert "wc104-dotnet-nuget" in (root / config["runners"]["dotnet"]["dockerfile"]).read_text()
     assert "wc104-typescript-pnpm" in (root / config["runners"]["typescript"]["dockerfile"]).read_text()
+    python_runner = (root / config["runners"]["python"]["dockerfile"]).read_text()
+    assert "COPY --from=buf /usr/local/bin/buf /usr/local/bin/buf" in python_runner
