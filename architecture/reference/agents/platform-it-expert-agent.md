@@ -1,11 +1,11 @@
 # WAOOAW AI Agent — Platform IT Expert
 
-**Specification version:** 1.3.3
-**Date:** 2026-08-13
+**Specification version:** 1.3.4
+**Date:** 2026-09-20
 **Type:** Internal Platform Agent (not customer-facing)
 **Constitutional Basis:** C-001 (Human Override), C-023 (Evidence First), C-032 (Implementation Cannot Create Architecture), C-041 (Tool Authorization), C-042 (Vocabulary Mandate), C-059 (Implementation Traceability), C-063 (Data Minimisation), C-064 (Three-Human Institution), C-065 (SDLC Separation of Duties), C-066 (Autonomous Development Authorization Tiers), C-071 (Quality Gates), C-076 (Coverage), C-095 (EA Skeleton), C-100 (CORS Safety)
-**Status:** v1.3.3 ACTIVE — Skill 17 activated by FA-049 after R-118 independent EA approval;
-v1.3.3 adds real-container pre-PR lifecycle evidence without changing capability or Decision Space
+**Status:** v1.3.4 ACTIVE — Skill 17 activated by FA-049 after R-118 independent EA approval;
+v1.3.4 adds static-first focused validation without changing capability or Decision Space
 **Implementation tool:** GitHub Copilot (Workspace / Agent mode) operating under this specification
 
 ---
@@ -1324,6 +1324,8 @@ The Platform IT Expert is event-driven. It does not run customer heartbeats or S
 
 **Reasoning-first execution loop:** `READ_CONTRACT -> MAP_AUTHORITY -> DISCLOSE_GAPS -> CE.VALIDATE_ACTION when consequential -> ACT -> TEST -> AUTHOR_REVIEW -> REQUEST_FOUNDER_REVIEW`. No generated code or external action may precede the contract and authorization checks.
 
+**Validation execution rule:** During implementation, run static validation first. Use catalog changed-path selection and focused component gates only. Reuse exact or verified carry-forward evidence when valid. Do not run full Docker qualification, rebuild all runners, or execute all-profile Compose unless the Work Contract explicitly requires it, runner inputs changed, focused evidence cannot establish correctness, or preparing the final PR. Run full hosted qualification once on the final pushed head.
+
 ## 10. Professional Template Definition
 
 ```yaml
@@ -1463,10 +1465,11 @@ are active after R-118 independent EA approval and FA-049 Founder activation.
 | 1.3.1 | 2026-09-02 | Founder / Platform IT Expert | Clarified permanent Skill 17 Docker Azure CLI runtime proof, PR evidence verification, honest provider boundary, and deterministic-first AI token optimization process; no capability or Decision Space change |
 | 1.3.2 | 2026-09-02 | Founder / Platform IT Expert | Required commit-bound C-059/C-065 preparation before PR creation; no capability or Decision Space change |
 | 1.3.3 | 2026-09-02 | Founder / Platform IT Expert | Required applicable PRs to prove real Professional Runtime delayed-dependency recovery and embed commit-bound lifecycle evidence; no capability or Decision Space change |
+| 1.3.4 | 2026-09-20 | Founder / Platform IT Expert | Required static-first focused validation, valid evidence reuse, and one final hosted qualification; no capability or Decision Space change |
 
 **Founder approval:** FA-032 authorized the Type 1 lifecycle. FA-033 approves Platform IT Expert v1.2 and activates Skill 16. FA-049 activates v1.3 Skill 17 after R-118. These actions grant no deployment authority; implementation remains bounded by its Work Contract, GOA, Acceptance and local entry criteria.
 
 **Independent EA review:** R-049 — APPROVED for v1.2. R-118 — APPROVE and Activation Gate PASS for v1.3 Skill 17.
 
-**Lifecycle status:** v1.3.3 ACTIVE — R-118 APPROVED; FA-049 ACTIVATED. Skills 1–17 are active;
-the v1.3.3 operational clarification adds no new activation or provider authority.
+**Lifecycle status:** v1.3.4 ACTIVE — R-118 APPROVED; FA-049 ACTIVATED. Skills 1–17 are active;
+the v1.3.4 operational clarification adds no new activation or provider authority.

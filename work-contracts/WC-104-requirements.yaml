@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-104
 contract_path: work-contracts/WC-104-end-to-end-docker-runner-supply.md
-contract_digest: be3eb5c64e6b51fe3949e70d10d22e48be2b48c2f6b941efe0eacef839a5ba8f
+contract_digest: 602d59f6ef48d3cef42b78060e37a63f7ed032b8cc78fa52bee175e55c1dfc4c
 contract_status: IMPLEMENTATION_AUTHORIZED
 implementation_scope: true
 result: QUALIFIED
@@ -193,7 +193,7 @@ requirements:
     evidence_class: Complete ledger, rollback and author review
     test_path_or_plan: Explicit-row ledger validation, exact-head qualification, rollback rehearsal and defect coverage audit.
     initial_state: new
-    dependencies: WC104-R001 through WC104-R015, WC104-R017 through WC104-R019 and one frozen implementation candidate
+    dependencies: WC104-R001 through WC104-R015, WC104-R017 through WC104-R022 and one frozen implementation candidate
     completion_rule: Every row independently reports PASS with direct evidence, rollback passes and author review records no unresolved finding.
     residual_risk: Founder approval, merge and external service availability remain outside author qualification.
     result: BLOCKED
@@ -235,3 +235,39 @@ requirements:
     residual_risk: Conservative ownership gaps must force execution rather than accept ancestor evidence.
     result: PASS
     evidence_refs: [scripts/precheck_orchestrator.py, scripts/prepare_pr_body.py, validation/engineering-validation.yaml, tests/pipeline/test_precheck_orchestrator.py, tests/pipeline/test_prepare_pr_body.py]
+  - requirement_id: WC104-R020
+    source: Section 13; D17
+    observable_outcome: Every precheck node explicitly classifies its evidence as executed, exact-candidate reuse or verified carry-forward reuse.
+    component_owner: Precheck evidence manifest
+    evidence_class: Provenance contract and audit
+    test_path_or_plan: Execute, exact-reuse and cross-commit carry-forward fixtures assert distinct explicit provenance values.
+    initial_state: expected-fail
+    dependencies: Precheck manifest schema, node executor and reusable-result loader
+    completion_rule: Every fresh manifest records one explicit provenance classification per node and cross-commit reuse cannot be mistaken for exact-head evidence.
+    residual_risk: External consumers must treat unknown future provenance values as untrusted until their schema support is updated.
+    result: PASS
+    evidence_refs: [scripts/precheck_orchestrator.py, tests/pipeline/test_precheck_orchestrator.py]
+  - requirement_id: WC104-R021
+    source: Section 13; D18
+    observable_outcome: Reusable historical evidence is selected from the nearest valid Git ancestor independent of evidence-path order.
+    component_owner: Precheck evidence resolver
+    evidence_class: Git ancestry, deterministic selection and negative security
+    test_path_or_plan: Multi-ancestor fixtures cover reversed path order, corrupt nearest evidence, non-ancestor evidence, missing distance and changed declared inputs.
+    initial_state: expected-fail
+    dependencies: Immutable source manifests, Git ancestry and distance proof, deterministic tie-breaking and per-node input ownership
+    completion_rule: The nearest valid ancestor wins; an invalid nearer candidate falls through; unprovable or affected candidates rerun without authorizing reuse.
+    residual_risk: Shallow or unavailable Git history conservatively forces execution.
+    result: PASS
+    evidence_refs: [scripts/precheck_orchestrator.py, tests/pipeline/test_precheck_orchestrator.py]
+  - requirement_id: WC104-R022
+    source: Section 13; D19
+    observable_outcome: The Platform IT Expert runs static validation before focused costly gates and reserves broad local or hosted qualification for the declared final or exceptional conditions.
+    component_owner: Platform IT Expert operating policy
+    evidence_class: Agent specification and policy contract
+    test_path_or_plan: Assert the canonical agent specification contains static-first ordering, changed-path selection, focused gates, valid evidence reuse and one final hosted qualification.
+    initial_state: expected-fail
+    dependencies: Platform IT Expert specification, AGENT-ENTRY version record and policy test
+    completion_rule: Platform IT Expert v1.3.4 contains the normative validation rule and the direct policy assertion passes.
+    residual_risk: Hosted CI availability remains external; the rule cannot convert unavailable hosted evidence into qualification.
+    result: PASS
+    evidence_refs: [architecture/reference/agents/platform-it-expert-agent.md, constitution/AGENT-ENTRY.md, tests/pipeline/test_agent_operating_policy.py]

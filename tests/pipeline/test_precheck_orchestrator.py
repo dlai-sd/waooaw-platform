@@ -85,9 +85,10 @@ def test_manifest_binds_inputs_and_node_results(tmp_path: Path) -> None:
         "runner_digest": "sha256:" + "r" * 64,
         "environment_digest": "e" * 64,
         "input_digest": "",
-        "selector_version": "wc104-gate-inputs-v1",
+        "selector_version": "wc104-gate-inputs-v2",
         "evidence_schema": "waooaw.pr-prechecks/v4",
     }
+    assert manifest["nodes"][0]["reuse"]["provenance"] == "executed"
 
 
 def test_identical_second_run_automatically_reuses_exact_node_evidence(tmp_path: Path) -> None:
@@ -103,6 +104,7 @@ def test_identical_second_run_automatically_reuses_exact_node_evidence(tmp_path:
     assert first["executed_count"] == 1
     assert second["executed_count"] == 0
     assert second["reused_count"] == 1
+    assert second["nodes"][0]["reuse"]["provenance"] == "exact-candidate"
     assert second["nodes"][0]["reuse"]["trust_source"] == "local-exact-candidate"
     assert marker.read_text() == "x"
 
@@ -146,7 +148,7 @@ def test_unaffected_success_is_carried_forward_with_current_head_proof(tmp_path:
         runner_digest="r" * 64,
         artifact_dir=current_dir,
         reuse_evidence_paths=[source_dir / "precheck-manifest.json"],
-        carry_forward_verifier=lambda source, current, patterns: (True, ["reviews/R-144.md"]),
+        carry_forward_verifier=lambda source, current, patterns: (True, ["reviews/R-144.md"], 1),
         preflight=lambda: (True, []),
     )
 
@@ -156,6 +158,7 @@ def test_unaffected_success_is_carried_forward_with_current_head_proof(tmp_path:
     assert carry["source_execution_head"] == "a" * 40
     assert carry["current_head_sha"] == "c" * 40
     assert carry["non_intersection_proven"] is True
+    assert manifest["nodes"][0]["reuse"]["provenance"] == "carry-forward"
     assert marker.read_text() == "x"
 
 
@@ -180,7 +183,7 @@ def test_candidate_arguments_do_not_invalidate_unchanged_gate_command(tmp_path: 
         runner_digest="r" * 64,
         artifact_dir=tmp_path / "current",
         reuse_evidence_paths=[source_dir / "precheck-manifest.json"],
-        carry_forward_verifier=lambda source_head, current_head, patterns: (True, ["reviews/R-144.md"]),
+        carry_forward_verifier=lambda source_head, current_head, patterns: (True, ["reviews/R-144.md"], 1),
         preflight=lambda: (True, []),
     )
 
@@ -197,8 +200,8 @@ def test_affected_or_changed_input_cannot_be_carried_forward(tmp_path: Path) -> 
     run([node], source_dir, preflight=lambda: (True, []))
 
     for suffix, candidate, verifier in (
-        ("affected", node, lambda source, current, patterns: (False, ["src/changed.py"])),
-        ("digest", replace(node, input_digest="j" * 64), lambda source, current, patterns: (True, [])),
+        ("affected", node, lambda source, current, patterns: (False, ["src/changed.py"], 1)),
+        ("digest", replace(node, input_digest="j" * 64), lambda source, current, patterns: (True, [], 1)),
     ):
         manifest = run_prechecks(
             [candidate],
@@ -237,7 +240,93 @@ def test_malformed_source_manifest_cannot_be_carried_forward(tmp_path: Path) -> 
         runner_digest="r" * 64,
         artifact_dir=tmp_path / "current",
         reuse_evidence_paths=[source_dir / "precheck-manifest.json"],
-        carry_forward_verifier=lambda source, current, patterns: (True, []),
+        carry_forward_verifier=lambda source, current, patterns: (True, [], 1),
+        preflight=lambda: (True, []),
+    )
+
+    assert manifest["executed_count"] == 1
+    assert manifest["reused_count"] == 0
+
+
+def test_nearest_valid_ancestor_is_selected_independent_of_path_order(tmp_path: Path) -> None:
+    node = replace(python_node("gate", "print('source')"), input_digest="i" * 64, input_patterns=("src/**",))
+    sources = [("far", "1" * 40), ("near", "2" * 40)]
+    paths = []
+    for directory_name, source_head in sources:
+        source_dir = tmp_path / directory_name
+        run([node], source_dir, preflight=lambda: (True, []))
+        path = source_dir / "precheck-manifest.json"
+        evidence = json.loads(path.read_text())
+        evidence["commit_sha"] = source_head
+        path.write_text(json.dumps(evidence))
+        paths.append(path)
+
+    distances = {"1" * 40: 3, "2" * 40: 1}
+    manifest = run_prechecks(
+        [node],
+        base_sha="b" * 40,
+        head_sha="c" * 40,
+        changed_file_digest="e" * 64,
+        graph_version="test-v1",
+        configuration_digest="c" * 64,
+        runner_digest="r" * 64,
+        artifact_dir=tmp_path / "current",
+        reuse_evidence_paths=paths,
+        carry_forward_verifier=lambda source, current, patterns: (True, [], distances[source]),
+        preflight=lambda: (True, []),
+    )
+
+    assert manifest["nodes"][0]["reuse"]["carry_forward"]["source_execution_head"] == "2" * 40
+
+
+def test_invalid_nearest_ancestor_falls_through_to_next_valid(tmp_path: Path) -> None:
+    node = replace(python_node("gate", "print('source')"), input_digest="i" * 64, input_patterns=("src/**",))
+    paths = []
+    for directory_name, source_head in (("far", "1" * 40), ("near", "2" * 40)):
+        source_dir = tmp_path / directory_name
+        run([node], source_dir, preflight=lambda: (True, []))
+        path = source_dir / "precheck-manifest.json"
+        evidence = json.loads(path.read_text())
+        evidence["commit_sha"] = source_head
+        path.write_text(json.dumps(evidence))
+        paths.append(path)
+    (tmp_path / "near" / "gate.stdout.log").write_text("corrupt")
+
+    distances = {"1" * 40: 3, "2" * 40: 1}
+    manifest = run_prechecks(
+        [node],
+        base_sha="b" * 40,
+        head_sha="c" * 40,
+        changed_file_digest="e" * 64,
+        graph_version="test-v1",
+        configuration_digest="c" * 64,
+        runner_digest="r" * 64,
+        artifact_dir=tmp_path / "current",
+        reuse_evidence_paths=reversed(paths),
+        carry_forward_verifier=lambda source, current, patterns: (True, [], distances[source]),
+        preflight=lambda: (True, []),
+    )
+
+    assert manifest["nodes"][0]["reuse"]["carry_forward"]["source_execution_head"] == "1" * 40
+
+
+@pytest.mark.parametrize("verification", [(False, [], None), (True, [], None)])
+def test_unproven_ancestor_or_distance_reruns_node(tmp_path: Path, verification: tuple[bool, list[str], int | None]) -> None:
+    source_dir = tmp_path / "source"
+    node = replace(python_node("gate", "print('source')"), input_digest="i" * 64, input_patterns=("src/**",))
+    run([node], source_dir, preflight=lambda: (True, []))
+
+    manifest = run_prechecks(
+        [node],
+        base_sha="b" * 40,
+        head_sha="c" * 40,
+        changed_file_digest="e" * 64,
+        graph_version="test-v1",
+        configuration_digest="c" * 64,
+        runner_digest="r" * 64,
+        artifact_dir=tmp_path / "current",
+        reuse_evidence_paths=[source_dir / "precheck-manifest.json"],
+        carry_forward_verifier=lambda source, current, patterns: verification,
         preflight=lambda: (True, []),
     )
 

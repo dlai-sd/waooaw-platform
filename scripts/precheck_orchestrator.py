@@ -35,7 +35,7 @@ ACTIVE_PROCESSES_LOCK = threading.Lock()
 DEFAULT_PROGRESS_INTERVAL_SECONDS = 30.0
 EVIDENCE_FILE_NAME = "precheck-manifest.json"
 EVIDENCE_SCHEMA = "waooaw.pr-prechecks/v4"
-CARRY_FORWARD_SELECTOR_VERSION = "wc104-gate-inputs-v1"
+CARRY_FORWARD_SELECTOR_VERSION = "wc104-gate-inputs-v2"
 
 
 @dataclass(frozen=True)
@@ -171,9 +171,10 @@ def _load_reusable_results(
     artifact_dir: Path,
     nodes: list[PrecheckNode],
     identity_inputs: dict[str, str],
-    carry_forward_verifier: Callable[[str, str, tuple[str, ...]], tuple[bool, list[str]]] | None,
+    carry_forward_verifier: Callable[[str, str, tuple[str, ...]], tuple[bool, list[str], int | None]] | None,
 ) -> dict[str, dict[str, object]]:
     reusable: dict[str, dict[str, object]] = {}
+    candidates: list[tuple[int, str, Path, bytes, dict[str, object], list[str]]] = []
     for evidence_path in evidence_paths:
         if not evidence_path.is_file():
             continue
@@ -193,6 +194,26 @@ def _load_reusable_results(
             or any(character not in "0123456789abcdef" for character in source_head)
         ):
             continue
+        changed_paths: list[str] = []
+        distance = 0
+        if source_head != identity_inputs["head_sha"]:
+            if carry_forward_verifier is None:
+                continue
+            verified, changed_paths, distance_value = carry_forward_verifier(
+                source_head,
+                identity_inputs["head_sha"],
+                (),
+            )
+            if not verified or distance_value is None or distance_value < 1:
+                continue
+            distance = distance_value
+        candidates.append((distance, source_head, evidence_path, evidence_bytes, evidence, changed_paths))
+
+    for distance, source_head, evidence_path, evidence_bytes, evidence, changed_paths in sorted(
+        candidates, key=lambda candidate: (candidate[0], candidate[1], str(candidate[2]))
+    ):
+        prior_nodes = evidence["nodes"]
+        assert isinstance(prior_nodes, list)
         prior_by_name = {item.get("name"): item for item in prior_nodes if isinstance(item, dict)}
         for node in nodes:
             if node.name in reusable:
@@ -202,17 +223,17 @@ def _load_reusable_results(
                 continue
             if prior.get("evidence_identity") != _node_identity(node, identity_inputs):
                 continue
-            changed_paths: list[str] = []
             if source_head != identity_inputs["head_sha"]:
-                if carry_forward_verifier is None or not node.input_patterns or not node.input_digest:
+                if not node.input_patterns or not node.input_digest:
                     continue
-                verified, changed_paths = carry_forward_verifier(
+                verified, node_changed_paths, node_distance = carry_forward_verifier(
                     source_head,
                     identity_inputs["head_sha"],
                     node.input_patterns,
                 )
-                if not verified:
+                if not verified or node_distance != distance:
                     continue
+                changed_paths = node_changed_paths
             artifact_digests = prior.get("artifact_digests")
             if not isinstance(artifact_digests, dict) or not artifact_digests:
                 continue
@@ -227,12 +248,14 @@ def _load_reusable_results(
                 continue
             reuse: dict[str, object] = {
                 "reused": True,
+                "provenance": "exact-candidate",
                 "trust_source": "local-exact-candidate",
                 "invalidation_reason": None,
             }
             if source_head != identity_inputs["head_sha"]:
                 reuse = {
                     **reuse,
+                    "provenance": "carry-forward",
                     "trust_source": "local-verified-carry-forward",
                     "carry_forward": {
                         "current_base_sha": identity_inputs["base_sha"],
@@ -253,10 +276,10 @@ def git_carry_forward_verifier(
     source_head: str,
     current_head: str,
     input_patterns: tuple[str, ...],
-) -> tuple[bool, list[str]]:
+) -> tuple[bool, list[str], int | None]:
     git = shutil.which("git")
     if git is None:
-        return False, []
+        return False, [], None
     ancestor = subprocess.run(  # noqa: S603
         [git, "merge-base", "--is-ancestor", source_head, current_head],
         check=False,
@@ -264,7 +287,19 @@ def git_carry_forward_verifier(
         text=True,
     )
     if ancestor.returncode != 0:
-        return False, []
+        return False, [], None
+    distance_result = subprocess.run(  # noqa: S603
+        [git, "rev-list", "--count", f"{source_head}..{current_head}"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    try:
+        distance = int(distance_result.stdout.strip())
+    except ValueError:
+        return False, [], None
+    if distance_result.returncode != 0 or distance < 1:
+        return False, [], None
     changed = subprocess.run(  # noqa: S603
         [git, "diff", "--name-only", f"{source_head}..{current_head}"],
         check=False,
@@ -272,10 +307,10 @@ def git_carry_forward_verifier(
         text=True,
     )
     if changed.returncode != 0:
-        return False, []
+        return False, [], None
     changed_paths = changed.stdout.splitlines()
     affected = any(any(fnmatch.fnmatchcase(path, pattern) for pattern in input_patterns) for path in changed_paths)
-    return not affected, changed_paths
+    return not affected, changed_paths, distance
 
 
 def _write_manifest_atomically(path: Path, manifest: dict[str, object]) -> None:
@@ -412,6 +447,7 @@ def _run_node(
         "evidence_identity": evidence_identity,
         "reuse": {
             "reused": False,
+            "provenance": "executed",
             "trust_source": "original-run",
             "invalidation_reason": "not-reused",
         },
@@ -440,7 +476,7 @@ def run_prechecks(
     force_serial: bool = False,
     disable_reuse: bool = False,
     reuse_evidence_paths: list[Path] | None = None,
-    carry_forward_verifier: Callable[[str, str, tuple[str, ...]], tuple[bool, list[str]]] | None = None,
+    carry_forward_verifier: Callable[[str, str, tuple[str, ...]], tuple[bool, list[str], int | None]] | None = None,
     preflight: Callable[[], tuple[bool, list[str]]] = resource_preflight,
 ) -> dict[str, object]:
     """Execute a dependency graph and return complete immutable node evidence."""
