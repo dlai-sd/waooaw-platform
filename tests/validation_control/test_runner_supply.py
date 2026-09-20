@@ -5,8 +5,10 @@
 
 import json
 from pathlib import Path
+import re
 
 import pytest
+import yaml
 
 from validation_control.runner_supply import (
     build_supply_manifest,
@@ -44,7 +46,10 @@ def test_repository_supply_config_resolves_all_four_narrow_contexts() -> None:
     for runner_id in config["runners"]:
         specification = runner_specification(config, root, runner_id)
         assert specification["identity"].startswith("sha256:")
-        assert all(not path.startswith(("src/", "tests/")) or path.endswith(".csproj") for path in specification["identity_inputs"]["context_manifest"])
+        assert all(
+            not path.startswith(("src/", "tests/")) or path.endswith(".csproj")
+            for path in specification["identity_inputs"]["context_manifest"]
+        )
 
 
 def test_context_and_identity_change_only_for_declared_inputs(tmp_path: Path) -> None:
@@ -84,6 +89,7 @@ def test_manifest_accepts_one_producer_and_rejects_mutable_or_mismatched_supply(
         producer_run="run-123",
         cache_outcome="built",
         build_count=1,
+        supply_duration_ms=1200,
     )
 
     assert validate_supply_manifest(manifest, specification).endswith("@sha256:" + "d" * 64)
@@ -92,9 +98,69 @@ def test_manifest_accepts_one_producer_and_rejects_mutable_or_mismatched_supply(
         ("oci_digest", "latest"),
         ("provenance_reference", ""),
         ("build_count", 2),
+        ("cache_outcome", "registry-hit"),
+        ("supply_duration_ms", -1),
         ("image_repository", "ghcr.io/dlai-sd/runner:latest"),
     ):
         invalid = json.loads(json.dumps(manifest))
         invalid[key] = value
         with pytest.raises(ValueError):
             validate_supply_manifest(invalid, specification)
+
+
+def test_hosted_workflows_use_one_supply_graph_and_never_build_in_consumers() -> None:
+    root = Path(__file__).resolve().parents[2]
+    workflow_paths = [
+        root / ".github/workflows/ci.yaml",
+        root / ".github/workflows/code-quality.yaml",
+        root / ".github/workflows/integration-tests.yaml",
+        root / ".github/workflows/e2e-acceptance-tests.yaml",
+    ]
+
+    for workflow_path in workflow_paths:
+        workflow = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
+        jobs = workflow["jobs"]
+        assert jobs["runner-supply"]["uses"] == "./.github/workflows/validation-runner-supply.yaml"
+        for job_id, job in jobs.items():
+            if not isinstance(job, dict) or "steps" not in job:
+                continue
+            rendered = json.dumps(job)
+            if "docker compose" not in rendered or "test-runner" not in rendered:
+                continue
+            for step in job["steps"]:
+                command = step.get("run", "") if isinstance(step, dict) else ""
+                assert re.search(r"docker compose.*\bbuild\b.*test-runner", command) is None, job_id
+            needs = job.get("needs", [])
+            needs = [needs] if isinstance(needs, str) else needs
+            assert "runner-supply" in needs, job_id
+            assert "./.github/actions/use-validation-runner" in rendered, job_id
+
+
+def test_supply_workflow_serializes_producers_and_consumers_verify_digests() -> None:
+    root = Path(__file__).resolve().parents[2]
+    supply = (root / ".github/workflows/validation-runner-supply.yaml").read_text(encoding="utf-8")
+    consumer = (root / ".github/actions/use-validation-runner/action.yml").read_text(encoding="utf-8")
+
+    assert "group: wc104-runner-supply-${{ matrix.runner }}" in supply
+    assert "matrix:\n        runner: [python, dotnet, typescript, full]" in supply
+    assert "cache-from: type=gha,scope=wc104-${{ matrix.runner }}-${{ steps.identity.outputs.identity }}" in supply
+    assert "cache-to: type=gha,mode=max,scope=wc104-${{ matrix.runner }}-${{ steps.identity.outputs.identity }}" in supply
+    assert "actions/attest-build-provenance@v2" in supply
+    assert 'gh attestation verify "oci://$image"' in consumer
+    assert 'docker pull "$image"' in consumer
+    assert "@$digest" in supply
+
+
+def test_every_runner_base_is_digest_pinned_and_has_locked_package_caches() -> None:
+    root = Path(__file__).resolve().parents[2]
+    config = load_supply_config(root / "validation/runner-supply.json")
+
+    for runner in config["runners"].values():
+        dockerfile = (root / runner["dockerfile"]).read_text(encoding="utf-8")
+        first_from = next(line for line in dockerfile.splitlines() if line.startswith("FROM "))
+        assert "@sha256:" in first_from
+        if runner["system_packages"]:
+            assert "target=/var/cache/apt,sharing=locked" in dockerfile
+    assert "wc104-python-pip" in (root / config["runners"]["python"]["dockerfile"]).read_text()
+    assert "wc104-dotnet-nuget" in (root / config["runners"]["dotnet"]["dockerfile"]).read_text()
+    assert "wc104-typescript-pnpm" in (root / config["runners"]["typescript"]["dockerfile"]).read_text()

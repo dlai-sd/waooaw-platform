@@ -46,9 +46,7 @@ def runner_specification(config: dict[str, Any], repository: Path, runner_id: st
         "dockerfile_digest": context_manifest[dockerfile],
         "base_image_digest": runner["base_image_digest"],
         "system_packages": runner["system_packages"],
-        "dependency_manifests": {
-            path: digest for path, digest in context_manifest.items() if path != dockerfile
-        },
+        "dependency_manifests": {path: digest for path, digest in context_manifest.items() if path != dockerfile},
         "build_arguments": runner.get("build_arguments", {}),
         "platform": runner["platform"],
         "context_manifest": context_manifest,
@@ -85,9 +83,14 @@ def build_supply_manifest(
     producer_run: str,
     cache_outcome: str,
     build_count: int,
+    supply_duration_ms: int,
 ) -> dict[str, Any]:
     if build_count not in {0, 1}:
         raise ValueError("runner supply build_count must be zero or one")
+    if cache_outcome not in {"registry-hit", "built"} or (cache_outcome == "registry-hit") != (build_count == 0):
+        raise ValueError("runner supply cache outcome does not match build count")
+    if supply_duration_ms < 0:
+        raise ValueError("runner supply duration must be non-negative")
     record = {
         "runner_identity": specification["identity"],
         "oci_digest": oci_digest,
@@ -113,12 +116,11 @@ def build_supply_manifest(
         "producer_run": producer_run,
         "cache_outcome": cache_outcome,
         "build_count": build_count,
+        "supply_duration_ms": supply_duration_ms,
     }
 
 
-def validate_supply_manifest(
-    manifest: dict[str, Any], specification: dict[str, Any]
-) -> str:
+def validate_supply_manifest(manifest: dict[str, Any], specification: dict[str, Any]) -> str:
     if manifest.get("schema") != "waooaw.runner-manifest/v1":
         raise ValueError("runner manifest schema is not trusted")
     if manifest.get("runner_id") != specification["runner_id"]:
@@ -143,6 +145,12 @@ def validate_supply_manifest(
     build_count = manifest.get("build_count")
     if build_count not in {0, 1}:
         raise ValueError("runner manifest has an invalid producer count")
+    cache_outcome = manifest.get("cache_outcome")
+    if cache_outcome not in {"registry-hit", "built"} or (cache_outcome == "registry-hit") != (build_count == 0):
+        raise ValueError("runner manifest cache outcome does not match producer count")
+    supply_duration_ms = manifest.get("supply_duration_ms")
+    if not isinstance(supply_duration_ms, int) or isinstance(supply_duration_ms, bool) or supply_duration_ms < 0:
+        raise ValueError("runner manifest has an invalid supply duration")
     repository = manifest.get("image_repository")
     if not isinstance(repository, str) or ":" in repository.rsplit("/", maxsplit=1)[-1]:
         raise ValueError("runner manifest repository must not contain a mutable tag")
@@ -162,13 +170,12 @@ def main() -> int:
     parser.add_argument("--producer-run")
     parser.add_argument("--cache-outcome", choices=("registry-hit", "built"))
     parser.add_argument("--build-count", type=int)
+    parser.add_argument("--supply-duration-ms", type=int)
     arguments = parser.parse_args()
 
     config = load_supply_config(arguments.config)
     if arguments.command == "plan":
-        result = {
-            "include": [runner_specification(config, arguments.repository, runner_id) for runner_id in config["runners"]]
-        }
+        result = {"include": [runner_specification(config, arguments.repository, runner_id) for runner_id in config["runners"]]}
     else:
         if not arguments.runner:
             raise ValueError("--runner is required")
@@ -186,6 +193,7 @@ def main() -> int:
                 arguments.producer_run,
                 arguments.cache_outcome,
                 arguments.build_count,
+                arguments.supply_duration_ms,
             )
             if any(value is None for value in required):
                 raise ValueError("manifest arguments are required")
@@ -197,6 +205,7 @@ def main() -> int:
                 producer_run=arguments.producer_run,
                 cache_outcome=arguments.cache_outcome,
                 build_count=arguments.build_count,
+                supply_duration_ms=arguments.supply_duration_ms,
             )
         else:
             if arguments.output is None:

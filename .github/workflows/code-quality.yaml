@@ -192,13 +192,19 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Biome lint (bugs + security + accessibility + performance)
-        run: docker compose --profile test-ts run --rm test-runner-ts sh -lc 'cd web && ../node_modules/.bin/biome lint --reporter=github .'
+        run: docker compose --profile test-ts run --rm test-runner-ts sh -lc 'cd web && biome lint --reporter=github .'
 
       - name: Biome format check
-        run: docker compose --profile test-ts run --rm test-runner-ts sh -lc 'cd web && ../node_modules/.bin/biome format --write=false .'
+        run: docker compose --profile test-ts run --rm test-runner-ts sh -lc 'cd web && biome format .'
 
       - name: TypeScript strict type check
-        run: docker compose --profile test-ts run --rm test-runner-ts sh -lc 'cd web && ../node_modules/.bin/tsc --noEmit --incremental false'
+        run: |
+          docker compose --profile test-ts run --rm test-runner-ts sh -lc '
+            cp -a web /tmp/web &&
+            ln -s /opt/waooaw-web/node_modules /tmp/web/node_modules &&
+            cd /tmp/web &&
+            tsc --noEmit --incremental false
+          '
 
       - name: Check for 'any' type (forbidden — C-072)
         run: |
@@ -210,8 +216,10 @@ jobs:
       - name: "Bundle size check (UX vocabulary: max 200KB home page)"
         run: |
           docker compose --profile test-ts run --rm test-runner-ts sh -lc '
-            cp -a web /tmp/web && cd /tmp/web &&
-            /workspace/node_modules/.bin/next build 2>&1 | grep -E "First Load JS|Route" || true
+            cp -a web /tmp/web &&
+            ln -s /opt/waooaw-web/node_modules /tmp/web/node_modules &&
+            cd /tmp/web &&
+            next build 2>&1 | grep -E "First Load JS|Route" || true
           '
           # TODO: parse Next.js build output and fail if bundle > 250KB threshold
 

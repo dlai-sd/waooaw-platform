@@ -32,6 +32,7 @@ jobs:
         env:
           RUNNER_ID: ${{ matrix.runner }}
         run: |
+          echo "started_ms=$(date +%s%3N)" >> "$GITHUB_OUTPUT"
           context="$RUNNER_TEMP/wc104-context-$RUNNER_ID"
           specification=$(PYTHONPATH=scripts python3 scripts/validation_control/runner_supply.py \
             context --runner "$RUNNER_ID" --output "$context")
@@ -109,6 +110,7 @@ jobs:
           digest=${RESOLVED_DIGEST:-$BUILT_DIGEST}
           cache_outcome=${CACHE_OUTCOME:-built}
           build_count=${BUILD_COUNT:-1}
+          supply_duration_ms=$(($(date +%s%3N) - ${{ steps.identity.outputs.started_ms }}))
           mkdir -p test-results/wc104/runner-manifests
           PYTHONPATH=scripts python3 scripts/validation_control/runner_supply.py manifest \
             --runner "$RUNNER_ID" \
@@ -118,6 +120,7 @@ jobs:
             --producer-run "${GITHUB_RUN_ID}:${GITHUB_RUN_ATTEMPT}" \
             --cache-outcome "$cache_outcome" \
             --build-count "$build_count" \
+            --supply-duration-ms "$supply_duration_ms" \
             > "test-results/wc104/runner-manifests/$RUNNER_ID.json"
       - uses: actions/upload-artifact@v4
         with:

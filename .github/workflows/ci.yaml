@@ -654,10 +654,12 @@ jobs:
           chmod 0777 ./test-results/coverage/web
           scripts/verify_runner_image.sh test-ts test-runner-ts '${{ steps.runner-build.outputs.image_id }}'
           docker compose --profile test-ts run --rm test-runner-ts sh -lc '
-            cd web &&
-            ../node_modules/.bin/tsc --noEmit --incremental false &&
-            ../node_modules/.bin/eslint . --max-warnings 0 &&
-            ../node_modules/.bin/jest --runInBand --coverage --coverageDirectory=/workspace/test-results/coverage/web --coverageThreshold='"'"'{"global":{"lines":90,"branches":80,"functions":90,"statements":90}}'"'"'
+            cp -a web /tmp/web &&
+            ln -s /opt/waooaw-web/node_modules /tmp/web/node_modules &&
+            cd /tmp/web &&
+            tsc --noEmit --incremental false &&
+            eslint . --max-warnings 0 &&
+            jest --runInBand --coverage --coverageDirectory=/workspace/test-results/coverage/web --coverageThreshold='"'"'{"global":{"lines":90,"branches":80,"functions":90,"statements":90}}'"'"'
           '
         # C-076: 90% line/function/statement floor is constitutional minimum
 

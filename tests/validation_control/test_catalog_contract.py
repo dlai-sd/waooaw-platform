@@ -44,6 +44,16 @@ def test_focused_and_qualification_modes_resolve_identical_commands() -> None:
     assert focused["nodes"][0]["runner_manifest"].endswith("/typescript.json")
 
 
+def test_typescript_plan_uses_immutable_dependencies_outside_read_only_source() -> None:
+    catalog = load_catalog()
+
+    for gate_id in ("build:web", "test-web"):
+        plan = build_execution_plan(catalog, [gate_id], mode="focused", head_sha="a" * 40, run_id=gate_id)
+        command = plan["nodes"][0]["command"]
+        assert "cp -a web /tmp/web" in command
+        assert "ln -s /opt/waooaw-web/node_modules /tmp/web/node_modules" in command
+
+
 def test_full_runner_is_limited_to_cross_stack_release_gates() -> None:
     catalog = load_catalog()
 
