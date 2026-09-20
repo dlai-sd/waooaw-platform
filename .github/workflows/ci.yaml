@@ -849,7 +849,7 @@ jobs:
         run: |
           scripts/verify_runner_image.sh test-ts test-runner-ts '${{ steps.typescript-runner.outputs.image_id }}'
           docker compose --profile test-ts run --rm test-runner-ts sh -lc '
-            pnpm audit --audit-level high
+            cd /opt/waooaw-web && pnpm audit --audit-level high
           '
 
   # ─── License compliance ───────────────────────────────────────────────────

@@ -41,24 +41,25 @@ jobs:
           repository="ghcr.io/${GITHUB_REPOSITORY_OWNER}/waooaw-validation-runner-$RUNNER_ID"
           identity_tag="identity-${identity#sha256:}"
           if [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == "refs/heads/main" ]]; then
-            publish_tag="$identity_tag"
+            resolution_tag="$identity_tag"
           else
-            publish_tag="candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${identity#sha256:}"
+            candidate_sha=$(jq -r '.pull_request.head.sha // env.GITHUB_SHA' "$GITHUB_EVENT_PATH")
+            resolution_tag="candidate-${candidate_sha}-${identity#sha256:}"
           fi
           echo "context=$context" >> "$GITHUB_OUTPUT"
           echo "dockerfile=$context/$dockerfile" >> "$GITHUB_OUTPUT"
           echo "identity=$identity" >> "$GITHUB_OUTPUT"
           echo "repository=$repository" >> "$GITHUB_OUTPUT"
           echo "identity_tag=$identity_tag" >> "$GITHUB_OUTPUT"
-          echo "publish_tag=$publish_tag" >> "$GITHUB_OUTPUT"
+          echo "resolution_tag=$resolution_tag" >> "$GITHUB_OUTPUT"
       - name: Resolve trusted immutable runner
         id: resolve
         env:
           REPOSITORY: ${{ steps.identity.outputs.repository }}
-          IDENTITY_TAG: ${{ steps.identity.outputs.identity_tag }}
+          RESOLUTION_TAG: ${{ steps.identity.outputs.resolution_tag }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          digest=$(docker buildx imagetools inspect "$REPOSITORY:$IDENTITY_TAG" \
+          digest=$(docker buildx imagetools inspect "$REPOSITORY:$RESOLUTION_TAG" \
             --format '{{json .Manifest.Digest}}' 2>/dev/null | tr -d '"' || true)
           if [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] \
             && gh attestation verify "oci://$REPOSITORY@$digest" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
@@ -78,7 +79,7 @@ jobs:
           file: ${{ steps.identity.outputs.dockerfile }}
           platforms: linux/amd64
           push: true
-          tags: ${{ steps.identity.outputs.repository }}:${{ steps.identity.outputs.publish_tag }}
+          tags: ${{ steps.identity.outputs.repository }}:${{ steps.identity.outputs.resolution_tag }}
           cache-from: type=gha,scope=wc104-${{ matrix.runner }}-${{ steps.identity.outputs.identity }}
           cache-to: type=gha,mode=max,scope=wc104-${{ matrix.runner }}-${{ steps.identity.outputs.identity }}
           provenance: mode=max
@@ -91,13 +92,6 @@ jobs:
           subject-name: ${{ steps.identity.outputs.repository }}
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
-      - name: Publish trusted identity mapping
-        if: steps.resolve.outputs.hit != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
-        env:
-          REPOSITORY: ${{ steps.identity.outputs.repository }}
-          PUBLISH_TAG: ${{ steps.identity.outputs.publish_tag }}
-          IDENTITY_TAG: ${{ steps.identity.outputs.identity_tag }}
-        run: docker buildx imagetools create --tag "$REPOSITORY:$IDENTITY_TAG" "$REPOSITORY:$PUBLISH_TAG"
       - name: Emit immutable runner manifest
         env:
           RUNNER_ID: ${{ matrix.runner }}

@@ -145,6 +145,9 @@ def test_supply_workflow_serializes_producers_and_consumers_verify_digests() -> 
     assert "matrix:\n        runner: [python, dotnet, typescript, full]" in supply
     assert "cache-from: type=gha,scope=wc104-${{ matrix.runner }}-${{ steps.identity.outputs.identity }}" in supply
     assert "cache-to: type=gha,mode=max,scope=wc104-${{ matrix.runner }}-${{ steps.identity.outputs.identity }}" in supply
+    assert 'resolution_tag="candidate-${candidate_sha}-${identity#sha256:}"' in supply
+    assert 'imagetools inspect "$REPOSITORY:$RESOLUTION_TAG"' in supply
+    assert "candidate-${GITHUB_RUN_ID}" not in supply
     assert "actions/attest-build-provenance@v2" in supply
     assert 'gh attestation verify "oci://$image"' in consumer
     assert 'docker pull "$image"' in consumer
