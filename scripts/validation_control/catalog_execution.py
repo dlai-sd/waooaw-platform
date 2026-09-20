@@ -67,6 +67,14 @@ def execution_command(node: dict[str, Any], docker: str, git_common_dir: str | N
     return command
 
 
+def runner_environment(image_id: str, docker_socket: Path = Path("/var/run/docker.sock")) -> dict[str, str]:
+    environment = os.environ.copy()
+    environment["WAOOAW_TEST_RUNNER_IMAGE_ID"] = image_id
+    if docker_socket.exists():
+        environment["DOCKER_GID"] = str(docker_socket.stat().st_gid)
+    return environment
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--plan", type=Path, required=True)
@@ -103,8 +111,7 @@ def main() -> int:
     )
     if verification.returncode != 0:
         return verification.returncode
-    environment = os.environ.copy()
-    environment["WAOOAW_TEST_RUNNER_IMAGE_ID"] = arguments.image_id
+    environment = runner_environment(arguments.image_id)
     return subprocess.run(execution_command(node, docker, git_common_dir), check=False, env=environment).returncode  # noqa: S603
 
 

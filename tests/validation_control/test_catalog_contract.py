@@ -7,7 +7,7 @@ import jsonschema
 import pytest
 import yaml
 
-from validation_control.catalog_execution import compose_command, execution_command, select_plan_node
+from validation_control.catalog_execution import compose_command, execution_command, runner_environment, select_plan_node
 from validation_control.orchestrator import build_execution_plan
 
 
@@ -144,6 +144,15 @@ def test_catalog_gate_mounts_linked_worktree_git_directory_read_only() -> None:
     command = compose_command(plan["nodes"][0], "/workspaces/repository/.git")
 
     assert command[command.index("--volume") + 1] == "/workspaces/repository/.git:/workspaces/repository/.git:ro"
+
+
+def test_catalog_gate_forwards_docker_socket_group(tmp_path: Path) -> None:
+    docker_socket = tmp_path / "docker.sock"
+    docker_socket.touch()
+
+    environment = runner_environment("sha256:" + "a" * 64, docker_socket)
+
+    assert environment["DOCKER_GID"] == str(docker_socket.stat().st_gid)
 
 
 def test_python_builds_write_bytecode_only_to_disposable_state() -> None:
