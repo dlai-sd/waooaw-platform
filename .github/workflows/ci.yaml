@@ -381,41 +381,38 @@ jobs:
   test-dotnet:
     name: .NET unit tests
     runs-on: ubuntu-latest
-    needs: runner-supply
+    needs: [runner-supply, validation-plan]
     strategy:
       fail-fast: false
       matrix:
         include:
           - service: constitutional-engine
-            source: src/constitutional-engine/constitutional-engine.csproj
-            tests: tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj
-            profile: test-dotnet
-            runner: test-runner-dotnet
+            gate: test-dotnet:constitutional-engine
           - service: business-platform
-            source: src/business-platform/business-platform.csproj
-            tests: tests/business-platform.Tests/business-platform.Tests.csproj
-            profile: test-dotnet
-            runner: test-runner-dotnet
+            gate: test-dotnet:business-platform
     steps:
       - uses: actions/checkout@v4
       - name: Resolve Docker socket group for Testcontainers
         run: echo "DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)" >> "$GITHUB_ENV"
-      - name: Resolve immutable .NET test runner (C-080)
-        uses: ./.github/actions/use-validation-runner
+      - name: Execute catalog .NET gate (C-076, C-080)
+        uses: ./.github/actions/run-validation-gate
         id: runner-build
+        continue-on-error: true
         with:
-          runner-id: dotnet
+          gate-id: ${{ matrix.gate }}
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Record immutable .NET runner evidence
+        if: always() && steps.runner-build.outputs.image_id != ''
         run: |
           scripts/record_build_evidence.sh \
             "$RUNNER_TEMP/build-evidence/${{ matrix.service }}.json" \
-            '${{ matrix.runner }}-${{ matrix.service }}' \
+            'test-runner-dotnet-${{ matrix.service }}' \
             '${{ github.event.pull_request.base.sha || github.event.before }}' \
             '${{ github.event.pull_request.head.sha || github.sha }}' \
             '${{ steps.runner-build.outputs.image_id }}' '' \
             '["dotnet-test","coverage"]' 'workflow_build'
       - name: Retain immutable .NET runner evidence
+        if: always() && steps.runner-build.outputs.image_id != ''
         uses: actions/upload-artifact@v4
         with:
           name: wc100-dotnet-runner-${{ matrix.service }}-${{ github.run_id }}
@@ -423,77 +420,43 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-      - name: Restore, build, and test in Docker (C-076, C-080)
-        run: |
-          mkdir -p ./test-results/coverage/${{ matrix.service }}
-          chmod 0777 ./test-results/coverage/${{ matrix.service }}
-          scripts/verify_runner_image.sh \
-            '${{ matrix.profile }}' '${{ matrix.runner }}' '${{ steps.runner-build.outputs.image_id }}'
-          docker compose --profile ${{ matrix.profile }} run --rm ${{ matrix.runner }} sh -lc '
-            dotnet restore "${{ matrix.tests }}" \
-              --artifacts-path /tmp/artifacts/${{ matrix.service }} &&
-            dotnet build "${{ matrix.tests }}" --no-restore -warnaserror \
-              --artifacts-path /tmp/artifacts/${{ matrix.service }} &&
-            dotnet test "${{ matrix.tests }}" \
-              --no-build \
-              --artifacts-path /tmp/artifacts/${{ matrix.service }} \
-              --settings tests/coverage.runsettings \
-              --collect:"XPlat Code Coverage" \
-              --results-directory ./test-results/coverage/${{ matrix.service }}
-          '
-
-      - name: Check coverage ≥90% (C-076)
-        run: |
-          coverage_file="$(find ./test-results/coverage/${{ matrix.service }} -name coverage.cobertura.xml -print -quit)"
-          if [[ -z "$coverage_file" ]]; then
-            echo "Cobertura coverage report not found" >&2
-            exit 1
-          fi
-          read -r line_rate branch_rate < <(
-            sed -n 's/.*<coverage line-rate="\([0-9.]*\)" branch-rate="\([0-9.]*\)".*/\1 \2/p' \
-              "$coverage_file" | head -n 1
-          )
-          awk -v lines="$line_rate" -v branches="$branch_rate" 'BEGIN {
-            printf "line_coverage=%.2f%% branch_coverage=%.2f%%\n", lines * 100, branches * 100
-            exit !(lines >= 0.90 && branches >= 0.80)
-          }'
-        # Failure = C-076 constitutional violation — blocks merge absolutely
-
       - name: Upload coverage
         uses: codecov/codecov-action@v4
+        if: always()
         continue-on-error: true  # geo-restricted runners must not break the gate
         with:
           directory: ./test-results/coverage/${{ matrix.service }}
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
+      - name: Enforce catalog .NET gate result
+        if: steps.runner-build.outcome != 'success'
+        run: exit 1
 
   # ─── Python unit tests ────────────────────────────────────────────────────
   test-python:
     name: Python unit tests + lint
     runs-on: ubuntu-latest
-    needs: runner-supply
+    needs: [runner-supply, validation-plan]
     strategy:
       matrix:
         include:
           - service: professional-runtime
-            source: src/professional-runtime
-            tests: tests/professional-runtime
-            mypy_path: /workspace/src/professional-runtime
+            gate: test-python:professional-runtime
           - service: ai-runtime
-            source: src/ai-runtime
-            tests: tests/ai-runtime
-            mypy_path: /workspace/src/ai-runtime:/workspace/src/trust-layer
+            gate: test-python:ai-runtime
     steps:
       - uses: actions/checkout@v4
       - name: Resolve Docker socket group for Testcontainers
         run: echo "DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)" >> "$GITHUB_ENV"
-      - name: Resolve immutable Python test runner (C-080)
-        uses: ./.github/actions/use-validation-runner
+      - name: Execute catalog Python gate (C-076, C-080)
+        uses: ./.github/actions/run-validation-gate
         id: runner-build
+        continue-on-error: true
         with:
-          runner-id: python
+          gate-id: ${{ matrix.gate }}
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Record immutable Python runner evidence
+        if: always() && steps.runner-build.outputs.image_id != ''
         run: |
           scripts/record_build_evidence.sh \
             "$RUNNER_TEMP/build-evidence/${{ matrix.service }}.json" \
@@ -503,47 +466,13 @@ jobs:
             '${{ steps.runner-build.outputs.image_id }}' '' \
             '["ruff","mypy","pytest","coverage"]' 'workflow_build'
       - name: Retain immutable Python runner evidence
+        if: always() && steps.runner-build.outputs.image_id != ''
         uses: actions/upload-artifact@v4
         with:
           name: wc100-python-runner-${{ matrix.service }}-${{ github.run_id }}
           path: ${{ runner.temp }}/build-evidence/${{ matrix.service }}.json
           if-no-files-found: error
           retention-days: 90
-
-      - name: Ruff in Docker (C-080)
-        run: |
-          scripts/verify_runner_image.sh test-python test-runner-python '${{ steps.runner-build.outputs.image_id }}'
-          docker compose --profile test-python run --rm test-runner-python sh -lc '
-            ruff check "${{ matrix.source }}" "${{ matrix.tests }}" &&
-            ruff format --check "${{ matrix.source }}" "${{ matrix.tests }}"
-          '
-
-      - name: mypy in Docker (C-080)
-        if: always()
-        run: |
-          docker compose --profile test-python run --rm test-runner-python sh -lc '
-            cd /tmp &&
-            MYPYPATH="${{ matrix.mypy_path }}" \
-              mypy --strict --explicit-package-bases \
-                $(find "/workspace/${{ matrix.source }}" -name "*.py" -type f | sort) \
-                --config-file /workspace/pyproject.toml
-          '
-
-      - name: pytest and constitutional coverage in Docker (C-076, C-080)
-        if: always()
-        run: |
-          mkdir -p ./test-results/coverage/${{ matrix.service }}
-          chmod 0777 ./test-results/coverage/${{ matrix.service }}
-          docker compose --profile test-python run --rm test-runner-python sh -lc '
-            export COVERAGE_FILE=/tmp/.coverage
-            pytest "${{ matrix.tests }}" \
-              --cov="${{ matrix.source }}" \
-              --cov-branch \
-              --cov-report=xml:test-results/coverage/${{ matrix.service }}/coverage.xml \
-              --cov-report=json:test-results/coverage/${{ matrix.service }}/coverage.json \
-              --cov-fail-under=0 &&
-            python -c "import json, sys; data=json.load(open(\"test-results/coverage/${{ matrix.service }}/coverage.json\")); totals=data[\"totals\"]; lines=totals[\"covered_lines\"]*100/totals[\"num_statements\"]; branches=100 if totals[\"num_branches\"] == 0 else totals[\"covered_branches\"]*100/totals[\"num_branches\"]; print(json.dumps({\"service\": \"${{ matrix.service }}\", \"line_coverage\": lines, \"branch_coverage\": branches, \"minimum_lines\": 90, \"minimum_branches\": 80})); sys.exit(0 if lines >= 90 and branches >= 80 else 1)"
-          '
 
       - name: Upload coverage
         if: always()
@@ -562,6 +491,9 @@ jobs:
           path: test-results/coverage/${{ matrix.service }}/
           if-no-files-found: error
           retention-days: 90
+      - name: Enforce catalog Python gate result
+        if: steps.runner-build.outcome != 'success'
+        run: exit 1
 
   release-qualification:
     name: Release qualification
@@ -636,10 +568,12 @@ jobs:
       - name: Execute catalog web gate (C-076, C-080)
         uses: ./.github/actions/run-validation-gate
         id: runner-build
+        continue-on-error: true
         with:
           gate-id: test-web
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Record immutable TypeScript runner evidence
+        if: always() && steps.runner-build.outputs.image_id != ''
         run: |
           scripts/record_build_evidence.sh \
             "$RUNNER_TEMP/build-evidence/web.json" \
@@ -649,12 +583,16 @@ jobs:
             '${{ steps.runner-build.outputs.image_id }}' '' \
             '["typecheck","eslint","jest","coverage"]' 'workflow_build'
       - name: Retain immutable TypeScript runner evidence
+        if: always() && steps.runner-build.outputs.image_id != ''
         uses: actions/upload-artifact@v4
         with:
           name: wc100-typescript-runner-${{ github.run_id }}
           path: ${{ runner.temp }}/build-evidence/web.json
           if-no-files-found: error
           retention-days: 90
+      - name: Enforce catalog web gate result
+        if: steps.runner-build.outcome != 'success'
+        run: exit 1
 
   # ─── OpenAPI spec lint ────────────────────────────────────────────────────
   spec-lint:

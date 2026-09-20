@@ -37,10 +37,10 @@ commands:
   build-billing-engine: {shell: "python -m compileall -q src/billing-engine"}
   build-agent-adapter: {shell: "python -m compileall -q src/agent-adapters"}
   build-web: {shell: "cp -a web /tmp/web && ln -s /opt/waooaw-web/node_modules /tmp/web/node_modules && cd /tmp/web && tsc --noEmit --incremental false"}
-  test-constitutional-engine: {shell: "dotnet test tests/constitutional-engine.Tests --artifacts-path /tmp/artifacts/constitutional-engine"}
-  test-business-platform: {shell: "dotnet test tests/business-platform.Tests --artifacts-path /tmp/artifacts/business-platform"}
-  test-professional-runtime: {shell: "pytest tests/professional-runtime -q"}
-  test-ai-runtime: {shell: "pytest tests/ai-runtime tests/trust-layer -q"}
+  test-constitutional-engine: {shell: "sh scripts/validation_control/run_dotnet_test_gate.sh constitutional-engine tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj"}
+  test-business-platform: {shell: "sh scripts/validation_control/run_dotnet_test_gate.sh business-platform tests/business-platform.Tests/business-platform.Tests.csproj"}
+  test-professional-runtime: {shell: "sh scripts/validation_control/run_python_test_gate.sh professional-runtime src/professional-runtime /workspace/src/professional-runtime tests/professional-runtime"}
+  test-ai-runtime: {shell: "sh scripts/validation_control/run_python_test_gate.sh ai-runtime src/ai-runtime /workspace/src/ai-runtime:/workspace/src/trust-layer tests/ai-runtime tests/trust-layer"}
   test-billing-engine: {shell: "pytest tests/billing-engine tests/pipeline/test_billing_ce_validator.py -q"}
   test-web: {shell: "mkdir -p /workspace/test-results/coverage/web && cp -a web /tmp/web && ln -s /opt/waooaw-web/node_modules /tmp/web/node_modules && cd /tmp/web && tsc --noEmit --incremental false && eslint . --max-warnings 0 && jest --runInBand --coverage --coverageDirectory=/workspace/test-results/coverage/web --coverageThreshold='{\"global\":{\"lines\":90,\"branches\":80,\"functions\":90,\"statements\":90}}'"}
   spec-lint: {shell: "python scripts/validation_control/docker_policy.py --repository /workspace"}

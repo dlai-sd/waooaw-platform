@@ -166,6 +166,39 @@ def test_web_ci_executes_catalog_gate_without_duplicate_command_or_runner_mappin
     assert '"runner-id": "typescript"' not in rendered
     assert "tsc --noEmit" not in rendered
     assert "jest --runInBand" not in rendered
+    assert job["steps"][1]["continue-on-error"] is True
+    assert job["steps"][-1]["if"] == "steps.runner-build.outcome != 'success'"
+
+
+def test_dotnet_ci_executes_catalog_gates_without_duplicate_commands_or_runner_mapping() -> None:
+    root = Path(__file__).resolve().parents[2]
+    workflow = yaml.safe_load((root / ".github/workflows/ci.yaml").read_text(encoding="utf-8"))
+    job = workflow["jobs"]["test-dotnet"]
+    rendered = json.dumps(job)
+
+    assert set(job["needs"]) == {"runner-supply", "validation-plan"}
+    assert all(set(row) == {"service", "gate"} for row in job["strategy"]["matrix"]["include"])
+    assert "./.github/actions/run-validation-gate" in rendered
+    assert '"runner-id": "dotnet"' not in rendered
+    assert "dotnet restore" not in rendered
+    assert "dotnet test" not in rendered
+    assert "line-rate" not in rendered
+
+
+def test_python_ci_executes_catalog_gates_without_duplicate_commands_or_runner_mapping() -> None:
+    root = Path(__file__).resolve().parents[2]
+    workflow = yaml.safe_load((root / ".github/workflows/ci.yaml").read_text(encoding="utf-8"))
+    job = workflow["jobs"]["test-python"]
+    rendered = json.dumps(job)
+
+    assert set(job["needs"]) == {"runner-supply", "validation-plan"}
+    assert all(set(row) == {"service", "gate"} for row in job["strategy"]["matrix"]["include"])
+    assert "./.github/actions/run-validation-gate" in rendered
+    assert '"runner-id": "python"' not in rendered
+    assert "matrix.source" not in rendered
+    assert "matrix.tests" not in rendered
+    assert "matrix.mypy_path" not in rendered
+    assert "docker compose" not in rendered
 
 
 def test_every_runner_base_is_digest_pinned_and_has_locked_package_caches() -> None:
