@@ -55,6 +55,20 @@ def test_runner_images_exclude_application_source() -> None:
         assert "USER root" not in source
 
 
+def test_primary_service_build_contexts_match_root_relative_dockerfiles() -> None:
+    for service in (
+        "constitutional-engine",
+        "business-platform",
+        "professional-runtime",
+        "ai-runtime",
+        "billing-engine",
+        "web",
+    ):
+        build = COMPOSE["services"][service]["build"]
+        assert build["context"] == "."
+        assert build["dockerfile"] in {f"src/{service}/Dockerfile", "web/Dockerfile"}
+
+
 def test_compose_accepts_only_explicit_supplied_runner_images() -> None:
     expected = {
         "test-runner-python": "${WAOOAW_RUNNER_PYTHON_IMAGE:-waooaw-platform-test-runner-python:local}",

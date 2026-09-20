@@ -365,8 +365,8 @@ services:
 
   constitutional-engine:
     build:
-      context: ./src/constitutional-engine
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: src/constitutional-engine/Dockerfile
     ports:
       - "5002:5002"
     environment:
@@ -386,8 +386,8 @@ services:
 
   business-platform:
     build:
-      context: ./src/business-platform
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: src/business-platform/Dockerfile
     ports:
       - "5001:5001"
     environment:
@@ -439,8 +439,8 @@ services:
 
   professional-runtime:
     build:
-      context: ./src/professional-runtime
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: src/professional-runtime/Dockerfile
     ports:
       - "5003:5003"
     environment:
@@ -486,8 +486,8 @@ services:
 
   ai-runtime:
     build:
-      context: ./src/ai-runtime
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: src/ai-runtime/Dockerfile
     ports:
       - "5004:5004"
     environment:
@@ -615,8 +615,8 @@ services:
 
   billing-engine:
     build:
-      context: ./src/billing-engine
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: src/billing-engine/Dockerfile
     ports:
       - "8140:8140"
     environment:
@@ -1310,8 +1310,8 @@ services:
 
   web:
     build:
-      context: ./web
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: web/Dockerfile
     ports:
       - "3000:3000"
     environment:
