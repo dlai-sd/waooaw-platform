@@ -31,7 +31,9 @@
         "required": ["shell"],
         "properties": {
           "shell": {"type": "string", "minLength": 1},
-          "execution": {"enum": ["container", "host"]}
+          "execution": {"enum": ["container", "host"]},
+          "runner_required": {"type": "boolean"},
+          "tool_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
         },
         "additionalProperties": false
       }

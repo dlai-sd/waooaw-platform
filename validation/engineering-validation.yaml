@@ -84,7 +84,7 @@ commands:
   acceptance-as-005: {shell: "sh scripts/validation_control/run_acceptance_gate.sh tests/acceptance/test_as005_agri_suresh.py as-005 -m acceptance"}
   acceptance-pse-failover: {shell: "sh scripts/validation_control/run_acceptance_gate.sh tests/acceptance/test_as_pse_failover.py as-pse"}
   e2e-emergency-stop: {shell: "sh scripts/validation_control/run_acceptance_gate.sh tests/constitutional/test_cct_ho_01_emergency_stop_latency.py emergency-stop-e2e -k e2e"}
-  precheck-gitleaks: {shell: "sh scripts/validation_control/run_gitleaks_gate.sh", execution: host}
+  precheck-gitleaks: {shell: "sh scripts/validation_control/run_gitleaks_gate.sh", execution: host, runner_required: false, tool_digest: "sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854"}
 
 gates:
   build: &python_static

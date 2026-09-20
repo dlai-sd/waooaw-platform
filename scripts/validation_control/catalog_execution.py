@@ -46,12 +46,14 @@ def compose_command(node: dict[str, Any]) -> list[str]:
     ]
     for name in environment:
         command.extend(("-e", name))
-    command.extend((
-        node["compose_service"],
-        "sh",
-        "-lc",
-        node["command"],
-    ))
+    command.extend(
+        (
+            node["compose_service"],
+            "sh",
+            "-lc",
+            node["command"],
+        )
+    )
     return command
 
 
@@ -77,7 +79,7 @@ def main() -> int:
     docker = shutil.which("docker")
     if docker is None:
         raise ValueError("runner verification tools are unavailable")
-    if node.get("execution", "container") == "host":
+    if node.get("execution", "container") == "host" and node.get("runner_required", True) is False:
         return subprocess.run(execution_command(node, docker), check=False).returncode  # noqa: S603
 
     image_variable = f"WAOOAW_RUNNER_{node['runner_id'].upper()}_IMAGE"

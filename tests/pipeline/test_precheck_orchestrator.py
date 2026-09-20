@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 import sys
 import time
 from pathlib import Path
@@ -54,9 +55,18 @@ def test_independent_gates_run_concurrently(tmp_path: Path) -> None:
 
 
 def test_manifest_binds_inputs_and_node_results(tmp_path: Path) -> None:
-    manifest = run([python_node("gate", "print('ok')")], tmp_path, preflight=lambda: (True, []))
+    node = replace(
+        python_node("gate", "print('ok')"),
+        catalog_version="catalog-v1",
+        gate_id="test:gate",
+        command_id="test-gate",
+        gate_implementation_digest="i" * 64,
+        runner_digest="sha256:" + "r" * 64,
+        environment_digest="e" * 64,
+    )
+    manifest = run([node], tmp_path, preflight=lambda: (True, []))
 
-    assert manifest["schema"] == "waooaw.pr-prechecks/v3"
+    assert manifest["schema"] == "waooaw.pr-prechecks/v4"
     assert manifest["base_sha"] == "b" * 40
     assert manifest["commit_sha"] == "h" * 40
     assert manifest["changed_file_digest"] == "d" * 64
@@ -67,14 +77,22 @@ def test_manifest_binds_inputs_and_node_results(tmp_path: Path) -> None:
     assert manifest["executed_count"] == 1
     assert manifest["reused_count"] == 0
     assert manifest["nodes"][0]["stdout_artifact"].endswith("gate.stdout.log")
+    assert manifest["nodes"][0]["authority"] == {
+        "catalog_version": "catalog-v1",
+        "gate_id": "test:gate",
+        "command_id": "test-gate",
+        "gate_implementation_digest": "i" * 64,
+        "runner_digest": "sha256:" + "r" * 64,
+        "environment_digest": "e" * 64,
+        "evidence_schema": "waooaw.pr-prechecks/v4",
+    }
 
 
 def test_identical_second_run_automatically_reuses_exact_node_evidence(tmp_path: Path) -> None:
     marker = tmp_path / "executions"
     node = python_node(
         "gate",
-        f"from pathlib import Path; p=Path({str(marker)!r}); "
-        "p.write_text(p.read_text() + 'x' if p.exists() else 'x')",
+        f"from pathlib import Path; p=Path({str(marker)!r}); p.write_text(p.read_text() + 'x' if p.exists() else 'x')",
     )
 
     first = run([node], tmp_path / "artifacts", preflight=lambda: (True, []))
@@ -99,6 +117,33 @@ def test_changed_node_or_corrupt_artifact_invalidates_only_affected_evidence(tmp
 
     (artifact_dir / "first.stdout.log").write_text("corrupt", encoding="utf-8")
     manifest = run([first, changed], artifact_dir, preflight=lambda: (True, []))
+    assert [node["reuse"]["reused"] for node in manifest["nodes"]] == [False, True]
+
+
+@pytest.mark.parametrize(
+    ("field", "initial", "changed"),
+    (
+        ("catalog_version", "v1", "v2"),
+        ("gate_id", "test:first", "test:first-v2"),
+        ("command_id", "command-first", "command-first-v2"),
+        ("gate_implementation_digest", "i" * 64, "j" * 64),
+        ("runner_digest", "sha256:" + "a" * 64, "sha256:" + "c" * 64),
+        ("environment_digest", "b" * 64, "d" * 64),
+    ),
+)
+def test_each_authority_change_invalidates_only_affected_evidence(
+    tmp_path: Path,
+    field: str,
+    initial: str,
+    changed: str,
+) -> None:
+    artifact_dir = tmp_path / "artifacts"
+    first = replace(python_node("first", "print('first')"), **{field: initial})
+    second = python_node("second", "print('second')")
+    run([first, second], artifact_dir, preflight=lambda: (True, []))
+
+    changed_first = replace(first, **{field: changed})
+    manifest = run([changed_first, second], artifact_dir, preflight=lambda: (True, []))
     assert [node["reuse"]["reused"] for node in manifest["nodes"]] == [False, True]
 
 

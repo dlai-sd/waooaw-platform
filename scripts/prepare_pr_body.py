@@ -22,6 +22,7 @@ from validate_c059 import read_commits, validate_commit, validate_pr_body
 from validate_requirement_ledger import validate_changed_ledgers
 from validate_runtime_lifecycle_evidence import runtime_gate_required
 from validation_policy import classify_paths
+from validation_control.local_catalog_gate import gate_execution_identity
 
 AUTHOR_REVIEW = """## Author Review
 
@@ -40,7 +41,7 @@ RUNTIME_EVIDENCE_SECTION = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 VALIDATION_POLICY_PATH = Path(__file__).resolve().parents[1] / "validation/engineering-validation.yaml"
-PRECHECK_GRAPH_VERSION = "wc100-prechecks-v2"
+PRECHECK_GRAPH_VERSION = "wc104-prechecks-v3"
 PRECHECK_CONFIGURATION_PATHS = (
     Path(__file__),
     Path(__file__).with_name("precheck_orchestrator.py"),
@@ -95,9 +96,7 @@ def execution_preflight(
     if not expected_worktree.is_absolute():
         failures.append("--expected-worktree must be an absolute path")
     elif repository_root.resolve() != expected_worktree.resolve():
-        failures.append(
-            f"selected worktree is {repository_root.resolve()}, expected {expected_worktree.resolve()}"
-        )
+        failures.append(f"selected worktree is {repository_root.resolve()}, expected {expected_worktree.resolve()}")
     if local_head != expected_head:
         failures.append(f"local HEAD is {local_head}, expected {expected_head}")
 
@@ -283,6 +282,12 @@ def runner_digest(nodes: list[PrecheckNode]) -> str:
             "heavy": node.heavy,
             "dependencies": node.dependencies,
             "transient_retries": node.transient_retries,
+            "catalog_version": node.catalog_version,
+            "gate_id": node.gate_id,
+            "command_id": node.command_id,
+            "gate_implementation_digest": node.gate_implementation_digest,
+            "runner_digest": node.runner_digest,
+            "environment_digest": node.environment_digest,
         }
         for node in nodes
     ]
@@ -302,7 +307,7 @@ def validate_precheck_evidence(
         raise ValueError("precheck evidence must report passed=true")
     if evidence.get("base_sha") != base_sha or evidence.get("commit_sha") != head:
         raise ValueError("precheck evidence is not bound to the selected base and branch HEAD")
-    if evidence.get("schema") != "waooaw.pr-prechecks/v3":
+    if evidence.get("schema") != "waooaw.pr-prechecks/v4":
         raise ValueError("precheck evidence schema is not trusted")
     if evidence.get("changed_file_digest") != changed_file_digest:
         raise ValueError("precheck evidence is not bound to the selected changed files")
@@ -339,6 +344,7 @@ def precheck_nodes(
         gate_id = config.get("gate") if isinstance(config, dict) else None
         if not isinstance(gate_id, str) or not gate_id:
             raise ValueError(f"validation catalog precheck {name} has no gate")
+        identity = gate_execution_identity(repository_root, gate_id, head)
         nodes.append(
             PrecheckNode(
                 name=name,
@@ -355,6 +361,7 @@ def precheck_nodes(
                     str(git_common_dir),
                 ),
                 heavy=name != "gitleaks",
+                **identity,
             )
         )
     return nodes

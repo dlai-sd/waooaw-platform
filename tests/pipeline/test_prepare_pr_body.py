@@ -159,12 +159,12 @@ def test_expected_pr_labels_include_lifecycle_and_branch_tier() -> None:
 def test_precheck_evidence_must_match_base_and_head() -> None:
     digest = changed_files_digest(["scripts/example.py"])
     evidence = {
-        "schema": "waooaw.pr-prechecks/v3",
+        "schema": "waooaw.pr-prechecks/v4",
         "passed": True,
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": digest,
-        "graph_version": "wc100-prechecks-v2",
+        "graph_version": "wc104-prechecks-v3",
         "configuration_digest": "c" * 64,
         "runner_digest": "r" * 64,
     }
@@ -181,17 +181,17 @@ def test_precheck_evidence_must_match_base_and_head() -> None:
 
 def test_precheck_evidence_rejects_changed_files_or_graph_version() -> None:
     evidence = {
-        "schema": "waooaw.pr-prechecks/v3",
+        "schema": "waooaw.pr-prechecks/v4",
         "passed": True,
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": "d" * 64,
-        "graph_version": "wc100-prechecks-v2",
+        "graph_version": "wc104-prechecks-v3",
         "configuration_digest": "c" * 64,
         "runner_digest": "r" * 64,
     }
 
-    for digest, graph_version in (("e" * 64, "wc100-prechecks-v2"), ("d" * 64, "stale")):
+    for digest, graph_version in (("e" * 64, "wc104-prechecks-v3"), ("d" * 64, "stale")):
         try:
             validate_precheck_evidence(
                 evidence,
@@ -210,12 +210,12 @@ def test_precheck_evidence_rejects_changed_files_or_graph_version() -> None:
 
 def test_precheck_evidence_rejects_configuration_or_runner_mismatch() -> None:
     evidence = {
-        "schema": "waooaw.pr-prechecks/v3",
+        "schema": "waooaw.pr-prechecks/v4",
         "passed": True,
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": "d" * 64,
-        "graph_version": "wc100-prechecks-v2",
+        "graph_version": "wc104-prechecks-v3",
         "configuration_digest": "c" * 64,
         "runner_digest": "r" * 64,
     }
@@ -246,6 +246,17 @@ def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path)
         "prepare_pr_body.git", lambda *arguments: "b" * 40 if "--git-common-dir" not in arguments else str(tmp_path)
     )
     monkeypatch.setattr("prepare_pr_body.shutil.which", lambda executable: f"/usr/bin/{executable}")
+    monkeypatch.setattr(
+        "prepare_pr_body.gate_execution_identity",
+        lambda repository, gate, head: {
+            "catalog_version": "test",
+            "gate_id": gate,
+            "command_id": gate,
+            "gate_implementation_digest": "i" * 64,
+            "runner_digest": "r" * 64,
+            "environment_digest": "e" * 64,
+        },
+    )
 
     def capture(nodes, **arguments):
         captured["nodes"] = nodes
@@ -264,9 +275,28 @@ def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path)
     ]
     assert all("docker compose" not in " ".join(node.command) for node in nodes)
     assert all("run_release_qualification.sh" not in " ".join(node.command) for node in nodes)
-    assert captured["graph_version"] == "wc100-prechecks-v2"
+    assert captured["graph_version"] == "wc104-prechecks-v3"
     assert captured["configuration_digest"] == configuration_digest()
     assert captured["runner_digest"] == runner_digest(nodes)
+    assert nodes[0].runner_digest == "r" * 64
+
+
+def test_runner_digest_binds_every_per_node_authority_field() -> None:
+    from dataclasses import replace
+    from precheck_orchestrator import PrecheckNode
+
+    node = PrecheckNode(name="gate", command=("true",))
+    baseline = runner_digest([node])
+    mutations = (
+        {"catalog_version": "v2"},
+        {"gate_id": "gate:new"},
+        {"command_id": "command-new"},
+        {"gate_implementation_digest": "i" * 64},
+        {"runner_digest": "sha256:" + "r" * 64},
+        {"environment_digest": "e" * 64},
+    )
+
+    assert all(runner_digest([replace(node, **mutation)]) != baseline for mutation in mutations)
 
 
 def test_execution_preflight_rejects_wrong_worktree_before_docker(monkeypatch, tmp_path: Path) -> None:
@@ -371,9 +401,7 @@ def test_execution_preflight_checks_each_docker_capability(monkeypatch, tmp_path
     for failing_subcommand, expected in (("info", "daemon"), ("compose", "Compose"), ("buildx", "Buildx")):
         monkeypatch.setattr(
             "prepare_pr_body.subprocess.run",
-            lambda command, failing=failing_subcommand, **unused: SimpleNamespace(
-                returncode=1 if command[1] == failing else 0
-            ),
+            lambda command, failing=failing_subcommand, **unused: SimpleNamespace(returncode=1 if command[1] == failing else 0),
         )
         try:
             execution_preflight(tmp_path, tmp_path / "pr-body.md", tmp_path, HEAD, HEAD, require_docker=True)

@@ -26,21 +26,30 @@ def specification() -> dict[str, object]:
 def test_local_fallback_builds_once_then_reuses_identity_image(monkeypatch, tmp_path: Path) -> None:
     inspected = iter((None, IMAGE_ID, IMAGE_ID))
     builds: list[list[str]] = []
+    runner_digest = "sha256:" + "c" * 64
     monkeypatch.setattr(local_catalog_gate, "image_id", lambda image, repository: next(inspected))
     monkeypatch.setattr(local_catalog_gate, "create_context", lambda repository, context, spec: context.mkdir(parents=True))
+
+    def build(command: list[str], **unused: object) -> SimpleNamespace:
+        builds.append(command)
+        metadata = Path(command[command.index("--metadata-file") + 1])
+        metadata.write_text(json.dumps({"containerimage.digest": runner_digest}), encoding="utf-8")
+        return SimpleNamespace(returncode=0)
+
     monkeypatch.setattr(
         local_catalog_gate.subprocess,
         "run",
-        lambda command, **unused: builds.append(command) or SimpleNamespace(returncode=0),
+        build,
     )
 
     first = local_catalog_gate.local_fallback_runner(tmp_path, "python", specification())
     second = local_catalog_gate.local_fallback_runner(tmp_path, "python", specification())
 
-    assert first[1:] == (IMAGE_ID, 1)
-    assert second[1:] == (IMAGE_ID, 0)
+    assert first[1:] == (IMAGE_ID, runner_digest, 1)
+    assert second[1:] == (IMAGE_ID, runner_digest, 0)
     assert len(builds) == 1
-    assert builds[0][0:3] == ["docker", "buildx", "build"]
+    assert builds[0][0].endswith("docker")
+    assert builds[0][1:3] == ["buildx", "build"]
     assert builds[0][builds[0].index("--platform") + 1] == "linux/amd64"
 
 
@@ -66,7 +75,7 @@ def test_host_gate_executes_plan_without_resolving_runner(monkeypatch, tmp_path:
         "schema": "waooaw.validation-catalog/v1",
         "version": "test",
         "runners": {"python": {"compose_service": "runner", "profile": "test"}},
-        "commands": {"host": {"shell": "true", "execution": "host"}},
+        "commands": {"host": {"shell": "true", "execution": "host", "runner_required": False}},
         "gates": {
             "host": {
                 "runner_id": "python",
@@ -101,10 +110,50 @@ def test_host_gate_executes_plan_without_resolving_runner(monkeypatch, tmp_path:
     assert plan["nodes"][0]["command"] == "true"
 
 
+def test_gate_identity_hashes_only_declared_environment(monkeypatch, tmp_path: Path) -> None:
+    tool_digest = "sha256:" + "d" * 64
+    catalog = {
+        "schema": "waooaw.validation-catalog/v1",
+        "version": "test-v1",
+        "runners": {"python": {"compose_service": "runner", "profile": "test"}},
+        "commands": {
+            "host": {
+                "shell": "true",
+                "execution": "host",
+                "runner_required": False,
+                "tool_digest": tool_digest,
+            }
+        },
+        "gates": {
+            "host": {
+                "runner_id": "python",
+                "command_id": "host",
+                "resources": {},
+                "retry_policy": "none",
+                "artifacts": {},
+                "environment": ["DECLARED"],
+            }
+        },
+    }
+    validation = tmp_path / "validation"
+    validation.mkdir()
+    (validation / "engineering-validation.yaml").write_text(yaml.safe_dump(catalog), encoding="utf-8")
+    monkeypatch.setenv("DECLARED", "first")
+    monkeypatch.setenv("UNDECLARED", "first")
+    original = local_catalog_gate.gate_execution_identity(tmp_path, "host", "a" * 40)
+
+    monkeypatch.setenv("UNDECLARED", "second")
+    undeclared_changed = local_catalog_gate.gate_execution_identity(tmp_path, "host", "a" * 40)
+    monkeypatch.setenv("DECLARED", "second")
+    declared_changed = local_catalog_gate.gate_execution_identity(tmp_path, "host", "a" * 40)
+
+    assert original["runner_digest"] == tool_digest
+    assert undeclared_changed["environment_digest"] == original["environment_digest"]
+    assert declared_changed["environment_digest"] != original["environment_digest"]
+
+
 def test_runner_backed_execution_requires_exact_image_and_disables_pull() -> None:
-    source = (Path(__file__).resolve().parents[2] / "scripts/validation_control/catalog_execution.py").read_text(
-        encoding="utf-8"
-    )
+    source = (Path(__file__).resolve().parents[2] / "scripts/validation_control/catalog_execution.py").read_text(encoding="utf-8")
 
     assert '"--pull",\n        "never"' in source
     assert 'raise ValueError("--image-id is required for runner-backed catalog execution")' in source

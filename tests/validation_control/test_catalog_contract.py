@@ -132,6 +132,27 @@ def test_catalog_gate_forwards_only_declared_environment() -> None:
     assert command[command.index("--pull") + 2 : command.index("test-runner-python")] == ["-e", "DATABASE_URL"]
 
 
+def test_host_orchestration_declares_whether_it_consumes_a_runner() -> None:
+    catalog = load_catalog()
+    release = build_execution_plan(
+        catalog,
+        ["release-qualification"],
+        mode="qualification",
+        head_sha="a" * 40,
+        run_id="release",
+    )["nodes"][0]
+    gitleaks = build_execution_plan(
+        catalog,
+        ["precheck:gitleaks"],
+        mode="qualification",
+        head_sha="a" * 40,
+        run_id="precheck",
+    )["nodes"][0]
+
+    assert release["execution"] == "host" and release["runner_required"] is True
+    assert gitleaks["execution"] == "host" and gitleaks["runner_required"] is False
+
+
 def test_catalog_gate_selection_rejects_missing_or_duplicate_nodes() -> None:
     catalog = load_catalog()
     plan = build_execution_plan(catalog, ["test-web"], mode="focused", head_sha="a" * 40, run_id="hosted")

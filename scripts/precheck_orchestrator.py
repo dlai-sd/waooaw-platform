@@ -33,6 +33,7 @@ ACTIVE_PROCESSES: set[subprocess.Popen[str]] = set()
 ACTIVE_PROCESSES_LOCK = threading.Lock()
 DEFAULT_PROGRESS_INTERVAL_SECONDS = 30.0
 EVIDENCE_FILE_NAME = "precheck-manifest.json"
+EVIDENCE_SCHEMA = "waooaw.pr-prechecks/v4"
 
 
 @dataclass(frozen=True)
@@ -44,6 +45,12 @@ class PrecheckNode:
     heavy: bool = False
     dependencies: tuple[str, ...] = ()
     transient_retries: int = 0
+    catalog_version: str = ""
+    gate_id: str = ""
+    command_id: str = ""
+    gate_implementation_digest: str = ""
+    runner_digest: str = ""
+    environment_digest: str = ""
 
 
 def utc_now() -> str:
@@ -112,14 +119,35 @@ def _sha256_file(path: Path) -> str:
 
 def _node_identity(node: PrecheckNode, identity_inputs: dict[str, str]) -> str:
     payload = {
-        **identity_inputs,
+        "evidence_schema": EVIDENCE_SCHEMA,
+        "base_sha": identity_inputs["base_sha"],
+        "head_sha": identity_inputs["head_sha"],
+        "changed_file_digest": identity_inputs["changed_file_digest"],
         "name": node.name,
         "command": node.command,
         "heavy": node.heavy,
         "dependencies": node.dependencies,
         "transient_retries": node.transient_retries,
+        "catalog_version": node.catalog_version,
+        "gate_id": node.gate_id,
+        "command_id": node.command_id,
+        "gate_implementation_digest": node.gate_implementation_digest,
+        "runner_digest": node.runner_digest,
+        "environment_digest": node.environment_digest,
     }
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+
+
+def _node_authority(node: PrecheckNode) -> dict[str, str]:
+    return {
+        "catalog_version": node.catalog_version,
+        "gate_id": node.gate_id,
+        "command_id": node.command_id,
+        "gate_implementation_digest": node.gate_implementation_digest,
+        "runner_digest": node.runner_digest,
+        "environment_digest": node.environment_digest,
+        "evidence_schema": EVIDENCE_SCHEMA,
+    }
 
 
 def _load_reusable_results(
@@ -151,11 +179,7 @@ def _load_reusable_results(
         verified = True
         for path_text, expected_digest in artifact_digests.items():
             path = Path(path_text)
-            if (
-                not path.is_relative_to(artifact_dir)
-                or not path.is_file()
-                or _sha256_file(path) != expected_digest
-            ):
+            if not path.is_relative_to(artifact_dir) or not path.is_file() or _sha256_file(path) != expected_digest:
                 verified = False
                 break
         if verified:
@@ -301,6 +325,7 @@ def _run_node(
             str(stdout_path): _sha256_file(stdout_path),
             str(stderr_path): _sha256_file(stderr_path),
         },
+        "authority": _node_authority(node),
         "evidence_identity": evidence_identity,
         "reuse": {
             "reused": False,
@@ -358,11 +383,7 @@ def run_prechecks(
         "runner_digest": runner_digest,
     }
     evidence_path = artifact_dir / EVIDENCE_FILE_NAME
-    results = (
-        _load_reusable_results(evidence_path, artifact_dir, nodes, identity_inputs)
-        if reuse_enabled
-        else {}
-    )
+    results = _load_reusable_results(evidence_path, artifact_dir, nodes, identity_inputs) if reuse_enabled else {}
     pending = set(names) - results.keys()
     heavy_slots = threading.Semaphore(max_heavy if mode == "parallel" else 1)
     while pending:
@@ -443,7 +464,7 @@ def run_prechecks(
     ordered_results = [results[name] for name in names]
     failures = [result for result in ordered_results if result["status"] != "PASS"]
     manifest = {
-        "schema": "waooaw.pr-prechecks/v3",
+        "schema": EVIDENCE_SCHEMA,
         "passed": not failures,
         "base_sha": base_sha,
         "commit_sha": head_sha,
