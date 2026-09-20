@@ -208,7 +208,7 @@ def test_code_quality_jobs_execute_catalog_gates() -> None:
     assert "test-results/stryker-ce-results/" in rendered_workflow
     dotnet_mutation = (root / "scripts/validation_control/run_dotnet_mutation_gate.sh").read_text(encoding="utf-8")
     python_mutation = (root / "scripts/validation_control/run_python_mutation_gate.sh").read_text(encoding="utf-8")
-    assert "--threshold-high 80 --threshold-low 75 --threshold-break 65" in dotnet_mutation
+    assert "--threshold-high 80 --threshold-low 75 --break-at 65" in dotnet_mutation
     assert '"${score:-0}" -lt 60' in python_mutation
 
 
