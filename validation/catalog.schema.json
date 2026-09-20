@@ -96,6 +96,11 @@
           },
           "additionalProperties": false
         },
+        "environment": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^[A-Z_][A-Z0-9_]*$"},
+          "uniqueItems": true
+        },
         "global_trigger": {"type": "boolean"}
       },
       "additionalProperties": false

@@ -62,7 +62,7 @@ def test_full_runner_is_limited_to_cross_stack_release_gates() -> None:
 
     full_runner_gates = {gate_id for gate_id, gate in catalog["gates"].items() if gate["runner_id"] == "full"}
 
-    assert full_runner_gates == {"release-qualification", "spec-lint"}
+    assert full_runner_gates == {"release-qualification", "spec-lint", "e2e:accessibility"}
 
 
 def test_concurrent_runs_receive_distinct_namespaces() -> None:
@@ -95,6 +95,23 @@ def test_catalog_gate_selection_controls_compose_execution() -> None:
         "-lc",
         catalog["commands"]["test-web"]["shell"],
     ]
+
+
+def test_catalog_gate_forwards_only_declared_environment() -> None:
+    catalog = load_catalog()
+    plan = build_execution_plan(
+        catalog,
+        ["integration:multi-tenant"],
+        mode="qualification",
+        head_sha="a" * 40,
+        run_id="integration",
+    )
+
+    node = select_plan_node(plan, "integration:multi-tenant")
+    command = compose_command(node)
+
+    assert node["environment"] == ["DATABASE_URL"]
+    assert command[command.index("--pull") + 2 : command.index("test-runner-python")] == ["-e", "DATABASE_URL"]
 
 
 def test_catalog_gate_selection_rejects_missing_or_duplicate_nodes() -> None:

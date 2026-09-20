@@ -52,6 +52,7 @@ def build_execution_plan(
                 "resources": gate["resources"],
                 "retry_policy": gate["retry_policy"],
                 "artifacts": gate["artifacts"],
+                "environment": gate.get("environment", []),
                 "runner_manifest": f"test-results/wc104/runner-manifests/{runner_id}.json",
             }
         )

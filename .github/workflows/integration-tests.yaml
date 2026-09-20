@@ -53,6 +53,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/run-validation-gate
+        env:
+          DATABASE_URL: postgresql://waooaw:testpassword@host.docker.internal:5432/waooaw_test
         with:
           gate-id: integration:multi-tenant
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -85,14 +87,20 @@ jobs:
       - name: Resolve Docker socket group for Testcontainers
         run: echo "DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)" >> "$GITHUB_ENV"
       - uses: ./.github/actions/run-validation-gate
+        env:
+          DATABASE_URL: postgresql://waooaw:testpassword@host.docker.internal:5432/waooaw_test
         with:
           gate-id: integration:postgres-migrations
           token: ${{ secrets.GITHUB_TOKEN }}
       - uses: ./.github/actions/run-validation-gate
+        env:
+          DATABASE_URL: "Host=host.docker.internal;Port=5432;Database=waooaw_test;Username=waooaw;Password=testpassword"
         with:
           gate-id: integration:dotnet
           token: ${{ secrets.GITHUB_TOKEN }}
       - uses: ./.github/actions/run-validation-gate
+        env:
+          DATABASE_URL: postgresql://waooaw:testpassword@host.docker.internal:5432/waooaw_test
         with:
           gate-id: integration:python
           token: ${{ secrets.GITHUB_TOKEN }}

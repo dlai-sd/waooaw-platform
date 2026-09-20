@@ -31,7 +31,10 @@ def select_plan_node(plan: dict[str, Any], gate_id: str) -> dict[str, Any]:
 
 
 def compose_command(node: dict[str, Any]) -> list[str]:
-    return [
+    environment = node.get("environment", [])
+    if not isinstance(environment, list) or not all(isinstance(name, str) and name for name in environment):
+        raise ValueError("validation plan node has invalid environment allowlist")
+    command = [
         "docker",
         "compose",
         "--profile",
@@ -40,11 +43,16 @@ def compose_command(node: dict[str, Any]) -> list[str]:
         "--rm",
         "--pull",
         "never",
+    ]
+    for name in environment:
+        command.extend(("-e", name))
+    command.extend((
         node["compose_service"],
         "sh",
         "-lc",
         node["command"],
-    ]
+    ))
+    return command
 
 
 def execution_command(node: dict[str, Any], docker: str) -> list[str]:

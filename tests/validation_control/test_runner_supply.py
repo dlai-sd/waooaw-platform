@@ -149,7 +149,7 @@ def test_reusable_validation_plan_preserves_consumer_contract() -> None:
     assert '"runner-id": "full"' in rendered
     assert "wc104-qualification-plan-${{ github.run_id }}" in rendered
     assert "--all-gates" in rendered
-    assert '[[ "$EVENT_NAME" == "schedule" ]]' in source
+    assert '[[ "$EVENT_NAME" == "schedule" || "$EVENT_NAME" == "workflow_dispatch" ]]' in source
     assert 'git rev-parse "$head_sha^"' in source
 
 
@@ -248,11 +248,44 @@ def test_integration_jobs_execute_catalog_gates() -> None:
         assert gate_id in rendered_workflow
     assert jobs["multi-tenant-isolation"]["steps"][-1]["if"] == "always()"
     assert catalog["commands"]["contract-rest"]["execution"] == "host"
-    assert "host.docker.internal:5432/waooaw_test" in catalog["commands"]["integration-multi-tenant"]["shell"]
-    assert "Host=host.docker.internal;Port=5432" in catalog["commands"]["integration-dotnet"]["shell"]
+    assert catalog["gates"]["integration:multi-tenant"]["environment"] == ["DATABASE_URL"]
+    assert catalog["gates"]["integration:dotnet"]["environment"] == ["DATABASE_URL"]
     assert "--pull never test-runner-python" in (
         root / "scripts/validation_control/run_rest_contract_gate.sh"
     ).read_text(encoding="utf-8")
+
+
+def test_e2e_jobs_execute_catalog_gates() -> None:
+    root = Path(__file__).resolve().parents[2]
+    workflow = yaml.safe_load((root / ".github/workflows/e2e-acceptance-tests.yaml").read_text(encoding="utf-8"))
+    catalog = yaml.safe_load((root / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
+    jobs = workflow["jobs"]
+    expected_gates = {
+        "accessibility": "e2e:accessibility",
+        "as-001-dma": "acceptance:as-001",
+        "as-003-trading": "acceptance:as-003",
+        "as-005-agricultural": "acceptance:as-005",
+        "as-pse-failover": "acceptance:pse-failover",
+        "emergency-stop-e2e": "e2e:emergency-stop",
+    }
+
+    assert "install" not in jobs
+    assert jobs["validation-plan"]["uses"] == "./.github/workflows/validation-plan.yaml"
+    for job_id, gate_id in expected_gates.items():
+        rendered = json.dumps(jobs[job_id])
+        assert set(jobs[job_id]["needs"]) == {"runner-supply", "validation-plan"}, job_id
+        assert "./.github/actions/run-validation-gate" in rendered, job_id
+        assert gate_id in rendered, job_id
+        assert "docker compose" not in rendered, job_id
+        assert '"runner-id"' not in rendered, job_id
+
+    assert catalog["gates"]["e2e:accessibility"]["runner_id"] == "full"
+    for gate_id in set(expected_gates.values()) - {"e2e:accessibility"}:
+        assert catalog["gates"][gate_id]["runner_id"] == "python"
+    assert jobs["accessibility"]["steps"][-1]["if"] == "always()"
+    assert jobs["as-001-dma"]["steps"][-1]["if"] == "always()"
+    assert jobs["as-003-trading"]["steps"][-1]["if"] == "always()"
+    assert jobs["as-005-agricultural"]["steps"][-1]["if"] == "always()"
 
 
 def test_supply_workflow_serializes_producers_and_consumers_verify_digests() -> None:

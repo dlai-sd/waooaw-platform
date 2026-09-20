@@ -71,13 +71,19 @@ commands:
   quality-constitutional-naming: {shell: "sh scripts/validation_control/run_constitutional_naming_gate.sh"}
   mutation-dotnet: {shell: "sh scripts/validation_control/run_dotnet_mutation_gate.sh"}
   mutation-python: {shell: "sh scripts/validation_control/run_python_mutation_gate.sh"}
-  integration-multi-tenant: {shell: "DATABASE_URL=postgresql://waooaw:testpassword@host.docker.internal:5432/waooaw_test sh scripts/validation_control/run_multi_tenant_integration_gate.sh"}
-  integration-postgres-migrations: {shell: "DATABASE_URL=postgresql://waooaw:testpassword@host.docker.internal:5432/waooaw_test sh scripts/validation_control/run_postgres_migrations.sh"}
-  integration-dotnet: {shell: "DATABASE_URL='Host=host.docker.internal;Port=5432;Database=waooaw_test;Username=waooaw;Password=testpassword' sh scripts/validation_control/run_dotnet_integration_gate.sh"}
-  integration-python: {shell: "DATABASE_URL=postgresql://waooaw:testpassword@host.docker.internal:5432/waooaw_test sh scripts/validation_control/run_python_integration_gate.sh"}
+  integration-multi-tenant: {shell: "sh scripts/validation_control/run_multi_tenant_integration_gate.sh"}
+  integration-postgres-migrations: {shell: "sh scripts/validation_control/run_postgres_migrations.sh"}
+  integration-dotnet: {shell: "sh scripts/validation_control/run_dotnet_integration_gate.sh"}
+  integration-python: {shell: "sh scripts/validation_control/run_python_integration_gate.sh"}
   contract-rest: {shell: "sh scripts/validation_control/run_rest_contract_gate.sh", execution: host}
   contract-seed-prompts: {shell: "sh scripts/validation_control/run_seed_prompts_contract_gate.sh"}
   security-prompt-injection: {shell: "sh scripts/validation_control/run_prompt_injection_gate.sh"}
+  e2e-accessibility: {shell: "sh scripts/validation_control/run_accessibility_gate.sh"}
+  acceptance-as-001: {shell: "sh scripts/validation_control/run_acceptance_gate.sh tests/acceptance/test_as001_dma_dr_mehta.py as-001 -m acceptance"}
+  acceptance-as-003: {shell: "sh scripts/validation_control/run_acceptance_gate.sh tests/acceptance/test_as003_trading_rahul.py as-003 -m acceptance"}
+  acceptance-as-005: {shell: "sh scripts/validation_control/run_acceptance_gate.sh tests/acceptance/test_as005_agri_suresh.py as-005 -m acceptance"}
+  acceptance-pse-failover: {shell: "sh scripts/validation_control/run_acceptance_gate.sh tests/acceptance/test_as_pse_failover.py as-pse"}
+  e2e-emergency-stop: {shell: "sh scripts/validation_control/run_acceptance_gate.sh tests/constitutional/test_cct_ho_01_emergency_stop_latency.py emergency-stop-e2e -k e2e"}
 
 gates:
   build: &python_static
@@ -152,13 +158,19 @@ gates:
   quality:constitutional-naming: {<<: *python_static, gate_id: "quality:constitutional-naming", command_id: quality-constitutional-naming, evidence_class: contract, global_trigger: true}
   mutation:dotnet: {<<: *python_static, gate_id: "mutation:dotnet", runner_id: dotnet, command_id: mutation-dotnet, evidence_class: coverage, resources: {cpus: 2, memory_mb: 4096, timeout_seconds: 3600, docker_socket: true, concurrency_class: dotnet}, global_trigger: true}
   mutation:python: {<<: *python_static, gate_id: "mutation:python", command_id: mutation-python, evidence_class: coverage, resources: {cpus: 2, memory_mb: 4096, timeout_seconds: 3600, docker_socket: true, concurrency_class: python}, global_trigger: true}
-  integration:multi-tenant: {<<: *python_test, gate_id: "integration:multi-tenant", command_id: integration-multi-tenant, global_trigger: true}
-  integration:postgres-migrations: {<<: *python_static, gate_id: "integration:postgres-migrations", command_id: integration-postgres-migrations, evidence_class: integration, global_trigger: true}
-  integration:dotnet: {<<: *dotnet_test, gate_id: "integration:dotnet", command_id: integration-dotnet, global_trigger: true}
-  integration:python: {<<: *python_test, gate_id: "integration:python", command_id: integration-python, global_trigger: true}
+  integration:multi-tenant: {<<: *python_test, gate_id: "integration:multi-tenant", command_id: integration-multi-tenant, environment: [DATABASE_URL], global_trigger: true}
+  integration:postgres-migrations: {<<: *python_static, gate_id: "integration:postgres-migrations", command_id: integration-postgres-migrations, evidence_class: integration, environment: [DATABASE_URL], global_trigger: true}
+  integration:dotnet: {<<: *dotnet_test, gate_id: "integration:dotnet", command_id: integration-dotnet, environment: [DATABASE_URL], global_trigger: true}
+  integration:python: {<<: *python_test, gate_id: "integration:python", command_id: integration-python, environment: [DATABASE_URL], global_trigger: true}
   contract:rest: {<<: *python_test, gate_id: "contract:rest", command_id: contract-rest, evidence_class: contract, resources: {cpus: 2, memory_mb: 4096, timeout_seconds: 1800, docker_socket: true, concurrency_class: integration}, global_trigger: true}
   contract:seed-prompts: {<<: *python_static, gate_id: "contract:seed-prompts", command_id: contract-seed-prompts, evidence_class: contract, global_trigger: true}
   security:prompt-injection: {<<: *python_test, gate_id: "security:prompt-injection", command_id: security-prompt-injection, evidence_class: security, global_trigger: true}
+  e2e:accessibility: {<<: *python_static, gate_id: "e2e:accessibility", runner_id: full, command_id: e2e-accessibility, evidence_class: browser, resources: {cpus: 2, memory_mb: 6144, timeout_seconds: 1800, docker_socket: true, concurrency_class: browser}, artifacts: {native: [test-results/playwright-report/**], common: test-results/validation/e2e-accessibility.json}, environment: [BASE_URL, PLAYWRIGHT_HTML_OUTPUT_DIR], global_trigger: true}
+  acceptance:as-001: {<<: *python_test, gate_id: "acceptance:as-001", command_id: acceptance-as-001, evidence_class: integration, environment: [WAOOAW_API_URL, WAOOAW_TEST_TOKEN, LLM_TEST_MODE], global_trigger: true}
+  acceptance:as-003: {<<: *python_test, gate_id: "acceptance:as-003", command_id: acceptance-as-003, evidence_class: integration, environment: [WAOOAW_API_URL, WAOOAW_TEST_TOKEN], global_trigger: true}
+  acceptance:as-005: {<<: *python_test, gate_id: "acceptance:as-005", command_id: acceptance-as-005, evidence_class: integration, environment: [WAOOAW_API_URL, WAOOAW_TEST_TOKEN, TEST_LANGUAGE], global_trigger: true}
+  acceptance:pse-failover: {<<: *python_test, gate_id: "acceptance:pse-failover", command_id: acceptance-pse-failover, evidence_class: integration, environment: [WAOOAW_API_URL, WAOOAW_TEST_TOKEN, PSE_TEST_INJECT_RATE_LIMIT], global_trigger: true}
+  e2e:emergency-stop: {<<: *python_test, gate_id: "e2e:emergency-stop", command_id: e2e-emergency-stop, evidence_class: CCT, environment: [WAOOAW_WS_URL, WAOOAW_TEST_TOKEN], global_trigger: true}
 
 full_gates:
   - build
@@ -198,6 +210,12 @@ full_gates:
   - contract:rest
   - contract:seed-prompts
   - security:prompt-injection
+  - e2e:accessibility
+  - acceptance:as-001
+  - acceptance:as-003
+  - acceptance:as-005
+  - acceptance:pse-failover
+  - e2e:emergency-stop
 
 components:
   constitutional-engine:

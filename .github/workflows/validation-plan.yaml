@@ -29,7 +29,7 @@ jobs:
           if [[ "$EVENT_NAME" == "pull_request" ]]; then
             base_sha=$PR_BASE_SHA
             head_sha=$PR_HEAD_SHA
-          elif [[ "$EVENT_NAME" == "schedule" ]]; then
+          elif [[ "$EVENT_NAME" == "schedule" || "$EVENT_NAME" == "workflow_dispatch" ]]; then
             head_sha=$PUSH_HEAD_SHA
             base_sha=$(git rev-parse "$head_sha^")
           else
