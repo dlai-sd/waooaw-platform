@@ -6,7 +6,7 @@
 |---|---|
 | Authoring office | Solution Architect (INST-005) |
 | Assigned by | Founder instruction in the 2026-09-20 continuous working conversation |
-| Status | IMPLEMENTATION-READY CORRECTIVE SPECIFICATION - IMPLEMENTATION NOT AUTHORIZED |
+| Status | IMPLEMENTATION AUTHORIZED |
 | Corrects | WC-102 runner supply, cache reuse, catalog execution and evidence gaps |
 | Depends on | WC-100, WC-101, WC-102, ADR-012, ADR-013, ADR-045 and ADR-050 |
 | Delivery shape | One end-to-end runner supply and validation control repair; no partial completion claim |
@@ -16,14 +16,10 @@
 ## 1. Authority And Scope
 
 This Work Contract corrects the gap between WC-102's layered runner construction and the operational
-supply chain used by local PR preparation, pull-request CI and post-merge CI. It authorizes
-architecture and Work Contract documentation only. It does not authorize workflow or script changes,
-image publication, registry mutation, branch-protection changes, cloud mutation, deployment,
-approval or merge.
-
-Before implementation begins, the Founder must explicitly authorize WC-104 implementation for that
-current Platform IT Expert session. WC-102's prior implementation authority does not authorize this
-corrective implementation.
+supply chain used by local PR preparation, pull-request CI and post-merge CI. The Founder authorized
+WC-104 implementation in the 2026-09-20 continuous Platform IT Expert session. Image publication,
+registry mutation, branch-protection changes, cloud mutation, deployment, approval and merge retain
+their separate authority boundaries.
 
 In scope:
 
@@ -89,6 +85,9 @@ inspection, local warm build or successful unrelated gate cannot substitute for 
 | D11 - Evidence reuse is manual | `reuse_enabled` is reported and `--precheck-evidence-file` is optional | Default invocation never discovers valid evidence and repeats expensive qualification | Add deterministic lookup by base/head, changed-file, graph, configuration, runner and environment digests | Repeated preparation of an unchanged candidate avoids rerunning valid gates | First invocation executes gates; second invocation automatically reuses exact evidence with `executed_count=0`; changing any bound input reruns only invalidated gates |
 | D12 - Output failure occurs after costly work | Preflight checks only the parent directory | A non-writable or non-replaceable body file fails after qualification | Probe final body/evidence creation and atomic replacement before any costly node starts | Configuration failures return immediately | Read-only file, ownership mismatch, missing mount and failed atomic-replace fixtures execute zero precheck nodes and return one bounded configuration failure |
 | D13 - Completion evidence did not test hosted reuse | Local single cold/warm samples and static string assertions supported inherited PASS rows | They cannot establish cross-job reuse, build counts or hosted behavior | Require multi-sample hosted PR and `main` evidence tied to exact workflow, runner and candidate identities | Completion reflects actual end-to-end operation | Every requirement has explicit row status and direct evidence; hosted samples report counts, cache source, durations and consumers; no default result can convert an unevidenced row to PASS |
+| D14 - Deterministic authority failures run after costly gates | PR preparation validates output writability early but validates C-059 commit/body traceability and C-065 author review only after selected prechecks finish | Invalid metadata can consume minutes of Business Platform or release qualification before returning a result known from repository text | Add a static-first phase that renders the candidate-bound author section in memory and validates C-059, C-065, changed ledgers, catalog policy, Compose configuration and output paths before constructing or starting costly nodes | Deterministic authority and configuration defects fail in seconds with zero costly processes | Invalid commit metadata, PR body, author review, ledger, catalog or Compose fixtures each report the exact violation and a node spy proves `executed_count=0`; a valid fixture reaches gate planning |
+| D15 - Full authoritative inventory is conflated with local costly prechecks | Any global trigger, unknown path or owner conflict sets `force_full`, and `force_full` selects every configured precheck | Governance, review, evidence or narrowly scoped control changes unnecessarily run Business Platform and release qualification even when those gates have no affected input | Separate authoritative PR/main/release inventory selection from local precheck applicability; select costly prechecks only through explicit component, gate or declared-input ownership while retaining always-on cheap security checks | Local preparation executes the smallest dependency-complete slice without reducing hosted authority | A path-impact matrix proves evidence/review-only changes run no costly precheck, Business Platform changes select its gate and release qualification, release-owned changes select release qualification, and every full hosted inventory remains unchanged |
+| D16 - Whole-candidate identity prevents safe per-gate carry-forward | Each node identity includes the full head SHA and branch-wide changed-file digest | Any checkpoint or evidence-only commit invalidates every prior gate even when no command, runner, environment or declared gate input changed | Replace whole-diff invalidation with a versioned per-gate input digest and create an exact-new-head carry-forward record that binds source evidence, intervening commit range, changed-path digest and non-impact proof | A new head reuses only unaffected PASS evidence while retaining exact-candidate provenance | A first candidate executes selected gates; an evidence-only successor executes zero unaffected costly nodes and emits current-head carry-forward evidence; mutation of any declared gate input, runner, command, environment, policy or source artifact reruns only affected nodes |
 
 ## 4. Architectural Contracts
 
@@ -168,16 +167,22 @@ continue to execute, but they execute through the shared runner supply and catal
 
 ### 4.6 Evidence Reuse
 
-Evidence lookup uses the complete trusted tuple:
+Executed evidence uses the complete trusted tuple:
 
 ```text
-base SHA + head SHA + changed-file digest + catalog version + gate implementation
-+ command ID + runner OCI digest + declared environment inputs + evidence schema
+execution base SHA + execution head SHA + per-gate declared-input digest + catalog version
++ gate implementation + command ID + runner OCI digest + declared environment inputs
++ evidence schema
 ```
 
 Only immutable successful evidence from an accepted trust source may be reused. Failed, missing,
 partial, stale, malformed, differently scoped or environment-incompatible evidence reruns the gate.
-Reuse is per gate, so one invalid node does not discard valid independent evidence.
+Reuse is per gate, so one invalid node does not discard valid independent evidence. Reuse across a
+later head requires a separate carry-forward record bound to the later base/head, source evidence
+digest, intervening commit range, intervening changed-path digest, selector version and proof that no
+intervening path intersects the gate's declared inputs. The carry-forward record is current-head
+evidence that a prior execution remains applicable; it must not claim that the gate executed at the
+later head. Raw ancestor evidence never directly authorizes the later candidate.
 
 ## 5. Stories And Acceptance
 
@@ -191,6 +196,9 @@ Reuse is per gate, so one invalid node does not discard valid independent eviden
 | WC104-S06 | Exact successful evidence is reused without skipping invalidated work | D11 | Two-run reuse plus per-input invalidation matrix |
 | WC104-S07 | Bad output configuration fails before costly work | D12 | Zero-node output-path failure fixtures |
 | WC104-S08 | Hosted measurements prove rather than infer optimization | D08, D13 | Multi-run PR/main evidence with build/cache/pull/execute timings |
+| WC104-S09 | Static authority defects stop before Docker compilation or service tests | D14 | Invalid C-059/C-065/ledger/catalog/Compose fixtures with zero-node process spy |
+| WC104-S10 | Local preparation runs only the dependency-complete affected slice | D15 | Path-impact matrix for evidence-only, component, release-owned and hosted-full cases |
+| WC104-S11 | Unaffected gate evidence follows a later exact head without rerunning | D16 | Two-head carry-forward and declared-input invalidation matrix |
 
 ## 6. Requirement-To-Evidence Matrix
 
@@ -212,6 +220,9 @@ Reuse is per gate, so one invalid node does not discard valid independent eviden
 | WC104-R014 | Cross-cutting | Isolation/security regression suite | Non-root, read-only source, bounded resources/socket, disposable state and secret redaction remain passing |
 | WC104-R015 | Cross-cutting | Full PR/main/release gate-equivalence test | No required gate, threshold or evidence class is reduced; Shadow activation remains disabled |
 | WC104-R016 | All | Complete ledger, rollback rehearsal and exact-head author review | Every row has direct PASS evidence at one candidate; rollback restores full clean no-reuse qualification |
+| WC104-R017 | D14 / S09 | Static-first failure-order and zero-node tests | Every deterministic authority/configuration failure returns before costly node construction or execution |
+| WC104-R018 | D15 / S10 | Local-precheck path-impact and hosted-equivalence matrix | Local costly prechecks contain only explicitly affected dependency-complete gates while hosted full inventory is unchanged |
+| WC104-R019 | D16 / S11 | Exact-head carry-forward and hostile invalidation tests | Only unaffected PASS evidence is carried forward through a current-head proof; every declared-input mutation reruns the affected gate |
 
 ## 7. Required Hosted Measurements
 
@@ -244,6 +255,7 @@ No completion claim may use a Codespace-only cache hit as proof of hosted reuse.
 | WC104-03 | GHCR runner supply | One producer publishes/verifies immutable runner manifests; consumers never build |
 | WC104-04 | Catalog execution convergence | Local, PR and main execute generated catalog plans with no duplicate command source |
 | WC104-05 | Automatic evidence reuse and early preflight | Exact tuple reuses per-node evidence; invalid output starts zero costly nodes |
+| WC104-05A | Static-first scoped preparation | Deterministic checks start zero costly nodes; local prechecks are dependency-complete and unaffected evidence carries forward safely |
 | WC104-06 | Hosted qualification | Three-sample PR/main measurements and all negative fixtures pass at one exact candidate |
 | WC104-07 | Author review and Founder handoff | Complete explicit ledger and no unresolved defect; PR remains unmerged for Founder decision |
 
@@ -265,13 +277,13 @@ the previous trusted identity mapping unchanged. Partially published manifests a
 
 WC-104 is complete only when:
 
-1. WC104-R001 through WC104-R016 each independently report `PASS` with direct evidence at one exact implementation candidate.
-2. D01 through D13 each satisfy the explicit passing condition in Section 3; no aggregate count substitutes for a row.
+1. WC104-R001 through WC104-R019 each independently report `PASS` with direct evidence at one exact implementation candidate.
+2. D01 through D16 each satisfy the explicit passing condition in Section 3; no aggregate count substitutes for a row.
 3. Every validation runner has one canonical identity, narrow context, layered cache policy, immutable GHCR digest and verified provenance.
 4. Source-only changes produce zero runner builds locally and in hosted PR/main fixtures.
 5. Each cache miss produces exactly one runner build per identity and all consumers use its digest.
 6. Local preparation, PR CI and `main`/release CI execute commands generated from the same catalog.
-7. Exact evidence reuse executes zero nodes only for a complete matching trust tuple; every mismatch fails closed or reruns.
+7. Exact evidence reuse executes zero nodes only for a complete matching trust tuple or a valid current-head carry-forward proof; every affected or unverifiable input fails closed or reruns.
 8. Full authoritative gate coverage and thresholds remain unchanged; selective enforcement remains separately gated.
 9. Hosted measurements meet Section 7 with at least three samples per affected runner.
 10. Author review resolves every correctness, security, operability, rollback, evidence and requirement-coverage finding before Founder handoff.
@@ -290,7 +302,7 @@ activating selective enforcement, mutating Production, self-approval or self-mer
 
 | Review question | Result | Evidence in this contract |
 |---|---|---|
-| Is every stated defect represented? | PASS | D01-D13 include all Founder-listed defects and the catalog, evidence-reuse, output-preflight and completion-evidence gaps found during review |
+| Is every stated defect represented? | PASS | D01-D16 include all Founder-listed defects and the catalog, evidence-reuse, output-preflight, scoped-precheck and completion-evidence gaps found during review |
 | Does each defect state today's behavior? | PASS | Section 3 records the existing runner, cache, context, orchestration and evidence behavior independently |
 | Does each defect explain why layering fails? | PASS | Every row identifies the broken cache, identity, distribution, authority or measurement boundary |
 | Is the required fix bounded and implementable? | PASS | Sections 4 and 8 define existing-technology contracts and ordered milestones without selecting a new platform |
@@ -298,8 +310,8 @@ activating selective enforcement, mutating Production, self-approval or self-mer
 | Can a superficial implementation pass? | PASS - PREVENTED | Negative tests reject duplicate builds, mutable tags, missing provenance, source-caused rebuilds, hardcoded commands and cache-authorized PASS |
 | Are local, PR and merge paths connected? | PASS | D09, R009 and Section 4.4 require one identity/digest across all three lifecycles |
 | Are Docker layers end-to-end? | PASS | D01-D07 cover layer construction, remote distribution, package caches, context boundaries and hosted restoration |
-| Is evidence reuse safe? | PASS | D11/R011 bind reuse to the complete trust tuple and preserve per-node invalidation |
+| Is evidence reuse safe? | PASS | D11/D16 and R011/R019 bind reuse to per-gate inputs and require exact-head carry-forward proof with fail-closed invalidation |
 | Are constitutional gates preserved? | PASS | R014-R015 retain C-080 isolation, security controls, full gate authority and separate selective activation |
-| Is completion atomized? | PASS | Sixteen explicit requirements and thirteen defect passing conditions prohibit aggregate substitution |
+| Is completion atomized? | PASS | Nineteen explicit requirements and sixteen defect passing conditions prohibit aggregate substitution |
 
 **Disposition:** PASS AT SPEC - READY FOR FOUNDER REVIEW. IMPLEMENTATION REMAINS UNAUTHORIZED.

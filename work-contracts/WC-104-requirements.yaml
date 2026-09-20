@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-104
 contract_path: work-contracts/WC-104-end-to-end-docker-runner-supply.md
-contract_digest: 7d434f16cb04429df033bdc83b97fb813befcaf5b7715568a17bcdff9e27ed6e
+contract_digest: be3eb5c64e6b51fe3949e70d10d22e48be2b48c2f6b941efe0eacef839a5ba8f
 contract_status: IMPLEMENTATION_AUTHORIZED
 implementation_scope: true
 result: QUALIFIED
@@ -193,9 +193,45 @@ requirements:
     evidence_class: Complete ledger, rollback and author review
     test_path_or_plan: Explicit-row ledger validation, exact-head qualification, rollback rehearsal and defect coverage audit.
     initial_state: new
-    dependencies: WC104-R001 through WC104-R015 and one frozen implementation candidate
+    dependencies: WC104-R001 through WC104-R015, WC104-R017 through WC104-R019 and one frozen implementation candidate
     completion_rule: Every row independently reports PASS with direct evidence, rollback passes and author review records no unresolved finding.
     residual_risk: Founder approval, merge and external service availability remain outside author qualification.
     result: BLOCKED
-    blocker_reason: Author review R-144 passes for implementation commit d4f327f4, but the clean rehearsal traversed all gates without passing and hosted dependencies R001, R002, R004, R007, R009 and R013 remain blocked.
+    blocker_reason: Author review R-144 passes for implementation commit d4f327f4, but the clean rehearsal traversed all gates without passing, hosted dependencies R001, R002, R004, R007, R009 and R013 remain blocked, and corrective requirements R017 through R019 are not yet implemented.
     evidence_refs: [validation/evidence/wc104-rollback-rehearsal.json, reviews/R-144-wc104-platform-it-expert-author-review.md]
+  - requirement_id: WC104-R017
+    source: Section 6; D14; WC104-S09
+    observable_outcome: Deterministic authority, ledger, catalog, Compose and output defects stop before any costly validation node is constructed or executed.
+    component_owner: PR preparation static validation phase
+    evidence_class: Failure ordering and contract
+    test_path_or_plan: Inject invalid C-059 commit and body metadata, C-065 author review, requirement ledger, validation catalog, Compose configuration and output targets with a costly-node construction and process spy.
+    initial_state: expected-fail
+    dependencies: PR body rendering, commit metadata reader, author-review validator, requirement-ledger validator, validation policy and Compose parser
+    completion_rule: Every invalid fixture reports its specific violation with executed_count=0 and no costly node construction; one valid fixture reaches gate planning.
+    residual_risk: Static validation cannot replace execution of a selected behavioral gate after preflight succeeds.
+    result: BLOCKED
+    blocker_reason: PR preparation currently validates C-059 and C-065 only after costly prechecks complete.
+  - requirement_id: WC104-R018
+    source: Section 6; D15; WC104-S10
+    observable_outcome: Local PR preparation runs only explicitly affected dependency-complete costly prechecks while hosted PR, main and release inventories remain unchanged.
+    component_owner: Change-impact policy and local precheck planner
+    evidence_class: Selection contract and authoritative equivalence
+    test_path_or_plan: Path-impact matrix covering evidence-only, review-only, component, release-owned, global-control, unknown-path and hosted push/release fixtures.
+    initial_state: expected-fail
+    dependencies: Versioned component ownership, reverse dependencies, gate input ownership and separate local/hosted selection modes
+    completion_rule: Evidence and review-only changes select no costly gate; component and release changes select exactly their declared costly gates; hosted full inventory and thresholds remain unchanged.
+    residual_risk: A missing path owner must fail closed to full hosted validation without silently broadening every local precheck.
+    result: BLOCKED
+    blocker_reason: Current force_full handling selects Business Platform and release qualification for every global, unknown or conflicting path.
+  - requirement_id: WC104-R019
+    source: Section 6; D16; WC104-S11
+    observable_outcome: Unaffected successful gate evidence is carried to a later exact head through a verifiable non-impact record instead of rerunning.
+    component_owner: Precheck evidence resolver and per-gate input model
+    evidence_class: Exact-candidate provenance and negative security
+    test_path_or_plan: Two-head execution/carry-forward fixture plus mutations of declared source inputs, command, runner, environment, policy, source evidence digest and intervening path proof.
+    initial_state: expected-fail
+    dependencies: Per-gate declared-input digest, immutable source evidence, Git commit range, path classifier and current-head carry-forward schema
+    completion_rule: An evidence-only successor executes zero unaffected costly nodes and emits current-head proof; every affected, stale, malformed or unverifiable mutation reruns only the affected gate.
+    residual_risk: Conservative ownership gaps must force execution rather than accept ancestor evidence.
+    result: BLOCKED
+    blocker_reason: Current node identity binds the whole head and branch-wide changed-file digest, invalidating every node after any commit.
