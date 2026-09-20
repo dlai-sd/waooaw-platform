@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
           }
           return NextResponse.json({ handoffConfirmed: true }, { headers: { 'Cache-Control': 'no-store' } });
         } catch (error) {
-          const problem =
+          const upstream =
             error instanceof ResponseError
               ? ((await error.response
                   .clone()
@@ -96,8 +96,15 @@ export async function POST(request: NextRequest) {
             init.signal.aborted ||
             !(error instanceof ResponseError) ||
             error.response.status !== 409 ||
-            problem?.code !== 'REGISTRATION_REQUIRED'
+            upstream?.code !== 'REGISTRATION_REQUIRED'
           ) {
+            if (error instanceof ResponseError) {
+              const problem = await safeRegistrationProblem(error);
+              return NextResponse.json(problem.body, {
+                status: problem.status,
+                headers: { 'Cache-Control': 'no-store' },
+              });
+            }
             return NextResponse.json(
               { code: 'IDENTITY_DEPENDENCY_UNAVAILABLE', title: 'Identity request could not be completed.' },
               {

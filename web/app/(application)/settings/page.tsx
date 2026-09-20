@@ -2,10 +2,11 @@
 // Constitutional basis: C-042 (Localization), C-049 (Honest Limitation), C-059 (Implementation Traceability)
 
 import { Bell, Globe2, MoonStar, ShieldCheck } from 'lucide-react';
+import { SessionManager } from '@/components/auth/SessionManager';
 import { SettingsEditor } from '@/components/portal/SettingsEditor';
 import { StateView } from '@/components/system/StateView';
 import { getRequestI18n } from '@/lib/i18n-server';
-import { getCustomerSettings, getIdentitySession } from '@/lib/api/identity';
+import { getCustomerSettings, getIdentitySession, listIdentitySessions } from '@/lib/api/identity';
 import { getServerAccessToken } from '@/lib/server-auth';
 
 export default async function SettingsPage() {
@@ -36,7 +37,10 @@ export default async function SettingsPage() {
       );
     }
     if (identity.kind !== 'ready') throw new Error('Customer identity is unavailable.');
-    const settings = await getCustomerSettings(accessToken);
+    const [settings, sessions] = await Promise.all([
+      getCustomerSettings(accessToken),
+      listIdentitySessions(accessToken),
+    ]);
     const notificationRows = [
       ['Approval requests', settings.notificationPreferences.approvalRequests],
       ['Maturity reports', settings.notificationPreferences.maturityReports],
@@ -103,6 +107,7 @@ export default async function SettingsPage() {
               <p>No account security action is currently available.</p>
             )}
           </section>
+          <SessionManager initialSessions={sessions} />
         </div>
       </section>
     );

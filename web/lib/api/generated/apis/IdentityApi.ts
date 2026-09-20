@@ -20,12 +20,14 @@ import type {
   CustomerSettingsV1,
   IdentityAccountLink,
   IdentityCompletion,
+  IdentityManagedSessionCollection,
   IdentityMobileStatus,
   IdentityProblemDetail,
   IdentityProviderCollection,
   IdentityRegistration,
   IdentityRegistrationProfileRequest,
   IdentitySession,
+  IdentitySessionRevocation,
   IdentityVerificationChallenge,
   StartEmailVerificationRequest,
   StartIdentityAccountLinkRequest,
@@ -47,6 +49,8 @@ import {
   IdentityAccountLinkToJSON,
   IdentityCompletionFromJSON,
   IdentityCompletionToJSON,
+  IdentityManagedSessionCollectionFromJSON,
+  IdentityManagedSessionCollectionToJSON,
   IdentityMobileStatusFromJSON,
   IdentityMobileStatusToJSON,
   IdentityProblemDetailFromJSON,
@@ -59,6 +63,8 @@ import {
   IdentityRegistrationProfileRequestToJSON,
   IdentitySessionFromJSON,
   IdentitySessionToJSON,
+  IdentitySessionRevocationFromJSON,
+  IdentitySessionRevocationToJSON,
   IdentityVerificationChallengeFromJSON,
   IdentityVerificationChallengeToJSON,
   StartEmailVerificationRequestFromJSON,
@@ -108,6 +114,15 @@ export interface GetIdentityAccountLinkRequest {
 
 export interface GetIdentityRegistrationRequest {
   registrationId: string;
+}
+
+export interface RevokeAllIdentitySessionsRequest {
+  idempotencyKey: string;
+}
+
+export interface RevokeIdentitySessionRequest {
+  sessionId: string;
+  idempotencyKey: string;
 }
 
 export interface StartAccountMobileVerificationRequest {
@@ -911,6 +926,191 @@ export class IdentityApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<IdentityProviderCollection> {
     const response = await this.listIdentityProvidersRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * List active sessions for the authenticated customer account
+   */
+  async listIdentitySessionsRaw(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<IdentityManagedSessionCollection>> {
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("BearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/identity/sessions`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "GET",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      IdentityManagedSessionCollectionFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * List active sessions for the authenticated customer account
+   */
+  async listIdentitySessions(
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<IdentityManagedSessionCollection> {
+    const response = await this.listIdentitySessionsRaw(initOverrides);
+    return await response.value();
+  }
+
+  /**
+   * Revoke every active session for the authenticated customer account
+   */
+  async revokeAllIdentitySessionsRaw(
+    requestParameters: RevokeAllIdentitySessionsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<IdentitySessionRevocation>> {
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling revokeAllIdentitySessions().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(
+        requestParameters["idempotencyKey"],
+      );
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("BearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/identity/sessions`;
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "DELETE",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      IdentitySessionRevocationFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * Revoke every active session for the authenticated customer account
+   */
+  async revokeAllIdentitySessions(
+    requestParameters: RevokeAllIdentitySessionsRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<IdentitySessionRevocation> {
+    const response = await this.revokeAllIdentitySessionsRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
+   * Revoke one session owned by the authenticated customer account
+   */
+  async revokeIdentitySessionRaw(
+    requestParameters: RevokeIdentitySessionRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<IdentitySessionRevocation>> {
+    if (requestParameters["sessionId"] == null) {
+      throw new runtime.RequiredError(
+        "sessionId",
+        'Required parameter "sessionId" was null or undefined when calling revokeIdentitySession().',
+      );
+    }
+
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling revokeIdentitySession().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(
+        requestParameters["idempotencyKey"],
+      );
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("BearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/identity/sessions/{sessionId}`;
+    urlPath = urlPath.replace(
+      `{${"sessionId"}}`,
+      encodeURIComponent(String(requestParameters["sessionId"])),
+    );
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "DELETE",
+        headers: headerParameters,
+        query: queryParameters,
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      IdentitySessionRevocationFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * Revoke one session owned by the authenticated customer account
+   */
+  async revokeIdentitySession(
+    requestParameters: RevokeIdentitySessionRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<IdentitySessionRevocation> {
+    const response = await this.revokeIdentitySessionRaw(
+      requestParameters,
+      initOverrides,
+    );
     return await response.value();
   }
 

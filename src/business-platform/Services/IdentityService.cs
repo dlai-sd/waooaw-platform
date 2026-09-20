@@ -116,17 +116,20 @@ public sealed class IdentityService
     private readonly string _activeHmacVersion;
     private readonly IReadOnlyDictionary<string, byte[]> _hmacKeys;
     private readonly IIdentityVerificationDispatcher _dispatcher;
+    private readonly IIdentityConstitutionalGateway? _constitutionalGateway;
 
     private const int Aal3FreshWindowMinutes = 5;
 
     public IdentityService(
         IDbContextFactory<IdentityDbContext> dbFactory,
         IOptions<IdentityHmacOptions> hmacOptions,
-        IIdentityVerificationDispatcher dispatcher
+        IIdentityVerificationDispatcher dispatcher,
+        IIdentityConstitutionalGateway? constitutionalGateway = null
     )
     {
         _dbFactory = dbFactory ?? throw new ArgumentNullException(nameof(dbFactory));
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+        _constitutionalGateway = constitutionalGateway;
         var options = hmacOptions?.Value;
         var key = options?.Key;
         if (string.IsNullOrEmpty(key) || key.Length < IdentityHmacOptions.MinKeyLength)
@@ -1471,12 +1474,21 @@ public sealed class IdentityService
             return (replayLink!, false);
         }
 
+        var startEvidenceId = await RequireConstitutionalEvidenceAsync(
+            tenantId,
+            idempotencyKey,
+            "IDENTITY_ACCOUNT_LINK_START",
+            new { verifiedMobileProofId },
+            ct
+        );
+
         var link = new IdentityAccountLinkRecord
         {
             ActorSubject = actorSubject,
             TenantId = tenantId,
             MaskedMobile = "***",
             VerifiedMobileProofId = verifiedMobileProofId,
+            StartEvidenceId = startEvidenceId,
         };
 
         db.AccountLinks.Add(link);
@@ -1526,6 +1538,14 @@ public sealed class IdentityService
         if (replay is not null)
             return (link, false);
 
+        var approvalEvidenceId = await RequireConstitutionalEvidenceAsync(
+            tenantId,
+            idempotencyKey,
+            "IDENTITY_ACCOUNT_LINK_APPROVE",
+            new { linkId },
+            ct
+        );
+
         if (
             link.State == IdentityAccountLinkState.Expired
             || link.ExpiresAt < DateTimeOffset.UtcNow
@@ -1537,6 +1557,7 @@ public sealed class IdentityService
         }
 
         link.State = IdentityAccountLinkState.PendingWhatsAppConfirmation;
+        link.ApprovalEvidenceId = approvalEvidenceId;
         link.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(ct);
         await RecordIdempotencyAsync(
@@ -1570,6 +1591,17 @@ public sealed class IdentityService
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private Task<Guid> RequireConstitutionalEvidenceAsync(
+        Guid tenantId,
+        Guid actionInstanceId,
+        string actionType,
+        object actionParameters,
+        CancellationToken ct
+    ) =>
+        (_constitutionalGateway
+            ?? throw new InvalidOperationException("Identity constitutional evidence is unavailable."))
+        .AuthorizeAndRecordAsync(tenantId, actionInstanceId, actionType, actionParameters, ct);
 
     private static void EnforceAal3Fresh(DateTimeOffset authTime)
     {

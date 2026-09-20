@@ -18,10 +18,12 @@ cleanup() {
 trap cleanup EXIT HUP INT TERM
 
 cd "$REPOSITORY_ROOT"
-docker compose --profile test run --rm --no-deps test-runner \
+docker compose --profile test run --rm --no-deps \
+  --volume "$SLICE_PATH:/tmp/web-openapi.yaml" \
+  test-runner \
   python3 scripts/openapi_slice.py \
   --input architecture/reference/api-specs/business-platform.openapi.yaml \
-  --output "${SLICE_PATH#"$REPOSITORY_ROOT/"}" \
+  --output /tmp/web-openapi.yaml \
   --tag Identity \
   --tag Billing \
   --tag Configuration \
@@ -46,5 +48,7 @@ docker run --rm \
   --global-property "apis=Billing:Configuration:Conversation:Employment:Identity:Notifications:Professionals:RelationshipWorkspace:VoiceContributions,models,supportingFiles=runtime.ts:models/index.ts:index.ts" \
   --additional-properties supportsES6=true,typescriptThreePlus=true,useSingleRequestParameter=true,hideGenerationTimestamp=true
 
-docker compose --profile test run --rm --no-deps test-runner \
-  sh -lc 'cd /workspace/web && pnpm install --frozen-lockfile --store-dir=/tmp/pnpm-store && node scripts/normalize-generated-api.mjs && pnpm exec prettier --write lib/api/generated'
+docker compose --profile test-ts run --rm --no-deps \
+  --volume "$OUTPUT_PATH:/workspace/web/lib/api/generated" \
+  test-runner-ts \
+  sh -lc 'cd /workspace/web && node scripts/normalize-generated-api.mjs && pnpm exec prettier --write lib/api/generated'

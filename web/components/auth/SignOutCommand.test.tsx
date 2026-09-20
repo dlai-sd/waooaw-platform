@@ -1,7 +1,7 @@
 // Implements: architecture/reference/ux/hybrid-ui-acceptance-contract.md §UX-PWA-04
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { signIn } from 'next-auth/react';
 import { AccountSwitchCommand, SignOutCommand } from './SignOutCommand';
 
@@ -39,7 +39,9 @@ it('clears WAOOAW protected state before ending the session', () => {
   });
 });
 
-it('clears protected state before requesting a different Keycloak account', () => {
+it('revokes prior server sessions before requesting a different Keycloak account', async () => {
+  const fetchMock = jest.fn().mockResolvedValue({ ok: true });
+  Object.defineProperty(globalThis, 'fetch', { configurable: true, value: fetchMock });
   sessionStorage.setItem('waooaw:relationship:draft', 'prior customer text');
   localStorage.setItem('waooaw:conversation:relationship-b:draft', 'prior account text');
   localStorage.setItem('unrelated-preference', 'retain');
@@ -49,5 +51,22 @@ it('clears protected state before requesting a different Keycloak account', () =
   expect(localStorage.getItem('waooaw:conversation:relationship-b:draft')).toBeNull();
   expect(localStorage.getItem('waooaw:identity:session-change')).toBeNull();
   expect(localStorage.getItem('unrelated-preference')).toBe('retain');
-  expect(signIn).toHaveBeenCalledWith('keycloak', { callbackUrl: '/home' }, { prompt: 'select_account' });
+  expect(fetchMock).toHaveBeenCalledWith('/api/identity/sessions', expect.objectContaining({ method: 'DELETE' }));
+  await waitFor(() =>
+    expect(signIn).toHaveBeenCalledWith('keycloak', { callbackUrl: '/home' }, { prompt: 'select_account' })
+  );
+});
+
+it('does not launch account selection when prior-session revocation fails', async () => {
+  jest.mocked(signIn).mockClear();
+  Object.defineProperty(globalThis, 'fetch', {
+    configurable: true,
+    value: jest.fn().mockResolvedValue({ ok: false }),
+  });
+  render(<AccountSwitchCommand label="Switch account" />);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Switch account' }));
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('Account switch could not start. Try again.');
+  expect(signIn).not.toHaveBeenCalled();
 });

@@ -117,6 +117,8 @@ docs/IdentityApi.md
 docs/IdentityAssuranceLevel.md
 docs/IdentityAuthenticationPath.md
 docs/IdentityCompletion.md
+docs/IdentityManagedSession.md
+docs/IdentityManagedSessionCollection.md
 docs/IdentityMobileStatus.md
 docs/IdentityNextAction.md
 docs/IdentityProblemCode.md
@@ -129,6 +131,7 @@ docs/IdentityRegistrationProfileRequest.md
 docs/IdentityRegistrationState.md
 docs/IdentitySession.md
 docs/IdentitySessionAuthenticationPath.md
+docs/IdentitySessionRevocation.md
 docs/IdentityVerificationChallenge.md
 docs/IdentityVerificationPurpose.md
 docs/IdentityVerificationState.md
@@ -410,6 +413,8 @@ models/IdentityAccountLinkState.ts
 models/IdentityAssuranceLevel.ts
 models/IdentityAuthenticationPath.ts
 models/IdentityCompletion.ts
+models/IdentityManagedSession.ts
+models/IdentityManagedSessionCollection.ts
 models/IdentityMobileStatus.ts
 models/IdentityNextAction.ts
 models/IdentityProblemCode.ts
@@ -422,6 +427,7 @@ models/IdentityRegistrationProfileRequest.ts
 models/IdentityRegistrationState.ts
 models/IdentitySession.ts
 models/IdentitySessionAuthenticationPath.ts
+models/IdentitySessionRevocation.ts
 models/IdentityVerificationChallenge.ts
 models/IdentityVerificationPurpose.ts
 models/IdentityVerificationState.ts

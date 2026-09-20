@@ -127,6 +127,63 @@ paths:
         "409": { $ref: "#/components/responses/IdentityRegistrationRequired" }
         "503": { $ref: "#/components/responses/IdentityUnavailable" }
 
+  /api/v1/identity/sessions:
+    get:
+      tags: [Identity]
+      summary: List active sessions for the authenticated customer account
+      operationId: listIdentitySessions
+      responses:
+        "200":
+          description: Privacy-safe active session projection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityManagedSessionCollection"
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
+        "503": { $ref: "#/components/responses/IdentityUnavailable" }
+    delete:
+      tags: [Identity]
+      summary: Revoke every active session for the authenticated customer account
+      operationId: revokeAllIdentitySessions
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: All sessions were already revoked or are now revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentitySessionRevocation"
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
+        "409": { $ref: "#/components/responses/IdentityConflict" }
+        "503": { $ref: "#/components/responses/IdentityUnavailable" }
+
+  /api/v1/identity/sessions/{sessionId}:
+    delete:
+      tags: [Identity]
+      summary: Revoke one session owned by the authenticated customer account
+      operationId: revokeIdentitySession
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: The selected session was already revoked or is now revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentitySessionRevocation"
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
+        "404": { $ref: "#/components/responses/IdentityNotFound" }
+        "409": { $ref: "#/components/responses/IdentityConflict" }
+        "503": { $ref: "#/components/responses/IdentityUnavailable" }
+
   /api/v1/identity/profile:
     get:
       tags: [Identity]
@@ -5002,6 +5059,47 @@ components:
         nextAction:
           type: string
           enum: [NONE, VERIFY_EMAIL, VERIFY_MOBILE, REAUTHENTICATE]
+
+    IdentityManagedSessionCollection:
+      type: object
+      additionalProperties: false
+      required: [sessions]
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/IdentityManagedSession"
+
+    IdentityManagedSession:
+      type: object
+      additionalProperties: false
+      required: [sessionId, issuedAt, lastSeenAt, expiresAt, assuranceLevel, provider, deviceLabel, current]
+      properties:
+        sessionId: { type: string, format: uuid }
+        issuedAt: { type: string, format: date-time }
+        lastSeenAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        assuranceLevel: { $ref: "#/components/schemas/IdentityAssuranceLevel" }
+        provider:
+          type: string
+          enum: [GOOGLE, FACEBOOK, APPLE, EMAIL, UNKNOWN]
+        deviceLabel:
+          type: string
+          minLength: 1
+          maxLength: 40
+        current: { type: boolean }
+
+    IdentitySessionRevocation:
+      type: object
+      additionalProperties: false
+      required: [scope, revokedCount]
+      properties:
+        scope:
+          type: string
+          enum: [ONE, ALL]
+        revokedCount:
+          type: integer
+          minimum: 0
 
     IdentityRegistration:
       type: object

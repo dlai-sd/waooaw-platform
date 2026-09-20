@@ -3,6 +3,17 @@
 
 import type { Session } from 'next-auth';
 import { activeAccessToken, authOptions, hasFounderClaim, keycloakClientConfig, projectSession } from './auth';
+import { persistWebIdentitySecurityEvent, recordWebIdentitySecurityEvent } from './identity-security-events';
+
+jest.mock('./identity-security-events', () => ({
+  persistWebIdentitySecurityEvent: jest.fn(),
+  recordWebIdentitySecurityEvent: jest.fn(),
+}));
+
+beforeEach(() => {
+  jest.mocked(persistWebIdentitySecurityEvent).mockReset().mockResolvedValue(true);
+  jest.mocked(recordWebIdentitySecurityEvent).mockReset().mockResolvedValue();
+});
 
 describe('Founder claim parsing', () => {
   it('accepts only an explicit Founder claim or realm role', () => {
@@ -123,9 +134,39 @@ describe('Browser session projection', () => {
       refreshToken: 'rotated-refresh-token',
       idToken: 'renewed-id-token',
     });
+    expect(persistWebIdentitySecurityEvent).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: 'REFRESH_SUCCESS',
+      reasonCode: 'TOKEN_ROTATED',
+    }));
     const session = projectSession({ expires: '2099-01-01', user: {} } as Session, token, 100);
     expect(session.authenticated).toBe(true);
     expect(JSON.stringify(session)).not.toContain('rotated-refresh-token');
+  });
+
+  it('purges refreshed authority when the required success event cannot be persisted', async () => {
+    Object.defineProperty(globalThis, 'fetch', {
+      configurable: true,
+      value: jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ access_token: 'unrecorded-bearer', expires_in: 300 }),
+      }),
+    });
+    jest.mocked(persistWebIdentitySecurityEvent).mockRejectedValueOnce(new Error('event store unavailable'));
+    const jwt = authOptions.callbacks?.jwt;
+    if (!jwt) throw new Error('JWT callback is required');
+
+    const token = await jwt({
+      token: { accessToken: 'expired', accessTokenExpiresAt: 1, refreshToken: 'refresh', founder: true },
+      account: null,
+    } as never);
+
+    expect(token).not.toHaveProperty('accessToken');
+    expect(token).not.toHaveProperty('refreshToken');
+    expect(token.founder).toBe(false);
+    expect(recordWebIdentitySecurityEvent).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: 'REFRESH_FAILURE',
+      reasonCode: 'EVENT_PERSISTENCE_UNAVAILABLE',
+    }));
   });
 
   it('purges all authentication authority when Keycloak rejects refresh', async () => {

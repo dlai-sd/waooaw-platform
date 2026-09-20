@@ -26,6 +26,7 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
 {
     public const string JourneyItem = "waooaw:customer-identity-journey";
     public const string MembershipItem = "waooaw:customer-membership";
+    public const string SessionIdItem = "waooaw:customer-session-id";
 
     public async Task InvokeAsync(HttpContext context)
     {
@@ -59,7 +60,23 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
                 var membership = await journey.ResolveAsync(context.User, context.RequestAborted);
                 CheckHeader(context, "x-tenant-id", membership.TenantId);
                 CheckHeader(context, "x-account-id", membership.AccountId);
+                var sessions = context.RequestServices.GetRequiredService<IdentitySessionService>();
+                var sourceSessionId =
+                    context.User.FindFirstValue("sid")
+                    ?? context.User.FindFirstValue("jti")
+                    ?? $"{journey.ValidateActor(context.User).Subject}\u001f{TokenTime(context, "auth_time"):O}";
+                var sessionId = await sessions.ObserveAsync(
+                    membership.AccountId,
+                    $"{journey.ValidateActor(context.User).Issuer}\u001f{journey.ValidateActor(context.User).Subject}",
+                    sourceSessionId,
+                    TokenTime(context, "auth_time"),
+                    TokenTime(context, "exp"),
+                    AssuranceClass(context),
+                    ProviderClass(context),
+                    context.RequestAborted
+                );
                 context.Items[MembershipItem] = membership;
+                context.Items[SessionIdItem] = sessionId;
                 context.Items[TenantIsolationMiddleware.TenantIdItemKey] =
                     membership.TenantId.ToString();
             }
@@ -116,9 +133,31 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
         {
             context.Items.Remove(JourneyItem);
             context.Items.Remove(MembershipItem);
+            context.Items.Remove(SessionIdItem);
             context.Items.Remove(TenantIsolationMiddleware.TenantIdItemKey);
         }
     }
+
+    private static DateTimeOffset TokenTime(HttpContext context, string claim) =>
+        context.User.FindFirstValue(claim) is string value && long.TryParse(value, out var seconds)
+            ? DateTimeOffset.FromUnixTimeSeconds(seconds)
+            : throw new IdentityActionDeniedException("IDENTITY_SESSION_REQUIRED");
+
+    private static string AssuranceClass(HttpContext context) =>
+        DateTimeOffset.UtcNow - TokenTime(context, "auth_time") <= TimeSpan.FromMinutes(5)
+            ? "AAL3"
+            : "AAL2";
+
+    private static string ProviderClass(HttpContext context) =>
+        (context.User.FindFirstValue("identity_provider") ?? context.User.FindFirstValue("idp"))
+            ?.ToLowerInvariant() switch
+        {
+            "google" => "GOOGLE",
+            "facebook" => "FACEBOOK",
+            "apple" => "APPLE",
+            "email" => "EMAIL",
+            _ => "UNKNOWN",
+        };
 
     private static void CheckHeader(HttpContext context, string name, Guid expected)
     {

@@ -12,6 +12,7 @@ services:
       KEYCLOAK_CLIENT_ID: waooaw-web-preview
       KEYCLOAK_PUBLIC_CLIENT: "true"
       BUSINESS_PLATFORM_URL: ${BUSINESS_PLATFORM_URL:?BUSINESS_PLATFORM_URL is required}
+      IDENTITY_EVENT_SIGNING_KEY: ${IDENTITY_EVENT_SIGNING_KEY:?IDENTITY_EVENT_SIGNING_KEY is required}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/login"]

@@ -4,6 +4,7 @@ import { NotificationChannel } from '@/lib/api/generated/models/NotificationChan
 import { AlertFeed, type PortalAlert } from './AlertFeed';
 import { ProfileEditor } from './ProfileEditor';
 import { SettingsEditor } from './SettingsEditor';
+import { SessionManager } from '@/components/auth/SessionManager';
 
 const alert: PortalAlert = {
   alertId: 'alert-1',
@@ -105,6 +106,35 @@ describe('WC084 portal editors', () => {
     fireEvent.submit(requiredForm(screen.getByRole('button', { name: 'Save settings' })));
     expect(await screen.findByText('Settings could not be saved.')).toBeVisible();
     expect(document.cookie).not.toContain('waooaw-theme=light');
+  });
+
+  it('lists privacy-safe sessions and revokes one through the same-origin boundary', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true });
+    render(
+      <SessionManager
+        initialSessions={[
+          {
+            sessionId: '11111111-1111-4111-8111-111111111111',
+            issuedAt: new Date('2026-09-20T10:00:00Z'),
+            lastSeenAt: new Date('2026-09-20T10:05:00Z'),
+            expiresAt: new Date('2026-09-20T11:00:00Z'),
+            assuranceLevel: 'AAL2_ACCOUNT',
+            provider: 'GOOGLE',
+            deviceLabel: 'Browser session',
+            current: true,
+          },
+        ]}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'End session' }));
+
+    expect(await screen.findByText('Session ended.')).toBeVisible();
+    expect(screen.getByText('No active sessions.')).toBeVisible();
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/identity/sessions/11111111-1111-4111-8111-111111111111',
+      expect.objectContaining({ method: 'DELETE' })
+    );
   });
 
   it('persists only the lightweight Onboard preferences', async () => {

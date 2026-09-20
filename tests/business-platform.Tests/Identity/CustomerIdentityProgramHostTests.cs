@@ -58,6 +58,9 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
             await OwnerAsync(canonical[start..end]);
         }
         await OwnerAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/20-identity-boundary.sql")));
+        await OwnerAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/38-identity-security-events.sql")));
+        await OwnerAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/39-identity-sessions.sql")));
+        await OwnerAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/40-identity-account-link-evidence.sql")));
         await OwnerAsync("""
             GRANT ALL ON ALL TABLES IN SCHEMA business, identity TO business_app;
             GRANT SELECT ON ALL TABLES IN SCHEMA business TO constitutional_app, runtime_app, wbe_app;

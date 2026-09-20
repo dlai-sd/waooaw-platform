@@ -16,6 +16,9 @@ All URIs are relative to _http://localhost:5001_
 | [**getIdentitySession**](IdentityApi.md#getidentitysession)                               | **GET** /api/v1/identity/session                                                      | Get the current customer identity session projection                 |
 | [**listCustomerLoginMethods**](IdentityApi.md#listcustomerloginmethods)                   | **GET** /api/v1/identity/login-methods                                                | List minimised login-method summaries for the authenticated customer |
 | [**listIdentityProviders**](IdentityApi.md#listidentityproviders)                         | **GET** /api/v1/identity/providers                                                    | List customer authentication choices for this environment            |
+| [**listIdentitySessions**](IdentityApi.md#listidentitysessions)                           | **GET** /api/v1/identity/sessions                                                     | List active sessions for the authenticated customer account          |
+| [**revokeAllIdentitySessions**](IdentityApi.md#revokeallidentitysessions)                 | **DELETE** /api/v1/identity/sessions                                                  | Revoke every active session for the authenticated customer account   |
+| [**revokeIdentitySession**](IdentityApi.md#revokeidentitysession)                         | **DELETE** /api/v1/identity/sessions/{sessionId}                                      | Revoke one session owned by the authenticated customer account       |
 | [**startAccountMobileVerification**](IdentityApi.md#startaccountmobileverification)       | **POST** /api/v1/identity/mobile-verifications                                        | Start or replay progressive mobile verification                      |
 | [**startIdentityAccountLink**](IdentityApi.md#startidentityaccountlinkoperation)          | **POST** /api/v1/identity/account-links                                               | Start or replay a WhatsApp-to-web account link                       |
 | [**startIdentityEmailVerification**](IdentityApi.md#startidentityemailverification)       | **POST** /api/v1/identity/registrations/{registrationId}/email-verifications          | Start or replay mandatory email verification                         |
@@ -854,6 +857,212 @@ No authorization required
 | ----------- | --------------------------------------------------------------------- | ---------------- |
 | **200**     | Ordered customer authentication choices                               | -                |
 | **503**     | Identity dependency is unavailable and the outcome remains unresolved | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## listIdentitySessions
+
+> IdentityManagedSessionCollection listIdentitySessions()
+
+List active sessions for the authenticated customer account
+
+### Example
+
+```ts
+import { Configuration, IdentityApi } from "";
+import type { ListIdentitySessionsRequest } from "";
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new IdentityApi(config);
+
+  try {
+    const data = await api.listIdentitySessions();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**IdentityManagedSessionCollection**](IdentityManagedSessionCollection.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                                 | Response headers |
+| ----------- | --------------------------------------------------------------------------- | ---------------- |
+| **200**     | Privacy-safe active session projection                                      | -                |
+| **401**     | Identity session is missing, invalid, or expired                            | -                |
+| **403**     | Fresh or stronger Keycloak assurance is required before the command can run | -                |
+| **503**     | Identity dependency is unavailable and the outcome remains unresolved       | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## revokeAllIdentitySessions
+
+> IdentitySessionRevocation revokeAllIdentitySessions(idempotencyKey)
+
+Revoke every active session for the authenticated customer account
+
+### Example
+
+```ts
+import {
+  Configuration,
+  IdentityApi,
+} from '';
+import type { RevokeAllIdentitySessionsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new IdentityApi(config);
+
+  const body = {
+    // string | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts.
+    idempotencyKey: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies RevokeAllIdentitySessionsRequest;
+
+  try {
+    const data = await api.revokeAllIdentitySessions(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name               | Type     | Description                                                                              | Notes                     |
+| ------------------ | -------- | ---------------------------------------------------------------------------------------- | ------------------------- |
+| **idempotencyKey** | `string` | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts. | [Defaults to `undefined`] |
+
+### Return type
+
+[**IdentitySessionRevocation**](IdentitySessionRevocation.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                                 | Response headers |
+| ----------- | --------------------------------------------------------------------------- | ---------------- |
+| **200**     | All sessions were already revoked or are now revoked                        | -                |
+| **401**     | Identity session is missing, invalid, or expired                            | -                |
+| **403**     | Fresh or stronger Keycloak assurance is required before the command can run | -                |
+| **409**     | Idempotency conflict or duplicate resolution requires a safe recovery path  | -                |
+| **503**     | Identity dependency is unavailable and the outcome remains unresolved       | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## revokeIdentitySession
+
+> IdentitySessionRevocation revokeIdentitySession(sessionId, idempotencyKey)
+
+Revoke one session owned by the authenticated customer account
+
+### Example
+
+```ts
+import {
+  Configuration,
+  IdentityApi,
+} from '';
+import type { RevokeIdentitySessionRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new IdentityApi(config);
+
+  const body = {
+    // string
+    sessionId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts.
+    idempotencyKey: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies RevokeIdentitySessionRequest;
+
+  try {
+    const data = await api.revokeIdentitySession(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name               | Type     | Description                                                                              | Notes                     |
+| ------------------ | -------- | ---------------------------------------------------------------------------------------- | ------------------------- |
+| **sessionId**      | `string` |                                                                                          | [Defaults to `undefined`] |
+| **idempotencyKey** | `string` | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts. | [Defaults to `undefined`] |
+
+### Return type
+
+[**IdentitySessionRevocation**](IdentitySessionRevocation.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                                                                                     | Response headers |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| **200**     | The selected session was already revoked or is now revoked                                                                      | -                |
+| **401**     | Identity session is missing, invalid, or expired                                                                                | -                |
+| **403**     | Fresh or stronger Keycloak assurance is required before the command can run                                                     | -                |
+| **404**     | Identity resource is absent, inaccessible, or cross-tenant; one normalized shape and timing class prevents existence disclosure | -                |
+| **409**     | Idempotency conflict or duplicate resolution requires a safe recovery path                                                      | -                |
+| **503**     | Identity dependency is unavailable and the outcome remains unresolved                                                           | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 

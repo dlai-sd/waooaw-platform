@@ -5,6 +5,8 @@ import 'server-only';
 
 import { IdentityApi } from '@/lib/api/generated/apis/IdentityApi';
 import type { IdentityProvider } from '@/lib/api/generated/models/IdentityProvider';
+import type { IdentityManagedSession } from '@/lib/api/generated/models/IdentityManagedSession';
+import type { IdentitySessionRevocation } from '@/lib/api/generated/models/IdentitySessionRevocation';
 import type { IdentitySession } from '@/lib/api/generated/models/IdentitySession';
 import type { CustomerLoginMethodCollectionV1 } from '@/lib/api/generated/models/CustomerLoginMethodCollectionV1';
 import type { CustomerProfileV1 } from '@/lib/api/generated/models/CustomerProfileV1';
@@ -55,6 +57,28 @@ export async function getCustomerSettings(accessToken: string): Promise<Customer
 
 export async function listCustomerLoginMethods(accessToken: string): Promise<CustomerLoginMethodCollectionV1> {
   return createIdentityApi(accessToken).listCustomerLoginMethods({ cache: 'no-store' });
+}
+
+export async function listIdentitySessions(accessToken: string): Promise<IdentityManagedSession[]> {
+  return (await createIdentityApi(accessToken).listIdentitySessions({ cache: 'no-store' })).sessions;
+}
+
+export async function revokeIdentitySession(
+  accessToken: string,
+  sessionId: string,
+  idempotencyKey: string
+): Promise<IdentitySessionRevocation> {
+  return createIdentityApi(accessToken).revokeIdentitySession(
+    { sessionId, idempotencyKey },
+    { cache: 'no-store' }
+  );
+}
+
+export async function revokeAllIdentitySessions(
+  accessToken: string,
+  idempotencyKey: string
+): Promise<IdentitySessionRevocation> {
+  return createIdentityApi(accessToken).revokeAllIdentitySessions({ idempotencyKey }, { cache: 'no-store' });
 }
 
 const unavailableProviders: IdentityProvider[] = [

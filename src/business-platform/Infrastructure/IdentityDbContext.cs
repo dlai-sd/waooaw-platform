@@ -121,6 +121,8 @@ public sealed class IdentityAccountLinkRecord
         IdentityAccountLinkState.PendingPortalApproval;
     public string MaskedMobile { get; init; } = string.Empty;
     public Guid VerifiedMobileProofId { get; init; }
+    public Guid StartEvidenceId { get; init; }
+    public Guid? ApprovalEvidenceId { get; set; }
     public DateTimeOffset ExpiresAt { get; init; } = DateTimeOffset.UtcNow.AddMinutes(15);
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
@@ -217,6 +219,52 @@ public sealed class IdentityRegistrationEventRecord
     public DateTimeOffset OccurredAt { get; init; }
 }
 
+public sealed class IdentitySecurityEventRecord
+{
+    public Guid EventId { get; init; } = Guid.NewGuid();
+    public Guid CorrelationId { get; init; }
+    public string SourceEventId { get; init; } = string.Empty;
+    public string? ActorRef { get; init; }
+    public string? SessionRef { get; init; }
+    public string Environment { get; init; } = string.Empty;
+    public string EventType { get; init; } = string.Empty;
+    public string ProviderClass { get; init; } = string.Empty;
+    public string Outcome { get; init; } = string.Empty;
+    public string ReasonCode { get; init; } = string.Empty;
+    public string AssuranceClass { get; init; } = string.Empty;
+    public string SourceBoundary { get; init; } = string.Empty;
+    public string ReferenceKeyVersion { get; init; } = string.Empty;
+    public string RetentionClass { get; init; } = "SECURITY_400D";
+    public DateTimeOffset RetainUntil { get; init; }
+    public int SchemaVersion { get; init; } = 1;
+    public DateTimeOffset OccurredAt { get; init; }
+    public DateTimeOffset RecordedAt { get; init; }
+    public string WriterService { get; init; } = string.Empty;
+}
+
+public sealed class IdentitySessionRecord
+{
+    public Guid SessionId { get; init; }
+    public string AccountRef { get; init; } = string.Empty;
+    public string ActorRef { get; init; } = string.Empty;
+    public DateTimeOffset IssuedAt { get; init; }
+    public DateTimeOffset LastSeenAt { get; set; }
+    public DateTimeOffset AbsoluteExpiresAt { get; init; }
+    public DateTimeOffset? RevokedAt { get; set; }
+    public string AssuranceClass { get; init; } = string.Empty;
+    public string ProviderClass { get; init; } = string.Empty;
+    public string DeviceLabel { get; init; } = string.Empty;
+    public string? RevocationReason { get; set; }
+}
+
+public sealed class IdentitySessionGenerationRecord
+{
+    public string AccountRef { get; init; } = string.Empty;
+    public DateTimeOffset? RevokedBefore { get; set; }
+    public long Generation { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+}
+
 public sealed class IdentityOrganisationRecord
 {
     public Guid Id { get; init; }
@@ -243,6 +291,10 @@ public sealed class IdentityDbContext : DbContext
     public DbSet<IdentityMembershipRecord> Memberships => Set<IdentityMembershipRecord>();
     public DbSet<IdentityRegistrationEventRecord> RegistrationEvents =>
         Set<IdentityRegistrationEventRecord>();
+    public DbSet<IdentitySecurityEventRecord> SecurityEvents => Set<IdentitySecurityEventRecord>();
+    public DbSet<IdentitySessionRecord> IdentitySessions => Set<IdentitySessionRecord>();
+    public DbSet<IdentitySessionGenerationRecord> IdentitySessionGenerations =>
+        Set<IdentitySessionGenerationRecord>();
     public DbSet<IdentityOrganisationRecord> Organisations => Set<IdentityOrganisationRecord>();
 
     public IdentityDbContext(DbContextOptions<IdentityDbContext> options)
@@ -342,6 +394,8 @@ public sealed class IdentityDbContext : DbContext
             e.Property(l => l.State).HasColumnName("state").HasConversion<string>();
             e.Property(l => l.MaskedMobile).HasColumnName("masked_mobile").HasMaxLength(32);
             e.Property(l => l.VerifiedMobileProofId).HasColumnName("verified_mobile_proof_id");
+            e.Property(l => l.StartEvidenceId).HasColumnName("start_evidence_id");
+            e.Property(l => l.ApprovalEvidenceId).HasColumnName("approval_evidence_id");
             e.Property(l => l.ExpiresAt).HasColumnName("expires_at");
             e.Property(l => l.CreatedAt).HasColumnName("created_at");
             e.Property(l => l.UpdatedAt).HasColumnName("updated_at");
@@ -547,6 +601,81 @@ public sealed class IdentityDbContext : DbContext
                 .Property(record => record.OccurredAt)
                 .HasColumnName("occurred_at")
                 .HasDefaultValueSql("now()");
+        });
+        modelBuilder.Entity<IdentitySecurityEventRecord>(entity =>
+        {
+            entity.ToTable("identity_security_events", "institutional");
+            entity.HasKey(record => record.EventId);
+            entity.Property(record => record.EventId).HasColumnName("event_id");
+            entity.Property(record => record.CorrelationId).HasColumnName("correlation_id");
+            entity.Property(record => record.SourceEventId)
+                .HasColumnName("source_event_id")
+                .HasMaxLength(128)
+                .UseCollation("C");
+            entity.Property(record => record.ActorRef).HasColumnName("actor_ref").HasMaxLength(64);
+            entity.Property(record => record.SessionRef)
+                .HasColumnName("session_ref")
+                .HasMaxLength(64);
+            entity.Property(record => record.Environment)
+                .HasColumnName("environment")
+                .HasMaxLength(16);
+            entity.Property(record => record.EventType)
+                .HasColumnName("event_type")
+                .HasMaxLength(48);
+            entity.Property(record => record.ProviderClass)
+                .HasColumnName("provider_class")
+                .HasMaxLength(16);
+            entity.Property(record => record.Outcome).HasColumnName("outcome").HasMaxLength(16);
+            entity.Property(record => record.ReasonCode)
+                .HasColumnName("reason_code")
+                .HasMaxLength(64);
+            entity.Property(record => record.AssuranceClass)
+                .HasColumnName("assurance_class")
+                .HasMaxLength(32);
+            entity.Property(record => record.SourceBoundary)
+                .HasColumnName("source_boundary")
+                .HasMaxLength(32);
+            entity.Property(record => record.ReferenceKeyVersion)
+                .HasColumnName("reference_key_version")
+                .HasMaxLength(32);
+            entity.Property(record => record.RetentionClass)
+                .HasColumnName("retention_class")
+                .HasMaxLength(32);
+            entity.Property(record => record.RetainUntil).HasColumnName("retain_until");
+            entity.Property(record => record.SchemaVersion).HasColumnName("schema_version");
+            entity.Property(record => record.OccurredAt).HasColumnName("occurred_at");
+            entity.Property(record => record.RecordedAt).HasColumnName("recorded_at");
+            entity.Property(record => record.WriterService)
+                .HasColumnName("writer_service")
+                .HasMaxLength(64);
+            entity.HasIndex(record => new { record.SourceBoundary, record.SourceEventId }).IsUnique();
+            entity.HasIndex(record => new { record.CorrelationId, record.OccurredAt });
+        });
+        modelBuilder.Entity<IdentitySessionRecord>(entity =>
+        {
+            entity.ToTable("identity_sessions", "business");
+            entity.HasKey(record => record.SessionId);
+            entity.Property(record => record.SessionId).HasColumnName("session_id");
+            entity.Property(record => record.AccountRef).HasColumnName("account_ref").HasMaxLength(64);
+            entity.Property(record => record.ActorRef).HasColumnName("actor_ref").HasMaxLength(64);
+            entity.Property(record => record.IssuedAt).HasColumnName("issued_at");
+            entity.Property(record => record.LastSeenAt).HasColumnName("last_seen_at");
+            entity.Property(record => record.AbsoluteExpiresAt).HasColumnName("absolute_expires_at");
+            entity.Property(record => record.RevokedAt).HasColumnName("revoked_at");
+            entity.Property(record => record.AssuranceClass).HasColumnName("assurance_class").HasMaxLength(32);
+            entity.Property(record => record.ProviderClass).HasColumnName("provider_class").HasMaxLength(16);
+            entity.Property(record => record.DeviceLabel).HasColumnName("device_label").HasMaxLength(40);
+            entity.Property(record => record.RevocationReason).HasColumnName("revocation_reason").HasMaxLength(32);
+            entity.HasIndex(record => new { record.AccountRef, record.RevokedAt });
+        });
+        modelBuilder.Entity<IdentitySessionGenerationRecord>(entity =>
+        {
+            entity.ToTable("identity_session_generations", "business");
+            entity.HasKey(record => record.AccountRef);
+            entity.Property(record => record.AccountRef).HasColumnName("account_ref").HasMaxLength(64);
+            entity.Property(record => record.RevokedBefore).HasColumnName("revoked_before");
+            entity.Property(record => record.Generation).HasColumnName("generation");
+            entity.Property(record => record.UpdatedAt).HasColumnName("updated_at");
         });
         modelBuilder.Entity<IdentityOrganisationRecord>(entity =>
         {

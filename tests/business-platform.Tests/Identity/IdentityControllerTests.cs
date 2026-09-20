@@ -44,6 +44,26 @@ internal sealed class CapturingVerificationDispatcher : IIdentityVerificationDis
     }
 }
 
+internal sealed class TestIdentityConstitutionalGateway : IIdentityConstitutionalGateway
+{
+    public Exception? Failure { get; init; }
+    public List<(Guid TenantId, Guid ActionInstanceId, string ActionType)> Calls { get; } = [];
+
+    public Task<Guid> AuthorizeAndRecordAsync(
+        Guid tenantId,
+        Guid actionInstanceId,
+        string actionType,
+        object actionParameters,
+        CancellationToken cancellationToken
+    )
+    {
+        Calls.Add((tenantId, actionInstanceId, actionType));
+        return Failure is null
+            ? Task.FromResult(Guid.NewGuid())
+            : Task.FromException<Guid>(Failure);
+    }
+}
+
 internal sealed class FailingVerificationDispatcher : IIdentityVerificationDispatcher
 {
     public Task DispatchAsync(
@@ -83,9 +103,10 @@ internal static class IdentityTestHelpers
         bool emailVerified = false,
         long? authTimestamp = null,
         string[]? customerRoles = null,
-        CapturingVerificationDispatcher? dispatcher = null)
+        CapturingVerificationDispatcher? dispatcher = null,
+        IIdentityConstitutionalGateway? constitutionalGateway = null)
     {
-        var service = CreateService(factory, dispatcher);
+        var service = CreateService(factory, dispatcher, constitutionalGateway);
 
         var claims = new List<Claim>
         {
@@ -121,11 +142,13 @@ internal static class IdentityTestHelpers
 
     public static IdentityService CreateService(
         IDbContextFactory<IdentityDbContext> factory,
-        CapturingVerificationDispatcher? dispatcher = null) =>
+        CapturingVerificationDispatcher? dispatcher = null,
+        IIdentityConstitutionalGateway? constitutionalGateway = null) =>
         new(
             factory,
             Options.Create(new IdentityHmacOptions { Key = TestHmacKey }),
-            dispatcher ?? new CapturingVerificationDispatcher());
+            dispatcher ?? new CapturingVerificationDispatcher(),
+            constitutionalGateway ?? new TestIdentityConstitutionalGateway());
 
     // Sets a fresh idempotency key for each call
     public static void RefreshIdempotencyKey(ControllerBase controller) =>
@@ -1214,6 +1237,59 @@ public sealed class IdentityAccountLinkTests
         Assert.Contains("LinkId", json.ToString());
         Assert.Equal("AAL3_FRESH", json.GetProperty("RequiredAssurance").GetString());
         Assert.Equal("PENDING_PORTAL_APPROVAL", json.GetProperty("State").GetString());
+    }
+
+    [Fact]
+    public async Task F2_StartAccountLink_ConstitutionalEvidencePrecedesMutationAndIsPersisted()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var gateway = new TestIdentityConstitutionalGateway();
+        var tenantId = Guid.NewGuid();
+        var controller = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "evidence-first-link",
+            tenantId: tenantId.ToString(),
+            authTimestamp: DateTimeOffset.UtcNow.AddMinutes(-1).ToUnixTimeSeconds(),
+            constitutionalGateway: gateway
+        );
+
+        var result = await controller.StartAccountLinkAsync(
+            new StartAccountLinkRequest(Guid.NewGuid()),
+            CancellationToken.None
+        );
+
+        Assert.Equal(201, Assert.IsType<ObjectResult>(result).StatusCode);
+        var call = Assert.Single(gateway.Calls);
+        Assert.Equal(tenantId, call.TenantId);
+        Assert.Equal("IDENTITY_ACCOUNT_LINK_START", call.ActionType);
+        await using var db = factory.CreateDbContext();
+        Assert.NotEqual(Guid.Empty, Assert.Single(await db.AccountLinks.ToListAsync()).StartEvidenceId);
+    }
+
+    [Fact]
+    public async Task F2_StartAccountLink_ConstitutionalFailureReturns503WithoutMutation()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var controller = IdentityTestHelpers.CreateController(
+            factory,
+            subject: "evidence-failure-link",
+            tenantId: Guid.NewGuid().ToString(),
+            authTimestamp: DateTimeOffset.UtcNow.AddMinutes(-1).ToUnixTimeSeconds(),
+            constitutionalGateway: new TestIdentityConstitutionalGateway
+            {
+                Failure = new IdentityConstitutionalUnavailableException("synthetic unavailable"),
+            }
+        );
+
+        var result = await controller.StartAccountLinkAsync(
+            new StartAccountLinkRequest(Guid.NewGuid()),
+            CancellationToken.None
+        );
+
+        Assert.Equal(503, Assert.IsType<ObjectResult>(result).StatusCode);
+        await using var db = factory.CreateDbContext();
+        Assert.Empty(await db.AccountLinks.ToListAsync());
+        Assert.Empty(await db.IdempotencyLedger.ToListAsync());
     }
 
     [Fact]

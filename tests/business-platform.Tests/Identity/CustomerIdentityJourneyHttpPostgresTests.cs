@@ -60,6 +60,9 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests : IAsyncLifetime
             await OwnerAsync(canonical[start..end]);
         }
         await OwnerAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/20-identity-boundary.sql")));
+        await OwnerAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/38-identity-security-events.sql")));
+        await OwnerAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/39-identity-sessions.sql")));
+        await OwnerAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/40-identity-account-link-evidence.sql")));
         await OwnerAsync("""
             GRANT ALL ON ALL TABLES IN SCHEMA business, identity TO business_app;
             GRANT SELECT ON ALL TABLES IN SCHEMA business TO constitutional_app, runtime_app, wbe_app;
@@ -87,8 +90,11 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests : IAsyncLifetime
         builder.Services.Configure<IdentityHmacOptions>(options => options.Key = "synthetic-http-test-hmac-key-at-least-32-characters");
         builder.Services.AddSingleton<IIdentityVerificationDispatcher, UnconfiguredVerificationDispatcher>();
         builder.Services.AddScoped<IdentityService>();
+        builder.Services.AddScoped<IdentitySecurityEventService>();
+        builder.Services.AddScoped<IdentitySessionService>();
         builder.Services.AddSingleton(Options.Create(new IdentityEnvironmentOptions
         {
+            Environment = "local",
             Providers = [
                 new() { Id = "GOOGLE", DisplayName = "Google", AuthenticationPath = "GOOGLE",
                     Enabled = true, ReadinessEvidenceReference = "SYNTHETIC-TEST-ONLY" },
@@ -356,6 +362,34 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, (await SendAsync(HttpMethod.Get, "/api/v1/identity/session", token)).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await SendAsync(HttpMethod.Post,
             $"/api/v1/identity/registrations/{registration}/complete", token)).StatusCode);
+        await AssertEmptyPoolAsync();
+    }
+
+    [Fact]
+    public async Task Http_RevokeAllDeniesTheSameBearerOnEveryMembershipProtectedRoute()
+    {
+        var token = Token("revoked-actor");
+        await CompleteAsync(token, await RegisterAsync(token));
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await SendAsync(HttpMethod.Get, "/api/v1/identity/session", token)).StatusCode
+        );
+
+        var revoked = await SendAsync(
+            HttpMethod.Delete,
+            "/api/v1/identity/sessions",
+            token,
+            key: Guid.NewGuid()
+        );
+
+        Assert.Equal(HttpStatusCode.OK, revoked.StatusCode);
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (await SendAsync(HttpMethod.Get, "/api/v1/identity/profile", token)).StatusCode
+        );
+        Assert.Equal(1L, await OwnerScalarAsync(
+            "SELECT count(*) FROM institutional.identity_security_events WHERE event_type = 'SESSION_REVOCATION_ALL'"
+        ));
         await AssertEmptyPoolAsync();
     }
 

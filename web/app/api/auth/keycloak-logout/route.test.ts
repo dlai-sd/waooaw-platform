@@ -15,6 +15,7 @@ function requiredHeader(response: Response, name: string): string {
 describe('Keycloak logout route', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    global.fetch = jest.fn().mockResolvedValue(new Response('{}', { status: 200 }));
     process.env.KEYCLOAK_ISSUER = 'https://identity.example/realms/waooaw';
     process.env.KEYCLOAK_CLIENT_ID = 'waooaw-web';
     process.env.NEXTAUTH_URL = 'https://app.example';
@@ -69,7 +70,32 @@ describe('Keycloak logout route', () => {
     expect(response.headers.get('set-cookie')).toContain('HttpOnly');
     expect(response.headers.get('set-cookie')).not.toContain('next-auth.session-token=;');
     expect(response.headers.get('cache-control')).toBe('no-store');
-    expect(getToken).not.toHaveBeenCalled();
+    expect(getToken).toHaveBeenCalledTimes(1);
+  });
+
+  it('revokes all WAOOAW sessions before returning the logout continuation', async () => {
+    jest.mocked(getToken).mockResolvedValue({
+      accessToken: 'server-held-access-token',
+      accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 300,
+      idToken: 'server-held-id-token',
+    });
+
+    const response = await POST(
+      new NextRequest('https://app.example/api/auth/keycloak-logout', {
+        method: 'POST',
+        headers: { accept: 'application/json', origin: 'https://app.example' },
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(fetch).toHaveBeenCalledWith(
+      'http://localhost:5001/api/v1/identity/sessions',
+      expect.objectContaining({
+        method: 'DELETE',
+        cache: 'no-store',
+        headers: expect.objectContaining({ Authorization: 'Bearer server-held-access-token' }),
+      })
+    );
   });
 
   it('redeems the continuation server-side before clearing the session and redirecting', async () => {

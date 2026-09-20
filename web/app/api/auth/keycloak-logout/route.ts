@@ -3,9 +3,12 @@
 
 import { getToken } from 'next-auth/jwt';
 import { type NextRequest, NextResponse } from 'next/server';
+import { activeAccessToken } from '@/lib/auth';
+import { recordWebIdentitySecurityEvent } from '@/lib/identity-security-events';
 
 const sessionCookie = /^(?:(?:__Secure-|__Host-)?next-auth\.|waooaw[.-])/i;
 const logoutContinuationCookie = 'waooaw.logout-continuation';
+const logoutCorrelationCookie = 'waooaw.logout-correlation';
 
 function isSameOriginSubmission(request: NextRequest, applicationOrigin: string) {
   const origin = request.headers.get('origin');
@@ -32,6 +35,37 @@ async function keycloakLogoutUrl(request: NextRequest, applicationOrigin: string
   return logout;
 }
 
+async function revokeWaooawSessions(request: NextRequest) {
+  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+  const accessToken = token ? activeAccessToken(token) : undefined;
+  if (!accessToken) return false;
+
+  try {
+    const response = await fetch(
+      `${process.env.BUSINESS_PLATFORM_URL ?? 'http://localhost:5001'}/api/v1/identity/sessions`,
+      {
+        method: 'DELETE',
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+          'Idempotency-Key': crypto.randomUUID(),
+        },
+        cache: 'no-store',
+      }
+    );
+    if (!response.ok) {
+      console.error('WAOOAW session revocation was not confirmed.', { status: response.status });
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error('WAOOAW session revocation was not confirmed.', {
+      reason: error instanceof Error ? error.name : 'UnknownError',
+    });
+    return false;
+  }
+}
+
 function clearSessionCookies(response: NextResponse, request: NextRequest) {
   for (const cookie of request.cookies.getAll()) {
     if (!sessionCookie.test(cookie.name)) continue;
@@ -55,10 +89,28 @@ export async function POST(request: NextRequest) {
   }
 
   if (request.headers.get('accept')?.includes('application/json')) {
+    const correlationId = crypto.randomUUID();
+    await recordWebIdentitySecurityEvent({
+      correlationId, eventType: 'LOGOUT_REQUEST', providerClass: 'INTERNAL', outcome: 'ATTEMPTED',
+      reasonCode: 'CUSTOMER_REQUESTED', assuranceClass: 'AAL2',
+    });
+    const revoked = await revokeWaooawSessions(request);
+    if (!revoked)
+      await recordWebIdentitySecurityEvent({
+        correlationId, eventType: 'LOGOUT_FAILURE', providerClass: 'INTERNAL', outcome: 'FAILED',
+        reasonCode: 'SESSION_REVOCATION_UNCONFIRMED', assuranceClass: 'AAL2',
+      });
     const nonce = crypto.randomUUID();
     const logoutPath = `/api/auth/keycloak-logout?nonce=${encodeURIComponent(nonce)}`;
     const response = NextResponse.json({ logoutPath });
     response.cookies.set(logoutContinuationCookie, nonce, {
+      httpOnly: true,
+      maxAge: 60,
+      path: '/api/auth/keycloak-logout',
+      sameSite: 'strict',
+      secure: applicationOrigin.startsWith('https://'),
+    });
+    response.cookies.set(logoutCorrelationCookie, correlationId, {
       httpOnly: true,
       maxAge: 60,
       path: '/api/auth/keycloak-logout',
@@ -83,6 +135,18 @@ export async function GET(request: NextRequest) {
   }
 
   const applicationOrigin = new URL(process.env.NEXTAUTH_URL ?? request.nextUrl.origin).origin;
+  const correlationId = request.cookies.get(logoutCorrelationCookie)?.value;
+  if (correlationId) {
+    await recordWebIdentitySecurityEvent({
+      correlationId, eventType: 'LOGOUT_COMPLETION', providerClass: 'INTERNAL', outcome: 'SUCCEEDED',
+      reasonCode: 'LOCAL_SESSION_CLEARED', assuranceClass: 'ANONYMOUS',
+    });
+  }
   const logout = await keycloakLogoutUrl(request, applicationOrigin);
-  return clearSessionCookies(NextResponse.redirect(logout, 303), request);
+  const response = clearSessionCookies(NextResponse.redirect(logout, 303), request);
+  response.cookies.set(logoutCorrelationCookie, '', {
+    expires: new Date(0),
+    path: '/api/auth/keycloak-logout',
+  });
+  return response;
 }
