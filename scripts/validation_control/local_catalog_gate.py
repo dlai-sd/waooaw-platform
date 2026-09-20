@@ -253,6 +253,15 @@ def gate_execution_identity(repository: Path, gate_id: str, head_sha: str) -> di
     }
 
 
+def write_commit_metadata(repository: Path, base_sha: str, head_sha: str) -> None:
+    evidence_root = repository / "test-results/wc104"
+    for relative in ("metadata", "c059", "c065"):
+        directory = evidence_root / relative
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / "base-sha.txt").write_text(base_sha + "\n", encoding="utf-8")
+        (directory / "head-sha.txt").write_text(head_sha + "\n", encoding="utf-8")
+
+
 def execute_gate(
     repository: Path,
     gate_id: str,
@@ -260,6 +269,7 @@ def execute_gate(
     base_sha: str,
     git_common_dir: Path,
 ) -> int:
+    write_commit_metadata(repository, base_sha, head_sha)
     catalog = yaml.safe_load((repository / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
     if not isinstance(catalog, dict):
         raise ValueError("validation catalog root must be a mapping")

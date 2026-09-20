@@ -147,6 +147,10 @@ def test_host_gate_executes_plan_without_resolving_runner(monkeypatch, tmp_path:
     assert captured_environment["DOCKER_GID"] == "321"
     plan = json.loads((tmp_path / "test-results/wc104/local-plans/host.json").read_text(encoding="utf-8"))
     assert plan["nodes"][0]["command"] == "true"
+    assert (tmp_path / "test-results/wc104/metadata/base-sha.txt").read_text() == "b" * 40 + "\n"
+    assert (tmp_path / "test-results/wc104/metadata/head-sha.txt").read_text() == "a" * 40 + "\n"
+    assert (tmp_path / "test-results/wc104/c059/base-sha.txt").read_text() == "b" * 40 + "\n"
+    assert not (tmp_path / "test-results/wc104/c059/pr-body.md").exists()
 
 
 def test_gate_identity_hashes_only_declared_environment(monkeypatch, tmp_path: Path) -> None:
