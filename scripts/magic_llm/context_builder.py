@@ -127,6 +127,7 @@ _RE_CLASS_NAMES = re.compile(
     r"public\s+(?:sealed\s+)?(?:class|interface|record)\s+(\w+)",
     re.MULTILINE,
 )
+_RE_PUBLIC_CONSTRUCTOR_START = re.compile(r"\bpublic\s+\w+\s*\(")
 _RE_PROPERTIES = re.compile(
     r"public\s+(?:required\s+)?(\w[\w<>\[\]?]*)\s+(\w+)\s*\{[^}]*get",
     re.MULTILINE,
@@ -740,15 +741,43 @@ class ContextBuilder:
 
     # ── Private: utilities ─────────────────────────────────────────────────────
 
+    @staticmethod
+    def _parenthesized_content(content: str, opening_index: int) -> str | None:
+        depth = 0
+        quote = ""
+        escaped = False
+        for index in range(opening_index, len(content)):
+            character = content[index]
+            if quote:
+                if escaped:
+                    escaped = False
+                elif character == "\\":
+                    escaped = True
+                elif character == quote:
+                    quote = ""
+                continue
+            if character in {'"', "'"}:
+                quote = character
+            elif character == "(":
+                depth += 1
+            elif character == ")":
+                depth -= 1
+                if depth == 0:
+                    return content[opening_index + 1 : index]
+        return None
+
     def _extract_public_signatures(self, content: str) -> dict:
         """Extract namespace, constructors, methods, properties, enum values from .cs source."""
         ns_m = _RE_NAMESPACE.search(content)
         namespace = ns_m.group(1) if ns_m else ""
 
-        # Multi-line constructor: capture from opening paren to closing paren
+        # Multi-line constructor: scan balanced parentheses without regex backtracking.
         ctors: list[str] = []
-        for m in re.finditer(r"public\s+\w+\s*\(\s*((?:[^()]*|\([^()]*\))*)\s*\)", content, re.DOTALL):
-            param_block = _RE_WHITESPACE.sub(" ", m.group(1)).strip()
+        for match in _RE_PUBLIC_CONSTRUCTOR_START.finditer(content):
+            param_block = self._parenthesized_content(content, match.end() - 1)
+            if param_block is None:
+                continue
+            param_block = _RE_WHITESPACE.sub(" ", param_block).strip()
             if param_block and len(param_block) > 2:
                 ctors.append(param_block)
 
