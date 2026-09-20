@@ -6,13 +6,13 @@
 | Office | INST-010 - Platform IT Expert |
 | Skill | 8 - CI/CD Orchestration |
 | Implementation base | `d1fff2149cba8940874feca233d565a476149764` |
-| Reviewed implementation | `e131a3f692a527f92d26e97df89362d42b0244f7` |
+| Reviewed implementation | `947f388d8be47f59043aefa07788f08ff122b324` |
 | Review date | 2026-09-20 |
 | Disposition | **PASS - IMPLEMENTATION REVIEWED; WC-104 NOT COMPLETE** |
 
 ## Scope Review
 
-The complete 82-file implementation diff was reviewed against WC-104 and its 19-row requirement
+The complete 277-file implementation diff was reviewed against WC-104 and its 19-row requirement
 ledger. The change remains inside the Platform IT Expert decision space: canonical validation-runner
 identity and supply, catalog execution, trusted evidence reuse, workflow orchestration, isolation,
 gate equivalence, rollback controls, Docker build integration, static-first PR preparation, scoped
@@ -40,6 +40,11 @@ normalizes the Buf comparison URL, applies the already-authoritative CSharpier a
 repairs concrete script lint findings, records line-local exceptions for intentional CLI operations,
 and refreshes the eight affected GOAL-006 bootstrap digests. It does not weaken or deselect a gate.
 
+The follow-up repair at `947f388d8be47f59043aefa07788f08ff122b324` removes Git metadata
+assumptions from the non-persisting prompt dry run and the canonical Buf baseline, and applies the
+pinned CSharpier 1.3.0 format to Business Platform. Real prompt seeding still requires a Git SHA,
+Buf still compares against the repository's `main` branch, and no validation policy was weakened.
+
 ## Test And Quality Review
 
 The reviewed implementation passes a bounded 170-test validation-control and changed-policy suite
@@ -52,9 +57,11 @@ record remains `validation/evidence/wc104-rollback-rehearsal.json`; it is not co
 
 The repair additionally passes the exact hosted commands for Constitutional Engine quality,
 scripts quality including the seed-prompts dry run, AI Runtime lint/type/test/coverage (114 tests;
-90.60% line and 82.09% branch coverage), and OpenAPI/Proto lint. A broader pipeline run reached 857
-passes before the pre-existing `validation/process-control.yaml` digest mismatch for the Platform IT
-office card; that unrelated constitutional evidence was not rewritten by this repair.
+90.60% line and 82.09% branch coverage), OpenAPI/Proto lint, and Business Platform quality. The
+Business Platform suite passes 803 tests with 91.54% line and 80.15% branch coverage. A broader
+pipeline run reached 857 passes before the pre-existing `validation/process-control.yaml` digest
+mismatch for the Platform IT office card; that unrelated constitutional evidence was not rewritten
+by this repair.
 
 ## Security, Constitutional, And Rollback Review
 
@@ -73,7 +80,7 @@ cannot authorize completion.
 - [x] Reviewed security, constitutional, and rollback impact
 - [x] Resolved every finding or recorded no findings
 
-**Reviewed Commit:** e131a3f692a527f92d26e97df89362d42b0244f7
+**Reviewed Commit:** 947f388d8be47f59043aefa07788f08ff122b324
 **Author Review Result:** PASS
 
 This PASS records completion of the author-review activity for the frozen implementation commit. It
