@@ -1,0 +1,170 @@
+schema: waooaw.requirement-evidence-ledger/v1
+contract_digest: 74aec7debf1b6b1c2ba13fb442ab176b21658d67bef08e55c247eb0ff0027c45
+implementation_scope: true
+result: PLANNED
+requirements:
+  - requirement_id: WC103-R001
+    source: AUTH-S01; Target Journeys 1-2
+    observable_outcome: Each enabled social provider establishes a visitor session without creating customer membership.
+    component_owner: Web Application, Keycloak and Business Platform Identity Boundary
+    evidence_class: Local Docker plus actual-provider evidence
+    test_path_or_plan: Clean-profile Google and Facebook callback-to-visitor journeys; Apple remains dark until gated.
+    initial_state: expected-fail
+    dependencies: Provider credentials, exact callback allowlists and immutable Demo candidate
+    completion_rule: Every enabled provider passes disclosure, callback, cancellation and bounded-failure acceptance.
+    residual_risk: Provider-console drift or untested real-account behavior
+    result: PLANNED
+  - requirement_id: WC103-R002
+    source: AUTH-S02; Target Journeys 3 and 13
+    observable_outcome: Trial and Hire each create exactly one account, tenant and membership and resume the selected intent.
+    component_owner: Business Platform Identity Boundary and PostgreSQL
+    evidence_class: PostgreSQL integration plus browser evidence
+    test_path_or_plan: Exercise new-visitor Trial and Hire with verified and missing-email variants.
+    initial_state: expected-fail
+    dependencies: Progressive-registration transaction, idempotency and intent continuation
+    completion_rule: Both intents complete once without duplicate durable identity state.
+    residual_risk: Retry races could duplicate or detach registration state
+    result: PLANNED
+  - requirement_id: WC103-R003
+    source: AUTH-S03; Target Journey 4
+    observable_outcome: A returning identity reaches only its current authorized portal context.
+    component_owner: Business Platform Identity Boundary and every enabled receiver
+    evidence_class: Integration plus browser evidence
+    test_path_or_plan: Test active, inactive, missing and wrong membership after exact JWT validation.
+    initial_state: expected-fail
+    dependencies: ADR-003 membership resolver and database RLS
+    completion_rule: Current membership succeeds and all absent or conflicting authority fails closed.
+    residual_risk: Receiver-specific authorization drift
+    result: PLANNED
+  - requirement_id: WC103-R004
+    source: AUTH-S04; Target Journeys 5 and 13
+    observable_outcome: Standalone verified email follows provider-neutral visitor and registration semantics.
+    component_owner: Keycloak, Web Application and Business Platform Identity Boundary
+    evidence_class: Security integration plus browser evidence
+    test_path_or_plan: Verify email enrollment, verification, recovery, enumeration resistance and rate limits.
+    initial_state: new
+    dependencies: Approved Keycloak email configuration and abuse controls
+    completion_rule: Email path passes parity and recovery checks before availability is projected.
+    residual_risk: Delivery reputation and abuse-control configuration remain environment dependent
+    result: PLANNED
+  - requirement_id: WC103-R005
+    source: AUTH-S05; Target Journeys 6-7
+    observable_outcome: Logout removes all WAOOAW protected state and revisit cannot silently restore it.
+    component_owner: Web Application, NextAuth and Keycloak
+    evidence_class: Unit, browser and exact-release evidence
+    test_path_or_plan: Run cleanup sentinel across logout, history, refresh, public revisit and protected direct route.
+    initial_state: expected-fail
+    dependencies: RP-initiated logout, server session revocation and browser cache controls
+    completion_rule: Every supported browser remains unauthenticated until a new explicit login action.
+    residual_risk: Browser or identity-provider session behavior varies outside WAOOAW control
+    result: PLANNED
+  - requirement_id: WC103-R006
+    source: AUTH-S06; Target Journeys 8-9
+    observable_outcome: A post-logout social login requires account selection with no prior-customer residue.
+    component_owner: Web Application, NextAuth and Keycloak
+    evidence_class: Browser plus actual-provider evidence
+    test_path_or_plan: Exercise account-selection intent and second-account isolation with real provider accounts.
+    initial_state: expected-fail
+    dependencies: prompt=select_account, max_age policy and complete WAOOAW cleanup
+    completion_rule: A different account can authenticate without exposure or reuse of the previous customer context.
+    residual_risk: External provider UX cannot be globally terminated or fully controlled
+    result: PLANNED
+  - requirement_id: WC103-R007
+    source: AUTH-S07; Target Journeys 10 and 16
+    observable_outcome: Expired, replayed or revoked sessions fail closed at every enabled receiver.
+    component_owner: NextAuth, Keycloak and every enabled downstream receiver
+    evidence_class: Integration plus exact-release evidence
+    test_path_or_plan: Test expiry, refresh rotation, token reuse, revoke-one, revoke-all and stale downstream access.
+    initial_state: expected-fail
+    dependencies: Server-held token lifecycle, revocation state and per-request membership resolution
+    completion_rule: No protected payload or effect survives the accepted revocation bound.
+    residual_risk: Disabled or uninstrumented receivers could escape qualification
+    result: PLANNED
+  - requirement_id: WC103-R008
+    source: AUTH-S08; Target Journeys 11-13
+    observable_outcome: Provider cancellation, unavailability, timeout and missing email produce distinct recoverable states.
+    component_owner: Web Application, NextAuth and Keycloak
+    evidence_class: Provider-neutral browser matrix
+    test_path_or_plan: Inject each provider boundary outcome and verify retry, restart and truthful availability.
+    initial_state: expected-fail
+    dependencies: Route-backed modal state and stable provider error classification
+    completion_rule: Every failure state is accessible, recoverable and creates no customer account.
+    residual_risk: Provider-specific callback changes may introduce unmapped failures
+    result: PLANNED
+  - requirement_id: WC103-R009
+    source: AUTH-S09; Target Journey 14
+    observable_outcome: Accounts are never linked from matching email alone.
+    component_owner: Keycloak and Business Platform Identity Boundary
+    evidence_class: Hostile integration evidence
+    test_path_or_plan: Test same-email distinct-subject attempts, dual fresh proof and enumeration resistance.
+    initial_state: expected-fail
+    dependencies: Provider subject binding, fresh assurance and anti-enumeration responses
+    completion_rule: Linking requires proof of both identities and bound intent; coincidence always denies.
+    residual_risk: Legacy or provider-specific linking policy may bypass the shared boundary
+    result: PLANNED
+  - requirement_id: WC103-R010
+    source: AUTH-S10; Target Journey 15
+    observable_outcome: Consequential identity actions require current assurance, membership and constitutional evidence.
+    component_owner: Business Platform Identity Boundary, Constitutional Engine and enabled receivers
+    evidence_class: CCT plus integration evidence
+    test_path_or_plan: Test auth_time, factors, bound intent, membership, RLS and Evidence First failure ordering.
+    initial_state: expected-fail
+    dependencies: Assurance policy, ADR-003 membership resolution and C-023 evidence confirmation
+    completion_rule: No consequential success is returned before every authority and evidence check passes.
+    residual_risk: Action-specific assurance policy may remain incomplete
+    result: PLANNED
+  - requirement_id: WC103-R011
+    source: AUTH-S11; Target Journey 16
+    observable_outcome: Customers can inspect privacy-safe active sessions and revoke one or all idempotently.
+    component_owner: Web Application, Business Platform Identity Boundary and Keycloak
+    evidence_class: PostgreSQL plus browser evidence
+    test_path_or_plan: Test list authorization, privacy projection, replay-safe revoke-one and revoke-all.
+    initial_state: new
+    dependencies: Mutable session registry, revocation ordering and operational audit events
+    completion_rule: Only the actor's sessions are visible and selected revocation has the exact intended scope.
+    residual_risk: Device descriptions could over-collect or mislead customers
+    result: PLANNED
+  - requirement_id: WC103-R012
+    source: AUTH-S12; Target Journey 17
+    observable_outcome: Every WAOOAW-observed identity attempt creates a privacy-safe append-only operational event.
+    component_owner: PostgreSQL identity-security event store and identity boundary writers
+    evidence_class: PostgreSQL plus security evidence
+    test_path_or_plan: Verify taxonomy, append-only controls, RLS, retention, redaction, correlation and failure injection.
+    initial_state: new
+    dependencies: Identity Security Data Contract and separate Constitutional Audit Ledger
+    completion_rule: Required events are durable and immutable without forbidden data or cross-ledger joins.
+    residual_risk: Events before the WAOOAW boundary remain intentionally unobservable
+    result: PLANNED
+  - requirement_id: WC103-R013
+    source: AUTH-S13; Target Journeys 1, 3-4, 8 and 11-14
+    observable_outcome: Apple can be activated without changing provider-neutral application semantics.
+    component_owner: Keycloak, Web Application and Business Platform Identity Boundary
+    evidence_class: Synthetic plus actual-Apple evidence
+    test_path_or_plan: Test stable subject, private relay, key rotation, transfer, revocation and real acceptance.
+    initial_state: blocked
+    dependencies: Apple enrollment, credentials, relay configuration and approved activation
+    completion_rule: All Apple prerequisites and actual-provider journeys pass before projection as available.
+    residual_risk: External Apple enrollment and console access are Founder-controlled dependencies
+    result: PLANNED
+  - requirement_id: WC103-R014
+    source: Cross-cutting all stories and journeys
+    observable_outcome: Identity flows expose no token or forbidden PII and accept no browser tenant authority.
+    component_owner: All identity-path components
+    evidence_class: Contract and static evidence
+    test_path_or_plan: Scan logs and artifacts; verify exact allowlists, generated clients and tenant-input rejection.
+    initial_state: expected-fail
+    dependencies: Generated contracts, logging policy and credentialed-origin configuration
+    completion_rule: Static and hostile checks find no forbidden disclosure or caller-selected authority.
+    residual_risk: Environment-only logging and proxy configuration require exact-release inspection
+    result: PLANNED
+  - requirement_id: WC103-R015
+    source: Cross-cutting all stories and journeys
+    observable_outcome: One immutable Demo candidate completes the full enabled-provider journey matrix.
+    component_owner: Solution Architecture acceptance across all implementing components
+    evidence_class: Actual-cloud evidence
+    test_path_or_plan: Bind source, image, configuration, migrations and provider results to one candidate.
+    initial_state: expected-fail
+    dependencies: Completion of WC103-R001 through WC103-R014 and authorized Demo execution
+    completion_rule: Every enabled journey has direct candidate-bound evidence with deferrals explicitly bounded.
+    residual_risk: Local or synthetic proof cannot establish deployed provider acceptance
+    result: PLANNED
