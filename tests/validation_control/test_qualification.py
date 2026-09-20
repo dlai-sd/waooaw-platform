@@ -5,7 +5,11 @@ from pathlib import Path
 import pytest
 import yaml
 
-from validation_control.qualification import build_qualification_manifest, build_rollback_manifest
+from validation_control.qualification import (
+    build_qualification_manifest,
+    build_rollback_manifest,
+    build_wc104_rollback_manifest,
+)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -47,3 +51,23 @@ def test_rollback_restores_full_clean_inventory_and_discards_newer_evidence() ->
     assert rollback["required_gates"] == catalog["full_gates"]
     assert rollback["reuse_prior_results"] is False
     assert rollback["discard_incompatible_evidence"] is True
+
+
+def test_wc104_rollback_forces_clean_local_supply_and_serial_no_reuse_qualification() -> None:
+    catalog = load_catalog()
+
+    rollback = build_wc104_rollback_manifest(catalog, candidate_sha=HEAD_SHA)
+
+    assert rollback["required_gates"] == catalog["full_gates"]
+    assert rollback["required_runners"] == list(catalog["runners"])
+    assert rollback["environment"] == {
+        "WC104_DISABLE_REGISTRY_REUSE": "1",
+        "WC104_FORCE_LOCAL_BUILD": "1",
+        "WC100_DISABLE_REUSE": "1",
+        "WC100_PRECHECK_MODE": "serial",
+    }
+    assert rollback["registry_reuse"] is False
+    assert rollback["local_image_reuse"] is False
+    assert rollback["reuse_prior_results"] is False
+    assert rollback["serial_orchestration"] is True
+    assert rollback["selective_enforcement"] is False

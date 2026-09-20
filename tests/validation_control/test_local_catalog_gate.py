@@ -70,6 +70,36 @@ def test_untrusted_manifest_is_a_miss_without_pull(monkeypatch, tmp_path: Path) 
     assert commands == []
 
 
+def test_rollback_bypasses_trusted_manifest_and_existing_local_image(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("WC104_DISABLE_REGISTRY_REUSE", "1")
+    monkeypatch.setattr(
+        local_catalog_gate.subprocess,
+        "run",
+        lambda *unused, **kwargs: pytest.fail("rollback attempted trusted registry consumption"),
+    )
+
+    assert local_catalog_gate.trusted_runner(tmp_path, "python", specification()) is None
+
+    runner_digest = "sha256:" + "c" * 64
+    inspected = iter((IMAGE_ID, IMAGE_ID))
+    builds: list[list[str]] = []
+    monkeypatch.setattr(local_catalog_gate, "image_id", lambda image, repository: next(inspected))
+    monkeypatch.setattr(local_catalog_gate, "create_context", lambda repository, context, spec: context.mkdir(parents=True))
+
+    def build(command: list[str], **unused: object) -> SimpleNamespace:
+        builds.append(command)
+        metadata = Path(command[command.index("--metadata-file") + 1])
+        metadata.write_text(json.dumps({"containerimage.digest": runner_digest}), encoding="utf-8")
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(local_catalog_gate.subprocess, "run", build)
+
+    result = local_catalog_gate.local_fallback_runner(tmp_path, "python", specification())
+
+    assert result[1:] == (IMAGE_ID, runner_digest, 1)
+    assert len(builds) == 1
+
+
 def test_host_gate_executes_plan_without_resolving_runner(monkeypatch, tmp_path: Path) -> None:
     catalog = {
         "schema": "waooaw.validation-catalog/v1",

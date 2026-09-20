@@ -59,6 +59,8 @@ def trusted_runner(
     runner_id: str,
     specification: dict[str, Any],
 ) -> tuple[str, str, str] | None:
+    if os.environ.get("WC104_DISABLE_REGISTRY_REUSE") == "1" or os.environ.get("WC104_FORCE_LOCAL_BUILD") == "1":
+        return None
     manifest_path = repository / "test-results/wc104/runner-manifests" / f"{runner_id}.json"
     source_repository = os.environ.get("GITHUB_REPOSITORY", "")
     gh = shutil.which("gh")
@@ -99,7 +101,7 @@ def local_fallback_runner(
         fcntl.flock(lock, fcntl.LOCK_EX)
         resolved_id = image_id(image, repository)
         manifest_path = evidence_root / "local-runner-manifests" / f"{runner_id}.json"
-        if resolved_id is not None and manifest_path.is_file():
+        if os.environ.get("WC104_FORCE_LOCAL_BUILD") != "1" and resolved_id is not None and manifest_path.is_file():
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             runner_digest = manifest.get("runner_digest")
             if (

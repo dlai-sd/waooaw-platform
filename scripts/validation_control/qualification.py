@@ -53,5 +53,34 @@ def build_rollback_manifest(catalog: dict[str, Any], *, incompatible_evidence_ve
     }
 
 
+def build_wc104_rollback_manifest(catalog: dict[str, Any], *, candidate_sha: str) -> dict[str, Any]:
+    if len(candidate_sha) != 40 or any(character not in "0123456789abcdef" for character in candidate_sha):
+        raise ValueError("candidate_sha must be a full hexadecimal commit")
+    full_gates = catalog.get("full_gates")
+    runners = catalog.get("runners")
+    if not isinstance(full_gates, list) or not all(isinstance(gate, str) for gate in full_gates):
+        raise ValueError("FULL_GATE_INVENTORY_INVALID")
+    if not isinstance(runners, dict) or not all(isinstance(runner, str) for runner in runners):
+        raise ValueError("RUNNER_INVENTORY_INVALID")
+    return {
+        "schema": "waooaw.wc104-rollback/v1",
+        "candidate_sha": candidate_sha,
+        "mode": "full-clean-qualification",
+        "required_gates": full_gates,
+        "required_runners": list(runners),
+        "environment": {
+            "WC104_DISABLE_REGISTRY_REUSE": "1",
+            "WC104_FORCE_LOCAL_BUILD": "1",
+            "WC100_DISABLE_REUSE": "1",
+            "WC100_PRECHECK_MODE": "serial",
+        },
+        "registry_reuse": False,
+        "local_image_reuse": False,
+        "reuse_prior_results": False,
+        "serial_orchestration": True,
+        "selective_enforcement": False,
+    }
+
+
 def render_manifest(manifest: dict[str, Any]) -> str:
     return json.dumps(manifest, indent=2, sort_keys=True) + "\n"

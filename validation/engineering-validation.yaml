@@ -265,6 +265,7 @@ global_triggers:
   - pyproject.toml
   - validation/**
   - scripts/validation_control/gate_equivalence.py
+  - scripts/validation_control/wc104_rollback.py
   - scripts/prepare_pr_body.py
   - scripts/precheck_orchestrator.py
   - scripts/build_evidence.py
