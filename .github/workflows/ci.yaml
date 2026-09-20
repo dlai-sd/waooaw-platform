@@ -768,26 +768,15 @@ jobs:
   license-check:
     name: License compliance
     runs-on: ubuntu-latest
-    needs: runner-supply
+    needs: [runner-supply, validation-plan]
     steps:
       - uses: actions/checkout@v4
-      - name: Resolve immutable Python license runner
-        uses: ./.github/actions/use-validation-runner
+      - name: Execute catalog license check
+        uses: ./.github/actions/run-validation-gate
+        continue-on-error: true  # Advisory only — LGPL can be acceptable
         with:
-          runner-id: python
+          gate-id: license-check
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: pip-licenses — check Python dependency licenses
-        run: |
-          docker compose --profile test-python run --rm test-runner-python sh -lc '
-            pip install --target /tmp/license-env -r src/professional-runtime/requirements.txt -q &&
-            sed -e "/^--extra-index-url/d" \
-                -e "s/torch==2.13.0+cpu/torch==2.13.0/" \
-                src/ai-runtime/requirements.txt > /tmp/ai-runtime-license.txt &&
-            pip install --target /tmp/license-env -r /tmp/ai-runtime-license.txt -q &&
-            PYTHONPATH=/tmp/license-env pip-licenses --fail-on="GPL;AGPL;LGPL"
-          '
-        continue-on-error: true  # Advisory only — does not block PR (LGPL can be acceptable)
 
   # ─── Constitutional commit gate (C-059 — Implementation Traceability) ─────
   # Every commit must reference an IB item or Fix issue AND a constitutional claim.

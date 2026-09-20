@@ -51,7 +51,7 @@ commands:
   dependency-scan-dotnet: {shell: "sh scripts/validation_control/run_dependency_scan_gate.sh dotnet"}
   dependency-scan-typescript: {shell: "sh scripts/validation_control/run_dependency_scan_gate.sh typescript"}
   secrets: {shell: "python scripts/validation_control/docker_policy.py --repository /workspace"}
-  license-check: {shell: "pip-licenses --fail-on='GPL;AGPL;LGPL'"}
+  license-check: {shell: "sh scripts/validation_control/run_license_check_gate.sh"}
   release-qualification: {shell: "sh scripts/run_release_qualification.sh", execution: host}
   constitutional-commit-gate: {shell: "python scripts/validate_c059.py --pr-body-file test-results/pr-body.md --base $BASE_SHA --head $HEAD_SHA"}
   requirement-ledger: {shell: "python scripts/validate_requirement_ledger.py --repository-root /workspace"}
