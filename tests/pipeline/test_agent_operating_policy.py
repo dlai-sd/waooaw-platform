@@ -26,7 +26,7 @@ def test_platform_it_expert_compact_inventory_maps_all_active_skills() -> None:
     assert headings == list(range(1, 18))
     assert "Skills 1–17 ACTIVE" in entry
     assert "Skill 17 Governed Cloud Delivery Engineering activated by FA-049" in entry
-    assert "Platform IT Expert v1.3.3" in entry
+    assert "Platform IT Expert v1.3.4" in entry
     assert "deterministic-first token efficiency" in entry
     assert "read only that skill section" in card
 
