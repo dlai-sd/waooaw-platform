@@ -15,14 +15,19 @@ public sealed class AuthenticatedActivationBillingGateway : IActivationBillingGa
     private readonly WorkloadIdentityClient _identity;
     private readonly HttpClient _billingEngine;
 
-    public AuthenticatedActivationBillingGateway(WorkloadIdentityClient identity, Uri billingEngineBaseAddress)
+    public AuthenticatedActivationBillingGateway(
+        WorkloadIdentityClient identity,
+        Uri billingEngineBaseAddress
+    )
     {
         _identity = identity;
         _billingEngine = identity.CreateClient(billingEngineBaseAddress, "billing-engine");
     }
 
     public async Task<ActivationBillingOutcome> ActivatePaidSubscriptionAsync(
-        ActivationBillingRequest request, CancellationToken cancellationToken)
+        ActivationBillingRequest request,
+        CancellationToken cancellationToken
+    )
     {
         var body = new SortedDictionary<string, object?>(StringComparer.Ordinal)
         {
@@ -53,12 +58,22 @@ public sealed class AuthenticatedActivationBillingGateway : IActivationBillingGa
                 ["activation_intent"] = request.ActivationIntentId.ToString("D"),
                 ["contract"] = request.ContractVersion.ToString(),
             },
-            request.CorrelationId.ToString("D"));
+            request.CorrelationId.ToString("D")
+        );
         var envelope = _identity.Sign(
-            context, _identity.GetAudience("billing-engine"), HttpMethod.Post.Method,
-            Route, Operation, 1, digest, DateTimeOffset.UtcNow);
+            context,
+            _identity.GetAudience("billing-engine"),
+            HttpMethod.Post.Method,
+            Route,
+            Operation,
+            1,
+            digest,
+            DateTimeOffset.UtcNow
+        );
         using var message = new HttpRequestMessage(
-            HttpMethod.Post, Route.Replace("{relationshipId}", request.RelationshipId.ToString("D")))
+            HttpMethod.Post,
+            Route.Replace("{relationshipId}", request.RelationshipId.ToString("D"))
+        )
         {
             Content = new ByteArrayContent(bodyBytes),
         };
@@ -71,14 +86,25 @@ public sealed class AuthenticatedActivationBillingGateway : IActivationBillingGa
         {
             using var response = await _billingEngine.SendAsync(message, cancellationToken);
             if (!response.IsSuccessStatusCode)
-                throw new ActivationOwnerUnavailableException($"Authenticated WBE paid activation returned {(int)response.StatusCode}.");
-            var outcome = await response.Content.ReadFromJsonAsync<WbePaidActivationOutcome>(cancellationToken)
-                ?? throw new ActivationOwnerUnavailableException("Authenticated WBE paid activation returned no outcome.");
+                throw new ActivationOwnerUnavailableException(
+                    $"Authenticated WBE paid activation returned {(int)response.StatusCode}."
+                );
+            var outcome =
+                await response.Content.ReadFromJsonAsync<WbePaidActivationOutcome>(
+                    cancellationToken
+                )
+                ?? throw new ActivationOwnerUnavailableException(
+                    "Authenticated WBE paid activation returned no outcome."
+                );
             return new ActivationBillingOutcome(outcome.SubscriptionId, outcome.Status);
         }
-        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+        catch (Exception exception)
+            when (exception is HttpRequestException or TaskCanceledException)
         {
-            throw new ActivationOwnerUnavailableException("Authenticated WBE paid activation is unresolved.", exception);
+            throw new ActivationOwnerUnavailableException(
+                "Authenticated WBE paid activation is unresolved.",
+                exception
+            );
         }
     }
 
@@ -86,5 +112,6 @@ public sealed class AuthenticatedActivationBillingGateway : IActivationBillingGa
 
     private sealed record WbePaidActivationOutcome(
         [property: JsonPropertyName("subscription_id")] Guid SubscriptionId,
-        [property: JsonPropertyName("status")] string Status);
+        [property: JsonPropertyName("status")] string Status
+    );
 }

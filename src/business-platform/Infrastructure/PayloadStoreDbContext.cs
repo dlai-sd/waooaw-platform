@@ -8,7 +8,8 @@ namespace Waooaw.BusinessPlatform.Infrastructure;
 /// <summary>EF Core context for payload_store schema. Payloads are erasable on DPDPA request.</summary>
 public sealed class PayloadStoreDbContext : DbContext
 {
-    public PayloadStoreDbContext(DbContextOptions<PayloadStoreDbContext> options) : base(options) { }
+    public PayloadStoreDbContext(DbContextOptions<PayloadStoreDbContext> options)
+        : base(options) { }
 
     public DbSet<OperationalPayload> OperationalPayloads => Set<OperationalPayload>();
 

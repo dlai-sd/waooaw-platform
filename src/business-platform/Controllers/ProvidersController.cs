@@ -14,14 +14,15 @@ public sealed record ProviderConfigResponse(
     string AuthMethod,
     string? McpServerUrl,
     string[] ScopeSet,
-    bool Active);
+    bool Active
+);
 
 /// <summary>
 /// Provider Registry API — internal-only endpoints (service-to-service JWT required).
 /// Called by CTG registry cache (ADR-042 §2) to route tool calls to the correct provider.
 /// </summary>
 [ApiController, Route("api/v1/providers")]
-[Authorize]  // service-to-service: validated JWT required (mTLS full auth in ADR-007 future sprint)
+[Authorize] // service-to-service: validated JWT required (mTLS full auth in ADR-007 future sprint)
 public sealed class ProvidersController : ControllerBase
 {
     private readonly IDbContextFactory<ProviderRegistryDbContext> _dbFactory;
@@ -29,10 +30,11 @@ public sealed class ProvidersController : ControllerBase
 
     public ProvidersController(
         IDbContextFactory<ProviderRegistryDbContext> dbFactory,
-        ILogger<ProvidersController> logger)
+        ILogger<ProvidersController> logger
+    )
     {
         _dbFactory = dbFactory;
-        _logger    = logger;
+        _logger = logger;
     }
 
     /// <summary>
@@ -42,23 +44,31 @@ public sealed class ProvidersController : ControllerBase
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<ProviderConfigResponse>>> GetProviders(
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         var tenantIdClaim = User.FindFirst("tenant_id")?.Value;
         Guid? tenantId = Guid.TryParse(tenantIdClaim, out var tid) ? tid : null;
 
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
 
-        var rows = await db.ProviderConfigs
-            .Where(p => p.Active && (p.TenantId == null || p.TenantId == tenantId))
+        var rows = await db
+            .ProviderConfigs.Where(p => p.Active && (p.TenantId == null || p.TenantId == tenantId))
             .OrderBy(p => p.ProviderName)
             .Select(p => new ProviderConfigResponse(
-                p.ProviderName, p.AuthMethod, p.McpServerUrl, p.ScopeSet, p.Active))
+                p.ProviderName,
+                p.AuthMethod,
+                p.McpServerUrl,
+                p.ScopeSet,
+                p.Active
+            ))
             .ToListAsync(ct);
 
         _logger.LogInformation(
             "GetProviders: returned {Count} providers for tenant={TenantId}",
-            rows.Count, tenantId);
+            rows.Count,
+            tenantId
+        );
 
         return Ok(rows);
     }
@@ -70,7 +80,8 @@ public sealed class ProvidersController : ControllerBase
     [HttpGet("{providerName}")]
     public async Task<ActionResult<ProviderConfigResponse>> GetProvider(
         string providerName,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         var tenantIdClaim = User.FindFirst("tenant_id")?.Value;
         Guid? tenantId = Guid.TryParse(tenantIdClaim, out var tid) ? tid : null;
@@ -78,22 +89,33 @@ public sealed class ProvidersController : ControllerBase
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
 
         // Tenant-specific row takes precedence over platform-level row.
-        var row = await db.ProviderConfigs
-            .Where(p => p.Active &&
-                        p.ProviderName == providerName &&
-                        (p.TenantId == tenantId || p.TenantId == null))
-            .OrderByDescending(p => p.TenantId.HasValue)  // tenant-specific first
+        var row = await db
+            .ProviderConfigs.Where(p =>
+                p.Active
+                && p.ProviderName == providerName
+                && (p.TenantId == tenantId || p.TenantId == null)
+            )
+            .OrderByDescending(p => p.TenantId.HasValue) // tenant-specific first
             .FirstOrDefaultAsync(ct);
 
         if (row is null)
         {
             _logger.LogWarning(
                 "GetProvider: provider_name={ProviderName} not found for tenant={TenantId}",
-                providerName, tenantId);
+                providerName,
+                tenantId
+            );
             return NotFound(new { error = "PROVIDER_NOT_FOUND", provider_name = providerName });
         }
 
-        return Ok(new ProviderConfigResponse(
-            row.ProviderName, row.AuthMethod, row.McpServerUrl, row.ScopeSet, row.Active));
+        return Ok(
+            new ProviderConfigResponse(
+                row.ProviderName,
+                row.AuthMethod,
+                row.McpServerUrl,
+                row.ScopeSet,
+                row.Active
+            )
+        );
     }
 }

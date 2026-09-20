@@ -24,15 +24,26 @@ public sealed class IdentityHmacOptions
 
 public interface IIdentityVerificationDispatcher
 {
-    Task DispatchAsync(IdentityVerificationPurpose purpose, string destination, string code, CancellationToken ct);
+    Task DispatchAsync(
+        IdentityVerificationPurpose purpose,
+        string destination,
+        string code,
+        CancellationToken ct
+    );
 }
 
 /// Fail-closed stand-in; replaced by a concrete provider implementation when configured.
 public sealed class UnconfiguredVerificationDispatcher : IIdentityVerificationDispatcher
 {
-    public Task DispatchAsync(IdentityVerificationPurpose purpose, string destination, string code, CancellationToken ct)
-        => throw new InvalidOperationException(
-            "No IIdentityVerificationDispatcher is configured. OTP delivery cannot proceed.");
+    public Task DispatchAsync(
+        IdentityVerificationPurpose purpose,
+        string destination,
+        string code,
+        CancellationToken ct
+    ) =>
+        throw new InvalidOperationException(
+            "No IIdentityVerificationDispatcher is configured. OTP delivery cannot proceed."
+        );
 }
 
 // ── Additional result type ────────────────────────────────────────────────────
@@ -40,7 +51,8 @@ public sealed class UnconfiguredVerificationDispatcher : IIdentityVerificationDi
 public sealed record IdentityMobileStatusResult(
     bool MobileVerified,
     string MaskedMobile,
-    DateTimeOffset VerifiedAt);
+    DateTimeOffset VerifiedAt
+);
 
 // ── Result types ─────────────────────────────────────────────────────────────
 
@@ -48,12 +60,14 @@ public sealed record IdentityCompletionResult(
     string Outcome,
     Guid AccountReference,
     string AssuranceLevel,
-    string DefaultTarget);
+    string DefaultTarget
+);
 
 public sealed record IdentitySessionState(
     Guid AccountReference,
     bool EmailVerified,
-    bool MobileVerified);
+    bool MobileVerified
+);
 
 public sealed record CustomerPortalProfileState(
     Guid AccountReference,
@@ -61,7 +75,8 @@ public sealed record CustomerPortalProfileState(
     string OrganizationDisplayName,
     bool EmailVerified,
     bool MobileVerified,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt
+);
 
 public sealed record CustomerPortalSettingsState(
     string Locale,
@@ -71,17 +86,26 @@ public sealed record CustomerPortalSettingsState(
     IReadOnlyList<string> MaturityReports,
     IReadOnlyList<string> MonthlyNarratives,
     IReadOnlyList<string> SelfGovernanceAlerts,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt
+);
 
 public sealed class IdentityIdempotencyConflict(string idempotencyKey)
-    : Exception($"Idempotency-Key {idempotencyKey} was reused with a different canonical request hash.");
+    : Exception(
+        $"Idempotency-Key {idempotencyKey} was reused with a different canonical request hash."
+    );
 
 public sealed class IdentityActionDeniedException(string reason) : Exception(reason);
+
 public sealed class IdentityResourceNotFoundException(string reason) : Exception(reason);
+
 public sealed class IdentityChallengeExpiredException(string reason) : Exception(reason);
+
 public sealed class IdentityVerificationRequiredException(string reason) : Exception(reason);
+
 public sealed class IdentityDeliveryUnavailableException(string reason) : Exception(reason);
-public sealed class IdentityStepUpRequiredException(string reason, Guid intentId) : Exception(reason)
+
+public sealed class IdentityStepUpRequiredException(string reason, Guid intentId)
+    : Exception(reason)
 {
     public Guid IntentId { get; } = intentId;
 }
@@ -98,7 +122,8 @@ public sealed class IdentityService
     public IdentityService(
         IDbContextFactory<IdentityDbContext> dbFactory,
         IOptions<IdentityHmacOptions> hmacOptions,
-        IIdentityVerificationDispatcher dispatcher)
+        IIdentityVerificationDispatcher dispatcher
+    )
     {
         _dbFactory = dbFactory ?? throw new ArgumentNullException(nameof(dbFactory));
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
@@ -106,19 +131,37 @@ public sealed class IdentityService
         var key = options?.Key;
         if (string.IsNullOrEmpty(key) || key.Length < IdentityHmacOptions.MinKeyLength)
             throw new InvalidOperationException(
-                $"Identity:HmacKey is absent or too short; minimum {IdentityHmacOptions.MinKeyLength} characters required. " +
-                "IdentityService cannot be constructed without valid secret material.");
-        if (string.IsNullOrWhiteSpace(options!.ActiveVersion)
-            || options.ActiveVersion.Any(character => !char.IsAsciiLetterOrDigit(character) && character is not '-' and not '_'))
-            throw new InvalidOperationException("Identity:Hmac:ActiveVersion must be a stable alphanumeric version identifier.");
-        if (options.ReadOnlyVersions.ContainsKey(options.ActiveVersion)
-            || options.ReadOnlyVersions.Any(item => string.IsNullOrWhiteSpace(item.Key)
-                || item.Value.Length < IdentityHmacOptions.MinKeyLength))
-            throw new InvalidOperationException("Identity:Hmac read-only versions must be distinct and contain valid secret material.");
+                $"Identity:HmacKey is absent or too short; minimum {IdentityHmacOptions.MinKeyLength} characters required. "
+                    + "IdentityService cannot be constructed without valid secret material."
+            );
+        if (
+            string.IsNullOrWhiteSpace(options!.ActiveVersion)
+            || options.ActiveVersion.Any(character =>
+                !char.IsAsciiLetterOrDigit(character) && character is not '-' and not '_'
+            )
+        )
+            throw new InvalidOperationException(
+                "Identity:Hmac:ActiveVersion must be a stable alphanumeric version identifier."
+            );
+        if (
+            options.ReadOnlyVersions.ContainsKey(options.ActiveVersion)
+            || options.ReadOnlyVersions.Any(item =>
+                string.IsNullOrWhiteSpace(item.Key)
+                || item.Value.Length < IdentityHmacOptions.MinKeyLength
+            )
+        )
+            throw new InvalidOperationException(
+                "Identity:Hmac read-only versions must be distinct and contain valid secret material."
+            );
 
         _activeHmacVersion = options.ActiveVersion;
-        _hmacKeys = new Dictionary<string, byte[]>(options.ReadOnlyVersions.ToDictionary(
-            item => item.Key, item => Encoding.UTF8.GetBytes(item.Value)), StringComparer.Ordinal)
+        _hmacKeys = new Dictionary<string, byte[]>(
+            options.ReadOnlyVersions.ToDictionary(
+                item => item.Key,
+                item => Encoding.UTF8.GetBytes(item.Value)
+            ),
+            StringComparer.Ordinal
+        )
         {
             [_activeHmacVersion] = Encoding.UTF8.GetBytes(key),
         };
@@ -127,36 +170,124 @@ public sealed class IdentityService
     // ── Registration ────────────────────────────────────────────────────────
 
     public Task<(IdentityRegistrationRecord reg, bool isNew)> StartRegistrationAsync(
-        VerifiedCustomerActor actor, Guid idempotencyKey, string canonicalHash,
-        string languagePreference, CancellationToken ct) =>
-        MutateBrokerRegistrationAsync(actor, IdentityAuthenticationPath.Google, null, idempotencyKey, canonicalHash,
-            "StartRegistration", languagePreference, true, null, null, null, null, ct);
+        VerifiedCustomerActor actor,
+        Guid idempotencyKey,
+        string canonicalHash,
+        string languagePreference,
+        CancellationToken ct
+    ) =>
+        MutateBrokerRegistrationAsync(
+            actor,
+            IdentityAuthenticationPath.Google,
+            null,
+            idempotencyKey,
+            canonicalHash,
+            "StartRegistration",
+            languagePreference,
+            true,
+            null,
+            null,
+            null,
+            null,
+            ct
+        );
 
     public Task<(IdentityRegistrationRecord reg, bool isNew)> StartRegistrationAsync(
-        VerifiedCustomerActor actor, IdentityAuthenticationPath authenticationPath, Guid idempotencyKey,
-        string canonicalHash, string languagePreference, bool emailVerified, string? maskedEmail, CancellationToken ct) =>
-        MutateBrokerRegistrationAsync(actor, authenticationPath, null, idempotencyKey, canonicalHash,
-            "StartRegistration", languagePreference, emailVerified, maskedEmail, null, null, null, ct);
+        VerifiedCustomerActor actor,
+        IdentityAuthenticationPath authenticationPath,
+        Guid idempotencyKey,
+        string canonicalHash,
+        string languagePreference,
+        bool emailVerified,
+        string? maskedEmail,
+        CancellationToken ct
+    ) =>
+        MutateBrokerRegistrationAsync(
+            actor,
+            authenticationPath,
+            null,
+            idempotencyKey,
+            canonicalHash,
+            "StartRegistration",
+            languagePreference,
+            emailVerified,
+            maskedEmail,
+            null,
+            null,
+            null,
+            ct
+        );
 
     public Task<(IdentityRegistrationRecord reg, bool isNew)> UpdateProfileAsync(
-        Guid registrationId, VerifiedCustomerActor actor, Guid idempotencyKey, string canonicalHash,
-        string displayName, string businessName, string businessDomain, string languagePreference,
-        CancellationToken ct) =>
-        MutateBrokerRegistrationAsync(actor, IdentityAuthenticationPath.Google, registrationId, idempotencyKey, canonicalHash,
-            "UpdateProfile", languagePreference, true, null, displayName, businessName, businessDomain, ct);
+        Guid registrationId,
+        VerifiedCustomerActor actor,
+        Guid idempotencyKey,
+        string canonicalHash,
+        string displayName,
+        string businessName,
+        string businessDomain,
+        string languagePreference,
+        CancellationToken ct
+    ) =>
+        MutateBrokerRegistrationAsync(
+            actor,
+            IdentityAuthenticationPath.Google,
+            registrationId,
+            idempotencyKey,
+            canonicalHash,
+            "UpdateProfile",
+            languagePreference,
+            true,
+            null,
+            displayName,
+            businessName,
+            businessDomain,
+            ct
+        );
 
     public Task<(IdentityRegistrationRecord reg, bool isNew)> UpdateProfileAsync(
-        Guid registrationId, VerifiedCustomerActor actor, IdentityAuthenticationPath authenticationPath,
-        Guid idempotencyKey, string canonicalHash, string displayName, string businessName,
-        string businessDomain, string languagePreference, CancellationToken ct) =>
-        MutateBrokerRegistrationAsync(actor, authenticationPath, registrationId, idempotencyKey, canonicalHash,
-            "UpdateProfile", languagePreference, true, null, displayName, businessName, businessDomain, ct);
+        Guid registrationId,
+        VerifiedCustomerActor actor,
+        IdentityAuthenticationPath authenticationPath,
+        Guid idempotencyKey,
+        string canonicalHash,
+        string displayName,
+        string businessName,
+        string businessDomain,
+        string languagePreference,
+        CancellationToken ct
+    ) =>
+        MutateBrokerRegistrationAsync(
+            actor,
+            authenticationPath,
+            registrationId,
+            idempotencyKey,
+            canonicalHash,
+            "UpdateProfile",
+            languagePreference,
+            true,
+            null,
+            displayName,
+            businessName,
+            businessDomain,
+            ct
+        );
 
     private async Task<(IdentityRegistrationRecord reg, bool isNew)> MutateBrokerRegistrationAsync(
-        VerifiedCustomerActor actor, IdentityAuthenticationPath authenticationPath, Guid? registrationId,
-        Guid idempotencyKey, string canonicalHash,
-        string operation, string languagePreference, bool emailVerified, string? maskedEmail, string? displayName,
-        string? businessName, string? businessDomain, CancellationToken ct)
+        VerifiedCustomerActor actor,
+        IdentityAuthenticationPath authenticationPath,
+        Guid? registrationId,
+        Guid idempotencyKey,
+        string canonicalHash,
+        string operation,
+        string languagePreference,
+        bool emailVerified,
+        string? maskedEmail,
+        string? displayName,
+        string? businessName,
+        string? businessDomain,
+        CancellationToken ct
+    )
     {
         if (idempotencyKey == Guid.Empty)
             throw new ArgumentException("An idempotency key is required.");
@@ -164,42 +295,76 @@ public sealed class IdentityService
         db.Database.SetCommandTimeout(15);
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         await SetActorContextAsync(db, actor, ct);
-        var lockIdentity = System.Text.Json.JsonSerializer.Serialize(new[] { actor.Issuer, actor.Subject });
+        var lockIdentity = System.Text.Json.JsonSerializer.Serialize(
+            new[] { actor.Issuer, actor.Subject }
+        );
         await db.Database.ExecuteSqlInterpolatedAsync(
-            $"SELECT pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended({lockIdentity}, 0))", ct);
+            $"SELECT pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended({lockIdentity}, 0))",
+            ct
+        );
         var key = idempotencyKey.ToString("D");
-        var replay = await db.IdempotencyLedger.SingleOrDefaultAsync(entry => entry.ActorIssuer == actor.Issuer
-            && entry.ActorSubject == actor.Subject && entry.OperationFamily == operation && entry.IdempotencyKey == key, ct);
-        if (replay is not null && (replay.CanonicalHash != canonicalHash
-            || registrationId.HasValue && replay.RegistrationId != registrationId))
+        var replay = await db.IdempotencyLedger.SingleOrDefaultAsync(
+            entry =>
+                entry.ActorIssuer == actor.Issuer
+                && entry.ActorSubject == actor.Subject
+                && entry.OperationFamily == operation
+                && entry.IdempotencyKey == key,
+            ct
+        );
+        if (
+            replay is not null
+            && (
+                replay.CanonicalHash != canonicalHash
+                || registrationId.HasValue && replay.RegistrationId != registrationId
+            )
+        )
             throw new IdentityIdempotencyConflict(key);
         var targetId = registrationId ?? replay?.RegistrationId;
         IdentityRegistrationRecord registration;
         if (targetId.HasValue)
         {
-            registration = (await db.Registrations.FromSqlInterpolated($"""
-                SELECT * FROM identity.registrations WHERE registration_id = {targetId.Value}
-                    AND actor_issuer = {actor.Issuer} COLLATE "C" AND actor_subject = {actor.Subject} COLLATE "C" FOR UPDATE
-                """).ToListAsync(ct)).SingleOrDefault()
-                ?? throw new IdentityResourceNotFoundException("Registration not found or not accessible.");
-            if (registration.ExpiresAt < DateTimeOffset.UtcNow && registration.State != IdentityRegistrationState.Completed)
-                throw new IdentityResourceNotFoundException("Registration not found or not accessible.");
+            registration =
+                (
+                    await db
+                        .Registrations.FromSqlInterpolated(
+                            $"""
+                            SELECT * FROM identity.registrations WHERE registration_id = {targetId.Value}
+                                AND actor_issuer = {actor.Issuer} COLLATE "C" AND actor_subject = {actor.Subject} COLLATE "C" FOR UPDATE
+                            """
+                        )
+                        .ToListAsync(ct)
+                ).SingleOrDefault()
+                ?? throw new IdentityResourceNotFoundException(
+                    "Registration not found or not accessible."
+                );
+            if (
+                registration.ExpiresAt < DateTimeOffset.UtcNow
+                && registration.State != IdentityRegistrationState.Completed
+            )
+                throw new IdentityResourceNotFoundException(
+                    "Registration not found or not accessible."
+                );
         }
         else
         {
             registration = new IdentityRegistrationRecord
             {
-                ActorIssuer = actor.Issuer, ActorSubject = actor.Subject,
-                AuthenticationPath = authenticationPath, ProviderLabel = authenticationPath switch
+                ActorIssuer = actor.Issuer,
+                ActorSubject = actor.Subject,
+                AuthenticationPath = authenticationPath,
+                ProviderLabel = authenticationPath switch
                 {
                     IdentityAuthenticationPath.Google => "google",
                     IdentityAuthenticationPath.Meta => "facebook",
                     IdentityAuthenticationPath.Apple => "apple",
                     _ => throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED"),
                 },
-                ProviderIssuer = actor.Issuer, EmailVerified = emailVerified, MaskedEmail = maskedEmail,
+                ProviderIssuer = actor.Issuer,
+                EmailVerified = emailVerified,
+                MaskedEmail = maskedEmail,
                 LanguagePreference = languagePreference,
-                State = emailVerified ? IdentityRegistrationState.FederatedIdentityAccepted
+                State = emailVerified
+                    ? IdentityRegistrationState.FederatedIdentityAccepted
                     : IdentityRegistrationState.EmailVerificationRequired,
             };
             db.Registrations.Add(registration);
@@ -211,10 +376,16 @@ public sealed class IdentityService
         }
         if (registrationId.HasValue)
         {
-            if (registration.State == IdentityRegistrationState.Completed
+            if (
+                registration.State == IdentityRegistrationState.Completed
                 || registration.AuthenticationPath != authenticationPath
-                || authenticationPath is not (IdentityAuthenticationPath.Google or IdentityAuthenticationPath.Meta
-                    or IdentityAuthenticationPath.Apple))
+                || authenticationPath
+                    is not (
+                        IdentityAuthenticationPath.Google
+                        or IdentityAuthenticationPath.Meta
+                        or IdentityAuthenticationPath.Apple
+                    )
+            )
                 throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
             registration.DisplayName = displayName;
             registration.BusinessName = businessName;
@@ -223,12 +394,19 @@ public sealed class IdentityService
             registration.State = ComputeRegistrationState(registration);
             registration.UpdatedAt = DateTimeOffset.UtcNow;
         }
-        db.IdempotencyLedger.Add(new IdentityIdempotencyEntry
-        {
-            ActorIssuer = actor.Issuer, ActorSubject = actor.Subject, RegistrationId = registration.RegistrationId,
-            IdempotencyKey = key, OperationFamily = operation, CanonicalHash = canonicalHash,
-            StatusCode = registrationId.HasValue ? 200 : 201, ResponseBody = registration.RegistrationId.ToString("D"),
-        });
+        db.IdempotencyLedger.Add(
+            new IdentityIdempotencyEntry
+            {
+                ActorIssuer = actor.Issuer,
+                ActorSubject = actor.Subject,
+                RegistrationId = registration.RegistrationId,
+                IdempotencyKey = key,
+                OperationFamily = operation,
+                CanonicalHash = canonicalHash,
+                StatusCode = registrationId.HasValue ? 200 : 201,
+                ResponseBody = registration.RegistrationId.ToString("D"),
+            }
+        );
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
         return (registration, !registrationId.HasValue);
@@ -245,17 +423,26 @@ public sealed class IdentityService
         bool emailVerifiedByClaim,
         string? maskedEmail,
         string? emailHmacKey,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         if (authPath == IdentityAuthenticationPath.WhatsApp)
             throw new IdentityActionDeniedException(
-                "WhatsApp registration uses an internal adapter and is not accepted by browser endpoints.");
+                "WhatsApp registration uses an internal adapter and is not accepted by browser endpoints."
+            );
 
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
 
         var (replay, conflict) = await CheckIdempotencyAsync(
-            db, actorSubject, idempotencyKey, "StartRegistration", canonicalHash, ct);
-        if (conflict) throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
+            db,
+            actorSubject,
+            idempotencyKey,
+            "StartRegistration",
+            canonicalHash,
+            ct
+        );
+        if (conflict)
+            throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
         if (replay is not null)
         {
             var replayReg = await db.Registrations.FindAsync([Guid.Parse(replay)], ct);
@@ -267,27 +454,36 @@ public sealed class IdentityService
             IdentityAuthenticationPath.Google => emailVerifiedByClaim
                 ? IdentityRegistrationState.FederatedIdentityAccepted
                 : IdentityRegistrationState.EmailVerificationRequired,
-            IdentityAuthenticationPath.Credential => IdentityRegistrationState.CredentialIdentityAccepted,
+            IdentityAuthenticationPath.Credential =>
+                IdentityRegistrationState.CredentialIdentityAccepted,
             _ => IdentityRegistrationState.Started,
         };
 
         var reg = new IdentityRegistrationRecord
         {
-            ActorSubject       = actorSubject,
-            State              = initialState,
+            ActorSubject = actorSubject,
+            State = initialState,
             AuthenticationPath = authPath,
-            ProviderLabel      = providerLabel,
-            ProviderIssuer     = providerIssuer,
-            EmailVerified      = emailVerifiedByClaim,
-            MaskedEmail        = maskedEmail,
-            EmailHmacKey       = emailHmacKey,
+            ProviderLabel = providerLabel,
+            ProviderIssuer = providerIssuer,
+            EmailVerified = emailVerifiedByClaim,
+            MaskedEmail = maskedEmail,
+            EmailHmacKey = emailHmacKey,
             LanguagePreference = languagePreference,
         };
 
         db.Registrations.Add(reg);
         await db.SaveChangesAsync(ct);
-        await RecordIdempotencyAsync(db, actorSubject, idempotencyKey, "StartRegistration",
-            canonicalHash, 201, reg.RegistrationId.ToString(), ct);
+        await RecordIdempotencyAsync(
+            db,
+            actorSubject,
+            idempotencyKey,
+            "StartRegistration",
+            canonicalHash,
+            201,
+            reg.RegistrationId.ToString(),
+            ct
+        );
 
         return (reg, true);
     }
@@ -295,37 +491,55 @@ public sealed class IdentityService
     public async Task<IdentityRegistrationRecord> GetRegistrationAsync(
         Guid registrationId,
         VerifiedCustomerActor actor,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
         db.Database.SetCommandTimeout(15);
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         await SetActorContextAsync(db, actor, ct);
-        var registration = await db.Registrations.SingleOrDefaultAsync(record =>
-            record.RegistrationId == registrationId && record.ActorIssuer == actor.Issuer
-            && record.ActorSubject == actor.Subject, ct)
-            ?? throw new IdentityResourceNotFoundException("Registration not found or not accessible.");
+        var registration =
+            await db.Registrations.SingleOrDefaultAsync(
+                record =>
+                    record.RegistrationId == registrationId
+                    && record.ActorIssuer == actor.Issuer
+                    && record.ActorSubject == actor.Subject,
+                ct
+            )
+            ?? throw new IdentityResourceNotFoundException(
+                "Registration not found or not accessible."
+            );
         await transaction.CommitAsync(ct);
         return registration;
     }
 
-    private static Task SetActorContextAsync(IdentityDbContext db, VerifiedCustomerActor actor, CancellationToken ct) =>
-        db.Database.ExecuteSqlInterpolatedAsync($"""
+    private static Task SetActorContextAsync(
+        IdentityDbContext db,
+        VerifiedCustomerActor actor,
+        CancellationToken ct
+    ) =>
+        db.Database.ExecuteSqlInterpolatedAsync(
+            $"""
             SELECT pg_catalog.set_config('app.identity_issuer', {actor.Issuer}, true),
                    pg_catalog.set_config('app.identity_subject', {actor.Subject}, true),
                    pg_catalog.set_config('app.tenant_id', '', true),
                    pg_catalog.set_config('app.current_tenant_id', '', true)
-            """, ct);
+            """,
+            ct
+        );
 
     public async Task<IdentityRegistrationRecord> GetRegistrationAsync(
         Guid registrationId,
         string actorSubject,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
         var reg = await db.Registrations.FindAsync([registrationId], ct);
         if (reg is null || reg.ActorSubject != actorSubject)
-            throw new IdentityResourceNotFoundException("Registration not found or not accessible.");
+            throw new IdentityResourceNotFoundException(
+                "Registration not found or not accessible."
+            );
         return reg;
     }
 
@@ -338,68 +552,144 @@ public sealed class IdentityService
         string businessName,
         string businessDomain,
         string languagePreference,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
 
         var reg = await db.Registrations.FindAsync([registrationId], ct);
         if (reg is null || reg.ActorSubject != actorSubject)
-            throw new IdentityResourceNotFoundException("Registration not found or not accessible.");
+            throw new IdentityResourceNotFoundException(
+                "Registration not found or not accessible."
+            );
 
         var (replay, conflict) = await CheckIdempotencyAsync(
-            db, actorSubject, idempotencyKey, "UpdateProfile", canonicalHash, ct);
-        if (conflict) throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
-        if (replay is not null) return (reg, false);
+            db,
+            actorSubject,
+            idempotencyKey,
+            "UpdateProfile",
+            canonicalHash,
+            ct
+        );
+        if (conflict)
+            throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
+        if (replay is not null)
+            return (reg, false);
 
-        reg.DisplayName        = displayName;
-        reg.BusinessName       = businessName;
-        reg.BusinessDomain     = businessDomain;
+        reg.DisplayName = displayName;
+        reg.BusinessName = businessName;
+        reg.BusinessDomain = businessDomain;
         reg.LanguagePreference = languagePreference;
-        reg.UpdatedAt          = DateTimeOffset.UtcNow;
-        reg.State              = ComputeRegistrationState(reg);
+        reg.UpdatedAt = DateTimeOffset.UtcNow;
+        reg.State = ComputeRegistrationState(reg);
         await db.SaveChangesAsync(ct);
-        await RecordIdempotencyAsync(db, actorSubject, idempotencyKey, "UpdateProfile",
-            canonicalHash, 200, reg.RegistrationId.ToString(), ct);
+        await RecordIdempotencyAsync(
+            db,
+            actorSubject,
+            idempotencyKey,
+            "UpdateProfile",
+            canonicalHash,
+            200,
+            reg.RegistrationId.ToString(),
+            ct
+        );
 
         return (reg, false);
     }
 
     // ── Email Verification ───────────────────────────────────────────────────
 
-    public Task<(IdentityVerificationChallengeRecord challenge, bool isNew)> StartEmailVerificationAsync(
-        Guid registrationId, VerifiedCustomerActor actor, Guid idempotencyKey, string canonicalHash,
-        string email, CancellationToken ct) =>
-        StartEmailVerificationAsync(registrationId, actor.Subject, idempotencyKey, canonicalHash, email, ct, actor);
+    public Task<(
+        IdentityVerificationChallengeRecord challenge,
+        bool isNew
+    )> StartEmailVerificationAsync(
+        Guid registrationId,
+        VerifiedCustomerActor actor,
+        Guid idempotencyKey,
+        string canonicalHash,
+        string email,
+        CancellationToken ct
+    ) =>
+        StartEmailVerificationAsync(
+            registrationId,
+            actor.Subject,
+            idempotencyKey,
+            canonicalHash,
+            email,
+            ct,
+            actor
+        );
 
-    public async Task<(IdentityVerificationChallengeRecord challenge, bool isNew)> StartEmailVerificationAsync(
+    public async Task<(
+        IdentityVerificationChallengeRecord challenge,
+        bool isNew
+    )> StartEmailVerificationAsync(
         Guid registrationId,
         string actorSubject,
         Guid idempotencyKey,
         string canonicalHash,
         string email,
-        CancellationToken ct) =>
-        await StartEmailVerificationAsync(registrationId, actorSubject, idempotencyKey, canonicalHash, email, ct, null);
+        CancellationToken ct
+    ) =>
+        await StartEmailVerificationAsync(
+            registrationId,
+            actorSubject,
+            idempotencyKey,
+            canonicalHash,
+            email,
+            ct,
+            null
+        );
 
-    private async Task<(IdentityVerificationChallengeRecord challenge, bool isNew)> StartEmailVerificationAsync(
-        Guid registrationId, string actorSubject, Guid idempotencyKey, string canonicalHash,
-        string email, CancellationToken ct, VerifiedCustomerActor? actor)
+    private async Task<(
+        IdentityVerificationChallengeRecord challenge,
+        bool isNew
+    )> StartEmailVerificationAsync(
+        Guid registrationId,
+        string actorSubject,
+        Guid idempotencyKey,
+        string canonicalHash,
+        string email,
+        CancellationToken ct,
+        VerifiedCustomerActor? actor
+    )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
-        await using var transaction = actor is null ? null : await db.Database.BeginTransactionAsync(ct);
-        if (actor is not null) await SetActorContextAsync(db, actor, ct);
+        await using var transaction = actor is null
+            ? null
+            : await db.Database.BeginTransactionAsync(ct);
+        if (actor is not null)
+            await SetActorContextAsync(db, actor, ct);
 
         var reg = await db.Registrations.FindAsync([registrationId], ct);
-        if (reg is null || reg.ActorSubject != actorSubject || actor is not null && reg.ActorIssuer != actor.Issuer)
-            throw new IdentityResourceNotFoundException("Registration not found or not accessible.");
+        if (
+            reg is null
+            || reg.ActorSubject != actorSubject
+            || actor is not null && reg.ActorIssuer != actor.Issuer
+        )
+            throw new IdentityResourceNotFoundException(
+                "Registration not found or not accessible."
+            );
 
         var (replay, conflict) = await CheckIdempotencyAsync(
-            db, actorSubject, idempotencyKey, "StartEmailVerification", canonicalHash, ct);
-        if (conflict) throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
+            db,
+            actorSubject,
+            idempotencyKey,
+            "StartEmailVerification",
+            canonicalHash,
+            ct
+        );
+        if (conflict)
+            throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
 
         if (replay is not null)
         {
-            var replayChallenge = await db.VerificationChallenges.FindAsync([Guid.Parse(replay)], ct);
-            if (transaction is not null) await transaction.CommitAsync(ct);
+            var replayChallenge = await db.VerificationChallenges.FindAsync(
+                [Guid.Parse(replay)],
+                ct
+            );
+            if (transaction is not null)
+                await transaction.CommitAsync(ct);
             return (replayChallenge!, false);
         }
 
@@ -412,19 +702,19 @@ public sealed class IdentityService
 
         var challenge = new IdentityVerificationChallengeRecord
         {
-            RegistrationId    = registrationId,
-            ActorSubject      = actorSubject,
-            Purpose           = IdentityVerificationPurpose.Email,
-            CodeHmac          = codeHmac,
-            CodeHmacVersion   = _activeHmacVersion,
+            RegistrationId = registrationId,
+            ActorSubject = actorSubject,
+            Purpose = IdentityVerificationPurpose.Email,
+            CodeHmac = codeHmac,
+            CodeHmacVersion = _activeHmacVersion,
             MaskedDestination = masked,
         };
 
         reg.EmailHmacKey = emailHmac;
         reg.EmailHmacVersion = _activeHmacVersion;
         reg.EmailHmacDomain = "email";
-        reg.MaskedEmail  = masked;
-        reg.UpdatedAt    = DateTimeOffset.UtcNow;
+        reg.MaskedEmail = masked;
+        reg.UpdatedAt = DateTimeOffset.UtcNow;
 
         db.VerificationChallenges.Add(challenge);
         await db.SaveChangesAsync(ct);
@@ -436,12 +726,22 @@ public sealed class IdentityService
         {
             challenge.State = IdentityVerificationState.Expired;
             await db.SaveChangesAsync(ct);
-            if (transaction is not null) await transaction.CommitAsync(ct);
+            if (transaction is not null)
+                await transaction.CommitAsync(ct);
             throw new IdentityDeliveryUnavailableException("Verification delivery is unavailable.");
         }
-        await RecordIdempotencyAsync(db, actorSubject, idempotencyKey, "StartEmailVerification",
-            canonicalHash, 202, challenge.ChallengeId.ToString(), ct);
-        if (transaction is not null) await transaction.CommitAsync(ct);
+        await RecordIdempotencyAsync(
+            db,
+            actorSubject,
+            idempotencyKey,
+            "StartEmailVerification",
+            canonicalHash,
+            202,
+            challenge.ChallengeId.ToString(),
+            ct
+        );
+        if (transaction is not null)
+            await transaction.CommitAsync(ct);
 
         return (challenge, true);
     }
@@ -453,24 +753,37 @@ public sealed class IdentityService
         string canonicalHash,
         Guid challengeId,
         string code,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
 
         var reg = await db.Registrations.FindAsync([registrationId], ct);
         if (reg is null || reg.ActorSubject != actorSubject)
-            throw new IdentityResourceNotFoundException("Registration not found or not accessible.");
+            throw new IdentityResourceNotFoundException(
+                "Registration not found or not accessible."
+            );
 
         var (replay, conflict) = await CheckIdempotencyAsync(
-            db, actorSubject, idempotencyKey, "ConfirmEmailVerification", canonicalHash, ct);
-        if (conflict) throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
-        if (replay is not null) return (reg, false);
+            db,
+            actorSubject,
+            idempotencyKey,
+            "ConfirmEmailVerification",
+            canonicalHash,
+            ct
+        );
+        if (conflict)
+            throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
+        if (replay is not null)
+            return (reg, false);
 
         var challenge = await db.VerificationChallenges.FindAsync([challengeId], ct);
-        if (challenge is null
+        if (
+            challenge is null
             || challenge.ActorSubject != actorSubject
             || challenge.RegistrationId != registrationId
-            || challenge.Purpose != IdentityVerificationPurpose.Email)
+            || challenge.Purpose != IdentityVerificationPurpose.Email
+        )
             throw new IdentityResourceNotFoundException("Challenge not found or not accessible.");
 
         if (challenge.State != IdentityVerificationState.Pending)
@@ -487,57 +800,122 @@ public sealed class IdentityService
         if (!VerifyCode(code, challenge.CodeHmac, challenge.CodeHmacVersion))
             throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
 
-        challenge.State      = IdentityVerificationState.Consumed;
+        challenge.State = IdentityVerificationState.Consumed;
         challenge.VerifiedAt = DateTimeOffset.UtcNow;
-        reg.EmailVerified    = true;
-        reg.UpdatedAt        = DateTimeOffset.UtcNow;
-        reg.State            = ComputeRegistrationState(reg);
+        reg.EmailVerified = true;
+        reg.UpdatedAt = DateTimeOffset.UtcNow;
+        reg.State = ComputeRegistrationState(reg);
         await db.SaveChangesAsync(ct);
-        await RecordIdempotencyAsync(db, actorSubject, idempotencyKey, "ConfirmEmailVerification",
-            canonicalHash, 200, reg.RegistrationId.ToString(), ct);
+        await RecordIdempotencyAsync(
+            db,
+            actorSubject,
+            idempotencyKey,
+            "ConfirmEmailVerification",
+            canonicalHash,
+            200,
+            reg.RegistrationId.ToString(),
+            ct
+        );
 
         return (reg, false);
     }
 
     // ── Mobile Verification ──────────────────────────────────────────────────
 
-    public Task<(IdentityVerificationChallengeRecord challenge, bool isNew)> StartMobileVerificationAsync(
-        Guid registrationId, VerifiedCustomerActor actor, Guid idempotencyKey, string canonicalHash,
-        string mobile, CancellationToken ct) =>
-        StartMobileVerificationAsync(registrationId, actor.Subject, idempotencyKey, canonicalHash, mobile, ct, actor);
+    public Task<(
+        IdentityVerificationChallengeRecord challenge,
+        bool isNew
+    )> StartMobileVerificationAsync(
+        Guid registrationId,
+        VerifiedCustomerActor actor,
+        Guid idempotencyKey,
+        string canonicalHash,
+        string mobile,
+        CancellationToken ct
+    ) =>
+        StartMobileVerificationAsync(
+            registrationId,
+            actor.Subject,
+            idempotencyKey,
+            canonicalHash,
+            mobile,
+            ct,
+            actor
+        );
 
-    public async Task<(IdentityVerificationChallengeRecord challenge, bool isNew)> StartMobileVerificationAsync(
+    public async Task<(
+        IdentityVerificationChallengeRecord challenge,
+        bool isNew
+    )> StartMobileVerificationAsync(
         Guid? registrationId,
         string actorSubject,
         Guid idempotencyKey,
         string canonicalHash,
         string mobile,
-        CancellationToken ct) =>
-        await StartMobileVerificationAsync(registrationId, actorSubject, idempotencyKey, canonicalHash, mobile, ct, null);
+        CancellationToken ct
+    ) =>
+        await StartMobileVerificationAsync(
+            registrationId,
+            actorSubject,
+            idempotencyKey,
+            canonicalHash,
+            mobile,
+            ct,
+            null
+        );
 
-    private async Task<(IdentityVerificationChallengeRecord challenge, bool isNew)> StartMobileVerificationAsync(
-        Guid? registrationId, string actorSubject, Guid idempotencyKey, string canonicalHash,
-        string mobile, CancellationToken ct, VerifiedCustomerActor? actor)
+    private async Task<(
+        IdentityVerificationChallengeRecord challenge,
+        bool isNew
+    )> StartMobileVerificationAsync(
+        Guid? registrationId,
+        string actorSubject,
+        Guid idempotencyKey,
+        string canonicalHash,
+        string mobile,
+        CancellationToken ct,
+        VerifiedCustomerActor? actor
+    )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
-        await using var transaction = actor is null ? null : await db.Database.BeginTransactionAsync(ct);
-        if (actor is not null) await SetActorContextAsync(db, actor, ct);
+        await using var transaction = actor is null
+            ? null
+            : await db.Database.BeginTransactionAsync(ct);
+        if (actor is not null)
+            await SetActorContextAsync(db, actor, ct);
 
         IdentityRegistrationRecord? reg = null;
         if (registrationId.HasValue)
         {
             reg = await db.Registrations.FindAsync([registrationId.Value], ct);
-            if (reg is null || reg.ActorSubject != actorSubject || actor is not null && reg.ActorIssuer != actor.Issuer)
-                throw new IdentityResourceNotFoundException("Registration not found or not accessible.");
+            if (
+                reg is null
+                || reg.ActorSubject != actorSubject
+                || actor is not null && reg.ActorIssuer != actor.Issuer
+            )
+                throw new IdentityResourceNotFoundException(
+                    "Registration not found or not accessible."
+                );
         }
 
         var (replay, conflict) = await CheckIdempotencyAsync(
-            db, actorSubject, idempotencyKey, "StartMobileVerification", canonicalHash, ct);
-        if (conflict) throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
+            db,
+            actorSubject,
+            idempotencyKey,
+            "StartMobileVerification",
+            canonicalHash,
+            ct
+        );
+        if (conflict)
+            throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
         if (replay is not null)
         {
-            var replayChallenge = await db.VerificationChallenges.FindAsync([Guid.Parse(replay)], ct);
-            if (transaction is not null) await transaction.CommitAsync(ct);
+            var replayChallenge = await db.VerificationChallenges.FindAsync(
+                [Guid.Parse(replay)],
+                ct
+            );
+            if (transaction is not null)
+                await transaction.CommitAsync(ct);
             return (replayChallenge!, false);
         }
 
@@ -552,17 +930,17 @@ public sealed class IdentityService
             reg.MobileHmacKey = ComputeHmac("mobile", mobile, _activeHmacVersion);
             reg.MobileHmacVersion = _activeHmacVersion;
             reg.MobileHmacDomain = "mobile";
-            reg.MaskedMobile  = masked;
-            reg.UpdatedAt     = DateTimeOffset.UtcNow;
+            reg.MaskedMobile = masked;
+            reg.UpdatedAt = DateTimeOffset.UtcNow;
         }
 
         var challenge = new IdentityVerificationChallengeRecord
         {
-            RegistrationId    = registrationId,
-            ActorSubject      = actorSubject,
-            Purpose           = IdentityVerificationPurpose.Mobile,
-            CodeHmac          = codeHmac,
-            CodeHmacVersion   = _activeHmacVersion,
+            RegistrationId = registrationId,
+            ActorSubject = actorSubject,
+            Purpose = IdentityVerificationPurpose.Mobile,
+            CodeHmac = codeHmac,
+            CodeHmacVersion = _activeHmacVersion,
             MaskedDestination = masked,
         };
 
@@ -570,18 +948,33 @@ public sealed class IdentityService
         await db.SaveChangesAsync(ct);
         try
         {
-            await _dispatcher.DispatchAsync(IdentityVerificationPurpose.Mobile, mobile, rawCode, ct);
+            await _dispatcher.DispatchAsync(
+                IdentityVerificationPurpose.Mobile,
+                mobile,
+                rawCode,
+                ct
+            );
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             challenge.State = IdentityVerificationState.Expired;
             await db.SaveChangesAsync(ct);
-            if (transaction is not null) await transaction.CommitAsync(ct);
+            if (transaction is not null)
+                await transaction.CommitAsync(ct);
             throw new IdentityDeliveryUnavailableException("Verification delivery is unavailable.");
         }
-        await RecordIdempotencyAsync(db, actorSubject, idempotencyKey, "StartMobileVerification",
-            canonicalHash, 202, challenge.ChallengeId.ToString(), ct);
-        if (transaction is not null) await transaction.CommitAsync(ct);
+        await RecordIdempotencyAsync(
+            db,
+            actorSubject,
+            idempotencyKey,
+            "StartMobileVerification",
+            canonicalHash,
+            202,
+            challenge.ChallengeId.ToString(),
+            ct
+        );
+        if (transaction is not null)
+            await transaction.CommitAsync(ct);
 
         return (challenge, true);
     }
@@ -593,13 +986,21 @@ public sealed class IdentityService
         string canonicalHash,
         Guid challengeId,
         string code,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
 
         var (replay, conflict) = await CheckIdempotencyAsync(
-            db, actorSubject, idempotencyKey, "ConfirmMobileVerification", canonicalHash, ct);
-        if (conflict) throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
+            db,
+            actorSubject,
+            idempotencyKey,
+            "ConfirmMobileVerification",
+            canonicalHash,
+            ct
+        );
+        if (conflict)
+            throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
 
         // Replay returns original outcome before any state validation
         if (replay is not null)
@@ -610,21 +1011,29 @@ public sealed class IdentityService
                 return (replayReg!, false);
             }
             var replayCh = await db.VerificationChallenges.FindAsync([challengeId], ct);
-            return (new IdentityMobileStatusResult(
-                true,
-                replayCh?.MaskedDestination ?? "***",
-                replayCh?.VerifiedAt ?? DateTimeOffset.UtcNow), false);
+            return (
+                new IdentityMobileStatusResult(
+                    true,
+                    replayCh?.MaskedDestination ?? "***",
+                    replayCh?.VerifiedAt ?? DateTimeOffset.UtcNow
+                ),
+                false
+            );
         }
 
         var challenge = await db.VerificationChallenges.FindAsync([challengeId], ct);
-        if (challenge is null
+        if (
+            challenge is null
             || challenge.ActorSubject != actorSubject
-            || challenge.Purpose != IdentityVerificationPurpose.Mobile)
+            || challenge.Purpose != IdentityVerificationPurpose.Mobile
+        )
             throw new IdentityResourceNotFoundException("Challenge not found or not accessible.");
 
         // Challenge must belong to this registration
         if (registrationId.HasValue && challenge.RegistrationId != registrationId.Value)
-            throw new IdentityResourceNotFoundException("Challenge does not belong to this registration.");
+            throw new IdentityResourceNotFoundException(
+                "Challenge does not belong to this registration."
+            );
 
         if (challenge.State != IdentityVerificationState.Pending)
             throw new IdentityChallengeExpiredException("Challenge is no longer usable.");
@@ -641,7 +1050,7 @@ public sealed class IdentityService
             throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
 
         var verifiedAt = DateTimeOffset.UtcNow;
-        challenge.State      = IdentityVerificationState.Consumed;
+        challenge.State = IdentityVerificationState.Consumed;
         challenge.VerifiedAt = verifiedAt;
 
         if (registrationId.HasValue)
@@ -650,21 +1059,40 @@ public sealed class IdentityService
             if (reg is not null && reg.ActorSubject == actorSubject)
             {
                 reg.MobileVerified = true;
-                reg.MaskedMobile   = challenge.MaskedDestination;
-                reg.UpdatedAt      = DateTimeOffset.UtcNow;
-                reg.State          = ComputeRegistrationState(reg);
+                reg.MaskedMobile = challenge.MaskedDestination;
+                reg.UpdatedAt = DateTimeOffset.UtcNow;
+                reg.State = ComputeRegistrationState(reg);
             }
             await db.SaveChangesAsync(ct);
-            await RecordIdempotencyAsync(db, actorSubject, idempotencyKey, "ConfirmMobileVerification",
-                canonicalHash, 200, reg!.RegistrationId.ToString(), ct);
+            await RecordIdempotencyAsync(
+                db,
+                actorSubject,
+                idempotencyKey,
+                "ConfirmMobileVerification",
+                canonicalHash,
+                200,
+                reg!.RegistrationId.ToString(),
+                ct
+            );
             return (reg!, false);
         }
 
         await db.SaveChangesAsync(ct);
-        await RecordIdempotencyAsync(db, actorSubject, idempotencyKey, "ConfirmMobileVerification",
-            canonicalHash, 200, $"mobile:{challenge.MaskedDestination}", ct);
+        await RecordIdempotencyAsync(
+            db,
+            actorSubject,
+            idempotencyKey,
+            "ConfirmMobileVerification",
+            canonicalHash,
+            200,
+            $"mobile:{challenge.MaskedDestination}",
+            ct
+        );
 
-        return (new IdentityMobileStatusResult(true, challenge.MaskedDestination, verifiedAt), true);
+        return (
+            new IdentityMobileStatusResult(true, challenge.MaskedDestination, verifiedAt),
+            true
+        );
     }
 
     // ── Registration Completion ──────────────────────────────────────────────
@@ -674,61 +1102,98 @@ public sealed class IdentityService
         string actorSubject,
         Guid idempotencyKey,
         string canonicalHash,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
 
         var reg = await db.Registrations.FindAsync([registrationId], ct);
         if (reg is null || reg.ActorSubject != actorSubject)
-            throw new IdentityResourceNotFoundException("Registration not found or not accessible.");
+            throw new IdentityResourceNotFoundException(
+                "Registration not found or not accessible."
+            );
 
         var (replay, conflict) = await CheckIdempotencyAsync(
-            db, actorSubject, idempotencyKey, "CompleteRegistration", canonicalHash, ct);
-        if (conflict) throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
+            db,
+            actorSubject,
+            idempotencyKey,
+            "CompleteRegistration",
+            canonicalHash,
+            ct
+        );
+        if (conflict)
+            throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
 
         if (replay is not null)
         {
             var parts = replay.Split(':');
-            return (new IdentityCompletionResult(
-                parts[0], Guid.Parse(parts[1]), "AAL2_ACCOUNT", "APPLICATION_HOME"), false);
+            return (
+                new IdentityCompletionResult(
+                    parts[0],
+                    Guid.Parse(parts[1]),
+                    "AAL2_ACCOUNT",
+                    "APPLICATION_HOME"
+                ),
+                false
+            );
         }
 
         // Completion requires confirmed email
         if (!reg.EmailVerified)
             throw new IdentityVerificationRequiredException(
-                "Email verification must be completed before registration can be finalized.");
+                "Email verification must be completed before registration can be finalized."
+            );
 
         // Require minimum profile fields
-        if (string.IsNullOrWhiteSpace(reg.DisplayName)
+        if (
+            string.IsNullOrWhiteSpace(reg.DisplayName)
             || string.IsNullOrWhiteSpace(reg.BusinessName)
-            || string.IsNullOrWhiteSpace(reg.BusinessDomain))
+            || string.IsNullOrWhiteSpace(reg.BusinessDomain)
+        )
             throw new IdentityVerificationRequiredException(
-                "Minimum profile fields are required before registration can be finalized.");
+                "Minimum profile fields are required before registration can be finalized."
+            );
 
         var isNew = reg.State != IdentityRegistrationState.Completed;
         var accountId = reg.AccountId ?? Guid.NewGuid();
         var outcome = (reg.AccountId is null) ? "ACCOUNT_CREATED" : "ACCOUNT_REUSED";
 
-        reg.AccountId   = accountId;
-        reg.State       = IdentityRegistrationState.Completed;
-        reg.UpdatedAt   = DateTimeOffset.UtcNow;
+        reg.AccountId = accountId;
+        reg.State = IdentityRegistrationState.Completed;
+        reg.UpdatedAt = DateTimeOffset.UtcNow;
 
-        var result = new IdentityCompletionResult(outcome, accountId, "AAL2_ACCOUNT", "APPLICATION_HOME");
-        await RecordIdempotencyAsync(db, actorSubject, idempotencyKey, "CompleteRegistration",
-            canonicalHash, 200, $"{outcome}:{accountId}", ct);
+        var result = new IdentityCompletionResult(
+            outcome,
+            accountId,
+            "AAL2_ACCOUNT",
+            "APPLICATION_HOME"
+        );
+        await RecordIdempotencyAsync(
+            db,
+            actorSubject,
+            idempotencyKey,
+            "CompleteRegistration",
+            canonicalHash,
+            200,
+            $"{outcome}:{accountId}",
+            ct
+        );
 
         return (result, isNew);
     }
 
     public async Task<IdentitySessionState> GetSessionStateAsync(
         string actorSubject,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
-        var registration = await db.Registrations
-            .Where(value => value.ActorSubject == actorSubject
+        var registration = await db
+            .Registrations.Where(value =>
+                value.ActorSubject == actorSubject
                 && value.State == IdentityRegistrationState.Completed
-                && value.AccountId != null)
+                && value.AccountId != null
+            )
             .OrderByDescending(value => value.UpdatedAt)
             .FirstOrDefaultAsync(ct);
 
@@ -736,26 +1201,32 @@ public sealed class IdentityService
             throw new IdentityResourceNotFoundException("Completed account session not found.");
 
         var progressiveMobileVerified = await db.VerificationChallenges.AnyAsync(
-            value => value.ActorSubject == actorSubject
+            value =>
+                value.ActorSubject == actorSubject
                 && value.Purpose == IdentityVerificationPurpose.Mobile
                 && value.VerifiedAt != null,
-            ct);
+            ct
+        );
 
         return new IdentitySessionState(
             registration.AccountId.Value,
             registration.EmailVerified,
-            registration.MobileVerified || progressiveMobileVerified);
+            registration.MobileVerified || progressiveMobileVerified
+        );
     }
 
     public async Task<CustomerPortalProfileState> GetCustomerProfileAsync(
         string actorSubject,
         Guid tenantId,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
         var registration = await GetCompletedRegistrationAsync(db, actorSubject, ct);
         var preference = await db.CustomerPortalPreferences.SingleOrDefaultAsync(
-            value => value.ActorSubject == actorSubject && value.TenantId == tenantId, ct);
+            value => value.ActorSubject == actorSubject && value.TenantId == tenantId,
+            ct
+        );
 
         return new CustomerPortalProfileState(
             registration.AccountId!.Value,
@@ -763,7 +1234,8 @@ public sealed class IdentityService
             preference?.OrganizationDisplayName ?? registration.BusinessName!,
             registration.EmailVerified,
             registration.MobileVerified || await HasVerifiedMobileAsync(db, actorSubject, ct),
-            preference?.UpdatedAt ?? registration.UpdatedAt);
+            preference?.UpdatedAt ?? registration.UpdatedAt
+        );
     }
 
     public async Task<CustomerPortalProfileState> UpdateCustomerProfileAsync(
@@ -773,13 +1245,21 @@ public sealed class IdentityService
         string canonicalHash,
         string displayName,
         string organizationDisplayName,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
         var registration = await GetCompletedRegistrationAsync(db, actorSubject, ct);
         var (replay, conflict) = await CheckIdempotencyAsync(
-            db, actorSubject, idempotencyKey, $"UpdateCustomerProfile:{tenantId}", canonicalHash, ct);
-        if (conflict) throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
+            db,
+            actorSubject,
+            idempotencyKey,
+            $"UpdateCustomerProfile:{tenantId}",
+            canonicalHash,
+            ct
+        );
+        if (conflict)
+            throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
 
         var preference = await GetOrCreatePortalPreferenceAsync(db, actorSubject, tenantId, ct);
         if (replay is null)
@@ -788,8 +1268,16 @@ public sealed class IdentityService
             preference.OrganizationDisplayName = organizationDisplayName;
             preference.UpdatedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(ct);
-            await RecordIdempotencyAsync(db, actorSubject, idempotencyKey,
-                $"UpdateCustomerProfile:{tenantId}", canonicalHash, 200, preference.PreferenceId.ToString(), ct);
+            await RecordIdempotencyAsync(
+                db,
+                actorSubject,
+                idempotencyKey,
+                $"UpdateCustomerProfile:{tenantId}",
+                canonicalHash,
+                200,
+                preference.PreferenceId.ToString(),
+                ct
+            );
         }
 
         return new CustomerPortalProfileState(
@@ -798,19 +1286,27 @@ public sealed class IdentityService
             preference.OrganizationDisplayName ?? registration.BusinessName!,
             registration.EmailVerified,
             registration.MobileVerified || await HasVerifiedMobileAsync(db, actorSubject, ct),
-            preference.UpdatedAt);
+            preference.UpdatedAt
+        );
     }
 
     public async Task<CustomerPortalSettingsState> GetCustomerSettingsAsync(
         string actorSubject,
         Guid tenantId,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
         var registration = await GetCompletedRegistrationAsync(db, actorSubject, ct);
         var preference = await db.CustomerPortalPreferences.SingleOrDefaultAsync(
-            value => value.ActorSubject == actorSubject && value.TenantId == tenantId, ct);
-        return ToSettings(preference, registration.LanguagePreference ?? "en", registration.UpdatedAt);
+            value => value.ActorSubject == actorSubject && value.TenantId == tenantId,
+            ct
+        );
+        return ToSettings(
+            preference,
+            registration.LanguagePreference ?? "en",
+            registration.UpdatedAt
+        );
     }
 
     public async Task<CustomerPortalSettingsState> UpdateCustomerSettingsAsync(
@@ -825,14 +1321,22 @@ public sealed class IdentityService
         IReadOnlyList<string> maturityReports,
         IReadOnlyList<string> monthlyNarratives,
         IReadOnlyList<string> selfGovernanceAlerts,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
         await GetCompletedRegistrationAsync(db, actorSubject, ct);
         var operation = $"UpdateCustomerSettings:{tenantId}";
         var (replay, conflict) = await CheckIdempotencyAsync(
-            db, actorSubject, idempotencyKey, operation, canonicalHash, ct);
-        if (conflict) throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
+            db,
+            actorSubject,
+            idempotencyKey,
+            operation,
+            canonicalHash,
+            ct
+        );
+        if (conflict)
+            throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
 
         var preference = await GetOrCreatePortalPreferenceAsync(db, actorSubject, tenantId, ct);
         if (replay is null)
@@ -846,37 +1350,69 @@ public sealed class IdentityService
             preference.SelfGovernanceAlertChannels = SerializeChannels(selfGovernanceAlerts);
             preference.UpdatedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(ct);
-            await RecordIdempotencyAsync(db, actorSubject, idempotencyKey,
-                operation, canonicalHash, 200, preference.PreferenceId.ToString(), ct);
+            await RecordIdempotencyAsync(
+                db,
+                actorSubject,
+                idempotencyKey,
+                operation,
+                canonicalHash,
+                200,
+                preference.PreferenceId.ToString(),
+                ct
+            );
         }
         return ToSettings(preference, locale, preference.UpdatedAt);
     }
 
     private static async Task<IdentityRegistrationRecord> GetCompletedRegistrationAsync(
-        IdentityDbContext db, string actorSubject, CancellationToken ct)
+        IdentityDbContext db,
+        string actorSubject,
+        CancellationToken ct
+    )
     {
-        var registration = await db.Registrations
-            .Where(value => value.ActorSubject == actorSubject
+        var registration = await db
+            .Registrations.Where(value =>
+                value.ActorSubject == actorSubject
                 && value.State == IdentityRegistrationState.Completed
-                && value.AccountId != null)
+                && value.AccountId != null
+            )
             .OrderByDescending(value => value.UpdatedAt)
             .FirstOrDefaultAsync(ct);
-        return registration ?? throw new IdentityResourceNotFoundException("Completed account not found.");
+        return registration
+            ?? throw new IdentityResourceNotFoundException("Completed account not found.");
     }
 
     private static Task<bool> HasVerifiedMobileAsync(
-        IdentityDbContext db, string actorSubject, CancellationToken ct) =>
-        db.VerificationChallenges.AnyAsync(value => value.ActorSubject == actorSubject
-            && value.Purpose == IdentityVerificationPurpose.Mobile
-            && value.VerifiedAt != null, ct);
+        IdentityDbContext db,
+        string actorSubject,
+        CancellationToken ct
+    ) =>
+        db.VerificationChallenges.AnyAsync(
+            value =>
+                value.ActorSubject == actorSubject
+                && value.Purpose == IdentityVerificationPurpose.Mobile
+                && value.VerifiedAt != null,
+            ct
+        );
 
     private static async Task<CustomerPortalPreferenceRecord> GetOrCreatePortalPreferenceAsync(
-        IdentityDbContext db, string actorSubject, Guid tenantId, CancellationToken ct)
+        IdentityDbContext db,
+        string actorSubject,
+        Guid tenantId,
+        CancellationToken ct
+    )
     {
         var preference = await db.CustomerPortalPreferences.SingleOrDefaultAsync(
-            value => value.ActorSubject == actorSubject && value.TenantId == tenantId, ct);
-        if (preference is not null) return preference;
-        preference = new CustomerPortalPreferenceRecord { ActorSubject = actorSubject, TenantId = tenantId };
+            value => value.ActorSubject == actorSubject && value.TenantId == tenantId,
+            ct
+        );
+        if (preference is not null)
+            return preference;
+        preference = new CustomerPortalPreferenceRecord
+        {
+            ActorSubject = actorSubject,
+            TenantId = tenantId,
+        };
         db.CustomerPortalPreferences.Add(preference);
         return preference;
     }
@@ -888,7 +1424,10 @@ public sealed class IdentityService
         System.Text.Json.JsonSerializer.Deserialize<string[]>(channels) ?? [];
 
     private static CustomerPortalSettingsState ToSettings(
-        CustomerPortalPreferenceRecord? preference, string defaultLocale, DateTimeOffset defaultUpdatedAt) =>
+        CustomerPortalPreferenceRecord? preference,
+        string defaultLocale,
+        DateTimeOffset defaultUpdatedAt
+    ) =>
         new(
             preference?.Locale ?? defaultLocale,
             preference?.Theme ?? "SYSTEM",
@@ -897,7 +1436,8 @@ public sealed class IdentityService
             DeserializeChannels(preference?.MaturityReportChannels ?? "[\"IN_APP\"]"),
             DeserializeChannels(preference?.MonthlyNarrativeChannels ?? "[\"IN_APP\"]"),
             DeserializeChannels(preference?.SelfGovernanceAlertChannels ?? "[\"IN_APP\"]"),
-            preference?.UpdatedAt ?? defaultUpdatedAt);
+            preference?.UpdatedAt ?? defaultUpdatedAt
+        );
 
     // ── Account Links (WhatsApp-to-web) ──────────────────────────────────────
 
@@ -908,15 +1448,23 @@ public sealed class IdentityService
         string canonicalHash,
         Guid verifiedMobileProofId,
         DateTimeOffset authTime,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         EnforceAal3Fresh(authTime);
 
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
 
         var (replay, conflict) = await CheckIdempotencyAsync(
-            db, actorSubject, idempotencyKey, "StartAccountLink", canonicalHash, ct);
-        if (conflict) throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
+            db,
+            actorSubject,
+            idempotencyKey,
+            "StartAccountLink",
+            canonicalHash,
+            ct
+        );
+        if (conflict)
+            throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
         if (replay is not null)
         {
             var replayLink = await db.AccountLinks.FindAsync([Guid.Parse(replay)], ct);
@@ -925,16 +1473,24 @@ public sealed class IdentityService
 
         var link = new IdentityAccountLinkRecord
         {
-            ActorSubject          = actorSubject,
-            TenantId              = tenantId,
-            MaskedMobile          = "***",
+            ActorSubject = actorSubject,
+            TenantId = tenantId,
+            MaskedMobile = "***",
             VerifiedMobileProofId = verifiedMobileProofId,
         };
 
         db.AccountLinks.Add(link);
         await db.SaveChangesAsync(ct);
-        await RecordIdempotencyAsync(db, actorSubject, idempotencyKey, "StartAccountLink",
-            canonicalHash, 201, link.LinkId.ToString(), ct);
+        await RecordIdempotencyAsync(
+            db,
+            actorSubject,
+            idempotencyKey,
+            "StartAccountLink",
+            canonicalHash,
+            201,
+            link.LinkId.ToString(),
+            ct
+        );
 
         return (link, true);
     }
@@ -946,7 +1502,8 @@ public sealed class IdentityService
         Guid idempotencyKey,
         string canonicalHash,
         DateTimeOffset authTime,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         EnforceAal3Fresh(authTime);
 
@@ -957,23 +1514,41 @@ public sealed class IdentityService
             throw new IdentityResourceNotFoundException("Link not found or not accessible.");
 
         var (replay, conflict) = await CheckIdempotencyAsync(
-            db, actorSubject, idempotencyKey, "ApproveAccountLink", canonicalHash, ct);
-        if (conflict) throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
-        if (replay is not null) return (link, false);
+            db,
+            actorSubject,
+            idempotencyKey,
+            "ApproveAccountLink",
+            canonicalHash,
+            ct
+        );
+        if (conflict)
+            throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
+        if (replay is not null)
+            return (link, false);
 
-        if (link.State == IdentityAccountLinkState.Expired
-            || link.ExpiresAt < DateTimeOffset.UtcNow)
+        if (
+            link.State == IdentityAccountLinkState.Expired
+            || link.ExpiresAt < DateTimeOffset.UtcNow
+        )
         {
             link.State = IdentityAccountLinkState.Expired;
             await db.SaveChangesAsync(ct);
             throw new IdentityChallengeExpiredException("Link challenge has expired.");
         }
 
-        link.State     = IdentityAccountLinkState.PendingWhatsAppConfirmation;
+        link.State = IdentityAccountLinkState.PendingWhatsAppConfirmation;
         link.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(ct);
-        await RecordIdempotencyAsync(db, actorSubject, idempotencyKey, "ApproveAccountLink",
-            canonicalHash, 200, link.LinkId.ToString(), ct);
+        await RecordIdempotencyAsync(
+            db,
+            actorSubject,
+            idempotencyKey,
+            "ApproveAccountLink",
+            canonicalHash,
+            200,
+            link.LinkId.ToString(),
+            ct
+        );
 
         return (link, false);
     }
@@ -982,7 +1557,8 @@ public sealed class IdentityService
         Guid linkId,
         string actorSubject,
         Guid tenantId,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
 
@@ -1000,18 +1576,25 @@ public sealed class IdentityService
         if ((DateTimeOffset.UtcNow - authTime).TotalMinutes > Aal3FreshWindowMinutes)
             throw new IdentityStepUpRequiredException(
                 "A freshly authenticated session is required for this action.",
-                Guid.NewGuid());
+                Guid.NewGuid()
+            );
     }
 
-    private static IdentityRegistrationState ComputeRegistrationState(IdentityRegistrationRecord reg)
+    private static IdentityRegistrationState ComputeRegistrationState(
+        IdentityRegistrationRecord reg
+    )
     {
-        if (reg.State == IdentityRegistrationState.Completed) return reg.State;
-        if (!reg.EmailVerified) return IdentityRegistrationState.EmailVerificationRequired;
+        if (reg.State == IdentityRegistrationState.Completed)
+            return reg.State;
+        if (!reg.EmailVerified)
+            return IdentityRegistrationState.EmailVerificationRequired;
 
-        var hasMinProfile = !string.IsNullOrWhiteSpace(reg.DisplayName)
+        var hasMinProfile =
+            !string.IsNullOrWhiteSpace(reg.DisplayName)
             && !string.IsNullOrWhiteSpace(reg.BusinessName)
             && !string.IsNullOrWhiteSpace(reg.BusinessDomain);
-        if (!hasMinProfile) return IdentityRegistrationState.ProfileCompletionRequired;
+        if (!hasMinProfile)
+            return IdentityRegistrationState.ProfileCompletionRequired;
 
         return IdentityRegistrationState.ReadyToComplete;
     }
@@ -1019,24 +1602,30 @@ public sealed class IdentityService
     public static string MaskEmail(string email)
     {
         var at = email.IndexOf('@');
-        if (at <= 1) return "***@***";
+        if (at <= 1)
+            return "***@***";
         return $"{email[0]}***{email[at..]}";
     }
 
     public static string MaskMobile(string mobile)
     {
-        if (mobile.Length < 5) return "***";
+        if (mobile.Length < 5)
+            return "***";
         return mobile[..^4].Replace(mobile[1..^4], "***") + mobile[^4..];
     }
 
     public IReadOnlyDictionary<string, string> ComputeMatchCandidates(string domain, string value)
     {
         if (domain is not ("email" or "mobile"))
-            throw new ArgumentOutOfRangeException(nameof(domain), "Identity match domain must be email or mobile.");
+            throw new ArgumentOutOfRangeException(
+                nameof(domain),
+                "Identity match domain must be email or mobile."
+            );
         return _hmacKeys.Keys.ToDictionary(
             version => version,
             version => ComputeHmac(domain, value, version),
-            StringComparer.Ordinal);
+            StringComparer.Ordinal
+        );
     }
 
     private byte[] ComputeHmacBytes(string domain, string value, string version)
@@ -1044,7 +1633,9 @@ public sealed class IdentityService
         if (!_hmacKeys.TryGetValue(version, out var masterKey))
             throw new InvalidOperationException("Identity HMAC version is unavailable.");
         using var keyDerivation = new HMACSHA256(masterKey);
-        var domainKey = keyDerivation.ComputeHash(Encoding.UTF8.GetBytes($"waooaw:identity:{domain}:{version}"));
+        var domainKey = keyDerivation.ComputeHash(
+            Encoding.UTF8.GetBytes($"waooaw:identity:{domain}:{version}")
+        );
         using var hmac = new HMACSHA256(domainKey);
         return hmac.ComputeHash(Encoding.UTF8.GetBytes(value.ToLowerInvariant().Trim()))[..16];
     }
@@ -1055,11 +1646,23 @@ public sealed class IdentityService
     private bool VerifyCode(string submittedCode, string storedHex, string version)
     {
         byte[] submitted;
-        try { submitted = ComputeHmacBytes("otp", submittedCode, version); }
-        catch (InvalidOperationException) { return false; }
+        try
+        {
+            submitted = ComputeHmacBytes("otp", submittedCode, version);
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
         byte[] stored;
-        try { stored = Convert.FromHexString(storedHex); }
-        catch (FormatException) { return false; }
+        try
+        {
+            stored = Convert.FromHexString(storedHex);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
         return stored.Length == submitted.Length
             && CryptographicOperations.FixedTimeEquals(submitted, stored);
     }
@@ -1070,17 +1673,23 @@ public sealed class IdentityService
         Guid idempotencyKey,
         string operationFamily,
         string canonicalHash,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         var key = idempotencyKey.ToString();
-        var existing = await db.IdempotencyLedger
-            .FirstOrDefaultAsync(e => e.ActorSubject == actorSubject
+        var existing = await db.IdempotencyLedger.FirstOrDefaultAsync(
+            e =>
+                e.ActorSubject == actorSubject
                 && e.IdempotencyKey == key
-                && e.OperationFamily == operationFamily, ct);
+                && e.OperationFamily == operationFamily,
+            ct
+        );
 
-        if (existing is null) return (null, false);
-        if (existing.CanonicalHash != canonicalHash) return (null, true);   // conflict
-        return (existing.ResponseBody, false);                               // replay
+        if (existing is null)
+            return (null, false);
+        if (existing.CanonicalHash != canonicalHash)
+            return (null, true); // conflict
+        return (existing.ResponseBody, false); // replay
     }
 
     private static async Task RecordIdempotencyAsync(
@@ -1091,17 +1700,20 @@ public sealed class IdentityService
         string canonicalHash,
         int statusCode,
         string? responseRef,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
-        db.IdempotencyLedger.Add(new IdentityIdempotencyEntry
-        {
-            ActorSubject    = actorSubject,
-            IdempotencyKey  = idempotencyKey.ToString(),
-            OperationFamily = operationFamily,
-            CanonicalHash   = canonicalHash,
-            StatusCode      = statusCode,
-            ResponseBody    = responseRef,
-        });
+        db.IdempotencyLedger.Add(
+            new IdentityIdempotencyEntry
+            {
+                ActorSubject = actorSubject,
+                IdempotencyKey = idempotencyKey.ToString(),
+                OperationFamily = operationFamily,
+                CanonicalHash = canonicalHash,
+                StatusCode = statusCode,
+                ResponseBody = responseRef,
+            }
+        );
         await db.SaveChangesAsync(ct);
     }
 }

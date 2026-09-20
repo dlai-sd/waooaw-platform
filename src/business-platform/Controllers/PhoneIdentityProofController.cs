@@ -23,7 +23,8 @@ public sealed class PhoneIdentityAdapterOptions
 [Route("internal/identity/whatsapp-proofs")]
 public sealed class PhoneIdentityProofController(
     WhatsAppJourneyService journeyService,
-    IOptions<PhoneIdentityAdapterOptions> options) : ControllerBase
+    IOptions<PhoneIdentityAdapterOptions> options
+) : ControllerBase
 {
     private readonly byte[] _signingKey = RequireKey(options.Value.SigningKey);
     private readonly string _audience = RequireAudience(options.Value.Audience);
@@ -41,7 +42,9 @@ public sealed class PhoneIdentityProofController(
         try
         {
             proof = JsonSerializer.Deserialize<VerifiedPhoneIdentityProof>(
-                rawBody, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                rawBody,
+                new JsonSerializerOptions(JsonSerializerDefaults.Web)
+            );
         }
         catch (JsonException)
         {
@@ -50,28 +53,38 @@ public sealed class PhoneIdentityProofController(
 
         if (proof is null)
             return Problem(statusCode: 400, title: "PHONE_IDENTITY_PROOF_INVALID");
-        if (!string.Equals(proof.Audience, _audience, StringComparison.Ordinal)
-            || !string.Equals(proof.AuthenticationAssurance, "AAL1_CHANNEL", StringComparison.Ordinal))
+        if (
+            !string.Equals(proof.Audience, _audience, StringComparison.Ordinal)
+            || !string.Equals(
+                proof.AuthenticationAssurance,
+                "AAL1_CHANNEL",
+                StringComparison.Ordinal
+            )
+        )
             return Problem(statusCode: 403, title: "PHONE_IDENTITY_PROOF_INVALID");
         var now = DateTimeOffset.UtcNow;
-        if (proof.VerifiedAt < proof.SentAt
+        if (
+            proof.VerifiedAt < proof.SentAt
             || proof.VerifiedAt > now.AddSeconds(30)
             || proof.ExpiresAt <= now
             || proof.ExpiresAt <= proof.VerifiedAt
-            || proof.ExpiresAt - proof.VerifiedAt > TimeSpan.FromMinutes(5))
+            || proof.ExpiresAt - proof.VerifiedAt > TimeSpan.FromMinutes(5)
+        )
             return Problem(statusCode: 400, title: "PHONE_IDENTITY_PROOF_INVALID");
 
         try
         {
             var receipt = await journeyService.ReceiveVerifiedAsync(proof, cancellationToken);
-            return Ok(new
-            {
-                messageId = receipt.MessageId,
-                status = receipt.Status,
-                journeyStage = receipt.JourneyStage,
-                reply = receipt.Reply,
-                replayed = receipt.Replayed,
-            });
+            return Ok(
+                new
+                {
+                    messageId = receipt.MessageId,
+                    status = receipt.Status,
+                    journeyStage = receipt.JourneyStage,
+                    reply = receipt.Reply,
+                    replayed = receipt.Replayed,
+                }
+            );
         }
         catch (WhatsAppWebhookException exception)
         {
@@ -100,7 +113,8 @@ public sealed class PhoneIdentityProofController(
         value.Length >= PhoneIdentityAdapterOptions.MinimumKeyLength
             ? Encoding.UTF8.GetBytes(value)
             : throw new InvalidOperationException(
-                $"PhoneIdentity:SigningKey must contain at least {PhoneIdentityAdapterOptions.MinimumKeyLength} characters.");
+                $"PhoneIdentity:SigningKey must contain at least {PhoneIdentityAdapterOptions.MinimumKeyLength} characters."
+            );
 
     private static string RequireAudience(string value) =>
         !string.IsNullOrWhiteSpace(value)

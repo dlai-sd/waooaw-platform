@@ -1,12 +1,12 @@
 // Implements: architecture/reference/product/wc085-identity-architecture-decision.md First Slice Defaults
 // constitutional_basis: C-023, C-026, C-059
 
+using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using System.Security.Claims;
-using System.Text.Json;
 using Waooaw.BusinessPlatform.Controllers;
 using Waooaw.BusinessPlatform.Services;
 
@@ -15,7 +15,8 @@ namespace Waooaw.BusinessPlatform.Infrastructure;
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class CustomerIdentityRouteAttribute(
     bool requiresMembership = false,
-    bool registrationRequiredWhenMissing = false) : Attribute
+    bool registrationRequiredWhenMissing = false
+) : Attribute
 {
     public bool RequiresMembership { get; } = requiresMembership;
     public bool RegistrationRequiredWhenMissing { get; } = registrationRequiredWhenMissing;
@@ -35,7 +36,8 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
             return;
         }
         var route = endpoint?.Metadata.GetMetadata<CustomerIdentityRouteAttribute>();
-        var identityController = endpoint?.Metadata.GetMetadata<ControllerActionDescriptor>()?.ControllerTypeInfo
+        var identityController =
+            endpoint?.Metadata.GetMetadata<ControllerActionDescriptor>()?.ControllerTypeInfo
             == typeof(IdentityController);
         var customer = IsCustomer(context.User);
         if (route is null && !identityController && !customer)
@@ -47,8 +49,10 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
         context.Items.Remove(TenantIsolationMiddleware.TenantIdItemKey);
         try
         {
-            if (route is null) throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
-            var journey = context.RequestServices.GetRequiredService<CustomerIdentityJourneyService>();
+            if (route is null)
+                throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
+            var journey =
+                context.RequestServices.GetRequiredService<CustomerIdentityJourneyService>();
             journey.ValidateActor(context.User);
             if (route.RequiresMembership)
             {
@@ -56,37 +60,55 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
                 CheckHeader(context, "x-tenant-id", membership.TenantId);
                 CheckHeader(context, "x-account-id", membership.AccountId);
                 context.Items[MembershipItem] = membership;
-                context.Items[TenantIsolationMiddleware.TenantIdItemKey] = membership.TenantId.ToString();
+                context.Items[TenantIsolationMiddleware.TenantIdItemKey] =
+                    membership.TenantId.ToString();
             }
-            else if (context.Request.Headers.ContainsKey("x-tenant-id") || context.Request.Headers.ContainsKey("x-account-id"))
+            else if (
+                context.Request.Headers.ContainsKey("x-tenant-id")
+                || context.Request.Headers.ContainsKey("x-account-id")
+            )
                 throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
             context.Items[JourneyItem] = true;
             await next(context);
         }
         catch (CustomerWorkspaceException exception)
         {
-            var registrationRequired = exception.Error == CustomerWorkspaceError.MembershipRequired
+            var registrationRequired =
+                exception.Error == CustomerWorkspaceError.MembershipRequired
                 && route?.RegistrationRequiredWhenMissing == true;
-            var code = registrationRequired ? "REGISTRATION_REQUIRED" : exception.Error switch
-            {
-                CustomerWorkspaceError.IdempotencyConflict => "IDENTITY_IDEMPOTENCY_CONFLICT",
-                CustomerWorkspaceError.RegistrationNotFound => "IDENTITY_RESOURCE_NOT_ACCESSIBLE",
-                CustomerWorkspaceError.FreshAuthenticationRequired => "IDENTITY_STEP_UP_REQUIRED",
-                CustomerWorkspaceError.RecoveryRequired => "IDENTITY_DUPLICATE_RESOLUTION_REQUIRED",
-                CustomerWorkspaceError.RegistrationIneligible => "IDENTITY_VERIFICATION_REQUIRED",
-                CustomerWorkspaceError.MembershipRequired => "IDENTITY_ACTION_DENIED",
-                CustomerWorkspaceError.MembershipInactive => "IDENTITY_ACTION_DENIED",
-                CustomerWorkspaceError.InvalidInput => "IDENTITY_REQUEST_INVALID",
-                _ => "IDENTITY_DEPENDENCY_UNAVAILABLE",
-            };
-            await ProblemAsync(context, registrationRequired ? StatusCodes.Status409Conflict : exception.StatusCode, code);
+            var code = registrationRequired
+                ? "REGISTRATION_REQUIRED"
+                : exception.Error switch
+                {
+                    CustomerWorkspaceError.IdempotencyConflict => "IDENTITY_IDEMPOTENCY_CONFLICT",
+                    CustomerWorkspaceError.RegistrationNotFound =>
+                        "IDENTITY_RESOURCE_NOT_ACCESSIBLE",
+                    CustomerWorkspaceError.FreshAuthenticationRequired =>
+                        "IDENTITY_STEP_UP_REQUIRED",
+                    CustomerWorkspaceError.RecoveryRequired =>
+                        "IDENTITY_DUPLICATE_RESOLUTION_REQUIRED",
+                    CustomerWorkspaceError.RegistrationIneligible =>
+                        "IDENTITY_VERIFICATION_REQUIRED",
+                    CustomerWorkspaceError.MembershipRequired => "IDENTITY_ACTION_DENIED",
+                    CustomerWorkspaceError.MembershipInactive => "IDENTITY_ACTION_DENIED",
+                    CustomerWorkspaceError.InvalidInput => "IDENTITY_REQUEST_INVALID",
+                    _ => "IDENTITY_DEPENDENCY_UNAVAILABLE",
+                };
+            await ProblemAsync(
+                context,
+                registrationRequired ? StatusCodes.Status409Conflict : exception.StatusCode,
+                code
+            );
         }
         catch (IdentityActionDeniedException)
         {
             await ProblemAsync(context, 403, "IDENTITY_ACTION_DENIED");
         }
-        catch (Exception exception) when (exception is NpgsqlException or DbUpdateException
-            || exception is OperationCanceledException && !context.RequestAborted.IsCancellationRequested)
+        catch (Exception exception)
+            when (exception is NpgsqlException or DbUpdateException
+                || exception is OperationCanceledException
+                    && !context.RequestAborted.IsCancellationRequested
+            )
         {
             await ProblemAsync(context, 503, "IDENTITY_DEPENDENCY_UNAVAILABLE");
         }
@@ -100,25 +122,40 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
 
     private static void CheckHeader(HttpContext context, string name, Guid expected)
     {
-        if (context.Request.Headers.TryGetValue(name, out var values)
-            && (values.Count != 1 || !Guid.TryParse(values[0], out var actual) || actual != expected))
+        if (
+            context.Request.Headers.TryGetValue(name, out var values)
+            && (
+                values.Count != 1 || !Guid.TryParse(values[0], out var actual) || actual != expected
+            )
+        )
             throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
     }
 
     private static bool IsCustomer(ClaimsPrincipal principal)
     {
-        if (principal.HasClaim("azp", "waooaw-web") || principal.HasClaim("azp", "waooaw-mobile")
-            || principal.HasClaim("idp", "google") || principal.IsInRole("customer")) return true;
+        if (
+            principal.HasClaim("azp", "waooaw-web")
+            || principal.HasClaim("azp", "waooaw-mobile")
+            || principal.HasClaim("idp", "google")
+            || principal.IsInRole("customer")
+        )
+            return true;
         try
         {
-            return principal.FindAll("realm_access").Select(claim =>
-            {
-                using var realm = JsonDocument.Parse(claim.Value);
-                return realm.RootElement.GetProperty("roles").EnumerateArray()
-                    .Any(role => role.GetString() == "customer");
-            }).Any(isCustomer => isCustomer);
+            return principal
+                .FindAll("realm_access")
+                .Select(claim =>
+                {
+                    using var realm = JsonDocument.Parse(claim.Value);
+                    return realm
+                        .RootElement.GetProperty("roles")
+                        .EnumerateArray()
+                        .Any(role => role.GetString() == "customer");
+                })
+                .Any(isCustomer => isCustomer);
         }
-        catch (Exception exception) when (exception is JsonException or KeyNotFoundException or InvalidOperationException)
+        catch (Exception exception)
+            when (exception is JsonException or KeyNotFoundException or InvalidOperationException)
         {
             return true;
         }
@@ -127,10 +164,20 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
     private static Task ProblemAsync(HttpContext context, int status, string code)
     {
         context.Response.StatusCode = status;
-        return context.Response.WriteAsJsonAsync(new
-        {
-            type = "https://waooaw.com/errors/identity/" + code.ToLowerInvariant().Replace('_', '-'),
-            title = code, status, code, detail = "The identity operation could not be completed.", correlationId = Guid.NewGuid(),
-        }, options: null, contentType: "application/problem+json", cancellationToken: context.RequestAborted);
+        return context.Response.WriteAsJsonAsync(
+            new
+            {
+                type = "https://waooaw.com/errors/identity/"
+                    + code.ToLowerInvariant().Replace('_', '-'),
+                title = code,
+                status,
+                code,
+                detail = "The identity operation could not be completed.",
+                correlationId = Guid.NewGuid(),
+            },
+            options: null,
+            contentType: "application/problem+json",
+            cancellationToken: context.RequestAborted
+        );
     }
 }

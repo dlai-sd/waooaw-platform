@@ -1,16 +1,16 @@
 // Implements: architecture/reference/components/business-platform.md § Tenant Isolation
 // constitutional_basis: C-005, C-023, C-026, C-059
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using Temporalio.Extensions.Hosting;
 using Waooaw.BusinessPlatform.Controllers;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
 using Waooaw.BusinessPlatform.Workflows;
 using Waooaw.ConstitutionalEngine.Grpc;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.Extensions.Options;
-using Temporalio.Extensions.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,35 +18,41 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddHealthChecks()
+builder
+    .Services.AddHealthChecks()
     .AddCheck<IdentitySchemaHealthCheck>("identity-schema", tags: ["ready"])
     .AddCheck<ConversationCursorHealthCheck>("conversation-cursor", tags: ["ready"]);
 
 // ── JWT Authentication — Keycloak (ADR-003, C-026) ───────────────────────────
 // tenant_id extracted in TenantIsolationMiddleware after token is validated.
 // Invalid token → 401. Missing tenant_id claim → 403 (enforced in middleware).
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+builder
+    .Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.Authority = builder.Configuration["Keycloak:Authority"]
+        options.Authority =
+            builder.Configuration["Keycloak:Authority"]
             ?? builder.Configuration["IdentityEnvironment:Keycloak:Issuer"]
             ?? throw new InvalidOperationException(
-                "Keycloak:Authority is required (C-026 — tenant isolation cannot function without JWT issuer).");
-        options.Audience = builder.Configuration["IdentityEnvironment:Keycloak:Audience"]
+                "Keycloak:Authority is required (C-026 — tenant isolation cannot function without JWT issuer)."
+            );
+        options.Audience =
+            builder.Configuration["IdentityEnvironment:Keycloak:Audience"]
             ?? builder.Configuration["Keycloak:Audience"]
             ?? "waooaw-platform";
-        options.RequireHttpsMetadata = builder.Configuration.GetValue<bool?>("Keycloak:RequireHttpsMetadata")
+        options.RequireHttpsMetadata =
+            builder.Configuration.GetValue<bool?>("Keycloak:RequireHttpsMetadata")
             ?? !builder.Environment.IsDevelopment();
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer            = true,
-            ValidateAudience          = true,
-            ValidateLifetime          = true,
-            ValidateIssuerSigningKey  = true,
-            ValidAlgorithms           = [SecurityAlgorithms.RsaSha256],
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidAlgorithms = [SecurityAlgorithms.RsaSha256],
             // Clock skew: tight on purpose — stale tokens violate tenant contract guarantees
-            ClockSkew                 = TimeSpan.FromSeconds(30),
+            ClockSkew = TimeSpan.FromSeconds(30),
         };
 
         options.Events = new JwtBearerEvents
@@ -54,32 +60,35 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             OnChallenge = async ctx =>
             {
                 // Log every rejected token challenge for constitutional audit visibility
-                var logger = ctx.HttpContext.RequestServices
-                    .GetRequiredService<ILogger<Program>>();
+                var logger = ctx.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
                 logger.LogWarning(
                     "JWT challenge fired: path={Path} (C-026 enforcement)",
-                    ctx.Request.Path);
+                    ctx.Request.Path
+                );
 
                 ctx.HandleResponse();
                 ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await ctx.Response.WriteAsJsonAsync(new
-                {
-                    type = "https://waooaw.com/errors/identity/identity-session-required",
-                    title = "IDENTITY_SESSION_REQUIRED",
-                    status = StatusCodes.Status401Unauthorized,
-                    detail = "A valid Keycloak-issued Bearer token is required.",
-                    code = "IDENTITY_SESSION_REQUIRED",
-                    correlationId = Guid.NewGuid(),
-                }, options: null, contentType: "application/problem+json",
-                    cancellationToken: ctx.HttpContext.RequestAborted);
+                await ctx.Response.WriteAsJsonAsync(
+                    new
+                    {
+                        type = "https://waooaw.com/errors/identity/identity-session-required",
+                        title = "IDENTITY_SESSION_REQUIRED",
+                        status = StatusCodes.Status401Unauthorized,
+                        detail = "A valid Keycloak-issued Bearer token is required.",
+                        code = "IDENTITY_SESSION_REQUIRED",
+                        correlationId = Guid.NewGuid(),
+                    },
+                    options: null,
+                    contentType: "application/problem+json",
+                    cancellationToken: ctx.HttpContext.RequestAborted
+                );
             },
         };
     });
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("InternalService", policy =>
-        policy.RequireClaim("client_type", "service"));
+    options.AddPolicy("InternalService", policy => policy.RequireClaim("client_type", "service"));
 });
 
 // ── Tenant Isolation — C-005, C-026, ADR-003 ─────────────────────────────────
@@ -96,33 +105,54 @@ var workloadCredentials = builder.Configuration["WAOOAW_WORKLOAD_CREDENTIALS"];
 WorkloadIdentityClient? workloadIdentity = null;
 var prWorkspaceBaseUrl = builder.Configuration["ProfessionalRuntime:RelationshipWorkspaceBaseUrl"];
 var wbeWorkspaceBaseUrl = builder.Configuration["BillingEngine:RelationshipWorkspaceBaseUrl"];
-if (!string.IsNullOrWhiteSpace(workloadCredentials)
+if (
+    !string.IsNullOrWhiteSpace(workloadCredentials)
     && Uri.TryCreate(prWorkspaceBaseUrl, UriKind.Absolute, out var prWorkspaceUri)
-    && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var wbeWorkspaceUri))
+    && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var wbeWorkspaceUri)
+)
 {
     workloadIdentity = WorkloadIdentityClient.Load(workloadCredentials);
     builder.Services.AddSingleton(workloadIdentity);
     builder.Services.AddSingleton<IRelationshipWorkspaceOwnerGateway>(
-        new AuthenticatedRelationshipWorkspaceOwnerGateway(workloadIdentity, prWorkspaceUri, wbeWorkspaceUri));
-    builder.Services.AddSingleton<IRelationshipTrialOwnerGateway>(services =>
-        new HttpRelationshipTrialOwnerGateway(
-            services.GetRequiredService<IHttpClientFactory>(), workloadIdentity, prWorkspaceUri));
+        new AuthenticatedRelationshipWorkspaceOwnerGateway(
+            workloadIdentity,
+            prWorkspaceUri,
+            wbeWorkspaceUri
+        )
+    );
+    builder.Services.AddSingleton<IRelationshipTrialOwnerGateway>(
+        services => new HttpRelationshipTrialOwnerGateway(
+            services.GetRequiredService<IHttpClientFactory>(),
+            workloadIdentity,
+            prWorkspaceUri
+        )
+    );
 }
 else
 {
-    builder.Services.AddSingleton<IRelationshipWorkspaceOwnerGateway, UnconfiguredRelationshipWorkspaceOwnerGateway>();
-    builder.Services.AddSingleton<IRelationshipTrialOwnerGateway, UnconfiguredRelationshipTrialOwnerGateway>();
+    builder.Services.AddSingleton<
+        IRelationshipWorkspaceOwnerGateway,
+        UnconfiguredRelationshipWorkspaceOwnerGateway
+    >();
+    builder.Services.AddSingleton<
+        IRelationshipTrialOwnerGateway,
+        UnconfiguredRelationshipTrialOwnerGateway
+    >();
 }
 
 // ── WBE (billing-engine) HttpClient — used by SubscriptionsController + Temporal activities ──
 var wbeBaseUrl = builder.Configuration["BillingEngine:BaseUrl"] ?? "http://billing-engine:8140";
-builder.Services.AddHttpClient("WBE", client =>
-{
-    client.BaseAddress = new Uri(wbeBaseUrl);
-    client.Timeout     = TimeSpan.FromSeconds(30);
-    var opsToken = builder.Configuration["BillingEngine:OpsAuthToken"];
-    if (!string.IsNullOrWhiteSpace(opsToken)) client.DefaultRequestHeaders.Add("X-Ops-Token", opsToken);
-});
+builder.Services.AddHttpClient(
+    "WBE",
+    client =>
+    {
+        client.BaseAddress = new Uri(wbeBaseUrl);
+        client.Timeout = TimeSpan.FromSeconds(30);
+        var opsToken = builder.Configuration["BillingEngine:OpsAuthToken"];
+        if (!string.IsNullOrWhiteSpace(opsToken))
+            client.DefaultRequestHeaders.Add("X-Ops-Token", opsToken);
+    }
+);
 
 // ── Temporal worker — trial expiry saga (ADR-015, conditional on config) ─────
 // Worker is skipped when Temporal:Host is not configured (e.g., in unit tests).
@@ -134,7 +164,8 @@ if (!string.IsNullOrWhiteSpace(temporalHost))
     builder.Services.AddScoped<ActivationWorkflowDispatchService>();
     builder.Services.AddSingleton<TrialExpiryActivities>();
     builder.Services.AddScoped<ActivationActivities>();
-    builder.Services.AddHostedTemporalWorker("bp-trial-worker")
+    builder
+        .Services.AddHostedTemporalWorker("bp-trial-worker")
         .AddWorkflow<TrialExpiryWorkflow>()
         .AddWorkflow<ActivationWorkflow>()
         .AddScopedActivities<ActivationActivities>()
@@ -142,39 +173,51 @@ if (!string.IsNullOrWhiteSpace(temporalHost))
 }
 
 // ── Payload Store DbContext — DPDPA Right-to-Erasure (ADR-044) ───────────────
-var payloadStoreConn = builder.Configuration.GetConnectionString("PayloadStore")
+var payloadStoreConn =
+    builder.Configuration.GetConnectionString("PayloadStore")
     ?? builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Host=localhost;Database=waooaw_bp;Username=bp_app;";
-builder.Services.AddDbContextFactory<Waooaw.BusinessPlatform.Infrastructure.PayloadStoreDbContext>(opts =>
-    opts.UseNpgsql(payloadStoreConn));
+builder.Services.AddDbContextFactory<Waooaw.BusinessPlatform.Infrastructure.PayloadStoreDbContext>(
+    opts => opts.UseNpgsql(payloadStoreConn)
+);
 
 // ── Provider Registry DbContext — runtime provider routing table (ADR-042) ───
-var providerRegistryConn = builder.Configuration.GetConnectionString("ProviderRegistry")
+var providerRegistryConn =
+    builder.Configuration.GetConnectionString("ProviderRegistry")
     ?? builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Host=localhost;Database=waooaw_bp;Username=bp_app;";
-builder.Services.AddDbContextFactory<Waooaw.BusinessPlatform.Infrastructure.ProviderRegistryDbContext>(opts =>
-    opts.UseNpgsql(providerRegistryConn));
+builder.Services.AddDbContextFactory<Waooaw.BusinessPlatform.Infrastructure.ProviderRegistryDbContext>(
+    opts => opts.UseNpgsql(providerRegistryConn)
+);
 
 // ── Skill Catalog DbContext — ADR-043 §2 ─────────────────────────────────────
-var skillCatalogConn = builder.Configuration.GetConnectionString("SkillCatalog")
+var skillCatalogConn =
+    builder.Configuration.GetConnectionString("SkillCatalog")
     ?? builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Host=localhost;Database=waooaw_bp;Username=bp_app;";
-builder.Services.AddDbContextFactory<Waooaw.BusinessPlatform.Infrastructure.SkillCatalogDbContext>(opts =>
-    opts.UseNpgsql(skillCatalogConn));
+builder.Services.AddDbContextFactory<Waooaw.BusinessPlatform.Infrastructure.SkillCatalogDbContext>(
+    opts => opts.UseNpgsql(skillCatalogConn)
+);
 
 // ── Employment Relationship aggregate — GOAL-005 D-03 / WC-057 ────────────
-var employmentRelationshipConn = builder.Configuration.GetConnectionString("EmploymentRelationship")
+var employmentRelationshipConn =
+    builder.Configuration.GetConnectionString("EmploymentRelationship")
     ?? builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Host=localhost;Database=waooaw_bp;Username=business_app;";
-builder.Services.AddDbContextFactory<EmploymentRelationshipDbContext>((services, options) =>
-    options
-        .UseNpgsql(employmentRelationshipConn)
-        .AddInterceptors(services.GetRequiredService<TenantDbConnectionInterceptor>()));
+builder.Services.AddDbContextFactory<EmploymentRelationshipDbContext>(
+    (services, options) =>
+        options
+            .UseNpgsql(employmentRelationshipConn)
+            .AddInterceptors(services.GetRequiredService<TenantDbConnectionInterceptor>())
+);
 builder.Services.AddScoped<IRelationshipConstitutionalGateway, RelationshipConstitutionalGateway>();
 builder.Services.AddSingleton<AgentAdmissionValidator>();
 builder.Services.AddScoped<AgentAdmissionService>();
 builder.Services.AddScoped<EmploymentRelationshipService>();
-builder.Services.AddScoped<IRelationshipEmergencyStopGateway, GrpcRelationshipEmergencyStopGateway>();
+builder.Services.AddScoped<
+    IRelationshipEmergencyStopGateway,
+    GrpcRelationshipEmergencyStopGateway
+>();
 builder.Services.AddScoped<RelationshipEmergencyStopService>();
 builder.Services.AddScoped<RelationshipConfigurationService>();
 builder.Services.AddScoped<CustomerAlertService>();
@@ -182,41 +225,69 @@ builder.Services.AddScoped<EmploymentContractService>();
 builder.Services.AddScoped<EmploymentContractAcceptanceService>();
 builder.Services.AddScoped<IRelationshipPaymentGateway, HttpRelationshipPaymentGateway>();
 builder.Services.AddScoped<RelationshipPaymentService>();
-if (workloadIdentity is not null && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var activationWbeUri))
+if (
+    workloadIdentity is not null
+    && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var activationWbeUri)
+)
     builder.Services.AddSingleton<IActivationBillingGateway>(
-        new AuthenticatedActivationBillingGateway(workloadIdentity, activationWbeUri));
+        new AuthenticatedActivationBillingGateway(workloadIdentity, activationWbeUri)
+    );
 else
-    builder.Services.AddSingleton<IActivationBillingGateway, UnconfiguredActivationBillingGateway>();
+    builder.Services.AddSingleton<
+        IActivationBillingGateway,
+        UnconfiguredActivationBillingGateway
+    >();
 builder.Services.AddScoped<IOfferabilityGuard, PersistentOfferabilityGuard>();
 builder.Services.AddScoped<OfferabilityService>();
-if (workloadIdentity is not null && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var offerabilityWbeUri))
+if (
+    workloadIdentity is not null
+    && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var offerabilityWbeUri)
+)
     builder.Services.AddSingleton<IOfferabilityOwnerGateway>(
-        new AuthenticatedOfferabilityOwnerGateway(workloadIdentity, offerabilityWbeUri));
+        new AuthenticatedOfferabilityOwnerGateway(workloadIdentity, offerabilityWbeUri)
+    );
 else
-    builder.Services.AddSingleton<IOfferabilityOwnerGateway, UnconfiguredOfferabilityOwnerGateway>();
+    builder.Services.AddSingleton<
+        IOfferabilityOwnerGateway,
+        UnconfiguredOfferabilityOwnerGateway
+    >();
 builder.Services.AddScoped<OfferabilityOrchestrationService>();
 builder.Services.AddScoped<ActivationOrchestrationService>();
 builder.Services.AddScoped<RelationshipTrialService>();
 builder.Services.Configure<WhatsAppJourneyOptions>(builder.Configuration.GetSection("WhatsApp"));
-builder.Services.Configure<PhoneIdentityAdapterOptions>(builder.Configuration.GetSection("PhoneIdentity"));
-builder.Services.AddScoped<IWhatsAppRegistrationEvidenceGateway, WhatsAppRegistrationEvidenceGateway>();
+builder.Services.Configure<PhoneIdentityAdapterOptions>(
+    builder.Configuration.GetSection("PhoneIdentity")
+);
+builder.Services.AddScoped<
+    IWhatsAppRegistrationEvidenceGateway,
+    WhatsAppRegistrationEvidenceGateway
+>();
 builder.Services.AddScoped<WhatsAppJourneyService>();
-builder.Services.Configure<ChannelContinuityOptions>(builder.Configuration.GetSection("ChannelContinuity"));
+builder.Services.Configure<ChannelContinuityOptions>(
+    builder.Configuration.GetSection("ChannelContinuity")
+);
 builder.Services.AddScoped<ChannelContinuityService>();
 builder.Services.AddScoped<IRelationshipEvidenceGateway, GrpcRelationshipEvidenceGateway>();
-builder.Services.Configure<RelationshipEvidenceExportOptions>(builder.Configuration.GetSection("RelationshipEvidenceExport"));
+builder.Services.Configure<RelationshipEvidenceExportOptions>(
+    builder.Configuration.GetSection("RelationshipEvidenceExport")
+);
 builder.Services.AddScoped<RelationshipEvidenceService>();
 
 var voicePrBaseUrl = builder.Configuration["ProfessionalRuntime:VoiceBaseUrl"];
 var voicePrSecret = builder.Configuration["Voice:ProfessionalRuntimeJwtSecret"];
-if (Uri.TryCreate(voicePrBaseUrl, UriKind.Absolute, out var voicePrUri)
-    && !string.IsNullOrWhiteSpace(voicePrSecret))
+if (
+    Uri.TryCreate(voicePrBaseUrl, UriKind.Absolute, out var voicePrUri)
+    && !string.IsNullOrWhiteSpace(voicePrSecret)
+)
 {
-    builder.Services.AddHttpClient("VoiceProfessionalRuntime", client =>
-    {
-        client.BaseAddress = voicePrUri;
-        client.Timeout = TimeSpan.FromSeconds(15);
-    });
+    builder.Services.AddHttpClient(
+        "VoiceProfessionalRuntime",
+        client =>
+        {
+            client.BaseAddress = voicePrUri;
+            client.Timeout = TimeSpan.FromSeconds(15);
+        }
+    );
     builder.Services.AddScoped<IVoiceTranscriptionGateway, HttpVoiceTranscriptionGateway>();
 }
 else
@@ -227,55 +298,87 @@ else
 // ── Identity Boundary — WC-034 F2 (identity-boundary.md) ─────────────────
 // Pre-account registration paths use actor subject (JWT sub); no tenant_id required.
 // Account-link and mobile-verification paths require full tenant JWT.
-var identityConn = builder.Configuration.GetConnectionString("Identity")
+var identityConn =
+    builder.Configuration.GetConnectionString("Identity")
     ?? builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Host=localhost;Database=waooaw_bp;Username=business_app;";
 if (new Npgsql.NpgsqlConnectionStringBuilder(identityConn).NoResetOnClose)
     throw new InvalidOperationException("Identity connections require pool reset on close.");
-builder.Services.AddDbContextFactory<Waooaw.BusinessPlatform.Infrastructure.IdentityDbContext>(options =>
-    options.UseNpgsql(identityConn));
-builder.Services.AddOptions<IdentityBrokerReadOptions>()
-    .Bind(builder.Configuration.GetSection(IdentityBrokerReadOptions.SectionName), options =>
-        options.ErrorOnUnknownConfiguration = true)
-    .Validate(options => !options.Enabled || options.IsConfigured,
-        "Enabled customer identity requires explicit approved private broker-read configuration.")
+builder.Services.AddDbContextFactory<Waooaw.BusinessPlatform.Infrastructure.IdentityDbContext>(
+    options => options.UseNpgsql(identityConn)
+);
+builder
+    .Services.AddOptions<IdentityBrokerReadOptions>()
+    .Bind(
+        builder.Configuration.GetSection(IdentityBrokerReadOptions.SectionName),
+        options => options.ErrorOnUnknownConfiguration = true
+    )
+    .Validate(
+        options => !options.Enabled || options.IsConfigured,
+        "Enabled customer identity requires explicit approved private broker-read configuration."
+    )
     .ValidateOnStart();
-builder.Services.AddHttpClient<GoogleWorkspaceProofAdapter>(client => client.Timeout = TimeSpan.FromSeconds(10))
-    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false })
+builder
+    .Services.AddHttpClient<GoogleWorkspaceProofAdapter>(client =>
+        client.Timeout = TimeSpan.FromSeconds(10)
+    )
+    .ConfigurePrimaryHttpMessageHandler(() =>
+        new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false }
+    )
     .RemoveAllLoggers();
 builder.Services.AddScoped<CustomerIdentityJourneyService>();
 builder.Services.Configure<Waooaw.BusinessPlatform.Services.IdentityHmacOptions>(
-    builder.Configuration.GetSection("Identity:Hmac"));
-builder.Services.AddSingleton<IValidateOptions<IdentityEnvironmentOptions>, IdentityEnvironmentOptionsValidator>();
-builder.Services.AddOptions<IdentityEnvironmentOptions>()
-    .Bind(builder.Configuration.GetSection(IdentityEnvironmentOptions.SectionName), options =>
-        options.ErrorOnUnknownConfiguration = true)
+    builder.Configuration.GetSection("Identity:Hmac")
+);
+builder.Services.AddSingleton<
+    IValidateOptions<IdentityEnvironmentOptions>,
+    IdentityEnvironmentOptionsValidator
+>();
+builder
+    .Services.AddOptions<IdentityEnvironmentOptions>()
+    .Bind(
+        builder.Configuration.GetSection(IdentityEnvironmentOptions.SectionName),
+        options => options.ErrorOnUnknownConfiguration = true
+    )
     .ValidateOnStart();
 builder.Services.AddSingleton<IdentityProviderProjectionService>();
-builder.Services.AddSingleton<Waooaw.BusinessPlatform.Services.IIdentityVerificationDispatcher,
-    Waooaw.BusinessPlatform.Services.UnconfiguredVerificationDispatcher>();
+builder.Services.AddSingleton<
+    Waooaw.BusinessPlatform.Services.IIdentityVerificationDispatcher,
+    Waooaw.BusinessPlatform.Services.UnconfiguredVerificationDispatcher
+>();
 builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.IdentityService>();
 
 // ── Conversation Core — WC-034 F3 ───────────────────────────────────────────
-var conversationConn = builder.Configuration.GetConnectionString("Conversation")
+var conversationConn =
+    builder.Configuration.GetConnectionString("Conversation")
     ?? builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Host=localhost;Database=waooaw_bp;Username=business_app;";
-builder.Services.AddDbContextFactory<ConversationStoreDbContext>((services, options) =>
-    options
-        .UseNpgsql(conversationConn)
-        .AddInterceptors(services.GetRequiredService<TenantDbConnectionInterceptor>()));
-builder.Services.AddSingleton<IValidateOptions<ConversationCursorOptions>, ConversationCursorOptionsValidator>();
-builder.Services.AddOptions<ConversationCursorOptions>()
+builder.Services.AddDbContextFactory<ConversationStoreDbContext>(
+    (services, options) =>
+        options
+            .UseNpgsql(conversationConn)
+            .AddInterceptors(services.GetRequiredService<TenantDbConnectionInterceptor>())
+);
+builder.Services.AddSingleton<
+    IValidateOptions<ConversationCursorOptions>,
+    ConversationCursorOptionsValidator
+>();
+builder
+    .Services.AddOptions<ConversationCursorOptions>()
     .Bind(builder.Configuration.GetSection("Conversation"))
     .ValidateOnStart();
 builder.Services.AddSingleton<ConversationCursorCodec>();
-var conversationPrBaseUrl = builder.Configuration["Conversation:ProfessionalRuntimeBaseUrl"]
+var conversationPrBaseUrl =
+    builder.Configuration["Conversation:ProfessionalRuntimeBaseUrl"]
     ?? "http://professional-runtime:5003";
-builder.Services.AddHttpClient("ConversationProfessionalRuntime", client =>
-{
-    client.BaseAddress = new Uri(conversationPrBaseUrl);
-    client.Timeout = TimeSpan.FromSeconds(10);
-});
+builder.Services.AddHttpClient(
+    "ConversationProfessionalRuntime",
+    client =>
+    {
+        client.BaseAddress = new Uri(conversationPrBaseUrl);
+        client.Timeout = TimeSpan.FromSeconds(10);
+    }
+);
 builder.Services.AddScoped<IConversationExecutionGateway, HttpConversationExecutionGateway>();
 builder.Services.AddScoped<IOperationalMandateResolver, OperationalMandateResolver>();
 builder.Services.AddScoped<PerformanceReviewService>();
@@ -283,20 +386,27 @@ builder.Services.AddScoped<ConversationService>();
 builder.Services.AddScoped<PortalInteractionService>();
 
 // ── Voice Contributions — WC-062 / GOAL-005 F6 ─────────────────────────────
-var voiceConn = builder.Configuration.GetConnectionString("VoiceContribution")
+var voiceConn =
+    builder.Configuration.GetConnectionString("VoiceContribution")
     ?? builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Host=localhost;Database=waooaw_bp;Username=business_app;";
-builder.Services.AddDbContextFactory<VoiceContributionDbContext>((services, options) =>
-    options
-        .UseNpgsql(voiceConn)
-        .AddInterceptors(services.GetRequiredService<TenantDbConnectionInterceptor>()));
-if (!string.IsNullOrWhiteSpace(builder.Configuration["Voice:Media:FfprobePath"])
+builder.Services.AddDbContextFactory<VoiceContributionDbContext>(
+    (services, options) =>
+        options
+            .UseNpgsql(voiceConn)
+            .AddInterceptors(services.GetRequiredService<TenantDbConnectionInterceptor>())
+);
+if (
+    !string.IsNullOrWhiteSpace(builder.Configuration["Voice:Media:FfprobePath"])
     && !string.IsNullOrWhiteSpace(builder.Configuration["Voice:Media:ClamAvHost"])
     && !string.IsNullOrWhiteSpace(builder.Configuration["Voice:Media:PayloadRoot"])
-    && !string.IsNullOrWhiteSpace(builder.Configuration["Voice:Media:EncryptionKey"]))
+    && !string.IsNullOrWhiteSpace(builder.Configuration["Voice:Media:EncryptionKey"])
+)
 {
     builder.Services.AddSingleton<ConfiguredVoiceMediaGateway>();
-    builder.Services.AddSingleton<IVoiceMediaGateway>(services => services.GetRequiredService<ConfiguredVoiceMediaGateway>());
+    builder.Services.AddSingleton<IVoiceMediaGateway>(services =>
+        services.GetRequiredService<ConfiguredVoiceMediaGateway>()
+    );
     builder.Services.AddHostedService<VoiceMediaRetentionWorker>();
 }
 else
@@ -334,15 +444,18 @@ app.UseAuthorization();
 // C-005 / C-026: sets PostgreSQL session variable from JWT tenant_id claim.
 // Returns 403 if tenant_id claim is absent from a successfully authenticated token.
 app.UseMiddleware<CustomerMembershipMiddleware>();
-app.UseWhen(context => !context.Items.ContainsKey(CustomerMembershipMiddleware.JourneyItem),
-    branch => branch.UseTenantIsolation());
+app.UseWhen(
+    context => !context.Items.ContainsKey(CustomerMembershipMiddleware.JourneyItem),
+    branch => branch.UseTenantIsolation()
+);
 
 app.MapControllers();
 app.MapHealthChecks("/health");
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
-app.MapHealthChecks("/health/ready", new HealthCheckOptions {
-    Predicate = registration => registration.Tags.Contains("ready"),
-});
+app.MapHealthChecks(
+    "/health/ready",
+    new HealthCheckOptions { Predicate = registration => registration.Tags.Contains("ready") }
+);
 
 app.Run();
 

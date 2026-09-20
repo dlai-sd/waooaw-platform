@@ -12,16 +12,24 @@ namespace Waooaw.BusinessPlatform.Services;
 
 public sealed class HttpConversationExecutionGateway(
     IHttpClientFactory httpClientFactory,
-    IConfiguration configuration) : IConversationExecutionGateway
+    IConfiguration configuration
+) : IConversationExecutionGateway
 {
-    private sealed record ExecutionText(string SchemaVersion, string ContentType, string Text, string Language);
+    private sealed record ExecutionText(
+        string SchemaVersion,
+        string ContentType,
+        string Text,
+        string Language
+    );
+
     private sealed record StartRequest(
         string SchemaVersion,
         Guid MessageId,
         int DecisionSpaceVersion,
         string Locale,
         OperationalMandateV1 OperationalMandate,
-        ExecutionText Content);
+        ExecutionText Content
+    );
 
     public async Task StartAsync(
         Guid conversationId,
@@ -32,34 +40,42 @@ public sealed class HttpConversationExecutionGateway(
         IReadOnlyList<ConversationTextBlockV1> content,
         OperationalMandateV1 operationalMandate,
         Guid idempotencyKey,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var secret = configuration["Conversation:ProfessionalRuntimeJwtSecret"];
         if (string.IsNullOrWhiteSpace(secret) || content.Count != 1)
             throw new ConversationExecutionUnavailableException();
         using var request = new HttpRequestMessage(
             HttpMethod.Post,
-            $"api/v1/internal/conversations/{conversationId:D}/executions");
+            $"api/v1/internal/conversations/{conversationId:D}/executions"
+        );
         request.Headers.Authorization = new AuthenticationHeaderValue(
             "Bearer",
-            CreateAssertion(secret, operationalMandate));
+            CreateAssertion(secret, operationalMandate)
+        );
         request.Headers.Add("Idempotency-Key", idempotencyKey.ToString("D"));
         request.Headers.Add("X-Correlation-Id", executionId.ToString("D"));
-        request.Content = JsonContent.Create(new StartRequest(
-            "1.0",
-            messageId,
-            operationalMandate.DecisionSpaceRevision,
-            locale,
-            operationalMandate,
-            new ExecutionText("1.0", "TEXT", content[0].Text, content[0].Language ?? locale)));
+        request.Content = JsonContent.Create(
+            new StartRequest(
+                "1.0",
+                messageId,
+                operationalMandate.DecisionSpaceRevision,
+                locale,
+                operationalMandate,
+                new ExecutionText("1.0", "TEXT", content[0].Text, content[0].Language ?? locale)
+            )
+        );
         try
         {
-            using var response = await httpClientFactory.CreateClient("ConversationProfessionalRuntime")
+            using var response = await httpClientFactory
+                .CreateClient("ConversationProfessionalRuntime")
                 .SendAsync(request, cancellationToken);
             if (!response.IsSuccessStatusCode)
                 throw new ConversationExecutionUnavailableException();
         }
-        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+        catch (Exception exception)
+            when (exception is HttpRequestException or TaskCanceledException)
         {
             throw new ConversationExecutionUnavailableException();
         }
@@ -69,8 +85,8 @@ public sealed class HttpConversationExecutionGateway(
         Guid conversationId,
         Guid executionId,
         Guid idempotencyKey,
-        CancellationToken cancellationToken) =>
-        throw new ConversationExecutionUnavailableException();
+        CancellationToken cancellationToken
+    ) => throw new ConversationExecutionUnavailableException();
 
     private static string CreateAssertion(string secret, OperationalMandateV1 mandate)
     {
@@ -87,13 +103,17 @@ public sealed class HttpConversationExecutionGateway(
         };
         var credentials = new SigningCredentials(
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
-            SecurityAlgorithms.HmacSha256);
-        return new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(
-            issuer: "business-platform",
-            audience: "professional-runtime",
-            claims: claims,
-            notBefore: now.UtcDateTime,
-            expires: now.AddSeconds(30).UtcDateTime,
-            signingCredentials: credentials));
+            SecurityAlgorithms.HmacSha256
+        );
+        return new JwtSecurityTokenHandler().WriteToken(
+            new JwtSecurityToken(
+                issuer: "business-platform",
+                audience: "professional-runtime",
+                claims: claims,
+                notBefore: now.UtcDateTime,
+                expires: now.AddSeconds(30).UtcDateTime,
+                signingCredentials: credentials
+            )
+        );
     }
 }

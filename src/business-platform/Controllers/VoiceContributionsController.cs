@@ -19,17 +19,43 @@ public sealed class VoiceContributionsController(VoiceContributionService servic
         Guid relationshipId,
         [FromHeader(Name = "Idempotency-Key")] Guid idempotencyKey,
         [FromBody] CreateVoiceContributionSessionRequestV1 request,
-        CancellationToken cancellationToken) => ExecuteAsync(async (tenantId, participantId) =>
-    {
-        var result = await service.CreateAsync(
-            tenantId, participantId, relationshipId, idempotencyKey, request, cancellationToken);
-        return result.Replayed ? Ok(result.Value) : StatusCode(StatusCodes.Status201Created, result.Value);
-    });
+        CancellationToken cancellationToken
+    ) =>
+        ExecuteAsync(
+            async (tenantId, participantId) =>
+            {
+                var result = await service.CreateAsync(
+                    tenantId,
+                    participantId,
+                    relationshipId,
+                    idempotencyKey,
+                    request,
+                    cancellationToken
+                );
+                return result.Replayed
+                    ? Ok(result.Value)
+                    : StatusCode(StatusCodes.Status201Created, result.Value);
+            }
+        );
 
     [HttpGet("sessions/{sessionId:guid}")]
-    public Task<IActionResult> GetAsync(Guid relationshipId, Guid sessionId, CancellationToken cancellationToken) =>
-        ExecuteAsync(async (tenantId, participantId) => Ok(await service.GetAsync(
-            tenantId, participantId, relationshipId, sessionId, cancellationToken)));
+    public Task<IActionResult> GetAsync(
+        Guid relationshipId,
+        Guid sessionId,
+        CancellationToken cancellationToken
+    ) =>
+        ExecuteAsync(
+            async (tenantId, participantId) =>
+                Ok(
+                    await service.GetAsync(
+                        tenantId,
+                        participantId,
+                        relationshipId,
+                        sessionId,
+                        cancellationToken
+                    )
+                )
+        );
 
     [HttpPost("sessions/{sessionId:guid}/audio")]
     [RequestSizeLimit(16 * 1024 * 1024)]
@@ -38,28 +64,44 @@ public sealed class VoiceContributionsController(VoiceContributionService servic
         Guid sessionId,
         [FromHeader(Name = "Idempotency-Key")] Guid idempotencyKey,
         IFormFile audio,
-        CancellationToken cancellationToken) => ExecuteAsync(async (tenantId, participantId) =>
-    {
-        await using var stream = audio.OpenReadStream();
-        var result = await service.UploadAsync(
-            tenantId,
-            participantId,
-            relationshipId,
-            sessionId,
-            idempotencyKey,
-            stream,
-            audio.ContentType,
-            cancellationToken);
-        return result.Replayed ? Ok(result.Value) : Accepted(result.Value);
-    });
+        CancellationToken cancellationToken
+    ) =>
+        ExecuteAsync(
+            async (tenantId, participantId) =>
+            {
+                await using var stream = audio.OpenReadStream();
+                var result = await service.UploadAsync(
+                    tenantId,
+                    participantId,
+                    relationshipId,
+                    sessionId,
+                    idempotencyKey,
+                    stream,
+                    audio.ContentType,
+                    cancellationToken
+                );
+                return result.Replayed ? Ok(result.Value) : Accepted(result.Value);
+            }
+        );
 
     [HttpGet("sessions/{sessionId:guid}/transcript")]
     public Task<IActionResult> GetTranscriptAsync(
         Guid relationshipId,
         Guid sessionId,
-        CancellationToken cancellationToken) => ExecuteAsync(async (tenantId, participantId) =>
-            Ok(await service.GetTranscriptAsync(
-                tenantId, participantId, relationshipId, sessionId, cancellationToken)));
+        CancellationToken cancellationToken
+    ) =>
+        ExecuteAsync(
+            async (tenantId, participantId) =>
+                Ok(
+                    await service.GetTranscriptAsync(
+                        tenantId,
+                        participantId,
+                        relationshipId,
+                        sessionId,
+                        cancellationToken
+                    )
+                )
+        );
 
     [HttpPut("sessions/{sessionId:guid}/correction")]
     public Task<IActionResult> CorrectAsync(
@@ -67,9 +109,24 @@ public sealed class VoiceContributionsController(VoiceContributionService servic
         Guid sessionId,
         [FromHeader(Name = "Idempotency-Key")] Guid idempotencyKey,
         [FromBody] VoiceCorrectionRequestV1 request,
-        CancellationToken cancellationToken) => ExecuteAsync(async (tenantId, participantId) =>
-            Ok((await service.CorrectAsync(
-                tenantId, participantId, relationshipId, sessionId, idempotencyKey, request, cancellationToken)).Value));
+        CancellationToken cancellationToken
+    ) =>
+        ExecuteAsync(
+            async (tenantId, participantId) =>
+                Ok(
+                    (
+                        await service.CorrectAsync(
+                            tenantId,
+                            participantId,
+                            relationshipId,
+                            sessionId,
+                            idempotencyKey,
+                            request,
+                            cancellationToken
+                        )
+                    ).Value
+                )
+        );
 
     [HttpPost("sessions/{sessionId:guid}/send")]
     public Task<IActionResult> SendAsync(
@@ -77,9 +134,24 @@ public sealed class VoiceContributionsController(VoiceContributionService servic
         Guid sessionId,
         [FromHeader(Name = "Idempotency-Key")] Guid idempotencyKey,
         [FromBody] SendVoiceContributionRequestV1 request,
-        CancellationToken cancellationToken) => ExecuteAsync(async (tenantId, participantId) =>
-            Ok((await service.SendAsync(
-                tenantId, participantId, relationshipId, sessionId, idempotencyKey, request, cancellationToken)).Value));
+        CancellationToken cancellationToken
+    ) =>
+        ExecuteAsync(
+            async (tenantId, participantId) =>
+                Ok(
+                    (
+                        await service.SendAsync(
+                            tenantId,
+                            participantId,
+                            relationshipId,
+                            sessionId,
+                            idempotencyKey,
+                            request,
+                            cancellationToken
+                        )
+                    ).Value
+                )
+        );
 
     [HttpPost("sessions/{sessionId:guid}/cancel")]
     public Task<IActionResult> CancelAsync(
@@ -87,9 +159,24 @@ public sealed class VoiceContributionsController(VoiceContributionService servic
         Guid sessionId,
         [FromHeader(Name = "Idempotency-Key")] Guid idempotencyKey,
         [FromBody] CancelVoiceContributionRequestV1 request,
-        CancellationToken cancellationToken) => ExecuteAsync(async (tenantId, participantId) =>
-            Ok((await service.CancelAsync(
-                tenantId, participantId, relationshipId, sessionId, idempotencyKey, request, cancellationToken)).Value));
+        CancellationToken cancellationToken
+    ) =>
+        ExecuteAsync(
+            async (tenantId, participantId) =>
+                Ok(
+                    (
+                        await service.CancelAsync(
+                            tenantId,
+                            participantId,
+                            relationshipId,
+                            sessionId,
+                            idempotencyKey,
+                            request,
+                            cancellationToken
+                        )
+                    ).Value
+                )
+        );
 
     [HttpPost("{contributionId:guid}/erasure")]
     public Task<IActionResult> EraseAsync(
@@ -97,16 +184,28 @@ public sealed class VoiceContributionsController(VoiceContributionService servic
         Guid contributionId,
         [FromHeader(Name = "Idempotency-Key")] Guid idempotencyKey,
         [FromBody] VoicePayloadErasureRequestV1 request,
-        CancellationToken cancellationToken) => ExecuteAsync(async (tenantId, participantId) =>
-    {
-        var result = await service.EraseAsync(
-            tenantId, participantId, relationshipId, contributionId, idempotencyKey, request, cancellationToken);
-        return result.Replayed ? Ok(result.Value) : Accepted(result.Value);
-    });
+        CancellationToken cancellationToken
+    ) =>
+        ExecuteAsync(
+            async (tenantId, participantId) =>
+            {
+                var result = await service.EraseAsync(
+                    tenantId,
+                    participantId,
+                    relationshipId,
+                    contributionId,
+                    idempotencyKey,
+                    request,
+                    cancellationToken
+                );
+                return result.Replayed ? Ok(result.Value) : Accepted(result.Value);
+            }
+        );
 
     private async Task<IActionResult> ExecuteAsync(Func<Guid, Guid, Task<IActionResult>> action)
     {
-        if (!TryGetTenantId(out var tenantId) || !TryGetParticipantId(out var participantId)) return Forbid();
+        if (!TryGetTenantId(out var tenantId) || !TryGetParticipantId(out var participantId))
+            return Forbid();
         try
         {
             return await action(tenantId, participantId);
@@ -152,14 +251,18 @@ public sealed class VoiceContributionsController(VoiceContributionService servic
     private bool TryGetTenantId(out Guid tenantId)
     {
         tenantId = default;
-        return HttpContext.Items.TryGetValue(TenantIsolationMiddleware.TenantIdItemKey, out var value)
+        return HttpContext.Items.TryGetValue(
+                TenantIsolationMiddleware.TenantIdItemKey,
+                out var value
+            )
             && value is string text
             && Guid.TryParse(text, out tenantId);
     }
 
     private bool TryGetParticipantId(out Guid participantId)
     {
-        var value = User.FindFirstValue("participant_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var value =
+            User.FindFirstValue("participant_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
         return Guid.TryParse(value, out participantId);
     }
 }

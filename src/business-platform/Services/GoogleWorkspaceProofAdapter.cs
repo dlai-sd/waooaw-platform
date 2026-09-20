@@ -41,14 +41,15 @@ public sealed class IdentityBrokerReadOptions
         && origin.Query == ""
         && origin.Fragment == ""
         && AllowedPrivateHosts.Contains(origin.Host, StringComparer.Ordinal)
-    && ClientId == "waooaw-bp-identity-reader"
-    && !string.IsNullOrWhiteSpace(ClientSecret)
+        && ClientId == "waooaw-bp-identity-reader"
+        && !string.IsNullOrWhiteSpace(ClientSecret)
         && AllowedAuthorizedParties.Length > 0
-        && AllowedAuthorizedParties.Distinct(StringComparer.Ordinal).Count() == AllowedAuthorizedParties.Length
+        && AllowedAuthorizedParties.Distinct(StringComparer.Ordinal).Count()
+            == AllowedAuthorizedParties.Length
         && AllowedAuthorizedParties.All(GoogleWorkspaceProofAdapter.ValidKey)
         && Providers.Count > 0
         && Providers.All(provider =>
-        provider.Key is "google" or "facebook" or "apple"
+            provider.Key is "google" or "facebook" or "apple"
             && GoogleWorkspaceProofAdapter.ValidKey(provider.Value.ProviderNamespace)
             && Regex.IsMatch(
                 provider.Value.TrustConfigDigest,
@@ -103,7 +104,8 @@ public sealed class GoogleWorkspaceProofAdapter(
 
     public string? VerifiedEmail(ClaimsPrincipal principal)
     {
-        if (!HasVerifiedEmail(principal)) return null;
+        if (!HasVerifiedEmail(principal))
+            return null;
         var email = SingleClaim(principal, "email");
         return MailAddress.TryCreate(email, out var parsed) && parsed.Address == email
             ? email
@@ -129,7 +131,12 @@ public sealed class GoogleWorkspaceProofAdapter(
             || subject!.StartsWith("service-account-", StringComparison.Ordinal)
         )
             return Denied<VerifiedCustomerActor>("actor_subject");
-        if (!_options.AllowedAuthorizedParties.Contains(SingleClaim(principal, "azp"), StringComparer.Ordinal))
+        if (
+            !_options.AllowedAuthorizedParties.Contains(
+                SingleClaim(principal, "azp"),
+                StringComparer.Ordinal
+            )
+        )
             return Denied<VerifiedCustomerActor>("actor_client");
         if (!principal.FindAll("aud").Any(claim => claim.Value == "waooaw-platform"))
             return Denied<VerifiedCustomerActor>("actor_audience");

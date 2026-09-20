@@ -64,8 +64,10 @@ public sealed class IdentityRegistrationRecord
     public string? ProviderLabel { get; set; }
     public bool EmailVerified { get; set; }
     public bool MobileVerified { get; set; }
+
     // Provider issuer + subject binding (issuer distinguishes Google from other OIDC providers)
     public string? ProviderIssuer { get; set; }
+
     // Match keys are keyed HMAC values — never returned to clients or exposed in logs
     public string? EmailHmacKey { get; set; }
     public string? EmailHmacVersion { get; set; }
@@ -99,6 +101,7 @@ public sealed class IdentityVerificationChallengeRecord
     public string ActorSubject { get; init; } = string.Empty;
     public IdentityVerificationPurpose Purpose { get; init; }
     public IdentityVerificationState State { get; set; } = IdentityVerificationState.Pending;
+
     // OTP code stored as HMAC — raw code never persisted
     public string CodeHmac { get; init; } = string.Empty;
     public string CodeHmacVersion { get; init; } = "v1";
@@ -114,7 +117,8 @@ public sealed class IdentityAccountLinkRecord
     public Guid LinkId { get; init; } = Guid.NewGuid();
     public string ActorSubject { get; init; } = string.Empty;
     public Guid TenantId { get; init; }
-    public IdentityAccountLinkState State { get; set; } = IdentityAccountLinkState.PendingPortalApproval;
+    public IdentityAccountLinkState State { get; set; } =
+        IdentityAccountLinkState.PendingPortalApproval;
     public string MaskedMobile { get; init; } = string.Empty;
     public Guid VerifiedMobileProofId { get; init; }
     public DateTimeOffset ExpiresAt { get; init; } = DateTimeOffset.UtcNow.AddMinutes(15);
@@ -227,18 +231,22 @@ public sealed class IdentityOrganisationRecord
 public sealed class IdentityDbContext : DbContext
 {
     public DbSet<IdentityRegistrationRecord> Registrations => Set<IdentityRegistrationRecord>();
-    public DbSet<IdentityVerificationChallengeRecord> VerificationChallenges => Set<IdentityVerificationChallengeRecord>();
+    public DbSet<IdentityVerificationChallengeRecord> VerificationChallenges =>
+        Set<IdentityVerificationChallengeRecord>();
     public DbSet<IdentityAccountLinkRecord> AccountLinks => Set<IdentityAccountLinkRecord>();
     public DbSet<IdentityIdempotencyEntry> IdempotencyLedger => Set<IdentityIdempotencyEntry>();
-    public DbSet<CustomerPortalPreferenceRecord> CustomerPortalPreferences => Set<CustomerPortalPreferenceRecord>();
+    public DbSet<CustomerPortalPreferenceRecord> CustomerPortalPreferences =>
+        Set<CustomerPortalPreferenceRecord>();
     public DbSet<IdentityAccountRecord> Accounts => Set<IdentityAccountRecord>();
     public DbSet<IdentityLoginMethodRecord> LoginMethods => Set<IdentityLoginMethodRecord>();
     public DbSet<IdentityActorBindingRecord> ActorBindings => Set<IdentityActorBindingRecord>();
     public DbSet<IdentityMembershipRecord> Memberships => Set<IdentityMembershipRecord>();
-    public DbSet<IdentityRegistrationEventRecord> RegistrationEvents => Set<IdentityRegistrationEventRecord>();
+    public DbSet<IdentityRegistrationEventRecord> RegistrationEvents =>
+        Set<IdentityRegistrationEventRecord>();
     public DbSet<IdentityOrganisationRecord> Organisations => Set<IdentityOrganisationRecord>();
 
-    public IdentityDbContext(DbContextOptions<IdentityDbContext> options) : base(options) { }
+    public IdentityDbContext(DbContextOptions<IdentityDbContext> options)
+        : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -249,32 +257,52 @@ public sealed class IdentityDbContext : DbContext
             e.ToTable("registrations");
             e.HasKey(r => r.RegistrationId);
             e.Property(r => r.RegistrationId).HasColumnName("registration_id");
-            e.Property(r => r.ActorIssuer).HasColumnName("actor_issuer").HasMaxLength(256).UseCollation("C");
-            e.Property(r => r.ActorSubject).HasColumnName("actor_subject").HasMaxLength(256).UseCollation("C");
+            e.Property(r => r.ActorIssuer)
+                .HasColumnName("actor_issuer")
+                .HasMaxLength(256)
+                .UseCollation("C");
+            e.Property(r => r.ActorSubject)
+                .HasColumnName("actor_subject")
+                .HasMaxLength(256)
+                .UseCollation("C");
             e.Property(r => r.State).HasColumnName("state").HasConversion<string>();
-            e.Property(r => r.AuthenticationPath).HasColumnName("authentication_path").HasConversion<string>();
+            e.Property(r => r.AuthenticationPath)
+                .HasColumnName("authentication_path")
+                .HasConversion<string>();
             e.Property(r => r.ProviderLabel).HasColumnName("provider_label").HasMaxLength(40);
             e.Property(r => r.ProviderIssuer).HasColumnName("provider_issuer").HasMaxLength(256);
             e.Property(r => r.EmailVerified).HasColumnName("email_verified");
             e.Property(r => r.MobileVerified).HasColumnName("mobile_verified");
             e.Property(r => r.EmailHmacKey).HasColumnName("email_hmac_key").HasMaxLength(128);
-            e.Property(r => r.EmailHmacVersion).HasColumnName("email_hmac_version").HasMaxLength(32);
+            e.Property(r => r.EmailHmacVersion)
+                .HasColumnName("email_hmac_version")
+                .HasMaxLength(32);
             e.Property(r => r.EmailHmacDomain).HasColumnName("email_hmac_domain").HasMaxLength(16);
             e.Property(r => r.MobileHmacKey).HasColumnName("mobile_hmac_key").HasMaxLength(128);
-            e.Property(r => r.MobileHmacVersion).HasColumnName("mobile_hmac_version").HasMaxLength(32);
-            e.Property(r => r.MobileHmacDomain).HasColumnName("mobile_hmac_domain").HasMaxLength(16);
+            e.Property(r => r.MobileHmacVersion)
+                .HasColumnName("mobile_hmac_version")
+                .HasMaxLength(32);
+            e.Property(r => r.MobileHmacDomain)
+                .HasColumnName("mobile_hmac_domain")
+                .HasMaxLength(16);
             e.Property(r => r.MaskedEmail).HasColumnName("masked_email").HasMaxLength(254);
             e.Property(r => r.MaskedMobile).HasColumnName("masked_mobile").HasMaxLength(32);
             e.Property(r => r.DisplayName).HasColumnName("display_name").HasMaxLength(120);
             e.Property(r => r.BusinessName).HasColumnName("business_name").HasMaxLength(160);
             e.Property(r => r.BusinessDomain).HasColumnName("business_domain").HasMaxLength(100);
-            e.Property(r => r.LanguagePreference).HasColumnName("language_preference").HasMaxLength(5);
+            e.Property(r => r.LanguagePreference)
+                .HasColumnName("language_preference")
+                .HasMaxLength(5);
             e.Property(r => r.AccountId).HasColumnName("account_id");
             e.Property(r => r.ActorBindingId).HasColumnName("actor_binding_id");
             e.Property(r => r.OriginRegistrationId).HasColumnName("origin_registration_id");
             e.Property(r => r.CompletedAt).HasColumnName("completed_at");
-            e.Property(r => r.CompletionOutcome).HasColumnName("completion_outcome").HasMaxLength(24);
-            e.Property(r => r.CompletionProfileSnapshot).HasColumnName("completion_profile_snapshot").HasColumnType("jsonb");
+            e.Property(r => r.CompletionOutcome)
+                .HasColumnName("completion_outcome")
+                .HasMaxLength(24);
+            e.Property(r => r.CompletionProfileSnapshot)
+                .HasColumnName("completion_profile_snapshot")
+                .HasColumnType("jsonb");
             e.Property(r => r.CompletionStatusCode).HasColumnName("completion_status_code");
             e.Property(r => r.CompletionResponseBody).HasColumnName("completion_response_body");
             e.Property(r => r.ExpiresAt).HasColumnName("expires_at");
@@ -295,7 +323,9 @@ public sealed class IdentityDbContext : DbContext
             e.Property(c => c.State).HasColumnName("state").HasConversion<string>();
             e.Property(c => c.CodeHmac).HasColumnName("code_hmac").HasMaxLength(128);
             e.Property(c => c.CodeHmacVersion).HasColumnName("code_hmac_version").HasMaxLength(32);
-            e.Property(c => c.MaskedDestination).HasColumnName("masked_destination").HasMaxLength(254);
+            e.Property(c => c.MaskedDestination)
+                .HasColumnName("masked_destination")
+                .HasMaxLength(254);
             e.Property(c => c.VerifiedAt).HasColumnName("verified_at");
             e.Property(c => c.ExpiresAt).HasColumnName("expires_at");
             e.Property(c => c.ResendAfter).HasColumnName("resend_after");
@@ -323,9 +353,15 @@ public sealed class IdentityDbContext : DbContext
             e.ToTable("idempotency_ledger");
             e.HasKey(i => i.EntryId);
             e.Property(i => i.EntryId).HasColumnName("entry_id");
-            e.Property(i => i.ActorIssuer).HasColumnName("actor_issuer").HasMaxLength(256).UseCollation("C");
+            e.Property(i => i.ActorIssuer)
+                .HasColumnName("actor_issuer")
+                .HasMaxLength(256)
+                .UseCollation("C");
             e.Property(i => i.RegistrationId).HasColumnName("registration_id");
-            e.Property(i => i.ActorSubject).HasColumnName("actor_subject").HasMaxLength(256).UseCollation("C");
+            e.Property(i => i.ActorSubject)
+                .HasColumnName("actor_subject")
+                .HasMaxLength(256)
+                .UseCollation("C");
             e.Property(i => i.IdempotencyKey).HasColumnName("idempotency_key").HasMaxLength(36);
             e.Property(i => i.OperationFamily).HasColumnName("operation_family").HasMaxLength(64);
             e.Property(i => i.CanonicalHash).HasColumnName("canonical_hash").HasMaxLength(64);
@@ -333,7 +369,14 @@ public sealed class IdentityDbContext : DbContext
             e.Property(i => i.ResponseBody).HasColumnName("response_body");
             e.Property(i => i.ExpiresAt).HasColumnName("expires_at");
             e.Property(i => i.CreatedAt).HasColumnName("created_at");
-            e.HasIndex(i => new { i.ActorIssuer, i.ActorSubject, i.IdempotencyKey, i.OperationFamily }).IsUnique();
+            e.HasIndex(i => new
+                {
+                    i.ActorIssuer,
+                    i.ActorSubject,
+                    i.IdempotencyKey,
+                    i.OperationFamily,
+                })
+                .IsUnique();
         });
 
         modelBuilder.Entity<CustomerPortalPreferenceRecord>(e =>
@@ -344,14 +387,26 @@ public sealed class IdentityDbContext : DbContext
             e.Property(p => p.ActorSubject).HasColumnName("actor_subject").HasMaxLength(256);
             e.Property(p => p.TenantId).HasColumnName("tenant_id");
             e.Property(p => p.DisplayName).HasColumnName("display_name").HasMaxLength(200);
-            e.Property(p => p.OrganizationDisplayName).HasColumnName("organization_display_name").HasMaxLength(200);
+            e.Property(p => p.OrganizationDisplayName)
+                .HasColumnName("organization_display_name")
+                .HasMaxLength(200);
             e.Property(p => p.Locale).HasColumnName("locale").HasMaxLength(16);
             e.Property(p => p.Theme).HasColumnName("theme").HasMaxLength(16);
-            e.Property(p => p.TimestampVisibility).HasColumnName("timestamp_visibility").HasMaxLength(16);
-            e.Property(p => p.ApprovalRequestChannels).HasColumnName("approval_request_channels").HasColumnType("jsonb");
-            e.Property(p => p.MaturityReportChannels).HasColumnName("maturity_report_channels").HasColumnType("jsonb");
-            e.Property(p => p.MonthlyNarrativeChannels).HasColumnName("monthly_narrative_channels").HasColumnType("jsonb");
-            e.Property(p => p.SelfGovernanceAlertChannels).HasColumnName("self_governance_alert_channels").HasColumnType("jsonb");
+            e.Property(p => p.TimestampVisibility)
+                .HasColumnName("timestamp_visibility")
+                .HasMaxLength(16);
+            e.Property(p => p.ApprovalRequestChannels)
+                .HasColumnName("approval_request_channels")
+                .HasColumnType("jsonb");
+            e.Property(p => p.MaturityReportChannels)
+                .HasColumnName("maturity_report_channels")
+                .HasColumnType("jsonb");
+            e.Property(p => p.MonthlyNarrativeChannels)
+                .HasColumnName("monthly_narrative_channels")
+                .HasColumnType("jsonb");
+            e.Property(p => p.SelfGovernanceAlertChannels)
+                .HasColumnName("self_governance_alert_channels")
+                .HasColumnType("jsonb");
             e.Property(p => p.UpdatedAt).HasColumnName("updated_at");
             e.HasIndex(p => new { p.ActorSubject, p.TenantId }).IsUnique();
         });
@@ -362,9 +417,14 @@ public sealed class IdentityDbContext : DbContext
             entity.HasKey(record => record.AccountId);
             entity.Property(record => record.AccountId).HasColumnName("account_id");
             entity.Property(record => record.InitialTenantId).HasColumnName("initial_tenant_id");
-            entity.Property(record => record.OriginRegistrationId).HasColumnName("origin_registration_id");
+            entity
+                .Property(record => record.OriginRegistrationId)
+                .HasColumnName("origin_registration_id");
             entity.Property(record => record.Status).HasColumnName("status").HasMaxLength(16);
-            entity.Property(record => record.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity
+                .Property(record => record.CreatedAt)
+                .HasColumnName("created_at")
+                .HasDefaultValueSql("now()");
             entity.HasIndex(record => record.InitialTenantId).IsUnique();
             entity.HasIndex(record => record.OriginRegistrationId).IsUnique();
         });
@@ -373,32 +433,74 @@ public sealed class IdentityDbContext : DbContext
             entity.ToTable("login_methods");
             entity.HasKey(record => record.LoginMethodId);
             entity.Property(record => record.LoginMethodId).HasColumnName("login_method_id");
-            entity.Property(record => record.ProviderIssuer).HasColumnName("provider_issuer").HasMaxLength(256).UseCollation("C");
-            entity.Property(record => record.BrokerAlias).HasColumnName("broker_alias").HasMaxLength(40).UseCollation("C");
-            entity.Property(record => record.ProviderSubject).HasColumnName("provider_subject").HasMaxLength(256).UseCollation("C");
+            entity
+                .Property(record => record.ProviderIssuer)
+                .HasColumnName("provider_issuer")
+                .HasMaxLength(256)
+                .UseCollation("C");
+            entity
+                .Property(record => record.BrokerAlias)
+                .HasColumnName("broker_alias")
+                .HasMaxLength(40)
+                .UseCollation("C");
+            entity
+                .Property(record => record.ProviderSubject)
+                .HasColumnName("provider_subject")
+                .HasMaxLength(256)
+                .UseCollation("C");
             entity.Property(record => record.AccountId).HasColumnName("account_id");
             entity.Property(record => record.Status).HasColumnName("status").HasMaxLength(16);
-            entity.Property(record => record.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
-            entity.HasIndex(record => new { record.ProviderIssuer, record.BrokerAlias, record.ProviderSubject }).IsUnique();
+            entity
+                .Property(record => record.CreatedAt)
+                .HasColumnName("created_at")
+                .HasDefaultValueSql("now()");
+            entity
+                .HasIndex(record => new
+                {
+                    record.ProviderIssuer,
+                    record.BrokerAlias,
+                    record.ProviderSubject,
+                })
+                .IsUnique();
         });
         modelBuilder.Entity<IdentityActorBindingRecord>(entity =>
         {
             entity.ToTable("actor_bindings");
             entity.HasKey(record => record.ActorBindingId);
             entity.Property(record => record.ActorBindingId).HasColumnName("actor_binding_id");
-            entity.Property(record => record.ActorIssuer).HasColumnName("actor_issuer").HasMaxLength(256).UseCollation("C");
-            entity.Property(record => record.ActorSubject).HasColumnName("actor_subject").HasMaxLength(256).UseCollation("C");
+            entity
+                .Property(record => record.ActorIssuer)
+                .HasColumnName("actor_issuer")
+                .HasMaxLength(256)
+                .UseCollation("C");
+            entity
+                .Property(record => record.ActorSubject)
+                .HasColumnName("actor_subject")
+                .HasMaxLength(256)
+                .UseCollation("C");
             entity.Property(record => record.LoginMethodId).HasColumnName("login_method_id");
             entity.Property(record => record.AccountId).HasColumnName("account_id");
             entity.Property(record => record.Status).HasColumnName("status").HasMaxLength(16);
-            entity.Property(record => record.ProofSource).HasColumnName("proof_source").HasMaxLength(32);
+            entity
+                .Property(record => record.ProofSource)
+                .HasColumnName("proof_source")
+                .HasMaxLength(32);
             entity.Property(record => record.VerifiedAt).HasColumnName("verified_at");
             entity.Property(record => record.AuthTime).HasColumnName("auth_time");
-            entity.Property(record => record.TrustConfigDigest).HasColumnName("trust_config_digest").HasMaxLength(64);
+            entity
+                .Property(record => record.TrustConfigDigest)
+                .HasColumnName("trust_config_digest")
+                .HasMaxLength(64);
             entity.Property(record => record.CorrelationId).HasColumnName("correlation_id");
-            entity.Property(record => record.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity
+                .Property(record => record.CreatedAt)
+                .HasColumnName("created_at")
+                .HasDefaultValueSql("now()");
             entity.HasIndex(record => new { record.ActorIssuer, record.ActorSubject }).IsUnique();
-            entity.HasIndex(record => record.LoginMethodId).IsUnique().HasFilter("status = 'ACTIVE'");
+            entity
+                .HasIndex(record => record.LoginMethodId)
+                .IsUnique()
+                .HasFilter("status = 'ACTIVE'");
         });
         modelBuilder.Entity<IdentityMembershipRecord>(entity =>
         {
@@ -409,7 +511,10 @@ public sealed class IdentityDbContext : DbContext
             entity.Property(record => record.TenantId).HasColumnName("tenant_id");
             entity.Property(record => record.Roles).HasColumnName("roles").HasColumnType("text[]");
             entity.Property(record => record.Status).HasColumnName("status").HasMaxLength(16);
-            entity.Property(record => record.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity
+                .Property(record => record.CreatedAt)
+                .HasColumnName("created_at")
+                .HasDefaultValueSql("now()");
             entity.HasIndex(record => record.AccountId).IsUnique();
         });
         modelBuilder.Entity<IdentityRegistrationEventRecord>(entity =>
@@ -418,13 +523,30 @@ public sealed class IdentityDbContext : DbContext
             entity.HasKey(record => record.EventId);
             entity.Property(record => record.EventId).HasColumnName("event_id");
             entity.Property(record => record.RegistrationId).HasColumnName("registration_id");
-            entity.Property(record => record.ActorIssuer).HasColumnName("actor_issuer").HasMaxLength(256).UseCollation("C");
-            entity.Property(record => record.ActorSubject).HasColumnName("actor_subject").HasMaxLength(256).UseCollation("C");
-            entity.Property(record => record.EventType).HasColumnName("event_type").HasMaxLength(64);
-            entity.Property(record => record.FromState).HasColumnName("from_state").HasMaxLength(64);
+            entity
+                .Property(record => record.ActorIssuer)
+                .HasColumnName("actor_issuer")
+                .HasMaxLength(256)
+                .UseCollation("C");
+            entity
+                .Property(record => record.ActorSubject)
+                .HasColumnName("actor_subject")
+                .HasMaxLength(256)
+                .UseCollation("C");
+            entity
+                .Property(record => record.EventType)
+                .HasColumnName("event_type")
+                .HasMaxLength(64);
+            entity
+                .Property(record => record.FromState)
+                .HasColumnName("from_state")
+                .HasMaxLength(64);
             entity.Property(record => record.ToState).HasColumnName("to_state").HasMaxLength(64);
             entity.Property(record => record.CorrelationId).HasColumnName("correlation_id");
-            entity.Property(record => record.OccurredAt).HasColumnName("occurred_at").HasDefaultValueSql("now()");
+            entity
+                .Property(record => record.OccurredAt)
+                .HasColumnName("occurred_at")
+                .HasDefaultValueSql("now()");
         });
         modelBuilder.Entity<IdentityOrganisationRecord>(entity =>
         {
@@ -433,10 +555,19 @@ public sealed class IdentityDbContext : DbContext
             entity.Property(record => record.Id).HasColumnName("id");
             entity.Property(record => record.TenantId).HasColumnName("tenant_id");
             entity.Property(record => record.Name).HasColumnName("name").HasMaxLength(200);
-            entity.Property(record => record.BusinessDomain).HasColumnName("business_domain").HasMaxLength(50);
+            entity
+                .Property(record => record.BusinessDomain)
+                .HasColumnName("business_domain")
+                .HasMaxLength(50);
             entity.Property(record => record.IdentityManaged).HasColumnName("identity_managed");
-            entity.Property(record => record.IdentityStatus).HasColumnName("identity_status").HasMaxLength(24);
-            entity.Property(record => record.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity
+                .Property(record => record.IdentityStatus)
+                .HasColumnName("identity_status")
+                .HasMaxLength(24);
+            entity
+                .Property(record => record.CreatedAt)
+                .HasColumnName("created_at")
+                .HasDefaultValueSql("now()");
             entity.HasIndex(record => record.TenantId).IsUnique();
         });
     }

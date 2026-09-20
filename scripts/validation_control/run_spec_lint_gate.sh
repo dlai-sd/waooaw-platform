@@ -2,12 +2,7 @@
 set -eu
 
 parent_container=${HOSTNAME:?HOSTNAME must identify the validation runner container}
-repository_url=$(git config --get remote.origin.url)
-test -n "$repository_url"
-case "$repository_url" in
-    *.git) ;;
-    *) repository_url="${repository_url}.git" ;;
-esac
+repository_url=https://github.com/dlai-sd/waooaw-platform.git
 
 docker run --rm --user 1000:1000 \
     --volumes-from "$parent_container":ro \

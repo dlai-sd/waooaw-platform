@@ -154,8 +154,8 @@ def seed_prompts(db_url: str, repo_root: Path, dry_run: bool, pipeline_run_url: 
     Main seeding logic. Returns count of prompts inserted.
     In dry_run mode: parses and prints what would be inserted, no DB writes.
     """
-    git_sha = get_git_sha(repo_root)
-    git_branch = get_git_branch(repo_root)
+    git_sha = "0" * 40 if dry_run else get_git_sha(repo_root)
+    git_branch = "" if dry_run else get_git_branch(repo_root)
     print(f"Git SHA: {git_sha[:12]}...  Branch: {git_branch or '(detached)'}")
 
     inserted = 0

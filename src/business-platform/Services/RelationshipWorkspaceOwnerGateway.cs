@@ -14,7 +14,8 @@ public sealed record RelationshipOwnerContext(
     Guid RelationshipId,
     int RelationshipVersion,
     string CorrelationId,
-    Guid AgentInstanceId);
+    Guid AgentInstanceId
+);
 
 public sealed record ExecutionOwnerWorkItem(
     Guid WorkItemId,
@@ -26,13 +27,15 @@ public sealed record ExecutionOwnerWorkItem(
     string State,
     string Effect,
     string? ResultRef,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt
+);
 
 public sealed record ExecutionOwnerProjection(
     string ProjectionVersion,
     string State,
     DateTimeOffset ProducedAt,
-    IReadOnlyList<ExecutionOwnerWorkItem>? Items = null);
+    IReadOnlyList<ExecutionOwnerWorkItem>? Items = null
+);
 
 public sealed record CommercialOwnerProjection(
     string ProjectionVersion,
@@ -40,26 +43,41 @@ public sealed record CommercialOwnerProjection(
     string Actuals,
     string Forecast,
     string Thresholds,
-    DateTimeOffset ProducedAt);
+    DateTimeOffset ProducedAt
+);
 
 public interface IRelationshipWorkspaceOwnerGateway
 {
-    Task<ExecutionOwnerProjection?> GetExecutionAsync(RelationshipOwnerContext context, CancellationToken cancellationToken);
-    Task<CommercialOwnerProjection?> GetCommercialAsync(RelationshipOwnerContext context, CancellationToken cancellationToken);
+    Task<ExecutionOwnerProjection?> GetExecutionAsync(
+        RelationshipOwnerContext context,
+        CancellationToken cancellationToken
+    );
+    Task<CommercialOwnerProjection?> GetCommercialAsync(
+        RelationshipOwnerContext context,
+        CancellationToken cancellationToken
+    );
 }
 
-public sealed class UnconfiguredRelationshipWorkspaceOwnerGateway : IRelationshipWorkspaceOwnerGateway
+public sealed class UnconfiguredRelationshipWorkspaceOwnerGateway
+    : IRelationshipWorkspaceOwnerGateway
 {
     public Task<ExecutionOwnerProjection?> GetExecutionAsync(
-        RelationshipOwnerContext context, CancellationToken cancellationToken) => Task.FromResult<ExecutionOwnerProjection?>(null);
+        RelationshipOwnerContext context,
+        CancellationToken cancellationToken
+    ) => Task.FromResult<ExecutionOwnerProjection?>(null);
 
     public Task<CommercialOwnerProjection?> GetCommercialAsync(
-        RelationshipOwnerContext context, CancellationToken cancellationToken) => Task.FromResult<CommercialOwnerProjection?>(null);
+        RelationshipOwnerContext context,
+        CancellationToken cancellationToken
+    ) => Task.FromResult<CommercialOwnerProjection?>(null);
 }
 
-public sealed class AuthenticatedRelationshipWorkspaceOwnerGateway : IRelationshipWorkspaceOwnerGateway, IDisposable
+public sealed class AuthenticatedRelationshipWorkspaceOwnerGateway
+    : IRelationshipWorkspaceOwnerGateway,
+        IDisposable
 {
-    private const string EmptyDigest = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+    private const string EmptyDigest =
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
     private readonly WorkloadIdentityClient _identity;
     private readonly HttpClient _professionalRuntime;
     private readonly HttpClient _billingEngine;
@@ -67,15 +85,21 @@ public sealed class AuthenticatedRelationshipWorkspaceOwnerGateway : IRelationsh
     public AuthenticatedRelationshipWorkspaceOwnerGateway(
         WorkloadIdentityClient identity,
         Uri professionalRuntimeBaseAddress,
-        Uri billingEngineBaseAddress)
+        Uri billingEngineBaseAddress
+    )
     {
         _identity = identity;
-        _professionalRuntime = identity.CreateClient(professionalRuntimeBaseAddress, "professional-runtime");
+        _professionalRuntime = identity.CreateClient(
+            professionalRuntimeBaseAddress,
+            "professional-runtime"
+        );
         _billingEngine = identity.CreateClient(billingEngineBaseAddress, "billing-engine");
     }
 
     public async Task<ExecutionOwnerProjection?> GetExecutionAsync(
-        RelationshipOwnerContext context, CancellationToken cancellationToken)
+        RelationshipOwnerContext context,
+        CancellationToken cancellationToken
+    )
     {
         const string route = "/api/v1/internal/relationships/{relationshipId}/workspace-execution";
         using var response = await SendAsync(
@@ -85,43 +109,62 @@ public sealed class AuthenticatedRelationshipWorkspaceOwnerGateway : IRelationsh
             route,
             "getRelationshipExecutionProjection",
             context,
-            cancellationToken);
-        if (response is null || !response.IsSuccessStatusCode) return null;
+            cancellationToken
+        );
+        if (response is null || !response.IsSuccessStatusCode)
+            return null;
         try
         {
             using var document = await JsonDocument.ParseAsync(
-                await response.Content.ReadAsStreamAsync(cancellationToken), cancellationToken: cancellationToken);
+                await response.Content.ReadAsStreamAsync(cancellationToken),
+                cancellationToken: cancellationToken
+            );
             var root = document.RootElement;
-            if (root.GetProperty("schemaVersion").GetString() != "1.0"
-                || root.GetProperty("relationshipId").GetGuid() != context.RelationshipId) return null;
-            var items = (root.TryGetProperty("items", out var itemCollection)
-                ? itemCollection.EnumerateArray()
-                : Enumerable.Empty<JsonElement>()).Select(item => new ExecutionOwnerWorkItem(
-                item.GetProperty("workItemId").GetGuid(),
-                item.GetProperty("agentInstanceId").GetGuid(),
-                item.GetProperty("skillId").GetString()!,
-                item.GetProperty("skillVersion").GetString()!,
-                item.GetProperty("invocationId").GetGuid(),
-                item.GetProperty("revision").GetInt32(),
-                item.GetProperty("state").GetString()!,
-                item.GetProperty("effect").GetString()!,
-                item.TryGetProperty("resultRef", out var resultRef) ? resultRef.GetString() : null,
-                item.GetProperty("updatedAt").GetDateTimeOffset())).ToArray();
-            if (items.Any(item => item.AgentInstanceId != context.AgentInstanceId)) return null;
+            if (
+                root.GetProperty("schemaVersion").GetString() != "1.0"
+                || root.GetProperty("relationshipId").GetGuid() != context.RelationshipId
+            )
+                return null;
+            var items = (
+                root.TryGetProperty("items", out var itemCollection)
+                    ? itemCollection.EnumerateArray()
+                    : Enumerable.Empty<JsonElement>()
+            )
+                .Select(item => new ExecutionOwnerWorkItem(
+                    item.GetProperty("workItemId").GetGuid(),
+                    item.GetProperty("agentInstanceId").GetGuid(),
+                    item.GetProperty("skillId").GetString()!,
+                    item.GetProperty("skillVersion").GetString()!,
+                    item.GetProperty("invocationId").GetGuid(),
+                    item.GetProperty("revision").GetInt32(),
+                    item.GetProperty("state").GetString()!,
+                    item.GetProperty("effect").GetString()!,
+                    item.TryGetProperty("resultRef", out var resultRef)
+                        ? resultRef.GetString()
+                        : null,
+                    item.GetProperty("updatedAt").GetDateTimeOffset()
+                ))
+                .ToArray();
+            if (items.Any(item => item.AgentInstanceId != context.AgentInstanceId))
+                return null;
             return new ExecutionOwnerProjection(
                 root.GetProperty("projectionVersion").GetString()!,
                 root.GetProperty("state").GetString()!,
                 root.GetProperty("producedAt").GetDateTimeOffset(),
-                items);
+                items
+            );
         }
-        catch (Exception exception) when (exception is JsonException or InvalidOperationException or FormatException)
+        catch (Exception exception)
+            when (exception is JsonException or InvalidOperationException or FormatException)
         {
             return null;
         }
     }
 
     public async Task<CommercialOwnerProjection?> GetCommercialAsync(
-        RelationshipOwnerContext context, CancellationToken cancellationToken)
+        RelationshipOwnerContext context,
+        CancellationToken cancellationToken
+    )
     {
         const string route = "/internal/v1/relationships/{relationshipId}/commercial-projection";
         using var response = await SendAsync(
@@ -131,24 +174,33 @@ public sealed class AuthenticatedRelationshipWorkspaceOwnerGateway : IRelationsh
             route,
             "getRelationshipCommercialProjection",
             context,
-            cancellationToken);
-        if (response is null || !response.IsSuccessStatusCode) return null;
+            cancellationToken
+        );
+        if (response is null || !response.IsSuccessStatusCode)
+            return null;
         try
         {
             using var document = await JsonDocument.ParseAsync(
-                await response.Content.ReadAsStreamAsync(cancellationToken), cancellationToken: cancellationToken);
+                await response.Content.ReadAsStreamAsync(cancellationToken),
+                cancellationToken: cancellationToken
+            );
             var root = document.RootElement;
-            if (root.GetProperty("schemaVersion").GetString() != "1.0"
-                || root.GetProperty("relationshipId").GetGuid() != context.RelationshipId) return null;
+            if (
+                root.GetProperty("schemaVersion").GetString() != "1.0"
+                || root.GetProperty("relationshipId").GetGuid() != context.RelationshipId
+            )
+                return null;
             return new CommercialOwnerProjection(
                 root.GetProperty("projectionVersion").GetString()!,
                 root.GetProperty("currencyState").GetString()!,
                 root.GetProperty("actuals").GetString()!,
                 root.GetProperty("forecast").GetString()!,
                 root.GetProperty("thresholds").GetString()!,
-                root.GetProperty("producedAt").GetDateTimeOffset());
+                root.GetProperty("producedAt").GetDateTimeOffset()
+            );
         }
-        catch (Exception exception) when (exception is JsonException or InvalidOperationException or FormatException)
+        catch (Exception exception)
+            when (exception is JsonException or InvalidOperationException or FormatException)
         {
             return null;
         }
@@ -161,7 +213,8 @@ public sealed class AuthenticatedRelationshipWorkspaceOwnerGateway : IRelationsh
         string route,
         string operation,
         RelationshipOwnerContext context,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var delegatedContext = new DelegatedRequestContext(
             context.ActorSubject,
@@ -177,7 +230,8 @@ public sealed class AuthenticatedRelationshipWorkspaceOwnerGateway : IRelationsh
                 ["relationship"] = context.RelationshipVersion.ToString(),
                 ["agent_instance"] = context.AgentInstanceId.ToString(),
             },
-            context.CorrelationId);
+            context.CorrelationId
+        );
         var envelope = _identity.Sign(
             delegatedContext,
             _identity.GetAudience(targetName),
@@ -186,15 +240,21 @@ public sealed class AuthenticatedRelationshipWorkspaceOwnerGateway : IRelationsh
             operation,
             1,
             EmptyDigest,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow
+        );
         using var request = new HttpRequestMessage(HttpMethod.Get, requestPath);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", envelope);
         request.Headers.Add("X-Correlation-ID", context.CorrelationId);
         try
         {
-            return await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            return await client.SendAsync(
+                request,
+                HttpCompletionOption.ResponseHeadersRead,
+                cancellationToken
+            );
         }
-        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+        catch (Exception exception)
+            when (exception is HttpRequestException or TaskCanceledException)
         {
             return null;
         }

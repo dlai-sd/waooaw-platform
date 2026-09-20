@@ -1,15 +1,16 @@
 // Implements: adr/ADR-043-skill-architecture-standard.md §2 Skill Catalog
 // constitutional_basis: C-036 (skills are constitutional units), C-059 (traceability)
 
-using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 
 namespace Waooaw.BusinessPlatform.Infrastructure;
 
 /// <summary>EF Core context for business.skills catalog table. BP-owned; PR reads via API.</summary>
 public sealed class SkillCatalogDbContext : DbContext
 {
-    public SkillCatalogDbContext(DbContextOptions<SkillCatalogDbContext> options) : base(options) { }
+    public SkillCatalogDbContext(DbContextOptions<SkillCatalogDbContext> options)
+        : base(options) { }
 
     public DbSet<SkillEntry> Skills => Set<SkillEntry>();
 
@@ -37,6 +38,7 @@ public sealed class SkillEntry
     public string SkillId { get; init; } = string.Empty;
     public string Version { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
+
     /// <summary>Full skill YAML as JSON — definition blob (ADR-043 §1 schema).</summary>
     public string Definition { get; init; } = "{}";
     public string[] CctSuite { get; init; } = [];

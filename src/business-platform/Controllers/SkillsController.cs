@@ -1,13 +1,13 @@
 // Implements: work-contracts/WC-040-skill-architecture-s1-catalog.md §WC040-02
 // constitutional_basis: C-036 (skills are constitutional units), C-059 (traceability), ADR-043 §2
 
+using System.Text.Json;
+using Grpc.Net.Client;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.ConstitutionalEngine.Grpc;
-using Grpc.Net.Client;
 
 namespace Waooaw.BusinessPlatform.Controllers;
 
@@ -20,14 +20,16 @@ public sealed record SkillResponse(
     JsonElement Definition,
     string[] CctSuite,
     string Status,
-    DateTimeOffset? PublishedAt);
+    DateTimeOffset? PublishedAt
+);
 
 public sealed record PublishSkillRequest(
     string SkillId,
     string Version,
     string DisplayName,
     JsonElement Definition,
-    string[] CctSuite);
+    string[] CctSuite
+);
 
 // ─── Controller ──────────────────────────────────────────────────────────────
 
@@ -47,11 +49,12 @@ public sealed class SkillsController : ControllerBase
     public SkillsController(
         IDbContextFactory<SkillCatalogDbContext> dbFactory,
         IConfiguration config,
-        ILogger<SkillsController> logger)
+        ILogger<SkillsController> logger
+    )
     {
         _dbFactory = dbFactory;
-        _config    = config;
-        _logger    = logger;
+        _config = config;
+        _logger = logger;
     }
 
     // ── GET /api/v1/skills ────────────────────────────────────────────────────
@@ -59,13 +62,15 @@ public sealed class SkillsController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<SkillResponse>>> ListSkillsAsync(
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
 
-        var skills = await db.Skills
-            .Where(s => s.Status == "PUBLISHED")
-            .OrderBy(s => s.SkillId).ThenBy(s => s.Version)
+        var skills = await db
+            .Skills.Where(s => s.Status == "PUBLISHED")
+            .OrderBy(s => s.SkillId)
+            .ThenBy(s => s.Version)
             .ToListAsync(ct);
 
         return Ok(skills.Select(ToResponse).ToList());
@@ -77,12 +82,13 @@ public sealed class SkillsController : ControllerBase
     [HttpGet("{skillId}")]
     public async Task<ActionResult<SkillResponse>> GetLatestSkillAsync(
         string skillId,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
 
-        var skill = await db.Skills
-            .Where(s => s.SkillId == skillId && s.Status == "PUBLISHED")
+        var skill = await db
+            .Skills.Where(s => s.SkillId == skillId && s.Status == "PUBLISHED")
             .OrderByDescending(s => s.PublishedAt)
             .FirstOrDefaultAsync(ct);
 
@@ -102,28 +108,36 @@ public sealed class SkillsController : ControllerBase
     public async Task<ActionResult<SkillResponse>> GetPinnedSkillAsync(
         string skillId,
         string version,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
 
         // ADR-043 §5: DEPRECATED skills remain resolvable for existing Employment Contract
         // assignments. Only DRAFT skills are excluded — they were never surfaced to callers.
-        var skill = await db.Skills
-            .FirstOrDefaultAsync(
-                s => s.SkillId == skillId && s.Version == version
-                  && (s.Status == "PUBLISHED" || s.Status == "DEPRECATED"),
-                ct);
+        var skill = await db.Skills.FirstOrDefaultAsync(
+            s =>
+                s.SkillId == skillId
+                && s.Version == version
+                && (s.Status == "PUBLISHED" || s.Status == "DEPRECATED"),
+            ct
+        );
 
         if (skill is null)
         {
             _logger.LogInformation(
-                "Skill not found at pinned version: {SkillId}@{Version}", skillId, version);
-            return NotFound(new
-            {
-                error   = "SKILL_NOT_FOUND",
-                skill_id = skillId,
+                "Skill not found at pinned version: {SkillId}@{Version}",
+                skillId,
                 version
-            });
+            );
+            return NotFound(
+                new
+                {
+                    error = "SKILL_NOT_FOUND",
+                    skill_id = skillId,
+                    version,
+                }
+            );
         }
 
         return Ok(ToResponse(skill));
@@ -136,7 +150,8 @@ public sealed class SkillsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> PublishSkillAsync(
         [FromBody] PublishSkillRequest request,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         if (request is null)
             return BadRequest(new { error = "Request body is required." });
@@ -147,7 +162,9 @@ public sealed class SkillsController : ControllerBase
         {
             _logger.LogWarning(
                 "Skill publish rejected: caller does not have Founder role. SkillId={SkillId} Version={Version}",
-                request.SkillId, request.Version);
+                request.SkillId,
+                request.Version
+            );
             return StatusCode(403, new { error = "FOUNDER_ROLE_REQUIRED" });
         }
 
@@ -155,87 +172,118 @@ public sealed class SkillsController : ControllerBase
         var ceGrpcUrl = _config["ConstitutionalEngine:GrpcUrl"];
         if (string.IsNullOrWhiteSpace(ceGrpcUrl))
         {
-            _logger.LogError("ConstitutionalEngine:GrpcUrl missing. SkillId={SkillId}", request.SkillId);
-            return StatusCode(503, new { error = "Constitutional Engine address is not configured." });
+            _logger.LogError(
+                "ConstitutionalEngine:GrpcUrl missing. SkillId={SkillId}",
+                request.SkillId
+            );
+            return StatusCode(
+                503,
+                new { error = "Constitutional Engine address is not configured." }
+            );
         }
 
         ValidateActionResponse ceResponse;
         try
         {
-            using var channel  = GrpcChannel.ForAddress(ceGrpcUrl);
-            var ceClient       = new ConstitutionalService.ConstitutionalServiceClient(channel);
+            using var channel = GrpcChannel.ForAddress(ceGrpcUrl);
+            var ceClient = new ConstitutionalService.ConstitutionalServiceClient(channel);
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             linkedCts.CancelAfter(TimeSpan.FromSeconds(5));
 
             ceResponse = await ceClient.ValidateActionAsync(
                 new ValidateActionRequest
                 {
-                    ContractId             = "platform",
-                    ActionType             = "SKILL_PUBLISH",
-                    ActionParameters       = $"{{\"skill_id\":\"{request.SkillId}\",\"version\":\"{request.Version}\"}}",
-                    DecisionSpaceVersion   = 1,
+                    ContractId = "platform",
+                    ActionType = "SKILL_PUBLISH",
+                    ActionParameters =
+                        $"{{\"skill_id\":\"{request.SkillId}\",\"version\":\"{request.Version}\"}}",
+                    DecisionSpaceVersion = 1,
                 },
-                cancellationToken: linkedCts.Token);
+                cancellationToken: linkedCts.Token
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "CE.ValidateAction failed for SKILL_PUBLISH. SkillId={SkillId}", request.SkillId);
-            return StatusCode(503, new { error = "Constitutional Engine unavailable. Publish cannot proceed (C-023)." });
+            _logger.LogError(
+                ex,
+                "CE.ValidateAction failed for SKILL_PUBLISH. SkillId={SkillId}",
+                request.SkillId
+            );
+            return StatusCode(
+                503,
+                new { error = "Constitutional Engine unavailable. Publish cannot proceed (C-023)." }
+            );
         }
 
         if (ceResponse.Decision != ValidationDecision.Allow)
         {
             _logger.LogWarning(
                 "CE denied SKILL_PUBLISH. SkillId={SkillId} Decision={Decision}",
-                request.SkillId, ceResponse.Decision);
-            return StatusCode(403, new
-            {
-                error                = "Constitutional Engine denied the publish action.",
-                decision             = ceResponse.Decision.ToString(),
-                reason               = ceResponse.Reason,
-                constitutional_basis = ceResponse.ConstitutionalBasis,
-            });
+                request.SkillId,
+                ceResponse.Decision
+            );
+            return StatusCode(
+                403,
+                new
+                {
+                    error = "Constitutional Engine denied the publish action.",
+                    decision = ceResponse.Decision.ToString(),
+                    reason = ceResponse.Reason,
+                    constitutional_basis = ceResponse.ConstitutionalBasis,
+                }
+            );
         }
 
-        await using var db  = await _dbFactory.CreateDbContextAsync(ct);
+        await using var db = await _dbFactory.CreateDbContextAsync(ct);
 
         // Idempotent: if this version already exists as PUBLISHED, return 409.
-        var existing = await db.Skills
-            .FirstOrDefaultAsync(s => s.SkillId == request.SkillId && s.Version == request.Version, ct);
+        var existing = await db.Skills.FirstOrDefaultAsync(
+            s => s.SkillId == request.SkillId && s.Version == request.Version,
+            ct
+        );
 
         if (existing is not null)
         {
             _logger.LogWarning(
-                "Skill version already exists: {SkillId}@{Version}", request.SkillId, request.Version);
-            return Conflict(new
-            {
-                error    = "SKILL_VERSION_EXISTS",
-                skill_id = request.SkillId,
-                version  = request.Version,
-            });
+                "Skill version already exists: {SkillId}@{Version}",
+                request.SkillId,
+                request.Version
+            );
+            return Conflict(
+                new
+                {
+                    error = "SKILL_VERSION_EXISTS",
+                    skill_id = request.SkillId,
+                    version = request.Version,
+                }
+            );
         }
 
         var entry = new SkillEntry
         {
-            SkillId      = request.SkillId,
-            Version      = request.Version,
-            DisplayName  = request.DisplayName,
-            Definition   = request.Definition.GetRawText(),
-            CctSuite     = request.CctSuite,
-            Status       = "PUBLISHED",
-            PublishedAt  = DateTimeOffset.UtcNow,
+            SkillId = request.SkillId,
+            Version = request.Version,
+            DisplayName = request.DisplayName,
+            Definition = request.Definition.GetRawText(),
+            CctSuite = request.CctSuite,
+            Status = "PUBLISHED",
+            PublishedAt = DateTimeOffset.UtcNow,
         };
 
         db.Skills.Add(entry);
         await db.SaveChangesAsync(ct);
 
         _logger.LogInformation(
-            "Skill published: {SkillId}@{Version}", request.SkillId, request.Version);
+            "Skill published: {SkillId}@{Version}",
+            request.SkillId,
+            request.Version
+        );
 
         return CreatedAtAction(
             nameof(GetPinnedSkillAsync),
             new { skillId = entry.SkillId, version = entry.Version },
-            ToResponse(entry));
+            ToResponse(entry)
+        );
     }
 
     // ─── Helper ──────────────────────────────────────────────────────────────
@@ -249,11 +297,22 @@ public sealed class SkillsController : ControllerBase
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "SkillEntry Definition is not valid JSON — returning empty object. SkillId={SkillId} Version={Version}",
-                s.SkillId, s.Version);
+                s.SkillId,
+                s.Version
+            );
             def = JsonDocument.Parse("{}").RootElement;
         }
-        return new SkillResponse(s.SkillId, s.Version, s.DisplayName, def, s.CctSuite, s.Status, s.PublishedAt);
+        return new SkillResponse(
+            s.SkillId,
+            s.Version,
+            s.DisplayName,
+            def,
+            s.CctSuite,
+            s.Status,
+            s.PublishedAt
+        );
     }
 }

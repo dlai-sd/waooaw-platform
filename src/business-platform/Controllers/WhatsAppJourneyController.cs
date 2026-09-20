@@ -22,15 +22,22 @@ public sealed class WhatsAppJourneyController(WhatsAppJourneyService service) : 
         var signature = Request.Headers["X-Hub-Signature-256"].ToString();
         try
         {
-            var receipt = await service.ReceiveAsync(rawBody, signature, DateTimeOffset.UtcNow, cancellationToken);
-            return Ok(new
-            {
-                messageId = receipt.MessageId,
-                status = receipt.Status,
-                journeyStage = receipt.JourneyStage,
-                reply = receipt.Reply,
-                replayed = receipt.Replayed,
-            });
+            var receipt = await service.ReceiveAsync(
+                rawBody,
+                signature,
+                DateTimeOffset.UtcNow,
+                cancellationToken
+            );
+            return Ok(
+                new
+                {
+                    messageId = receipt.MessageId,
+                    status = receipt.Status,
+                    journeyStage = receipt.JourneyStage,
+                    reply = receipt.Reply,
+                    replayed = receipt.Replayed,
+                }
+            );
         }
         catch (WhatsAppWebhookException exception)
         {

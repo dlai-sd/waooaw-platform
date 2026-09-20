@@ -1,11 +1,11 @@
 // Implements: work-contracts/WC-059-goal005-ae01-contract-payment-activation.md §WC059-05
 // constitutional_basis: C-002, C-023, C-059, C-088
 
+using System.Security.Cryptography;
+using System.Text;
 using Temporalio.Activities;
 using Temporalio.Exceptions;
 using Temporalio.Workflows;
-using System.Security.Cryptography;
-using System.Text;
 using Waooaw.BusinessPlatform.Services;
 
 namespace Waooaw.BusinessPlatform.Workflows;
@@ -23,12 +23,14 @@ public sealed class ActivationWorkflow
     public Task<ActivationOutcome> RunAsync(ActivationRequest request) =>
         Workflow.ExecuteActivityAsync(
             (ActivationActivities activities) => activities.ActivateAsync(request),
-            ActivityOptions);
+            ActivityOptions
+        );
 
     public static string WorkflowIdFor(ActivationRequest request)
     {
-        var paymentDigest = Convert.ToHexStringLower(SHA256.HashData(
-            Encoding.UTF8.GetBytes(request.PaymentReference)))[..16];
+        var paymentDigest = Convert.ToHexStringLower(
+            SHA256.HashData(Encoding.UTF8.GetBytes(request.PaymentReference))
+        )[..16];
         return $"activation-{request.TenantId:D}-{request.RelationshipId:D}-{request.AcceptedContractId:D}-{paymentDigest}";
     }
 }
@@ -40,7 +42,10 @@ public sealed class ActivationActivities(ActivationOrchestrationService orchestr
     {
         try
         {
-            return await orchestration.ActivateAsync(request, ActivityExecutionContext.Current.CancellationToken);
+            return await orchestration.ActivateAsync(
+                request,
+                ActivityExecutionContext.Current.CancellationToken
+            );
         }
         catch (ActivationConflictException exception)
         {

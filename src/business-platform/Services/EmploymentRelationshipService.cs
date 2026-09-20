@@ -1,9 +1,9 @@
 // Implements: architecture/reference/product/ae01-solution-contract.md § Canonical API and Compatibility
 // constitutional_basis: C-005, C-023, C-026, C-059
 
-using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
 using Waooaw.BusinessPlatform.Infrastructure;
 
 namespace Waooaw.BusinessPlatform.Services;
@@ -14,18 +14,21 @@ public sealed record RelationshipAcquisitionEvidence(
     string Intent,
     string DisclosureRevision,
     string TermsVersion,
-    DateTimeOffset AcceptedAt);
+    DateTimeOffset AcceptedAt
+);
 
 public sealed record EmploymentRelationshipListItem(
     EmploymentRelationship Relationship,
     string? CurrentGoalSummary,
     string? TrialStatus,
     int EnabledSkillCount,
-    int PendingSkillCount);
+    int PendingSkillCount
+);
 
 public sealed record EmploymentRelationshipListPage(
     IReadOnlyList<EmploymentRelationshipListItem> Items,
-    string? NextCursor);
+    string? NextCursor
+);
 
 public sealed record EmergencyStopReleaseAuthorization(
     bool IsPortalContext,
@@ -34,33 +37,75 @@ public sealed record EmergencyStopReleaseAuthorization(
     Guid OriginatingStopEvidenceId,
     Guid OriginatingStopCorrelationId,
     string Confirmation,
-    string Justification);
+    string Justification
+);
 
 public sealed class IllegalRelationshipTransitionException(
     EmploymentRelationshipState current,
-    EmploymentRelationshipState target)
-    : Exception($"Transition from {current} to {target} is not permitted.");
+    EmploymentRelationshipState target
+) : Exception($"Transition from {current} to {target} is not permitted.");
 
 public sealed class ProfessionalAdmissionBindingException()
-    : Exception("The selected professional admission is not active or does not match the requested type and version.");
+    : Exception(
+        "The selected professional admission is not active or does not match the requested type and version."
+    );
 
 public sealed class EmploymentRelationshipService
 {
-    private static readonly IReadOnlyDictionary<EmploymentRelationshipState, ISet<EmploymentRelationshipState>> LegalTransitions =
-        new Dictionary<EmploymentRelationshipState, ISet<EmploymentRelationshipState>>
-        {
-            [EmploymentRelationshipState.Discovered] = Set(EmploymentRelationshipState.Interviewing, EmploymentRelationshipState.StoppedEmergency),
-            [EmploymentRelationshipState.Interviewing] = Set(EmploymentRelationshipState.TrialActive, EmploymentRelationshipState.Configuring, EmploymentRelationshipState.StoppedEmergency),
-            [EmploymentRelationshipState.TrialActive] = Set(EmploymentRelationshipState.Configuring, EmploymentRelationshipState.StoppedEmergency),
-            [EmploymentRelationshipState.Configuring] = Set(EmploymentRelationshipState.ContractPendingAcceptance, EmploymentRelationshipState.StoppedEmergency),
-            [EmploymentRelationshipState.ContractPendingAcceptance] = Set(EmploymentRelationshipState.ContractAcceptedPendingPayment, EmploymentRelationshipState.StoppedEmergency),
-            [EmploymentRelationshipState.ContractAcceptedPendingPayment] = Set(EmploymentRelationshipState.ActivationPending, EmploymentRelationshipState.StoppedEmergency),
-            [EmploymentRelationshipState.ActivationPending] = Set(EmploymentRelationshipState.Active, EmploymentRelationshipState.StoppedEmergency),
-            [EmploymentRelationshipState.Active] = Set(EmploymentRelationshipState.Paused, EmploymentRelationshipState.StoppedEmergency, EmploymentRelationshipState.Terminated),
-            [EmploymentRelationshipState.Paused] = Set(EmploymentRelationshipState.Active, EmploymentRelationshipState.StoppedEmergency, EmploymentRelationshipState.Terminated),
-            [EmploymentRelationshipState.StoppedEmergency] = Set(EmploymentRelationshipState.Paused, EmploymentRelationshipState.Active, EmploymentRelationshipState.Terminated),
-            [EmploymentRelationshipState.Terminated] = Set(),
-        };
+    private static readonly IReadOnlyDictionary<
+        EmploymentRelationshipState,
+        ISet<EmploymentRelationshipState>
+    > LegalTransitions = new Dictionary<
+        EmploymentRelationshipState,
+        ISet<EmploymentRelationshipState>
+    >
+    {
+        [EmploymentRelationshipState.Discovered] = Set(
+            EmploymentRelationshipState.Interviewing,
+            EmploymentRelationshipState.StoppedEmergency
+        ),
+        [EmploymentRelationshipState.Interviewing] = Set(
+            EmploymentRelationshipState.TrialActive,
+            EmploymentRelationshipState.Configuring,
+            EmploymentRelationshipState.StoppedEmergency
+        ),
+        [EmploymentRelationshipState.TrialActive] = Set(
+            EmploymentRelationshipState.Configuring,
+            EmploymentRelationshipState.StoppedEmergency
+        ),
+        [EmploymentRelationshipState.Configuring] = Set(
+            EmploymentRelationshipState.ContractPendingAcceptance,
+            EmploymentRelationshipState.StoppedEmergency
+        ),
+        [EmploymentRelationshipState.ContractPendingAcceptance] = Set(
+            EmploymentRelationshipState.ContractAcceptedPendingPayment,
+            EmploymentRelationshipState.StoppedEmergency
+        ),
+        [EmploymentRelationshipState.ContractAcceptedPendingPayment] = Set(
+            EmploymentRelationshipState.ActivationPending,
+            EmploymentRelationshipState.StoppedEmergency
+        ),
+        [EmploymentRelationshipState.ActivationPending] = Set(
+            EmploymentRelationshipState.Active,
+            EmploymentRelationshipState.StoppedEmergency
+        ),
+        [EmploymentRelationshipState.Active] = Set(
+            EmploymentRelationshipState.Paused,
+            EmploymentRelationshipState.StoppedEmergency,
+            EmploymentRelationshipState.Terminated
+        ),
+        [EmploymentRelationshipState.Paused] = Set(
+            EmploymentRelationshipState.Active,
+            EmploymentRelationshipState.StoppedEmergency,
+            EmploymentRelationshipState.Terminated
+        ),
+        [EmploymentRelationshipState.StoppedEmergency] = Set(
+            EmploymentRelationshipState.Paused,
+            EmploymentRelationshipState.Active,
+            EmploymentRelationshipState.Terminated
+        ),
+        [EmploymentRelationshipState.Terminated] = Set(),
+    };
 
     private readonly IDbContextFactory<EmploymentRelationshipDbContext> _dbFactory;
     private readonly IRelationshipConstitutionalGateway _constitutionalGateway;
@@ -69,7 +114,8 @@ public sealed class EmploymentRelationshipService
     public EmploymentRelationshipService(
         IDbContextFactory<EmploymentRelationshipDbContext> dbFactory,
         IRelationshipConstitutionalGateway constitutionalGateway,
-        ILogger<EmploymentRelationshipService> logger)
+        ILogger<EmploymentRelationshipService> logger
+    )
     {
         _dbFactory = dbFactory;
         _constitutionalGateway = constitutionalGateway;
@@ -82,10 +128,19 @@ public sealed class EmploymentRelationshipService
         Guid evaluationIntentId,
         string professionalType,
         Guid correlationId,
-        CancellationToken cancellationToken) =>
+        CancellationToken cancellationToken
+    ) =>
         await AdmitCoreAsync(
-            tenantId, participantId, evaluationIntentId, professionalType,
-            null, null, correlationId, null, cancellationToken);
+            tenantId,
+            participantId,
+            evaluationIntentId,
+            professionalType,
+            null,
+            null,
+            correlationId,
+            null,
+            cancellationToken
+        );
 
     public async Task<AdmitRelationshipResult> AdmitAsync(
         Guid tenantId,
@@ -95,10 +150,19 @@ public sealed class EmploymentRelationshipService
         Guid professionalAdmissionId,
         string professionalVersion,
         Guid correlationId,
-        CancellationToken cancellationToken) =>
+        CancellationToken cancellationToken
+    ) =>
         await AdmitCoreAsync(
-            tenantId, participantId, evaluationIntentId, professionalType,
-            professionalAdmissionId, professionalVersion, correlationId, null, cancellationToken);
+            tenantId,
+            participantId,
+            evaluationIntentId,
+            professionalType,
+            professionalAdmissionId,
+            professionalVersion,
+            correlationId,
+            null,
+            cancellationToken
+        );
 
     public async Task<AdmitRelationshipResult> AdmitFromAcquisitionAsync(
         Guid tenantId,
@@ -109,10 +173,19 @@ public sealed class EmploymentRelationshipService
         string professionalVersion,
         Guid correlationId,
         RelationshipAcquisitionEvidence acquisitionEvidence,
-        CancellationToken cancellationToken) =>
+        CancellationToken cancellationToken
+    ) =>
         await AdmitCoreAsync(
-            tenantId, participantId, evaluationIntentId, professionalType,
-            professionalAdmissionId, professionalVersion, correlationId, acquisitionEvidence, cancellationToken);
+            tenantId,
+            participantId,
+            evaluationIntentId,
+            professionalType,
+            professionalAdmissionId,
+            professionalVersion,
+            correlationId,
+            acquisitionEvidence,
+            cancellationToken
+        );
 
     private async Task<AdmitRelationshipResult> AdmitCoreAsync(
         Guid tenantId,
@@ -123,12 +196,16 @@ public sealed class EmploymentRelationshipService
         string? professionalVersion,
         Guid correlationId,
         RelationshipAcquisitionEvidence? acquisitionEvidence,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var normalizedProfessionalType = professionalType.Trim().ToUpperInvariant();
         if (normalizedProfessionalType.Length is 0 or > 64)
         {
-            throw new ArgumentException("Professional type must contain 1 to 64 characters.", nameof(professionalType));
+            throw new ArgumentException(
+                "Professional type must contain 1 to 64 characters.",
+                nameof(professionalType)
+            );
         }
 
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
@@ -138,7 +215,8 @@ public sealed class EmploymentRelationshipService
             participantId,
             evaluationIntentId,
             normalizedProfessionalType,
-            cancellationToken);
+            cancellationToken
+        );
         if (existing is not null)
         {
             EnsureBindingMatches(existing, professionalAdmissionId, professionalVersion);
@@ -148,11 +226,18 @@ public sealed class EmploymentRelationshipService
         var normalizedProfessionalVersion = professionalVersion?.Trim();
         if (professionalAdmissionId.HasValue)
         {
-            if (professionalAdmissionId == Guid.Empty || string.IsNullOrWhiteSpace(normalizedProfessionalVersion)
+            if (
+                professionalAdmissionId == Guid.Empty
+                || string.IsNullOrWhiteSpace(normalizedProfessionalVersion)
                 || normalizedProfessionalVersion.Length > 64
                 || !await IsActiveProfessionalAdmissionAsync(
-                    db, professionalAdmissionId.Value, normalizedProfessionalType,
-                    normalizedProfessionalVersion, cancellationToken))
+                    db,
+                    professionalAdmissionId.Value,
+                    normalizedProfessionalType,
+                    normalizedProfessionalVersion,
+                    cancellationToken
+                )
+            )
             {
                 throw new ProfessionalAdmissionBindingException();
             }
@@ -165,16 +250,17 @@ public sealed class EmploymentRelationshipService
         var relationshipId = Guid.NewGuid();
         var agentInstanceId = Guid.NewGuid();
         var actionParameters = acquisitionEvidence is null
-            ? (object)new
-            {
-                evaluation_intent_id = evaluationIntentId,
-                initiating_participant_id = participantId,
-                agent_instance_id = agentInstanceId,
-                professional_admission_id = professionalAdmissionId,
-                professional_type = normalizedProfessionalType,
-                professional_version = normalizedProfessionalVersion,
-                target_state = "DISCOVERED",
-            }
+            ? (object)
+                new
+                {
+                    evaluation_intent_id = evaluationIntentId,
+                    initiating_participant_id = participantId,
+                    agent_instance_id = agentInstanceId,
+                    professional_admission_id = professionalAdmissionId,
+                    professional_type = normalizedProfessionalType,
+                    professional_version = normalizedProfessionalVersion,
+                    target_state = "DISCOVERED",
+                }
             : new
             {
                 evaluation_intent_id = evaluationIntentId,
@@ -196,7 +282,8 @@ public sealed class EmploymentRelationshipService
             "ADMIT_EMPLOYMENT_RELATIONSHIP",
             correlationId,
             actionParameters,
-            cancellationToken);
+            cancellationToken
+        );
 
         var relationship = new EmploymentRelationship
         {
@@ -210,25 +297,29 @@ public sealed class EmploymentRelationshipService
             InitiatingParticipantId = participantId,
         };
         db.EmploymentRelationships.Add(relationship);
-        db.RelationshipParticipants.Add(new RelationshipParticipant
-        {
-            TenantId = tenantId,
-            RelationshipId = relationshipId,
-            ParticipantId = participantId,
-            Role = RelationshipParticipantRole.Evaluator,
-            BoundEvidenceId = evidenceId,
-        });
-        db.RelationshipStateHistory.Add(new RelationshipStateHistory
-        {
-            TenantId = tenantId,
-            RelationshipId = relationshipId,
-            StateVersion = 0,
-            ToState = EmploymentRelationshipState.Discovered,
-            ActorParticipantId = participantId,
-            ActorRole = RelationshipParticipantRole.Evaluator,
-            CorrelationId = correlationId,
-            EvidenceId = evidenceId,
-        });
+        db.RelationshipParticipants.Add(
+            new RelationshipParticipant
+            {
+                TenantId = tenantId,
+                RelationshipId = relationshipId,
+                ParticipantId = participantId,
+                Role = RelationshipParticipantRole.Evaluator,
+                BoundEvidenceId = evidenceId,
+            }
+        );
+        db.RelationshipStateHistory.Add(
+            new RelationshipStateHistory
+            {
+                TenantId = tenantId,
+                RelationshipId = relationshipId,
+                StateVersion = 0,
+                ToState = EmploymentRelationshipState.Discovered,
+                ActorParticipantId = participantId,
+                ActorRole = RelationshipParticipantRole.Evaluator,
+                CorrelationId = correlationId,
+                EvidenceId = evidenceId,
+            }
+        );
 
         try
         {
@@ -241,7 +332,8 @@ public sealed class EmploymentRelationshipService
                 exception,
                 "Concurrent first admission detected for tenant {TenantId}, intent {EvaluationIntentId}",
                 tenantId,
-                evaluationIntentId);
+                evaluationIntentId
+            );
 
             await using var replayDb = await _dbFactory.CreateDbContextAsync(cancellationToken);
             var replay = await FindByAdmissionKeyAsync(
@@ -250,7 +342,8 @@ public sealed class EmploymentRelationshipService
                 participantId,
                 evaluationIntentId,
                 normalizedProfessionalType,
-                cancellationToken);
+                cancellationToken
+            );
             if (replay is null)
             {
                 throw;
@@ -264,12 +357,20 @@ public sealed class EmploymentRelationshipService
     private static void EnsureBindingMatches(
         EmploymentRelationship relationship,
         Guid? professionalAdmissionId,
-        string? professionalVersion)
+        string? professionalVersion
+    )
     {
-        if (professionalAdmissionId.HasValue
-            && (relationship.ProfessionalAdmissionId != professionalAdmissionId
+        if (
+            professionalAdmissionId.HasValue
+            && (
+                relationship.ProfessionalAdmissionId != professionalAdmissionId
                 || !string.Equals(
-                    relationship.ProfessionalVersion, professionalVersion?.Trim(), StringComparison.Ordinal)))
+                    relationship.ProfessionalVersion,
+                    professionalVersion?.Trim(),
+                    StringComparison.Ordinal
+                )
+            )
+        )
         {
             throw new ProfessionalAdmissionBindingException();
         }
@@ -280,29 +381,37 @@ public sealed class EmploymentRelationshipService
         Guid admissionId,
         string professionalType,
         string professionalVersion,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         if (!db.Database.IsRelational())
         {
-            return await db.AgentAdmissions.AsNoTracking().AnyAsync(
-                value => value.AdmissionId == admissionId
-                    && value.ProfessionalTypeId == professionalType
-                    && value.ProfessionalVersion == professionalVersion
-                    && value.State == AgentAdmissionState.Active,
-                cancellationToken);
+            return await db
+                .AgentAdmissions.AsNoTracking()
+                .AnyAsync(
+                    value =>
+                        value.AdmissionId == admissionId
+                        && value.ProfessionalTypeId == professionalType
+                        && value.ProfessionalVersion == professionalVersion
+                        && value.State == AgentAdmissionState.Active,
+                    cancellationToken
+                );
         }
 
         var connection = db.Database.GetDbConnection();
         if (connection.State != System.Data.ConnectionState.Open)
             await connection.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT business.is_active_professional_admission(@admission_id, @professional_type, @professional_version)";
-        foreach (var (name, value) in new[]
-        {
-            ("admission_id", (object)admissionId),
-            ("professional_type", professionalType),
-            ("professional_version", professionalVersion),
-        })
+        command.CommandText =
+            "SELECT business.is_active_professional_admission(@admission_id, @professional_type, @professional_version)";
+        foreach (
+            var (name, value) in new[]
+            {
+                ("admission_id", (object)admissionId),
+                ("professional_type", professionalType),
+                ("professional_version", professionalVersion),
+            }
+        )
         {
             var parameter = command.CreateParameter();
             parameter.ParameterName = name;
@@ -318,26 +427,30 @@ public sealed class EmploymentRelationshipService
         string legacyIdentity,
         string professionalType,
         Guid correlationId,
-        CancellationToken cancellationToken) =>
+        CancellationToken cancellationToken
+    ) =>
         AdmitAsync(
             tenantId,
             participantId,
             DeriveLegacyEvaluationIntent(legacyIdentity),
             professionalType,
             correlationId,
-            cancellationToken);
+            cancellationToken
+        );
 
     public async Task<EmploymentRelationship?> GetAsync(
         Guid tenantId,
         Guid relationshipId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
-        return await db.EmploymentRelationships
-            .AsNoTracking()
+        return await db
+            .EmploymentRelationships.AsNoTracking()
             .SingleOrDefaultAsync(
                 value => value.TenantId == tenantId && value.RelationshipId == relationshipId,
-                cancellationToken);
+                cancellationToken
+            );
     }
 
     public async Task<EmploymentRelationshipListPage> ListAuthorizedAsync(
@@ -345,7 +458,8 @@ public sealed class EmploymentRelationshipService
         Guid participantId,
         string? cursor,
         int limit,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         Guid? afterRelationshipId = null;
         if (!string.IsNullOrWhiteSpace(cursor))
@@ -362,13 +476,19 @@ public sealed class EmploymentRelationshipService
         }
 
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
-        var authorizedIds = db.RelationshipParticipants.AsNoTracking()
-            .Where(value => value.TenantId == tenantId
+        var authorizedIds = db
+            .RelationshipParticipants.AsNoTracking()
+            .Where(value =>
+                value.TenantId == tenantId
                 && value.ParticipantId == participantId
-                && value.Status == "ACTIVE")
+                && value.Status == "ACTIVE"
+            )
             .Select(value => value.RelationshipId);
-        var relationships = await db.EmploymentRelationships.AsNoTracking()
-            .Where(value => value.TenantId == tenantId && authorizedIds.Contains(value.RelationshipId))
+        var relationships = await db
+            .EmploymentRelationships.AsNoTracking()
+            .Where(value =>
+                value.TenantId == tenantId && authorizedIds.Contains(value.RelationshipId)
+            )
             .OrderByDescending(value => value.UpdatedAt)
             .ThenBy(value => value.RelationshipId)
             .ToListAsync(cancellationToken);
@@ -376,65 +496,114 @@ public sealed class EmploymentRelationshipService
         var start = 0;
         if (afterRelationshipId.HasValue)
         {
-            var cursorIndex = relationships.FindIndex(value => value.RelationshipId == afterRelationshipId.Value);
-            if (cursorIndex < 0) throw new ArgumentException("Cursor is invalid.", nameof(cursor));
+            var cursorIndex = relationships.FindIndex(value =>
+                value.RelationshipId == afterRelationshipId.Value
+            );
+            if (cursorIndex < 0)
+                throw new ArgumentException("Cursor is invalid.", nameof(cursor));
             start = cursorIndex + 1;
         }
 
         var page = relationships.Skip(start).Take(limit + 1).ToArray();
         var selected = page.Take(limit).ToArray();
         var selectedIds = selected.Select(value => value.RelationshipId).ToArray();
-        var goals = await db.RelationshipGoals.AsNoTracking()
-            .Where(value => value.TenantId == tenantId && selectedIds.Contains(value.RelationshipId))
+        var goals = await db
+            .RelationshipGoals.AsNoTracking()
+            .Where(value =>
+                value.TenantId == tenantId && selectedIds.Contains(value.RelationshipId)
+            )
             .OrderByDescending(value => value.UpdatedAt)
             .ToListAsync(cancellationToken);
-        var trialStatuses = await db.RelationshipTrialBindings.AsNoTracking()
-            .Where(value => value.TenantId == tenantId && selectedIds.Contains(value.RelationshipId))
-            .ToDictionaryAsync(value => value.RelationshipId, value => value.Status, cancellationToken);
-        var skills = await db.RelationshipSkillConfigurations.AsNoTracking()
-            .Where(value => value.TenantId == tenantId && selectedIds.Contains(value.RelationshipId))
+        var trialStatuses = await db
+            .RelationshipTrialBindings.AsNoTracking()
+            .Where(value =>
+                value.TenantId == tenantId && selectedIds.Contains(value.RelationshipId)
+            )
+            .ToDictionaryAsync(
+                value => value.RelationshipId,
+                value => value.Status,
+                cancellationToken
+            );
+        var skills = await db
+            .RelationshipSkillConfigurations.AsNoTracking()
+            .Where(value =>
+                value.TenantId == tenantId && selectedIds.Contains(value.RelationshipId)
+            )
             .GroupBy(value => value.RelationshipId)
             .Select(group => new
             {
                 RelationshipId = group.Key,
-                Enabled = group.Count(value => value.Status == "ACTIVE" || value.Status == "ENABLED" || value.Status == "APPROVED"),
-                Pending = group.Count(value => value.Status != "ACTIVE" && value.Status != "ENABLED" && value.Status != "APPROVED"),
+                Enabled = group.Count(value =>
+                    value.Status == "ACTIVE"
+                    || value.Status == "ENABLED"
+                    || value.Status == "APPROVED"
+                ),
+                Pending = group.Count(value =>
+                    value.Status != "ACTIVE"
+                    && value.Status != "ENABLED"
+                    && value.Status != "APPROVED"
+                ),
             })
             .ToDictionaryAsync(value => value.RelationshipId, cancellationToken);
-        var items = selected.Select(relationship => new EmploymentRelationshipListItem(
-            relationship,
-            goals.FirstOrDefault(goal => goal.RelationshipId == relationship.RelationshipId
-                && goal.Status is not ("RETIRED" or "SUPERSEDED"))?.Goal,
-            trialStatuses.GetValueOrDefault(relationship.RelationshipId),
-            skills.GetValueOrDefault(relationship.RelationshipId)?.Enabled ?? 0,
-            skills.GetValueOrDefault(relationship.RelationshipId)?.Pending ?? 0)).ToArray();
-        var nextCursor = page.Length > limit
-            ? Convert.ToBase64String(Encoding.UTF8.GetBytes(selected[^1].RelationshipId.ToString()))
-            : null;
+        var items = selected
+            .Select(relationship => new EmploymentRelationshipListItem(
+                relationship,
+                goals
+                    .FirstOrDefault(goal =>
+                        goal.RelationshipId == relationship.RelationshipId
+                        && goal.Status is not ("RETIRED" or "SUPERSEDED")
+                    )
+                    ?.Goal,
+                trialStatuses.GetValueOrDefault(relationship.RelationshipId),
+                skills.GetValueOrDefault(relationship.RelationshipId)?.Enabled ?? 0,
+                skills.GetValueOrDefault(relationship.RelationshipId)?.Pending ?? 0
+            ))
+            .ToArray();
+        var nextCursor =
+            page.Length > limit
+                ? Convert.ToBase64String(
+                    Encoding.UTF8.GetBytes(selected[^1].RelationshipId.ToString())
+                )
+                : null;
         return new EmploymentRelationshipListPage(items, nextCursor);
     }
 
     public async Task<bool> IsActiveParticipantAsync(
-        Guid tenantId, Guid relationshipId, Guid participantId, CancellationToken cancellationToken)
+        Guid tenantId,
+        Guid relationshipId,
+        Guid participantId,
+        CancellationToken cancellationToken
+    )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
-        return await db.RelationshipParticipants.AsNoTracking().AnyAsync(
-            value => value.TenantId == tenantId
-                && value.RelationshipId == relationshipId
-                && value.ParticipantId == participantId
-                && value.Status == "ACTIVE",
-            cancellationToken);
+        return await db
+            .RelationshipParticipants.AsNoTracking()
+            .AnyAsync(
+                value =>
+                    value.TenantId == tenantId
+                    && value.RelationshipId == relationshipId
+                    && value.ParticipantId == participantId
+                    && value.Status == "ACTIVE",
+                cancellationToken
+            );
     }
 
     public async Task<RelationshipParticipantRole?> GetActiveRoleAsync(
-        Guid tenantId, Guid relationshipId, Guid participantId, CancellationToken cancellationToken)
+        Guid tenantId,
+        Guid relationshipId,
+        Guid participantId,
+        CancellationToken cancellationToken
+    )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
-        return await db.RelationshipParticipants.AsNoTracking()
-            .Where(value => value.TenantId == tenantId
+        return await db
+            .RelationshipParticipants.AsNoTracking()
+            .Where(value =>
+                value.TenantId == tenantId
                 && value.RelationshipId == relationshipId
                 && value.ParticipantId == participantId
-                && value.Status == "ACTIVE")
+                && value.Status == "ACTIVE"
+            )
             .OrderBy(value => value.Role == RelationshipParticipantRole.Employer ? 0 : 1)
             .Select(value => (RelationshipParticipantRole?)value.Role)
             .FirstOrDefaultAsync(cancellationToken);
@@ -443,11 +612,12 @@ public sealed class EmploymentRelationshipService
     public async Task<IReadOnlyList<RelationshipStateHistory>> GetTimelineAsync(
         Guid tenantId,
         Guid relationshipId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
-        return await db.RelationshipStateHistory
-            .AsNoTracking()
+        return await db
+            .RelationshipStateHistory.AsNoTracking()
             .Where(value => value.TenantId == tenantId && value.RelationshipId == relationshipId)
             .OrderBy(value => value.StateVersion)
             .ToListAsync(cancellationToken);
@@ -462,12 +632,14 @@ public sealed class EmploymentRelationshipService
         Guid correlationId,
         bool explicitEmergencyRelease,
         CancellationToken cancellationToken,
-        EmergencyStopReleaseAuthorization? emergencyReleaseAuthorization = null)
+        EmergencyStopReleaseAuthorization? emergencyReleaseAuthorization = null
+    )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
         var relationship = await db.EmploymentRelationships.SingleOrDefaultAsync(
             value => value.TenantId == tenantId && value.RelationshipId == relationshipId,
-            cancellationToken);
+            cancellationToken
+        );
         if (relationship is null)
         {
             return null;
@@ -479,32 +651,49 @@ public sealed class EmploymentRelationshipService
         }
 
         var hasActiveRoleBinding = await db.RelationshipParticipants.AnyAsync(
-            value => value.TenantId == tenantId
+            value =>
+                value.TenantId == tenantId
                 && value.RelationshipId == relationshipId
                 && value.ParticipantId == actorParticipantId
                 && value.Role == actorRole
                 && value.Status == "ACTIVE",
-            cancellationToken);
+            cancellationToken
+        );
         if (!hasActiveRoleBinding)
         {
             throw new ConstitutionalActionDeniedException(
-                "Transition authority requires an active same-tenant participant-role binding.");
+                "Transition authority requires an active same-tenant participant-role binding."
+            );
         }
 
         RelationshipStateHistory? originatingStop = null;
-        if (relationship.State == EmploymentRelationshipState.StoppedEmergency
-            && targetState is EmploymentRelationshipState.Active or EmploymentRelationshipState.Paused)
+        if (
+            relationship.State == EmploymentRelationshipState.StoppedEmergency
+            && targetState
+                is EmploymentRelationshipState.Active
+                    or EmploymentRelationshipState.Paused
+        )
         {
-            originatingStop = await db.RelationshipStateHistory.AsNoTracking()
-                .Where(value => value.TenantId == tenantId
+            originatingStop = await db
+                .RelationshipStateHistory.AsNoTracking()
+                .Where(value =>
+                    value.TenantId == tenantId
                     && value.RelationshipId == relationshipId
-                    && value.ToState == EmploymentRelationshipState.StoppedEmergency)
+                    && value.ToState == EmploymentRelationshipState.StoppedEmergency
+                )
                 .OrderByDescending(value => value.StateVersion)
                 .FirstOrDefaultAsync(cancellationToken);
-            ValidateEmergencyRelease(actorRole, explicitEmergencyRelease, emergencyReleaseAuthorization, originatingStop);
+            ValidateEmergencyRelease(
+                actorRole,
+                explicitEmergencyRelease,
+                emergencyReleaseAuthorization,
+                originatingStop
+            );
         }
 
-        var actionType = originatingStop is null ? "TRANSITION_EMPLOYMENT_RELATIONSHIP" : "RELEASE_EMERGENCY_STOP";
+        var actionType = originatingStop is null
+            ? "TRANSITION_EMPLOYMENT_RELATIONSHIP"
+            : "RELEASE_EMERGENCY_STOP";
         var evidenceId = await _constitutionalGateway.AuthorizeAndRecordAsync(
             tenantId,
             relationshipId,
@@ -520,31 +709,37 @@ public sealed class EmploymentRelationshipService
                 explicit_emergency_release = explicitEmergencyRelease,
                 originating_stop_evidence_id = originatingStop?.EvidenceId,
                 originating_stop_correlation_id = originatingStop?.CorrelationId,
-                constitutional_basis = originatingStop is null ? null : $"EMERGENCY_STOP_RELEASE:{originatingStop.EvidenceId:D}",
+                constitutional_basis = originatingStop is null
+                    ? null
+                    : $"EMERGENCY_STOP_RELEASE:{originatingStop.EvidenceId:D}",
                 release_justification = emergencyReleaseAuthorization?.Justification.Trim(),
             },
-            cancellationToken);
+            cancellationToken
+        );
 
         var previousState = relationship.State;
         relationship.State = targetState;
         relationship.StateVersion += 1;
         relationship.UpdatedAt = DateTimeOffset.UtcNow;
-        relationship.StoppedAt = targetState == EmploymentRelationshipState.StoppedEmergency
-            ? DateTimeOffset.UtcNow
-            : relationship.StoppedAt;
-        db.RelationshipStateHistory.Add(new RelationshipStateHistory
-        {
-            TenantId = tenantId,
-            RelationshipId = relationshipId,
-            StateVersion = relationship.StateVersion,
-            FromState = previousState,
-            ToState = targetState,
-            ActorParticipantId = actorParticipantId,
-            ActorRole = actorRole,
-            AuthoritySnapshotId = relationship.AuthoritySnapshotId,
-            CorrelationId = correlationId,
-            EvidenceId = evidenceId,
-        });
+        relationship.StoppedAt =
+            targetState == EmploymentRelationshipState.StoppedEmergency
+                ? DateTimeOffset.UtcNow
+                : relationship.StoppedAt;
+        db.RelationshipStateHistory.Add(
+            new RelationshipStateHistory
+            {
+                TenantId = tenantId,
+                RelationshipId = relationshipId,
+                StateVersion = relationship.StateVersion,
+                FromState = previousState,
+                ToState = targetState,
+                ActorParticipantId = actorParticipantId,
+                ActorRole = actorRole,
+                AuthoritySnapshotId = relationship.AuthoritySnapshotId,
+                CorrelationId = correlationId,
+                EvidenceId = evidenceId,
+            }
+        );
 
         await db.SaveChangesAsync(cancellationToken);
         return relationship;
@@ -557,43 +752,60 @@ public sealed class EmploymentRelationshipService
         RelationshipParticipantRole actorRole,
         Guid correlationId,
         Guid stopEvidenceId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
         var relationship = await db.EmploymentRelationships.SingleOrDefaultAsync(
             value => value.TenantId == tenantId && value.RelationshipId == relationshipId,
-            cancellationToken);
-        if (relationship is null) return null;
-        if (relationship.State == EmploymentRelationshipState.StoppedEmergency) return relationship;
-        if (!LegalTransitions[relationship.State].Contains(EmploymentRelationshipState.StoppedEmergency))
-            throw new IllegalRelationshipTransitionException(relationship.State, EmploymentRelationshipState.StoppedEmergency);
+            cancellationToken
+        );
+        if (relationship is null)
+            return null;
+        if (relationship.State == EmploymentRelationshipState.StoppedEmergency)
+            return relationship;
+        if (
+            !LegalTransitions[relationship.State]
+                .Contains(EmploymentRelationshipState.StoppedEmergency)
+        )
+            throw new IllegalRelationshipTransitionException(
+                relationship.State,
+                EmploymentRelationshipState.StoppedEmergency
+            );
         var bound = await db.RelationshipParticipants.AnyAsync(
-            value => value.TenantId == tenantId
+            value =>
+                value.TenantId == tenantId
                 && value.RelationshipId == relationshipId
                 && value.ParticipantId == actorParticipantId
                 && value.Role == actorRole
                 && value.Status == "ACTIVE",
-            cancellationToken);
-        if (!bound) throw new ConstitutionalActionDeniedException("Emergency Stop requires an active same-tenant participant binding.");
+            cancellationToken
+        );
+        if (!bound)
+            throw new ConstitutionalActionDeniedException(
+                "Emergency Stop requires an active same-tenant participant binding."
+            );
 
         var previousState = relationship.State;
         relationship.State = EmploymentRelationshipState.StoppedEmergency;
         relationship.StateVersion += 1;
         relationship.StoppedAt = DateTimeOffset.UtcNow;
         relationship.UpdatedAt = relationship.StoppedAt.Value;
-        db.RelationshipStateHistory.Add(new RelationshipStateHistory
-        {
-            TenantId = tenantId,
-            RelationshipId = relationshipId,
-            StateVersion = relationship.StateVersion,
-            FromState = previousState,
-            ToState = EmploymentRelationshipState.StoppedEmergency,
-            ActorParticipantId = actorParticipantId,
-            ActorRole = actorRole,
-            AuthoritySnapshotId = relationship.AuthoritySnapshotId,
-            CorrelationId = correlationId,
-            EvidenceId = stopEvidenceId,
-        });
+        db.RelationshipStateHistory.Add(
+            new RelationshipStateHistory
+            {
+                TenantId = tenantId,
+                RelationshipId = relationshipId,
+                StateVersion = relationship.StateVersion,
+                FromState = previousState,
+                ToState = EmploymentRelationshipState.StoppedEmergency,
+                ActorParticipantId = actorParticipantId,
+                ActorRole = actorRole,
+                AuthoritySnapshotId = relationship.AuthoritySnapshotId,
+                CorrelationId = correlationId,
+                EvidenceId = stopEvidenceId,
+            }
+        );
         await db.SaveChangesAsync(cancellationToken);
         return relationship;
     }
@@ -602,12 +814,15 @@ public sealed class EmploymentRelationshipService
         RelationshipParticipantRole actorRole,
         bool explicitEmergencyRelease,
         EmergencyStopReleaseAuthorization? authorization,
-        RelationshipStateHistory? originatingStop)
+        RelationshipStateHistory? originatingStop
+    )
     {
-        var freshAuthentication = authorization is not null
+        var freshAuthentication =
+            authorization is not null
             && authorization.AuthenticatedAt <= DateTimeOffset.UtcNow
             && DateTimeOffset.UtcNow - authorization.AuthenticatedAt <= TimeSpan.FromMinutes(5);
-        if (!explicitEmergencyRelease
+        if (
+            !explicitEmergencyRelease
             || actorRole != RelationshipParticipantRole.Employer
             || authorization is null
             || !authorization.IsPortalContext
@@ -618,10 +833,12 @@ public sealed class EmploymentRelationshipService
             || authorization.Justification.Trim().Length > 500
             || originatingStop is null
             || authorization.OriginatingStopEvidenceId != originatingStop.EvidenceId
-            || authorization.OriginatingStopCorrelationId != originatingStop.CorrelationId)
+            || authorization.OriginatingStopCorrelationId != originatingStop.CorrelationId
+        )
         {
             throw new ConstitutionalActionDeniedException(
-                "Emergency Stop release requires fresh Tier-4 portal EMPLOYER authorization linked to the active Stop.");
+                "Emergency Stop release requires fresh Tier-4 portal EMPLOYER authorization linked to the active Stop."
+            );
         }
     }
 
@@ -631,18 +848,22 @@ public sealed class EmploymentRelationshipService
         Guid participantId,
         Guid evaluationIntentId,
         string professionalType,
-        CancellationToken cancellationToken) =>
-        db.EmploymentRelationships
-            .AsNoTracking()
+        CancellationToken cancellationToken
+    ) =>
+        db
+            .EmploymentRelationships.AsNoTracking()
             .SingleOrDefaultAsync(
-                value => value.TenantId == tenantId
+                value =>
+                    value.TenantId == tenantId
                     && value.InitiatingParticipantId == participantId
                     && value.EvaluationIntentId == evaluationIntentId
                     && value.ProfessionalType == professionalType,
-                cancellationToken);
+                cancellationToken
+            );
 
-    private static ISet<EmploymentRelationshipState> Set(params EmploymentRelationshipState[] states) =>
-        new HashSet<EmploymentRelationshipState>(states);
+    private static ISet<EmploymentRelationshipState> Set(
+        params EmploymentRelationshipState[] states
+    ) => new HashSet<EmploymentRelationshipState>(states);
 
     private static Guid DeriveLegacyEvaluationIntent(string legacyIdentity)
     {

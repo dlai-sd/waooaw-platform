@@ -1,58 +1,56 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
+    <!-- Reference .csproj for src/business-platform/business-platform.csproj       -->
+    <!-- Constitutional basis: ADR-002 (OpenAPI spec-first), ADR-003 (JWT tenancy)  -->
+    <!-- ADR-006 (rate limiting), C-005 (Three-Ledger), C-026 (Tenant Isolation)   -->
+    <!-- DO NOT add packages without EA approval. Exact versions are pinned.        -->
 
-  <!-- Reference .csproj for src/business-platform/business-platform.csproj       -->
-  <!-- Constitutional basis: ADR-002 (OpenAPI spec-first), ADR-003 (JWT tenancy)  -->
-  <!-- ADR-006 (rate limiting), C-005 (Three-Ledger), C-026 (Tenant Isolation)   -->
-  <!-- DO NOT add packages without EA approval. Exact versions are pinned.        -->
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <RootNamespace>Waooaw.BusinessPlatform</RootNamespace>
+        <AssemblyName>BusinessPlatform</AssemblyName>
+        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    </PropertyGroup>
 
-  <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <RootNamespace>Waooaw.BusinessPlatform</RootNamespace>
-    <AssemblyName>BusinessPlatform</AssemblyName>
-    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
-  </PropertyGroup>
+    <ItemGroup>
+        <!-- REST API + OpenAPI spec-first (ADR-002) -->
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0" />
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
 
-  <ItemGroup>
-    <!-- REST API + OpenAPI spec-first (ADR-002) -->
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
+        <!-- Entity Framework Core 9 + PostgreSQL (C-026 RLS enforcement) -->
+        <!-- NOTE: EF Core must be 9.0.1+ — Npgsql 9.0.4 requires 9.0.1 -->
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.1" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.1" />
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
 
-    <!-- Entity Framework Core 9 + PostgreSQL (C-026 RLS enforcement) -->
-    <!-- NOTE: EF Core must be 9.0.1+ — Npgsql 9.0.4 requires 9.0.1 -->
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.1" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.1" />
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
+        <!-- JWT validation — Keycloak (ADR-003, ADR-008) -->
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
 
-    <!-- JWT validation — Keycloak (ADR-003, ADR-008) -->
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
+        <!-- Rate limiting (ADR-006) -->
+        <!-- Built into ASP.NET Core 9 — no external package needed -->
 
-    <!-- Rate limiting (ADR-006) -->
-    <!-- Built into ASP.NET Core 9 — no external package needed -->
+        <!-- gRPC client — to call Constitutional Engine (ADR-001) -->
+        <PackageReference Include="Grpc.Net.Client" Version="2.67.0" />
+        <PackageReference Include="Google.Protobuf" Version="3.28.0" />
+        <PackageReference Include="Grpc.Tools" Version="2.67.0" />
 
-    <!-- gRPC client — to call Constitutional Engine (ADR-001) -->
-    <PackageReference Include="Grpc.Net.Client" Version="2.67.0" />
-    <PackageReference Include="Google.Protobuf" Version="3.28.0" />
-    <PackageReference Include="Grpc.Tools" Version="2.67.0" />
+        <!-- Temporal workflow orchestration — ADR-015 (trial expiry saga, employment lifecycle) -->
+        <PackageReference Include="Temporalio" Version="1.4.0" />
+        <PackageReference Include="Temporalio.Extensions.Hosting" Version="1.4.0" />
 
-    <!-- Temporal workflow orchestration — ADR-015 (trial expiry saga, employment lifecycle) -->
-    <PackageReference Include="Temporalio" Version="1.4.0" />
-    <PackageReference Include="Temporalio.Extensions.Hosting" Version="1.4.0" />
+        <!-- OpenTelemetry — NOTE: use OpenTelemetryProtocol NOT Otlp -->
+        <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.17.0" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.17.0" />
+        <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.17.0" />
+    </ItemGroup>
 
-    <!-- OpenTelemetry — NOTE: use OpenTelemetryProtocol NOT Otlp -->
-    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.17.0" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.17.0" />
-    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.17.0" />
-  </ItemGroup>
+    <!-- gRPC client proto for calling CE -->
+    <ItemGroup>
+        <Protobuf Include="Protos/constitutional_service.proto" GrpcServices="Client" />
+    </ItemGroup>
 
-  <!-- gRPC client proto for calling CE -->
-  <ItemGroup>
-    <Protobuf Include="Protos/constitutional_service.proto" GrpcServices="Client" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Update="Catalog/Professionals/*.json" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
-
+    <ItemGroup>
+        <Content Update="Catalog/Professionals/*.json" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
 </Project>

@@ -17,7 +17,8 @@ public sealed record ConversationTextBlockV1(
     string SchemaVersion,
     string BlockType,
     string Text,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Language = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Language = null
+);
 
 public sealed record SendConversationMessageRequestV1(
     string SchemaVersion,
@@ -25,12 +26,15 @@ public sealed record SendConversationMessageRequestV1(
     string SkillId,
     IReadOnlyList<ConversationTextBlockV1> Content,
     string Locale,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? ExpectedCursor = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        string? ExpectedCursor = null
+);
 
 public sealed record UpdateConversationReadPositionRequestV1(
     string SchemaVersion,
     Guid LastVisibleMessageId,
-    string AuthoritativeCursor);
+    string AuthoritativeCursor
+);
 
 public sealed record ConversationMessageV1(
     string SchemaVersion,
@@ -46,11 +50,14 @@ public sealed record ConversationMessageV1(
     string EvidenceState,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Guid? EvidenceRecordId,
     bool Partial,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? CompletionReason,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        string? CompletionReason,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Guid? RetryOfMessageId,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Guid? ClientMessageId,
     DateTimeOffset AcceptedAt,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] DateTimeOffset? CompletedAt);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        DateTimeOffset? CompletedAt
+);
 
 public sealed record ConversationTimelinePageV1(
     string SchemaVersion,
@@ -58,9 +65,11 @@ public sealed record ConversationTimelinePageV1(
     IReadOnlyList<ConversationMessageV1> Items,
     string AuthoritativeCursor,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? NextCursor,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Guid? UnreadBoundaryMessageId,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        Guid? UnreadBoundaryMessageId,
     bool HasMore,
-    DateTimeOffset ServerTime);
+    DateTimeOffset ServerTime
+);
 
 public sealed record ConversationSubmissionV1(
     string SchemaVersion,
@@ -68,21 +77,25 @@ public sealed record ConversationSubmissionV1(
     ConversationMessageV1 Message,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Guid? ExecutionId,
     string AuthoritativeCursor,
-    bool Replayed);
+    bool Replayed
+);
 
 public sealed record ConversationReadPositionV1(
     string SchemaVersion,
     Guid RelationshipId,
     Guid LastReadMessageId,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt
+);
 
 public sealed record ConversationExecutionStatusV1(
     string SchemaVersion,
     Guid ExecutionId,
     string State,
     bool Partial,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? CompletionReason,
-    DateTimeOffset UpdatedAt);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        string? CompletionReason,
+    DateTimeOffset UpdatedAt
+);
 
 public sealed record ConversationStreamEventV1(
     string SchemaVersion,
@@ -93,7 +106,8 @@ public sealed record ConversationStreamEventV1(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Guid? MessageId,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Guid? ExecutionId,
     DateTimeOffset OccurredAt,
-    JsonElement Data);
+    JsonElement Data
+);
 
 public sealed record ConversationCommandResult<T>(T Value, bool Replayed);
 
@@ -144,15 +158,23 @@ public sealed record OperationalMandateV1(
     string ConstitutionalDecisionRef,
     string ConstitutionalEvidenceRef,
     string? BillingReservationRef,
-    string? BillingAttributionRef);
+    string? BillingAttributionRef
+);
 
 public sealed class ConversationNotAccessibleException : Exception;
+
 public sealed class ConversationIdempotencyConflictException : Exception;
+
 public sealed class ConversationStateConflictException : Exception;
+
 public sealed class ConversationCursorExpiredException : Exception;
+
 public sealed class ConversationRetryNotAllowedException : Exception;
+
 public sealed class ConversationStoppedException : Exception;
+
 public sealed class ConversationExecutionUnavailableException : Exception;
+
 public sealed class OperationalMandateUnavailableException : Exception;
 
 public sealed class ConversationRequestException(string message) : Exception(message);
@@ -163,7 +185,8 @@ public sealed class ConversationCursorOptions
     public string CursorHmacKey { get; set; } = string.Empty;
     public string[] PreviousHmacKeys { get; set; } = [];
 
-    public string EffectiveHmacKey => string.IsNullOrWhiteSpace(CursorHmacKey) ? HmacKey : CursorHmacKey;
+    public string EffectiveHmacKey =>
+        string.IsNullOrWhiteSpace(CursorHmacKey) ? HmacKey : CursorHmacKey;
 }
 
 public sealed class ConversationCursorOptionsValidator : IValidateOptions<ConversationCursorOptions>
@@ -174,23 +197,33 @@ public sealed class ConversationCursorOptionsValidator : IValidateOptions<Conver
         if (options.EffectiveHmacKey.Length < 32)
             errors.Add("Conversation:CursorHmacKey must contain at least 32 characters.");
         if (options.PreviousHmacKeys.Any(key => string.IsNullOrWhiteSpace(key) || key.Length < 32))
-            errors.Add("Conversation:PreviousHmacKeys must contain keys of at least 32 characters.");
-        return errors.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(errors);
+            errors.Add(
+                "Conversation:PreviousHmacKeys must contain keys of at least 32 characters."
+            );
+        return errors.Count == 0
+            ? ValidateOptionsResult.Success
+            : ValidateOptionsResult.Fail(errors);
     }
 }
 
 public sealed class ConversationCursorHealthCheck(
     IOptions<ConversationCursorOptions> options,
-    IValidateOptions<ConversationCursorOptions> validator) : IHealthCheck
+    IValidateOptions<ConversationCursorOptions> validator
+) : IHealthCheck
 {
     public Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var result = validator.Validate(Options.DefaultName, options.Value);
-        return Task.FromResult(result.Succeeded
-            ? HealthCheckResult.Healthy()
-            : HealthCheckResult.Unhealthy("Conversation cursor signing configuration is invalid."));
+        return Task.FromResult(
+            result.Succeeded
+                ? HealthCheckResult.Healthy()
+                : HealthCheckResult.Unhealthy(
+                    "Conversation cursor signing configuration is invalid."
+                )
+        );
     }
 }
 
@@ -205,13 +238,15 @@ public interface IConversationExecutionGateway
         IReadOnlyList<ConversationTextBlockV1> content,
         OperationalMandateV1 operationalMandate,
         Guid idempotencyKey,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken
+    );
 
     Task CancelAsync(
         Guid conversationId,
         Guid executionId,
         Guid idempotencyKey,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken
+    );
 }
 
 public interface IOperationalMandateResolver
@@ -220,7 +255,8 @@ public interface IOperationalMandateResolver
         Guid tenantId,
         Guid participantId,
         Guid relationshipId,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken
+    );
 
     Task<OperationalMandateV1> ResolveAsync(
         Guid tenantId,
@@ -230,7 +266,8 @@ public interface IOperationalMandateResolver
         Guid constitutionalEvidenceId,
         string skillId,
         string operationalPurpose,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken
+    );
 }
 
 public sealed record OperationalMandateReadiness(bool Ready, IReadOnlyList<string> BlockedReasons);
@@ -241,8 +278,14 @@ public sealed class UnconfiguredOperationalMandateResolver : IOperationalMandate
         Guid tenantId,
         Guid participantId,
         Guid relationshipId,
-        CancellationToken cancellationToken) => Task.FromResult(new OperationalMandateReadiness(
-            false, ["The admitted artifact and runtime binding coordinates are unavailable."]));
+        CancellationToken cancellationToken
+    ) =>
+        Task.FromResult(
+            new OperationalMandateReadiness(
+                false,
+                ["The admitted artifact and runtime binding coordinates are unavailable."]
+            )
+        );
 
     public Task<OperationalMandateV1> ResolveAsync(
         Guid tenantId,
@@ -252,8 +295,8 @@ public sealed class UnconfiguredOperationalMandateResolver : IOperationalMandate
         Guid constitutionalEvidenceId,
         string skillId,
         string operationalPurpose,
-        CancellationToken cancellationToken) =>
-        throw new OperationalMandateUnavailableException();
+        CancellationToken cancellationToken
+    ) => throw new OperationalMandateUnavailableException();
 }
 
 public sealed class UnconfiguredConversationExecutionGateway : IConversationExecutionGateway
@@ -267,15 +310,15 @@ public sealed class UnconfiguredConversationExecutionGateway : IConversationExec
         IReadOnlyList<ConversationTextBlockV1> content,
         OperationalMandateV1 operationalMandate,
         Guid idempotencyKey,
-        CancellationToken cancellationToken) =>
-        throw new ConversationExecutionUnavailableException();
+        CancellationToken cancellationToken
+    ) => throw new ConversationExecutionUnavailableException();
 
     public Task CancelAsync(
         Guid conversationId,
         Guid executionId,
         Guid idempotencyKey,
-        CancellationToken cancellationToken) =>
-        throw new ConversationExecutionUnavailableException();
+        CancellationToken cancellationToken
+    ) => throw new ConversationExecutionUnavailableException();
 }
 
 public sealed class ConversationCursorCodec
@@ -288,15 +331,27 @@ public sealed class ConversationCursorCodec
         var effectiveKey = options.Value.EffectiveHmacKey;
         if (string.IsNullOrWhiteSpace(effectiveKey) || effectiveKey.Length < 32)
         {
-            throw new InvalidOperationException("Conversation:CursorHmacKey must contain at least 32 characters.");
+            throw new InvalidOperationException(
+                "Conversation:CursorHmacKey must contain at least 32 characters."
+            );
         }
 
         _key = Encoding.UTF8.GetBytes(effectiveKey);
-        if (options.Value.PreviousHmacKeys.Any(key => string.IsNullOrWhiteSpace(key) || key.Length < 32))
+        if (
+            options.Value.PreviousHmacKeys.Any(key =>
+                string.IsNullOrWhiteSpace(key) || key.Length < 32
+            )
+        )
         {
-            throw new InvalidOperationException("Conversation:PreviousHmacKeys must contain keys of at least 32 characters.");
+            throw new InvalidOperationException(
+                "Conversation:PreviousHmacKeys must contain keys of at least 32 characters."
+            );
         }
-        _verificationKeys = [_key, .. options.Value.PreviousHmacKeys.Distinct().Select(Encoding.UTF8.GetBytes)];
+        _verificationKeys =
+        [
+            _key,
+            .. options.Value.PreviousHmacKeys.Distinct().Select(Encoding.UTF8.GetBytes),
+        ];
     }
 
     public string Encode(Guid tenantId, Guid relationshipId, string purpose, long sequence)
@@ -319,19 +374,27 @@ public sealed class ConversationCursorCodec
         {
             var payloadBytes = Base64UrlDecode(parts[0]);
             var suppliedSignature = Base64UrlDecode(parts[1]);
-            if (!_verificationKeys.Any(key =>
-                CryptographicOperations.FixedTimeEquals(suppliedSignature, HMACSHA256.HashData(key, payloadBytes))))
+            if (
+                !_verificationKeys.Any(key =>
+                    CryptographicOperations.FixedTimeEquals(
+                        suppliedSignature,
+                        HMACSHA256.HashData(key, payloadBytes)
+                    )
+                )
+            )
             {
                 throw new ConversationCursorExpiredException();
             }
 
             var fields = Encoding.UTF8.GetString(payloadBytes).Split('|');
-            if (fields.Length != 4
+            if (
+                fields.Length != 4
                 || fields[0] != tenantId.ToString("D")
                 || fields[1] != relationshipId.ToString("D")
                 || fields[2] != purpose
                 || !long.TryParse(fields[3], out var sequence)
-                || sequence < 0)
+                || sequence < 0
+            )
             {
                 throw new ConversationCursorExpiredException();
             }
@@ -358,7 +421,9 @@ public sealed class ConversationCursorCodec
 public sealed class ConversationService
 {
     private const string SchemaVersion = "1.0";
-    private static readonly ActivitySource ActivitySource = new("waooaw.business-platform.conversation");
+    private static readonly ActivitySource ActivitySource = new(
+        "waooaw.business-platform.conversation"
+    );
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly IDbContextFactory<ConversationStoreDbContext> _conversationFactory;
@@ -374,7 +439,8 @@ public sealed class ConversationService
         IRelationshipConstitutionalGateway constitutionalGateway,
         IConversationExecutionGateway executionGateway,
         IOperationalMandateResolver mandateResolver,
-        ConversationCursorCodec cursorCodec)
+        ConversationCursorCodec cursorCodec
+    )
     {
         _conversationFactory = conversationFactory;
         _relationshipFactory = relationshipFactory;
@@ -391,12 +457,15 @@ public sealed class ConversationService
         string? cursor,
         string? afterCursor,
         int limit,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         using var activity = StartActivity("bp.conversation.timeline", relationshipId);
         if (cursor is not null && afterCursor is not null)
         {
-            throw new ConversationRequestException("cursor and afterCursor are mutually exclusive.");
+            throw new ConversationRequestException(
+                "cursor and afterCursor are mutually exclusive."
+            );
         }
 
         if (limit is < 1 or > 100)
@@ -406,9 +475,12 @@ public sealed class ConversationService
 
         await EnsureAccessAsync(tenantId, participantId, relationshipId, cancellationToken);
         await using var db = await _conversationFactory.CreateDbContextAsync(cancellationToken);
-        var conversation = await db.Conversations.AsNoTracking().SingleOrDefaultAsync(
-            value => value.TenantId == tenantId && value.RelationshipId == relationshipId,
-            cancellationToken);
+        var conversation = await db
+            .Conversations.AsNoTracking()
+            .SingleOrDefaultAsync(
+                value => value.TenantId == tenantId && value.RelationshipId == relationshipId,
+                cancellationToken
+            );
         if (conversation is null)
         {
             return new ConversationTimelinePageV1(
@@ -419,11 +491,13 @@ public sealed class ConversationService
                 null,
                 null,
                 false,
-                DateTimeOffset.UtcNow);
+                DateTimeOffset.UtcNow
+            );
         }
 
-        var query = db.Messages.AsNoTracking().Where(
-            value => value.TenantId == tenantId && value.RelationshipId == relationshipId);
+        var query = db
+            .Messages.AsNoTracking()
+            .Where(value => value.TenantId == tenantId && value.RelationshipId == relationshipId);
         if (cursor is not null)
         {
             var before = _cursorCodec.Decode(cursor, tenantId, relationshipId, "timeline");
@@ -435,29 +509,45 @@ public sealed class ConversationService
             query = query.Where(value => value.Sequence > after);
         }
 
-        var descending = await query.OrderByDescending(value => value.Sequence).Take(limit + 1).ToListAsync(cancellationToken);
+        var descending = await query
+            .OrderByDescending(value => value.Sequence)
+            .Take(limit + 1)
+            .ToListAsync(cancellationToken);
         var hasMore = descending.Count > limit;
         var selected = descending.Take(limit).OrderBy(value => value.Sequence).ToList();
-        var maximumSequence = await db.Messages
-            .Where(value => value.TenantId == tenantId && value.RelationshipId == relationshipId)
-            .Select(value => (long?)value.Sequence)
-            .MaxAsync(cancellationToken) ?? 0;
-        var readSequence = await db.ReadPositions.AsNoTracking()
-            .Where(value => value.TenantId == tenantId
+        var maximumSequence =
+            await db
+                .Messages.Where(value =>
+                    value.TenantId == tenantId && value.RelationshipId == relationshipId
+                )
+                .Select(value => (long?)value.Sequence)
+                .MaxAsync(cancellationToken)
+            ?? 0;
+        var readSequence =
+            await db
+                .ReadPositions.AsNoTracking()
+                .Where(value =>
+                    value.TenantId == tenantId
+                    && value.RelationshipId == relationshipId
+                    && value.ParticipantId == participantId
+                )
+                .Select(value => (long?)value.LastReadSequence)
+                .SingleOrDefaultAsync(cancellationToken)
+            ?? 0;
+        var unreadBoundary = await db
+            .Messages.AsNoTracking()
+            .Where(value =>
+                value.TenantId == tenantId
                 && value.RelationshipId == relationshipId
-                && value.ParticipantId == participantId)
-            .Select(value => (long?)value.LastReadSequence)
-            .SingleOrDefaultAsync(cancellationToken) ?? 0;
-        var unreadBoundary = await db.Messages.AsNoTracking()
-            .Where(value => value.TenantId == tenantId
-                && value.RelationshipId == relationshipId
-                && value.Sequence > readSequence)
+                && value.Sequence > readSequence
+            )
             .OrderBy(value => value.Sequence)
             .Select(value => (Guid?)value.MessageId)
             .FirstOrDefaultAsync(cancellationToken);
-        var nextCursor = hasMore && selected.Count > 0
-            ? _cursorCodec.Encode(tenantId, relationshipId, "timeline", selected[0].Sequence)
-            : null;
+        var nextCursor =
+            hasMore && selected.Count > 0
+                ? _cursorCodec.Encode(tenantId, relationshipId, "timeline", selected[0].Sequence)
+                : null;
 
         return new ConversationTimelinePageV1(
             SchemaVersion,
@@ -467,7 +557,8 @@ public sealed class ConversationService
             nextCursor,
             unreadBoundary,
             hasMore,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow
+        );
     }
 
     public async Task<ConversationCommandResult<ConversationSubmissionV1>> SendAsync(
@@ -476,20 +567,39 @@ public sealed class ConversationService
         Guid relationshipId,
         Guid idempotencyKey,
         SendConversationMessageRequestV1 request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         using var activity = StartActivity("bp.conversation.send", relationshipId);
         ValidateSendRequest(request);
-        var relationship = await EnsureAccessAsync(tenantId, participantId, relationshipId, cancellationToken);
+        var relationship = await EnsureAccessAsync(
+            tenantId,
+            participantId,
+            relationshipId,
+            cancellationToken
+        );
         var requestHash = HashCanonical(request);
         await using var db = await _conversationFactory.CreateDbContextAsync(cancellationToken);
-        var replay = await FindIdempotencyAsync(db, tenantId, participantId, relationshipId, "SEND", idempotencyKey, cancellationToken);
+        var replay = await FindIdempotencyAsync(
+            db,
+            tenantId,
+            participantId,
+            relationshipId,
+            "SEND",
+            idempotencyKey,
+            cancellationToken
+        );
         if (replay is not null)
         {
             EnsureMatchingHash(replay, requestHash);
             return new ConversationCommandResult<ConversationSubmissionV1>(
-                Deserialize<ConversationSubmissionV1>(replay.ResponseJson) with { Replayed = true, Outcome = "REPLAYED" },
-                true);
+                Deserialize<ConversationSubmissionV1>(replay.ResponseJson) with
+                {
+                    Replayed = true,
+                    Outcome = "REPLAYED",
+                },
+                true
+            );
         }
 
         EnsureRelationshipNotStopped(relationship);
@@ -505,7 +615,8 @@ public sealed class ConversationService
                 locale = request.Locale,
                 request_hash = requestHash,
             },
-            cancellationToken);
+            cancellationToken
+        );
         var operationalMandate = await _mandateResolver.ResolveAsync(
             tenantId,
             participantId,
@@ -514,9 +625,15 @@ public sealed class ConversationService
             evidenceId,
             request.SkillId,
             request.Content[0].Text,
-            cancellationToken);
+            cancellationToken
+        );
 
-        var conversation = await GetOrCreateConversationAsync(db, tenantId, relationshipId, cancellationToken);
+        var conversation = await GetOrCreateConversationAsync(
+            db,
+            tenantId,
+            relationshipId,
+            cancellationToken
+        );
         var message = new ConversationMessage
         {
             TenantId = tenantId,
@@ -543,9 +660,17 @@ public sealed class ConversationService
             "message.accepted",
             message.MessageId,
             execution.ExecutionId,
-            new { message = ToContract(message) });
+            new { message = ToContract(message) }
+        );
         conversation.UpdatedAt = DateTimeOffset.UtcNow;
-        var submission = CreateSubmission(tenantId, relationshipId, message, execution, "ACCEPTED", false);
+        var submission = CreateSubmission(
+            tenantId,
+            relationshipId,
+            message,
+            execution,
+            "ACCEPTED",
+            false
+        );
         var idempotency = CreateIdempotency(
             tenantId,
             participantId,
@@ -555,7 +680,8 @@ public sealed class ConversationService
             requestHash,
             submission,
             message.MessageId,
-            execution.ExecutionId);
+            execution.ExecutionId
+        );
         db.Messages.Add(message);
         db.Executions.Add(execution);
         db.Events.Add(conversationEvent);
@@ -566,7 +692,9 @@ public sealed class ConversationService
         }
         catch (DbUpdateException)
         {
-            await using var replayDb = await _conversationFactory.CreateDbContextAsync(cancellationToken);
+            await using var replayDb = await _conversationFactory.CreateDbContextAsync(
+                cancellationToken
+            );
             var concurrentOutcome = await FindIdempotencyAsync(
                 replayDb,
                 tenantId,
@@ -574,7 +702,8 @@ public sealed class ConversationService
                 relationshipId,
                 "SEND",
                 idempotencyKey,
-                cancellationToken);
+                cancellationToken
+            );
             if (concurrentOutcome is null)
             {
                 throw new ConversationStateConflictException();
@@ -587,7 +716,8 @@ public sealed class ConversationService
                     Replayed = true,
                     Outcome = "REPLAYED",
                 },
-                true);
+                true
+            );
         }
 
         try
@@ -601,7 +731,8 @@ public sealed class ConversationService
                 request.Content,
                 operationalMandate,
                 idempotencyKey,
-                cancellationToken);
+                cancellationToken
+            );
             return new ConversationCommandResult<ConversationSubmissionV1>(submission, false);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
@@ -611,16 +742,31 @@ public sealed class ConversationService
             execution.ProcessingState = "FAILED";
             execution.UpdatedAt = DateTimeOffset.UtcNow;
             idempotency.Outcome = "UNRESOLVED";
-            var unresolved = CreateSubmission(tenantId, relationshipId, message, execution, "UNRESOLVED", false);
-            idempotency.ResponseJson = JsonSerializer.Serialize(unresolved, JsonOptions);
-            db.Events.Add(CreateEvent(
-                conversation,
+            var unresolved = CreateSubmission(
                 tenantId,
                 relationshipId,
-                "message.failed",
-                message.MessageId,
-                execution.ExecutionId,
-                new { code = "CONVERSATION_EXECUTION_UNAVAILABLE", retryable = true, partial = false }));
+                message,
+                execution,
+                "UNRESOLVED",
+                false
+            );
+            idempotency.ResponseJson = JsonSerializer.Serialize(unresolved, JsonOptions);
+            db.Events.Add(
+                CreateEvent(
+                    conversation,
+                    tenantId,
+                    relationshipId,
+                    "message.failed",
+                    message.MessageId,
+                    execution.ExecutionId,
+                    new
+                    {
+                        code = "CONVERSATION_EXECUTION_UNAVAILABLE",
+                        retryable = true,
+                        partial = false,
+                    }
+                )
+            );
             await db.SaveChangesAsync(cancellationToken);
             throw new ConversationExecutionUnavailableException();
         }
@@ -632,38 +778,58 @@ public sealed class ConversationService
         Guid relationshipId,
         Guid messageId,
         Guid originalIdempotencyKey,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         using var activity = StartActivity("bp.conversation.retry", relationshipId);
-        var relationship = await EnsureAccessAsync(tenantId, participantId, relationshipId, cancellationToken);
+        var relationship = await EnsureAccessAsync(
+            tenantId,
+            participantId,
+            relationshipId,
+            cancellationToken
+        );
         EnsureRelationshipNotStopped(relationship);
         await using var db = await _conversationFactory.CreateDbContextAsync(cancellationToken);
         var original = await FindIdempotencyAsync(
-            db, tenantId, participantId, relationshipId, "SEND", originalIdempotencyKey, cancellationToken);
+            db,
+            tenantId,
+            participantId,
+            relationshipId,
+            "SEND",
+            originalIdempotencyKey,
+            cancellationToken
+        );
         var message = await db.Messages.SingleOrDefaultAsync(
-            value => value.TenantId == tenantId
+            value =>
+                value.TenantId == tenantId
                 && value.RelationshipId == relationshipId
                 && value.MessageId == messageId,
-            cancellationToken);
+            cancellationToken
+        );
         if (original is null || message is null || original.MessageId != messageId)
         {
             throw new ConversationRetryNotAllowedException();
         }
 
         var execution = await db.Executions.SingleAsync(
-            value => value.TenantId == tenantId
+            value =>
+                value.TenantId == tenantId
                 && value.RelationshipId == relationshipId
                 && value.MessageId == messageId,
-            cancellationToken);
+            cancellationToken
+        );
         if (message.ProcessingState == "COMPLETED")
         {
             return new ConversationCommandResult<ConversationSubmissionV1>(
                 CreateSubmission(tenantId, relationshipId, message, execution, "REPLAYED", true),
-                true);
+                true
+            );
         }
 
-        if (message.DeliveryState is not ("FAILED" or "UNRESOLVED")
-            && message.ProcessingState is not "FAILED")
+        if (
+            message.DeliveryState is not ("FAILED" or "UNRESOLVED")
+            && message.ProcessingState is not "FAILED"
+        )
         {
             throw new ConversationRetryNotAllowedException();
         }
@@ -675,7 +841,8 @@ public sealed class ConversationService
             "RETRY_CONVERSATION_MESSAGE",
             originalIdempotencyKey,
             new { message_id = messageId, request_hash = original.RequestHash },
-            cancellationToken);
+            cancellationToken
+        );
         var retryContent = ToContract(message).Content;
         var retryMandate = await _mandateResolver.ResolveAsync(
             tenantId,
@@ -685,7 +852,8 @@ public sealed class ConversationService
             retryEvidenceId,
             message.SkillId,
             retryContent[0].Text,
-            cancellationToken);
+            cancellationToken
+        );
         message.DeliveryState = "ACCEPTED";
         message.ProcessingState = "QUEUED";
         execution.ProcessingState = "QUEUED";
@@ -693,17 +861,28 @@ public sealed class ConversationService
         original.Outcome = "ACCEPTED";
         var conversation = await db.Conversations.SingleAsync(
             value => value.TenantId == tenantId && value.RelationshipId == relationshipId,
-            cancellationToken);
-        var submission = CreateSubmission(tenantId, relationshipId, message, execution, "ACCEPTED", false);
-        original.ResponseJson = JsonSerializer.Serialize(submission, JsonOptions);
-        db.Events.Add(CreateEvent(
-            conversation,
+            cancellationToken
+        );
+        var submission = CreateSubmission(
             tenantId,
             relationshipId,
-            "processing.started",
-            message.MessageId,
-            execution.ExecutionId,
-            new { messageId = message.MessageId, executionId = execution.ExecutionId }));
+            message,
+            execution,
+            "ACCEPTED",
+            false
+        );
+        original.ResponseJson = JsonSerializer.Serialize(submission, JsonOptions);
+        db.Events.Add(
+            CreateEvent(
+                conversation,
+                tenantId,
+                relationshipId,
+                "processing.started",
+                message.MessageId,
+                execution.ExecutionId,
+                new { messageId = message.MessageId, executionId = execution.ExecutionId }
+            )
+        );
         await db.SaveChangesAsync(cancellationToken);
 
         try
@@ -717,7 +896,8 @@ public sealed class ConversationService
                 retryContent,
                 retryMandate,
                 originalIdempotencyKey,
-                cancellationToken);
+                cancellationToken
+            );
             return new ConversationCommandResult<ConversationSubmissionV1>(submission, false);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
@@ -731,13 +911,16 @@ public sealed class ConversationService
         }
     }
 
-    public async Task<ConversationCommandResult<ConversationReadPositionV1>> UpdateReadPositionAsync(
+    public async Task<
+        ConversationCommandResult<ConversationReadPositionV1>
+    > UpdateReadPositionAsync(
         Guid tenantId,
         Guid participantId,
         Guid relationshipId,
         Guid idempotencyKey,
         UpdateConversationReadPositionRequestV1 request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         using var activity = StartActivity("bp.conversation.read_position", relationshipId);
         if (request.SchemaVersion != SchemaVersion)
@@ -745,25 +928,47 @@ public sealed class ConversationService
             throw new ConversationRequestException("Unsupported schemaVersion.");
         }
 
-        var relationship = await EnsureAccessAsync(tenantId, participantId, relationshipId, cancellationToken);
+        var relationship = await EnsureAccessAsync(
+            tenantId,
+            participantId,
+            relationshipId,
+            cancellationToken
+        );
         var requestHash = HashCanonical(request);
         await using var db = await _conversationFactory.CreateDbContextAsync(cancellationToken);
         var replay = await FindIdempotencyAsync(
-            db, tenantId, participantId, relationshipId, "READ_POSITION", idempotencyKey, cancellationToken);
+            db,
+            tenantId,
+            participantId,
+            relationshipId,
+            "READ_POSITION",
+            idempotencyKey,
+            cancellationToken
+        );
         if (replay is not null)
         {
             EnsureMatchingHash(replay, requestHash);
             return new ConversationCommandResult<ConversationReadPositionV1>(
                 Deserialize<ConversationReadPositionV1>(replay.ResponseJson),
-                true);
+                true
+            );
         }
 
-        var observedSequence = _cursorCodec.Decode(request.AuthoritativeCursor, tenantId, relationshipId, "timeline");
-        var message = await db.Messages.AsNoTracking().SingleOrDefaultAsync(
-            value => value.TenantId == tenantId
-                && value.RelationshipId == relationshipId
-                && value.MessageId == request.LastVisibleMessageId,
-            cancellationToken);
+        var observedSequence = _cursorCodec.Decode(
+            request.AuthoritativeCursor,
+            tenantId,
+            relationshipId,
+            "timeline"
+        );
+        var message = await db
+            .Messages.AsNoTracking()
+            .SingleOrDefaultAsync(
+                value =>
+                    value.TenantId == tenantId
+                    && value.RelationshipId == relationshipId
+                    && value.MessageId == request.LastVisibleMessageId,
+                cancellationToken
+            );
         if (message is null)
         {
             throw new ConversationNotAccessibleException();
@@ -775,10 +980,12 @@ public sealed class ConversationService
         }
 
         var current = await db.ReadPositions.SingleOrDefaultAsync(
-            value => value.TenantId == tenantId
+            value =>
+                value.TenantId == tenantId
                 && value.RelationshipId == relationshipId
                 && value.ParticipantId == participantId,
-            cancellationToken);
+            cancellationToken
+        );
         if (current is not null && message.Sequence < current.LastReadSequence)
         {
             throw new ConversationStateConflictException();
@@ -791,7 +998,8 @@ public sealed class ConversationService
             "UPDATE_CONVERSATION_READ_POSITION",
             idempotencyKey,
             new { last_visible_message_id = message.MessageId, request_hash = requestHash },
-            cancellationToken);
+            cancellationToken
+        );
         var now = DateTimeOffset.UtcNow;
         if (current is null)
         {
@@ -813,15 +1021,23 @@ public sealed class ConversationService
             current.UpdatedAt = now;
         }
 
-        var response = new ConversationReadPositionV1(SchemaVersion, relationshipId, message.MessageId, now);
-        db.IdempotencyOutcomes.Add(CreateIdempotency(
-            tenantId,
-            participantId,
+        var response = new ConversationReadPositionV1(
+            SchemaVersion,
             relationshipId,
-            "READ_POSITION",
-            idempotencyKey,
-            requestHash,
-            response));
+            message.MessageId,
+            now
+        );
+        db.IdempotencyOutcomes.Add(
+            CreateIdempotency(
+                tenantId,
+                participantId,
+                relationshipId,
+                "READ_POSITION",
+                idempotencyKey,
+                requestHash,
+                response
+            )
+        );
         await db.SaveChangesAsync(cancellationToken);
         return new ConversationCommandResult<ConversationReadPositionV1>(response, false);
     }
@@ -832,28 +1048,44 @@ public sealed class ConversationService
         Guid relationshipId,
         Guid executionId,
         Guid idempotencyKey,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         using var activity = StartActivity("bp.conversation.cancel", relationshipId);
-        var relationship = await EnsureAccessAsync(tenantId, participantId, relationshipId, cancellationToken);
+        var relationship = await EnsureAccessAsync(
+            tenantId,
+            participantId,
+            relationshipId,
+            cancellationToken
+        );
         EnsureRelationshipNotStopped(relationship);
         var requestHash = HashCanonical(new { executionId });
         await using var db = await _conversationFactory.CreateDbContextAsync(cancellationToken);
         var replay = await FindIdempotencyAsync(
-            db, tenantId, participantId, relationshipId, "CANCEL", idempotencyKey, cancellationToken);
+            db,
+            tenantId,
+            participantId,
+            relationshipId,
+            "CANCEL",
+            idempotencyKey,
+            cancellationToken
+        );
         if (replay is not null)
         {
             EnsureMatchingHash(replay, requestHash);
             return new ConversationCommandResult<ConversationExecutionStatusV1>(
                 Deserialize<ConversationExecutionStatusV1>(replay.ResponseJson),
-                true);
+                true
+            );
         }
 
         var execution = await db.Executions.SingleOrDefaultAsync(
-            value => value.TenantId == tenantId
+            value =>
+                value.TenantId == tenantId
                 && value.RelationshipId == relationshipId
                 && value.ExecutionId == executionId,
-            cancellationToken);
+            cancellationToken
+        );
         if (execution is null)
         {
             throw new ConversationNotAccessibleException();
@@ -861,7 +1093,10 @@ public sealed class ConversationService
 
         if (execution.ProcessingState is "COMPLETED" or "FAILED" or "CANCELLED" or "STOPPED")
         {
-            return new ConversationCommandResult<ConversationExecutionStatusV1>(ToContract(execution), true);
+            return new ConversationCommandResult<ConversationExecutionStatusV1>(
+                ToContract(execution),
+                true
+            );
         }
 
         await _constitutionalGateway.AuthorizeAndRecordAsync(
@@ -871,8 +1106,14 @@ public sealed class ConversationService
             "CANCEL_CONVERSATION_EXECUTION",
             idempotencyKey,
             new { execution_id = executionId, request_hash = requestHash },
-            cancellationToken);
-        await _executionGateway.CancelAsync(execution.ConversationId, executionId, idempotencyKey, cancellationToken);
+            cancellationToken
+        );
+        await _executionGateway.CancelAsync(
+            execution.ConversationId,
+            executionId,
+            idempotencyKey,
+            cancellationToken
+        );
 
         execution.ProcessingState = "CANCELLED";
         execution.Partial = true;
@@ -880,33 +1121,41 @@ public sealed class ConversationService
         execution.UpdatedAt = DateTimeOffset.UtcNow;
         var message = await db.Messages.SingleAsync(
             value => value.TenantId == tenantId && value.MessageId == execution.MessageId,
-            cancellationToken);
+            cancellationToken
+        );
         message.ProcessingState = "CANCELLED";
         message.Partial = true;
         message.CompletionReason = "CANCELLED";
         message.CompletedAt = execution.UpdatedAt;
         var conversation = await db.Conversations.SingleAsync(
             value => value.TenantId == tenantId && value.RelationshipId == relationshipId,
-            cancellationToken);
-        db.Events.Add(CreateEvent(
-            conversation,
-            tenantId,
-            relationshipId,
-            "stream.cancelled",
-            message.MessageId,
-            execution.ExecutionId,
-            new { message = ToContract(message) }));
+            cancellationToken
+        );
+        db.Events.Add(
+            CreateEvent(
+                conversation,
+                tenantId,
+                relationshipId,
+                "stream.cancelled",
+                message.MessageId,
+                execution.ExecutionId,
+                new { message = ToContract(message) }
+            )
+        );
         var response = ToContract(execution);
-        db.IdempotencyOutcomes.Add(CreateIdempotency(
-            tenantId,
-            participantId,
-            relationshipId,
-            "CANCEL",
-            idempotencyKey,
-            requestHash,
-            response,
-            message.MessageId,
-            execution.ExecutionId));
+        db.IdempotencyOutcomes.Add(
+            CreateIdempotency(
+                tenantId,
+                participantId,
+                relationshipId,
+                "CANCEL",
+                idempotencyKey,
+                requestHash,
+                response,
+                message.MessageId,
+                execution.ExecutionId
+            )
+        );
         await db.SaveChangesAsync(cancellationToken);
         return new ConversationCommandResult<ConversationExecutionStatusV1>(response, false);
     }
@@ -916,52 +1165,69 @@ public sealed class ConversationService
         Guid participantId,
         Guid relationshipId,
         string? lastEventId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         using var activity = StartActivity("bp.conversation.stream_replay", relationshipId);
         await EnsureAccessAsync(tenantId, participantId, relationshipId, cancellationToken);
-        var after = lastEventId is null ? 0 : _cursorCodec.Decode(lastEventId, tenantId, relationshipId, "event");
+        var after = lastEventId is null
+            ? 0
+            : _cursorCodec.Decode(lastEventId, tenantId, relationshipId, "event");
         await using var db = await _conversationFactory.CreateDbContextAsync(cancellationToken);
-        var events = await db.Events.AsNoTracking()
-            .Where(value => value.TenantId == tenantId
+        var events = await db
+            .Events.AsNoTracking()
+            .Where(value =>
+                value.TenantId == tenantId
                 && value.RelationshipId == relationshipId
-                && value.Sequence > after)
+                && value.Sequence > after
+            )
             .OrderBy(value => value.Sequence)
             .Take(500)
             .ToListAsync(cancellationToken);
-        return events.Select(value => new ConversationStreamEventV1(
-            SchemaVersion,
-            _cursorCodec.Encode(tenantId, relationshipId, "event", value.Sequence),
-            value.EventType,
-            relationshipId,
-            value.Sequence,
-            value.MessageId,
-            value.ExecutionId,
-            value.OccurredAt,
-            JsonDocument.Parse(value.DataJson).RootElement.Clone())).ToList();
+        return events
+            .Select(value => new ConversationStreamEventV1(
+                SchemaVersion,
+                _cursorCodec.Encode(tenantId, relationshipId, "event", value.Sequence),
+                value.EventType,
+                relationshipId,
+                value.Sequence,
+                value.MessageId,
+                value.ExecutionId,
+                value.OccurredAt,
+                JsonDocument.Parse(value.DataJson).RootElement.Clone()
+            ))
+            .ToList();
     }
 
     private async Task<EmploymentRelationship> EnsureAccessAsync(
         Guid tenantId,
         Guid participantId,
         Guid relationshipId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         await using var db = await _relationshipFactory.CreateDbContextAsync(cancellationToken);
-        var relationship = await db.EmploymentRelationships.AsNoTracking().SingleOrDefaultAsync(
-            value => value.TenantId == tenantId && value.RelationshipId == relationshipId,
-            cancellationToken);
+        var relationship = await db
+            .EmploymentRelationships.AsNoTracking()
+            .SingleOrDefaultAsync(
+                value => value.TenantId == tenantId && value.RelationshipId == relationshipId,
+                cancellationToken
+            );
         if (relationship is null)
         {
             throw new ConversationNotAccessibleException();
         }
 
-        var authorized = await db.RelationshipParticipants.AsNoTracking().AnyAsync(
-            value => value.TenantId == tenantId
-                && value.RelationshipId == relationshipId
-                && value.ParticipantId == participantId
-                && value.Status == "ACTIVE",
-            cancellationToken);
+        var authorized = await db
+            .RelationshipParticipants.AsNoTracking()
+            .AnyAsync(
+                value =>
+                    value.TenantId == tenantId
+                    && value.RelationshipId == relationshipId
+                    && value.ParticipantId == participantId
+                    && value.Status == "ACTIVE",
+                cancellationToken
+            );
         if (!authorized)
         {
             throw new ConversationNotAccessibleException();
@@ -982,17 +1248,23 @@ public sealed class ConversationService
         ConversationStoreDbContext db,
         Guid tenantId,
         Guid relationshipId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var conversation = await db.Conversations.SingleOrDefaultAsync(
             value => value.TenantId == tenantId && value.RelationshipId == relationshipId,
-            cancellationToken);
+            cancellationToken
+        );
         if (conversation is not null)
         {
             return conversation;
         }
 
-        conversation = new ConversationProjection { TenantId = tenantId, RelationshipId = relationshipId };
+        conversation = new ConversationProjection
+        {
+            TenantId = tenantId,
+            RelationshipId = relationshipId,
+        };
         db.Conversations.Add(conversation);
         return conversation;
     }
@@ -1004,7 +1276,8 @@ public sealed class ConversationService
         string eventType,
         Guid? messageId,
         Guid? executionId,
-        object data) =>
+        object data
+    ) =>
         new()
         {
             TenantId = tenantId,
@@ -1023,14 +1296,16 @@ public sealed class ConversationService
         ConversationMessage message,
         ConversationExecution execution,
         string outcome,
-        bool replayed) =>
+        bool replayed
+    ) =>
         new(
             SchemaVersion,
             outcome,
             ToContract(message),
             execution.ExecutionId,
             _cursorCodec.Encode(tenantId, relationshipId, "timeline", message.Sequence),
-            replayed);
+            replayed
+        );
 
     private static ConversationMessageV1 ToContract(ConversationMessage message) =>
         new(
@@ -1051,7 +1326,8 @@ public sealed class ConversationService
             message.RetryOfMessageId,
             message.ClientMessageId,
             message.AcceptedAt,
-            message.CompletedAt);
+            message.CompletedAt
+        );
 
     private static ConversationExecutionStatusV1 ToContract(ConversationExecution execution) =>
         new(
@@ -1060,7 +1336,8 @@ public sealed class ConversationService
             execution.ProcessingState,
             execution.Partial,
             execution.CompletionReason,
-            execution.UpdatedAt);
+            execution.UpdatedAt
+        );
 
     private static ConversationIdempotencyOutcome CreateIdempotency<T>(
         Guid tenantId,
@@ -1071,7 +1348,8 @@ public sealed class ConversationService
         string requestHash,
         T response,
         Guid? messageId = null,
-        Guid? executionId = null) =>
+        Guid? executionId = null
+    ) =>
         new()
         {
             TenantId = tenantId,
@@ -1092,20 +1370,29 @@ public sealed class ConversationService
         Guid relationshipId,
         string operationFamily,
         Guid idempotencyKey,
-        CancellationToken cancellationToken) =>
+        CancellationToken cancellationToken
+    ) =>
         db.IdempotencyOutcomes.SingleOrDefaultAsync(
-            value => value.TenantId == tenantId
+            value =>
+                value.TenantId == tenantId
                 && value.RelationshipId == relationshipId
                 && value.ActorParticipantId == participantId
                 && value.OperationFamily == operationFamily
                 && value.IdempotencyKey == idempotencyKey,
-            cancellationToken);
+            cancellationToken
+        );
 
-    private static void EnsureMatchingHash(ConversationIdempotencyOutcome outcome, string requestHash)
+    private static void EnsureMatchingHash(
+        ConversationIdempotencyOutcome outcome,
+        string requestHash
+    )
     {
-        if (!CryptographicOperations.FixedTimeEquals(
-            Encoding.ASCII.GetBytes(outcome.RequestHash),
-            Encoding.ASCII.GetBytes(requestHash)))
+        if (
+            !CryptographicOperations.FixedTimeEquals(
+                Encoding.ASCII.GetBytes(outcome.RequestHash),
+                Encoding.ASCII.GetBytes(requestHash)
+            )
+        )
         {
             throw new ConversationIdempotencyConflictException();
         }
@@ -1113,7 +1400,8 @@ public sealed class ConversationService
 
     private static void ValidateSendRequest(SendConversationMessageRequestV1 request)
     {
-        if (request.SchemaVersion != SchemaVersion
+        if (
+            request.SchemaVersion != SchemaVersion
             || string.IsNullOrWhiteSpace(request.SkillId)
             || request.SkillId.Length > 128
             || request.Content.Count != 1
@@ -1121,14 +1409,19 @@ public sealed class ConversationService
             || request.Content[0].BlockType != "TEXT"
             || string.IsNullOrWhiteSpace(request.Content[0].Text)
             || request.Content[0].Text.Length > 32000
-            || request.Locale.Length is < 2 or > 35)
+            || request.Locale.Length is < 2 or > 35
+        )
         {
-            throw new ConversationRequestException("Conversation request is malformed or unsupported.");
+            throw new ConversationRequestException(
+                "Conversation request is malformed or unsupported."
+            );
         }
     }
 
     private static string HashCanonical<T>(T value) =>
-        Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(value, JsonOptions))).ToLowerInvariant();
+        Convert
+            .ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(value, JsonOptions)))
+            .ToLowerInvariant();
 
     private static T Deserialize<T>(string json) =>
         JsonSerializer.Deserialize<T>(json, JsonOptions)

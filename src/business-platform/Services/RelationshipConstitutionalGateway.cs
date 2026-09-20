@@ -18,7 +18,8 @@ public interface IRelationshipConstitutionalGateway
         string actionType,
         Guid correlationId,
         object actionParameters,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken
+    );
 }
 
 public sealed class ConstitutionalActionDeniedException(string reason) : Exception(reason);
@@ -32,7 +33,8 @@ public sealed class RelationshipConstitutionalGateway : IRelationshipConstitutio
 
     public RelationshipConstitutionalGateway(
         IConfiguration configuration,
-        ILogger<RelationshipConstitutionalGateway> logger)
+        ILogger<RelationshipConstitutionalGateway> logger
+    )
     {
         _configuration = configuration;
         _logger = logger;
@@ -45,13 +47,17 @@ public sealed class RelationshipConstitutionalGateway : IRelationshipConstitutio
         string actionType,
         Guid correlationId,
         object actionParameters,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(ConstitutionalTimeout);
 
-        var endpoint = _configuration["ConstitutionalEngine:GrpcUrl"]
-            ?? throw new InvalidOperationException("ConstitutionalEngine:GrpcUrl is not configured.");
+        var endpoint =
+            _configuration["ConstitutionalEngine:GrpcUrl"]
+            ?? throw new InvalidOperationException(
+                "ConstitutionalEngine:GrpcUrl is not configured."
+            );
         using var channel = GrpcChannel.ForAddress(endpoint);
         var client = new ConstitutionalService.ConstitutionalServiceClient(channel);
         var headers = new Metadata { { "x-tenant-id", tenantId.ToString("D") } };
@@ -70,14 +76,16 @@ public sealed class RelationshipConstitutionalGateway : IRelationshipConstitutio
                     DcmCategory = DcmCategory.DeterministicRequired,
                 },
                 headers,
-                cancellationToken: timeout.Token);
+                cancellationToken: timeout.Token
+            );
 
             if (validation.Decision != ValidationDecision.Allow)
             {
                 throw new ConstitutionalActionDeniedException(
                     string.IsNullOrWhiteSpace(validation.Reason)
                         ? $"Constitutional Engine returned {validation.Decision}."
-                        : validation.Reason);
+                        : validation.Reason
+                );
             }
 
             var evidence = await client.RecordEvidenceAsync(
@@ -95,11 +103,14 @@ public sealed class RelationshipConstitutionalGateway : IRelationshipConstitutio
                         : validation.ConstitutionalBasis,
                 },
                 headers,
-                cancellationToken: timeout.Token);
+                cancellationToken: timeout.Token
+            );
 
             if (!Guid.TryParse(evidence.EvidenceRecordId, out var evidenceId))
             {
-                throw new InvalidOperationException("Constitutional Engine returned an invalid evidence identifier.");
+                throw new InvalidOperationException(
+                    "Constitutional Engine returned an invalid evidence identifier."
+                );
             }
 
             return evidenceId;
@@ -115,7 +126,8 @@ public sealed class RelationshipConstitutionalGateway : IRelationshipConstitutio
                 "Constitutional authorization failed for relationship {RelationshipId}, action {ActionType}, correlation {CorrelationId}",
                 relationshipId,
                 actionType,
-                correlationId);
+                correlationId
+            );
             throw;
         }
     }

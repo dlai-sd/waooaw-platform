@@ -1,24 +1,22 @@
 // Implements: work-contracts/WC-033-goal005-bp-trial-lifecycle.md §WC033-01
 // constitutional_basis: C-023 (Evidence First — phone_verified gate), C-088 (trial is a billing mode), C-059
-using Microsoft.AspNetCore.Mvc;
 using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Waooaw.BusinessPlatform.Controllers;
 
 // ─── Request / Response ──────────────────────────────────────────────────────
 
-public sealed record TrialStartRequest(
-    Guid   CustomerId,
-    string AgentType,
-    bool   PhoneVerified);
+public sealed record TrialStartRequest(Guid CustomerId, string AgentType, bool PhoneVerified);
 
 public sealed record TrialStartResponse(
-    Guid                    TrialId,
-    DateTimeOffset          ExpiresAt,
+    Guid TrialId,
+    DateTimeOffset ExpiresAt,
     Dictionary<string, int> FreeUnitCaps,
-    List<Guid>              WalletBucketIds);
+    List<Guid> WalletBucketIds
+);
 
 // ─── Controller ──────────────────────────────────────────────────────────────
 
@@ -30,15 +28,16 @@ public sealed class SubscriptionsController : ControllerBase
 
     private static readonly JsonSerializerOptions _jsonOpts = new(JsonSerializerDefaults.Web);
 
-    private readonly IHttpClientFactory             _httpClientFactory;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<SubscriptionsController> _logger;
 
     public SubscriptionsController(
-        IHttpClientFactory              httpClientFactory,
-        ILogger<SubscriptionsController> logger)
+        IHttpClientFactory httpClientFactory,
+        ILogger<SubscriptionsController> logger
+    )
     {
         _httpClientFactory = httpClientFactory;
-        _logger            = logger;
+        _logger = logger;
     }
 
     /// <summary>
@@ -49,8 +48,9 @@ public sealed class SubscriptionsController : ControllerBase
     /// </summary>
     [HttpPost("trial-start")]
     public async Task<IActionResult> TrialStartAsync(
-        [FromBody] TrialStartRequest   request,
-        CancellationToken              cancellationToken)
+        [FromBody] TrialStartRequest request,
+        CancellationToken cancellationToken
+    )
     {
         if (request is null)
             return BadRequest(new { error = "Request body is required." });
@@ -60,7 +60,9 @@ public sealed class SubscriptionsController : ControllerBase
         {
             _logger.LogWarning(
                 "TrialStart rejected: phone not verified. customer_id={CustomerId} agent_type={AgentType}",
-                request.CustomerId, request.AgentType);
+                request.CustomerId,
+                request.AgentType
+            );
             return UnprocessableEntity(new { error = "PHONE_NOT_VERIFIED" });
         }
 
@@ -71,26 +73,35 @@ public sealed class SubscriptionsController : ControllerBase
         WbeTrialStartPayload wbePayload = new(
             request.CustomerId.ToString(),
             request.AgentType,
-            request.PhoneVerified);
+            request.PhoneVerified
+        );
 
         HttpResponseMessage wbeResponse;
         try
         {
             wbeResponse = await wbeClient.PostAsJsonAsync(
-                WbeTrialStartPath, wbePayload, _jsonOpts, cancellationToken);
+                WbeTrialStartPath,
+                wbePayload,
+                _jsonOpts,
+                cancellationToken
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "WBE /trial/start request failed: customer_id={CustomerId}",
-                request.CustomerId);
+                request.CustomerId
+            );
             return StatusCode(503, new { error = "Billing service unavailable. Please retry." });
         }
 
         // C-059: log WBE outcome for traceability
         _logger.LogInformation(
             "WBE /trial/start response: status={Status} customer_id={CustomerId}",
-            (int)wbeResponse.StatusCode, request.CustomerId);
+            (int)wbeResponse.StatusCode,
+            request.CustomerId
+        );
 
         // Propagate 409 TRIAL_ALREADY_USED directly from WBE
         if (wbeResponse.StatusCode == System.Net.HttpStatusCode.Conflict)
@@ -103,7 +114,9 @@ public sealed class SubscriptionsController : ControllerBase
         {
             _logger.LogError(
                 "WBE /trial/start returned unexpected status={Status} customer_id={CustomerId}",
-                (int)wbeResponse.StatusCode, request.CustomerId);
+                (int)wbeResponse.StatusCode,
+                request.CustomerId
+            );
             return StatusCode(502, new { error = "Billing service returned an unexpected error." });
         }
 
@@ -112,13 +125,17 @@ public sealed class SubscriptionsController : ControllerBase
         try
         {
             wbeResult = await wbeResponse.Content.ReadFromJsonAsync<WbeTrialStartResult>(
-                _jsonOpts, cancellationToken);
+                _jsonOpts,
+                cancellationToken
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "Failed to deserialize WBE /trial/start response: customer_id={CustomerId}",
-                request.CustomerId);
+                request.CustomerId
+            );
             return StatusCode(502, new { error = "Billing service response could not be parsed." });
         }
 
@@ -130,23 +147,28 @@ public sealed class SubscriptionsController : ControllerBase
             .Where(g => g != Guid.Empty)
             .ToList();
 
-        return Ok(new TrialStartResponse(
-            TrialId:        Guid.TryParse(wbeResult.TrialId, out var tid) ? tid : Guid.Empty,
-            ExpiresAt:      wbeResult.ExpiresAt,
-            FreeUnitCaps:   wbeResult.FreeUnitCaps ?? [],
-            WalletBucketIds: walletIds));
+        return Ok(
+            new TrialStartResponse(
+                TrialId: Guid.TryParse(wbeResult.TrialId, out var tid) ? tid : Guid.Empty,
+                ExpiresAt: wbeResult.ExpiresAt,
+                FreeUnitCaps: wbeResult.FreeUnitCaps ?? [],
+                WalletBucketIds: walletIds
+            )
+        );
     }
 
     // ─── WBE wire types (snake_case from billing-engine FastAPI) ─────────────
 
     private sealed record WbeTrialStartPayload(
-        [property: JsonPropertyName("customer_id")]   string CustomerId,
-        [property: JsonPropertyName("agent_type")]    string AgentType,
-        [property: JsonPropertyName("phone_verified")] bool   PhoneVerified);
+        [property: JsonPropertyName("customer_id")] string CustomerId,
+        [property: JsonPropertyName("agent_type")] string AgentType,
+        [property: JsonPropertyName("phone_verified")] bool PhoneVerified
+    );
 
     private sealed record WbeTrialStartResult(
-        [property: JsonPropertyName("trial_id")]         string?                 TrialId,
-        [property: JsonPropertyName("expires_at")]       DateTimeOffset          ExpiresAt,
-        [property: JsonPropertyName("free_unit_caps")]   Dictionary<string, int>? FreeUnitCaps,
-        [property: JsonPropertyName("wallet_bucket_ids")] List<string>?           WalletBucketIds);
+        [property: JsonPropertyName("trial_id")] string? TrialId,
+        [property: JsonPropertyName("expires_at")] DateTimeOffset ExpiresAt,
+        [property: JsonPropertyName("free_unit_caps")] Dictionary<string, int>? FreeUnitCaps,
+        [property: JsonPropertyName("wallet_bucket_ids")] List<string>? WalletBucketIds
+    );
 }

@@ -6,11 +6,13 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Waooaw.BusinessPlatform.Infrastructure;
 
-public sealed class IdentitySchemaHealthCheck(IDbContextFactory<IdentityDbContext> factory) : IHealthCheck
+public sealed class IdentitySchemaHealthCheck(IDbContextFactory<IdentityDbContext> factory)
+    : IHealthCheck
 {
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {

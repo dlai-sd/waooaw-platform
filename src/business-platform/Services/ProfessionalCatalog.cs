@@ -11,19 +11,22 @@ public sealed record ProfessionalSkillDisclosure(
     string SkillId,
     string DisplayName,
     bool ApplicableInTrial,
-    string? ActivationCondition);
+    string? ActivationCondition
+);
 
 public sealed record ProfessionalTrialDisclosure(
     bool Available,
     int DurationDays,
     bool PaidApiCallsAllowed,
-    bool ExternalActionsAllowed);
+    bool ExternalActionsAllowed
+);
 
 public sealed record IndicativePriceDisclosure(
     string Currency,
     long AmountInrPaise,
     string Cadence,
-    string Qualification);
+    string Qualification
+);
 
 public sealed record ProfessionalDisclosure(
     string ProfessionalType,
@@ -38,7 +41,8 @@ public sealed record ProfessionalDisclosure(
     ProfessionalTrialDisclosure Trial,
     string EvidencePosture,
     IndicativePriceDisclosure IndicativePrice,
-    ProfessionalEligibility Eligibility)
+    ProfessionalEligibility Eligibility
+)
 {
     public string DisclosureRevision => ProjectionVersion;
     public string TermsVersion => "2026-07-18";
@@ -49,7 +53,8 @@ public sealed record ProfessionalDiscoveryResult(
     string ProjectionVersion,
     string DisplayName,
     IReadOnlyList<string> Suitability,
-    ProfessionalEligibility Eligibility);
+    ProfessionalEligibility Eligibility
+);
 
 public interface IProfessionalCatalog
 {
@@ -71,9 +76,14 @@ public sealed class ProfessionalCatalog : IProfessionalCatalog
 
     public ProfessionalCatalog(IHostEnvironment environment)
     {
-        var catalogDirectory = Path.Combine(environment.ContentRootPath, "Catalog", "Professionals");
+        var catalogDirectory = Path.Combine(
+            environment.ContentRootPath,
+            "Catalog",
+            "Professionals"
+        );
         _manifests = Directory.Exists(catalogDirectory)
-            ? Directory.EnumerateFiles(catalogDirectory, "*.json", SearchOption.TopDirectoryOnly)
+            ? Directory
+                .EnumerateFiles(catalogDirectory, "*.json", SearchOption.TopDirectoryOnly)
                 .OrderBy(path => path, StringComparer.Ordinal)
                 .Select(LoadManifest)
                 .ToList()
@@ -90,14 +100,19 @@ public sealed class ProfessionalCatalog : IProfessionalCatalog
 
         return _manifests
             .Where(manifest => manifest.Active)
-            .Where(manifest => !manifest.ProhibitedOutcomeTerms.Any(term => ContainsTerm(normalizedOutcome, term)))
-            .Where(manifest => manifest.SupportedOutcomeTerms.Any(term => ContainsTerm(normalizedOutcome, term)))
+            .Where(manifest =>
+                !manifest.ProhibitedOutcomeTerms.Any(term => ContainsTerm(normalizedOutcome, term))
+            )
+            .Where(manifest =>
+                manifest.SupportedOutcomeTerms.Any(term => ContainsTerm(normalizedOutcome, term))
+            )
             .Select(manifest => new ProfessionalDiscoveryResult(
                 manifest.ProfessionalType,
                 manifest.ProjectionVersion,
                 manifest.DisplayName,
                 manifest.Suitability,
-                new ProfessionalEligibility(true, manifest.EligibilityExplanation)))
+                new ProfessionalEligibility(true, manifest.EligibilityExplanation)
+            ))
             .ToList();
     }
 
@@ -105,7 +120,12 @@ public sealed class ProfessionalCatalog : IProfessionalCatalog
     {
         var manifest = _manifests.FirstOrDefault(candidate =>
             candidate.Active
-            && string.Equals(candidate.ProfessionalType, professionalType, StringComparison.OrdinalIgnoreCase));
+            && string.Equals(
+                candidate.ProfessionalType,
+                professionalType,
+                StringComparison.OrdinalIgnoreCase
+            )
+        );
 
         return manifest is null
             ? null
@@ -122,7 +142,8 @@ public sealed class ProfessionalCatalog : IProfessionalCatalog
                 manifest.Trial,
                 manifest.EvidencePosture,
                 manifest.IndicativePrice,
-                new ProfessionalEligibility(true, manifest.EligibilityExplanation));
+                new ProfessionalEligibility(true, manifest.EligibilityExplanation)
+            );
     }
 
     public IReadOnlyList<ProfessionalDisclosure> Browse(string? professionalType, string? query)
@@ -131,12 +152,22 @@ public sealed class ProfessionalCatalog : IProfessionalCatalog
         var normalizedQuery = query?.Trim();
         return _manifests
             .Where(manifest => manifest.Active)
-            .Where(manifest => string.IsNullOrEmpty(normalizedType)
-                || string.Equals(manifest.ProfessionalType, normalizedType, StringComparison.OrdinalIgnoreCase))
-            .Where(manifest => string.IsNullOrEmpty(normalizedQuery)
+            .Where(manifest =>
+                string.IsNullOrEmpty(normalizedType)
+                || string.Equals(
+                    manifest.ProfessionalType,
+                    normalizedType,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
+            .Where(manifest =>
+                string.IsNullOrEmpty(normalizedQuery)
                 || ContainsTerm(Normalize(manifest.DisplayName), normalizedQuery)
                 || ContainsTerm(Normalize(manifest.ProfessionalType), normalizedQuery)
-                || manifest.Suitability.Any(value => ContainsTerm(Normalize(value), normalizedQuery)))
+                || manifest.Suitability.Any(value =>
+                    ContainsTerm(Normalize(value), normalizedQuery)
+                )
+            )
             .OrderBy(manifest => manifest.DisplayName, StringComparer.Ordinal)
             .Select(manifest => GetDisclosure(manifest.ProfessionalType)!)
             .ToArray();
@@ -146,7 +177,9 @@ public sealed class ProfessionalCatalog : IProfessionalCatalog
     {
         using var stream = File.OpenRead(path);
         return JsonSerializer.Deserialize<ProfessionalCatalogManifest>(stream, JsonOptions)
-            ?? throw new InvalidDataException($"Professional catalog manifest is empty: {Path.GetFileName(path)}");
+            ?? throw new InvalidDataException(
+                $"Professional catalog manifest is empty: {Path.GetFileName(path)}"
+            );
     }
 
     private static string Normalize(string value) => value.Trim().ToLowerInvariant();
@@ -170,5 +203,6 @@ public sealed class ProfessionalCatalog : IProfessionalCatalog
         IReadOnlyList<string> CustomerRights,
         ProfessionalTrialDisclosure Trial,
         string EvidencePosture,
-        IndicativePriceDisclosure IndicativePrice);
+        IndicativePriceDisclosure IndicativePrice
+    );
 }

@@ -11,6 +11,7 @@ using Waooaw.BusinessPlatform.Infrastructure;
 namespace Waooaw.BusinessPlatform.Services;
 
 public sealed record CreateVoiceContributionSessionRequestV1(string SchemaVersion, string Locale);
+
 public sealed record VoiceContributionSessionV1(
     string SchemaVersion,
     Guid SessionId,
@@ -22,13 +23,49 @@ public sealed record VoiceContributionSessionV1(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] long? AudioSizeBytes,
     IReadOnlyList<string> AllowedCommands,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
-public sealed record VoiceUploadReceiptV1(string SchemaVersion, Guid SessionId, string State, Guid ReceiptId, DateTimeOffset AcceptedAt);
-public sealed record VoiceTranscriptV1(string SchemaVersion, Guid SessionId, string State, string Locale, string ConfidenceBand, string? Text, int Version);
-public sealed record VoiceCorrectionRequestV1(string SchemaVersion, int ExpectedVersion, string CorrectedText);
-public sealed record VoiceCorrectionReceiptV1(string SchemaVersion, Guid SessionId, string State, int Version, DateTimeOffset RecordedAt);
-public sealed record SendVoiceContributionRequestV1(string SchemaVersion, int AcceptedTranscriptVersion, bool ExplicitSend);
+    DateTimeOffset UpdatedAt
+);
+
+public sealed record VoiceUploadReceiptV1(
+    string SchemaVersion,
+    Guid SessionId,
+    string State,
+    Guid ReceiptId,
+    DateTimeOffset AcceptedAt
+);
+
+public sealed record VoiceTranscriptV1(
+    string SchemaVersion,
+    Guid SessionId,
+    string State,
+    string Locale,
+    string ConfidenceBand,
+    string? Text,
+    int Version
+);
+
+public sealed record VoiceCorrectionRequestV1(
+    string SchemaVersion,
+    int ExpectedVersion,
+    string CorrectedText
+);
+
+public sealed record VoiceCorrectionReceiptV1(
+    string SchemaVersion,
+    Guid SessionId,
+    string State,
+    int Version,
+    DateTimeOffset RecordedAt
+);
+
+public sealed record SendVoiceContributionRequestV1(
+    string SchemaVersion,
+    int AcceptedTranscriptVersion,
+    bool ExplicitSend
+);
+
 public sealed record CancelVoiceContributionRequestV1(string SchemaVersion);
+
 public sealed record VoiceContributionOutcomeV1(
     string SchemaVersion,
     Guid SessionId,
@@ -36,15 +73,19 @@ public sealed record VoiceContributionOutcomeV1(
     string State,
     Guid? EvidenceReference,
     bool ReconciliationRequired,
-    DateTimeOffset OutcomeAt);
+    DateTimeOffset OutcomeAt
+);
+
 public sealed record VoicePayloadErasureRequestV1(string SchemaVersion, string Scope);
+
 public sealed record VoicePayloadErasureReceiptV1(
     string SchemaVersion,
     Guid ErasureId,
     Guid ContributionId,
     string Status,
     Guid? EvidenceReference,
-    DateTimeOffset RecordedAt);
+    DateTimeOffset RecordedAt
+);
 
 public sealed record VoiceMediaInspection(
     string ContentSha256,
@@ -52,9 +93,15 @@ public sealed record VoiceMediaInspection(
     string DetectedMediaType,
     long SizeBytes,
     int DurationMilliseconds,
-    string PayloadReference);
+    string PayloadReference
+);
 
-public sealed record VoiceTranscriptionResult(string Text, string Locale, decimal Confidence, string ContractVersion);
+public sealed record VoiceTranscriptionResult(
+    string Text,
+    string Locale,
+    decimal Confidence,
+    string ContractVersion
+);
 
 public interface IVoiceMediaGateway
 {
@@ -64,10 +111,15 @@ public interface IVoiceMediaGateway
         Guid tenantId,
         Guid relationshipId,
         Guid sessionId,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken
+    );
 
     Task EraseAsync(string payloadReference, CancellationToken cancellationToken);
-    Task SetRetentionAsync(string payloadReference, DateTimeOffset retainUntil, CancellationToken cancellationToken);
+    Task SetRetentionAsync(
+        string payloadReference,
+        DateTimeOffset retainUntil,
+        CancellationToken cancellationToken
+    );
     Task PurgeExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken);
 }
 
@@ -79,7 +131,8 @@ public interface IVoiceTranscriptionGateway
         Guid sessionId,
         VoiceMediaInspection inspection,
         string locale,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken
+    );
 }
 
 public interface IVoiceContentProtector
@@ -96,14 +149,17 @@ public sealed class UnconfiguredVoiceMediaGateway : IVoiceMediaGateway
         Guid tenantId,
         Guid relationshipId,
         Guid sessionId,
-        CancellationToken cancellationToken) =>
-        throw new VoiceUnavailableException();
+        CancellationToken cancellationToken
+    ) => throw new VoiceUnavailableException();
 
     public Task EraseAsync(string payloadReference, CancellationToken cancellationToken) =>
         throw new VoiceUnavailableException();
 
-    public Task SetRetentionAsync(string payloadReference, DateTimeOffset retainUntil, CancellationToken cancellationToken) =>
-        throw new VoiceUnavailableException();
+    public Task SetRetentionAsync(
+        string payloadReference,
+        DateTimeOffset retainUntil,
+        CancellationToken cancellationToken
+    ) => throw new VoiceUnavailableException();
 
     public Task PurgeExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken) =>
         throw new VoiceUnavailableException();
@@ -117,8 +173,8 @@ public sealed class UnconfiguredVoiceTranscriptionGateway : IVoiceTranscriptionG
         Guid sessionId,
         VoiceMediaInspection inspection,
         string locale,
-        CancellationToken cancellationToken) =>
-        throw new VoiceUnavailableException();
+        CancellationToken cancellationToken
+    ) => throw new VoiceUnavailableException();
 }
 
 public sealed class AesVoiceContentProtector : IVoiceContentProtector
@@ -134,7 +190,8 @@ public sealed class AesVoiceContentProtector : IVoiceContentProtector
         }
 
         _key = Convert.FromBase64String(configured);
-        if (_key.Length != 32) throw new InvalidOperationException("Voice content key must be 256 bits.");
+        if (_key.Length != 32)
+            throw new InvalidOperationException("Voice content key must be 256 bits.");
     }
 
     public string Protect(string plaintext)
@@ -151,7 +208,8 @@ public sealed class AesVoiceContentProtector : IVoiceContentProtector
     public string Unprotect(string ciphertext)
     {
         var input = Convert.FromBase64String(ciphertext);
-        if (input.Length < 29) throw new CryptographicException("Voice ciphertext is invalid.");
+        if (input.Length < 29)
+            throw new CryptographicException("Voice ciphertext is invalid.");
         var nonce = input[..12];
         var tag = input[12..28];
         var encrypted = input[28..];
@@ -163,18 +221,29 @@ public sealed class AesVoiceContentProtector : IVoiceContentProtector
 }
 
 public sealed class VoiceRequestException(string message) : Exception(message);
+
 public sealed class VoiceNotAccessibleException : Exception;
+
 public sealed class VoiceConflictException(string message) : Exception(message);
+
 public sealed class VoiceBlockedException(string message) : Exception(message);
+
 public sealed class VoiceInvalidMediaException(string message) : Exception(message);
+
 public sealed class VoiceLimitExceededException(string message) : Exception(message);
+
 public sealed class VoiceUnavailableException : Exception;
 
 public sealed class VoiceContributionService
 {
     private const string SchemaVersion = "1.0.0";
     private static readonly HashSet<string> SupportedLocales = ["en-IN", "hi-IN", "mr-IN"];
-    private static readonly HashSet<string> ErasureScopes = ["AUDIO", "TRANSCRIPT", "AUDIO_AND_TRANSCRIPT"];
+    private static readonly HashSet<string> ErasureScopes =
+    [
+        "AUDIO",
+        "TRANSCRIPT",
+        "AUDIO_AND_TRANSCRIPT",
+    ];
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly IDbContextFactory<VoiceContributionDbContext> _voiceFactory;
@@ -190,7 +259,8 @@ public sealed class VoiceContributionService
         IRelationshipConstitutionalGateway constitutionalGateway,
         IVoiceMediaGateway mediaGateway,
         IVoiceTranscriptionGateway transcriptionGateway,
-        IVoiceContentProtector protector)
+        IVoiceContentProtector protector
+    )
     {
         _voiceFactory = voiceFactory;
         _relationshipFactory = relationshipFactory;
@@ -206,15 +276,28 @@ public sealed class VoiceContributionService
         Guid relationshipId,
         Guid idempotencyKey,
         CreateVoiceContributionSessionRequestV1 request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         ValidateSchema(request.SchemaVersion);
-        if (!SupportedLocales.Contains(request.Locale)) throw new VoiceRequestException("unsupported_language");
+        if (!SupportedLocales.Contains(request.Locale))
+            throw new VoiceRequestException("unsupported_language");
         await EnsureAccessAsync(tenantId, participantId, relationshipId, cancellationToken);
         var hash = Hash(request);
         await using var db = await _voiceFactory.CreateDbContextAsync(cancellationToken);
-        var replay = await FindReplayAsync(db, tenantId, relationshipId, participantId, null, "CREATE", idempotencyKey, hash, cancellationToken);
-        if (replay is not null) return (Deserialize<VoiceContributionSessionV1>(replay.ResponseJson), true);
+        var replay = await FindReplayAsync(
+            db,
+            tenantId,
+            relationshipId,
+            participantId,
+            null,
+            "CREATE",
+            idempotencyKey,
+            hash,
+            cancellationToken
+        );
+        if (replay is not null)
+            return (Deserialize<VoiceContributionSessionV1>(replay.ResponseJson), true);
 
         var now = DateTimeOffset.UtcNow;
         var session = new VoiceContributionSession
@@ -230,7 +313,18 @@ public sealed class VoiceContributionService
         };
         db.Sessions.Add(session);
         var response = ToSession(session, null, null);
-        db.IdempotencyOutcomes.Add(NewOutcome(tenantId, relationshipId, participantId, session.SessionId, "CREATE", idempotencyKey, hash, response));
+        db.IdempotencyOutcomes.Add(
+            NewOutcome(
+                tenantId,
+                relationshipId,
+                participantId,
+                session.SessionId,
+                "CREATE",
+                idempotencyKey,
+                hash,
+                response
+            )
+        );
         await db.SaveChangesAsync(cancellationToken);
         return (response, false);
     }
@@ -240,13 +334,25 @@ public sealed class VoiceContributionService
         Guid participantId,
         Guid relationshipId,
         Guid sessionId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         await EnsureAccessAsync(tenantId, participantId, relationshipId, cancellationToken);
         await using var db = await _voiceFactory.CreateDbContextAsync(cancellationToken);
-        var session = await GetSessionAsync(db, tenantId, participantId, relationshipId, sessionId, cancellationToken);
-        var audio = await db.AudioPayloads.AsNoTracking().SingleOrDefaultAsync(
-            value => value.TenantId == tenantId && value.SessionId == sessionId, cancellationToken);
+        var session = await GetSessionAsync(
+            db,
+            tenantId,
+            participantId,
+            relationshipId,
+            sessionId,
+            cancellationToken
+        );
+        var audio = await db
+            .AudioPayloads.AsNoTracking()
+            .SingleOrDefaultAsync(
+                value => value.TenantId == tenantId && value.SessionId == sessionId,
+                cancellationToken
+            );
         var transcript = await CurrentTranscriptAsync(db, tenantId, sessionId, cancellationToken);
         return ToSession(session, audio, transcript);
     }
@@ -259,21 +365,46 @@ public sealed class VoiceContributionService
         Guid idempotencyKey,
         Stream audio,
         string declaredMediaType,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         await EnsureAccessAsync(tenantId, participantId, relationshipId, cancellationToken);
         await using var db = await _voiceFactory.CreateDbContextAsync(cancellationToken);
-        var session = await GetSessionAsync(db, tenantId, participantId, relationshipId, sessionId, cancellationToken);
+        var session = await GetSessionAsync(
+            db,
+            tenantId,
+            participantId,
+            relationshipId,
+            sessionId,
+            cancellationToken
+        );
 
         await using var boundedAudio = await ReadBoundedAsync(audio, cancellationToken);
         var requestHash = Convert.ToHexStringLower(SHA256.HashData(boundedAudio.ToArray()));
         var replay = await FindReplayAsync(
-            db, tenantId, relationshipId, participantId, sessionId, "UPLOAD", idempotencyKey, requestHash, cancellationToken);
-        if (replay is not null) return (Deserialize<VoiceUploadReceiptV1>(replay.ResponseJson), true);
-        if (session.State != "CREATED") throw new VoiceConflictException("invalid_state");
+            db,
+            tenantId,
+            relationshipId,
+            participantId,
+            sessionId,
+            "UPLOAD",
+            idempotencyKey,
+            requestHash,
+            cancellationToken
+        );
+        if (replay is not null)
+            return (Deserialize<VoiceUploadReceiptV1>(replay.ResponseJson), true);
+        if (session.State != "CREATED")
+            throw new VoiceConflictException("invalid_state");
 
         var inspection = await _mediaGateway.ValidateScanAndStoreAsync(
-            boundedAudio, declaredMediaType, tenantId, relationshipId, sessionId, cancellationToken);
+            boundedAudio,
+            declaredMediaType,
+            tenantId,
+            relationshipId,
+            sessionId,
+            cancellationToken
+        );
         if (inspection.SizeBytes > 15 * 1024 * 1024 || inspection.DurationMilliseconds > 180_000)
             throw new VoiceLimitExceededException("limit_exceeded");
 
@@ -301,7 +432,13 @@ public sealed class VoiceContributionService
         try
         {
             var result = await _transcriptionGateway.TranscribeAsync(
-                tenantId, relationshipId, sessionId, inspection, session.SelectedLocale, cancellationToken);
+                tenantId,
+                relationshipId,
+                sessionId,
+                inspection,
+                session.SelectedLocale,
+                cancellationToken
+            );
             var band = ConfidenceBand(result.Confidence);
             var transcript = new VoiceTranscriptVersion
             {
@@ -311,7 +448,13 @@ public sealed class VoiceContributionService
                 AudioPayloadId = payload.AudioPayloadId,
                 Version = 1,
                 Locale = result.Locale,
-                LocaleSource = string.Equals(result.Locale, session.SelectedLocale, StringComparison.Ordinal) ? "DECLARED" : "DETECTED",
+                LocaleSource = string.Equals(
+                    result.Locale,
+                    session.SelectedLocale,
+                    StringComparison.Ordinal
+                )
+                    ? "DECLARED"
+                    : "DETECTED",
                 Confidence = result.Confidence,
                 ConfidenceBand = band,
                 TextCiphertext = _protector.Protect(result.Text),
@@ -329,9 +472,25 @@ public sealed class VoiceContributionService
         }
 
         session.UpdatedAt = DateTimeOffset.UtcNow;
-        var receipt = new VoiceUploadReceiptV1(SchemaVersion, sessionId, session.State, payload.AudioPayloadId, now);
-        db.IdempotencyOutcomes.Add(NewOutcome(
-            tenantId, relationshipId, participantId, sessionId, "UPLOAD", idempotencyKey, requestHash, receipt));
+        var receipt = new VoiceUploadReceiptV1(
+            SchemaVersion,
+            sessionId,
+            session.State,
+            payload.AudioPayloadId,
+            now
+        );
+        db.IdempotencyOutcomes.Add(
+            NewOutcome(
+                tenantId,
+                relationshipId,
+                participantId,
+                sessionId,
+                "UPLOAD",
+                idempotencyKey,
+                requestHash,
+                receipt
+            )
+        );
         await db.SaveChangesAsync(cancellationToken);
         return (receipt, false);
     }
@@ -341,12 +500,21 @@ public sealed class VoiceContributionService
         Guid participantId,
         Guid relationshipId,
         Guid sessionId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         await EnsureAccessAsync(tenantId, participantId, relationshipId, cancellationToken);
         await using var db = await _voiceFactory.CreateDbContextAsync(cancellationToken);
-        var session = await GetSessionAsync(db, tenantId, participantId, relationshipId, sessionId, cancellationToken);
-        var transcript = await CurrentTranscriptAsync(db, tenantId, sessionId, cancellationToken)
+        var session = await GetSessionAsync(
+            db,
+            tenantId,
+            participantId,
+            relationshipId,
+            sessionId,
+            cancellationToken
+        );
+        var transcript =
+            await CurrentTranscriptAsync(db, tenantId, sessionId, cancellationToken)
             ?? throw new VoiceConflictException("transcript_not_ready");
         return new VoiceTranscriptV1(
             SchemaVersion,
@@ -355,7 +523,8 @@ public sealed class VoiceContributionService
             transcript.Locale,
             transcript.ConfidenceBand,
             transcript.ErasedAt is null ? _protector.Unprotect(transcript.TextCiphertext) : null,
-            transcript.Version);
+            transcript.Version
+        );
     }
 
     public async Task<(VoiceCorrectionReceiptV1 Value, bool Replayed)> CorrectAsync(
@@ -365,21 +534,46 @@ public sealed class VoiceContributionService
         Guid sessionId,
         Guid idempotencyKey,
         VoiceCorrectionRequestV1 request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         ValidateSchema(request.SchemaVersion);
-        if (string.IsNullOrWhiteSpace(request.CorrectedText) || request.CorrectedText.Length > 20_000)
+        if (
+            string.IsNullOrWhiteSpace(request.CorrectedText)
+            || request.CorrectedText.Length > 20_000
+        )
             throw new VoiceRequestException("corrected_text_invalid");
         await EnsureAccessAsync(tenantId, participantId, relationshipId, cancellationToken);
         await using var db = await _voiceFactory.CreateDbContextAsync(cancellationToken);
-        var session = await GetSessionAsync(db, tenantId, participantId, relationshipId, sessionId, cancellationToken);
-        if (session.State is not ("REVIEW_REQUIRED" or "READY_TO_SEND")) throw new VoiceConflictException("invalid_state");
+        var session = await GetSessionAsync(
+            db,
+            tenantId,
+            participantId,
+            relationshipId,
+            sessionId,
+            cancellationToken
+        );
+        if (session.State is not ("REVIEW_REQUIRED" or "READY_TO_SEND"))
+            throw new VoiceConflictException("invalid_state");
         var hash = Hash(request);
-        var replay = await FindReplayAsync(db, tenantId, relationshipId, participantId, sessionId, "CORRECT", idempotencyKey, hash, cancellationToken);
-        if (replay is not null) return (Deserialize<VoiceCorrectionReceiptV1>(replay.ResponseJson), true);
-        var current = await CurrentTranscriptAsync(db, tenantId, sessionId, cancellationToken)
+        var replay = await FindReplayAsync(
+            db,
+            tenantId,
+            relationshipId,
+            participantId,
+            sessionId,
+            "CORRECT",
+            idempotencyKey,
+            hash,
+            cancellationToken
+        );
+        if (replay is not null)
+            return (Deserialize<VoiceCorrectionReceiptV1>(replay.ResponseJson), true);
+        var current =
+            await CurrentTranscriptAsync(db, tenantId, sessionId, cancellationToken)
             ?? throw new VoiceConflictException("transcript_not_ready");
-        if (request.ExpectedVersion != current.Version) throw new VoiceConflictException("stale_version");
+        if (request.ExpectedVersion != current.Version)
+            throw new VoiceConflictException("stale_version");
 
         var now = DateTimeOffset.UtcNow;
         var correction = new VoiceTranscriptVersion
@@ -405,8 +599,25 @@ public sealed class VoiceContributionService
         session.AcceptedTranscriptId = correction.TranscriptId;
         session.State = "READY_TO_SEND";
         session.UpdatedAt = now;
-        var receipt = new VoiceCorrectionReceiptV1(SchemaVersion, sessionId, session.State, correction.Version, now);
-        db.IdempotencyOutcomes.Add(NewOutcome(tenantId, relationshipId, participantId, sessionId, "CORRECT", idempotencyKey, hash, receipt));
+        var receipt = new VoiceCorrectionReceiptV1(
+            SchemaVersion,
+            sessionId,
+            session.State,
+            correction.Version,
+            now
+        );
+        db.IdempotencyOutcomes.Add(
+            NewOutcome(
+                tenantId,
+                relationshipId,
+                participantId,
+                sessionId,
+                "CORRECT",
+                idempotencyKey,
+                hash,
+                receipt
+            )
+        );
         await db.SaveChangesAsync(cancellationToken);
         return (receipt, false);
     }
@@ -418,22 +629,53 @@ public sealed class VoiceContributionService
         Guid sessionId,
         Guid idempotencyKey,
         SendVoiceContributionRequestV1 request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         ValidateSchema(request.SchemaVersion);
-        if (!request.ExplicitSend) throw new VoiceRequestException("consent_required");
-        var relationship = await EnsureAccessAsync(tenantId, participantId, relationshipId, cancellationToken);
+        if (!request.ExplicitSend)
+            throw new VoiceRequestException("consent_required");
+        var relationship = await EnsureAccessAsync(
+            tenantId,
+            participantId,
+            relationshipId,
+            cancellationToken
+        );
         await using var db = await _voiceFactory.CreateDbContextAsync(cancellationToken);
-        var session = await GetSessionAsync(db, tenantId, participantId, relationshipId, sessionId, cancellationToken);
+        var session = await GetSessionAsync(
+            db,
+            tenantId,
+            participantId,
+            relationshipId,
+            sessionId,
+            cancellationToken
+        );
         var hash = Hash(request);
-        var replay = await FindReplayAsync(db, tenantId, relationshipId, participantId, sessionId, "SEND", idempotencyKey, hash, cancellationToken);
-        if (replay is not null) return (Deserialize<VoiceContributionOutcomeV1>(replay.ResponseJson), true);
-        if (session.State != "READY_TO_SEND" || request.AcceptedTranscriptVersion != session.CurrentTranscriptVersion)
+        var replay = await FindReplayAsync(
+            db,
+            tenantId,
+            relationshipId,
+            participantId,
+            sessionId,
+            "SEND",
+            idempotencyKey,
+            hash,
+            cancellationToken
+        );
+        if (replay is not null)
+            return (Deserialize<VoiceContributionOutcomeV1>(replay.ResponseJson), true);
+        if (
+            session.State != "READY_TO_SEND"
+            || request.AcceptedTranscriptVersion != session.CurrentTranscriptVersion
+        )
             throw new VoiceConflictException("stale_version");
-        var transcript = await CurrentTranscriptAsync(db, tenantId, sessionId, cancellationToken)
+        var transcript =
+            await CurrentTranscriptAsync(db, tenantId, sessionId, cancellationToken)
             ?? throw new VoiceConflictException("transcript_not_ready");
         var audio = await db.AudioPayloads.SingleAsync(
-            value => value.TenantId == tenantId && value.SessionId == sessionId, cancellationToken);
+            value => value.TenantId == tenantId && value.SessionId == sessionId,
+            cancellationToken
+        );
 
         session.State = "SENDING";
         session.UpdatedAt = DateTimeOffset.UtcNow;
@@ -454,19 +696,43 @@ public sealed class VoiceContributionService
                 locale = transcript.Locale,
                 explicitSend = true,
             },
-            cancellationToken);
+            cancellationToken
+        );
         var now = DateTimeOffset.UtcNow;
         session.ContributionId = contributionId;
         session.EvidenceReference = evidenceId;
         if (audio?.PayloadReference is not null)
         {
-            await _mediaGateway.SetRetentionAsync(audio.PayloadReference, now.AddDays(30), cancellationToken);
+            await _mediaGateway.SetRetentionAsync(
+                audio.PayloadReference,
+                now.AddDays(30),
+                cancellationToken
+            );
         }
         session.State = "RECORDED";
         session.UpdatedAt = now;
         audio!.RetainUntil = now.AddDays(30);
-        var outcome = new VoiceContributionOutcomeV1(SchemaVersion, sessionId, contributionId, "RECORDED", evidenceId, false, now);
-        db.IdempotencyOutcomes.Add(NewOutcome(tenantId, relationshipId, participantId, sessionId, "SEND", idempotencyKey, hash, outcome));
+        var outcome = new VoiceContributionOutcomeV1(
+            SchemaVersion,
+            sessionId,
+            contributionId,
+            "RECORDED",
+            evidenceId,
+            false,
+            now
+        );
+        db.IdempotencyOutcomes.Add(
+            NewOutcome(
+                tenantId,
+                relationshipId,
+                participantId,
+                sessionId,
+                "SEND",
+                idempotencyKey,
+                hash,
+                outcome
+            )
+        );
         await db.SaveChangesAsync(cancellationToken);
         return (outcome, false);
     }
@@ -478,28 +744,69 @@ public sealed class VoiceContributionService
         Guid sessionId,
         Guid idempotencyKey,
         CancelVoiceContributionRequestV1 request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         ValidateSchema(request.SchemaVersion);
         await EnsureAccessAsync(tenantId, participantId, relationshipId, cancellationToken);
         await using var db = await _voiceFactory.CreateDbContextAsync(cancellationToken);
-        var session = await GetSessionAsync(db, tenantId, participantId, relationshipId, sessionId, cancellationToken);
+        var session = await GetSessionAsync(
+            db,
+            tenantId,
+            participantId,
+            relationshipId,
+            sessionId,
+            cancellationToken
+        );
         var hash = Hash(request);
-        var replay = await FindReplayAsync(db, tenantId, relationshipId, participantId, sessionId, "CANCEL", idempotencyKey, hash, cancellationToken);
-        if (replay is not null) return (Deserialize<VoiceContributionOutcomeV1>(replay.ResponseJson), true);
-        if (session.State == "RECORDED") throw new VoiceConflictException("already_recorded");
+        var replay = await FindReplayAsync(
+            db,
+            tenantId,
+            relationshipId,
+            participantId,
+            sessionId,
+            "CANCEL",
+            idempotencyKey,
+            hash,
+            cancellationToken
+        );
+        if (replay is not null)
+            return (Deserialize<VoiceContributionOutcomeV1>(replay.ResponseJson), true);
+        if (session.State == "RECORDED")
+            throw new VoiceConflictException("already_recorded");
         session.State = "CANCELLED";
         session.UpdatedAt = DateTimeOffset.UtcNow;
         var audio = await db.AudioPayloads.SingleOrDefaultAsync(
-            value => value.TenantId == tenantId && value.SessionId == sessionId, cancellationToken);
+            value => value.TenantId == tenantId && value.SessionId == sessionId,
+            cancellationToken
+        );
         if (audio?.PayloadReference is not null)
         {
             await _mediaGateway.EraseAsync(audio.PayloadReference, cancellationToken);
             audio.PayloadReference = null;
             audio.ErasedAt = session.UpdatedAt;
         }
-        var outcome = new VoiceContributionOutcomeV1(SchemaVersion, sessionId, null, "CANCELLED", null, false, session.UpdatedAt);
-        db.IdempotencyOutcomes.Add(NewOutcome(tenantId, relationshipId, participantId, sessionId, "CANCEL", idempotencyKey, hash, outcome));
+        var outcome = new VoiceContributionOutcomeV1(
+            SchemaVersion,
+            sessionId,
+            null,
+            "CANCELLED",
+            null,
+            false,
+            session.UpdatedAt
+        );
+        db.IdempotencyOutcomes.Add(
+            NewOutcome(
+                tenantId,
+                relationshipId,
+                participantId,
+                sessionId,
+                "CANCEL",
+                idempotencyKey,
+                hash,
+                outcome
+            )
+        );
         await db.SaveChangesAsync(cancellationToken);
         return (outcome, false);
     }
@@ -511,21 +818,42 @@ public sealed class VoiceContributionService
         Guid contributionId,
         Guid idempotencyKey,
         VoicePayloadErasureRequestV1 request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         ValidateSchema(request.SchemaVersion);
-        if (!ErasureScopes.Contains(request.Scope)) throw new VoiceRequestException("scope_invalid");
-        var relationship = await EnsureAccessAsync(tenantId, participantId, relationshipId, cancellationToken);
+        if (!ErasureScopes.Contains(request.Scope))
+            throw new VoiceRequestException("scope_invalid");
+        var relationship = await EnsureAccessAsync(
+            tenantId,
+            participantId,
+            relationshipId,
+            cancellationToken
+        );
         await using var db = await _voiceFactory.CreateDbContextAsync(cancellationToken);
-        var session = await db.Sessions.SingleOrDefaultAsync(
-            value => value.TenantId == tenantId
-                && value.RelationshipId == relationshipId
-                && value.ActorParticipantId == participantId
-                && value.ContributionId == contributionId,
-            cancellationToken) ?? throw new VoiceNotAccessibleException();
+        var session =
+            await db.Sessions.SingleOrDefaultAsync(
+                value =>
+                    value.TenantId == tenantId
+                    && value.RelationshipId == relationshipId
+                    && value.ActorParticipantId == participantId
+                    && value.ContributionId == contributionId,
+                cancellationToken
+            ) ?? throw new VoiceNotAccessibleException();
         var hash = Hash(request);
-        var replay = await FindReplayAsync(db, tenantId, relationshipId, participantId, session.SessionId, "ERASE", idempotencyKey, hash, cancellationToken);
-        if (replay is not null) return (Deserialize<VoicePayloadErasureReceiptV1>(replay.ResponseJson), true);
+        var replay = await FindReplayAsync(
+            db,
+            tenantId,
+            relationshipId,
+            participantId,
+            session.SessionId,
+            "ERASE",
+            idempotencyKey,
+            hash,
+            cancellationToken
+        );
+        if (replay is not null)
+            return (Deserialize<VoicePayloadErasureReceiptV1>(replay.ResponseJson), true);
 
         var erasureId = Guid.NewGuid();
         var evidenceId = await _constitutionalGateway.AuthorizeAndRecordAsync(
@@ -535,13 +863,17 @@ public sealed class VoiceContributionService
             "VOICE_PAYLOAD_ERASURE",
             erasureId,
             new { contributionId, request.Scope },
-            cancellationToken);
+            cancellationToken
+        );
         var now = DateTimeOffset.UtcNow;
         if (request.Scope is "AUDIO" or "AUDIO_AND_TRANSCRIPT")
         {
             var audio = await db.AudioPayloads.SingleOrDefaultAsync(
-                value => value.TenantId == tenantId && value.SessionId == session.SessionId, cancellationToken);
-            if (audio?.PayloadReference is not null) await _mediaGateway.EraseAsync(audio.PayloadReference, cancellationToken);
+                value => value.TenantId == tenantId && value.SessionId == session.SessionId,
+                cancellationToken
+            );
+            if (audio?.PayloadReference is not null)
+                await _mediaGateway.EraseAsync(audio.PayloadReference, cancellationToken);
             if (audio is not null)
             {
                 audio.PayloadReference = null;
@@ -550,28 +882,51 @@ public sealed class VoiceContributionService
         }
         if (request.Scope is "TRANSCRIPT" or "AUDIO_AND_TRANSCRIPT")
         {
-            var transcripts = await db.TranscriptVersions.Where(
-                value => value.TenantId == tenantId && value.SessionId == session.SessionId).ToListAsync(cancellationToken);
+            var transcripts = await db
+                .TranscriptVersions.Where(value =>
+                    value.TenantId == tenantId && value.SessionId == session.SessionId
+                )
+                .ToListAsync(cancellationToken);
             foreach (var transcript in transcripts)
             {
                 transcript.TextCiphertext = string.Empty;
                 transcript.ErasedAt = now;
             }
         }
-        db.ErasureTombstones.Add(new VoiceErasureTombstone
-        {
-            TombstoneId = erasureId,
-            TenantId = tenantId,
-            RelationshipId = relationshipId,
-            ContributionId = contributionId,
-            ActorParticipantId = participantId,
-            Scope = request.Scope,
-            ReasonClass = "CUSTOMER_REQUEST",
-            EvidenceReference = evidenceId,
-            ErasedAt = now,
-        });
-        var receipt = new VoicePayloadErasureReceiptV1(SchemaVersion, erasureId, contributionId, "COMPLETED", evidenceId, now);
-        db.IdempotencyOutcomes.Add(NewOutcome(tenantId, relationshipId, participantId, session.SessionId, "ERASE", idempotencyKey, hash, receipt));
+        db.ErasureTombstones.Add(
+            new VoiceErasureTombstone
+            {
+                TombstoneId = erasureId,
+                TenantId = tenantId,
+                RelationshipId = relationshipId,
+                ContributionId = contributionId,
+                ActorParticipantId = participantId,
+                Scope = request.Scope,
+                ReasonClass = "CUSTOMER_REQUEST",
+                EvidenceReference = evidenceId,
+                ErasedAt = now,
+            }
+        );
+        var receipt = new VoicePayloadErasureReceiptV1(
+            SchemaVersion,
+            erasureId,
+            contributionId,
+            "COMPLETED",
+            evidenceId,
+            now
+        );
+        db.IdempotencyOutcomes.Add(
+            NewOutcome(
+                tenantId,
+                relationshipId,
+                participantId,
+                session.SessionId,
+                "ERASE",
+                idempotencyKey,
+                hash,
+                receipt
+            )
+        );
         await db.SaveChangesAsync(cancellationToken);
         return (receipt, false);
     }
@@ -580,20 +935,35 @@ public sealed class VoiceContributionService
         Guid tenantId,
         Guid participantId,
         Guid relationshipId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         await using var db = await _relationshipFactory.CreateDbContextAsync(cancellationToken);
-        var relationship = await db.EmploymentRelationships.AsNoTracking().SingleOrDefaultAsync(
-            value => value.TenantId == tenantId && value.RelationshipId == relationshipId, cancellationToken);
-        if (relationship is null || relationship.State is EmploymentRelationshipState.StoppedEmergency or EmploymentRelationshipState.Terminated)
+        var relationship = await db
+            .EmploymentRelationships.AsNoTracking()
+            .SingleOrDefaultAsync(
+                value => value.TenantId == tenantId && value.RelationshipId == relationshipId,
+                cancellationToken
+            );
+        if (
+            relationship is null
+            || relationship.State
+                is EmploymentRelationshipState.StoppedEmergency
+                    or EmploymentRelationshipState.Terminated
+        )
             throw new VoiceNotAccessibleException();
-        var authorized = await db.RelationshipParticipants.AsNoTracking().AnyAsync(
-            value => value.TenantId == tenantId
-                && value.RelationshipId == relationshipId
-                && value.ParticipantId == participantId
-                && value.Status == "ACTIVE",
-            cancellationToken);
-        if (!authorized) throw new VoiceNotAccessibleException();
+        var authorized = await db
+            .RelationshipParticipants.AsNoTracking()
+            .AnyAsync(
+                value =>
+                    value.TenantId == tenantId
+                    && value.RelationshipId == relationshipId
+                    && value.ParticipantId == participantId
+                    && value.Status == "ACTIVE",
+                cancellationToken
+            );
+        if (!authorized)
+            throw new VoiceNotAccessibleException();
         return relationship;
     }
 
@@ -603,20 +973,25 @@ public sealed class VoiceContributionService
         Guid participantId,
         Guid relationshipId,
         Guid sessionId,
-        CancellationToken cancellationToken) =>
+        CancellationToken cancellationToken
+    ) =>
         await db.Sessions.SingleOrDefaultAsync(
-            value => value.TenantId == tenantId
+            value =>
+                value.TenantId == tenantId
                 && value.RelationshipId == relationshipId
                 && value.ActorParticipantId == participantId
                 && value.SessionId == sessionId,
-            cancellationToken) ?? throw new VoiceNotAccessibleException();
+            cancellationToken
+        ) ?? throw new VoiceNotAccessibleException();
 
     private static Task<VoiceTranscriptVersion?> CurrentTranscriptAsync(
         VoiceContributionDbContext db,
         Guid tenantId,
         Guid sessionId,
-        CancellationToken cancellationToken) =>
-        db.TranscriptVersions.AsNoTracking()
+        CancellationToken cancellationToken
+    ) =>
+        db
+            .TranscriptVersions.AsNoTracking()
             .Where(value => value.TenantId == tenantId && value.SessionId == sessionId)
             .OrderByDescending(value => value.Version)
             .FirstOrDefaultAsync(cancellationToken);
@@ -630,17 +1005,27 @@ public sealed class VoiceContributionService
         string operation,
         Guid idempotencyKey,
         string requestHash,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
-        var replay = await db.IdempotencyOutcomes.AsNoTracking().SingleOrDefaultAsync(
-            value => value.TenantId == tenantId
-                && value.RelationshipId == relationshipId
-                && value.ActorParticipantId == participantId
-                && value.Operation == operation
-                && value.IdempotencyKey == idempotencyKey,
-            cancellationToken);
-        if (replay is not null
-            && ((sessionId is not null && replay.SessionId != sessionId) || replay.RequestSha256 != requestHash))
+        var replay = await db
+            .IdempotencyOutcomes.AsNoTracking()
+            .SingleOrDefaultAsync(
+                value =>
+                    value.TenantId == tenantId
+                    && value.RelationshipId == relationshipId
+                    && value.ActorParticipantId == participantId
+                    && value.Operation == operation
+                    && value.IdempotencyKey == idempotencyKey,
+                cancellationToken
+            );
+        if (
+            replay is not null
+            && (
+                (sessionId is not null && replay.SessionId != sessionId)
+                || replay.RequestSha256 != requestHash
+            )
+        )
             throw new VoiceConflictException("idempotency_conflict");
         return replay;
     }
@@ -653,7 +1038,9 @@ public sealed class VoiceContributionService
         string operation,
         Guid idempotencyKey,
         string requestHash,
-        T response) => new()
+        T response
+    ) =>
+        new()
         {
             TenantId = tenantId,
             RelationshipId = relationshipId,
@@ -668,31 +1055,55 @@ public sealed class VoiceContributionService
     private static VoiceContributionSessionV1 ToSession(
         VoiceContributionSession session,
         VoiceAudioPayload? audio,
-        VoiceTranscriptVersion? transcript) => new(
-        SchemaVersion,
-        session.SessionId,
-        session.RelationshipId,
-        session.State,
-        session.SelectedLocale,
-        transcript?.ConfidenceBand,
-        audio is null ? null : audio.DurationMilliseconds / 1000,
-        audio?.SizeBytes,
-        AllowedCommands(session.State),
-        session.CreatedAt,
-        session.UpdatedAt);
+        VoiceTranscriptVersion? transcript
+    ) =>
+        new(
+            SchemaVersion,
+            session.SessionId,
+            session.RelationshipId,
+            session.State,
+            session.SelectedLocale,
+            transcript?.ConfidenceBand,
+            audio is null ? null : audio.DurationMilliseconds / 1000,
+            audio?.SizeBytes,
+            AllowedCommands(session.State),
+            session.CreatedAt,
+            session.UpdatedAt
+        );
 
-    private static IReadOnlyList<string> AllowedCommands(string state) => state switch
-    {
-        "CREATED" => ["UPLOAD", "CANCEL", "SWITCH_TO_TEXT"],
-        "REVIEW_REQUIRED" => ["REVIEW_TRANSCRIPT", "SUBMIT_CORRECTION", "CANCEL", "SWITCH_TO_TEXT"],
-        "READY_TO_SEND" => ["REVIEW_TRANSCRIPT", "SUBMIT_CORRECTION", "SEND", "CANCEL", "SWITCH_TO_TEXT"],
-        "UNAVAILABLE" or "UNKNOWN" => ["RETRY", "CANCEL", "SWITCH_TO_TEXT"],
-        "RECORDED" => ["REQUEST_ERASURE"],
-        _ => [],
-    };
+    private static IReadOnlyList<string> AllowedCommands(string state) =>
+        state switch
+        {
+            "CREATED" => ["UPLOAD", "CANCEL", "SWITCH_TO_TEXT"],
+            "REVIEW_REQUIRED" =>
+            [
+                "REVIEW_TRANSCRIPT",
+                "SUBMIT_CORRECTION",
+                "CANCEL",
+                "SWITCH_TO_TEXT",
+            ],
+            "READY_TO_SEND" =>
+            [
+                "REVIEW_TRANSCRIPT",
+                "SUBMIT_CORRECTION",
+                "SEND",
+                "CANCEL",
+                "SWITCH_TO_TEXT",
+            ],
+            "UNAVAILABLE" or "UNKNOWN" => ["RETRY", "CANCEL", "SWITCH_TO_TEXT"],
+            "RECORDED" => ["REQUEST_ERASURE"],
+            _ => [],
+        };
 
-    private static string ConfidenceBand(decimal confidence) => confidence >= 0.90m ? "HIGH" : confidence >= 0.70m ? "REVIEW" : "LOW";
-    private static async Task<MemoryStream> ReadBoundedAsync(Stream source, CancellationToken cancellationToken)
+    private static string ConfidenceBand(decimal confidence) =>
+        confidence >= 0.90m ? "HIGH"
+        : confidence >= 0.70m ? "REVIEW"
+        : "LOW";
+
+    private static async Task<MemoryStream> ReadBoundedAsync(
+        Stream source,
+        CancellationToken cancellationToken
+    )
     {
         const int maximumBytes = 15 * 1024 * 1024;
         var target = new MemoryStream();
@@ -700,8 +1111,10 @@ public sealed class VoiceContributionService
         while (true)
         {
             var read = await source.ReadAsync(buffer, cancellationToken);
-            if (read == 0) break;
-            if (target.Length + read > maximumBytes) throw new VoiceLimitExceededException("limit_exceeded");
+            if (read == 0)
+                break;
+            if (target.Length + read > maximumBytes)
+                throw new VoiceLimitExceededException("limit_exceeded");
             await target.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
         }
         target.Position = 0;
@@ -709,11 +1122,17 @@ public sealed class VoiceContributionService
     }
 
     private static string Hash<T>(T value) => Sha256(JsonSerializer.Serialize(value, JsonOptions));
-    private static string Sha256(string value) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
-    private static T Deserialize<T>(string value) => JsonSerializer.Deserialize<T>(value, JsonOptions)
+
+    private static string Sha256(string value) =>
+        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
+
+    private static T Deserialize<T>(string value) =>
+        JsonSerializer.Deserialize<T>(value, JsonOptions)
         ?? throw new InvalidOperationException("Stored voice outcome is invalid.");
+
     private static void ValidateSchema(string schemaVersion)
     {
-        if (schemaVersion != SchemaVersion) throw new VoiceRequestException("contract_mismatch");
+        if (schemaVersion != SchemaVersion)
+            throw new VoiceRequestException("contract_mismatch");
     }
 }
