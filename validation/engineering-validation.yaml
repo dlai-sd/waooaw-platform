@@ -32,10 +32,10 @@ runners:
 commands:
   build-constitutional-engine: {shell: "dotnet build src/constitutional-engine --artifacts-path /tmp/artifacts/constitutional-engine --no-restore"}
   build-business-platform: {shell: "dotnet build src/business-platform --artifacts-path /tmp/artifacts/business-platform --no-restore"}
-  build-professional-runtime: {shell: "python -m compileall -q src/professional-runtime"}
-  build-ai-runtime: {shell: "python -m compileall -q src/ai-runtime src/trust-layer"}
-  build-billing-engine: {shell: "python -m compileall -q src/billing-engine"}
-  build-agent-adapter: {shell: "python -m compileall -q src/agent-adapters"}
+  build-professional-runtime: {shell: "PYTHONPYCACHEPREFIX=/tmp/pycache/professional-runtime python -m compileall -q src/professional-runtime"}
+  build-ai-runtime: {shell: "PYTHONPYCACHEPREFIX=/tmp/pycache/ai-runtime python -m compileall -q src/ai-runtime src/trust-layer"}
+  build-billing-engine: {shell: "PYTHONPYCACHEPREFIX=/tmp/pycache/billing-engine python -m compileall -q src/billing-engine"}
+  build-agent-adapter: {shell: "PYTHONPYCACHEPREFIX=/tmp/pycache/agent-adapters python -m compileall -q src/agent-adapters"}
   build-web: {shell: "cp -a web /tmp/web && ln -s /opt/waooaw-web/node_modules /tmp/web/node_modules && cd /tmp/web && tsc --noEmit --incremental false"}
   test-constitutional-engine: {shell: "sh scripts/validation_control/run_dotnet_test_gate.sh constitutional-engine tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj"}
   test-business-platform: {shell: "sh scripts/validation_control/run_dotnet_test_gate.sh business-platform tests/business-platform.Tests/business-platform.Tests.csproj"}

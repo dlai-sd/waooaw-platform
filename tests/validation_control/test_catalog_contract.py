@@ -141,6 +141,20 @@ def test_catalog_gate_mounts_linked_worktree_git_directory_read_only() -> None:
     assert command[command.index("--volume") + 1] == "/workspaces/repository/.git:/workspaces/repository/.git:ro"
 
 
+def test_python_builds_write_bytecode_only_to_disposable_state() -> None:
+    catalog = load_catalog()
+
+    for command_id in (
+        "build-professional-runtime",
+        "build-ai-runtime",
+        "build-billing-engine",
+        "build-agent-adapter",
+    ):
+        command = catalog["commands"][command_id]["shell"]
+        assert command.startswith("PYTHONPYCACHEPREFIX=/tmp/pycache/")
+        assert "python -m compileall -q src/" in command
+
+
 def test_host_orchestration_declares_whether_it_consumes_a_runner() -> None:
     catalog = load_catalog()
     release = build_execution_plan(
