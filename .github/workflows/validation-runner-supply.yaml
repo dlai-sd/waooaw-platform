@@ -1,0 +1,127 @@
+name: Validation Runner Supply
+
+on:
+  workflow_call:
+
+jobs:
+  supply:
+    name: Supply ${{ matrix.runner }} validation runner
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [python, dotnet, typescript, full]
+    concurrency:
+      group: wc104-runner-supply-${{ matrix.runner }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Prepare canonical narrow context
+        id: identity
+        env:
+          RUNNER_ID: ${{ matrix.runner }}
+        run: |
+          context="$RUNNER_TEMP/wc104-context-$RUNNER_ID"
+          specification=$(PYTHONPATH=scripts python3 scripts/validation_control/runner_supply.py \
+            context --runner "$RUNNER_ID" --output "$context")
+          identity=$(jq -r '.identity' <<< "$specification")
+          dockerfile=$(jq -r '.dockerfile' <<< "$specification")
+          repository="ghcr.io/${GITHUB_REPOSITORY_OWNER}/waooaw-validation-runner-$RUNNER_ID"
+          identity_tag="identity-${identity#sha256:}"
+          if [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == "refs/heads/main" ]]; then
+            publish_tag="$identity_tag"
+          else
+            publish_tag="candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${identity#sha256:}"
+          fi
+          echo "context=$context" >> "$GITHUB_OUTPUT"
+          echo "dockerfile=$context/$dockerfile" >> "$GITHUB_OUTPUT"
+          echo "identity=$identity" >> "$GITHUB_OUTPUT"
+          echo "repository=$repository" >> "$GITHUB_OUTPUT"
+          echo "identity_tag=$identity_tag" >> "$GITHUB_OUTPUT"
+          echo "publish_tag=$publish_tag" >> "$GITHUB_OUTPUT"
+      - name: Resolve trusted immutable runner
+        id: resolve
+        env:
+          REPOSITORY: ${{ steps.identity.outputs.repository }}
+          IDENTITY_TAG: ${{ steps.identity.outputs.identity_tag }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          digest=$(docker buildx imagetools inspect "$REPOSITORY:$IDENTITY_TAG" \
+            --format '{{json .Manifest.Digest}}' 2>/dev/null | tr -d '"' || true)
+          if [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] \
+            && gh attestation verify "oci://$REPOSITORY@$digest" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "hit=true" >> "$GITHUB_OUTPUT"
+            echo "digest=$digest" >> "$GITHUB_OUTPUT"
+            echo "build_count=0" >> "$GITHUB_OUTPUT"
+            echo "cache_outcome=registry-hit" >> "$GITHUB_OUTPUT"
+          else
+            echo "hit=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build and publish one runner on trusted miss
+        if: steps.resolve.outputs.hit != 'true'
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ steps.identity.outputs.context }}
+          file: ${{ steps.identity.outputs.dockerfile }}
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.identity.outputs.repository }}:${{ steps.identity.outputs.publish_tag }}
+          cache-from: type=gha,scope=wc104-${{ matrix.runner }}-${{ steps.identity.outputs.identity }}
+          cache-to: type=gha,mode=max,scope=wc104-${{ matrix.runner }}-${{ steps.identity.outputs.identity }}
+          provenance: mode=max
+          sbom: true
+      - name: Attest newly published runner
+        if: steps.resolve.outputs.hit != 'true'
+        id: attest
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ steps.identity.outputs.repository }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+      - name: Publish trusted identity mapping
+        if: steps.resolve.outputs.hit != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          REPOSITORY: ${{ steps.identity.outputs.repository }}
+          PUBLISH_TAG: ${{ steps.identity.outputs.publish_tag }}
+          IDENTITY_TAG: ${{ steps.identity.outputs.identity_tag }}
+        run: docker buildx imagetools create --tag "$REPOSITORY:$IDENTITY_TAG" "$REPOSITORY:$PUBLISH_TAG"
+      - name: Emit immutable runner manifest
+        env:
+          RUNNER_ID: ${{ matrix.runner }}
+          REPOSITORY: ${{ steps.identity.outputs.repository }}
+          RESOLVED_DIGEST: ${{ steps.resolve.outputs.digest }}
+          BUILT_DIGEST: ${{ steps.build.outputs.digest }}
+          CACHE_OUTCOME: ${{ steps.resolve.outputs.cache_outcome }}
+          BUILD_COUNT: ${{ steps.resolve.outputs.build_count }}
+        run: |
+          digest=${RESOLVED_DIGEST:-$BUILT_DIGEST}
+          cache_outcome=${CACHE_OUTCOME:-built}
+          build_count=${BUILD_COUNT:-1}
+          mkdir -p test-results/wc104/runner-manifests
+          PYTHONPATH=scripts python3 scripts/validation_control/runner_supply.py manifest \
+            --runner "$RUNNER_ID" \
+            --image-repository "$REPOSITORY" \
+            --oci-digest "$digest" \
+            --provenance-reference "github-attestation:${GITHUB_RUN_ID}:${GITHUB_RUN_ATTEMPT}" \
+            --producer-run "${GITHUB_RUN_ID}:${GITHUB_RUN_ATTEMPT}" \
+            --cache-outcome "$cache_outcome" \
+            --build-count "$build_count" \
+            > "test-results/wc104/runner-manifests/$RUNNER_ID.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wc104-runner-${{ matrix.runner }}
+          path: test-results/wc104/runner-manifests/${{ matrix.runner }}.json
+          if-no-files-found: error
+          retention-days: 90

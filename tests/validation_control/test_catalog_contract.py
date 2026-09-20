@@ -41,6 +41,15 @@ def test_focused_and_qualification_modes_resolve_identical_commands() -> None:
     assert [node["command"] for node in focused["nodes"]] == [node["command"] for node in qualification["nodes"]]
     assert focused["authoritative"] is False
     assert qualification["requires_clean_commit"] is True
+    assert focused["nodes"][0]["runner_manifest"].endswith("/typescript.json")
+
+
+def test_full_runner_is_limited_to_cross_stack_release_gates() -> None:
+    catalog = load_catalog()
+
+    full_runner_gates = {gate_id for gate_id, gate in catalog["gates"].items() if gate["runner_id"] == "full"}
+
+    assert full_runner_gates == {"release-qualification"}
 
 
 def test_concurrent_runs_receive_distinct_namespaces() -> None:

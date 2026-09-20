@@ -23,23 +23,37 @@ env:
 
 jobs:
 
+  runner-supply:
+    uses: ./.github/workflows/validation-runner-supply.yaml
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+
   # ─── Playwright setup ────────────────────────────────────────────────────
   install:
-    name: Build Playwright runner
+    name: Resolve Playwright runner
     runs-on: ubuntu-latest
+    needs: runner-supply
     steps:
       - uses: actions/checkout@v4
-      - run: docker compose --profile test build test-runner
+      - uses: ./.github/actions/use-validation-runner
+        with:
+          runner-id: full
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   # ─── Accessibility tests (WCAG 2.1 AA — C-042 constitutional UX standard) ──
   accessibility:
     name: Accessibility — WCAG 2.1 AA
     runs-on: ubuntu-latest
-    needs: install
+    needs: [runner-supply, install]
     steps:
       - uses: actions/checkout@v4
-      - name: Build Playwright runner
-        run: docker compose --profile test build test-runner
+      - uses: ./.github/actions/use-validation-runner
+        with:
+          runner-id: full
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Run axe-playwright accessibility tests
         env:
           BASE_URL: ${{ env.BASE_URL }}
@@ -61,10 +75,13 @@ jobs:
   as-001-dma:
     name: AS-001 DMA — Dr. Mehta (Grade A required)
     runs-on: ubuntu-latest
+    needs: runner-supply
     steps:
       - uses: actions/checkout@v4
-      - name: Build Python acceptance runner
-        run: docker compose --profile test-python build test-runner-python
+      - uses: ./.github/actions/use-validation-runner
+        with:
+          runner-id: python
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Run AS-001
         env:
           WAOOAW_API_URL: ${{ env.BASE_URL }}
@@ -85,10 +102,13 @@ jobs:
   as-003-trading:
     name: AS-003 Trading — Rahul (Grade A + Emergency Stop ≤250ms)
     runs-on: ubuntu-latest
+    needs: runner-supply
     steps:
       - uses: actions/checkout@v4
-      - name: Build Python acceptance runner
-        run: docker compose --profile test-python build test-runner-python
+      - uses: ./.github/actions/use-validation-runner
+        with:
+          runner-id: python
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Run AS-003 + Emergency Stop constitutional test
         env:
           WAOOAW_API_URL: ${{ env.BASE_URL }}
@@ -108,10 +128,13 @@ jobs:
   as-005-agricultural:
     name: AS-005 Agricultural — Suresh (Grade A + C-042 Marathi)
     runs-on: ubuntu-latest
+    needs: runner-supply
     steps:
       - uses: actions/checkout@v4
-      - name: Build Python acceptance runner
-        run: docker compose --profile test-python build test-runner-python
+      - uses: ./.github/actions/use-validation-runner
+        with:
+          runner-id: python
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Run AS-005 with regional language assertions
         env:
           WAOOAW_API_URL: ${{ env.BASE_URL }}
@@ -132,10 +155,13 @@ jobs:
   as-pse-failover:
     name: AS-PSE — Provider failover (Gemini → Azure)
     runs-on: ubuntu-latest
+    needs: runner-supply
     steps:
       - uses: actions/checkout@v4
-      - name: Build Python acceptance runner
-        run: docker compose --profile test-python build test-runner-python
+      - uses: ./.github/actions/use-validation-runner
+        with:
+          runner-id: python
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: PSE circuit-breaker + fallback test
         env:
           WAOOAW_API_URL: ${{ env.BASE_URL }}
@@ -151,10 +177,13 @@ jobs:
   emergency-stop-e2e:
     name: Emergency Stop E2E — ≤250ms P99 (constitutional floor)
     runs-on: ubuntu-latest
+    needs: runner-supply
     steps:
       - uses: actions/checkout@v4
-      - name: Build Python constitutional runner
-        run: docker compose --profile test-python build test-runner-python
+      - uses: ./.github/actions/use-validation-runner
+        with:
+          runner-id: python
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Emergency Stop latency test (10 runs, P99 assertion)
         env:
           WAOOAW_WS_URL: ${{ secrets.QA_WS_URL || 'ws://localhost:5003/emergency-stop' }}

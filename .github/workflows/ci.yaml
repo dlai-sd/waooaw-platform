@@ -24,9 +24,18 @@ env:
 
 jobs:
 
+  runner-supply:
+    uses: ./.github/workflows/validation-runner-supply.yaml
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+
   validation-plan:
     name: WC-102 validation plan (Shadow)
     runs-on: ubuntu-latest
+    needs: runner-supply
     outputs:
       release_required: ${{ steps.plan.outputs.release_required }}
     steps:
@@ -54,12 +63,12 @@ jobs:
           mkdir -p test-results/wc102
           git diff --name-only --find-renames "$base_sha" "$head_sha" > test-results/wc102/changed-files.txt
           git diff --name-status --find-renames "$base_sha" "$head_sha" > test-results/wc102/changed-files.status
-      - name: Build validation runner once (C-080)
+      - name: Resolve immutable validation runner (C-080)
+        uses: ./.github/actions/use-validation-runner
         id: runner-build
-        run: |
-          docker compose --profile test build test-runner
-          image_id=$(scripts/runner_image_id.sh test test-runner)
-          echo "image_id=$image_id" >> "$GITHUB_OUTPUT"
+        with:
+          runner-id: full
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Record immutable validation runner evidence
         run: |
           scripts/record_build_evidence.sh \
@@ -364,6 +373,7 @@ jobs:
   test-dotnet:
     name: .NET unit tests
     runs-on: ubuntu-latest
+    needs: runner-supply
     strategy:
       fail-fast: false
       matrix:
@@ -382,12 +392,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Resolve Docker socket group for Testcontainers
         run: echo "DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)" >> "$GITHUB_ENV"
-      - name: Build .NET Docker test runner (C-080)
+      - name: Resolve immutable .NET test runner (C-080)
+        uses: ./.github/actions/use-validation-runner
         id: runner-build
-        run: |
-          docker compose --profile ${{ matrix.profile }} build ${{ matrix.runner }}
-          image_id=$(scripts/runner_image_id.sh '${{ matrix.profile }}' '${{ matrix.runner }}')
-          echo "image_id=$image_id" >> "$GITHUB_OUTPUT"
+        with:
+          runner-id: dotnet
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Record immutable .NET runner evidence
         run: |
           scripts/record_build_evidence.sh \
@@ -453,6 +463,7 @@ jobs:
   test-python:
     name: Python unit tests + lint
     runs-on: ubuntu-latest
+    needs: runner-supply
     strategy:
       matrix:
         include:
@@ -468,12 +479,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Resolve Docker socket group for Testcontainers
         run: echo "DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)" >> "$GITHUB_ENV"
-      - name: Build constitutional Docker test runner (C-080)
+      - name: Resolve immutable Python test runner (C-080)
+        uses: ./.github/actions/use-validation-runner
         id: runner-build
-        run: |
-          docker compose --profile test-python build test-runner-python
-          image_id=$(scripts/runner_image_id.sh test-python test-runner-python)
-          echo "image_id=$image_id" >> "$GITHUB_OUTPUT"
+        with:
+          runner-id: python
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Record immutable Python runner evidence
         run: |
           scripts/record_build_evidence.sh \
@@ -547,21 +558,23 @@ jobs:
   release-qualification:
     name: Release qualification
     runs-on: ubuntu-latest
-    needs: validation-plan
+    needs: [runner-supply, validation-plan]
     permissions:
       contents: read
+      packages: read
+      attestations: read
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Build release qualification runner once (C-080)
+      - name: Resolve immutable release qualification runner (C-080)
         if: needs.validation-plan.outputs.release_required == 'true'
+        uses: ./.github/actions/use-validation-runner
         id: runner-build
-        run: |
-          docker compose --profile test build test-runner
-          image_id=$(scripts/runner_image_id.sh test test-runner)
-          echo "image_id=$image_id" >> "$GITHUB_OUTPUT"
+        with:
+          runner-id: full
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Record immutable release runner evidence
         if: needs.validation-plan.outputs.release_required == 'true'
         run: |
@@ -609,14 +622,15 @@ jobs:
   test-web:
     name: Web unit tests + type check
     runs-on: ubuntu-latest
+    needs: runner-supply
     steps:
       - uses: actions/checkout@v4
-      - name: Build TypeScript Docker test runner (C-080)
+      - name: Resolve immutable TypeScript test runner (C-080)
+        uses: ./.github/actions/use-validation-runner
         id: runner-build
-        run: |
-          docker compose --profile test-ts build test-runner-ts
-          image_id=$(scripts/runner_image_id.sh test-ts test-runner-ts)
-          echo "image_id=$image_id" >> "$GITHUB_OUTPUT"
+        with:
+          runner-id: typescript
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Record immutable TypeScript runner evidence
         run: |
           scripts/record_build_evidence.sh \
@@ -747,17 +761,27 @@ jobs:
   dep-scan:
     name: Dependency vulnerability scan
     runs-on: ubuntu-latest
+    needs: runner-supply
     steps:
       - uses: actions/checkout@v4
-      - name: Build dependency audit runners (C-080)
-        id: runner-build
-        run: |
-          docker compose --profile test-python build test-runner-python
-          docker compose --profile test-dotnet build test-runner-dotnet
-          docker compose --profile test-ts build test-runner-ts
-          echo "python_image_id=$(scripts/runner_image_id.sh test-python test-runner-python)" >> "$GITHUB_OUTPUT"
-          echo "dotnet_image_id=$(scripts/runner_image_id.sh test-dotnet test-runner-dotnet)" >> "$GITHUB_OUTPUT"
-          echo "ts_image_id=$(scripts/runner_image_id.sh test-ts test-runner-ts)" >> "$GITHUB_OUTPUT"
+      - name: Resolve immutable Python audit runner
+        uses: ./.github/actions/use-validation-runner
+        id: python-runner
+        with:
+          runner-id: python
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Resolve immutable .NET audit runner
+        uses: ./.github/actions/use-validation-runner
+        id: dotnet-runner
+        with:
+          runner-id: dotnet
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Resolve immutable TypeScript audit runner
+        uses: ./.github/actions/use-validation-runner
+        id: typescript-runner
+        with:
+          runner-id: typescript
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Record immutable dependency runner evidence
         run: |
@@ -765,17 +789,17 @@ jobs:
             "$RUNNER_TEMP/build-evidence/dependency-python.json" 'test-runner-python-dependencies' \
             '${{ github.event.pull_request.base.sha || github.event.before }}' \
             '${{ github.event.pull_request.head.sha || github.sha }}' \
-            '${{ steps.runner-build.outputs.python_image_id }}' '' '["pip-audit"]' 'workflow_build'
+            '${{ steps.python-runner.outputs.image_id }}' '' '["pip-audit"]' 'workflow_build'
           scripts/record_build_evidence.sh \
             "$RUNNER_TEMP/build-evidence/dependency-dotnet.json" 'test-runner-dotnet-dependencies' \
             '${{ github.event.pull_request.base.sha || github.event.before }}' \
             '${{ github.event.pull_request.head.sha || github.sha }}' \
-            '${{ steps.runner-build.outputs.dotnet_image_id }}' '' '["dotnet-vulnerable"]' 'workflow_build'
+            '${{ steps.dotnet-runner.outputs.image_id }}' '' '["dotnet-vulnerable"]' 'workflow_build'
           scripts/record_build_evidence.sh \
             "$RUNNER_TEMP/build-evidence/dependency-ts.json" 'test-runner-ts-dependencies' \
             '${{ github.event.pull_request.base.sha || github.event.before }}' \
             '${{ github.event.pull_request.head.sha || github.sha }}' \
-            '${{ steps.runner-build.outputs.ts_image_id }}' '' '["pnpm-audit"]' 'workflow_build'
+            '${{ steps.typescript-runner.outputs.image_id }}' '' '["pnpm-audit"]' 'workflow_build'
 
       - name: Retain immutable dependency runner evidence
         uses: actions/upload-artifact@v4
@@ -787,7 +811,7 @@ jobs:
 
       - name: pip-audit — Python dependencies
         run: |
-          scripts/verify_runner_image.sh test-python test-runner-python '${{ steps.runner-build.outputs.python_image_id }}'
+          scripts/verify_runner_image.sh test-python test-runner-python '${{ steps.python-runner.outputs.image_id }}'
           docker compose --profile test-python run --rm test-runner-python sh -lc '
             pip-audit -r src/professional-runtime/requirements.txt --strict --cache-dir /tmp/pip-audit-cache &&
             sed -e "/^--extra-index-url/d" \
@@ -800,7 +824,7 @@ jobs:
 
       - name: dotnet vulnerable — .NET dependencies
         run: |
-          scripts/verify_runner_image.sh test-dotnet test-runner-dotnet '${{ steps.runner-build.outputs.dotnet_image_id }}'
+          scripts/verify_runner_image.sh test-dotnet test-runner-dotnet '${{ steps.dotnet-runner.outputs.image_id }}'
           docker compose --profile test-dotnet run --rm test-runner-dotnet sh -lc '
             audit_dotnet_project() {
               project_name="$(basename "$1")"
@@ -821,7 +845,7 @@ jobs:
 
       - name: pnpm audit — Node.js dependencies
         run: |
-          scripts/verify_runner_image.sh test-ts test-runner-ts '${{ steps.runner-build.outputs.ts_image_id }}'
+          scripts/verify_runner_image.sh test-ts test-runner-ts '${{ steps.typescript-runner.outputs.image_id }}'
           docker compose --profile test-ts run --rm test-runner-ts sh -lc '
             pnpm audit --audit-level high
           '
@@ -831,10 +855,14 @@ jobs:
   license-check:
     name: License compliance
     runs-on: ubuntu-latest
+    needs: runner-supply
     steps:
       - uses: actions/checkout@v4
-      - name: Build Python license runner
-        run: docker compose --profile test-python build test-runner-python
+      - name: Resolve immutable Python license runner
+        uses: ./.github/actions/use-validation-runner
+        with:
+          runner-id: python
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: pip-licenses — check Python dependency licenses
         run: |
@@ -856,13 +884,17 @@ jobs:
   constitutional-commit-gate:
     name: C-059 Constitutional Commit Gate
     runs-on: ubuntu-latest
+    needs: runner-supply
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Build constitutional validation runner
-        run: docker compose --profile test-python build test-runner-python
+      - name: Resolve immutable constitutional validation runner
+        uses: ./.github/actions/use-validation-runner
+        with:
+          runner-id: python
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Validate commit messages (C-059)
         run: |
@@ -888,13 +920,17 @@ jobs:
   author-review-gate:
     name: C-065 Author Review Gate
     runs-on: ubuntu-latest
+    needs: runner-supply
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Build constitutional validation runner
-        run: docker compose --profile test-python build test-runner-python
+      - name: Resolve immutable constitutional validation runner
+        uses: ./.github/actions/use-validation-runner
+        with:
+          runner-id: python
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Validate author review evidence
         env:

@@ -1,6 +1,7 @@
 schema: waooaw.validation-catalog/v1
 version: wc102-shadow-v1
 mode: shadow
+runner_supply: validation/runner-supply.json
 enforced_activation:
   founder_approved: false
   minimum_shadow_samples: 20

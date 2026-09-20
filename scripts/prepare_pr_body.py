@@ -9,6 +9,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -49,6 +50,32 @@ PRECHECK_CONFIGURATION_PATHS = (
 )
 
 
+def probe_atomic_output(path: Path) -> None:
+    """Prove that a final output can be created and atomically replaced."""
+    resolved = path.expanduser().resolve()
+    parent = resolved.parent
+    if not parent.is_dir() or not os.access(parent, os.W_OK):
+        raise ValueError(f"output directory is not writable: {parent}")
+    if resolved.exists():
+        writable_bits = stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
+        if resolved.stat().st_mode & writable_bits == 0 or not os.access(resolved, os.W_OK):
+            raise ValueError(f"output file is not writable: {resolved}")
+
+    temporary = parent / f".{resolved.name}.wc104-probe-{os.getpid()}.tmp"
+    replacement = parent / f".{resolved.name}.wc104-probe-{os.getpid()}"
+    try:
+        with temporary.open("x", encoding="utf-8") as handle:
+            handle.write("wc104-output-probe\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        temporary.replace(replacement)
+    except OSError as error:
+        raise ValueError(f"output does not support atomic replacement: {resolved}") from error
+    finally:
+        temporary.unlink(missing_ok=True)
+        replacement.unlink(missing_ok=True)
+
+
 def execution_preflight(
     repository_root: Path,
     body_file: Path,
@@ -72,9 +99,13 @@ def execution_preflight(
     home = Path(os.environ.get("HOME", ""))
     if not home.is_absolute() or not home.is_dir() or not os.access(home, os.W_OK):
         failures.append("HOME must name an existing writable absolute directory")
-    output_dir = body_file.expanduser().resolve().parent
-    if not output_dir.is_dir() or not os.access(output_dir, os.W_OK):
-        failures.append(f"PR body output directory is not writable: {output_dir}")
+    for output in (body_file, body_file.with_suffix(".precheck-evidence.json")):
+        try:
+            probe_atomic_output(output)
+        except ValueError as error:
+            failures.append(str(error))
+    if failures:
+        raise ValueError("execution preflight: " + "; ".join(failures))
 
     try:
         tracked_changes = git("status", "--porcelain", "--untracked-files=no")

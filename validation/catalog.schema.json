@@ -2,11 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://waooaw.com/schemas/validation-catalog-v1.json",
   "type": "object",
-  "required": ["schema", "version", "mode", "runners", "commands", "gates", "full_gates", "components", "global_triggers"],
+  "required": ["schema", "version", "mode", "runner_supply", "runners", "commands", "gates", "full_gates", "components", "global_triggers"],
   "properties": {
     "schema": {"const": "waooaw.validation-catalog/v1"},
     "version": {"type": "string", "minLength": 1},
     "mode": {"enum": ["shadow", "enforced"]},
+    "runner_supply": {"type": "string", "minLength": 1},
     "runners": {
       "type": "object",
       "minProperties": 1,

@@ -64,7 +64,42 @@ def test_manifest_binds_inputs_and_node_results(tmp_path: Path) -> None:
     assert manifest["configuration_digest"] == "c" * 64
     assert manifest["runner_digest"] == "r" * 64
     assert manifest["passed"] is True
+    assert manifest["executed_count"] == 1
+    assert manifest["reused_count"] == 0
     assert manifest["nodes"][0]["stdout_artifact"].endswith("gate.stdout.log")
+
+
+def test_identical_second_run_automatically_reuses_exact_node_evidence(tmp_path: Path) -> None:
+    marker = tmp_path / "executions"
+    node = python_node(
+        "gate",
+        f"from pathlib import Path; p=Path({str(marker)!r}); "
+        "p.write_text(p.read_text() + 'x' if p.exists() else 'x')",
+    )
+
+    first = run([node], tmp_path / "artifacts", preflight=lambda: (True, []))
+    second = run([node], tmp_path / "artifacts", preflight=lambda: (True, []))
+
+    assert first["executed_count"] == 1
+    assert second["executed_count"] == 0
+    assert second["reused_count"] == 1
+    assert second["nodes"][0]["reuse"]["trust_source"] == "local-exact-candidate"
+    assert marker.read_text() == "x"
+
+
+def test_changed_node_or_corrupt_artifact_invalidates_only_affected_evidence(tmp_path: Path) -> None:
+    artifact_dir = tmp_path / "artifacts"
+    first = python_node("first", "print('first')")
+    second = python_node("second", "print('second')")
+    run([first, second], artifact_dir, preflight=lambda: (True, []))
+
+    changed = python_node("second", "print('changed')")
+    manifest = run([first, changed], artifact_dir, preflight=lambda: (True, []))
+    assert [node["reuse"]["reused"] for node in manifest["nodes"]] == [True, False]
+
+    (artifact_dir / "first.stdout.log").write_text("corrupt", encoding="utf-8")
+    manifest = run([first, changed], artifact_dir, preflight=lambda: (True, []))
+    assert [node["reuse"]["reused"] for node in manifest["nodes"]] == [False, True]
 
 
 def test_parallel_nodes_have_isolated_namespaces(tmp_path: Path) -> None:

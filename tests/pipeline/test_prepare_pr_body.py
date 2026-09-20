@@ -2,6 +2,8 @@ from pathlib import Path
 import sys
 from types import SimpleNamespace
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -306,6 +308,40 @@ def test_execution_preflight_rejects_wrong_head(monkeypatch, tmp_path: Path) -> 
         assert "local HEAD" in str(error)
     else:
         raise AssertionError("wrong HEAD was accepted")
+
+
+def test_execution_preflight_rejects_read_only_output_before_docker(monkeypatch, tmp_path: Path) -> None:
+    body_file = tmp_path / "pr-body.md"
+    body_file.write_text("body", encoding="utf-8")
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr("prepare_pr_body.git", lambda *arguments: "")
+    monkeypatch.setattr(
+        "prepare_pr_body.os.access",
+        lambda path, mode: Path(path) != body_file.resolve(),
+    )
+    docker_checked: list[str] = []
+    monkeypatch.setattr(
+        "prepare_pr_body.shutil.which",
+        lambda executable: docker_checked.append(executable) or f"/usr/bin/{executable}",
+    )
+
+    with pytest.raises(ValueError, match="output file is not writable"):
+        execution_preflight(tmp_path, body_file, tmp_path, HEAD, HEAD, require_docker=True)
+
+    assert docker_checked == []
+
+
+def test_execution_preflight_probes_body_and_evidence_atomic_replacement(monkeypatch, tmp_path: Path) -> None:
+    body_file = tmp_path / "pr-body.md"
+    body_file.write_text("body", encoding="utf-8")
+    probed: list[Path] = []
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr("prepare_pr_body.git", lambda *arguments: "")
+    monkeypatch.setattr("prepare_pr_body.probe_atomic_output", lambda path: probed.append(path))
+
+    execution_preflight(tmp_path, body_file, tmp_path, HEAD, HEAD, require_docker=False)
+
+    assert probed == [body_file, body_file.with_suffix(".precheck-evidence.json")]
 
 
 def test_execution_preflight_rejects_tracked_worktree_changes(monkeypatch, tmp_path: Path) -> None:

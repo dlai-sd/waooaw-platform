@@ -18,6 +18,14 @@ concurrency:
 
 jobs:
 
+  runner-supply:
+    uses: ./.github/workflows/validation-runner-supply.yaml
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+
   # ─── Commit message format (C-059 + C-073 traceability) ──────────────────
   # G-05 FIX: commitlint enforces IB:/Constitutional:/CCTs-added: fields on
   # every commit message. Without this, the spec→code traceability chain breaks
@@ -25,16 +33,19 @@ jobs:
   commitlint:
     name: Commit message lint (C-059 traceability)
     runs-on: ubuntu-latest
+    needs: runner-supply
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Build commitlint runner
-        run: docker compose --profile test build test-runner
+      - uses: ./.github/actions/use-validation-runner
+        with:
+          runner-id: typescript
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Validate PR commits
         run: |
-          docker compose --profile test run --rm test-runner \
+          docker compose --profile test-ts run --rm test-runner-ts \
             commitlint \
               --from ${{ github.event.pull_request.base.sha }} \
               --to ${{ github.event.pull_request.head.sha }} \
@@ -47,6 +58,7 @@ jobs:
   dotnet-quality:
     name: .NET — CSharpier + analyzers + StyleCop
     runs-on: ubuntu-latest
+    needs: runner-supply
     # hashFiles guard: skip before src/ service dirs exist (Sprint 011 scaffold PRs)
     if: |
       hashFiles('src/constitutional-engine/**/*.csproj') != '' ||
@@ -56,8 +68,10 @@ jobs:
         project: [src/constitutional-engine, src/business-platform]
     steps:
       - uses: actions/checkout@v4
-      - name: Build .NET quality runner
-        run: docker compose --profile test-dotnet build test-runner-dotnet
+      - uses: ./.github/actions/use-validation-runner
+        with:
+          runner-id: dotnet
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check formatting (CSharpier)
         run: docker compose --profile test-dotnet run --rm test-runner-dotnet csharpier check ${{ matrix.project }}
@@ -83,6 +97,7 @@ jobs:
   python-quality:
     name: Python — Ruff + mypy + bandit
     runs-on: ubuntu-latest
+    needs: runner-supply
     # hashFiles guard: skip before Python service dirs exist
     if: |
       hashFiles('src/professional-runtime/pyproject.toml') != '' ||
@@ -96,8 +111,10 @@ jobs:
             mypy_path: /workspace/src/ai-runtime:/workspace/src/trust-layer
     steps:
       - uses: actions/checkout@v4
-      - name: Build Python quality runner
-        run: docker compose --profile test-python build test-runner-python
+      - uses: ./.github/actions/use-validation-runner
+        with:
+          runner-id: python
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Ruff lint (catches bugs, style, security patterns)
         run: docker compose --profile test-python run --rm test-runner-python ruff check ${{ matrix.service }} --output-format=github
@@ -148,10 +165,13 @@ jobs:
   scripts-quality:
     name: Python scripts — ruff + mypy
     runs-on: ubuntu-latest
+    needs: runner-supply
     steps:
       - uses: actions/checkout@v4
-      - name: Build Python quality runner
-        run: docker compose --profile test-python build test-runner-python
+      - uses: ./.github/actions/use-validation-runner
+        with:
+          runner-id: python
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Lint scripts
         run: docker compose --profile test-python run --rm test-runner-python ruff check scripts/ --config pyproject.toml
       - name: Format check scripts
@@ -163,10 +183,13 @@ jobs:
   typescript-quality:
     name: TypeScript — Biome + tsc strict
     runs-on: ubuntu-latest
+    needs: runner-supply
     steps:
       - uses: actions/checkout@v4
-      - name: Build TypeScript quality runner
-        run: docker compose --profile test-ts build test-runner-ts
+      - uses: ./.github/actions/use-validation-runner
+        with:
+          runner-id: typescript
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Biome lint (bugs + security + accessibility + performance)
         run: docker compose --profile test-ts run --rm test-runner-ts sh -lc 'cd web && ../node_modules/.bin/biome lint --reporter=github .'
@@ -196,10 +219,13 @@ jobs:
   sql-quality:
     name: SQL — sqlfluff lint
     runs-on: ubuntu-latest
+    needs: runner-supply
     steps:
       - uses: actions/checkout@v4
-      - name: Build SQL quality runner
-        run: docker compose --profile test-python build test-runner-python
+      - uses: ./.github/actions/use-validation-runner
+        with:
+          runner-id: python
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Lint SQL migrations
         run: |
           docker compose --profile test-python run --rm test-runner-python \
@@ -256,13 +282,16 @@ jobs:
   traceability-scan:
     name: C-073 Traceability scan (constitutional annotations)
     runs-on: ubuntu-latest
+    needs: runner-supply
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0   # Full history needed for diff + claim amendment detection
-      - name: Build traceability runner
-        run: docker compose --profile test-python build test-runner-python
+      - uses: ./.github/actions/use-validation-runner
+        with:
+          runner-id: python
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Scan changed files for constitutional annotations
         run: docker compose --profile test-python run --rm test-runner-python python scripts/scan-traceability.py --changed-only
@@ -322,11 +351,14 @@ jobs:
   mutation-dotnet:
     name: Mutation testing — .NET (Stryker)
     runs-on: ubuntu-latest
+    needs: runner-supply
     if: github.event_name == 'schedule'
     steps:
       - uses: actions/checkout@v4
-      - name: Build .NET mutation runner
-        run: docker compose --profile test-dotnet build test-runner-dotnet
+      - uses: ./.github/actions/use-validation-runner
+        with:
+          runner-id: dotnet
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Run Stryker on CE (target ≥75% mutation score)
         run: |
           docker compose --profile test-dotnet run --rm test-runner-dotnet sh -lc '
@@ -344,11 +376,14 @@ jobs:
   mutation-python:
     name: Mutation testing — Python (mutmut)
     runs-on: ubuntu-latest
+    needs: runner-supply
     if: github.event_name == 'schedule'
     steps:
       - uses: actions/checkout@v4
-      - name: Build Python mutation runner
-        run: docker compose --profile test-python build test-runner-python
+      - uses: ./.github/actions/use-validation-runner
+        with:
+          runner-id: python
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Run mutmut on AI Runtime (target ≥65%)
         run: |
           docker compose --profile test-python run --rm test-runner-python sh -lc '

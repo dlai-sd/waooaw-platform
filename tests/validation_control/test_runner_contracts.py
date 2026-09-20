@@ -26,7 +26,7 @@ def test_stack_runners_are_non_root_bounded_and_source_mounted() -> None:
     assert ".:/workspace:ro" in COMPOSE["services"]["test-runner-python"]["volumes"]
     assert ".:/workspace:ro" in COMPOSE["services"]["test-runner-dotnet"]["volumes"]
     typescript_volumes = COMPOSE["services"]["test-runner-ts"]["volumes"]
-    assert "./web:/workspace/web:ro" in typescript_volumes
+    assert ".:/workspace:ro" in typescript_volumes
     assert "./test-results:/workspace/test-results" in typescript_volumes
     assert all(":/workspace/web/" not in volume for volume in typescript_volumes)
     assert all(":/workspace/web/" not in volume for volume in COMPOSE["services"]["test-runner"]["volumes"])
@@ -53,6 +53,18 @@ def test_runner_images_exclude_application_source() -> None:
         assert "COPY . /workspace" not in source
         assert "COPY --chown=waooaw:waooaw . /workspace" not in source
         assert "USER root" not in source
+
+
+def test_compose_accepts_only_explicit_supplied_runner_images() -> None:
+    expected = {
+        "test-runner-python": "${WAOOAW_RUNNER_PYTHON_IMAGE:-waooaw-platform-test-runner-python:local}",
+        "test-runner-dotnet": "${WAOOAW_RUNNER_DOTNET_IMAGE:-waooaw-platform-test-runner-dotnet:local}",
+        "test-runner-ts": "${WAOOAW_RUNNER_TYPESCRIPT_IMAGE:-waooaw-platform-test-runner-typescript:local}",
+        "test-runner": "${WAOOAW_RUNNER_FULL_IMAGE:-waooaw-platform-test-runner-full:local}",
+    }
+
+    for service, image in expected.items():
+        assert COMPOSE["services"][service]["image"] == image
 
 
 def test_dotnet_cache_path_is_aligned() -> None:
