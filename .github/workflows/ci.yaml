@@ -817,49 +817,24 @@ jobs:
   author-review-gate:
     name: C-065 Author Review Gate
     runs-on: ubuntu-latest
-    needs: runner-supply
+    needs: [runner-supply, validation-plan]
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Resolve immutable constitutional validation runner
-        uses: ./.github/actions/use-validation-runner
+      - name: Execute catalog C-065 gate with bounded metadata refresh
+        uses: ./.github/actions/run-validation-gate
         with:
-          runner-id: python
+          gate-id: author-review-gate
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Validate author review evidence
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          REPOSITORY: ${{ github.repository }}
-        run: |
-          mkdir -p test-results
-          for attempt in 1 2 3; do
-            gh pr view "$PR_NUMBER" --json body --jq .body --repo "$REPOSITORY" > test-results/pr-body.md
-            if docker compose --profile test-python run --rm \
-              -v "$PWD/test-results/pr-body.md:/tmp/pr-body.md:ro" \
-              -e HEAD_SHA -e BASE_SHA test-runner-python sh -lc '
-                python scripts/validate_author_review.py \
-                  --pr-body-file /tmp/pr-body.md \
-                  --head "$HEAD_SHA" &&
-                python scripts/validate_runtime_lifecycle_evidence.py \
-                  --pr-body-file /tmp/pr-body.md \
-                  --base "$BASE_SHA" \
-                  --head "$HEAD_SHA"
-              '; then
-              exit 0
-            fi
-            if [ "$attempt" -eq 3 ]; then
-              echo "C-065 failed after three metadata reads for PR head $HEAD_SHA" >&2
-              exit 1
-            fi
-            echo "PR metadata has not converged to $HEAD_SHA; retrying in 5 seconds"
-            sleep 5
-          done
+          pr-number: ${{ github.event.pull_request.number }}
+          repository: ${{ github.repository }}
+          metadata-directory: test-results/wc104/c065
+          base-sha: ${{ github.event.pull_request.base.sha }}
+          head-sha: ${{ github.event.pull_request.head.sha }}
+          attempts: "3"
+          retry-delay-seconds: "5"
 
   # ─── Authorization boundary check (C-066) ─────────────────────────────────
   # Every PR may run CI. Authorization to enter main is enforced by the

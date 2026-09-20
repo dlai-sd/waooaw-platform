@@ -55,7 +55,7 @@ commands:
   release-qualification: {shell: "sh scripts/run_release_qualification.sh", execution: host}
   constitutional-commit-gate: {shell: "sh scripts/validation_control/run_c059_gate.sh"}
   requirement-ledger: {shell: "python scripts/validate_requirement_ledger.py --repository-root /workspace"}
-  author-review-gate: {shell: "python scripts/validate_author_review.py --pr-body-file test-results/pr-body.md --head $HEAD_SHA"}
+  author-review-gate: {shell: "sh scripts/validation_control/run_c065_gate.sh"}
   authorization-tier-check: {shell: "test $BASE_BRANCH = main && test -n $PR_NUMBER && test -n $REPOSITORY"}
 
 gates:

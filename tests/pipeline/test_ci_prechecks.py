@@ -64,6 +64,6 @@ def test_c065_retries_bounded_pr_metadata_convergence() -> None:
     workflow = CI_WORKFLOW.read_text(encoding="utf-8")
     gate = workflow[workflow.index("  author-review-gate:") : workflow.index("  authorization-tier-check:")]
 
-    assert "for attempt in 1 2 3" in gate
-    assert 'if [ "$attempt" -eq 3 ]' in gate
-    assert "retrying in 5 seconds" in gate
+    assert gate.count("uses: ./.github/actions/run-validation-gate") == 1
+    assert 'attempts: "3"' in gate
+    assert 'retry-delay-seconds: "5"' in gate

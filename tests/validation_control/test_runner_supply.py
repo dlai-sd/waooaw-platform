@@ -269,6 +269,29 @@ def test_c059_ci_executes_catalog_gate_without_duplicate_command_or_runner_mappi
     assert "docker compose" not in rendered
 
 
+def test_c065_ci_retries_catalog_gate_without_duplicate_command_or_runner_mapping() -> None:
+    root = Path(__file__).resolve().parents[2]
+    workflow = yaml.safe_load((root / ".github/workflows/ci.yaml").read_text(encoding="utf-8"))
+    action = yaml.safe_load((root / ".github/actions/run-validation-gate/action.yml").read_text(encoding="utf-8"))
+    job = workflow["jobs"]["author-review-gate"]
+    rendered = json.dumps(job)
+    action_rendered = json.dumps(action)
+    gate_steps = [step for step in job["steps"] if step.get("uses") == "./.github/actions/run-validation-gate"]
+
+    assert set(job["needs"]) == {"runner-supply", "validation-plan"}
+    assert len(gate_steps) == 1
+    assert all(step["with"]["gate-id"] == "author-review-gate" for step in gate_steps)
+    assert gate_steps[0]["with"]["attempts"] == "3"
+    assert gate_steps[0]["with"]["retry-delay-seconds"] == "5"
+    assert '"runner-id"' not in rendered
+    assert "python scripts/validate_author_review.py" not in rendered
+    assert "python scripts/validate_runtime_lifecycle_evidence.py" not in rendered
+    assert "docker compose" not in rendered
+    assert action_rendered.count("./.github/actions/use-validation-runner") == 1
+    assert "attempt <= ATTEMPTS" in action_rendered
+    assert "Unable to refresh PR metadata for attempt $attempt" in action_rendered
+
+
 def test_every_runner_base_is_digest_pinned_and_has_locked_package_caches() -> None:
     root = Path(__file__).resolve().parents[2]
     config = load_supply_config(root / "validation/runner-supply.json")

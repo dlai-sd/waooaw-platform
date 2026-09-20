@@ -7,6 +7,34 @@ inputs:
   token:
     description: GitHub token used for GHCR and attestation verification
     required: true
+  pr-number:
+    description: Optional pull request number whose body is refreshed before each execution attempt
+    required: false
+    default: ""
+  repository:
+    description: Repository used to refresh optional pull request metadata
+    required: false
+    default: ""
+  metadata-directory:
+    description: Directory receiving optional PR body and commit-range inputs
+    required: false
+    default: ""
+  base-sha:
+    description: Base commit written to the optional metadata directory
+    required: false
+    default: ""
+  head-sha:
+    description: Head commit written to the optional metadata directory
+    required: false
+    default: ""
+  attempts:
+    description: Maximum catalog execution attempts
+    required: false
+    default: "1"
+  retry-delay-seconds:
+    description: Delay before refreshing metadata for a subsequent attempt
+    required: false
+    default: "0"
 outputs:
   image_id:
     description: Verified Docker image ID used by the gate
@@ -38,8 +66,41 @@ runs:
       shell: bash
       env:
         GATE_ID: ${{ inputs.gate-id }}
+        GH_TOKEN: ${{ inputs.token }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+        REPOSITORY: ${{ inputs.repository }}
+        METADATA_DIRECTORY: ${{ inputs.metadata-directory }}
+        BASE_SHA: ${{ inputs.base-sha }}
+        HEAD_SHA: ${{ inputs.head-sha }}
+        ATTEMPTS: ${{ inputs.attempts }}
+        RETRY_DELAY_SECONDS: ${{ inputs.retry-delay-seconds }}
       run: |
-        python3 scripts/validation_control/catalog_execution.py \
-          --plan test-results/wc104/catalog-plan/qualification-plan.json \
-          --gate "$GATE_ID" \
-          --image-id '${{ steps.runner.outputs.image_id }}'
+        [[ "$ATTEMPTS" =~ ^[1-9][0-9]*$ ]]
+        [[ "$RETRY_DELAY_SECONDS" =~ ^[0-9]+$ ]]
+        if [[ -n "$PR_NUMBER" ]]; then
+          [[ -n "$REPOSITORY" && -n "$METADATA_DIRECTORY" && -n "$BASE_SHA" && -n "$HEAD_SHA" ]]
+          mkdir -p "$METADATA_DIRECTORY"
+          printf '%s\n' "$BASE_SHA" > "$METADATA_DIRECTORY/base-sha.txt"
+          printf '%s\n' "$HEAD_SHA" > "$METADATA_DIRECTORY/head-sha.txt"
+        fi
+        for ((attempt = 1; attempt <= ATTEMPTS; attempt++)); do
+          if [[ -n "$PR_NUMBER" ]]; then
+            if ((attempt > 1)); then
+              echo "PR metadata has not converged; retrying in $RETRY_DELAY_SECONDS seconds"
+              sleep "$RETRY_DELAY_SECONDS"
+            fi
+            if ! gh pr view "$PR_NUMBER" --json body --jq .body --repo "$REPOSITORY" \
+              > "$METADATA_DIRECTORY/pr-body.md"; then
+              echo "Unable to refresh PR metadata for attempt $attempt" >&2
+              continue
+            fi
+          fi
+          if python3 scripts/validation_control/catalog_execution.py \
+            --plan test-results/wc104/catalog-plan/qualification-plan.json \
+            --gate "$GATE_ID" \
+            --image-id '${{ steps.runner.outputs.image_id }}'; then
+            exit 0
+          fi
+        done
+        echo "$GATE_ID failed after $ATTEMPTS attempts" >&2
+        exit 1
