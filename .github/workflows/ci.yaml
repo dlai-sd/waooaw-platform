@@ -105,6 +105,7 @@ jobs:
                 --selection test-results/wc102/change-impact.json \
                 --mode qualification --head "$HEAD_SHA" \
                 --run-id "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-qualification" \
+                --all-gates \
                 --output test-results/wc102/qualification-plan.json
               python scripts/validate_requirement_ledger.py \
                 --repository-root /workspace \
@@ -125,6 +126,13 @@ jobs:
             test-results/wc102/focused-plan.json
             test-results/wc102/qualification-plan.json
             ${{ runner.temp }}/build-evidence/validation-plan.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Retain complete catalog execution plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: wc104-qualification-plan-${{ github.run_id }}
+          path: test-results/wc102/qualification-plan.json
           if-no-files-found: error
           retention-days: 90
 
@@ -622,14 +630,14 @@ jobs:
   test-web:
     name: Web unit tests + type check
     runs-on: ubuntu-latest
-    needs: runner-supply
+    needs: [runner-supply, validation-plan]
     steps:
       - uses: actions/checkout@v4
-      - name: Resolve immutable TypeScript test runner (C-080)
-        uses: ./.github/actions/use-validation-runner
+      - name: Execute catalog web gate (C-076, C-080)
+        uses: ./.github/actions/run-validation-gate
         id: runner-build
         with:
-          runner-id: typescript
+          gate-id: test-web
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Record immutable TypeScript runner evidence
         run: |
@@ -647,21 +655,6 @@ jobs:
           path: ${{ runner.temp }}/build-evidence/web.json
           if-no-files-found: error
           retention-days: 90
-
-      - name: Type check, lint, and test in Docker (C-076, C-080)
-        run: |
-          mkdir -p ./test-results/coverage/web
-          chmod 0777 ./test-results/coverage/web
-          scripts/verify_runner_image.sh test-ts test-runner-ts '${{ steps.runner-build.outputs.image_id }}'
-          docker compose --profile test-ts run --rm test-runner-ts sh -lc '
-            cp -a web /tmp/web &&
-            ln -s /opt/waooaw-web/node_modules /tmp/web/node_modules &&
-            cd /tmp/web &&
-            tsc --noEmit --incremental false &&
-            eslint . --max-warnings 0 &&
-            jest --runInBand --coverage --coverageDirectory=/workspace/test-results/coverage/web --coverageThreshold='"'"'{"global":{"lines":90,"branches":80,"functions":90,"statements":90}}'"'"'
-          '
-        # C-076: 90% line/function/statement floor is constitutional minimum
 
   # ─── OpenAPI spec lint ────────────────────────────────────────────────────
   spec-lint:

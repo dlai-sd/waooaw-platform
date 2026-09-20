@@ -154,6 +154,20 @@ def test_supply_workflow_serializes_producers_and_consumers_verify_digests() -> 
     assert "@$digest" in supply
 
 
+def test_web_ci_executes_catalog_gate_without_duplicate_command_or_runner_mapping() -> None:
+    root = Path(__file__).resolve().parents[2]
+    workflow = yaml.safe_load((root / ".github/workflows/ci.yaml").read_text(encoding="utf-8"))
+    job = workflow["jobs"]["test-web"]
+    rendered = json.dumps(job)
+
+    assert set(job["needs"]) == {"runner-supply", "validation-plan"}
+    assert "./.github/actions/run-validation-gate" in rendered
+    assert '"gate-id": "test-web"' in rendered
+    assert '"runner-id": "typescript"' not in rendered
+    assert "tsc --noEmit" not in rendered
+    assert "jest --runInBand" not in rendered
+
+
 def test_every_runner_base_is_digest_pinned_and_has_locked_package_caches() -> None:
     root = Path(__file__).resolve().parents[2]
     config = load_supply_config(root / "validation/runner-supply.json")

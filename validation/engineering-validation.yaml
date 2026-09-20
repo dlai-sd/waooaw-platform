@@ -42,7 +42,7 @@ commands:
   test-professional-runtime: {shell: "pytest tests/professional-runtime -q"}
   test-ai-runtime: {shell: "pytest tests/ai-runtime tests/trust-layer -q"}
   test-billing-engine: {shell: "pytest tests/billing-engine tests/pipeline/test_billing_ce_validator.py -q"}
-  test-web: {shell: "cp -a web /tmp/web && ln -s /opt/waooaw-web/node_modules /tmp/web/node_modules && cd /tmp/web && jest --runInBand"}
+  test-web: {shell: "mkdir -p /workspace/test-results/coverage/web && cp -a web /tmp/web && ln -s /opt/waooaw-web/node_modules /tmp/web/node_modules && cd /tmp/web && tsc --noEmit --incremental false && eslint . --max-warnings 0 && jest --runInBand --coverage --coverageDirectory=/workspace/test-results/coverage/web --coverageThreshold='{\"global\":{\"lines\":90,\"branches\":80,\"functions\":90,\"statements\":90}}'"}
   spec-lint: {shell: "python scripts/validation_control/docker_policy.py --repository /workspace"}
   sast-csharp: {shell: "dotnet build src/constitutional-engine/constitutional-engine.csproj --artifacts-path /tmp/artifacts/sast/constitutional-engine -p:TreatWarningsAsErrors=true && dotnet build src/business-platform/business-platform.csproj --artifacts-path /tmp/artifacts/sast/business-platform -p:TreatWarningsAsErrors=true"}
   sast-python: {shell: "bandit -r src -c pyproject.toml -lll -f json -o test-results/bandit.json"}

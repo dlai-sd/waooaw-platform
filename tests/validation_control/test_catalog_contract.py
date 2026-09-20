@@ -4,8 +4,10 @@ import json
 from pathlib import Path
 
 import jsonschema
+import pytest
 import yaml
 
+from validation_control.catalog_execution import compose_command, select_plan_node
 from validation_control.orchestrator import build_execution_plan
 
 
@@ -42,6 +44,7 @@ def test_focused_and_qualification_modes_resolve_identical_commands() -> None:
     assert focused["authoritative"] is False
     assert qualification["requires_clean_commit"] is True
     assert focused["nodes"][0]["runner_manifest"].endswith("/typescript.json")
+    assert focused["nodes"][0]["profile"] == "test-ts"
 
 
 def test_typescript_plan_uses_immutable_dependencies_outside_read_only_source() -> None:
@@ -70,3 +73,36 @@ def test_concurrent_runs_receive_distinct_namespaces() -> None:
 
     assert first["execution_namespace"] != second["execution_namespace"]
     assert first["nodes"] == second["nodes"]
+
+
+def test_catalog_gate_selection_controls_compose_execution() -> None:
+    catalog = load_catalog()
+    plan = build_execution_plan(catalog, ["test-web"], mode="qualification", head_sha="a" * 40, run_id="hosted")
+
+    node = select_plan_node(plan, "test-web")
+
+    assert compose_command(node) == [
+        "docker",
+        "compose",
+        "--profile",
+        "test-ts",
+        "run",
+        "--rm",
+        "--no-build",
+        "test-runner-ts",
+        "sh",
+        "-lc",
+        catalog["commands"]["test-web"]["shell"],
+    ]
+
+
+def test_catalog_gate_selection_rejects_missing_or_duplicate_nodes() -> None:
+    catalog = load_catalog()
+    plan = build_execution_plan(catalog, ["test-web"], mode="focused", head_sha="a" * 40, run_id="hosted")
+
+    with pytest.raises(ValueError, match="exactly one"):
+        select_plan_node(plan, "test-python")
+
+    plan["nodes"].append(plan["nodes"][0])
+    with pytest.raises(ValueError, match="exactly one"):
+        select_plan_node(plan, "test-web")

@@ -1,0 +1,45 @@
+name: Run catalog validation gate
+description: Resolve and execute one validation gate from the immutable WC-104 catalog plan.
+inputs:
+  gate-id:
+    description: Validation catalog gate identifier
+    required: true
+  token:
+    description: GitHub token used for GHCR and attestation verification
+    required: true
+outputs:
+  image_id:
+    description: Verified Docker image ID used by the gate
+    value: ${{ steps.runner.outputs.image_id }}
+runs:
+  using: composite
+  steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: wc104-qualification-plan-${{ github.run_id }}
+        path: test-results/wc104/catalog-plan
+    - name: Resolve catalog runner
+      id: gate
+      shell: bash
+      env:
+        GATE_ID: ${{ inputs.gate-id }}
+      run: |
+        plan=test-results/wc104/catalog-plan/qualification-plan.json
+        count=$(jq --arg gate "$GATE_ID" '[.nodes[] | select(.gate_id == $gate)] | length' "$plan")
+        [[ "$count" == 1 ]]
+        runner_id=$(jq -r --arg gate "$GATE_ID" '.nodes[] | select(.gate_id == $gate) | .runner_id' "$plan")
+        echo "runner_id=$runner_id" >> "$GITHUB_OUTPUT"
+    - uses: ./.github/actions/use-validation-runner
+      id: runner
+      with:
+        runner-id: ${{ steps.gate.outputs.runner_id }}
+        token: ${{ inputs.token }}
+    - name: Execute catalog command
+      shell: bash
+      env:
+        GATE_ID: ${{ inputs.gate-id }}
+      run: |
+        python3 scripts/validation_control/catalog_execution.py \
+          --plan test-results/wc104/catalog-plan/qualification-plan.json \
+          --gate "$GATE_ID" \
+          --image-id '${{ steps.runner.outputs.image_id }}'
