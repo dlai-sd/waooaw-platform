@@ -834,18 +834,25 @@ jobs:
   authorization-tier-check:
     name: C-066 Authorization Tier Check
     runs-on: ubuntu-latest
+    needs: [runner-supply, validation-plan]
     if: github.event_name == 'pull_request'
     steps:
-      - name: Verify Founder-controlled merge boundary
+      - uses: actions/checkout@v4
+      - name: Stage C-066 inputs
         env:
           BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPOSITORY: ${{ github.repository }}
         run: |
-          test "$BASE_BRANCH" = "main"
-          test -n "$PR_NUMBER"
-          test -n "$REPOSITORY"
-          echo "C-066 PASS: CI is authorized; Founder review and merge remain mandatory."
+          mkdir -p test-results/wc104/c066
+          printf '%s\n' "$BASE_BRANCH" > test-results/wc104/c066/base-branch.txt
+          printf '%s\n' "$PR_NUMBER" > test-results/wc104/c066/pr-number.txt
+          printf '%s\n' "$REPOSITORY" > test-results/wc104/c066/repository.txt
+      - name: Verify Founder-controlled merge boundary
+        uses: ./.github/actions/run-validation-gate
+        with:
+          gate-id: authorization-tier-check
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   # ─── Test Champion campaign verdict (INST-015; C-023/C-065/C-099) ─────────
   # Deterministically synthesizes every CI prerequisite. This job recommends

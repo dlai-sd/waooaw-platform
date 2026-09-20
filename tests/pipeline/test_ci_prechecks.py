@@ -17,10 +17,13 @@ def test_c059_accepts_markdown_formatted_pr_metadata() -> None:
 
 def test_c066_uses_founder_merge_gate_instead_of_pr_labels() -> None:
     workflow = CI_WORKFLOW.read_text(encoding="utf-8")
+    gate = (ROOT / "scripts/validation_control/run_c066_gate.sh").read_text(encoding="utf-8")
 
     assert "Verify Founder-controlled merge boundary" in workflow
-    assert 'test "$BASE_BRANCH" = "main"' in workflow
-    assert "Founder review and merge remain mandatory" in workflow
+    assert "gate-id: authorization-tier-check" in workflow
+    assert "test-results/wc104/c066/base-branch.txt" in workflow
+    assert 'test "$base_branch" = "main"' in gate
+    assert "Founder review and merge remain mandatory" in gate
     assert "PR_LABELS" not in workflow
     assert "approved:sujay" not in workflow
     assert "approved:yogesh" not in workflow

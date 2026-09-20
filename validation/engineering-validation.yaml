@@ -56,7 +56,7 @@ commands:
   constitutional-commit-gate: {shell: "sh scripts/validation_control/run_c059_gate.sh"}
   requirement-ledger: {shell: "python scripts/validate_requirement_ledger.py --repository-root /workspace"}
   author-review-gate: {shell: "sh scripts/validation_control/run_c065_gate.sh"}
-  authorization-tier-check: {shell: "test $BASE_BRANCH = main && test -n $PR_NUMBER && test -n $REPOSITORY"}
+  authorization-tier-check: {shell: "sh scripts/validation_control/run_c066_gate.sh"}
 
 gates:
   build: &python_static
