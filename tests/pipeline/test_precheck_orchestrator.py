@@ -24,7 +24,7 @@ def run(nodes: list[PrecheckNode], artifact_dir: Path, **options: object) -> dic
     return run_prechecks(
         nodes,
         base_sha="b" * 40,
-        head_sha="h" * 40,
+        head_sha="a" * 40,
         changed_file_digest="d" * 64,
         graph_version="test-v1",
         configuration_digest="c" * 64,
@@ -68,7 +68,7 @@ def test_manifest_binds_inputs_and_node_results(tmp_path: Path) -> None:
 
     assert manifest["schema"] == "waooaw.pr-prechecks/v4"
     assert manifest["base_sha"] == "b" * 40
-    assert manifest["commit_sha"] == "h" * 40
+    assert manifest["commit_sha"] == "a" * 40
     assert manifest["changed_file_digest"] == "d" * 64
     assert manifest["graph_version"] == "test-v1"
     assert manifest["configuration_digest"] == "c" * 64
@@ -84,6 +84,8 @@ def test_manifest_binds_inputs_and_node_results(tmp_path: Path) -> None:
         "gate_implementation_digest": "i" * 64,
         "runner_digest": "sha256:" + "r" * 64,
         "environment_digest": "e" * 64,
+        "input_digest": "",
+        "selector_version": "wc104-gate-inputs-v1",
         "evidence_schema": "waooaw.pr-prechecks/v4",
     }
 
@@ -118,6 +120,129 @@ def test_changed_node_or_corrupt_artifact_invalidates_only_affected_evidence(tmp
     (artifact_dir / "first.stdout.log").write_text("corrupt", encoding="utf-8")
     manifest = run([first, changed], artifact_dir, preflight=lambda: (True, []))
     assert [node["reuse"]["reused"] for node in manifest["nodes"]] == [False, True]
+
+
+def test_unaffected_success_is_carried_forward_with_current_head_proof(tmp_path: Path) -> None:
+    source_dir = tmp_path / "source"
+    current_dir = tmp_path / "current"
+    marker = tmp_path / "executions"
+    node = replace(
+        python_node(
+            "gate",
+            f"from pathlib import Path; p=Path({str(marker)!r}); p.write_text(p.read_text() + 'x' if p.exists() else 'x')",
+        ),
+        input_digest="i" * 64,
+        input_patterns=("src/business-platform/**",),
+    )
+    run([node], source_dir, preflight=lambda: (True, []))
+
+    manifest = run_prechecks(
+        [node],
+        base_sha="b" * 40,
+        head_sha="c" * 40,
+        changed_file_digest="e" * 64,
+        graph_version="test-v1",
+        configuration_digest="c" * 64,
+        runner_digest="r" * 64,
+        artifact_dir=current_dir,
+        reuse_evidence_paths=[source_dir / "precheck-manifest.json"],
+        carry_forward_verifier=lambda source, current, patterns: (True, ["reviews/R-144.md"]),
+        preflight=lambda: (True, []),
+    )
+
+    carry = manifest["nodes"][0]["reuse"]["carry_forward"]
+    assert manifest["executed_count"] == 0
+    assert manifest["commit_sha"] == "c" * 40
+    assert carry["source_execution_head"] == "a" * 40
+    assert carry["current_head_sha"] == "c" * 40
+    assert carry["non_intersection_proven"] is True
+    assert marker.read_text() == "x"
+
+
+def test_candidate_arguments_do_not_invalidate_unchanged_gate_command(tmp_path: Path) -> None:
+    source_dir = tmp_path / "source"
+    source = replace(
+        python_node("gate", "print('source')"),
+        command=(sys.executable, "-c", "print('source')", "--head", "a" * 40, "--base", "b" * 40),
+        input_digest="i" * 64,
+        input_patterns=("src/**",),
+    )
+    run([source], source_dir, preflight=lambda: (True, []))
+    current = replace(source, command=(*source.command[:-3], "c" * 40, "--base", "b" * 40))
+
+    manifest = run_prechecks(
+        [current],
+        base_sha="b" * 40,
+        head_sha="c" * 40,
+        changed_file_digest="e" * 64,
+        graph_version="test-v1",
+        configuration_digest="c" * 64,
+        runner_digest="r" * 64,
+        artifact_dir=tmp_path / "current",
+        reuse_evidence_paths=[source_dir / "precheck-manifest.json"],
+        carry_forward_verifier=lambda source_head, current_head, patterns: (True, ["reviews/R-144.md"]),
+        preflight=lambda: (True, []),
+    )
+
+    assert manifest["executed_count"] == 0
+
+
+def test_affected_or_changed_input_cannot_be_carried_forward(tmp_path: Path) -> None:
+    source_dir = tmp_path / "source"
+    node = replace(
+        python_node("gate", "print('source')"),
+        input_digest="i" * 64,
+        input_patterns=("src/**",),
+    )
+    run([node], source_dir, preflight=lambda: (True, []))
+
+    for suffix, candidate, verifier in (
+        ("affected", node, lambda source, current, patterns: (False, ["src/changed.py"])),
+        ("digest", replace(node, input_digest="j" * 64), lambda source, current, patterns: (True, [])),
+    ):
+        manifest = run_prechecks(
+            [candidate],
+            base_sha="b" * 40,
+            head_sha="c" * 40,
+            changed_file_digest="e" * 64,
+            graph_version="test-v1",
+            configuration_digest="c" * 64,
+            runner_digest="r" * 64,
+            artifact_dir=tmp_path / suffix,
+            reuse_evidence_paths=[source_dir / "precheck-manifest.json"],
+            carry_forward_verifier=verifier,
+            preflight=lambda: (True, []),
+        )
+        assert manifest["executed_count"] == 1
+        assert manifest["reused_count"] == 0
+
+
+def test_malformed_source_manifest_cannot_be_carried_forward(tmp_path: Path) -> None:
+    source_dir = tmp_path / "source"
+    source_dir.mkdir()
+    (source_dir / "precheck-manifest.json").write_text('{"schema":"untrusted","passed":true}', encoding="utf-8")
+    node = replace(
+        python_node("gate", "print('current')"),
+        input_digest="i" * 64,
+        input_patterns=("src/**",),
+    )
+
+    manifest = run_prechecks(
+        [node],
+        base_sha="b" * 40,
+        head_sha="c" * 40,
+        changed_file_digest="e" * 64,
+        graph_version="test-v1",
+        configuration_digest="c" * 64,
+        runner_digest="r" * 64,
+        artifact_dir=tmp_path / "current",
+        reuse_evidence_paths=[source_dir / "precheck-manifest.json"],
+        carry_forward_verifier=lambda source, current, patterns: (True, []),
+        preflight=lambda: (True, []),
+    )
+
+    assert manifest["executed_count"] == 1
+    assert manifest["reused_count"] == 0
 
 
 @pytest.mark.parametrize(

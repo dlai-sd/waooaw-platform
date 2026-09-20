@@ -287,8 +287,49 @@ global_triggers:
   - work-contracts/**
 documentation_only: [README.md, CHANGELOG.md, docs/**]
 prechecks:
-  gitleaks: {always: true, gate: "precheck:gitleaks"}
-  business_platform: {components: [business-platform], gate: "test-dotnet:business-platform"}
-  release_qualification: {gates: [release-qualification], gate: release-qualification}
+  gitleaks: {always: true, inputs: ["**"], gate: "precheck:gitleaks"}
+  business_platform:
+    components: [business-platform]
+    inputs:
+      - src/business-platform/**
+      - tests/business-platform.Tests/**
+      - infrastructure/postgres/init/**
+      - architecture/reference/api-specs/business-platform.openapi.yaml
+      - architecture/reference/dockerfiles/**
+      - docker-compose*.yml
+      - requirements*.txt
+      - validation/**
+      - scripts/validation_control/**
+    gate: "test-dotnet:business-platform"
+  release_qualification:
+    gates: [release-qualification]
+    inputs:
+      - .github/workflows/**
+      - architecture/reference/dockerfiles/**
+      - docker-compose*.yml
+      - infrastructure/**
+      - release/**
+      - requirements*.txt
+      - scripts/goal006_*.py
+      - scripts/run_goal006_*.sh
+      - scripts/run_release_qualification.sh
+      - scripts/validation_control/**
+      - src/business-platform/**
+      - tests/business-platform.Tests/**
+      - tests/pipeline/test_goal006_*.py
+      - tests/pipeline/test_wc091_*.py
+      - validation/**
+    paths:
+      - .github/workflows/**
+      - docker-compose*.yml
+      - infrastructure/terraform/**
+      - infrastructure/recovery/**
+      - infrastructure/environment-readiness/**
+      - release/**
+      - scripts/goal006_release_simulator.py
+      - scripts/run_release_qualification.sh
+      - tests/pipeline/test_goal006_*.py
+      - tests/pipeline/test_wc091_*.py
+    gate: release-qualification
 release_full_inventory: true
 main_full_inventory: true

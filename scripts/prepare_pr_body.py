@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import hashlib
 import json
 import os
@@ -16,12 +17,12 @@ from pathlib import Path
 
 import yaml
 
-from precheck_orchestrator import PrecheckNode, run_prechecks
+from precheck_orchestrator import EVIDENCE_FILE_NAME, PrecheckNode, run_prechecks
 from validate_author_review import SECTION, validate_author_review
 from validate_c059 import read_commits, validate_commit, validate_pr_body
 from validate_requirement_ledger import validate_changed_ledgers
 from validate_runtime_lifecycle_evidence import runtime_gate_required
-from validation_policy import classify_paths
+from validation_policy import classify_paths, validate_policy
 from validation_control.local_catalog_gate import gate_execution_identity
 
 AUTHOR_REVIEW = """## Author Review
@@ -41,7 +42,7 @@ RUNTIME_EVIDENCE_SECTION = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 VALIDATION_POLICY_PATH = Path(__file__).resolve().parents[1] / "validation/engineering-validation.yaml"
-PRECHECK_GRAPH_VERSION = "wc104-prechecks-v3"
+PRECHECK_GRAPH_VERSION = "wc104-prechecks-v4"
 PRECHECK_CONFIGURATION_PATHS = (
     Path(__file__),
     Path(__file__).with_name("precheck_orchestrator.py"),
@@ -242,6 +243,31 @@ def selected_prechecks(changed_files: list[str]) -> set[str]:
     return set(selected)
 
 
+def validate_static_repository(repository_root: Path) -> list[str]:
+    violations: list[str] = []
+    try:
+        loaded = yaml.safe_load(VALIDATION_POLICY_PATH.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError) as error:
+        violations.append(f"validation catalog cannot be loaded: {error}")
+    else:
+        if not isinstance(loaded, dict):
+            violations.append("validation catalog root must be a mapping")
+        else:
+            violations.extend(f"validation catalog: {violation}" for violation in validate_policy(loaded))
+
+    compose = subprocess.run(
+        ["docker", "compose", "config", "--quiet"],  # noqa: S607
+        cwd=repository_root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if compose.returncode != 0:
+        detail = compose.stderr.strip() or compose.stdout.strip() or "configuration is invalid"
+        violations.append(f"Docker Compose: {detail}")
+    return violations
+
+
 def business_platform_gate_required(changed_files: list[str]) -> bool:
     return "business_platform" in selected_prechecks(changed_files)
 
@@ -288,10 +314,23 @@ def runner_digest(nodes: list[PrecheckNode]) -> str:
             "gate_implementation_digest": node.gate_implementation_digest,
             "runner_digest": node.runner_digest,
             "environment_digest": node.environment_digest,
+            "input_digest": node.input_digest,
+            "input_patterns": node.input_patterns,
         }
         for node in nodes
     ]
     return hashlib.sha256(json.dumps(graph, sort_keys=True).encode()).hexdigest()
+
+
+def gate_input_digest(head: str, patterns: tuple[str, ...]) -> str:
+    entries: list[tuple[str, str]] = []
+    for line in git("ls-tree", "-r", "--full-tree", head).splitlines():
+        metadata, separator, path = line.partition("\t")
+        fields = metadata.split()
+        if separator and len(fields) == 3 and any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns):
+            entries.append((path, metadata))
+    payload = {"patterns": patterns, "entries": sorted(entries)}
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
 def validate_precheck_evidence(
@@ -344,6 +383,12 @@ def precheck_nodes(
         gate_id = config.get("gate") if isinstance(config, dict) else None
         if not isinstance(gate_id, str) or not gate_id:
             raise ValueError(f"validation catalog precheck {name} has no gate")
+        input_patterns_value = config.get("inputs")
+        if not isinstance(input_patterns_value, list) or not all(
+            isinstance(pattern, str) and pattern for pattern in input_patterns_value
+        ):
+            raise ValueError(f"validation catalog precheck {name} has no declared inputs")
+        input_patterns = tuple(input_patterns_value)
         identity = gate_execution_identity(repository_root, gate_id, head)
         nodes.append(
             PrecheckNode(
@@ -361,6 +406,8 @@ def precheck_nodes(
                     str(git_common_dir),
                 ),
                 heavy=name != "gitleaks",
+                input_digest=gate_input_digest(head, input_patterns),
+                input_patterns=input_patterns,
                 **identity,
             )
         )
@@ -371,6 +418,8 @@ def run_ci_prechecks(base: str, head: str, changed_files: list[str]) -> dict[str
     repository_root = Path(git("rev-parse", "--show-toplevel"))
     git_common_dir = Path(git("rev-parse", "--path-format=absolute", "--git-common-dir"))
     nodes = precheck_nodes(repository_root, git_common_dir, base, head, changed_files)
+    artifact_dir = repository_root / "test-results/wc100/prechecks" / head
+    prior_evidence = sorted(path for path in artifact_dir.parent.glob(f"*/{EVIDENCE_FILE_NAME}") if path.parent != artifact_dir)
     return run_prechecks(
         nodes,
         base_sha=git("rev-parse", base),
@@ -379,7 +428,8 @@ def run_ci_prechecks(base: str, head: str, changed_files: list[str]) -> dict[str
         graph_version=PRECHECK_GRAPH_VERSION,
         configuration_digest=configuration_digest(),
         runner_digest=runner_digest(nodes),
-        artifact_dir=repository_root / "test-results/wc100/prechecks" / head,
+        artifact_dir=artifact_dir,
+        reuse_evidence_paths=prior_evidence,
     )
 
 
@@ -458,6 +508,13 @@ def main() -> int:
         ledger_violations = validate_changed_ledgers(repository_root, changed_files)
         if ledger_violations:
             raise ValueError("requirement ledger: " + "; ".join(ledger_violations))
+        body = prepare_body(body, head)
+        violations = validate_prepared_body(body, arguments.base, head)
+        if violations:
+            raise ValueError("static PR validation: " + "; ".join(violations))
+        repository_violations = validate_static_repository(repository_root)
+        if repository_violations:
+            raise ValueError("static repository validation: " + "; ".join(repository_violations))
         if arguments.precheck_evidence_file:
             nodes = precheck_nodes(
                 repository_root,
@@ -494,7 +551,6 @@ def main() -> int:
                 else run_runtime_gate(arguments.body_file, head)
             )
             body = add_runtime_evidence(body, evidence)
-        body = prepare_body(body, head)
         violations = validate_prepared_body(body, arguments.base, head)
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         print(f"PR body preparation failed: {error}", file=sys.stderr)

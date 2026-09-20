@@ -75,6 +75,21 @@ def test_docs_only_and_renamed_paths_are_reasoned() -> None:
     assert "web" in renamed["selected_components"]
 
 
+def test_local_prechecks_are_scoped_independently_from_full_hosted_inventory() -> None:
+    policy = load_policy()
+
+    evidence_only = classify_paths(policy, ["reviews/R-144-wc104-platform-it-expert-author-review.md"])
+    business = classify_paths(policy, ["src/business-platform/Program.cs"])
+    release = classify_paths(policy, ["infrastructure/terraform/phase2/main.tf"])
+    hosted = classify_paths(policy, ["README.md"], event="push")
+
+    assert evidence_only["full"] is True
+    assert evidence_only["selected_prechecks"] == ["gitleaks"]
+    assert business["selected_prechecks"] == ["business_platform", "gitleaks", "release_qualification"]
+    assert release["selected_prechecks"] == ["gitleaks", "release_qualification"]
+    assert hosted["selected_gates"] == policy["full_gates"]
+
+
 def test_name_status_parser_keeps_deleted_and_renamed_paths() -> None:
     paths = parse_name_status("D\tweb/deleted.ts\nR100\tweb/old.ts\tsrc/business-platform/New.cs\n")
 
@@ -89,6 +104,13 @@ def test_enforced_mode_requires_founder_activation() -> None:
 
     assert "ENFORCED_WITHOUT_FOUNDER_APPROVAL" in violations
     assert "ENFORCED_WITHOUT_SHADOW_EVIDENCE" in violations
+
+
+def test_prechecks_require_declared_gate_inputs() -> None:
+    policy = load_policy()
+    del policy["prechecks"]["business_platform"]["inputs"]
+
+    assert "PRECHECK_INPUTS_MISSING: business_platform" in validate_policy(policy)
 
 
 def test_shadow_comparison_detects_omitted_failure() -> None:

@@ -16,11 +16,13 @@ from prepare_pr_body import (  # noqa: E402
     expected_pr_labels,
     execution_preflight,
     load_runtime_evidence,
+    main,
     preparation_head,
     prepare_body,
     release_qualification_gate_required,
     run_ci_prechecks,
     runner_digest,
+    validate_static_repository,
     validate_precheck_evidence,
 )
 from validate_author_review import validate_author_review  # noqa: E402
@@ -59,6 +61,82 @@ def test_prepare_body_requires_template_section() -> None:
         assert "Author Review" in str(error)
     else:
         raise AssertionError("missing Author Review section was accepted")
+
+
+@pytest.mark.parametrize(
+    ("ledger_violations", "body_violations", "repository_violations", "expected_calls"),
+    (
+        (["ledger invalid"], [], [], 0),
+        ([], ["C-059 or C-065 invalid"], [], 0),
+        ([], [], ["catalog or Compose invalid"], 0),
+        ([], [], [], 1),
+    ),
+)
+def test_main_runs_costly_prechecks_only_after_static_validation(
+    monkeypatch,
+    tmp_path: Path,
+    ledger_violations: list[str],
+    body_violations: list[str],
+    repository_violations: list[str],
+    expected_calls: int,
+) -> None:
+    body_file = tmp_path / "pr-body.md"
+    body_file.write_text("## Author Review\n\nPending.\n", encoding="utf-8")
+    costly_calls: list[tuple[object, ...]] = []
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "prepare_pr_body.py",
+            "--body-file",
+            str(body_file),
+            "--expected-worktree",
+            str(tmp_path),
+            "--expected-head",
+            HEAD,
+        ],
+    )
+    monkeypatch.setattr("prepare_pr_body.execution_preflight", lambda *args, **kwargs: None)
+    monkeypatch.setattr("prepare_pr_body.authoritative_remote_head", lambda remote: HEAD)
+    monkeypatch.setattr("prepare_pr_body.validate_changed_ledgers", lambda root, paths: ledger_violations)
+    monkeypatch.setattr("prepare_pr_body.validate_prepared_body", lambda body, base, head: body_violations)
+    monkeypatch.setattr("prepare_pr_body.validate_static_repository", lambda root: repository_violations)
+    monkeypatch.setattr(
+        "prepare_pr_body.run_ci_prechecks",
+        lambda *args: costly_calls.append(args) or {"passed": False, "first_causal_failure": "test", "nodes": []},
+    )
+
+    def fake_git(*arguments: str) -> str:
+        if arguments == ("rev-parse", "--show-toplevel"):
+            return str(tmp_path)
+        if arguments == ("rev-parse", "HEAD"):
+            return HEAD
+        if arguments == ("rev-parse", "origin/main"):
+            return "b" * 40
+        if arguments[:2] == ("diff", "--name-only"):
+            return ""
+        raise AssertionError(f"unexpected git arguments: {arguments}")
+
+    monkeypatch.setattr("prepare_pr_body.git", fake_git)
+
+    assert main() == 1
+    assert len(costly_calls) == expected_calls
+
+
+def test_static_repository_validation_reports_catalog_and_compose_failures(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(
+        "prepare_pr_body.yaml.safe_load",
+        lambda content: {"schema": "invalid"},
+    )
+    monkeypatch.setattr(
+        "prepare_pr_body.subprocess.run",
+        lambda *args, **kwargs: SimpleNamespace(returncode=1, stderr="invalid compose", stdout=""),
+    )
+
+    violations = validate_static_repository(tmp_path)
+
+    assert any("validation catalog" in violation for violation in violations)
+    assert "Docker Compose: invalid compose" in violations
 
 
 def test_preparation_head_rejects_unpushed_commit_by_default() -> None:
@@ -117,14 +195,18 @@ def test_business_platform_gate_covers_shared_runtime_and_deployment_paths() -> 
         "src/business-platform/Program.cs",
         "tests/business-platform.Tests/OwnerGatewayCoverageTests.cs",
         "infrastructure/postgres/init/029_identity.sql",
-        "infrastructure/terraform/phase2/modules/workload/main.tf",
         "architecture/reference/api-specs/business-platform.openapi.yaml",
     ):
         assert business_platform_gate_required([path])
 
 
 def test_business_platform_gate_ignores_unrelated_paths() -> None:
-    assert not business_platform_gate_required(["web/components/auth/LoginView.tsx"])
+    for path in (
+        "web/components/auth/LoginView.tsx",
+        "infrastructure/terraform/phase2/modules/workload/main.tf",
+        "reviews/R-144-wc104-platform-it-expert-author-review.md",
+    ):
+        assert not business_platform_gate_required([path])
 
 
 def test_release_qualification_gate_matches_ci_change_paths() -> None:
@@ -164,7 +246,7 @@ def test_precheck_evidence_must_match_base_and_head() -> None:
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": digest,
-        "graph_version": "wc104-prechecks-v3",
+        "graph_version": "wc104-prechecks-v4",
         "configuration_digest": "c" * 64,
         "runner_digest": "r" * 64,
     }
@@ -186,12 +268,12 @@ def test_precheck_evidence_rejects_changed_files_or_graph_version() -> None:
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": "d" * 64,
-        "graph_version": "wc104-prechecks-v3",
+        "graph_version": "wc104-prechecks-v4",
         "configuration_digest": "c" * 64,
         "runner_digest": "r" * 64,
     }
 
-    for digest, graph_version in (("e" * 64, "wc104-prechecks-v3"), ("d" * 64, "stale")):
+    for digest, graph_version in (("e" * 64, "wc104-prechecks-v4"), ("d" * 64, "stale")):
         try:
             validate_precheck_evidence(
                 evidence,
@@ -215,7 +297,7 @@ def test_precheck_evidence_rejects_configuration_or_runner_mismatch() -> None:
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": "d" * 64,
-        "graph_version": "wc104-prechecks-v3",
+        "graph_version": "wc104-prechecks-v4",
         "configuration_digest": "c" * 64,
         "runner_digest": "r" * 64,
     }
@@ -275,7 +357,7 @@ def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path)
     ]
     assert all("docker compose" not in " ".join(node.command) for node in nodes)
     assert all("run_release_qualification.sh" not in " ".join(node.command) for node in nodes)
-    assert captured["graph_version"] == "wc104-prechecks-v3"
+    assert captured["graph_version"] == "wc104-prechecks-v4"
     assert captured["configuration_digest"] == configuration_digest()
     assert captured["runner_digest"] == runner_digest(nodes)
     assert nodes[0].runner_digest == "r" * 64
@@ -294,6 +376,8 @@ def test_runner_digest_binds_every_per_node_authority_field() -> None:
         {"gate_implementation_digest": "i" * 64},
         {"runner_digest": "sha256:" + "r" * 64},
         {"environment_digest": "e" * 64},
+        {"input_digest": "i" * 64},
+        {"input_patterns": ("src/**",)},
     )
 
     assert all(runner_digest([replace(node, **mutation)]) != baseline for mutation in mutations)

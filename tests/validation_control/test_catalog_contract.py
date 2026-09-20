@@ -73,11 +73,16 @@ def test_local_precheck_commands_are_catalog_owned_and_tool_pinned() -> None:
     root = Path(__file__).resolve().parents[2]
     catalog = load_catalog()
 
-    assert catalog["prechecks"] == {
-        "gitleaks": {"always": True, "gate": "precheck:gitleaks"},
-        "business_platform": {"components": ["business-platform"], "gate": "test-dotnet:business-platform"},
-        "release_qualification": {"gates": ["release-qualification"], "gate": "release-qualification"},
+    assert {name: config["gate"] for name, config in catalog["prechecks"].items()} == {
+        "gitleaks": "precheck:gitleaks",
+        "business_platform": "test-dotnet:business-platform",
+        "release_qualification": "release-qualification",
     }
+    assert all(config["inputs"] for config in catalog["prechecks"].values())
+    assert catalog["prechecks"]["gitleaks"]["always"] is True
+    assert catalog["prechecks"]["business_platform"]["components"] == ["business-platform"]
+    assert catalog["prechecks"]["release_qualification"]["gates"] == ["release-qualification"]
+    assert "infrastructure/terraform/**" in catalog["prechecks"]["release_qualification"]["paths"]
     gitleaks = (root / "scripts/validation_control/run_gitleaks_gate.sh").read_text(encoding="utf-8")
     assert "zricethezav/gitleaks@sha256:" in gitleaks
     assert "zricethezav/gitleaks:v" not in gitleaks
