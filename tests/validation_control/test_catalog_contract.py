@@ -7,7 +7,7 @@ import jsonschema
 import pytest
 import yaml
 
-from validation_control.catalog_execution import compose_command, select_plan_node
+from validation_control.catalog_execution import compose_command, execution_command, select_plan_node
 from validation_control.orchestrator import build_execution_plan
 
 
@@ -106,3 +106,23 @@ def test_catalog_gate_selection_rejects_missing_or_duplicate_nodes() -> None:
     plan["nodes"].append(plan["nodes"][0])
     with pytest.raises(ValueError, match="exactly one"):
         select_plan_node(plan, "test-web")
+
+
+def test_release_qualification_is_explicit_host_orchestration() -> None:
+    catalog = load_catalog()
+    plan = build_execution_plan(
+        catalog,
+        ["release-qualification"],
+        mode="qualification",
+        head_sha="a" * 40,
+        run_id="release",
+    )
+    node = select_plan_node(plan, "release-qualification")
+
+    assert node["runner_id"] == "full"
+    assert node["execution"] == "host"
+    assert execution_command(node, "/usr/bin/docker") == [
+        "sh",
+        "-lc",
+        "sh scripts/run_release_qualification.sh",
+    ]

@@ -508,15 +508,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Resolve immutable release qualification runner (C-080)
+      - name: Execute catalog release qualification
         if: needs.validation-plan.outputs.release_required == 'true'
-        uses: ./.github/actions/use-validation-runner
+        uses: ./.github/actions/run-validation-gate
         id: runner-build
+        continue-on-error: true
         with:
-          runner-id: full
+          gate-id: release-qualification
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Record immutable release runner evidence
-        if: needs.validation-plan.outputs.release_required == 'true'
+        if: always() && needs.validation-plan.outputs.release_required == 'true' && steps.runner-build.outputs.image_id != ''
         run: |
           scripts/record_build_evidence.sh \
             "$RUNNER_TEMP/build-evidence/release-qualification.json" \
@@ -526,19 +527,13 @@ jobs:
             '${{ steps.runner-build.outputs.image_id }}' '' \
             '["release-qualification"]' 'workflow_build'
       - name: Retain immutable release runner evidence
-        if: needs.validation-plan.outputs.release_required == 'true'
+        if: always() && needs.validation-plan.outputs.release_required == 'true' && steps.runner-build.outputs.image_id != ''
         uses: actions/upload-artifact@v4
         with:
           name: wc100-release-runner-${{ github.run_id }}
           path: ${{ runner.temp }}/build-evidence/release-qualification.json
           if-no-files-found: error
           retention-days: 90
-
-      - name: Run release qualification
-        if: needs.validation-plan.outputs.release_required == 'true'
-        env:
-          WAOOAW_TEST_RUNNER_IMAGE_ID: ${{ steps.runner-build.outputs.image_id }}
-        run: scripts/run_release_qualification.sh
 
       - name: Retain WC-091 Demo data evidence
         if: always() && needs.validation-plan.outputs.release_required == 'true'
@@ -557,6 +552,9 @@ jobs:
           path: goal006-local-azure-runtime/
           if-no-files-found: error
           retention-days: 90
+      - name: Enforce catalog release qualification result
+        if: needs.validation-plan.outputs.release_required == 'true' && steps.runner-build.outcome != 'success'
+        run: exit 1
 
   # ─── TypeScript tests ─────────────────────────────────────────────────────
   test-web:

@@ -29,7 +29,10 @@
       "additionalProperties": {
         "type": "object",
         "required": ["shell"],
-        "properties": {"shell": {"type": "string", "minLength": 1}},
+        "properties": {
+          "shell": {"type": "string", "minLength": 1},
+          "execution": {"enum": ["container", "host"]}
+        },
         "additionalProperties": false
       }
     },

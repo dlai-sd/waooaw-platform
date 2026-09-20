@@ -201,6 +201,19 @@ def test_python_ci_executes_catalog_gates_without_duplicate_commands_or_runner_m
     assert "docker compose" not in rendered
 
 
+def test_release_ci_executes_catalog_gate_without_duplicate_command_or_runner_mapping() -> None:
+    root = Path(__file__).resolve().parents[2]
+    workflow = yaml.safe_load((root / ".github/workflows/ci.yaml").read_text(encoding="utf-8"))
+    job = workflow["jobs"]["release-qualification"]
+    rendered = json.dumps(job)
+
+    assert set(job["needs"]) == {"runner-supply", "validation-plan"}
+    assert "./.github/actions/run-validation-gate" in rendered
+    assert '"gate-id": "release-qualification"' in rendered
+    assert '"runner-id": "full"' not in rendered
+    assert "scripts/run_release_qualification.sh" not in rendered
+
+
 def test_every_runner_base_is_digest_pinned_and_has_locked_package_caches() -> None:
     root = Path(__file__).resolve().parents[2]
     config = load_supply_config(root / "validation/runner-supply.json")

@@ -50,7 +50,7 @@ commands:
   dependency-scan: {shell: "pip-audit --cache-dir /tmp/pip-audit-cache -r requirements-test.txt --strict"}
   secrets: {shell: "python scripts/validation_control/docker_policy.py --repository /workspace"}
   license-check: {shell: "pip-licenses --fail-on='GPL;AGPL;LGPL'"}
-  release-qualification: {shell: "sh scripts/run_release_qualification.sh"}
+  release-qualification: {shell: "sh scripts/run_release_qualification.sh", execution: host}
   constitutional-commit-gate: {shell: "python scripts/validate_c059.py --pr-body-file test-results/pr-body.md --base $BASE_SHA --head $HEAD_SHA"}
   requirement-ledger: {shell: "python scripts/validate_requirement_ledger.py --repository-root /workspace"}
   author-review-gate: {shell: "python scripts/validate_author_review.py --pr-body-file test-results/pr-body.md --head $HEAD_SHA"}

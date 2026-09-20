@@ -46,6 +46,14 @@ def compose_command(node: dict[str, Any]) -> list[str]:
     ]
 
 
+def execution_command(node: dict[str, Any], docker: str) -> list[str]:
+    if node.get("execution", "container") == "host":
+        return ["sh", "-lc", node["command"]]
+    command = compose_command(node)
+    command[0] = docker
+    return command
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--plan", type=Path, required=True)
@@ -74,9 +82,9 @@ def main() -> int:
     )
     if verification.returncode != 0:
         return verification.returncode
-    command = compose_command(node)
-    command[0] = docker
-    return subprocess.run(command, check=False).returncode  # noqa: S603
+    environment = os.environ.copy()
+    environment["WAOOAW_TEST_RUNNER_IMAGE_ID"] = arguments.image_id
+    return subprocess.run(execution_command(node, docker), check=False, env=environment).returncode  # noqa: S603
 
 
 if __name__ == "__main__":

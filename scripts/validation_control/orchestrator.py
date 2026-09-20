@@ -48,6 +48,7 @@ def build_execution_plan(
                 "profile": runner["profile"],
                 "command_id": command_id,
                 "command": command["shell"],
+                "execution": command.get("execution", "container"),
                 "resources": gate["resources"],
                 "retry_policy": gate["retry_policy"],
                 "artifacts": gate["artifacts"],
