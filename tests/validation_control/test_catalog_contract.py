@@ -62,7 +62,7 @@ def test_full_runner_is_limited_to_cross_stack_release_gates() -> None:
 
     full_runner_gates = {gate_id for gate_id, gate in catalog["gates"].items() if gate["runner_id"] == "full"}
 
-    assert full_runner_gates == {"release-qualification"}
+    assert full_runner_gates == {"release-qualification", "spec-lint"}
 
 
 def test_concurrent_runs_receive_distinct_namespaces() -> None:

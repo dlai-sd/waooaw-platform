@@ -292,6 +292,20 @@ def test_c065_ci_retries_catalog_gate_without_duplicate_command_or_runner_mappin
     assert "Unable to refresh PR metadata for attempt $attempt" in action_rendered
 
 
+def test_spec_lint_ci_executes_catalog_gate_without_duplicate_commands() -> None:
+    root = Path(__file__).resolve().parents[2]
+    workflow = yaml.safe_load((root / ".github/workflows/ci.yaml").read_text(encoding="utf-8"))
+    job = workflow["jobs"]["spec-lint"]
+    rendered = json.dumps(job)
+
+    assert set(job["needs"]) == {"runner-supply", "validation-plan"}
+    gate_step = next(step for step in job["steps"] if step.get("uses") == "./.github/actions/run-validation-gate")
+    assert gate_step["with"]["gate-id"] == "spec-lint"
+    assert "stoplight/spectral" not in rendered
+    assert "bufbuild/buf" not in rendered
+    assert "docker run" not in rendered
+
+
 def test_every_runner_base_is_digest_pinned_and_has_locked_package_caches() -> None:
     root = Path(__file__).resolve().parents[2]
     config = load_supply_config(root / "validation/runner-supply.json")

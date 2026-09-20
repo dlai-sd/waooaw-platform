@@ -43,7 +43,7 @@ commands:
   test-ai-runtime: {shell: "sh scripts/validation_control/run_python_test_gate.sh ai-runtime src/ai-runtime /workspace/src/ai-runtime:/workspace/src/trust-layer tests/ai-runtime tests/trust-layer"}
   test-billing-engine: {shell: "pytest tests/billing-engine tests/pipeline/test_billing_ce_validator.py -q"}
   test-web: {shell: "mkdir -p /workspace/test-results/coverage/web && cp -a web /tmp/web && ln -s /opt/waooaw-web/node_modules /tmp/web/node_modules && cd /tmp/web && tsc --noEmit --incremental false && eslint . --max-warnings 0 && jest --runInBand --coverage --coverageDirectory=/workspace/test-results/coverage/web --coverageThreshold='{\"global\":{\"lines\":90,\"branches\":80,\"functions\":90,\"statements\":90}}'"}
-  spec-lint: {shell: "python scripts/validation_control/docker_policy.py --repository /workspace"}
+  spec-lint: {shell: "sh scripts/validation_control/run_spec_lint_gate.sh"}
   sast-csharp: {shell: "dotnet build src/constitutional-engine/constitutional-engine.csproj --artifacts-path /tmp/artifacts/sast/constitutional-engine -p:TreatWarningsAsErrors=true && dotnet build src/business-platform/business-platform.csproj --artifacts-path /tmp/artifacts/sast/business-platform -p:TreatWarningsAsErrors=true"}
   sast-python: {shell: "bandit -r src -c pyproject.toml -lll -f json -o test-results/bandit.json"}
   sast-javascript: {shell: "cd web && biome lint ."}
@@ -102,7 +102,7 @@ gates:
     evidence_class: coverage
     resources: *typescript_resources
     artifacts: {native: [test-results/**/*.xml, test-results/coverage/**], common: test-results/validation/test-web.json}
-  spec-lint: {<<: *python_static, gate_id: spec-lint, command_id: spec-lint, evidence_class: contract}
+  spec-lint: {<<: *python_static, gate_id: spec-lint, runner_id: full, command_id: spec-lint, evidence_class: contract, resources: {cpus: 2, memory_mb: 6144, timeout_seconds: 900, docker_socket: true, concurrency_class: full}}
   sast: &security_gate {<<: *python_static, gate_id: sast, command_id: sast-python, evidence_class: security, artifacts: {native: [test-results/**/*.json], common: test-results/validation/security.json}}
   sast:csharp: {<<: *security_gate, gate_id: "sast:csharp", runner_id: dotnet, command_id: sast-csharp, resources: *dotnet_resources}
   sast:python: {<<: *security_gate, gate_id: "sast:python", command_id: sast-python}

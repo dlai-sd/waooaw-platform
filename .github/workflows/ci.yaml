@@ -596,25 +596,16 @@ jobs:
   spec-lint:
     name: OpenAPI + Proto lint
     runs-on: ubuntu-latest
+    needs: [runner-supply, validation-plan]
     steps:
       - uses: actions/checkout@v4
-      - name: Spectral lint — OpenAPI contracts
-        run: |
-          docker run --rm --user 1000:1000 -v "$PWD:/workspace:ro" -w /workspace \
-            stoplight/spectral:6.15.0 lint \
-            --fail-severity error \
-            architecture/reference/api-specs/business-platform.openapi.yaml \
-            architecture/reference/api-specs/professional-runtime.openapi.yaml
-
-      - name: buf lint — Constitutional Service proto
-        run: |
-          docker run --rm -v "$PWD:/workspace" -w /workspace/architecture/reference/proto \
-            bufbuild/buf:1.72.0 format --diff --exit-code
-          docker run --rm -v "$PWD:/workspace" -w /workspace/architecture/reference/proto \
-            bufbuild/buf:1.72.0 lint
-          docker run --rm -v "$PWD:/workspace" -w /workspace/architecture/reference/proto \
-            bufbuild/buf:1.72.0 breaking \
-            --against 'https://github.com/${{ github.repository }}.git#branch=main,subdir=architecture/reference/proto'
+        with:
+          fetch-depth: 0
+      - name: Execute catalog specification lint
+        uses: ./.github/actions/run-validation-gate
+        with:
+          gate-id: spec-lint
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   # ─── Security — SAST ──────────────────────────────────────────────────────
   sast:
