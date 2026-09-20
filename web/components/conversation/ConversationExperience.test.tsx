@@ -210,9 +210,9 @@ describe('ConversationExperience', () => {
       configurable: true,
       value: jest
         .fn()
-        .mockReturnValueOnce('51885e4d-53ac-4abf-ad77-58cd127a3dc4')
-        .mockReturnValueOnce('f5bc4af1-bb1a-45f9-b979-71f0dfc8379e')
-        .mockReturnValue('d075fa11-75c2-4b6e-9a87-510421293a66'),
+        .mockReturnValueOnce('00000000-0000-4000-8000-000000000001')
+        .mockReturnValueOnce('00000000-0000-4000-8000-000000000002')
+        .mockReturnValue('00000000-0000-4000-8000-000000000003'),
     });
   });
 
@@ -286,8 +286,8 @@ describe('ConversationExperience', () => {
     expect(JSON.parse(String(sendCall[1]?.body))).toEqual(
       expect.objectContaining({
         action: 'send',
-        clientMessageId: '51885e4d-53ac-4abf-ad77-58cd127a3dc4',
-        idempotencyKey: 'f5bc4af1-bb1a-45f9-b979-71f0dfc8379e',
+        clientMessageId: '00000000-0000-4000-8000-000000000001',
+        idempotencyKey: '00000000-0000-4000-8000-000000000002',
         skillId: 'campaign_planning',
         text: 'Please summarize today.',
       })
@@ -328,7 +328,7 @@ describe('ConversationExperience', () => {
     expect(apiCalls(requestMock)[1][0]).toContain('afterCursor=authoritative-cursor-0001');
     expect(JSON.parse(String(apiCalls(requestMock)[2][1]?.body))).toEqual(
       expect.objectContaining({
-        idempotencyKey: 'f5bc4af1-bb1a-45f9-b979-71f0dfc8379e',
+        idempotencyKey: '00000000-0000-4000-8000-000000000002',
         text: 'Queue this safely.',
       })
     );
