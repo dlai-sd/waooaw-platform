@@ -315,3 +315,15 @@ activating selective enforcement, mutating Production, self-approval or self-mer
 | Is completion atomized? | PASS | Nineteen explicit requirements and sixteen defect passing conditions prohibit aggregate substitution |
 
 **Disposition:** PASS AT SPEC - READY FOR FOUNDER REVIEW. IMPLEMENTATION REMAINS UNAUTHORIZED.
+
+## 13. Authorized Follow-Up Defects
+
+The Founder authorized these post-merge corrections in the 2026-09-20 continuous Platform IT Expert
+session. They extend R019 and the Platform IT Expert execution standard without reducing hosted gate
+authority or reinterpreting prior WC-104 evidence.
+
+| Defect | Current defect | Required fix | Outcome / benefit | Passing condition |
+|---|---|---|---|---|
+| D17 - Carry-forward provenance is implicit | Cross-commit reuse is represented by `trust_source` and nested metadata but has no explicit provenance classification in the fresh exact-head manifest | Write `provenance: carry-forward` for every cross-commit reused node and distinguish exact-candidate reuse | Auditors and automation immediately distinguish executed, exact-reused and carry-forward evidence | Focused manifest tests assert explicit provenance for exact and cross-commit reuse |
+| D18 - Historical evidence selection follows path order | The first valid lexically supplied artifact wins even when a nearer valid ancestor exists | Prove ancestry and numeric commit distance, rank candidates nearest-first with deterministic tie-breaking, reject unprovable candidates and fall through when a nearer candidate is invalid | Maximizes safe reuse, avoids stale evidence and unnecessary Docker execution, and fails closed on unverifiable history | Tests prove nearest selection, invalid-nearest fallback, non-ancestor rejection, missing-distance rejection and affected-input rerun |
+| D19 - The Platform IT Expert standard permits wasteful validation cadence | The execution standard does not explicitly prohibit repeated full Docker qualification or runner rebuilds during ordinary implementation | Require static-first validation, catalog changed-path selection, focused gates, valid evidence reuse and one final hosted qualification; reserve full local qualification for explicit necessity | Reduces image rebuilds, CPU use, disk pressure and feedback time without weakening final authority | The agent specification contains the normative execution rule and policy tests preserve static-before-costly ordering |

@@ -1324,6 +1324,8 @@ The Platform IT Expert is event-driven. It does not run customer heartbeats or S
 
 **Reasoning-first execution loop:** `READ_CONTRACT -> MAP_AUTHORITY -> DISCLOSE_GAPS -> CE.VALIDATE_ACTION when consequential -> ACT -> TEST -> AUTHOR_REVIEW -> REQUEST_FOUNDER_REVIEW`. No generated code or external action may precede the contract and authorization checks.
 
+**Validation execution rule:** During implementation, run static validation first. Use catalog changed-path selection and focused component gates only. Reuse exact or verified carry-forward evidence when valid. Do not run full Docker qualification, rebuild all runners, or execute all-profile Compose unless the Work Contract explicitly requires it, runner inputs changed, focused evidence cannot establish correctness, or preparing the final PR. Run full hosted qualification once on the final pushed head.
+
 ## 10. Professional Template Definition
 
 ```yaml

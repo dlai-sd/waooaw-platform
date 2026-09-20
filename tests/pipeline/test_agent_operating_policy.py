@@ -159,3 +159,17 @@ def test_platform_it_policy_defines_costly_run_contract() -> None:
         assert "original absolute paths" in normalized
         assert "writable output directories" in normalized
         assert "first causal" in normalized
+
+
+def test_platform_it_policy_requires_static_first_focused_validation() -> None:
+    canonical = IT_EXPERT_SPEC.read_text(encoding="utf-8")
+    normalized = " ".join(canonical.split())
+
+    for requirement in (
+        "run static validation first",
+        "catalog changed-path selection and focused component gates only",
+        "Reuse exact or verified carry-forward evidence when valid",
+        "Do not run full Docker qualification",
+        "Run full hosted qualification once on the final pushed head",
+    ):
+        assert requirement in normalized
