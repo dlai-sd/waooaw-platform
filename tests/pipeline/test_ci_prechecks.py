@@ -10,8 +10,8 @@ PR_TEMPLATE = ROOT / ".github" / "pull_request_template.md"
 def test_c059_accepts_markdown_formatted_pr_metadata() -> None:
     workflow = CI_WORKFLOW.read_text(encoding="utf-8")
 
-    assert "python scripts/validate_c059.py" in workflow
-    assert "--pr-body-file /tmp/pr-body.md" in workflow
+    assert "gate-id: constitutional-commit-gate" in workflow
+    assert "test-results/wc104/c059/pr-body.md" in workflow
     assert "PR_METADATA=" not in workflow
 
 

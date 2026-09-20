@@ -255,6 +255,20 @@ def test_license_ci_executes_advisory_catalog_gate_without_duplicate_command_or_
     assert "docker compose" not in rendered
 
 
+def test_c059_ci_executes_catalog_gate_without_duplicate_command_or_runner_mapping() -> None:
+    root = Path(__file__).resolve().parents[2]
+    workflow = yaml.safe_load((root / ".github/workflows/ci.yaml").read_text(encoding="utf-8"))
+    job = workflow["jobs"]["constitutional-commit-gate"]
+    rendered = json.dumps(job)
+
+    assert set(job["needs"]) == {"runner-supply", "validation-plan"}
+    gate_step = next(step for step in job["steps"] if step.get("uses") == "./.github/actions/run-validation-gate")
+    assert gate_step["with"]["gate-id"] == "constitutional-commit-gate"
+    assert '"runner-id"' not in rendered
+    assert "python scripts/validate_c059.py" not in rendered
+    assert "docker compose" not in rendered
+
+
 def test_every_runner_base_is_digest_pinned_and_has_locked_package_caches() -> None:
     root = Path(__file__).resolve().parents[2]
     config = load_supply_config(root / "validation/runner-supply.json")

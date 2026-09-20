@@ -786,35 +786,30 @@ jobs:
   constitutional-commit-gate:
     name: C-059 Constitutional Commit Gate
     runs-on: ubuntu-latest
-    needs: runner-supply
+    needs: [runner-supply, validation-plan]
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Resolve immutable constitutional validation runner
-        uses: ./.github/actions/use-validation-runner
-        with:
-          runner-id: python
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Validate commit messages (C-059)
-        run: |
-          BASE="${{ github.event.pull_request.base.sha }}"
-          HEAD="${{ github.event.pull_request.head.sha }}"
-          mkdir -p test-results
-          gh pr view ${{ github.event.pull_request.number }} \
-            --json body --jq .body --repo ${{ github.repository }} > test-results/pr-body.md
-          docker compose --profile test-python run --rm \
-            -v "$PWD/test-results/pr-body.md:/tmp/pr-body.md:ro" \
-            -e BASE="$BASE" -e HEAD="$HEAD" test-runner-python sh -lc '
-              python scripts/validate_c059.py \
-                --pr-body-file /tmp/pr-body.md \
-                --base "$BASE" \
-                --head "$HEAD"
-            '
+      - name: Stage C-059 inputs
         env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p test-results/wc104/c059
+          gh pr view "$PR_NUMBER" \
+            --json body --jq .body --repo "$REPOSITORY" > test-results/wc104/c059/pr-body.md
+          printf '%s\n' "$BASE_SHA" > test-results/wc104/c059/base-sha.txt
+          printf '%s\n' "$HEAD_SHA" > test-results/wc104/c059/head-sha.txt
+      - name: Execute catalog C-059 gate
+        uses: ./.github/actions/run-validation-gate
+        with:
+          gate-id: constitutional-commit-gate
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   # ─── Author review gate (C-065) ──────────────────────────────────────────
   # Review evidence is bound to the exact PR head. A later commit invalidates
