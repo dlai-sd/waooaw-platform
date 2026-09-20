@@ -4,7 +4,7 @@
     "python": {
       "dockerfile": "architecture/reference/dockerfiles/Dockerfile.test-runner-python",
       "base_image_digest": "sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e",
-      "system_packages": ["curl", "git"],
+      "system_packages": ["curl", "git", "postgresql-client"],
       "build_arguments": {},
       "platform": "linux/amd64",
       "context_inputs": [

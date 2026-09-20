@@ -24,7 +24,8 @@ RUN --mount=type=cache,id=wc104-python-apt-lists,target=/var/lib/apt/lists,shari
     --mount=type=cache,id=wc104-python-apt-packages,target=/var/cache/apt,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
     git \
-    curl
+    curl \
+    postgresql-client
 
 COPY --from=buf /usr/local/bin/buf /usr/local/bin/buf
 

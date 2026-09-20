@@ -212,6 +212,49 @@ def test_code_quality_jobs_execute_catalog_gates() -> None:
     assert '"${score:-0}" -lt 60' in python_mutation
 
 
+def test_integration_jobs_execute_catalog_gates() -> None:
+    root = Path(__file__).resolve().parents[2]
+    workflow = yaml.safe_load((root / ".github/workflows/integration-tests.yaml").read_text(encoding="utf-8"))
+    catalog = yaml.safe_load((root / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
+    jobs = workflow["jobs"]
+    expected_gates = {
+        "integration:multi-tenant": "python",
+        "integration:postgres-migrations": "python",
+        "integration:dotnet": "dotnet",
+        "integration:python": "python",
+        "contract:rest": "python",
+        "contract:seed-prompts": "python",
+        "security:prompt-injection": "python",
+    }
+
+    assert jobs["validation-plan"]["uses"] == "./.github/workflows/validation-plan.yaml"
+    for job_id in (
+        "multi-tenant-isolation",
+        "service-integration",
+        "contract-rest",
+        "seed-prompts-contract",
+        "prompt-injection",
+    ):
+        rendered = json.dumps(jobs[job_id])
+        assert "runner-supply" in jobs[job_id]["needs"], job_id
+        assert "validation-plan" in jobs[job_id]["needs"], job_id
+        assert "./.github/actions/run-validation-gate" in rendered, job_id
+        assert "docker compose" not in rendered, job_id
+        assert '"runner-id"' not in rendered, job_id
+
+    assert {gate: catalog["gates"][gate]["runner_id"] for gate in expected_gates} == expected_gates
+    rendered_workflow = json.dumps(workflow)
+    for gate_id in expected_gates:
+        assert gate_id in rendered_workflow
+    assert jobs["multi-tenant-isolation"]["steps"][-1]["if"] == "always()"
+    assert catalog["commands"]["contract-rest"]["execution"] == "host"
+    assert "host.docker.internal:5432/waooaw_test" in catalog["commands"]["integration-multi-tenant"]["shell"]
+    assert "Host=host.docker.internal;Port=5432" in catalog["commands"]["integration-dotnet"]["shell"]
+    assert "--pull never test-runner-python" in (
+        root / "scripts/validation_control/run_rest_contract_gate.sh"
+    ).read_text(encoding="utf-8")
+
+
 def test_supply_workflow_serializes_producers_and_consumers_verify_digests() -> None:
     root = Path(__file__).resolve().parents[2]
     supply = (root / ".github/workflows/validation-runner-supply.yaml").read_text(encoding="utf-8")

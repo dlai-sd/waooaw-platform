@@ -101,7 +101,9 @@ def test_full_runner_fixtures_use_bounded_executable_tmpfs() -> None:
 def test_contract_workflow_starts_services_and_blocks_on_failure() -> None:
     workflow = (ROOT / ".github/workflows/integration-tests.yaml").read_text(encoding="utf-8")
     contract_job = workflow.split("  contract-rest:", maxsplit=1)[1].split("\n  seed-prompts-contract:", maxsplit=1)[0]
+    contract_gate = (ROOT / "scripts/validation_control/run_rest_contract_gate.sh").read_text(encoding="utf-8")
 
-    assert "docker compose up --detach --wait" in contract_job
-    assert "business-platform professional-runtime" in contract_job
+    assert "docker compose up --detach --wait" in contract_gate
+    assert "business-platform professional-runtime" in contract_gate
+    assert "gate-id: contract:rest" in contract_job
     assert "continue-on-error: true" not in contract_job
