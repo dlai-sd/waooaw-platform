@@ -33,10 +33,9 @@ import os
 import shutil
 import subprocess
 import sys
-from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import yaml
 
@@ -55,8 +54,8 @@ REPO_ROOT = Path(__file__).parent.parent
 STACK_BEHAVIORAL_RULES: dict[str, list[str]] = {
     "dotnet": [
         "⛔ FIRST LINE RULE: The FIRST line of every .cs file MUST be // (comment) or using (directive). NEVER ## or any markdown. CS1024 fires if you start with markdown.",
-        "ActionParameters is JSON-encoded — use ctx.GetParameter(\"key\"), NEVER TryGetValue().",
-        "TenantId comes from gRPC metadata: context.RequestHeaders.GetValue(\"x-tenant-id\") ?? \"\".",
+        'ActionParameters is JSON-encoded — use ctx.GetParameter("key"), NEVER TryGetValue().',
+        'TenantId comes from gRPC metadata: context.RequestHeaders.GetValue("x-tenant-id") ?? "".',
         "All using directives MUST precede the namespace declaration (proto namespace collision risk).",
         "PROTO NAMESPACE: using Waooaw.ConstitutionalEngine.Grpc; on files referencing gRPC types.",
         "C-059 header required on every .cs file: // Implements: <spec> and // constitutional_basis: <claims>.",
@@ -129,7 +128,6 @@ STACK_BEHAVIORAL_RULES: dict[str, list[str]] = {
         "NEVER pass raw f-strings or string concatenation to execute(). "
         "Applies to ALL Session.execute() and connection.execute() calls. "
         "Import: 'from sqlalchemy import text'.",
-
     ],
     "typescript": [
         "JWT stored in httpOnly cookie ONLY — never localStorage or sessionStorage.",
@@ -152,6 +150,7 @@ STACK_BEHAVIORAL_RULES: dict[str, list[str]] = {
 
 # ── Sub-task definition ────────────────────────────────────────────────────────
 
+
 @dataclass
 class SubTaskDef:
     """
@@ -166,15 +165,16 @@ class SubTaskDef:
     IB-022: wc_task_id links to PMO Work Contract for constitutional requirements.
     constitutional_check is now a delta/override — primary content comes from WC spec.
     """
-    id: str                                    # e.g. "WC012-03a"
+
+    id: str  # e.g. "WC012-03a"
     description: str
-    type: str                                  # "deterministic" | "llm" | "udcp"
+    type: str  # "deterministic" | "llm" | "udcp"
     depends_on: list[str] = field(default_factory=list)
-    compile_gate: str = "dotnet_build"         # "dotnet_build" | "dotnet_test" | "ruff" | "pytest" | "tsc" | "ts_test"
+    compile_gate: str = "dotnet_build"  # "dotnet_build" | "dotnet_test" | "ruff" | "pytest" | "tsc" | "ts_test"
     service_dir: str = "src/constitutional-engine"  # target service dir for compile gate
 
     # For type="deterministic"
-    template_fn: Optional[Callable[[], bool]] = None
+    template_fn: Callable[[], bool] | None = None
 
     # For type="llm" — mirror of execute_with_llm() params
     spec_sections: dict[str, str] = field(default_factory=dict)
@@ -182,10 +182,10 @@ class SubTaskDef:
     max_tokens: int = 10000
 
     # IB-022: WC-spec-driven constitutional check assembly
-    wc_task_id: str = ""                       # "WC012-02" → auto-loads PMO spec
+    wc_task_id: str = ""  # "WC012-02" → auto-loads PMO spec
     output_files: list[str] = field(default_factory=list)  # files this subtask MUST produce
     not_regenerate_from: list[str] = field(default_factory=list)  # prior subtask IDs
-    stack: str = "dotnet"                      # selects STACK_BEHAVIORAL_RULES entry
+    stack: str = "dotnet"  # selects STACK_BEHAVIORAL_RULES entry
     inject_source_files: list[str] = field(default_factory=list)  # actual source to paste verbatim
 
     # DELTA: task-specific override / additions (primary if wc_task_id empty)
@@ -317,19 +317,16 @@ def _validate_task_service_boundary(st: SubTaskDef) -> tuple[bool, str]:
         return True, ""
 
     candidate_paths = (st.output_files or []) + (st.inject_source_files or [])
-    violations = [
-        p for p in candidate_paths
-        if not any(p.startswith(prefix) for prefix in allowed)
-    ]
+    violations = [p for p in candidate_paths if not any(p.startswith(prefix) for prefix in allowed)]
     if violations:
         return False, (
-            f"SERVICE_BOUNDARY_VIOLATION ({task_root}): disallowed paths {violations}. "
-            f"Allowed prefixes: {list(allowed)}"
+            f"SERVICE_BOUNDARY_VIOLATION ({task_root}): disallowed paths {violations}. Allowed prefixes: {list(allowed)}"
         )
     return True, ""
 
 
 # ── Effective constitutional check assembly (IB-022) ──────────────────────────
+
 
 def _build_effective_check(st: SubTaskDef, completed: list[str]) -> str:
     """
@@ -354,12 +351,10 @@ def _build_effective_check(st: SubTaskDef, completed: list[str]) -> str:
     if st.wc_task_id:
         try:
             from wc_spec_reader import get_task
+
             wc_spec = get_task(st.wc_task_id)
             if wc_spec:
-                pmo_section = (
-                    f"CONSTITUTIONAL REQUIREMENTS "
-                    f"(PMO: {wc_spec.task_id} — {wc_spec.title}):\n"
-                )
+                pmo_section = f"CONSTITUTIONAL REQUIREMENTS (PMO: {wc_spec.task_id} — {wc_spec.title}):\n"
                 if wc_spec.scope:
                     pmo_section += f"Scope: {wc_spec.scope}\n"
                 if wc_spec.constitutional_check:
@@ -372,17 +367,13 @@ def _build_effective_check(st: SubTaskDef, completed: list[str]) -> str:
 
     # 2. Output file boundaries
     if st.output_files:
-        files_section = "Implement ONLY these files:\n" + "\n".join(
-            f"  {f}" for f in st.output_files
-        )
+        files_section = "Implement ONLY these files:\n" + "\n".join(f"  {f}" for f in st.output_files)
         parts.append(files_section)
 
     # 3. Prior task preservation
     preserved = [t for t in st.not_regenerate_from if t in completed]
     if preserved:
-        parts.append(
-            f"Do NOT regenerate files from prior subtasks: {', '.join(preserved)}"
-        )
+        parts.append(f"Do NOT regenerate files from prior subtasks: {', '.join(preserved)}")
 
     # 3b. Auto-inject frozen signatures for output_files that already exist
     # This is the structural replacement for hardcoded "EXTEND not replace" prompts.
@@ -392,6 +383,7 @@ def _build_effective_check(st: SubTaskDef, completed: list[str]) -> str:
         frozen_sigs_parts: list[str] = []
         try:
             import json as _json
+
             _frozen_path = REPO_ROOT / "sprint-context" / "frozen-artifacts.json"
             frozen_registry: dict = {}
             if _frozen_path.exists():
@@ -413,7 +405,7 @@ def _build_effective_check(st: SubTaskDef, completed: list[str]) -> str:
                             sig_lines.append(f"  constructor: {class_name}({ctor[:80]})")
                         for m in methods[:6]:
                             sig_lines.append(f"  method: {m}()")
-                        sig_lines.append(f"  ⛔ Do NOT remove or alter any of the above — ONLY add new members.")
+                        sig_lines.append("  ⛔ Do NOT remove or alter any of the above — ONLY add new members.")
                         frozen_sigs_parts.append("\n".join(sig_lines))
                     elif full_path.suffix == ".cs":
                         # Not yet frozen — fall back to first 40 lines of actual file
@@ -427,8 +419,7 @@ def _build_effective_check(st: SubTaskDef, completed: list[str]) -> str:
             print(f"  [decomposer] frozen sig injection skipped ({_frozen_e})")
 
         if frozen_sigs_parts:
-            parts.append("EXISTING FILE SIGNATURES (auto-injected from frozen registry):\n"
-                         + "\n\n".join(frozen_sigs_parts))
+            parts.append("EXISTING FILE SIGNATURES (auto-injected from frozen registry):\n" + "\n\n".join(frozen_sigs_parts))
 
     # 3c. Auto-inject frozen signatures of depends_on subtask types
     # Fixes CS0117 "invented field on newly created entity": when WC012-03b depends_on WC012-03a,
@@ -439,6 +430,7 @@ def _build_effective_check(st: SubTaskDef, completed: list[str]) -> str:
         dep_sigs_parts: list[str] = []
         try:
             import json as _json
+
             _frozen_path = REPO_ROOT / "sprint-context" / "frozen-artifacts.json"
             if _frozen_path.exists():
                 _frozen_reg = _json.loads(_frozen_path.read_text(encoding="utf-8"))
@@ -447,7 +439,7 @@ def _build_effective_check(st: SubTaskDef, completed: list[str]) -> str:
                 for _fpath, _sigs in _frozen_reg.items():
                     if _fpath in output_set:
                         continue  # already handled in 3b
-                    _class = _fpath.rsplit('/', 1)[-1].replace('.cs', '')
+                    _class = _fpath.rsplit("/", 1)[-1].replace(".cs", "")
                     _ns = _sigs.get("namespace", "")
                     _ctors = _sigs.get("public_constructors", [])
                     _methods = _sigs.get("public_methods", [])
@@ -474,9 +466,7 @@ def _build_effective_check(st: SubTaskDef, completed: list[str]) -> str:
     # 4. Stack behavioral rules (EA floor)
     rules = STACK_BEHAVIORAL_RULES.get(st.stack, [])
     if rules:
-        rules_section = "STACK RULES (non-negotiable):\n" + "\n".join(
-            f"  {r}" for r in rules
-        )
+        rules_section = "STACK RULES (non-negotiable):\n" + "\n".join(f"  {r}" for r in rules)
         parts.append(rules_section)
 
     # 5. Phase rules (Contract-First + Compile-Gated development)
@@ -514,7 +504,13 @@ def _build_effective_check(st: SubTaskDef, completed: list[str]) -> str:
 
 # ── Compile gates ──────────────────────────────────────────────────────────────
 
-def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engine", target_files: list[str] | None = None, task_id: str = "unknown") -> tuple[bool, str]:
+
+def run_compile_gate(
+    gate_type: str,
+    service_dir: str = "src/constitutional-engine",
+    target_files: list[str] | None = None,
+    task_id: str = "unknown",
+) -> tuple[bool, str]:
     """
     Run the appropriate compile gate for the technology stack.
     C-082: build validation required after every sub-task.
@@ -524,9 +520,11 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
         csproj_files = list((REPO_ROOT / service_dir).glob("*.csproj"))
         if not csproj_files:
             return False, f"No .csproj found in {service_dir}"
-        result = subprocess.run(
-            ["dotnet", "build", str(csproj_files[0]), "--nologo", "-v", "quiet"],
-            capture_output=True, text=True, cwd=REPO_ROOT
+        result = subprocess.run(  # noqa: S603
+            ["dotnet", "build", str(csproj_files[0]), "--nologo", "-v", "quiet"],  # noqa: S607
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
         )
         return result.returncode == 0, result.stderr[:500] if result.returncode != 0 else ""
 
@@ -538,15 +536,29 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
         if not test_csproj:
             return False, f"No test .csproj found in {service_dir}"
         project_path = test_csproj[0].relative_to(REPO_ROOT).as_posix()
-        result = subprocess.run(
-            [
-                "docker", "compose", "--profile", "test", "run", "--rm",
-                "--user", "root", "--volume",
+        result = subprocess.run(  # noqa: S603
+            [  # noqa: S607
+                "docker",
+                "compose",
+                "--profile",
+                "test",
+                "run",
+                "--rm",
+                "--user",
+                "root",
+                "--volume",
                 "waooaw-f3-web-node-modules:/workspace/web/node_modules",
                 "test-runner",
-                "dotnet", "test", project_path, "--nologo", "-v", "quiet",
+                "dotnet",
+                "test",
+                project_path,
+                "--nologo",
+                "-v",
+                "quiet",
             ],
-            capture_output=True, text=True, cwd=REPO_ROOT
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
         )
         error_output = (result.stdout + result.stderr)[-500:] if result.returncode != 0 else ""
         return result.returncode == 0, error_output
@@ -556,9 +568,11 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
         if not target_files:
             return False, "py_compile gate requires explicit target_files — none provided"
         for f in target_files:
-            result = subprocess.run(
-                ["python3", "-m", "py_compile", str(REPO_ROOT / f)],
-                capture_output=True, text=True, cwd=REPO_ROOT
+            result = subprocess.run(  # noqa: S603
+                ["python3", "-m", "py_compile", str(REPO_ROOT / f)],  # noqa: S607
+                capture_output=True,
+                text=True,
+                cwd=REPO_ROOT,
             )
             if result.returncode != 0:
                 return False, result.stderr[:500]
@@ -571,14 +585,13 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
         # Auto-fix all fixable issues first (whitespace, import sorting, unused imports).
         # --unsafe-fixes enables ruff to rename unused variables (F841: `handle` → `_handle`)
         # and other semantic-safe transformations that are disabled in the default safe mode.
-        subprocess.run(
-            ["python3", "-m", "ruff", "check", *ruff_targets, "--fix", "--unsafe-fixes", "--exit-zero"],
-            capture_output=True, text=True, cwd=REPO_ROOT
+        subprocess.run(  # noqa: S603
+            ["python3", "-m", "ruff", "check", *ruff_targets, "--fix", "--unsafe-fixes", "--exit-zero"],  # noqa: S607
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
         )
-        result = subprocess.run(
-            ["python3", "-m", "ruff", "check", *ruff_targets],
-            capture_output=True, text=True, cwd=REPO_ROOT
-        )
+        result = subprocess.run(["python3", "-m", "ruff", "check", *ruff_targets], capture_output=True, text=True, cwd=REPO_ROOT)  # noqa: S603, S607
         # Capture both stdout (violations) and stderr (ruff errors, e.g. TOML parse)
         error_output = (result.stdout + result.stderr)[:500]
         if result.returncode != 0:
@@ -589,12 +602,25 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
         # C-080: test execution must run in Docker, never host Python.
         # Scope to target_files when provided — avoids unrelated baseline failures.
         pytest_targets: list[str] = target_files if target_files else [service_dir]
-        result = subprocess.run(
-            [
-                "docker", "compose", "--profile", "test", "run", "--rm", "test-runner",
-                "python3", "-m", "pytest", *pytest_targets, "-q", "--tb=short",
+        result = subprocess.run(  # noqa: S603
+            [  # noqa: S607
+                "docker",
+                "compose",
+                "--profile",
+                "test",
+                "run",
+                "--rm",
+                "test-runner",
+                "python3",
+                "-m",
+                "pytest",
+                *pytest_targets,
+                "-q",
+                "--tb=short",
             ],
-            capture_output=True, text=True, cwd=REPO_ROOT
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
         )
         # Capture both stdout+stderr (same as ruff gate) — ImportErrors from missing
         # deps (asyncpg, httpx) go to stderr; silent failure if only stdout captured.
@@ -611,23 +637,32 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
         except (OSError, ValueError, yaml.YAMLError) as exc:
             return False, f"Could not build dependency-closed F3 OpenAPI slice: {exc}"
         model_selection = ":".join(F3_CONVERSATION_MODELS)
-        generator = subprocess.run(
-            [
-                "docker", "run", "--rm",
-                "--user", f"{os.getuid()}:{os.getgid()}",
-                "--volume", f"{REPO_ROOT}:/local",
+        generator = subprocess.run(  # noqa: S603
+            [  # noqa: S607
+                "docker",
+                "run",
+                "--rm",
+                "--user",
+                f"{os.getuid()}:{os.getgid()}",
+                "--volume",
+                f"{REPO_ROOT}:/local",
                 "openapitools/openapi-generator-cli:v7.17.0",
                 "generate",
-                "-i", "/local/sprint-context/.f3-conversation.openapi.yaml",
-                "-g", "typescript-fetch",
-                "-o", "/local/sprint-context/.generated-conversation-client",
+                "-i",
+                "/local/sprint-context/.f3-conversation.openapi.yaml",
+                "-g",
+                "typescript-fetch",
+                "-o",
+                "/local/sprint-context/.generated-conversation-client",
                 "--skip-validate-spec",
                 "--global-property",
                 f"apis=Conversation,models={model_selection},supportingFiles=runtime.ts",
                 "--additional-properties",
                 "supportsES6=true,typescriptThreePlus=true,useSingleRequestParameter=true",
             ],
-            capture_output=True, text=True, cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
         )
         if generator.returncode != 0:
             slice_path.unlink(missing_ok=True)
@@ -675,9 +710,11 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
         validation_script = REPO_ROOT / "scripts" / "wc034_f3_validation.py"
         if not validation_script.exists():
             return False, "scripts/wc034_f3_validation.py was not generated"
-        result = subprocess.run(
-            ["python3", str(validation_script)],
-            capture_output=True, text=True, cwd=REPO_ROOT,
+        result = subprocess.run(  # noqa: S603
+            ["python3", str(validation_script)],  # noqa: S607
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
         )
         error_output = (result.stdout + result.stderr)[-1500:] if result.returncode != 0 else ""
         return result.returncode == 0, error_output
@@ -688,16 +725,26 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
             return False, "web/ directory not found"
 
         tsc_proc = subprocess.run(
-            [
-                "docker", "compose", "--profile", "test", "run", "--rm",
-                "--user", "root", "--volume",
+            [  # noqa: S607
+                "docker",
+                "compose",
+                "--profile",
+                "test",
+                "run",
+                "--rm",
+                "--user",
+                "root",
+                "--volume",
                 "waooaw-f3-web-node-modules:/workspace/web/node_modules",
                 "test-runner",
-                "bash", "-lc",
+                "bash",
+                "-lc",
                 "cd /workspace/web && CI=true pnpm install --frozen-lockfile --package-import-method=copy "
                 "&& pnpm exec tsc --noEmit --strict",
             ],
-            capture_output=True, text=True, cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
         )
         if tsc_proc.returncode != 0:
             error_output = (tsc_proc.stdout + tsc_proc.stderr)[:500]
@@ -713,17 +760,26 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
             rel_targets = " ".join(p.replace("web/", "") for p in web_targets)
             run_clause = f"pnpm test -- --runInBand --runTestsByPath {rel_targets}"
 
-        result = subprocess.run(
-            [
-                "docker", "compose", "--profile", "test", "run", "--rm",
-                "--user", "root", "--volume",
+        result = subprocess.run(  # noqa: S603
+            [  # noqa: S607
+                "docker",
+                "compose",
+                "--profile",
+                "test",
+                "run",
+                "--rm",
+                "--user",
+                "root",
+                "--volume",
                 "waooaw-f3-web-node-modules:/workspace/web/node_modules",
                 "test-runner",
-                "bash", "-lc",
-                "cd /workspace/web && "
-                f"CI=true pnpm install --frozen-lockfile --package-import-method=copy && {run_clause}",
+                "bash",
+                "-lc",
+                f"cd /workspace/web && CI=true pnpm install --frozen-lockfile --package-import-method=copy && {run_clause}",
             ],
-            capture_output=True, text=True, cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
         )
         error_output = (result.stdout + result.stderr)[-500:] if result.returncode != 0 else ""
         return result.returncode == 0, error_output
@@ -735,10 +791,22 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
         full_paths = [str(REPO_ROOT / f) for f in sql_targets if (REPO_ROOT / f).exists()]
         if not full_paths:
             return True, ""
-        result = subprocess.run(
-            ["python3", "-m", "sqlfluff", "lint", "--dialect", "postgres",
-             "--format", "github-annotation", "--no-progress-bar"] + full_paths,
-            capture_output=True, text=True, cwd=REPO_ROOT
+        result = subprocess.run(  # noqa: S603
+            [  # noqa: S607
+                "python3",
+                "-m",
+                "sqlfluff",
+                "lint",
+                "--dialect",
+                "postgres",
+                "--format",
+                "github-annotation",
+                "--no-progress-bar",
+                *full_paths,
+            ],
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
         )
         error_output = (result.stdout + result.stderr)[:500] if result.returncode != 0 else ""
         if result.returncode != 0:
@@ -752,9 +820,11 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
         full_paths = [str(REPO_ROOT / f) for f in yaml_targets if (REPO_ROOT / f).exists()]
         if not full_paths:
             return True, ""
-        result = subprocess.run(
-            ["python3", "-m", "yamllint", "-d", "relaxed", "-f", "parsable"] + full_paths,
-            capture_output=True, text=True, cwd=REPO_ROOT
+        result = subprocess.run(  # noqa: S603
+            ["python3", "-m", "yamllint", "-d", "relaxed", "-f", "parsable", *full_paths],  # noqa: S607
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
         )
         error_output = (result.stdout + result.stderr)[:500] if result.returncode != 0 else ""
         if result.returncode != 0:
@@ -769,6 +839,7 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
         errors: list[str] = []
         try:
             import hcl2  # type: ignore[import-untyped]
+
             for f in tf_targets:
                 full = REPO_ROOT / f
                 if not full.exists():
@@ -784,14 +855,13 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
             return False, "\n".join(errors)
         return True, ""
 
-    return False, (
-        f"Unknown gate_type: {gate_type}. Supported: {sorted(SUPPORTED_COMPILE_GATES)}"
-    )
+    return False, (f"Unknown gate_type: {gate_type}. Supported: {sorted(SUPPORTED_COMPILE_GATES)}")
 
 
 # ── Lint violation learning cache (C-069 self-improvement) ────────────────────
 
 _LINT_VIOLATIONS_PATH = REPO_ROOT / "sprint-context" / "lint-violations.json"
+
 
 def record_lint_violations(task_id: str, error_output: str, gate_type: str) -> None:
     """
@@ -810,8 +880,8 @@ def record_lint_violations(task_id: str, error_output: str, gate_type: str) -> N
             except Exception:
                 violations = {}
 
-        # Match 1–3 uppercase letters + 3–4 digits (covers ANN201, B017, F841, E501, UP007)
-        code_pattern = _re.compile(r'\b([A-Z]{1,3}\d{3,4}|SQL\w+)\b')
+        # Match 1-3 uppercase letters + 3-4 digits (covers ANN201, B017, F841, E501, UP007)
+        code_pattern = _re.compile(r"\b([A-Z]{1,3}\d{3,4}|SQL\w+)\b")
         codes = list(set(code_pattern.findall(error_output)))
 
         for code in codes:
@@ -830,14 +900,18 @@ def record_lint_violations(task_id: str, error_output: str, gate_type: str) -> N
             _json.dumps(violations, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
-    except Exception:
+    except Exception:  # noqa: S110
         pass  # non-blocking — learning cache is best-effort
 
 
 # ── Signal emission (C-083) ───────────────────────────────────────────────────
 
+
 def emit_subtask_signal(
-    task_id: str, subtask_id: str, result: str, monitor_signal: dict,
+    task_id: str,
+    subtask_id: str,
+    result: str,
+    monitor_signal: dict,
     error_codes: list[str] | None = None,
     error_text: str = "",
 ) -> None:
@@ -860,6 +934,7 @@ def emit_subtask_signal(
 
 # ── File-by-file LLM generation (IB-023) ──────────────────────────────────────
 
+
 def _filter_ptr_types_for_file(filename: str, all_types: dict) -> list[str]:
     """
     Heuristic: return PTR type names likely relevant to the given filename.
@@ -880,22 +955,39 @@ def _filter_ptr_types_for_file(filename: str, all_types: dict) -> list[str]:
 
     # Constitutional engine service — proto types + evaluator types
     if "service" in fname and "constitutional" in fname:
-        return [t for t in all_types if
-                any(k in t.lower() for k in ("validate", "record", "evidence", "emergency",
-                                              "grant", "revoke", "evaluator", "evaluation",
-                                              "validation", "decision", "budget"))]
+        return [
+            t
+            for t in all_types
+            if any(
+                k in t.lower()
+                for k in (
+                    "validate",
+                    "record",
+                    "evidence",
+                    "emergency",
+                    "grant",
+                    "revoke",
+                    "evaluator",
+                    "evaluation",
+                    "validation",
+                    "decision",
+                    "budget",
+                )
+            )
+        ]
 
     # Evaluator files — evaluation types only
     if "evaluator" in fname or "evaluators" in fname.split("/")[-2:]:
-        return [t for t in all_types if
-                any(k in t.lower() for k in ("evaluation", "evaluator", "verdict",
-                                              "result", "claim", "context", "registry"))]
+        return [
+            t
+            for t in all_types
+            if any(k in t.lower() for k in ("evaluation", "evaluator", "verdict", "result", "claim", "context", "registry"))
+        ]
 
     # Name match — type name substring appears in filename
     matched = [t for t in all_types if t.lower() in fname or fname in t.lower()]
     if matched:
-        return matched + [t for t in all_types if
-                          any(k in t.lower() for k in ("evaluation", "evaluator"))]
+        return matched + [t for t in all_types if any(k in t.lower() for k in ("evaluation", "evaluator"))]
 
     # Safe fallback — inject all
     return list(all_types.keys())
@@ -934,7 +1026,7 @@ def execute_file_by_file(
     _scripts = str(REPO_ROOT / "scripts")
     if _scripts not in sys.path:
         sys.path.insert(0, _scripts)
-    from autonomous_sprint_runner import execute_with_llm, write_llm_files, parse_llm_files, validate_written_files, call_llm_via_magiclm
+    from autonomous_sprint_runner import execute_with_llm, write_llm_files, parse_llm_files, call_llm_via_magiclm
 
     # ── FinOps Pattern 1: augment spec_sections from sprint RAG index ──────────
     # The index pre-computes semantically-relevant spec files with token-budget
@@ -945,24 +1037,23 @@ def execute_file_by_file(
     if _index_path.exists():
         try:
             import json as _ijson
+
             _idx = _ijson.loads(_index_path.read_text(encoding="utf-8"))
             _idx_specs: dict[str, str] = {
-                s["file"]: (
-                    s.get("section", "full")
-                    if "TOO_LARGE" not in s.get("section", "")
-                    else "full"
-                )
+                s["file"]: (s.get("section", "full") if "TOO_LARGE" not in s.get("section", "") else "full")
                 for s in _idx.get("spec_sections", [])
                 if s.get("file") and (REPO_ROOT / s["file"]).exists()
             }
             # SubTaskDef wins on overlap — index fills the gaps
             _augmented = {**_idx_specs, **spec_sections}
             if len(_augmented) > len(spec_sections):
-                print(f"  FILE-BY-FILE: RAG index augmented spec_sections "
-                      f"{len(spec_sections)} → {len(_augmented)} files "
-                      f"(+{len(_augmented) - len(spec_sections)} from index)")
+                print(
+                    f"  FILE-BY-FILE: RAG index augmented spec_sections "
+                    f"{len(spec_sections)} → {len(_augmented)} files "
+                    f"(+{len(_augmented) - len(spec_sections)} from index)"
+                )
             spec_sections = _augmented
-        except Exception as _idx_e:
+        except Exception as _idx_e:  # noqa: S110
             pass  # non-blocking — SubTaskDef spec_sections still used
 
     # D-4: inject declared source files so ContextBuilder/GoalExecutor receives them as spec context
@@ -976,6 +1067,7 @@ def execute_file_by_file(
     _go_available = False
     try:
         from goal_orchestrator.goal_executor import GoalExecutor
+
         _go_available = True
     except ImportError as _go_import_err:
         print(f"  FILE-BY-FILE: GoalExecutor not importable ({_go_import_err}) — using MagicLLM inline")
@@ -983,7 +1075,7 @@ def execute_file_by_file(
     if _go_available:
         try:
             executor = GoalExecutor(goal_id=effective_goal_id, repo_root=REPO_ROOT)
-            print(f"  FILE-BY-FILE: using GoalExecutor (canonical GO path)")
+            print("  FILE-BY-FILE: using GoalExecutor (canonical GO path)")
             results = executor.execute_sprint_task(
                 task_id=task_id,
                 wc_number=task_id[2:5] if task_id.startswith("WC") else "012",
@@ -1007,22 +1099,23 @@ def execute_file_by_file(
                 if not missing:
                     return True
                 print(f"  FILE-BY-FILE: GoalExecutor path mismatch — expected but missing: {missing}")
-                print(f"  FILE-BY-FILE: falling back to inline MagicLLM with explicit path constraint")
+                print("  FILE-BY-FILE: falling back to inline MagicLLM with explicit path constraint")
                 output_files = missing
             else:
                 # Partial success — identify failed files and log prominently
                 output_files = [r.task.output_file for r in results if r.status != "success"]
                 print(f"  FILE-BY-FILE: GoalExecutor partial failure — {len(output_files)} file(s) failed: {output_files}")
-            print(f"  FILE-BY-FILE: falling back to inline MagicLLM for failed files only")
+            print("  FILE-BY-FILE: falling back to inline MagicLLM for failed files only")
         except Exception as _go_runtime_err:
             print(f"  FILE-BY-FILE: ⚠️  GoalExecutor runtime error ({type(_go_runtime_err).__name__}: {_go_runtime_err})")
-            print(f"  FILE-BY-FILE: falling back to inline MagicLLM")
+            print("  FILE-BY-FILE: falling back to inline MagicLLM")
 
     # ── Path 2: Inline MagicLLM (fallback) ────────────────────────────────────
     # Try to load MagicLLM components
     try:
         from magic_llm.context_builder import ContextBuilder
         from magic_llm.response_evaluator import ResponseEvaluator
+
         _cb = ContextBuilder(REPO_ROOT)
         _re_eval = ResponseEvaluator(REPO_ROOT)
         _use_magic = True
@@ -1043,9 +1136,10 @@ def execute_file_by_file(
             # E5: pre-compile self-review before write
             # E7: retry advisor on compile gate failure
             import os as _os
+
             api_key = _os.environ.get("ANTHROPIC_API_KEY", "")
             if not api_key:
-                print(f"  WARN: no API key — falling back to ad-hoc path")
+                print("  WARN: no API key — falling back to ad-hoc path")
                 _use_magic = False
             else:
                 max_magic_attempts = 3
@@ -1055,8 +1149,9 @@ def execute_file_by_file(
                 for attempt in range(1, max_magic_attempts + 1):
                     # E4: fresh ContextBuilder per attempt — reloads frozen registry
                     try:
-                        from magic_llm.context_builder import ContextBuilder as _CB
-                        _cb_fresh = _CB(REPO_ROOT)
+                        from magic_llm.context_builder import ContextBuilder as _ContextBuilder
+
+                        _cb_fresh = _ContextBuilder(REPO_ROOT)
                     except Exception:
                         _cb_fresh = _cb  # fallback to outer instance
 
@@ -1067,8 +1162,8 @@ def execute_file_by_file(
                             output_file=output_file,
                             spec_sections=spec_sections,
                             constitutional_check=(
-                                effective_check +
-                                (f"\n\nPREVIOUS ATTEMPT FAILED:\n{magic_failure_context}" if magic_failure_context else "")
+                                effective_check
+                                + (f"\n\nPREVIOUS ATTEMPT FAILED:\n{magic_failure_context}" if magic_failure_context else "")
                             ),
                             depends_on_tasks=[],
                             prior_output_files=prior_output_files or already_written,
@@ -1093,17 +1188,18 @@ def execute_file_by_file(
 
                         files_parsed = parse_llm_files(response)
                         if not files_parsed:
-                            magic_failure_context = "No <file> blocks in response — wrap output in <file path=\"...\">.</file>"
+                            magic_failure_context = 'No <file> blocks in response — wrap output in <file path="...">.</file>'
                             continue
 
                         # E5: pre-compile self-review before write
                         try:
                             from codegen_self_review import pre_compile_review
                             from ptr_assembler import get_assembler as _pga2
+
                             _um2 = _pga2().build_using_map()
                             files_parsed = pre_compile_review(files_parsed, api_key, _um2)
                             print(f"  PRE-REVIEW: self-review complete ({len(files_parsed)} file(s))")
-                        except Exception as _pr_err:
+                        except Exception as _pr_err:  # noqa: S110
                             pass  # non-blocking
 
                         written = write_llm_files(files_parsed)
@@ -1132,11 +1228,17 @@ def execute_file_by_file(
                         if failure and failure.error_codes:
                             try:
                                 import importlib.util as _ilu
-                                _s = _ilu.spec_from_file_location("sprint_retry_advisor",
-                                     str(REPO_ROOT / "scripts" / "sprint_retry_advisor.py"))
-                                _m = _ilu.module_from_spec(_s); _s.loader.exec_module(_m)
+
+                                _s = _ilu.spec_from_file_location(
+                                    "sprint_retry_advisor", str(REPO_ROOT / "scripts" / "sprint_retry_advisor.py")
+                                )
+                                _m = _ilu.module_from_spec(_s)
+                                _s.loader.exec_module(_m)
                                 diagnosis = _m.diagnose_build_error(
-                                    f"{task_id}:{file_name}", failure.detail, written, [],
+                                    f"{task_id}:{file_name}",
+                                    failure.detail,
+                                    written,
+                                    [],
                                     output_file=output_file,
                                 )
                                 if diagnosis.should_retry and diagnosis.confidence >= 0.3:
@@ -1147,7 +1249,7 @@ def execute_file_by_file(
                                     )
                                     print(f"  Retry Advisor: {diagnosis.error_type} (confidence={diagnosis.confidence:.0%})")
                                     continue
-                            except Exception:
+                            except Exception:  # noqa: S110
                                 pass
                         magic_failure_context = f"Gate {failure.gate} failed: {failure.detail[:300]}"
 
@@ -1172,16 +1274,18 @@ def execute_file_by_file(
         all_ptr_types: dict = {}
         try:
             from platform_type_registry import load_ptr, build_ptr_prompt_block
+
             ptr = load_ptr()
             for task_entry in ptr.get("tasks", {}).values():
                 all_ptr_types.update(task_entry.get("types", {}))
-        except Exception:
+        except Exception:  # noqa: S110
             pass
 
         preservation = (
-            f"\nFiles already written in this session (DO NOT regenerate):\n  "
-            + "\n  ".join(already_written)
-        ) if already_written else ""
+            ("\nFiles already written in this session (DO NOT regenerate):\n  " + "\n  ".join(already_written))
+            if already_written
+            else ""
+        )
 
         relevant_types = _filter_ptr_types_for_file(output_file, all_ptr_types)
         file_ptr_block = ""
@@ -1189,7 +1293,7 @@ def execute_file_by_file(
             try:
                 file_ptr_block = build_ptr_prompt_block(relevant_types, ptr=ptr)
                 print(f"  PTR: {len(relevant_types)}/{len(all_ptr_types)} types injected for {file_name}")
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
 
         single_file_check = (
@@ -1202,16 +1306,18 @@ def execute_file_by_file(
         # REQUIRED_USINGS injection
         try:
             from ptr_assembler import get_assembler as _pga
+
             _umap = _pga().build_using_map()
             if _umap:
                 import re as _re2
+
                 _scan_text = effective_check + file_ptr_block
-                _mentioned = set(_re2.findall(r'\b([A-Z][a-zA-Z0-9]+)\b', _scan_text))
+                _mentioned = set(_re2.findall(r"\b([A-Z][a-zA-Z0-9]+)\b", _scan_text))
                 _req = sorted({f"using {ns};" for cls, ns in _umap.items() if cls in _mentioned})
                 if _req:
                     single_file_check += "\n\nREQUIRED USINGS:\n" + "\n".join(_req)
                     print(f"  REQUIRED_USINGS: {len(_req)} directives injected")
-        except Exception:
+        except Exception:  # noqa: S110
             pass
 
         success = execute_with_llm(
@@ -1236,7 +1342,8 @@ def execute_file_by_file(
 
 # ── Generalized LLM subtask runner (used by both normal and skeleton→logic path) ─
 
-def _run_llm_subtask(st: "SubTaskDef", completed: list[str], dry_run: bool) -> bool:
+
+def _run_llm_subtask(st: SubTaskDef, completed: list[str], dry_run: bool) -> bool:
     """Run a single LLM subtask with full context assembly. Used by execute_subtask_chain."""
     _scripts = str(REPO_ROOT / "scripts")
     if _scripts not in sys.path:
@@ -1249,33 +1356,40 @@ def _run_llm_subtask(st: "SubTaskDef", completed: list[str], dry_run: bool) -> b
     if not st.output_files:
         try:
             from platform_type_registry import build_ptr_prompt_block, load_ptr
+
             ptr = load_ptr()
             if ptr:
-                all_type_names = [
-                    t for task_entry in ptr.get("tasks", {}).values()
-                    for t in task_entry.get("types", {}).keys()
-                ]
+                all_type_names = [t for task_entry in ptr.get("tasks", {}).values() for t in task_entry.get("types", {}).keys()]
                 ptr_block = build_ptr_prompt_block(all_type_names, ptr=ptr)
                 if ptr_block:
                     effective_check = effective_check + ptr_block
-        except Exception:
+        except Exception:  # noqa: S110
             pass
 
     if st.output_files:
         return execute_file_by_file(
-            st.id, st.output_files, effective_check, spec_with_context,
-            st.model_hint, st.max_tokens,
+            st.id,
+            st.output_files,
+            effective_check,
+            spec_with_context,
+            st.model_hint,
+            st.max_tokens,
             stack=st.stack,
             prior_output_files=list(spec_with_context.keys()),  # spec keys hint at dependencies
         )
     else:
         return execute_with_llm(
-            st.id, st.description, spec_with_context, effective_check,
-            st.model_hint, st.max_tokens,
+            st.id,
+            st.description,
+            spec_with_context,
+            effective_check,
+            st.model_hint,
+            st.max_tokens,
         )
 
 
 # ── Canary-file validation ─────────────────────────────────────────────────────
+
 
 def run_canary_validation(
     task_id: str,
@@ -1301,13 +1415,9 @@ def run_canary_validation(
     _scripts = str(REPO_ROOT / "scripts")
     if _scripts not in sys.path:
         sys.path.insert(0, _scripts)
-    from autonomous_sprint_runner import execute_with_llm, validate_written_files
+    from autonomous_sprint_runner import execute_with_llm
 
-    canary_check = (
-        f"Generate ONLY this ONE canary file: {canary_file}\n"
-        f"Do NOT generate any other file.\n\n"
-        f"{effective_check}"
-    )
+    canary_check = f"Generate ONLY this ONE canary file: {canary_file}\nDo NOT generate any other file.\n\n{effective_check}"
 
     success = execute_with_llm(
         f"{task_id}:canary:{Path(canary_file).name}",
@@ -1330,6 +1440,7 @@ def run_canary_validation(
 
 
 # ── TaskDecomposer ─────────────────────────────────────────────────────────────
+
 
 def execute_subtask_chain(
     task_id: str,
@@ -1366,8 +1477,6 @@ def execute_subtask_chain(
     completed_this_chain: list[str] = []
     # Seed with cross-task failures so depends_on across task chains is honoured
     failed: list[str] = list(prior_failed) if prior_failed else []
-    all_written_files: list[str] = []
-
     print(f"\n── {task_id}: sub-task chain ({len(subtasks)} sub-tasks) ──")
 
     for st in subtasks:
@@ -1403,8 +1512,8 @@ def execute_subtask_chain(
             for rel_path in st.output_files
         }
 
-        def rollback_outputs() -> None:
-            for rel_path, original in output_snapshot.items():
+        def rollback_outputs(snapshot: dict[str, bytes | None] = output_snapshot) -> None:
+            for rel_path, original in snapshot.items():
                 path = REPO_ROOT / rel_path
                 if original is None:
                     path.unlink(missing_ok=True)
@@ -1462,7 +1571,9 @@ def execute_subtask_chain(
                     failed.append(st.id)
                     continue
                 # Compile gate between phases — scope to output_files (B-2 fix)
-                gate_ok, gate_error = run_compile_gate(st.compile_gate, st.service_dir, target_files=st.output_files or None, task_id=st.id)
+                gate_ok, gate_error = run_compile_gate(
+                    st.compile_gate, st.service_dir, target_files=st.output_files or None, task_id=st.id
+                )
                 if not gate_ok:
                     print(f"  [{st.id}] SKELETON compile gate FAILED: {gate_error[:200]}")
                     emit_subtask_signal(task_id, st.id, "FAIL", monitor_signal)
@@ -1470,6 +1581,7 @@ def execute_subtask_chain(
                     continue
                 print(f"  [{st.id}] SKELETON compile gate: ✅ PASS — signatures frozen")
                 import copy
+
                 logic_st = copy.copy(st)
                 logic_st.generation_phase = "logic"
                 print(f"  [{st.id}] PHASE 2/2: LOGIC FILL (method bodies only)...")
@@ -1496,11 +1608,11 @@ def execute_subtask_chain(
             if not st.output_files:
                 try:
                     from platform_type_registry import build_ptr_prompt_block, load_ptr
+
                     ptr = load_ptr()
                     if ptr:
                         all_type_names = [
-                            t for task_entry in ptr.get("tasks", {}).values()
-                            for t in task_entry.get("types", {}).keys()
+                            t for task_entry in ptr.get("tasks", {}).values() for t in task_entry.get("types", {}).keys()
                         ]
                         ptr_block = build_ptr_prompt_block(all_type_names, ptr=ptr)
                         if ptr_block:
@@ -1515,8 +1627,9 @@ def execute_subtask_chain(
                 # E1+E2 fix: pass stack + prior_output_files so ContextBuilder has frozen signatures
                 # prior = all output files from already-completed subtasks in this chain
                 prior_files = [
-                    f for prev_st in subtasks
-                    if prev_st.id in completed and hasattr(prev_st, 'output_files')
+                    f
+                    for prev_st in subtasks
+                    if prev_st.id in completed and hasattr(prev_st, "output_files")
                     for f in (prev_st.output_files or [])
                 ]
                 success = execute_file_by_file(
@@ -1533,6 +1646,7 @@ def execute_subtask_chain(
             else:
                 # Legacy batch mode — backward compat for subtasks without output_files
                 from autonomous_sprint_runner import execute_with_llm
+
                 success = execute_with_llm(
                     st.id,
                     st.description,
@@ -1549,10 +1663,11 @@ def execute_subtask_chain(
             # scope_text = effective_check assembled from WC spec + stack rules + delta
             # (the same prompt context MagicLLM would receive, but UDCP does scaffold first)
             from runner.task_executor import execute_with_udcp
+
             effective_check = _build_effective_check(st, completed)
             # Append spec section content as additional scope context
             scope_lines = [effective_check]
-            for spec_file, section in st.spec_sections.items():
+            for spec_file, _section in st.spec_sections.items():
                 spec_path = REPO_ROOT / spec_file
                 if spec_path.is_file():
                     content = spec_path.read_text(encoding="utf-8", errors="replace")
@@ -1600,26 +1715,28 @@ def execute_subtask_chain(
                 gate_error = f"MISSING_DELIVERABLE: UDCP did not write declared output(s): {sorted(missing)}"
             else:
                 # Use written files if available; fall back to declared files for DIFFERENTIAL no-ops
-                gate_files = [f for f in udcp_files_written if f in declared] or [
-                    f for f in declared if (REPO_ROOT / f).exists()
-                ]
+                gate_files = [f for f in udcp_files_written if f in declared] or [f for f in declared if (REPO_ROOT / f).exists()]
                 gate_ok, gate_error = run_compile_gate(
-                    st.compile_gate, st.service_dir,
-                    target_files=gate_files or None, task_id=st.id,
+                    st.compile_gate,
+                    st.service_dir,
+                    target_files=gate_files or None,
+                    task_id=st.id,
                 )
         else:
             gate_ok, gate_error = run_compile_gate(
-                st.compile_gate, st.service_dir,
-                target_files=st.output_files or None, task_id=st.id,
+                st.compile_gate,
+                st.service_dir,
+                target_files=st.output_files or None,
+                task_id=st.id,
             )
         if not gate_ok:
             rollback_outputs()
             print(f"  [{st.id}] COMPILE GATE FAILED: {gate_error[:200]}")
-            print(f"  C-084 2.0: marking failed, continuing non-dependent subtasks")
+            print("  C-084 2.0: marking failed, continuing non-dependent subtasks")
             import re as _re_ec
-            _codes = sorted(set(_re_ec.findall(r'(?:CS|NU|MSB|E|W|N|F|B|UP|ANN|I|G)\d+', gate_error)))
-            emit_subtask_signal(task_id, st.id, "FAIL", monitor_signal,
-                                error_codes=_codes, error_text=gate_error)
+
+            _codes = sorted(set(_re_ec.findall(r"(?:CS|NU|MSB|E|W|N|F|B|UP|ANN|I|G)\d+", gate_error)))
+            emit_subtask_signal(task_id, st.id, "FAIL", monitor_signal, error_codes=_codes, error_text=gate_error)
             # P2: correct the provisional SUCCESS written by execute_with_udcp
             if st.id in monitor_signal.get("task_results", {}):
                 monitor_signal["task_results"][st.id] = {
@@ -1642,6 +1759,7 @@ def execute_subtask_chain(
                 if _scripts not in sys.path:
                     sys.path.insert(0, _scripts)
                 from magic_llm.context_builder import ContextBuilder
+
                 _cb = ContextBuilder(REPO_ROOT)
                 frozen_count = _cb.freeze_artifacts_from_task(st.output_files, st.id)
                 if frozen_count > 0:
@@ -1653,10 +1771,15 @@ def execute_subtask_chain(
                         git(["add", str(frozen_path)], check=False)
                         diff = git(["diff", "--cached", "--quiet"], check=False)
                         if diff.returncode != 0:
-                            git(["commit", "-m",
-                                 f"chore(frozen): {st.id} artifact signatures committed\n\n"
-                                 "Constitutional: C-085 (Idempotency — frozen signatures persist across runs)"],
-                                check=False)
+                            git(
+                                [
+                                    "commit",
+                                    "-m",
+                                    f"chore(frozen): {st.id} artifact signatures committed\n\n"
+                                    "Constitutional: C-085 (Idempotency — frozen signatures persist across runs)",
+                                ],
+                                check=False,
+                            )
                             print(f"  [{st.id}] Frozen registry committed to sprint branch")
             except Exception as _freeze_err:
                 print(f"  [{st.id}] WARN: artifact freeze failed ({_freeze_err}) — non-blocking")
@@ -1665,6 +1788,7 @@ def execute_subtask_chain(
         # Best-effort — never blocks sprint execution.
         try:
             from platform_type_registry import update_ptr_from_task
+
             src_files = [
                 str(f.relative_to(REPO_ROOT))
                 for f in (REPO_ROOT / "src").rglob("*")
@@ -1686,14 +1810,21 @@ def execute_subtask_chain(
         git(["add", "src/", "tests/"], check=False)
         diff = git(["diff", "--cached", "--quiet"], check=False)
         if diff.returncode != 0:
-            git(["commit", "-m",
-                 f"feat: {task_id} — {subtasks[-1].description}\n\n"
-                 f"IB: IB-009\nConstitutional: C-059, C-073, C-076, C-084\n"
-                 f"Sub-tasks: {', '.join(completed_this_chain)}"
-                 + (f"\nFailed (retry next run): {', '.join(failed)}" if failed else "")])
+            git(
+                [
+                    "commit",
+                    "-m",
+                    f"feat: {task_id} — {subtasks[-1].description}\n\n"
+                    f"IB: IB-009\nConstitutional: C-059, C-073, C-076, C-084\n"
+                    f"Sub-tasks: {', '.join(completed_this_chain)}"
+                    + (f"\nFailed (retry next run): {', '.join(failed)}" if failed else ""),
+                ]
+            )
 
-    print(f"\n  ✅ {task_id}: {len(completed)}/{len(subtasks)} sub-tasks passed"
-          + (f" | {len(failed)} failed (retry next run): {failed}" if failed else ""))
+    print(
+        f"\n  ✅ {task_id}: {len(completed)}/{len(subtasks)} sub-tasks passed"
+        + (f" | {len(failed)} failed (retry next run): {failed}" if failed else "")
+    )
     return len(failed) == 0
     return len(completed) == len(subtasks)
 
@@ -1706,7 +1837,7 @@ def check_simulation_exists(task_id: str) -> tuple[bool, str]:
     sim_dir = REPO_ROOT / "simulation"
     # Match case-insensitively: files are named SIM-PL-002-WC012-03-*.md (uppercase)
     patterns = [
-        f"SIM-PL-002-{task_id}-*.md",          # exact case: SIM-PL-002-WC012-03-*.md
+        f"SIM-PL-002-{task_id}-*.md",  # exact case: SIM-PL-002-WC012-03-*.md
         f"SIM-PL-002-{task_id.lower()}-*.md",  # lowercase fallback
         f"SIM-PL-002-{task_id.lower().replace('-', '')}-*.md",  # no-hyphen fallback
     ]

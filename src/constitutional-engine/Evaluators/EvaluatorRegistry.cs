@@ -13,7 +13,8 @@ public sealed class EvaluatorRegistry
 
     public EvaluatorRegistry(
         IEnumerable<IClaimEvaluator> evaluators,
-        ILogger<EvaluatorRegistry> logger)
+        ILogger<EvaluatorRegistry> logger
+    )
     {
         _evaluators = evaluators.ToList();
         _logger = logger;
@@ -23,11 +24,15 @@ public sealed class EvaluatorRegistry
 
     public async Task<IReadOnlyList<EvaluationResult>> EvaluateAllAsync(
         EvaluationContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         _logger.LogInformation(
             "Evaluating action {ActionType} for contract {ContractId} against {Count} claims",
-            context.ActionType, context.ContractId, _evaluators.Count);
+            context.ActionType,
+            context.ContractId,
+            _evaluators.Count
+        );
         var tasks = _evaluators.Select(e => e.EvaluateAsync(context, cancellationToken));
         return await Task.WhenAll(tasks);
     }

@@ -43,9 +43,26 @@ _AUTO_EXTEND_PATTERN = re.compile(r"\bCS\d{4}\b")
 
 # Do NOT re-add codes that already have explicit handlers
 _KNOWN_CODES = {
-    "CS0019", "CS0037", "CS0101", "CS0103", "CS0115", "CS0117", "CS0246",
-    "CS0266", "CS0505", "CS0539", "CS0738", "CS1061", "CS1503",
-    "CS1729", "CS1744", "CS7036", "CS8600", "CS8602", "CS8604", "CS8618",
+    "CS0019",
+    "CS0037",
+    "CS0101",
+    "CS0103",
+    "CS0115",
+    "CS0117",
+    "CS0246",
+    "CS0266",
+    "CS0505",
+    "CS0539",
+    "CS0738",
+    "CS1061",
+    "CS1503",
+    "CS1729",
+    "CS1744",
+    "CS7036",
+    "CS8600",
+    "CS8602",
+    "CS8604",
+    "CS8618",
     "CS8629",
     # CS1024 intentionally NOT here — auto-extend will generate it on first encounter
 }
@@ -59,7 +76,7 @@ def _extract_unknown_codes_from_signal(signal: dict) -> list[tuple[str, str]]:
     results = signal.get("task_results", {})
     unknown_pairs: list[tuple[str, str]] = []
 
-    for task_id, result in results.items():
+    for _task_id, result in results.items():
         if result.get("result") not in ("BUILD_FAILURE", "SPEC_GAP"):
             continue
         snippet = result.get("build_error_snippet", "") or ""
@@ -122,7 +139,8 @@ Return ONLY the function. No markdown. No explanation."""
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        response = urllib.request.urlopen(req, timeout=30)  # noqa: S310
+        with response as resp:
             body = json.loads(resp.read().decode("utf-8"))
         return body["content"][0]["text"].strip()
     except Exception as e:
@@ -134,11 +152,11 @@ def _validate_handler_syntax(handler_code: str, error_code: str) -> bool:
     """Compile-check the generated handler before injecting."""
     # Must be a function definition
     if not handler_code.strip().startswith("def _classify_"):
-        print(f"  advisor_auto_extend: handler does not start with 'def _classify_'")
+        print("  advisor_auto_extend: handler does not start with 'def _classify_'")
         return False
     # Must contain RetryDiagnosis
     if "RetryDiagnosis" not in handler_code:
-        print(f"  advisor_auto_extend: handler missing RetryDiagnosis")
+        print("  advisor_auto_extend: handler missing RetryDiagnosis")
         return False
     # Syntax check via py_compile
     test_code = (
@@ -154,8 +172,7 @@ def _validate_handler_syntax(handler_code: str, error_code: str) -> bool:
         "    confidence: float\n"
         "    duplicate_files: list = field(default_factory=list)\n"
         "    constitutional_trace: str = ''\n"
-        "WRONG_FIELD_NAME = 'WRONG_FIELD_NAME'\n\n"
-        + handler_code
+        "WRONG_FIELD_NAME = 'WRONG_FIELD_NAME'\n\n" + handler_code
     )
     try:
         compile(test_code, "<handler>", "exec")
@@ -174,7 +191,7 @@ def _inject_handler(error_code: str, handler_code: str) -> bool:
 
     # 1. Check anchor exists
     if INJECTION_ANCHOR not in content:
-        print(f"  advisor_auto_extend: anchor not found in advisor — skipping injection")
+        print("  advisor_auto_extend: anchor not found in advisor — skipping injection")
         return False
 
     # 2. Check not already present
@@ -184,20 +201,16 @@ def _inject_handler(error_code: str, handler_code: str) -> bool:
         return False
 
     # 3. Inject handler function before the learning-cache fallback block
-    handler_block = (
-        f"\n\n# ── Auto-generated handler: {error_code} (advisor_auto_extend.py) ──\n"
-        + handler_code
-        + "\n"
-    )
+    handler_block = f"\n\n# ── Auto-generated handler: {error_code} (advisor_auto_extend.py) ──\n" + handler_code + "\n"
     content = content.replace(INJECTION_ANCHOR, handler_block + "\n" + INJECTION_ANCHOR)
 
     # 4. Add call site in diagnose_build_error() just before the learning-cache fallback
     call_site = (
         f"    # ── Auto-extended: {error_code} ──────────────────────────────────────────\n"
-        f"    if \"{error_code}\" in error_codes:\n"
+        f'    if "{error_code}" in error_codes:\n'
         f"        _diag = {function_name}(build_error)\n"
         f"        if _diag:\n"
-        f"            print(f\"  Retry Advisor: {error_code} auto-handler (confidence={{_diag.confidence:.0%}})\")\n"
+        f'            print(f"  Retry Advisor: {error_code} auto-handler (confidence={{_diag.confidence:.0%}})")\n'
         f"            return _diag\n\n"
     )
     content = content.replace(INJECTION_ANCHOR, call_site + INJECTION_ANCHOR)
@@ -210,34 +223,41 @@ def _inject_handler(error_code: str, handler_code: str) -> bool:
 def _run_tests() -> bool:
     """Run advisor tests after injection to confirm no regression."""
     result = subprocess.run(
-        [sys.executable, "-m", "pytest",
-         "tests/pipeline/test_sprint_retry_advisor_comprehensive.py",
-         "-q", "--tb=short"],
-        cwd=REPO_ROOT, capture_output=True, text=True,
+        [sys.executable, "-m", "pytest", "tests/pipeline/test_sprint_retry_advisor_comprehensive.py", "-q", "--tb=short"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
     )
     if result.returncode != 0:
         print(f"  advisor_auto_extend: tests FAILED after injection:\n{result.stdout[-500:]}")
         return False
-    print(f"  advisor_auto_extend: ✅ advisor tests pass after injection")
+    print("  advisor_auto_extend: ✅ advisor tests pass after injection")
     return True
 
 
 def _commit_and_push(error_code: str) -> bool:
     """Commit and push the auto-extended advisor to main."""
+
     def run(cmd: list[str]) -> subprocess.CompletedProcess:
-        return subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True)
+        return subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True)  # noqa: S603
 
     run(["git", "add", "scripts/sprint_retry_advisor.py"])
     diff = run(["git", "diff", "--cached", "--quiet"])
     if diff.returncode == 0:
-        print(f"  advisor_auto_extend: nothing to commit")
+        print("  advisor_auto_extend: nothing to commit")
         return True
 
-    commit = run(["git", "commit", "-m",
-                  f"fix(advisor): auto-extend {error_code} handler (C-069 self-improvement)\n\n"
-                  f"New error code encountered in sprint run — auto-generated handler\n"
-                  f"via advisor_auto_extend.py. Validated with advisor test suite.\n"
-                  f"Constitutional basis: C-069 (Self-Improvement), C-082 (Build Validation)"])
+    commit = run(
+        [
+            "git",
+            "commit",
+            "-m",
+            f"fix(advisor): auto-extend {error_code} handler (C-069 self-improvement)\n\n"
+            f"New error code encountered in sprint run — auto-generated handler\n"
+            f"via advisor_auto_extend.py. Validated with advisor test suite.\n"
+            f"Constitutional basis: C-069 (Self-Improvement), C-082 (Build Validation)",
+        ]
+    )
     if commit.returncode != 0:
         print(f"  advisor_auto_extend: commit failed: {commit.stderr[:200]}")
         return False
@@ -272,8 +292,7 @@ def run_auto_extend(signal: dict | None = None) -> int:
         print("  advisor_auto_extend: no new unknown error codes found")
         return 0
 
-    print(f"  advisor_auto_extend: {len(unknown_pairs)} new error code(s) to auto-extend: "
-          f"{[p[0] for p in unknown_pairs]}")
+    print(f"  advisor_auto_extend: {len(unknown_pairs)} new error code(s) to auto-extend: {[p[0] for p in unknown_pairs]}")
 
     injected = 0
     for error_code, snippet in unknown_pairs:
@@ -291,13 +310,11 @@ def run_auto_extend(signal: dict | None = None) -> int:
         except SyntaxError as e:
             print(f"  advisor_auto_extend: post-injection syntax error — reverting: {e}")
             # Revert: restore from git
-            subprocess.run(["git", "checkout", "scripts/sprint_retry_advisor.py"],
-                           cwd=REPO_ROOT, capture_output=True)
+            subprocess.run(["git", "checkout", "scripts/sprint_retry_advisor.py"], cwd=REPO_ROOT, capture_output=True)  # noqa: S607
             continue
         if not _run_tests():
             print(f"  advisor_auto_extend: reverting {error_code} injection (test failure)")
-            subprocess.run(["git", "checkout", "scripts/sprint_retry_advisor.py"],
-                           cwd=REPO_ROOT, capture_output=True)
+            subprocess.run(["git", "checkout", "scripts/sprint_retry_advisor.py"], cwd=REPO_ROOT, capture_output=True)  # noqa: S607
             continue
         _commit_and_push(error_code)
         # Add to known codes so we don't re-generate in same run

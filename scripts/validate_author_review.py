@@ -52,8 +52,7 @@ def validate_author_review(body: str, head_sha: str) -> list[str]:
         violations.append("AUTHOR_REVIEW_SHA_MISSING: add the full reviewed commit SHA")
     elif reviewed_commit.group(1).lower() != normalized_head:
         violations.append(
-            "AUTHOR_REVIEW_STALE: reviewed commit "
-            f"{reviewed_commit.group(1).lower()} does not match PR head {normalized_head}"
+            f"AUTHOR_REVIEW_STALE: reviewed commit {reviewed_commit.group(1).lower()} does not match PR head {normalized_head}"
         )
 
     if REVIEW_RESULT.search(section) is None:

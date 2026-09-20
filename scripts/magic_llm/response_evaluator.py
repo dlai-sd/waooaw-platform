@@ -26,31 +26,31 @@ import re
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 
 # ── Module-level compiled regexes (P2: avoid recompile on every evaluation) ──
-_RE_FILE_BLOCK  = re.compile(r'<file\s+path="[^"]+">', re.IGNORECASE)
-_RE_XML_BLOCK   = re.compile(r'<file\s+path="([^"]+)">(.*?)</file>', re.DOTALL)
-_RE_IMPLEMENTS  = re.compile(r'(?://|#)\s*Implements:', re.MULTILINE)
-_RE_BASIS       = re.compile(r'(?://|#)\s*constitutional_basis:', re.MULTILINE)
-_RE_CS_ERRORS   = re.compile(r'CS\d+')
-_RE_TEMPORAL_NS = re.compile(r'using\s+.*Temporal')
+_RE_FILE_BLOCK = re.compile(r'<file\s+path="[^"]+">', re.IGNORECASE)
+_RE_XML_BLOCK = re.compile(r'<file\s+path="([^"]+)">(.*?)</file>', re.DOTALL)
+_RE_IMPLEMENTS = re.compile(r"(?://|#)\s*Implements:", re.MULTILINE)
+_RE_BASIS = re.compile(r"(?://|#)\s*constitutional_basis:", re.MULTILINE)
+_RE_CS_ERRORS = re.compile(r"CS\d+")
+_RE_TEMPORAL_NS = re.compile(r"using\s+.*Temporal")
 
 
 @dataclass
 class GateResult:
-    gate: str              # FORMAT | COMPILE | SPEC_ALIGN | ANNOTATION | SCHEMA
+    gate: str  # FORMAT | COMPILE | SPEC_ALIGN | ANNOTATION | SCHEMA
     passed: bool
-    failure_class: str     # maps to §9 Retry Advisor failure classifications
-    detail: str            # human-readable detail for Retry Advisor context
+    failure_class: str  # maps to §9 Retry Advisor failure classifications
+    detail: str  # human-readable detail for Retry Advisor context
     error_codes: list[str] = field(default_factory=list)  # compiler error codes if compile gate
 
 
 @dataclass
 class EvaluationResult:
     """Result of all applicable gates for one LLM response."""
+
     task_id: str
     output_file: str
     status: str = "pending"  # "accepted" | "retry_needed" | "escalate"
@@ -169,18 +169,22 @@ class ResponseEvaluator:
             # Check for markdown code blocks with file indicators
             if "```" in (raw_response or "") and ("using " in (raw_response or "") or "def " in (raw_response or "")):
                 return GateResult(
-                    "FORMAT", False, "FORMAT_FAILURE",
-                    'Response has code but not in required XML file block format. '
-                    'Wrap output in: <file path="exact/path/to/file.ext">code</file>'
+                    "FORMAT",
+                    False,
+                    "FORMAT_FAILURE",
+                    "Response has code but not in required XML file block format. "
+                    'Wrap output in: <file path="exact/path/to/file.ext">code</file>',
                 )
             return GateResult(
-                "FORMAT", False, "FORMAT_FAILURE",
-                "No <file path=\"...\"> block found in response. "
-                "Output must be wrapped in XML file blocks."
+                "FORMAT",
+                False,
+                "FORMAT_FAILURE",
+                'No <file path="..."> block found in response. Output must be wrapped in XML file blocks.',
             )
         if expected_format == "json":
             try:
                 import json
+
                 json.loads(raw_response or "")
                 return GateResult("FORMAT", True, "", "Valid JSON")
             except Exception:
@@ -201,11 +205,13 @@ class ResponseEvaluator:
         if expected_output_file in written_files:
             return GateResult("PATH", True, "", f"Expected file written: {expected_output_file}")
         return GateResult(
-            "PATH", False, "PATH_MISMATCH",
+            "PATH",
+            False,
+            "PATH_MISMATCH",
             f"Expected output file not written. "
             f"Expected: {expected_output_file} — "
             f"LLM wrote to: {written_files or '(nothing)'}. "
-            f"Rewrite the file at the exact path: {expected_output_file}"
+            f"Rewrite the file at the exact path: {expected_output_file}",
         )
 
     # ── Gate 2: COMPILE ────────────────────────────────────────────────────────
@@ -247,10 +253,7 @@ class ResponseEvaluator:
         # For BP (src/business-platform), do NOT build CE tests — hardcoding caused
         # WC013-02a to fail: CE tests were always compiled, LLM-generated extra file blocks
         # for CE types overwrote them with incorrect versions → CS0117 on CE tests.
-        has_ce_files = any(
-            "constitutional-engine" in f or (f.startswith("tests/") and "constitutional" in f)
-            for f in cs_files
-        )
+        has_ce_files = any("constitutional-engine" in f or (f.startswith("tests/") and "constitutional" in f) for f in cs_files)
         if has_ce_files:
             csproj_dirs.add(str(self._root / "tests" / "constitutional-engine.Tests"))
 
@@ -262,9 +265,11 @@ class ResponseEvaluator:
             if not csproj_files:
                 continue
             build_target = str(csproj_files[0])
-            proc = subprocess.run(
-                ["dotnet", "build", build_target, "--nologo", "-v", "quiet"],
-                capture_output=True, text=True, cwd=self._root,
+            proc = subprocess.run(  # noqa: S603
+                ["dotnet", "build", build_target, "--nologo", "-v", "quiet"],  # noqa: S607
+                capture_output=True,
+                text=True,
+                cwd=self._root,
                 timeout=120,  # R1: 2-min hard cap — prevents infinite hang on corrupted dotnet cache
             )
             if proc.returncode != 0:
@@ -275,10 +280,11 @@ class ResponseEvaluator:
 
         if errors:
             return GateResult(
-                "COMPILE", False,
+                "COMPILE",
+                False,
                 f"COMPILE_FAILURE: {','.join(sorted(set(error_codes))[:5])}",
                 "\n".join(errors[:2]),
-                error_codes=sorted(set(error_codes))
+                error_codes=sorted(set(error_codes)),
             )
         return GateResult("COMPILE", True, "", "dotnet build: PASS")
 
@@ -288,9 +294,10 @@ class ResponseEvaluator:
             full = self._root / f
             if not full.exists():
                 continue
-            proc = subprocess.run(
-                ["python3", "-m", "py_compile", str(full)],
-                capture_output=True, text=True,
+            proc = subprocess.run(  # noqa: S603
+                ["python3", "-m", "py_compile", str(full)],  # noqa: S607
+                capture_output=True,
+                text=True,
                 timeout=30,  # R1: py_compile should be instant
             )
             if proc.returncode != 0:
@@ -299,8 +306,7 @@ class ResponseEvaluator:
             return GateResult("COMPILE", False, "COMPILE_FAILURE: PYTHON_SYNTAX", "\n".join(errors))
         # Normalise Unicode confusables (EN/EM dash) before ruff — RUF002/RUF003 are not
         # auto-fixable by ruff but are deterministic text replacements safe to self-heal.
-        _CONFUSABLES = {'\u2013': '-', '\u2014': '--', '\u2018': "'", '\u2019': "'",
-                        '\u201c': '"', '\u201d': '"'}
+        _CONFUSABLES = {"\u2013": "-", "\u2014": "--", "\u2018": "'", "\u2019": "'", "\u201c": '"', "\u201d": '"'}
         for f in py_files:
             full = self._root / f
             if not full.exists():
@@ -314,19 +320,22 @@ class ResponseEvaluator:
         # Style gate: ruff check scoped to only the generated files (no pre-existing violations)
         # This runs INSIDE the 3-attempt retry loop so violations get targeted fixes.
         ruff_args = ["python3", "-m", "ruff", "check"] + [str(self._root / f) for f in py_files]
-        ruff_proc = subprocess.run(
+        ruff_proc = subprocess.run(  # noqa: S603
             ruff_args,
-            capture_output=True, text=True, cwd=self._root,
+            capture_output=True,
+            text=True,
+            cwd=self._root,
             timeout=30,
         )
         if ruff_proc.returncode != 0:
             ruff_output = (ruff_proc.stdout + ruff_proc.stderr).strip()
             # Strip absolute path prefix for cleaner error messages
             ruff_output = ruff_output.replace(str(self._root) + "/", "")
-            # Match 1–3 uppercase letters + 3–4 digits (covers ANN201, B017, F841, E501, UP007)
-            codes = sorted(set(re.findall(r'\b([A-Z]{1,3}\d{3,4})\b', ruff_output)))
+            # Match 1-3 uppercase letters + 3-4 digits (covers ANN201, B017, F841, E501, UP007)
+            codes = sorted(set(re.findall(r"\b([A-Z]{1,3}\d{3,4})\b", ruff_output)))
             return GateResult(
-                "COMPILE", False,
+                "COMPILE",
+                False,
                 f"COMPILE_FAILURE: RUFF {','.join(codes[:6]) if codes else 'VIOLATION'}",
                 ruff_output[:500],
                 error_codes=codes,
@@ -339,17 +348,19 @@ class ResponseEvaluator:
         # For test files: --collect-only catches import errors the AST check can't (e.g. missing modules).
         test_files = [f for f in py_files if f.startswith("tests/") or "/tests/" in f]
         if test_files:
-            collect_proc = subprocess.run(
-                ["python3", "-m", "pytest", "--collect-only", "-q", "--tb=short"]
-                + [str(self._root / f) for f in test_files],
-                capture_output=True, text=True, cwd=self._root,
+            collect_proc = subprocess.run(  # noqa: S603
+                ["python3", "-m", "pytest", "--collect-only", "-q", "--tb=short"] + [str(self._root / f) for f in test_files],
+                capture_output=True,
+                text=True,
+                cwd=self._root,
                 timeout=30,
             )
             if collect_proc.returncode != 0:
                 collect_out = (collect_proc.stdout + collect_proc.stderr).strip()
                 collect_out = collect_out.replace(str(self._root) + "/", "")
                 return GateResult(
-                    "COMPILE", False,
+                    "COMPILE",
+                    False,
                     "COMPILE_FAILURE: PYTEST_COLLECT",
                     collect_out[:2000],
                 )
@@ -367,7 +378,7 @@ class ResponseEvaluator:
         # Build module → file map for every .py file under src/ (skipping __init__)
         # src/billing-engine/markup/models.py → "markup.models"
         # src/wallet/wallet/services.py       → "wallet.services"
-        module_file_map: dict[str, pathlib.Path] = {}
+        module_file_map: dict[str, Path] = {}
         src_root = self._root / "src"
         if src_root.exists():
             for py_path in src_root.rglob("*.py"):
@@ -427,8 +438,10 @@ class ResponseEvaluator:
         if not web_dir.exists():
             return GateResult("COMPILE", True, "", "No TypeScript project found — gate skipped")
         proc = subprocess.run(
-            ["npx", "tsc", "--noEmit", "--strict"],
-            capture_output=True, text=True, cwd=web_dir,
+            ["npx", "tsc", "--noEmit", "--strict"],  # noqa: S607
+            capture_output=True,
+            text=True,
+            cwd=web_dir,
             timeout=60,  # R1: tsc type check hard cap
         )
         if proc.returncode != 0:
@@ -438,13 +451,19 @@ class ResponseEvaluator:
         if biome_config.exists():
             # Probe availability first — avoids 60s hang when biome not in node_modules
             probe = subprocess.run(
-                ["npx", "biome", "--version"],
-                capture_output=True, text=True, cwd=web_dir, timeout=10,
+                ["npx", "biome", "--version"],  # noqa: S607
+                capture_output=True,
+                text=True,
+                cwd=web_dir,
+                timeout=10,
             )
             if probe.returncode == 0:
                 biome_proc = subprocess.run(
-                    ["npx", "biome", "ci", "--files-ignore-unknown=true"],
-                    capture_output=True, text=True, cwd=web_dir, timeout=60,
+                    ["npx", "biome", "ci", "--files-ignore-unknown=true"],  # noqa: S607
+                    capture_output=True,
+                    text=True,
+                    cwd=web_dir,
+                    timeout=60,
                 )
                 if biome_proc.returncode != 0:
                     output = (biome_proc.stdout + biome_proc.stderr).strip()[:400]
@@ -483,10 +502,23 @@ class ResponseEvaluator:
         full_paths = [str(self._root / f) for f in sql_files if (self._root / f).exists()]
         if not full_paths:
             return GateResult("COMPILE", True, "", "SQL files not written yet — gate skipped")
-        proc = subprocess.run(
-            ["python3", "-m", "sqlfluff", "lint", "--dialect", "postgres",
-             "--format", "github-annotation", "--no-progress-bar"] + full_paths,
-            capture_output=True, text=True, cwd=self._root, timeout=60,
+        proc = subprocess.run(  # noqa: S603
+            [  # noqa: S607
+                "python3",
+                "-m",
+                "sqlfluff",
+                "lint",
+                "--dialect",
+                "postgres",
+                "--format",
+                "github-annotation",
+                "--no-progress-bar",
+                *full_paths,
+            ],
+            capture_output=True,
+            text=True,
+            cwd=self._root,
+            timeout=60,
         )
         if proc.returncode != 0:
             output = (proc.stdout + proc.stderr).strip()[:500]
@@ -502,9 +534,12 @@ class ResponseEvaluator:
         full_paths = [str(self._root / f) for f in yaml_files if (self._root / f).exists()]
         if not full_paths:
             return GateResult("COMPILE", True, "", "YAML files not written yet — gate skipped")
-        proc = subprocess.run(
-            ["python3", "-m", "yamllint", "-d", "relaxed", "-f", "parsable"] + full_paths,
-            capture_output=True, text=True, cwd=self._root, timeout=30,
+        proc = subprocess.run(  # noqa: S603
+            ["python3", "-m", "yamllint", "-d", "relaxed", "-f", "parsable", *full_paths],  # noqa: S607
+            capture_output=True,
+            text=True,
+            cwd=self._root,
+            timeout=30,
         )
         if proc.returncode != 0:
             output = (proc.stdout + proc.stderr).strip()[:500]
@@ -544,17 +579,17 @@ class ResponseEvaluator:
                 ext_hint = first_ext.lstrip(".")
             comment = "//" if ext_hint in ("cs", "ts", "tsx") else "#"
             return GateResult(
-                "ANNOTATION", False, "ANNOTATION_MISSING",
+                "ANNOTATION",
+                False,
+                "ANNOTATION_MISSING",
                 f"Files missing C-059/C-073 header: {', '.join(missing)}. "
-                f"First lines must be: {comment} Implements: <spec> and {comment} constitutional_basis: <claims>"
+                f"First lines must be: {comment} Implements: <spec> and {comment} constitutional_basis: <claims>",
             )
         return GateResult("ANNOTATION", True, "", "C-059/C-073 headers: PASS")
 
     # ── Gate 4: SPEC_ALIGN ─────────────────────────────────────────────────────
 
-    def _gate_spec_align(
-        self, written_files: list[str], spec_sections: dict[str, str]
-    ) -> GateResult:
+    def _gate_spec_align(self, written_files: list[str], spec_sections: dict[str, str]) -> GateResult:
         """
         §8 Gate 4 (C-032): No drift from spec.
         Fast check: verify no Temporal namespace in WC012-02 files (known scope violation).
@@ -567,17 +602,14 @@ class ResponseEvaluator:
             content = full.read_text(encoding="utf-8", errors="replace")
 
             # Detect known scope violations
-            if _RE_TEMPORAL_NS.search(content) and "WC012-02" in f or "WC012-02" in str(spec_sections):
+            if (_RE_TEMPORAL_NS.search(content) and "WC012-02" in f) or "WC012-02" in str(spec_sections):
                 violations.append(f"{full.name}: Temporal namespace is WC012-04b scope, not WC012-02")
 
             # Detect invented types not in spec (fast heuristic: look for types not in USING_MAP)
             # Full semantic check is Phase 2 (embedding-based)
 
         if violations:
-            return GateResult(
-                "SPEC_ALIGN", False, "SPEC_DRIFT",
-                "; ".join(violations)
-            )
+            return GateResult("SPEC_ALIGN", False, "SPEC_DRIFT", "; ".join(violations))
         return GateResult("SPEC_ALIGN", True, "", "Spec alignment: PASS (fast check)")
 
     # ── Gate 5: SCHEMA ─────────────────────────────────────────────────────────
@@ -586,6 +618,7 @@ class ResponseEvaluator:
         """§8 Gate 5: Structured output JSON validation."""
         try:
             import json
+
             data = json.loads(raw_response or "")
             if not isinstance(data, dict):
                 return GateResult("SCHEMA", False, "SCHEMA_VIOLATION", "Response is not a JSON object")

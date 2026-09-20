@@ -80,7 +80,12 @@ def simulate_release(
 
     estimated_cost = policy.get("estimated_monthly_cost_inr")
     ceiling = policy.get("monthly_cost_ceiling_inr")
-    if not isinstance(estimated_cost, int | float) or not isinstance(ceiling, int | float) or estimated_cost < 0 or estimated_cost > ceiling:
+    if (
+        not isinstance(estimated_cost, int | float)
+        or not isinstance(ceiling, int | float)
+        or estimated_cost < 0
+        or estimated_cost > ceiling
+    ):
         return _failure([], 0, "COST_GATE_FAILED")
     if validate_manifest(manifest, manifest_root):
         return _failure([], 0, "MANIFEST_GATE_FAILED")

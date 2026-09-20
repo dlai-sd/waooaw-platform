@@ -75,9 +75,7 @@ def extract_cleanup_evidence(
         raise ExecutionTemplateError("workflow run identity is invalid")
     if private_job_conclusion not in TERMINAL_CONCLUSIONS:
         raise ExecutionTemplateError("private job conclusion is invalid")
-    encoded_records = re.findall(
-        re.escape(CLEANUP_EVIDENCE_PREFIX) + r"([A-Za-z0-9+/]+={0,2})", log_text
-    )
+    encoded_records = re.findall(re.escape(CLEANUP_EVIDENCE_PREFIX) + r"([A-Za-z0-9+/]+={0,2})", log_text)
     if len(encoded_records) != 1:
         raise ExecutionTemplateError("cleanup evidence record is missing or ambiguous")
     try:
@@ -93,9 +91,7 @@ def extract_cleanup_evidence(
         "workflow_run_id": run_id,
         "workflow_run_attempt": run_attempt,
         "private_job_conclusion": private_job_conclusion,
-        "token_secret_name": (
-            f"runner-registration-token-{environment}-{run_id}-{run_attempt}"
-        ),
+        "token_secret_name": (f"runner-registration-token-{environment}-{run_id}-{run_attempt}"),
         "registration_absent": True,
         "execution_terminal": True,
         "token_secret_deleted": True,
@@ -122,9 +118,7 @@ def build_cleanup_evidence_pointer(
         raise ExecutionTemplateError("workflow run identity is invalid")
     if private_job_conclusion not in TERMINAL_CONCLUSIONS:
         raise ExecutionTemplateError("private job conclusion is invalid")
-    if not cleanup_execution_name.startswith(
-        f"goal006-{environment}-runner-cleanup-"
-    ):
+    if not cleanup_execution_name.startswith(f"goal006-{environment}-runner-cleanup-"):
         raise ExecutionTemplateError("cleanup execution name is invalid")
     if not evidence_container_url.startswith("https://"):
         raise ExecutionTemplateError("cleanup evidence container URL is invalid")
@@ -137,10 +131,7 @@ def build_cleanup_evidence_pointer(
         "workflow_run_attempt": run_attempt,
         "private_job_conclusion": private_job_conclusion,
         "cleanup_execution_name": cleanup_execution_name,
-        "evidence_blob_url": (
-            f"{evidence_container_url.rstrip('/')}/cleanup/"
-            f"{environment}/{run_id}/{run_attempt}.json"
-        ),
+        "evidence_blob_url": (f"{evidence_container_url.rstrip('/')}/cleanup/{environment}/{run_id}/{run_attempt}.json"),
         "producer_status": "Succeeded",
     }
 
@@ -200,9 +191,7 @@ def build_execution_template(
     names = [item.get("name") for item in environment]
     if len(names) != len(set(names)):
         raise ExecutionTemplateError("job environment contains duplicate names")
-    required_environment = REQUIRED_ENVIRONMENT | (
-        CLEANUP_REQUIRED_ENVIRONMENT if mode == "cleanup" else set()
-    )
+    required_environment = REQUIRED_ENVIRONMENT | (CLEANUP_REQUIRED_ENVIRONMENT if mode == "cleanup" else set())
     if not required_environment.issubset(names):
         raise ExecutionTemplateError("job environment is incomplete")
     values = {item.get("name"): item for item in environment}
@@ -266,9 +255,7 @@ def main() -> int:
             run_attempt=arguments.run_attempt,
             private_job_conclusion=arguments.private_job_conclusion,
         )
-        arguments.output.write_text(
-            json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-        )
+        arguments.output.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         return 0
     if arguments.mode == "pointer":
         pointer = build_cleanup_evidence_pointer(
@@ -279,9 +266,7 @@ def main() -> int:
             cleanup_execution_name=arguments.cleanup_execution_name,
             evidence_container_url=arguments.evidence_container_url,
         )
-        arguments.output.write_text(
-            json.dumps(pointer, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-        )
+        arguments.output.write_text(json.dumps(pointer, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         return 0
     job = json.loads(arguments.job.read_text(encoding="utf-8"))
     template = build_execution_template(
@@ -292,9 +277,7 @@ def main() -> int:
         run_attempt=arguments.run_attempt,
         private_job_conclusion=arguments.private_job_conclusion,
     )
-    arguments.output.write_text(
-        json.dumps(template, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
+    arguments.output.write_text(json.dumps(template, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return 0
 
 

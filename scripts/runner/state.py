@@ -11,6 +11,7 @@ reads them at the end to emit the Constitutional Monitor artifact.
 Design: module-level singletons (not class instances) so all runner
 modules share the exact same object reference when imported.
 """
+
 from __future__ import annotations
 
 import os
@@ -21,12 +22,12 @@ import os
 _MONITOR_SIGNAL: dict = {
     "run_id": os.environ.get("GITHUB_RUN_ID", ""),
     "sprint": "",
-    "scaffold_task": None,     # task ID of the scaffold (if any) in this run
+    "scaffold_task": None,  # task ID of the scaffold (if any) in this run
     "scaffold_failed": False,  # True = downstream spec-gap issues are CASCADE bugs
-    "task_results": {},        # per-task: result, error_type, snippet, attempts, issue
-    "spec_gap_issues": [],     # GitHub issue numbers opened by flag_spec_gap()
+    "task_results": {},  # per-task: result, error_type, snippet, attempts, issue
+    "spec_gap_issues": [],  # GitHub issue numbers opened by flag_spec_gap()
     "overall_result": "UNKNOWN",
-    "file_costs": {},          # task_id → ₹ cost — populated by call_llm_via_magiclm
+    "file_costs": {},  # task_id → ₹ cost — populated by call_llm_via_magiclm
 }
 
 # Populated by execute_with_llm() when all 3 attempts are pure API failures.

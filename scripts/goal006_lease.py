@@ -33,10 +33,7 @@ def validate_active_lease(configuration: Mapping[str, Any], current_time: dateti
     if expires_at <= issued_at:
         raise ValueError("lease_expires_at must be after lease_issued_at")
     if expires_at <= current_time:
-        raise ValueError(
-            "deployment lease expired at "
-            f"{expires_at.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')}"
-        )
+        raise ValueError(f"deployment lease expired at {expires_at.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')}")
 
 
 def renew_lease(
@@ -84,9 +81,7 @@ def main() -> int:
         expires_at=parse_lease_timestamp("expires_at", arguments.expires_at),
     )
     validate_active_lease(renewed, now)
-    arguments.renewed_output.write_text(
-        json.dumps(renewed, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
+    arguments.renewed_output.write_text(json.dumps(renewed, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(
         json.dumps(
             {

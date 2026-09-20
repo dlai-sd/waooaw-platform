@@ -1,6 +1,7 @@
 # Implements: architecture/reference/magic-llm/architecture.md (package entry point)
 # Constitutional basis: C-059, C-069, C-070
 """MagicLLM — Universal Constitutional AI Execution Layer."""
+
 from .types import (
     FailureClassification,
     MagicLLMDecisionRecord,
@@ -21,18 +22,18 @@ from .orchestration import (
 )
 
 __all__ = [
-    "TaskCategory",
-    "QualityGate",
     "FailureClassification",
-    "MagicLLMRequest",
-    "MagicLLMResponse",
+    "FounderDecisionBrief",
+    "GoalUnderstandingRecord",
+    "GoalUnderstandingRequest",
     "MagicLLMDecisionRecord",
     "MagicLLMPipeline",
-    "GoalUnderstandingRequest",
-    "GoalUnderstandingRecord",
-    "RoutingRequest",
-    "RoutingDecisionRecord",
+    "MagicLLMRequest",
+    "MagicLLMResponse",
     "MonitorSignal",
+    "QualityGate",
     "ResearchRecord",
-    "FounderDecisionBrief",
+    "RoutingDecisionRecord",
+    "RoutingRequest",
+    "TaskCategory",
 ]

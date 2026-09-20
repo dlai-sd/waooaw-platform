@@ -1,10 +1,10 @@
 // Implements: architecture/reference/components/constitutional-engine.md §2 PAAS Boundary Validator
 // constitutional_basis: C-001, C-003, C-023, C-041, C-059
+using System.Globalization;
 using Grpc.Core;
+using Microsoft.Extensions.Logging;
 using Waooaw.ConstitutionalEngine.Evaluators;
 using Waooaw.ConstitutionalEngine.Grpc;
-using Microsoft.Extensions.Logging;
-using System.Globalization;
 
 namespace Waooaw.ConstitutionalEngine.Evaluators;
 
@@ -29,7 +29,7 @@ public sealed class C049HonestLimitationEvaluator : IClaimEvaluator
 
     // ActionParameters keys used by C-049 logic.
     private const string UncertaintyAcknowledgedKey = "uncertainty_acknowledged"; // C-049
-    private const string ConfidenceScoreKey = "confidence_score";                 // C-049
+    private const string ConfidenceScoreKey = "confidence_score"; // C-049
 
     private readonly ILogger<C049HonestLimitationEvaluator> _logger;
 
@@ -70,15 +70,21 @@ public sealed class C049HonestLimitationEvaluator : IClaimEvaluator
             if (string.Equals(uncertaintyFlag, "true", StringComparison.OrdinalIgnoreCase))
             {
                 _logger.LogInformation(
-                    "C-049: uncertainty_acknowledged=true on ContractId={ContractId} " +
-                    "ActionType={ActionType} TenantId={TenantId} — escalating to customer",
-                    ctx.ContractId, ctx.ActionType, ctx.TenantId);
+                    "C-049: uncertainty_acknowledged=true on ContractId={ContractId} "
+                        + "ActionType={ActionType} TenantId={TenantId} — escalating to customer",
+                    ctx.ContractId,
+                    ctx.ActionType,
+                    ctx.TenantId
+                );
 
-                return Task.FromResult(new EvaluationResult(
-                    ClaimId,
-                    EvaluationVerdict.Escalate,
-                    "C-049: Agent declared honest limitation (uncertainty_acknowledged=true) — " +
-                    "action escalated for explicit customer authorisation."));
+                return Task.FromResult(
+                    new EvaluationResult(
+                        ClaimId,
+                        EvaluationVerdict.Escalate,
+                        "C-049: Agent declared honest limitation (uncertainty_acknowledged=true) — "
+                            + "action escalated for explicit customer authorisation."
+                    )
+                );
             }
 
             // ── Rule 2 & 3: Confidence score below constitutional floor ─────────────────
@@ -88,55 +94,82 @@ public sealed class C049HonestLimitationEvaluator : IClaimEvaluator
             var confidenceRaw = ctx.GetParameter(ConfidenceScoreKey);
             if (confidenceRaw is not null)
             {
-                if (!double.TryParse(
+                if (
+                    !double.TryParse(
                         confidenceRaw,
                         NumberStyles.Float,
                         CultureInfo.InvariantCulture,
-                        out double confidenceScore))
+                        out double confidenceScore
+                    )
+                )
                 {
                     _logger.LogWarning(
-                        "C-049: confidence_score present but not parseable as double " +
-                        "(raw={Raw}) on ContractId={ContractId} TenantId={TenantId} — " +
-                        "escalating for constitutional safety",
-                        confidenceRaw, ctx.ContractId, ctx.TenantId);
+                        "C-049: confidence_score present but not parseable as double "
+                            + "(raw={Raw}) on ContractId={ContractId} TenantId={TenantId} — "
+                            + "escalating for constitutional safety",
+                        confidenceRaw,
+                        ctx.ContractId,
+                        ctx.TenantId
+                    );
 
-                    return Task.FromResult(new EvaluationResult(
-                        ClaimId,
-                        EvaluationVerdict.Escalate,
-                        $"C-049: confidence_score parameter value '{confidenceRaw}' could not be " +
-                        "parsed as a numeric score — escalating for constitutional safety."));
+                    return Task.FromResult(
+                        new EvaluationResult(
+                            ClaimId,
+                            EvaluationVerdict.Escalate,
+                            $"C-049: confidence_score parameter value '{confidenceRaw}' could not be "
+                                + "parsed as a numeric score — escalating for constitutional safety."
+                        )
+                    );
                 }
 
                 if (confidenceScore < MinimumConfidenceThreshold)
                 {
                     _logger.LogInformation(
-                        "C-049: confidence_score={Score:F4} below constitutional floor {Threshold:F4} " +
-                        "on ContractId={ContractId} ActionType={ActionType} TenantId={TenantId} — escalating",
-                        confidenceScore, MinimumConfidenceThreshold, ctx.ContractId, ctx.ActionType, ctx.TenantId);
+                        "C-049: confidence_score={Score:F4} below constitutional floor {Threshold:F4} "
+                            + "on ContractId={ContractId} ActionType={ActionType} TenantId={TenantId} — escalating",
+                        confidenceScore,
+                        MinimumConfidenceThreshold,
+                        ctx.ContractId,
+                        ctx.ActionType,
+                        ctx.TenantId
+                    );
 
-                    return Task.FromResult(new EvaluationResult(
-                        ClaimId,
-                        EvaluationVerdict.Escalate,
-                        $"C-049: Reported confidence {confidenceScore:F4} is below the constitutional " +
-                        $"floor of {MinimumConfidenceThreshold:F4} — action escalated to customer."));
+                    return Task.FromResult(
+                        new EvaluationResult(
+                            ClaimId,
+                            EvaluationVerdict.Escalate,
+                            $"C-049: Reported confidence {confidenceScore:F4} is below the constitutional "
+                                + $"floor of {MinimumConfidenceThreshold:F4} — action escalated to customer."
+                        )
+                    );
                 }
 
                 _logger.LogDebug(
-                    "C-049: confidence_score={Score:F4} meets floor {Threshold:F4} " +
-                    "on ContractId={ContractId} ActionType={ActionType}",
-                    confidenceScore, MinimumConfidenceThreshold, ctx.ContractId, ctx.ActionType);
+                    "C-049: confidence_score={Score:F4} meets floor {Threshold:F4} "
+                        + "on ContractId={ContractId} ActionType={ActionType}",
+                    confidenceScore,
+                    MinimumConfidenceThreshold,
+                    ctx.ContractId,
+                    ctx.ActionType
+                );
             }
 
             // ── Default: no limitation signal detected → allow ───────────────────────────
             _logger.LogDebug(
-                "C-049: Allow — no honest limitation signal on ContractId={ContractId} " +
-                "ActionType={ActionType} TenantId={TenantId}",
-                ctx.ContractId, ctx.ActionType, ctx.TenantId);
+                "C-049: Allow — no honest limitation signal on ContractId={ContractId} "
+                    + "ActionType={ActionType} TenantId={TenantId}",
+                ctx.ContractId,
+                ctx.ActionType,
+                ctx.TenantId
+            );
 
-            return Task.FromResult(new EvaluationResult(
-                ClaimId,
-                EvaluationVerdict.Allow,
-                "C-049: No honest limitation signal detected — action proceeds."));
+            return Task.FromResult(
+                new EvaluationResult(
+                    ClaimId,
+                    EvaluationVerdict.Allow,
+                    "C-049: No honest limitation signal detected — action proceeds."
+                )
+            );
         }
         catch (OperationCanceledException)
         {
@@ -149,7 +182,9 @@ public sealed class C049HonestLimitationEvaluator : IClaimEvaluator
             _logger.LogError(
                 ex,
                 "C-049: EvaluateAsync failed for ContractId={ContractId} ActionType={ActionType}",
-                ctx.ContractId, ctx.ActionType);
+                ctx.ContractId,
+                ctx.ActionType
+            );
             throw;
         }
     }

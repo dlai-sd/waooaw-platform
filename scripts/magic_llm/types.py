@@ -10,30 +10,31 @@ Phase 1: Engineering categories (Cat. 1-6) via Anthropic API.
 Every invocation produces a MagicLLMDecisionRecord committed to the Goal Register
 before results are used (C-059: Evidence First).
 """
+
 from __future__ import annotations
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Optional
+from enum import Enum, StrEnum
+from typing import Any
 from datetime import datetime, timezone
 
 
 class TaskCategory(Enum):
     # ── Engineering execution (invoked by Runtime Implementation Professional) ──
-    DEEP_REASONING         = 1  # Steps 01-05: large context, deliberate analysis
-    CODE_GENERATION        = 2  # Step 08: source code output, compile required
-    DESIGN_CONTRACTS       = 3  # Steps 06-07: interface contracts, pseudocode
-    REVIEW_EVALUATION      = 4  # Steps 04, 10: fast, structured output
-    DOCUMENTATION          = 5  # Step 13: writing quality, fast
-    TEST_GENERATION        = 6  # Step 11: test code, AAA pattern
+    DEEP_REASONING = 1  # Steps 01-05: large context, deliberate analysis
+    CODE_GENERATION = 2  # Step 08: source code output, compile required
+    DESIGN_CONTRACTS = 3  # Steps 06-07: interface contracts, pseudocode
+    REVIEW_EVALUATION = 4  # Steps 04, 10: fast, structured output
+    DOCUMENTATION = 5  # Step 13: writing quality, fast
+    TEST_GENERATION = 6  # Step 11: test code, AAA pattern
     SEMANTIC_UNDERSTANDING = 7  # Knowledge-deriving agents (RepoNav Semantic Twin)
-    RESEARCH_QUERY         = 8  # L2 Remediation: external knowledge synthesis
+    RESEARCH_QUERY = 8  # L2 Remediation: external knowledge synthesis
 
     # ── Goal Orchestration (invoked by Goal Orchestrator — INST-013 only) ──
-    GOAL_UNDERSTANDING      = 9   # GEOM G-2: raw input → Understanding Record
-    ROUTING_INTELLIGENCE    = 10  # GEOM G-4: Goal + registry → Execution Plan
-    JOURNEY_MONITOR         = 11  # GEOM G-5: continuous drift + SLA detection
-    RESEARCH_ORCHESTRATION  = 12  # GEOM §10 L2: cascade research context
-    DECISION_SYNTHESIS      = 13  # Founder escalation: 3-option decision brief
+    GOAL_UNDERSTANDING = 9  # GEOM G-2: raw input → Understanding Record
+    ROUTING_INTELLIGENCE = 10  # GEOM G-4: Goal + registry → Execution Plan
+    JOURNEY_MONITOR = 11  # GEOM G-5: continuous drift + SLA detection
+    RESEARCH_ORCHESTRATION = 12  # GEOM §10 L2: cascade research context
+    DECISION_SYNTHESIS = 13  # Founder escalation: 3-option decision brief
 
     @property
     def is_engineering(self) -> bool:
@@ -61,26 +62,26 @@ class TaskCategory(Enum):
         return "auto"
 
 
-class QualityGate(str, Enum):
-    FORMAT         = "format"       # response follows expected output structure
-    COMPILE        = "compile"      # code compiles (Cat. 2, 6)
-    SPEC_ALIGN     = "spec_align"   # C-032: no drift from Design Record
-    ANNOTATION     = "annotation"   # C-073: @constitutional present
-    SCHEMA         = "schema"       # structured outputs satisfy schema
+class QualityGate(StrEnum):
+    FORMAT = "format"  # response follows expected output structure
+    COMPILE = "compile"  # code compiles (Cat. 2, 6)
+    SPEC_ALIGN = "spec_align"  # C-032: no drift from Design Record
+    ANNOTATION = "annotation"  # C-073: @constitutional present
+    SCHEMA = "schema"  # structured outputs satisfy schema
     EVIDENCE_TRACE = "evidence_trace"  # claims traceable to source (Cat. 7, 8)
 
 
-class FailureClassification(str, Enum):
-    CS1061_MISSING_PROPERTY    = "CS1061"
-    CS0246_MISSING_TYPE        = "CS0246"
+class FailureClassification(StrEnum):
+    CS1061_MISSING_PROPERTY = "CS1061"
+    CS0246_MISSING_TYPE = "CS0246"
     CS0505_NONVIRTUAL_OVERRIDE = "CS0505"
-    SPEC_DRIFT                 = "SPEC_DRIFT"
-    FORMAT_FAILURE             = "FORMAT_FAILURE"
-    ANNOTATION_MISSING         = "ANNOTATION_MISSING"
-    SCHEMA_VIOLATION           = "SCHEMA_VIOLATION"
-    EVIDENCE_INCOMPLETE        = "EVIDENCE_INCOMPLETE"
-    GOAL_OUTCOME_MISALIGNMENT  = "GOAL_OUTCOME_MISALIGNMENT"
-    UNKNOWN                    = "UNKNOWN"
+    SPEC_DRIFT = "SPEC_DRIFT"
+    FORMAT_FAILURE = "FORMAT_FAILURE"
+    ANNOTATION_MISSING = "ANNOTATION_MISSING"
+    SCHEMA_VIOLATION = "SCHEMA_VIOLATION"
+    EVIDENCE_INCOMPLETE = "EVIDENCE_INCOMPLETE"
+    GOAL_OUTCOME_MISALIGNMENT = "GOAL_OUTCOME_MISALIGNMENT"
+    UNKNOWN = "UNKNOWN"
 
 
 @dataclass
@@ -88,34 +89,36 @@ class MagicLLMRequest:
     """Universal input to any MagicLLM invocation.
     Implements: architecture/reference/goal-orchestrator/component-contracts.md §1
     """
+
     goal_id: str
-    institution_id: str                  # INST-NNN of invoking Institution
-    go_authorization_id: str             # GOA-GOAL-NNN-INST-NNN-NN (or "internal" for GO-self)
+    institution_id: str  # INST-NNN of invoking Institution
+    go_authorization_id: str  # GOA-GOAL-NNN-INST-NNN-NN (or "internal" for GO-self)
     task_category: TaskCategory
     task_description: str
-    context_sections: list[str]          # ordered context blocks
-    ptr_snapshot: dict[str, Any]         # Platform Type Registry
-    expected_output_format: str          # "xml_file_blocks" | "json" | "prose" | "knowledge_graph"
-    execution_plan_reference: str        # record_id of Execution Plan
-    previous_attempt_id: Optional[str] = None
-    cascade_level: Optional[int] = None  # 1|2|3 if in remediation
-    research_record_id: Optional[str] = None
+    context_sections: list[str]  # ordered context blocks
+    ptr_snapshot: dict[str, Any]  # Platform Type Registry
+    expected_output_format: str  # "xml_file_blocks" | "json" | "prose" | "knowledge_graph"
+    execution_plan_reference: str  # record_id of Execution Plan
+    previous_attempt_id: str | None = None
+    cascade_level: int | None = None  # 1|2|3 if in remediation
+    research_record_id: str | None = None
     max_tokens: int = 10_000
 
 
 @dataclass
 class MagicLLMResponse:
     """Universal output from any MagicLLM invocation."""
+
     request_id: str
     goal_id: str
     institution_id: str
     task_category: TaskCategory
-    status: str                          # "accepted" | "retry_needed" | "escalate"
+    status: str  # "accepted" | "retry_needed" | "escalate"
     raw_output: str
     parsed_artifacts: dict[str, Any] = field(default_factory=dict)
     gates_evaluated: dict[str, bool] = field(default_factory=dict)
-    failure_classification: Optional[FailureClassification] = None
-    failure_detail: Optional[str] = None
+    failure_classification: FailureClassification | None = None
+    failure_detail: str | None = None
     model_provider: str = "anthropic"
     model_version: str = "claude-sonnet-4-6"
     temperature: float = 0.0
@@ -132,12 +135,13 @@ class MagicLLMDecisionRecord:
     Implements: architecture/reference/magic-llm/architecture.md §10
     Constitutional basis: C-059 (every AI decision is evidence)
     """
-    institution_id: str                  # INST-008 (AI Architect — MagicLLM owner)
-    invoked_by: str                      # INST-010 (engineering) | INST-013 (orchestration)
+
+    institution_id: str  # INST-008 (AI Architect — MagicLLM owner)
+    invoked_by: str  # INST-010 (engineering) | INST-013 (orchestration)
     goal_id: str
-    record_id: str                       # MDR-GOAL-NNN-INST-NNN-NN
+    record_id: str  # MDR-GOAL-NNN-INST-NNN-NN
     record_type: str = "MagicLLM Decision Record"
-    task_category: Optional[TaskCategory] = None
+    task_category: TaskCategory | None = None
     model_provider: str = ""
     model_version: str = ""
     temperature: float = 0.0
@@ -149,7 +153,7 @@ class MagicLLMDecisionRecord:
     retry_classifications: list[str] = field(default_factory=list)
     performance_score_used: float = 0.0
     cost_incurred_inr: float = 0.0
-    cascade_level: Optional[int] = None
+    cascade_level: int | None = None
     produced_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def to_dict(self) -> dict[str, Any]:

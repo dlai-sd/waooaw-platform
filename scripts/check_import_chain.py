@@ -81,7 +81,7 @@ def _compile_check(path: Path) -> str | None:
         return None
     except SyntaxError as e:
         return f"SyntaxError at line {e.lineno}: {e.msg}"
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         return str(e)
 
 

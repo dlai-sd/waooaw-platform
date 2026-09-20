@@ -41,9 +41,7 @@ def normalize_dispatch_inputs(
     lease_expires_at = ""
     if execution == "apply" and environment in {"demo", "uat"}:
         now = current_time or datetime.now(timezone.utc)
-        lease_expires_at = (now + LEASE_DURATION).astimezone(timezone.utc).isoformat().replace(
-            "+00:00", "Z"
-        )
+        lease_expires_at = (now + LEASE_DURATION).astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
     return {
         "environment": environment,

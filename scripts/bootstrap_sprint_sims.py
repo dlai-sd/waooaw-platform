@@ -19,6 +19,7 @@ generated stubs. Engineers review PENDING verdicts and change to PASS or FAIL.
 
 Run: python3 scripts/bootstrap_sprint_sims.py [--dry-run]
 """
+
 from __future__ import annotations
 
 import re
@@ -35,22 +36,45 @@ STATE_FILE = REPO_ROOT / "constitution" / "PROJECT_STATE.md"
 # PASS: well-understood, low-risk patterns that follow established repo conventions
 # PENDING: novel logic requiring human pre-execution review
 KNOWN_SAFE_PATTERNS = {
-    "scaffold", "config", "dockerfile", "requirements",
-    "migration", "sql", "seed",
-    "models", "model",
-    "cache", "redis",
-    "router", "routes",
-    "tests", "test",
-    "health", "main",
-    "docker-compose", "compose",
-    "init", "setup",
+    "scaffold",
+    "config",
+    "dockerfile",
+    "requirements",
+    "migration",
+    "sql",
+    "seed",
+    "models",
+    "model",
+    "cache",
+    "redis",
+    "router",
+    "routes",
+    "tests",
+    "test",
+    "health",
+    "main",
+    "docker-compose",
+    "compose",
+    "init",
+    "setup",
 }
 
 PENDING_PATTERNS = {
-    "orchestrat", "workflow", "temporal", "saga",
-    "encryption", "secret", "auth", "jwt", "oauth",
-    "payment", "razorpay", "webhook",
-    "novel", "custom", "experimental",
+    "orchestrat",
+    "workflow",
+    "temporal",
+    "saga",
+    "encryption",
+    "secret",
+    "auth",
+    "jwt",
+    "oauth",
+    "payment",
+    "razorpay",
+    "webhook",
+    "novel",
+    "custom",
+    "experimental",
 }
 
 
@@ -117,14 +141,17 @@ def _classify_task(scope: str) -> str:
 
 
 def _build_sim_content(task_id: str, scope: str, sprint: str, verdict: str) -> str:
-    today = datetime.date.today().isoformat()
-    verdict_line = "**VERDICT: ✅ PASS**" if verdict == "PASS" else "**VERDICT: ⏳ PENDING — requires human review before pipeline may proceed**"
+    today = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+    verdict_line = (
+        "**VERDICT: ✅ PASS**"
+        if verdict == "PASS"
+        else "**VERDICT: ⏳ PENDING — requires human review before pipeline may proceed**"
+    )
     risk_note = (
         "Known-safe pattern — follows established repo conventions. Low execution risk."
         if verdict == "PASS"
         else "Novel or complex pattern — pre-execution analysis required. Set verdict to ✅ PASS or ❌ FAIL after review."
     )
-    slug = re.sub(r"[^a-z0-9]+", "-", scope[:40].lower()).strip("-")
     return f"""# SIM-PL-002 — {task_id} {scope[:60]}
 **Date:** {today}
 **Author:** bootstrap_sprint_sims.py (pipeline tooling — Platform IT Expert hat)

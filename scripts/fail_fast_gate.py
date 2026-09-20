@@ -45,7 +45,7 @@ class GateResult:
 
 
 def run(cmd: list[str]) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True, check=False)
+    return subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True, check=False)  # noqa: S603
 
 
 def parse_state() -> dict[str, Any]:
@@ -55,6 +55,7 @@ def parse_state() -> dict[str, Any]:
         raise ValueError("SPRINT_STATE_MACHINE block not found")
 
     state: dict[str, Any] = {}
+
     def _strip_inline_comment(raw: str) -> str:
         in_single = False
         in_double = False
@@ -240,11 +241,16 @@ def main() -> int:
     blockers = [r for r in results if r.severity == "BLOCKER" and not r.passed]
 
     if args.json:
-        print(json.dumps({
-            "sprint": sprint,
-            "blockers": len(blockers),
-            "results": [r.__dict__ for r in results],
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "sprint": sprint,
+                    "blockers": len(blockers),
+                    "results": [r.__dict__ for r in results],
+                },
+                indent=2,
+            )
+        )
     else:
         print("=" * 72)
         print("FAIL-FAST GATE")

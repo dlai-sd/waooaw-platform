@@ -27,8 +27,10 @@ BILLING_ENGINE_TESTS = REPO_ROOT / "tests" / "billing-engine"
 
 # Forbidden cross-layer import prefixes
 FORBIDDEN_CROSS_LAYER = [
-    "ai_runtime", "ai-runtime",
-    "bp.", "business_platform",
+    "ai_runtime",
+    "ai-runtime",
+    "bp.",
+    "business_platform",
 ]
 
 # Sub-package directories to exclude from structural checks (infra, not services)
@@ -39,21 +41,13 @@ def _find_service_packages() -> list[Path]:
     """Return billing-engine sub-package dirs that contain a service.py."""
     if not BILLING_ENGINE_SRC.exists():
         return []
-    return [
-        d for d in BILLING_ENGINE_SRC.iterdir()
-        if d.is_dir()
-        and d.name not in INFRA_DIRS
-        and (d / "service.py").exists()
-    ]
+    return [d for d in BILLING_ENGINE_SRC.iterdir() if d.is_dir() and d.name not in INFRA_DIRS and (d / "service.py").exists()]
 
 
 def _find_all_py_files() -> list[Path]:
     if not BILLING_ENGINE_SRC.exists():
         return []
-    return [
-        f for f in BILLING_ENGINE_SRC.rglob("*.py")
-        if not any(part in INFRA_DIRS for part in f.parts)
-    ]
+    return [f for f in BILLING_ENGINE_SRC.rglob("*.py") if not any(part in INFRA_DIRS for part in f.parts)]
 
 
 def _check_cross_layer_imports(py_files: list[Path]) -> list[str]:
@@ -75,8 +69,7 @@ def _check_cross_layer_imports(py_files: list[Path]) -> list[str]:
                     for forbidden in FORBIDDEN_CROSS_LAYER:
                         if name.startswith(forbidden):
                             violations.append(
-                                f"{path.relative_to(REPO_ROOT)}: "
-                                f"cross-layer import '{name}' (forbidden: {forbidden})"
+                                f"{path.relative_to(REPO_ROOT)}: cross-layer import '{name}' (forbidden: {forbidden})"
                             )
     return violations
 
@@ -96,10 +89,7 @@ def _check_wildcard_imports(py_files: list[Path]) -> list[str]:
             if isinstance(node, ast.ImportFrom):
                 for alias in node.names:
                     if alias.name == "*":
-                        violations.append(
-                            f"{path.relative_to(REPO_ROOT)}: "
-                            f"wildcard import 'from {node.module} import *'"
-                        )
+                        violations.append(f"{path.relative_to(REPO_ROOT)}: wildcard import 'from {node.module} import *'")
     return violations
 
 
@@ -109,10 +99,7 @@ def _check_test_coverage(packages: list[Path]) -> list[str]:
     for pkg in packages:
         test_file = BILLING_ENGINE_TESTS / f"test_{pkg.name}.py"
         if not test_file.exists():
-            violations.append(
-                f"No test file for service package '{pkg.name}': "
-                f"expected {test_file.relative_to(REPO_ROOT)}"
-            )
+            violations.append(f"No test file for service package '{pkg.name}': expected {test_file.relative_to(REPO_ROOT)}")
     return violations
 
 
@@ -128,8 +115,7 @@ def _check_models_present(packages: list[Path]) -> list[str]:
             continue
         if not (pkg / "models.py").exists():
             violations.append(
-                f"Service package '{pkg.name}' has service.py but no models.py "
-                f"(required by layered structure convention)"
+                f"Service package '{pkg.name}' has service.py but no models.py (required by layered structure convention)"
             )
     return violations
 

@@ -26,7 +26,6 @@ import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 from compiler_diagnostic_router import (
     FAMILY_INTERFACE_CONTRACT,
@@ -41,31 +40,33 @@ from compiler_diagnostic_router import (
 
 # ── Error type constants ───────────────────────────────────────────────────────
 
-EXTEND_NOT_REPLACE = "EXTEND_NOT_REPLACE"   # CS0101: duplicate class — Claude replaced existing file
-WRONG_NAMESPACE    = "WRONG_NAMESPACE"       # CS0246: type not found — wrong generated namespace
-WRONG_FIELD_NAME   = "WRONG_FIELD_NAME"      # CS0117: field not found — Claude invented property name
-MISSING_USING      = "MISSING_USING"         # CS0246 (general): missing using directive
-UNKNOWN            = "UNKNOWN"               # Cannot classify — skip remaining retries
+EXTEND_NOT_REPLACE = "EXTEND_NOT_REPLACE"  # CS0101: duplicate class — Claude replaced existing file
+WRONG_NAMESPACE = "WRONG_NAMESPACE"  # CS0246: type not found — wrong generated namespace
+WRONG_FIELD_NAME = "WRONG_FIELD_NAME"  # CS0117: field not found — Claude invented property name
+MISSING_USING = "MISSING_USING"  # CS0246 (general): missing using directive
+UNKNOWN = "UNKNOWN"  # Cannot classify — skip remaining retries
 
 # Ruff violation constants (Python style gate — Layer 1 ruff inside retry loop)
-RUFF_ANN201 = "RUFF_ANN201"   # Missing return type annotation (public function)
-RUFF_ANN001 = "RUFF_ANN001"   # Missing parameter type annotation
-RUFF_B017   = "RUFF_B017"     # pytest.raises(Exception) — blind exception catch
-RUFF_B006   = "RUFF_B006"     # Mutable default argument
-RUFF_F841   = "RUFF_F841"     # Unused local variable
-RUFF_B018   = "RUFF_B018"     # Useless expression statement
-RUFF_G004   = "RUFF_G004"     # f-string in logging call
-RUFF_E501   = "RUFF_E501"     # Line too long
+RUFF_ANN201 = "RUFF_ANN201"  # Missing return type annotation (public function)
+RUFF_ANN001 = "RUFF_ANN001"  # Missing parameter type annotation
+RUFF_B017 = "RUFF_B017"  # pytest.raises(Exception) — blind exception catch
+RUFF_B006 = "RUFF_B006"  # Mutable default argument
+RUFF_F841 = "RUFF_F841"  # Unused local variable
+RUFF_B018 = "RUFF_B018"  # Useless expression statement
+RUFF_G004 = "RUFF_G004"  # f-string in logging call
+RUFF_E501 = "RUFF_E501"  # Line too long
 RUFF_RUF046 = "RUFF_RUF046"  # Redundant int() cast (value already an integer)
-RUFF_F401   = "RUFF_F401"    # Unused import
-RUFF_GENERIC = "RUFF_GENERIC" # Ruff violation with no specific handler
+RUFF_F401 = "RUFF_F401"  # Unused import
+RUFF_GENERIC = "RUFF_GENERIC"  # Ruff violation with no specific handler
 PYTHON_IMPORT_ERROR = "PYTHON_IMPORT_ERROR"  # pytest collection ImportError / ModuleNotFoundError
 PYTHON_WRONG_SYMBOL = "PYTHON_WRONG_SYMBOL"  # cannot import name 'X' — symbol name mismatch in any intra-service module
 HYPOTHESIS_HEALTH_CHECK = "HYPOTHESIS_HEALTH_CHECK"  # hypothesis.errors.FailedHealthCheck
 HYPOTHESIS_FIXTURE_PARAM = "HYPOTHESIS_FIXTURE_PARAM"  # fixture 'X' not found — @given param treated as pytest fixture
 DATETIME_UTCNOW = "DATETIME_UTCNOW"  # datetime.utcnow() / DTZ003 naive-datetime violation
 ASYNC_MOCK_MISMATCH = "ASYNC_MOCK_MISMATCH"  # await MagicMock() raises TypeError — must use AsyncMock for async methods
-PYDANTIC_VALIDATION_ERROR = "PYDANTIC_VALIDATION_ERROR"  # pydantic_core.ValidationError — test data doesn't match model field types
+PYDANTIC_VALIDATION_ERROR = (
+    "PYDANTIC_VALIDATION_ERROR"  # pydantic_core.ValidationError — test data doesn't match model field types
+)
 SQLITE_ISOLATION = "SQLITE_ISOLATION"  # SQLite in-memory sessions return empty results — StaticPool missing
 PYTEST_FIXTURE_AWAIT = "PYTEST_FIXTURE_AWAIT"  # await <fixture> in test body — fixture already ran, value is None
 WRONG_COLLECTION_ATTRIBUTE = "WRONG_COLLECTION_ATTRIBUTE"  # assert 'X' in [] — test iterates the wrong attribute on the model
@@ -78,17 +79,19 @@ class RetryDiagnosis:
     Result from Sprint Retry Advisor diagnosis.
     C-059: every diagnosis must include constitutional_trace.
     """
+
     error_type: str
-    fix_instruction: str           # Injected into next attempt's context
-    should_retry: bool             # False = skip remaining attempts, flag spec-gap immediately
-    confidence: float              # 0.0-1.0; < 0.6 → should_retry=False regardless of type
-    duplicate_files: list[str] = field(default_factory=list)   # For EXTEND_NOT_REPLACE
+    fix_instruction: str  # Injected into next attempt's context
+    should_retry: bool  # False = skip remaining attempts, flag spec-gap immediately
+    confidence: float  # 0.0-1.0; < 0.6 → should_retry=False regardless of type
+    duplicate_files: list[str] = field(default_factory=list)  # For EXTEND_NOT_REPLACE
     constitutional_trace: str = ""  # Which claim this error pattern violates
 
 
 # ── Rule-based classifiers (no LLM cost) ──────────────────────────────────────
 
-def _classify_cs0101(error: str, written_files: list[str]) -> Optional[RetryDiagnosis]:
+
+def _classify_cs0101(error: str, written_files: list[str]) -> RetryDiagnosis | None:
     """
     CS0101: The namespace '...' already contains a definition for '...'
     Root cause: Claude regenerated a file that already existed on the sprint branch.
@@ -103,8 +106,9 @@ def _classify_cs0101(error: str, written_files: list[str]) -> Optional[RetryDiag
     duplicate_type = m.group(1)
 
     # Find which of the written files contains this type
-    duplicate_files = [f for f in written_files if duplicate_type.replace("_", "").lower()
-                       in Path(f).stem.lower().replace("_", "")]
+    duplicate_files = [
+        f for f in written_files if duplicate_type.replace("_", "").lower() in Path(f).stem.lower().replace("_", "")
+    ]
 
     fix = (
         f"CRITICAL — DUPLICATE CLASS DETECTED: '{duplicate_type}' already exists on the branch "
@@ -121,13 +125,11 @@ def _classify_cs0101(error: str, written_files: list[str]) -> Optional[RetryDiag
         should_retry=True,
         confidence=0.95,
         duplicate_files=duplicate_files,
-        constitutional_trace="C-085 (Idempotency Obligation — completed steps must not be re-executed)"
+        constitutional_trace="C-085 (Idempotency Obligation — completed steps must not be re-executed)",
     )
 
 
-def _classify_out_of_boundary_reference(
-    error: str, output_file: str
-) -> Optional[RetryDiagnosis]:
+def _classify_out_of_boundary_reference(error: str, output_file: str) -> RetryDiagnosis | None:
     """
     Generic handler for any build error where the referenced namespace/type is
     not reachable from the target project's .csproj dependency graph.
@@ -145,7 +147,7 @@ def _classify_out_of_boundary_reference(
     #   CS0234: "...name 'X' does not exist in the namespace 'Y'"
     #   CS0246: "...type or namespace name 'X' could not be found"
     #   CS0103/CS1061: "...name 'X' does not exist..."
-    offending_ns: Optional[str] = None
+    offending_ns: str | None = None
 
     m = re.search(r"does not exist in the namespace '([^']+)'", error)
     if m:
@@ -180,14 +182,19 @@ def _classify_out_of_boundary_reference(
 
     try:
         from pathlib import Path as _Path
+
         _scripts = str(_Path(__file__).parent)
         import sys as _sys
+
         if _scripts not in _sys.path:
             _sys.path.insert(0, _scripts)
         from project_dependency_map import (
-            find_csproj_for_file, is_namespace_reachable,
-            get_reachable_prefixes, REPO_ROOT as _REPO,
+            find_csproj_for_file,
+            is_namespace_reachable,
+            get_reachable_prefixes,
+            REPO_ROOT as _REPO,
         )
+
         csproj = find_csproj_for_file(output_file, _REPO)
         if not csproj:
             return None  # can't determine boundary — fall through to specific handlers
@@ -210,13 +217,13 @@ def _classify_out_of_boundary_reference(
             fix_instruction=fix,
             should_retry=True,
             confidence=0.95,
-            constitutional_trace="C-082 (build validation) + C-059 (traceability — boundary derived from .csproj)"
+            constitutional_trace="C-082 (build validation) + C-059 (traceability — boundary derived from .csproj)",
         )
     except Exception:
         return None  # non-blocking — fall through to specific handlers
 
 
-def _classify_cs0234_cross_project_ref(error: str) -> Optional[RetryDiagnosis]:
+def _classify_cs0234_cross_project_ref(error: str) -> RetryDiagnosis | None:
     """
     CS0234: sub-namespace does not exist in the parent namespace.
     Root cause in BP: LLM generates 'using Waooaw.ConstitutionalEngine.Evaluators'
@@ -257,11 +264,11 @@ def _classify_cs0234_cross_project_ref(error: str) -> Optional[RetryDiagnosis]:
         fix_instruction=fix,
         should_retry=True,
         confidence=0.95,
-        constitutional_trace="C-082 (build validation) + C-059 (traceability — CE called via gRPC only)"
+        constitutional_trace="C-082 (build validation) + C-059 (traceability — CE called via gRPC only)",
     )
 
 
-def _classify_cs0246_namespace(error: str) -> Optional[RetryDiagnosis]:
+def _classify_cs0246_namespace(error: str) -> RetryDiagnosis | None:
     """
     CS0246 with namespace hint: type not found because Claude used wrong namespace.
     Most common: Waooaw.ConstitutionalEngine.Protos instead of Waooaw.ConstitutionalEngine.Grpc
@@ -271,14 +278,14 @@ def _classify_cs0246_namespace(error: str) -> Optional[RetryDiagnosis]:
     # Also covers proto-generated request/response types (ValidateActionRequest, etc.)
     # which live in Waooaw.ConstitutionalEngine.Grpc and need 'using Grpc;'
     NAMESPACE_MAP = {
-        "Protos":                    "Waooaw.ConstitutionalEngine.Grpc",
-        "Proto":                     "Waooaw.ConstitutionalEngine.Grpc",
-        "ConstitutionalService":     "Waooaw.ConstitutionalEngine.Grpc",
+        "Protos": "Waooaw.ConstitutionalEngine.Grpc",
+        "Proto": "Waooaw.ConstitutionalEngine.Grpc",
+        "ConstitutionalService": "Waooaw.ConstitutionalEngine.Grpc",
         "Grpc.ConstitutionalService": "Waooaw.ConstitutionalEngine.Grpc",
         # Proto-generated message types — all end in Request/Response/Reply
-        "Request":                   "Waooaw.ConstitutionalEngine.Grpc",
-        "Response":                  "Waooaw.ConstitutionalEngine.Grpc",
-        "Reply":                     "Waooaw.ConstitutionalEngine.Grpc",
+        "Request": "Waooaw.ConstitutionalEngine.Grpc",
+        "Response": "Waooaw.ConstitutionalEngine.Grpc",
+        "Reply": "Waooaw.ConstitutionalEngine.Grpc",
     }
 
     # Extract the missing type
@@ -288,7 +295,7 @@ def _classify_cs0246_namespace(error: str) -> Optional[RetryDiagnosis]:
     if not (type_match or namespace_match):
         return None
 
-    missing = (type_match.group(1) if type_match else namespace_match.group(1))
+    missing = type_match.group(1) if type_match else namespace_match.group(1)
 
     for wrong, correct in NAMESPACE_MAP.items():
         if wrong.lower() in missing.lower() or wrong.lower() in error.lower():
@@ -305,13 +312,13 @@ def _classify_cs0246_namespace(error: str) -> Optional[RetryDiagnosis]:
                 fix_instruction=fix,
                 should_retry=True,
                 confidence=0.90,
-                constitutional_trace="C-059 (Traceability — implementation must reference correct spec types)"
+                constitutional_trace="C-059 (Traceability — implementation must reference correct spec types)",
             )
 
     return None
 
 
-def _lookup_type_in_ptr(type_name: str) -> Optional[dict]:
+def _lookup_type_in_ptr(type_name: str) -> dict | None:
     """
     Look up a type's members in the Platform Type Registry.
     Returns the PTR entry if found, None otherwise.
@@ -320,11 +327,12 @@ def _lookup_type_in_ptr(type_name: str) -> Optional[dict]:
     """
     try:
         from platform_type_registry import load_ptr
+
         ptr = load_ptr()
         for task_entry in ptr.get("tasks", {}).values():
             if type_name in task_entry.get("types", {}):
                 return task_entry["types"][type_name]
-    except Exception:
+    except Exception:  # noqa: S110
         pass
     return None
 
@@ -343,10 +351,7 @@ def _build_ptr_fix_instruction(type_name: str, field_name: str, ptr_entry: dict)
     elif kind == "proto_message" and "fields" in ptr_entry:
         actual = list(ptr_entry["fields"].keys())
     elif kind == "interface" and "methods" in ptr_entry:
-        actual = [
-            m["name"] if isinstance(m, dict) else str(m)
-            for m in ptr_entry.get("methods", [])
-        ]
+        actual = [m["name"] if isinstance(m, dict) else str(m) for m in ptr_entry.get("methods", [])]
     elif kind in ("enum", "proto_enum") and "values" in ptr_entry:
         actual = ptr_entry["values"]
 
@@ -373,19 +378,14 @@ def _build_ptr_fix_instruction(type_name: str, field_name: str, ptr_entry: dict)
     methods_str = str(ptr_entry.get("methods", []))
     props_str = str(ptr_entry.get("properties", {}).keys())
     if "ActionParameters" in props_str or "GetParameter" in methods_str:
-        fix += (
-            "For ActionParameters: use ctx.GetParameter(\"key\") — "
-            "it is a JSON-encoded string, NOT a Dictionary. "
-        )
+        fix += 'For ActionParameters: use ctx.GetParameter("key") — it is a JSON-encoded string, NOT a Dictionary. '
     if "EvaluateAllAsync" in methods_str:
-        fix += (
-            "For EvaluatorRegistry: _registry.EvaluateAllAsync(ctx, ct) is the ONLY public method. "
-        )
+        fix += "For EvaluatorRegistry: _registry.EvaluateAllAsync(ctx, ct) is the ONLY public method. "
 
     return fix
 
 
-def _classify_cs0117(error: str) -> Optional[RetryDiagnosis]:
+def _classify_cs0117(error: str) -> RetryDiagnosis | None:
     """
     CS0117: 'X' does not contain a definition for 'Y'.
     Generalized: looks up X in frozen registry FIRST (catches types created this sprint),
@@ -403,6 +403,7 @@ def _classify_cs0117(error: str) -> Optional[RetryDiagnosis]:
     try:
         import json as _json
         from pathlib import Path as _Path
+
         _frozen_path = _Path(__file__).parent.parent / "sprint-context" / "frozen-artifacts.json"
         if _frozen_path.exists():
             _frozen = _json.loads(_frozen_path.read_text(encoding="utf-8"))
@@ -427,9 +428,9 @@ def _classify_cs0117(error: str) -> Optional[RetryDiagnosis]:
                             fix_instruction=fix,
                             should_retry=True,
                             confidence=0.97,
-                            constitutional_trace="C-082 + C-085 (frozen registry — compiled this sprint)"
+                            constitutional_trace="C-082 + C-085 (frozen registry — compiled this sprint)",
                         )
-    except Exception:
+    except Exception:  # noqa: S110
         pass  # fall through to PTR
 
     # Try PTR — fully generalized across all sprints
@@ -441,7 +442,7 @@ def _classify_cs0117(error: str) -> Optional[RetryDiagnosis]:
             fix_instruction=fix,
             should_retry=True,
             confidence=0.95,
-            constitutional_trace="C-082 + C-085 (PTR-verified — prior compiled state is authoritative)"
+            constitutional_trace="C-082 + C-085 (PTR-verified — prior compiled state is authoritative)",
         )
 
     # PTR miss — generic fallback
@@ -458,11 +459,11 @@ def _classify_cs0117(error: str) -> Optional[RetryDiagnosis]:
         fix_instruction=fix,
         should_retry=True,
         confidence=0.75,
-        constitutional_trace="C-082 (Build Validation — generated code must compile)"
+        constitutional_trace="C-082 (Build Validation — generated code must compile)",
     )
 
 
-def _classify_cs0019_nullable_operator(error: str) -> Optional[RetryDiagnosis]:
+def _classify_cs0019_nullable_operator(error: str) -> RetryDiagnosis | None:
     """
     CS0019: Operator '??' (or similar) cannot be applied to non-nullable type.
     Root cause: LLM uses 'field ?? default' on a non-nullable long/int field.
@@ -493,11 +494,11 @@ def _classify_cs0019_nullable_operator(error: str) -> Optional[RetryDiagnosis]:
         fix_instruction=fix,
         should_retry=True,
         confidence=0.95,
-        constitutional_trace="C-082 (Build Validation)"
+        constitutional_trace="C-082 (Build Validation)",
     )
 
 
-def _classify_cs7036_constructor_args(error: str) -> Optional[RetryDiagnosis]:
+def _classify_cs7036_constructor_args(error: str) -> RetryDiagnosis | None:
     """
     CS7036: constructor/method call missing required argument.
 
@@ -529,7 +530,7 @@ def _classify_cs7036_constructor_args(error: str) -> Optional[RetryDiagnosis]:
     )
 
 
-def _classify_cs0246_missing_using(error: str) -> Optional[RetryDiagnosis]:
+def _classify_cs0246_missing_using(error: str) -> RetryDiagnosis | None:
     """
     CS0246 general: type not found, likely missing using directive.
     constitutional_trace: C-082
@@ -542,32 +543,30 @@ def _classify_cs0246_missing_using(error: str) -> Optional[RetryDiagnosis]:
 
     # Known type → namespace mappings
     TYPE_NAMESPACES = {
-        "ServerCallContext":   "Grpc.Core",
-        "ILogger":             "Microsoft.Extensions.Logging",
-        "ActivitySource":      "System.Diagnostics",
-        "DbContext":           "Microsoft.EntityFrameworkCore",
-        "ActivityKind":        "System.Diagnostics",
-        "DbSet":               "Microsoft.EntityFrameworkCore",
+        "ServerCallContext": "Grpc.Core",
+        "ILogger": "Microsoft.Extensions.Logging",
+        "ActivitySource": "System.Diagnostics",
+        "DbContext": "Microsoft.EntityFrameworkCore",
+        "ActivityKind": "System.Diagnostics",
+        "DbSet": "Microsoft.EntityFrameworkCore",
     }
 
     for known_type, namespace in TYPE_NAMESPACES.items():
         if known_type.lower() in missing_type.lower():
-            fix = (
-                f"MISSING USING: '{missing_type}' requires: using {namespace}; "
-                f"Add this using directive to the top of the file."
-            )
+            fix = f"MISSING USING: '{missing_type}' requires: using {namespace}; Add this using directive to the top of the file."
             return RetryDiagnosis(
                 error_type=MISSING_USING,
                 fix_instruction=fix,
                 should_retry=True,
                 confidence=0.80,
-                constitutional_trace="C-082 (Build Validation)"
+                constitutional_trace="C-082 (Build Validation)",
             )
 
     return None
 
 
 # ── pytest tally-based pre-classifier ─────────────────────────────────────────
+
 
 def _tally_pytest_failures(error: str) -> dict[str, int]:
     """Count pytest FAILED lines by failure category.
@@ -597,7 +596,7 @@ def _tally_pytest_failures(error: str) -> dict[str, int]:
     return tallies
 
 
-def _classify_sqlite_isolation(error: str) -> Optional[RetryDiagnosis]:
+def _classify_sqlite_isolation(error: str) -> RetryDiagnosis | None:
     """SQLite in-memory sessions return empty results — StaticPool missing.
 
     Pattern: test inserts data via one async session, service reads via another.
@@ -635,7 +634,7 @@ def _classify_sqlite_isolation(error: str) -> Optional[RetryDiagnosis]:
     )
 
 
-def _classify_pytest_fixture_await(error: str) -> Optional[RetryDiagnosis]:
+def _classify_pytest_fixture_await(error: str) -> RetryDiagnosis | None:
     """pytest async fixture awaited in test body — fixture value is None, not a coroutine.
 
     Pattern: test does `await setup_test_data` where setup_test_data is a pytest
@@ -649,6 +648,7 @@ def _classify_pytest_fixture_await(error: str) -> Optional[RetryDiagnosis]:
     if "TypeError" not in error:
         return None
     import re as _re
+
     # Try to extract the fixture name from the traceback line
     m = _re.search(r"await (\w+)", error)
     fixture_name = m.group(1) if m else "the fixture"
@@ -671,7 +671,7 @@ def _classify_pytest_fixture_await(error: str) -> Optional[RetryDiagnosis]:
     )
 
 
-def _classify_empty_collection_assertion(error: str) -> Optional[RetryDiagnosis]:
+def _classify_empty_collection_assertion(error: str) -> RetryDiagnosis | None:
     """assert 'X' in [] / assert 'X' in set() — test iterates the wrong attribute on the model.
 
     Pattern: test checks membership against an empty list or set, meaning the code
@@ -679,6 +679,7 @@ def _classify_empty_collection_assertion(error: str) -> Optional[RetryDiagnosis]
     Applies to any domain model with multiple collection fields (e.g. ThresholdPolicy).
     """
     import re as _re
+
     tallies = _tally_pytest_failures(error)
     if tallies.get("empty_collection", 0) == 0:
         return None
@@ -703,7 +704,7 @@ def _classify_empty_collection_assertion(error: str) -> Optional[RetryDiagnosis]
     )
 
 
-def _classify_output_truncated(error: str) -> Optional[RetryDiagnosis]:
+def _classify_output_truncated(error: str) -> RetryDiagnosis | None:
     """LLM response contained no <file> blocks — token budget too low for context size.
 
     Pattern: GoalExecutor or cascade returns a response with explanation text but no
@@ -731,7 +732,8 @@ def _classify_output_truncated(error: str) -> Optional[RetryDiagnosis]:
 
 # ── Multi-stack classifiers (WC013-022 coverage) ──────────────────────────────
 
-def _classify_python_import_error(error: str) -> Optional[RetryDiagnosis]:
+
+def _classify_python_import_error(error: str) -> RetryDiagnosis | None:
     """Python ImportError / ModuleNotFoundError — wrong package/module name."""
     if "ImportError" not in error and "ModuleNotFoundError" not in error:
         return None
@@ -749,8 +751,9 @@ def _classify_python_import_error(error: str) -> Optional[RetryDiagnosis]:
                     "NEVER use: 'temporal-sdk', 'temporal-python', 'temporal.client'. "
                     "The package is 'temporalio' — installed from PyPI as temporalio."
                 ),
-                should_retry=True, confidence=0.95,
-                constitutional_trace="C-082 (Build Validation — Python stack)"
+                should_retry=True,
+                confidence=0.95,
+                constitutional_trace="C-082 (Build Validation — Python stack)",
             )
 
     # Vertex AI SDK
@@ -764,8 +767,9 @@ def _classify_python_import_error(error: str) -> Optional[RetryDiagnosis]:
                 "SA key from env: os.environ.get('GOOGLE_VERTEX_SA_KEY'). "
                 "Region: 'asia-south1' for DPDPA compliance."
             ),
-            should_retry=True, confidence=0.90,
-            constitutional_trace="C-082 + C-063 (DPDPA — data residency)"
+            should_retry=True,
+            confidence=0.90,
+            constitutional_trace="C-082 + C-063 (DPDPA — data residency)",
         )
 
     # Sarvam AI
@@ -778,8 +782,9 @@ def _classify_python_import_error(error: str) -> Optional[RetryDiagnosis]:
                 "async with httpx.AsyncClient() as client: "
                 "resp = await client.post('https://api.sarvam.ai/v1/...', json=..., headers=...)"
             ),
-            should_retry=True, confidence=0.95,
-            constitutional_trace="C-082 (Build Validation)"
+            should_retry=True,
+            confidence=0.95,
+            constitutional_trace="C-082 (Build Validation)",
         )
 
     # apscheduler — must not be imported directly in tests; mock instead
@@ -793,8 +798,9 @@ def _classify_python_import_error(error: str) -> Optional[RetryDiagnosis]:
                 "Example: `with unittest.mock.patch('reconciliation.scheduler.create_scheduler') as mock_sched:`\n"
                 "The test must verify scheduling behaviour without importing apscheduler directly."
             ),
-            should_retry=True, confidence=0.97,
-            constitutional_trace="C-082 (Build Validation — missing apscheduler)"
+            should_retry=True,
+            confidence=0.97,
+            constitutional_trace="C-082 (Build Validation — missing apscheduler)",
         )
 
     # timezone — not a PyPI package; it lives inside the datetime stdlib module
@@ -808,8 +814,9 @@ def _classify_python_import_error(error: str) -> Optional[RetryDiagnosis]:
                 "(NOT `import timezone`, NOT `from timezone import timezone`). "
                 "For datetime + timezone together: `from datetime import datetime, timezone`."
             ),
-            should_retry=True, confidence=0.97,
-            constitutional_trace="C-082 (Build Validation — Python stack)"
+            should_retry=True,
+            confidence=0.97,
+            constitutional_trace="C-082 (Build Validation — Python stack)",
         )
 
     # Generic Python import
@@ -824,16 +831,16 @@ def _classify_python_import_error(error: str) -> Optional[RetryDiagnosis]:
                 f"Do NOT invent package names. Use packages listed in the PTR. "
                 f"httpx replaces requests. asyncpg replaces psycopg2 for async Postgres."
             ),
-            should_retry=True, confidence=0.75,
-            constitutional_trace="C-082 (Build Validation)"
+            should_retry=True,
+            confidence=0.75,
+            constitutional_trace="C-082 (Build Validation)",
         )
     return None
 
 
-def _classify_python_async_error(error: str) -> Optional[RetryDiagnosis]:
+def _classify_python_async_error(error: str) -> RetryDiagnosis | None:
     """Python async/await misuse — blocking calls inside async context."""
-    if ("RuntimeError" not in error and "coroutine" not in error
-            and "await" not in error.lower()):
+    if "RuntimeError" not in error and "coroutine" not in error and "await" not in error.lower():
         return None
 
     if "coroutine was never awaited" in error or "RuntimeWarning" in error:
@@ -847,8 +854,9 @@ def _classify_python_async_error(error: str) -> Optional[RetryDiagnosis]:
                 "For Temporal: activities must be 'async def' and 'await'ed. "
                 "For FastAPI: route handlers must be 'async def'."
             ),
-            should_retry=True, confidence=0.90,
-            constitutional_trace="C-082 (Build Validation — Python async)"
+            should_retry=True,
+            confidence=0.90,
+            constitutional_trace="C-082 (Build Validation — Python async)",
         )
 
     if "asyncio.run() cannot be called" in error:
@@ -860,13 +868,14 @@ def _classify_python_async_error(error: str) -> Optional[RetryDiagnosis]:
                 "Use 'await coro()' directly. "
                 "For one-off async calls: use 'await asyncio.ensure_future(coro())'."
             ),
-            should_retry=True, confidence=0.95,
-            constitutional_trace="C-082 (Build Validation)"
+            should_retry=True,
+            confidence=0.95,
+            constitutional_trace="C-082 (Build Validation)",
         )
     return None
 
 
-def _classify_temporal_error(error: str) -> Optional[RetryDiagnosis]:
+def _classify_temporal_error(error: str) -> RetryDiagnosis | None:
     """Temporal SDK registration and workflow definition errors."""
     if "temporalio" not in error.lower() and "temporal" not in error.lower():
         return None
@@ -885,8 +894,9 @@ def _classify_temporal_error(error: str) -> Optional[RetryDiagnosis]:
                 "          return await workflow.execute_activity(my_activity, ...)\n"
                 "NEVER call activities directly — always via workflow.execute_activity()."
             ),
-            should_retry=True, confidence=0.90,
-            constitutional_trace="C-082 (Build Validation — Temporal SDK)"
+            should_retry=True,
+            confidence=0.90,
+            constitutional_trace="C-082 (Build Validation — Temporal SDK)",
         )
 
     if "not an activity" in error.lower() or "@activity.defn" in error:
@@ -902,19 +912,19 @@ def _classify_temporal_error(error: str) -> Optional[RetryDiagnosis]:
                 "activities=[my_activity]). "
                 "Activity input/output must be serializable (Pydantic or dataclass)."
             ),
-            should_retry=True, confidence=0.90,
-            constitutional_trace="C-082 (Build Validation)"
+            should_retry=True,
+            confidence=0.90,
+            constitutional_trace="C-082 (Build Validation)",
         )
     return None
 
 
-def _classify_terraform_error(error: str) -> Optional[RetryDiagnosis]:
+def _classify_terraform_error(error: str) -> RetryDiagnosis | None:
     """Terraform plan/apply errors — provider and resource configuration."""
     if "Error:" not in error and "error" not in error.lower():
         return None
     # Only process if looks like a Terraform error
-    if not any(kw in error for kw in ["azurerm", "terraform", "Unsupported argument",
-                                        "Invalid reference", "provider"]):
+    if not any(kw in error for kw in ["azurerm", "terraform", "Unsupported argument", "Invalid reference", "provider"]):
         return None
 
     if "Unsupported argument" in error:
@@ -929,8 +939,9 @@ def _classify_terraform_error(error: str) -> Optional[RetryDiagnosis]:
                 f"'location' is always required. "
                 f"Pin provider version: azurerm ~> 4.0 in required_providers."
             ),
-            should_retry=True, confidence=0.85,
-            constitutional_trace="C-082 (Build Validation — Terraform)"
+            should_retry=True,
+            confidence=0.85,
+            constitutional_trace="C-082 (Build Validation — Terraform)",
         )
 
     if "Invalid reference" in error or "Variables not allowed" in error:
@@ -943,8 +954,9 @@ def _classify_terraform_error(error: str) -> Optional[RetryDiagnosis]:
                 "NEVER hardcode subscription IDs, tenant IDs, or resource IDs. "
                 "NEVER use string interpolation for resource names — use var.* references."
             ),
-            should_retry=True, confidence=0.85,
-            constitutional_trace="C-082 + C-059 (Terraform — no hardcoded credentials)"
+            should_retry=True,
+            confidence=0.85,
+            constitutional_trace="C-082 + C-059 (Terraform — no hardcoded credentials)",
         )
 
     if "provider" in error.lower() and "configuration" in error.lower():
@@ -953,23 +965,24 @@ def _classify_terraform_error(error: str) -> Optional[RetryDiagnosis]:
             fix_instruction=(
                 "TERRAFORM FIX: Provider configuration missing or incorrect. "
                 "Add to provider.tf (root module only — NEVER inside a module):\n"
-                "  provider \"azurerm\" {\n"
+                '  provider "azurerm" {\n'
                 "    features {}\n"
                 "    subscription_id = var.subscription_id\n"
                 "  }\n"
                 "required_providers block: azurerm = { source = 'hashicorp/azurerm', version = '~> 4.0' }"
             ),
-            should_retry=True, confidence=0.85,
-            constitutional_trace="C-082 (Build Validation)"
+            should_retry=True,
+            confidence=0.85,
+            constitutional_trace="C-082 (Build Validation)",
         )
     return None
 
 
-def _classify_typescript_error(error: str) -> Optional[RetryDiagnosis]:
+def _classify_typescript_error(error: str) -> RetryDiagnosis | None:
     """TypeScript/Next.js compilation and runtime boundary errors."""
     # TypeScript compile errors
-    if "TS" in error and re.search(r'TS\d{4}', error):
-        ts_code = re.search(r'TS(\d{4})', error)
+    if "TS" in error and re.search(r"TS\d{4}", error):
+        ts_code = re.search(r"TS(\d{4})", error)
         code = int(ts_code.group(1)) if ts_code else 0
 
         if code == 2307:  # Cannot find module
@@ -984,8 +997,9 @@ def _classify_typescript_error(error: str) -> Optional[RetryDiagnosis]:
                     f"NEVER use relative paths like '../../components' from src root. "
                     f"Check package.json for available packages before importing."
                 ),
-                should_retry=True, confidence=0.85,
-                constitutional_trace="C-082 (Build Validation — TypeScript)"
+                should_retry=True,
+                confidence=0.85,
+                constitutional_trace="C-082 (Build Validation — TypeScript)",
             )
 
         if code == 2339:  # Property does not exist
@@ -1001,8 +1015,9 @@ def _classify_typescript_error(error: str) -> Optional[RetryDiagnosis]:
                         f"For React props: ensure the interface/type includes this prop. "
                         f"NEVER use 'any' to bypass this — narrow the type properly."
                     ),
-                    should_retry=True, confidence=0.85,
-                    constitutional_trace="C-082 (Build Validation)"
+                    should_retry=True,
+                    confidence=0.85,
+                    constitutional_trace="C-082 (Build Validation)",
                 )
 
     # Next.js runtime boundary errors (not compile errors — need special handling)
@@ -1017,8 +1032,9 @@ def _classify_typescript_error(error: str) -> Optional[RetryDiagnosis]:
                 "→ add 'use client'; to the file. "
                 "Default is Server Component. Only add 'use client' when needed."
             ),
-            should_retry=True, confidence=0.95,
-            constitutional_trace="C-082 (Build Validation — Next.js App Router)"
+            should_retry=True,
+            confidence=0.95,
+            constitutional_trace="C-082 (Build Validation — Next.js App Router)",
         )
 
     if "useRouter" in error and "only works in a Client Component" in error:
@@ -1029,8 +1045,9 @@ def _classify_typescript_error(error: str) -> Optional[RetryDiagnosis]:
                 "Add 'use client'; as the first line of the file. "
                 "Alternative: pass the value as a prop from a Server Component parent."
             ),
-            should_retry=True, confidence=0.95,
-            constitutional_trace="C-082 (Build Validation)"
+            should_retry=True,
+            confidence=0.95,
+            constitutional_trace="C-082 (Build Validation)",
         )
     return None
 
@@ -1046,6 +1063,7 @@ _LEARNING_CACHE_PATH = Path(__file__).parent.parent / "sprint-context" / "retry-
 def record_successful_fix(error_snippet: str, fix_instruction: str, error_type: str, task_id: str) -> None:
     """Append a successful error→fix pair to the learning cache (C-069 self-improvement)."""
     import json as _json
+
     try:
         entry = {
             "error_snippet": error_snippet[:200],
@@ -1056,11 +1074,11 @@ def record_successful_fix(error_snippet: str, fix_instruction: str, error_type: 
         _LEARNING_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
         with _LEARNING_CACHE_PATH.open("a", encoding="utf-8") as f:
             f.write(_json.dumps(entry) + "\n")
-    except Exception:
+    except Exception:  # noqa: S110
         pass  # Learning cache is best-effort — never blocks execution
 
 
-def lookup_learning_cache(error_snippet: str) -> Optional[RetryDiagnosis]:
+def lookup_learning_cache(error_snippet: str) -> RetryDiagnosis | None:
     """Check learning cache for a known fix before calling LLM.
     P2 Fix 2: Also checks cross-sprint learning cache archives (Instinct 2 compounds).
     """
@@ -1090,12 +1108,13 @@ def lookup_learning_cache(error_snippet: str) -> Optional[RetryDiagnosis]:
                             confidence=0.82,
                             constitutional_trace="C-069 (Self-Improvement — learned from prior successful retry)",
                         )
-        except Exception:
+        except Exception:  # noqa: S110
             pass
     return None
 
 
 # ── LLM-assisted classifier for UNKNOWN patterns ──────────────────────────────
+
 
 def _classify_with_llm(task_id: str, error: str) -> RetryDiagnosis:  # pragma: no cover
     """
@@ -1110,7 +1129,7 @@ def _classify_with_llm(task_id: str, error: str) -> RetryDiagnosis:  # pragma: n
             fix_instruction="Cannot classify — no API key. Manual diagnosis required.",
             should_retry=False,
             confidence=0.0,
-            constitutional_trace="C-077 (FinOps — cannot classify without API)"
+            constitutional_trace="C-077 (FinOps — cannot classify without API)",
         )
 
     try:
@@ -1122,28 +1141,25 @@ def _classify_with_llm(task_id: str, error: str) -> RetryDiagnosis:  # pragma: n
             f"Task: {task_id}\n"
             f"Build error:\n{error[:500]}\n\n"
             f"Respond in JSON only:\n"
-            f"{{\"error_type\": \"EXTEND_NOT_REPLACE|WRONG_NAMESPACE|WRONG_FIELD_NAME|MISSING_USING|UNKNOWN\",\n"
-            f" \"fix_instruction\": \"one sentence telling the developer exactly what to change\",\n"
-            f" \"confidence\": 0.0-1.0,\n"
-            f" \"should_retry\": true/false}}"
+            f'{{"error_type": "EXTEND_NOT_REPLACE|WRONG_NAMESPACE|WRONG_FIELD_NAME|MISSING_USING|UNKNOWN",\n'
+            f' "fix_instruction": "one sentence telling the developer exactly what to change",\n'
+            f' "confidence": 0.0-1.0,\n'
+            f' "should_retry": true/false}}'
         )
 
         payload = {
-            "model": "claude-haiku-4-5",   # cheapest model — classification only
+            "model": "claude-haiku-4-5",  # cheapest model — classification only
             "max_tokens": 200,
             "temperature": 0,
-            "messages": [{"role": "user", "content": prompt}]
+            "messages": [{"role": "user", "content": prompt}],
         }
         req = urllib.request.Request(
             "https://api.anthropic.com/v1/messages",
             data=json.dumps(payload).encode(),
-            headers={
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json"
-            }
+            headers={"x-api-key": api_key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
         )
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        response = urllib.request.urlopen(req, timeout=30)  # noqa: S310
+        with response as resp:
             result = json.loads(resp.read())
             text = result["content"][0]["text"].strip()
             # Parse JSON from response
@@ -1153,7 +1169,7 @@ def _classify_with_llm(task_id: str, error: str) -> RetryDiagnosis:  # pragma: n
                 fix_instruction=parsed.get("fix_instruction", ""),
                 should_retry=parsed.get("should_retry", False),
                 confidence=float(parsed.get("confidence", 0.5)),
-                constitutional_trace="C-077 (LLM-assisted classification — cheap model)"
+                constitutional_trace="C-077 (LLM-assisted classification — cheap model)",
             )
     except Exception as e:
         return RetryDiagnosis(
@@ -1161,11 +1177,12 @@ def _classify_with_llm(task_id: str, error: str) -> RetryDiagnosis:  # pragma: n
             fix_instruction=f"LLM classification failed: {str(e)[:100]}",
             should_retry=False,
             confidence=0.0,
-            constitutional_trace="C-082 (Build Validation — cannot retry without diagnosis)"
+            constitutional_trace="C-082 (Build Validation — cannot retry without diagnosis)",
         )
 
 
 # ── Ruff Python violation classifier ─────────────────────────────────────────
+
 
 def _classify_ruff_violation(build_error: str) -> RetryDiagnosis | None:
     """
@@ -1179,7 +1196,7 @@ def _classify_ruff_violation(build_error: str) -> RetryDiagnosis | None:
 
     # ANN201 — missing return type annotation
     if "ANN201" in build_error:
-        m = re.search(r'ANN201.*?`([^`]+)`', build_error)
+        m = re.search(r"ANN201.*?`([^`]+)`", build_error)
         fn_name = m.group(1) if m else "function"
         fix_parts.append(
             f"[ANN201] Add return type to `{fn_name}`. "
@@ -1189,11 +1206,10 @@ def _classify_ruff_violation(build_error: str) -> RetryDiagnosis | None:
 
     # ANN001 — missing parameter type annotation
     if "ANN001" in build_error:
-        m = re.search(r'ANN001.*?`([^`]+)`', build_error)
+        m = re.search(r"ANN001.*?`([^`]+)`", build_error)
         param_name = m.group(1) if m else "parameter"
         fix_parts.append(
-            f"[ANN001] Add type annotation to parameter `{param_name}`. "
-            "Every parameter needs a type: 'def f(x: int, y: str)'."
+            f"[ANN001] Add type annotation to parameter `{param_name}`. Every parameter needs a type: 'def f(x: int, y: str)'."
         )
 
     # B017 — blind exception in pytest.raises
@@ -1205,13 +1221,11 @@ def _classify_ruff_violation(build_error: str) -> RetryDiagnosis | None:
 
     # B006 — mutable default argument
     if "B006" in build_error:
-        fix_parts.append(
-            "[B006] Mutable default: replace 'def f(x=[])' with 'def f(x: list | None = None)'."
-        )
+        fix_parts.append("[B006] Mutable default: replace 'def f(x=[])' with 'def f(x: list | None = None)'.")
 
     # F841 — unused variable
     if "F841" in build_error:
-        m = re.search(r'F841.*?`([^`]+)`', build_error)
+        m = re.search(r"F841.*?`([^`]+)`", build_error)
         var_name = m.group(1) if m else "variable"
         fix_parts.append(
             f"[F841] `{var_name}` is assigned but never used.\n"
@@ -1222,33 +1236,25 @@ def _classify_ruff_violation(build_error: str) -> RetryDiagnosis | None:
 
     # B018 — useless expression
     if "B018" in build_error:
-        fix_parts.append(
-            "[B018] Bare expression statement found — convert to assert or remove."
-        )
+        fix_parts.append("[B018] Bare expression statement found — convert to assert or remove.")
 
     # G004 — f-string in logging
     if "G004" in build_error:
-        fix_parts.append(
-            "[G004] f-string in logger call — use 'logger.info(\"val=%s\", x)' instead."
-        )
+        fix_parts.append("[G004] f-string in logger call — use 'logger.info(\"val=%s\", x)' instead.")
 
     # E501 — line too long
     if "E501" in build_error:
-        fix_parts.append(
-            "[E501] Line too long — break at 120 chars using line continuation or restructure."
-        )
+        fix_parts.append("[E501] Line too long — break at 120 chars using line continuation or restructure.")
 
     # RUF046 — redundant int() cast
     if "RUF046" in build_error:
-        m = re.search(r'RUF046.*?`([^`]+)`', build_error)
+        m = re.search(r"RUF046.*?`([^`]+)`", build_error)
         expr = m.group(1) if m else "the expression"
-        fix_parts.append(
-            f"[RUF046] `{expr}` is already an integer — remove the redundant `int()` cast."
-        )
+        fix_parts.append(f"[RUF046] `{expr}` is already an integer — remove the redundant `int()` cast.")
 
     # F401 — unused import
     if "F401" in build_error:
-        m = re.search(r'F401.*?`([^`]+)`', build_error)
+        m = re.search(r"F401.*?`([^`]+)`", build_error)
         import_name = m.group(1) if m else "the import"
         if import_name.startswith("src."):
             # Wrong dotted path — this service uses flat imports via conftest.py sys.path
@@ -1281,7 +1287,7 @@ def _classify_ruff_violation(build_error: str) -> RetryDiagnosis | None:
 
     # DTZ003 / DTZ — naive datetime (utcnow, utcfromtimestamp)
     elif "DTZ" in build_error or "utcnow" in build_error:
-        m = re.search(r'DTZ0\d\d', build_error)
+        m = re.search(r"DTZ0\d\d", build_error)
         dtz_code = m.group(0) if m else "DTZ003"
         fix_parts.append(
             f"[{dtz_code}] Naive datetime detected. "
@@ -1337,7 +1343,7 @@ def _classify_ruff_violation(build_error: str) -> RetryDiagnosis | None:
 
     # W605 — invalid escape sequence (missing r'' prefix on regex strings)
     if "W605" in build_error:
-        m = re.search(r'W605.*?`([^`]+)`', build_error)
+        m = re.search(r"W605.*?`([^`]+)`", build_error)
         escape_seq = m.group(1) if m else r"\pattern"
         fix_parts.append(
             f"[W605] Invalid escape sequence `{escape_seq}` in string. "
@@ -1362,7 +1368,7 @@ def _classify_ruff_violation(build_error: str) -> RetryDiagnosis | None:
     if not fix_parts:
         # Ruff matched a code we have no specific handler for — return generic guidance
         # so the LLM gets directed to fix the violation instead of UNKNOWN fallback.
-        codes = re.findall(r'\b[A-Z]{1,3}\d{3,4}\b', build_error)
+        codes = re.findall(r"\b[A-Z]{1,3}\d{3,4}\b", build_error)
         unique_codes = sorted(set(codes))
         return RetryDiagnosis(
             error_type=RUFF_GENERIC,
@@ -1379,11 +1385,22 @@ def _classify_ruff_violation(build_error: str) -> RetryDiagnosis | None:
     # Determine primary error_type from first violation found
     first_type = RUFF_ANN201
     for code, rtype in [
-        ("ANN201", RUFF_ANN201), ("ANN001", RUFF_ANN001), ("B017", RUFF_B017),
-        ("B006", RUFF_B006), ("DTZ", DATETIME_UTCNOW), ("F841", RUFF_F841), ("B018", RUFF_B018),
-        ("G004", RUFF_G004), ("E501", RUFF_E501), ("RUF046", RUFF_RUF046),
-        ("RUF012", RUFF_GENERIC), ("UP037", RUFF_GENERIC), ("UP045", RUFF_GENERIC),
-        ("UP024", RUFF_GENERIC), ("UP035", RUFF_GENERIC), ("W605", RUFF_GENERIC),
+        ("ANN201", RUFF_ANN201),
+        ("ANN001", RUFF_ANN001),
+        ("B017", RUFF_B017),
+        ("B006", RUFF_B006),
+        ("DTZ", DATETIME_UTCNOW),
+        ("F841", RUFF_F841),
+        ("B018", RUFF_B018),
+        ("G004", RUFF_G004),
+        ("E501", RUFF_E501),
+        ("RUF046", RUFF_RUF046),
+        ("RUF012", RUFF_GENERIC),
+        ("UP037", RUFF_GENERIC),
+        ("UP045", RUFF_GENERIC),
+        ("UP024", RUFF_GENERIC),
+        ("UP035", RUFF_GENERIC),
+        ("W605", RUFF_GENERIC),
         ("ASYNC240", RUFF_GENERIC),
         ("F401", RUFF_F401),
     ]:
@@ -1391,9 +1408,8 @@ def _classify_ruff_violation(build_error: str) -> RetryDiagnosis | None:
             first_type = rtype
             break
 
-    combined_fix = (
-        f"RUFF VIOLATIONS ({len(fix_parts)} issue(s) — fix ALL before resubmitting):\n"
-        + "\n".join(f"  {i + 1}. {p}" for i, p in enumerate(fix_parts))
+    combined_fix = f"RUFF VIOLATIONS ({len(fix_parts)} issue(s) — fix ALL before resubmitting):\n" + "\n".join(
+        f"  {i + 1}. {p}" for i, p in enumerate(fix_parts)
     )
 
     return RetryDiagnosis(
@@ -1401,17 +1417,18 @@ def _classify_ruff_violation(build_error: str) -> RetryDiagnosis | None:
         fix_instruction=combined_fix,
         should_retry=True,
         confidence=0.95,
-        constitutional_trace="C-082 (COMPILE gate: ruff violations — fix all listed issues)"
+        constitutional_trace="C-082 (COMPILE gate: ruff violations — fix all listed issues)",
     )
 
 
 # ── Main entry point ───────────────────────────────────────────────────────────
 
+
 def diagnose_build_error(
     task_id: str,
     build_error: str,
     written_files: list[str],
-    branch_files: Optional[list[str]] = None,
+    branch_files: list[str] | None = None,
     output_file: str = "",
 ) -> RetryDiagnosis:
     """
@@ -1425,7 +1442,9 @@ def diagnose_build_error(
     """
     # ── Ruff Python violations (classified BEFORE CS code scan) ───────────────
     # Ruff rule codes (ANN*, B*, F*, G*, E5xx) don't overlap with CS codes.
-    ruff_pattern = re.compile(r'\b(ANN\d+|B0\d+|F\d{3}|G\d{3}|E5\d{2}|UP\d{3}|RUF\d+|C9\d+|PL[RCEW]\d+|W\d{3}|N\d{3}|I\d{3}|D\d{3}|T\d{3}|PT\d{3}|SIM\d{3}|ERA\d{3}|TID\d{3}|DTZ\d{3})\b')
+    ruff_pattern = re.compile(
+        r"\b(ANN\d+|B0\d+|F\d{3}|G\d{3}|E5\d{2}|UP\d{3}|RUF\d+|C9\d+|PL[RCEW]\d+|W\d{3}|N\d{3}|I\d{3}|D\d{3}|T\d{3}|PT\d{3}|SIM\d{3}|ERA\d{3}|TID\d{3}|DTZ\d{3})\b"
+    )
     ruff_codes = ruff_pattern.findall(build_error)
     if ruff_codes:
         diagnosis = _classify_ruff_violation(build_error)
@@ -1471,8 +1490,10 @@ def diagnose_build_error(
             )
             diagnosis = RetryDiagnosis(
                 error_type=PYTHON_IMPORT_ERROR,
-                fix_instruction=fix, should_retry=True, confidence=0.97,
-                constitutional_trace="C-082 (Build Validation — apscheduler not installed)"
+                fix_instruction=fix,
+                should_retry=True,
+                confidence=0.97,
+                constitutional_trace="C-082 (Build Validation — apscheduler not installed)",
             )
             print(f"  Retry Advisor: {PYTHON_IMPORT_ERROR} (confidence=97%)")
             return diagnosis
@@ -1510,10 +1531,11 @@ def diagnose_build_error(
                 "  Import: `from sqlalchemy import cast, func` and `from sqlalchemy import Date`\n"
                 "Replace ALL raw-SQL PostgreSQL casts with SQLAlchemy equivalents."
             ),
-            should_retry=True, confidence=0.95,
-            constitutional_trace="C-082 (Build Validation — SQLite/PostgreSQL syntax incompatibility)"
+            should_retry=True,
+            confidence=0.95,
+            constitutional_trace="C-082 (Build Validation — SQLite/PostgreSQL syntax incompatibility)",
         )
-        print(f"  Retry Advisor: SQLITE_POSTGRES_CAST (confidence=95%)")
+        print("  Retry Advisor: SQLITE_POSTGRES_CAST (confidence=95%)")
         return diagnosis
 
     # ── assert None is not None — method does not return required result object ──
@@ -1528,10 +1550,11 @@ def diagnose_build_error(
                 "Fix: ensure the method ALWAYS constructs and returns the result object, even on the happy path.\n"
                 "Per C-023: evidence records must be emitted regardless of outcome."
             ),
-            should_retry=True, confidence=0.90,
-            constitutional_trace="C-023 (Evidence First) + C-082 (Build Validation)"
+            should_retry=True,
+            confidence=0.90,
+            constitutional_trace="C-023 (Evidence First) + C-082 (Build Validation)",
         )
-        print(f"  Retry Advisor: TEST_ASSERT_NONE (confidence=90%)")
+        print("  Retry Advisor: TEST_ASSERT_NONE (confidence=90%)")
         return diagnosis
 
     # ── pytest fixture not found — likely @given param treated as pytest fixture ──
@@ -1669,7 +1692,7 @@ def diagnose_build_error(
         print(f"  Retry Advisor: {PYDANTIC_VALIDATION_ERROR} (confidence=88%)")
         return diagnosis
 
-    error_codes = set(re.findall(r'CS\d+', build_error))
+    error_codes = set(re.findall(r"CS\d+", build_error))
     facts = parse_diagnostic_facts(build_error)
     family = classify_diagnostic_family(facts)
 
@@ -1734,15 +1757,14 @@ def diagnose_build_error(
                 f"For EvaluationResult: use EvaluationVerdict (not EvaluationDecision). "
                 f"For EvaluationVerdict values: Allow, Deny, Escalate (exact case)."
             )
-            print(f"  Retry Advisor: WRONG_FIELD_NAME/undefined name CS0103 (confidence=88%)")
+            print("  Retry Advisor: WRONG_FIELD_NAME/undefined name CS0103 (confidence=88%)")
             return RetryDiagnosis(
                 error_type=WRONG_FIELD_NAME,
                 fix_instruction=fix,
                 should_retry=True,
                 confidence=0.88,
-                constitutional_trace="C-082 (Build Validation — generated code must use defined types)"
+                constitutional_trace="C-082 (Build Validation — generated code must use defined types)",
             )
-
 
     # ── Rule 5: CS1061 — member not found on type ─────────────────────────────
     if "CS1061" in error_codes:
@@ -1760,14 +1782,14 @@ def diagnose_build_error(
                     fix_instruction=fix,
                     should_retry=True,
                     confidence=0.95,
-                    constitutional_trace="C-082 + C-085 (PTR-verified — prior compiled state is authoritative)"
+                    constitutional_trace="C-082 + C-085 (PTR-verified — prior compiled state is authoritative)",
                 )
 
             # PTR miss — fall back to known behavioral patterns
             fix = (
                 f"FIELD NOT FOUND: '{type_name}.{field_name}' does not exist. "
                 f"Check BRANCH CONTEXT for the exact API of '{type_name}'. "
-                f"If this is EvaluationContext: use ctx.GetParameter(\"key\") for ActionParameters JSON — "
+                f'If this is EvaluationContext: use ctx.GetParameter("key") for ActionParameters JSON — '
                 f"NEVER call ActionParameters.TryGetValue(). "
                 f"If this is EvaluatorRegistry: use _registry.EvaluateAllAsync(ctx, ct) — the only public method."
             )
@@ -1777,7 +1799,7 @@ def diagnose_build_error(
                 fix_instruction=fix,
                 should_retry=True,
                 confidence=0.75,
-                constitutional_trace="C-082 (Build Validation — use types from BRANCH CONTEXT)"
+                constitutional_trace="C-082 (Build Validation — use types from BRANCH CONTEXT)",
             )
 
     # ── Rule 6: CS0266 / CS0037 — null/nullable-to-non-nullable conversion ──────
@@ -1786,11 +1808,11 @@ def diagnose_build_error(
         if m:
             from_type, to_type = m.group(1), m.group(2)
             # PTR-aware: look up the field that is nullable
-            field_m = re.search(r"error CS0266:.*\[.*\]\s*$", build_error, re.MULTILINE)
             ptr_entry = None
             # Try to find which field is nullable from PTR
             try:
                 from platform_type_registry import load_ptr
+
                 ptr = load_ptr()
                 for task_entry in ptr.get("tasks", {}).values():
                     for type_entry in task_entry.get("types", {}).values():
@@ -1798,7 +1820,7 @@ def diagnose_build_error(
                             if "?" in field_type and field_type.replace("?", "").strip() == to_type:
                                 ptr_entry = (field_name, field_type)
                                 break
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
             if ptr_entry:
                 field_name, field_type = ptr_entry
@@ -1817,13 +1839,13 @@ def diagnose_build_error(
                     f"OR use .Value if you know it is non-null: nullableValue.Value "
                     f"For proto optional long fields: field ?? 0L"
                 )
-            print(f"  Retry Advisor: CS0266/CS0037 nullable-to-non-nullable (confidence=90%)")
+            print("  Retry Advisor: CS0266/CS0037 nullable-to-non-nullable (confidence=90%)")
             return RetryDiagnosis(
                 error_type=WRONG_FIELD_NAME,
                 fix_instruction=fix,
                 should_retry=True,
                 confidence=0.90,
-                constitutional_trace="C-082 (Build Validation — nullable types require explicit conversion)"
+                constitutional_trace="C-082 (Build Validation — nullable types require explicit conversion)",
             )
 
     # ── Rule 6b: CS8629 / CS8600 / CS8602 / CS8604 — nullable dereference warnings-as-errors ──
@@ -1842,15 +1864,12 @@ def diagnose_build_error(
             fix_instruction=fix,
             should_retry=True,
             confidence=0.88,
-            constitutional_trace="C-082 (Build Validation — nullable dereference must be explicit)"
+            constitutional_trace="C-082 (Build Validation — nullable dereference must be explicit)",
         )
 
     # ── Rule 6c: CS1503 — argument type mismatch ──────────────────────────────
     if "CS1503" in error_codes:
-        m = re.search(
-            r"Argument (\d+).*?cannot convert from '([^']+)' to '([^']+)'",
-            build_error, re.DOTALL
-        )
+        m = re.search(r"Argument (\d+).*?cannot convert from '([^']+)' to '([^']+)'", build_error, re.DOTALL)
         arg_n = m.group(1) if m else "?"
         from_t = m.group(2) if m else "?"
         to_t = m.group(3) if m else "?"
@@ -1868,7 +1887,7 @@ def diagnose_build_error(
             fix_instruction=fix,
             should_retry=True,
             confidence=0.85,
-            constitutional_trace="C-082 (Build Validation — constructor argument types must match signature)"
+            constitutional_trace="C-082 (Build Validation — constructor argument types must match signature)",
         )
 
     # ── Rule 6d: CS1744 — named argument after positional ────────────────────
@@ -1888,7 +1907,7 @@ def diagnose_build_error(
             fix_instruction=fix,
             should_retry=True,
             confidence=0.92,
-            constitutional_trace="C-082 (Build Validation — named and positional args cannot be mixed)"
+            constitutional_trace="C-082 (Build Validation — named and positional args cannot be mixed)",
         )
 
     # ── Rule 6e: CS1729 — no matching constructor ─────────────────────────────
@@ -1908,7 +1927,7 @@ def diagnose_build_error(
             fix_instruction=fix,
             should_retry=True,
             confidence=0.88,
-            constitutional_trace="C-082 (Build Validation — constructor arity must match definition)"
+            constitutional_trace="C-082 (Build Validation — constructor arity must match definition)",
         )
 
     # ── Rule 7: CS0019 — operator applied to non-nullable type ──────────────────
@@ -1943,7 +1962,7 @@ def diagnose_build_error(
             fix_instruction=fix,
             should_retry=True,
             confidence=0.95,
-            constitutional_trace="C-082 (Build Validation — do not invent interface members)"
+            constitutional_trace="C-082 (Build Validation — do not invent interface members)",
         )
 
     # ── Rule 9: CS0505 — overriding property as method ────────────────────────
@@ -1955,21 +1974,21 @@ def diagnose_build_error(
             "PROPERTY OVERRIDE ERROR (CS0505): You tried to override a property as a method. "
             "In Grpc.Core.ServerCallContext, ALL core members are abstract PROPERTIES — "
             "NEVER use parentheses '()' when overriding them. "
-            "CORRECT form: protected override string MethodCore => \"value\"; "
-            "WRONG form:   protected override string MethodCore() => \"value\"; "
+            'CORRECT form: protected override string MethodCore => "value"; '
+            'WRONG form:   protected override string MethodCore() => "value"; '
             "Members that are properties (no parentheses): "
             "MethodCore, HostCore, DeadlineCore, RequestHeadersCore, "
             "CancellationTokenCore, PeerCore, AuthContextCore, StatusCore, WriteOptionsCore. "
             "Members that ARE methods (use parentheses): "
             "CreatePropagationTokenCore(options), WriteResponseHeadersAsyncCore(headers)."
         )
-        print(f"  Retry Advisor: CS0505 property-as-method override (confidence=95%)")
+        print("  Retry Advisor: CS0505 property-as-method override (confidence=95%)")
         return RetryDiagnosis(
             error_type=WRONG_FIELD_NAME,
             fix_instruction=fix,
             should_retry=True,
             confidence=0.95,
-            constitutional_trace="C-082 (Build Validation — Grpc.Core.ServerCallContext members are properties)"
+            constitutional_trace="C-082 (Build Validation — Grpc.Core.ServerCallContext members are properties)",
         )
 
     # ── Rules 10-14: Multi-stack classifiers (WC013-022) ─────────────────────
@@ -1978,9 +1997,7 @@ def diagnose_build_error(
     # ── Rule 10b: CS0019 — CE gRPC enum type confusion (ValidationDecision vs PolicyDecision) ──
     # RCA-fix (2026-07-29): LLM compared ValidateActionResponse.Decision (ValidationDecision)
     # against PolicyDecision.* (different enum, different RPC).
-    if "CS0019" in error_codes and (
-        "ValidationDecision" in build_error and "PolicyDecision" in build_error
-    ):
+    if "CS0019" in error_codes and ("ValidationDecision" in build_error and "PolicyDecision" in build_error):
         fix = (
             "CE gRPC ENUM TYPE MISMATCH (CS0019): ValidateActionResponse.Decision is "
             "ValidationDecision, NOT PolicyDecision.\n"
@@ -1991,7 +2008,7 @@ def diagnose_build_error(
             "with ValidationDecision.Allow / ValidationDecision.Deny.\n"
             "PolicyDecision is used on EvaluatePolicyResponse.Decision only (different RPC)."
         )
-        print(f"  Retry Advisor: CS0019 ValidationDecision/PolicyDecision CE gRPC enum mismatch (confidence=97%)")
+        print("  Retry Advisor: CS0019 ValidationDecision/PolicyDecision CE gRPC enum mismatch (confidence=97%)")
         return RetryDiagnosis(
             error_type="WRONG_ENUM_TYPE",
             fix_instruction=fix,
@@ -2015,7 +2032,7 @@ def diagnose_build_error(
             f"  Interface declares Task Method()    → implementation: async Task Method()\n"
             f"Remove 'async' if the interface method is not async, or fix return type to match."
         )
-        print(f"  Retry Advisor: CS8609 async return type mismatch (confidence=85%)")
+        print("  Retry Advisor: CS8609 async return type mismatch (confidence=85%)")
         return RetryDiagnosis(
             error_type="WRONG_RETURN_TYPE",
             fix_instruction=fix,
@@ -2161,7 +2178,7 @@ def diagnose_build_error(
         return cache_hit
 
     # ── Fallback 2: LLM classification ───────────────────────────────────────
-    print(f"  Retry Advisor: pattern not recognized — calling cheap LLM classifier")
+    print("  Retry Advisor: pattern not recognized — calling cheap LLM classifier")
     diagnosis = _classify_with_llm(task_id, build_error)
     print(f"  Retry Advisor: LLM says {diagnosis.error_type} (confidence={diagnosis.confidence:.0%})")
 
@@ -2169,8 +2186,7 @@ def diagnose_build_error(
     if diagnosis.confidence < 0.6:
         diagnosis.should_retry = False
         diagnosis.fix_instruction = (
-            f"Cannot diagnose with sufficient confidence ({diagnosis.confidence:.0%}). "
-            f"Original error: {build_error[:200]}"
+            f"Cannot diagnose with sufficient confidence ({diagnosis.confidence:.0%}). Original error: {build_error[:200]}"
         )
 
     return diagnosis

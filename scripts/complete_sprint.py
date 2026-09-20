@@ -47,6 +47,7 @@ Environment variables consumed (set by GitHub Actions):
   GITHUB_REPOSITORY   — owner/repo
   GITHUB_RUN_ID       — for registry entry
 """
+
 from __future__ import annotations
 
 import argparse
@@ -62,28 +63,29 @@ from pathlib import Path
 _scripts_path = Path(__file__).parent
 if str(_scripts_path) not in _sys.path:
     _sys.path.insert(0, str(_scripts_path))
-from runner.sprint_ops import close_run_heartbeat  # ADR-041 P2a
+from runner.sprint_ops import close_run_heartbeat  # ADR-041 P2a  # noqa: E402
 
-REPO_ROOT   = Path(__file__).parent.parent
+REPO_ROOT = Path(__file__).parent.parent
 SIGNAL_PATH = REPO_ROOT / "sprint-context" / "monitor-signal.json"
-REGISTRY    = REPO_ROOT / "logs" / "failure-registry.jsonl"
-STATE_PATH  = REPO_ROOT / "constitution" / "PROJECT_STATE.md"
+REGISTRY = REPO_ROOT / "logs" / "failure-registry.jsonl"
+STATE_PATH = REPO_ROOT / "constitution" / "PROJECT_STATE.md"
 
 
 # ── Registry Entry Schema ──────────────────────────────────────────────────────
 
+
 def _make_registry_entry(
-    run_id:        str,
-    sprint:        str,
-    task_id:       str,
-    subtask_id:    str,
-    result:        str,          # "FAIL" | "SKIPPED"
-    build_error:   str = "",
-    error_codes:   list[str] | None = None,
-    retry_count:   int = 0,
-    advisor_type:  str = "",
-    confidence:    float = 0.0,
-    output_files:  list[str] | None = None,
+    run_id: str,
+    sprint: str,
+    task_id: str,
+    subtask_id: str,
+    result: str,  # "FAIL" | "SKIPPED"
+    build_error: str = "",
+    error_codes: list[str] | None = None,
+    retry_count: int = 0,
+    advisor_type: str = "",
+    confidence: float = 0.0,
+    output_files: list[str] | None = None,
 ) -> dict:
     """
     One failure-registry entry.
@@ -91,29 +93,30 @@ def _make_registry_entry(
     resolution and fix_applied are set externally when a fix is applied.
     """
     return {
-        "timestamp":       datetime.now(timezone.utc).isoformat(),
-        "run_id":          run_id,
-        "sprint":          sprint,
-        "task_id":         task_id,
-        "subtask_id":      subtask_id,
-        "result":          result,
-        "error_codes":     error_codes or _extract_error_codes(build_error),
-        "error_text":      build_error[:500] if build_error else "",
-        "retry_count":     retry_count,
-        "advisor_type":    advisor_type,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "run_id": run_id,
+        "sprint": sprint,
+        "task_id": task_id,
+        "subtask_id": subtask_id,
+        "result": result,
+        "error_codes": error_codes or _extract_error_codes(build_error),
+        "error_text": build_error[:500] if build_error else "",
+        "retry_count": retry_count,
+        "advisor_type": advisor_type,
         "advisor_confidence": confidence,
-        "output_files":    output_files or [],
-        "resolution":      "UNRESOLVED",   # updated by fix_applied() when a fix lands
-        "fix_commit":      None,           # SHA of commit that fixed this pattern
+        "output_files": output_files or [],
+        "resolution": "UNRESOLVED",  # updated by fix_applied() when a fix lands
+        "fix_commit": None,  # SHA of commit that fixed this pattern
     }
 
 
 def _extract_error_codes(error_text: str) -> list[str]:
     """Extract CS/NU/MSB error codes from build output."""
-    return sorted(set(re.findall(r'(?:CS|NU|MSB)\d+', error_text)))
+    return sorted(set(re.findall(r"(?:CS|NU|MSB)\d+", error_text)))
 
 
 # ── Registry I/O ──────────────────────────────────────────────────────────────
+
 
 def append_to_registry(entries: list[dict], dry_run: bool = False) -> int:
     """Append entries to logs/failure-registry.jsonl. Returns count appended.
@@ -164,20 +167,22 @@ def read_registry() -> list[dict]:
 
 # ── Sprint state helpers ───────────────────────────────────────────────────────
 
+
 def _run(cmd: list[str], check: bool = True) -> subprocess.CompletedProcess:
     in_container = os.environ.get("AUTONOMOUS_SPRINT_AGENT") == "true"
     if in_container and len(cmd) > 1 and cmd[0] == "git" and cmd[1] in ("commit", "merge"):
-        cmd = ["git", "-c", "commit.gpgsign=false"] + cmd[1:]
+        cmd = ["git", "-c", "commit.gpgsign=false", *cmd[1:]]
     if in_container and cmd == ["git", "push", "origin", "main"]:
         # Inject GITHUB_TOKEN into remote URL for authenticated push inside container
         token = os.environ.get("GITHUB_TOKEN", "")
         repo = os.environ.get("GITHUB_REPO", "dlai-sd/waooaw-platform")
         if token:
-            subprocess.run(["git", "remote", "set-url", "origin",
-                            f"https://x-access-token:{token}@github.com/{repo}.git"],
-                           cwd=REPO_ROOT, capture_output=True)
-    return subprocess.run(cmd, capture_output=True, text=True, check=check,
-                          cwd=REPO_ROOT)
+            subprocess.run(  # noqa: S603
+                ["git", "remote", "set-url", "origin", f"https://x-access-token:{token}@github.com/{repo}.git"],  # noqa: S607
+                cwd=REPO_ROOT,
+                capture_output=True,
+            )
+    return subprocess.run(cmd, capture_output=True, text=True, check=check, cwd=REPO_ROOT)  # noqa: S603
 
 
 def _read_sprint_state() -> dict:
@@ -186,8 +191,7 @@ def _read_sprint_state() -> dict:
     sm_idx = full_text.find("## SPRINT_STATE_MACHINE")
     text = full_text[sm_idx:] if sm_idx >= 0 else full_text
     state: dict = {}
-    for key in ["sprint", "sprint_status", "task_id", "consecutive_failures",
-                "autonomous_halt"]:
+    for key in ["sprint", "sprint_status", "task_id", "consecutive_failures", "autonomous_halt"]:
         m = re.search(rf"^{key}:\s*(.+)$", text, re.MULTILINE)
         if m:
             state[key] = m.group(1).strip()
@@ -207,19 +211,28 @@ def _update_sprint_state(
 
     state_script = str(REPO_ROOT / "scripts" / "sprint_state.py")
     py = sys.executable
-    _run([py, state_script, "set",
-          "sprint_status", sprint_status,
-          "consecutive_failures", str(consecutive_failures),
-          "autonomous_halt", str(autonomous_halt).lower()])
+    _run(
+        [
+            py,
+            state_script,
+            "set",
+            "sprint_status",
+            sprint_status,
+            "consecutive_failures",
+            str(consecutive_failures),
+            "autonomous_halt",
+            str(autonomous_halt).lower(),
+        ]
+    )
 
 
 # ── PR closure ────────────────────────────────────────────────────────────────
 
-def close_pr(pr_number: int, sprint: str, result: str, registry_count: int,
-             dry_run: bool = False) -> None:
+
+def close_pr(pr_number: int, sprint: str, result: str, registry_count: int, dry_run: bool = False) -> None:
     """Close a stale sprint PR with a registry-aware comment."""
     token = os.environ.get("GITHUB_TOKEN", "")
-    repo  = os.environ.get("GITHUB_REPOSITORY", "dlai-sd/waooaw-platform")
+    repo = os.environ.get("GITHUB_REPOSITORY", "dlai-sd/waooaw-platform")
 
     comment = (
         f"**Closing: {result} run — failures recorded to registry.**\n\n"
@@ -236,19 +249,28 @@ def close_pr(pr_number: int, sprint: str, result: str, registry_count: int,
         print(f"  WARN: no GITHUB_TOKEN — cannot close PR #{pr_number}")
         return
     env = {**os.environ, "GITHUB_TOKEN": token}
-    subprocess.run(
-        ["gh", "pr", "close", str(pr_number), "--repo", repo,
-         "--comment", comment],
-        env=env, capture_output=True, cwd=REPO_ROOT
+    subprocess.run(  # noqa: S603
+        [  # noqa: S607
+            "gh",
+            "pr",
+            "close",
+            str(pr_number),
+            "--repo",
+            repo,
+            "--comment",
+            comment,
+        ],
+        env=env,
+        capture_output=True,
+        cwd=REPO_ROOT,
     )
     print(f"  ✓ PR #{pr_number} closed with registry reference")
 
 
 # ── Main completion logic ──────────────────────────────────────────────────────
 
-def _generate_next_sprint_simulations(
-    current_sprint: str, tasks_done: list[str], tasks_remaining: list[str]
-) -> None:
+
+def _generate_next_sprint_simulations(current_sprint: str, tasks_done: list[str], tasks_remaining: list[str]) -> None:
     """
     Generate SIM-PL-002 skeleton files for tasks in the NEXT sprint that lack them.
 
@@ -263,14 +285,15 @@ def _generate_next_sprint_simulations(
     try:
         import importlib.util as _ilu
         import sys as _sys
+
         _scripts = str(REPO_ROOT / "scripts")
         if _scripts not in _sys.path:
             _sys.path.insert(0, _scripts)
 
         # Load TASK_HANDLERS from autonomous_sprint_runner
         _spec = _ilu.spec_from_file_location(
-            "autonomous_sprint_runner",
-            str(REPO_ROOT / "scripts" / "autonomous_sprint_runner.py"))
+            "autonomous_sprint_runner", str(REPO_ROOT / "scripts" / "autonomous_sprint_runner.py")
+        )
         _mod = _ilu.module_from_spec(_spec)
         _sys.modules.setdefault("autonomous_sprint_runner", _mod)
         # Only load the module-level definitions (TASK_HANDLERS, etc.)
@@ -286,7 +309,8 @@ def _generate_next_sprint_simulations(
 
     # Determine which sprint comes NEXT (current sprint number + 1)
     import re as _re
-    m = _re.search(r'WC0*(\d+)', current_sprint)
+
+    m = _re.search(r"WC0*(\d+)", current_sprint)
     if not m:
         return
     next_num = int(m.group(1)) + 1
@@ -306,8 +330,6 @@ def _generate_next_sprint_simulations(
             continue
 
         handler = task_handlers.get(task_id)
-        slug = task_id.lower().replace("wc", "wc").replace("-", "-")
-
         # Determine task characteristics
         if callable(handler):
             task_type = "deterministic"
@@ -363,12 +385,18 @@ def _generate_next_sprint_simulations(
 
     if generated:
         try:
-            _run(["git", "add"] + generated)
-            _run(["git", "commit", "-m",
-                  f"feat(sim): auto-generate SIM-PL-002 for {next_prefix} (C-086 gate prep)\n\n"
-                  f"Generated {len(generated)} simulation file(s) on closure of {current_sprint}.\n"
-                  f"Review before triggering {next_prefix} sprint.\n"
-                  f"Constitutional: C-086 (simulation PASS required before first LLM call)"])
+            _run(["git", "add", *generated])
+            _run(
+                [
+                    "git",
+                    "commit",
+                    "-m",
+                    f"feat(sim): auto-generate SIM-PL-002 for {next_prefix} (C-086 gate prep)\n\n"
+                    f"Generated {len(generated)} simulation file(s) on closure of {current_sprint}.\n"
+                    f"Review before triggering {next_prefix} sprint.\n"
+                    f"Constitutional: C-086 (simulation PASS required before first LLM call)",
+                ]
+            )
             _run(["git", "push", "origin", "main"])
             print(f"  ✓ {len(generated)} simulation(s) committed to main")
         except Exception as e:
@@ -419,16 +447,16 @@ def complete_sprint(pr_number: int = 0, dry_run: bool = False) -> int:
         print("  WARN: monitor-signal.json is empty (git show wrote 0 bytes — signal not pushed to sprint branch yet)")
         return 0
 
-    signal    = json.loads(raw_signal)
-    sprint    = signal.get("sprint", "unknown")
-    run_id    = signal.get("run_id") or os.environ.get("GITHUB_RUN_ID", "manual")
-    result    = signal.get("overall_result", "UNKNOWN")
-    subtasks  = signal.get("subtask_results", {})
+    signal = json.loads(raw_signal)
+    sprint = signal.get("sprint", "unknown")
+    run_id = signal.get("run_id") or os.environ.get("GITHUB_RUN_ID", "manual")
+    result = signal.get("overall_result", "UNKNOWN")
+    subtasks = signal.get("subtask_results", {})
     task_results = signal.get("task_results", {})
-    tasks_req    = signal.get("tasks_requested", [])
-    signal_done  = signal.get("tasks_done", [])
+    tasks_req = signal.get("tasks_requested", [])
+    signal_done = signal.get("tasks_done", [])
 
-    print(f"\n── Sprint Completion Protocol ──")
+    print("\n── Sprint Completion Protocol ──")
     print(f"  Sprint:  {sprint}")
     print(f"  Run:     {run_id}")
     print(f"  Result:  {result}")
@@ -444,36 +472,44 @@ def complete_sprint(pr_number: int = 0, dry_run: bool = False) -> int:
             task_id = info.get("task_id", sid[:7])
             # Read error_codes and error_text from signal (captured by emit_subtask_signal)
             signal_codes = info.get("error_codes", [])
-            signal_text  = info.get("error_text", "")
+            signal_text = info.get("error_text", "")
             tr = task_results.get(task_id, {})
-            error_text   = signal_text or tr.get("build_error_snippet", "")
+            error_text = signal_text or tr.get("build_error_snippet", "")
             advisor_type = tr.get("error_type", "")
-            confidence   = tr.get("advisor_confidence", 0.0)
-            retry_count  = tr.get("attempts", 0)
-            entries.append(_make_registry_entry(
-                run_id=run_id, sprint=sprint,
-                task_id=task_id, subtask_id=sid,
-                result=info["result"],
-                build_error=error_text,
-                error_codes=signal_codes if signal_codes else None,
-                retry_count=retry_count,
-                advisor_type=advisor_type,
-                confidence=confidence,
-            ))
+            confidence = tr.get("advisor_confidence", 0.0)
+            retry_count = tr.get("attempts", 0)
+            entries.append(
+                _make_registry_entry(
+                    run_id=run_id,
+                    sprint=sprint,
+                    task_id=task_id,
+                    subtask_id=sid,
+                    result=info["result"],
+                    build_error=error_text,
+                    error_codes=signal_codes if signal_codes else None,
+                    retry_count=retry_count,
+                    advisor_type=advisor_type,
+                    confidence=confidence,
+                )
+            )
 
     # From task_results (autonomous_sprint_runner path — WC012 and older)
     for tid, info in task_results.items():
         if info.get("result") in ("BUILD_FAILURE", "SPEC_GAP", "FAIL", "SKIPPED"):
             # Only add if not already covered by subtask
             if not any(e["task_id"] == tid for e in entries):
-                entries.append(_make_registry_entry(
-                    run_id=run_id, sprint=sprint,
-                    task_id=tid, subtask_id=tid,
-                    result=info.get("result", "FAIL"),
-                    build_error=info.get("build_error_snippet", ""),
-                    retry_count=info.get("attempts", 0),
-                    advisor_type=info.get("error_type", ""),
-                ))
+                entries.append(
+                    _make_registry_entry(
+                        run_id=run_id,
+                        sprint=sprint,
+                        task_id=tid,
+                        subtask_id=tid,
+                        result=info.get("result", "FAIL"),
+                        build_error=info.get("build_error_snippet", ""),
+                        retry_count=info.get("attempts", 0),
+                        advisor_type=info.get("error_type", ""),
+                    )
+                )
 
     print(f"  Failures to record: {len(entries)}")
 
@@ -489,16 +525,29 @@ def complete_sprint(pr_number: int = 0, dry_run: bool = False) -> int:
         close_pr(pr_number, sprint, result, recorded, dry_run=dry_run)
     elif not pr_number:
         # Try to find open PR from sprint branch
-        sprint_num = re.search(r'WC0*(\d+)', sprint)
+        sprint_num = re.search(r"WC0*(\d+)", sprint)
         if sprint_num:
             branch = f"ib/009/sprint-{sprint_num.group(1).zfill(3)}"
-            r = subprocess.run(
-                ["gh", "pr", "list", "--repo",
-                 os.environ.get("GITHUB_REPOSITORY", "dlai-sd/waooaw-platform"),
-                 "--state", "open", "--head", branch,
-                 "--json", "number", "--jq", ".[0].number // empty"],
-                capture_output=True, text=True, cwd=REPO_ROOT,
-                env={**os.environ, "GITHUB_TOKEN": os.environ.get("GITHUB_TOKEN", "")}
+            r = subprocess.run(  # noqa: S603
+                [  # noqa: S607
+                    "gh",
+                    "pr",
+                    "list",
+                    "--repo",
+                    os.environ.get("GITHUB_REPOSITORY", "dlai-sd/waooaw-platform"),
+                    "--state",
+                    "open",
+                    "--head",
+                    branch,
+                    "--json",
+                    "number",
+                    "--jq",
+                    ".[0].number // empty",
+                ],
+                capture_output=True,
+                text=True,
+                cwd=REPO_ROOT,
+                env={**os.environ, "GITHUB_TOKEN": os.environ.get("GITHUB_TOKEN", "")},
             )
             found = r.stdout.strip()
             if found.isdigit():
@@ -560,14 +609,15 @@ def complete_sprint(pr_number: int = 0, dry_run: bool = False) -> int:
         # Include any new simulation files generated in Step 6
         sim_files = list((REPO_ROOT / "simulation").glob("SIM-PL-002-*.md"))
         new_sims = [
-            str(f.relative_to(REPO_ROOT)) for f in sim_files
+            str(f.relative_to(REPO_ROOT))
+            for f in sim_files
             if str(f.relative_to(REPO_ROOT)) in (r.stdout.strip().splitlines() or [])
         ]
         if new_sims:
             to_add.extend(new_sims)
 
         if to_add:
-            _run(["git", "add"] + to_add)
+            _run(["git", "add", *to_add])
             msg = (
                 f"chore(registry): sprint {sprint} {result} — "
                 f"{recorded} failure(s) recorded\n\n"
@@ -578,9 +628,9 @@ def complete_sprint(pr_number: int = 0, dry_run: bool = False) -> int:
             )
             _run(["git", "commit", "-m", msg])
             _run(["git", "push", "origin", "main"])
-            print(f"  ✓ Registry committed and pushed to main")
+            print("  ✓ Registry committed and pushed to main")
 
-    print(f"\n  Sprint completion protocol DONE.")
+    print("\n  Sprint completion protocol DONE.")
     print(f"  Registry entries this run: {recorded}")
     print(f"  Total registry entries: {len(read_registry())}")
     # ADR-041 P2a: close heartbeat — signals clean completion to next RESUME
@@ -591,12 +641,11 @@ def complete_sprint(pr_number: int = 0, dry_run: bool = False) -> int:
 
 # ── CLI ────────────────────────────────────────────────────────────────────────
 
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Autonomous sprint completion protocol")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Print what would happen without making changes")
-    parser.add_argument("--pr", type=int, default=0,
-                        help="PR number to close (auto-detected if omitted)")
+    parser.add_argument("--dry-run", action="store_true", help="Print what would happen without making changes")
+    parser.add_argument("--pr", type=int, default=0, help="PR number to close (auto-detected if omitted)")
     args = parser.parse_args()
     return complete_sprint(pr_number=args.pr, dry_run=args.dry_run)
 

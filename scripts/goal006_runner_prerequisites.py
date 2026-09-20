@@ -55,9 +55,7 @@ CUSTOM_ROLE_PERMISSIONS = {
     },
     "Cleanup Evidence Writer": {
         "actions": frozenset(),
-        "dataActions": frozenset(
-            {"Microsoft.Storage/storageAccounts/blobServices/containers/blobs/write"}
-        ),
+        "dataActions": frozenset({"Microsoft.Storage/storageAccounts/blobServices/containers/blobs/write"}),
     },
 }
 
@@ -218,9 +216,7 @@ def verify_custom_role(
         raise RuntimeError(f"custom role permissions mismatch: {expected_name}")
 
 
-def verify(
-    parameters: dict[str, Any], subscription_id: str, deployment_name: str
-) -> dict[str, Any]:
+def verify(parameters: dict[str, Any], subscription_id: str, deployment_name: str) -> dict[str, Any]:
     environment = str(parameters["environment"])
     resource_group = str(parameters["runnerResourceGroupName"])
     principal_id = str(parameters["bootstrapPrincipalId"])
@@ -237,10 +233,7 @@ def verify(
         "--include-inherited",
         "--all",
     )
-    observed = {
-        (str(item.get("roleDefinitionName")), str(item.get("scope", "")).lower())
-        for item in assignments
-    }
+    observed = {(str(item.get("roleDefinitionName")), str(item.get("scope", "")).lower()) for item in assignments}
     required = {
         ("Azure Deployment Stack Owner", subscription_scope.lower()),
         ("Contributor", runner_scope.lower()),
@@ -298,9 +291,7 @@ def verify(
     }
 
 
-def verify_with_retry(
-    parameters: dict[str, Any], subscription_id: str, deployment_name: str
-) -> dict[str, Any]:
+def verify_with_retry(parameters: dict[str, Any], subscription_id: str, deployment_name: str) -> dict[str, Any]:
     for attempt in range(1, 7):
         try:
             return verify(parameters, subscription_id, deployment_name)
@@ -343,9 +334,7 @@ def main() -> int:
                 deployment_name=deployment_name,
                 location=arguments.location,
             )
-            result["verification"] = verify_with_retry(
-                parameters, arguments.subscription_id, deployment_name
-            )
+            result["verification"] = verify_with_retry(parameters, arguments.subscription_id, deployment_name)
         print(json.dumps(result, sort_keys=True))
         return 0
     except RuntimeError as error:

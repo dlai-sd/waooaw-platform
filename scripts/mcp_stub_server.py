@@ -27,6 +27,7 @@ Usage (in docker-compose.yml):
       MCP_PORT: "8106"
       MCP_STUB_MESSAGE: "STUB — Meta credentials required"
 """
+
 from __future__ import annotations
 
 import json
@@ -36,7 +37,7 @@ import sys
 
 def main() -> None:
     service_name = os.environ.get("MCP_SERVICE_NAME", "unnamed-mcp-stub")
-    tools_json = os.environ.get("MCP_TOOLS", '[]')
+    tools_json = os.environ.get("MCP_TOOLS", "[]")
     port = int(os.environ.get("MCP_PORT", "8100"))
     stub_message = os.environ.get("MCP_STUB_MESSAGE", "STUB — not yet implemented")
 
@@ -83,7 +84,7 @@ def main() -> None:
         }
 
     print(f"Starting MCP stub: {service_name} on port {port} with {len(tools)} tools")
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="warning")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="warning")  # noqa: S104
 
 
 if __name__ == "__main__":

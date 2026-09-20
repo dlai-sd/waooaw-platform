@@ -33,10 +33,8 @@ from __future__ import annotations
 
 import json
 import re
-import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 REPO_ROOT = Path(__file__).parent.parent
 
@@ -112,25 +110,25 @@ _TERRAFORM_FORBIDDEN_PATTERNS = (
 )
 
 # ── Module-level compiled regexes (P2: avoid recompile on every build call) ──
-_RE_CAPITAL_WORDS = re.compile(r'\b([A-Z][a-zA-Z0-9]+)\b')
-_RE_WHITESPACE    = re.compile(r'\s+')
-_RE_NAMESPACE     = re.compile(r'^namespace\s+([\w.]+)', re.MULTILINE)
-_RE_CLAIMS        = re.compile(r'C-\d{3}')
-_RE_WC_CTOR       = re.compile(
-    r'public\s+\w+\s*\(([^)]*)\)',
+_RE_CAPITAL_WORDS = re.compile(r"\b([A-Z][a-zA-Z0-9]+)\b")
+_RE_WHITESPACE = re.compile(r"\s+")
+_RE_NAMESPACE = re.compile(r"^namespace\s+([\w.]+)", re.MULTILINE)
+_RE_CLAIMS = re.compile(r"C-\d{3}")
+_RE_WC_CTOR = re.compile(
+    r"public\s+\w+\s*\(([^)]*)\)",
     re.MULTILINE,
 )
-_RE_METHODS       = re.compile(
-    r'public\s+(?:async\s+)?(?:Task(?:<[^>]+>)?|void|bool|string|int|[A-Z]\w*)\s+'
-    r'(\w+)\s*\([^)]*\)',
+_RE_METHODS = re.compile(
+    r"public\s+(?:async\s+)?(?:Task(?:<[^>]+>)?|void|bool|string|int|[A-Z]\w*)\s+"
+    r"(\w+)\s*\([^)]*\)",
     re.MULTILINE,
 )
-_RE_CLASS_NAMES   = re.compile(
-    r'public\s+(?:sealed\s+)?(?:class|interface|record)\s+(\w+)',
+_RE_CLASS_NAMES = re.compile(
+    r"public\s+(?:sealed\s+)?(?:class|interface|record)\s+(\w+)",
     re.MULTILINE,
 )
-_RE_PROPERTIES    = re.compile(
-    r'public\s+(?:required\s+)?(\w[\w<>\[\]?]*)\s+(\w+)\s*\{[^}]*get',
+_RE_PROPERTIES = re.compile(
+    r"public\s+(?:required\s+)?(\w[\w<>\[\]?]*)\s+(\w+)\s*\{[^}]*get",
     re.MULTILINE,
 )
 
@@ -146,6 +144,7 @@ _STACK_BASE_USINGS: dict[str, list[str]] = {
 @dataclass
 class ContextBlock:
     """One slot in the §7.1 ordered context assembly."""
+
     slot: str
     content: str
 
@@ -157,6 +156,7 @@ class ContextBlock:
 @dataclass
 class AssembledContext:
     """Result of §7.1 ordered context assembly for one LLM invocation."""
+
     task_id: str
     output_file: str
     blocks: list[ContextBlock] = field(default_factory=list)
@@ -228,12 +228,14 @@ class ContextBuilder:
         # [2] PREAMBLE — pre-written file header (C-073, §7.5)
         preamble = self._build_preamble(output_file, spec_sections, stack, constitutional_check)
         ctx.preamble_lines = preamble
-        ctx.blocks.append(ContextBlock(
-            "PREAMBLE",
-            "MANDATORY FILE HEADER — the file already starts with these exact lines. "
-            "Extend from the line after the last using directive. "
-            "NEVER alter or omit these lines:\n\n" + "\n".join(preamble)
-        ))
+        ctx.blocks.append(
+            ContextBlock(
+                "PREAMBLE",
+                "MANDATORY FILE HEADER — the file already starts with these exact lines. "
+                "Extend from the line after the last using directive. "
+                "NEVER alter or omit these lines:\n\n" + "\n".join(preamble),
+            )
+        )
 
         # [3] FROZEN — signatures from prior compile gates (§7.6)
         frozen_block = self._build_frozen_block(output_file, prior_output_files or [])
@@ -286,10 +288,11 @@ class ContextBuilder:
         if conftest_block:
             ctx.blocks.append(ContextBlock("CONFTEST", conftest_block))
 
-        ctx.blocks.append(ContextBlock("TASK", self._build_task_block(
-            task_id, output_file, constitutional_check,
-            file_exists=existing_block != ""
-        )))
+        ctx.blocks.append(
+            ContextBlock(
+                "TASK", self._build_task_block(task_id, output_file, constitutional_check, file_exists=existing_block != "")
+            )
+        )
 
         # [9] FORMAT — output format instruction
         ctx.blocks.append(ContextBlock("FORMAT", self._build_format_block(output_file, preamble)))
@@ -335,7 +338,7 @@ class ContextBuilder:
             "the existing conventions (imports, sys.path, fixtures, patterns) before writing\n"
             "a single line. Never invent a path or import that contradicts those slots.\n\n"
             "Your output passes through these 5 constitutional gates in sequence:\n"
-            "  Gate FORMAT:     wrap every file in <file path=\"exact/path\">...</file>\n"
+            '  Gate FORMAT:     wrap every file in <file path="exact/path">...</file>\n'
             "  Gate PATH:       the file must be at the EXACT path in the TASK block below\n"
             "  Gate COMPILE:    stack-specific: must exit 0 (syntax + style; ruff for Python)\n"
             "  Gate ANNOTATION: first lines must include '# Implements:' and '# constitutional_basis:'\n"
@@ -346,9 +349,8 @@ class ContextBuilder:
             "Every file you produce MUST begin with:\n"
             "  // Implements: <spec-path> §<section>\n"
             "  // constitutional_basis: <C-NNN>\n"
-            "Output format: <file path=\"relative/path.ext\">...content...</file>\n\n"
-            "FORBIDDEN PATTERNS (non-negotiable — any violation = compile failure):\n"
-            + _FORBIDDEN_PATTERNS
+            'Output format: <file path="relative/path.ext">...content...</file>\n\n'
+            "FORBIDDEN PATTERNS (non-negotiable — any violation = compile failure):\n" + _FORBIDDEN_PATTERNS
         )
         # Inject Python-specific ruff constraints (enforced by ruff check in COMPILE gate)
         if stack == "python":
@@ -358,6 +360,7 @@ class ContextBuilder:
             if violations_path.exists():
                 try:
                     import json as _json
+
                     violations: dict = _json.loads(violations_path.read_text(encoding="utf-8"))
                     if violations:
                         history_lines = []
@@ -370,7 +373,7 @@ class ContextBuilder:
                             + "\n".join(history_lines)
                             + "\n"
                         )
-                except Exception:
+                except Exception:  # noqa: S110
                     pass  # non-blocking — best-effort context injection
         # Inject TypeScript-specific constraints
         if stack == "typescript":
@@ -382,21 +385,22 @@ class ContextBuilder:
         if stack == "dotnet" and output_file:
             try:
                 from project_dependency_map import find_csproj_for_file, get_boundary_injection_text
+
                 csproj = find_csproj_for_file(output_file, self._root)
                 if csproj:
                     base += "\n\n" + get_boundary_injection_text(csproj)
-            except Exception as _pdm_e:
+            except Exception as _pdm_e:  # noqa: S110
                 pass  # non-blocking — boundary enforcement degrades gracefully
         # Inject EA-approved stack error-handling standards (STACK_BEHAVIORAL_RULES)
         try:
             from task_decomposer import STACK_BEHAVIORAL_RULES
+
             rules = STACK_BEHAVIORAL_RULES.get(stack, [])
             if rules:
                 error_rules = [r for r in rules if r.startswith("ERROR HANDLING")]
                 if error_rules:
-                    base += (
-                        "\n\nCONSTITUTIONAL ERROR HANDLING STANDARDS (C-082, C-059):\n"
-                        + "\n".join(f"  • {r}" for r in error_rules)
+                    base += "\n\nCONSTITUTIONAL ERROR HANDLING STANDARDS (C-082, C-059):\n" + "\n".join(
+                        f"  • {r}" for r in error_rules
                     )
         except Exception as _sbr_e:
             print(f"  [CB] STACK_BEHAVIORAL_RULES unavailable ({type(_sbr_e).__name__}: {_sbr_e})")
@@ -418,8 +422,8 @@ class ContextBuilder:
 
         if ext == ".cs":
             # C-059/C-073 header
-            spec_ref = list(spec_sections.keys())[0] if spec_sections else "architecture/reference"
-            spec_section = list(spec_sections.values())[0] if spec_sections else "full"
+            spec_ref = next(iter(spec_sections.keys())) if spec_sections else "architecture/reference"
+            spec_section = next(iter(spec_sections.values())) if spec_sections else "full"
             claims = self._extract_claims_from_check(constitutional_check)
             lines.append(f"// Implements: {spec_ref} {spec_section}")
             lines.append(f"// constitutional_basis: {claims}")
@@ -430,8 +434,8 @@ class ContextBuilder:
                 lines.append(u)
 
         elif ext == ".py":
-            spec_ref = list(spec_sections.keys())[0] if spec_sections else "architecture/reference"
-            spec_section = list(spec_sections.values())[0] if spec_sections else "full"
+            spec_ref = next(iter(spec_sections.keys())) if spec_sections else "architecture/reference"
+            spec_section = next(iter(spec_sections.values())) if spec_sections else "full"
             claims = self._extract_claims_from_check(constitutional_check)
             lines.append(f"# Implements: {spec_ref} {spec_section}")
             lines.append(f"# constitutional_basis: {claims}")
@@ -458,14 +462,14 @@ class ContextBuilder:
 
             lines.append(f"\n  // {class_name} — namespace: {ns}")
             for ctor in ctors[:2]:  # max 2 constructors
-                ctor_clean = _RE_WHITESPACE.sub(' ', ctor).strip()
+                ctor_clean = _RE_WHITESPACE.sub(" ", ctor).strip()
                 lines.append(f"  constructor: {class_name}({ctor_clean})")
             for method in methods[:4]:  # max 4 methods
                 lines.append(f"  method: {method}(...)")
             # Enum values — eliminates CS1503 string→EnumType pattern
             for enum_name, values in sigs.get("enum_values", {}).items():
                 lines.append(f"  enum {enum_name}: {' | '.join(values)}")
-                lines.append(f"  ⛔ Use {enum_name}.{values[0]} NOT \"{values[0]}\" (string causes CS1503)")
+                lines.append(f'  ⛔ Use {enum_name}.{values[0]} NOT "{values[0]}" (string causes CS1503)')
 
             sigs_note = sigs.get("frozen_at_task", "")
             if sigs_note:
@@ -488,7 +492,6 @@ class ContextBuilder:
             return ""
         try:
             ptr = self._assembler.assemble(scope=["src", "tests"])
-            spec_text = " ".join(spec_sections.values())
             task_ptr = self._assembler.extract_task_ptr(ptr, list(spec_sections.values()), stack=stack)
             types = task_ptr.get(stack, {}).get("types", {})
             if not types:
@@ -530,7 +533,7 @@ class ContextBuilder:
             "DO NOT change class names, method signatures, or field types. "
             "Your task is to fill method bodies only. "
             "If a change to the interface is needed, raise SPEC_GAP — do not modify skeleton.",
-            ""
+            "",
         ]
         for skel_file in sorted(service_dir.glob(f"*{ext}")):
             lines.append(f"# --- {skel_file.name} ---")
@@ -549,10 +552,11 @@ class ContextBuilder:
             # Filter using_map to only types reachable from the target project
             try:
                 from project_dependency_map import find_csproj_for_file, filter_using_map as _pdm_filter
+
                 csproj = find_csproj_for_file(output_file, self._root)
                 if csproj:
                     using_map = _pdm_filter(using_map, csproj)
-            except Exception:
+            except Exception:  # noqa: S110
                 pass  # non-blocking — degrade to unfiltered map
 
             # Find types mentioned in the check or output file name
@@ -565,12 +569,12 @@ class ContextBuilder:
             for cls, ns in sorted(relevant.items()):
                 lines.append(f"  {cls} → using {ns};")
             return "\n".join(lines)
-        except Exception as e:
+        except Exception:
             return ""
 
     def _build_spec_block(self, spec_sections: dict[str, str]) -> str:
         """§7.1 [6]: Load spec sections from Work Contract only."""
-        parts = [f"SPECIFICATION CONTEXT:"]
+        parts = ["SPECIFICATION CONTEXT:"]
         for file_path, section in spec_sections.items():
             full = self._root / file_path
             if not full.exists():
@@ -607,7 +611,7 @@ class ContextBuilder:
                     class_name = Path(file_path).stem
                     lines.append(f"\n  {class_name} (from frozen registry):")
                     for ctor in ctors[:2]:
-                        ctor_clean = _RE_WHITESPACE.sub(' ', ctor).strip()
+                        ctor_clean = _RE_WHITESPACE.sub(" ", ctor).strip()
                         lines.append(f"    constructor: {class_name}({ctor_clean})")
                     found = True
                 continue
@@ -618,11 +622,10 @@ class ContextBuilder:
             if ctors:
                 lines.append(f"\n  {class_name} — {sigs.get('namespace', '')}:")
                 for ctor in ctors[:2]:
-                    ctor_clean = _RE_WHITESPACE.sub(' ', ctor).strip()
+                    ctor_clean = _RE_WHITESPACE.sub(" ", ctor).strip()
                     lines.append(f"    constructor: {class_name}({ctor_clean})")
                 lines.append(
-                    f"    ⛔ Use this exact constructor — all positional, this order. "
-                    "NullLogger<T>.Instance for logger params."
+                    "    ⛔ Use this exact constructor — all positional, this order. NullLogger<T>.Instance for logger params."
                 )
                 found = True
         if not found:
@@ -634,6 +637,7 @@ class ContextBuilder:
         Prevents PYTHON_WRONG_SYMBOL failures from guessing module APIs (C-082, C-085).
         """
         import ast as _ast
+
         lines: list[str] = []
         for file_path in prior_output_files:
             if not file_path.endswith(".py"):
@@ -645,7 +649,8 @@ class ContextBuilder:
                 source = full.read_text(encoding="utf-8")
                 tree = _ast.parse(source)
                 exports = [
-                    node.name for node in tree.body
+                    node.name
+                    for node in tree.body
                     if isinstance(node, (_ast.FunctionDef, _ast.AsyncFunctionDef, _ast.ClassDef))
                     and not node.name.startswith("_")
                 ]
@@ -654,10 +659,9 @@ class ContextBuilder:
                 module_name = Path(file_path).stem
                 lines.append(f"\n  {file_path} — importable names: {exports}")
                 lines.append(
-                    f"  ⛔ from {module_name} import X — X MUST be one of the names above. "
-                    "Do NOT guess or invent other names."
+                    f"  ⛔ from {module_name} import X — X MUST be one of the names above. Do NOT guess or invent other names."
                 )
-            except Exception:
+            except Exception:  # noqa: S112
                 continue  # parse failure is non-blocking
         if not lines:
             return ""
@@ -711,10 +715,7 @@ class ContextBuilder:
             f"```\n{truncated}{suffix}\n```"
         )
 
-    def _build_task_block(
-        self, task_id: str, output_file: str, constitutional_check: str,
-        file_exists: bool = False
-    ) -> str:
+    def _build_task_block(self, task_id: str, output_file: str, constitutional_check: str, file_exists: bool = False) -> str:
         action = "EXTEND" if file_exists else "Generate"
         note = " (EXISTING FILE — see EXISTING_FILE slot above)" if file_exists else ""
         return (
@@ -729,7 +730,7 @@ class ContextBuilder:
         return (
             f"OUTPUT FORMAT:\n"
             f"Wrap the complete file in:\n"
-            f"<file path=\"{output_file}\">\n"
+            f'<file path="{output_file}">\n'
             f"{preamble_preview}\n"
             f"... your code here ...\n"
             f"</file>\n\n"
@@ -746,45 +747,33 @@ class ContextBuilder:
 
         # Multi-line constructor: capture from opening paren to closing paren
         ctors: list[str] = []
-        for m in re.finditer(
-            r'public\s+\w+\s*\(\s*((?:[^()]*|\([^()]*\))*)\s*\)',
-            content, re.DOTALL
-        ):
-            param_block = _RE_WHITESPACE.sub(' ', m.group(1)).strip()
+        for m in re.finditer(r"public\s+\w+\s*\(\s*((?:[^()]*|\([^()]*\))*)\s*\)", content, re.DOTALL):
+            param_block = _RE_WHITESPACE.sub(" ", m.group(1)).strip()
             if param_block and len(param_block) > 2:
                 ctors.append(param_block)
 
         # Methods
-        methods = re.findall(
-            r'public\s+(?:override\s+)?(?:async\s+)?(?:static\s+)?[\w<>?\[\]]+\s+(\w+)\s*\(',
-            content
-        )
+        methods = re.findall(r"public\s+(?:override\s+)?(?:async\s+)?(?:static\s+)?[\w<>?\[\]]+\s+(\w+)\s*\(", content)
         # Filter out constructors (same name as class)
         class_names = _RE_CLASS_NAMES.findall(content)
         methods = [m for m in methods if m not in class_names]
 
         # Properties
-        properties = re.findall(
-            r'public\s+(?:override\s+)?(?:static\s+)?[\w<>?\[\]]+\s+(\w+)\s*\{',
-            content
-        )
+        properties = re.findall(r"public\s+(?:override\s+)?(?:static\s+)?[\w<>?\[\]]+\s+(\w+)\s*\{", content)
 
         # Enum values — captures public enum X { A, B, C } → {"X": ["A", "B", "C"]}
         # Critical for retry advisor: eliminates CS1503 string→EnumType pattern
         enum_values: dict[str, list[str]] = {}
-        for m in re.finditer(
-            r'public\s+enum\s+(\w+)\s*\{([^}]+)\}',
-            content, re.DOTALL
-        ):
+        for m in re.finditer(r"public\s+enum\s+(\w+)\s*\{([^}]+)\}", content, re.DOTALL):
             enum_name = m.group(1)
             raw_values = m.group(2)
             # Strip comments, parse comma-separated identifiers
             values = [
-                v.strip().split('=')[0].strip().split('//')[0].strip()
-                for v in raw_values.split(',')
-                if v.strip() and not v.strip().startswith('//')
+                v.strip().split("=")[0].strip().split("//")[0].strip()
+                for v in raw_values.split(",")
+                if v.strip() and not v.strip().startswith("//")
             ]
-            values = [v for v in values if re.match(r'^\w+$', v)]
+            values = [v for v in values if re.match(r"^\w+$", v)]
             if values:
                 enum_values[enum_name] = values[:20]
 
@@ -796,9 +785,7 @@ class ContextBuilder:
             "enum_values": enum_values,
         }
 
-    def _resolve_required_usings(
-        self, output_file: str, constitutional_check: str, stack: str
-    ) -> list[str]:
+    def _resolve_required_usings(self, output_file: str, constitutional_check: str, stack: str) -> list[str]:
         """
         §7.5: Resolve required using directives for the preamble.
         Combines: explicit mentions in constitutional_check + USING_MAP + stack base usings.
@@ -809,7 +796,7 @@ class ContextBuilder:
         usings: set[str] = set()
 
         # Extract explicit using directives from constitutional_check
-        for m in re.finditer(r'using\s+([\w.]+)\s*;', constitutional_check):
+        for m in re.finditer(r"using\s+([\w.]+)\s*;", constitutional_check):
             usings.add(f"using {m.group(1)};")
 
         # Resolve type names mentioned in constitutional_check via USING_MAP
@@ -820,10 +807,11 @@ class ContextBuilder:
                 # Filter to only reachable namespaces for this project
                 try:
                     from project_dependency_map import find_csproj_for_file, filter_using_map as _pdm_filter
+
                     csproj = find_csproj_for_file(output_file, self._root)
                     if csproj:
                         using_map = _pdm_filter(using_map, csproj)
-                except Exception:
+                except Exception:  # noqa: S110
                     pass  # non-blocking
                 mentioned = set(_RE_CAPITAL_WORDS.findall(constitutional_check))
                 for cls in mentioned:
@@ -850,9 +838,7 @@ class ContextBuilder:
             return "C-059, C-076, C-082"
         return ", ".join(sorted(set(claims))[:5])
 
-    def _is_relevant_frozen(
-        self, frozen_file: str, output_file: str, prior_files: list[str]
-    ) -> bool:
+    def _is_relevant_frozen(self, frozen_file: str, output_file: str, prior_files: list[str]) -> bool:
         """Determine if a frozen artifact is relevant to the current output file."""
         class_name = Path(frozen_file).stem
         # Relevant if: the class name appears in the output file name or path
@@ -887,10 +873,12 @@ class ContextBuilder:
         """Get PTR assembler, gracefully degrading if unavailable."""
         try:
             import sys
+
             scripts_path = str(self._root / "scripts")
             if scripts_path not in sys.path:
                 sys.path.insert(0, scripts_path)
             from ptr_assembler import PTR2Assembler
+
             return PTR2Assembler(self._root)
         except Exception as _ptr_e:
             print(f"  [CB] PTR2Assembler unavailable ({type(_ptr_e).__name__}: {_ptr_e})")
@@ -940,6 +928,4 @@ class ContextBuilder:
 
     def _save_frozen_registry(self) -> None:
         self._frozen_registry_path.parent.mkdir(parents=True, exist_ok=True)
-        self._frozen_registry_path.write_text(
-            json.dumps(self._frozen, indent=2), encoding="utf-8"
-        )
+        self._frozen_registry_path.write_text(json.dumps(self._frozen, indent=2), encoding="utf-8")

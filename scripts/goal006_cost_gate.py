@@ -25,24 +25,16 @@ def _cost(response: Mapping[str, Any], *, cost_status: str | None = None) -> tup
         raise ValueError("cost response rows missing")
     names = [str(column.get("name", "")).lower() if isinstance(column, Mapping) else "" for column in columns]
     if any(
-        not isinstance(candidate, Sequence)
-        or isinstance(candidate, str | bytes)
-        or len(candidate) != len(columns)
+        not isinstance(candidate, Sequence) or isinstance(candidate, str | bytes) or len(candidate) != len(columns)
         for candidate in rows
     ):
         raise ValueError("cost response row invalid")
     row = rows[0]
     if cost_status is not None:
-        status_index = next(
-            (index for index, name in enumerate(names) if name == "coststatus"), None
-        )
+        status_index = next((index for index, name in enumerate(names) if name == "coststatus"), None)
         if status_index is None:
             raise ValueError("cost status column missing")
-        matches = [
-            candidate
-            for candidate in rows
-            if str(candidate[status_index]).casefold() == cost_status.casefold()
-        ]
+        matches = [candidate for candidate in rows if str(candidate[status_index]).casefold() == cost_status.casefold()]
         if len(matches) != 1:
             raise ValueError(f"{cost_status} cost row missing or ambiguous")
         row = matches[0]

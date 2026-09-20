@@ -19,8 +19,6 @@ from ctg.exception_translator import ExceptionTranslator
 from ctg.gateway import ConstitutionalToolGateway
 from ctg.models import (
     ConstitutionalBlockError,
-    GatewayResult,
-    MCPToolError,
     ProviderConfig,
     SessionContext,
 )
@@ -30,6 +28,7 @@ from ctg.registry_client import ProviderRegistryClient
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_session_ctx(**kwargs) -> SessionContext:
     defaults = dict(
@@ -103,6 +102,7 @@ def _make_executor(return_value: dict | None = None) -> AsyncMock:
 # CCT-CTG-01 — CE.ValidateAction called before any external call
 # ---------------------------------------------------------------------------
 
+
 class TestCCTCtg01CeCalledFirst:
     """CCT-CTG-01: CE.ValidateAction is invoked on every gateway.call()."""
 
@@ -162,6 +162,7 @@ class TestCCTCtg01CeCalledFirst:
 # ---------------------------------------------------------------------------
 # CCT-CTG-02 — Token absent from MCPToolError on failure
 # ---------------------------------------------------------------------------
+
 
 class TestCCTCtg02TokenAbsentFromError:
     """CCT-CTG-02: token never leaks into caller-visible MCPToolError."""
@@ -226,6 +227,7 @@ class TestCCTCtg02TokenAbsentFromError:
 # CCT-CTG-03 — Evidence record written after successful call
 # ---------------------------------------------------------------------------
 
+
 class TestCCTCtg03EvidenceRecordWritten:
     """CCT-CTG-03: audit_sink.write_record called with decision_id + args_hash on success."""
 
@@ -245,9 +247,7 @@ class TestCCTCtg03EvidenceRecordWritten:
         audit.write_record.assert_awaited_once()
         call_kwargs = audit.write_record.call_args.kwargs
         assert call_kwargs["decision_id"] == "DEC-007"
-        expected_hash = "sha256:" + hashlib.sha256(
-            json.dumps(args, sort_keys=True, default=str).encode()
-        ).hexdigest()[:16]
+        expected_hash = "sha256:" + hashlib.sha256(json.dumps(args, sort_keys=True, default=str).encode()).hexdigest()[:16]
         assert call_kwargs["args_hash"] == expected_hash
         assert result.decision_id == "DEC-007"
         assert result.result == {"response": "hello", "done": True}
@@ -256,6 +256,7 @@ class TestCCTCtg03EvidenceRecordWritten:
     async def test_audit_sink_called_on_failure(self):
         """Failed call (executor raises) still writes an evidence record with FAILED status."""
         audit = _make_audit_sink()
+
         async def _fail(tool_name, args, token, config):
             raise RuntimeError("provider down")
 
@@ -294,6 +295,7 @@ class TestCCTCtg03EvidenceRecordWritten:
 # ---------------------------------------------------------------------------
 # CCT-CTG-04 — DENY from CE blocks execution; no external call made
 # ---------------------------------------------------------------------------
+
 
 class TestCCTCtg04DenyBlocksExecution:
     """CCT-CTG-04: CE DENY → ConstitutionalBlockError; executor never called."""
@@ -345,11 +347,13 @@ class TestCCTCtg04DenyBlocksExecution:
 # Unit: ExceptionTranslator
 # ---------------------------------------------------------------------------
 
+
 class TestExceptionTranslator:
     """Unit tests for ExceptionTranslator — structural token leakage prevention."""
 
     def test_timeout_maps_to_timeout_code(self):
         import httpx
+
         tr = ExceptionTranslator()
         err = tr.translate(httpx.ConnectTimeout("timeout"), "openai")
         assert err.code == "TIMEOUT"
@@ -414,13 +418,15 @@ class TestExceptionTranslator:
 # Unit: ProviderRegistryClient TTL cache
 # ---------------------------------------------------------------------------
 
+
 class TestRegistryClientCache:
     """TTL cache correctness — cache hit avoids HTTP round-trip."""
 
     @pytest.mark.asyncio
     async def test_cache_hit_avoids_second_http_call(self):
         """Second call within TTL returns cached result without HTTP."""
-        import respx, httpx
+        import httpx
+        import respx
         import uuid as uuid_mod
 
         client = ProviderRegistryClient("http://bp:5003", "jwt-token")
@@ -434,9 +440,7 @@ class TestRegistryClientCache:
         }
 
         with respx.mock:
-            route = respx.get("http://bp:5003/api/v1/providers/openai").mock(
-                return_value=httpx.Response(200, json=payload)
-            )
+            route = respx.get("http://bp:5003/api/v1/providers/openai").mock(return_value=httpx.Response(200, json=payload))
             await client.get_config(tenant, "openai")
             await client.get_config(tenant, "openai")  # should hit cache
 
@@ -445,15 +449,21 @@ class TestRegistryClientCache:
     @pytest.mark.asyncio
     async def test_cache_miss_on_different_provider(self):
         """Different provider_name → different cache key → HTTP called for each."""
-        import respx, httpx
+        import httpx
+        import respx
         import uuid as uuid_mod
 
         client = ProviderRegistryClient("http://bp:5003", "jwt-token")
         tenant = uuid_mod.UUID("00000000-0000-0000-0000-000000000001")
 
         def _payload(name: str) -> dict:
-            return {"provider_name": name, "auth_method": "API_KEY",
-                    "mcp_server_url": None, "vault_path_key": f"p/{name}", "scope_set": []}
+            return {
+                "provider_name": name,
+                "auth_method": "API_KEY",
+                "mcp_server_url": None,
+                "vault_path_key": f"p/{name}",
+                "scope_set": [],
+            }
 
         with respx.mock:
             r1 = respx.get("http://bp:5003/api/v1/providers/openai").mock(
@@ -473,6 +483,7 @@ class TestRegistryClientCache:
 # Unit: _LoggingAuditSinkWriter and gateway internals (GAP-001 — EA R-022)
 # ---------------------------------------------------------------------------
 
+
 class TestLoggingAuditSinkWriter:
     """Direct coverage of _LoggingAuditSinkWriter.write_record (default no-op sink)."""
 
@@ -480,6 +491,7 @@ class TestLoggingAuditSinkWriter:
     async def test_write_record_does_not_raise(self):
         """Default logging sink writes without error."""
         from ctg.gateway import _LoggingAuditSinkWriter
+
         sink = _LoggingAuditSinkWriter()
         # Must not raise
         await sink.write_record(
@@ -500,7 +512,9 @@ class TestFetchToken:
     @pytest.mark.asyncio
     async def test_fetch_token_404_returns_none(self):
         """404 from oauth-vault → None (provider needs no credential, e.g. ollama)."""
-        import respx, httpx
+        import httpx
+        import respx
+
         gw = _make_gateway(
             ce_client=_make_ce_allow(),
             audit_sink=_make_audit_sink(),
@@ -509,9 +523,7 @@ class TestFetchToken:
         gw._vault_base_url = "http://vault:8130"
 
         with respx.mock:
-            respx.get("http://vault:8130/tokens/contract-001/openai").mock(
-                return_value=httpx.Response(404)
-            )
+            respx.get("http://vault:8130/tokens/contract-001/openai").mock(return_value=httpx.Response(404))
             token = await gw._fetch_token("contract-001", "openai")
 
         assert token is None
@@ -519,7 +531,9 @@ class TestFetchToken:
     @pytest.mark.asyncio
     async def test_fetch_token_200_returns_value(self):
         """200 from oauth-vault → access_token string."""
-        import respx, httpx
+        import httpx
+        import respx
+
         gw = _make_gateway(
             ce_client=_make_ce_allow(),
             audit_sink=_make_audit_sink(),
@@ -549,7 +563,9 @@ class TestFetchToken:
     @pytest.mark.asyncio
     async def test_fetch_token_non404_status_raises(self):
         """Non-404 HTTPStatusError propagates (e.g. 500 vault error)."""
-        import respx, httpx
+        import httpx
+        import respx
+
         gw = _make_gateway(
             ce_client=_make_ce_allow(),
             audit_sink=_make_audit_sink(),
@@ -558,16 +574,16 @@ class TestFetchToken:
         gw._vault_base_url = "http://vault:8130"
 
         with respx.mock:
-            respx.get("http://vault:8130/tokens/ctr-003/openai").mock(
-                return_value=httpx.Response(500)
-            )
+            respx.get("http://vault:8130/tokens/ctr-003/openai").mock(return_value=httpx.Response(500))
             with pytest.raises(httpx.HTTPStatusError):
                 await gw._fetch_token("ctr-003", "openai")
 
     @pytest.mark.asyncio
     async def test_fetch_token_request_error_raises(self):
         """Network failure (RequestError) propagates."""
-        import respx, httpx
+        import httpx
+        import respx
+
         gw = _make_gateway(
             ce_client=_make_ce_allow(),
             audit_sink=_make_audit_sink(),
@@ -576,9 +592,7 @@ class TestFetchToken:
         gw._vault_base_url = "http://vault:8130"
 
         with respx.mock:
-            respx.get("http://vault:8130/tokens/ctr-004/openai").mock(
-                side_effect=httpx.ConnectError("connection refused")
-            )
+            respx.get("http://vault:8130/tokens/ctr-004/openai").mock(side_effect=httpx.ConnectError("connection refused"))
             with pytest.raises(httpx.ConnectError):
                 await gw._fetch_token("ctr-004", "openai")
 

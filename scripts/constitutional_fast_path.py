@@ -11,6 +11,7 @@
 This tool routes context. It does not grant authority, make semantic decisions,
 edit repository files, invoke RAG, or execute validation commands.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -247,9 +248,7 @@ def _normalize_request(request: dict[str, Any]) -> tuple[dict[str, Any], int]:
     sources, source_tokens = _validate_sources(request.get("sources"))
     total_tokens = MAX_MANIFEST_TOKENS + source_tokens
     if total_tokens > MAX_TASK_CONTEXT_TOKENS:
-        raise ManifestError(
-            f"post-BOOTSTRAP context budget exceeded: {total_tokens}/{MAX_TASK_CONTEXT_TOKENS} tokens"
-        )
+        raise ManifestError(f"post-BOOTSTRAP context budget exceeded: {total_tokens}/{MAX_TASK_CONTEXT_TOKENS} tokens")
     normalized = {
         "task_id": _require_string(request.get("task_id"), "task_id"),
         "task_class": task_class,

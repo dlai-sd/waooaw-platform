@@ -24,11 +24,11 @@ Usage:
     python3 scripts/build_sprint_index.py --task WC011-04
     python3 scripts/build_sprint_index.py --dry-run
 """
+
 from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import sys
 from pathlib import Path
@@ -39,11 +39,11 @@ STATE_FILE = REPO_ROOT / "constitution" / "PROJECT_STATE.md"
 INDEX_OUTPUT = REPO_ROOT / "sprint-context" / "index.json"
 
 # ── Token budget constants (SIM-022 GAP-SIM-01/02 fix) ───────────────────────
-FREE_MODEL_CONTEXT      = 8_192    # llama-3.1-8b / phi-3.5-mini hard context limit
+FREE_MODEL_CONTEXT = 8_192  # llama-3.1-8b / phi-3.5-mini hard context limit
 REASONING_MODEL_CONTEXT = 100_000  # Claude Sonnet 4.6 — effectively unlimited for our tasks
-RESERVED_FOR_BOOT   = 3_500   # AGENT-ENTRY.md always loaded first (~3.4K tokens)
-MAX_TASK_CONTEXT    = 4_500   # hard cap for all spec_files combined
-MAX_TOKENS_PER_FILE = 1_500   # single file triggers section targeting above this
+RESERVED_FOR_BOOT = 3_500  # AGENT-ENTRY.md always loaded first (~3.4K tokens)
+MAX_TASK_CONTEXT = 4_500  # hard cap for all spec_files combined
+MAX_TOKENS_PER_FILE = 1_500  # single file triggers section targeting above this
 
 # ── Task → Spec section mapping ───────────────────────────────────────────────
 # CRITICAL: spec_sections maps file → relevant section heading (not whole file).
@@ -53,9 +53,9 @@ TASK_CONTEXT_MAP: dict[str, dict] = {
     # WC-011: Infrastructure Foundation (rule-based tasks — model_hint: auto)
     "WC011-01": {
         "description": "Validate docker-compose.yml",
-        "model_hint": "none",          # Pure Python validation — NO LLM needed
+        "model_hint": "none",  # Pure Python validation — NO LLM needed
         "spec_sections": {
-            "docker-compose.yml": "full",   # 730 tokens — fits
+            "docker-compose.yml": "full",  # 730 tokens — fits
         },
         "relevant_claims": ["C-067", "C-004"],
         "relevant_adrs": ["ADR-015"],
@@ -84,7 +84,7 @@ TASK_CONTEXT_MAP: dict[str, dict] = {
     },
     "WC011-04": {
         "description": "Create src/ directory scaffold with C-059 headers",
-        "model_hint": "auto",          # Simple file creation — cheap model sufficient
+        "model_hint": "auto",  # Simple file creation — cheap model sufficient
         "spec_sections": {
             # AGENT-ENTRY.md is already in global_context — do NOT duplicate here
             # Section targeting: only the C-059 header requirement, not all 7K tokens
@@ -99,8 +99,8 @@ TASK_CONTEXT_MAP: dict[str, dict] = {
         "description": "Verify setup.sh and get-dev-token.sh",
         "model_hint": "none",
         "spec_sections": {
-            "scripts/setup.sh": "full",         # 1,967 tok — fits
-            "scripts/get-dev-token.sh": "full", # 415 tok — fits
+            "scripts/setup.sh": "full",  # 1,967 tok — fits
+            "scripts/get-dev-token.sh": "full",  # 415 tok — fits
         },
         "relevant_claims": ["C-059"],
         "relevant_adrs": [],
@@ -170,8 +170,8 @@ TASK_CONTEXT_MAP: dict[str, dict] = {
         "relevant_claims": ["C-005", "C-059", "C-072", "C-076"],
         "relevant_adrs": ["ADR-002", "ADR-003", "ADR-006"],
         "constitutional_check": "Copy business-platform.csproj EXACTLY from architecture/reference/dotfiles/. "
-            "Every endpoint must call CE.ValidateAction before executing (C-023). Spec-first (ADR-002). "
-            "project name: business-platform (lowercase-hyphenated). EXACTLY ONE .csproj in src/business-platform/.",
+        "Every endpoint must call CE.ValidateAction before executing (C-023). Spec-first (ADR-002). "
+        "project name: business-platform (lowercase-hyphenated). EXACTLY ONE .csproj in src/business-platform/.",
     },
     "WC013-02": {
         "description": "Tenant isolation middleware + JWT validation",
@@ -184,7 +184,7 @@ TASK_CONTEXT_MAP: dict[str, dict] = {
         "relevant_claims": ["C-005", "C-026", "C-059", "C-076"],
         "relevant_adrs": ["ADR-003", "ADR-008"],
         "constitutional_check": "C-005: tenant_id from JWT → SET LOCAL app.tenant_id. RLS enforced at DB layer. "
-            "NEVER create a second .csproj in src/business-platform/.",
+        "NEVER create a second .csproj in src/business-platform/.",
     },
     # WC-014: Professional Runtime skeleton (Python 3.12 + Temporal)
     "WC014-01": {
@@ -198,9 +198,9 @@ TASK_CONTEXT_MAP: dict[str, dict] = {
         "relevant_claims": ["C-001", "C-024", "C-025", "C-059", "C-076"],
         "relevant_adrs": ["ADR-005", "ADR-015", "ADR-018"],
         "constitutional_check": "Copy requirements-professional-runtime.txt EXACTLY for dependencies. "
-            "Package is 'temporalio' (1.x stable) — NOT 'temporal-sdk' or 'temporal-python'. "
-            "PAAS is the exclusive execution model (C-025). Emergency Stop path has NO blocking I/O. "
-            "pyproject.toml in src/professional-runtime/ root only.",
+        "Package is 'temporalio' (1.x stable) — NOT 'temporal-sdk' or 'temporal-python'. "
+        "PAAS is the exclusive execution model (C-025). Emergency Stop path has NO blocking I/O. "
+        "pyproject.toml in src/professional-runtime/ root only.",
     },
     "WC014-02": {
         "description": "Emergency Stop WebSocket + CCT-HO-02",
@@ -213,7 +213,7 @@ TASK_CONTEXT_MAP: dict[str, dict] = {
         "relevant_claims": ["C-001", "C-024", "C-079", "C-059", "C-076"],
         "relevant_adrs": ["ADR-004", "ADR-018"],
         "constitutional_check": "C-001: ≤250ms P99 absolute. C-079: if CE unreachable, local halt executes immediately. "
-            "NEVER create a second pyproject.toml.",
+        "NEVER create a second pyproject.toml.",
     },
     # WC-015: AI Runtime skeleton (Python 3.12 + Vertex AI + Sarvam REST)
     "WC015-01": {
@@ -227,11 +227,11 @@ TASK_CONTEXT_MAP: dict[str, dict] = {
         "relevant_claims": ["C-051", "C-059", "C-072", "C-076"],
         "relevant_adrs": ["ADR-024", "ADR-028", "ADR-029"],
         "constitutional_check": "Copy requirements-ai-runtime.txt EXACTLY for dependencies. "
-            "CRITICAL: Sarvam AI has NO Python SDK — SarvamProvider uses httpx REST calls only. "
-            "NEVER 'import sarvam' or use any sarvam package. "
-            "Vertex AI import: 'from google.cloud import aiplatform' (NOT 'import vertexai'). "
-            "AI4Bharat IndicNER: load via transformers.pipeline('ner', model='ai4bharat/IndicNER') — NOT 'import ai4bharat'. "
-            "PSE: LOCAL tier for 60-70% requests (C-051). ADR-029 rules PSE-R01 to PSE-R08.",
+        "CRITICAL: Sarvam AI has NO Python SDK — SarvamProvider uses httpx REST calls only. "
+        "NEVER 'import sarvam' or use any sarvam package. "
+        "Vertex AI import: 'from google.cloud import aiplatform' (NOT 'import vertexai'). "
+        "AI4Bharat IndicNER: load via transformers.pipeline('ner', model='ai4bharat/IndicNER') — NOT 'import ai4bharat'. "
+        "PSE: LOCAL tier for 60-70% requests (C-051). ADR-029 rules PSE-R01 to PSE-R08.",
     },
     "WC015-02": {
         "description": "LLM dispatch + PII Scrubber (C-078) + real Ollama inference",
@@ -245,9 +245,9 @@ TASK_CONTEXT_MAP: dict[str, dict] = {
         "relevant_claims": ["C-063", "C-078", "C-059", "C-076"],
         "relevant_adrs": ["ADR-019", "ADR-029"],
         "constitutional_check": "C-078 MANDATORY: PII Scrubber fires BEFORE every external LLM dispatch. "
-            "CRITICAL: Sarvam has NO SDK — use httpx only. "
-            "Gemini model name: 'gemini-2.0-flash' (NOT 'gemini-pro' — deprecated). "
-            "AI4Bharat IndicNER via transformers.pipeline only. Type-system enforcement.",
+        "CRITICAL: Sarvam has NO SDK — use httpx only. "
+        "Gemini model name: 'gemini-2.0-flash' (NOT 'gemini-pro' — deprecated). "
+        "AI4Bharat IndicNER via transformers.pipeline only. Type-system enforcement.",
     },
     # WC-016: Web Portal skeleton
     "WC016-01": {
@@ -272,7 +272,6 @@ TASK_CONTEXT_MAP: dict[str, dict] = {
         "relevant_adrs": [],
         "constitutional_check": "21 skills in professional.agent_prompts. seed-prompts.py idempotent (can re-run safely).",
     },
-
     # WC-027: WBE-S3 Markup Engine
     "WC027-01a": {
         "description": "markup/models.py (Pydantic models) + markup/bundle_engine.py (BundleEngine — cost_floor, derive_price, validate_price)",
@@ -309,7 +308,6 @@ TASK_CONTEXT_MAP: dict[str, dict] = {
         "relevant_adrs": ["ADR-034"],
         "constitutional_check": "≥90% line coverage. pricing_floor_log row written on BOTH APPROVED and REJECTED paths. Property-based tests with hypothesis @given on derive_price and validate_price.",
     },
-
     # WC-034 F3: Conversation core autonomous pipeline dispatch
     "WC034-08": {
         "description": "Business Platform F3 conversation timeline/send/retry/read-position/cancel/SSE implementation with JWT tenant authority and idempotency",
@@ -380,11 +378,12 @@ TASK_CONTEXT_MAP: dict[str, dict] = {
 
 # Global context always injected (condensed — not full corpus)
 GLOBAL_CONTEXT_FILES = [
-    "constitution/AGENT-ENTRY.md",   # 3,438 tokens — mandatory routing + current state
-    "adr/ADR-INDEX.md",              # 2,269 tokens — all 29 ADRs in 36 lines
+    "constitution/AGENT-ENTRY.md",  # 3,438 tokens — mandatory routing + current state
+    "adr/ADR-INDEX.md",  # 2,269 tokens — all 29 ADRs in 36 lines
 ]
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
 
 def parse_sprint_state() -> dict[str, str]:
     content = STATE_FILE.read_text(encoding="utf-8")
@@ -431,37 +430,45 @@ def resolve_spec_sections(spec_sections: dict[str, str]) -> tuple[list[dict], in
         tokens = estimate_tokens(file_path) if exists and p.is_file() else 0
 
         if not exists:
-            resolved.append({
-                "file": file_path,
-                "section": section,
-                "status": "MISSING — skip this file, task may not require it yet",
-                "tokens": 0,
-            })
+            resolved.append(
+                {
+                    "file": file_path,
+                    "section": section,
+                    "status": "MISSING — skip this file, task may not require it yet",
+                    "tokens": 0,
+                }
+            )
             continue
 
         if tokens > MAX_TOKENS_PER_FILE and section == "full":
-            resolved.append({
-                "file": file_path,
-                "section": "TOO_LARGE — use targeted section read instead of full file",
-                "status": f"WARNING: {tokens:,} tokens exceeds {MAX_TOKENS_PER_FILE:,} limit for free models. Read only the section specified in the task.",
-                "tokens": min(tokens, MAX_TOKENS_PER_FILE),
-            })
+            resolved.append(
+                {
+                    "file": file_path,
+                    "section": "TOO_LARGE — use targeted section read instead of full file",
+                    "status": f"WARNING: {tokens:,} tokens exceeds {MAX_TOKENS_PER_FILE:,} limit for free models. Read only the section specified in the task.",
+                    "tokens": min(tokens, MAX_TOKENS_PER_FILE),
+                }
+            )
             total_tokens += MAX_TOKENS_PER_FILE
         elif tokens > MAX_TOKENS_PER_FILE and section != "full":
-            resolved.append({
-                "file": file_path,
-                "section": section,
-                "status": f"LARGE FILE — read section '{section}' only (~{min(tokens//10, MAX_TOKENS_PER_FILE)} tokens estimated)",
-                "tokens": min(tokens // 10, MAX_TOKENS_PER_FILE),
-            })
+            resolved.append(
+                {
+                    "file": file_path,
+                    "section": section,
+                    "status": f"LARGE FILE — read section '{section}' only (~{min(tokens // 10, MAX_TOKENS_PER_FILE)} tokens estimated)",
+                    "tokens": min(tokens // 10, MAX_TOKENS_PER_FILE),
+                }
+            )
             total_tokens += min(tokens // 10, MAX_TOKENS_PER_FILE)
         else:
-            resolved.append({
-                "file": file_path,
-                "section": section,
-                "status": f"OK — {tokens:,} tokens",
-                "tokens": tokens,
-            })
+            resolved.append(
+                {
+                    "file": file_path,
+                    "section": section,
+                    "status": f"OK — {tokens:,} tokens",
+                    "tokens": tokens,
+                }
+            )
             total_tokens += tokens
 
     return resolved, total_tokens
@@ -532,9 +539,7 @@ def build_index(task_id: str) -> dict:
     base_sections = context.get("spec_sections", {})
 
     # Semantic spec discovery: supplement hardcoded map with dynamically found sections
-    semantic_sections = discover_semantic_spec_sections(
-        context.get("description", ""), base_sections
-    )
+    semantic_sections = discover_semantic_spec_sections(context.get("description", ""), base_sections)
     if semantic_sections:
         merged_sections = {**base_sections, **semantic_sections}
         print(f"  Semantic discovery added: {list(semantic_sections.keys())}")
@@ -558,7 +563,6 @@ def build_index(task_id: str) -> dict:
         "task_description": context.get("description", "unknown task"),
         "model_hint": context.get("model_hint", "reasoning"),
         "constitutional_check": context.get("constitutional_check", ""),
-
         # Token budget (SIM-022 GAP-SIM-01/02 fix)
         "token_budget": {
             "free_model_limit": FREE_MODEL_CONTEXT,
@@ -567,28 +571,35 @@ def build_index(task_id: str) -> dict:
             "task_context_tokens": task_tokens,
             "total_tokens": total_tokens,
             "budget_ok": budget_ok,
-            "warning": None if budget_ok else (
+            "warning": None
+            if budget_ok
+            else (
                 f"OVERFLOW: {total_tokens:,} tokens exceeds free model limit ({FREE_MODEL_CONTEXT:,}. "
                 f"Use section targeting or a reasoning model."
             ),
         },
-
         "finops_rule": (
             "Read ONLY the listed sections, not full files. "
             f"Total context must stay under {FREE_MODEL_CONTEXT:,} tokens for zero-cost execution. "
             "If token_budget.budget_ok=false, escalate to reasoning model."
         ),
-
         "global_context": GLOBAL_CONTEXT_FILES,
         "spec_sections": spec_entries,
         "relevant_claims": context.get("relevant_claims", []),
         "relevant_adrs": context.get("relevant_adrs", []),
-
         "excluded_from_workspace": [
-            "simulation/*", "reviews/*", "blockers/*", "pmo/*", "legal/*",
-            "knowledge/claims/*", "architecture/100k/*", "architecture/32k/*",
-            "constitution/CONSTITUTION.md", "constitution/GENESIS.md",
-            "constitution/ORGANIZATION.md", "constitution/PROJECT_STATE_ARCHIVE.md",
+            "simulation/*",
+            "reviews/*",
+            "blockers/*",
+            "pmo/*",
+            "legal/*",
+            "knowledge/claims/*",
+            "architecture/100k/*",
+            "architecture/32k/*",
+            "constitution/CONSTITUTION.md",
+            "constitution/GENESIS.md",
+            "constitution/ORGANIZATION.md",
+            "constitution/PROJECT_STATE_ARCHIVE.md",
         ],
     }
 
@@ -599,7 +610,9 @@ def write_copilotignore(excluded: list[str]) -> None:
         "# Auto-generated by build_sprint_index.py — regenerated each sprint run",
         "# constitutional_basis: C-066, FinOps token budget (SIM-022)",
         "",
-    ] + excluded + [""]
+        *excluded,
+        "",
+    ]
     ignore_path.write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -643,9 +656,11 @@ def main() -> None:
 
     budget = index["token_budget"]
     print(f"  model_hint: {index['model_hint']}")
-    effective_display = budget.get('effective_limit', budget['free_model_limit'])
-    print(f"  token budget: {budget['total_tokens']:,}/{effective_display:,} tokens "
-          f"({'OK' if budget['budget_ok'] else 'OVERFLOW — check spec sections'})")
+    effective_display = budget.get("effective_limit", budget["free_model_limit"])
+    print(
+        f"  token budget: {budget['total_tokens']:,}/{effective_display:,} tokens "
+        f"({'OK' if budget['budget_ok'] else 'OVERFLOW — check spec sections'})"
+    )
     if budget.get("warning"):
         print(f"  WARNING: {budget['warning']}")
 

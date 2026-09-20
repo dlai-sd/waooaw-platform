@@ -7,38 +7,40 @@ Remediation Cascade state machine — GEOM §10.
 No state may be skipped. Every transition produces a Goal Register entry.
 The Founder is the last resort — not the first escalation.
 """
+
 from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum, auto
-from typing import Any, Callable, Optional
+from typing import Any
+from collections.abc import Callable
 
 
 class CascadeState(Enum):
-    NOMINAL         = auto()  # no cascade active
-    L1_ACTIVE       = auto()  # Level 1 retries in progress
-    L1_EXHAUSTED    = auto()  # L1 all attempts failed
-    L2_ACTIVE       = auto()  # Level 2 research query in progress
-    L2_EXHAUSTED    = auto()  # L2 all attempts failed
-    L3_ACTIVE       = auto()  # Level 3 expert-informed redesign
-    L3_EXHAUSTED    = auto()  # L3 failed
+    NOMINAL = auto()  # no cascade active
+    L1_ACTIVE = auto()  # Level 1 retries in progress
+    L1_EXHAUSTED = auto()  # L1 all attempts failed
+    L2_ACTIVE = auto()  # Level 2 research query in progress
+    L2_EXHAUSTED = auto()  # L2 all attempts failed
+    L3_ACTIVE = auto()  # Level 3 expert-informed redesign
+    L3_EXHAUSTED = auto()  # L3 failed
     FOUNDER_PENDING = auto()  # Evidence Package sent, awaiting Founder
-    RESOLVED        = auto()  # any level resolved the Goal outcome
-    ESCALATED       = auto()  # Founder made decision
+    RESOLVED = auto()  # any level resolved the Goal outcome
+    ESCALATED = auto()  # Founder made decision
 
 
 # Strict transition map — constitutional, not configurable
 _VALID_TRANSITIONS: dict[CascadeState, list[CascadeState]] = {
-    CascadeState.NOMINAL:         [CascadeState.L1_ACTIVE],
-    CascadeState.L1_ACTIVE:       [CascadeState.RESOLVED, CascadeState.L1_EXHAUSTED],
-    CascadeState.L1_EXHAUSTED:    [CascadeState.L2_ACTIVE],
-    CascadeState.L2_ACTIVE:       [CascadeState.RESOLVED, CascadeState.L2_EXHAUSTED],
-    CascadeState.L2_EXHAUSTED:    [CascadeState.L3_ACTIVE],
-    CascadeState.L3_ACTIVE:       [CascadeState.RESOLVED, CascadeState.L3_EXHAUSTED],
-    CascadeState.L3_EXHAUSTED:    [CascadeState.FOUNDER_PENDING],
+    CascadeState.NOMINAL: [CascadeState.L1_ACTIVE],
+    CascadeState.L1_ACTIVE: [CascadeState.RESOLVED, CascadeState.L1_EXHAUSTED],
+    CascadeState.L1_EXHAUSTED: [CascadeState.L2_ACTIVE],
+    CascadeState.L2_ACTIVE: [CascadeState.RESOLVED, CascadeState.L2_EXHAUSTED],
+    CascadeState.L2_EXHAUSTED: [CascadeState.L3_ACTIVE],
+    CascadeState.L3_ACTIVE: [CascadeState.RESOLVED, CascadeState.L3_EXHAUSTED],
+    CascadeState.L3_EXHAUSTED: [CascadeState.FOUNDER_PENDING],
     CascadeState.FOUNDER_PENDING: [CascadeState.ESCALATED],
-    CascadeState.RESOLVED:        [],   # terminal
-    CascadeState.ESCALATED:       [],   # terminal
+    CascadeState.RESOLVED: [],  # terminal
+    CascadeState.ESCALATED: [],  # terminal
 }
 
 
@@ -47,8 +49,9 @@ class CascadeContext:
     """Mutable state for one cascade activation on a Goal.
     Implements: architecture/reference/goal-orchestrator/component-contracts.md §3
     """
+
     goal_id: str
-    gate_step: int                        # EEM step that triggered (6, 10, or 14)
+    gate_step: int  # EEM step that triggered (6, 10, or 14)
     state: CascadeState = CascadeState.NOMINAL
     l1_attempts: int = 0
     l1_max: int = 3
@@ -57,13 +60,13 @@ class CascadeContext:
     l3_attempts: int = 0
     l3_max: int = 1
     l1_record_ids: list[str] = field(default_factory=list)
-    l2_research_record_id: Optional[str] = None
-    l3_redesign_record_id: Optional[str] = None
-    founder_brief_id: Optional[str] = None
-    founder_decision: Optional[str] = None  # "a" | "b" | "c"
+    l2_research_record_id: str | None = None
+    l3_redesign_record_id: str | None = None
+    founder_brief_id: str | None = None
+    founder_decision: str | None = None  # "a" | "b" | "c"
     activated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    resolved_at: Optional[datetime] = None
-    resolved_by_level: Optional[int] = None  # 1, 2, or 3
+    resolved_at: datetime | None = None
+    resolved_by_level: int | None = None  # 1, 2, or 3
 
     def to_dict(self) -> dict[str, Any]:
         d = dict(self.__dict__)
@@ -88,9 +91,9 @@ class CascadeHandler:
         self,
         context: CascadeContext,
         goal_register_writer: Callable[[dict], str],
-        magic_llm: Any,          # MagicLLMPipeline
-        go_intelligence: Any,    # GOIntelligence
-        steward_notifier: Optional[Callable[[str, str], None]] = None,
+        magic_llm: Any,  # MagicLLMPipeline
+        go_intelligence: Any,  # GOIntelligence
+        steward_notifier: Callable[[str, str], None] | None = None,
     ) -> None:
         self.ctx = context
         self._write = goal_register_writer
@@ -152,13 +155,15 @@ class CascadeHandler:
             raise ValueError(f"Invalid Founder decision '{decision}' — must be a, b, or c")
         self.ctx.founder_decision = decision
         self._transition(CascadeState.ESCALATED)
-        self._write({
-            "record_type": "Founder Decision",
-            "goal_id": self.ctx.goal_id,
-            "decision": decision,
-            "brief_id": self.ctx.founder_brief_id,
-            "decided_at": datetime.now(timezone.utc).isoformat(),
-        })
+        self._write(
+            {
+                "record_type": "Founder Decision",
+                "goal_id": self.ctx.goal_id,
+                "decision": decision,
+                "brief_id": self.ctx.founder_brief_id,
+                "decided_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
         print(f"  [Cascade] Founder selected option '{decision}' for {self.ctx.goal_id}")
 
     # ── Private level runners ─────────────────────────────────────────────────
@@ -198,34 +203,35 @@ class CascadeHandler:
                     # Log advisor classification so CI trace shows which handler will fire next retry.
                     try:
                         import sys as _sys2
-                        _scripts2 = str(__import__('pathlib').Path(__file__).parent.parent.parent / 'scripts')
+
+                        _scripts2 = str(__import__("pathlib").Path(__file__).parent.parent.parent / "scripts")
                         if _scripts2 not in _sys2.path:
                             _sys2.path.insert(0, _scripts2)
                         from sprint_retry_advisor import diagnose_build_error  # type: ignore[import]
+
                         _diag = diagnose_build_error(self.ctx.goal_id, write_err, [])
                         print(f"  [Cascade] advisor: {_diag.error_type} (confidence={_diag.confidence:.0%})")
-                    except Exception:
+                    except Exception:  # noqa: S110
                         pass
 
-            record_id = self._write({
-                "record_type": "L1 Attempt Record",
-                "goal_id": self.ctx.goal_id,
-                "cascade_level": 1,
-                "attempt": self.ctx.l1_attempts,
-                "failure_classification": (
-                    result.failure_classification.value
-                    if result.failure_classification else None
-                ),
-                "outcome": actual_outcome,
-                "recorded_at": datetime.now(timezone.utc).isoformat(),
-            })
+            record_id = self._write(
+                {
+                    "record_type": "L1 Attempt Record",
+                    "goal_id": self.ctx.goal_id,
+                    "cascade_level": 1,
+                    "attempt": self.ctx.l1_attempts,
+                    "failure_classification": (result.failure_classification.value if result.failure_classification else None),
+                    "outcome": actual_outcome,
+                    "recorded_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
             self.ctx.l1_record_ids.append(record_id)
 
             if actual_outcome == "accepted":
                 self.ctx.resolved_by_level = 1
                 self.ctx.resolved_at = datetime.now(timezone.utc)
                 self._transition(CascadeState.RESOLVED)
-                print(f"  [Cascade] L1 resolved ✓")
+                print("  [Cascade] L1 resolved ✓")
                 return
 
         print(f"  [Cascade] L1 exhausted after {self.ctx.l1_max} attempts")
@@ -259,7 +265,7 @@ class CascadeHandler:
                 from autonomous_sprint_runner import parse_llm_files, write_llm_files  # type: ignore[import]
             except ImportError:
                 # Inline fallback matching _parse_llm_files_local/_write_llm_files_local exactly
-                _WRITE_BOUNDARY = _re.compile(r'^(src|tests|scripts|web|infrastructure)/', _re.IGNORECASE)
+                _WRITE_BOUNDARY = _re.compile(r"^(src|tests|scripts|web|infrastructure)/", _re.IGNORECASE)
                 _pattern = _re.compile(r'<file\s+path="([^"]+)">(.*?)</file>', _re.DOTALL | _re.IGNORECASE)
 
                 def parse_llm_files(response: str) -> dict:  # type: ignore[misc]
@@ -289,9 +295,10 @@ class CascadeHandler:
             # Verify py_compile for Python files
             for f in (w for w in written if w.endswith(".py")):
                 full = _repo_root / f
-                proc = _sp.run(
-                    ["python3", "-m", "py_compile", str(full)],
-                    capture_output=True, text=True,
+                proc = _sp.run(  # noqa: S603
+                    ["python3", "-m", "py_compile", str(full)],  # noqa: S607
+                    capture_output=True,
+                    text=True,
                 )
                 if proc.returncode != 0:
                     return False, f"{f}: {proc.stderr[:200]}"
@@ -300,14 +307,26 @@ class CascadeHandler:
             # declare "resolved" when the main compile gate would still fail.
             py_files = [w for w in written if w.endswith(".py")]
             if py_files:
-                _sp.run(
-                    ["python3", "-m", "ruff", "check", *[str(_repo_root / f) for f in py_files],
-                     "--fix", "--unsafe-fixes", "--exit-zero"],
-                    capture_output=True, text=True, cwd=_repo_root,
+                _sp.run(  # noqa: S603
+                    [  # noqa: S607
+                        "python3",
+                        "-m",
+                        "ruff",
+                        "check",
+                        *[str(_repo_root / f) for f in py_files],
+                        "--fix",
+                        "--unsafe-fixes",
+                        "--exit-zero",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    cwd=_repo_root,
                 )
-                ruff_check = _sp.run(
-                    ["python3", "-m", "ruff", "check", *[str(_repo_root / f) for f in py_files]],
-                    capture_output=True, text=True, cwd=_repo_root,
+                ruff_check = _sp.run(  # noqa: S603
+                    ["python3", "-m", "ruff", "check", *[str(_repo_root / f) for f in py_files]],  # noqa: S607
+                    capture_output=True,
+                    text=True,
+                    cwd=_repo_root,
                 )
                 if ruff_check.returncode != 0:
                     ruff_err = (ruff_check.stdout + ruff_check.stderr)[:500]
@@ -318,21 +337,23 @@ class CascadeHandler:
             if py_files:
                 try:
                     from magic_llm.response_evaluator import ResponseEvaluator  # type: ignore[import]
+
                     _ev = ResponseEvaluator(_repo_root)
                     _import_err = _ev._check_intrapackage_imports(py_files)
                     if _import_err:
                         return False, f"COMPILE_FAILURE: IMPORT_SYMBOL: {_import_err}"
-                except Exception:
+                except Exception:  # noqa: S110
                     pass  # evaluator not available — fall through to pytest
 
             # For test files: run full pytest (not collect-only) to catch runtime errors
             # such as TypeError from await MagicMock() that only manifest at execution time.
             test_files = [w for w in written if w.startswith("tests/") or "/tests/" in w]
             if test_files:
-                collect_proc = _sp.run(
-                    ["python3", "-m", "pytest", "-q", "--tb=short"]
-                    + [str(_repo_root / f) for f in test_files],
-                    capture_output=True, text=True, cwd=_repo_root,
+                collect_proc = _sp.run(  # noqa: S603
+                    ["python3", "-m", "pytest", "-q", "--tb=short"] + [str(_repo_root / f) for f in test_files],
+                    capture_output=True,
+                    text=True,
+                    cwd=_repo_root,
                     timeout=120,
                 )
                 if collect_proc.returncode != 0:
@@ -347,7 +368,7 @@ class CascadeHandler:
 
     def _run_l2(self, failure_evidence: dict) -> None:
         """Level 2: Research/Industry Expert Query — advisor_auto_extend as Phase 1 L2."""
-        print(f"  [Cascade] Initiating L2 research query")
+        print("  [Cascade] Initiating L2 research query")
 
         # Phase 1 L2: use advisor_auto_extend to auto-generate a new error handler.
         # If the failure contains an unknown error code, auto-extend the advisor.
@@ -356,18 +377,24 @@ class CascadeHandler:
         failure_text = failure_evidence.get("failure", "")
         try:
             import sys as _sys
+
             _scripts = str(__import__("pathlib").Path(__file__).parent.parent.parent / "scripts")
             if _scripts not in _sys.path:
                 _sys.path.insert(0, _scripts)
             from advisor_auto_extend import run_auto_extend
             import re as _re
-            codes = _re.findall(r'\bCS\d{4}\b', failure_text)
+
+            codes = _re.findall(r"\bCS\d{4}\b", failure_text)
             if codes:
-                mock_signal = {"task_results": {task_id: {
-                    "result": "BUILD_FAILURE",
-                    "error_type": "UNKNOWN",
-                    "build_error_snippet": failure_text[:200],
-                }}}
+                mock_signal = {
+                    "task_results": {
+                        task_id: {
+                            "result": "BUILD_FAILURE",
+                            "error_type": "UNKNOWN",
+                            "build_error_snippet": failure_text[:200],
+                        }
+                    }
+                }
                 new_handlers = run_auto_extend(mock_signal)
                 if new_handlers > 0:
                     print(f"  [Cascade] L2 self-heal: {new_handlers} new advisor handler(s) generated")
@@ -380,7 +407,7 @@ class CascadeHandler:
             print(f"  [Cascade] L2 advisor_auto_extend failed ({_l2_err})")
 
         # L2 research via GOIntelligence (Phase 2 — Gemini)
-        print(f"  [Cascade] L2 GOIntelligence research (Phase 2 not yet available)")
+        print("  [Cascade] L2 GOIntelligence research (Phase 2 not yet available)")
         try:
             research = self._go.research_query(
                 goal_id=self.ctx.goal_id,
@@ -389,7 +416,7 @@ class CascadeHandler:
             )
             self.ctx.l2_research_record_id = research.record_id
         except NotImplementedError:
-            print(f"  [Cascade] L2 research (Phase 2) not yet available — skipping to L3")
+            print("  [Cascade] L2 research (Phase 2) not yet available — skipping to L3")
             self._transition(CascadeState.L2_EXHAUSTED)
             return
 
@@ -408,7 +435,7 @@ class CascadeHandler:
                 self.ctx.resolved_by_level = 2
                 self.ctx.resolved_at = datetime.now(timezone.utc)
                 self._transition(CascadeState.RESOLVED)
-                print(f"  [Cascade] L2 resolved ✓")
+                print("  [Cascade] L2 resolved ✓")
                 return
 
         print(f"  [Cascade] L2 exhausted after {self.ctx.l2_max} attempts")
@@ -416,7 +443,7 @@ class CascadeHandler:
 
     def _run_l3(self) -> None:
         """Level 3: Expert-Informed Redesign (EEM re-runs from Step 03)."""
-        print(f"  [Cascade] Initiating L3 expert-informed redesign")
+        print("  [Cascade] Initiating L3 expert-informed redesign")
         try:
             redesign_id = self._go.expert_informed_redesign(
                 goal_id=self.ctx.goal_id,
@@ -428,12 +455,12 @@ class CascadeHandler:
             # For Phase 1: treat as immediate failure (redesign loop not yet wired)
             self._transition(CascadeState.L3_EXHAUSTED)
         except NotImplementedError:
-            print(f"  [Cascade] L3 redesign (Phase 2) not yet available")
+            print("  [Cascade] L3 redesign (Phase 2) not yet available")
             self._transition(CascadeState.L3_EXHAUSTED)
 
     def _escalate_to_founder(self, failure_evidence: dict) -> None:
         """Compile and deliver the Founder Evidence Package."""
-        print(f"  [Cascade] Escalating to Founder — assembling Evidence Package")
+        print("  [Cascade] Escalating to Founder — assembling Evidence Package")
         try:
             brief = self._go.synthesise_decision(
                 goal_id=self.ctx.goal_id,
@@ -445,19 +472,21 @@ class CascadeHandler:
             self._write(brief.to_dict())
         except NotImplementedError:
             # Phase 2 synthesis not yet available — write a minimal brief
-            record_id = f"FDB-{self.ctx.goal_id}-{int(datetime.now().timestamp())}"
+            record_id = f"FDB-{self.ctx.goal_id}-{int(datetime.now(timezone.utc).timestamp())}"
             self.ctx.founder_brief_id = record_id
-            self._write({
-                "record_id": record_id,
-                "record_type": "Founder Decision Brief",
-                "goal_id": self.ctx.goal_id,
-                "headline": f"Goal {self.ctx.goal_id} cannot be resolved autonomously",
-                "the_gap": str(failure_evidence.get("failure_detail", "unknown")),
-                "option_a": {"title": "Scope reduction"},
-                "option_b": {"title": "Architectural redesign"},
-                "option_c": {"title": "Goal suspension"},
-                "assembled_at": datetime.now(timezone.utc).isoformat(),
-            })
+            self._write(
+                {
+                    "record_id": record_id,
+                    "record_type": "Founder Decision Brief",
+                    "goal_id": self.ctx.goal_id,
+                    "headline": f"Goal {self.ctx.goal_id} cannot be resolved autonomously",
+                    "the_gap": str(failure_evidence.get("failure_detail", "unknown")),
+                    "option_a": {"title": "Scope reduction"},
+                    "option_b": {"title": "Architectural redesign"},
+                    "option_c": {"title": "Goal suspension"},
+                    "assembled_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
 
         self._notify(self.ctx.goal_id, self.ctx.founder_brief_id)
 

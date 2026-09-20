@@ -38,14 +38,15 @@ import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 
 # ── Docker-safe file parser/writer (no autonomous_sprint_runner dependency) ──
-import re as _re
+import re as _re  # noqa: E402
 
-_WRITE_BOUNDARY = _re.compile(r'^(src|tests|scripts|web|infrastructure)/', _re.IGNORECASE)
+_WRITE_BOUNDARY = _re.compile(r"^(src|tests|scripts|web|infrastructure)/", _re.IGNORECASE)
 
 
 def _parse_llm_files_local(response: str) -> dict[str, str]:
@@ -70,23 +71,26 @@ def _inject_compliance_header_local(content: str, rel_path: str, task_id: str) -
         return content
     comment = "#" if ext == ".py" else "//"
     wc_num = ""
-    m = _re.match(r'(WC\d+)', task_id, _re.IGNORECASE)
+    m = _re.match(r"(WC\d+)", task_id, _re.IGNORECASE)
     if m:
         raw = m.group(1).upper()
-        digits = _re.search(r'\d+', raw)
+        digits = _re.search(r"\d+", raw)
         wc_num = f"WC-{int(digits.group()):03d}" if digits else raw
     spec_ref = (
-        f"work-contracts/{wc_num}-*.md §{task_id}" if wc_num
-        else f"work-contracts/ §{task_id}" if task_id
+        f"work-contracts/{wc_num}-*.md §{task_id}"
+        if wc_num
+        else f"work-contracts/ §{task_id}"
+        if task_id
         else "<spec-path> §<section>"
     )
-    header = (
-        f"{comment} Implements: {spec_ref}\n"
-        f"{comment} constitutional_basis: C-059 (Implementation Traceability)\n"
-    )
+    header = f"{comment} Implements: {spec_ref}\n{comment} constitutional_basis: C-059 (Implementation Traceability)\n"
     lines = content.splitlines(keepends=True)
-    strip_prefixes = (f"{comment} Implements:", f"{comment} Constitutional basis:",
-                      f"{comment} constitutional_basis:", f"{comment} ib_item:")
+    strip_prefixes = (
+        f"{comment} Implements:",
+        f"{comment} Constitutional basis:",
+        f"{comment} constitutional_basis:",
+        f"{comment} ib_item:",
+    )
     while lines and lines[0].strip().startswith(strip_prefixes):
         lines.pop(0)
     return header + "".join(lines)
@@ -115,13 +119,14 @@ if _scripts not in sys.path:
 @dataclass
 class FileGenerationTask:
     """One unit of work: generate one file via MagicLLM."""
+
     goal_id: str
-    task_id: str               # e.g. "WC012-02b"
-    output_file: str           # repo-relative path
+    task_id: str  # e.g. "WC012-02b"
+    output_file: str  # repo-relative path
     spec_sections: dict[str, str]
     constitutional_check: str
-    stack: str                 # "dotnet" | "python" | "typescript" | "terraform"
-    model_hint: str            # "reasoning" | "auto" | "none"
+    stack: str  # "dotnet" | "python" | "typescript" | "terraform"
+    model_hint: str  # "reasoning" | "auto" | "none"
     max_tokens: int
     depends_on_files: list[str] = field(default_factory=list)  # prior frozen artifacts
 
@@ -129,8 +134,9 @@ class FileGenerationTask:
 @dataclass
 class FileGenerationResult:
     """Result of one MagicLLM file generation attempt."""
+
     task: FileGenerationTask
-    status: str                # "success" | "failed" | "skipped"
+    status: str  # "success" | "failed" | "skipped"
     attempts: int = 0
     final_error: str = ""
     cascade_level_reached: int = 0
@@ -203,16 +209,22 @@ class GoalExecutor:
             prior_failures = file_failure_counts.get(file_key, 0)
             if prior_failures >= 3:
                 print(f"  [GO] {Path(output_file).name} — {prior_failures} consecutive run failures → genuine spec-gap")
-                results.append(FileGenerationResult(
-                    task=FileGenerationTask(
-                        goal_id=self.goal_id, task_id=f"{task_id}:{Path(output_file).name}",
-                        output_file=output_file, spec_sections=spec_sections,
-                        constitutional_check=constitutional_check, stack=stack,
-                        model_hint=model_hint, max_tokens=max_tokens,
-                    ),
-                    status="failed",
-                    final_error=f"Skipped: {prior_failures} consecutive run failures — spec-gap required"
-                ))
+                results.append(
+                    FileGenerationResult(
+                        task=FileGenerationTask(
+                            goal_id=self.goal_id,
+                            task_id=f"{task_id}:{Path(output_file).name}",
+                            output_file=output_file,
+                            spec_sections=spec_sections,
+                            constitutional_check=constitutional_check,
+                            stack=stack,
+                            model_hint=model_hint,
+                            max_tokens=max_tokens,
+                        ),
+                        status="failed",
+                        final_error=f"Skipped: {prior_failures} consecutive run failures — spec-gap required",
+                    )
+                )
                 continue
 
             task_model_hint = model_hint
@@ -285,6 +297,7 @@ class GoalExecutor:
             # §7.1: Fresh ContextBuilder per attempt (reloads frozen registry)
             try:
                 from magic_llm.context_builder import ContextBuilder
+
                 cb = ContextBuilder(self._root)
             except Exception:
                 cb = self._cb
@@ -296,15 +309,17 @@ class GoalExecutor:
                     output_file=task.output_file,
                     spec_sections=task.spec_sections,
                     constitutional_check=(
-                        task.constitutional_check +
-                        (f"\n\nPREVIOUS ATTEMPT FAILED:\n{failure_context}" if failure_context else "")
+                        task.constitutional_check
+                        + (f"\n\nPREVIOUS ATTEMPT FAILED:\n{failure_context}" if failure_context else "")
                     ),
                     depends_on_tasks=[],
                     prior_output_files=task.depends_on_files,
                     stack=task.stack,
                 )
-                print(f"\n  [GO] {task.task_id} attempt {attempt}/{max_attempts} "
-                      f"— {ctx.total_chars:,} chars ({len(ctx.blocks)} slots)")
+                print(
+                    f"\n  [GO] {task.task_id} attempt {attempt}/{max_attempts} "
+                    f"— {ctx.total_chars:,} chars ({len(ctx.blocks)} slots)"
+                )
                 last_prompt = ctx.full_prompt
                 # LLM invocation
                 response = self._call_llm(task, ctx.full_prompt, api_key, attempt)
@@ -316,6 +331,7 @@ class GoalExecutor:
                 # Docker-safe: use local parser, fall back to autonomous_sprint_runner
                 try:
                     from autonomous_sprint_runner import parse_llm_files, write_llm_files as _wlf_runner
+
                     def write_llm_files(f: dict, tid: str = "") -> list[str]:
                         return _wlf_runner(f, task_id=tid)
                 except ImportError:
@@ -330,6 +346,7 @@ class GoalExecutor:
                 try:
                     from codegen_self_review import pre_compile_review
                     from ptr_assembler import get_assembler as _pga
+
                     files_parsed = pre_compile_review(files_parsed, api_key, _pga().build_using_map())
                 except Exception as _pre_e:
                     print(f"  [GO] pre_compile_review skipped ({type(_pre_e).__name__}: {_pre_e})")
@@ -357,9 +374,7 @@ class GoalExecutor:
 
                 # Classify failure for next attempt context
                 failure = eval_result.first_failure
-                failure_context = self._classify_and_fix(
-                    failure, written, task.task_id
-                )
+                failure_context = self._classify_and_fix(failure, written, task.task_id)
                 # Always reinforce the target file — prevents LLM from writing a dependency instead
                 failure_context += f"\n\nCRITICAL: This attempt MUST write ONLY `{task.output_file}`. Never write any other file path, even to fix a dependency."
 
@@ -402,7 +417,7 @@ class GoalExecutor:
         Returns True if cascade resolved the failure.
         """
         try:
-            from goal_orchestrator.cascade_handler import CascadeHandler, CascadeContext, CascadeState
+            from goal_orchestrator.cascade_handler import CascadeHandler, CascadeContext
             from magic_llm.pipeline import MagicLLMPipeline
             from magic_llm.types import MagicLLMRequest, TaskCategory
 
@@ -421,11 +436,7 @@ class GoalExecutor:
             cat = (
                 TaskCategory.DEEP_REASONING
                 if task.model_hint == "reasoning"
-                else (
-                    TaskCategory.TEST_GENERATION
-                    if "test" in task.output_file.lower()
-                    else TaskCategory.CODE_GENERATION
-                )
+                else (TaskCategory.TEST_GENERATION if "test" in task.output_file.lower() else TaskCategory.CODE_GENERATION)
             )
             original_req = MagicLLMRequest(
                 goal_id=task.goal_id,
@@ -462,9 +473,15 @@ class GoalExecutor:
         # Primary: runner bridge (non-Docker, full runner available)
         try:
             from autonomous_sprint_runner import call_llm_via_magiclm
+
             return call_llm_via_magiclm(
-                task.task_id, f"Generate {Path(task.output_file).name}",
-                prompt, "", task.model_hint, task.max_tokens, attempt=attempt,
+                task.task_id,
+                f"Generate {Path(task.output_file).name}",
+                prompt,
+                "",
+                task.model_hint,
+                task.max_tokens,
+                attempt=attempt,
             )
         except ImportError:
             pass  # Docker mode — fall through to direct API
@@ -532,8 +549,8 @@ class GoalExecutor:
             advisor = getattr(self, "_advisor_module", None)
             if advisor is None:
                 import importlib.util as _ilu
-                _s = _ilu.spec_from_file_location("sprint_retry_advisor",
-                     str(self._root / "scripts" / "sprint_retry_advisor.py"))
+
+                _s = _ilu.spec_from_file_location("sprint_retry_advisor", str(self._root / "scripts" / "sprint_retry_advisor.py"))
                 _m = _ilu.module_from_spec(_s)
                 # Register in sys.modules BEFORE exec — @dataclass needs it
                 sys.modules["sprint_retry_advisor"] = _m
@@ -544,9 +561,7 @@ class GoalExecutor:
             if diagnosis is not None and diagnosis.should_retry and diagnosis.confidence >= 0.3:
                 # For Python failures, error_codes=[] — use failure_class instead.
                 code_str = (
-                    ','.join(failure.error_codes)
-                    if failure.error_codes
-                    else getattr(failure, "failure_class", "COMPILE_FAILURE")
+                    ",".join(failure.error_codes) if failure.error_codes else getattr(failure, "failure_class", "COMPILE_FAILURE")
                 )
                 return (
                     f"COMPILE FAILED ({code_str}):\n"
@@ -565,6 +580,7 @@ class GoalExecutor:
         prior: list[str] = []
         try:
             from autonomous_sprint_runner import TASK_HANDLERS
+
             for tid in completed_tasks:
                 handler = TASK_HANDLERS.get(tid)
                 if isinstance(handler, dict) and "subtasks" in handler:
@@ -596,6 +612,7 @@ class GoalExecutor:
     def _load_context_builder(self):
         try:
             from magic_llm.context_builder import ContextBuilder
+
             return ContextBuilder(self._root)
         except Exception as e:
             print(f"  [GO] ContextBuilder unavailable: {e}")
@@ -604,6 +621,7 @@ class GoalExecutor:
     def _load_response_evaluator(self):
         try:
             from magic_llm.response_evaluator import ResponseEvaluator
+
             return ResponseEvaluator(self._root)
         except Exception as e:
             print(f"  [GO] ResponseEvaluator unavailable: {e}")
@@ -612,6 +630,7 @@ class GoalExecutor:
     def _load_go_intelligence(self, pipeline):
         try:
             from goal_orchestrator.intelligence import GOIntelligence
+
             return GOIntelligence(magic_llm=pipeline, goal_register_writer=self._write)
         except Exception:
             return None
@@ -619,17 +638,19 @@ class GoalExecutor:
     def _write_evidence(self, record_type: str, task: FileGenerationTask, result: FileGenerationResult) -> None:
         """C-059: write evidence record before returning."""
         try:
-            self._write({
-                "record_type": record_type,
-                "goal_id": self.goal_id,
-                "task_id": task.task_id,
-                "output_file": task.output_file,
-                "stack": task.stack,
-                "status": result.status,
-                "attempts": result.attempts,
-                "cascade_level": result.cascade_level_reached,
-                "produced_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            })
+            self._write(
+                {
+                    "record_type": record_type,
+                    "goal_id": self.goal_id,
+                    "task_id": task.task_id,
+                    "output_file": task.output_file,
+                    "stack": task.stack,
+                    "status": result.status,
+                    "attempts": result.attempts,
+                    "cascade_level": result.cascade_level_reached,
+                    "produced_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                }
+            )
         except Exception as _e:
             print(f"  [GO] {type(_e).__name__}: {_e}")
 
@@ -652,14 +673,13 @@ class GoalExecutor:
             issue_num = os.environ.get("GOAL_REGISTER_ISSUE", "")
             if not issue_num:
                 return
-            subprocess.run(
-                ["gh", "issue", "edit", issue_num,
-                 "--add-label", label,
-                 "--repo", github_repo],
-                capture_output=True, timeout=15,  # R2: gh CLI can hang on auth failure
+            subprocess.run(  # noqa: S603
+                ["gh", "issue", "edit", issue_num, "--add-label", label, "--repo", github_repo],  # noqa: S607
+                capture_output=True,
+                timeout=15,  # R2: gh CLI can hang on auth failure
             )
         except subprocess.TimeoutExpired:
-            print(f"  [GO] GEOM label update timed out — non-blocking")
+            print("  [GO] GEOM label update timed out — non-blocking")
         except Exception as e:
             print(f"  [GO] GEOM label update failed ({type(e).__name__}: {e}) — non-blocking")
 
@@ -671,7 +691,7 @@ class GoalExecutor:
         if not path.exists():
             return {}
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 fcntl.flock(f.fileno(), fcntl.LOCK_SH)
                 try:
                     return json.loads(f.read()) or {}

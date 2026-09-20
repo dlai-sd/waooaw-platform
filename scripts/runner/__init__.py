@@ -18,22 +18,32 @@ Package layout:
   llm_codegen.py   — call_llm_via_magiclm, file parse/write/validate
   task_executor.py — execute_with_llm, flag_spec_gap
 
-WC011–WC015 are complete. legacy_handlers.py retired — all sprint handling via
+WC011-WC015 are complete. legacy_handlers.py retired — all sprint handling via
 groom_sprint.py → SubTaskDef → execute_with_llm via the governed MagicLLM layer.
 """
+
 from runner.constants import REPO_ROOT, STATE_FILE, EVIDENCE_LOG, ALLOWED_WRITE_ROOTS  # noqa: F401
 from runner.state import _MONITOR_SIGNAL, _INFRA_ERROR_TASKS  # noqa: F401
 from runner.git_ops import run, git, gh, set_output, record_evidence  # noqa: F401
 from runner.system_prompts import (  # noqa: F401
-    _BASE_SYSTEM_PROMPT, _STACK_EXPERTS, _TASK_STACK_MAP,
-    _build_system_prompt, CONSTITUTIONAL_SYSTEM_PROMPT, get_branch_context,
+    _BASE_SYSTEM_PROMPT,
+    _STACK_EXPERTS,
+    _TASK_STACK_MAP,
+    _build_system_prompt,
+    CONSTITUTIONAL_SYSTEM_PROMPT,
+    get_branch_context,
 )
 from runner.sprint_ops import (  # noqa: F401
-    parse_sprint_state, check_platform_phase_gate, run_spec_validation,
-    update_sprint_state, run_runner_integrity_checks,
+    parse_sprint_state,
+    check_platform_phase_gate,
+    run_spec_validation,
+    update_sprint_state,
+    run_runner_integrity_checks,
 )
 from runner.llm_codegen import (  # noqa: F401
     call_llm_via_magiclm,
-    parse_llm_files, write_llm_files, validate_written_files,
+    parse_llm_files,
+    write_llm_files,
+    validate_written_files,
 )
 from runner.task_executor import execute_with_llm, flag_spec_gap  # noqa: F401

@@ -9,7 +9,8 @@ namespace Waooaw.ConstitutionalEngine.Data;
 /// <summary>EF Core context for the audit_sink schema. C-059: WORM — INSERT only, no UPDATE/DELETE.</summary>
 public sealed class AuditSinkDbContext : DbContext
 {
-    public AuditSinkDbContext(DbContextOptions<AuditSinkDbContext> options) : base(options) { }
+    public AuditSinkDbContext(DbContextOptions<AuditSinkDbContext> options)
+        : base(options) { }
 
     public DbSet<AuditSinkEvidenceRecord> EvidenceRecords => Set<AuditSinkEvidenceRecord>();
 

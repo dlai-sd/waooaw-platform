@@ -7,6 +7,7 @@ Shell command helpers: run(), git(), gh(), set_output(), record_evidence().
 All subprocess calls in the runner go through run() so there is a single
 chokepoint for cwd=REPO_ROOT enforcement and observability.
 """
+
 from __future__ import annotations
 
 import json
@@ -47,7 +48,7 @@ def run(
 ) -> subprocess.CompletedProcess:
     """Run a shell command with cwd=REPO_ROOT. Prints the command before running."""
     print(f"  $ {' '.join(cmd)}")
-    return subprocess.run(
+    return subprocess.run(  # noqa: S603
         cmd,
         check=check,
         capture_output=capture,
@@ -61,9 +62,9 @@ def git(args: list[str], check: bool = True) -> subprocess.CompletedProcess:
     # Local .git/config has commit.gpgsign=true (codespace). Override for container runs.
     in_container = os.environ.get("AUTONOMOUS_SPRINT_AGENT") == "true"
     prefix = ["-c", "commit.gpgsign=false"] if in_container and args and args[0] in ("commit", "merge") else []
-    return run(["git"] + prefix + args, check=check)
+    return run(["git", *prefix, *args], check=check)
 
 
 def gh(args: list[str], check: bool = True) -> subprocess.CompletedProcess:
     """Thin wrapper: run gh CLI and capture output."""
-    return run(["gh"] + args, check=check, capture=True)
+    return run(["gh", *args], check=check, capture=True)

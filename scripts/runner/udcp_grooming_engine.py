@@ -10,13 +10,9 @@ from runner.constants import REPO_ROOT
 
 # Regex patterns for scope text parsing
 _FILE_PATH_RE = re.compile(r"`((?:src|tests)/[^`]+\.py)`")
-_FASTAPI_METHOD_RE = re.compile(
-    r"`(GET|POST|PUT|DELETE|PATCH)\s+(/[^`]*)`", re.IGNORECASE
-)
+_FASTAPI_METHOD_RE = re.compile(r"`(GET|POST|PUT|DELETE|PATCH)\s+(/[^`]*)`", re.IGNORECASE)
 _CLASS_RE = re.compile(r"`([A-Z][A-Za-z0-9_]+)`")
-_SKELETON_ABSTRACT_RE = re.compile(
-    r"^\s+(?:async\s+)?def\s+(\w+)\s*\(self(?:,\s*([^)]*))?\)", re.MULTILINE
-)
+_SKELETON_ABSTRACT_RE = re.compile(r"^\s+(?:async\s+)?def\s+(\w+)\s*\(self(?:,\s*([^)]*))?\)", re.MULTILINE)
 _PYDANTIC_HINT_RE = re.compile(r"\bPydantic\b|\bBaseModel\b", re.IGNORECASE)
 _IMPLEMENTS_RE = re.compile(r"implementing\s+`([A-Z][A-Za-z0-9_]+)`")
 _HYPOTHESIS_RE = re.compile(r"\bhypothesis\b|@given\b", re.IGNORECASE)
@@ -35,9 +31,7 @@ class UDCPGroomingEngine:
         repo_root: Path | None = None,
     ) -> None:
         self.repo_root = repo_root or REPO_ROOT
-        self.skeleton_path = skeleton_path or (
-            self.repo_root / "src/billing-engine/skeleton/wbe_interfaces.py"
-        )
+        self.skeleton_path = skeleton_path or (self.repo_root / "src/billing-engine/skeleton/wbe_interfaces.py")
         self._skeleton_text: str | None = None
 
     # ── Public API ────────────────────────────────────────────────────────────
@@ -55,13 +49,15 @@ class UDCPGroomingEngine:
             artifacts = []
             for fp in required_output_files:
                 imports = self._extract_imports(scope_text, fp)
-                artifacts.append({
-                    "file_path": fp,
-                    "imports": imports,
-                    # PTR-validated import budget — logic-fill may not exceed this list
-                    "allowed_imports": self._imports_to_strings(imports),
-                    "interfaces": self._extract_interfaces(scope_text, fp),
-                })
+                artifacts.append(
+                    {
+                        "file_path": fp,
+                        "imports": imports,
+                        # PTR-validated import budget — logic-fill may not exceed this list
+                        "allowed_imports": self._imports_to_strings(imports),
+                        "interfaces": self._extract_interfaces(scope_text, fp),
+                    }
+                )
         else:
             artifacts = self._extract_artifacts(scope_text, track=1)
         return {
@@ -103,7 +99,8 @@ class UDCPGroomingEngine:
         if not required_output_files:
             return "GREENFIELD"
         existing = [
-            fp for fp in required_output_files
+            fp
+            for fp in required_output_files
             if (self.repo_root / fp).is_file()
             and "WAOOAW_LOGIC_FILLER_START" not in (self.repo_root / fp).read_text(encoding="utf-8", errors="replace")
         ]
@@ -134,9 +131,7 @@ class UDCPGroomingEngine:
                     lines.append(f"import {name}")
         return lines
 
-    def _extract_artifacts(
-        self, scope_text: str, track: int
-    ) -> list[dict[str, Any]]:
+    def _extract_artifacts(self, scope_text: str, track: int) -> list[dict[str, Any]]:
         file_paths = _FILE_PATH_RE.findall(scope_text)
         artifacts = []
         for fp in file_paths:
@@ -151,9 +146,7 @@ class UDCPGroomingEngine:
             )
         return artifacts
 
-    def _extract_imports(
-        self, scope_text: str, file_path: str
-    ) -> list[dict[str, Any]]:
+    def _extract_imports(self, scope_text: str, file_path: str) -> list[dict[str, Any]]:
         imports: list[dict[str, Any]] = []
 
         if self._is_test_file(file_path):
@@ -171,9 +164,7 @@ class UDCPGroomingEngine:
         # Source files: FastAPI imports when endpoints are mentioned
         endpoints = _FASTAPI_METHOD_RE.findall(scope_text)
         if endpoints:
-            imports.append(
-                {"from": "fastapi", "import": ["APIRouter", "Depends", "HTTPException"]}
-            )
+            imports.append({"from": "fastapi", "import": ["APIRouter", "Depends", "HTTPException"]})
 
         # Pydantic import when BaseModel/Pydantic mentioned
         if _PYDANTIC_HINT_RE.search(scope_text):
@@ -186,9 +177,7 @@ class UDCPGroomingEngine:
 
         return imports
 
-    def _extract_interfaces(
-        self, scope_text: str, file_path: str
-    ) -> list[dict[str, Any]]:
+    def _extract_interfaces(self, scope_text: str, file_path: str) -> list[dict[str, Any]]:
         interfaces: list[dict[str, Any]] = []
 
         if self._is_test_file(file_path):
@@ -200,30 +189,34 @@ class UDCPGroomingEngine:
                     continue
                 seen.add(key)
                 func_name = f"test_{_path_to_func_name(method.lower(), path)}"
-                interfaces.append({
-                    "type": "function",
-                    "async": True,
-                    "name": func_name,
-                    "decorators": ["pytest.mark.asyncio"],
-                    "arguments": [{"name": "client", "type": "AsyncClient"}],
-                    "return_type": "None",
-                    "docstring": f"Test {method.upper()} {path}",
-                })
+                interfaces.append(
+                    {
+                        "type": "function",
+                        "async": True,
+                        "name": func_name,
+                        "decorators": ["pytest.mark.asyncio"],
+                        "arguments": [{"name": "client", "type": "AsyncClient"}],
+                        "return_type": "None",
+                        "docstring": f"Test {method.upper()} {path}",
+                    }
+                )
             if _HYPOTHESIS_RE.search(scope_text):
-                interfaces.append({
-                    "type": "function",
-                    "name": "test_property_based",
-                    "decorators": [
-                        "given(a=st.integers(min_value=0), b=st.floats(min_value=0.0, max_value=99.9))",
-                        "settings(max_examples=200)",
-                    ],
-                    "arguments": [
-                        {"name": "a", "type": "int"},
-                        {"name": "b", "type": "float"},
-                    ],
-                    "return_type": "None",
-                    "docstring": "Hypothesis property-based test",
-                })
+                interfaces.append(
+                    {
+                        "type": "function",
+                        "name": "test_property_based",
+                        "decorators": [
+                            "given(a=st.integers(min_value=0), b=st.floats(min_value=0.0, max_value=99.9))",
+                            "settings(max_examples=200)",
+                        ],
+                        "arguments": [
+                            {"name": "a", "type": "int"},
+                            {"name": "b", "type": "float"},
+                        ],
+                        "return_type": "None",
+                        "docstring": "Hypothesis property-based test",
+                    }
+                )
             return interfaces
 
         # Source files: FastAPI route functions
@@ -233,9 +226,7 @@ class UDCPGroomingEngine:
                 {
                     "type": "function",
                     "name": func_name,
-                    "decorators": [
-                        f"router.{method.lower()}('{path}')"
-                    ],
+                    "decorators": [f"router.{method.lower()}('{path}')"],
                     "arguments": [],
                     "return_type": "dict",
                     "docstring": f"{method.upper()} {path}",
@@ -265,9 +256,7 @@ class UDCPGroomingEngine:
 
         return interfaces
 
-    def _resolve_skeleton_types(
-        self, scope_text: str, file_path: str
-    ) -> list[dict[str, Any]]:
+    def _resolve_skeleton_types(self, scope_text: str, file_path: str) -> list[dict[str, Any]]:
         """
         Cross-references class names mentioned in scope_text against the skeleton
         file to emit the correct from-import. LLM-free — regex on skeleton source.
@@ -280,25 +269,19 @@ class UDCPGroomingEngine:
         # Determine the skeleton module name relative to the service root
         # e.g. src/billing-engine/skeleton/wbe_interfaces.py → skeleton.wbe_interfaces
         try:
-            rel = self.skeleton_path.relative_to(
-                self.repo_root / "src/billing-engine"
-            )
+            rel = self.skeleton_path.relative_to(self.repo_root / "src/billing-engine")
             module = ".".join(rel.with_suffix("").parts)
         except ValueError:
             return []
 
         # Find class names from skeleton that appear in scope_text
-        skeleton_classes = re.findall(
-            r"^class\s+([A-Z][A-Za-z0-9_]+)", self._skeleton_text, re.MULTILINE
-        )
+        skeleton_classes = re.findall(r"^class\s+([A-Z][A-Za-z0-9_]+)", self._skeleton_text, re.MULTILINE)
         found = [c for c in skeleton_classes if f"`{c}`" in scope_text]
         if not found:
             return []
         return [{"from": module, "import": found}]
 
-    def _extract_method_names(
-        self, scope_text: str, class_name: str | None
-    ) -> list[str]:
+    def _extract_method_names(self, scope_text: str, class_name: str | None) -> list[str]:
         if not class_name or self.skeleton_path is None or not self.skeleton_path.is_file():
             return []
         if self._skeleton_text is None:
@@ -320,6 +303,7 @@ class UDCPGroomingEngine:
 
 
 # ── Utility ───────────────────────────────────────────────────────────────────
+
 
 def _path_to_func_name(method: str, path: str) -> str:
     """Converts 'post /bundle-cost-floor/{agent_type}' → 'post_bundle_cost_floor'."""

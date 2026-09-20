@@ -17,10 +17,10 @@ public sealed class AuditSinkEvidenceRecord
     public Guid? PayloadRefId { get; init; }
     public string? CredentialProvider { get; init; }
     public string? VaultAlias { get; init; }
-    public string ExecutionStatus { get; init; } = string.Empty;  // immutable proof field
+    public string ExecutionStatus { get; init; } = string.Empty; // immutable proof field
     public string[] ConstitutionalBasis { get; init; } = [];
     public string EvidenceHash { get; init; } = string.Empty;
     public DateTimeOffset RecordedAt { get; init; } = DateTimeOffset.UtcNow;
-    public string ErasureStatus { get; set; } = "NONE";           // updated by RecordErasure only
-    public DateTimeOffset? ErasureTimestamp { get; set; }          // set by RecordErasure
+    public string ErasureStatus { get; set; } = "NONE"; // updated by RecordErasure only
+    public DateTimeOffset? ErasureTimestamp { get; set; } // set by RecordErasure
 }

@@ -63,10 +63,7 @@ def _stable_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in payload.items():
         if key == "changes":
-            result[key] = [
-                {"change_type": item["change_type"], "resource_id": item["resource_id"]}
-                for item in value
-            ]
+            result[key] = [{"change_type": item["change_type"], "resource_id": item["resource_id"]} for item in value]
         else:
             result[key] = value
     return result
@@ -87,9 +84,7 @@ def _read_json(path: Path) -> dict[str, Any]:
     return value
 
 
-def environment_contract(
-    repository_root: Path, manifest_path: Path, environment: str
-) -> dict[str, Any]:
+def environment_contract(repository_root: Path, manifest_path: Path, environment: str) -> dict[str, Any]:
     violations = validate_bootstrap_manifest(repository_root, manifest_path, environment)
     if violations:
         raise RuntimeError("invalid bootstrap manifest: " + ", ".join(violations))
@@ -124,10 +119,7 @@ def normalize_changes(changes: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 environment
                 for environment in ("demo", "uat", "prod")
                 if f"/containers/goal006-{environment}-runner-evidence'" in resource_id
-                and (
-                    f"/userAssignedIdentities/goal006-{environment}-runner-"
-                    "evidence-writer-identity'"
-                ) in resource_id
+                and (f"/userAssignedIdentities/goal006-{environment}-runner-evidence-writer-identity'") in resource_id
             ),
             None,
         )
@@ -145,11 +137,7 @@ def normalize_changes(changes: list[dict[str, Any]]) -> list[dict[str, Any]]:
             {
                 "change_type": change_type,
                 "resource_id": resource_id,
-                "details": {
-                    key: value
-                    for key, value in change.items()
-                    if key not in {"changeType", "resourceId"}
-                },
+                "details": {key: value for key, value in change.items() if key not in {"changeType", "resourceId"}},
             }
         )
     return sorted(normalized, key=lambda item: (item["resource_id"].lower(), item["change_type"]))
@@ -334,9 +322,7 @@ def _required_resource_names(environment: str) -> dict[str, str]:
     }
 
 
-def verify_signer_role_assignments(
-    *, resource_group: str, prefix: str, key_scope: str
-) -> None:
+def verify_signer_role_assignments(*, resource_group: str, prefix: str, key_scope: str) -> None:
     expected_scope = key_scope.lower()
     for identity_name in (f"{prefix}-broker-identity", f"{prefix}-cleanup-identity"):
         identity = _az(
@@ -357,18 +343,13 @@ def verify_signer_role_assignments(
             "--all",
         )
         if not any(
-            item.get("roleDefinitionName") == "Key Vault Crypto User"
-            and str(item.get("scope", "")).lower() == expected_scope
+            item.get("roleDefinitionName") == "Key Vault Crypto User" and str(item.get("scope", "")).lower() == expected_scope
             for item in assignments
         ):
-            raise RuntimeError(
-                f"{identity_name} lacks Key Vault Crypto User at the signing key scope"
-            )
+            raise RuntimeError(f"{identity_name} lacks Key Vault Crypto User at the signing key scope")
 
 
-def verify_audit_diagnostics(
-    *, resource_id: str, setting_name: str, workspace_id: str, categories: set[str]
-) -> None:
+def verify_audit_diagnostics(*, resource_id: str, setting_name: str, workspace_id: str, categories: set[str]) -> None:
     setting = _az(
         "monitor",
         "diagnostic-settings",
@@ -378,11 +359,7 @@ def verify_audit_diagnostics(
         "--name",
         setting_name,
     )
-    observed_categories = {
-        str(item.get("category"))
-        for item in setting.get("logs", [])
-        if item.get("enabled") is True
-    }
+    observed_categories = {str(item.get("category")) for item in setting.get("logs", []) if item.get("enabled") is True}
     if observed_categories != categories:
         raise RuntimeError(f"audit diagnostic categories differ: {setting_name}")
     if str(setting.get("workspaceId", "")).lower() != workspace_id.lower():
@@ -410,15 +387,10 @@ def verify_deployment(
     ):
         raise RuntimeError("deployment stack action on unmanage is not detachAll")
     managed_resource_ids = {
-        str(item.get("id", "")).lower()
-        for item in stack.get("resources", [])
-        if str(item.get("status", "")).lower() == "managed"
+        str(item.get("id", "")).lower() for item in stack.get("resources", []) if str(item.get("status", "")).lower() == "managed"
     }
     resources = _az("resource", "list", "--resource-group", contract["resource_group"])
-    observed = {
-        (str(item.get("name")), str(item.get("type"))): str(item.get("id", "")).lower()
-        for item in resources
-    }
+    observed = {(str(item.get("name")), str(item.get("type"))): str(item.get("id", "")).lower() for item in resources}
     missing = sorted(
         (name, resource_type)
         for name, resource_type in _required_resource_names(environment).items()
@@ -445,10 +417,7 @@ def verify_deployment(
             endpoint,
         )
         connections = resource.get("privateLinkServiceConnections", [])
-        statuses = {
-            item.get("privateLinkServiceConnectionState", {}).get("status")
-            for item in connections
-        }
+        statuses = {item.get("privateLinkServiceConnectionState", {}).get("status") for item in connections}
         if statuses != {"Approved"}:
             raise RuntimeError(f"private endpoint is not approved: {endpoint} {statuses}")
     parameters = _parameters(contract["parameter_path"])
@@ -461,10 +430,7 @@ def verify_deployment(
         f"{prefix}-evidence-writer-identity",
     )
     state_account_id = str(parameters["stateStorageAccountId"])
-    evidence_container_id = (
-        f"{state_account_id}/blobServices/default/containers/"
-        f"goal006-{environment}-runner-evidence"
-    )
+    evidence_container_id = f"{state_account_id}/blobServices/default/containers/goal006-{environment}-runner-evidence"
     evidence_policy_id = f"{evidence_container_id}/immutabilityPolicies/default"
     for evidence_resource_id in (evidence_container_id, evidence_policy_id):
         if evidence_resource_id.lower() not in managed_resource_ids:
@@ -473,12 +439,7 @@ def verify_deployment(
     if evidence_container.get("properties", {}).get("publicAccess") != "None":
         raise RuntimeError("cleanup evidence container is not private")
     evidence_policy = _az("resource", "show", "--ids", evidence_policy_id)
-    if (
-        evidence_policy.get("properties", {}).get(
-            "immutabilityPeriodSinceCreationInDays"
-        )
-        != 90
-    ):
+    if evidence_policy.get("properties", {}).get("immutabilityPeriodSinceCreationInDays") != 90:
         raise RuntimeError("cleanup evidence retention is not 90 days")
     evidence_assignments = _az(
         "role",
@@ -490,18 +451,13 @@ def verify_deployment(
         evidence_container_id,
     )
     if not any(
-        item.get("roleDefinitionName")
-        == f"GOAL-006 {environment} Cleanup Evidence Writer"
+        item.get("roleDefinitionName") == f"GOAL-006 {environment} Cleanup Evidence Writer"
         and str(item.get("scope", "")).lower() == evidence_container_id.lower()
         for item in evidence_assignments
     ):
         raise RuntimeError("cleanup evidence writer assignment is missing")
-    workspace_id = observed[
-        (f"{prefix}-logs", "Microsoft.OperationalInsights/workspaces")
-    ]
-    vault_id = observed[
-        (f"waooaw-{environment}-runner-kv", "Microsoft.KeyVault/vaults")
-    ]
+    workspace_id = observed[(f"{prefix}-logs", "Microsoft.OperationalInsights/workspaces")]
+    vault_id = observed[(f"waooaw-{environment}-runner-kv", "Microsoft.KeyVault/vaults")]
     verify_audit_diagnostics(
         resource_id=vault_id,
         setting_name=f"{prefix}-vault-audit",
@@ -564,9 +520,7 @@ def verify_deployment(
     ]
     evidence_identity_id = str(evidence_identity.get("id", "")).lower()
     cleanup_job_identities = {
-        str(identity_id).lower()
-        for identity_id in cleanup_broker_job.get("identity", {})
-        .get("userAssignedIdentities", {})
+        str(identity_id).lower() for identity_id in cleanup_broker_job.get("identity", {}).get("userAssignedIdentities", {})
     }
     if cleanup_job_identities != {cleanup_identity_id, evidence_identity_id}:
         raise RuntimeError("cleanup broker identity boundary differs from blueprint")
@@ -586,8 +540,7 @@ def verify_deployment(
     if reconciler_configuration.get("triggerType") != expected_trigger:
         raise RuntimeError(f"reconciler job trigger is not {expected_trigger}")
     if expected_trigger == "Schedule" and (
-        reconciler_configuration.get("scheduleTriggerConfig", {}).get("cronExpression")
-        != "*/5 * * * *"
+        reconciler_configuration.get("scheduleTriggerConfig", {}).get("cronExpression") != "*/5 * * * *"
     ):
         raise RuntimeError("reconciler job schedule is not every five minutes")
     active_execution_states = {"processing", "running", "waiting"}
@@ -602,11 +555,7 @@ def verify_deployment(
             "--name",
             name,
         )
-        if any(
-            str(item.get("properties", {}).get("status", "")).lower()
-            in active_execution_states
-            for item in executions
-        ):
+        if any(str(item.get("properties", {}).get("status", "")).lower() in active_execution_states for item in executions):
             raise RuntimeError(f"{name} has an active execution during verification")
     expected_jobs = (
         (
@@ -622,15 +571,10 @@ def verify_deployment(
             contract["reconciler_image"],
             ["python3", "-c"],
             [
-                (repository_root / "scripts/goal006_runner_lifecycle.py").read_text(
-                    encoding="utf-8"
-                ),
+                (repository_root / "scripts/goal006_runner_lifecycle.py").read_text(encoding="utf-8"),
                 "reconcile",
                 "--app-manifest-json",
-                (
-                    repository_root
-                    / "architecture/reference/pipeline/github-runner-app-manifest.json"
-                ).read_text(encoding="utf-8"),
+                (repository_root / "architecture/reference/pipeline/github-runner-app-manifest.json").read_text(encoding="utf-8"),
                 "--output",
                 RECONCILIATION_OUTPUT,
             ],
@@ -640,7 +584,13 @@ def verify_deployment(
             "broker",
             contract["runner_image"],
             ["python3", "/opt/waooaw/goal006_runner_lifecycle.py"],
-            ["start", "--app-manifest", "/opt/waooaw/github-runner-app-manifest.json", "--output", "/home/runner/lifecycle-record.json"],
+            [
+                "start",
+                "--app-manifest",
+                "/opt/waooaw/github-runner-app-manifest.json",
+                "--output",
+                "/home/runner/lifecycle-record.json",
+            ],
         ),
         (
             cleanup_broker_job,
@@ -648,9 +598,7 @@ def verify_deployment(
             contract["runner_image"],
             ["python3", "-c"],
             [
-                (repository_root / "scripts/goal006_runner_lifecycle.py").read_text(
-                    encoding="utf-8"
-                ),
+                (repository_root / "scripts/goal006_runner_lifecycle.py").read_text(encoding="utf-8"),
                 "cleanup-correlated",
                 "--app-manifest",
                 "/opt/waooaw/github-runner-app-manifest.json",
@@ -669,9 +617,7 @@ def verify_deployment(
         )
         if container is None or container.get("image") != expected_image:
             raise RuntimeError(f"{container_name} job image differs from reviewed blueprint")
-        environment_values = {
-            item.get("name"): item.get("value") for item in container.get("env", [])
-        }
+        environment_values = {item.get("name"): item.get("value") for item in container.get("env", [])}
         if environment_values.get("RUNNER_ACTIVATION_STATE") != contract["activation_state"]:
             raise RuntimeError(f"{container_name} job activation state differs from blueprint")
         if container.get("command") != expected_command:
@@ -689,14 +635,10 @@ def verify_deployment(
             expected_evidence_environment = {
                 "EVIDENCE_WRITER_CLIENT_ID": evidence_identity.get("clientId"),
                 "RUNNER_EVIDENCE_CONTAINER_URL": (
-                    f"https://{storage_account_name}.blob.core.windows.net/"
-                    f"goal006-{environment}-runner-evidence"
+                    f"https://{storage_account_name}.blob.core.windows.net/goal006-{environment}-runner-evidence"
                 ),
             }
-            if any(
-                environment_values.get(name) != value
-                for name, value in expected_evidence_environment.items()
-            ):
+            if any(environment_values.get(name) != value for name, value in expected_evidence_environment.items()):
                 raise RuntimeError("cleanup broker evidence environment differs from blueprint")
     payload: dict[str, Any] = {
         "schema": DEPLOYMENT_SCHEMA,
@@ -759,11 +701,7 @@ def main() -> int:
                 "subscription_id": arguments.subscription_id,
                 "source_commit": arguments.source_commit,
             }
-            result = (
-                apply_reviewed_plan(**common)
-                if arguments.operation == "apply"
-                else revalidate_reviewed_plan(**common)
-            )
+            result = apply_reviewed_plan(**common) if arguments.operation == "apply" else revalidate_reviewed_plan(**common)
             _write_json(arguments.output, result)
             print(json.dumps(result, sort_keys=True))
         return 0

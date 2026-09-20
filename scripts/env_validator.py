@@ -162,7 +162,7 @@ def collect_imports(path: Path) -> set[str]:
 
 
 def check_importable(name: str) -> bool:
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603
         [sys.executable, "-c", f"import {name}"],
         capture_output=True,
         timeout=15,
@@ -173,10 +173,7 @@ def check_importable(name: str) -> bool:
 def main() -> int:
     greenfield_dirs = _greenfield_test_dirs()
 
-    py_files = [
-        f for f in TESTS_DIR.rglob("*.py")
-        if not any(f.is_relative_to(gd) for gd in greenfield_dirs)
-    ]
+    py_files = [f for f in TESTS_DIR.rglob("*.py") if not any(f.is_relative_to(gd) for gd in greenfield_dirs)]
     if not py_files:
         print("  env_validator: no test files found — skipping")
         return 0
@@ -194,10 +191,7 @@ def main() -> int:
     stdlib: set[str] = sys.stdlib_module_names  # type: ignore[attr-defined]
     local_modules = _collect_local_modules()
     pending_local = _pending_local_imports()
-    third_party = sorted(
-        m for m in all_modules
-        if m not in stdlib and m not in local_modules and m not in pending_local and m
-    )
+    third_party = sorted(m for m in all_modules if m not in stdlib and m not in local_modules and m not in pending_local and m)
 
     gaps: list[str] = []
     for module in third_party:
@@ -208,8 +202,8 @@ def main() -> int:
 
     if gaps:
         print(f"\n  ❌ CRITICAL: {len(gaps)} module(s) not importable: {gaps}")
-        print(f"  Add missing packages to requirements-test.txt and re-run.")
-        print(f"  Constitutional: C-032 (spec/code drift), C-086 (pre-execution gate)")
+        print("  Add missing packages to requirements-test.txt and re-run.")
+        print("  Constitutional: C-032 (spec/code drift), C-086 (pre-execution gate)")
         return 1
 
     print(f"\n  ✅ Environment contract valid — {len(third_party)} module(s) verified")

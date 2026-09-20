@@ -1,9 +1,9 @@
 // Implements: architecture/reference/components/constitutional-engine.md §2 PAAS Boundary Validator
 // constitutional_basis: C-001, C-003, C-023, C-041, C-059
 using Grpc.Core;
+using Microsoft.Extensions.Logging;
 using Waooaw.ConstitutionalEngine.Evaluators;
 using Waooaw.ConstitutionalEngine.Grpc;
-using Microsoft.Extensions.Logging;
 
 namespace Waooaw.ConstitutionalEngine.Evaluators;
 
@@ -26,18 +26,18 @@ namespace Waooaw.ConstitutionalEngine.Evaluators;
 public sealed class C041ToolAuthorizationEvaluator : IClaimEvaluator
 {
     // ActionParameters JSON keys — populated by EvaluatorRegistry from Decision Space cache
-    private const string AuthorizedActionsKey  = "authorized_actions";
-    private const string ProhibitedActionsKey  = "prohibited_actions";
-    private const string AlwaysAskActionsKey   = "always_ask_actions";
-    private const string ToolNameKey           = "tool_name";
+    private const string AuthorizedActionsKey = "authorized_actions";
+    private const string ProhibitedActionsKey = "prohibited_actions";
+    private const string AlwaysAskActionsKey = "always_ask_actions";
+    private const string ToolNameKey = "tool_name";
 
     // C-041 is scoped to MCP tool calls only; all other action types default-deny
     private const string McpToolCallActionType = "MCP_TOOL_CALL";
 
     // C-041: constitutional floor — no tool invocation may pass without an explicit allow
-    private const string DenyReasonNoActionType  =
+    private const string DenyReasonNoActionType =
         "C-041: ActionType must be specified. No anonymous tool invocations are permitted.";
-    private const string DenyReasonNoList        =
+    private const string DenyReasonNoList =
         "C-041: No authorized_actions list present in Decision Space context. Default deny applied.";
 
     private readonly ILogger<C041ToolAuthorizationEvaluator> _logger;
@@ -65,12 +65,15 @@ public sealed class C041ToolAuthorizationEvaluator : IClaimEvaluator
             if (string.IsNullOrWhiteSpace(ctx.ActionType))
             {
                 _logger.LogWarning(
-                    "C-041 DENY: ActionType is null or empty. " +
-                    "ContractId={ContractId} TenantId={TenantId}",
-                    ctx.ContractId, ctx.TenantId);
+                    "C-041 DENY: ActionType is null or empty. "
+                        + "ContractId={ContractId} TenantId={TenantId}",
+                    ctx.ContractId,
+                    ctx.TenantId
+                );
 
                 return Task.FromResult(
-                    new EvaluationResult(ClaimId, EvaluationVerdict.Deny, DenyReasonNoActionType));
+                    new EvaluationResult(ClaimId, EvaluationVerdict.Deny, DenyReasonNoActionType)
+                );
             }
 
             var actionType = ctx.ActionType.Trim();
@@ -79,16 +82,21 @@ public sealed class C041ToolAuthorizationEvaluator : IClaimEvaluator
             if (!string.Equals(actionType, McpToolCallActionType, StringComparison.Ordinal))
             {
                 _logger.LogWarning(
-                    "C-041 DENY: ActionType={ActionType} is not MCP_TOOL_CALL — outside C041 scope. " +
-                    "ContractId={ContractId} TenantId={TenantId}",
-                    actionType, ctx.ContractId, ctx.TenantId);
+                    "C-041 DENY: ActionType={ActionType} is not MCP_TOOL_CALL — outside C041 scope. "
+                        + "ContractId={ContractId} TenantId={TenantId}",
+                    actionType,
+                    ctx.ContractId,
+                    ctx.TenantId
+                );
 
                 return Task.FromResult(
                     new EvaluationResult(
                         ClaimId,
                         EvaluationVerdict.Deny,
-                        $"C-041: ActionType '{actionType}' is not MCP_TOOL_CALL. " +
-                        "C041 evaluates MCP tool invocations only. Default deny applied."));
+                        $"C-041: ActionType '{actionType}' is not MCP_TOOL_CALL. "
+                            + "C041 evaluates MCP tool invocations only. Default deny applied."
+                    )
+                );
             }
 
             // ── Extract tool_name from ActionParameters ────────────────────────────────
@@ -96,15 +104,19 @@ public sealed class C041ToolAuthorizationEvaluator : IClaimEvaluator
             if (string.IsNullOrEmpty(toolName))
             {
                 _logger.LogWarning(
-                    "C-041 DENY: tool_name is null or empty. " +
-                    "ContractId={ContractId} TenantId={TenantId}",
-                    ctx.ContractId, ctx.TenantId);
+                    "C-041 DENY: tool_name is null or empty. "
+                        + "ContractId={ContractId} TenantId={TenantId}",
+                    ctx.ContractId,
+                    ctx.TenantId
+                );
 
                 return Task.FromResult(
                     new EvaluationResult(
                         ClaimId,
                         EvaluationVerdict.Deny,
-                        "C-041: tool_name must be specified in ActionParameters. No anonymous tool invocations are permitted."));
+                        "C-041: tool_name must be specified in ActionParameters. No anonymous tool invocations are permitted."
+                    )
+                );
             }
 
             // ── Step 1: Prohibited actions (absolute — checked before allowed list) ────
@@ -115,15 +127,20 @@ public sealed class C041ToolAuthorizationEvaluator : IClaimEvaluator
                 if (ContainsOrdinal(prohibited, toolName))
                 {
                     _logger.LogWarning(
-                        "C-041 DENY: ActionType={ActionType} is explicitly prohibited. " +
-                        "ContractId={ContractId} TenantId={TenantId}",
-                        actionType, ctx.ContractId, ctx.TenantId);
+                        "C-041 DENY: ActionType={ActionType} is explicitly prohibited. "
+                            + "ContractId={ContractId} TenantId={TenantId}",
+                        actionType,
+                        ctx.ContractId,
+                        ctx.TenantId
+                    );
 
                     return Task.FromResult(
                         new EvaluationResult(
                             ClaimId,
                             EvaluationVerdict.Deny,
-                            $"C-041: Action '{actionType}' is explicitly prohibited in the Decision Space."));
+                            $"C-041: Action '{actionType}' is explicitly prohibited in the Decision Space."
+                        )
+                    );
                 }
             }
 
@@ -135,16 +152,21 @@ public sealed class C041ToolAuthorizationEvaluator : IClaimEvaluator
                 if (ContainsOrdinal(alwaysAsk, toolName))
                 {
                     _logger.LogInformation(
-                        "C-041 ESCALATE: tool_name={ToolName} requires customer confirmation. " +
-                        "ContractId={ContractId} TenantId={TenantId}",
-                        toolName, ctx.ContractId, ctx.TenantId);
+                        "C-041 ESCALATE: tool_name={ToolName} requires customer confirmation. "
+                            + "ContractId={ContractId} TenantId={TenantId}",
+                        toolName,
+                        ctx.ContractId,
+                        ctx.TenantId
+                    );
 
                     return Task.FromResult(
                         new EvaluationResult(
                             ClaimId,
                             EvaluationVerdict.Escalate,
-                            $"C-041: Tool '{toolName}' is at a scope boundary — " +
-                            "explicit customer confirmation required (always-ask)."));
+                            $"C-041: Tool '{toolName}' is at a scope boundary — "
+                                + "explicit customer confirmation required (always-ask)."
+                        )
+                    );
                 }
             }
 
@@ -153,41 +175,56 @@ public sealed class C041ToolAuthorizationEvaluator : IClaimEvaluator
             if (string.IsNullOrWhiteSpace(authorizedRaw))
             {
                 _logger.LogWarning(
-                    "C-041 DENY (default): No '{Key}' parameter in context. " +
-                    "ContractId={ContractId} ActionType={ActionType} TenantId={TenantId}",
-                    AuthorizedActionsKey, ctx.ContractId, actionType, ctx.TenantId);
+                    "C-041 DENY (default): No '{Key}' parameter in context. "
+                        + "ContractId={ContractId} ActionType={ActionType} TenantId={TenantId}",
+                    AuthorizedActionsKey,
+                    ctx.ContractId,
+                    actionType,
+                    ctx.TenantId
+                );
 
                 return Task.FromResult(
-                    new EvaluationResult(ClaimId, EvaluationVerdict.Deny, DenyReasonNoList));
+                    new EvaluationResult(ClaimId, EvaluationVerdict.Deny, DenyReasonNoList)
+                );
             }
 
             var authorized = ParseActionList(authorizedRaw);
             if (!ContainsOrdinal(authorized, toolName))
             {
                 _logger.LogWarning(
-                    "C-041 DENY (default): tool_name={ToolName} not in authorized list. " +
-                    "ContractId={ContractId} TenantId={TenantId}",
-                    toolName, ctx.ContractId, ctx.TenantId);
+                    "C-041 DENY (default): tool_name={ToolName} not in authorized list. "
+                        + "ContractId={ContractId} TenantId={TenantId}",
+                    toolName,
+                    ctx.ContractId,
+                    ctx.TenantId
+                );
 
                 return Task.FromResult(
                     new EvaluationResult(
                         ClaimId,
                         EvaluationVerdict.Deny,
-                        $"C-041: Tool '{toolName}' is not listed in the authorized Decision Space. " +
-                        "Default deny applied."));
+                        $"C-041: Tool '{toolName}' is not listed in the authorized Decision Space. "
+                            + "Default deny applied."
+                    )
+                );
             }
 
             // ── All checks passed — tool is constitutionally authorized ───────────────
             _logger.LogDebug(
-                "C-041 Allow: tool_name={ToolName} is authorized by Decision Space. " +
-                "ContractId={ContractId} TenantId={TenantId}",
-                toolName, ctx.ContractId, ctx.TenantId);
+                "C-041 Allow: tool_name={ToolName} is authorized by Decision Space. "
+                    + "ContractId={ContractId} TenantId={TenantId}",
+                toolName,
+                ctx.ContractId,
+                ctx.TenantId
+            );
 
             return Task.FromResult(
                 new EvaluationResult(
                     ClaimId,
                     EvaluationVerdict.Allow,
-                    $"C-041: Tool '{toolName}' is within the authorized Decision Space."));
+                    $"C-041: Tool '{toolName}' is within the authorized Decision Space."
+                )
+            );
         }
         catch (OperationCanceledException)
         {
@@ -200,13 +237,16 @@ public sealed class C041ToolAuthorizationEvaluator : IClaimEvaluator
             _logger.LogError(
                 ex,
                 "C-041 evaluation failed: {Context}",
-                $"ContractId={ctx.ContractId} ActionType={ctx.ActionType} TenantId={ctx.TenantId}");
+                $"ContractId={ctx.ContractId} ActionType={ctx.ActionType} TenantId={ctx.TenantId}"
+            );
 
             return Task.FromResult(
                 new EvaluationResult(
                     ClaimId,
                     EvaluationVerdict.Deny,
-                    $"C-041: Evaluator error — failing closed per default-deny principle. {ex.Message}"));
+                    $"C-041: Evaluator error — failing closed per default-deny principle. {ex.Message}"
+                )
+            );
         }
     }
 
@@ -216,10 +256,11 @@ public sealed class C041ToolAuthorizationEvaluator : IClaimEvaluator
     /// Parses a comma- or semicolon-delimited action list from a raw parameter string.
     /// Whitespace is trimmed from each entry; empty entries are dropped.
     /// </summary>
-    private static IReadOnlyList<string> ParseActionList(string raw)
-        => raw.Split(
+    private static IReadOnlyList<string> ParseActionList(string raw) =>
+        raw.Split(
                 new[] { ',', ';' },
-                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
+            )
             .ToList();
 
     /// <summary>

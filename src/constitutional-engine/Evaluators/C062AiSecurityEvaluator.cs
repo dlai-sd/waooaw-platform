@@ -1,9 +1,9 @@
 // Implements: architecture/reference/components/constitutional-engine.md §2 PAAS Boundary Validator
 // constitutional_basis: C-001, C-003, C-023, C-041, C-059
 using Grpc.Core;
+using Microsoft.Extensions.Logging;
 using Waooaw.ConstitutionalEngine.Evaluators;
 using Waooaw.ConstitutionalEngine.Grpc;
-using Microsoft.Extensions.Logging;
 
 namespace Waooaw.ConstitutionalEngine.Evaluators;
 
@@ -29,42 +29,45 @@ public sealed class C062AiSecurityEvaluator : IClaimEvaluator
 {
     // C-062: constitutional floor — these action types are ALWAYS denied.
     // Static set: evaluators MUST NOT perform network I/O (40ms ValidateAction budget, ADR-001).
-    private static readonly IReadOnlySet<string> ProhibitedActionTypes =
-        new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "SYSTEM_PROMPT_INJECTION",
-            "PRIVILEGE_ESCALATION",
-            "CREDENTIAL_EXFILTRATION",
-            "MODEL_JAILBREAK",
-            "CONSTITUTIONAL_BYPASS",
-            "DIRECT_DB_ACCESS",
-            "RAW_SYSTEM_COMMAND",
-            "ARBITRARY_CODE_EXECUTION",
-        };
+    private static readonly IReadOnlySet<string> ProhibitedActionTypes = new HashSet<string>(
+        StringComparer.OrdinalIgnoreCase
+    )
+    {
+        "SYSTEM_PROMPT_INJECTION",
+        "PRIVILEGE_ESCALATION",
+        "CREDENTIAL_EXFILTRATION",
+        "MODEL_JAILBREAK",
+        "CONSTITUTIONAL_BYPASS",
+        "DIRECT_DB_ACCESS",
+        "RAW_SYSTEM_COMMAND",
+        "ARBITRARY_CODE_EXECUTION",
+    };
 
     // C-062: tool name prefixes that are constitutionally prohibited regardless of action type.
-    private static readonly IReadOnlySet<string> ProhibitedToolPrefixes =
-        new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "SHELL_",
-            "EXEC_",
-            "ADMIN_OVERRIDE_",
-            "BYPASS_",
-        };
+    private static readonly IReadOnlySet<string> ProhibitedToolPrefixes = new HashSet<string>(
+        StringComparer.OrdinalIgnoreCase
+    )
+    {
+        "SHELL_",
+        "EXEC_",
+        "ADMIN_OVERRIDE_",
+        "BYPASS_",
+    };
 
     // C-062: exact tool names that are constitutionally prohibited.
-    private static readonly IReadOnlySet<string> ProhibitedToolNames =
-        new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "bash",
-            "shell",
-            "eval",
-            "exec",
-            "subprocess",
-            "os.system",
-            "powershell",
-            "cmd",
-        };
+    private static readonly IReadOnlySet<string> ProhibitedToolNames = new HashSet<string>(
+        StringComparer.OrdinalIgnoreCase
+    )
+    {
+        "bash",
+        "shell",
+        "eval",
+        "exec",
+        "subprocess",
+        "os.system",
+        "powershell",
+        "cmd",
+    };
 
     private readonly ILogger<C062AiSecurityEvaluator> _logger;
 
@@ -88,12 +91,18 @@ public sealed class C062AiSecurityEvaluator : IClaimEvaluator
             {
                 _logger.LogWarning(
                     "C-062 AI Security: prohibited action type '{ActionType}' denied. ContractId={ContractId} TenantId={TenantId}",
-                    ctx.ActionType, ctx.ContractId, ctx.TenantId);
+                    ctx.ActionType,
+                    ctx.ContractId,
+                    ctx.TenantId
+                );
 
-                return Task.FromResult(new EvaluationResult(
-                    ClaimId,
-                    EvaluationVerdict.Deny,
-                    $"C-062: Action type '{ctx.ActionType}' is constitutionally prohibited under AI Security policy."));
+                return Task.FromResult(
+                    new EvaluationResult(
+                        ClaimId,
+                        EvaluationVerdict.Deny,
+                        $"C-062: Action type '{ctx.ActionType}' is constitutionally prohibited under AI Security policy."
+                    )
+                );
             }
 
             // ── Guard 2: tool name checks (exact + prefix) ────────────────────────────
@@ -105,12 +114,18 @@ public sealed class C062AiSecurityEvaluator : IClaimEvaluator
                 {
                     _logger.LogWarning(
                         "C-062 AI Security: prohibited tool name '{ToolName}' denied. ContractId={ContractId} TenantId={TenantId}",
-                        toolName, ctx.ContractId, ctx.TenantId);
+                        toolName,
+                        ctx.ContractId,
+                        ctx.TenantId
+                    );
 
-                    return Task.FromResult(new EvaluationResult(
-                        ClaimId,
-                        EvaluationVerdict.Deny,
-                        $"C-062: Tool '{toolName}' is constitutionally prohibited under AI Security policy."));
+                    return Task.FromResult(
+                        new EvaluationResult(
+                            ClaimId,
+                            EvaluationVerdict.Deny,
+                            $"C-062: Tool '{toolName}' is constitutionally prohibited under AI Security policy."
+                        )
+                    );
                 }
 
                 // Prefix-match prohibited tool families.
@@ -120,12 +135,19 @@ public sealed class C062AiSecurityEvaluator : IClaimEvaluator
                     {
                         _logger.LogWarning(
                             "C-062 AI Security: tool '{ToolName}' matches prohibited prefix '{Prefix}'. ContractId={ContractId} TenantId={TenantId}",
-                            toolName, prefix, ctx.ContractId, ctx.TenantId);
+                            toolName,
+                            prefix,
+                            ctx.ContractId,
+                            ctx.TenantId
+                        );
 
-                        return Task.FromResult(new EvaluationResult(
-                            ClaimId,
-                            EvaluationVerdict.Deny,
-                            $"C-062: Tool '{toolName}' matches constitutionally prohibited tool-family prefix '{prefix}'."));
+                        return Task.FromResult(
+                            new EvaluationResult(
+                                ClaimId,
+                                EvaluationVerdict.Deny,
+                                $"C-062: Tool '{toolName}' matches constitutionally prohibited tool-family prefix '{prefix}'."
+                            )
+                        );
                     }
                 }
             }
@@ -138,23 +160,35 @@ public sealed class C062AiSecurityEvaluator : IClaimEvaluator
             {
                 _logger.LogWarning(
                     "C-062 AI Security: prompt-injection marker detected. Marker='{Marker}' ContractId={ContractId} TenantId={TenantId}",
-                    injectionMarker, ctx.ContractId, ctx.TenantId);
+                    injectionMarker,
+                    ctx.ContractId,
+                    ctx.TenantId
+                );
 
-                return Task.FromResult(new EvaluationResult(
-                    ClaimId,
-                    EvaluationVerdict.Deny,
-                    $"C-062: Prompt-injection marker detected ('{injectionMarker}') — action denied under AI Security policy."));
+                return Task.FromResult(
+                    new EvaluationResult(
+                        ClaimId,
+                        EvaluationVerdict.Deny,
+                        $"C-062: Prompt-injection marker detected ('{injectionMarker}') — action denied under AI Security policy."
+                    )
+                );
             }
 
             // ── All C-062 guards passed ───────────────────────────────────────────────
             _logger.LogDebug(
                 "C-062 AI Security: action cleared. ActionType={ActionType} ContractId={ContractId} TenantId={TenantId}",
-                ctx.ActionType, ctx.ContractId, ctx.TenantId);
+                ctx.ActionType,
+                ctx.ContractId,
+                ctx.TenantId
+            );
 
-            return Task.FromResult(new EvaluationResult(
-                ClaimId,
-                EvaluationVerdict.Allow,
-                "C-062: Action cleared by AI Security evaluator."));
+            return Task.FromResult(
+                new EvaluationResult(
+                    ClaimId,
+                    EvaluationVerdict.Allow,
+                    "C-062: Action cleared by AI Security evaluator."
+                )
+            );
         }
         catch (OperationCanceledException)
         {
@@ -168,12 +202,17 @@ public sealed class C062AiSecurityEvaluator : IClaimEvaluator
             _logger.LogError(
                 ex,
                 "C-062 AI Security evaluator fault — denying for safety. ContractId={ContractId} TenantId={TenantId}",
-                ctx.ContractId, ctx.TenantId);
+                ctx.ContractId,
+                ctx.TenantId
+            );
 
-            return Task.FromResult(new EvaluationResult(
-                ClaimId,
-                EvaluationVerdict.Deny,
-                $"C-062: Evaluator fault — action denied for safety. Error: {ex.Message}"));
+            return Task.FromResult(
+                new EvaluationResult(
+                    ClaimId,
+                    EvaluationVerdict.Deny,
+                    $"C-062: Evaluator fault — action denied for safety. Error: {ex.Message}"
+                )
+            );
         }
     }
 }

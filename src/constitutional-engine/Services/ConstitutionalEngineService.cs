@@ -29,7 +29,7 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
     // ─── Latency budgets ────────────────────────────────────────────────────
     // C-001 / AD-001: Emergency Stop ≤ 250 ms end-to-end.
     // 100 ms allocated to this service (header: "100ms here").
-    private static readonly TimeSpan EmergencyStopTimeout  = TimeSpan.FromMilliseconds(100);
+    private static readonly TimeSpan EmergencyStopTimeout = TimeSpan.FromMilliseconds(100);
 
     // ValidateAction latency budget: target < 40 ms (ADR-001, AD-005)
     private static readonly TimeSpan ValidateActionTimeout = TimeSpan.FromSeconds(5);
@@ -38,17 +38,17 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
     private static readonly TimeSpan RecordEvidenceTimeout = TimeSpan.FromSeconds(10);
 
     // ─── Dependencies ───────────────────────────────────────────────────────
-    private readonly EvaluatorRegistry                          _registry;
-    private readonly ILogger<ConstitutionalEngineService>       _logger;
+    private readonly EvaluatorRegistry _registry;
+    private readonly ILogger<ConstitutionalEngineService> _logger;
     private readonly IDbContextFactory<ConstitutionalDbContext> _dbContextFactory;
 
     // Added in WC012-04b — optional so the 3-arg constructor used by existing
     // test helpers continues to compile unchanged (constructor compatibility rule).
     private readonly IDbContextFactory<EmergencyStopDbContext>? _emergencyStopDbContextFactory;
-    private readonly ITemporalClient?                           _temporalClient;
+    private readonly ITemporalClient? _temporalClient;
 
     // Added in WC037-04 — optional for backwards-compatible test construction.
-    private readonly IDbContextFactory<AuditSinkDbContext>?     _auditSinkDbContextFactory;
+    private readonly IDbContextFactory<AuditSinkDbContext>? _auditSinkDbContextFactory;
 
     // ─── Primary constructor (6 args — DI registration) ────────────────────
     public ConstitutionalEngineService(
@@ -57,14 +57,15 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
         IDbContextFactory<ConstitutionalDbContext> dbContextFactory,
         IDbContextFactory<EmergencyStopDbContext> emergencyStopDbContextFactory,
         ITemporalClient temporalClient,
-        IDbContextFactory<AuditSinkDbContext>? auditSinkDbContextFactory = null)
+        IDbContextFactory<AuditSinkDbContext>? auditSinkDbContextFactory = null
+    )
     {
-        _registry                      = registry;
-        _logger                        = logger;
-        _dbContextFactory              = dbContextFactory;
+        _registry = registry;
+        _logger = logger;
+        _dbContextFactory = dbContextFactory;
         _emergencyStopDbContextFactory = emergencyStopDbContextFactory;
-        _temporalClient                = temporalClient;
-        _auditSinkDbContextFactory     = auditSinkDbContextFactory;
+        _temporalClient = temporalClient;
+        _auditSinkDbContextFactory = auditSinkDbContextFactory;
     }
 
     // ─── Compatibility overload — 3 args (preserves existing test call-sites) ─
@@ -73,10 +74,9 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
     public ConstitutionalEngineService(
         EvaluatorRegistry registry,
         ILogger<ConstitutionalEngineService> logger,
-        IDbContextFactory<ConstitutionalDbContext> dbContextFactory)
-        : this(registry, logger, dbContextFactory, null!, null!, null)
-    {
-    }
+        IDbContextFactory<ConstitutionalDbContext> dbContextFactory
+    )
+        : this(registry, logger, dbContextFactory, null!, null!, null) { }
 
     // ═══════════════════════════════════════════════════════════════════════
     // §1  Evidence First Enforcer — RecordEvidence
@@ -85,55 +85,76 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
     // C-085: Idempotent on (IdempotencyKey, TenantId).
     // ═══════════════════════════════════════════════════════════════════════
     public override async Task<RecordEvidenceResponse> RecordEvidence(
-        RecordEvidenceRequest req, ServerCallContext ctx)
+        RecordEvidenceRequest req,
+        ServerCallContext ctx
+    )
     {
         var rawTenantId = ctx.RequestHeaders.GetValue("x-tenant-id") ?? string.Empty;
 
         if (string.IsNullOrWhiteSpace(rawTenantId))
         {
             _logger.LogWarning(
-                "RecordEvidence rejected: x-tenant-id metadata absent. " +
-                "ActionInstanceId={ActionInstanceId} ActionType={ActionType}",
-                req.ActionInstanceId, req.ActionType);
+                "RecordEvidence rejected: x-tenant-id metadata absent. "
+                    + "ActionInstanceId={ActionInstanceId} ActionType={ActionType}",
+                req.ActionInstanceId,
+                req.ActionType
+            );
 
             throw new RpcException(
-                new Status(StatusCode.Unauthenticated,
-                    "x-tenant-id gRPC metadata is required (C-005: tenant isolation)."));
+                new Status(
+                    StatusCode.Unauthenticated,
+                    "x-tenant-id gRPC metadata is required (C-005: tenant isolation)."
+                )
+            );
         }
 
         if (!Guid.TryParse(rawTenantId, out var tenantGuid))
         {
             _logger.LogWarning(
-                "RecordEvidence rejected: x-tenant-id is not a valid UUID. " +
-                "TenantIdRaw={TenantIdRaw} ActionInstanceId={ActionInstanceId}",
-                rawTenantId, req.ActionInstanceId);
+                "RecordEvidence rejected: x-tenant-id is not a valid UUID. "
+                    + "TenantIdRaw={TenantIdRaw} ActionInstanceId={ActionInstanceId}",
+                rawTenantId,
+                req.ActionInstanceId
+            );
 
             throw new RpcException(
-                new Status(StatusCode.Unauthenticated,
-                    "x-tenant-id must be a valid UUID in canonical format (C-005)."));
+                new Status(
+                    StatusCode.Unauthenticated,
+                    "x-tenant-id must be a valid UUID in canonical format (C-005)."
+                )
+            );
         }
 
         if (string.IsNullOrWhiteSpace(req.ConstitutionalBasis))
         {
             _logger.LogWarning(
-                "RecordEvidence rejected: constitutional_basis empty. " +
-                "ActionInstanceId={ActionInstanceId} ActionType={ActionType}",
-                req.ActionInstanceId, req.ActionType);
+                "RecordEvidence rejected: constitutional_basis empty. "
+                    + "ActionInstanceId={ActionInstanceId} ActionType={ActionType}",
+                req.ActionInstanceId,
+                req.ActionType
+            );
 
             throw new RpcException(
-                new Status(StatusCode.InvalidArgument,
-                    "constitutional_basis must not be empty (C-023; AD-008)."));
+                new Status(
+                    StatusCode.InvalidArgument,
+                    "constitutional_basis must not be empty (C-023; AD-008)."
+                )
+            );
         }
 
         if (string.IsNullOrWhiteSpace(req.ActionInstanceId))
         {
             _logger.LogWarning(
                 "RecordEvidence rejected: ActionInstanceId empty. ActionType={ActionType}",
-                req.ActionType);
+                req.ActionType
+            );
 
             throw new RpcException(
-                new Status(StatusCode.InvalidArgument,
-                    "action_instance_id must not be empty (C-023)."));
+                new Status(
+                    StatusCode.InvalidArgument,
+                    "action_instance_id must not be empty (C-023)."
+                )
+            );
         }
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ctx.CancellationToken);
@@ -147,34 +168,38 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
             // (C-027 append-only: Proposed + Executed are different ledger entries).
             var existing = await db.Set<EvidenceRecord>()
                 .FirstOrDefaultAsync(
-                    e => e.IdempotencyKey == req.ActionInstanceId &&
-                         e.StateCode      == (int)req.State        &&
-                         e.TenantId       == tenantGuid,
-                    cts.Token);
+                    e =>
+                        e.IdempotencyKey == req.ActionInstanceId
+                        && e.StateCode == (int)req.State
+                        && e.TenantId == tenantGuid,
+                    cts.Token
+                );
 
             if (existing is not null)
             {
                 _logger.LogInformation(
                     "RecordEvidence idempotent hit. IdempotencyKey={Key} TenantId={TenantId}",
-                    req.ActionInstanceId, tenantGuid);
+                    req.ActionInstanceId,
+                    tenantGuid
+                );
 
                 return new RecordEvidenceResponse
                 {
                     EvidenceRecordId = existing.Id.ToString(),
-                    RecordedAt       = Timestamp.FromDateTimeOffset(existing.RecordedAt)
+                    RecordedAt = Timestamp.FromDateTimeOffset(existing.RecordedAt),
                 };
             }
 
             var record = new EvidenceRecord
             {
-                Id             = Guid.NewGuid(),
+                Id = Guid.NewGuid(),
                 IdempotencyKey = req.ActionInstanceId,
-                StateCode      = (int)req.State,
-                TenantId       = tenantGuid,
-                EvidenceType   = req.ActionType,
-                Summary        = req.ConstitutionalBasis,
-                PayloadJson    = req.HasProposedContent ? req.ProposedContent : null,
-                RecordedAt     = DateTimeOffset.UtcNow
+                StateCode = (int)req.State,
+                TenantId = tenantGuid,
+                EvidenceType = req.ActionType,
+                Summary = req.ConstitutionalBasis,
+                PayloadJson = req.HasProposedContent ? req.ProposedContent : null,
+                RecordedAt = DateTimeOffset.UtcNow,
             };
 
             await db.Set<EvidenceRecord>().AddAsync(record, cts.Token);
@@ -182,33 +207,45 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
 
             _logger.LogInformation(
                 "RecordEvidence persisted. RecordId={RecordId} TenantId={TenantId} ActionType={ActionType}",
-                record.Id, tenantGuid, req.ActionType);
+                record.Id,
+                tenantGuid,
+                req.ActionType
+            );
 
             return new RecordEvidenceResponse
             {
                 EvidenceRecordId = record.Id.ToString(),
-                RecordedAt       = Timestamp.FromDateTimeOffset(record.RecordedAt)
+                RecordedAt = Timestamp.FromDateTimeOffset(record.RecordedAt),
             };
         }
         catch (RpcException)
         {
             throw;
         }
-        catch (OperationCanceledException) when (
-            cts.IsCancellationRequested && !ctx.CancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException)
+            when (cts.IsCancellationRequested && !ctx.CancellationToken.IsCancellationRequested)
         {
             _logger.LogError(
-                "RecordEvidence exceeded latency budget {BudgetMs}ms. " +
-                "ActionInstanceId={ActionInstanceId}",
-                RecordEvidenceTimeout.TotalMilliseconds, req.ActionInstanceId);
-            throw new RpcException(new Status(StatusCode.DeadlineExceeded,
-                $"RecordEvidence exceeded {RecordEvidenceTimeout.TotalMilliseconds}ms latency budget."));
+                "RecordEvidence exceeded latency budget {BudgetMs}ms. "
+                    + "ActionInstanceId={ActionInstanceId}",
+                RecordEvidenceTimeout.TotalMilliseconds,
+                req.ActionInstanceId
+            );
+            throw new RpcException(
+                new Status(
+                    StatusCode.DeadlineExceeded,
+                    $"RecordEvidence exceeded {RecordEvidenceTimeout.TotalMilliseconds}ms latency budget."
+                )
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "RecordEvidence failed. ActionInstanceId={ActionInstanceId} TenantId={TenantId}",
-                req.ActionInstanceId, tenantGuid);
+                req.ActionInstanceId,
+                tenantGuid
+            );
             throw new RpcException(new Status(StatusCode.Internal, ex.Message));
         }
     }
@@ -219,15 +256,20 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
     // AD-005: ValidateAction target < 40 ms.
     // ═══════════════════════════════════════════════════════════════════════
     public override async Task<ValidateActionResponse> ValidateAction(
-        ValidateActionRequest req, ServerCallContext ctx)
+        ValidateActionRequest req,
+        ServerCallContext ctx
+    )
     {
         var rawTenantId = ctx.RequestHeaders.GetValue("x-tenant-id") ?? string.Empty;
 
         if (string.IsNullOrWhiteSpace(rawTenantId))
         {
             throw new RpcException(
-                new Status(StatusCode.Unauthenticated,
-                    "x-tenant-id gRPC metadata is required (C-005: tenant isolation)."));
+                new Status(
+                    StatusCode.Unauthenticated,
+                    "x-tenant-id gRPC metadata is required (C-005: tenant isolation)."
+                )
+            );
         }
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ctx.CancellationToken);
@@ -239,23 +281,33 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
             var results = await _registry.EvaluateAllAsync(evalCtx, cts.Token);
 
             // Any Deny verdict overrides; Escalate is returned if no Deny but escalation needed.
-            var firstDeny     = results.FirstOrDefault(r => r.Verdict == EvaluationVerdict.Deny);
-            var firstEscalate = results.FirstOrDefault(r => r.Verdict == EvaluationVerdict.Escalate);
+            var firstDeny = results.FirstOrDefault(r => r.Verdict == EvaluationVerdict.Deny);
+            var firstEscalate = results.FirstOrDefault(r =>
+                r.Verdict == EvaluationVerdict.Escalate
+            );
 
             if (firstDeny is not null)
             {
                 _logger.LogInformation(
                     "ValidateAction DENY. ContractId={ContractId} ClaimId={ClaimId} Reason={Reason}",
-                    req.ContractId, firstDeny.ClaimId, firstDeny.Reason);
+                    req.ContractId,
+                    firstDeny.ClaimId,
+                    firstDeny.Reason
+                );
 
-                await WriteAuditSinkRecordAsync(req, rawTenantId, "DENIED",
-                    firstDeny.ClaimId, cts.Token);
+                await WriteAuditSinkRecordAsync(
+                    req,
+                    rawTenantId,
+                    "DENIED",
+                    firstDeny.ClaimId,
+                    cts.Token
+                );
 
                 return new ValidateActionResponse
                 {
-                    Decision            = ValidationDecision.Deny,
+                    Decision = ValidationDecision.Deny,
                     ConstitutionalBasis = firstDeny.ClaimId,
-                    Reason              = firstDeny.Reason
+                    Reason = firstDeny.Reason,
                 };
             }
 
@@ -263,51 +315,75 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
             {
                 _logger.LogInformation(
                     "ValidateAction ESCALATE. ContractId={ContractId} ClaimId={ClaimId} Reason={Reason}",
-                    req.ContractId, firstEscalate.ClaimId, firstEscalate.Reason);
+                    req.ContractId,
+                    firstEscalate.ClaimId,
+                    firstEscalate.Reason
+                );
 
-                await WriteAuditSinkRecordAsync(req, rawTenantId, "ESCALATED",
-                    firstEscalate.ClaimId, cts.Token);
+                await WriteAuditSinkRecordAsync(
+                    req,
+                    rawTenantId,
+                    "ESCALATED",
+                    firstEscalate.ClaimId,
+                    cts.Token
+                );
 
                 return new ValidateActionResponse
                 {
-                    Decision            = ValidationDecision.Escalate,
+                    Decision = ValidationDecision.Escalate,
                     ConstitutionalBasis = firstEscalate.ClaimId,
-                    Reason              = firstEscalate.Reason
+                    Reason = firstEscalate.Reason,
                 };
             }
 
             _logger.LogInformation(
                 "ValidateAction ALLOW. ContractId={ContractId} ActionType={ActionType}",
-                req.ContractId, req.ActionType);
+                req.ContractId,
+                req.ActionType
+            );
 
-            await WriteAuditSinkRecordAsync(req, rawTenantId, "AUTHORIZED",
-                "C-003; C-041", cts.Token);
+            await WriteAuditSinkRecordAsync(
+                req,
+                rawTenantId,
+                "AUTHORIZED",
+                "C-003; C-041",
+                cts.Token
+            );
 
             return new ValidateActionResponse
             {
-                Decision            = ValidationDecision.Allow,
+                Decision = ValidationDecision.Allow,
                 ConstitutionalBasis = "C-003; C-041",
-                Reason              = "Action is within the approved Decision Space."
+                Reason = "Action is within the approved Decision Space.",
             };
         }
         catch (RpcException)
         {
             throw;
         }
-        catch (OperationCanceledException) when (
-            cts.IsCancellationRequested && !ctx.CancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException)
+            when (cts.IsCancellationRequested && !ctx.CancellationToken.IsCancellationRequested)
         {
             _logger.LogError(
                 "ValidateAction exceeded latency budget {BudgetMs}ms. ContractId={ContractId}",
-                ValidateActionTimeout.TotalMilliseconds, req.ContractId);
-            throw new RpcException(new Status(StatusCode.DeadlineExceeded,
-                $"ValidateAction exceeded {ValidateActionTimeout.TotalMilliseconds}ms latency budget."));
+                ValidateActionTimeout.TotalMilliseconds,
+                req.ContractId
+            );
+            throw new RpcException(
+                new Status(
+                    StatusCode.DeadlineExceeded,
+                    $"ValidateAction exceeded {ValidateActionTimeout.TotalMilliseconds}ms latency budget."
+                )
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "ValidateAction failed. ContractId={ContractId} ActionType={ActionType}",
-                req.ContractId, req.ActionType);
+                req.ContractId,
+                req.ActionType
+            );
             throw new RpcException(new Status(StatusCode.Internal, ex.Message));
         }
     }
@@ -318,22 +394,33 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
     // C-023: Write before returning.
     // ═══════════════════════════════════════════════════════════════════════
     public override async Task<GrantAuthorityResponse> GrantAuthorityLicense(
-        GrantAuthorityRequest req, ServerCallContext ctx)
+        GrantAuthorityRequest req,
+        ServerCallContext ctx
+    )
     {
         var rawTenantId = ctx.RequestHeaders.GetValue("x-tenant-id") ?? string.Empty;
 
-        if (string.IsNullOrWhiteSpace(rawTenantId) || !Guid.TryParse(rawTenantId, out var tenantGuid))
+        if (
+            string.IsNullOrWhiteSpace(rawTenantId)
+            || !Guid.TryParse(rawTenantId, out var tenantGuid)
+        )
         {
             throw new RpcException(
-                new Status(StatusCode.Unauthenticated,
-                    "x-tenant-id gRPC metadata is required and must be a valid UUID (C-005)."));
+                new Status(
+                    StatusCode.Unauthenticated,
+                    "x-tenant-id gRPC metadata is required and must be a valid UUID (C-005)."
+                )
+            );
         }
 
         if (req.EvidenceIds.Count == 0)
         {
             throw new RpcException(
-                new Status(StatusCode.InvalidArgument,
-                    "At least one evidence_id is required for authority grant (C-003)."));
+                new Status(
+                    StatusCode.InvalidArgument,
+                    "At least one evidence_id is required for authority grant (C-003)."
+                )
+            );
         }
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ctx.CancellationToken);
@@ -341,26 +428,29 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
 
         try
         {
-            var licenseId   = Guid.NewGuid();
-            var recordedAt  = DateTimeOffset.UtcNow;
+            var licenseId = Guid.NewGuid();
+            var recordedAt = DateTimeOffset.UtcNow;
 
             await using var db = await _dbContextFactory.CreateDbContextAsync(cts.Token);
 
             var record = new EvidenceRecord
             {
-                Id             = licenseId,
+                Id = licenseId,
                 IdempotencyKey = $"GRANT:{req.ContractId}:{licenseId}",
-                TenantId       = tenantGuid,
-                EvidenceType   = "AUTHORITY_GRANT",
-                Summary        = $"Authority expanded to level {req.NewAuthorityLevel} by {req.GrantedBy}. Basis: {req.ConstitutionalBasis}",
-                PayloadJson    = JsonSerializer.Serialize(new
-                {
-                    contractId        = req.ContractId,
-                    newAuthorityLevel = req.NewAuthorityLevel,
-                    grantedBy         = req.GrantedBy,
-                    evidenceIds       = req.EvidenceIds.ToArray()
-                }),
-                RecordedAt = recordedAt
+                TenantId = tenantGuid,
+                EvidenceType = "AUTHORITY_GRANT",
+                Summary =
+                    $"Authority expanded to level {req.NewAuthorityLevel} by {req.GrantedBy}. Basis: {req.ConstitutionalBasis}",
+                PayloadJson = JsonSerializer.Serialize(
+                    new
+                    {
+                        contractId = req.ContractId,
+                        newAuthorityLevel = req.NewAuthorityLevel,
+                        grantedBy = req.GrantedBy,
+                        evidenceIds = req.EvidenceIds.ToArray(),
+                    }
+                ),
+                RecordedAt = recordedAt,
             };
 
             await db.Set<EvidenceRecord>().AddAsync(record, cts.Token);
@@ -368,12 +458,15 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
 
             _logger.LogInformation(
                 "GrantAuthorityLicense persisted. LicenseId={LicenseId} ContractId={ContractId} Level={Level}",
-                licenseId, req.ContractId, req.NewAuthorityLevel);
+                licenseId,
+                req.ContractId,
+                req.NewAuthorityLevel
+            );
 
             return new GrantAuthorityResponse
             {
-                LicenseId  = licenseId.ToString(),
-                RecordedAt = Timestamp.FromDateTimeOffset(recordedAt)
+                LicenseId = licenseId.ToString(),
+                RecordedAt = Timestamp.FromDateTimeOffset(recordedAt),
             };
         }
         catch (RpcException)
@@ -382,8 +475,11 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
-                "GrantAuthorityLicense failed. ContractId={ContractId}", req.ContractId);
+            _logger.LogError(
+                ex,
+                "GrantAuthorityLicense failed. ContractId={ContractId}",
+                req.ContractId
+            );
             throw new RpcException(new Status(StatusCode.Internal, ex.Message));
         }
     }
@@ -394,15 +490,23 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
     // C-023: Write before returning.
     // ═══════════════════════════════════════════════════════════════════════
     public override async Task<RevokeAuthorityResponse> RevokeAuthorityLicense(
-        RevokeAuthorityRequest req, ServerCallContext ctx)
+        RevokeAuthorityRequest req,
+        ServerCallContext ctx
+    )
     {
         var rawTenantId = ctx.RequestHeaders.GetValue("x-tenant-id") ?? string.Empty;
 
-        if (string.IsNullOrWhiteSpace(rawTenantId) || !Guid.TryParse(rawTenantId, out var tenantGuid))
+        if (
+            string.IsNullOrWhiteSpace(rawTenantId)
+            || !Guid.TryParse(rawTenantId, out var tenantGuid)
+        )
         {
             throw new RpcException(
-                new Status(StatusCode.Unauthenticated,
-                    "x-tenant-id gRPC metadata is required and must be a valid UUID (C-005)."));
+                new Status(
+                    StatusCode.Unauthenticated,
+                    "x-tenant-id gRPC metadata is required and must be a valid UUID (C-005)."
+                )
+            );
         }
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ctx.CancellationToken);
@@ -410,26 +514,29 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
 
         try
         {
-            var licenseId  = Guid.NewGuid();
+            var licenseId = Guid.NewGuid();
             var recordedAt = DateTimeOffset.UtcNow;
 
             await using var db = await _dbContextFactory.CreateDbContextAsync(cts.Token);
 
             var record = new EvidenceRecord
             {
-                Id             = licenseId,
+                Id = licenseId,
                 IdempotencyKey = $"REVOKE:{req.ContractId}:{licenseId}",
-                TenantId       = tenantGuid,
-                EvidenceType   = "AUTHORITY_REVOKE",
-                Summary        = $"Authority restricted to level {req.NewAuthorityLevel} by {req.RevokedBy}. Basis: {req.ConstitutionalBasis}",
-                PayloadJson    = JsonSerializer.Serialize(new
-                {
-                    contractId        = req.ContractId,
-                    newAuthorityLevel = req.NewAuthorityLevel,
-                    revokedBy         = req.RevokedBy,
-                    reason            = req.Reason
-                }),
-                RecordedAt = recordedAt
+                TenantId = tenantGuid,
+                EvidenceType = "AUTHORITY_REVOKE",
+                Summary =
+                    $"Authority restricted to level {req.NewAuthorityLevel} by {req.RevokedBy}. Basis: {req.ConstitutionalBasis}",
+                PayloadJson = JsonSerializer.Serialize(
+                    new
+                    {
+                        contractId = req.ContractId,
+                        newAuthorityLevel = req.NewAuthorityLevel,
+                        revokedBy = req.RevokedBy,
+                        reason = req.Reason,
+                    }
+                ),
+                RecordedAt = recordedAt,
             };
 
             await db.Set<EvidenceRecord>().AddAsync(record, cts.Token);
@@ -437,12 +544,15 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
 
             _logger.LogInformation(
                 "RevokeAuthorityLicense persisted. LicenseId={LicenseId} ContractId={ContractId} Level={Level}",
-                licenseId, req.ContractId, req.NewAuthorityLevel);
+                licenseId,
+                req.ContractId,
+                req.NewAuthorityLevel
+            );
 
             return new RevokeAuthorityResponse
             {
-                LicenseId  = licenseId.ToString(),
-                RecordedAt = Timestamp.FromDateTimeOffset(recordedAt)
+                LicenseId = licenseId.ToString(),
+                RecordedAt = Timestamp.FromDateTimeOffset(recordedAt),
             };
         }
         catch (RpcException)
@@ -451,8 +561,11 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
-                "RevokeAuthorityLicense failed. ContractId={ContractId}", req.ContractId);
+            _logger.LogError(
+                ex,
+                "RevokeAuthorityLicense failed. ContractId={ContractId}",
+                req.ContractId
+            );
             throw new RpcException(new Status(StatusCode.Internal, ex.Message));
         }
     }
@@ -462,15 +575,20 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
     // AD-008: Every permission decision must name its constitutional basis.
     // ═══════════════════════════════════════════════════════════════════════
     public override async Task<EvaluatePolicyResponse> EvaluatePolicy(
-        EvaluatePolicyRequest req, ServerCallContext ctx)
+        EvaluatePolicyRequest req,
+        ServerCallContext ctx
+    )
     {
         var rawTenantId = ctx.RequestHeaders.GetValue("x-tenant-id") ?? string.Empty;
 
         if (string.IsNullOrWhiteSpace(rawTenantId))
         {
             throw new RpcException(
-                new Status(StatusCode.Unauthenticated,
-                    "x-tenant-id gRPC metadata is required (C-005)."));
+                new Status(
+                    StatusCode.Unauthenticated,
+                    "x-tenant-id gRPC metadata is required (C-005)."
+                )
+            );
         }
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ctx.CancellationToken);
@@ -489,20 +607,23 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
                 0L,
                 0L,
                 0L,
-                string.Empty);
+                string.Empty
+            );
 
             var results = await _registry.EvaluateAllAsync(evalCtx, cts.Token);
 
-            var firstDeny     = results.FirstOrDefault(r => r.Verdict == EvaluationVerdict.Deny);
-            var firstEscalate = results.FirstOrDefault(r => r.Verdict == EvaluationVerdict.Escalate);
+            var firstDeny = results.FirstOrDefault(r => r.Verdict == EvaluationVerdict.Deny);
+            var firstEscalate = results.FirstOrDefault(r =>
+                r.Verdict == EvaluationVerdict.Escalate
+            );
 
             if (firstDeny is not null)
             {
                 return new EvaluatePolicyResponse
                 {
-                    Decision            = PolicyDecision.Deny,
+                    Decision = PolicyDecision.Deny,
                     ConstitutionalBasis = firstDeny.ClaimId,
-                    Rationale           = firstDeny.Reason
+                    Rationale = firstDeny.Reason,
                 };
             }
 
@@ -510,17 +631,17 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
             {
                 return new EvaluatePolicyResponse
                 {
-                    Decision            = PolicyDecision.Escalate,
+                    Decision = PolicyDecision.Escalate,
                     ConstitutionalBasis = firstEscalate.ClaimId,
-                    Rationale           = firstEscalate.Reason
+                    Rationale = firstEscalate.Reason,
                 };
             }
 
             return new EvaluatePolicyResponse
             {
-                Decision            = PolicyDecision.Permit,
+                Decision = PolicyDecision.Permit,
                 ConstitutionalBasis = "C-003; AD-008",
-                Rationale           = "Action evaluated against all active claims — no violation found."
+                Rationale = "Action evaluated against all active claims — no violation found.",
             };
         }
         catch (RpcException)
@@ -529,9 +650,12 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "EvaluatePolicy failed. ContractId={ContractId} ActionType={ActionType}",
-                req.ContractId, req.ActionType);
+                req.ContractId,
+                req.ActionType
+            );
             throw new RpcException(new Status(StatusCode.Internal, ex.Message));
         }
     }
@@ -553,7 +677,9 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
     // source of truth. Downstream workers poll for ABANDONED state.
     // ═══════════════════════════════════════════════════════════════════════
     public override async Task<EmergencyStopResponse> TriggerEmergencyStop(
-        EmergencyStopRequest req, ServerCallContext ctx)
+        EmergencyStopRequest req,
+        ServerCallContext ctx
+    )
     {
         var rawTenantId = ctx.RequestHeaders.GetValue("x-tenant-id") ?? string.Empty;
 
@@ -561,35 +687,50 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
         {
             _logger.LogWarning(
                 "TriggerEmergencyStop rejected: x-tenant-id metadata absent. ContractId={ContractId}",
-                req.ContractId);
+                req.ContractId
+            );
             throw new RpcException(
-                new Status(StatusCode.Unauthenticated,
-                    "x-tenant-id gRPC metadata is required (C-005: tenant isolation)."));
+                new Status(
+                    StatusCode.Unauthenticated,
+                    "x-tenant-id gRPC metadata is required (C-005: tenant isolation)."
+                )
+            );
         }
 
         if (!Guid.TryParse(rawTenantId, out var tenantGuid))
         {
             _logger.LogWarning(
-                "TriggerEmergencyStop rejected: x-tenant-id is not a valid UUID. " +
-                "TenantIdRaw={TenantIdRaw} ContractId={ContractId}",
-                rawTenantId, req.ContractId);
+                "TriggerEmergencyStop rejected: x-tenant-id is not a valid UUID. "
+                    + "TenantIdRaw={TenantIdRaw} ContractId={ContractId}",
+                rawTenantId,
+                req.ContractId
+            );
             throw new RpcException(
-                new Status(StatusCode.Unauthenticated,
-                    "x-tenant-id must be a valid UUID in canonical format (C-005)."));
+                new Status(
+                    StatusCode.Unauthenticated,
+                    "x-tenant-id must be a valid UUID in canonical format (C-005)."
+                )
+            );
         }
 
         if (!Guid.TryParse(req.ContractId, out var contractGuid))
         {
             throw new RpcException(
-                new Status(StatusCode.InvalidArgument,
-                    "contract_id must be a valid UUID in canonical format."));
+                new Status(
+                    StatusCode.InvalidArgument,
+                    "contract_id must be a valid UUID in canonical format."
+                )
+            );
         }
 
         if (string.IsNullOrWhiteSpace(req.StoppedBy))
         {
             throw new RpcException(
-                new Status(StatusCode.InvalidArgument,
-                    "stopped_by must not be empty (C-024: actor identity required for Emergency Stop)."));
+                new Status(
+                    StatusCode.InvalidArgument,
+                    "stopped_by must not be empty (C-024: actor identity required for Emergency Stop)."
+                )
+            );
         }
 
         // C-001: Emergency Stop MUST complete within 100 ms (this service's share of the
@@ -599,8 +740,8 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
 
         try
         {
-            var triggeredAt      = DateTimeOffset.UtcNow;
-            var stopEventId      = Guid.NewGuid();
+            var triggeredAt = DateTimeOffset.UtcNow;
+            var stopEventId = Guid.NewGuid();
             var affectedSessions = req.ActiveSessionIds.ToList();
 
             // ── Step 1: Write EmergencyStopEvent to DB FIRST (C-023 Evidence First) ──
@@ -613,35 +754,43 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
                 // Configuration error: factory not injected (only acceptable in narrow test
                 // harnesses that do not exercise Emergency Stop). Fail loudly.
                 _logger.LogError(
-                    "TriggerEmergencyStop: EmergencyStopDbContextFactory is null. " +
-                    "This is a DI misconfiguration. ContractId={ContractId}",
-                    req.ContractId);
+                    "TriggerEmergencyStop: EmergencyStopDbContextFactory is null. "
+                        + "This is a DI misconfiguration. ContractId={ContractId}",
+                    req.ContractId
+                );
                 throw new RpcException(
-                    new Status(StatusCode.Internal,
-                        "Emergency Stop DB context factory is not configured (DI misconfiguration)."));
+                    new Status(
+                        StatusCode.Internal,
+                        "Emergency Stop DB context factory is not configured (DI misconfiguration)."
+                    )
+                );
             }
 
             var stopEvent = new EmergencyStopEvent
             {
-                Id                  = stopEventId,
-                ContractId          = contractGuid,
-                InitiatedByUserId   = req.StoppedBy,
-                AffectedSessionIds  = affectedSessions.ToArray(),
-                TriggeredAt         = triggeredAt,
-                TemporalSignalledAt = null,         // set after Temporal signal completes
-                StopSource          = "CUSTOMER_INITIATED"
+                Id = stopEventId,
+                ContractId = contractGuid,
+                InitiatedByUserId = req.StoppedBy,
+                AffectedSessionIds = affectedSessions.ToArray(),
+                TriggeredAt = triggeredAt,
+                TemporalSignalledAt = null, // set after Temporal signal completes
+                StopSource = "CUSTOMER_INITIATED",
             };
 
-            await using var emergencyDb =
-                await _emergencyStopDbContextFactory.CreateDbContextAsync(cts.Token);
+            await using var emergencyDb = await _emergencyStopDbContextFactory.CreateDbContextAsync(
+                cts.Token
+            );
 
             await emergencyDb.Set<EmergencyStopEvent>().AddAsync(stopEvent, cts.Token);
             await emergencyDb.SaveChangesAsync(cts.Token);
 
             _logger.LogInformation(
-                "TriggerEmergencyStop: EmergencyStopEvent persisted. " +
-                "StopEventId={StopEventId} ContractId={ContractId} SessionCount={SessionCount}",
-                stopEventId, req.ContractId, affectedSessions.Count);
+                "TriggerEmergencyStop: EmergencyStopEvent persisted. "
+                    + "StopEventId={StopEventId} ContractId={ContractId} SessionCount={SessionCount}",
+                stopEventId,
+                req.ContractId,
+                affectedSessions.Count
+            );
 
             // ── Step 2: Signal Temporal to halt each affected session (ADR-018) ──
             // Temporal signal failures are tolerated — DB record is source of truth.
@@ -655,19 +804,21 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
                     try
                     {
                         var handle = _temporalClient.GetWorkflowHandle(sessionId);
-                        await handle.SignalAsync(
-                            "EmergencyStop",
-                            Array.Empty<object>());
+                        await handle.SignalAsync("EmergencyStop", Array.Empty<object>());
                     }
                     catch (Exception ex)
                     {
                         // C-082 ERROR HANDLING RULE 1: log; do not swallow silently.
                         // The DB record guarantees constitutional enforcement regardless
                         // of Temporal signal outcome.
-                        _logger.LogError(ex,
-                            "TriggerEmergencyStop: Temporal signal failed for session. " +
-                            "SessionId={SessionId} StopEventId={StopEventId} ContractId={ContractId}",
-                            sessionId, stopEventId, req.ContractId);
+                        _logger.LogError(
+                            ex,
+                            "TriggerEmergencyStop: Temporal signal failed for session. "
+                                + "SessionId={SessionId} StopEventId={StopEventId} ContractId={ContractId}",
+                            sessionId,
+                            stopEventId,
+                            req.ContractId
+                        );
                     }
                 }
 
@@ -676,9 +827,11 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
             else if (_temporalClient is null)
             {
                 _logger.LogWarning(
-                    "TriggerEmergencyStop: ITemporalClient is null; Temporal signals skipped. " +
-                    "StopEventId={StopEventId} ContractId={ContractId}",
-                    stopEventId, req.ContractId);
+                    "TriggerEmergencyStop: ITemporalClient is null; Temporal signals skipped. "
+                        + "StopEventId={StopEventId} ContractId={ContractId}",
+                    stopEventId,
+                    req.ContractId
+                );
             }
 
             // ── Step 3: Update TemporalSignalledAt on persisted record (best-effort) ──
@@ -693,48 +846,62 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex,
-                        "TriggerEmergencyStop: failed to persist TemporalSignalledAt. " +
-                        "StopEventId={StopEventId} ContractId={ContractId}",
-                        stopEventId, req.ContractId);
+                    _logger.LogError(
+                        ex,
+                        "TriggerEmergencyStop: failed to persist TemporalSignalledAt. "
+                            + "StopEventId={StopEventId} ContractId={ContractId}",
+                        stopEventId,
+                        req.ContractId
+                    );
                     // Non-fatal: constitutional record already written in Step 1.
                 }
             }
 
             _logger.LogInformation(
-                "TriggerEmergencyStop completed. StopEventId={StopEventId} ContractId={ContractId} " +
-                "AffectedSessions={AffectedSessions} ElapsedMs={ElapsedMs}",
-                stopEventId, req.ContractId,
+                "TriggerEmergencyStop completed. StopEventId={StopEventId} ContractId={ContractId} "
+                    + "AffectedSessions={AffectedSessions} ElapsedMs={ElapsedMs}",
+                stopEventId,
+                req.ContractId,
                 string.Join(",", affectedSessions),
-                (DateTimeOffset.UtcNow - triggeredAt).TotalMilliseconds);
+                (DateTimeOffset.UtcNow - triggeredAt).TotalMilliseconds
+            );
 
             // Format: "EMERGENCY_STOP:<uuid>" per evidence-schema.md specification.
             return new EmergencyStopResponse
             {
                 EmergencyStopRecordId = $"EMERGENCY_STOP:{stopEventId}",
-                AffectedSessions      = { affectedSessions },
-                RecordedAt            = Timestamp.FromDateTimeOffset(triggeredAt)
+                AffectedSessions = { affectedSessions },
+                RecordedAt = Timestamp.FromDateTimeOffset(triggeredAt),
             };
         }
         catch (RpcException)
         {
             throw;
         }
-        catch (OperationCanceledException) when (
-            cts.IsCancellationRequested && !ctx.CancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException)
+            when (cts.IsCancellationRequested && !ctx.CancellationToken.IsCancellationRequested)
         {
             // C-001: exceeded Emergency Stop latency budget.
             _logger.LogError(
                 "TriggerEmergencyStop exceeded latency budget {BudgetMs}ms. ContractId={ContractId}",
-                EmergencyStopTimeout.TotalMilliseconds, req.ContractId);
-            throw new RpcException(new Status(StatusCode.DeadlineExceeded,
-                $"Emergency Stop exceeded {EmergencyStopTimeout.TotalMilliseconds}ms latency budget (C-001, AD-001)."));
+                EmergencyStopTimeout.TotalMilliseconds,
+                req.ContractId
+            );
+            throw new RpcException(
+                new Status(
+                    StatusCode.DeadlineExceeded,
+                    $"Emergency Stop exceeded {EmergencyStopTimeout.TotalMilliseconds}ms latency budget (C-001, AD-001)."
+                )
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "TriggerEmergencyStop failed. ContractId={ContractId} StoppedBy={StoppedBy}",
-                req.ContractId, req.StoppedBy);
+                req.ContractId,
+                req.StoppedBy
+            );
             throw new RpcException(new Status(StatusCode.Internal, ex.Message));
         }
     }
@@ -746,32 +913,50 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
     // Note: this updates erasure metadata only — it does NOT delete proof rows.
     // ═══════════════════════════════════════════════════════════════════════
     public override async Task<QueryEvidenceRecordsResponse> QueryEvidenceRecords(
-        QueryEvidenceRecordsRequest req, ServerCallContext ctx)
+        QueryEvidenceRecordsRequest req,
+        ServerCallContext ctx
+    )
     {
         var rawTenantId = ctx.RequestHeaders.GetValue("x-tenant-id") ?? string.Empty;
         if (!Guid.TryParse(rawTenantId, out var tenantId))
-            throw new RpcException(new Status(StatusCode.Unauthenticated, "Valid x-tenant-id metadata is required."));
-        if (req.EvidenceRecordIds.Count is 0 or > 100 || req.PageSize is < 0 or > 100 || req.HasPageCursor)
-            throw new RpcException(new Status(StatusCode.InvalidArgument, "Evidence query shape is invalid."));
+            throw new RpcException(
+                new Status(StatusCode.Unauthenticated, "Valid x-tenant-id metadata is required.")
+            );
+        if (
+            req.EvidenceRecordIds.Count is 0 or > 100
+            || req.PageSize is < 0 or > 100
+            || req.HasPageCursor
+        )
+            throw new RpcException(
+                new Status(StatusCode.InvalidArgument, "Evidence query shape is invalid.")
+            );
         if (_auditSinkDbContextFactory is null)
-            throw new RpcException(new Status(StatusCode.Unavailable, "Audit evidence is unavailable."));
+            throw new RpcException(
+                new Status(StatusCode.Unavailable, "Audit evidence is unavailable.")
+            );
 
         var orderedIds = new List<Guid>(req.EvidenceRecordIds.Count);
         foreach (var value in req.EvidenceRecordIds)
         {
             if (!Guid.TryParse(value, out var id))
-                throw new RpcException(new Status(StatusCode.InvalidArgument, "Evidence identifiers must be UUIDs."));
+                throw new RpcException(
+                    new Status(StatusCode.InvalidArgument, "Evidence identifiers must be UUIDs.")
+                );
             orderedIds.Add(id);
         }
         var pageSize = req.PageSize == 0 ? 50 : req.PageSize;
-        await using var db = await _auditSinkDbContextFactory.CreateDbContextAsync(ctx.CancellationToken);
-        var records = await db.EvidenceRecords.AsNoTracking()
+        await using var db = await _auditSinkDbContextFactory.CreateDbContextAsync(
+            ctx.CancellationToken
+        );
+        var records = await db
+            .EvidenceRecords.AsNoTracking()
             .Where(value => value.TenantId == tenantId && orderedIds.Contains(value.Id))
             .ToDictionaryAsync(value => value.Id, ctx.CancellationToken);
         var response = new QueryEvidenceRecordsResponse();
         foreach (var id in orderedIds.Take(pageSize))
         {
-            if (!records.TryGetValue(id, out var record)) continue;
+            if (!records.TryGetValue(id, out var record))
+                continue;
             var visible = new CustomerVisibleEvidenceRecord
             {
                 EvidenceRecordId = record.Id.ToString("D"),
@@ -784,12 +969,16 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
                 RecordedAt = Timestamp.FromDateTimeOffset(record.RecordedAt),
                 ErasureStatus = record.ErasureStatus,
             };
-            if (record.ToolName is not null) visible.ToolName = record.ToolName;
-            if (record.ArgsHash is not null) visible.ArgsHash = record.ArgsHash;
+            if (record.ToolName is not null)
+                visible.ToolName = record.ToolName;
+            if (record.ArgsHash is not null)
+                visible.ArgsHash = record.ArgsHash;
             if (record.PayloadRefId.HasValue && record.ErasureStatus == "NONE")
                 visible.PayloadRefId = record.PayloadRefId.Value.ToString("D");
             if (record.ErasureTimestamp.HasValue)
-                visible.ErasureTimestamp = Timestamp.FromDateTimeOffset(record.ErasureTimestamp.Value);
+                visible.ErasureTimestamp = Timestamp.FromDateTimeOffset(
+                    record.ErasureTimestamp.Value
+                );
             visible.ConstitutionalBasis.AddRange(record.ConstitutionalBasis);
             response.Records.Add(visible);
         }
@@ -797,40 +986,52 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
     }
 
     public override async Task<RecordErasureResponse> RecordErasure(
-        RecordErasureRequest req, ServerCallContext ctx)
+        RecordErasureRequest req,
+        ServerCallContext ctx
+    )
     {
-        if (string.IsNullOrWhiteSpace(req.TenantId) || !Guid.TryParse(req.TenantId, out var tenantGuid))
+        if (
+            string.IsNullOrWhiteSpace(req.TenantId)
+            || !Guid.TryParse(req.TenantId, out var tenantGuid)
+        )
         {
             throw new RpcException(
-                new Status(StatusCode.InvalidArgument,
-                    "tenant_id must be a valid UUID (C-078)."));
+                new Status(StatusCode.InvalidArgument, "tenant_id must be a valid UUID (C-078).")
+            );
         }
 
         if (string.IsNullOrWhiteSpace(req.ErasureOrderId))
         {
             throw new RpcException(
-                new Status(StatusCode.InvalidArgument,
-                    "erasure_order_id must not be empty (C-078)."));
+                new Status(
+                    StatusCode.InvalidArgument,
+                    "erasure_order_id must not be empty (C-078)."
+                )
+            );
         }
 
         if (_auditSinkDbContextFactory is null)
         {
-            _logger.LogWarning("RecordErasure: AuditSinkDbContextFactory is null; skipping (test mode).");
+            _logger.LogWarning(
+                "RecordErasure: AuditSinkDbContextFactory is null; skipping (test mode)."
+            );
             return new RecordErasureResponse { RecordsUpdated = 0, Success = true };
         }
 
         try
         {
-            await using var db = await _auditSinkDbContextFactory.CreateDbContextAsync(ctx.CancellationToken);
+            await using var db = await _auditSinkDbContextFactory.CreateDbContextAsync(
+                ctx.CancellationToken
+            );
 
-            var records = await db.EvidenceRecords
-                .Where(r => r.TenantId == tenantGuid && r.ErasureStatus == "NONE")
+            var records = await db
+                .EvidenceRecords.Where(r => r.TenantId == tenantGuid && r.ErasureStatus == "NONE")
                 .ToListAsync(ctx.CancellationToken);
 
             var erasureTs = DateTimeOffset.UtcNow;
             foreach (var record in records)
             {
-                record.ErasureStatus    = "PAYLOAD_PURGED";
+                record.ErasureStatus = "PAYLOAD_PURGED";
                 record.ErasureTimestamp = erasureTs;
             }
 
@@ -838,15 +1039,21 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
 
             _logger.LogInformation(
                 "RecordErasure complete. TenantId={TenantId} ErasureOrderId={ErasureOrderId} Records={Count}",
-                tenantGuid, req.ErasureOrderId, records.Count);
+                tenantGuid,
+                req.ErasureOrderId,
+                records.Count
+            );
 
             return new RecordErasureResponse { RecordsUpdated = records.Count, Success = true };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "RecordErasure failed. TenantId={TenantId} ErasureOrderId={ErasureOrderId}",
-                req.TenantId, req.ErasureOrderId);
+                req.TenantId,
+                req.ErasureOrderId
+            );
             throw new RpcException(new Status(StatusCode.Internal, ex.Message));
         }
     }
@@ -859,52 +1066,60 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
         string rawTenantId,
         string executionStatus,
         string constitutionalBasis,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         if (_auditSinkDbContextFactory is null)
         {
             // C-059: misconfiguration in production — must be visible in logs.
             _logger.LogWarning(
-                "WriteAuditSinkRecord SKIPPED: AuditSinkDbContextFactory is null. " +
-                "ContractId={ContractId} ActionType={ActionType} — configure AuditSink connection string.",
-                req.ContractId, req.ActionType);
+                "WriteAuditSinkRecord SKIPPED: AuditSinkDbContextFactory is null. "
+                    + "ContractId={ContractId} ActionType={ActionType} — configure AuditSink connection string.",
+                req.ContractId,
+                req.ActionType
+            );
             return;
         }
 
         try
         {
-            var argsHash    = ComputeSha256(req.ActionParameters);
+            var argsHash = ComputeSha256(req.ActionParameters);
             // "DEC-{13-digit-ms}-{32-hex}" ≈ 50 chars — within VARCHAR(64)
-            var decisionId  = $"DEC-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}-{Guid.NewGuid():N}";
-            var tenantGuid  = Guid.Parse(rawTenantId);
-            var recordedAt  = DateTimeOffset.UtcNow;
-            var basis       = constitutionalBasis.Split(';', StringSplitOptions.TrimEntries);
+            var decisionId =
+                $"DEC-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}-{Guid.NewGuid():N}";
+            var tenantGuid = Guid.Parse(rawTenantId);
+            var recordedAt = DateTimeOffset.UtcNow;
+            var basis = constitutionalBasis.Split(';', StringSplitOptions.TrimEntries);
 
             // Compute evidence_hash over canonical fields before record creation.
-            var evidenceHash = ComputeSha256(JsonSerializer.Serialize(new
-            {
-                decisionId,
-                tenantId    = tenantGuid,
-                actionType  = req.ActionType,
-                executionStatus,
-                recordedAt
-            }));
+            var evidenceHash = ComputeSha256(
+                JsonSerializer.Serialize(
+                    new
+                    {
+                        decisionId,
+                        tenantId = tenantGuid,
+                        actionType = req.ActionType,
+                        executionStatus,
+                        recordedAt,
+                    }
+                )
+            );
 
             var sinkRecord = new AuditSinkEvidenceRecord
             {
-                Id                  = Guid.NewGuid(),
-                DecisionId          = decisionId,
-                TenantId            = tenantGuid,
-                AgentId             = req.ContractId,
-                AgentInstanceId     = req.ContractId,
-                ActionType          = req.ActionType,
-                ToolName            = null,
-                ArgsHash            = argsHash,
-                ExecutionStatus     = executionStatus,
+                Id = Guid.NewGuid(),
+                DecisionId = decisionId,
+                TenantId = tenantGuid,
+                AgentId = req.ContractId,
+                AgentInstanceId = req.ContractId,
+                ActionType = req.ActionType,
+                ToolName = null,
+                ArgsHash = argsHash,
+                ExecutionStatus = executionStatus,
                 ConstitutionalBasis = basis,
-                EvidenceHash        = evidenceHash,
-                RecordedAt          = recordedAt,
-                ErasureStatus       = "NONE",
+                EvidenceHash = evidenceHash,
+                RecordedAt = recordedAt,
+                ErasureStatus = "NONE",
             };
 
             await using var db = await _auditSinkDbContextFactory.CreateDbContextAsync(ct);
@@ -914,9 +1129,12 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
         catch (Exception ex)
         {
             // C-059: log audit write failure — do not suppress
-            _logger.LogError(ex,
+            _logger.LogError(
+                ex,
                 "WriteAuditSinkRecord failed. ContractId={ContractId} ActionType={ActionType}",
-                req.ContractId, req.ActionType);
+                req.ContractId,
+                req.ActionType
+            );
             throw; // re-raise: C-059 audit write failure must surface
         }
     }

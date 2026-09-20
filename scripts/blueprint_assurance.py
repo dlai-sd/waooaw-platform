@@ -12,13 +12,13 @@ Exit code 1 if score < 90% (triggers Steward Assistant alert to Yogesh).
 
 Run: python3 scripts/blueprint_assurance.py [--env dev|prod]
 """
+
 from __future__ import annotations
 
 import sys
-import re
 import json
 from pathlib import Path
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 REPO_ROOT = Path(__file__).parent.parent
@@ -61,7 +61,7 @@ def check_manifest_exists(comp: dict) -> AssuranceCheck:
         check_name="manifest_exists",
         passed=exists,
         detail=f"Manifest: {comp.get('manifest', 'MISSING')}",
-        severity="HIGH"
+        severity="HIGH",
     )
 
 
@@ -76,7 +76,7 @@ def check_skeleton_exists(comp: dict) -> AssuranceCheck:
         check_name="skeleton_exists",
         passed=exists,
         detail=f"Skeleton dir: {skel} ({'exists' if exists else 'MISSING or EMPTY'})",
-        severity="HIGH"
+        severity="HIGH",
     )
 
 
@@ -87,6 +87,7 @@ def check_skeleton_compiles(comp: dict) -> AssuranceCheck:
     if lang != "python" or not skel:
         return AssuranceCheck(comp["id"], "skeleton_compiles", True, "N/A (non-Python or no skeleton)", "LOW")
     import ast
+
     skel_dir = REPO_ROOT / skel
     if not skel_dir.exists():
         return AssuranceCheck(comp["id"], "skeleton_compiles", False, f"{skel} not found", "HIGH")
@@ -102,7 +103,7 @@ def check_skeleton_compiles(comp: dict) -> AssuranceCheck:
         check_name="skeleton_compiles",
         passed=passed,
         detail=f"{skel_dir.name}/*.py — {len(list(skel_dir.glob('*.py')))} files, {len(errors)} errors",
-        severity="HIGH"
+        severity="HIGH",
     )
 
 
@@ -118,7 +119,7 @@ def check_signal_schema_exists(comp: dict) -> AssuranceCheck:
         check_name="signal_schema_exists",
         passed=exists,
         detail=f"Signal schema: {schema or 'NOT DECLARED IN MANIFEST'}",
-        severity="HIGH"
+        severity="HIGH",
     )
 
 
@@ -128,8 +129,7 @@ def check_adr_exists(comp: dict) -> AssuranceCheck:
     adr_dir = REPO_ROOT / "adr"
     found = False
     for adr in adr_dir.glob("*.md"):
-        if comp_id.replace("-", "_").upper() in adr.read_text().upper() or \
-           comp_id.upper() in adr.read_text().upper():
+        if comp_id.replace("-", "_").upper() in adr.read_text().upper() or comp_id.upper() in adr.read_text().upper():
             found = True
             break
     return AssuranceCheck(
@@ -137,7 +137,7 @@ def check_adr_exists(comp: dict) -> AssuranceCheck:
         check_name="adr_references_component",
         passed=found,
         detail=f"ADR referencing {comp_id}: {'found' if found else 'NOT FOUND'}",
-        severity="MEDIUM"
+        severity="MEDIUM",
     )
 
 
@@ -170,10 +170,10 @@ def run_assurance() -> tuple[list[AssuranceCheck], float]:
 
 
 def main() -> int:
-    print(f"\n{'='*65}")
+    print(f"\n{'=' * 65}")
     print("  WAOOAW Blueprint Assurance Run")
     print(f"  Timestamp: {datetime.now(timezone.utc).isoformat()}")
-    print(f"{'='*65}")
+    print(f"{'=' * 65}")
 
     checks, score = run_assurance()
 
@@ -182,7 +182,7 @@ def main() -> int:
         symbol = "✅" if c.passed else "❌"
         print(f"  {symbol} [{c.component_id:15}] {c.check_name}: {c.detail}")
 
-    print(f"\n{'='*65}")
+    print(f"\n{'=' * 65}")
     print(f"  Conformance score: {score}%  ({sum(1 for c in checks if c.passed)}/{len(checks)} checks passed)")
 
     gaps = [c for c in checks if not c.passed and c.severity == "HIGH"]
@@ -200,8 +200,9 @@ def main() -> int:
         "total_checks": len(checks),
         "passed": sum(1 for c in checks if c.passed),
         "high_severity_gaps": len(gaps),
-        "checks": [{"component": c.component_id, "check": c.check_name,
-                    "passed": c.passed, "severity": c.severity} for c in checks]
+        "checks": [
+            {"component": c.component_id, "check": c.check_name, "passed": c.passed, "severity": c.severity} for c in checks
+        ],
     }
     report_path.write_text(json.dumps(report, indent=2))
     print(f"\n  Report saved: {report_path}")

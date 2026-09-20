@@ -39,7 +39,6 @@ import re
 import xml.etree.ElementTree as ET
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional
 
 REPO_ROOT = Path(__file__).parent.parent
 
@@ -48,26 +47,26 @@ REPO_ROOT = Path(__file__).parent.parent
 # Value: one or more namespace prefixes that this package exposes.
 _NUGET_NS_MAP: dict[str, list[str]] = {
     # Microsoft
-    "Microsoft.AspNetCore":                        ["Microsoft.AspNetCore", "Microsoft.Extensions"],
-    "Microsoft.EntityFrameworkCore":               ["Microsoft.EntityFrameworkCore"],
-    "Microsoft.Extensions":                        ["Microsoft.Extensions"],
-    "Npgsql.EntityFrameworkCore":                  ["Npgsql", "Microsoft.EntityFrameworkCore"],
-    "Npgsql":                                      ["Npgsql"],
+    "Microsoft.AspNetCore": ["Microsoft.AspNetCore", "Microsoft.Extensions"],
+    "Microsoft.EntityFrameworkCore": ["Microsoft.EntityFrameworkCore"],
+    "Microsoft.Extensions": ["Microsoft.Extensions"],
+    "Npgsql.EntityFrameworkCore": ["Npgsql", "Microsoft.EntityFrameworkCore"],
+    "Npgsql": ["Npgsql"],
     # gRPC + Protobuf
-    "Grpc.Net":                                    ["Grpc.Net.Client", "Grpc.Core"],
-    "Grpc.AspNetCore":                             ["Grpc.AspNetCore", "Grpc.Core"],
-    "Grpc.Tools":                                  [],   # codegen only — no runtime import
-    "Google.Protobuf":                             ["Google.Protobuf"],
+    "Grpc.Net": ["Grpc.Net.Client", "Grpc.Core"],
+    "Grpc.AspNetCore": ["Grpc.AspNetCore", "Grpc.Core"],
+    "Grpc.Tools": [],  # codegen only — no runtime import
+    "Google.Protobuf": ["Google.Protobuf"],
     # OpenTelemetry
-    "OpenTelemetry":                               ["OpenTelemetry"],
+    "OpenTelemetry": ["OpenTelemetry"],
     # Temporal
-    "Temporalio":                                  ["Temporalio"],
+    "Temporalio": ["Temporalio"],
     # Test
-    "xunit":                                       ["Xunit"],
-    "Moq":                                         ["Moq"],
-    "FluentAssertions":                            ["FluentAssertions"],
-    "Microsoft.NET.Test":                          [],   # no runtime namespace
-    "coverlet.collector":                          [],   # no runtime namespace
+    "xunit": ["Xunit"],
+    "Moq": ["Moq"],
+    "FluentAssertions": ["FluentAssertions"],
+    "Microsoft.NET.Test": [],  # no runtime namespace
+    "coverlet.collector": [],  # no runtime namespace
 }
 
 # Namespace prefixes always reachable in any net9.0 project (SDK implicit usings)
@@ -80,7 +79,8 @@ _IMPLICIT_PREFIXES: list[str] = [
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-def find_csproj_for_file(file_path: str | Path, repo_root: Path = REPO_ROOT) -> Optional[Path]:
+
+def find_csproj_for_file(file_path: str | Path, repo_root: Path = REPO_ROOT) -> Path | None:
     """
     Walk up the directory tree from file_path to find the nearest .csproj.
     Returns absolute path or None if not found within repo_root.
@@ -108,7 +108,7 @@ def get_reachable_prefixes(csproj_path: Path) -> frozenset[str]:
     prefixes: set[str] = set(_IMPLICIT_PREFIXES)
 
     try:
-        tree = ET.parse(csproj_path)
+        tree = ET.parse(csproj_path)  # noqa: S314
         root = tree.getroot()
     except Exception:
         return frozenset(prefixes)
@@ -131,7 +131,7 @@ def get_reachable_prefixes(csproj_path: Path) -> frozenset[str]:
         ref_csproj = (csproj_dir / rel_path).resolve()
         if ref_csproj.exists():
             try:
-                ref_tree = ET.parse(ref_csproj)
+                ref_tree = ET.parse(ref_csproj)  # noqa: S314
                 ref_root = ref_tree.getroot()
                 for prop in ref_root.iter("RootNamespace"):
                     if prop.text:
@@ -144,7 +144,7 @@ def get_reachable_prefixes(csproj_path: Path) -> frozenset[str]:
                         ns = _read_proto_namespace(proto_path)
                         if ns:
                             prefixes.add(ns)
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
 
     # ── Protobuf includes in this project ─────────────────────────────────
@@ -174,10 +174,7 @@ def filter_using_map(using_map: dict[str, str], csproj_path: Path) -> dict[str, 
     Used by context_builder to prevent injecting unreachable types into prompts.
     """
     prefixes = get_reachable_prefixes(csproj_path)
-    return {
-        cls: ns for cls, ns in using_map.items()
-        if _matches_any_prefix(ns, prefixes)
-    }
+    return {cls: ns for cls, ns in using_map.items() if _matches_any_prefix(ns, prefixes)}
 
 
 def get_boundary_injection_text(csproj_path: Path) -> str:
@@ -196,8 +193,7 @@ def get_boundary_injection_text(csproj_path: Path) -> str:
     for p in prefixes:
         lines.append(f"  ✓ {p}.*")
     lines.append(
-        "⛔ Do NOT import namespaces from projects not listed in this project's "
-        "<ProjectReference> or <PackageReference> entries."
+        "⛔ Do NOT import namespaces from projects not listed in this project's <ProjectReference> or <PackageReference> entries."
     )
     return "\n".join(lines)
 
@@ -211,13 +207,11 @@ def get_forbidden_namespaces_in_context(
     reachable from csproj_path. Used to build explicit ⛔ lists for the prompt.
     """
     prefixes = get_reachable_prefixes(csproj_path)
-    return sorted(
-        ns for ns in candidate_namespaces
-        if not _matches_any_prefix(ns, prefixes)
-    )
+    return sorted(ns for ns in candidate_namespaces if not _matches_any_prefix(ns, prefixes))
 
 
 # ── Private helpers ───────────────────────────────────────────────────────────
+
 
 def _namespaces_for_package(package_id: str) -> list[str]:
     """
@@ -244,7 +238,7 @@ def _namespaces_for_package(package_id: str) -> list[str]:
     return [parts[0]]
 
 
-def _read_proto_namespace(proto_path: Path) -> Optional[str]:
+def _read_proto_namespace(proto_path: Path) -> str | None:
     """Extract `option csharp_namespace = "..."` from a .proto file."""
     if not proto_path.exists():
         return None

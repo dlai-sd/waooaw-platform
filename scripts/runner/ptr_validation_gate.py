@@ -16,20 +16,80 @@ _DEFAULT_SYS_PATH_ROOTS: list[str] = [
 ]
 
 # Third-party and stdlib module roots that are never in the workspace index
-_EXTERNAL_ROOTS: frozenset[str] = frozenset({
-    "fastapi", "pydantic", "sqlalchemy", "redis", "httpx", "uvicorn",
-    "starlette", "jose", "passlib", "celery", "anthropic", "openai",
-    "google", "requests", "pytest", "pytest_asyncio", "hypothesis",
-    "unittest", "typing", "typing_extensions",
-    "abc", "ast", "os", "sys", "re", "json", "pathlib", "datetime",
-    "dataclasses", "enum", "uuid", "logging", "time", "io", "collections",
-    "itertools", "functools", "contextlib", "asyncio", "inspect",
-    "importlib", "textwrap", "copy", "hashlib", "hmac", "base64",
-    "urllib", "http", "email", "struct", "socket", "threading", "warnings",
-    "operator", "math", "decimal", "string", "random", "statistics",
-    "subprocess", "tempfile", "shutil", "glob", "fnmatch", "zipfile",
-    "csv", "configparser", "argparse", "traceback", "weakref",
-})
+_EXTERNAL_ROOTS: frozenset[str] = frozenset(
+    {
+        "fastapi",
+        "pydantic",
+        "sqlalchemy",
+        "redis",
+        "httpx",
+        "uvicorn",
+        "starlette",
+        "jose",
+        "passlib",
+        "celery",
+        "anthropic",
+        "openai",
+        "google",
+        "requests",
+        "pytest",
+        "pytest_asyncio",
+        "hypothesis",
+        "unittest",
+        "typing",
+        "typing_extensions",
+        "abc",
+        "ast",
+        "os",
+        "sys",
+        "re",
+        "json",
+        "pathlib",
+        "datetime",
+        "dataclasses",
+        "enum",
+        "uuid",
+        "logging",
+        "time",
+        "io",
+        "collections",
+        "itertools",
+        "functools",
+        "contextlib",
+        "asyncio",
+        "inspect",
+        "importlib",
+        "textwrap",
+        "copy",
+        "hashlib",
+        "hmac",
+        "base64",
+        "urllib",
+        "http",
+        "email",
+        "struct",
+        "socket",
+        "threading",
+        "warnings",
+        "operator",
+        "math",
+        "decimal",
+        "string",
+        "random",
+        "statistics",
+        "subprocess",
+        "tempfile",
+        "shutil",
+        "glob",
+        "fnmatch",
+        "zipfile",
+        "csv",
+        "configparser",
+        "argparse",
+        "traceback",
+        "weakref",
+    }
+)
 
 
 class PTRValidationError(ValueError):
@@ -49,9 +109,7 @@ class WorkspaceSymbolIndex:
         repo_root: Path | None = None,
     ) -> None:
         self.repo_root = repo_root or REPO_ROOT
-        self.sys_path_roots: list[Path] = [
-            self.repo_root / r for r in (sys_path_roots or _DEFAULT_SYS_PATH_ROOTS)
-        ]
+        self.sys_path_roots: list[Path] = [self.repo_root / r for r in (sys_path_roots or _DEFAULT_SYS_PATH_ROOTS)]
         self._index: dict[str, set[str]] = {}
 
     # ── Public API ────────────────────────────────────────────────────────────
@@ -96,9 +154,7 @@ class WorkspaceSymbolIndex:
                 if _is_external(module):
                     continue
                 if module not in self._index:
-                    errors.append(
-                        f"PTR_GATE: module '{module}' not found in workspace index"
-                    )
+                    errors.append(f"PTR_GATE: module '{module}' not found in workspace index")
                     continue
                 available = self._index[module]
                 if "*" in available:
@@ -107,8 +163,7 @@ class WorkspaceSymbolIndex:
                 for name in names:
                     if name not in available:
                         errors.append(
-                            f"PTR_GATE: symbol '{name}' not exported by '{module}' "
-                            f"(available: {sorted(available)[:10]})"
+                            f"PTR_GATE: symbol '{name}' not exported by '{module}' (available: {sorted(available)[:10]})"
                         )
         return errors
 

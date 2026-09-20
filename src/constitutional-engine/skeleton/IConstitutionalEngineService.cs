@@ -20,7 +20,8 @@ public interface IConstitutionalEngineService
     /// </summary>
     Task<RecordEvidenceResponse> RecordEvidenceAsync(
         RecordEvidenceRequest request,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 
     /// <summary>
     /// Validate that a proposed action is within the agent's constitutional Decision Space.
@@ -29,7 +30,8 @@ public interface IConstitutionalEngineService
     /// </summary>
     Task<ValidateActionResponse> ValidateActionAsync(
         ValidateActionRequest request,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 
     /// <summary>
     /// Trigger Emergency Stop for one or more active PAAS sessions.
@@ -38,7 +40,8 @@ public interface IConstitutionalEngineService
     /// </summary>
     Task<EmergencyStopResponse> TriggerEmergencyStopAsync(
         EmergencyStopRequest request,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 
     /// <summary>
     /// Evaluate a policy claim against the current constitutional state.
@@ -46,14 +49,20 @@ public interface IConstitutionalEngineService
     /// </summary>
     Task<EvaluatePolicyResponse> EvaluatePolicyAsync(
         EvaluatePolicyRequest request,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 }
 
 /// <summary>
 /// All evaluator results must use this type to indicate the constitutional decision.
 /// Constitutional: C-023 — every ValidateAction call produces evidence of ALLOW or DENY.
 /// </summary>
-public enum ConstitutionalDecision { Allow, Deny, Escalate }
+public enum ConstitutionalDecision
+{
+    Allow,
+    Deny,
+    Escalate,
+}
 
 /// <summary>Thrown when CE is unavailable — triggers ADR-031 fail-safe protocol.</summary>
 public sealed class CeUnavailableException(string message) : Exception(message);
