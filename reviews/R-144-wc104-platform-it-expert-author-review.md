@@ -6,7 +6,7 @@
 | Office | INST-010 - Platform IT Expert |
 | Skill | 8 - CI/CD Orchestration |
 | Implementation base | `d1fff2149cba8940874feca233d565a476149764` |
-| Reviewed implementation | `4cd3a4db6278e9aeeb022d75fbeb8bba21ff924d` |
+| Reviewed implementation | `e131a3f692a527f92d26e97df89362d42b0244f7` |
 | Review date | 2026-09-20 |
 | Disposition | **PASS - IMPLEMENTATION REVIEWED; WC-104 NOT COMPLETE** |
 
@@ -35,6 +35,11 @@ output failures stop before costly prechecks; local costly selection is independ
 hosted inventory; and cross-head reuse requires immutable source evidence plus ancestry,
 declared-input and non-intersection proof bound to the current head.
 
+The hosted precheck repair at `e131a3f692a527f92d26e97df89362d42b0244f7` was also reviewed. It
+normalizes the Buf comparison URL, applies the already-authoritative CSharpier and Ruff formats,
+repairs concrete script lint findings, records line-local exceptions for intentional CLI operations,
+and refreshes the eight affected GOAL-006 bootstrap digests. It does not weaken or deselect a gate.
+
 ## Test And Quality Review
 
 The reviewed implementation passes a bounded 170-test validation-control and changed-policy suite
@@ -44,6 +49,12 @@ in 5.99 seconds in the canonical Docker runner; its focused R017-R019 subset pas
 isolation/security suite passes 39 tests. The complete all-profile
 Compose build passes 211/211 BuildKit steps and builds all 16 custom images. The diagnostic rollback
 record remains `validation/evidence/wc104-rollback-rehearsal.json`; it is not completion evidence.
+
+The repair additionally passes the exact hosted commands for Constitutional Engine quality,
+scripts quality including the seed-prompts dry run, AI Runtime lint/type/test/coverage (114 tests;
+90.60% line and 82.09% branch coverage), and OpenAPI/Proto lint. A broader pipeline run reached 857
+passes before the pre-existing `validation/process-control.yaml` digest mismatch for the Platform IT
+office card; that unrelated constitutional evidence was not rewritten by this repair.
 
 ## Security, Constitutional, And Rollback Review
 
@@ -62,7 +73,7 @@ cannot authorize completion.
 - [x] Reviewed security, constitutional, and rollback impact
 - [x] Resolved every finding or recorded no findings
 
-**Reviewed Commit:** 4cd3a4db6278e9aeeb022d75fbeb8bba21ff924d
+**Reviewed Commit:** e131a3f692a527f92d26e97df89362d42b0244f7
 **Author Review Result:** PASS
 
 This PASS records completion of the author-review activity for the frozen implementation commit. It
