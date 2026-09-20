@@ -1,0 +1,73 @@
+schema: waooaw.authoritative-gate-baseline/v1
+workflows:
+  .github/workflows/ci.yaml:
+    catalog_gates:
+      - test-dotnet:constitutional-engine
+      - test-dotnet:business-platform
+      - test-python:professional-runtime
+      - test-python:ai-runtime
+      - release-qualification
+      - test-web
+      - spec-lint
+      - dep-scan:python
+      - dep-scan:dotnet
+      - dep-scan:typescript
+      - license-check
+      - constitutional-commit-gate
+      - author-review-gate
+      - authorization-tier-check
+    external_jobs: [build, publish, secrets, sast, trivy, qa-campaign, release-manifest]
+  .github/workflows/code-quality.yaml:
+    catalog_gates:
+      - quality:commitlint
+      - quality:dotnet:constitutional-engine
+      - quality:dotnet:business-platform
+      - quality:python:professional-runtime
+      - quality:python:ai-runtime
+      - quality:scripts
+      - quality:typescript
+      - quality:sql
+      - quality:proto
+      - quality:observability
+      - quality:traceability
+      - quality:constitutional-naming
+      - mutation:dotnet
+      - mutation:python
+    external_jobs: []
+  .github/workflows/integration-tests.yaml:
+    catalog_gates:
+      - integration:multi-tenant
+      - integration:postgres-migrations
+      - integration:dotnet
+      - integration:python
+      - contract:rest
+      - contract:seed-prompts
+      - security:prompt-injection
+    external_jobs: []
+  .github/workflows/e2e-acceptance-tests.yaml:
+    catalog_gates:
+      - e2e:accessibility
+      - acceptance:as-001
+      - acceptance:as-003
+      - acceptance:as-005
+      - acceptance:pse-failover
+      - e2e:emergency-stop
+    external_jobs: [report]
+thresholds:
+  scripts/validation_control/run_dotnet_test_gate.sh:
+    - "lines >= 0.90 && branches >= 0.80"
+  scripts/validation_control/run_python_test_gate.sh:
+    - "lines >= 90 and branches >= 80"
+  validation/engineering-validation.yaml:
+    - '\"lines\":90,\"branches\":80,\"functions\":90,\"statements\":90'
+  scripts/validation_control/run_dotnet_mutation_gate.sh:
+    - "--threshold-high 80 --threshold-low 75 --threshold-break 65"
+  scripts/validation_control/run_python_mutation_gate.sh:
+    - '"${score:-0}" -lt 60'
+required_evidence_classes: [CCT, browser, contract, coverage, integration, release, security, static]
+required_catalog_flags:
+  mode: shadow
+  release_full_inventory: true
+  main_full_inventory: true
+  enforced_activation:
+    founder_approved: false

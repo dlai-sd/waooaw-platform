@@ -109,7 +109,9 @@ def test_selection_manifest_rejects_merge_base_movement() -> None:
 def test_policy_is_single_selection_source() -> None:
     preparer = (ROOT / "scripts/prepare_pr_body.py").read_text(encoding="utf-8")
     workflow = (ROOT / ".github/workflows/ci.yaml").read_text(encoding="utf-8")
+    planner = (ROOT / ".github/workflows/validation-plan.yaml").read_text(encoding="utf-8")
 
     assert "BUSINESS_PLATFORM_GATE_PATHS" not in preparer
     assert "RELEASE_QUALIFICATION_GATE_PATHS" not in preparer
-    assert "validation/engineering-validation.yaml" in workflow
+    assert "uses: ./.github/workflows/validation-plan.yaml" in workflow
+    assert "validation/engineering-validation.yaml" in planner
