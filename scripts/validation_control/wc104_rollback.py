@@ -51,6 +51,9 @@ def execute_rollback(
     gate_results: list[dict[str, Any]] = []
     try:
         os.environ.update(manifest["environment"])
+        docker_config = Path(os.environ["DOCKER_CONFIG"])
+        docker_config.mkdir(parents=True, exist_ok=True)
+        docker_config.chmod(0o700)
         for runner_id in manifest["required_runners"]:
             resolution = runner_resolver(repository, runner_id)
             if resolution.get("build_count") != 1 or resolution.get("trust_source") != "local-identity-build":

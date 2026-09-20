@@ -61,6 +61,7 @@ def test_wc104_rollback_forces_clean_local_supply_and_serial_no_reuse_qualificat
     assert rollback["required_gates"] == catalog["full_gates"]
     assert rollback["required_runners"] == list(catalog["runners"])
     assert rollback["environment"] == {
+        "DOCKER_CONFIG": f"/tmp/wc104-docker-{HEAD_SHA}",
         "WC104_DISABLE_REGISTRY_REUSE": "1",
         "WC104_FORCE_LOCAL_BUILD": "1",
         "WC100_DISABLE_REUSE": "1",

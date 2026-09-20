@@ -21,6 +21,8 @@ def test_rollback_clean_builds_each_runner_once_then_executes_full_inventory_ser
     events: list[tuple[str, str]] = []
 
     def resolve(repository: Path, runner_id: str) -> dict[str, object]:
+        assert os.environ["DOCKER_CONFIG"] == f"/tmp/wc104-docker-{HEAD_SHA}"
+        assert Path(os.environ["DOCKER_CONFIG"]).is_dir()
         assert os.environ["WC104_DISABLE_REGISTRY_REUSE"] == "1"
         assert os.environ["WC104_FORCE_LOCAL_BUILD"] == "1"
         events.append(("runner", runner_id))

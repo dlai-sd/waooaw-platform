@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import tempfile
+from pathlib import Path
 from typing import Any
 
 
@@ -69,6 +71,7 @@ def build_wc104_rollback_manifest(catalog: dict[str, Any], *, candidate_sha: str
         "required_gates": full_gates,
         "required_runners": list(runners),
         "environment": {
+            "DOCKER_CONFIG": str(Path(tempfile.gettempdir()) / f"wc104-docker-{candidate_sha}"),
             "WC104_DISABLE_REGISTRY_REUSE": "1",
             "WC104_FORCE_LOCAL_BUILD": "1",
             "WC100_DISABLE_REUSE": "1",
