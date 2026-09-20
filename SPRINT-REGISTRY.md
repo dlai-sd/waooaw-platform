@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-09-15 · **Version:** 1.45.0 · **Work Contracts:** 87 recorded (76 closed · 11 active · 1 blocked)
+**Last Updated:** 2026-09-20 · **Version:** 1.45.0 · **Work Contracts:** 96 recorded (81 closed · 15 active · 1 blocked)
 
 **Reference hierarchy:** This file is the canonical compact Work Contract and delivery index. `README.md`
 is the operator entry and routing summary; `constitution/PROJECT_STATE.md` records only the current
@@ -28,6 +28,10 @@ constitutional-repair record. Agents must select the record by title and Goal, n
 | **WC-089** | DMA Thin Vertical Slice And Agent Image Proof | Agent productization and Release 1 implementation | ENGINEERING QUALIFIED · ISSUE #437 · PR SUBMISSION PENDING · PROVIDER/CLOUD/DEPLOYMENT PROHIBITED | WC-079 · WC-080 · WC-087 · WC-088 · ADR-035 · ADR-049 | Release 1 / `professionalVersion: 1.0.0` remains independent from DMA specification `3.1`; exact-three Skills, instance isolation, owner attribution, authority-gated reproducible image `sha256:085fe312…`, 79 Python tests, 49 BP tests, OpenAPI, SBOM, Trivy and gitleaks pass on exact local head |
 | **WC-090** | Facebook Login Enablement And Google Readiness Repair | Demo identity delivery | IMPLEMENTATION AND FOLLOW-UP REPAIRS MERGED · REAL PROVIDER/DEMO ACCEPTANCE REMAINS BOUNDED | WC-084 SP-04 and §6.4 · PR #416 · Meta/Google protected credentials | PRs #417→#421, #426, #428→#430 and #433→#436 merged provider-neutral broker delivery, deployment/readiness repairs, progressive auth completion and CSP-safe Keycloak logout; real Google/Facebook account acceptance is not inferred |
 | **WC-091** | Environment Readiness And Data Continuity | Three-iteration delivery; I1 disposable Demo readiness | I1 MERGED · I2 UAT AND I3 DARK PRODUCTION REMAIN SEPARATELY GATED | WC-076 · WC-077 · WC-085 · WC-086 · WC-090 | PRs #422→#424 merged the I1 plan, disposable Demo implementation and HMAC deployment repair; local/emulator and merged source evidence do not prove real-account acceptance or authorize I2/I3 |
+| **WC-099** | Demo Customer Journey And Application Shell Remediation | Customer journey repair | IMPLEMENTATION MERGED · ACTUAL-CLOUD INTEGRATED JOURNEY REMAINS GATED | WC-092→098 · PRs #452/#454 | Local evidence covers fresh account selection and journey repairs; exact-release Demo acceptance remains separate |
+| **WC-100** | Engineering Validation Efficiency | Validation control improvement | IMPLEMENTATION MERGED · SHADOW ACTIVATION EVIDENCE REMAINS GATED | WC-099 · PR #449 | Change-aware validation and immutable evidence controls merged without replacing authoritative CI |
+| **WC-102** | Docker-Only Validation Control Plane | Validation control implementation | IMPLEMENTATION MERGED · SELECTIVE ENFORCEMENT REMAINS GATED | WC-100 · WC-101 · ADR-050 · PR #456 | Docker-only control plane merged; 20-sample Shadow floor and Founder activation remain required |
+| **WC-103** | Multi-Tenant Authentication Journeys | Solution Architecture and constitutional closure | IMPLEMENTATION-READY SPECIFICATION · IMPLEMENTATION NOT AUTHORIZED | WC-083 · WC-090 · WC-092→094 · WC-098→099 · ADR-003/008/009/011 · Issue #458 | Defect-to-story-to-journey-to-DoD traceability plus one-pass Security/Data contracts; Founder review required |
 
 ### Parked Owner Contracts From Delivered WC-084
 
@@ -77,6 +81,14 @@ parked dependencies for later slices, not completed capabilities and not reasons
 | WC-092 | #425 (`b73338e`), #431 | Demo authentication UX and privacy-safe denial diagnostics merged; WC-093 subsequently preserved the route-backed identity behavior while finalizing the public/auth experience |
 | WC-093 | #431 (`894a0d2`) | Founder-frozen public/auth experience finalization merged with responsive, theme, RTL, reduced-motion, enlarged-text and available-browser evidence |
 | WC-094 | #432 (`549b382`), #435 (`9c500a6`) | Demo auth session/readiness repair merged, followed by progressive portal and logout-readiness repair; PR #436 adds the final CSP-safe Keycloak round-trip regression under WC-090 |
+| WC-095 | #440 (`6c21bb3`), #444 (`c0d24a0`) | Universal employment lifecycle and DMA customer activation merged; proposed operating-envelope and portal-coherence architecture retains its approval gates |
+| WC-096 | #441→#442 (`b747253`) | Conversational Customer Portal remediation merged with persistent interaction, authoritative relationship continuation and responsive qualification |
+| WC-097 | #443 (`474a8bc`) | Marketplace acquisition experience merged with BP-owned Trial/Hire intent; onboarding, payment and activation remain separately gated |
+| WC-098 | #445 (`2442873`) | Customer registration readiness merged; exact Demo/provider acceptance remains separate |
+| WC-099 | #452→#454 (`ff09197d`) | Customer journey remediation and qualification safeguards merged; actual-cloud integrated journey remains separately gated |
+| WC-100 | #449 (`ecda846b`) | Engineering validation efficiency controls merged in Shadow mode |
+| WC-101 | #456 (`6b7fff2c`) | Founder-accepted Docker-only validation architecture delivered with WC-102 |
+| WC-102 | #456 (`6b7fff2c`), #457 (`502f70b5`) | Docker-only validation control plane merged; follow-up repaired squash-sensitive gitleaks behavior |
 
 PRs are grouped by the Work Contract references in their bodies. A merged planning PR proves delivery
 of the plan, not completion of future implementation tasks; rows above call implementation complete
@@ -163,6 +175,15 @@ only where an implementation PR merged.
 | WC-092 | Demo Authentication Experience And Identity Handoff Repair | Platform IT Expert | 1.45.0 | Route-backed loading/navigation, customer-safe provider states and privacy-safe BP denial diagnostics; PR #425 merged as `b73338e` |
 | WC-093 | Public And Authentication Experience Finalization | Platform IT Expert | 1.45.0 | Founder-frozen public hero, professional orbit and compact route-backed auth experience; PR #431 merged as `894a0d2` |
 | WC-094 | Demo Authentication Session And Readiness Repair | Platform IT Expert | 1.45.0 | Session cleanup, provider-readiness recovery, branded loading and dedicated continuity HMAC delivery; PR #432 merged as `549b382`, with portal/logout follow-ups in PRs #435→#436 |
+| WC-095 | Universal Agent Employment Lifecycle And DMA Customer Activation | Platform IT Expert | 1.45.0 | Reusable employment lifecycle and DMA activation merged through PRs #440/#444 |
+| WC-096 | Conversational Customer Portal | Platform IT Expert | 1.45.0 | Persistent conversational workspace and authoritative continuation merged through PRs #441→#442 |
+| WC-097 | Marketplace Acquisition Experience | Platform IT Expert | 1.45.0 | BP-owned professional detail and Trial/Hire intent merged in PR #443 |
+| WC-098 | Customer Registration Readiness | Platform IT Expert | 1.45.0 | Broker-verified email, actor continuity, truthful SMS state and bounded recovery merged in PR #445 |
+| WC-099 | Demo Customer Journey And Application Shell Remediation | Solution Architect / Platform IT Expert | 1.45.0 | Journey repairs and safeguards merged through PR #454; actual-cloud integrated acceptance remains gated |
+| WC-100 | Engineering Validation Efficiency | Platform IT Expert | 1.45.0 | Change-aware Shadow validation and immutable evidence controls merged in PR #449 |
+| WC-101 | Docker-Only Validation Architecture | Enterprise Architect | 1.45.0 | Founder-accepted architecture delivered with PR #456; no independent runtime component |
+| WC-102 | Docker-Only Validation Control Plane | Platform IT Expert | 1.45.0 | Docker-only control plane merged in PR #456 with PR #457 follow-up |
+| WC-103 | Multi-Tenant Authentication Journeys | Solution Architect | 1.45.0 | Implementation-ready authentication specification and one-pass Security/Data closure; implementation not authorized |
 
 ---
 
@@ -184,7 +205,7 @@ only where an implementation PR merged.
 | L2 Trust | Provider Registry, oauth-vault, CTG, Token Refresh | ✅ 100% DONE | WC-037→039 |
 | L3 Business | WBE S1–S8 implemented and tested; AIR/BP end-to-end integration remains partial | ~90% repository evidence | WC-025→033, WC-042→043 |
 | L4 Skill Architecture | Skill Catalog, Skill Runtime, Intent Crystallizer | ✅ 100% DONE | WC-040→041 |
-| L5 Interface | Hybrid application, employment journey, shared identity, public acquisition, authentication, and customer portal | Public/auth finalization, Demo auth-session readiness and CSP-safe Keycloak logout are merged; WC-084 Section 9.2 owner contracts and WC-090 real provider/Demo acceptance remain pending | WC-034 and WC-057→062; WC-077→078; WC-083→085; active WC-090; WC-092→094; WC-064→069 commercial governance remains separately gated |
+| L5 Interface | Hybrid application, employment journey, shared identity, public acquisition, authentication, marketplace and customer portal | WC-103 consolidates residual authentication defects into implementation-ready journey acceptance; real-provider, exact-release, Apple/email and session-management implementation remain gated | WC-034 and WC-057→062; WC-077→078; WC-083→085; WC-090; WC-092→099; WC-103; WC-064→069 commercial governance remains separately gated |
 | L6 Agent Admission And Runtime | Versioned admission, runtime adapters, immutable instances, multi-agent navigation, governed skill decisions, and DMA Release 1 | Admission, adapter, instance and multi-agent foundations are merged; WC-089's separate Release 1 image, exact-three Skills and owner attribution are engineering-qualified locally, with PR review/merge and all deployment/provider acceptance still pending | WC-079→080; WC-087→089 |
 | L7 Cloud Delivery | Offline release foundation, Demo/UAT promotion, workflow consolidation, dark-Production handover | Phase 2, Demo, and UAT complete; P3-EX11 handover pending; Production apply and activation prohibited | WC-071→074; active WC-076; WC-081 consolidation |
 | L8 Quality Evolution | QA institution planning and promotion maturity backlog | Goal intake and groomed backlog complete; QA institution activation and IB-031 implementation unauthorized | WC-075; WC-082 |

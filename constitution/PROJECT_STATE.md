@@ -20,8 +20,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-080 - Agent Runtime Adapter Contract v1 |
-| Latest merge | PR #442 merged to `main` as `b7472535` |
-| Active delivery | WC-102 Docker-Only Validation Control Plane, WC-099 post-Demo correction, WC-100 Engineering Validation Efficiency, WC-098 Customer Registration Readiness, WC-097 Marketplace Acquisition Experience, WC-089 DMA Release 1, WC-093 public/auth experience finalization, WC-085 brokered authentication follow-up and WC-088 Customer Multi-Agent And Skill Journey; P3-EX11 remains plan-only |
+| Latest merge | PR #457 merged to `main` as `502f70b5` |
+| Active delivery | WC-103 Multi-Tenant Authentication Journeys is specification-ready and implementation-gated; WC-099 actual-cloud journey acceptance, WC-100 Shadow evidence, WC-102 selective-enforcement evidence, WC-090 real-provider acceptance and WC-089 DMA Release 1 remain bounded; P3-EX11 remains plan-only |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 
@@ -89,6 +89,12 @@ WC-085 full-schema rehearsal, stock reader/private TLS, recreated identity conti
 downstream membership and browser account-switch qualification remain open; CB-009 tracks delivery.
 
 ## Next Authorized Action
+
+Submit WC-103's implementation-ready authentication specification and one-pass Security/Data
+contracts for Founder review. Do not begin implementation, create migrations, mutate providers or
+deploy under WC-103 without explicit current-session Founder authorization. After acceptance, execute
+the requirement ledger as one atomic work component; unavailable Apple/email paths remain dark until
+their independent gates pass.
 
 Submit WC-102 as an unmerged Shadow-mode PR for Founder review; do not activate selective PR execution before the 20-sample Shadow floor and separate Founder approval. Submit WC-099 Iterations 2 and 3 as one unmerged implementation PR for Founder review; do not deploy it to Demo without separate work-component authority. Submit WC-100 as an unmerged Shadow-mode PR for Founder review and hosted full-CI evidence; do not
 activate selected PR execution before the required Shadow window and separate Founder approval.

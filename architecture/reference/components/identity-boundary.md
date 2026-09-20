@@ -648,6 +648,16 @@ Sign-out also performs Keycloak RP-initiated logout using the server-held sessio
 allowlisted post-logout redirect. Clearing only the NextAuth cookie is incomplete because it leaves
 the Keycloak SSO session capable of silently re-authenticating the prior account.
 
+After explicit sign-out, every WAOOAW route treats the browser as unauthenticated and presents the
+public Login/Register entry until the customer starts a new authentication transaction. Background
+session restoration, silent OIDC authorization and restoration from browser history or cached
+authenticated content are prohibited. The next explicit social-provider launch uses
+`prompt=select_account`; a sensitive or stale reauthentication path additionally uses the approved
+freshness control. WAOOAW does not attempt to terminate the customer's unrelated Google, Facebook or
+Apple sessions. Logout removes ephemeral session and protected presentation state, never the customer
+account, retained business records or committed ledger evidence. Detailed race, CSRF, fixation,
+browser and provider controls are defined by `security/identity-session-security-contract.md`.
+
 ## 12. Privacy, Telemetry, and Tenant Isolation
 
 - URLs and telemetry contain no email, mobile, token, code, tenant ID, provider subject, relationship ID, or evidence payload.
@@ -659,6 +669,20 @@ the Keycloak SSO session capable of silently re-authenticating the prior account
   response size and latency. They must not record request URIs, query strings, remote addresses,
   referrers or user agents on authorization, broker, callback, login-action, token or logout routes.
 - ADR-023 WhatsApp continuation invokes the logical Identity Boundary through an internal server-to-server adapter. The Phone Identity Service token is never issued to a browser and cannot self-upgrade to a Keycloak session. Web continuation requires a Keycloak round trip and proof-gated binding.
+
+### Forensic identity events and session records
+
+Every identity attempt observed by a WAOOAW boundary produces a durable database event under
+`data/identity-security-data-contract.md`. Required events cover authentication start, provider
+handoff, callback success/failure, session establishment, registration start/completion/failure,
+refresh success/failure, authorization denial, logout request/completion/failure, account switch,
+session expiry and single/all-session revocation. A provider-side action that never reaches a WAOOAW
+boundary cannot be claimed as observed.
+
+Operational identity-security events and Constitutional Audit Ledger records remain separate under
+C-005. Consequential identity/authorization success continues to wait for confirmed C-023 evidence.
+Both classes may share an opaque correlation ID but may not be merged. Logout clears revocable
+session state but never deletes or rewrites a committed operational or constitutional record.
 
 ## 12.1 Environment and deployment qualification
 
