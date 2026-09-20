@@ -692,47 +692,63 @@ jobs:
   dep-scan:
     name: Dependency vulnerability scan
     runs-on: ubuntu-latest
-    needs: runner-supply
+    needs: [runner-supply, validation-plan]
     steps:
       - uses: actions/checkout@v4
-      - name: Resolve immutable Python audit runner
-        uses: ./.github/actions/use-validation-runner
-        id: python-runner
+      - name: Execute catalog Python dependency scan
+        uses: ./.github/actions/run-validation-gate
+        id: python-scan
+        continue-on-error: true
         with:
-          runner-id: python
+          gate-id: dep-scan:python
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Resolve immutable .NET audit runner
-        uses: ./.github/actions/use-validation-runner
-        id: dotnet-runner
+      - name: Execute catalog .NET dependency scan
+        uses: ./.github/actions/run-validation-gate
+        id: dotnet-scan
+        continue-on-error: true
         with:
-          runner-id: dotnet
+          gate-id: dep-scan:dotnet
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Resolve immutable TypeScript audit runner
-        uses: ./.github/actions/use-validation-runner
-        id: typescript-runner
+      - name: Execute catalog TypeScript dependency scan
+        uses: ./.github/actions/run-validation-gate
+        id: typescript-scan
+        continue-on-error: true
         with:
-          runner-id: typescript
+          gate-id: dep-scan:typescript
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Record immutable dependency runner evidence
+        if: always()
         run: |
-          scripts/record_build_evidence.sh \
-            "$RUNNER_TEMP/build-evidence/dependency-python.json" 'test-runner-python-dependencies' \
-            '${{ github.event.pull_request.base.sha || github.event.before }}' \
-            '${{ github.event.pull_request.head.sha || github.sha }}' \
-            '${{ steps.python-runner.outputs.image_id }}' '' '["pip-audit"]' 'workflow_build'
-          scripts/record_build_evidence.sh \
-            "$RUNNER_TEMP/build-evidence/dependency-dotnet.json" 'test-runner-dotnet-dependencies' \
-            '${{ github.event.pull_request.base.sha || github.event.before }}' \
-            '${{ github.event.pull_request.head.sha || github.sha }}' \
-            '${{ steps.dotnet-runner.outputs.image_id }}' '' '["dotnet-vulnerable"]' 'workflow_build'
-          scripts/record_build_evidence.sh \
-            "$RUNNER_TEMP/build-evidence/dependency-ts.json" 'test-runner-ts-dependencies' \
-            '${{ github.event.pull_request.base.sha || github.event.before }}' \
-            '${{ github.event.pull_request.head.sha || github.sha }}' \
-            '${{ steps.typescript-runner.outputs.image_id }}' '' '["pnpm-audit"]' 'workflow_build'
+          if [[ -n '${{ steps.python-scan.outputs.image_id }}' ]]; then
+            scripts/record_build_evidence.sh \
+              "$RUNNER_TEMP/build-evidence/dependency-python.json" 'test-runner-python-dependencies' \
+              '${{ github.event.pull_request.base.sha || github.event.before }}' \
+              '${{ github.event.pull_request.head.sha || github.sha }}' \
+              '${{ steps.python-scan.outputs.image_id }}' '' '["pip-audit"]' 'workflow_build'
+          fi
+          if [[ -n '${{ steps.dotnet-scan.outputs.image_id }}' ]]; then
+            scripts/record_build_evidence.sh \
+              "$RUNNER_TEMP/build-evidence/dependency-dotnet.json" 'test-runner-dotnet-dependencies' \
+              '${{ github.event.pull_request.base.sha || github.event.before }}' \
+              '${{ github.event.pull_request.head.sha || github.sha }}' \
+              '${{ steps.dotnet-scan.outputs.image_id }}' '' '["dotnet-vulnerable"]' 'workflow_build'
+          fi
+          if [[ -n '${{ steps.typescript-scan.outputs.image_id }}' ]]; then
+            scripts/record_build_evidence.sh \
+              "$RUNNER_TEMP/build-evidence/dependency-ts.json" 'test-runner-ts-dependencies' \
+              '${{ github.event.pull_request.base.sha || github.event.before }}' \
+              '${{ github.event.pull_request.head.sha || github.sha }}' \
+              '${{ steps.typescript-scan.outputs.image_id }}' '' '["pnpm-audit"]' 'workflow_build'
+          fi
 
       - name: Retain immutable dependency runner evidence
+        if: >-
+          always() && (
+            steps.python-scan.outputs.image_id != '' ||
+            steps.dotnet-scan.outputs.image_id != '' ||
+            steps.typescript-scan.outputs.image_id != ''
+          )
         uses: actions/upload-artifact@v4
         with:
           name: wc100-dependency-runners-${{ github.run_id }}
@@ -740,46 +756,12 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-      - name: pip-audit — Python dependencies
-        run: |
-          scripts/verify_runner_image.sh test-python test-runner-python '${{ steps.python-runner.outputs.image_id }}'
-          docker compose --profile test-python run --rm test-runner-python sh -lc '
-            pip-audit -r src/professional-runtime/requirements.txt --strict --cache-dir /tmp/pip-audit-cache &&
-            sed -e "/^--extra-index-url/d" \
-                -e "s/torch==2.13.0+cpu/torch==2.13.0/" \
-                src/ai-runtime/requirements.txt > /tmp/ai-runtime-audit.txt &&
-            pip-audit -r /tmp/ai-runtime-audit.txt --strict --cache-dir /tmp/pip-audit-cache &&
-            pip-audit -r src/billing-engine/requirements.txt --strict --cache-dir /tmp/pip-audit-cache
-          '
-        continue-on-error: false  # Fail on any vulnerability
-
-      - name: dotnet vulnerable — .NET dependencies
-        run: |
-          scripts/verify_runner_image.sh test-dotnet test-runner-dotnet '${{ steps.dotnet-runner.outputs.image_id }}'
-          docker compose --profile test-dotnet run --rm test-runner-dotnet sh -lc '
-            audit_dotnet_project() {
-              project_name="$(basename "$1")"
-              export BaseIntermediateOutputPath="/tmp/dependency-audit/$project_name/obj/"
-              dotnet restore "$1" --nologo >/dev/null
-              if ! output="$(dotnet list "$1" package --vulnerable --include-transitive 2>&1)"; then
-                printf "%s\n" "$output"
-                return 1
-              fi
-              printf "%s\n" "$output"
-              if printf "%s\n" "$output" | grep -qi "has the following vulnerable packages"; then
-                return 1
-              fi
-            }
-            audit_dotnet_project src/constitutional-engine &&
-            audit_dotnet_project src/business-platform
-          '
-
-      - name: pnpm audit — Node.js dependencies
-        run: |
-          scripts/verify_runner_image.sh test-ts test-runner-ts '${{ steps.typescript-runner.outputs.image_id }}'
-          docker compose --profile test-ts run --rm test-runner-ts sh -lc '
-            cd /opt/waooaw-web && pnpm audit --audit-level high
-          '
+      - name: Enforce catalog dependency scan results
+        if: >-
+          steps.python-scan.outcome != 'success' ||
+          steps.dotnet-scan.outcome != 'success' ||
+          steps.typescript-scan.outcome != 'success'
+        run: exit 1
 
   # ─── License compliance ───────────────────────────────────────────────────
   # Prevents inadvertent use of GPL/AGPL licensed dependencies in commercial code.

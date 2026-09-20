@@ -47,7 +47,9 @@ commands:
   sast-csharp: {shell: "dotnet build src/constitutional-engine/constitutional-engine.csproj --artifacts-path /tmp/artifacts/sast/constitutional-engine -p:TreatWarningsAsErrors=true && dotnet build src/business-platform/business-platform.csproj --artifacts-path /tmp/artifacts/sast/business-platform -p:TreatWarningsAsErrors=true"}
   sast-python: {shell: "bandit -r src -c pyproject.toml -lll -f json -o test-results/bandit.json"}
   sast-javascript: {shell: "cd web && biome lint ."}
-  dependency-scan: {shell: "pip-audit --cache-dir /tmp/pip-audit-cache -r requirements-test.txt --strict"}
+  dependency-scan-python: {shell: "sh scripts/validation_control/run_dependency_scan_gate.sh python"}
+  dependency-scan-dotnet: {shell: "sh scripts/validation_control/run_dependency_scan_gate.sh dotnet"}
+  dependency-scan-typescript: {shell: "sh scripts/validation_control/run_dependency_scan_gate.sh typescript"}
   secrets: {shell: "python scripts/validation_control/docker_policy.py --repository /workspace"}
   license-check: {shell: "pip-licenses --fail-on='GPL;AGPL;LGPL'"}
   release-qualification: {shell: "sh scripts/run_release_qualification.sh", execution: host}
@@ -105,7 +107,9 @@ gates:
   sast:csharp: {<<: *security_gate, gate_id: "sast:csharp", runner_id: dotnet, command_id: sast-csharp, resources: *dotnet_resources}
   sast:python: {<<: *security_gate, gate_id: "sast:python", command_id: sast-python}
   sast:javascript: {<<: *security_gate, gate_id: sast:javascript, runner_id: typescript, command_id: sast-javascript, resources: *typescript_resources}
-  dep-scan: {<<: *security_gate, gate_id: dep-scan, command_id: dependency-scan}
+  dep-scan:python: {<<: *security_gate, gate_id: "dep-scan:python", command_id: dependency-scan-python}
+  dep-scan:dotnet: {<<: *security_gate, gate_id: "dep-scan:dotnet", runner_id: dotnet, command_id: dependency-scan-dotnet, resources: *dotnet_resources}
+  dep-scan:typescript: {<<: *security_gate, gate_id: "dep-scan:typescript", runner_id: typescript, command_id: dependency-scan-typescript, resources: *typescript_resources}
   secrets: {<<: *security_gate, gate_id: secrets, command_id: secrets, global_trigger: true}
   license-check: {<<: *security_gate, gate_id: license-check, command_id: license-check, global_trigger: true}
   release-qualification: {<<: *python_static, gate_id: release-qualification, runner_id: full, command_id: release-qualification, evidence_class: release, resources: {cpus: 2, memory_mb: 6144, timeout_seconds: 3600, docker_socket: true, concurrency_class: qualification}, global_trigger: true}
@@ -122,7 +126,9 @@ full_gates:
   - test-web
   - spec-lint
   - sast
-  - dep-scan
+  - dep-scan:python
+  - dep-scan:dotnet
+  - dep-scan:typescript
   - license-check
   - release-qualification
   - constitutional-commit-gate
@@ -134,37 +140,37 @@ components:
   constitutional-engine:
     component_id: constitutional-engine
     paths: [src/constitutional-engine/**, tests/constitutional-engine.Tests/**, architecture/reference/proto/**]
-    gates: [build:constitutional-engine, test-dotnet:constitutional-engine, spec-lint, sast:csharp, dep-scan]
+    gates: [build:constitutional-engine, test-dotnet:constitutional-engine, spec-lint, sast:csharp, "dep-scan:dotnet"]
     reverse_dependencies: [business-platform, professional-runtime, ai-runtime, billing-engine]
   business-platform:
     component_id: business-platform
     paths: [src/business-platform/**, tests/business-platform.Tests/**, infrastructure/postgres/init/**, architecture/reference/api-specs/business-platform.openapi.yaml]
-    gates: [build:business-platform, test-dotnet:business-platform, spec-lint, sast:csharp, dep-scan, release-qualification]
+    gates: [build:business-platform, test-dotnet:business-platform, spec-lint, sast:csharp, "dep-scan:dotnet", release-qualification]
     reverse_dependencies: [professional-runtime, billing-engine, web]
   professional-runtime:
     component_id: professional-runtime
     paths: [src/professional-runtime/**, tests/professional-runtime/**, architecture/reference/api-specs/professional-runtime.openapi.yaml]
-    gates: [build:professional-runtime, test-python:professional-runtime, spec-lint, sast:python, dep-scan]
+    gates: [build:professional-runtime, test-python:professional-runtime, spec-lint, sast:python, "dep-scan:python"]
     reverse_dependencies: [agent-runtime-adapter-digital-marketing, web]
   ai-runtime:
     component_id: ai-runtime
     paths: [src/ai-runtime/**, tests/ai-runtime/**, src/trust-layer/**, tests/trust-layer/**]
-    gates: [build:ai-runtime, test-python:ai-runtime, sast:python, dep-scan]
+    gates: [build:ai-runtime, test-python:ai-runtime, sast:python, "dep-scan:python"]
     reverse_dependencies: [agent-runtime-adapter-digital-marketing]
   billing-engine:
     component_id: billing-engine
     paths: [src/billing-engine/**, tests/billing-engine/**, tests/pipeline/test_billing_ce_validator.py]
-    gates: [build:billing-engine, test-python:billing-engine, sast:python, dep-scan, release-qualification]
+    gates: [build:billing-engine, test-python:billing-engine, sast:python, "dep-scan:python", release-qualification]
     reverse_dependencies: []
   agent-runtime-adapter-digital-marketing:
     component_id: agent-runtime-adapter-digital-marketing
     paths: [src/agent-adapters/**, tests/agent-adapters/**, tests/professional-runtime/test_dma_release_1_skills.py]
-    gates: [build:agent-runtime-adapter-digital-marketing, test-python:professional-runtime, sast:python, dep-scan]
+    gates: [build:agent-runtime-adapter-digital-marketing, test-python:professional-runtime, sast:python, "dep-scan:python"]
     reverse_dependencies: []
   web:
     component_id: web
     paths: [web/**]
-    gates: [build:web, test-web, sast:javascript, dep-scan]
+    gates: [build:web, test-web, sast:javascript, "dep-scan:typescript"]
     reverse_dependencies: []
 
 global_triggers:

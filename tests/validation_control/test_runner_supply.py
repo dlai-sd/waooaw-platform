@@ -214,6 +214,31 @@ def test_release_ci_executes_catalog_gate_without_duplicate_command_or_runner_ma
     assert "scripts/run_release_qualification.sh" not in rendered
 
 
+def test_dependency_ci_executes_catalog_gates_without_duplicate_commands_or_runner_mappings() -> None:
+    root = Path(__file__).resolve().parents[2]
+    workflow = yaml.safe_load((root / ".github/workflows/ci.yaml").read_text(encoding="utf-8"))
+    catalog = yaml.safe_load((root / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
+    job = workflow["jobs"]["dep-scan"]
+    rendered = json.dumps(job)
+    split_gates = {"dep-scan:python", "dep-scan:dotnet", "dep-scan:typescript"}
+
+    assert set(job["needs"]) == {"runner-supply", "validation-plan"}
+    assert rendered.count("./.github/actions/run-validation-gate") == 3
+    assert {
+        step["with"]["gate-id"]
+        for step in job["steps"]
+        if step.get("uses") == "./.github/actions/run-validation-gate"
+    } == split_gates
+    assert split_gates.issubset(catalog["full_gates"])
+    assert "dep-scan" not in catalog["full_gates"]
+    assert all(step.get("continue-on-error") is True for step in job["steps"] if step.get("id", "").endswith("-scan"))
+    assert job["steps"][-1]["name"] == "Enforce catalog dependency scan results"
+    assert '"runner-id"' not in rendered
+    assert "pip-audit -r" not in rendered
+    assert "dotnet list" not in rendered
+    assert "pnpm audit" not in rendered
+
+
 def test_every_runner_base_is_digest_pinned_and_has_locked_package_caches() -> None:
     root = Path(__file__).resolve().parents[2]
     config = load_supply_config(root / "validation/runner-supply.json")
