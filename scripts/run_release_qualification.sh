@@ -29,5 +29,5 @@ docker compose run --rm test-runner python \
   release/goal006/promotion-policy.json \
   release/goal006/release-manifest.json \
   infrastructure/recovery/phase2/fixtures/valid-recovery-bundle.json
-GOAL006_EVIDENCE_DIR=goal006-local-azure-runtime \
+GOAL006_EVIDENCE_DIR=${GOAL006_EVIDENCE_DIR:-goal006-local-azure-runtime} \
   bash scripts/run_goal006_local_azure_verification.sh

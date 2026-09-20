@@ -283,6 +283,7 @@ def execute_gate(
         {
             "BASE_SHA": base_sha,
             "DOCKER_GID": docker_socket_group(),
+            "GOAL006_EVIDENCE_DIR": str(repository / "test-results/wc104/goal006-local-azure-runtime"),
             "HEAD_SHA": head_sha,
             "GIT_COMMON_DIR": str(git_common_dir),
             "REPOSITORY_ROOT": str(repository),

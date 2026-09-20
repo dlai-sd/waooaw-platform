@@ -145,6 +145,9 @@ def test_host_gate_executes_plan_without_resolving_runner(monkeypatch, tmp_path:
     assert local_catalog_gate.execute_gate(tmp_path, "host", "a" * 40, "b" * 40, tmp_path) == 0
     assert "--image-id" not in captured[0]
     assert captured_environment["DOCKER_GID"] == "321"
+    assert captured_environment["GOAL006_EVIDENCE_DIR"] == str(
+        tmp_path / "test-results/wc104/goal006-local-azure-runtime"
+    )
     plan = json.loads((tmp_path / "test-results/wc104/local-plans/host.json").read_text(encoding="utf-8"))
     assert plan["nodes"][0]["command"] == "true"
     assert (tmp_path / "test-results/wc104/metadata/base-sha.txt").read_text() == "b" * 40 + "\n"
