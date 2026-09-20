@@ -30,7 +30,7 @@ def select_plan_node(plan: dict[str, Any], gate_id: str) -> dict[str, Any]:
     return node
 
 
-def compose_command(node: dict[str, Any]) -> list[str]:
+def compose_command(node: dict[str, Any], git_common_dir: str | None = None) -> list[str]:
     environment = node.get("environment", [])
     if not isinstance(environment, list) or not all(isinstance(name, str) and name for name in environment):
         raise ValueError("validation plan node has invalid environment allowlist")
@@ -46,6 +46,8 @@ def compose_command(node: dict[str, Any]) -> list[str]:
     ]
     for name in environment:
         command.extend(("-e", name))
+    if git_common_dir:
+        command.extend(("--volume", f"{git_common_dir}:{git_common_dir}:ro"))
     command.extend(
         (
             node["compose_service"],
@@ -57,10 +59,10 @@ def compose_command(node: dict[str, Any]) -> list[str]:
     return command
 
 
-def execution_command(node: dict[str, Any], docker: str) -> list[str]:
+def execution_command(node: dict[str, Any], docker: str, git_common_dir: str | None = None) -> list[str]:
     if node.get("execution", "container") == "host":
         return ["sh", "-lc", node["command"]]
-    command = compose_command(node)
+    command = compose_command(node, git_common_dir)
     command[0] = docker
     return command
 
@@ -79,8 +81,9 @@ def main() -> int:
     docker = shutil.which("docker")
     if docker is None:
         raise ValueError("runner verification tools are unavailable")
+    git_common_dir = os.environ.get("GIT_COMMON_DIR")
     if node.get("execution", "container") == "host" and node.get("runner_required", True) is False:
-        return subprocess.run(execution_command(node, docker), check=False).returncode  # noqa: S603
+        return subprocess.run(execution_command(node, docker, git_common_dir), check=False).returncode  # noqa: S603
 
     image_variable = f"WAOOAW_RUNNER_{node['runner_id'].upper()}_IMAGE"
     if not os.environ.get(image_variable):
@@ -102,7 +105,7 @@ def main() -> int:
         return verification.returncode
     environment = os.environ.copy()
     environment["WAOOAW_TEST_RUNNER_IMAGE_ID"] = arguments.image_id
-    return subprocess.run(execution_command(node, docker), check=False, env=environment).returncode  # noqa: S603
+    return subprocess.run(execution_command(node, docker, git_common_dir), check=False, env=environment).returncode  # noqa: S603
 
 
 if __name__ == "__main__":

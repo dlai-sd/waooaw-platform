@@ -132,6 +132,15 @@ def test_catalog_gate_forwards_only_declared_environment() -> None:
     assert command[command.index("--pull") + 2 : command.index("test-runner-python")] == ["-e", "DATABASE_URL"]
 
 
+def test_catalog_gate_mounts_linked_worktree_git_directory_read_only() -> None:
+    catalog = load_catalog()
+    plan = build_execution_plan(catalog, ["spec-lint"], mode="qualification", head_sha="a" * 40, run_id="git")
+
+    command = compose_command(plan["nodes"][0], "/workspaces/repository/.git")
+
+    assert command[command.index("--volume") + 1] == "/workspaces/repository/.git:/workspaces/repository/.git:ro"
+
+
 def test_host_orchestration_declares_whether_it_consumes_a_runner() -> None:
     catalog = load_catalog()
     release = build_execution_plan(

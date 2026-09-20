@@ -127,15 +127,24 @@ def test_host_gate_executes_plan_without_resolving_runner(monkeypatch, tmp_path:
         "load_supply_config",
         lambda unused: pytest.fail("host execution resolved a validation runner"),
     )
+    monkeypatch.setattr(local_catalog_gate, "docker_socket_group", lambda: "321")
     captured: list[list[str]] = []
+    captured_environment: dict[str, str] = {}
+
+    def execute(command: list[str], **kwargs: object) -> SimpleNamespace:
+        captured.append(command)
+        captured_environment.update(kwargs["env"])
+        return SimpleNamespace(returncode=0)
+
     monkeypatch.setattr(
         local_catalog_gate.subprocess,
         "run",
-        lambda command, **unused: captured.append(command) or SimpleNamespace(returncode=0),
+        execute,
     )
 
     assert local_catalog_gate.execute_gate(tmp_path, "host", "a" * 40, "b" * 40, tmp_path) == 0
     assert "--image-id" not in captured[0]
+    assert captured_environment["DOCKER_GID"] == "321"
     plan = json.loads((tmp_path / "test-results/wc104/local-plans/host.json").read_text(encoding="utf-8"))
     assert plan["nodes"][0]["command"] == "true"
 

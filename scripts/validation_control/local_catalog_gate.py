@@ -42,6 +42,13 @@ def docker_executable() -> str:
     return docker
 
 
+def docker_socket_group() -> str:
+    socket = Path("/var/run/docker.sock")
+    if not socket.exists():
+        raise ValueError("Docker socket is required for local catalog execution")
+    return str(socket.stat().st_gid)
+
+
 def image_id(image: str, repository: Path) -> str | None:
     completed = subprocess.run(  # noqa: S603
         [docker_executable(), "image", "inspect", image, "--format", "{{.Id}}"],
@@ -265,6 +272,7 @@ def execute_gate(
     environment.update(
         {
             "BASE_SHA": base_sha,
+            "DOCKER_GID": docker_socket_group(),
             "HEAD_SHA": head_sha,
             "GIT_COMMON_DIR": str(git_common_dir),
             "REPOSITORY_ROOT": str(repository),
