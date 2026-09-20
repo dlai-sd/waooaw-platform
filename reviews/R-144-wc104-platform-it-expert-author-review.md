@@ -6,13 +6,13 @@
 | Office | INST-010 - Platform IT Expert |
 | Skill | 8 - CI/CD Orchestration |
 | Implementation base | `d1fff2149cba8940874feca233d565a476149764` |
-| Reviewed implementation | `947f388d8be47f59043aefa07788f08ff122b324` |
+| Reviewed implementation | `143a1a43a6e1a7ce092073e80afa9e5246da97fc` |
 | Review date | 2026-09-20 |
 | Disposition | **PASS - IMPLEMENTATION REVIEWED; WC-104 NOT COMPLETE** |
 
 ## Scope Review
 
-The complete 277-file implementation diff was reviewed against WC-104 and its 19-row requirement
+The complete 279-file implementation diff was reviewed against WC-104 and its 19-row requirement
 ledger. The change remains inside the Platform IT Expert decision space: canonical validation-runner
 identity and supply, catalog execution, trusted evidence reuse, workflow orchestration, isolation,
 gate equivalence, rollback controls, Docker build integration, static-first PR preparation, scoped
@@ -44,6 +44,10 @@ The follow-up repair at `947f388d8be47f59043aefa07788f08ff122b324` removes Git m
 assumptions from the non-persisting prompt dry run and the canonical Buf baseline, and applies the
 pinned CSharpier 1.3.0 format to Business Platform. Real prompt seeding still requires a Git SHA,
 Buf still compares against the repository's `main` branch, and no validation policy was weakened.
+
+The final hosted repair at `143a1a43a6e1a7ce092073e80afa9e5246da97fc` makes the shared catalog
+executor derive `DOCKER_GID` from the mounted daemon socket. Nested-container gates therefore receive
+the required supplementary group in hosted execution as well as local execution.
 
 ## Test And Quality Review
 
@@ -80,7 +84,7 @@ cannot authorize completion.
 - [x] Reviewed security, constitutional, and rollback impact
 - [x] Resolved every finding or recorded no findings
 
-**Reviewed Commit:** 947f388d8be47f59043aefa07788f08ff122b324
+**Reviewed Commit:** 143a1a43a6e1a7ce092073e80afa9e5246da97fc
 **Author Review Result:** PASS
 
 This PASS records completion of the author-review activity for the frozen implementation commit. It
