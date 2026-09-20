@@ -136,6 +136,20 @@ def test_hosted_workflows_use_one_supply_graph_and_never_build_in_consumers() ->
             assert "./.github/actions/use-validation-runner" in rendered, job_id
 
 
+def test_reusable_validation_plan_preserves_consumer_contract() -> None:
+    root = Path(__file__).resolve().parents[2]
+    workflow = yaml.safe_load((root / ".github/workflows/validation-plan.yaml").read_text(encoding="utf-8"))
+    plan = workflow["jobs"]["plan"]
+    rendered = json.dumps(plan)
+
+    assert "release_required" in workflow[True]["workflow_call"]["outputs"]
+    assert plan["outputs"]["release_required"] == "${{ steps.plan.outputs.release_required }}"
+    assert rendered.count("./.github/actions/use-validation-runner") == 1
+    assert '"runner-id": "full"' in rendered
+    assert "wc104-qualification-plan-${{ github.run_id }}" in rendered
+    assert "--all-gates" in rendered
+
+
 def test_supply_workflow_serializes_producers_and_consumers_verify_digests() -> None:
     root = Path(__file__).resolve().parents[2]
     supply = (root / ".github/workflows/validation-runner-supply.yaml").read_text(encoding="utf-8")
