@@ -84,6 +84,7 @@ commands:
   acceptance-as-005: {shell: "sh scripts/validation_control/run_acceptance_gate.sh tests/acceptance/test_as005_agri_suresh.py as-005 -m acceptance"}
   acceptance-pse-failover: {shell: "sh scripts/validation_control/run_acceptance_gate.sh tests/acceptance/test_as_pse_failover.py as-pse"}
   e2e-emergency-stop: {shell: "sh scripts/validation_control/run_acceptance_gate.sh tests/constitutional/test_cct_ho_01_emergency_stop_latency.py emergency-stop-e2e -k e2e"}
+  precheck-gitleaks: {shell: "sh scripts/validation_control/run_gitleaks_gate.sh", execution: host}
 
 gates:
   build: &python_static
@@ -171,6 +172,7 @@ gates:
   acceptance:as-005: {<<: *python_test, gate_id: "acceptance:as-005", command_id: acceptance-as-005, evidence_class: integration, environment: [WAOOAW_API_URL, WAOOAW_TEST_TOKEN, TEST_LANGUAGE], global_trigger: true}
   acceptance:pse-failover: {<<: *python_test, gate_id: "acceptance:pse-failover", command_id: acceptance-pse-failover, evidence_class: integration, environment: [WAOOAW_API_URL, WAOOAW_TEST_TOKEN, PSE_TEST_INJECT_RATE_LIMIT], global_trigger: true}
   e2e:emergency-stop: {<<: *python_test, gate_id: "e2e:emergency-stop", command_id: e2e-emergency-stop, evidence_class: CCT, environment: [WAOOAW_WS_URL, WAOOAW_TEST_TOKEN], global_trigger: true}
+  precheck:gitleaks: {<<: *security_gate, gate_id: "precheck:gitleaks", command_id: precheck-gitleaks, global_trigger: true}
 
 full_gates:
   - build
@@ -283,8 +285,8 @@ global_triggers:
   - work-contracts/**
 documentation_only: [README.md, CHANGELOG.md, docs/**]
 prechecks:
-  gitleaks: {always: true}
-  business_platform: {components: [business-platform]}
-  release_qualification: {gates: [release-qualification]}
+  gitleaks: {always: true, gate: "precheck:gitleaks"}
+  business_platform: {components: [business-platform], gate: "test-dotnet:business-platform"}
+  release_qualification: {gates: [release-qualification], gate: release-qualification}
 release_full_inventory: true
 main_full_inventory: true

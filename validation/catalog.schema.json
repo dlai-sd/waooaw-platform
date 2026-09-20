@@ -60,7 +60,20 @@
     "global_triggers": {"type": "array", "minItems": 1, "items": {"type": "string"}},
     "documentation_only": {"type": "array", "items": {"type": "string"}},
     "enforced_activation": {"type": "object"},
-    "prechecks": {"type": "object"},
+    "prechecks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["gate"],
+        "properties": {
+          "gate": {"type": "string", "minLength": 1},
+          "always": {"type": "boolean"},
+          "components": {"type": "array", "items": {"type": "string"}},
+          "gates": {"type": "array", "items": {"type": "string"}}
+        },
+        "additionalProperties": false
+      }
+    },
     "release_full_inventory": {"type": "boolean"},
     "main_full_inventory": {"type": "boolean"}
   },

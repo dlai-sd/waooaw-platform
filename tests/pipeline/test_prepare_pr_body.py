@@ -257,6 +257,13 @@ def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path)
     assert run_ci_prechecks("origin/main", HEAD, ["src/business-platform/Program.cs", ".github/workflows/ci.yaml"])["passed"]
     nodes = captured["nodes"]
     assert [node.name for node in nodes] == ["gitleaks", "business_platform", "release_qualification"]
+    assert [node.command[node.command.index("--gate") + 1] for node in nodes] == [
+        "precheck:gitleaks",
+        "test-dotnet:business-platform",
+        "release-qualification",
+    ]
+    assert all("docker compose" not in " ".join(node.command) for node in nodes)
+    assert all("run_release_qualification.sh" not in " ".join(node.command) for node in nodes)
     assert captured["graph_version"] == "wc100-prechecks-v2"
     assert captured["configuration_digest"] == configuration_digest()
     assert captured["runner_digest"] == runner_digest(nodes)

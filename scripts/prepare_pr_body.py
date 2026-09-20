@@ -44,6 +44,11 @@ PRECHECK_GRAPH_VERSION = "wc100-prechecks-v2"
 PRECHECK_CONFIGURATION_PATHS = (
     Path(__file__),
     Path(__file__).with_name("precheck_orchestrator.py"),
+    Path(__file__).parent / "validation_control/local_catalog_gate.py",
+    Path(__file__).parent / "validation_control/catalog_execution.py",
+    Path(__file__).parent / "validation_control/orchestrator.py",
+    Path(__file__).parent / "validation_control/runner_supply.py",
+    Path(__file__).parent / "validation_control/run_gitleaks_gate.sh",
     VALIDATION_POLICY_PATH,
     Path(__file__).resolve().parents[1] / "docker-compose.yml",
     Path(__file__).with_name("run_release_qualification.sh"),
@@ -317,63 +322,39 @@ def precheck_nodes(
     head: str,
     changed_files: list[str],
 ) -> list[PrecheckNode]:
-    docker = shutil.which("docker")
-    if docker is None:
-        raise ValueError("docker executable is required for PR prechecks")
     applicable_prechecks = selected_prechecks(changed_files)
-    nodes = [
-        PrecheckNode(
-            name="gitleaks",
-            command=(
-                docker,
-                "run",
-                "--rm",
-                "-v",
-                f"{repository_root}:/repo:ro",
-                "-v",
-                f"{git_common_dir}:{git_common_dir}:ro",
-                "zricethezav/gitleaks:v8.28.0",
-                "git",
-                "/repo",
-                "--log-opts",
-                f"{base}..{head}",
-                "--no-banner",
-                "--redact",
-            ),
-        )
-    ]
-    if "business_platform" in applicable_prechecks:
+    loaded = yaml.safe_load(VALIDATION_POLICY_PATH.read_text(encoding="utf-8"))
+    precheck_config = loaded.get("prechecks") if isinstance(loaded, dict) else None
+    if not isinstance(precheck_config, dict):
+        raise ValueError("validation catalog prechecks must be a mapping")
+    python = shutil.which("python3")
+    if python is None:
+        raise ValueError("python3 executable is required for PR prechecks")
+    local_executor = repository_root / "scripts/validation_control/local_catalog_gate.py"
+    nodes: list[PrecheckNode] = []
+    for name in ("gitleaks", "business_platform", "release_qualification"):
+        if name not in applicable_prechecks:
+            continue
+        config = precheck_config.get(name)
+        gate_id = config.get("gate") if isinstance(config, dict) else None
+        if not isinstance(gate_id, str) or not gate_id:
+            raise ValueError(f"validation catalog precheck {name} has no gate")
         nodes.append(
             PrecheckNode(
-                name="business_platform",
+                name=name,
                 command=(
-                    docker,
-                    "compose",
-                    "--profile",
-                    "test-dotnet",
-                    "run",
-                    "--rm",
-                    "test-runner-dotnet",
-                    "sh",
-                    "-lc",
-                    "dotnet restore tests/business-platform.Tests/business-platform.Tests.csproj "
-                    "--artifacts-path /tmp/artifacts/business-platform-precheck && "
-                    "dotnet build tests/business-platform.Tests/business-platform.Tests.csproj "
-                    "--artifacts-path /tmp/artifacts/business-platform-precheck --no-restore -warnaserror && "
-                    "dotnet test tests/business-platform.Tests/business-platform.Tests.csproj "
-                    "--artifacts-path /tmp/artifacts/business-platform-precheck "
-                    "--no-build --settings tests/coverage.runsettings --collect:'XPlat Code Coverage' "
-                    "--results-directory /workspace/test-results/coverage/business-platform",
+                    python,
+                    str(local_executor),
+                    "--gate",
+                    gate_id,
+                    "--base",
+                    base,
+                    "--head",
+                    head,
+                    "--git-common-dir",
+                    str(git_common_dir),
                 ),
-                heavy=True,
-            )
-        )
-    if "release_qualification" in applicable_prechecks:
-        nodes.append(
-            PrecheckNode(
-                name="release_qualification",
-                command=(str(repository_root / "scripts/run_release_qualification.sh"),),
-                heavy=True,
+                heavy=name != "gitleaks",
             )
         )
     return nodes

@@ -67,23 +67,30 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--plan", type=Path, required=True)
     parser.add_argument("--gate", required=True)
-    parser.add_argument("--image-id", required=True)
+    parser.add_argument("--image-id")
     arguments = parser.parse_args()
 
     plan = json.loads(arguments.plan.read_text(encoding="utf-8"))
     if not isinstance(plan, dict):
         raise ValueError("validation plan root must be a mapping")
     node = select_plan_node(plan, arguments.gate)
+    docker = shutil.which("docker")
+    if docker is None:
+        raise ValueError("runner verification tools are unavailable")
+    if node.get("execution", "container") == "host":
+        return subprocess.run(execution_command(node, docker), check=False).returncode  # noqa: S603
+
     image_variable = f"WAOOAW_RUNNER_{node['runner_id'].upper()}_IMAGE"
     if not os.environ.get(image_variable):
         raise ValueError(f"{image_variable} is not set by the verified runner consumer")
+    if arguments.image_id is None:
+        raise ValueError("--image-id is required for runner-backed catalog execution")
 
     artifact_root = Path("test-results")
     artifact_root.mkdir(exist_ok=True)
     artifact_root.chmod(0o777)
     verifier = Path("scripts/verify_runner_image.sh").resolve()
-    docker = shutil.which("docker")
-    if not verifier.is_file() or docker is None:
+    if not verifier.is_file():
         raise ValueError("runner verification tools are unavailable")
     verification = subprocess.run(  # noqa: S603
         [str(verifier), node["profile"], node["compose_service"], arguments.image_id],

@@ -62,7 +62,25 @@ def test_full_runner_is_limited_to_cross_stack_release_gates() -> None:
 
     full_runner_gates = {gate_id for gate_id, gate in catalog["gates"].items() if gate["runner_id"] == "full"}
 
-    assert full_runner_gates == {"release-qualification", "spec-lint", "e2e:accessibility"}
+    assert full_runner_gates == {
+        "release-qualification",
+        "spec-lint",
+        "e2e:accessibility",
+    }
+
+
+def test_local_precheck_commands_are_catalog_owned_and_tool_pinned() -> None:
+    root = Path(__file__).resolve().parents[2]
+    catalog = load_catalog()
+
+    assert catalog["prechecks"] == {
+        "gitleaks": {"always": True, "gate": "precheck:gitleaks"},
+        "business_platform": {"components": ["business-platform"], "gate": "test-dotnet:business-platform"},
+        "release_qualification": {"gates": ["release-qualification"], "gate": "release-qualification"},
+    }
+    gitleaks = (root / "scripts/validation_control/run_gitleaks_gate.sh").read_text(encoding="utf-8")
+    assert "zricethezav/gitleaks@sha256:" in gitleaks
+    assert "zricethezav/gitleaks:v" not in gitleaks
 
 
 def test_concurrent_runs_receive_distinct_namespaces() -> None:
