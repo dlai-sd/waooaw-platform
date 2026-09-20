@@ -174,27 +174,27 @@ C-023 evidence before success.
 
 | Requirement | Story / journey | Evidence class | Required executable evidence |
 |---|---|---|---|
-| WC103-R01 | S01 / J1-J2 | Local Docker + actual provider | Clean-profile Google/Facebook callback-to-visitor journeys; Apple dark until gated |
-| WC103-R02 | S02 / J3, J13 | PostgreSQL integration + browser | New visitor Trial and Hire each create one account/tenant/membership and resume intent |
-| WC103-R03 | S03 / J4 | Integration + browser | Returning identity reaches correct portal; inactive/wrong membership denies |
-| WC103-R04 | S04 / J5 | Security integration + browser | Verified-email, recovery, enumeration and rate-limit matrix |
-| WC103-R05 | S05 / J6-J7 | Unit + browser + exact release | Logout cleanup sentinel; history/refresh/direct-route no-silent-reauth matrix |
-| WC103-R06 | S06 / J8-J9 | Browser + actual provider | Account-selection intent and second-account journey with zero prior residue |
-| WC103-R07 | S07 / J10, J16 | Integration + exact release | Expiry, rotation, replay, revoke-one/all and downstream stale-token denial |
-| WC103-R08 | S08 / J11-J13 | Provider-neutral browser matrix | Cancel, unavailable, timeout, callback failure and unverified-email outcomes |
-| WC103-R09 | S09 / J14 | Hostile integration | Same-email/different-subject denial, fresh dual proof and anti-enumeration |
-| WC103-R10 | S10 / J15 | CCT + integration | Freshness, factor, bound-intent, membership/RLS and Evidence First checks |
-| WC103-R11 | S11 / J16 | PostgreSQL + browser | Session inventory authorization, privacy projection, idempotent revoke-one/all |
-| WC103-R12 | S12 / J17 | PostgreSQL + security | Event taxonomy, append-only controls, RLS, retention, redaction and failure injection |
-| WC103-R13 | S13 / J1, J3-J4, J8, J11-J14 | Synthetic + actual Apple | Stable subject, private relay, key rotation, transfer/revocation and acceptance |
-| WC103-R14 | All | Contract/static | No token/PII leakage, no browser tenant authority, exact allowlists and generated-client consistency |
-| WC103-R15 | All | Actual cloud | One exact immutable Demo candidate completes the enabled-provider journey matrix |
+| WC103-R001 | S01 / J1-J2 | Local Docker + actual provider | Clean-profile Google/Facebook callback-to-visitor journeys; Apple dark until gated |
+| WC103-R002 | S02 / J3, J13 | PostgreSQL integration + browser | New visitor Trial and Hire each create one account/tenant/membership and resume intent |
+| WC103-R003 | S03 / J4 | Integration + browser | Returning identity reaches correct portal; inactive/wrong membership denies |
+| WC103-R004 | S04 / J5 | Security integration + browser | Verified-email, recovery, enumeration and rate-limit matrix |
+| WC103-R005 | S05 / J6-J7 | Unit + browser + exact release | Logout cleanup sentinel; history/refresh/direct-route no-silent-reauth matrix |
+| WC103-R006 | S06 / J8-J9 | Browser + actual provider | Account-selection intent and second-account journey with zero prior residue |
+| WC103-R007 | S07 / J10, J16 | Integration + exact release | Expiry, rotation, replay, revoke-one/all and downstream stale-token denial |
+| WC103-R008 | S08 / J11-J13 | Provider-neutral browser matrix | Cancel, unavailable, timeout, callback failure and unverified-email outcomes |
+| WC103-R009 | S09 / J14 | Hostile integration | Same-email/different-subject denial, fresh dual proof and anti-enumeration |
+| WC103-R010 | S10 / J15 | CCT + integration | Freshness, factor, bound-intent, membership/RLS and Evidence First checks |
+| WC103-R011 | S11 / J16 | PostgreSQL + browser | Session inventory authorization, privacy projection, idempotent revoke-one/all |
+| WC103-R012 | S12 / J17 | PostgreSQL + security | Event taxonomy, append-only controls, RLS, retention, redaction and failure injection |
+| WC103-R013 | S13 / J1, J3-J4, J8, J11-J14 | Synthetic + actual Apple | Stable subject, private relay, key rotation, transfer/revocation and acceptance |
+| WC103-R014 | All | Contract/static | No token/PII leakage, no browser tenant authority, exact allowlists and generated-client consistency |
+| WC103-R015 | All | Actual cloud | One exact immutable Demo candidate completes the enabled-provider journey matrix |
 
 ## 11. Definition Of Done
 
 WC-103 is complete only when:
 
-1. WC103-R01 through WC103-R15 each have an exact result of `PASS`, `BLOCKED`, `DEFERRED` or
+1. WC103-R001 through WC103-R015 each have an exact result of `PASS`, `BLOCKED`, `DEFERRED` or
    `NOT_APPLICABLE`, with only unavailable-provider activation rows permitted to remain `DEFERRED`.
 2. Every enabled Target Authentication Journey has direct evidence on one exact immutable candidate;
    aggregate counts and redirects alone are insufficient.
@@ -273,7 +273,7 @@ contract without inventing a mutable log or cross-ledger join.
 ### 15.3 Solution Architect Final Author Review
 
 The complete specification was reviewed against the Founder objective, all 17 Target Authentication
-Journeys, AUTH-D01 through AUTH-D12, WC103-R01 through WC103-R15, the controlling identity
+Journeys, AUTH-D01 through AUTH-D12, WC103-R001 through WC103-R015, the controlling identity
 architecture, constitutional obligations, Security/Data findings, failure modes, operability,
 rollback and evidence classes. The stale ADR-003 index summary was corrected to the accepted WC-085
 membership-authority amendment. No requirement lacks an owner or direct acceptance class, no new
