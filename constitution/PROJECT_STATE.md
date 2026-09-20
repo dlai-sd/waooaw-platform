@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 182
-**Last Updated:** 2026-09-19 (WC-102 ENGINEERING QUALIFIED CHECKPOINT)
+**State Revision:** 183
+**Last Updated:** 2026-09-20 (WC-104 CORRECTIVE SPECIFICATION CHECKPOINT)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-080 - Agent Runtime Adapter Contract v1 |
 | Latest merge | PR #457 merged to `main` as `502f70b5` |
-| Active delivery | WC-103 Multi-Tenant Authentication Journeys is specification-ready and implementation-gated; WC-099 actual-cloud journey acceptance, WC-100 Shadow evidence, WC-102 selective-enforcement evidence, WC-090 real-provider acceptance and WC-089 DMA Release 1 remain bounded; P3-EX11 remains plan-only |
+| Active delivery | WC-103 Multi-Tenant Authentication Journeys and WC-104 End-to-End Docker Runner Supply are specification-ready and implementation-gated; WC-104 corrects unresolved WC-102 runner distribution, cache, catalog execution, evidence reuse and hosted measurement gaps without activating selective enforcement; other bounded delivery remains unchanged |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 
@@ -90,11 +90,12 @@ downstream membership and browser account-switch qualification remain open; CB-0
 
 ## Next Authorized Action
 
-Submit WC-103's implementation-ready authentication specification and one-pass Security/Data
-contracts for Founder review. Do not begin implementation, create migrations, mutate providers or
-deploy under WC-103 without explicit current-session Founder authorization. After acceptance, execute
-the requirement ledger as one atomic work component; unavailable Apple/email paths remain dark until
-their independent gates pass.
+Submit WC-103's authentication specification and WC-104's corrective Docker runner-supply
+specification for Founder review. Neither specification authorizes implementation. Do not change
+workflows, scripts, Dockerfiles, registry state, providers, migrations or deployments under these
+contracts without explicit current-session Founder authorization. WC-104 implementation must close
+every defect and ledger row as one end-to-end work component; full PR, `main` and release validation
+remain authoritative, and selective enforcement remains separately Founder-gated.
 
 Submit WC-102 as an unmerged Shadow-mode PR for Founder review; do not activate selective PR execution before the 20-sample Shadow floor and separate Founder approval. Submit WC-099 Iterations 2 and 3 as one unmerged implementation PR for Founder review; do not deploy it to Demo without separate work-component authority. Submit WC-100 as an unmerged Shadow-mode PR for Founder review and hosted full-CI evidence; do not
 activate selected PR execution before the required Shadow window and separate Founder approval.
