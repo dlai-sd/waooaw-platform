@@ -6,17 +6,17 @@
 | Office | INST-010 - Platform IT Expert |
 | Skill | 8 - CI/CD Orchestration |
 | Implementation base | `d1fff2149cba8940874feca233d565a476149764` |
-| Reviewed implementation | `d4f327f4e37b18142d8adfb1959d95349b33123b` |
+| Reviewed implementation | `f54ec65c898b8d5b3802cbd734624ce9ec771ae9` |
 | Review date | 2026-09-20 |
 | Disposition | **PASS - IMPLEMENTATION REVIEWED; WC-104 NOT COMPLETE** |
 
 ## Scope Review
 
-The complete 77-file implementation diff was reviewed against WC-104 and its 16-row requirement
+The complete 82-file implementation diff was reviewed against WC-104 and its 19-row requirement
 ledger. The change remains inside the Platform IT Expert decision space: canonical validation-runner
 identity and supply, catalog execution, trusted evidence reuse, workflow orchestration, isolation,
-gate equivalence, rollback controls, and Docker build integration. Selective enforcement remains
-disabled.
+gate equivalence, rollback controls, Docker build integration, static-first PR preparation, scoped
+local prechecks, and verified cross-head evidence carry-forward. Selective enforcement remains disabled.
 
 ## Findings
 
@@ -30,11 +30,18 @@ WC104-R016 remains BLOCKED because its dependency rows are blocked and the recor
 rehearsal attempted all 43 gates but passed only 16. WC-104 therefore remains in progress and
 partially qualified.
 
+Corrective defects D14 through D16 are resolved. Deterministic PR, ledger, catalog, Compose and
+output failures stop before costly prechecks; local costly selection is independent from the full
+hosted inventory; and cross-head reuse requires immutable source evidence plus ancestry,
+declared-input and non-intersection proof bound to the current head.
+
 ## Test And Quality Review
 
-The reviewed implementation passes 99 validation-control tests and 87 changed pipeline-control
-tests in the canonical Docker runner. The retained R014 isolation/security suite passes 39 tests,
-and the 16-row requirement ledger validates with nine local PASS rows. The complete all-profile
+The reviewed implementation passes a bounded 170-test validation-control and changed-policy suite
+in 5.99 seconds in the canonical Docker runner; its focused R017-R019 subset passes 63 tests in
+2.76 seconds. Focused Ruff lint and format checks pass, Compose renders successfully, and the
+19-row requirement ledger validates with twelve local PASS rows. The retained R014
+isolation/security suite passes 39 tests. The complete all-profile
 Compose build passes 211/211 BuildKit steps and builds all 16 custom images. The diagnostic rollback
 record remains `validation/evidence/wc104-rollback-rehearsal.json`; it is not completion evidence.
 
@@ -55,7 +62,7 @@ cannot authorize completion.
 - [x] Reviewed security, constitutional, and rollback impact
 - [x] Resolved every finding or recorded no findings
 
-**Reviewed Commit:** d4f327f4e37b18142d8adfb1959d95349b33123b
+**Reviewed Commit:** f54ec65c898b8d5b3802cbd734624ce9ec771ae9
 **Author Review Result:** PASS
 
 This PASS records completion of the author-review activity for the frozen implementation commit. It
