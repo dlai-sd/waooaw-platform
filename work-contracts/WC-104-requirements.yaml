@@ -197,5 +197,5 @@ requirements:
     completion_rule: Every row independently reports PASS with direct evidence, rollback passes and author review records no unresolved finding.
     residual_risk: Founder approval, merge and external service availability remain outside author qualification.
     result: BLOCKED
-    blocker_reason: The clean rehearsal traversed all gates but did not pass, and hosted dependencies R001, R002, R004, R007, R009 and R013 remain blocked.
-    evidence_refs: [validation/evidence/wc104-rollback-rehearsal.json]
+    blocker_reason: Author review R-144 passes for implementation commit 17dab0f4, but the clean rehearsal traversed all gates without passing and hosted dependencies R001, R002, R004, R007, R009 and R013 remain blocked.
+    evidence_refs: [validation/evidence/wc104-rollback-rehearsal.json, reviews/R-144-wc104-platform-it-expert-author-review.md]
