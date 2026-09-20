@@ -7,7 +7,7 @@
 | Office | INST-010 - Platform IT Expert |
 | Skill | 8 - CI/CD Orchestration |
 | Implementation base | `8c340d8769c66276e2771b9d7b3b398909daf6b8` |
-| Reviewed implementation | `3767a0e5922e6e3fe7e3a5921c3030380008f978` |
+| Reviewed implementation | `9843b6e3e09875102d8a0ead6288f98d46616d77` |
 | Review date | 2026-09-20 |
 | Disposition | **PASS - FOLLOW-UP IMPLEMENTATION REVIEWED** |
 
@@ -28,10 +28,14 @@ patch clarification, not a new constitutional claim, capability, Skill, prompt, 
 or Decision Space amendment. `constitution/AGENT-ENTRY.md` is aligned; prior Skill 17 activation and
 Founder-reserved approval and merge boundaries remain unchanged.
 
+The WC-104 ledger is bound to the amended contract digest and atomizes D17-D19 as WC104-R020 through
+WC104-R022. The ledger validator accepts all 22 requirements without hiding the new obligations in an
+aggregate or relying on prior WC-104 qualification as substitute evidence.
+
 ## Test And Quality Review
 
-The canonical focused Python runner passes 94 tests covering the orchestrator, PR preparation,
-CI prechecks, validation efficiency, catalog contracts, and agent operating policy. Focused Ruff lint
+The canonical focused Python runner passes 102 tests covering the requirement ledger, orchestrator,
+PR preparation, CI prechecks, validation efficiency, catalog contracts, and agent operating policy. Focused Ruff lint
 and format checks pass, Compose renders successfully, and `git diff --check` passes. Tests prove exact
 reuse provenance, carry-forward provenance, nearest valid ancestor selection independent of path
 order, invalid-nearest fallback, non-ancestor rejection, missing-distance rejection, changed-input
@@ -52,7 +56,7 @@ converted into PASS evidence.
 - [x] Reviewed security, constitutional, and rollback impact
 - [x] Resolved every finding or recorded no findings
 
-**Reviewed Commit:** 3767a0e5922e6e3fe7e3a5921c3030380008f978
+**Reviewed Commit:** 9843b6e3e09875102d8a0ead6288f98d46616d77
 **Author Review Result:** PASS
 
 This review is author evidence, not approval or merge authority. Final pushed-head hosted
