@@ -61,7 +61,7 @@ thresholds:
   validation/engineering-validation.yaml:
     - '\"lines\":90,\"branches\":80,\"functions\":90,\"statements\":90'
   scripts/validation_control/run_dotnet_mutation_gate.sh:
-    - "--threshold-high 80 --threshold-low 75 --threshold-break 65"
+    - "--threshold-high 80 --threshold-low 75 --break-at 65"
   scripts/validation_control/run_python_mutation_gate.sh:
     - '"${score:-0}" -lt 60'
 required_evidence_classes: [CCT, browser, contract, coverage, integration, release, security, static]

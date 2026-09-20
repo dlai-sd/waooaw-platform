@@ -59,3 +59,21 @@ def test_matrix_and_literal_catalog_bindings_are_detected() -> None:
     assert "test-dotnet:constitutional-engine" in gates
     assert "test-python:ai-runtime" in gates
     assert "release-qualification" in gates
+
+
+def test_lower_dotnet_mutation_break_threshold_fails_equivalence(tmp_path: Path) -> None:
+    baseline = load_baseline()
+    required_files = set(baseline["workflows"]) | set(baseline["thresholds"]) | {"validation/engineering-validation.yaml"}
+    for source in required_files:
+        destination = tmp_path / source
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes((ROOT / source).read_bytes())
+    mutation_gate = tmp_path / "scripts/validation_control/run_dotnet_mutation_gate.sh"
+    mutation_gate.write_text(mutation_gate.read_text().replace("--break-at 65", "--break-at 64"), encoding="utf-8")
+
+    violations = validate_gate_equivalence(tmp_path, baseline)
+
+    assert (
+        "THRESHOLD_REDUCED:scripts/validation_control/run_dotnet_mutation_gate.sh:--threshold-high 80 --threshold-low 75 --break-at 65"
+        in violations
+    )

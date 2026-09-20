@@ -155,6 +155,13 @@ def test_python_builds_write_bytecode_only_to_disposable_state() -> None:
         assert "python -m compileall -q src/" in command
 
 
+def test_dotnet_mutation_thresholds_match_pinned_stryker_cli() -> None:
+    source = (Path(__file__).resolve().parents[2] / "scripts/validation_control/run_dotnet_mutation_gate.sh").read_text()
+
+    assert "--threshold-high 80 --threshold-low 75 --break-at 65" in source
+    assert "--threshold-break" not in source
+
+
 def test_host_orchestration_declares_whether_it_consumes_a_runner() -> None:
     catalog = load_catalog()
     release = build_execution_plan(
