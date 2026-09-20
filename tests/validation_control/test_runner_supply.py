@@ -488,3 +488,13 @@ def test_every_runner_base_is_digest_pinned_and_has_locked_package_caches() -> N
     assert "wc104-typescript-pnpm" in (root / config["runners"]["typescript"]["dockerfile"]).read_text()
     python_runner = (root / config["runners"]["python"]["dockerfile"]).read_text()
     assert "COPY --from=buf /usr/local/bin/buf /usr/local/bin/buf" in python_runner
+
+
+def test_full_runner_includes_buildx_for_clean_local_runner_supply() -> None:
+    root = Path(__file__).resolve().parents[2]
+    config = load_supply_config(root / "validation/runner-supply.json")
+    full = config["runners"]["full"]
+    dockerfile = (root / full["dockerfile"]).read_text(encoding="utf-8")
+
+    assert "docker-buildx" in full["system_packages"]
+    assert "    docker-buildx \\\n" in dockerfile

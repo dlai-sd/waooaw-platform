@@ -42,7 +42,7 @@
     "full": {
       "dockerfile": "architecture/reference/dockerfiles/Dockerfile.test-runner",
       "base_image_digest": "sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e",
-      "system_packages": ["curl", "docker-compose-v2", "docker.io", "gh", "git", "jq", "python-is-python3", "python3", "python3-pip"],
+      "system_packages": ["curl", "docker-buildx", "docker-compose-v2", "docker.io", "gh", "git", "jq", "python-is-python3", "python3", "python3-pip"],
       "build_arguments": {},
       "platform": "linux/amd64",
       "context_inputs": [
