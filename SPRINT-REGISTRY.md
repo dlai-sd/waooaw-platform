@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-09-20 · **Version:** 1.45.0 · **Work Contracts:** 96 recorded (81 closed · 15 active · 1 blocked)
+**Last Updated:** 2026-09-20 · **Version:** 1.45.0 · **Work Contracts:** 97 recorded (81 closed · 16 active · 1 blocked)
 
 **Reference hierarchy:** This file is the canonical compact Work Contract and delivery index. `README.md`
 is the operator entry and routing summary; `constitution/PROJECT_STATE.md` records only the current
@@ -32,6 +32,7 @@ constitutional-repair record. Agents must select the record by title and Goal, n
 | **WC-100** | Engineering Validation Efficiency | Validation control improvement | IMPLEMENTATION MERGED · SHADOW ACTIVATION EVIDENCE REMAINS GATED | WC-099 · PR #449 | Change-aware validation and immutable evidence controls merged without replacing authoritative CI |
 | **WC-102** | Docker-Only Validation Control Plane | Validation control implementation | IMPLEMENTATION MERGED · SELECTIVE ENFORCEMENT REMAINS GATED | WC-100 · WC-101 · ADR-050 · PR #456 | Docker-only control plane merged; 20-sample Shadow floor and Founder activation remain required |
 | **WC-103** | Multi-Tenant Authentication Journeys | Solution Architecture and constitutional closure | IMPLEMENTATION-READY SPECIFICATION · IMPLEMENTATION NOT AUTHORIZED | WC-083 · WC-090 · WC-092→094 · WC-098→099 · ADR-003/008/009/011 · Issue #458 | Defect-to-story-to-journey-to-DoD traceability plus one-pass Security/Data contracts; Founder review required |
+| **WC-104** | End-to-End Docker Runner Supply And Cache Reuse | Corrective validation architecture | IMPLEMENTATION-READY SPECIFICATION · IMPLEMENTATION NOT AUTHORIZED | WC-100→102 · ADR-012/013/045/050 | Immutable GHCR runner supply, remote BuildKit caches, catalog execution, exact evidence reuse and hosted build-count proof across local, PR and main lifecycles |
 
 ### Parked Owner Contracts From Delivered WC-084
 
@@ -184,6 +185,7 @@ only where an implementation PR merged.
 | WC-101 | Docker-Only Validation Architecture | Enterprise Architect | 1.45.0 | Founder-accepted architecture delivered with PR #456; no independent runtime component |
 | WC-102 | Docker-Only Validation Control Plane | Platform IT Expert | 1.45.0 | Docker-only control plane merged in PR #456 with PR #457 follow-up |
 | WC-103 | Multi-Tenant Authentication Journeys | Solution Architect | 1.45.0 | Implementation-ready authentication specification and one-pass Security/Data closure; implementation not authorized |
+| WC-104 | End-to-End Docker Runner Supply And Cache Reuse | Solution Architect | 1.45.0 | Corrective end-to-end validation-runner supply and cache architecture; implementation not authorized |
 
 ---
 
