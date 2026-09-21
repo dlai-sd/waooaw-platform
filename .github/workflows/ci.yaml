@@ -281,9 +281,7 @@ jobs:
     name: .NET unit tests
     runs-on: ubuntu-latest
     needs: [runner-supply, validation-plan]
-    if: >-
-      contains(fromJSON(needs.validation-plan.outputs.selected_gates), 'test-dotnet:constitutional-engine') ||
-      contains(fromJSON(needs.validation-plan.outputs.selected_gates), 'test-dotnet:business-platform')
+    if: needs.validation-plan.outputs.dotnet_test_matrix != '[]'
     strategy:
       fail-fast: false
       matrix:
@@ -335,9 +333,7 @@ jobs:
     name: Python unit tests + lint
     runs-on: ubuntu-latest
     needs: [runner-supply, validation-plan]
-    if: >-
-      contains(fromJSON(needs.validation-plan.outputs.selected_gates), 'test-python:professional-runtime') ||
-      contains(fromJSON(needs.validation-plan.outputs.selected_gates), 'test-python:ai-runtime')
+    if: needs.validation-plan.outputs.python_test_matrix != '[]'
     strategy:
       matrix:
         include: ${{ fromJSON(needs.validation-plan.outputs.python_test_matrix) }}
@@ -846,17 +842,7 @@ jobs:
     if: >-
       always() &&
       github.event_name == 'push' &&
-      github.ref == 'refs/heads/main' &&
-      needs.publish.result == 'success' &&
-      needs.secrets.result == 'success' &&
-      needs.test-dotnet.result == 'success' &&
-      needs.test-python.result == 'success' &&
-      needs.test-web.result == 'success' &&
-      needs.spec-lint.result == 'success' &&
-      needs.sast.result == 'success' &&
-      needs.trivy.result == 'success' &&
-      needs.dep-scan.result == 'success' &&
-      needs.license-check.result == 'success'
+      github.ref == 'refs/heads/main'
     needs:
       - build
       - publish
@@ -876,6 +862,37 @@ jobs:
       id-token: write
       attestations: write
     steps:
+      - name: Require successful exact-seven validation prerequisites
+        env:
+          PUBLISH_RESULT: ${{ needs.publish.result }}
+          SECRETS_RESULT: ${{ needs.secrets.result }}
+          DOTNET_RESULT: ${{ needs.test-dotnet.result }}
+          PYTHON_RESULT: ${{ needs.test-python.result }}
+          WEB_RESULT: ${{ needs.test-web.result }}
+          SPEC_LINT_RESULT: ${{ needs.spec-lint.result }}
+          SAST_RESULT: ${{ needs.sast.result }}
+          TRIVY_RESULT: ${{ needs.trivy.result }}
+          DEPENDENCY_SCAN_RESULT: ${{ needs.dep-scan.result }}
+          LICENSE_RESULT: ${{ needs.license-check.result }}
+        run: |
+          for prerequisite in \
+            "publish=$PUBLISH_RESULT" \
+            "secrets=$SECRETS_RESULT" \
+            "test-dotnet=$DOTNET_RESULT" \
+            "test-python=$PYTHON_RESULT" \
+            "test-web=$WEB_RESULT" \
+            "spec-lint=$SPEC_LINT_RESULT" \
+            "sast=$SAST_RESULT" \
+            "trivy=$TRIVY_RESULT" \
+            "dep-scan=$DEPENDENCY_SCAN_RESULT" \
+            "license-check=$LICENSE_RESULT"; do
+            name=${prerequisite%%=*}
+            result=${prerequisite#*=}
+            test "$result" = success || {
+              echo "Release prerequisite $name concluded $result; refusing to omit the exact-seven artifact." >&2
+              exit 1
+            }
+          done
       - uses: actions/checkout@v4
 
       - name: Download exact-seven registry digests

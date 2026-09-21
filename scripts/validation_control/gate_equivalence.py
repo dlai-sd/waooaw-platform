@@ -16,6 +16,16 @@ import yaml
 
 SCHEMA = "waooaw.authoritative-gate-baseline/v1"
 CATALOG_ACTION = "./.github/actions/run-validation-gate"
+MATRIX_OUTPUT_GATES = {
+    "dotnet_test_matrix": {
+        "test-dotnet:constitutional-engine",
+        "test-dotnet:business-platform",
+    },
+    "python_test_matrix": {
+        "test-python:professional-runtime",
+        "test-python:ai-runtime",
+    },
+}
 
 
 def workflow_catalog_gates(workflow: dict[str, Any]) -> set[str]:
@@ -34,6 +44,9 @@ def workflow_catalog_gates(workflow: dict[str, Any]) -> set[str]:
         condition = job.get("if", "")
         if isinstance(condition, str):
             gates.update(re.findall(r"selected_gates\), '([^']+)'", condition))
+            for output, output_gates in MATRIX_OUTPUT_GATES.items():
+                if f"needs.validation-plan.outputs.{output}" in condition:
+                    gates.update(output_gates)
         steps = job.get("steps", [])
         if not isinstance(steps, list):
             continue

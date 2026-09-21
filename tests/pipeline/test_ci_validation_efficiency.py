@@ -128,17 +128,36 @@ def test_required_gate_aggregation_is_preserved() -> None:
 def test_costly_ci_jobs_are_guarded_by_the_validation_plan() -> None:
     ci = load_ci()
 
-    for job_id in ("test-dotnet", "test-python", "test-web", "spec-lint", "sast", "dep-scan", "license-check"):
+    assert ci["jobs"]["test-dotnet"]["if"] == "needs.validation-plan.outputs.dotnet_test_matrix != '[]'"
+    assert ci["jobs"]["test-python"]["if"] == "needs.validation-plan.outputs.python_test_matrix != '[]'"
+    for job_id in ("test-web", "spec-lint", "sast", "dep-scan", "license-check"):
         condition = ci["jobs"][job_id].get("if", "")
         assert "needs.validation-plan.outputs.selected_gates" in condition, job_id
         assert "validation-plan" in (
-            [ci["jobs"][job_id]["needs"]]
-            if isinstance(ci["jobs"][job_id]["needs"], str)
-            else ci["jobs"][job_id]["needs"]
+            [ci["jobs"][job_id]["needs"]] if isinstance(ci["jobs"][job_id]["needs"], str) else ci["jobs"][job_id]["needs"]
         ), job_id
-    assert ci["jobs"]["release-qualification"]["if"] == (
-        "needs.validation-plan.outputs.release_required == 'true'"
-    )
+    assert ci["jobs"]["release-qualification"]["if"] == ("needs.validation-plan.outputs.release_required == 'true'")
+
+
+def test_main_release_manifest_fails_when_a_prerequisite_is_not_successful() -> None:
+    release_manifest = load_ci()["jobs"]["release-manifest"]
+
+    assert release_manifest["if"] == ("always() && github.event_name == 'push' && github.ref == 'refs/heads/main'")
+    prerequisite = release_manifest["steps"][0]
+    assert prerequisite["name"] == "Require successful exact-seven validation prerequisites"
+    assert set(prerequisite["env"]) == {
+        "PUBLISH_RESULT",
+        "SECRETS_RESULT",
+        "DOTNET_RESULT",
+        "PYTHON_RESULT",
+        "WEB_RESULT",
+        "SPEC_LINT_RESULT",
+        "SAST_RESULT",
+        "TRIVY_RESULT",
+        "DEPENDENCY_SCAN_RESULT",
+        "LICENSE_RESULT",
+    }
+    assert 'test "$result" = success' in prerequisite["run"]
 
 
 def test_shadow_mode_keeps_full_main_publication_authoritative() -> None:

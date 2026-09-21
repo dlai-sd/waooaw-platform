@@ -271,8 +271,16 @@ def classify_paths(
         },
     }
     selected_gate_set = set(selected_gates)
+    aggregate_matrix_gates = {
+        "dotnet_test_matrix": "test-dotnet",
+        "python_test_matrix": "test-python",
+    }
     gate_matrices = {
-        name: [definition[gate] for gate in definition if gate in selected_gate_set]
+        name: [
+            definition[gate]
+            for gate in definition
+            if gate in selected_gate_set or aggregate_matrix_gates.get(name) in selected_gate_set
+        ]
         for name, definition in gate_matrix_definitions.items()
     }
     prechecks = policy.get("prechecks", {})

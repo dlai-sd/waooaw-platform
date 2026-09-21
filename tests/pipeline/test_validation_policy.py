@@ -112,11 +112,22 @@ def test_component_change_selects_required_runners_and_service_images() -> None:
         "web",
     ]
     assert {entry["name"] for entry in result["service_build_matrix"]} == set(result["service_builds"])
+    assert result["dotnet_test_matrix"] == [{"service": "business-platform", "gate": "test-dotnet:business-platform"}]
+    assert result["python_test_matrix"] == [{"service": "professional-runtime", "gate": "test-python:professional-runtime"}]
+
+
+def test_push_full_inventory_expands_aggregate_language_gates() -> None:
+    policy = load_policy()
+
+    result = classify_paths(policy, ["README.md"], event="push")
+
     assert result["dotnet_test_matrix"] == [
-        {"service": "business-platform", "gate": "test-dotnet:business-platform"}
+        {"service": "constitutional-engine", "gate": "test-dotnet:constitutional-engine"},
+        {"service": "business-platform", "gate": "test-dotnet:business-platform"},
     ]
     assert result["python_test_matrix"] == [
-        {"service": "professional-runtime", "gate": "test-python:professional-runtime"}
+        {"service": "professional-runtime", "gate": "test-python:professional-runtime"},
+        {"service": "ai-runtime", "gate": "test-python:ai-runtime"},
     ]
 
 
