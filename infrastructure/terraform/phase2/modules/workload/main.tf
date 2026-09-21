@@ -818,6 +818,7 @@ resource "azurerm_container_app" "member" {
     azurerm_role_assignment.professional_runtime_bp_secret,
     azurerm_role_assignment.identity_reader_secret,
     azurerm_role_assignment.identity_hmac_secret,
+    azurerm_role_assignment.identity_event_secret,
     azurerm_role_assignment.continuity_hmac_secret,
     azurerm_role_assignment.conversation_cursor_secret,
     azurerm_container_app.temporal,

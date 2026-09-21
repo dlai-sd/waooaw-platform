@@ -1,5 +1,5 @@
 {
-  "catalogDigest": "sha256:523b74b8dd3a324cdfe18dc75787a2fce59a9f2b4f5c5acb2143bcb519531722",
+  "catalogDigest": "sha256:0d2eb278d2e5f288e288af8656a34eacbc40527c594c8cb1e336246342307f35",
   "configuration": {
     "channels": {
       "mobile": false,
@@ -127,7 +127,7 @@
   },
   "environment": "demo",
   "manifestDigest": "sha256:1acff7076972dc785dd6ad23ff077c8ab635ae62e1a643c377edabe5baef1028",
-  "renderDigest": "sha256:9fc4502dd3ce03fedf9472178f02fd16b5fdf02d34a388ad3553b3ee30510af7",
+  "renderDigest": "sha256:eb3ca8bc7f9bf349f94a6c0996dfe37a0a5983ff050e105d48d073147caded13",
   "schemaVersion": "1.0",
   "secretBindings": [
     {
