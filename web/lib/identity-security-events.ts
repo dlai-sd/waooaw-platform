@@ -1,4 +1,5 @@
 // Implements: work-contracts/WC-103-multitenant-authentication-journeys.md §AUTH-S12
+// Implements: work-contracts/WC-105-auth-ui-runtime-defect-repair.md WC105-R007
 // Constitutional basis: C-002, C-005, C-059, C-063
 
 import { createHmac } from 'node:crypto';
@@ -62,7 +63,7 @@ export async function recordWebIdentitySecurityEvent(event: WebIdentitySecurityE
   } catch (error) {
     console.error('Identity security event was not persisted.', {
       eventType: event.eventType,
-      reason: error instanceof Error ? error.name : 'UnknownError',
+      reason: error instanceof Error || error instanceof DOMException ? error.name : 'UnknownError',
     });
   }
 }

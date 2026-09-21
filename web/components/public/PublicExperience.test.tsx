@@ -68,6 +68,13 @@ describe('public acquisition components', () => {
     const { container } = render(<ProfessionalJourneyShowcase content={content} />);
     expect(container.querySelectorAll('.orbit-card')).toHaveLength(4);
     expect(container.querySelectorAll('.orbit-card.front')).toHaveLength(1);
+    expect(container.querySelector('.orbit-card.front')).toHaveTextContent('Digital Marketing Agent');
+    expect(container.querySelector('.orbit-card.front')).toHaveTextContent('Digital Marketing on fire');
+    expect(container.querySelector('.orbit-card.front')).toHaveTextContent(
+      'Watch chaos turn into clarity - You only step in when it matters.'
+    );
+    expect(container.querySelector('.orbit-card.front')).not.toHaveTextContent('Before WAOOAW');
+    expect(container.querySelector('.orbit-card.front')).toHaveTextContent('With WAOOAW - order & results');
   });
 
   it('exposes semantic previous, next, card, and scene controls', () => {
@@ -90,9 +97,9 @@ describe('public acquisition components', () => {
 
   it('selects a professional through card and dot controls', () => {
     const { container } = render(<ProfessionalJourneyShowcase content={getProfessionalJourneyContent('en')} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Bring Private Tutoring Professional to front' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Bring Private Tutor to front' }));
     expect(container.querySelector('.orbit-footer')).toHaveTextContent('03 / 04');
-    fireEvent.click(screen.getByRole('button', { name: 'Show Trading Advisory Professional' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show Share Market Trading Expert' }));
     expect(container.querySelector('.orbit-footer')).toHaveTextContent('04 / 04');
   });
 
@@ -105,10 +112,10 @@ describe('public acquisition components', () => {
     jest.useRealTimers();
   });
 
-  it('autoplays left-to-right every three seconds', () => {
+  it('autoplays left-to-right every ten seconds', () => {
     jest.useFakeTimers();
     const { container } = render(<ProfessionalJourneyShowcase content={getProfessionalJourneyContent('en')} />);
-    act(() => jest.advanceTimersByTime(2999));
+    act(() => jest.advanceTimersByTime(9999));
     expect(container.querySelector('.orbit-footer')).toHaveTextContent('01 / 04');
     act(() => jest.advanceTimersByTime(1));
     expect(container.querySelector('.orbit-footer')).toHaveTextContent('04 / 04');

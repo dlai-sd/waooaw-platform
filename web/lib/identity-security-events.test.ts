@@ -1,7 +1,7 @@
 /** @jest-environment node */
 
 import { createHmac } from 'node:crypto';
-import { persistWebIdentitySecurityEvent } from './identity-security-events';
+import { persistWebIdentitySecurityEvent, recordWebIdentitySecurityEvent } from './identity-security-events';
 
 const signingKey = 'test-only-identity-event-signing-key-32-bytes';
 
@@ -53,5 +53,46 @@ describe('identity security event transport', () => {
         reasonCode: 'BROKER_CALLBACK_FAILED',
       })
     ).rejects.toThrow('Identity event signing is unavailable.');
+  });
+
+  it('bounds Business Platform persistence requests to five seconds', async () => {
+    const signal = new AbortController().signal;
+    const timeout = jest.spyOn(AbortSignal, 'timeout').mockReturnValue(signal);
+    const request = jest.fn().mockResolvedValue(new Response(null, { status: 201 }));
+    Object.defineProperty(globalThis, 'fetch', { configurable: true, value: request });
+
+    await persistWebIdentitySecurityEvent({
+      correlationId: crypto.randomUUID(),
+      eventType: 'SESSION_EXPIRY',
+      providerClass: 'GOOGLE',
+      outcome: 'SUCCEEDED',
+      reasonCode: 'SESSION_EXPIRED',
+    });
+
+    expect(timeout).toHaveBeenCalledWith(5_000);
+    expect(request.mock.calls[0][1]).toMatchObject({ signal });
+  });
+
+  it('reports transport timeout without rejecting the customer flow', async () => {
+    const timeout = new DOMException('The operation timed out.', 'TimeoutError');
+    Object.defineProperty(globalThis, 'fetch', {
+      configurable: true,
+      value: jest.fn().mockRejectedValue(timeout),
+    });
+    const error = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await expect(
+      recordWebIdentitySecurityEvent({
+        correlationId: crypto.randomUUID(),
+        eventType: 'PROVIDER_HANDOFF',
+        providerClass: 'GOOGLE',
+        outcome: 'ATTEMPTED',
+        reasonCode: 'BROKER_REDIRECT_REQUESTED',
+      })
+    ).resolves.toBeUndefined();
+    expect(error).toHaveBeenCalledWith('Identity security event was not persisted.', {
+      eventType: 'PROVIDER_HANDOFF',
+      reason: 'TimeoutError',
+    });
   });
 });
