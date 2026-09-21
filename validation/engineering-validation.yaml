@@ -288,6 +288,25 @@ global_triggers:
 documentation_only: [README.md, CHANGELOG.md, docs/**]
 prechecks:
   gitleaks: {always: true, inputs: ["**"], gate: "precheck:gitleaks"}
+  dotnet_quality_business_platform:
+    components: [business-platform]
+    inputs:
+      - src/business-platform/**
+      - architecture/reference/dockerfiles/**
+      - docker-compose*.yml
+      - requirements*.txt
+      - validation/**
+      - scripts/validation_control/**
+    gate: "quality:dotnet:business-platform"
+  typescript_quality:
+    components: [web]
+    inputs:
+      - web/**
+      - architecture/reference/dockerfiles/**
+      - docker-compose*.yml
+      - validation/**
+      - scripts/validation_control/**
+    gate: "quality:typescript"
   business_platform:
     components: [business-platform]
     inputs:

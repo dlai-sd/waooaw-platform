@@ -273,11 +273,13 @@ public sealed class IdentityController(
             return;
 
         var trace = HttpContext.TraceIdentifier;
-        var sourceDigest = Convert.ToHexString(
-            System.Security.Cryptography.SHA256.HashData(
-                System.Text.Encoding.UTF8.GetBytes($"{eventType}:{trace}")
+        var sourceDigest = Convert
+            .ToHexString(
+                System.Security.Cryptography.SHA256.HashData(
+                    System.Text.Encoding.UTF8.GetBytes($"{eventType}:{trace}")
+                )
             )
-        ).ToLowerInvariant();
+            .ToLowerInvariant();
         var correlationBytes = System.Security.Cryptography.SHA256.HashData(
             System.Text.Encoding.UTF8.GetBytes($"correlation:{trace}")
         );
@@ -287,7 +289,9 @@ public sealed class IdentityController(
                 $"http:{sourceDigest}",
                 eventType,
                 ProviderClass,
-                status < 400 ? "SUCCEEDED" : status < 500 ? "DENIED" : "FAILED",
+                status < 400 ? "SUCCEEDED"
+                    : status < 500 ? "DENIED"
+                    : "FAILED",
                 status < 400 ? "IDENTITY_OPERATION_COMPLETED" : $"HTTP_{status}",
                 AssuranceClass,
                 "BUSINESS_PLATFORM",
@@ -299,8 +303,9 @@ public sealed class IdentityController(
     }
 
     private string ProviderClass =>
-        (User.FindFirstValue("identity_provider") ?? User.FindFirstValue("idp"))
-            ?.ToLowerInvariant() switch
+        (
+            User.FindFirstValue("identity_provider") ?? User.FindFirstValue("idp")
+        )?.ToLowerInvariant() switch
         {
             "google" => "GOOGLE",
             "facebook" => "FACEBOOK",
@@ -310,11 +315,9 @@ public sealed class IdentityController(
         };
 
     private string AssuranceClass =>
-        User.FindFirstValue("auth_time") is null
-            ? "UNKNOWN"
-            : DateTimeOffset.UtcNow - AuthTime <= TimeSpan.FromMinutes(5)
-                ? "AAL3"
-                : "AAL2";
+        User.FindFirstValue("auth_time") is null ? "UNKNOWN"
+        : DateTimeOffset.UtcNow - AuthTime <= TimeSpan.FromMinutes(5) ? "AAL3"
+        : "AAL2";
 
     private static readonly Regex LanguagePattern = new(
         "^[a-z]{2}(-[A-Z]{2})?$",
@@ -635,33 +638,59 @@ public sealed class IdentityController(
     public async Task<IActionResult> ListIdentitySessionsAsync(CancellationToken ct)
     {
         if (customerJourney is null || sessionService is null)
-            return IdentityProblem(503, "IDENTITY_DEPENDENCY_UNAVAILABLE", "Session management is unavailable.");
-        var membership = (CustomerWorkspaceMembership)HttpContext.Items[CustomerMembershipMiddleware.MembershipItem]!;
+            return IdentityProblem(
+                503,
+                "IDENTITY_DEPENDENCY_UNAVAILABLE",
+                "Session management is unavailable."
+            );
+        var membership = (CustomerWorkspaceMembership)
+            HttpContext.Items[CustomerMembershipMiddleware.MembershipItem]!;
         var currentSessionId = (Guid)HttpContext.Items[CustomerMembershipMiddleware.SessionIdItem]!;
         var sessions = await sessionService.ListAsync(membership.AccountId, currentSessionId, ct);
-        return Ok(new IdentityManagedSessionCollectionResponse(
-            sessions.Select(value => new IdentityManagedSessionResponse(
-                value.SessionId, value.IssuedAt, value.LastSeenAt, value.ExpiresAt,
-                value.AssuranceLevel switch
-                {
-                    "AAL3" => "AAL3_FRESH",
-                    "AAL2" => "AAL2_ACCOUNT",
-                    _ => "AAL1_CHANNEL",
-                },
-                value.Provider, value.DeviceLabel, value.Current
-            )).ToArray()
-        ));
+        return Ok(
+            new IdentityManagedSessionCollectionResponse(
+                sessions
+                    .Select(value => new IdentityManagedSessionResponse(
+                        value.SessionId,
+                        value.IssuedAt,
+                        value.LastSeenAt,
+                        value.ExpiresAt,
+                        value.AssuranceLevel switch
+                        {
+                            "AAL3" => "AAL3_FRESH",
+                            "AAL2" => "AAL2_ACCOUNT",
+                            _ => "AAL1_CHANNEL",
+                        },
+                        value.Provider,
+                        value.DeviceLabel,
+                        value.Current
+                    ))
+                    .ToArray()
+            )
+        );
     }
 
     [HttpDelete("sessions/{sessionId:guid}")]
     [CustomerIdentityRoute(requiresMembership: true)]
-    public async Task<IActionResult> RevokeIdentitySessionAsync(Guid sessionId, CancellationToken ct)
+    public async Task<IActionResult> RevokeIdentitySessionAsync(
+        Guid sessionId,
+        CancellationToken ct
+    )
     {
         if (sessionService is null)
-            return IdentityProblem(503, "IDENTITY_DEPENDENCY_UNAVAILABLE", "Session management is unavailable.");
-        var membership = (CustomerWorkspaceMembership)HttpContext.Items[CustomerMembershipMiddleware.MembershipItem]!;
+            return IdentityProblem(
+                503,
+                "IDENTITY_DEPENDENCY_UNAVAILABLE",
+                "Session management is unavailable."
+            );
+        var membership = (CustomerWorkspaceMembership)
+            HttpContext.Items[CustomerMembershipMiddleware.MembershipItem]!;
         var count = await sessionService.RevokeOneAsync(
-            membership.AccountId, ActorSubject, sessionId, $"revoke-one:{IdempotencyKey:D}", ct
+            membership.AccountId,
+            ActorSubject,
+            sessionId,
+            $"revoke-one:{IdempotencyKey:D}",
+            ct
         );
         return Ok(new IdentitySessionRevocationResponse("ONE", count));
     }
@@ -671,10 +700,18 @@ public sealed class IdentityController(
     public async Task<IActionResult> RevokeAllIdentitySessionsAsync(CancellationToken ct)
     {
         if (sessionService is null)
-            return IdentityProblem(503, "IDENTITY_DEPENDENCY_UNAVAILABLE", "Session management is unavailable.");
-        var membership = (CustomerWorkspaceMembership)HttpContext.Items[CustomerMembershipMiddleware.MembershipItem]!;
+            return IdentityProblem(
+                503,
+                "IDENTITY_DEPENDENCY_UNAVAILABLE",
+                "Session management is unavailable."
+            );
+        var membership = (CustomerWorkspaceMembership)
+            HttpContext.Items[CustomerMembershipMiddleware.MembershipItem]!;
         var count = await sessionService.RevokeAllAsync(
-            membership.AccountId, ActorSubject, $"revoke-all:{IdempotencyKey:D}", ct
+            membership.AccountId,
+            ActorSubject,
+            $"revoke-all:{IdempotencyKey:D}",
+            ct
         );
         return Ok(new IdentitySessionRevocationResponse("ALL", count));
     }
@@ -754,11 +791,19 @@ public sealed class IdentityController(
         }
         catch (ConstitutionalActionDeniedException)
         {
-            return IdentityProblem(403, "IDENTITY_ACTION_DENIED", "Constitutional authorization denied the account link.");
+            return IdentityProblem(
+                403,
+                "IDENTITY_ACTION_DENIED",
+                "Constitutional authorization denied the account link."
+            );
         }
         catch (IdentityConstitutionalUnavailableException)
         {
-            return IdentityProblem(503, "IDENTITY_DEPENDENCY_UNAVAILABLE", "Constitutional evidence is unavailable.");
+            return IdentityProblem(
+                503,
+                "IDENTITY_DEPENDENCY_UNAVAILABLE",
+                "Constitutional evidence is unavailable."
+            );
         }
         catch (ArgumentException)
         {
@@ -840,11 +885,19 @@ public sealed class IdentityController(
         }
         catch (ConstitutionalActionDeniedException)
         {
-            return IdentityProblem(403, "IDENTITY_ACTION_DENIED", "Constitutional authorization denied the account link.");
+            return IdentityProblem(
+                403,
+                "IDENTITY_ACTION_DENIED",
+                "Constitutional authorization denied the account link."
+            );
         }
         catch (IdentityConstitutionalUnavailableException)
         {
-            return IdentityProblem(503, "IDENTITY_DEPENDENCY_UNAVAILABLE", "Constitutional evidence is unavailable.");
+            return IdentityProblem(
+                503,
+                "IDENTITY_DEPENDENCY_UNAVAILABLE",
+                "Constitutional evidence is unavailable."
+            );
         }
         catch (IdentityResourceNotFoundException)
         {

@@ -91,12 +91,17 @@ public sealed class IdentitySecurityEventService
         var hmac = hmacOptions?.Value;
         var key = hmac?.Key;
         if (string.IsNullOrEmpty(key) || key.Length < IdentityHmacOptions.MinKeyLength)
-            throw new InvalidOperationException("Identity security events require valid HMAC material.");
+            throw new InvalidOperationException(
+                "Identity security events require valid HMAC material."
+            );
         _referenceKey = Encoding.UTF8.GetBytes(key);
         _referenceKeyVersion = hmac!.ActiveVersion;
-        _environment = environmentOptions?.Value.Environment?.Trim().ToLowerInvariant() ?? string.Empty;
+        _environment =
+            environmentOptions?.Value.Environment?.Trim().ToLowerInvariant() ?? string.Empty;
         if (_environment is not ("local" or "demo" or "uat" or "prod"))
-            throw new InvalidOperationException("Identity security events require a known environment.");
+            throw new InvalidOperationException(
+                "Identity security events require a known environment."
+            );
     }
 
     public async Task<bool> RecordAsync(IdentitySecurityEventInput input, CancellationToken ct)
@@ -105,7 +110,10 @@ public sealed class IdentitySecurityEventService
         Validate(input);
         var occurredAt = input.OccurredAt ?? DateTimeOffset.UtcNow;
         if (occurredAt > DateTimeOffset.UtcNow.AddMinutes(5))
-            throw new ArgumentException("Identity security event time cannot be in the future.", nameof(input));
+            throw new ArgumentException(
+                "Identity security event time cannot be in the future.",
+                nameof(input)
+            );
 
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
         db.SecurityEvents.Add(
@@ -136,8 +144,9 @@ public sealed class IdentitySecurityEventService
             return true;
         }
         catch (DbUpdateException exception)
-            when (exception.InnerException is PostgresException
-                { SqlState: PostgresErrorCodes.UniqueViolation })
+            when (exception.InnerException
+                    is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation }
+            )
         {
             return false;
         }
@@ -150,7 +159,10 @@ public sealed class IdentitySecurityEventService
         if (!SourceEventPattern.IsMatch(input.SourceEventId))
             throw new ArgumentException("The source event ID is invalid.", nameof(input));
         if (!EventTypes.Contains(input.EventType))
-            throw new ArgumentException("The identity security event type is invalid.", nameof(input));
+            throw new ArgumentException(
+                "The identity security event type is invalid.",
+                nameof(input)
+            );
         if (!ProviderClasses.Contains(input.ProviderClass))
             throw new ArgumentException("The provider class is invalid.", nameof(input));
         if (!Outcomes.Contains(input.Outcome))

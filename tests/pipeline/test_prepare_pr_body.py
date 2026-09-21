@@ -246,7 +246,7 @@ def test_precheck_evidence_must_match_base_and_head() -> None:
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": digest,
-        "graph_version": "wc104-prechecks-v4",
+        "graph_version": "wc103-prechecks-v5",
         "configuration_digest": "c" * 64,
         "runner_digest": "r" * 64,
     }
@@ -297,7 +297,7 @@ def test_precheck_evidence_rejects_configuration_or_runner_mismatch() -> None:
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": "d" * 64,
-        "graph_version": "wc104-prechecks-v4",
+        "graph_version": "wc103-prechecks-v5",
         "configuration_digest": "c" * 64,
         "runner_digest": "r" * 64,
     }
@@ -319,6 +319,15 @@ def test_prepare_pr_body_uses_requirement_ledger_validator() -> None:
 
     assert "validate_changed_ledgers" in source
     assert '"--preflight-only"' in source
+
+
+def test_typescript_quality_replaces_copied_node_modules_before_linking_runner_dependencies() -> None:
+    source = (ROOT / "scripts/validation_control/run_typescript_quality_gate.sh").read_text(encoding="utf-8")
+
+    remove = "rm -rf /tmp/web/node_modules"
+    link = "ln -s /opt/waooaw-web/node_modules /tmp/web/node_modules"
+    assert remove in source
+    assert source.index(remove) < source.index(link)
 
 
 def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path) -> None:
@@ -349,15 +358,31 @@ def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path)
 
     assert run_ci_prechecks("origin/main", HEAD, ["src/business-platform/Program.cs", ".github/workflows/ci.yaml"])["passed"]
     nodes = captured["nodes"]
-    assert [node.name for node in nodes] == ["gitleaks", "business_platform", "release_qualification"]
+    assert [node.name for node in nodes] == [
+        "gitleaks",
+        "dotnet_quality_business_platform",
+        "typescript_quality",
+        "business_platform",
+        "release_qualification",
+    ]
     assert [node.command[node.command.index("--gate") + 1] for node in nodes] == [
         "precheck:gitleaks",
+        "quality:dotnet:business-platform",
+        "quality:typescript",
         "test-dotnet:business-platform",
         "release-qualification",
     ]
+    assert nodes[1].heavy is False
+    assert nodes[2].heavy is False
+    assert nodes[3].dependencies == ("dotnet_quality_business_platform",)
+    assert nodes[4].dependencies == (
+        "gitleaks",
+        "dotnet_quality_business_platform",
+        "typescript_quality",
+    )
     assert all("docker compose" not in " ".join(node.command) for node in nodes)
     assert all("run_release_qualification.sh" not in " ".join(node.command) for node in nodes)
-    assert captured["graph_version"] == "wc104-prechecks-v4"
+    assert captured["graph_version"] == "wc103-prechecks-v5"
     assert captured["configuration_digest"] == configuration_digest()
     assert captured["runner_digest"] == runner_digest(nodes)
     assert nodes[0].runner_digest == "r" * 64

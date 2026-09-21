@@ -134,10 +134,12 @@ describe('Browser session projection', () => {
       refreshToken: 'rotated-refresh-token',
       idToken: 'renewed-id-token',
     });
-    expect(persistWebIdentitySecurityEvent).toHaveBeenCalledWith(expect.objectContaining({
-      eventType: 'REFRESH_SUCCESS',
-      reasonCode: 'TOKEN_ROTATED',
-    }));
+    expect(persistWebIdentitySecurityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'REFRESH_SUCCESS',
+        reasonCode: 'TOKEN_ROTATED',
+      })
+    );
     const session = projectSession({ expires: '2099-01-01', user: {} } as Session, token, 100);
     expect(session.authenticated).toBe(true);
     expect(JSON.stringify(session)).not.toContain('rotated-refresh-token');
@@ -163,10 +165,12 @@ describe('Browser session projection', () => {
     expect(token).not.toHaveProperty('accessToken');
     expect(token).not.toHaveProperty('refreshToken');
     expect(token.founder).toBe(false);
-    expect(recordWebIdentitySecurityEvent).toHaveBeenCalledWith(expect.objectContaining({
-      eventType: 'REFRESH_FAILURE',
-      reasonCode: 'EVENT_PERSISTENCE_UNAVAILABLE',
-    }));
+    expect(recordWebIdentitySecurityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'REFRESH_FAILURE',
+        reasonCode: 'EVENT_PERSISTENCE_UNAVAILABLE',
+      })
+    );
   });
 
   it('purges all authentication authority when Keycloak rejects refresh', async () => {

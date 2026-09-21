@@ -149,8 +149,9 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
             : "AAL2";
 
     private static string ProviderClass(HttpContext context) =>
-        (context.User.FindFirstValue("identity_provider") ?? context.User.FindFirstValue("idp"))
-            ?.ToLowerInvariant() switch
+        (
+            context.User.FindFirstValue("identity_provider") ?? context.User.FindFirstValue("idp")
+        )?.ToLowerInvariant() switch
         {
             "google" => "GOOGLE",
             "facebook" => "FACEBOOK",

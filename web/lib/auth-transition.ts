@@ -54,7 +54,17 @@ export function recordAuthTransition(stage: AuthTransitionStage, reasonCode = 'O
     })
   );
   if (
-    ['ROUTE_REQUESTED', 'BROKER_REDIRECT_REQUESTED', 'PROVIDER_CANCELLED', 'BROKER_LAUNCH_FAILED', 'CALLBACK_FAILED', 'ACCOUNT_SWITCH_REQUESTED', 'ACCOUNT_SWITCH_COMPLETED', 'ACCOUNT_SWITCH_FAILED', 'SESSION_RESOLVED'].includes(stage) &&
+    [
+      'ROUTE_REQUESTED',
+      'BROKER_REDIRECT_REQUESTED',
+      'PROVIDER_CANCELLED',
+      'BROKER_LAUNCH_FAILED',
+      'CALLBACK_FAILED',
+      'ACCOUNT_SWITCH_REQUESTED',
+      'ACCOUNT_SWITCH_COMPLETED',
+      'ACCOUNT_SWITCH_FAILED',
+      'SESSION_RESOLVED',
+    ].includes(stage) &&
     typeof fetch === 'function'
   ) {
     void fetch('/api/auth/identity-events', {

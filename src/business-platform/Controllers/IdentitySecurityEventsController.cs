@@ -65,13 +65,21 @@ public sealed class IdentitySecurityEventsController(
     {
         using var reader = new StreamReader(Request.Body, Encoding.UTF8);
         var rawBody = await reader.ReadToEndAsync(cancellationToken);
-        if (!IsValidSignature(rawBody, Request.Headers["X-WAOOAW-Identity-Event-Signature"].ToString()))
+        if (
+            !IsValidSignature(
+                rawBody,
+                Request.Headers["X-WAOOAW-Identity-Event-Signature"].ToString()
+            )
+        )
             return Problem(statusCode: 403, title: "IDENTITY_EVENT_SIGNATURE_INVALID");
 
         WebIdentitySecurityEventRequest? request;
         try
         {
-            request = JsonSerializer.Deserialize<WebIdentitySecurityEventRequest>(rawBody, JsonOptions);
+            request = JsonSerializer.Deserialize<WebIdentitySecurityEventRequest>(
+                rawBody,
+                JsonOptions
+            );
         }
         catch (JsonException)
         {

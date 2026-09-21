@@ -608,47 +608,60 @@ public sealed class IdentityDbContext : DbContext
             entity.HasKey(record => record.EventId);
             entity.Property(record => record.EventId).HasColumnName("event_id");
             entity.Property(record => record.CorrelationId).HasColumnName("correlation_id");
-            entity.Property(record => record.SourceEventId)
+            entity
+                .Property(record => record.SourceEventId)
                 .HasColumnName("source_event_id")
                 .HasMaxLength(128)
                 .UseCollation("C");
             entity.Property(record => record.ActorRef).HasColumnName("actor_ref").HasMaxLength(64);
-            entity.Property(record => record.SessionRef)
+            entity
+                .Property(record => record.SessionRef)
                 .HasColumnName("session_ref")
                 .HasMaxLength(64);
-            entity.Property(record => record.Environment)
+            entity
+                .Property(record => record.Environment)
                 .HasColumnName("environment")
                 .HasMaxLength(16);
-            entity.Property(record => record.EventType)
+            entity
+                .Property(record => record.EventType)
                 .HasColumnName("event_type")
                 .HasMaxLength(48);
-            entity.Property(record => record.ProviderClass)
+            entity
+                .Property(record => record.ProviderClass)
                 .HasColumnName("provider_class")
                 .HasMaxLength(16);
             entity.Property(record => record.Outcome).HasColumnName("outcome").HasMaxLength(16);
-            entity.Property(record => record.ReasonCode)
+            entity
+                .Property(record => record.ReasonCode)
                 .HasColumnName("reason_code")
                 .HasMaxLength(64);
-            entity.Property(record => record.AssuranceClass)
+            entity
+                .Property(record => record.AssuranceClass)
                 .HasColumnName("assurance_class")
                 .HasMaxLength(32);
-            entity.Property(record => record.SourceBoundary)
+            entity
+                .Property(record => record.SourceBoundary)
                 .HasColumnName("source_boundary")
                 .HasMaxLength(32);
-            entity.Property(record => record.ReferenceKeyVersion)
+            entity
+                .Property(record => record.ReferenceKeyVersion)
                 .HasColumnName("reference_key_version")
                 .HasMaxLength(32);
-            entity.Property(record => record.RetentionClass)
+            entity
+                .Property(record => record.RetentionClass)
                 .HasColumnName("retention_class")
                 .HasMaxLength(32);
             entity.Property(record => record.RetainUntil).HasColumnName("retain_until");
             entity.Property(record => record.SchemaVersion).HasColumnName("schema_version");
             entity.Property(record => record.OccurredAt).HasColumnName("occurred_at");
             entity.Property(record => record.RecordedAt).HasColumnName("recorded_at");
-            entity.Property(record => record.WriterService)
+            entity
+                .Property(record => record.WriterService)
                 .HasColumnName("writer_service")
                 .HasMaxLength(64);
-            entity.HasIndex(record => new { record.SourceBoundary, record.SourceEventId }).IsUnique();
+            entity
+                .HasIndex(record => new { record.SourceBoundary, record.SourceEventId })
+                .IsUnique();
             entity.HasIndex(record => new { record.CorrelationId, record.OccurredAt });
         });
         modelBuilder.Entity<IdentitySessionRecord>(entity =>
@@ -656,23 +669,43 @@ public sealed class IdentityDbContext : DbContext
             entity.ToTable("identity_sessions", "business");
             entity.HasKey(record => record.SessionId);
             entity.Property(record => record.SessionId).HasColumnName("session_id");
-            entity.Property(record => record.AccountRef).HasColumnName("account_ref").HasMaxLength(64);
+            entity
+                .Property(record => record.AccountRef)
+                .HasColumnName("account_ref")
+                .HasMaxLength(64);
             entity.Property(record => record.ActorRef).HasColumnName("actor_ref").HasMaxLength(64);
             entity.Property(record => record.IssuedAt).HasColumnName("issued_at");
             entity.Property(record => record.LastSeenAt).HasColumnName("last_seen_at");
-            entity.Property(record => record.AbsoluteExpiresAt).HasColumnName("absolute_expires_at");
+            entity
+                .Property(record => record.AbsoluteExpiresAt)
+                .HasColumnName("absolute_expires_at");
             entity.Property(record => record.RevokedAt).HasColumnName("revoked_at");
-            entity.Property(record => record.AssuranceClass).HasColumnName("assurance_class").HasMaxLength(32);
-            entity.Property(record => record.ProviderClass).HasColumnName("provider_class").HasMaxLength(16);
-            entity.Property(record => record.DeviceLabel).HasColumnName("device_label").HasMaxLength(40);
-            entity.Property(record => record.RevocationReason).HasColumnName("revocation_reason").HasMaxLength(32);
+            entity
+                .Property(record => record.AssuranceClass)
+                .HasColumnName("assurance_class")
+                .HasMaxLength(32);
+            entity
+                .Property(record => record.ProviderClass)
+                .HasColumnName("provider_class")
+                .HasMaxLength(16);
+            entity
+                .Property(record => record.DeviceLabel)
+                .HasColumnName("device_label")
+                .HasMaxLength(40);
+            entity
+                .Property(record => record.RevocationReason)
+                .HasColumnName("revocation_reason")
+                .HasMaxLength(32);
             entity.HasIndex(record => new { record.AccountRef, record.RevokedAt });
         });
         modelBuilder.Entity<IdentitySessionGenerationRecord>(entity =>
         {
             entity.ToTable("identity_session_generations", "business");
             entity.HasKey(record => record.AccountRef);
-            entity.Property(record => record.AccountRef).HasColumnName("account_ref").HasMaxLength(64);
+            entity
+                .Property(record => record.AccountRef)
+                .HasColumnName("account_ref")
+                .HasMaxLength(64);
             entity.Property(record => record.RevokedBefore).HasColumnName("revoked_before");
             entity.Property(record => record.Generation).HasColumnName("generation");
             entity.Property(record => record.UpdatedAt).HasColumnName("updated_at");

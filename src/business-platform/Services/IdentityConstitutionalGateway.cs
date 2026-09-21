@@ -19,8 +19,10 @@ public interface IIdentityConstitutionalGateway
     );
 }
 
-public sealed class IdentityConstitutionalUnavailableException(string reason, Exception? inner = null)
-    : Exception(reason, inner);
+public sealed class IdentityConstitutionalUnavailableException(
+    string reason,
+    Exception? inner = null
+) : Exception(reason, inner);
 
 public sealed class GrpcIdentityConstitutionalGateway(
     IConfiguration configuration,
@@ -39,9 +41,12 @@ public sealed class GrpcIdentityConstitutionalGateway(
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(Timeout);
-        var endpoint = configuration["ConstitutionalEngine:GrpcUrl"]
+        var endpoint =
+            configuration["ConstitutionalEngine:GrpcUrl"]
             ?? configuration["ConstitutionalEngine:Address"]
-            ?? throw new InvalidOperationException("Constitutional Engine endpoint is not configured.");
+            ?? throw new InvalidOperationException(
+                "Constitutional Engine endpoint is not configured."
+            );
         using var channel = GrpcChannel.ForAddress(endpoint);
         var client = new ConstitutionalService.ConstitutionalServiceClient(channel);
         var headers = new Metadata { { "x-tenant-id", tenantId.ToString("D") } };
@@ -88,7 +93,9 @@ public sealed class GrpcIdentityConstitutionalGateway(
             );
             return Guid.TryParse(evidence.EvidenceRecordId, out var evidenceId)
                 ? evidenceId
-                : throw new InvalidOperationException("Constitutional Engine returned an invalid evidence identifier.");
+                : throw new InvalidOperationException(
+                    "Constitutional Engine returned an invalid evidence identifier."
+                );
         }
         catch (ConstitutionalActionDeniedException)
         {

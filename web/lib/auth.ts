@@ -74,8 +74,12 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
   const correlationId = crypto.randomUUID();
   if (typeof token.refreshToken !== 'string') {
     await recordWebIdentitySecurityEvent({
-      correlationId, eventType: 'SESSION_EXPIRY', providerClass: 'INTERNAL', outcome: 'DENIED',
-      reasonCode: 'REFRESH_TOKEN_ABSENT', assuranceClass: 'UNKNOWN',
+      correlationId,
+      eventType: 'SESSION_EXPIRY',
+      providerClass: 'INTERNAL',
+      outcome: 'DENIED',
+      reasonCode: 'REFRESH_TOKEN_ABSENT',
+      assuranceClass: 'UNKNOWN',
     });
     return purgeAuthentication(token);
   }
@@ -95,8 +99,12 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
     });
     if (!response.ok) {
       await recordWebIdentitySecurityEvent({
-        correlationId, eventType: 'REFRESH_FAILURE', providerClass: 'INTERNAL', outcome: 'FAILED',
-        reasonCode: 'TOKEN_ENDPOINT_REJECTED', assuranceClass: 'UNKNOWN',
+        correlationId,
+        eventType: 'REFRESH_FAILURE',
+        providerClass: 'INTERNAL',
+        outcome: 'FAILED',
+        reasonCode: 'TOKEN_ENDPOINT_REJECTED',
+        assuranceClass: 'UNKNOWN',
       });
       return purgeAuthentication(token);
     }
@@ -112,14 +120,17 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       typeof refreshed.expires_in !== 'number' ||
       !Number.isFinite(refreshed.expires_in) ||
       refreshed.expires_in <= 0
-    )
-      {
-        await recordWebIdentitySecurityEvent({
-          correlationId, eventType: 'REFRESH_FAILURE', providerClass: 'INTERNAL', outcome: 'FAILED',
-          reasonCode: 'TOKEN_RESPONSE_INVALID', assuranceClass: 'UNKNOWN',
-        });
-        return purgeAuthentication(token);
-      }
+    ) {
+      await recordWebIdentitySecurityEvent({
+        correlationId,
+        eventType: 'REFRESH_FAILURE',
+        providerClass: 'INTERNAL',
+        outcome: 'FAILED',
+        reasonCode: 'TOKEN_RESPONSE_INVALID',
+        assuranceClass: 'UNKNOWN',
+      });
+      return purgeAuthentication(token);
+    }
 
     token.accessToken = refreshed.access_token;
     token.accessTokenExpiresAt = Math.floor(Date.now() / 1000) + refreshed.expires_in;
@@ -130,21 +141,33 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
     token.founder = hasFounderClaim(accessTokenClaims(refreshed.access_token));
     try {
       await persistWebIdentitySecurityEvent({
-        correlationId, eventType: 'REFRESH_SUCCESS', providerClass: 'INTERNAL', outcome: 'SUCCEEDED',
-        reasonCode: 'TOKEN_ROTATED', assuranceClass: 'AAL2',
+        correlationId,
+        eventType: 'REFRESH_SUCCESS',
+        providerClass: 'INTERNAL',
+        outcome: 'SUCCEEDED',
+        reasonCode: 'TOKEN_ROTATED',
+        assuranceClass: 'AAL2',
       });
     } catch {
       await recordWebIdentitySecurityEvent({
-        correlationId, eventType: 'REFRESH_FAILURE', providerClass: 'INTERNAL', outcome: 'FAILED',
-        reasonCode: 'EVENT_PERSISTENCE_UNAVAILABLE', assuranceClass: 'UNKNOWN',
+        correlationId,
+        eventType: 'REFRESH_FAILURE',
+        providerClass: 'INTERNAL',
+        outcome: 'FAILED',
+        reasonCode: 'EVENT_PERSISTENCE_UNAVAILABLE',
+        assuranceClass: 'UNKNOWN',
       });
       return purgeAuthentication(token);
     }
     return token;
   } catch {
     await recordWebIdentitySecurityEvent({
-      correlationId, eventType: 'REFRESH_FAILURE', providerClass: 'INTERNAL', outcome: 'FAILED',
-      reasonCode: 'TOKEN_ENDPOINT_UNAVAILABLE', assuranceClass: 'UNKNOWN',
+      correlationId,
+      eventType: 'REFRESH_FAILURE',
+      providerClass: 'INTERNAL',
+      outcome: 'FAILED',
+      reasonCode: 'TOKEN_ENDPOINT_UNAVAILABLE',
+      assuranceClass: 'UNKNOWN',
     });
     return purgeAuthentication(token);
   }

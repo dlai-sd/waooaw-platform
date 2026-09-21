@@ -1599,9 +1599,12 @@ public sealed class IdentityService
         object actionParameters,
         CancellationToken ct
     ) =>
-        (_constitutionalGateway
-            ?? throw new InvalidOperationException("Identity constitutional evidence is unavailable."))
-        .AuthorizeAndRecordAsync(tenantId, actionInstanceId, actionType, actionParameters, ct);
+        (
+            _constitutionalGateway
+            ?? throw new InvalidOperationException(
+                "Identity constitutional evidence is unavailable."
+            )
+        ).AuthorizeAndRecordAsync(tenantId, actionInstanceId, actionType, actionParameters, ct);
 
     private static void EnforceAal3Fresh(DateTimeOffset authTime)
     {

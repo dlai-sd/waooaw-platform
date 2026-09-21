@@ -29,8 +29,7 @@ function isSameOrigin(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!isSameOrigin(request))
-    return NextResponse.json({ code: 'IDENTITY_ACTION_DENIED' }, { status: 403 });
+  if (!isSameOrigin(request)) return NextResponse.json({ code: 'IDENTITY_ACTION_DENIED' }, { status: 403 });
 
   let input: { correlationId?: unknown; stage?: unknown; providerClass?: unknown };
   try {

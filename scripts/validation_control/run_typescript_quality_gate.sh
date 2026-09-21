@@ -6,6 +6,7 @@ biome lint --reporter=github .
 biome format .
 cd /workspace
 cp -a web /tmp/web
+rm -rf /tmp/web/node_modules
 ln -s /opt/waooaw-web/node_modules /tmp/web/node_modules
 cd /tmp/web
 tsc --noEmit --incremental false

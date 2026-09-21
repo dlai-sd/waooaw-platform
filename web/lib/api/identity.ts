@@ -68,10 +68,7 @@ export async function revokeIdentitySession(
   sessionId: string,
   idempotencyKey: string
 ): Promise<IdentitySessionRevocation> {
-  return createIdentityApi(accessToken).revokeIdentitySession(
-    { sessionId, idempotencyKey },
-    { cache: 'no-store' }
-  );
+  return createIdentityApi(accessToken).revokeIdentitySession({ sessionId, idempotencyKey }, { cache: 'no-store' });
 }
 
 export async function revokeAllIdentitySessions(

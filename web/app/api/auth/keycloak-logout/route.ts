@@ -91,14 +91,22 @@ export async function POST(request: NextRequest) {
   if (request.headers.get('accept')?.includes('application/json')) {
     const correlationId = crypto.randomUUID();
     await recordWebIdentitySecurityEvent({
-      correlationId, eventType: 'LOGOUT_REQUEST', providerClass: 'INTERNAL', outcome: 'ATTEMPTED',
-      reasonCode: 'CUSTOMER_REQUESTED', assuranceClass: 'AAL2',
+      correlationId,
+      eventType: 'LOGOUT_REQUEST',
+      providerClass: 'INTERNAL',
+      outcome: 'ATTEMPTED',
+      reasonCode: 'CUSTOMER_REQUESTED',
+      assuranceClass: 'AAL2',
     });
     const revoked = await revokeWaooawSessions(request);
     if (!revoked)
       await recordWebIdentitySecurityEvent({
-        correlationId, eventType: 'LOGOUT_FAILURE', providerClass: 'INTERNAL', outcome: 'FAILED',
-        reasonCode: 'SESSION_REVOCATION_UNCONFIRMED', assuranceClass: 'AAL2',
+        correlationId,
+        eventType: 'LOGOUT_FAILURE',
+        providerClass: 'INTERNAL',
+        outcome: 'FAILED',
+        reasonCode: 'SESSION_REVOCATION_UNCONFIRMED',
+        assuranceClass: 'AAL2',
       });
     const nonce = crypto.randomUUID();
     const logoutPath = `/api/auth/keycloak-logout?nonce=${encodeURIComponent(nonce)}`;
@@ -138,8 +146,12 @@ export async function GET(request: NextRequest) {
   const correlationId = request.cookies.get(logoutCorrelationCookie)?.value;
   if (correlationId) {
     await recordWebIdentitySecurityEvent({
-      correlationId, eventType: 'LOGOUT_COMPLETION', providerClass: 'INTERNAL', outcome: 'SUCCEEDED',
-      reasonCode: 'LOCAL_SESSION_CLEARED', assuranceClass: 'ANONYMOUS',
+      correlationId,
+      eventType: 'LOGOUT_COMPLETION',
+      providerClass: 'INTERNAL',
+      outcome: 'SUCCEEDED',
+      reasonCode: 'LOCAL_SESSION_CLEARED',
+      assuranceClass: 'ANONYMOUS',
     });
   }
   const logout = await keycloakLogoutUrl(request, applicationOrigin);

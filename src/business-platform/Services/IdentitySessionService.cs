@@ -60,7 +60,10 @@ public sealed class IdentitySessionService
         var now = DateTimeOffset.UtcNow;
 
         await using var db = await _factory.CreateDbContextAsync(ct);
-        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        await using var transaction = await db.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            ct
+        );
         await SetAccountContextAsync(db, accountRef, ct);
         var generation = await db.IdentitySessionGenerations.FindAsync([accountRef], ct);
         if (generation?.RevokedBefore is { } revokedBefore && issuedAt <= revokedBefore)
@@ -96,10 +99,19 @@ public sealed class IdentitySessionService
         await transaction.CommitAsync(ct);
         await _events.RecordAsync(
             new IdentitySecurityEventInput(
-                Guid.NewGuid(), $"session-observed:{sessionId:D}", "SESSION_ESTABLISHMENT",
-                providerClass, "SUCCEEDED", "SESSION_ACTIVE", assuranceClass,
-                "BUSINESS_PLATFORM", actorIdentifier, sourceSessionId, issuedAt
-            ), ct
+                Guid.NewGuid(),
+                $"session-observed:{sessionId:D}",
+                "SESSION_ESTABLISHMENT",
+                providerClass,
+                "SUCCEEDED",
+                "SESSION_ACTIVE",
+                assuranceClass,
+                "BUSINESS_PLATFORM",
+                actorIdentifier,
+                sourceSessionId,
+                issuedAt
+            ),
+            ct
         );
         return sessionId;
     }
@@ -114,12 +126,20 @@ public sealed class IdentitySessionService
         await using var db = await _factory.CreateDbContextAsync(ct);
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         await SetAccountContextAsync(db, accountRef, ct);
-        var sessions = await db.IdentitySessions
-            .Where(value => value.AccountRef == accountRef && value.RevokedAt == null && value.AbsoluteExpiresAt > DateTimeOffset.UtcNow)
+        var sessions = await db
+            .IdentitySessions.Where(value =>
+                value.AccountRef == accountRef
+                && value.RevokedAt == null
+                && value.AbsoluteExpiresAt > DateTimeOffset.UtcNow
+            )
             .OrderByDescending(value => value.LastSeenAt)
             .Select(value => new IdentityManagedSession(
-                value.SessionId, value.IssuedAt, value.LastSeenAt, value.AbsoluteExpiresAt,
-                value.AssuranceClass, value.ProviderClass,
+                value.SessionId,
+                value.IssuedAt,
+                value.LastSeenAt,
+                value.AbsoluteExpiresAt,
+                value.AssuranceClass,
+                value.ProviderClass,
                 value.SessionId == currentSessionId ? "Current browser" : value.DeviceLabel,
                 value.SessionId == currentSessionId
             ))
@@ -138,11 +158,17 @@ public sealed class IdentitySessionService
     {
         var accountRef = Reference("account", accountId.ToString("D"));
         await using var db = await _factory.CreateDbContextAsync(ct);
-        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        await using var transaction = await db.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            ct
+        );
         await SetAccountContextAsync(db, accountRef, ct);
-        var session = await db.IdentitySessions.SingleOrDefaultAsync(
-            value => value.SessionId == sessionId && value.AccountRef == accountRef, ct
-        ) ?? throw new IdentityResourceNotFoundException("Session not found or not accessible.");
+        var session =
+            await db.IdentitySessions.SingleOrDefaultAsync(
+                value => value.SessionId == sessionId && value.AccountRef == accountRef,
+                ct
+            )
+            ?? throw new IdentityResourceNotFoundException("Session not found or not accessible.");
         var changed = session.RevokedAt is null ? 1 : 0;
         if (changed == 1)
         {
@@ -151,7 +177,13 @@ public sealed class IdentitySessionService
             await db.SaveChangesAsync(ct);
         }
         await transaction.CommitAsync(ct);
-        await RecordRevocationAsync("SESSION_REVOCATION_ONE", actorIdentifier, sessionId, sourceEventId, ct);
+        await RecordRevocationAsync(
+            "SESSION_REVOCATION_ONE",
+            actorIdentifier,
+            sessionId,
+            sourceEventId,
+            ct
+        );
         return changed;
     }
 
@@ -165,12 +197,21 @@ public sealed class IdentitySessionService
         var accountRef = Reference("account", accountId.ToString("D"));
         var now = DateTimeOffset.UtcNow;
         await using var db = await _factory.CreateDbContextAsync(ct);
-        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        await using var transaction = await db.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            ct
+        );
         await SetAccountContextAsync(db, accountRef, ct);
         var generation = await db.IdentitySessionGenerations.FindAsync([accountRef], ct);
         if (generation is null)
         {
-            generation = new IdentitySessionGenerationRecord { AccountRef = accountRef, Generation = 1, RevokedBefore = now, UpdatedAt = now };
+            generation = new IdentitySessionGenerationRecord
+            {
+                AccountRef = accountRef,
+                Generation = 1,
+                RevokedBefore = now,
+                UpdatedAt = now,
+            };
             db.IdentitySessionGenerations.Add(generation);
         }
         else
@@ -179,8 +220,10 @@ public sealed class IdentitySessionService
             generation.RevokedBefore = now;
             generation.UpdatedAt = now;
         }
-        var active = await db.IdentitySessions
-            .Where(value => value.AccountRef == accountRef && value.RevokedAt == null)
+        var active = await db
+            .IdentitySessions.Where(value =>
+                value.AccountRef == accountRef && value.RevokedAt == null
+            )
             .ToListAsync(ct);
         foreach (var session in active)
         {
@@ -189,7 +232,13 @@ public sealed class IdentitySessionService
         }
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
-        await RecordRevocationAsync("SESSION_REVOCATION_ALL", actorIdentifier, null, sourceEventId, ct);
+        await RecordRevocationAsync(
+            "SESSION_REVOCATION_ALL",
+            actorIdentifier,
+            null,
+            sourceEventId,
+            ct
+        );
         return active.Count;
     }
 
@@ -202,25 +251,45 @@ public sealed class IdentitySessionService
     ) =>
         _events.RecordAsync(
             new IdentitySecurityEventInput(
-                Guid.NewGuid(), sourceEventId, eventType, "INTERNAL", "SUCCEEDED",
-                "CUSTOMER_REQUESTED", "AAL2", "BUSINESS_PLATFORM",
-                actorIdentifier, sessionId?.ToString("D")
-            ), ct
+                Guid.NewGuid(),
+                sourceEventId,
+                eventType,
+                "INTERNAL",
+                "SUCCEEDED",
+                "CUSTOMER_REQUESTED",
+                "AAL2",
+                "BUSINESS_PLATFORM",
+                actorIdentifier,
+                sessionId?.ToString("D")
+            ),
+            ct
         );
 
-    private static Task SetAccountContextAsync(IdentityDbContext db, string accountRef, CancellationToken ct) =>
+    private static Task SetAccountContextAsync(
+        IdentityDbContext db,
+        string accountRef,
+        CancellationToken ct
+    ) =>
         db.Database.ExecuteSqlInterpolatedAsync(
-            $"SELECT pg_catalog.set_config('app.identity_account_ref', {accountRef}, true)", ct
+            $"SELECT pg_catalog.set_config('app.identity_account_ref', {accountRef}, true)",
+            ct
         );
 
     private string Reference(string purpose, string value) =>
-        Convert.ToHexString(HMACSHA256.HashData(_key, Encoding.UTF8.GetBytes($"wc103:{purpose}:{value}"))).ToLowerInvariant();
+        Convert
+            .ToHexString(
+                HMACSHA256.HashData(_key, Encoding.UTF8.GetBytes($"wc103:{purpose}:{value}"))
+            )
+            .ToLowerInvariant();
 
     public Guid SessionId(string sourceSessionId)
     {
         if (string.IsNullOrWhiteSpace(sourceSessionId))
             throw new IdentityActionDeniedException("IDENTITY_SESSION_REQUIRED");
-        var bytes = HMACSHA256.HashData(_key, Encoding.UTF8.GetBytes($"wc103:session-id:{sourceSessionId}"));
+        var bytes = HMACSHA256.HashData(
+            _key,
+            Encoding.UTF8.GetBytes($"wc103:session-id:{sourceSessionId}")
+        );
         return new Guid(bytes.AsSpan(0, 16));
     }
 }

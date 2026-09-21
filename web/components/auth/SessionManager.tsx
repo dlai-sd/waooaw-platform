@@ -34,7 +34,9 @@ export function SessionManager({ initialSessions }: { initialSessions: IdentityM
           {sessions.map((session) => (
             <li key={session.sessionId}>
               <strong>{session.current ? 'Current browser' : session.deviceLabel}</strong>{' '}
-              <span>{session.provider.toLowerCase()} · active {session.lastSeenAt.toLocaleString()}</span>{' '}
+              <span>
+                {session.provider.toLowerCase()} · active {session.lastSeenAt.toLocaleString()}
+              </span>{' '}
               <button type="button" onClick={() => void revoke(session.sessionId)}>
                 <ShieldX aria-hidden="true" size={16} /> End session
               </button>
