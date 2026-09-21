@@ -75,6 +75,9 @@ def test_local_precheck_commands_are_catalog_owned_and_tool_pinned() -> None:
 
     assert {name: config["gate"] for name, config in catalog["prechecks"].items()} == {
         "gitleaks": "precheck:gitleaks",
+        "scripts_quality": "quality:scripts",
+        "dotnet_quality_business_platform": "quality:dotnet:business-platform",
+        "typescript_quality": "quality:typescript",
         "business_platform": "test-dotnet:business-platform",
         "release_qualification": "release-qualification",
     }

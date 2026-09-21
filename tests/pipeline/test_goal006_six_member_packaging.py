@@ -42,8 +42,16 @@ def test_ci_publishes_only_main_with_attestations_and_digest_artifacts() -> None
     jobs = yaml.safe_load(workflow)["jobs"]
     build = jobs["build"]
     publish = jobs["publish"]
-    for job in (build, publish):
-        services = job["strategy"]["matrix"]["service"]
+    policy = yaml.safe_load((REPO_ROOT / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
+    pull_request_services = [
+        {
+            "name": component["service_image"],
+            "context": component["service_context"],
+            "dockerfile": component["service_dockerfile"],
+        }
+        for component in policy["components"].values()
+    ]
+    for services in (pull_request_services, publish["strategy"]["matrix"]["service"]):
         assert all((REPO_ROOT / service["dockerfile"]).is_file() for service in services)
         dma = next(
             service
@@ -52,7 +60,7 @@ def test_ci_publishes_only_main_with_attestations_and_digest_artifacts() -> None
         )
         assert dma["context"] == "src/agent-adapters"
         assert dma["dockerfile"] == "src/agent-adapters/digital_marketing/Dockerfile"
-    assert build["if"] == "github.event_name == 'pull_request'"
+    assert "needs.validation-plan.outputs.has_service_builds == 'true'" in build["if"]
     assert build["permissions"] == {"contents": "read", "security-events": "write"}
     assert publish["if"] == "github.event_name == 'push' && github.ref == 'refs/heads/main'"
     assert publish["permissions"] == {

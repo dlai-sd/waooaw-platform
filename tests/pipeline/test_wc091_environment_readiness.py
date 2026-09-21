@@ -347,5 +347,7 @@ def test_demo_reset_script_and_runtime_verifier_match_terraform_contract() -> No
     assert 'rm -rf "${PGDATA:?}"/*' in reset
     assert "docker restart" in verifier
     assert '"priorGenerationReachable": false' in verifier
+    assert "docker compose config --format json" in delegated_postgres
+    assert ".networks.default.name" in delegated_postgres
     assert "postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685" in delegated_postgres
     assert "postgres:16-alpine" not in delegated_postgres

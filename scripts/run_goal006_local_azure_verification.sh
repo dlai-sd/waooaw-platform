@@ -57,6 +57,7 @@ docker run --rm \
   -v "$AZURE_CONFIG_DIR:/azure-config" \
   -e HOME=/tmp \
   -e AZURE_CONFIG_DIR=/azure-config \
+  -e AZURE_CORE_ONLY_SHOW_ERRORS=true \
   "$AZURE_CLI_IMAGE" \
   az cloud register \
     --name WAOOAWLocal \
@@ -70,6 +71,7 @@ docker run --rm \
   -v "$AZURE_CONFIG_DIR:/azure-config" \
   -e HOME=/tmp \
   -e AZURE_CONFIG_DIR=/azure-config \
+  -e AZURE_CORE_ONLY_SHOW_ERRORS=true \
   "$AZURE_CLI_IMAGE" \
   az cloud set --name WAOOAWLocal
 
@@ -98,6 +100,7 @@ run_az() {
     -v "$AZURE_CONFIG_DIR:/azure-config" \
     -e HOME=/tmp \
     -e AZURE_CONFIG_DIR=/azure-config \
+    -e AZURE_CORE_ONLY_SHOW_ERRORS=true \
     -e AZURE_POD_IDENTITY_AUTHORITY_HOST=http://goal006-azure-emulator:8080 \
     -v "$EVIDENCE_DIR:/evidence" \
     "$AZURE_CLI_IMAGE" az "$@"
@@ -115,6 +118,7 @@ docker run --rm \
   -w /evidence \
   -e HOME=/tmp \
   -e AZURE_CONFIG_DIR=/azure-config \
+  -e AZURE_CORE_ONLY_SHOW_ERRORS=true \
   -e AZURE_POD_IDENTITY_AUTHORITY_HOST=http://goal006-azure-emulator:8080 \
   -e PYTHONPATH=/repo/scripts \
   -e GOAL006_REVISION_READY_ATTEMPTS=4 \
@@ -154,6 +158,7 @@ docker run --rm \
   -w /evidence/unhealthy-revision \
   -e HOME=/tmp \
   -e AZURE_CONFIG_DIR=/azure-config \
+  -e AZURE_CORE_ONLY_SHOW_ERRORS=true \
   -e AZURE_POD_IDENTITY_AUTHORITY_HOST=http://goal006-azure-emulator:8080 \
   -e PYTHONPATH=/repo/scripts \
   -e GOAL006_REVISION_READY_ATTEMPTS=1 \

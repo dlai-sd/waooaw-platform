@@ -87,7 +87,8 @@ def build_supply_manifest(
 ) -> dict[str, Any]:
     if build_count not in {0, 1}:
         raise ValueError("runner supply build_count must be zero or one")
-    if cache_outcome not in {"registry-hit", "built"} or (cache_outcome == "registry-hit") != (build_count == 0):
+    cache_hits = {"registry-hit", "trusted-identity-hit", "candidate-identity-hit"}
+    if cache_outcome not in {*cache_hits, "built"} or (cache_outcome in cache_hits) != (build_count == 0):
         raise ValueError("runner supply cache outcome does not match build count")
     if supply_duration_ms < 0:
         raise ValueError("runner supply duration must be non-negative")
@@ -146,7 +147,8 @@ def validate_supply_manifest(manifest: dict[str, Any], specification: dict[str, 
     if build_count not in {0, 1}:
         raise ValueError("runner manifest has an invalid producer count")
     cache_outcome = manifest.get("cache_outcome")
-    if cache_outcome not in {"registry-hit", "built"} or (cache_outcome == "registry-hit") != (build_count == 0):
+    cache_hits = {"registry-hit", "trusted-identity-hit", "candidate-identity-hit"}
+    if cache_outcome not in {*cache_hits, "built"} or (cache_outcome in cache_hits) != (build_count == 0):
         raise ValueError("runner manifest cache outcome does not match producer count")
     supply_duration_ms = manifest.get("supply_duration_ms")
     if not isinstance(supply_duration_ms, int) or isinstance(supply_duration_ms, bool) or supply_duration_ms < 0:
@@ -168,7 +170,10 @@ def main() -> int:
     parser.add_argument("--oci-digest")
     parser.add_argument("--provenance-reference")
     parser.add_argument("--producer-run")
-    parser.add_argument("--cache-outcome", choices=("registry-hit", "built"))
+    parser.add_argument(
+        "--cache-outcome",
+        choices=("registry-hit", "trusted-identity-hit", "candidate-identity-hit", "built"),
+    )
     parser.add_argument("--build-count", type=int)
     parser.add_argument("--supply-duration-ms", type=int)
     arguments = parser.parse_args()

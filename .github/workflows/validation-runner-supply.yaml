@@ -46,30 +46,47 @@ jobs:
             candidate_sha=$(jq -r '.pull_request.head.sha // env.GITHUB_SHA' "$GITHUB_EVENT_PATH")
             resolution_tag="candidate-${candidate_sha}-${identity#sha256:}"
           fi
-          echo "context=$context" >> "$GITHUB_OUTPUT"
-          echo "dockerfile=$context/$dockerfile" >> "$GITHUB_OUTPUT"
-          echo "identity=$identity" >> "$GITHUB_OUTPUT"
-          echo "repository=$repository" >> "$GITHUB_OUTPUT"
-          echo "identity_tag=$identity_tag" >> "$GITHUB_OUTPUT"
-          echo "resolution_tag=$resolution_tag" >> "$GITHUB_OUTPUT"
+          {
+            echo "context=$context"
+            echo "dockerfile=$context/$dockerfile"
+            echo "identity=$identity"
+            echo "repository=$repository"
+            echo "identity_tag=$identity_tag"
+            echo "resolution_tag=$resolution_tag"
+          } >> "$GITHUB_OUTPUT"
       - name: Resolve trusted immutable runner
         id: resolve
         env:
           REPOSITORY: ${{ steps.identity.outputs.repository }}
+          IDENTITY_TAG: ${{ steps.identity.outputs.identity_tag }}
           RESOLUTION_TAG: ${{ steps.identity.outputs.resolution_tag }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          digest=$(docker buildx imagetools inspect "$REPOSITORY:$IDENTITY_TAG" \
+            --format '{{json .Manifest.Digest}}' 2>/dev/null | tr -d '"' || true)
+          if [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] \
+            && gh attestation verify "oci://$REPOSITORY@$digest" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            {
+              echo "hit=true"
+              echo "digest=$digest"
+              echo "build_count=0"
+              echo "cache_outcome=trusted-identity-hit"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           digest=$(docker buildx imagetools inspect "$REPOSITORY:$RESOLUTION_TAG" \
             --format '{{json .Manifest.Digest}}' 2>/dev/null | tr -d '"' || true)
           if [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] \
             && gh attestation verify "oci://$REPOSITORY@$digest" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "hit=true" >> "$GITHUB_OUTPUT"
-            echo "digest=$digest" >> "$GITHUB_OUTPUT"
-            echo "build_count=0" >> "$GITHUB_OUTPUT"
-            echo "cache_outcome=registry-hit" >> "$GITHUB_OUTPUT"
-          else
-            echo "hit=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "hit=true"
+              echo "digest=$digest"
+              echo "build_count=0"
+              echo "cache_outcome=candidate-identity-hit"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          echo "hit=false" >> "$GITHUB_OUTPUT"
       - name: Build and publish one runner on trusted miss
         if: steps.resolve.outputs.hit != 'true'
         id: build

@@ -49,9 +49,12 @@
       "minProperties": 1,
       "additionalProperties": {
         "type": "object",
-        "required": ["component_id", "paths", "gates", "reverse_dependencies"],
+        "required": ["component_id", "service_image", "service_context", "service_dockerfile", "paths", "gates", "reverse_dependencies"],
         "properties": {
           "component_id": {"type": "string"},
+          "service_image": {"type": "string"},
+          "service_context": {"type": "string"},
+          "service_dockerfile": {"type": "string"},
           "paths": {"type": "array", "minItems": 1, "items": {"type": "string"}},
           "gates": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true},
           "reverse_dependencies": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
@@ -60,6 +63,20 @@
       }
     },
     "global_triggers": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "always_on_gates": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "scoped_paths": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["paths", "gates"],
+        "properties": {
+          "paths": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true},
+          "gates": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+          "components": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+        },
+        "additionalProperties": false
+      }
+    },
     "documentation_only": {"type": "array", "items": {"type": "string"}},
     "enforced_activation": {"type": "object"},
     "prechecks": {

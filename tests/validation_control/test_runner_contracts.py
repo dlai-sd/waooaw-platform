@@ -13,6 +13,11 @@ COMPOSE = yaml.safe_load((ROOT / "docker-compose.yml").read_text(encoding="utf-8
 RUNNERS = ("test-runner-python", "test-runner-dotnet", "test-runner-ts")
 
 
+def test_default_network_is_project_scoped() -> None:
+    assert "name" not in COMPOSE
+    assert "default" not in COMPOSE["networks"]
+
+
 def test_stack_runners_are_non_root_bounded_and_source_mounted() -> None:
     for runner_name in RUNNERS:
         runner = COMPOSE["services"][runner_name]

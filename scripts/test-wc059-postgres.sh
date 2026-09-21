@@ -2,7 +2,7 @@
 set -euo pipefail
 
 container="wc059-postgres-$RANDOM-$$"
-network="${WAOOAW_DOCKER_NETWORK:-waooaw-dev}"
+network="${WAOOAW_DOCKER_NETWORK:-$(docker compose config --format json | jq -er '.networks.default.name')}"
 image="postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685"
 cleanup() { docker rm -f "$container" >/dev/null 2>&1 || true; }
 trap cleanup EXIT

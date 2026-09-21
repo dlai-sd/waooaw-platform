@@ -1337,7 +1337,5 @@ volumes:
   wc102_nuget_cache:
 
 networks:
-  default:
-    name: waooaw-dev
   agent-runtime-private:
     internal: true
