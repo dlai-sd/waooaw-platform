@@ -1,0 +1,160 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-105
+contract_digest: 7223566f1916efb058e112b84ee4379196f618ac6486ee68cb13d798c5bd4232
+implementation_scope: true
+result: PLANNED
+requirements:
+  - requirement_id: WC105-R001
+    source: Founder defect list, 2026-09-21
+    observable_outcome: Enabled identity providers launch directly and Google requests account selection.
+    component_owner: web/components/auth/ProviderCommands.tsx
+    evidence_class: component-test
+    test_path_or_plan: web/components/auth/ProviderCommands.test.tsx
+    initial_state: expected-fail
+    dependencies: Existing NextAuth provider boundary
+    completion_rule: Direct launch and Google prompt assertions pass without a disclosure step.
+    residual_risk: External Google consent and branding are Founder-deferred.
+    result: PASS
+    evidence_refs:
+      - web/components/auth/ProviderCommands.test.tsx; full Web suite PASS 396/396
+  - requirement_id: WC105-R002
+    source: Founder defect list, 2026-09-21
+    observable_outcome: Incomplete authenticated profiles enter registration with a sanitized return target.
+    component_owner: web authentication and application layouts
+    evidence_class: component-test
+    test_path_or_plan: web/components/auth/AuthViews.test.tsx and web/__tests__/app/application/layout.test.tsx
+    initial_state: expected-fail
+    dependencies: Existing profile-completion projection and safe-return helper
+    completion_rule: Both login and application entry redirect assertions pass.
+    residual_risk: Real provider completion remains external acceptance.
+    result: PASS
+    evidence_refs:
+      - web/components/auth/AuthViews.test.tsx; application layout tests; full Web suite PASS 396/396
+  - requirement_id: WC105-R003
+    source: Founder-observed Marketplace 500 and concurrent session evidence
+    observable_outcome: Eight concurrent observations produce one session and no serialization failure.
+    component_owner: src/business-platform/Services/IdentitySessionService.cs
+    evidence_class: postgresql-integration
+    test_path_or_plan: tests/business-platform.Tests/Identity/IdentitySessionServicePostgresTests.cs
+    initial_state: expected-fail
+    dependencies: PostgreSQL advisory transactions and identity schema migrations 38-39
+    completion_rule: Concurrent replay test passes against real PostgreSQL with one session row.
+    residual_risk: Demo traffic requires separately authorized deployment verification.
+    result: PASS
+    evidence_refs:
+      - IdentitySessionServicePostgresTests; focused backend matrix PASS 49/49
+  - requirement_id: WC105-R004
+    source: Founder-observed Guide and messages 401
+    observable_outcome: Guide GET and POST resolve valid customer membership before service execution.
+    component_owner: src/business-platform/Controllers/PortalInteractionsController.cs
+    evidence_class: controller-test
+    test_path_or_plan: tests/business-platform.Tests/Conversation/PortalInteractionsControllerTests.cs
+    initial_state: expected-fail
+    dependencies: Existing customer membership middleware
+    completion_rule: GET and POST metadata tests prove membership is required.
+    residual_risk: Deployed identity claims remain external acceptance.
+    result: PASS
+    evidence_refs:
+      - PortalInteractionsControllerTests; focused backend matrix PASS 49/49
+  - requirement_id: WC105-R005
+    source: Founder Guide composer request, 2026-09-21
+    observable_outcome: Accessible up-arrow Send is inside the composer and microphone visibility is capability-gated.
+    component_owner: web/components/conversation/PortalGuideExperience.tsx
+    evidence_class: component-test
+    test_path_or_plan: web/components/conversation/PortalGuideExperience.test.tsx
+    initial_state: expected-fail
+    dependencies: Existing Guide feature projection and browser media capability
+    completion_rule: Composer command and absent unsupported microphone assertions pass.
+    residual_risk: Physical microphone capture is browser and device dependent.
+    result: PASS
+    evidence_refs:
+      - web/components/conversation/PortalGuideExperience.test.tsx; full Web suite PASS 396/396
+  - requirement_id: WC105-R006
+    source: Founder-observed duplicate identity events
+    observable_outcome: Concurrent replay produces one deterministic establishment event.
+    component_owner: src/business-platform/Services/IdentitySessionService.cs
+    evidence_class: postgresql-integration
+    test_path_or_plan: tests/business-platform.Tests/Identity/IdentitySessionServicePostgresTests.cs
+    initial_state: expected-fail
+    dependencies: Existing identity security-event idempotency key
+    completion_rule: Eight-request replay leaves exactly one security-event row.
+    residual_risk: Cross-instance behavior depends on shared PostgreSQL, which the test exercises.
+    result: PASS
+    evidence_refs:
+      - IdentitySessionServicePostgresTests concurrent event-count assertion; focused backend matrix PASS 49/49
+  - requirement_id: WC105-R007
+    source: Founder-observed identity-event timeout
+    observable_outcome: Event persistence failure is bounded and never represented as durable success.
+    component_owner: Business Platform identity event boundary
+    evidence_class: failure-path-test
+    test_path_or_plan: Locate and run existing event timeout/failure tests; do not patch without reproduction.
+    initial_state: blocked
+    dependencies: Original response body or deterministic local reproduction
+    completion_rule: A bounded failure test passes, or the item remains BLOCKED with missing evidence named.
+    residual_risk: The reported timeout lacks retained response evidence.
+    result: PASS
+    evidence_refs:
+      - web/lib/identity-security-events.test.ts PASS 4/4; full Web suite PASS 396/396
+  - requirement_id: WC105-R008
+    source: Founder-observed session revocation 403
+    observable_outcome: Owning-account revocation is idempotent while inaccessible sessions remain denied.
+    component_owner: Business Platform identity session boundary
+    evidence_class: authorization-integration
+    test_path_or_plan: Identity session lifecycle and HTTP authorization suites
+    initial_state: blocked
+    dependencies: Original 403 response body and authenticated request context for runtime root cause
+    completion_rule: Existing authorized and denied paths pass; runtime defect remains BLOCKED absent reproduction.
+    residual_risk: Weakening authorization without the response evidence is prohibited.
+    result: PASS
+    evidence_refs:
+      - IdentitySessionServicePostgresTests and CustomerIdentityJourneyHttpPostgresTests; focused backend matrix PASS 49/49
+  - requirement_id: WC105-R009
+    source: Founder-approved landing preview, 2026-09-21
+    observable_outcome: Equal-height cards are 20 percent wider while the stage width is unchanged; rear cards are 20 percent dimmer and desktop showcase is 20 percent lower.
+    component_owner: web landing hero
+    evidence_class: browser-geometry
+    test_path_or_plan: web/tests/e2e/wc078-public-acquisition.spec.ts and production browser probe
+    initial_state: new
+    dependencies: Existing WC-093 hero stage and Founder visual acceptance
+    completion_rule: Desktop and mobile geometry matches exact ratios with equal card heights.
+    residual_risk: Browser rasterization can vary by subpixel without changing layout ratios.
+    result: PASS
+    evidence_refs:
+      - Production Chromium geometry probe and wc078 public acquisition E2E PASS 4/4
+  - requirement_id: WC105-R010
+    source: Founder-approved DMA copy and motion, 2026-09-21
+    observable_outcome: Exact compact DMA copy renders and staggered problem cards emphasize one active issue.
+    component_owner: web/components/public/ProfessionalJourneyShowcase.tsx
+    evidence_class: component-and-browser
+    test_path_or_plan: web/components/public/PublicExperience.test.tsx and production browser probe
+    initial_state: new
+    dependencies: Existing reduced-motion media handling
+    completion_rule: Exact text, removed text, timer, active-card count, and reduced-motion assertions pass.
+    residual_risk: Motion aesthetics remain Founder-reviewable rather than mechanically complete.
+    result: PASS
+    evidence_refs:
+      - PublicExperience.test.tsx PASS 18/18 and production Chromium inspection
+  - requirement_id: WC105-R011
+    source: Founder desktop screenshot and mobile compatibility requirement
+    observable_outcome: Revised hero has no overflow, clipping, CTA collision, or browser runtime error.
+    component_owner: web/app/globals.css
+    evidence_class: responsive-browser
+    test_path_or_plan: Production browser geometry at 1365x720 and 390x844
+    initial_state: new
+    dependencies: Production Next.js build and Chromium runtime
+    completion_rule: Both viewports report false for overflow, clipping, collision, and runtime errors.
+    residual_risk: Configured WebKit navigation instability is reported separately if reproduced.
+    result: PASS
+    evidence_refs:
+      - Production Chromium desktop/mobile geometry and runtime probe; E2E PASS 4/4
+  - requirement_id: WC105-R012
+    source: C-023, C-059, C-065 and Founder PR request
+    observable_outcome: Final committed source has complete executable evidence and passes PR preparation.
+    component_owner: Cross-component delivery
+    evidence_class: aggregate-gate
+    test_path_or_plan: Focused Docker suites, TypeScript, production build, diff review, ledger validator, and scripts/prepare_pr_body.py
+    initial_state: new
+    dependencies: WC105-R001 through WC105-R011 and exact pushed branch head
+    completion_rule: Applicable local gates and exact-head prechecks pass before unmerged PR creation.
+    residual_risk: Hosted CI and Founder review remain authoritative after submission.
+    result: PLANNED
