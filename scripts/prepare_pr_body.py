@@ -505,13 +505,11 @@ def main() -> int:
         "--update-pr",
         type=int,
         metavar="NUMBER",
-        help="update an existing PR body and labels before pushing the prepared local commit",
+        help="update an existing PR body and labels for the prepared commit",
     )
     arguments = parser.parse_args()
 
     try:
-        if arguments.update_pr is not None and not arguments.allow_unpushed_head:
-            raise ValueError("--update-pr requires --allow-unpushed-head")
         repository_root = Path(git("rev-parse", "--show-toplevel"))
         local_head = git("rev-parse", "HEAD")
         execution_preflight(

@@ -123,6 +123,31 @@ def test_main_runs_costly_prechecks_only_after_static_validation(
     assert len(costly_calls) == expected_calls
 
 
+def test_main_accepts_post_push_pr_update(monkeypatch, tmp_path: Path) -> None:
+    body_file = tmp_path / "pr-body.md"
+    body_file.write_text("body", encoding="utf-8")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "prepare_pr_body.py",
+            "--body-file",
+            str(body_file),
+            "--expected-worktree",
+            str(tmp_path),
+            "--expected-head",
+            HEAD,
+            "--preflight-only",
+            "--update-pr",
+            "465",
+        ],
+    )
+    monkeypatch.setattr("prepare_pr_body.git", lambda *arguments: str(tmp_path) if arguments[-1] == "--show-toplevel" else HEAD)
+    monkeypatch.setattr("prepare_pr_body.execution_preflight", lambda *args, **kwargs: None)
+
+    assert main() == 0
+
+
 def test_static_repository_validation_reports_catalog_and_compose_failures(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(
         "prepare_pr_body.yaml.safe_load",
