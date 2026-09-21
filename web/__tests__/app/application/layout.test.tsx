@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { redirect } from 'next/navigation';
 import ApplicationLayout from '@/app/(application)/layout';
 import { getIdentitySession } from '@/lib/api/identity';

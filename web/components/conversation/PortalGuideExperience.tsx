@@ -136,7 +136,13 @@ export function PortalGuideExperience({
             rows={3}
             value={draft}
           />
-          <button aria-label="Send" className="send-command" disabled={!draft.trim() || sending} title="Send" type="submit">
+          <button
+            aria-label="Send"
+            className="send-command"
+            disabled={!draft.trim() || sending}
+            title="Send"
+            type="submit"
+          >
             {sending ? (
               <LoaderCircle aria-hidden="true" className="spin" size={18} />
             ) : (

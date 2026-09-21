@@ -106,7 +106,6 @@ test('WC093-A01 WC093-A03 WC093-A04 WC093-A05: laptop orbit navigates left-to-ri
     if (!orbitElement || !stageElement || !frontElement || !backElement || !commandElement)
       throw new Error('Hero geometry elements are required');
     const orbitRect = orbitElement.getBoundingClientRect();
-    const stageRect = stageElement.getBoundingClientRect();
     const frontRect = frontElement.getBoundingClientRect();
     const commandRect = commandElement.getBoundingClientRect();
     return {
@@ -146,9 +145,7 @@ test('WC093-A01 WC093-A03 WC093-A04 WC093-A05: laptop orbit navigates left-to-ri
   await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('wc093-home-laptop-light.png') });
   const html = page.locator('html');
   const initialTheme = await html.getAttribute('data-theme');
-  await page
-    .getByRole('button', { name: new RegExp(`${messages.en.darkTheme}|${messages.en.lightTheme}`) })
-    .click();
+  await page.getByRole('button', { name: new RegExp(`${messages.en.darkTheme}|${messages.en.lightTheme}`) }).click();
   await expect.poll(() => html.getAttribute('data-theme')).not.toBe(initialTheme);
   expect(await next.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe('rgb(0, 0, 0)');
   await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('wc093-home-laptop-dark.png') });

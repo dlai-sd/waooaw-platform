@@ -4303,10 +4303,11 @@ html[data-header-scrolled="true"] .app-shell-public .top-bar {
   min-inline-size: 0;
   padding: 3px 5px;
   color: var(--ink);
-  opacity: .72;
-  filter: blur(.5px) saturate(.95);
+  opacity: 0.72;
+  filter: blur(.5px) saturate(0.95);
   transform: translate(-50%, -50%) rotate(var(--chaos-rotate));
-  transition: transform .9s cubic-bezier(.65, 0, .35, 1), inset .9s cubic-bezier(.65, 0, .35, 1),
+  transition:
+    transform .9s cubic-bezier(0.65, 0, 0.35, 1), inset .9s cubic-bezier(0.65, 0, 0.35, 1),
     opacity .5s ease, filter .5s ease, background .5s ease, box-shadow .5s ease;
   animation: chaos-jitter 3.2s ease-in-out var(--chaos-delay) infinite;
 }
@@ -4389,8 +4390,7 @@ html[data-header-scrolled="true"] .app-shell-public .top-bar {
   overflow: hidden;
   border: 1px solid rgb(43 213 118 / 28%);
   border-radius: 8px;
-  background: radial-gradient(ellipse at 70% 20%, rgb(43 213 118 / 15%), transparent 60%),
-    rgb(43 213 118 / 5%);
+  background: radial-gradient(ellipse at 70% 20%, rgb(43 213 118 / 15%), transparent 60%), rgb(43 213 118 / 5%);
 }
 .order-pane .chaos-heading {
   color: var(--orbit-green);
@@ -4412,7 +4412,7 @@ html[data-header-scrolled="true"] .app-shell-public .top-bar {
   border: 1px solid rgb(43 213 118 / 25%);
   border-radius: 7px;
   background: rgb(43 213 118 / 6%);
-  animation: order-row-in .8s cubic-bezier(.65, 0, .35, 1) both, order-breathe 3.6s ease-in-out infinite;
+  animation: order-row-in .8s cubic-bezier(0.65, 0, 0.35, 1) both, order-breathe 3.6s ease-in-out infinite;
 }
 .order-row strong {
   min-inline-size: 0;
@@ -4448,25 +4448,47 @@ html[data-header-scrolled="true"] .app-shell-public .top-bar {
   text-transform: uppercase;
 }
 @keyframes chaos-glow {
-  50% { opacity: .75; transform: scale(1.03); }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.03);
+  }
 }
 @keyframes chaos-jitter {
-  0%, 100% { transform: translate(-50%, -50%) rotate(var(--chaos-rotate)); }
-  25% { transform: translate(calc(-50% + 3px), calc(-50% - 4px)) rotate(var(--chaos-rotate)); }
-  50% { transform: translate(calc(-50% - 2px), calc(-50% + 2px)) rotate(var(--chaos-rotate)); }
-  75% { transform: translate(calc(-50% + 2px), calc(-50% + 4px)) rotate(var(--chaos-rotate)); }
+  0%,
+  100% {
+    transform: translate(-50%, -50%) rotate(var(--chaos-rotate));
+  }
+  25% {
+    transform: translate(calc(-50% + 3px), calc(-50% - 4px)) rotate(var(--chaos-rotate));
+  }
+  50% {
+    transform: translate(calc(-50% - 2px), calc(-50% + 2px)) rotate(var(--chaos-rotate));
+  }
+  75% {
+    transform: translate(calc(-50% + 2px), calc(-50% + 4px)) rotate(var(--chaos-rotate));
+  }
 }
 @keyframes chaos-core-beat {
-  50% { opacity: 1; transform: scale(1.25); }
+  50% {
+    opacity: 1;
+    transform: scale(1.25);
+  }
 }
 @keyframes chaos-flow {
-  to { transform: translateX(8px); }
+  to {
+    transform: translateX(8px);
+  }
 }
 @keyframes order-row-in {
-  from { opacity: 0; transform: translateX(8px); }
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
 }
 @keyframes order-breathe {
-  50% { box-shadow: 0 0 14px -2px rgb(43 213 118 / 35%); }
+  50% {
+    box-shadow: 0 0 14px -2px rgb(43 213 118 / 35%);
+  }
 }
 .orbit-nav {
   position: absolute;

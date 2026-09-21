@@ -45,11 +45,7 @@ const SCENES: readonly SpotlightScene[] = [
     id: 'digital-marketing',
     name: 'Digital Marketing Agent',
     context: 'Growing business',
-    capability: [
-      'Watch ',
-      'chaos turn into clarity',
-      ' - You only step in when it matters.',
-    ],
+    capability: ['Watch ', 'chaos turn into clarity', ' - You only step in when it matters.'],
     outcomes: ['Planning', 'Execution', 'Optimization'],
   },
   {
@@ -77,7 +73,14 @@ const SCENES: readonly SpotlightScene[] = [
 
 const CHAOS_ITEMS = [
   { Icon: Search, label: 'SEO', detail: 'Rankings dropping, no one owns it', x: '18%', y: '22%', rotate: '-12deg' },
-  { Icon: Smartphone, label: 'Social content', detail: 'One idea across five platforms', x: '78%', y: '20%', rotate: '9deg' },
+  {
+    Icon: Smartphone,
+    label: 'Social content',
+    detail: 'One idea across five platforms',
+    x: '78%',
+    y: '20%',
+    rotate: '9deg',
+  },
   { Icon: CircleDollarSign, label: 'Ad budget', detail: 'Spend up, returns flat', x: '15%', y: '50%', rotate: '-7deg' },
   { Icon: Globe2, label: 'Website', detail: 'Updates queued, links broken', x: '82%', y: '52%', rotate: '12deg' },
   { Icon: Clock3, label: 'Hours lost', detail: '20+ hours each week on ops', x: '20%', y: '80%', rotate: '10deg' },
