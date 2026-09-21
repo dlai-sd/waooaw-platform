@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { redirect } from 'next/navigation';
 import ApplicationLayout from '@/app/(application)/layout';
 import { getIdentitySession } from '@/lib/api/identity';
@@ -26,13 +26,13 @@ beforeEach(() => {
   });
 });
 
-it('admits an authenticated visitor without creating workspace membership', async () => {
+it('requires registration before an authenticated visitor enters the application shell', async () => {
   jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'registration-required' });
 
-  render(await ApplicationLayout({ children: <p>Marketplace</p> }));
+  await expect(ApplicationLayout({ children: <p>Marketplace</p> })).rejects.toThrow('NEXT_REDIRECT');
 
-  expect(screen.getByTestId('application-shell')).toHaveAttribute('data-has-membership', 'false');
-  expect(screen.getByText('Marketplace')).toBeInTheDocument();
+  expect(redirect).toHaveBeenCalledWith('/register?returnTo=%2Fhome');
+  expect(screen.queryByTestId('application-shell')).not.toBeInTheDocument();
 });
 
 it('keeps anonymous users outside the application shell', async () => {

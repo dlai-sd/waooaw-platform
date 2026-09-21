@@ -14,6 +14,19 @@ namespace Waooaw.BusinessPlatform.Tests.Conversation;
 
 public sealed class PortalInteractionsControllerTests
 {
+    [Theory]
+    [InlineData(nameof(PortalInteractionsController.ListAsync))]
+    [InlineData(nameof(PortalInteractionsController.SendAsync))]
+    public void PortalRoutesRequireResolvedMembership(string methodName)
+    {
+        var method = typeof(PortalInteractionsController).GetMethod(methodName)!;
+        var route = Assert.Single(
+            method.GetCustomAttributes(typeof(CustomerIdentityRouteAttribute), true)
+        );
+
+        Assert.True(Assert.IsType<CustomerIdentityRouteAttribute>(route).RequiresMembership);
+    }
+
     [Fact]
     public async Task MembershipAuthorityOwnsPersistentPortalTimeline()
     {

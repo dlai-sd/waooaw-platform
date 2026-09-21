@@ -1,4 +1,5 @@
 // Implements: architecture/reference/data/identity-security-data-contract.md §Session Projection
+// Implements: work-contracts/WC-105-auth-ui-runtime-defect-repair.md WC105-R003, WC105-R006, WC105-R008
 // Constitutional basis: C-001, C-007, C-026, C-059, C-063
 
 using System.Data;
@@ -6,6 +7,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Npgsql;
 using Waooaw.BusinessPlatform.Infrastructure;
 
 namespace Waooaw.BusinessPlatform.Services;
@@ -23,6 +25,7 @@ public sealed record IdentityManagedSession(
 
 public sealed class IdentitySessionService
 {
+    private const int MaxObservationAttempts = 5;
     private readonly IDbContextFactory<IdentityDbContext> _factory;
     private readonly IdentitySecurityEventService _events;
     private readonly byte[] _key;
@@ -57,11 +60,65 @@ public sealed class IdentitySessionService
         var accountRef = Reference("account", accountId.ToString("D"));
         var actorRef = Reference("actor", actorIdentifier);
         var sessionId = SessionId(sourceSessionId);
-        var now = DateTimeOffset.UtcNow;
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                await ObserveSessionAsync(
+                    accountRef,
+                    actorRef,
+                    sessionId,
+                    issuedAt,
+                    expiresAt,
+                    assuranceClass,
+                    providerClass,
+                    ct
+                );
+                break;
+            }
+            catch (Exception exception)
+                when (attempt < MaxObservationAttempts && IsSerializationFailure(exception))
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(10 * attempt), ct);
+            }
+        }
+        await _events.RecordAsync(
+            new IdentitySecurityEventInput(
+                Guid.NewGuid(),
+                $"session-observed:{sessionId:D}",
+                "SESSION_ESTABLISHMENT",
+                providerClass,
+                "SUCCEEDED",
+                "SESSION_ACTIVE",
+                assuranceClass,
+                "BUSINESS_PLATFORM",
+                actorIdentifier,
+                sourceSessionId,
+                issuedAt
+            ),
+            ct
+        );
+        return sessionId;
+    }
 
+    private async Task ObserveSessionAsync(
+        string accountRef,
+        string actorRef,
+        Guid sessionId,
+        DateTimeOffset issuedAt,
+        DateTimeOffset expiresAt,
+        string assuranceClass,
+        string providerClass,
+        CancellationToken ct
+    )
+    {
         await using var db = await _factory.CreateDbContextAsync(ct);
         await using var transaction = await db.Database.BeginTransactionAsync(
             IsolationLevel.Serializable,
+            ct
+        );
+        await db.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT pg_advisory_xact_lock({BitConverter.ToInt64(sessionId.ToByteArray(), 0)})",
             ct
         );
         await SetAccountContextAsync(db, accountRef, ct);
@@ -81,7 +138,7 @@ public sealed class IdentitySessionService
                     AccountRef = accountRef,
                     ActorRef = actorRef,
                     IssuedAt = issuedAt,
-                    LastSeenAt = now,
+                    LastSeenAt = DateTimeOffset.UtcNow,
                     AbsoluteExpiresAt = expiresAt,
                     AssuranceClass = assuranceClass,
                     ProviderClass = providerClass,
@@ -93,27 +150,20 @@ public sealed class IdentitySessionService
         {
             if (session.AccountRef != accountRef || session.ActorRef != actorRef)
                 throw new IdentityActionDeniedException("IDENTITY_SESSION_REQUIRED");
-            session.LastSeenAt = now;
+            session.LastSeenAt = DateTimeOffset.UtcNow;
         }
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
-        await _events.RecordAsync(
-            new IdentitySecurityEventInput(
-                Guid.NewGuid(),
-                $"session-observed:{sessionId:D}",
-                "SESSION_ESTABLISHMENT",
-                providerClass,
-                "SUCCEEDED",
-                "SESSION_ACTIVE",
-                assuranceClass,
-                "BUSINESS_PLATFORM",
-                actorIdentifier,
-                sourceSessionId,
-                issuedAt
-            ),
-            ct
-        );
-        return sessionId;
+    }
+
+    private static bool IsSerializationFailure(Exception exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is PostgresException { SqlState: PostgresErrorCodes.SerializationFailure })
+                return true;
+        }
+        return false;
     }
 
     public async Task<IReadOnlyList<IdentityManagedSession>> ListAsync(

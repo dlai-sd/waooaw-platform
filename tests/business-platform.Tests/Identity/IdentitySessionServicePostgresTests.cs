@@ -54,6 +54,8 @@ public sealed class IdentitySessionServicePostgresTests : IAsyncLifetime
 
         Assert.Equal(1, await service.RevokeOneAsync(account, "issuer\u001factor", second, "revoke-one:test", CancellationToken.None));
         Assert.Equal(0, await service.RevokeOneAsync(account, "issuer\u001factor", second, "revoke-one:test", CancellationToken.None));
+        await Assert.ThrowsAsync<IdentityResourceNotFoundException>(() =>
+            service.RevokeOneAsync(otherAccount, "issuer\u001factor", first, "revoke-foreign:test", CancellationToken.None));
         Assert.Single(await service.ListAsync(account, first, CancellationToken.None));
         Assert.Equal(1, await service.RevokeAllAsync(account, "issuer\u001factor", "revoke-all:test", CancellationToken.None));
         Assert.Empty(await service.ListAsync(account, first, CancellationToken.None));
@@ -64,6 +66,34 @@ public sealed class IdentitySessionServicePostgresTests : IAsyncLifetime
             service.ObserveAsync(account, "issuer\u001factor", "session-one", issuedAt, expiresAt, "AAL2", "GOOGLE", CancellationToken.None));
 
         Assert.Equal(4L, await OwnerScalarAsync("SELECT count(*) FROM institutional.identity_security_events"));
+    }
+
+    [Fact]
+    public async Task ObserveAsync_IsSafeUnderConcurrentReplay()
+    {
+        var service = CreateService();
+        var account = Guid.NewGuid();
+        var issuedAt = DateTimeOffset.UtcNow.AddMinutes(-2);
+        var expiresAt = issuedAt.AddHours(1);
+
+        var observations = await Task.WhenAll(
+            Enumerable.Range(0, 8).Select(_ =>
+                service.ObserveAsync(
+                    account,
+                    "issuer\u001factor",
+                    "shared-session",
+                    issuedAt,
+                    expiresAt,
+                    "AAL2",
+                    "GOOGLE",
+                    CancellationToken.None
+                )
+            )
+        );
+
+        Assert.Single(observations.Distinct());
+        Assert.Equal(1L, await OwnerScalarAsync("SELECT count(*) FROM business.identity_sessions"));
+        Assert.Equal(1L, await OwnerScalarAsync("SELECT count(*) FROM institutional.identity_security_events"));
     }
 
     private IdentitySessionService CreateService()

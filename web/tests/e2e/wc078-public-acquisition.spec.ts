@@ -38,14 +38,28 @@ test('WC093-A02 WC093-A03 WC093-A08: orbit renders four cards with reduced motio
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Grow your business with WAOOAW AI professionals' })).toBeVisible();
-  const orbit = page.locator('.orbit-showcase');
+  const orbit = page.getByRole('main').locator('.orbit-showcase');
   await expect(orbit).toBeVisible();
   await expect(orbit.locator('.orbit-card')).toHaveCount(4);
   await expect(orbit.locator('.orbit-card.front')).toHaveCount(1);
+  await expect(orbit.locator('.orbit-card.front')).toContainText('Digital Marketing Agent');
   await expect(page.getByRole('button', { name: 'Previous professional' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Next professional' })).toBeVisible();
   await page.getByRole('button', { name: 'Next professional' }).press('Enter');
-  await expect(orbit.locator('.orbit-card.front')).toContainText('Digital Marketing Professional');
+  await expect(orbit.locator('.orbit-card.front')).toContainText('Agriculture AI Expert');
+  const compactGeometry = await orbit.evaluate((node) => {
+    const cards = [...node.querySelectorAll('.orbit-card')];
+    const front = node.querySelector('.orbit-card.front');
+    if (!(front instanceof HTMLElement)) throw new Error('Front orbit card is required');
+    const frontRect = front.getBoundingClientRect();
+    const contentBottom = Math.max(...[...front.children].map((child) => child.getBoundingClientRect().bottom));
+    return {
+      cardHeights: cards.map((card) => (card instanceof HTMLElement ? card.offsetHeight : 0)),
+      contentClipped: contentBottom > frontRect.bottom - 12,
+    };
+  });
+  expect(new Set(compactGeometry.cardHeights).size).toBe(1);
+  expect(compactGeometry.contentClipped).toBe(false);
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(
     false
   );
@@ -59,13 +73,13 @@ test('WC093-A02 WC093-A03 WC093-A08: orbit renders four cards with reduced motio
   await context.addCookies([{ name: 'waooaw-locale', value: 'ur', url: baseURL }]);
   await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
-  await expect(page.locator('.orbit-card.front')).toBeVisible();
+  await expect(page.getByRole('main').locator('.orbit-card.front')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(
     false
   );
 });
 
-test('WC093-A01 WC093-A03 WC093-A04 WC093-A05: laptop orbit advances left-to-right with quiet theme controls and no sticky edge', async ({
+test('WC093-A01 WC093-A03 WC093-A04 WC093-A05: laptop orbit navigates left-to-right with quiet theme controls and no sticky edge', async ({
   page,
 }, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
@@ -73,29 +87,52 @@ test('WC093-A01 WC093-A03 WC093-A04 WC093-A05: laptop orbit advances left-to-rig
   await page.goto('/');
   await page.getByRole('button', { name: 'Reject optional' }).click();
   const intro = page.locator('.public-intro-wc078');
-  const orbit = page.locator('.orbit-showcase');
+  const orbit = page.getByRole('main').locator('.orbit-showcase');
   const front = orbit.locator('.orbit-card.front');
   const previous = page.getByRole('button', { name: 'Previous professional' });
   const next = page.getByRole('button', { name: 'Next professional' });
-  await expect(front).toContainText('Agricultural Advisor');
-  await expect(front).toContainText('Trading Advisor', { timeout: 4_000 });
-  await next.click();
-  await expect(front).toContainText('Agricultural Advisor');
+  await expect(front).toContainText('Digital Marketing Agent');
   await previous.click();
-  await expect(front).toContainText('Trading Advisor');
+  await expect(front).toContainText('Share Market Trading Expert');
+  await next.click();
+  await expect(front).toContainText('Digital Marketing Agent');
   const geometry = await intro.evaluate((node) => {
     const introRect = node.getBoundingClientRect();
     const orbitElement = node.querySelector('.orbit-showcase');
-    if (!orbitElement) throw new Error('Orbit showcase is required');
+    const stageElement = node.querySelector('.orbit-stage');
+    const frontElement = node.querySelector('.orbit-card.front');
+    const backElement = node.querySelector('.orbit-card.back');
+    const commandElement = node.querySelector('.command-row');
+    if (!orbitElement || !stageElement || !frontElement || !backElement || !commandElement)
+      throw new Error('Hero geometry elements are required');
     const orbitRect = orbitElement.getBoundingClientRect();
+    const frontRect = frontElement.getBoundingClientRect();
+    const commandRect = commandElement.getBoundingClientRect();
     return {
       bottom: introRect.bottom,
+      cardHeights: [...node.querySelectorAll('.orbit-card')].map((card) =>
+        card instanceof HTMLElement ? card.offsetHeight : 0
+      ),
+      frontWidthRatio: (frontElement as HTMLElement).offsetWidth / (stageElement as HTMLElement).clientWidth,
+      rearOpacity: Number((backElement as HTMLElement).style.opacity),
+      showcaseOffsetHeight: (orbitElement as HTMLElement).offsetHeight,
+      showcaseTranslateY: new DOMMatrixReadOnly(getComputedStyle(orbitElement).transform).m42,
+      commandCollision:
+        commandRect.left < frontRect.right &&
+        commandRect.right > frontRect.left &&
+        commandRect.top < frontRect.bottom &&
+        commandRect.bottom > frontRect.top,
       orbitLeft: orbitRect.left,
       orbitRight: orbitRect.right,
       viewportWidth: document.documentElement.clientWidth,
     };
   });
   expect(geometry.bottom).toBeLessThanOrEqual(618);
+  expect(new Set(geometry.cardHeights).size).toBe(1);
+  expect(geometry.frontWidthRatio).toBeCloseTo(1.1232, 3);
+  expect(geometry.rearOpacity).toBeCloseTo(0.352, 3);
+  expect(geometry.showcaseTranslateY / geometry.showcaseOffsetHeight).toBeCloseTo(0.2, 2);
+  expect(geometry.commandCollision).toBe(false);
   expect(geometry.orbitLeft).toBeGreaterThanOrEqual(0);
   expect(geometry.orbitRight).toBeLessThanOrEqual(geometry.viewportWidth);
   for (const control of [previous, next]) {
@@ -106,8 +143,10 @@ test('WC093-A01 WC093-A03 WC093-A04 WC093-A05: laptop orbit advances left-to-rig
     );
   }
   await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('wc093-home-laptop-light.png') });
-  await page.getByRole('button', { name: messages.en.darkTheme }).click();
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  const html = page.locator('html');
+  const initialTheme = await html.getAttribute('data-theme');
+  await page.getByRole('button', { name: new RegExp(`${messages.en.darkTheme}|${messages.en.lightTheme}`) }).click();
+  await expect.poll(() => html.getAttribute('data-theme')).not.toBe(initialTheme);
   expect(await next.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe('rgb(0, 0, 0)');
   await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('wc093-home-laptop-dark.png') });
   await page.evaluate(() => scrollTo(0, 500));

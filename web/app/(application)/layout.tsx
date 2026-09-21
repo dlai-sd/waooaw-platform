@@ -1,4 +1,5 @@
 // Implements: architecture/reference/ux/hybrid-application-shell.md §Route and Layout Ownership
+// Implements: work-contracts/WC-105-auth-ui-runtime-defect-repair.md WC105-R002
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
 import { redirect } from 'next/navigation';
@@ -14,6 +15,7 @@ export default async function ApplicationLayout({ children }: { children: ReactN
   if (!accessToken) redirect('/login');
   const identity = await getIdentitySession(accessToken);
   if (identity.kind === 'expired' || identity.kind === 'unauthorized') redirect('/login');
+  if (identity.kind === 'registration-required') redirect('/register?returnTo=%2Fhome');
   const { locale, messages } = await getRequestI18n();
   if (identity.kind === 'step-up') {
     return (

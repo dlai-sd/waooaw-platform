@@ -1,9 +1,10 @@
 'use client';
 
 // Implements: work-contracts/WC-096-conversational-customer-portal.md §5
+// Implements: work-contracts/WC-105-auth-ui-runtime-defect-repair.md WC105-R005
 // Constitutional basis: C-026 (Tenant Isolation), C-049 (Honest Limitation), C-059 (Implementation Traceability)
 
-import { LoaderCircle, Send } from 'lucide-react';
+import { ArrowUp, LoaderCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import type { PortalInteractionMessageV1 } from '@/lib/api/generated/models/PortalInteractionMessageV1';
@@ -126,22 +127,29 @@ export function PortalGuideExperience({
         }}
       >
         <label htmlFor="portal-guide-draft">Ask the Guide</label>
-        <textarea
-          id="portal-guide-draft"
-          maxLength={4000}
-          onChange={(event) => updateDraft(event.target.value)}
-          placeholder="Where can I review my agents?"
-          rows={3}
-          value={draft}
-        />
-        <button className="send-command" disabled={!draft.trim() || sending} type="submit">
-          {sending ? (
-            <LoaderCircle aria-hidden="true" className="spin" size={18} />
-          ) : (
-            <Send aria-hidden="true" size={18} />
-          )}
-          Send
-        </button>
+        <div className="portal-guide-composer">
+          <textarea
+            id="portal-guide-draft"
+            maxLength={4000}
+            onChange={(event) => updateDraft(event.target.value)}
+            placeholder="Where can I review my agents?"
+            rows={3}
+            value={draft}
+          />
+          <button
+            aria-label="Send"
+            className="send-command"
+            disabled={!draft.trim() || sending}
+            title="Send"
+            type="submit"
+          >
+            {sending ? (
+              <LoaderCircle aria-hidden="true" className="spin" size={18} />
+            ) : (
+              <ArrowUp aria-hidden="true" size={18} />
+            )}
+          </button>
+        </div>
       </form>
     </section>
   );

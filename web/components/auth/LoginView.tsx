@@ -1,4 +1,5 @@
 // Implements: work-contracts/WC-083-route-backed-auth-dialog.md §Milestone 1
+// Implements: work-contracts/WC-105-auth-ui-runtime-defect-repair.md WC105-R002
 // Constitutional basis: C-059 (Implementation Traceability)
 
 import { redirect } from 'next/navigation';
@@ -16,7 +17,7 @@ export async function LoginView({ searchParams }: { searchParams?: Promise<{ ret
   if (accessToken) {
     const identity = await getIdentitySession(accessToken);
     if (identity.kind === 'ready') redirect(returnTo);
-    if (identity.kind === 'registration-required') redirect('/marketplace');
+    if (identity.kind === 'registration-required') redirect(`/register?returnTo=${encodeURIComponent(returnTo)}`);
     if (identity.kind === 'unavailable') redirect(returnTo);
   }
   const providers = await listIdentityProviders();

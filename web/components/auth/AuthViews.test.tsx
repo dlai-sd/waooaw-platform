@@ -72,7 +72,7 @@ describe('authentication views', () => {
     expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-callback-url', '/login?returnTo=%2Fsettings');
   });
 
-  it('continues an authenticated visitor to Marketplace without registration', async () => {
+  it('requires an authenticated visitor to register before continuing', async () => {
     jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
     jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'registration-required' });
 
@@ -80,7 +80,7 @@ describe('authentication views', () => {
       'NEXT_REDIRECT'
     );
 
-    expect(redirect).toHaveBeenCalledWith('/marketplace');
+    expect(redirect).toHaveBeenCalledWith('/register?returnTo=%2Fsettings');
     expect(listIdentityProviders).not.toHaveBeenCalled();
   });
 

@@ -62,8 +62,12 @@ describe('PortalGuideExperience', () => {
     expect(timeline).toBeTruthy();
     expect(composer?.parentElement).toBe(guide);
     expect(timeline?.contains(composer)).toBe(false);
+    const sendButton = screen.getByRole('button', { name: 'Send' });
+    expect(sendButton.closest('.portal-guide-composer')).toBeTruthy();
+    expect(sendButton).toHaveTextContent('');
+    expect(screen.queryByRole('button', { name: /microphone/i })).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Ask the Guide'), { target: { value: 'Show billing' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    fireEvent.click(sendButton);
 
     expect(await screen.findByText('I can take you to billing details.')).toBeVisible();
     expect(screen.getByRole('link', { name: 'Review billing' })).toHaveAttribute('href', '/profile#billing');
