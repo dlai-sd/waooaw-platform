@@ -79,12 +79,19 @@ jobs:
             "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yaml/runs?branch=main&event=push&status=success&per_page=100" \
             | jq -r --arg sha "$latest_main_sha" \
               '[.workflow_runs[] | select(.head_sha == $sha)] | sort_by(.run_number) | last | .id // empty')
-          test -n "$release_run_id"
+          test -n "$release_run_id" || {
+            echo "No successful main CI run found for release SHA $latest_main_sha" >&2
+            exit 1
+          }
           artifact_name="goal006-exact-seven-release-$latest_main_sha"
-          artifact_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$release_run_id/artifacts" \
+          artifact_id=$(gh api --paginate --slurp \
+            "repos/$GITHUB_REPOSITORY/actions/runs/$release_run_id/artifacts?per_page=100" \
             | jq -r --arg name "$artifact_name" \
-              '[.artifacts[] | select(.name == $name and (.expired | not))] | first | .id // empty')
-          test -n "$artifact_id"
+              '[.[].artifacts[] | select(.name == $name and (.expired | not))] | first | .id // empty')
+          test -n "$artifact_id" || {
+            echo "No unexpired release artifact named $artifact_name found in CI run $release_run_id" >&2
+            exit 1
+          }
           echo "release_run_id=$release_run_id" >> "$GITHUB_OUTPUT"
           echo "release_sha=$latest_main_sha" >> "$GITHUB_OUTPUT"
 
