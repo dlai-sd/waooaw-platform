@@ -42,17 +42,16 @@ RUNTIME_EVIDENCE_SECTION = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 VALIDATION_POLICY_PATH = Path(__file__).resolve().parents[1] / "validation/engineering-validation.yaml"
-PRECHECK_GRAPH_VERSION = "wc103-prechecks-v5"
+PRECHECK_GRAPH_VERSION = "wc103-prechecks-v6"
 PRECHECK_ORDER = (
     "gitleaks",
+    "scripts_quality",
     "dotnet_quality_business_platform",
     "typescript_quality",
     "business_platform",
     "release_qualification",
 )
-STATIC_PRECHECKS = frozenset(
-    {"gitleaks", "dotnet_quality_business_platform", "typescript_quality"}
-)
+STATIC_PRECHECKS = frozenset({"gitleaks", "scripts_quality", "dotnet_quality_business_platform", "typescript_quality"})
 PRECHECK_CONFIGURATION_PATHS = (
     Path(__file__),
     Path(__file__).with_name("precheck_orchestrator.py"),
@@ -61,6 +60,7 @@ PRECHECK_CONFIGURATION_PATHS = (
     Path(__file__).parent / "validation_control/orchestrator.py",
     Path(__file__).parent / "validation_control/runner_supply.py",
     Path(__file__).parent / "validation_control/run_gitleaks_gate.sh",
+    Path(__file__).parent / "validation_control/run_dotnet_test_gate.sh",
     VALIDATION_POLICY_PATH,
     Path(__file__).resolve().parents[1] / "docker-compose.yml",
     Path(__file__).with_name("run_release_qualification.sh"),
@@ -387,10 +387,7 @@ def precheck_nodes(
     local_executor = repository_root / "scripts/validation_control/local_catalog_gate.py"
     unsupported_prechecks = applicable_prechecks.difference(PRECHECK_ORDER)
     if unsupported_prechecks:
-        raise ValueError(
-            "validation catalog selected unsupported prechecks: "
-            + ", ".join(sorted(unsupported_prechecks))
-        )
+        raise ValueError("validation catalog selected unsupported prechecks: " + ", ".join(sorted(unsupported_prechecks)))
     nodes: list[PrecheckNode] = []
     for name in PRECHECK_ORDER:
         if name not in applicable_prechecks:

@@ -102,6 +102,57 @@ public sealed class IdentitySecurityEventServiceTests
         );
     }
 
+    [Theory]
+    [InlineData("correlation")]
+    [InlineData("source-event")]
+    [InlineData("assurance")]
+    [InlineData("boundary")]
+    [InlineData("future")]
+    public async Task RecordAsync_RejectsRemainingInvalidContractFields(string field)
+    {
+        var input = new IdentitySecurityEventInput(
+            Guid.NewGuid(),
+            "synthetic:valid",
+            "CALLBACK_SUCCESS",
+            "GOOGLE",
+            "SUCCEEDED",
+            "VALID_REASON",
+            "AAL2",
+            "BUSINESS_PLATFORM");
+        input = field switch
+        {
+            "correlation" => input with { CorrelationId = Guid.Empty },
+            "source-event" => input with { SourceEventId = "invalid source" },
+            "assurance" => input with { AssuranceClass = "AAL9" },
+            "boundary" => input with { SourceBoundary = "PUBLIC_BROWSER" },
+            _ => input with { OccurredAt = DateTimeOffset.UtcNow.AddMinutes(6) },
+        };
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            CreateService(new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString())).RecordAsync(
+                input,
+                CancellationToken.None));
+    }
+
+    [Theory]
+    [InlineData(null, "test-only-identity-security-event-key-32-bytes", "local")]
+    [InlineData("factory", "short", "local")]
+    [InlineData("factory", "test-only-identity-security-event-key-32-bytes", "unknown")]
+    public void Constructor_RejectsMissingDependenciesAndInvalidConfiguration(
+        string? factoryMode,
+        string key,
+        string environment)
+    {
+        var factory = factoryMode is null
+            ? null
+            : new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString());
+
+        Assert.ThrowsAny<Exception>(() => new IdentitySecurityEventService(
+            factory!,
+            Options.Create(new IdentityHmacOptions { Key = key }),
+            Options.Create(new IdentityEnvironmentOptions { Environment = environment })));
+    }
+
     [Fact]
     public void Migration_DefinesAppendOnlyInsertOnlyOperationalStore()
     {

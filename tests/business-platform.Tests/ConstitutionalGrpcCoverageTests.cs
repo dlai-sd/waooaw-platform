@@ -84,6 +84,129 @@ public sealed class ConstitutionalGrpcCoverageTests
     }
 
     [Fact]
+    public async Task IdentityGateway_AllowsAndRecordsCanonicalEvidence()
+    {
+        var tenantId = Guid.NewGuid();
+        var actionInstanceId = Guid.NewGuid();
+        var evidenceId = Guid.NewGuid();
+        await using var server = await RawConstitutionalServer.StartAsync(
+            request =>
+            {
+                Assert.Equal(tenantId.ToString("D"), request.ContractId);
+                Assert.Equal("IDENTITY_LOGIN", request.ActionType);
+                Assert.Contains("canonical", request.ActionParameters, StringComparison.Ordinal);
+                return new ValidateActionResponse
+                {
+                    Decision = ValidationDecision.Allow,
+                    ConstitutionalBasis = "C-023; C-026",
+                };
+            },
+            request =>
+            {
+                Assert.Equal(actionInstanceId.ToString("D"), request.ActionInstanceId);
+                Assert.Equal("C-023; C-026", request.ConstitutionalBasis);
+                return new RecordEvidenceResponse { EvidenceRecordId = evidenceId.ToString("D") };
+            });
+        var gateway = new GrpcIdentityConstitutionalGateway(
+            Configuration(server.Address),
+            NullLogger<GrpcIdentityConstitutionalGateway>.Instance);
+
+        var result = await gateway.AuthorizeAndRecordAsync(
+            tenantId,
+            actionInstanceId,
+            "IDENTITY_LOGIN",
+            new { value = "canonical" },
+            CancellationToken.None);
+
+        Assert.Equal(evidenceId, result);
+        Assert.Equal(1, server.ValidateCalls);
+        Assert.Equal(1, server.RecordCalls);
+    }
+
+    [Fact]
+    public async Task IdentityGateway_UsesAddressAndDefaultConstitutionalBasis()
+    {
+        var evidenceId = Guid.NewGuid();
+        await using var server = await RawConstitutionalServer.StartAsync(
+            _ => new ValidateActionResponse
+            {
+                Decision = ValidationDecision.Allow,
+                ConstitutionalBasis = " ",
+            },
+            request =>
+            {
+                Assert.Equal("C-023; C-026; WC-103", request.ConstitutionalBasis);
+                return new RecordEvidenceResponse { EvidenceRecordId = evidenceId.ToString("D") };
+            });
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConstitutionalEngine:Address"] = server.Address.ToString(),
+            })
+            .Build();
+        var gateway = new GrpcIdentityConstitutionalGateway(
+            configuration,
+            NullLogger<GrpcIdentityConstitutionalGateway>.Instance);
+
+        var result = await gateway.AuthorizeAndRecordAsync(
+            Guid.NewGuid(), Guid.NewGuid(), "IDENTITY_LOGOUT", new { }, CancellationToken.None);
+
+        Assert.Equal(evidenceId, result);
+    }
+
+    [Theory]
+    [InlineData(ValidationDecision.Deny, "denied", "denied")]
+    [InlineData(ValidationDecision.Escalate, "", "Escalate")]
+    public async Task IdentityGateway_RejectsNonAllowDecision(
+        ValidationDecision decision,
+        string reason,
+        string expected)
+    {
+        await using var server = await RawConstitutionalServer.StartAsync(
+            _ => new ValidateActionResponse { Decision = decision, Reason = reason },
+            _ => new RecordEvidenceResponse { EvidenceRecordId = Guid.NewGuid().ToString("D") });
+        var gateway = new GrpcIdentityConstitutionalGateway(
+            Configuration(server.Address),
+            NullLogger<GrpcIdentityConstitutionalGateway>.Instance);
+
+        var exception = await Assert.ThrowsAsync<ConstitutionalActionDeniedException>(() =>
+            gateway.AuthorizeAndRecordAsync(
+                Guid.NewGuid(), Guid.NewGuid(), "IDENTITY_LOGIN", new { }, CancellationToken.None));
+
+        Assert.Contains(expected, exception.Message);
+        Assert.Equal(0, server.RecordCalls);
+    }
+
+    [Fact]
+    public async Task IdentityGateway_MapsInvalidEvidenceIdentifierToUnavailable()
+    {
+        await using var server = await RawConstitutionalServer.StartAsync(
+            _ => new ValidateActionResponse { Decision = ValidationDecision.Allow },
+            _ => new RecordEvidenceResponse { EvidenceRecordId = "invalid" });
+        var gateway = new GrpcIdentityConstitutionalGateway(
+            Configuration(server.Address),
+            NullLogger<GrpcIdentityConstitutionalGateway>.Instance);
+
+        var exception = await Assert.ThrowsAsync<IdentityConstitutionalUnavailableException>(() =>
+            gateway.AuthorizeAndRecordAsync(
+                Guid.NewGuid(), Guid.NewGuid(), "IDENTITY_LOGIN", new { }, CancellationToken.None));
+
+        Assert.IsType<InvalidOperationException>(exception.InnerException);
+    }
+
+    [Fact]
+    public async Task IdentityGateway_RequiresConfiguredEndpoint()
+    {
+        var gateway = new GrpcIdentityConstitutionalGateway(
+            new ConfigurationBuilder().Build(),
+            NullLogger<GrpcIdentityConstitutionalGateway>.Instance);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            gateway.AuthorizeAndRecordAsync(
+                Guid.NewGuid(), Guid.NewGuid(), "IDENTITY_LOGIN", new { }, CancellationToken.None));
+    }
+
+    [Fact]
     public async Task SkillPublish_AllowsCreationThenRejectsDuplicateVersion()
     {
         await using var server = await RawConstitutionalServer.StartAsync(

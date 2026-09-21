@@ -11,6 +11,7 @@ test_project=$2
 result_directory="/workspace/test-results/coverage/$service"
 artifact_directory="/tmp/artifacts/$service"
 
+rm -rf "$result_directory"
 mkdir -p "$result_directory"
 dotnet restore "$test_project" --artifacts-path "$artifact_directory"
 dotnet build "$test_project" --no-restore -warnaserror --artifacts-path "$artifact_directory"

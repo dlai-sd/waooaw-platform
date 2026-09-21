@@ -288,6 +288,18 @@ global_triggers:
 documentation_only: [README.md, CHANGELOG.md, docs/**]
 prechecks:
   gitleaks: {always: true, inputs: ["**"], gate: "precheck:gitleaks"}
+  scripts_quality:
+    paths:
+      - scripts/**
+      - pyproject.toml
+      - requirements*.txt
+      - validation/**
+    inputs:
+      - scripts/**
+      - pyproject.toml
+      - requirements*.txt
+      - validation/**
+    gate: "quality:scripts"
   dotnet_quality_business_platform:
     components: [business-platform]
     inputs:
