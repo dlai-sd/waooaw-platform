@@ -993,7 +993,12 @@ def test_environment_deployment_is_authorized_without_changing_promotion_state()
     assert "actions/workflows/ci.yaml/runs?branch=main&event=push&status=success" in deploy
     assert 'artifact_name="goal006-exact-seven-release-$latest_main_sha"' in deploy
     assert 'test -n "$release_run_id"' in deploy
+    assert "No successful main CI run found for release SHA" in deploy
+    assert "gh api --paginate --slurp" in deploy
+    assert "actions/runs/$release_run_id/artifacts?per_page=100" in deploy
+    assert "[.[].artifacts[]" in deploy
     assert 'test -n "$artifact_id"' in deploy
+    assert "No unexpired release artifact named" in deploy
     assert "release_run_id: ${{ fromJSON(needs.authorize.outputs.release_run_id) }}" in deploy
     assert "release_sha: ${{ needs.authorize.outputs.release_sha }}" in deploy
     assert "environment: ${{ inputs.environment }}" in deploy
