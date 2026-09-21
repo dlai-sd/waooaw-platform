@@ -1,4 +1,5 @@
 // Implements: work-contracts/WC-096-conversational-customer-portal.md §5
+// Implements: work-contracts/WC-105-auth-ui-runtime-defect-repair.md WC105-R004
 // constitutional_basis: C-005, C-026, C-049, C-059, C-063
 
 using System.Security.Claims;
@@ -15,7 +16,7 @@ namespace Waooaw.BusinessPlatform.Controllers;
 public sealed class PortalInteractionsController(PortalInteractionService service) : ControllerBase
 {
     [HttpGet]
-    [CustomerIdentityRoute]
+    [CustomerIdentityRoute(requiresMembership: true)]
     public async Task<IActionResult> ListAsync(
         [FromQuery] string? cursor,
         [FromQuery] int limit = 40,
@@ -37,7 +38,7 @@ public sealed class PortalInteractionsController(PortalInteractionService servic
     }
 
     [HttpPost]
-    [CustomerIdentityRoute]
+    [CustomerIdentityRoute(requiresMembership: true)]
     public async Task<IActionResult> SendAsync(
         [FromBody] SendPortalInteractionMessageRequestV1 request,
         CancellationToken cancellationToken
