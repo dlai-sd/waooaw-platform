@@ -3,13 +3,17 @@
 
 using System.Net;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Waooaw.BusinessPlatform.Controllers;
+using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
 using Xunit;
 
@@ -481,6 +485,133 @@ public sealed class GoogleWorkspaceProofAdapterTests
         );
         Assert.False(invoked);
         Assert.Equal(503, Assert.IsType<ObjectResult>(context.Result).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("StartRegistrationAsync", "object", 201, "google", 0, false, "sid", "REGISTRATION_START", "SUCCEEDED")]
+    [InlineData("StartRegistrationAsync", "status", 500, "facebook", 10, true, "jti", "REGISTRATION_FAILURE", "FAILED")]
+    [InlineData("CompleteRegistrationAsync", "exception", 500, "apple", null, false, "none", "REGISTRATION_FAILURE", "FAILED")]
+    [InlineData("CompleteRegistrationAsync", "default", 200, "email", 10, false, "sid", "REGISTRATION_COMPLETION", "SUCCEEDED")]
+    [InlineData("GetSessionAsync", "object-default", 200, null, 0, false, "sid", "SESSION_ESTABLISHMENT", "SUCCEEDED")]
+    [InlineData("GetSessionAsync", "status", 401, "google", 10, false, "sid", "AUTHORIZATION_DENIAL", "DENIED")]
+    [InlineData("StartAccountLinkAsync", "status", 403, "facebook", 0, false, "sid", "AUTHORIZATION_DENIAL", "DENIED")]
+    [InlineData("ApproveAccountLinkAsync", "status", 503, "apple", 0, false, "sid", "AUTHORIZATION_DENIAL", "FAILED")]
+    public async Task MvcFilter_RecordsPrivacySafeObservedEvent(
+        string actionName,
+        string resultKind,
+        int status,
+        string? provider,
+        int? authAgeMinutes,
+        bool useSubClaim,
+        string sessionClaim,
+        string expectedEvent,
+        string expectedOutcome)
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var identity = IdentityTestHelpers.CreateService(factory);
+        var adapter = new GoogleWorkspaceProofAdapter(
+            new HttpClient(),
+            Options.Create(Configuration()));
+        var providers = new IdentityProviderProjectionService(
+            Options.Create(IdentityTestHelpers.TestEnvironment));
+        var journey = new CustomerIdentityJourneyService(identity, factory, adapter, providers);
+        var securityEvents = new IdentitySecurityEventService(
+            factory,
+            Options.Create(new IdentityHmacOptions
+            {
+                Key = "test-only-identity-security-event-key-32-bytes",
+            }),
+            Options.Create(new IdentityEnvironmentOptions { Environment = "local" }));
+        var claims = new List<Claim>
+        {
+            new(useSubClaim ? "sub" : ClaimTypes.NameIdentifier, "observed-actor"),
+        };
+        if (provider is not null)
+            claims.Add(new Claim(provider == "facebook" ? "idp" : "identity_provider", provider));
+        if (authAgeMinutes.HasValue)
+            claims.Add(new Claim(
+                "auth_time",
+                DateTimeOffset.UtcNow.AddMinutes(-authAgeMinutes.Value).ToUnixTimeSeconds().ToString()));
+        if (sessionClaim != "none")
+            claims.Add(new Claim(sessionClaim, "observed-session"));
+        var httpContext = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test")),
+        };
+        httpContext.Items[CustomerMembershipMiddleware.JourneyItem] = true;
+        var controller = new IdentityController(
+            identity,
+            providers,
+            NullLogger<IdentityController>.Instance,
+            journey,
+            securityEvents)
+        {
+            ControllerContext = new ControllerContext { HttpContext = httpContext },
+        };
+        var action = new ActionContext(
+            httpContext,
+            new RouteData(),
+            new ActionDescriptor { RouteValues = { ["action"] = actionName } });
+        var context = new ActionExecutingContext(action, [], new Dictionary<string, object?>(), controller);
+
+        await controller.OnActionExecutionAsync(context, () =>
+        {
+            var executed = new ActionExecutedContext(action, [], controller)
+            {
+                Result = resultKind switch
+                {
+                    "object" => new ObjectResult(new { }) { StatusCode = status },
+                    "object-default" => new ObjectResult(new { }),
+                    "status" => new StatusCodeResult(status),
+                    _ => new EmptyResult(),
+                },
+            };
+            if (resultKind == "exception")
+                executed.Exception = new InvalidOperationException("synthetic action failure");
+            return Task.FromResult(executed);
+        });
+
+        await using var db = factory.CreateDbContext();
+        var record = Assert.Single(db.SecurityEvents);
+        Assert.Equal(expectedEvent, record.EventType);
+        Assert.Equal(expectedOutcome, record.Outcome);
+        Assert.Equal(provider?.ToUpperInvariant() ?? "UNKNOWN", record.ProviderClass);
+        Assert.NotNull(record.ActorRef);
+    }
+
+    [Fact]
+    public async Task MvcFilter_IgnoresActionWithoutSecurityEventMapping()
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var identity = IdentityTestHelpers.CreateService(factory);
+        var adapter = new GoogleWorkspaceProofAdapter(new HttpClient(), Options.Create(Configuration()));
+        var providers = new IdentityProviderProjectionService(Options.Create(IdentityTestHelpers.TestEnvironment));
+        var journey = new CustomerIdentityJourneyService(identity, factory, adapter, providers);
+        var securityEvents = new IdentitySecurityEventService(
+            factory,
+            Options.Create(new IdentityHmacOptions { Key = "test-only-identity-security-event-key-32-bytes" }),
+            Options.Create(new IdentityEnvironmentOptions { Environment = "local" }));
+        var httpContext = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "observed-actor")], "Test")),
+        };
+        httpContext.Items[CustomerMembershipMiddleware.JourneyItem] = true;
+        var controller = new IdentityController(
+            identity, providers, NullLogger<IdentityController>.Instance, journey, securityEvents)
+        {
+            ControllerContext = new ControllerContext { HttpContext = httpContext },
+        };
+        var action = new ActionContext(
+            httpContext,
+            new RouteData(),
+            new ActionDescriptor { RouteValues = { ["action"] = "GetProfileAsync" } });
+
+        await controller.OnActionExecutionAsync(
+            new ActionExecutingContext(action, [], new Dictionary<string, object?>(), controller),
+            () => Task.FromResult(new ActionExecutedContext(action, [], controller) { Result = new OkResult() }));
+
+        await using var db = factory.CreateDbContext();
+        Assert.Empty(db.SecurityEvents);
     }
 
     [Theory]

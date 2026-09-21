@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 192
-**Last Updated:** 2026-09-20 (WC-104 DETERMINISTIC CARRY-FORWARD CHECKPOINT)
+**State Revision:** 194
+**Last Updated:** 2026-09-20 (WC-103 LOCAL IMPLEMENTATION QUALIFICATION CHECKPOINT)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-080 - Agent Runtime Adapter Contract v1 |
 | Latest merge | PR #462 merged to `main` as `8c340d87` |
-| Active delivery | WC-104 End-to-End Docker Runner Supply is merged through PR #462; Founder-authorized defects D17-D19 are implemented on `fix/wc104-deterministic-carry-forward` at `5abc3145` with explicit evidence provenance, deterministic nearest-valid-ancestor selection and a static-first focused Platform IT validation rule, without activating selective enforcement; WC-103 remains specification-ready and implementation-gated; other bounded delivery remains unchanged |
+| Active delivery | WC-103 authentication implementation is locally qualified on `wc/103-authentication-implementation`; actual Google/Facebook, exact-release/Demo, Apple and standalone-email acceptance remain deferred and no deployment was run; WC-104 follow-up remains locally qualified without selective enforcement; other bounded delivery remains unchanged |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 
@@ -54,6 +54,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | WC-099 post-Demo correction | ENGINEERING QUALIFIED CANDIDATE - Iteration 2 candidate `64cbce45` delegates Marketplace Trial/Hire to canonical lifecycle owners, enforces exact DMA offerability, requests fresh Google account selection, fails Guide startup/readiness for invalid cursor material, and repairs Guide/portal geometry. Iteration 3 milestone `c8fecd61` adds fail-fast worktree/HEAD and Docker preflight, schema-v3 exact evidence binding, bounded non-runtime evidence reuse, and durable Platform IT Expert costly-run rules; 45 focused Docker tests and all 36 ledger rows pass. Existing product evidence includes 803 BP tests, 386 Web tests, 30 deployment tests, a 52-route production build and 29 WC-099 browser checks with 36 intentional project skips. R-014/R-020 remain blocked pending Founder merge and separately authorized work-component deployment; no cloud mutation, Demo acceptance, Production readiness, approval or merge is claimed. |
 | WC-100 engineering validation efficiency | ENGINEERING QUALIFIED CANDIDATE - WC100-01 through WC100-04A are implemented on `ib/100/engineering-validation-efficiency`. Exact-head Docker qualification passes 61 focused ledger, orchestration, immutable-image, classifier and handoff tests with lint/format checks; current full PR CI remains authoritative. Hosted security/regression evidence, the 20-PR Shadow evaluation, candidate hosted timing, Founder review/merge and any WC100-04C activation remain open or Founder-reserved. |
 | WC-102 Docker-only validation control plane | ENGINEERING QUALIFIED CANDIDATE - WC102-00 through WC102-07 are implemented on `ib/102/docker-only-validation-control-plane`; exact implementation candidate `a270f0ec` passes all component, quality, security, dependency, control-plane and release qualification gates. The 26-row obligation ledger, five-class measurements, Shadow comparison, rollback record and INST-010 author review pass. Full CI remains authoritative; the 20-sample Shadow activation floor, selective enforcement, Founder review and merge remain open or Founder-reserved. |
+| WC-103 multi-tenant authentication journeys | LOCAL IMPLEMENTATION QUALIFIED - Candidate `3bb064fa` with validated requirement ledger `ce59694f` on `wc/103-authentication-implementation` implements Google/Facebook provider-neutral journeys, progressive registration, logout/account switch, stale-session enforcement, active-session controls, Evidence First account linking and privacy-safe operational events. Docker evidence passes 268 BP identity tests with real PostgreSQL, 396 Web tests plus TypeScript, 23 applicable desktop/mobile Chromium auth checks, canonical API generation and infrastructure/static gates. Real Google/Facebook and exact-release/Demo acceptance remain human-only and deferred; Apple/email remain disabled; no cloud mutation, deployment, provider change, customer traffic, approval or merge is claimed. |
 | WC-104 end-to-end Docker runner supply | MERGED / FOLLOW-UP IN PROGRESS - PR #462 merged to `main` as `8c340d87` after its final PR and main hosted qualifications passed. Founder-authorized defects D17-D19 are implemented at `5abc3145`: manifests classify executed, exact-candidate and carry-forward provenance; reusable evidence is ranked by proven Git ancestry distance with deterministic fallback; and the Platform IT Expert standard requires static-first focused validation. Focused Docker evidence passes 86 adjacent orchestration tests, 34 policy/orchestrator tests, Ruff lint/format and Compose rendering. Final pushed-head preparation, hosted PR qualification and Founder review/merge remain; no selective enforcement, Production action or self-approval is authorized. |
 | Production | PLAN ONLY - code-prepared; protected environments, authorized plan, traffic and final acceptance remain Founder-reserved |
 

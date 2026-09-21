@@ -42,7 +42,16 @@ RUNTIME_EVIDENCE_SECTION = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 VALIDATION_POLICY_PATH = Path(__file__).resolve().parents[1] / "validation/engineering-validation.yaml"
-PRECHECK_GRAPH_VERSION = "wc104-prechecks-v4"
+PRECHECK_GRAPH_VERSION = "wc103-prechecks-v6"
+PRECHECK_ORDER = (
+    "gitleaks",
+    "scripts_quality",
+    "dotnet_quality_business_platform",
+    "typescript_quality",
+    "business_platform",
+    "release_qualification",
+)
+STATIC_PRECHECKS = frozenset({"gitleaks", "scripts_quality", "dotnet_quality_business_platform", "typescript_quality"})
 PRECHECK_CONFIGURATION_PATHS = (
     Path(__file__),
     Path(__file__).with_name("precheck_orchestrator.py"),
@@ -51,6 +60,7 @@ PRECHECK_CONFIGURATION_PATHS = (
     Path(__file__).parent / "validation_control/orchestrator.py",
     Path(__file__).parent / "validation_control/runner_supply.py",
     Path(__file__).parent / "validation_control/run_gitleaks_gate.sh",
+    Path(__file__).parent / "validation_control/run_dotnet_test_gate.sh",
     VALIDATION_POLICY_PATH,
     Path(__file__).resolve().parents[1] / "docker-compose.yml",
     Path(__file__).with_name("run_release_qualification.sh"),
@@ -375,8 +385,11 @@ def precheck_nodes(
     if python is None:
         raise ValueError("python3 executable is required for PR prechecks")
     local_executor = repository_root / "scripts/validation_control/local_catalog_gate.py"
+    unsupported_prechecks = applicable_prechecks.difference(PRECHECK_ORDER)
+    if unsupported_prechecks:
+        raise ValueError("validation catalog selected unsupported prechecks: " + ", ".join(sorted(unsupported_prechecks)))
     nodes: list[PrecheckNode] = []
-    for name in ("gitleaks", "business_platform", "release_qualification"):
+    for name in PRECHECK_ORDER:
         if name not in applicable_prechecks:
             continue
         config = precheck_config.get(name)
@@ -390,6 +403,15 @@ def precheck_nodes(
             raise ValueError(f"validation catalog precheck {name} has no declared inputs")
         input_patterns = tuple(input_patterns_value)
         identity = gate_execution_identity(repository_root, gate_id, head)
+        dependencies: tuple[str, ...] = ()
+        if name == "business_platform" and "dotnet_quality_business_platform" in applicable_prechecks:
+            dependencies = ("dotnet_quality_business_platform",)
+        elif name == "release_qualification":
+            dependencies = tuple(
+                static_name
+                for static_name in PRECHECK_ORDER
+                if static_name in STATIC_PRECHECKS and static_name in applicable_prechecks
+            )
         nodes.append(
             PrecheckNode(
                 name=name,
@@ -405,7 +427,8 @@ def precheck_nodes(
                     "--git-common-dir",
                     str(git_common_dir),
                 ),
-                heavy=name != "gitleaks",
+                heavy=name not in STATIC_PRECHECKS,
+                dependencies=dependencies,
                 input_digest=gate_input_digest(head, input_patterns),
                 input_patterns=input_patterns,
                 **identity,
@@ -479,13 +502,11 @@ def main() -> int:
         "--update-pr",
         type=int,
         metavar="NUMBER",
-        help="update an existing PR body and labels before pushing the prepared local commit",
+        help="update an existing PR body and labels for the prepared commit",
     )
     arguments = parser.parse_args()
 
     try:
-        if arguments.update_pr is not None and not arguments.allow_unpushed_head:
-            raise ValueError("--update-pr requires --allow-unpushed-head")
         repository_root = Path(git("rev-parse", "--show-toplevel"))
         local_head = git("rev-parse", "HEAD")
         execution_preflight(

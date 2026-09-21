@@ -347,6 +347,17 @@ builder.Services.AddSingleton<
     Waooaw.BusinessPlatform.Services.UnconfiguredVerificationDispatcher
 >();
 builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.IdentityService>();
+builder.Services.AddScoped<
+    Waooaw.BusinessPlatform.Services.IIdentityConstitutionalGateway,
+    Waooaw.BusinessPlatform.Services.GrpcIdentityConstitutionalGateway
+>();
+builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.IdentitySecurityEventService>();
+builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.IdentitySessionService>();
+builder.Services.Configure<Waooaw.BusinessPlatform.Controllers.IdentitySecurityEventIngestOptions>(
+    builder.Configuration.GetSection(
+        Waooaw.BusinessPlatform.Controllers.IdentitySecurityEventIngestOptions.SectionName
+    )
+);
 
 // ── Conversation Core — WC-034 F3 ───────────────────────────────────────────
 var conversationConn =

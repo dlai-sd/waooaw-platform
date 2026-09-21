@@ -126,6 +126,23 @@ public sealed record IdentitySessionResponse(
     string NextAction
 );
 
+public sealed record IdentityManagedSessionResponse(
+    Guid SessionId,
+    DateTimeOffset IssuedAt,
+    DateTimeOffset LastSeenAt,
+    DateTimeOffset ExpiresAt,
+    string AssuranceLevel,
+    string Provider,
+    string DeviceLabel,
+    bool Current
+);
+
+public sealed record IdentityManagedSessionCollectionResponse(
+    IReadOnlyList<IdentityManagedSessionResponse> Sessions
+);
+
+public sealed record IdentitySessionRevocationResponse(string Scope, int RevokedCount);
+
 public sealed record CustomerProfileResponse(
     string SchemaVersion,
     string DisplayName,
@@ -173,7 +190,9 @@ public sealed class IdentityController(
     IdentityService identityService,
     IdentityProviderProjectionService providerProjectionService,
     ILogger<IdentityController> logger,
-    CustomerIdentityJourneyService? customerJourney = null
+    CustomerIdentityJourneyService? customerJourney = null,
+    IdentitySecurityEventService? securityEvents = null,
+    IdentitySessionService? sessionService = null
 ) : ControllerBase, IAsyncActionFilter
 {
     [NonAction]
@@ -199,7 +218,9 @@ public sealed class IdentityController(
             );
             return;
         }
-        await next();
+        var executed = await next();
+        if (securityEvents is not null)
+            await RecordObservedEventAsync(context, executed);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
@@ -212,6 +233,91 @@ public sealed class IdentityController(
     private string ProviderIssuer => User.FindFirstValue("iss") ?? "keycloak-local";
 
     private string ActorSubject => $"{ProviderIssuer}\u001f{SubjectClaim}";
+
+    private string SourceSessionId =>
+        User.FindFirstValue("sid")
+        ?? User.FindFirstValue("jti")
+        ?? $"{ActorSubject}\u001f{User.FindFirstValue("auth_time")}";
+
+    private DateTimeOffset TokenTime(string claim) =>
+        User.FindFirstValue(claim) is string value && long.TryParse(value, out var seconds)
+            ? DateTimeOffset.FromUnixTimeSeconds(seconds)
+            : throw new IdentityActionDeniedException("IDENTITY_SESSION_REQUIRED");
+
+    private async Task RecordObservedEventAsync(
+        ActionExecutingContext context,
+        ActionExecutedContext executed
+    )
+    {
+        var actionName = context.ActionDescriptor.RouteValues["action"];
+        var status = executed.Result switch
+        {
+            ObjectResult result => result.StatusCode ?? StatusCodes.Status200OK,
+            StatusCodeResult result => result.StatusCode,
+            _ when executed.Exception is not null => StatusCodes.Status500InternalServerError,
+            _ => StatusCodes.Status200OK,
+        };
+        var eventType = actionName switch
+        {
+            nameof(StartRegistrationAsync) when status < 400 => "REGISTRATION_START",
+            nameof(StartRegistrationAsync) => "REGISTRATION_FAILURE",
+            nameof(CompleteRegistrationAsync) when status < 400 => "REGISTRATION_COMPLETION",
+            nameof(CompleteRegistrationAsync) => "REGISTRATION_FAILURE",
+            nameof(GetSessionAsync) when status < 400 => "SESSION_ESTABLISHMENT",
+            nameof(GetSessionAsync) => "AUTHORIZATION_DENIAL",
+            nameof(StartAccountLinkAsync) when status >= 400 => "AUTHORIZATION_DENIAL",
+            nameof(ApproveAccountLinkAsync) when status >= 400 => "AUTHORIZATION_DENIAL",
+            _ => null,
+        };
+        if (eventType is null)
+            return;
+
+        var trace = HttpContext.TraceIdentifier;
+        var sourceDigest = Convert
+            .ToHexString(
+                System.Security.Cryptography.SHA256.HashData(
+                    System.Text.Encoding.UTF8.GetBytes($"{eventType}:{trace}")
+                )
+            )
+            .ToLowerInvariant();
+        var correlationBytes = System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes($"correlation:{trace}")
+        );
+        await securityEvents!.RecordAsync(
+            new IdentitySecurityEventInput(
+                new Guid(correlationBytes.AsSpan(0, 16)),
+                $"http:{sourceDigest}",
+                eventType,
+                ProviderClass,
+                status < 400 ? "SUCCEEDED"
+                    : status < 500 ? "DENIED"
+                    : "FAILED",
+                status < 400 ? "IDENTITY_OPERATION_COMPLETED" : $"HTTP_{status}",
+                AssuranceClass,
+                "BUSINESS_PLATFORM",
+                ActorSubject,
+                User.FindFirstValue("sid")
+            ),
+            HttpContext.RequestAborted
+        );
+    }
+
+    private string ProviderClass =>
+        (
+            User.FindFirstValue("identity_provider") ?? User.FindFirstValue("idp")
+        )?.ToLowerInvariant() switch
+        {
+            "google" => "GOOGLE",
+            "facebook" => "FACEBOOK",
+            "apple" => "APPLE",
+            "email" => "EMAIL",
+            _ => "UNKNOWN",
+        };
+
+    private string AssuranceClass =>
+        User.FindFirstValue("auth_time") is null ? "UNKNOWN"
+        : DateTimeOffset.UtcNow - AuthTime <= TimeSpan.FromMinutes(5) ? "AAL3"
+        : "AAL2";
 
     private static readonly Regex LanguagePattern = new(
         "^[a-z]{2}(-[A-Z]{2})?$",
@@ -527,6 +633,89 @@ public sealed class IdentityController(
         }
     }
 
+    [HttpGet("sessions")]
+    [CustomerIdentityRoute(requiresMembership: true)]
+    public async Task<IActionResult> ListIdentitySessionsAsync(CancellationToken ct)
+    {
+        if (customerJourney is null || sessionService is null)
+            return IdentityProblem(
+                503,
+                "IDENTITY_DEPENDENCY_UNAVAILABLE",
+                "Session management is unavailable."
+            );
+        var membership = (CustomerWorkspaceMembership)
+            HttpContext.Items[CustomerMembershipMiddleware.MembershipItem]!;
+        var currentSessionId = (Guid)HttpContext.Items[CustomerMembershipMiddleware.SessionIdItem]!;
+        var sessions = await sessionService.ListAsync(membership.AccountId, currentSessionId, ct);
+        return Ok(
+            new IdentityManagedSessionCollectionResponse(
+                sessions
+                    .Select(value => new IdentityManagedSessionResponse(
+                        value.SessionId,
+                        value.IssuedAt,
+                        value.LastSeenAt,
+                        value.ExpiresAt,
+                        value.AssuranceLevel switch
+                        {
+                            "AAL3" => "AAL3_FRESH",
+                            "AAL2" => "AAL2_ACCOUNT",
+                            _ => "AAL1_CHANNEL",
+                        },
+                        value.Provider,
+                        value.DeviceLabel,
+                        value.Current
+                    ))
+                    .ToArray()
+            )
+        );
+    }
+
+    [HttpDelete("sessions/{sessionId:guid}")]
+    [CustomerIdentityRoute(requiresMembership: true)]
+    public async Task<IActionResult> RevokeIdentitySessionAsync(
+        Guid sessionId,
+        CancellationToken ct
+    )
+    {
+        if (sessionService is null)
+            return IdentityProblem(
+                503,
+                "IDENTITY_DEPENDENCY_UNAVAILABLE",
+                "Session management is unavailable."
+            );
+        var membership = (CustomerWorkspaceMembership)
+            HttpContext.Items[CustomerMembershipMiddleware.MembershipItem]!;
+        var count = await sessionService.RevokeOneAsync(
+            membership.AccountId,
+            ActorSubject,
+            sessionId,
+            $"revoke-one:{IdempotencyKey:D}",
+            ct
+        );
+        return Ok(new IdentitySessionRevocationResponse("ONE", count));
+    }
+
+    [HttpDelete("sessions")]
+    [CustomerIdentityRoute(requiresMembership: true)]
+    public async Task<IActionResult> RevokeAllIdentitySessionsAsync(CancellationToken ct)
+    {
+        if (sessionService is null)
+            return IdentityProblem(
+                503,
+                "IDENTITY_DEPENDENCY_UNAVAILABLE",
+                "Session management is unavailable."
+            );
+        var membership = (CustomerWorkspaceMembership)
+            HttpContext.Items[CustomerMembershipMiddleware.MembershipItem]!;
+        var count = await sessionService.RevokeAllAsync(
+            membership.AccountId,
+            ActorSubject,
+            $"revoke-all:{IdempotencyKey:D}",
+            ct
+        );
+        return Ok(new IdentitySessionRevocationResponse("ALL", count));
+    }
+
     [HttpGet("profile")]
     [CustomerIdentityRoute(requiresMembership: true)]
     public async Task<IActionResult> GetCustomerProfileAsync(CancellationToken ct)
@@ -598,6 +787,22 @@ public sealed class IdentityController(
                 404,
                 "IDENTITY_RESOURCE_NOT_ACCESSIBLE",
                 "Account profile not found or not accessible."
+            );
+        }
+        catch (ConstitutionalActionDeniedException)
+        {
+            return IdentityProblem(
+                403,
+                "IDENTITY_ACTION_DENIED",
+                "Constitutional authorization denied the account link."
+            );
+        }
+        catch (IdentityConstitutionalUnavailableException)
+        {
+            return IdentityProblem(
+                503,
+                "IDENTITY_DEPENDENCY_UNAVAILABLE",
+                "Constitutional evidence is unavailable."
             );
         }
         catch (ArgumentException)
@@ -676,6 +881,22 @@ public sealed class IdentityController(
                 409,
                 "IDENTITY_IDEMPOTENCY_CONFLICT",
                 "The idempotency key was already used with a different request."
+            );
+        }
+        catch (ConstitutionalActionDeniedException)
+        {
+            return IdentityProblem(
+                403,
+                "IDENTITY_ACTION_DENIED",
+                "Constitutional authorization denied the account link."
+            );
+        }
+        catch (IdentityConstitutionalUnavailableException)
+        {
+            return IdentityProblem(
+                503,
+                "IDENTITY_DEPENDENCY_UNAVAILABLE",
+                "Constitutional evidence is unavailable."
             );
         }
         catch (IdentityResourceNotFoundException)
@@ -1557,6 +1778,22 @@ public sealed class IdentityController(
                 "The idempotency key was already used with a different request."
             );
         }
+        catch (ConstitutionalActionDeniedException)
+        {
+            return IdentityProblem(
+                403,
+                "IDENTITY_ACTION_DENIED",
+                "Constitutional authorization denied the account link."
+            );
+        }
+        catch (IdentityConstitutionalUnavailableException)
+        {
+            return IdentityProblem(
+                503,
+                "IDENTITY_DEPENDENCY_UNAVAILABLE",
+                "Constitutional evidence is unavailable."
+            );
+        }
         catch (ArgumentException)
         {
             return IdentityProblem(
@@ -1619,6 +1856,22 @@ public sealed class IdentityController(
                 409,
                 "IDENTITY_IDEMPOTENCY_CONFLICT",
                 "The idempotency key was already used with a different request."
+            );
+        }
+        catch (ConstitutionalActionDeniedException)
+        {
+            return IdentityProblem(
+                403,
+                "IDENTITY_ACTION_DENIED",
+                "Constitutional authorization denied the account link."
+            );
+        }
+        catch (IdentityConstitutionalUnavailableException)
+        {
+            return IdentityProblem(
+                503,
+                "IDENTITY_DEPENDENCY_UNAVAILABLE",
+                "Constitutional evidence is unavailable."
             );
         }
         catch (IdentityResourceNotFoundException)

@@ -1,6 +1,7 @@
 import type { Session, NextAuthOptions } from 'next-auth';
 import type { JWT } from 'next-auth/jwt';
 import KeycloakProvider from 'next-auth/providers/keycloak';
+import { persistWebIdentitySecurityEvent, recordWebIdentitySecurityEvent } from '@/lib/identity-security-events';
 
 // Implements: architecture/reference/ux/hybrid-application-shell.md §Authentication Boundaries
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
@@ -70,7 +71,18 @@ function purgeAuthentication(token: JWT): JWT {
 }
 
 async function refreshAccessToken(token: JWT): Promise<JWT> {
-  if (typeof token.refreshToken !== 'string') return purgeAuthentication(token);
+  const correlationId = crypto.randomUUID();
+  if (typeof token.refreshToken !== 'string') {
+    await recordWebIdentitySecurityEvent({
+      correlationId,
+      eventType: 'SESSION_EXPIRY',
+      providerClass: 'INTERNAL',
+      outcome: 'DENIED',
+      reasonCode: 'REFRESH_TOKEN_ABSENT',
+      assuranceClass: 'UNKNOWN',
+    });
+    return purgeAuthentication(token);
+  }
   const body = new URLSearchParams({
     grant_type: 'refresh_token',
     refresh_token: token.refreshToken,
@@ -85,7 +97,17 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       body,
       cache: 'no-store',
     });
-    if (!response.ok) return purgeAuthentication(token);
+    if (!response.ok) {
+      await recordWebIdentitySecurityEvent({
+        correlationId,
+        eventType: 'REFRESH_FAILURE',
+        providerClass: 'INTERNAL',
+        outcome: 'FAILED',
+        reasonCode: 'TOKEN_ENDPOINT_REJECTED',
+        assuranceClass: 'UNKNOWN',
+      });
+      return purgeAuthentication(token);
+    }
     const refreshed = (await response.json()) as {
       access_token?: unknown;
       expires_in?: unknown;
@@ -98,8 +120,17 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       typeof refreshed.expires_in !== 'number' ||
       !Number.isFinite(refreshed.expires_in) ||
       refreshed.expires_in <= 0
-    )
+    ) {
+      await recordWebIdentitySecurityEvent({
+        correlationId,
+        eventType: 'REFRESH_FAILURE',
+        providerClass: 'INTERNAL',
+        outcome: 'FAILED',
+        reasonCode: 'TOKEN_RESPONSE_INVALID',
+        assuranceClass: 'UNKNOWN',
+      });
       return purgeAuthentication(token);
+    }
 
     token.accessToken = refreshed.access_token;
     token.accessTokenExpiresAt = Math.floor(Date.now() / 1000) + refreshed.expires_in;
@@ -108,8 +139,36 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
     }
     if (typeof refreshed.id_token === 'string' && refreshed.id_token.trim()) token.idToken = refreshed.id_token;
     token.founder = hasFounderClaim(accessTokenClaims(refreshed.access_token));
+    try {
+      await persistWebIdentitySecurityEvent({
+        correlationId,
+        eventType: 'REFRESH_SUCCESS',
+        providerClass: 'INTERNAL',
+        outcome: 'SUCCEEDED',
+        reasonCode: 'TOKEN_ROTATED',
+        assuranceClass: 'AAL2',
+      });
+    } catch {
+      await recordWebIdentitySecurityEvent({
+        correlationId,
+        eventType: 'REFRESH_FAILURE',
+        providerClass: 'INTERNAL',
+        outcome: 'FAILED',
+        reasonCode: 'EVENT_PERSISTENCE_UNAVAILABLE',
+        assuranceClass: 'UNKNOWN',
+      });
+      return purgeAuthentication(token);
+    }
     return token;
   } catch {
+    await recordWebIdentitySecurityEvent({
+      correlationId,
+      eventType: 'REFRESH_FAILURE',
+      providerClass: 'INTERNAL',
+      outcome: 'FAILED',
+      reasonCode: 'TOKEN_ENDPOINT_UNAVAILABLE',
+      assuranceClass: 'UNKNOWN',
+    });
     return purgeAuthentication(token);
   }
 }

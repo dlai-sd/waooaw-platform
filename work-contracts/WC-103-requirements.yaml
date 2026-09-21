@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
-contract_digest: 74aec7debf1b6b1c2ba13fb442ab176b21658d67bef08e55c247eb0ff0027c45
+contract_digest: 78ab01b1ecfb9dba0dd6add196ff8d1e57ece573443ba326e64a3fd3c6242a33
 implementation_scope: true
-result: PLANNED
+result: QUALIFIED
 requirements:
   - requirement_id: WC103-R001
     source: AUTH-S01; Target Journeys 1-2
@@ -13,7 +13,7 @@ requirements:
     dependencies: Provider credentials, exact callback allowlists and immutable Demo candidate
     completion_rule: Every enabled provider passes disclosure, callback, cancellation and bounded-failure acceptance.
     residual_risk: Provider-console drift or untested real-account behavior
-    result: PLANNED
+    result: BLOCKED
   - requirement_id: WC103-R002
     source: AUTH-S02; Target Journeys 3 and 13
     observable_outcome: Trial and Hire each create exactly one account, tenant and membership and resume the selected intent.
@@ -24,7 +24,10 @@ requirements:
     dependencies: Progressive-registration transaction, idempotency and intent continuation
     completion_rule: Both intents complete once without duplicate durable identity state.
     residual_risk: Retry races could duplicate or detach registration state
-    result: PLANNED
+    result: PASS
+    evidence_refs:
+      - tests/business-platform.Tests/Identity/CustomerIdentityJourneyHttpPostgresTests.cs
+      - web/tests/e2e/wc099-demo-remediation.spec.ts
   - requirement_id: WC103-R003
     source: AUTH-S03; Target Journey 4
     observable_outcome: A returning identity reaches only its current authorized portal context.
@@ -35,7 +38,10 @@ requirements:
     dependencies: ADR-003 membership resolver and database RLS
     completion_rule: Current membership succeeds and all absent or conflicting authority fails closed.
     residual_risk: Receiver-specific authorization drift
-    result: PLANNED
+    result: PASS
+    evidence_refs:
+      - tests/business-platform.Tests/Identity/CustomerIdentityProgramHostTests.cs
+      - tests/business-platform.Tests/Identity/CustomerIdentityJourneyHttpPostgresTests.cs
   - requirement_id: WC103-R004
     source: AUTH-S04; Target Journeys 5 and 13
     observable_outcome: Standalone verified email follows provider-neutral visitor and registration semantics.
@@ -46,7 +52,7 @@ requirements:
     dependencies: Approved Keycloak email configuration and abuse controls
     completion_rule: Email path passes parity and recovery checks before availability is projected.
     residual_risk: Delivery reputation and abuse-control configuration remain environment dependent
-    result: PLANNED
+    result: BLOCKED
   - requirement_id: WC103-R005
     source: AUTH-S05; Target Journeys 6-7
     observable_outcome: Logout removes all WAOOAW protected state and revisit cannot silently restore it.
@@ -57,7 +63,7 @@ requirements:
     dependencies: RP-initiated logout, server session revocation and browser cache controls
     completion_rule: Every supported browser remains unauthenticated until a new explicit login action.
     residual_risk: Browser or identity-provider session behavior varies outside WAOOAW control
-    result: PLANNED
+    result: BLOCKED
   - requirement_id: WC103-R006
     source: AUTH-S06; Target Journeys 8-9
     observable_outcome: A post-logout social login requires account selection with no prior-customer residue.
@@ -68,7 +74,7 @@ requirements:
     dependencies: prompt=select_account, max_age policy and complete WAOOAW cleanup
     completion_rule: A different account can authenticate without exposure or reuse of the previous customer context.
     residual_risk: External provider UX cannot be globally terminated or fully controlled
-    result: PLANNED
+    result: BLOCKED
   - requirement_id: WC103-R007
     source: AUTH-S07; Target Journeys 10 and 16
     observable_outcome: Expired, replayed or revoked sessions fail closed at every enabled receiver.
@@ -79,7 +85,7 @@ requirements:
     dependencies: Server-held token lifecycle, revocation state and per-request membership resolution
     completion_rule: No protected payload or effect survives the accepted revocation bound.
     residual_risk: Disabled or uninstrumented receivers could escape qualification
-    result: PLANNED
+    result: BLOCKED
   - requirement_id: WC103-R008
     source: AUTH-S08; Target Journeys 11-13
     observable_outcome: Provider cancellation, unavailability, timeout and missing email produce distinct recoverable states.
@@ -90,7 +96,10 @@ requirements:
     dependencies: Route-backed modal state and stable provider error classification
     completion_rule: Every failure state is accessible, recoverable and creates no customer account.
     residual_risk: Provider-specific callback changes may introduce unmapped failures
-    result: PLANNED
+    result: PASS
+    evidence_refs:
+      - web/components/auth/ProviderCommands.test.tsx
+      - web/tests/e2e/wc083-auth-dialog.spec.ts
   - requirement_id: WC103-R009
     source: AUTH-S09; Target Journey 14
     observable_outcome: Accounts are never linked from matching email alone.
@@ -101,7 +110,9 @@ requirements:
     dependencies: Provider subject binding, fresh assurance and anti-enumeration responses
     completion_rule: Linking requires proof of both identities and bound intent; coincidence always denies.
     residual_risk: Legacy or provider-specific linking policy may bypass the shared boundary
-    result: PLANNED
+    result: PASS
+    evidence_refs:
+      - tests/business-platform.Tests/Identity/IdentityControllerTests.cs
   - requirement_id: WC103-R010
     source: AUTH-S10; Target Journey 15
     observable_outcome: Consequential identity actions require current assurance, membership and constitutional evidence.
@@ -112,7 +123,10 @@ requirements:
     dependencies: Assurance policy, ADR-003 membership resolution and C-023 evidence confirmation
     completion_rule: No consequential success is returned before every authority and evidence check passes.
     residual_risk: Action-specific assurance policy may remain incomplete
-    result: PLANNED
+    result: PASS
+    evidence_refs:
+      - tests/business-platform.Tests/Identity/IdentityControllerTests.cs
+      - src/business-platform/Services/IdentityConstitutionalGateway.cs
   - requirement_id: WC103-R011
     source: AUTH-S11; Target Journey 16
     observable_outcome: Customers can inspect privacy-safe active sessions and revoke one or all idempotently.
@@ -123,7 +137,7 @@ requirements:
     dependencies: Mutable session registry, revocation ordering and operational audit events
     completion_rule: Only the actor's sessions are visible and selected revocation has the exact intended scope.
     residual_risk: Device descriptions could over-collect or mislead customers
-    result: PLANNED
+    result: BLOCKED
   - requirement_id: WC103-R012
     source: AUTH-S12; Target Journey 17
     observable_outcome: Every WAOOAW-observed identity attempt creates a privacy-safe append-only operational event.
@@ -134,7 +148,12 @@ requirements:
     dependencies: Identity Security Data Contract and separate Constitutional Audit Ledger
     completion_rule: Required events are durable and immutable without forbidden data or cross-ledger joins.
     residual_risk: Events before the WAOOAW boundary remain intentionally unobservable
-    result: PLANNED
+    result: PASS
+    evidence_refs:
+      - tests/business-platform.Tests/Identity/IdentitySecurityEventServiceTests.cs
+      - tests/business-platform.Tests/Identity/IdentitySecurityEventPostgresTests.cs
+      - tests/business-platform.Tests/Identity/IdentitySecurityEventsControllerTests.cs
+      - web/lib/identity-security-events.test.ts
   - requirement_id: WC103-R013
     source: AUTH-S13; Target Journeys 1, 3-4, 8 and 11-14
     observable_outcome: Apple can be activated without changing provider-neutral application semantics.
@@ -145,7 +164,7 @@ requirements:
     dependencies: Apple enrollment, credentials, relay configuration and approved activation
     completion_rule: All Apple prerequisites and actual-provider journeys pass before projection as available.
     residual_risk: External Apple enrollment and console access are Founder-controlled dependencies
-    result: PLANNED
+    result: BLOCKED
   - requirement_id: WC103-R014
     source: Cross-cutting all stories and journeys
     observable_outcome: Identity flows expose no token or forbidden PII and accept no browser tenant authority.
@@ -156,7 +175,12 @@ requirements:
     dependencies: Generated contracts, logging policy and credentialed-origin configuration
     completion_rule: Static and hostile checks find no forbidden disclosure or caller-selected authority.
     residual_risk: Environment-only logging and proxy configuration require exact-release inspection
-    result: PLANNED
+    result: PASS
+    evidence_refs:
+      - tests/contracts/conversation-web-contract.test.ts
+      - web/scripts/generate-api.sh
+      - docker-compose.auth-preview.yml
+      - docker-compose.release.yml
   - requirement_id: WC103-R015
     source: Cross-cutting all stories and journeys
     observable_outcome: One immutable Demo candidate completes the full enabled-provider journey matrix.
@@ -167,4 +191,4 @@ requirements:
     dependencies: Completion of WC103-R001 through WC103-R014 and authorized Demo execution
     completion_rule: Every enabled journey has direct candidate-bound evidence with deferrals explicitly bounded.
     residual_risk: Local or synthetic proof cannot establish deployed provider acceptance
-    result: PLANNED
+    result: BLOCKED

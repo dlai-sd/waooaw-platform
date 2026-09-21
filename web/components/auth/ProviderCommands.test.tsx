@@ -118,6 +118,27 @@ describe('ProviderCommands', () => {
     expect(screen.getByRole('button', { name: 'Log in with Facebook' })).toBeEnabled();
   });
 
+  it('discloses Facebook data use and reports Facebook launch failures truthfully', async () => {
+    jest.mocked(signIn).mockRejectedValueOnce(new Error('navigation unavailable'));
+    render(
+      <ProviderCommands
+        callbackUrl="/login"
+        intent="login"
+        providers={[providers[0], { ...providers[1], availability: 'AVAILABLE', unavailableReason: undefined }]}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Log in with Facebook' }));
+    expect(screen.getByRole('dialog', { name: 'Continue to Facebook' })).toBeVisible();
+    expect(screen.getByText(/Facebook account identifier/)).toBeVisible();
+    expect(signIn).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to Facebook' }));
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Facebook sign-in could not start.'));
+    expect(screen.getByRole('alert')).toHaveAttribute('data-reason-code', 'BROKER_LAUNCH_FAILED');
+  });
+
   it('offers an actionable retry when provider readiness is temporarily unavailable', () => {
     const reload = jest.fn();
     render(

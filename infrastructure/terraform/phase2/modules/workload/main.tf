@@ -426,6 +426,12 @@ locals {
   identity_hmac_secret_resource_ids = var.environment == "demo" ? {
     identity-hmac-active = "${trimsuffix(var.key_vault_secret_resource_ids["business-platform"], "/business-platform")}/identity-hmac-active"
   } : {}
+  identity_event_secret_uris = {
+    identity-event-ingest-hmac = "${trimsuffix(var.key_vault_secret_uris["business-platform"], "/business-platform")}/identity-event-ingest-hmac"
+  }
+  identity_event_secret_resource_ids = {
+    identity-event-ingest-hmac = "${trimsuffix(var.key_vault_secret_resource_ids["business-platform"], "/business-platform")}/identity-event-ingest-hmac"
+  }
   continuity_hmac_secret_uris = {
     continuity-envelope-hmac = "${trimsuffix(var.key_vault_secret_uris["business-platform"], "/business-platform")}/continuity-envelope-hmac"
   }
@@ -480,6 +486,19 @@ resource "azurerm_role_assignment" "identity_hmac_secret" {
   principal_id         = azurerm_user_assigned_identity.member["business-platform"].principal_id
 }
 
+resource "azurerm_role_assignment" "identity_event_secret" {
+  for_each = var.workload_enabled ? {
+    for pair in setproduct(["business-platform", "web"], keys(local.identity_event_secret_resource_ids)) :
+    "${pair[0]}:${pair[1]}" => {
+      member = pair[0]
+      scope  = local.identity_event_secret_resource_ids[pair[1]]
+    }
+  } : {}
+  scope                = each.value.scope
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.member[each.value.member].principal_id
+}
+
 resource "azurerm_role_assignment" "continuity_hmac_secret" {
   for_each             = var.workload_enabled ? local.continuity_hmac_secret_resource_ids : {}
   scope                = each.value
@@ -524,6 +543,15 @@ resource "azurerm_container_app" "member" {
 
   dynamic "secret" {
     for_each = each.key == "business-platform" ? local.identity_hmac_secret_uris : {}
+    content {
+      name                = secret.key
+      identity            = azurerm_user_assigned_identity.member[each.key].id
+      key_vault_secret_id = secret.value
+    }
+  }
+
+  dynamic "secret" {
+    for_each = contains(["business-platform", "web"], each.key) ? local.identity_event_secret_uris : {}
     content {
       name                = secret.key
       identity            = azurerm_user_assigned_identity.member[each.key].id
@@ -601,6 +629,14 @@ resource "azurerm_container_app" "member" {
         for_each = each.key == "business-platform" ? local.identity_hmac_secret_uris : {}
         content {
           name        = "Identity__Hmac__Key"
+          secret_name = env.key
+        }
+      }
+
+      dynamic "env" {
+        for_each = contains(["business-platform", "web"], each.key) ? local.identity_event_secret_uris : {}
+        content {
+          name        = each.key == "web" ? "IDENTITY_EVENT_SIGNING_KEY" : "IdentitySecurityEvents__Ingest__SigningKey"
           secret_name = env.key
         }
       }

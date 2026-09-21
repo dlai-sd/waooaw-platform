@@ -123,6 +123,31 @@ def test_main_runs_costly_prechecks_only_after_static_validation(
     assert len(costly_calls) == expected_calls
 
 
+def test_main_accepts_post_push_pr_update(monkeypatch, tmp_path: Path) -> None:
+    body_file = tmp_path / "pr-body.md"
+    body_file.write_text("body", encoding="utf-8")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "prepare_pr_body.py",
+            "--body-file",
+            str(body_file),
+            "--expected-worktree",
+            str(tmp_path),
+            "--expected-head",
+            HEAD,
+            "--preflight-only",
+            "--update-pr",
+            "465",
+        ],
+    )
+    monkeypatch.setattr("prepare_pr_body.git", lambda *arguments: str(tmp_path) if arguments[-1] == "--show-toplevel" else HEAD)
+    monkeypatch.setattr("prepare_pr_body.execution_preflight", lambda *args, **kwargs: None)
+
+    assert main() == 0
+
+
 def test_static_repository_validation_reports_catalog_and_compose_failures(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(
         "prepare_pr_body.yaml.safe_load",
@@ -246,7 +271,7 @@ def test_precheck_evidence_must_match_base_and_head() -> None:
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": digest,
-        "graph_version": "wc104-prechecks-v4",
+        "graph_version": "wc103-prechecks-v6",
         "configuration_digest": "c" * 64,
         "runner_digest": "r" * 64,
     }
@@ -297,7 +322,7 @@ def test_precheck_evidence_rejects_configuration_or_runner_mismatch() -> None:
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": "d" * 64,
-        "graph_version": "wc104-prechecks-v4",
+        "graph_version": "wc103-prechecks-v6",
         "configuration_digest": "c" * 64,
         "runner_digest": "r" * 64,
     }
@@ -319,6 +344,24 @@ def test_prepare_pr_body_uses_requirement_ledger_validator() -> None:
 
     assert "validate_changed_ledgers" in source
     assert '"--preflight-only"' in source
+
+
+def test_typescript_quality_replaces_copied_node_modules_before_linking_runner_dependencies() -> None:
+    source = (ROOT / "scripts/validation_control/run_typescript_quality_gate.sh").read_text(encoding="utf-8")
+
+    remove = "rm -rf /tmp/web/node_modules"
+    link = "ln -s /opt/waooaw-web/node_modules /tmp/web/node_modules"
+    assert remove in source
+    assert source.index(remove) < source.index(link)
+
+
+def test_dotnet_gate_removes_stale_coverage_before_running() -> None:
+    source = (ROOT / "scripts/validation_control/run_dotnet_test_gate.sh").read_text(encoding="utf-8")
+
+    remove = 'rm -rf "$result_directory"'
+    collect = '--collect:"XPlat Code Coverage"'
+    assert remove in source
+    assert source.index(remove) < source.index(collect)
 
 
 def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path) -> None:
@@ -347,17 +390,41 @@ def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path)
 
     monkeypatch.setattr("prepare_pr_body.run_prechecks", capture)
 
-    assert run_ci_prechecks("origin/main", HEAD, ["src/business-platform/Program.cs", ".github/workflows/ci.yaml"])["passed"]
+    assert run_ci_prechecks(
+        "origin/main",
+        HEAD,
+        ["src/business-platform/Program.cs", "scripts/prepare_pr_body.py", ".github/workflows/ci.yaml"],
+    )["passed"]
     nodes = captured["nodes"]
-    assert [node.name for node in nodes] == ["gitleaks", "business_platform", "release_qualification"]
+    assert [node.name for node in nodes] == [
+        "gitleaks",
+        "scripts_quality",
+        "dotnet_quality_business_platform",
+        "typescript_quality",
+        "business_platform",
+        "release_qualification",
+    ]
     assert [node.command[node.command.index("--gate") + 1] for node in nodes] == [
         "precheck:gitleaks",
+        "quality:scripts",
+        "quality:dotnet:business-platform",
+        "quality:typescript",
         "test-dotnet:business-platform",
         "release-qualification",
     ]
+    assert nodes[1].heavy is False
+    assert nodes[2].heavy is False
+    assert nodes[3].heavy is False
+    assert nodes[4].dependencies == ("dotnet_quality_business_platform",)
+    assert nodes[5].dependencies == (
+        "gitleaks",
+        "scripts_quality",
+        "dotnet_quality_business_platform",
+        "typescript_quality",
+    )
     assert all("docker compose" not in " ".join(node.command) for node in nodes)
     assert all("run_release_qualification.sh" not in " ".join(node.command) for node in nodes)
-    assert captured["graph_version"] == "wc104-prechecks-v4"
+    assert captured["graph_version"] == "wc103-prechecks-v6"
     assert captured["configuration_digest"] == configuration_digest()
     assert captured["runner_digest"] == runner_digest(nodes)
     assert nodes[0].runner_digest == "r" * 64

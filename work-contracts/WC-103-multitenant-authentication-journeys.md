@@ -7,7 +7,7 @@
 | Authoring office | Solution Architect (INST-005) |
 | Assigned by | Founder instruction in the 2026-09-20 continuous working conversation |
 | GitHub issue | #458 |
-| Status | IMPLEMENTATION-READY SPECIFICATION - IMPLEMENTATION NOT AUTHORIZED |
+| Status | IMPLEMENTATION LOCALLY QUALIFIED - EXTERNAL ACCEPTANCE DEFERRED |
 | Delivery shape | One atomic authentication quality work component; partial journey closure is not completion |
 | Baseline | `origin/main` at `502f70b5`; WC-083, WC-090, WC-092, WC-093, WC-094, WC-098 and WC-099 |
 | Governing architecture | `architecture/reference/components/identity-boundary.md`; `architecture/reference/ux/hybrid-application-shell.md` |
@@ -190,6 +190,30 @@ C-023 evidence before success.
 | WC103-R014 | All | Contract/static | No token/PII leakage, no browser tenant authority, exact allowlists and generated-client consistency |
 | WC103-R015 | All | Actual cloud | One exact immutable Demo candidate completes the enabled-provider journey matrix |
 
+### 10.1 Implementation Results
+
+| Requirement | Result | Evidence and remaining boundary |
+|---|---|---|
+| WC103-R001 | DEFERRED | Google/Facebook disclosure, cancellation, callback handling and visitor behavior pass local Web and PostgreSQL checks; real-provider Demo acceptance is human-only and was not run |
+| WC103-R002 | PASS | Real-PostgreSQL registration and browser continuation checks prove exact-once account/tenant/membership creation and Trial/Hire intent resumption |
+| WC103-R003 | PASS | Program-host and PostgreSQL checks prove current membership resolution and fail-closed wrong, inactive, forged or absent membership behavior |
+| WC103-R004 | DEFERRED | Standalone email remains disabled by Founder direction; no activation or acceptance is claimed |
+| WC103-R005 | DEFERRED | Local unit and desktop/mobile Chromium checks prove cleanup and no local restoration; exact-release Demo proof remains human-only |
+| WC103-R006 | DEFERRED | Local Chromium proves explicit account-selection intent and protected-state cleanup; real second-account provider acceptance remains human-only |
+| WC103-R007 | DEFERRED | PostgreSQL and shared-middleware checks prove expiry, replay, revoke-one/all and stale-token denial locally; exact-release receiver evidence remains open |
+| WC103-R008 | PASS | Provider-neutral component and desktop/mobile Chromium checks cover cancellation, unavailable, launch failure, policy denial, retry and missing-email recovery |
+| WC103-R009 | PASS | Hostile integration checks require fresh dual proof and deny same-email coincidence, stale assurance, viewer authority and cross-tenant mutation |
+| WC103-R010 | PASS | Integration checks prove freshness, factor, actor, membership, tenant and intent validation plus confirmed constitutional evidence before mutation |
+| WC103-R011 | DEFERRED | PostgreSQL and component checks prove privacy-safe inventory and replay-safe revoke-one/all; exact-release browser acceptance remains open |
+| WC103-R012 | PASS | Full event taxonomy, signed ingestion, append-only event/legal-hold controls, forced RLS, retention, redaction and failure injection pass real-PostgreSQL and Web checks |
+| WC103-R013 | DEFERRED | Apple remains disabled by Founder direction; synthetic activation work and real Apple acceptance were not performed |
+| WC103-R014 | PASS | Canonical generation, full Web typecheck/tests, Compose rendering, Terraform format, secret-catalog parse and diff integrity pass |
+| WC103-R015 | DEFERRED | No cloud mutation or Demo workflow was run; exact immutable candidate acceptance is reserved to the human-only deployment workflow |
+
+`DEFERRED` rows are not implementation failures, but they prevent a claim that WC-103 is acceptance-complete.
+Local and synthetic evidence above must not be represented as actual Google, Facebook, Apple, exact-release
+or cloud proof.
+
 ## 11. Definition Of Done
 
 WC-103 is complete only when:
@@ -227,6 +251,28 @@ WC-103 is complete only when:
 
 Each implementation step requires explicit current-session Founder authorization. This ordering is a
 delivery dependency, not authorization to write code or mutate an environment.
+
+### 12.1 Implementation Progress
+
+| Story | Status | Evidence or blocker | Planned next |
+|---|---|---|---|
+| AUTH-S01 | LOCAL PASS | Google/Facebook disclosure and provider-neutral visitor registration pass focused Web plus real-PostgreSQL HTTP checks; actual-provider acceptance remains deferred | No |
+| AUTH-S02 | LOCAL PASS | Verified-email reuse, exact-once account creation and retry pass real-PostgreSQL HTTP checks; 32 focused Web checks preserve Trial/Hire intent and safe post-auth continuation | No |
+| AUTH-S03 | LOCAL PASS | Returning membership resolves server-side while wrong issuer/signature, forged tenant, inactive membership and dependency outage deny without fallback | No |
+| AUTH-S04 | DEFERRED | Founder directed standalone email to remain disabled for this work component; implementation and activation require later scope | No |
+| AUTH-S05 | LOCAL PASS | Server-held bearer revokes WAOOAW sessions before browser/Keycloak cleanup; focused unit and Chromium no-restoration checks pass | No |
+| AUTH-S06 | LOCAL PASS | Account switch clears protected state and sends `prompt=select_account`; real second-account provider acceptance is deferred to the human Demo workflow | No |
+| AUTH-S07 | LOCAL PASS | Web expiry handling plus Business Platform shared-middleware expiry, revoke-one/all and stale-token denial pass focused Docker and PostgreSQL checks | No |
+| AUTH-S08 | LOCAL PASS | Provider-neutral disclosure, cancellation, unavailable/retry, launch-failure and missing-email states pass focused component and Chromium checks | No |
+| AUTH-S09 | LOCAL PASS | Focused hostile checks require owner authority, fresh AAL3 and actor/tenant binding; stale, viewer and cross-tenant requests deny without mutation | No |
+| AUTH-S10 | LOCAL PASS | Fresh/stale AAL3, actor, owner role, membership and tenant checks pass; constitutional evidence is confirmed and persisted before link mutation, with outage leaving zero state | No |
+| AUTH-S11 | LOCAL PASS | Account-scoped inventory and replay-safe revoke-one/all pass focused PostgreSQL and Web component checks; exact-release browser proof remains open | No |
+| AUTH-S12 | LOCAL PASS | Full taxonomy, signed Web ingestion, callback/refresh/logout/account-switch writers, opaque references, append-only privileges, retention/key-erasure eligibility, legal hold and failure propagation pass focused Web plus real-PostgreSQL checks | No |
+| AUTH-S13 | DEFERRED | Founder directed Apple to remain disabled for this work component; implementation and activation require later scope | No |
+
+Google/Facebook Demo deployment and actual-provider acceptance are also deferred to the human-only
+deployment workflow. This implementation does not trigger that workflow and does not convert local or
+synthetic evidence into deployed-provider acceptance.
 
 ## 13. Rollback And Failure Policy
 
@@ -280,3 +326,22 @@ membership-authority amendment. No requirement lacks an owner or direct acceptan
 technology decision requires an ADR, and no implementation or environment action is authorized.
 
 **Disposition:** PASS AT SPEC - READY FOR FOUNDER REVIEW.
+
+### 15.4 Platform IT Expert Implementation Author Review
+
+The final implementation diff was reviewed against all 17 journeys, WC103-R001 through WC103-R015,
+the Identity Boundary, session-security and identity-security data contracts, C-023 ordering, tenant
+isolation, privacy minimisation, operational/constitutional ledger separation, rollback and failure
+semantics. Review repaired missing Program-host migrations 38-40, mutable legal-hold facts, unrevoked
+account-switch sessions, registration policy-denial collapse, incomplete browser assertions and the
+hardened-runner generated-client path. No unresolved local correctness, security, privacy, data,
+operability, constitutional or traceability finding remains.
+
+Final local evidence passes 268 Business Platform identity tests against Docker/PostgreSQL, 396 Web
+tests plus TypeScript, 23 applicable desktop/mobile Chromium authentication checks, canonical API
+generation, three Compose renders, Terraform format, secret-catalog parse and diff integrity. The
+Chromium fixture intentionally cannot confirm provider-console or cloud behavior, and no deployment,
+provider mutation, customer traffic, Production action, approval or merge occurred.
+
+**Disposition:** PASS FOR LOCAL IMPLEMENTATION QUALIFICATION. WC-103 remains acceptance-incomplete on
+the `DEFERRED` rows in Section 10.1 and is ready for Founder review, not self-approval or merge.

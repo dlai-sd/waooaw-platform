@@ -46,21 +46,21 @@ export function ProviderCommands({
   reload?: () => void;
 }) {
   const [pendingProvider, setPendingProvider] = useState<string>();
-  const [googleDisclosureOpen, setGoogleDisclosureOpen] = useState(false);
+  const [disclosureProvider, setDisclosureProvider] = useState<IdentityProvider>();
   const [launchFailure, setLaunchFailure] = useState<string>();
-  const googleCommand = useRef<HTMLButtonElement>(null);
+  const providerCommand = useRef<HTMLButtonElement>();
   const disclosure = useRef<HTMLDialogElement>(null);
   const continueCommand = useRef<HTMLButtonElement>(null);
   const primary = providers.find((provider) => provider.id === 'GOOGLE');
   const secondary = providers.filter((provider) => provider.id !== 'GOOGLE');
 
   useEffect(() => {
-    if (!googleDisclosureOpen) return;
+    if (!disclosureProvider) return;
     continueCommand.current?.focus();
     function handleDisclosureKey(event: KeyboardEvent) {
       if (event.key === 'Escape') {
-        setGoogleDisclosureOpen(false);
-        googleCommand.current?.focus();
+        setDisclosureProvider(undefined);
+        providerCommand.current?.focus();
         return;
       }
       if (event.key !== 'Tab') return;
@@ -78,7 +78,7 @@ export function ProviderCommands({
     }
     window.addEventListener('keydown', handleDisclosureKey);
     return () => window.removeEventListener('keydown', handleDisclosureKey);
-  }, [googleDisclosureOpen]);
+  }, [disclosureProvider]);
   useEffect(() => {
     recordAuthTransition('PROVIDER_PROJECTION_READY');
   }, []);
@@ -92,7 +92,7 @@ export function ProviderCommands({
     if (!isActionable(provider) || !supportsNextAuth(provider.id)) return;
     setLaunchFailure(undefined);
     setPendingProvider(provider.id);
-    recordAuthTransition('BROKER_REDIRECT_REQUESTED');
+    recordAuthTransition('BROKER_REDIRECT_REQUESTED', 'OK', provider.id);
     try {
       await signIn(
         nextAuthProvider[provider.id],
@@ -101,13 +101,15 @@ export function ProviderCommands({
       );
     } catch {
       setPendingProvider(undefined);
-      setLaunchFailure('BROKER_LAUNCH_FAILED');
+      setLaunchFailure(provider.displayName);
+      recordAuthTransition('BROKER_LAUNCH_FAILED', 'BROKER_LAUNCH_FAILED', provider.id);
     }
   }
 
-  function cancelGoogleDisclosure() {
-    setGoogleDisclosureOpen(false);
-    googleCommand.current?.focus();
+  function cancelDisclosure() {
+    setDisclosureProvider(undefined);
+    providerCommand.current?.focus();
+    recordAuthTransition('PROVIDER_CANCELLED', 'CUSTOMER_CANCELLED', disclosureProvider?.id);
   }
 
   const readinessUnavailable = providers.some((provider) => provider.unavailableReason === 'TEMPORARILY_UNAVAILABLE');
@@ -124,8 +126,10 @@ export function ProviderCommands({
                 aria-label={unavailable ? `${label} (Unavailable)` : label}
                 className="provider-command provider-command-primary"
                 disabled={unavailable || pendingProvider !== undefined}
-                onClick={() => setGoogleDisclosureOpen(true)}
-                ref={googleCommand}
+                onClick={(event) => {
+                  providerCommand.current = event.currentTarget;
+                  setDisclosureProvider(primary);
+                }}
                 title={unavailable ? `${primary.displayName} is unavailable` : label}
                 type="button"
               >
@@ -146,7 +150,10 @@ export function ProviderCommands({
               className={`provider-icon-command provider-command-${provider.id.toLowerCase()}`}
               disabled={unavailable || pendingProvider !== undefined}
               key={provider.id}
-              onClick={() => void begin(provider)}
+              onClick={(event) => {
+                providerCommand.current = event.currentTarget;
+                setDisclosureProvider(provider);
+              }}
               title={unavailable ? `${provider.displayName} is unavailable` : label}
               type="button"
             >
@@ -165,40 +172,40 @@ export function ProviderCommands({
         </output>
       ) : null}
       {launchFailure ? (
-        <div className="provider-readiness" data-reason-code={launchFailure} role="alert">
-          <p>Google sign-in could not start.</p>
+        <div className="provider-readiness" data-reason-code="BROKER_LAUNCH_FAILED" role="alert">
+          <p>{launchFailure} sign-in could not start.</p>
           <button className="text-command" onClick={() => setLaunchFailure(undefined)} type="button">
             Try again
           </button>
         </div>
       ) : null}
-      {googleDisclosureOpen && primary ? (
-        <dialog aria-labelledby="google-disclosure-title" className="provider-disclosure" open ref={disclosure}>
+      {disclosureProvider ? (
+        <dialog aria-labelledby="provider-disclosure-title" className="provider-disclosure" open ref={disclosure}>
           <div className="provider-disclosure-content">
-            <h2 id="google-disclosure-title">Continue to Google</h2>
+            <h2 id="provider-disclosure-title">Continue to {disclosureProvider.displayName}</h2>
             <p>
-              WAOOAW will receive your name, email address, profile information and Google account identifier to sign
-              you in, identify your WAOOAW account, and support registration only when you explicitly choose it. WAOOAW
-              does not receive your Google password.
+              WAOOAW will receive your name, email address, profile information and {disclosureProvider.displayName}{' '}
+              account identifier to sign you in, identify your WAOOAW account, and support registration only when you
+              explicitly choose it. WAOOAW does not receive your {disclosureProvider.displayName} password.
             </p>
             <p>
-              Google manages its own consent screen. Read the WAOOAW <Link href="/privacy">Privacy Notice</Link> before
-              continuing.
+              {disclosureProvider.displayName} manages its own consent screen. Read the WAOOAW{' '}
+              <Link href="/privacy">Privacy Notice</Link> before continuing.
             </p>
             <div className="provider-disclosure-actions">
-              <button className="text-command" onClick={cancelGoogleDisclosure} type="button">
+              <button className="text-command" onClick={cancelDisclosure} type="button">
                 Cancel
               </button>
               <button
                 className="primary-command"
                 onClick={() => {
-                  setGoogleDisclosureOpen(false);
-                  void begin(primary);
+                  setDisclosureProvider(undefined);
+                  void begin(disclosureProvider);
                 }}
                 ref={continueCommand}
                 type="button"
               >
-                Continue to Google
+                Continue to {disclosureProvider.displayName}
               </button>
             </div>
           </div>
