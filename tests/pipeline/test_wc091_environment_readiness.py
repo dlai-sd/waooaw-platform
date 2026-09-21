@@ -10,7 +10,7 @@ import sys
 
 import pytest
 
-from scripts import wc091_environment, wc091_readiness, wc091_secret_provision
+from scripts import goal006_deployment_credentials, wc091_environment, wc091_readiness, wc091_secret_provision
 
 
 def test_demo_render_is_deterministic_secret_free_and_environment_bound() -> None:
@@ -131,26 +131,33 @@ def test_demo_deployment_provisions_and_orders_every_hmac_secret_dependency() ->
     catalog = json.loads((wc091_environment.ROOT / "infrastructure/environment-readiness/secret-catalog.json").read_text())
     workflow = (wc091_environment.ROOT / ".github/workflows/environment-deployment.yaml").read_text()
     module = (wc091_environment.ROOT / "infrastructure/terraform/phase2/modules/workload/main.tf").read_text()
-    hmac_secret = next(entry["vaultSecretName"] for entry in catalog["entries"] if entry["id"] == "identity-hmac-active")
-    continuity_secret = next(entry["vaultSecretName"] for entry in catalog["entries"] if entry["id"] == "continuity-envelope-hmac")
-    cursor_secret = next(entry["vaultSecretName"] for entry in catalog["entries"] if entry["id"] == "conversation-cursor-hmac")
-    inventory = re.search(r'^\s*credential_names="([^"]+)"$', workflow, re.MULTILINE)
-    seeder = re.search(r"seeder_script='.*?for name in ([^;]+); do", workflow)
+    managed_secrets = {
+        entry["vaultSecretName"]
+        for entry in catalog["entries"]
+        if entry.get("provisioner") == "environment-deployment" and "demo" in entry["environments"]
+    }
+    credentials = set(goal006_deployment_credentials.deployment_credentials(catalog, "demo"))
 
-    assert inventory is not None and hmac_secret in inventory.group(1).split()
-    assert inventory is not None and continuity_secret in inventory.group(1).split()
-    assert inventory is not None and cursor_secret in inventory.group(1).split()
-    assert seeder is not None and hmac_secret in seeder.group(1).split()
-    assert seeder is not None and continuity_secret in seeder.group(1).split()
-    assert seeder is not None and cursor_secret in seeder.group(1).split()
+    assert managed_secrets <= credentials
+    assert "identity-event-ingest-hmac" in credentials
+    assert "keycloak-client-secret" not in credentials
+    assert "goal006_deployment_credentials.py" in workflow
+    assert "for name in $CREDENTIAL_NAMES" in workflow
+    assert "CREDENTIAL_NAMES: ${{ steps.credential-inventory.outputs.credential_names }}" in workflow
     assert (
         "azurerm_role_assignment.identity_hmac_secret" in module.split('resource "azurerm_container_app" "member"', maxsplit=1)[1]
     )
     assert (
-        "azurerm_role_assignment.continuity_hmac_secret" in module.split('resource "azurerm_container_app" "member"', maxsplit=1)[1]
+        "azurerm_role_assignment.identity_event_secret"
+        in module.split('resource "azurerm_container_app" "member"', maxsplit=1)[1]
     )
     assert (
-        "azurerm_role_assignment.conversation_cursor_secret" in module.split('resource "azurerm_container_app" "member"', maxsplit=1)[1]
+        "azurerm_role_assignment.continuity_hmac_secret"
+        in module.split('resource "azurerm_container_app" "member"', maxsplit=1)[1]
+    )
+    assert (
+        "azurerm_role_assignment.conversation_cursor_secret"
+        in module.split('resource "azurerm_container_app" "member"', maxsplit=1)[1]
     )
     assert 'scripts/goal006_keyvault_retry.py"' in workflow
 
@@ -172,7 +179,7 @@ for argument in "$@"; do
 done
 if [ "$1" = "login" ]; then exit 0; fi
 if [ "$1 $2 $3" = "keyvault secret show" ]; then
-    if [ "$name" = "identity-hmac-active" ]; then
+    if [ "$name" = "identity-event-ingest-hmac" ]; then
         echo SecretNotFound >&2
         exit 3
     fi
@@ -192,6 +199,7 @@ exit 0
         "FAKE_AZ_LOG": str(az_log),
         "AZURE_CLIENT_ID": "synthetic-client",
         "CREDENTIAL_SCHEMA": "synthetic-schema",
+        "CREDENTIAL_NAMES": "business-platform identity-event-ingest-hmac",
         "KEY_VAULT_NAME": "synthetic-vault",
     }
 
@@ -205,8 +213,8 @@ exit 0
 
     assert result.returncode == 0, result.stderr
     assert "credential_status name=business-platform status=preserved" in result.stdout
-    assert "credential_status name=identity-hmac-active status=created" in result.stdout
-    assert "keyvault secret set --vault-name synthetic-vault --name identity-hmac-active" in az_log.read_text()
+    assert "credential_status name=identity-event-ingest-hmac status=created" in result.stdout
+    assert "keyvault secret set --vault-name synthetic-vault --name identity-event-ingest-hmac" in az_log.read_text()
 
 
 @pytest.mark.parametrize(
@@ -215,6 +223,11 @@ exit 0
         (
             "Unable to get value using Managed identity for secret identity-hmac-active",
             {"credentials": [{"name": "identity-hmac-active"}]},
+            True,
+        ),
+        (
+            "Unable to get value using Managed identity for secret identity-event-ingest-hmac",
+            {"credentials": [{"name": "identity-event-ingest-hmac"}]},
             True,
         ),
         (

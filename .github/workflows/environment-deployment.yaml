@@ -767,9 +767,12 @@ jobs:
         id: credential-inventory
         env:
           KEY_VAULT_NAME: ${{ steps.foundation.outputs.key_vault_name }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -euo pipefail
-          credential_names="constitutional-engine business-platform professional-runtime ai-runtime web billing-engine bp-identity-reader-client-secret identity-hmac-active continuity-envelope-hmac conversation-cursor-hmac"
+          credential_names=$(python3 scripts/goal006_deployment_credentials.py \
+            --catalog infrastructure/environment-readiness/secret-catalog.json \
+            --environment "$TARGET_ENVIRONMENT")
           credential_schema=$(printf '%s\n%s\n' "$SEEDER_IMAGE" "$credential_names" | sha256sum | cut -d' ' -f1)
           seeding_required=false
           jq -n --arg schema "$credential_schema" '{schema: $schema, credentials: []}' > credential-inventory.json
@@ -809,14 +812,18 @@ jobs:
               credential-inventory.json > credential-inventory.next.json
             mv credential-inventory.next.json credential-inventory.json
           done
-          echo "seeding_required=$seeding_required" >> "$GITHUB_OUTPUT"
-          echo "credential_schema=$credential_schema" >> "$GITHUB_OUTPUT"
+          {
+            echo "seeding_required=$seeding_required"
+            echo "credential_schema=$credential_schema"
+            echo "credential_names=$credential_names"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Create private digest-pinned credential seeder
         if: inputs.apply && steps.credential-inventory.outputs.seeding_required == 'true'
         env:
           CONTAINER_APP_ENVIRONMENT_ID: ${{ steps.foundation.outputs.container_app_environment_id }}
           CREDENTIAL_SCHEMA: ${{ steps.credential-inventory.outputs.credential_schema }}
+          CREDENTIAL_NAMES: ${{ steps.credential-inventory.outputs.credential_names }}
           DEPLOYMENT_CLIENT_ID: ${{ steps.foundation.outputs.deployment_client_id }}
           DEPLOYMENT_IDENTITY_ID: ${{ steps.foundation.outputs.deployment_identity_id }}
           KEY_VAULT_NAME: ${{ steps.foundation.outputs.key_vault_name }}
@@ -832,7 +839,7 @@ jobs:
           test "$actual_digest" = "$expected_digest"
           az containerapp job delete --name "$SEEDER_JOB" --resource-group "$RESOURCE_GROUP" --yes --output none 2>/dev/null || true
           # shellcheck disable=SC2016
-          seeder_script='set -eu; az login --identity --client-id "$AZURE_CLIENT_ID" --allow-no-subscriptions --output none; for name in constitutional-engine business-platform professional-runtime ai-runtime web billing-engine bp-identity-reader-client-secret identity-hmac-active continuity-envelope-hmac conversation-cursor-hmac; do lookup_error=$(mktemp); if secret_json=$(az keyvault secret show --vault-name "$KEY_VAULT_NAME" --name "$name" -o json 2>"$lookup_error"); then rm -f "$lookup_error"; test "$(printf "%s" "$secret_json" | jq -r ".attributes.enabled")" = true || { echo "credential_status name=$name status=disabled" >&2; exit 1; }; if test "$name" != "conversation-cursor-hmac" || test "$(printf "%s" "$secret_json" | jq -r ".value | length")" -ge 32; then az keyvault secret set-attributes --vault-name "$KEY_VAULT_NAME" --name "$name" --tags goal006-credential-schema="$CREDENTIAL_SCHEMA" --output none; echo "credential_status name=$name status=preserved"; continue; fi; echo "credential_status name=$name status=invalid-length"; else if ! grep -q "SecretNotFound" "$lookup_error"; then cat "$lookup_error" >&2; rm -f "$lookup_error"; exit 1; fi; rm -f "$lookup_error"; fi; credential=$(head -c 48 /dev/urandom | base64 | tr -d "\n"); created=false; for attempt in 1 2 3 4 5 6; do if az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name "$name" --value "$credential" --tags goal006-credential-schema="$CREDENTIAL_SCHEMA" --output none; then created=true; echo "credential_status name=$name status=created"; break; fi; test "$attempt" != 6; sleep 10; done; unset credential secret_json; test "$created" = true; done'
+          seeder_script='set -eu; az login --identity --client-id "$AZURE_CLIENT_ID" --allow-no-subscriptions --output none; for name in $CREDENTIAL_NAMES; do lookup_error=$(mktemp); if secret_json=$(az keyvault secret show --vault-name "$KEY_VAULT_NAME" --name "$name" -o json 2>"$lookup_error"); then rm -f "$lookup_error"; test "$(printf "%s" "$secret_json" | jq -r ".attributes.enabled")" = true || { echo "credential_status name=$name status=disabled" >&2; exit 1; }; if test "$name" != "conversation-cursor-hmac" || test "$(printf "%s" "$secret_json" | jq -r ".value | length")" -ge 32; then az keyvault secret set-attributes --vault-name "$KEY_VAULT_NAME" --name "$name" --tags goal006-credential-schema="$CREDENTIAL_SCHEMA" --output none; echo "credential_status name=$name status=preserved"; continue; fi; echo "credential_status name=$name status=invalid-length"; else if ! grep -q "SecretNotFound" "$lookup_error"; then cat "$lookup_error" >&2; rm -f "$lookup_error"; exit 1; fi; rm -f "$lookup_error"; fi; credential=$(head -c 48 /dev/urandom | base64 | tr -d "\n"); created=false; for attempt in 1 2 3 4 5 6; do if az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name "$name" --value "$credential" --tags goal006-credential-schema="$CREDENTIAL_SCHEMA" --output none; then created=true; echo "credential_status name=$name status=created"; break; fi; test "$attempt" != 6; sleep 10; done; unset credential secret_json; test "$created" = true; done'
           jq -n \
             --arg name "$SEEDER_JOB" \
             --arg environment_id "$CONTAINER_APP_ENVIRONMENT_ID" \
@@ -840,6 +847,7 @@ jobs:
             --arg image "$SEEDER_IMAGE" \
             --arg client_id "$DEPLOYMENT_CLIENT_ID" \
             --arg credential_schema "$CREDENTIAL_SCHEMA" \
+            --arg credential_names "$CREDENTIAL_NAMES" \
             --arg key_vault_name "$KEY_VAULT_NAME" \
             --arg script "$seeder_script" \
             '{
@@ -868,6 +876,7 @@ jobs:
                     env: [
                       {name: "AZURE_CLIENT_ID", value: $client_id},
                       {name: "CREDENTIAL_SCHEMA", value: $credential_schema},
+                      {name: "CREDENTIAL_NAMES", value: $credential_names},
                       {name: "KEY_VAULT_NAME", value: $key_vault_name}
                     ],
                     resources: {cpu: 0.25, memory: "0.5Gi"}
