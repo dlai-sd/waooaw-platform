@@ -580,6 +580,7 @@ def test_post_deploy_verification_requires_the_exact_latest_revision() -> None:
     )
     assert "force-professional-runtime-unready" in rehearsal
     assert "unhealthy_revision_failure_proved: true" in rehearsal
+    assert rehearsal.count("-e AZURE_CORE_ONLY_SHOW_ERRORS=true") == 5
 
 
 def test_post_deploy_functional_verification_fails_fast_and_retains_job_contract() -> None:

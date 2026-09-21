@@ -67,10 +67,19 @@ def validate_policy(policy: dict[str, object]) -> list[str]:
         violations.append("CATALOG_DEFINITIONS_MISSING")
     else:
         referenced = set(policy.get("full_gates", []))
+        referenced.update(policy.get("always_on_gates", []))
         for component_id, component in components.items():
             if component.get("component_id") != component_id:
                 violations.append(f"COMPONENT_ID_MISMATCH: {component_id}")
             referenced.update(component.get("gates", []))
+            service_fields = ("service_image", "service_context", "service_dockerfile")
+            if not all(isinstance(component.get(field), str) and component[field] for field in service_fields):
+                violations.append(f"COMPONENT_SERVICE_BUILD_MISSING: {component_id}")
+        scoped_paths = policy.get("scoped_paths", {})
+        if isinstance(scoped_paths, dict):
+            for scope in scoped_paths.values():
+                if isinstance(scope, dict):
+                    referenced.update(scope.get("gates", []))
         for gate_id in sorted(referenced):
             gate = gates.get(gate_id)
             if not isinstance(gate, dict):
@@ -94,6 +103,15 @@ def validate_policy(policy: dict[str, object]) -> list[str]:
             inputs = precheck.get("inputs")
             if not isinstance(inputs, list) or not inputs or not all(isinstance(item, str) and item for item in inputs):
                 violations.append(f"PRECHECK_INPUTS_MISSING: {precheck_id}")
+    scoped_paths = policy.get("scoped_paths", {})
+    if not isinstance(scoped_paths, dict):
+        violations.append("SCOPED_PATHS_INVALID")
+    else:
+        for scope_id, scope in scoped_paths.items():
+            if not isinstance(scope, dict) or not isinstance(scope.get("paths"), list) or not scope["paths"]:
+                violations.append(f"SCOPED_PATH_INVALID: {scope_id}")
+            if not isinstance(scope, dict) or not isinstance(scope.get("gates"), list):
+                violations.append(f"SCOPED_GATES_INVALID: {scope_id}")
     if policy.get("mode") == "enforced":
         activation = policy.get("enforced_activation")
         if not isinstance(activation, dict) or activation.get("founder_approved") is not True:
@@ -127,12 +145,33 @@ def classify_paths(
     if event in {"push", "release"}:
         reasons.append(f"{event} requires full inventory")
     selected: set[str] = set()
+    directly_selected_gates: set[str] = set()
     global_patterns = policy.get("global_triggers", [])
+    scoped_paths = policy.get("scoped_paths", {})
     documentation_patterns = policy.get("documentation_only", [])
     for path in changed_paths:
         if isinstance(global_patterns, list) and _matches(path, global_patterns):
             force_full = True
             reasons.append(f"global trigger: {path}")
+            continue
+        scopes = (
+            [
+                scope_id
+                for scope_id, scope in scoped_paths.items()
+                if isinstance(scope, dict) and isinstance(scope.get("paths"), list) and _matches(path, scope["paths"])
+            ]
+            if isinstance(scoped_paths, dict)
+            else []
+        )
+        if len(scopes) > 1:
+            force_full = True
+            reasons.append(f"conflicting scopes: {path}")
+            continue
+        if scopes:
+            scope = scoped_paths[scopes[0]]
+            directly_selected_gates.update(gate for gate in scope.get("gates", []) if isinstance(gate, str))
+            selected.update(component for component in scope.get("components", []) if isinstance(component, str))
+            reasons.append(f"scoped owner {scopes[0]}: {path}")
             continue
         owners = []
         for component, definition in components.items():
@@ -163,8 +202,79 @@ def classify_paths(
                 changed = changed or bool(additions)
 
     selected_components = sorted(components) if force_full else sorted(impacted)
-    impacted_gates = {gate for component in impacted for gate in components[component].get("gates", []) if isinstance(gate, str)}
-    selected_gates = list(full_gates) if force_full else sorted(impacted_gates)
+    impacted_gates = {
+        gate for component in impacted for gate in components[component].get("gates", []) if isinstance(gate, str)
+    } | directly_selected_gates
+    always_on_gates = policy.get("always_on_gates", [])
+    if not isinstance(always_on_gates, list) or not all(isinstance(gate, str) for gate in always_on_gates):
+        raise ValueError("validation policy always_on_gates must be a string list")
+    selected_gates = list(full_gates) if force_full else sorted(impacted_gates | set(always_on_gates))
+    gates = policy.get("gates", {})
+    required_runners = sorted(
+        {
+            gates[gate]["runner_id"]
+            for gate in selected_gates
+            if isinstance(gates, dict) and isinstance(gates.get(gate), dict) and isinstance(gates[gate].get("runner_id"), str)
+        }
+    )
+    service_builds = sorted(
+        {
+            components[component]["service_image"]
+            for component in selected_components
+            if isinstance(components[component].get("service_image"), str)
+        }
+    )
+    service_build_matrix = [
+        {
+            "name": components[component]["service_image"],
+            "context": components[component]["service_context"],
+            "dockerfile": components[component]["service_dockerfile"],
+        }
+        for component in selected_components
+        if all(
+            isinstance(components[component].get(key), str) for key in ("service_image", "service_context", "service_dockerfile")
+        )
+    ]
+    gate_matrix_definitions = {
+        "dotnet_test_matrix": {
+            "test-dotnet:constitutional-engine": {
+                "service": "constitutional-engine",
+                "gate": "test-dotnet:constitutional-engine",
+            },
+            "test-dotnet:business-platform": {"service": "business-platform", "gate": "test-dotnet:business-platform"},
+        },
+        "python_test_matrix": {
+            "test-python:professional-runtime": {"service": "professional-runtime", "gate": "test-python:professional-runtime"},
+            "test-python:ai-runtime": {"service": "ai-runtime", "gate": "test-python:ai-runtime"},
+        },
+        "dotnet_quality_matrix": {
+            "quality:dotnet:constitutional-engine": {
+                "project": "src/constitutional-engine",
+                "gate": "quality:dotnet:constitutional-engine",
+            },
+            "quality:dotnet:business-platform": {
+                "project": "src/business-platform",
+                "gate": "quality:dotnet:business-platform",
+            },
+        },
+        "python_quality_matrix": {
+            "quality:python:professional-runtime": {
+                "service": "src/professional-runtime",
+                "mypy_path": "/workspace/src/professional-runtime",
+                "gate": "quality:python:professional-runtime",
+            },
+            "quality:python:ai-runtime": {
+                "service": "src/ai-runtime",
+                "mypy_path": "/workspace/src/ai-runtime:/workspace/src/trust-layer",
+                "gate": "quality:python:ai-runtime",
+            },
+        },
+    }
+    selected_gate_set = set(selected_gates)
+    gate_matrices = {
+        name: [definition[gate] for gate in definition if gate in selected_gate_set]
+        for name, definition in gate_matrix_definitions.items()
+    }
     prechecks = policy.get("prechecks", {})
     selected_prechecks: list[str] = []
     if isinstance(prechecks, dict):
@@ -194,6 +304,10 @@ def classify_paths(
         "full": force_full,
         "selected_components": selected_components,
         "selected_gates": selected_gates,
+        "required_runners": required_runners,
+        "service_builds": service_builds,
+        "service_build_matrix": service_build_matrix,
+        **gate_matrices,
         "selected_prechecks": sorted(selected_prechecks),
         "skipped_gates": [] if force_full else sorted(set(full_gates) - set(selected_gates)),
         "reasons": reasons,

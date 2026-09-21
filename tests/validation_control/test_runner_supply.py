@@ -108,6 +108,25 @@ def test_manifest_accepts_one_producer_and_rejects_mutable_or_mismatched_supply(
             validate_supply_manifest(invalid, specification)
 
 
+@pytest.mark.parametrize("cache_outcome", ["registry-hit", "trusted-identity-hit", "candidate-identity-hit"])
+def test_manifest_accepts_verified_zero_build_cache_outcomes(tmp_path: Path, cache_outcome: str) -> None:
+    repository, config = fixture_repository(tmp_path)
+    specification = runner_specification(config, repository, "python")
+
+    manifest = build_supply_manifest(
+        specification,
+        image_repository="ghcr.io/dlai-sd/validation-runner-python",
+        oci_digest="sha256:" + "d" * 64,
+        provenance_reference="attestation-123",
+        producer_run="run-123",
+        cache_outcome=cache_outcome,
+        build_count=0,
+        supply_duration_ms=1200,
+    )
+
+    assert validate_supply_manifest(manifest, specification).endswith("@sha256:" + "d" * 64)
+
+
 def test_hosted_workflows_use_one_supply_graph_and_never_build_in_consumers() -> None:
     root = Path(__file__).resolve().parents[2]
     workflow_paths = [
@@ -149,6 +168,7 @@ def test_reusable_validation_plan_preserves_consumer_contract() -> None:
     assert '"runner-id": "full"' in rendered
     assert "wc104-qualification-plan-${{ github.run_id }}" in rendered
     assert "--all-gates" in rendered
+    assert ".selected_gates | index(\"release-qualification\") != null" in source
     assert '[[ "$EVENT_NAME" == "schedule" || "$EVENT_NAME" == "workflow_dispatch" ]]' in source
     assert 'git rev-parse "$head_sha^"' in source
 
@@ -174,6 +194,7 @@ def test_code_quality_jobs_execute_catalog_gates() -> None:
     }
 
     assert jobs["validation-plan"]["uses"] == "./.github/workflows/validation-plan.yaml"
+    assert jobs["runner-supply"]["needs"] == "static-preflight"
     for job_id in catalog_jobs:
         rendered = json.dumps(jobs[job_id])
         assert jobs[job_id]["needs"] == ["runner-supply", "validation-plan"], job_id
@@ -181,6 +202,9 @@ def test_code_quality_jobs_execute_catalog_gates() -> None:
         assert "docker compose" not in rendered, job_id
 
     assert workflow[True]["schedule"] == [{"cron": "0 0 * * 0"}]
+
+    for job_id in catalog_jobs - {"commitlint", "mutation-dotnet", "mutation-python"}:
+        assert "needs.validation-plan.outputs.selected_gates" in jobs[job_id].get("if", ""), job_id
 
     expected_runners = {
         "quality:commitlint": "typescript",
@@ -298,7 +322,13 @@ def test_supply_workflow_serializes_producers_and_consumers_verify_digests() -> 
     assert "cache-from: type=gha,scope=wc104-${{ matrix.runner }}-${{ steps.identity.outputs.identity }}" in supply
     assert "cache-to: type=gha,mode=max,scope=wc104-${{ matrix.runner }}-${{ steps.identity.outputs.identity }}" in supply
     assert 'resolution_tag="candidate-${candidate_sha}-${identity#sha256:}"' in supply
+    assert 'imagetools inspect "$REPOSITORY:$IDENTITY_TAG"' in supply
     assert 'imagetools inspect "$REPOSITORY:$RESOLUTION_TAG"' in supply
+    assert supply.index('imagetools inspect "$REPOSITORY:$IDENTITY_TAG"') < supply.index(
+        'imagetools inspect "$REPOSITORY:$RESOLUTION_TAG"'
+    )
+    assert "cache_outcome=trusted-identity-hit" in supply
+    assert "cache_outcome=candidate-identity-hit" in supply
     assert "candidate-${GITHUB_RUN_ID}" not in supply
     assert "actions/attest-build-provenance@v2" in supply
     assert 'gh attestation verify "oci://$image"' in consumer
@@ -329,7 +359,9 @@ def test_dotnet_ci_executes_catalog_gates_without_duplicate_commands_or_runner_m
     rendered = json.dumps(job)
 
     assert set(job["needs"]) == {"runner-supply", "validation-plan"}
-    assert all(set(row) == {"service", "gate"} for row in job["strategy"]["matrix"]["include"])
+    assert job["strategy"]["matrix"]["include"] == (
+        "${{ fromJSON(needs.validation-plan.outputs.dotnet_test_matrix) }}"
+    )
     assert "./.github/actions/run-validation-gate" in rendered
     assert '"runner-id": "dotnet"' not in rendered
     assert "dotnet restore" not in rendered
@@ -344,7 +376,9 @@ def test_python_ci_executes_catalog_gates_without_duplicate_commands_or_runner_m
     rendered = json.dumps(job)
 
     assert set(job["needs"]) == {"runner-supply", "validation-plan"}
-    assert all(set(row) == {"service", "gate"} for row in job["strategy"]["matrix"]["include"])
+    assert job["strategy"]["matrix"]["include"] == (
+        "${{ fromJSON(needs.validation-plan.outputs.python_test_matrix) }}"
+    )
     assert "./.github/actions/run-validation-gate" in rendered
     assert '"runner-id": "python"' not in rendered
     assert "matrix.source" not in rendered

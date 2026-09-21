@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import re
 from typing import Any
 
 import yaml
@@ -30,6 +31,9 @@ def workflow_catalog_gates(workflow: dict[str, Any]) -> set[str]:
             include = matrix.get("include", [])
             if isinstance(include, list):
                 gates.update(row["gate"] for row in include if isinstance(row, dict) and isinstance(row.get("gate"), str))
+        condition = job.get("if", "")
+        if isinstance(condition, str):
+            gates.update(re.findall(r"selected_gates\), '([^']+)'", condition))
         steps = job.get("steps", [])
         if not isinstance(steps, list):
             continue

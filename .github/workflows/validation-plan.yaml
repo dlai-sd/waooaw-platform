@@ -6,6 +6,30 @@ on:
       release_required:
         description: Whether the selected change requires release qualification
         value: ${{ jobs.plan.outputs.release_required }}
+      selected_gates:
+        description: JSON array of selected validation gates
+        value: ${{ jobs.plan.outputs.selected_gates }}
+      required_runners:
+        description: JSON array of required validation runners
+        value: ${{ jobs.plan.outputs.required_runners }}
+      service_build_matrix:
+        description: JSON array of selected application image build definitions
+        value: ${{ jobs.plan.outputs.service_build_matrix }}
+      has_service_builds:
+        description: Whether at least one application image must be built
+        value: ${{ jobs.plan.outputs.has_service_builds }}
+      dotnet_test_matrix:
+        description: Selected .NET test matrix
+        value: ${{ jobs.plan.outputs.dotnet_test_matrix }}
+      python_test_matrix:
+        description: Selected Python test matrix
+        value: ${{ jobs.plan.outputs.python_test_matrix }}
+      dotnet_quality_matrix:
+        description: Selected .NET quality matrix
+        value: ${{ jobs.plan.outputs.dotnet_quality_matrix }}
+      python_quality_matrix:
+        description: Selected Python quality matrix
+        value: ${{ jobs.plan.outputs.python_quality_matrix }}
 
 jobs:
   plan:
@@ -13,6 +37,14 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       release_required: ${{ steps.plan.outputs.release_required }}
+      selected_gates: ${{ steps.plan.outputs.selected_gates }}
+      required_runners: ${{ steps.plan.outputs.required_runners }}
+      service_build_matrix: ${{ steps.plan.outputs.service_build_matrix }}
+      has_service_builds: ${{ steps.plan.outputs.has_service_builds }}
+      dotnet_test_matrix: ${{ steps.plan.outputs.dotnet_test_matrix }}
+      python_test_matrix: ${{ steps.plan.outputs.python_test_matrix }}
+      dotnet_quality_matrix: ${{ steps.plan.outputs.dotnet_quality_matrix }}
+      python_quality_matrix: ${{ steps.plan.outputs.python_quality_matrix }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -89,9 +121,19 @@ jobs:
                 --repository-root /workspace \
                 --changed-file-list test-results/wc102/changed-files.txt
             '
-          release_required=$(jq -r '.selected_prechecks | index("release_qualification") != null' \
+          release_required=$(jq -r '.selected_gates | index("release-qualification") != null' \
             test-results/wc102/change-impact.json)
-          echo "release_required=$release_required" >> "$GITHUB_OUTPUT"
+          {
+            echo "release_required=$release_required"
+            echo "selected_gates=$(jq -c '.selected_gates' test-results/wc102/change-impact.json)"
+            echo "required_runners=$(jq -c '.required_runners' test-results/wc102/change-impact.json)"
+            echo "service_build_matrix=$(jq -c '.service_build_matrix' test-results/wc102/change-impact.json)"
+            echo "has_service_builds=$(jq -r '.service_build_matrix | length > 0' test-results/wc102/change-impact.json)"
+            echo "dotnet_test_matrix=$(jq -c '.dotnet_test_matrix' test-results/wc102/change-impact.json)"
+            echo "python_test_matrix=$(jq -c '.python_test_matrix' test-results/wc102/change-impact.json)"
+            echo "dotnet_quality_matrix=$(jq -c '.dotnet_quality_matrix' test-results/wc102/change-impact.json)"
+            echo "python_quality_matrix=$(jq -c '.python_quality_matrix' test-results/wc102/change-impact.json)"
+          } >> "$GITHUB_OUTPUT"
       - name: Retain Shadow selection and validation evidence
         if: always()
         uses: actions/upload-artifact@v4

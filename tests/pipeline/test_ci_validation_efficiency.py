@@ -14,14 +14,37 @@ CATALOG_EXECUTION_PATH = ROOT / "scripts/validation_control/catalog_execution.py
 DOTNET_GATE_PATH = ROOT / "scripts/validation_control/run_dotnet_test_gate.sh"
 PYTHON_GATE_PATH = ROOT / "scripts/validation_control/run_python_test_gate.sh"
 DEPENDENCY_GATE_PATH = ROOT / "scripts/validation_control/run_dependency_scan_gate.sh"
+STATIC_PREFLIGHT_PATH = ROOT / "scripts/run_static_validation_preflight.sh"
 
 
 def load_ci() -> dict[str, object]:
     return yaml.safe_load(CI_PATH.read_text(encoding="utf-8"))
 
 
+def test_static_preflight_blocks_runner_supply_and_compiles_docker_graphs() -> None:
+    ci = load_ci()
+    source = STATIC_PREFLIGHT_PATH.read_text(encoding="utf-8")
+
+    assert ci["jobs"]["runner-supply"]["needs"] == "static-preflight"
+    assert "static-preflight" in ci["jobs"]["qa-campaign"]["needs"]
+    checkout = ci["jobs"]["static-preflight"]["steps"][0]
+    assert checkout["with"]["fetch-depth"] == 0
+    preflight = ci["jobs"]["static-preflight"]["steps"][-1]
+    assert "github.event.pull_request.base.sha" in preflight["env"]["BASE_SHA"]
+    assert "github.event.pull_request.head.sha" in preflight["env"]["HEAD_SHA"]
+    assert "rhysd/actionlint:1.7.7" in source
+    assert "git diff --name-only --diff-filter=ACMR" in source
+    assert "git diff --cached --name-only" in source
+    assert "docker compose config --quiet" in source
+    assert source.count("docker buildx build --check") == 1
+    assert "src/constitutional-engine/Dockerfile" in source
+    assert "src/agent-adapters/digital_marketing/Dockerfile" in source
+    assert "--push" not in source
+
+
 def test_candidate_image_is_built_once_and_consumed_by_image_id() -> None:
     source = CI_PATH.read_text(encoding="utf-8")
+    ci = load_ci()
 
     assert "id: candidate-build" in source
     assert "steps.candidate-build.outputs.imageid" in source
@@ -29,6 +52,11 @@ def test_candidate_image_is_built_once_and_consumed_by_image_id() -> None:
     assert "image-ref: ${{ steps.candidate-build.outputs.imageid }}" in source
     assert "scripts/record_build_evidence.sh" in source
     assert "actions/upload-artifact@v4" in source
+    assert ci["jobs"]["build"]["needs"] == "validation-plan"
+    assert ci["jobs"]["build"]["strategy"]["matrix"]["service"] == (
+        "${{ fromJSON(needs.validation-plan.outputs.service_build_matrix) }}"
+    )
+    assert "has_service_builds == 'true'" in ci["jobs"]["build"]["if"]
 
 
 def test_runner_images_are_verified_before_consumption() -> None:
@@ -97,8 +125,23 @@ def test_required_gate_aggregation_is_preserved() -> None:
         assert gate in needs
 
 
-def test_shadow_mode_keeps_full_ci_authoritative() -> None:
-    source = CI_PATH.read_text(encoding="utf-8")
+def test_costly_ci_jobs_are_guarded_by_the_validation_plan() -> None:
+    ci = load_ci()
+
+    for job_id in ("test-dotnet", "test-python", "test-web", "spec-lint", "sast", "dep-scan", "license-check"):
+        condition = ci["jobs"][job_id].get("if", "")
+        assert "needs.validation-plan.outputs.selected_gates" in condition, job_id
+        assert "validation-plan" in (
+            [ci["jobs"][job_id]["needs"]]
+            if isinstance(ci["jobs"][job_id]["needs"], str)
+            else ci["jobs"][job_id]["needs"]
+        ), job_id
+    assert ci["jobs"]["release-qualification"]["if"] == (
+        "needs.validation-plan.outputs.release_required == 'true'"
+    )
+
+
+def test_shadow_mode_keeps_full_main_publication_authoritative() -> None:
     ci = load_ci()
     plan_workflow = (CI_PATH.parent / "validation-plan.yaml").read_text(encoding="utf-8")
 
@@ -106,7 +149,9 @@ def test_shadow_mode_keeps_full_ci_authoritative() -> None:
     assert "WC-102 validation plan (Shadow)" in plan_workflow
     assert "chmod 0777 test-results/wc102" in plan_workflow
     assert ci["jobs"]["validation-plan"]["uses"] == "./.github/workflows/validation-plan.yaml"
-    assert ci["jobs"]["build"]["if"] == "github.event_name == 'pull_request'"
+    assert "needs.validation-plan.outputs.has_service_builds == 'true'" in ci["jobs"]["build"]["if"]
+    assert ci["jobs"]["publish"]["if"] == "github.event_name == 'push' && github.ref == 'refs/heads/main'"
+    assert len(ci["jobs"]["publish"]["strategy"]["matrix"]["service"]) == 7
     assert "validation-plan" in ci["jobs"]["qa-campaign"]["needs"]
     assert "build" in ci["jobs"]["qa-campaign"]["needs"]
 

@@ -1,5 +1,5 @@
 schema: waooaw.validation-catalog/v1
-version: wc102-shadow-v1
+version: wc104-efficient-execution-v2
 mode: shadow
 runner_supply: validation/runner-supply.json
 enforced_activation:
@@ -219,39 +219,67 @@ full_gates:
   - acceptance:pse-failover
   - e2e:emergency-stop
 
+always_on_gates:
+  - secrets
+  - constitutional-commit-gate
+  - author-review-gate
+  - authorization-tier-check
+  - quality:commitlint
+
 components:
   constitutional-engine:
     component_id: constitutional-engine
+    service_image: constitutional-engine
+    service_context: .
+    service_dockerfile: src/constitutional-engine/Dockerfile
     paths: [src/constitutional-engine/**, tests/constitutional-engine.Tests/**, architecture/reference/proto/**]
     gates: [build:constitutional-engine, test-dotnet:constitutional-engine, spec-lint, sast:csharp, "dep-scan:dotnet"]
     reverse_dependencies: [business-platform, professional-runtime, ai-runtime, billing-engine]
   business-platform:
     component_id: business-platform
+    service_image: business-platform
+    service_context: .
+    service_dockerfile: src/business-platform/Dockerfile
     paths: [src/business-platform/**, tests/business-platform.Tests/**, infrastructure/postgres/init/**, architecture/reference/api-specs/business-platform.openapi.yaml]
     gates: [build:business-platform, test-dotnet:business-platform, spec-lint, sast:csharp, "dep-scan:dotnet", release-qualification]
     reverse_dependencies: [professional-runtime, billing-engine, web]
   professional-runtime:
     component_id: professional-runtime
+    service_image: professional-runtime
+    service_context: .
+    service_dockerfile: src/professional-runtime/Dockerfile
     paths: [src/professional-runtime/**, tests/professional-runtime/**, architecture/reference/api-specs/professional-runtime.openapi.yaml]
     gates: [build:professional-runtime, test-python:professional-runtime, spec-lint, sast:python, "dep-scan:python"]
     reverse_dependencies: [agent-runtime-adapter-digital-marketing, web]
   ai-runtime:
     component_id: ai-runtime
+    service_image: ai-runtime
+    service_context: .
+    service_dockerfile: src/ai-runtime/Dockerfile
     paths: [src/ai-runtime/**, tests/ai-runtime/**, src/trust-layer/**, tests/trust-layer/**]
     gates: [build:ai-runtime, test-python:ai-runtime, sast:python, "dep-scan:python"]
     reverse_dependencies: [agent-runtime-adapter-digital-marketing]
   billing-engine:
     component_id: billing-engine
+    service_image: billing-engine
+    service_context: .
+    service_dockerfile: src/billing-engine/Dockerfile
     paths: [src/billing-engine/**, tests/billing-engine/**, tests/pipeline/test_billing_ce_validator.py]
     gates: [build:billing-engine, test-python:billing-engine, sast:python, "dep-scan:python", release-qualification]
     reverse_dependencies: []
   agent-runtime-adapter-digital-marketing:
     component_id: agent-runtime-adapter-digital-marketing
+    service_image: agent-runtime-adapter-digital-marketing
+    service_context: src/agent-adapters
+    service_dockerfile: src/agent-adapters/digital_marketing/Dockerfile
     paths: [src/agent-adapters/**, tests/agent-adapters/**, tests/professional-runtime/test_dma_release_1_skills.py]
     gates: [build:agent-runtime-adapter-digital-marketing, test-python:professional-runtime, sast:python, "dep-scan:python"]
     reverse_dependencies: []
   web:
     component_id: web
+    service_image: web
+    service_context: .
+    service_dockerfile: web/Dockerfile
     paths: [web/**]
     gates: [build:web, test-web, sast:javascript, "dep-scan:typescript"]
     reverse_dependencies: []
@@ -259,7 +287,11 @@ components:
 global_triggers:
   - .github/agent-context/office-platform-it-expert.md
   - constitution/BOOTSTRAP.md
-  - .github/workflows/**
+  - .github/workflows/ci.yaml
+  - .github/workflows/code-quality.yaml
+  - .github/workflows/validation-plan.yaml
+  - .github/workflows/validation-runner-supply.yaml
+  - .github/actions/**
   - docker-compose*.yml
   - requirements*.txt
   - pyproject.toml
@@ -285,6 +317,16 @@ global_triggers:
   - infrastructure/recovery/**
   - infrastructure/environment-readiness/**
   - work-contracts/**
+scoped_paths:
+  deployment-workflows:
+    paths:
+      - .github/workflows/deploy.yaml
+      - .github/workflows/environment-deployment.yaml
+      - .github/workflows/environment-deployment-verification.yaml
+      - .github/workflows/private-runner-infrastructure.yaml
+      - .github/workflows/workload-lease-reconciliation.yaml
+      - tests/pipeline/test_goal006_*.py
+    gates: [release-qualification]
 documentation_only: [README.md, CHANGELOG.md, docs/**]
 prechecks:
   gitleaks: {always: true, inputs: ["**"], gate: "precheck:gitleaks"}

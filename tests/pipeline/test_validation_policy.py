@@ -75,6 +75,51 @@ def test_docs_only_and_renamed_paths_are_reasoned() -> None:
     assert "web" in renamed["selected_components"]
 
 
+def test_deployment_workflow_change_selects_release_without_service_builds() -> None:
+    policy = load_policy()
+
+    result = classify_paths(
+        policy,
+        [".github/workflows/deploy.yaml", "tests/pipeline/test_goal006_terraform_foundations.py"],
+    )
+
+    assert result["full"] is False
+    assert result["selected_components"] == []
+    assert result["selected_gates"] == [
+        "author-review-gate",
+        "authorization-tier-check",
+        "constitutional-commit-gate",
+        "quality:commitlint",
+        "release-qualification",
+        "secrets",
+    ]
+    assert result["required_runners"] == ["full", "python", "typescript"]
+    assert result["service_builds"] == []
+    assert result["service_build_matrix"] == []
+
+
+def test_component_change_selects_required_runners_and_service_images() -> None:
+    policy = load_policy()
+
+    result = classify_paths(policy, ["src/business-platform/Program.cs"])
+
+    assert result["required_runners"] == ["dotnet", "full", "python", "typescript"]
+    assert result["service_builds"] == [
+        "agent-runtime-adapter-digital-marketing",
+        "billing-engine",
+        "business-platform",
+        "professional-runtime",
+        "web",
+    ]
+    assert {entry["name"] for entry in result["service_build_matrix"]} == set(result["service_builds"])
+    assert result["dotnet_test_matrix"] == [
+        {"service": "business-platform", "gate": "test-dotnet:business-platform"}
+    ]
+    assert result["python_test_matrix"] == [
+        {"service": "professional-runtime", "gate": "test-python:professional-runtime"}
+    ]
+
+
 def test_local_prechecks_are_scoped_independently_from_full_hosted_inventory() -> None:
     policy = load_policy()
 
@@ -117,6 +162,17 @@ def test_prechecks_require_declared_gate_inputs() -> None:
     del policy["prechecks"]["business_platform"]["inputs"]
 
     assert "PRECHECK_INPUTS_MISSING: business_platform" in validate_policy(policy)
+
+
+def test_scoped_and_always_on_gates_must_be_defined() -> None:
+    policy = load_policy()
+    policy["always_on_gates"].append("missing-always-on")
+    policy["scoped_paths"]["deployment-workflows"]["gates"].append("missing-scoped")
+
+    violations = validate_policy(policy)
+
+    assert "GATE_UNDEFINED: missing-always-on" in violations
+    assert "GATE_UNDEFINED: missing-scoped" in violations
 
 
 def test_shadow_comparison_detects_omitted_failure() -> None:
