@@ -447,7 +447,7 @@ locals {
   minimum_replicas = {
     "constitutional-engine"                   = var.ce_min_replicas
     "professional-runtime"                    = var.pr_min_replicas
-    "business-platform"                       = 0
+    "business-platform"                       = var.bp_min_replicas
     "ai-runtime"                              = 0
     "web"                                     = 0
     "billing-engine"                          = 0

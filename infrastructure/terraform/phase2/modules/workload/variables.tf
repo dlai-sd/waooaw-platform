@@ -106,6 +106,15 @@ variable "pr_min_replicas" {
   default = 0
 }
 
+variable "bp_min_replicas" {
+  type    = number
+  default = 0
+  validation {
+    condition     = var.bp_min_replicas >= 0 && var.bp_min_replicas <= 1
+    error_message = "Business Platform minimum replicas must be zero or one."
+  }
+}
+
 variable "max_replicas" {
   type    = number
   default = 10
