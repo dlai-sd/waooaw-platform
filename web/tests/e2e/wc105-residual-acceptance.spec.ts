@@ -96,7 +96,9 @@ test('WC105-R022 R023: acquired DMA relationships persist, isolate, verify a goa
   await conversation.getByLabel('Message your professional').fill('Prepare the approved campaign plan.');
   await expect(conversation.getByRole('button', { name: 'Send' })).toBeEnabled();
   await conversation.getByRole('button', { name: 'Send' }).click();
-  await expect(conversation.getByLabel('Conversation timeline').getByText('Prepare the approved campaign plan.')).toBeVisible();
+  await expect(
+    conversation.getByLabel('Conversation timeline').getByText('Prepare the approved campaign plan.')
+  ).toBeVisible();
   await expect(conversation.getByText('Accepted by WAOOAW')).toBeVisible();
   await expect(conversation.getByText('Professional processing', { exact: true })).toBeVisible();
   await expect(conversation.getByText('Evidence pending', { exact: true })).toBeVisible();
@@ -106,7 +108,10 @@ test('WC105-R024 R025 R026: feature rail, trust copy, and enlarged logo remain u
   context,
   page,
 }, testInfo) => {
-  test.skip(testInfo.project.name !== 'chromium-expanded', 'One Chromium instance controls the complete viewport matrix.');
+  test.skip(
+    testInfo.project.name !== 'chromium-expanded',
+    'One Chromium instance controls the complete viewport matrix.'
+  );
   await context.clearCookies();
   const viewports = [
     { width: 1440, height: 900, logoWidth: 108, logoHeight: 108 },
@@ -126,9 +131,9 @@ test('WC105-R024 R025 R026: feature rail, trust copy, and enlarged logo remain u
     expect(logoBox?.height).toBeCloseTo(viewport.logoHeight, 0);
     await page.getByRole('button', { name: 'Next platform feature' }).click();
     await expect(page.getByText('Built for real business growth')).toBeVisible();
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(
-      true
-    );
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
+    ).toBe(true);
   }
 
   await page.setViewportSize({ width: 390, height: 844 });
