@@ -1339,9 +1339,9 @@ select:focus-visible,
 }
 .brand-link img {
   block-size: auto;
-  max-block-size: 72px;
+  max-block-size: 108px;
   inline-size: auto;
-  max-inline-size: 220px;
+  max-inline-size: 324px;
   object-fit: contain;
 }
 .primary-link,
@@ -3595,7 +3595,7 @@ select:focus-visible,
     grid-template-columns: minmax(0, 1fr);
   }
   .app-shell {
-    grid-template-rows: 64px 1fr;
+    grid-template-rows: 80px 1fr;
   }
   .app-shell-customer,
   .app-shell-founder {
@@ -3607,13 +3607,13 @@ select:focus-visible,
     padding-inline: .75rem;
   }
   .top-bar .brand-link {
-    min-width: 44px;
-    width: 44px;
+    min-width: 66px;
+    width: 66px;
     overflow: hidden;
   }
   .top-bar .brand-link img {
-    max-block-size: 44px;
-    max-inline-size: 160px;
+    max-block-size: 66px;
+    max-inline-size: 240px;
   }
   .top-actions > a,
   .top-actions .role-label {
@@ -3825,7 +3825,7 @@ select:focus-visible,
 /* WC-078 public acquisition experience */
 /* Implements: architecture/reference/ux/wc-078-visual-experience-implementation-plan.md §10 (WC-04, WC-05) */
 .app-shell-public {
-  --public-header-height: 96px;
+  --public-header-height: 132px;
   --public-hero-background: radial-gradient(circle at 8% 8%, rgb(26 102 194 / 8%) 0%, transparent 38%),
     linear-gradient(105deg, transparent 0%, rgb(61 173 53 / 3%) 52%, rgb(247 148 29 / 4%) 100%), #fff;
   grid-template-rows: auto minmax(0, 1fr) auto;
@@ -5086,9 +5086,70 @@ html[data-header-scrolled="true"] .app-shell-public .top-bar {
   }
 }
 .public-trust-band {
+  color: #fff;
+  background: var(--color-brand-navy);
+}
+.public-trust-heading {
   min-height: 112px;
+  justify-content: center;
+  padding-block-end: 1.5rem;
+}
+.platform-feature-rail {
+  width: min(100% - 2rem, 880px);
+  margin-inline: auto;
+  padding-block-end: 2rem;
+}
+.platform-feature-viewport {
+  overflow: hidden;
+  border-block: 1px solid color-mix(in srgb, #fff 28%, transparent);
+}
+.platform-feature-track {
+  display: flex;
+  transition: transform 420ms ease;
+}
+.platform-feature-card {
+  min-inline-size: 100%;
+  min-block-size: 180px;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: center;
+  gap: 1.25rem;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+}
+.platform-feature-card svg {
+  color: var(--color-brand-orange);
+}
+.platform-feature-card h3 {
+  margin: 0 0 .65rem;
+  font-size: clamp(1.35rem, 3vw, 2rem);
+}
+.platform-feature-card p {
+  max-width: 660px;
+  margin: 0;
+  color: #dce6ef;
+  line-height: 1.6;
+}
+.platform-feature-controls {
+  min-block-size: 52px;
+  display: flex;
   align-items: center;
   justify-content: center;
+  gap: 1rem;
+}
+.platform-feature-controls button {
+  width: 44px;
+  height: 44px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, #fff 42%, transparent);
+  border-radius: 50%;
+  color: #fff;
+  background: transparent;
+}
+.platform-feature-controls span {
+  min-inline-size: 64px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 .professional-grid li span {
   display: grid;
@@ -5427,7 +5488,7 @@ html[data-header-scrolled="true"] .app-shell-public .top-bar {
 
 @media (max-width: 599px) {
   .app-shell-public {
-    --public-header-height: 64px;
+    --public-header-height: 82px;
   }
   .public-intro-wc078 .public-hero {
     padding: 2.5rem 1.25rem;
@@ -5478,7 +5539,7 @@ html[data-header-scrolled="true"] .app-shell-public .top-bar {
     grid-template-columns: 1fr 1fr;
   }
   .app-shell-public .top-bar {
-    min-block-size: 64px;
+    min-block-size: 82px;
     padding-block: .5rem;
   }
 }

@@ -4,6 +4,7 @@
 
 import { ArrowRight, BriefcaseBusiness, Scale, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
+import { PlatformFeatureRail } from '@/components/public/PlatformFeatureRail';
 import { ProfessionalJourneyShowcase } from '@/components/public/ProfessionalJourneyShowcase';
 import { PublicCatalogue } from '@/components/public/PublicCatalogue';
 import { StructuredData } from '@/components/public/StructuredData';
@@ -55,12 +56,15 @@ export default async function HomePage() {
         <ProfessionalJourneyShowcase content={journeyContent} />
       </div>
 
-      <section className="trust-strip public-trust-band" aria-label={messages.safeguards}>
-        <ShieldCheck aria-hidden="true" size={26} />
-        <div>
-          <strong>{messages.controlYours}</strong>
-          <span>{messages.safeguardsDescription}</span>
+      <section className="public-trust-band" aria-label={messages.safeguards}>
+        <div className="trust-strip public-trust-heading">
+          <ShieldCheck aria-hidden="true" size={26} />
+          <div>
+            <strong>{messages.controlYours}</strong>
+            <span>{messages.safeguardsDescription}</span>
+          </div>
         </div>
+        <PlatformFeatureRail />
       </section>
 
       <section className="public-section professionals-section" aria-labelledby="expert-professionals-title">
@@ -83,7 +87,7 @@ export default async function HomePage() {
         </div>
         <div>
           <Scale aria-hidden="true" size={32} />
-          <p className="eyebrow">Illustrative governance journey</p>
+          <p className="eyebrow">How your professional works with you</p>
           <h2>{messages.constitutionalPromise}</h2>
           <p>{messages.constitutionalDescription}</p>
         </div>

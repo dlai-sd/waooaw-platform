@@ -1,6 +1,7 @@
 // Implements: architecture/reference/components/business-platform.md § Tenant Isolation
 // constitutional_basis: C-005, C-023, C-026, C-059
 using System;
+using System.Collections.Concurrent;
 using System.Data.Common;
 using System.Security.Claims;
 using System.Threading;
@@ -188,6 +189,7 @@ public sealed class TenantDbConnectionInterceptor : DbCommandInterceptor
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<TenantDbConnectionInterceptor> _logger;
+    private readonly ConcurrentDictionary<DbCommand, DbTransaction> _ownedTransactions = new();
 
     public TenantDbConnectionInterceptor(
         IHttpContextAccessor httpContextAccessor,
@@ -231,6 +233,48 @@ public sealed class TenantDbConnectionInterceptor : DbCommandInterceptor
         return base.NonQueryExecuting(command, eventData, result);
     }
 
+    public override object? ScalarExecuted(
+        DbCommand command,
+        CommandExecutedEventData eventData,
+        object? result
+    )
+    {
+        CompleteOwnedTransaction(command);
+        return base.ScalarExecuted(command, eventData, result);
+    }
+
+    public override int NonQueryExecuted(
+        DbCommand command,
+        CommandExecutedEventData eventData,
+        int result
+    )
+    {
+        CompleteOwnedTransaction(command);
+        return base.NonQueryExecuted(command, eventData, result);
+    }
+
+    public override InterceptionResult DataReaderDisposing(
+        DbCommand command,
+        DataReaderDisposingEventData eventData,
+        InterceptionResult result
+    )
+    {
+        CompleteOwnedTransaction(command);
+        return base.DataReaderDisposing(command, eventData, result);
+    }
+
+    public override void CommandFailed(DbCommand command, CommandErrorEventData eventData)
+    {
+        RollBackOwnedTransaction(command);
+        base.CommandFailed(command, eventData);
+    }
+
+    public override void CommandCanceled(DbCommand command, CommandEndEventData eventData)
+    {
+        RollBackOwnedTransaction(command);
+        base.CommandCanceled(command, eventData);
+    }
+
     // ── Asynchronous intercepts ──────────────────────────────────────────────
 
     public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
@@ -266,6 +310,48 @@ public sealed class TenantDbConnectionInterceptor : DbCommandInterceptor
         return base.NonQueryExecutingAsync(command, eventData, result, cancellationToken);
     }
 
+    public override ValueTask<object?> ScalarExecutedAsync(
+        DbCommand command,
+        CommandExecutedEventData eventData,
+        object? result,
+        CancellationToken cancellationToken = default
+    )
+    {
+        CompleteOwnedTransaction(command);
+        return base.ScalarExecutedAsync(command, eventData, result, cancellationToken);
+    }
+
+    public override ValueTask<int> NonQueryExecutedAsync(
+        DbCommand command,
+        CommandExecutedEventData eventData,
+        int result,
+        CancellationToken cancellationToken = default
+    )
+    {
+        CompleteOwnedTransaction(command);
+        return base.NonQueryExecutedAsync(command, eventData, result, cancellationToken);
+    }
+
+    public override Task CommandFailedAsync(
+        DbCommand command,
+        CommandErrorEventData eventData,
+        CancellationToken cancellationToken = default
+    )
+    {
+        RollBackOwnedTransaction(command);
+        return base.CommandFailedAsync(command, eventData, cancellationToken);
+    }
+
+    public override Task CommandCanceledAsync(
+        DbCommand command,
+        CommandEndEventData eventData,
+        CancellationToken cancellationToken = default
+    )
+    {
+        RollBackOwnedTransaction(command);
+        return base.CommandCanceledAsync(command, eventData, cancellationToken);
+    }
+
     // ── Private helpers ──────────────────────────────────────────────────────
 
     /// <summary>
@@ -298,6 +384,24 @@ public sealed class TenantDbConnectionInterceptor : DbCommandInterceptor
 
         // Guard against injection: tenantId is a validated UUID string from TenantIsolationMiddleware.
         // We validated Guid.TryParse upstream so this cannot carry SQL-injection characters.
+        if (command.Transaction is null)
+        {
+            var connection =
+                command.Connection
+                ?? throw new InvalidOperationException(
+                    "Tenant-scoped database commands require an open connection."
+                );
+            var transaction = connection.BeginTransaction();
+            command.Transaction = transaction;
+            if (!_ownedTransactions.TryAdd(command, transaction))
+            {
+                transaction.Dispose();
+                throw new InvalidOperationException(
+                    "Tenant-scoped database command already owns a transaction."
+                );
+            }
+        }
+
         var setLocal = $"SET LOCAL app.current_tenant_id = '{tenantId}';";
 
         // Prepend to the existing command text so it executes in the same statement batch.
@@ -307,6 +411,36 @@ public sealed class TenantDbConnectionInterceptor : DbCommandInterceptor
             "TenantDbInterceptor: injected SET LOCAL app.current_tenant_id for tenant {TenantId}",
             tenantId
         );
+    }
+
+    private void CompleteOwnedTransaction(DbCommand command)
+    {
+        if (!_ownedTransactions.TryRemove(command, out var transaction))
+            return;
+
+        try
+        {
+            transaction.Commit();
+        }
+        finally
+        {
+            transaction.Dispose();
+        }
+    }
+
+    private void RollBackOwnedTransaction(DbCommand command)
+    {
+        if (!_ownedTransactions.TryRemove(command, out var transaction))
+            return;
+
+        try
+        {
+            transaction.Rollback();
+        }
+        finally
+        {
+            transaction.Dispose();
+        }
     }
 }
 

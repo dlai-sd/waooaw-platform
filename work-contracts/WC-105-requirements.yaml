@@ -1,6 +1,6 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-105
-contract_digest: f1209c17920194d75c87fb9e906e848d84e2f9a37b51bcbcbb8596c84bc0a19d
+contract_digest: d50fa0c5afbdd7b65109dfed3b01d2619550f0e84ba349f1b73c19f577270d46
 implementation_scope: true
 result: QUALIFIED
 requirements:
@@ -230,3 +230,121 @@ requirements:
     result: PASS
     evidence_refs:
       - Identity response classification, alerts, layout, and home tests PASS; full Web suite PASS 407/407
+  - requirement_id: WC105-R018
+    source: Azure Demo cold-start telemetry, 2026-09-23
+    observable_outcome: Demo Business Platform remains available while Web accepts authenticated traffic, and retained cold-start journeys have no unexplained timeout or 499.
+    component_owner: infrastructure/terraform/phase2 workload module
+    evidence_class: terraform-static-and-deployment
+    test_path_or_plan: tests/pipeline/test_goal006_terraform_foundations.py plus separately authorized Demo cold-start journey
+    initial_state: expected-fail
+    dependencies: Exact candidate deployment and retained Azure logs
+    completion_rule: Demo maps bp_min_replicas to one and the deployed first request completes within bounded timeouts.
+    residual_risk: Local Terraform checks cannot prove Azure image-pull, sidecar, or authenticated first-request timing.
+    result: PLANNED
+    evidence_refs:
+      - Focused Docker Terraform test PASS 1/1; Demo deployment evidence not authorized or collected
+  - requirement_id: WC105-R019
+    source: Azure PostgreSQL warning telemetry, 2026-09-23
+    observable_outcome: Every tenant-scoped command has transaction-local RLS context with no warning or pooled-session leak.
+    component_owner: src/business-platform/Infrastructure/TenantIsolationMiddleware.cs
+    evidence_class: postgresql-integration
+    test_path_or_plan: tests/business-platform.Tests/Infrastructure/TenantDbConnectionInterceptorPostgresTests.cs
+    initial_state: expected-fail
+    dependencies: Real PostgreSQL 16 and protected HTTP middleware coverage
+    completion_rule: Transactional and non-transactional HTTP paths see the tenant, deny another tenant, emit no warning, and clear pooled state.
+    residual_risk: The local PostgreSQL contract does not replace deployed pooled-connection telemetry.
+    result: PASS
+    evidence_refs:
+      - TenantDbConnectionInterceptorPostgresTests PASS 1/1 with clean build; forced RLS protected HTTP path proves both tenants, denied cross-tenant mutation, explicit and interceptor-owned transactions, canceled-command rollback with same-context continuation, no warning, and pooled-state cleanup
+  - requirement_id: WC105-R020
+    source: Azure Log Analytics table inventory, 2026-09-23
+    observable_outcome: One privacy-safe trace spans Web, Business Platform, identity, Guide, and Marketplace with a shared trace identifier.
+    component_owner: Web, Business Platform, and phase2 observability configuration
+    evidence_class: distributed-trace-deployment
+    test_path_or_plan: Runtime propagation test plus separately authorized Azure ingestion and bounded KQL query
+    initial_state: blocked
+    dependencies: Approved Web tracing dependency/design and an Azure trace ingestion destination consistent with ADR-009
+    completion_rule: Azure retains queryable shared spans with service/revision, latency, status, and no sensitive attributes.
+    residual_risk: Existing ADR-009 names OTLP but phase2 provisions no compatible trace destination; source-only evidence cannot close this requirement.
+    result: BLOCKED
+    evidence_refs:
+      - BP and CE reference OTel packages but have no registration; phase2 exports container logs only
+  - requirement_id: WC105-R021
+    source: Meta OAuthException 191 evidence, 2026-09-23
+    observable_outcome: The verifier distinguishes domain configuration error 191 without retaining provider body, account data, or trace identifiers.
+    component_owner: scripts/verify_facebook_deployment.py and external Meta application configuration
+    evidence_class: verifier-test-and-provider-acceptance
+    test_path_or_plan: tests/pipeline/test_wc090_facebook_deployment.py plus separately authorized real-provider acceptance
+    initial_state: expected-fail
+    dependencies: Founder-authorized Meta App Domains and valid OAuth redirect URI mutation
+    completion_rule: Verifier safely classifies 191, then deployed login reaches Meta and returns only to the approved callback without 191.
+    residual_risk: Repository code cannot repair the external Meta application configuration.
+    result: PLANNED
+    evidence_refs:
+      - Focused Docker Facebook verifier suite PASS 18/18; provider mutation and real-account acceptance not authorized
+  - requirement_id: WC105-R022
+    source: WC-105 cross-surface lifecycle gap
+    observable_outcome: Idempotent Hire and Trial actions durably project under My Agents across sessions and remain tenant-isolated.
+    component_owner: Web acquisition continuation and Business Platform relationship lifecycle
+    evidence_class: browser-and-service-journey
+    test_path_or_plan: web/tests/e2e/wc099-demo-remediation.spec.ts and relationship lifecycle integration suites
+    initial_state: new
+    dependencies: Existing acquisition continuation, relationship, trial, and My Agents APIs
+    completion_rule: Both commercial models create one relationship, survive a new session, and remain invisible to another tenant.
+    residual_risk: Browser evidence uses the stateful service fixture; deployed cross-session retention remains covered by R018 deployment evidence.
+    result: PASS
+    evidence_refs:
+      - WC105 residual Playwright acceptance PASS 2/2; trial replay is idempotent, hire and trial each project once, both survive a renewed owner session, and neither is visible to another tenant
+  - requirement_id: WC105-R023
+    source: WC-105 DMA operational journey gap
+    observable_outcome: A hired and trial DMA can be configured, receive a verified goal, and expose a truthful governed operation state without cross-boundary access.
+    component_owner: Relationship workspace and customer portal
+    evidence_class: browser-and-service-journey
+    test_path_or_plan: web/tests/e2e/f4-relationship-workspace-acceptance.spec.ts and tests/business-platform.Tests/RelationshipWorkspaceControllerTests.cs
+    initial_state: new
+    dependencies: Existing relationship configuration, goal verification, mandate, limits, and Emergency Stop controls
+    completion_rule: Hired and trial journeys reach evidence-backed operation status while invalid, stopped, and cross-tenant paths fail closed.
+    residual_risk: Browser acquisition uses the stateful fixture; canonical hired activation and failure controls are proven in the service layer rather than repeated through a synthetic payment provider.
+    result: PASS
+    evidence_refs:
+      - WC105 residual Playwright acceptance PASS 2/2; acquired trial persists goal verification and exposes accepted, running, evidence-pending work without cross-tenant visibility
+      - Docker Business Platform composed qualification PASS 84/84 covering relationship workspace, contract acceptance, payment, canonical activation, malformed and stale requests, tenant isolation, and Emergency Stop
+  - requirement_id: WC105-R024
+    source: Founder platform feature request, 2026-09-23
+    observable_outcome: Three exact platform features appear one at a time below Control remains yours with accessible controls, keyboard, swipe, pause, and reduced motion.
+    component_owner: web/components/public/PlatformFeatureRail.tsx
+    evidence_class: component-and-responsive-browser
+    test_path_or_plan: web/components/public/PublicExperience.test.tsx plus desktop/mobile/zoom browser assertions
+    initial_state: expected-fail
+    dependencies: Existing landing page and public shell
+    completion_rule: Exact content and interactions pass with no clipping, overlap, or horizontal overflow.
+    residual_risk: Browser evidence uses Chromium; component semantics and interaction tests remain the cross-engine control.
+    result: PASS
+    evidence_refs:
+      - Docker PublicExperience suite PASS 23/23 and WC105 residual Playwright acceptance PASS 2/2 across desktop, mobile, 200-percent zoom, reduced-motion component behavior, and Urdu RTL
+  - requirement_id: WC105-R025
+    source: Founder SMB trust-copy request, 2026-09-23
+    observable_outcome: The section labelled 02 uses the exact approved practical trust and owner-control language.
+    component_owner: web/lib/i18n.ts and web/app/(public)/page.tsx
+    evidence_class: component-and-responsive-browser
+    test_path_or_plan: web/components/public/PublicExperience.test.tsx plus locale/RTL/zoom browser assertions
+    initial_state: expected-fail
+    dependencies: Existing localized content projection
+    completion_rule: Exact English copy is visible and replaced academic headings are absent across required browser modes.
+    residual_risk: Exact approved wording applies to English; ten translated catalogs are checked for practical intent and non-fallback content, with Urdu as the browser RTL representative.
+    result: PASS
+    evidence_refs:
+      - Docker i18n suite PASS 12/12, PublicExperience suite PASS 23/23, and WC105 residual Playwright acceptance PASS 2/2 with exact English copy plus customer-visible Urdu replacement copy under RTL and 200-percent zoom
+  - requirement_id: WC105-R026
+    source: Founder logo prominence request, 2026-09-23
+    observable_outcome: The top-left logo is exactly 50 percent larger with preserved aspect ratio and stable controls.
+    component_owner: web/components/shell/Brand.tsx and web/app/globals.css
+    evidence_class: component-and-responsive-browser
+    test_path_or_plan: web/components/public/PublicExperience.test.tsx plus desktop/mobile/zoom/locale geometry
+    initial_state: expected-fail
+    dependencies: Existing public and application headers
+    completion_rule: Source and computed dimensions are 1.5x baseline without clipping, overlap, wrapping, or overflow.
+    residual_risk: Exact computed geometry is measured in Chromium; production build and broader Web regression remain qualification controls.
+    result: PASS
+    evidence_refs:
+      - Docker PublicExperience suite PASS 23/23 and WC105 residual Playwright acceptance PASS 2/2; square source aspect ratio renders at exact 108x108 desktop and 66x66 mobile/200-percent zoom without overflow in English or Urdu RTL

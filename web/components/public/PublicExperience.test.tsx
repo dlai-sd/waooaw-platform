@@ -6,10 +6,13 @@ import { AnnouncementBar } from './AnnouncementBar';
 import { ConsentController, cookiePreferencesReopenEvent } from './ConsentController';
 import { CookiePreferencesTrigger } from './CookiePreferencesTrigger';
 import { InformationPage } from './InformationPage';
+import { PlatformFeatureRail } from './PlatformFeatureRail';
 import { ProfessionalJourneyShowcase } from './ProfessionalJourneyShowcase';
 import { PublicCatalogue } from './PublicCatalogue';
 import { PublicFooter } from './PublicFooter';
+import { Brand } from '@/components/shell/Brand';
 import { listPublicProfessionals } from '@/config/professionals';
+import { getMessages } from '@/lib/i18n';
 import { getProfessionalJourneyContent } from '@/lib/professional-journey-content';
 
 class IntersectionObserverStub implements IntersectionObserver {
@@ -120,6 +123,62 @@ describe('public acquisition components', () => {
     act(() => jest.advanceTimersByTime(1));
     expect(container.querySelector('.orbit-footer')).toHaveTextContent('04 / 04');
     jest.useRealTimers();
+  });
+
+  it('presents the three platform features one at a time with directional controls', () => {
+    const { container } = render(<PlatformFeatureRail />);
+    expect(screen.getByText('Work with your WAOOAW professional on WhatsApp')).toBeVisible();
+    expect(screen.getByText(/governed records remain connected to the professional relationship/)).toBeVisible();
+    expect(container.querySelectorAll('.platform-feature-card')).toHaveLength(3);
+    expect(container.querySelector('.platform-feature-controls')).toHaveTextContent('01 / 03');
+    fireEvent.click(screen.getByRole('button', { name: 'Next platform feature' }));
+    expect(container.querySelector('.platform-feature-controls')).toHaveTextContent('02 / 03');
+    fireEvent.click(screen.getByRole('button', { name: 'Previous platform feature' }));
+    expect(container.querySelector('.platform-feature-controls')).toHaveTextContent('01 / 03');
+  });
+
+  it('supports keyboard and swipe navigation and pauses after interaction', () => {
+    jest.useFakeTimers();
+    const { container } = render(<PlatformFeatureRail />);
+    const rail = screen.getByRole('region', { name: 'Platform features' });
+    fireEvent.keyDown(rail, { key: 'ArrowRight' });
+    expect(container.querySelector('.platform-feature-controls')).toHaveTextContent('02 / 03');
+    fireEvent.touchStart(rail, { touches: [{ clientX: 200 }] });
+    fireEvent.touchEnd(rail, { changedTouches: [{ clientX: 100 }] });
+    expect(container.querySelector('.platform-feature-controls')).toHaveTextContent('03 / 03');
+    fireEvent.pointerLeave(rail);
+    act(() => jest.advanceTimersByTime(7000));
+    expect(container.querySelector('.platform-feature-controls')).toHaveTextContent('03 / 03');
+    jest.useRealTimers();
+  });
+
+  it('autoplays platform features unless reduced motion is requested', () => {
+    jest.useFakeTimers();
+    const { container, unmount } = render(<PlatformFeatureRail />);
+    act(() => jest.advanceTimersByTime(7000));
+    expect(container.querySelector('.platform-feature-controls')).toHaveTextContent('02 / 03');
+    unmount();
+    stubMatchMedia(true);
+    const reduced = render(<PlatformFeatureRail />);
+    act(() => jest.advanceTimersByTime(7000));
+    expect(reduced.container.querySelector('.platform-feature-controls')).toHaveTextContent('01 / 03');
+    jest.useRealTimers();
+  });
+
+  it('uses plain business language for trust and control', () => {
+    const content = getMessages('en');
+    expect(content.trustJourney).toBe('Trust grows when you can see the work');
+    expect(content.constitutionalPromise).toBe('Clear rules. Your business stays in control.');
+    expect(content.constitutionalDescription).toContain('stop the work at any time');
+  });
+
+  it('renders compact and full logos at exactly 150 percent of their former dimensions', () => {
+    const { container, rerender } = render(<Brand compact />);
+    expect(container.querySelector('img')).toHaveAttribute('width', '66');
+    expect(container.querySelector('img')).toHaveAttribute('height', '66');
+    rerender(<Brand />);
+    expect(container.querySelector('img')).toHaveAttribute('width', '108');
+    expect(container.querySelector('img')).toHaveAttribute('height', '108');
   });
 
   it('links every admitted professional to a public detail page', () => {

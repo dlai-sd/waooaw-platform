@@ -56,6 +56,21 @@ def validate_redirect(location: str, issuer: str) -> bool:
     return redirect_failure_reason(location, issuer) is None
 
 
+def provider_failure_reason(status: int, body: bytes) -> str:
+    try:
+        payload = json.loads(body.decode("utf-8", errors="replace"))
+    except json.JSONDecodeError:
+        payload = None
+    if isinstance(payload, dict):
+        error = payload.get("error")
+        if isinstance(error, dict) and str(error.get("code")) == "191":
+            return "facebook_oauth_191_domain_configuration"
+    text = body.decode("utf-8", errors="replace").lower()
+    if status == 400 and "191" in text and "domain" in text:
+        return "facebook_oauth_191_domain_configuration"
+    return f"broker_http_{status}"
+
+
 def verify_redirect_chain(issuer: str, target: str) -> None:
     opener = build_opener(NoRedirect(), HTTPCookieProcessor(http.cookiejar.CookieJar()))
     opener.addheaders = BROWSER_HEADERS
@@ -67,7 +82,7 @@ def verify_redirect_chain(issuer: str, target: str) -> None:
                 raise VerificationError("authorization_html_response")
         except HTTPError as error:
             if error.code not in (301, 302, 303, 307, 308):
-                raise VerificationError(f"broker_http_{error.code}") from None
+                raise VerificationError(provider_failure_reason(error.code, error.read(65536))) from None
             target = urljoin(target, error.headers.get("Location", ""))
         if validate_redirect(target, issuer):
             break

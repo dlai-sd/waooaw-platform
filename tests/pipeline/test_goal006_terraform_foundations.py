@@ -631,10 +631,14 @@ def test_network_egress_is_explicitly_fail_closed() -> None:
 
 def test_scale_contract_is_bounded_and_defaults_to_zero() -> None:
     contract = read_contract("modules/workload/variables.tf")
+    workload = read_contract("modules/workload/main.tf")
+    demo_root = read_contract("environments/demo/workload/main.tf")
     prod_root = read_contract("environments/prod/workload/main.tf")
     prod_variables = read_contract("environments/prod/workload/variables.tf")
 
-    assert contract.count("default = 0") == 2
+    assert contract.count("default = 0") == 3
+    assert '"business-platform"                       = var.bp_min_replicas' in workload
+    assert re.search(r"bp_min_replicas\s*=\s*1", demo_root)
     assert "var.max_replicas > 0 && var.max_replicas <= 10" in contract
     uat_root = read_contract("environments/uat/workload/main.tf")
     assert re.search(r"ce_min_replicas\s*=\s*0", uat_root)

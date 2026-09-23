@@ -1,4 +1,5 @@
 import json
+from io import BytesIO
 from pathlib import Path
 from http.client import RemoteDisconnected
 import sys
@@ -10,7 +11,7 @@ import hcl2
 import pytest
 
 from scripts import verify_facebook_deployment
-from scripts.verify_facebook_deployment import redirect_failure_reason, validate_redirect
+from scripts.verify_facebook_deployment import provider_failure_reason, redirect_failure_reason, validate_redirect
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -162,6 +163,43 @@ def test_facebook_verifier_fails_after_bounded_disconnects(monkeypatch: pytest.M
         )
 
     assert opener.open.call_count == 3
+
+
+def test_facebook_verifier_classifies_oauth_191_without_retaining_provider_details(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    issuer = "https://identity.demo.waooaw.com/realms/waooaw"
+    provider_error = {
+        "error": {
+            "message": "Can't load URL: callback domain mismatch for account 12345",
+            "type": "OAuthException",
+            "code": 191,
+            "fbtrace_id": "sensitive-provider-trace",
+        }
+    }
+    opener = Mock()
+    opener.open.side_effect = HTTPError(
+        issuer,
+        400,
+        "Bad Request",
+        {},
+        BytesIO(json.dumps(provider_error).encode()),
+    )
+    monkeypatch.setattr(verify_facebook_deployment, "build_opener", lambda *handlers: opener)
+
+    with pytest.raises(
+        verify_facebook_deployment.VerificationError,
+        match="^facebook_oauth_191_domain_configuration$",
+    ) as failure:
+        verify_facebook_deployment.verify(issuer, "https://app.demo.waooaw.com")
+
+    assert failure.value.reason == "facebook_oauth_191_domain_configuration"
+    assert "12345" not in failure.value.reason
+    assert "sensitive-provider-trace" not in failure.value.reason
+
+
+def test_facebook_provider_failure_preserves_bounded_generic_status() -> None:
+    assert provider_failure_reason(503, b"upstream unavailable") == "broker_http_503"
 
 
 def test_facebook_verifier_writes_sanitized_failure_evidence(
