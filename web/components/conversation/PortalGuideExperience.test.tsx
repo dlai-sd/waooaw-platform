@@ -81,8 +81,10 @@ describe('PortalGuideExperience', () => {
   });
 
   it('retains the typed problem code and correlation ID for Guide diagnostics', async () => {
-    jest.mocked(global.fetch).mockReset().mockResolvedValueOnce(
-      {
+    jest
+      .mocked(global.fetch)
+      .mockReset()
+      .mockResolvedValueOnce({
         ok: false,
         status: 503,
         json: async () => ({
@@ -90,8 +92,7 @@ describe('PortalGuideExperience', () => {
           correlationId: 'd8f914cf-f258-46f3-a41a-e345d489862a',
           detail: 'Sensitive downstream detail must not be displayed.',
         }),
-      } as Response
-    );
+      } as Response);
 
     render(<PortalGuideExperience currentSurface="MARKETPLACE" />);
 

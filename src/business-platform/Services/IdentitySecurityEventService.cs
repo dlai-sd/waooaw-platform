@@ -176,8 +176,7 @@ public sealed class IdentitySecurityEventService
             await db.SaveChangesAsync(ct);
             return true;
         }
-        catch (DbUpdateException exception)
-            when (IsUniqueViolation(exception))
+        catch (DbUpdateException exception) when (IsUniqueViolation(exception))
         {
             return false;
         }

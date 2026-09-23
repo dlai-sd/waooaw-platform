@@ -79,9 +79,7 @@ export function PortalGuideExperience({
         }),
       });
       if (!response.ok) {
-        throw new Error(
-          await guideProblem(response, 'The Guide response is unresolved. Refresh before retrying.')
-        );
+        throw new Error(await guideProblem(response, 'The Guide response is unresolved. Refresh before retrying.'));
       }
       const submission = PortalInteractionSubmissionV1FromJSON(await response.json());
       setMessages((current) => [...current, submission.customerMessage, submission.guideMessage]);
