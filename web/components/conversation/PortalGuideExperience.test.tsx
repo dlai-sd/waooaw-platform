@@ -79,4 +79,25 @@ describe('PortalGuideExperience', () => {
       expectedCursor: 'cursor-0',
     });
   });
+
+  it('retains the typed problem code and correlation ID for Guide diagnostics', async () => {
+    jest.mocked(global.fetch).mockReset().mockResolvedValueOnce(
+      {
+        ok: false,
+        status: 503,
+        json: async () => ({
+          code: 'IDENTITY_DEPENDENCY_UNAVAILABLE',
+          correlationId: 'd8f914cf-f258-46f3-a41a-e345d489862a',
+          detail: 'Sensitive downstream detail must not be displayed.',
+        }),
+      } as Response
+    );
+
+    render(<PortalGuideExperience currentSurface="MARKETPLACE" />);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('IDENTITY_DEPENDENCY_UNAVAILABLE');
+    expect(alert).toHaveTextContent('d8f914cf-f258-46f3-a41a-e345d489862a');
+    expect(alert).not.toHaveTextContent('Sensitive downstream detail');
+  });
 });

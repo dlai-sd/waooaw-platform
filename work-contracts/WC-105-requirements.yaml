@@ -1,6 +1,6 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-105
-contract_digest: 7223566f1916efb058e112b84ee4379196f618ac6486ee68cb13d798c5bd4232
+contract_digest: f1209c17920194d75c87fb9e906e848d84e2f9a37b51bcbcbb8596c84bc0a19d
 implementation_scope: true
 result: QUALIFIED
 requirements:
@@ -162,3 +162,71 @@ requirements:
       - Docker-focused Business Platform PASS 49/49; full Web PASS 396/396; lint, TypeScript, production build and Chromium geometry PASS
       - Complete diff and security/authorization/rollback author review PASS; PR execution preflight PASS
       - Exact pushed-head scripts/prepare_pr_body.py gate required to pass before PR creation
+  - requirement_id: WC105-R013
+    source: Azure Demo telemetry, 2026-09-22
+    observable_outcome: A cold protected render resolves one stable identity session without concurrent session or establishment-event failures.
+    component_owner: Business Platform identity session and Web protected-route boundary
+    evidence_class: postgresql-http-and-component
+    test_path_or_plan: Concurrent real-PostgreSQL identity service test and protected layout/page component tests
+    initial_state: expected-fail
+    dependencies: Existing membership middleware, identity session service, and server request cache
+    completion_rule: Concurrent identity observations and one protected render complete without duplicate observations or incorrect protected content.
+    residual_risk: Demo acceptance requires a separately authorized deployment and authenticated journey.
+    result: PASS
+    evidence_refs:
+      - IdentitySessionServicePostgresTests PASS 3/3 with zero failed database commands
+      - Identity cache and protected-route tests PASS; full Web suite PASS 407/407
+  - requirement_id: WC105-R014
+    source: Azure PostgreSQL 23505 telemetry, 2026-09-22
+    observable_outcome: Concurrent writes of one deterministic identity source event atomically converge on one stored event.
+    component_owner: src/business-platform/Services/IdentitySecurityEventService.cs
+    evidence_class: postgresql-integration
+    test_path_or_plan: Identity security event real-PostgreSQL concurrency tests
+    initial_state: expected-fail
+    dependencies: Existing identity_security_events_source_unique constraint
+    completion_rule: All parallel callers complete, exactly one reports insertion, one row exists, and no unique violation escapes.
+    residual_risk: Database availability failures must still fail truthfully.
+    result: PASS
+    evidence_refs:
+      - IdentitySessionServicePostgresTests PASS 3/3; 16-way replay stores one row with zero failed database commands
+  - requirement_id: WC105-R015
+    source: Azure Guide 503 telemetry, 2026-09-22
+    observable_outcome: Concurrent first Guide loads share one context and typed downstream failures retain their problem code and correlation ID.
+    component_owner: Business Platform portal interactions and Web Guide proxy
+    evidence_class: postgresql-and-route-contract
+    test_path_or_plan: Portal interaction real-PostgreSQL concurrency tests and Web proxy/component failure tests
+    initial_state: expected-fail
+    dependencies: Existing portal context uniqueness and identity membership middleware
+    completion_rule: Parallel first loads return one context without 503 and injected downstream problems remain diagnosable.
+    residual_risk: The observed 503 shares interleaved logs; exact deployed trace propagation requires later Demo verification.
+    result: PASS
+    evidence_refs:
+      - PortalInteractionServicePostgresTests PASS 1/1; 16 first loads share one context
+      - Portal Guide component and proxy tests PASS; full Web suite PASS 407/407
+  - requirement_id: WC105-R016
+    source: Azure Web TimeoutError and backend 499 telemetry, 2026-09-22
+    observable_outcome: Identity-event persistence is bounded and reports inserted, duplicate, dependency failure, timeout, and caller cancellation truthfully.
+    component_owner: Business Platform event endpoint and web/lib/identity-security-events.ts
+    evidence_class: failure-path-and-concurrency
+    test_path_or_plan: Backend event persistence concurrency tests and Web transport timeout/failure tests
+    initial_state: expected-fail
+    dependencies: WC105-R014 atomic persistence and existing five-second Web deadline
+    completion_rule: Concurrent writes finish within the test deadline while timeout and dependency paths cannot report durable success.
+    residual_risk: Network latency in Demo remains an external deployment variable.
+    result: PASS
+    evidence_refs:
+      - IdentitySessionServicePostgresTests PASS 3/3 and identity event Web tests PASS
+      - Complete Business Platform suite PASS 846/846; full Web suite PASS 407/407
+  - requirement_id: WC105-R017
+    source: Azure identity and alerts 403 telemetry, 2026-09-22
+    observable_outcome: Web identity classification uses the backend problem code and reserves step-up for IDENTITY_STEP_UP_REQUIRED.
+    component_owner: web/lib/api/identity.ts and protected route presentations
+    evidence_class: contract-and-component
+    test_path_or_plan: Identity client response-code tests and alerts/protected-route presentation tests
+    initial_state: expected-fail
+    dependencies: Existing Business Platform problem response schema
+    completion_rule: Supported 403 codes map to distinct typed outcomes and preserve a correlation ID without exposing sensitive data.
+    residual_risk: Unknown future 403 codes fail closed as forbidden rather than acquire authority.
+    result: PASS
+    evidence_refs:
+      - Identity response classification, alerts, layout, and home tests PASS; full Web suite PASS 407/407

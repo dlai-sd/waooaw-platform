@@ -70,3 +70,21 @@ or revocation `403` must remain blocked rather than receive a speculative repair
 
 Revert the bounded commits. No schema, migration, provider, secret, cloud, or customer-data rollback
 is required.
+
+## Post-Deployment RCA And Follow-Up Requirements
+
+PR #470 was deployed from merge commit `e9c8726f41ba594ee7897ea76b8aab19cdbe2da1` to the intended
+Demo revisions and image digests. The deployment was correct, but retained Azure telemetry from
+2026-09-22 disproved customer-journey completion and established the following bounded follow-up.
+
+| Requirement | Unresolved point | RCA | Azure evidence | Authorized fix | Closure evidence |
+|---|---|---|---|---|---|
+| WC105-R013 | Marketplace / My Agents unavailable | One protected render fans out through layout and page identity-session calls. Session locking ends before establishment-event persistence, so a shared identity dependency can fail while the marketplace and relationship APIs succeed. | Marketplace and relationships returned `200`; concurrent identity-session requests returned `200`, `403`, and `409`, with PostgreSQL `40001` and `23505`. | Deduplicate identity resolution within one server render and keep session observation plus establishment-event outcome inside one serialized, idempotent boundary. | Protected-render component tests and a concurrent real-PostgreSQL service test complete without duplicate session observations, database command failures, or incorrect protected content. |
+| WC105-R014 | Duplicate identity events | Concurrent callers insert the same deterministic source event. Exception recovery depends on one direct wrapper shape and allows a wrapped unique violation to escape. | Repeated `23505` for `identity_security_events_source_unique` wrapped in `DbUpdateException`. | Persist with atomic PostgreSQL conflict handling and return the existing outcome without exception-driven duplicate control flow. | Parallel same-source writes all complete, exactly one event is stored, and no database error is emitted. |
+| WC105-R015 | WAOOAW Guide initial `503` | Guide membership/session middleware can fail before controller execution; first-use context creation also uses a check-then-insert sequence. | Guide GET returned `503` beside the identity-event `23505`; a later request returned `200`. | Remove the identity-event failure path, make Guide context creation atomic under concurrent first use, and preserve downstream problem code and correlation ID. | Simultaneous first Guide loads return `200`, share one context, and expose typed diagnostics for an injected downstream failure. |
+| WC105-R016 | Security-event timeout | The Web waits five seconds for event persistence while duplicate writes and database contention prevent a durable response. | Repeated Web `TimeoutError`; backend event requests included `499` and duplicate-key failures. | Use bounded atomic persistence and distinguish accepted duplicate, dependency failure, timeout, and caller cancellation without reporting false durable success. | Concurrent persistence completes within the bounded test deadline with one event; timeout and failure tests preserve truthful typed outcomes. |
+| WC105-R017 | Identity / alerts `403` | The Web maps every identity `403` to step-up although the backend distinguishes step-up from action denial and other typed identity outcomes. | Demo identity and alerts requests returned `403`; the client projected a generic or misleading state. | Classify identity responses by the backend problem `code`, reserve step-up for `IDENTITY_STEP_UP_REQUIRED`, and preserve the correlation ID for diagnostics. | Contract tests cover each supported `403` code and the alerts/protected-route presentation receives the correct typed state. |
+
+The follow-up remains limited to Business Platform and Web source, focused tests, this Work Contract
+and its requirement ledger, Docker validation, and one unmerged PR. It does not authorize deployment,
+provider mutation, customer traffic, approval, or merge.

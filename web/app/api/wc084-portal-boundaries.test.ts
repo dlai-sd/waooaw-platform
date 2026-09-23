@@ -36,6 +36,10 @@ const identityProblem = jest.fn(async () => ({ status: 503, body: { title: 'Iden
 
 jest.mock('@/lib/server-auth', () => ({ accessTokenFromRequest }));
 jest.mock('server-only', () => ({}));
+jest.mock('react', () => ({
+  ...jest.requireActual('react'),
+  cache: <Arguments extends unknown[], Result>(operation: (...args: Arguments) => Result) => operation,
+}));
 jest.mock('@/lib/api/identity', () => ({
   createIdentityApi,
   identityProblem,

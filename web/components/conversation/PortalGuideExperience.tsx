@@ -1,7 +1,7 @@
 'use client';
 
 // Implements: work-contracts/WC-096-conversational-customer-portal.md §5
-// Implements: work-contracts/WC-105-auth-ui-runtime-defect-repair.md WC105-R005
+// Implements: work-contracts/WC-105-auth-ui-runtime-defect-repair.md WC105-R005, WC105-R015
 // Constitutional basis: C-026 (Tenant Isolation), C-049 (Honest Limitation), C-059 (Implementation Traceability)
 
 import { ArrowUp, LoaderCircle } from 'lucide-react';
@@ -13,6 +13,15 @@ import { PortalInteractionTimelinePageV1FromJSON } from '@/lib/api/generated/mod
 import type { PortalInteractionSurfaceV1 } from '@/lib/api/generated/models/PortalInteractionSurfaceV1';
 
 const draftKey = 'waooaw:conversation:portal:draft';
+
+type PortalProblem = { code?: unknown; correlationId?: unknown };
+
+async function guideProblem(response: Response, fallback: string): Promise<string> {
+  const problem = (await response.json().catch(() => undefined)) as PortalProblem | undefined;
+  const code = typeof problem?.code === 'string' ? problem.code : undefined;
+  const correlationId = typeof problem?.correlationId === 'string' ? problem.correlationId : undefined;
+  return [fallback, code, correlationId].filter(Boolean).join(' Reference: ');
+}
 
 export function PortalGuideExperience({
   currentSurface,
@@ -32,7 +41,9 @@ export function PortalGuideExperience({
     setDraft(localStorage.getItem(draftKey) ?? '');
     fetch('/api/interactions/portal?limit=40', { cache: 'no-store' })
       .then(async (response) => {
-        if (!response.ok) throw new Error('Guide conversation is unavailable.');
+        if (!response.ok) {
+          throw new Error(await guideProblem(response, 'Guide conversation is unavailable.'));
+        }
         const page = PortalInteractionTimelinePageV1FromJSON(await response.json());
         setMessages(page.items);
         setCursor(page.authoritativeCursor);
@@ -67,7 +78,11 @@ export function PortalGuideExperience({
           expectedCursor: cursor || undefined,
         }),
       });
-      if (!response.ok) throw new Error('The Guide response is unresolved. Refresh before retrying.');
+      if (!response.ok) {
+        throw new Error(
+          await guideProblem(response, 'The Guide response is unresolved. Refresh before retrying.')
+        );
+      }
       const submission = PortalInteractionSubmissionV1FromJSON(await response.json());
       setMessages((current) => [...current, submission.customerMessage, submission.guideMessage]);
       setCursor(submission.authoritativeCursor);

@@ -1,4 +1,5 @@
 // Implements: work-contracts/WC-096-conversational-customer-portal.md §5
+// Implements: work-contracts/WC-105-auth-ui-runtime-defect-repair.md WC105-R015
 // constitutional_basis: C-005, C-026, C-049, C-059, C-063
 
 using System.Security.Cryptography;
@@ -357,6 +358,25 @@ public sealed class PortalInteractionService
         CancellationToken cancellationToken
     )
     {
+        if (db.Database.IsRelational())
+        {
+            var contextId = Guid.NewGuid();
+            var now = DateTimeOffset.UtcNow;
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+                INSERT INTO business.portal_interaction_contexts
+                    (context_id, tenant_id, participant_id, next_message_sequence, created_at, updated_at)
+                VALUES ({contextId}, {tenantId}, {participantId}, {1L}, {now}, {now})
+                ON CONFLICT DO NOTHING
+                """,
+                cancellationToken
+            );
+            return await db.PortalInteractionContexts.SingleAsync(
+                value => value.TenantId == tenantId && value.ParticipantId == participantId,
+                cancellationToken
+            );
+        }
+
         var existing = await db.PortalInteractionContexts.SingleOrDefaultAsync(
             value => value.TenantId == tenantId && value.ParticipantId == participantId,
             cancellationToken

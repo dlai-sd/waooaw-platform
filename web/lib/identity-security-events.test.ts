@@ -73,6 +73,41 @@ describe('identity security event transport', () => {
     expect(request.mock.calls[0][1]).toMatchObject({ signal });
   });
 
+  it('reports an accepted duplicate without claiming a new durable insert', async () => {
+    Object.defineProperty(globalThis, 'fetch', {
+      configurable: true,
+      value: jest.fn().mockResolvedValue(new Response(null, { status: 200 })),
+    });
+
+    await expect(
+      persistWebIdentitySecurityEvent({
+        correlationId: crypto.randomUUID(),
+        sourceEventId: 'web:duplicate-event',
+        eventType: 'CALLBACK_SUCCESS',
+        providerClass: 'GOOGLE',
+        outcome: 'SUCCEEDED',
+        reasonCode: 'BROKER_CALLBACK_VALID',
+      })
+    ).resolves.toBe(false);
+  });
+
+  it('rejects a dependency response without reporting durable success', async () => {
+    Object.defineProperty(globalThis, 'fetch', {
+      configurable: true,
+      value: jest.fn().mockResolvedValue(new Response(null, { status: 503 })),
+    });
+
+    await expect(
+      persistWebIdentitySecurityEvent({
+        correlationId: crypto.randomUUID(),
+        eventType: 'CALLBACK_FAILURE',
+        providerClass: 'UNKNOWN',
+        outcome: 'FAILED',
+        reasonCode: 'BROKER_CALLBACK_FAILED',
+      })
+    ).rejects.toThrow('Identity event persistence failed with status 503.');
+  });
+
   it('reports transport timeout without rejecting the customer flow', async () => {
     const timeout = new DOMException('The operation timed out.', 'TimeoutError');
     Object.defineProperty(globalThis, 'fetch', {
