@@ -3,6 +3,7 @@ import AlertsPage from '@/app/(application)/alerts/page';
 import ProfilePage from '@/app/(application)/profile/page';
 import SettingsPage from '@/app/(application)/settings/page';
 import { getIdentitySession } from '@/lib/api/identity';
+import { listCustomerAlerts } from '@/lib/api/notifications';
 import { getServerAccessToken } from '@/lib/server-auth';
 
 jest.mock('@/lib/server-auth', () => ({ getServerAccessToken: jest.fn() }));
@@ -32,4 +33,17 @@ it.each([
 
   expect(screen.getByRole('heading', { name: heading })).toBeVisible();
   expect(screen.getByRole('link', { name: 'Browse Marketplace' })).toHaveAttribute('href', '/marketplace');
+});
+
+it('does not read alerts when identity returns an action denial', async () => {
+  jest.mocked(getIdentitySession).mockResolvedValue({
+    kind: 'forbidden',
+    code: 'IDENTITY_ACTION_DENIED',
+    correlationId: 'd8f914cf-f258-46f3-a41a-e345d489862a',
+  });
+
+  render(await AlertsPage());
+
+  expect(screen.getByRole('heading', { name: 'Alerts unavailable' })).toBeVisible();
+  expect(listCustomerAlerts).not.toHaveBeenCalled();
 });

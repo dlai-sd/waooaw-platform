@@ -1,4 +1,8 @@
 jest.mock('server-only', () => ({}));
+jest.mock('react', () => ({
+  ...jest.requireActual('react'),
+  cache: <Arguments extends unknown[], Result>(operation: (...args: Arguments) => Result) => operation,
+}));
 
 import { IdentityApi } from '@/lib/api/generated/apis/IdentityApi';
 import { ResponseError } from '@/lib/api/generated/runtime';
@@ -72,7 +76,6 @@ describe('identity provider projection', () => {
 
   it.each([
     [401, 'unauthorized'],
-    [403, 'step-up'],
     [503, 'unavailable'],
   ] as const)('maps HTTP %s to a truthful %s state', async (status, kind) => {
     jest
@@ -80,6 +83,44 @@ describe('identity provider projection', () => {
       .mockRejectedValue(new ResponseError({ status } as Response));
 
     await expect(getIdentitySession('access-token')).resolves.toEqual({ kind });
+  });
+
+  it.each([
+    ['IDENTITY_STEP_UP_REQUIRED', 'step-up'],
+    ['IDENTITY_ACTION_DENIED', 'forbidden'],
+    ['IDENTITY_DUPLICATE_RESOLUTION_REQUIRED', 'forbidden'],
+    ['IDENTITY_VERIFICATION_REQUIRED', 'forbidden'],
+  ] as const)('maps typed 403 code %s to %s', async (code, kind) => {
+    jest.spyOn(IdentityApi.prototype, 'getIdentitySession').mockRejectedValue(
+      new ResponseError({
+        status: 403,
+        clone: () => ({
+          json: async () => ({ code, correlationId: 'd8f914cf-f258-46f3-a41a-e345d489862a' }),
+        }),
+      } as Response)
+    );
+
+    const result = await getIdentitySession(`access-token-${code}`);
+
+    expect(result).toMatchObject({
+      kind,
+      correlationId: 'd8f914cf-f258-46f3-a41a-e345d489862a',
+    });
+    if (kind === 'forbidden') expect(result).toMatchObject({ code });
+  });
+
+  it('fails an untyped 403 closed as action denied rather than step-up', async () => {
+    jest.spyOn(IdentityApi.prototype, 'getIdentitySession').mockRejectedValue(
+      new ResponseError({
+        status: 403,
+        clone: () => ({ json: async () => undefined }),
+      } as Response)
+    );
+
+    await expect(getIdentitySession('access-token-untyped-denial')).resolves.toEqual({
+      kind: 'forbidden',
+      code: 'IDENTITY_ACTION_DENIED',
+    });
   });
 
   it('maps only the typed registration-required conflict', async () => {

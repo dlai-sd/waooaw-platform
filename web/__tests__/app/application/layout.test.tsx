@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { redirect } from 'next/navigation';
 import ApplicationLayout from '@/app/(application)/layout';
 import { getIdentitySession } from '@/lib/api/identity';
@@ -42,4 +42,25 @@ it('keeps anonymous users outside the application shell', async () => {
 
   expect(redirect).toHaveBeenCalledWith('/login');
   expect(getIdentitySession).not.toHaveBeenCalled();
+});
+
+it('renders a forbidden state for action denial without exposing protected content', async () => {
+  jest.mocked(getIdentitySession).mockResolvedValue({
+    kind: 'forbidden',
+    code: 'IDENTITY_ACTION_DENIED',
+    correlationId: 'd8f914cf-f258-46f3-a41a-e345d489862a',
+  });
+  jest.mocked(getRequestI18n).mockResolvedValue({
+    locale: 'en',
+    messages: {
+      retrySecureSignIn: 'Sign in again',
+      accessNotPermitted: 'Access not permitted',
+      accessNotPermittedDescription: 'Your current session cannot access this workspace.',
+    },
+  } as never);
+
+  render(await ApplicationLayout({ children: <p>Protected customer data</p> }));
+
+  expect(screen.getByRole('heading', { name: 'Access not permitted' })).toBeVisible();
+  expect(screen.queryByText('Protected customer data')).not.toBeInTheDocument();
 });

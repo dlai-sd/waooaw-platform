@@ -1,7 +1,10 @@
 // Implements: work-contracts/WC-103-multitenant-authentication-journeys.md §AUTH-S07, §AUTH-S11
+// Implements: work-contracts/WC-105-auth-ui-runtime-defect-repair.md WC105-R013, WC105-R014, WC105-R016
 // Constitutional basis: C-001, C-007, C-026, C-059, C-063
 
+using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Options;
 using Npgsql;
@@ -71,7 +74,8 @@ public sealed class IdentitySessionServicePostgresTests : IAsyncLifetime
     [Fact]
     public async Task ObserveAsync_IsSafeUnderConcurrentReplay()
     {
-        var service = CreateService();
+        var commandFailures = new CommandFailureCounter();
+        var service = CreateService(commandFailures);
         var account = Guid.NewGuid();
         var issuedAt = DateTimeOffset.UtcNow.AddMinutes(-2);
         var expiresAt = issuedAt.AddHours(1);
@@ -94,11 +98,64 @@ public sealed class IdentitySessionServicePostgresTests : IAsyncLifetime
         Assert.Single(observations.Distinct());
         Assert.Equal(1L, await OwnerScalarAsync("SELECT count(*) FROM business.identity_sessions"));
         Assert.Equal(1L, await OwnerScalarAsync("SELECT count(*) FROM institutional.identity_security_events"));
+        Assert.Equal(0, commandFailures.Count);
     }
 
-    private IdentitySessionService CreateService()
+    [Fact]
+    public async Task SecurityEventRecordAsync_ConcurrentReplayUsesConflictFreeInsert()
     {
-        var options = new DbContextOptionsBuilder<IdentityDbContext>().UseNpgsql(AppConnection).Options;
+        var commandFailures = new CommandFailureCounter();
+        var options = new DbContextOptionsBuilder<IdentityDbContext>()
+            .UseNpgsql(AppConnection)
+            .AddInterceptors(commandFailures)
+            .Options;
+        var factory = new PooledDbContextFactory<IdentityDbContext>(options);
+        var hmac = Options.Create(
+            new IdentityHmacOptions { Key = "test-only-session-registry-hmac-key-32-bytes" }
+        );
+        var service = new IdentitySecurityEventService(
+            factory,
+            hmac,
+            Options.Create(new IdentityEnvironmentOptions { Environment = "local" })
+        );
+        var sourceEventId = $"concurrent:{Guid.NewGuid():N}";
+        var before = await OwnerScalarAsync(
+            "SELECT count(*) FROM institutional.identity_security_events"
+        );
+
+        var results = await Task.WhenAll(
+            Enumerable.Range(0, 16).Select(_ =>
+                service.RecordAsync(
+                    new IdentitySecurityEventInput(
+                        Guid.NewGuid(),
+                        sourceEventId,
+                        "SESSION_ESTABLISHMENT",
+                        "GOOGLE",
+                        "SUCCEEDED",
+                        "SESSION_ACTIVE",
+                        "AAL2",
+                        "BUSINESS_PLATFORM"
+                    ),
+                    CancellationToken.None
+                )
+            )
+        );
+
+        Assert.Single(results, inserted => inserted);
+        Assert.Equal(15, results.Count(inserted => !inserted));
+        Assert.Equal(
+            before + 1,
+            await OwnerScalarAsync("SELECT count(*) FROM institutional.identity_security_events")
+        );
+        Assert.Equal(0, commandFailures.Count);
+    }
+
+    private IdentitySessionService CreateService(params IInterceptor[] interceptors)
+    {
+        var options = new DbContextOptionsBuilder<IdentityDbContext>()
+            .UseNpgsql(AppConnection)
+            .AddInterceptors(interceptors)
+            .Options;
         var factory = new PooledDbContextFactory<IdentityDbContext>(options);
         var hmac = Options.Create(new IdentityHmacOptions { Key = "test-only-session-registry-hmac-key-32-bytes" });
         var environment = Options.Create(new IdentityEnvironmentOptions { Environment = "local" });
@@ -119,5 +176,22 @@ public sealed class IdentitySessionServicePostgresTests : IAsyncLifetime
         await connection.OpenAsync();
         await using var command = new NpgsqlCommand(sql, connection);
         return (long)(await command.ExecuteScalarAsync())!;
+    }
+}
+
+internal sealed class CommandFailureCounter : DbCommandInterceptor
+{
+    private int _count;
+
+    public int Count => _count;
+
+    public override Task CommandFailedAsync(
+        DbCommand command,
+        CommandErrorEventData eventData,
+        CancellationToken cancellationToken = default
+    )
+    {
+        Interlocked.Increment(ref _count);
+        return Task.CompletedTask;
     }
 }

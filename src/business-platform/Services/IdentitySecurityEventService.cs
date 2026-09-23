@@ -1,4 +1,5 @@
 // Implements: architecture/reference/data/identity-security-data-contract.md §Logical Event Schema
+// Implements: work-contracts/WC-105-auth-ui-runtime-defect-repair.md WC105-R014, WC105-R016
 // Constitutional basis: C-002, C-005, C-007, C-027, C-059, C-063
 
 using System.Security.Cryptography;
@@ -106,6 +107,16 @@ public sealed class IdentitySecurityEventService
 
     public async Task<bool> RecordAsync(IdentitySecurityEventInput input, CancellationToken ct)
     {
+        await using var db = await _dbFactory.CreateDbContextAsync(ct);
+        return await RecordAsync(input, db, ct);
+    }
+
+    internal async Task<bool> RecordAsync(
+        IdentitySecurityEventInput input,
+        IdentityDbContext db,
+        CancellationToken ct
+    )
+    {
         ArgumentNullException.ThrowIfNull(input);
         Validate(input);
         var occurredAt = input.OccurredAt ?? DateTimeOffset.UtcNow;
@@ -115,41 +126,70 @@ public sealed class IdentitySecurityEventService
                 nameof(input)
             );
 
-        await using var db = await _dbFactory.CreateDbContextAsync(ct);
-        db.SecurityEvents.Add(
-            new IdentitySecurityEventRecord
-            {
-                CorrelationId = input.CorrelationId,
-                SourceEventId = input.SourceEventId,
-                ActorRef = HashReference("actor", input.ActorIdentifier),
-                SessionRef = HashReference("session", input.SessionIdentifier),
-                Environment = _environment,
-                EventType = input.EventType,
-                ProviderClass = input.ProviderClass,
-                Outcome = input.Outcome,
-                ReasonCode = input.ReasonCode,
-                AssuranceClass = input.AssuranceClass,
-                SourceBoundary = input.SourceBoundary,
-                ReferenceKeyVersion = _referenceKeyVersion,
-                RetentionClass = "SECURITY_400D",
-                RetainUntil = occurredAt.AddDays(400),
-                OccurredAt = occurredAt,
-                RecordedAt = DateTimeOffset.UtcNow,
-                WriterService = "business-platform",
-            }
-        );
+        var securityEvent = new IdentitySecurityEventRecord
+        {
+            CorrelationId = input.CorrelationId,
+            SourceEventId = input.SourceEventId,
+            ActorRef = HashReference("actor", input.ActorIdentifier),
+            SessionRef = HashReference("session", input.SessionIdentifier),
+            Environment = _environment,
+            EventType = input.EventType,
+            ProviderClass = input.ProviderClass,
+            Outcome = input.Outcome,
+            ReasonCode = input.ReasonCode,
+            AssuranceClass = input.AssuranceClass,
+            SourceBoundary = input.SourceBoundary,
+            ReferenceKeyVersion = _referenceKeyVersion,
+            RetentionClass = "SECURITY_400D",
+            RetainUntil = occurredAt.AddDays(400),
+            OccurredAt = occurredAt,
+            RecordedAt = DateTimeOffset.UtcNow,
+            WriterService = "business-platform",
+        };
+        if (db.Database.IsRelational())
+        {
+            var inserted = await db.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+                INSERT INTO institutional.identity_security_events
+                    (event_id, correlation_id, source_event_id, actor_ref, session_ref,
+                     environment, event_type, provider_class, outcome, reason_code,
+                     assurance_class, source_boundary, reference_key_version, retention_class,
+                     retain_until, schema_version, occurred_at, recorded_at, writer_service)
+                VALUES
+                    ({securityEvent.EventId}, {securityEvent.CorrelationId}, {securityEvent.SourceEventId},
+                     {securityEvent.ActorRef}, {securityEvent.SessionRef}, {securityEvent.Environment},
+                     {securityEvent.EventType}, {securityEvent.ProviderClass}, {securityEvent.Outcome},
+                     {securityEvent.ReasonCode}, {securityEvent.AssuranceClass}, {securityEvent.SourceBoundary},
+                     {securityEvent.ReferenceKeyVersion}, {securityEvent.RetentionClass},
+                     {securityEvent.RetainUntil}, {securityEvent.SchemaVersion}, {securityEvent.OccurredAt},
+                     {securityEvent.RecordedAt}, {securityEvent.WriterService})
+                ON CONFLICT DO NOTHING
+                """,
+                ct
+            );
+            return inserted == 1;
+        }
+
+        db.SecurityEvents.Add(securityEvent);
         try
         {
             await db.SaveChangesAsync(ct);
             return true;
         }
-        catch (DbUpdateException exception)
-            when (exception.InnerException
-                    is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation }
-            )
+        catch (DbUpdateException exception) when (IsUniqueViolation(exception))
         {
             return false;
         }
+    }
+
+    private static bool IsUniqueViolation(Exception exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+                return true;
+        }
+        return false;
     }
 
     private static void Validate(IdentitySecurityEventInput input)

@@ -1,5 +1,5 @@
 // Implements: architecture/reference/data/identity-security-data-contract.md §Session Projection
-// Implements: work-contracts/WC-105-auth-ui-runtime-defect-repair.md WC105-R003, WC105-R006, WC105-R008
+// Implements: work-contracts/WC-105-auth-ui-runtime-defect-repair.md WC105-R003, WC105-R006, WC105-R008, WC105-R013
 // Constitutional basis: C-001, C-007, C-026, C-059, C-063
 
 using System.Data;
@@ -7,7 +7,6 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Npgsql;
 using Waooaw.BusinessPlatform.Infrastructure;
 
 namespace Waooaw.BusinessPlatform.Services;
@@ -25,7 +24,6 @@ public sealed record IdentityManagedSession(
 
 public sealed class IdentitySessionService
 {
-    private const int MaxObservationAttempts = 5;
     private readonly IDbContextFactory<IdentityDbContext> _factory;
     private readonly IdentitySecurityEventService _events;
     private readonly byte[] _key;
@@ -60,42 +58,28 @@ public sealed class IdentitySessionService
         var accountRef = Reference("account", accountId.ToString("D"));
         var actorRef = Reference("actor", actorIdentifier);
         var sessionId = SessionId(sourceSessionId);
-        for (var attempt = 1; ; attempt++)
-        {
-            try
-            {
-                await ObserveSessionAsync(
-                    accountRef,
-                    actorRef,
-                    sessionId,
-                    issuedAt,
-                    expiresAt,
-                    assuranceClass,
-                    providerClass,
-                    ct
-                );
-                break;
-            }
-            catch (Exception exception)
-                when (attempt < MaxObservationAttempts && IsSerializationFailure(exception))
-            {
-                await Task.Delay(TimeSpan.FromMilliseconds(10 * attempt), ct);
-            }
-        }
-        await _events.RecordAsync(
-            new IdentitySecurityEventInput(
-                Guid.NewGuid(),
-                $"session-observed:{sessionId:D}",
-                "SESSION_ESTABLISHMENT",
-                providerClass,
-                "SUCCEEDED",
-                "SESSION_ACTIVE",
-                assuranceClass,
-                "BUSINESS_PLATFORM",
-                actorIdentifier,
-                sourceSessionId,
-                issuedAt
-            ),
+        var establishmentEvent = new IdentitySecurityEventInput(
+            Guid.NewGuid(),
+            $"session-observed:{sessionId:D}",
+            "SESSION_ESTABLISHMENT",
+            providerClass,
+            "SUCCEEDED",
+            "SESSION_ACTIVE",
+            assuranceClass,
+            "BUSINESS_PLATFORM",
+            actorIdentifier,
+            sourceSessionId,
+            issuedAt
+        );
+        await ObserveSessionAsync(
+            accountRef,
+            actorRef,
+            sessionId,
+            issuedAt,
+            expiresAt,
+            assuranceClass,
+            providerClass,
+            establishmentEvent,
             ct
         );
         return sessionId;
@@ -109,18 +93,16 @@ public sealed class IdentitySessionService
         DateTimeOffset expiresAt,
         string assuranceClass,
         string providerClass,
+        IdentitySecurityEventInput establishmentEvent,
         CancellationToken ct
     )
     {
         await using var db = await _factory.CreateDbContextAsync(ct);
         await using var transaction = await db.Database.BeginTransactionAsync(
-            IsolationLevel.Serializable,
+            IsolationLevel.ReadCommitted,
             ct
         );
-        await db.Database.ExecuteSqlInterpolatedAsync(
-            $"SELECT pg_advisory_xact_lock({BitConverter.ToInt64(sessionId.ToByteArray(), 0)})",
-            ct
-        );
+        await AcquireAccountLockAsync(db, accountRef, ct);
         await SetAccountContextAsync(db, accountRef, ct);
         var generation = await db.IdentitySessionGenerations.FindAsync([accountRef], ct);
         if (generation?.RevokedBefore is { } revokedBefore && issuedAt <= revokedBefore)
@@ -153,17 +135,8 @@ public sealed class IdentitySessionService
             session.LastSeenAt = DateTimeOffset.UtcNow;
         }
         await db.SaveChangesAsync(ct);
+        await _events.RecordAsync(establishmentEvent, db, ct);
         await transaction.CommitAsync(ct);
-    }
-
-    private static bool IsSerializationFailure(Exception exception)
-    {
-        for (var current = exception; current is not null; current = current.InnerException)
-        {
-            if (current is PostgresException { SqlState: PostgresErrorCodes.SerializationFailure })
-                return true;
-        }
-        return false;
     }
 
     public async Task<IReadOnlyList<IdentityManagedSession>> ListAsync(
@@ -209,9 +182,10 @@ public sealed class IdentitySessionService
         var accountRef = Reference("account", accountId.ToString("D"));
         await using var db = await _factory.CreateDbContextAsync(ct);
         await using var transaction = await db.Database.BeginTransactionAsync(
-            IsolationLevel.Serializable,
+            IsolationLevel.ReadCommitted,
             ct
         );
+        await AcquireAccountLockAsync(db, accountRef, ct);
         await SetAccountContextAsync(db, accountRef, ct);
         var session =
             await db.IdentitySessions.SingleOrDefaultAsync(
@@ -248,9 +222,10 @@ public sealed class IdentitySessionService
         var now = DateTimeOffset.UtcNow;
         await using var db = await _factory.CreateDbContextAsync(ct);
         await using var transaction = await db.Database.BeginTransactionAsync(
-            IsolationLevel.Serializable,
+            IsolationLevel.ReadCommitted,
             ct
         );
+        await AcquireAccountLockAsync(db, accountRef, ct);
         await SetAccountContextAsync(db, accountRef, ct);
         var generation = await db.IdentitySessionGenerations.FindAsync([accountRef], ct);
         if (generation is null)
@@ -324,6 +299,22 @@ public sealed class IdentitySessionService
             $"SELECT pg_catalog.set_config('app.identity_account_ref', {accountRef}, true)",
             ct
         );
+
+    private static Task AcquireAccountLockAsync(
+        IdentityDbContext db,
+        string accountRef,
+        CancellationToken ct
+    ) =>
+        db.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT pg_advisory_xact_lock({AdvisoryLockKey(accountRef)})",
+            ct
+        );
+
+    private static long AdvisoryLockKey(string accountRef)
+    {
+        var digest = SHA256.HashData(Encoding.UTF8.GetBytes($"identity-session:{accountRef}"));
+        return BitConverter.ToInt64(digest, 0);
+    }
 
     private string Reference(string purpose, string value) =>
         Convert

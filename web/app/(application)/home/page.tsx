@@ -1,4 +1,5 @@
 // Implements: architecture/reference/ux/hybrid-application-shell.md §Entry and Resume Behavior
+// Implements: work-contracts/WC-105-auth-ui-runtime-defect-repair.md WC105-R013, WC105-R017
 // Constitutional basis: C-049 (Honest Limitation), C-059 (Implementation Traceability)
 
 import { redirect } from 'next/navigation';
@@ -15,7 +16,7 @@ export default async function ApplicationHomePage() {
   const identity = await getIdentitySession(accessToken);
   if (identity.kind === 'registration-required') redirect('/marketplace');
   if (identity.kind === 'expired' || identity.kind === 'unauthorized') redirect('/login');
-  if (identity.kind === 'step-up') {
+  if (identity.kind === 'step-up' || identity.kind === 'forbidden') {
     return (
       <StateView
         actionHref="/login"

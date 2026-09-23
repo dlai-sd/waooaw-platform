@@ -1,8 +1,10 @@
 import 'server-only';
 
 // Implements: architecture/reference/components/identity-boundary.md §7 Canonical Public API
+// Implements: work-contracts/WC-105-auth-ui-runtime-defect-repair.md WC105-R013, WC105-R017
 // Constitutional basis: C-026 (Tenant Isolation), C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
+import { cache } from 'react';
 import { IdentityApi } from '@/lib/api/generated/apis/IdentityApi';
 import type { IdentityProvider } from '@/lib/api/generated/models/IdentityProvider';
 import type { IdentityManagedSession } from '@/lib/api/generated/models/IdentityManagedSession';
@@ -23,29 +25,50 @@ export type IdentitySessionResult =
   | { kind: 'ready'; session: IdentitySession }
   | { kind: 'registration-required' }
   | { kind: 'expired' }
-  | { kind: 'step-up' }
+  | { kind: 'step-up'; correlationId?: string }
+  | { kind: 'forbidden'; code: string; correlationId?: string }
   | { kind: 'unauthorized' }
-  | { kind: 'unavailable' };
+  | { kind: 'unavailable'; correlationId?: string };
 
-export async function getIdentitySession(accessToken: string): Promise<IdentitySessionResult> {
+type IdentityProblem = { code?: unknown; correlationId?: unknown };
+
+async function readIdentityProblem(response: Response): Promise<IdentityProblem | undefined> {
+  if (typeof response.clone !== 'function') return undefined;
+  return (await response
+    .clone()
+    .json()
+    .catch(() => undefined)) as IdentityProblem | undefined;
+}
+
+async function loadIdentitySession(accessToken: string): Promise<IdentitySessionResult> {
   try {
     const session = await createIdentityApi(accessToken).getIdentitySession({ cache: 'no-store' });
     return session.expiresAt.getTime() > Date.now() ? { kind: 'ready', session } : { kind: 'expired' };
   } catch (error) {
     if (error instanceof ResponseError) {
       if (error.response.status === 401) return { kind: 'unauthorized' };
-      if (error.response.status === 403) return { kind: 'step-up' };
+      const problem = await readIdentityProblem(error.response);
+      const correlationId = typeof problem?.correlationId === 'string' ? problem.correlationId : undefined;
+      if (error.response.status === 403) {
+        if (problem?.code === 'IDENTITY_STEP_UP_REQUIRED') {
+          return { kind: 'step-up', ...(correlationId ? { correlationId } : {}) };
+        }
+        return {
+          kind: 'forbidden',
+          code: typeof problem?.code === 'string' ? problem.code : 'IDENTITY_ACTION_DENIED',
+          ...(correlationId ? { correlationId } : {}),
+        };
+      }
       if (error.response.status === 409) {
-        const problem = (await error.response
-          .clone()
-          .json()
-          .catch(() => undefined)) as { code?: unknown } | undefined;
         if (problem?.code === 'REGISTRATION_REQUIRED') return { kind: 'registration-required' };
       }
+      return { kind: 'unavailable', ...(correlationId ? { correlationId } : {}) };
     }
     return { kind: 'unavailable' };
   }
 }
+
+export const getIdentitySession = cache(loadIdentitySession);
 
 export async function getCustomerProfile(accessToken: string): Promise<CustomerProfileV1> {
   return createIdentityApi(accessToken).getCustomerProfile({ cache: 'no-store' });
