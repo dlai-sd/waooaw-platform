@@ -386,7 +386,8 @@ public sealed class TenantDbConnectionInterceptor : DbCommandInterceptor
         // We validated Guid.TryParse upstream so this cannot carry SQL-injection characters.
         if (command.Transaction is null)
         {
-            var connection = command.Connection
+            var connection =
+                command.Connection
                 ?? throw new InvalidOperationException(
                     "Tenant-scoped database commands require an open connection."
                 );
