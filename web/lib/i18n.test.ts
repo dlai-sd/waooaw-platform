@@ -32,6 +32,30 @@ describe('F1 translations', () => {
     }
   });
 
+  it('uses practical work visibility and owner-control trust copy in every locale', () => {
+    const replacedAcademicHeadings = [
+      'विश्वास प्रमाण से बढ़ता है',
+      'विश्वास पुराव्याने वाढतो',
+      'ஆதாரத்தால் நம்பிக்கை வளர்கிறது',
+      'ఆధారాలతో నమ్మకం పెరుగుతుంది',
+      'ಸಾಕ್ಷ್ಯದಿಂದ ನಂಬಿಕೆ ಬೆಳೆಯುತ್ತದೆ',
+      'વિશ્વાસ પુરાવાથી વધે છે',
+      'প্রমাণের মাধ্যমে বিশ্বাস বাড়ে',
+      'തെളിവിലൂടെ വിശ്വാസം വളരുന്നു',
+      'ਸਬੂਤ ਨਾਲ ਭਰੋਸਾ ਵਧਦਾ ਹੈ',
+      'ثبوت سے اعتماد بڑھتا ہے',
+    ];
+
+    for (const locale of supportedLocales.filter((candidate) => candidate !== 'en')) {
+      const localized = getMessages(locale);
+      expect(localized.trustJourney).not.toBe(messages.en.trustJourney);
+      expect(localized.trustDescription).not.toBe(messages.en.trustDescription);
+      expect(localized.constitutionalPromise).not.toBe(messages.en.constitutionalPromise);
+      expect(localized.constitutionalDescription).not.toBe(messages.en.constitutionalDescription);
+      expect(replacedAcademicHeadings).not.toContain(localized.trustJourney);
+    }
+  });
+
   it('translates auth, system, and protected labels for Urdu', () => {
     expect(messages.ur.signInSecurely).not.toBe(messages.en.signInSecurely);
     expect(messages.ur.returnHome).not.toBe(messages.en.returnHome);

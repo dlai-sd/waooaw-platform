@@ -8,6 +8,7 @@ const portalTimelines = new Map();
 const continuityStates = new Map();
 const voiceSessions = new Map();
 const acquisitionStates = new Map();
+const goalVerificationStates = new Map();
 const identityProviderDelayMs = Number.parseInt(process.env.IDENTITY_PROVIDER_DELAY_MS ?? '0', 10) || 0;
 
 const governedCards = [
@@ -133,6 +134,10 @@ function scopeKey(scope, relationshipId) {
 function acquisitionsFor(scope) {
   if (!acquisitionStates.has(scope)) acquisitionStates.set(scope, new Map());
   return acquisitionStates.get(scope);
+}
+
+function goalVerificationKey(scope, relationshipId) {
+  return `${scope}:${relationshipId}`;
 }
 
 function relationshipSummary(relationshipId, professionalType, professionalDisplayName, lifecycleState = 'ACTIVE') {
@@ -908,7 +913,17 @@ const server = createServer(async (request, response) => {
       interviewState: 'AVAILABLE',
       context: [],
       goals: [],
-      skills: [],
+      skills: [
+        {
+          configurationId: `configuration-${relationshipId}`,
+          skillId: 'CAMPAIGN_PLANNING',
+          skillVersion: '1.0.0',
+          subjectVersion: 'skill-1',
+          applicability: 'APPLICABLE',
+          authorityState: 'CONSTRAINED',
+          status: 'ACCEPTED',
+        },
+      ],
     });
     return;
   }
@@ -1013,6 +1028,8 @@ const server = createServer(async (request, response) => {
   }
 
   if (request.method === 'GET' && goalsMatch) {
+    const relationshipId = decodeURIComponent(goalsMatch[1]);
+    const verified = goalVerificationStates.get(goalVerificationKey(scope, relationshipId)) === true;
     json(response, {
       sectionType: 'GOALS',
       currencyState: 'CURRENT',
@@ -1026,7 +1043,7 @@ const server = createServer(async (request, response) => {
           skillLabel: 'Campaign planning',
           measure: 'Qualified enquiries',
           frequency: 'MONTHLY',
-          verificationStatus: 'PENDING_CUSTOMER',
+          verificationStatus: verified ? 'VERIFIED' : 'PENDING_CUSTOMER',
           status: 'ACTIVE',
         },
       ],
@@ -1093,6 +1110,23 @@ const server = createServer(async (request, response) => {
 
   if (request.method === 'POST' && workspaceCommandMatch) {
     const body = await readBody(request);
+    const relationshipId = decodeURIComponent(workspaceCommandMatch[1]);
+    if (body.payload?.commandKind === 'VERIFY_GOAL') {
+      goalVerificationStates.set(goalVerificationKey(scope, relationshipId), true);
+      json(
+        response,
+        {
+          schemaVersion: '1.0',
+          commandId: '55555555-5555-4555-8555-555555555555',
+          commandKind: body.payload.commandKind,
+          status: 'COMPLETED',
+          acceptedAt: '2026-09-01T10:05:00Z',
+          replayed: false,
+        },
+        202
+      );
+      return;
+    }
     if (body.payload?.commandKind !== 'RESPOND_TO_PERFORMANCE_REVIEW') {
       json(response, { title: 'Unsupported fixture command.' }, 423);
       return;
@@ -1113,15 +1147,17 @@ const server = createServer(async (request, response) => {
   }
 
   if (request.method === 'GET' && operationsMatch) {
+    const relationshipId = decodeURIComponent(operationsMatch[1]);
+    const verified = goalVerificationStates.get(goalVerificationKey(scope, relationshipId)) === true;
     json(response, {
       sectionType: 'OPERATIONS',
       currencyState: 'CURRENT',
       provenance: { owner: 'BP', sourceProjectionVersion: 'fixture-1', producedAt: '2026-08-12T10:00:00Z' },
       availableCommands: [],
-      eligibilityState: 'LOCKED',
+      eligibilityState: verified ? 'ELIGIBLE' : 'LOCKED',
       requiredGoalIds: ['goal-1'],
-      verifiedGoalIds: [],
-      blockedReasons: ['Customer goal verification is required.'],
+      verifiedGoalIds: verified ? ['goal-1'] : [],
+      blockedReasons: verified ? [] : ['Customer goal verification is required.'],
       reassessmentRequired: false,
     });
     return;
