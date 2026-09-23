@@ -51,7 +51,7 @@ export function PlatformFeatureRail() {
   }
 
   return (
-    <div
+    <section
       aria-label="Platform features"
       className="platform-feature-rail"
       onFocusCapture={pauseForInteraction}
@@ -75,8 +75,6 @@ export function PlatformFeatureRail() {
         pauseForInteraction();
         touchStartX.current = event.touches[0].clientX;
       }}
-      role="region"
-      tabIndex={0}
     >
       <div className="platform-feature-viewport">
         <div className="platform-feature-track" style={{ transform: `translateX(-${activeIndex * 100}%)` }}>
@@ -105,6 +103,6 @@ export function PlatformFeatureRail() {
           <ChevronRight aria-hidden="true" size={22} />
         </button>
       </div>
-    </div>
+    </section>
   );
 }
