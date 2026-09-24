@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 196
-**Last Updated:** 2026-09-23 (WC-105 RESIDUAL QUALIFICATION CHECKPOINT)
+**State Revision:** 197
+**Last Updated:** 2026-09-24 (WC-105 CODESPACES REVIEW AND SESSION REPAIR CHECKPOINT)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -19,9 +19,9 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Gate | G5 CLEAR — prerequisites met; not session implementation authority |
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
-| Latest completed Work Contract | WC-080 - Agent Runtime Adapter Contract v1 |
-| Latest merge | PR #462 merged to `main` as `8c340d87` |
-| Active delivery | WC-103 authentication implementation is locally qualified on `wc/103-authentication-implementation`; actual Google/Facebook, exact-release/Demo, Apple and standalone-email acceptance remain deferred and no deployment was run; WC-104 follow-up remains locally qualified without selective enforcement; other bounded delivery remains unchanged |
+| Latest completed Work Contract | WC-102 - Docker-Only Validation Control Plane |
+| Latest merge | PR #472 merged to `main` as `b50cb36b` |
+| Active delivery | WC-105 follow-up on `fix/wc105-session-defects` is locally deployed and qualified in the isolated Codespaces preview. It adds the repository-owned preview launcher and standard, session/acquisition integrity repairs, and authoritative Hire/Trial card modes. PR submission and Founder review/merge remain open; no Azure or provider mutation occurred. |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 
@@ -56,7 +56,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | WC-102 Docker-only validation control plane | ENGINEERING QUALIFIED CANDIDATE - WC102-00 through WC102-07 are implemented on `ib/102/docker-only-validation-control-plane`; exact implementation candidate `a270f0ec` passes all component, quality, security, dependency, control-plane and release qualification gates. The 26-row obligation ledger, five-class measurements, Shadow comparison, rollback record and INST-010 author review pass. Full CI remains authoritative; the 20-sample Shadow activation floor, selective enforcement, Founder review and merge remain open or Founder-reserved. |
 | WC-103 multi-tenant authentication journeys | LOCAL IMPLEMENTATION QUALIFIED - Candidate `3bb064fa` with validated requirement ledger `ce59694f` on `wc/103-authentication-implementation` implements Google/Facebook provider-neutral journeys, progressive registration, logout/account switch, stale-session enforcement, active-session controls, Evidence First account linking and privacy-safe operational events. Docker evidence passes 268 BP identity tests with real PostgreSQL, 396 Web tests plus TypeScript, 23 applicable desktop/mobile Chromium auth checks, canonical API generation and infrastructure/static gates. Real Google/Facebook and exact-release/Demo acceptance remain human-only and deferred; Apple/email remain disabled; no cloud mutation, deployment, provider change, customer traffic, approval or merge is claimed. |
 | WC-104 end-to-end Docker runner supply | MERGED / FOLLOW-UP IN PROGRESS - PR #462 merged to `main` as `8c340d87` after its final PR and main hosted qualifications passed. Founder-authorized defects D17-D19 are implemented at `5abc3145`: manifests classify executed, exact-candidate and carry-forward provenance; reusable evidence is ranked by proven Git ancestry distance with deterministic fallback; and the Platform IT Expert standard requires static-first focused validation. Focused Docker evidence passes 86 adjacent orchestration tests, 34 policy/orchestrator tests, Ruff lint/format and Compose rendering. Final pushed-head preparation, hosted PR qualification and Founder review/merge remain; no selective enforcement, Production action or self-approval is authorized. |
-| WC-105 authentication, Guide, session and landing defects | ENGINEERING QUALIFIED CANDIDATE - residual milestones `3d0842a6`, `695bf95a` and `8017466a` add transaction-local tenant RLS with cancellation cleanup, Demo Business Platform warm readiness, privacy-safe Facebook OAuth 191 classification, stateful tenant-isolated Hire/Trial and DMA operation evidence, an accessible three-feature rail, practical trust copy in all eleven locales, and exact 1.5x logo geometry. Exact-head repairs `cef7289d`, `42d74a0a` and `10854407` pass CSharpier, warning-as-error build, Biome and TypeScript checks. Docker evidence passes 75 infrastructure/verifier tests, 84 composed BP tests, 413 Web tests, production build and two desktop/mobile/zoom/RTL browser stories; all 26 ledger rows validate. WC105-R018 deployed cold-start evidence, R020 distributed tracing and R021 real-provider acceptance remain external or blocked. Final exact-head PR prechecks, hosted CI and Founder review/merge remain open; no cloud or provider mutation occurred. |
+| WC-105 authentication, Guide, session and landing defects | FOLLOW-UP ENGINEERING QUALIFIED - PRs #470→#472 are merged. Current branch `fix/wc105-session-defects` adds a repeatable six-service Codespaces preview through `scripts/run_auth_preview.sh`, the lightweight `standards/CODESPACES-PORTAL-PREVIEW.md` operating standard, local-only marketplace and identity readiness, constitutional acquisition admission, customer-membership route repair, stale-session/sign-out/account-switch corrections, truthful unsupported-Trial handling, and persisted prominent Hire/Trial modes in My Agents. Focused Docker evidence passes the affected Web and Business Platform suites, the production images build, the preview is healthy at the printed HTTPS URL, and all 49 WC-105 ledger rows validate. Real external-provider acceptance, Azure mutation, Production action, PR approval and merge are not claimed. |
 | Production | PLAN ONLY - code-prepared; protected environments, authorized plan, traffic and final acceptance remain Founder-reserved |
 
 ### Checkpoint Context
@@ -93,12 +93,10 @@ downstream membership and browser account-switch qualification remain open; CB-0
 
 ## Next Authorized Action
 
-Continue the Founder-authorized WC-104 implementation without activating selective enforcement.
-Complete workflow/catalog convergence, hosted PR and `main` measurements, rollback rehearsal,
-exact requirement-ledger closure and author review before presenting WC-104 as complete; image
-publication remains limited to the authorized validation-runner workflow, and Founder review/merge
-remain reserved. Submit WC-103's authentication specification for Founder review; WC-103 remains
-implementation-gated.
+Submit the WC-105 Codespaces preview and session-defect follow-up as one unmerged PR for Founder
+review. Do not infer real-provider, Azure, UAT, Production, customer-traffic, approval or merge
+authority from the local preview evidence. WC-103 real-provider acceptance and WC-104 selective
+enforcement remain separately gated.
 
 Submit WC-102 as an unmerged Shadow-mode PR for Founder review; do not activate selective PR execution before the 20-sample Shadow floor and separate Founder approval. Submit WC-099 Iterations 2 and 3 as one unmerged implementation PR for Founder review; do not deploy it to Demo without separate work-component authority. Submit WC-100 as an unmerged Shadow-mode PR for Founder review and hosted full-CI evidence; do not
 activate selected PR execution before the required Shadow window and separate Founder approval.
