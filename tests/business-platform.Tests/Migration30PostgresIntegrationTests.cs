@@ -40,6 +40,7 @@ public sealed class Migration30PostgresFixture : IAsyncLifetime
             GRANT USAGE ON SCHEMA business, payload_store TO business_app;
             """);
         await ExecuteFileAsync(connection, RepositoryPaths.Resolve("infrastructure/postgres/init/19-ae01-employment-relationship.sql"));
+        await ExecuteAsync(connection, "ALTER TABLE business.employment_relationships ADD COLUMN acquisition_mode VARCHAR(8);");
         await ExecuteFileAsync(connection, RepositoryPaths.Resolve("infrastructure/postgres/init/20b-ae01-context-configuration.sql"));
         await ExecuteFileAsync(connection, RepositoryPaths.Resolve("infrastructure/postgres/init/25-agent-admission.sql"));
         await ExecuteFileAsync(connection, RepositoryPaths.Resolve("infrastructure/postgres/init/30-relationship-goal-decisions.sql"));
