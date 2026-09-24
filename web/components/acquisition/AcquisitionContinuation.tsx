@@ -20,26 +20,39 @@ export type AcquisitionContinuationProps = {
 export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
   const router = useRouter();
   const started = useRef(false);
-  const [failed, setFailed] = useState(false);
+  const [failure, setFailure] = useState<{ retryable: boolean; title: string } | null>(null);
 
   async function continueAcquisition() {
-    setFailed(false);
+    setFailure(null);
     try {
       const response = await fetch('/api/acquisition/continue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(props),
       });
-      const result = await response.json();
+      const result: unknown = await response.json();
+      if (!response.ok) {
+        const title =
+          result && typeof result === 'object' && 'title' in result && typeof result.title === 'string'
+            ? result.title
+            : undefined;
+        throw new AcquisitionResponseError({ status: response.status, title });
+      }
       if (
-        !response.ok ||
+        !result ||
+        typeof result !== 'object' ||
+        !('resumePath' in result) ||
         typeof result.resumePath !== 'string' ||
         !/^\/relationships\/[0-9a-f-]+$/i.test(result.resumePath)
       )
         throw new Error();
       router.replace(result.resumePath);
-    } catch {
-      setFailed(true);
+    } catch (error) {
+      const response = error instanceof AcquisitionResponseError ? error.response : null;
+      setFailure({
+        retryable: response?.status === 503,
+        title: response?.title ?? 'We could not continue yet',
+      });
     }
   }
 
@@ -53,14 +66,19 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
 
   return (
     <section className="portal-status" aria-live="polite">
-      {failed ? (
+      {failure ? (
         <>
-          <h2>We could not continue yet</h2>
-          <p>No trial, contract, payment, or live work was started. You can safely retry the same request.</p>
+          <h2>{failure.title}</h2>
+          <p>This request did not complete cleanly. Check My Agents before making another attempt.</p>
           <div className="command-row">
-            <button className="primary-command" onClick={() => void continueAcquisition()} type="button">
-              Try again
-            </button>
+            {failure.retryable ? (
+              <button className="primary-command" onClick={() => void continueAcquisition()} type="button">
+                Try same request again
+              </button>
+            ) : null}
+            <Link className="secondary-link" href="/professionals/mine">
+              View My Agents
+            </Link>
             <Link className="text-command" href="/marketplace">
               Cancel
             </Link>
@@ -74,4 +92,12 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
       )}
     </section>
   );
+}
+
+class AcquisitionResponseError extends Error {
+  constructor(
+    readonly response: { status: number; title?: string }
+  ) {
+    super(response.title);
+  }
 }

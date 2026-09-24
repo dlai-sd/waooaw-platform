@@ -67,6 +67,7 @@ module "workload" {
   ce_min_replicas                          = 0
   pr_min_replicas                          = 0
   bp_min_replicas                          = 1
+  web_min_replicas                         = 1
   max_replicas                             = 1
   workload_enabled                         = module.lease.workload_enabled
   demo_data_generation_id                  = var.manifest_digest

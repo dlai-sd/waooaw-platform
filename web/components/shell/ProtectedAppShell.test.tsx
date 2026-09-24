@@ -7,6 +7,7 @@ jest.mock('@/components/auth/SignOutCommand', () => ({
   AccountSwitchCommand: () => <button type="button">Switch account</button>,
   SignOutCommand: () => <button type="button">Sign out</button>,
 }));
+jest.mock('@/components/auth/SessionValidityGuard', () => ({ SessionValidityGuard: () => null }));
 jest.mock('@/components/conversation/PersistentConversationDock', () => ({ PersistentConversationDock: () => null }));
 jest.mock('./ExperienceControls', () => ({ ExperienceControls: () => null }));
 jest.mock('./RouteAwareEmergencyStop', () => ({ RouteAwareEmergencyStop: () => null }));

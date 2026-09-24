@@ -2,7 +2,15 @@
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
 import type { Session } from 'next-auth';
-import { activeAccessToken, authOptions, hasFounderClaim, keycloakClientConfig, projectSession } from './auth';
+import {
+  activeAccessToken,
+  authOptions,
+  bindPreviewDeployment,
+  hasFounderClaim,
+  keycloakClientConfig,
+  previewSessionMaxAge,
+  projectSession,
+} from './auth';
 import { persistWebIdentitySecurityEvent, recordWebIdentitySecurityEvent } from './identity-security-events';
 
 jest.mock('./identity-security-events', () => ({
@@ -40,6 +48,42 @@ describe('Browser session projection', () => {
     expect(session.authenticated).toBe(true);
     expect(session).not.toHaveProperty('accessToken');
     expect(JSON.stringify(session)).not.toContain('secret-bearer-token');
+  });
+
+  it('uses a bounded one-hour lifetime for deployment-bound preview sessions', () => {
+    expect(
+      previewSessionMaxAge({
+        AUTH_PREVIEW_DEPLOYMENT_ID: 'deployment-a',
+        AUTH_PREVIEW_SESSION_MAX_AGE_SECONDS: '3600',
+      })
+    ).toBe(3600);
+    expect(previewSessionMaxAge({})).toBeUndefined();
+  });
+
+  it('purges authentication authority from a cookie issued by another deployment', () => {
+    const token = bindPreviewDeployment(
+      {
+        accessToken: 'old-bearer',
+        accessTokenExpiresAt: 999,
+        refreshToken: 'old-refresh',
+        founder: true,
+        previewDeploymentId: 'deployment-a',
+      },
+      false,
+      'deployment-b'
+    );
+
+    expect(token).not.toHaveProperty('accessToken');
+    expect(token).not.toHaveProperty('refreshToken');
+    expect(token.founder).toBe(false);
+    expect(token.previewDeploymentId).toBe('deployment-b');
+  });
+
+  it('binds a newly authenticated token to the active deployment', () => {
+    expect(bindPreviewDeployment({ accessToken: 'new-bearer' }, true, 'deployment-b')).toMatchObject({
+      accessToken: 'new-bearer',
+      previewDeploymentId: 'deployment-b',
+    });
   });
 
   it.each([

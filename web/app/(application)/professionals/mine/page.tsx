@@ -7,6 +7,7 @@ import { StateView } from '@/components/system/StateView';
 import { getRequestI18n } from '@/lib/i18n-server';
 import type { CustomerPortalDestinationV1 } from '@/lib/api/generated/models/CustomerPortalDestinationV1';
 import { getIdentitySession } from '@/lib/api/identity';
+import { describePortalFailure } from '@/lib/api/portal-failure';
 import { listEmploymentRelationships } from '@/lib/api/relationships';
 import { getServerAccessToken } from '@/lib/server-auth';
 
@@ -72,6 +73,10 @@ export default async function MyProfessionalsPage() {
                 <h2>{item.professionalDisplayName}</h2>
                 <span className="status-label">{(item.trialStatus ?? item.lifecycleState).replaceAll('_', ' ')}</span>
               </div>
+              <p className="agent-mode" data-mode={item.acquisitionMode ?? 'UNKNOWN'}>
+                <span>Engagement mode</span>
+                <strong>{item.acquisitionMode ? `${item.acquisitionMode} MODE` : 'MODE NOT RECORDED'}</strong>
+              </p>
               <p className="agent-version">
                 {item.professionalType} · {item.professionalVersion ?? 'Version unavailable'}
               </p>
@@ -120,12 +125,15 @@ export default async function MyProfessionalsPage() {
         </ul>
       </section>
     );
-  } catch {
+  } catch (error) {
+    const failure = await describePortalFailure(error, 'MY_AGENTS');
     return (
       <StateView
         actionHref="/home"
         actionLabel={messages.returnHome}
+        correlationId={failure.correlationId}
         kind="error"
+        reasonCode={failure.reasonCode}
         title="My Experts unavailable"
         description="Your authoritative relationship list could not be retrieved."
       />

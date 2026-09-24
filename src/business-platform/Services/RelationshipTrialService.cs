@@ -30,6 +30,8 @@ public sealed record RelationshipTrialResult(
 
 public interface IRelationshipTrialOwnerGateway
 {
+    bool IsConfigured { get; }
+
     Task<WbeTrialEntitlement?> StartWbeTrialAsync(
         Guid customerId,
         string professionalType,
@@ -59,6 +61,8 @@ public interface IRelationshipTrialOwnerGateway
 
 public sealed class UnconfiguredRelationshipTrialOwnerGateway : IRelationshipTrialOwnerGateway
 {
+    public bool IsConfigured => false;
+
     public Task<WbeTrialEntitlement?> StartWbeTrialAsync(
         Guid customerId,
         string professionalType,
@@ -95,6 +99,8 @@ public sealed class HttpRelationshipTrialOwnerGateway : IRelationshipTrialOwnerG
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly WorkloadIdentityClient _identity;
     private readonly HttpClient _professionalRuntime;
+
+    public bool IsConfigured => true;
 
     public HttpRelationshipTrialOwnerGateway(
         IHttpClientFactory httpClientFactory,
@@ -319,6 +325,8 @@ public sealed class RelationshipTrialService(
     IRelationshipTrialOwnerGateway owners
 )
 {
+    public bool IsConfigured => owners.IsConfigured;
+
     public async Task<IReadOnlyDictionary<Guid, string>> GetAuthoritativeStatusesAsync(
         Guid tenantId,
         IReadOnlyCollection<Guid> relationshipIds,

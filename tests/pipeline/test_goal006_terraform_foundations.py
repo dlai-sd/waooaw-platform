@@ -636,9 +636,13 @@ def test_scale_contract_is_bounded_and_defaults_to_zero() -> None:
     prod_root = read_contract("environments/prod/workload/main.tf")
     prod_variables = read_contract("environments/prod/workload/variables.tf")
 
-    assert contract.count("default = 0") == 3
+    for variable in ("ce_min_replicas", "pr_min_replicas", "bp_min_replicas", "web_min_replicas"):
+        block = contract.split(f'variable "{variable}"', 1)[1].split("variable ", 1)[0]
+        assert "default = 0" in block
     assert '"business-platform"                       = var.bp_min_replicas' in workload
+    assert '"web"                                     = var.web_min_replicas' in workload
     assert re.search(r"bp_min_replicas\s*=\s*1", demo_root)
+    assert re.search(r"web_min_replicas\s*=\s*1", demo_root)
     assert "var.max_replicas > 0 && var.max_replicas <= 10" in contract
     uat_root = read_contract("environments/uat/workload/main.tf")
     assert re.search(r"ce_min_replicas\s*=\s*0", uat_root)

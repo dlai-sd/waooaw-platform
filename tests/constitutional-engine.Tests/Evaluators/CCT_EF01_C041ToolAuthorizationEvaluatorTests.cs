@@ -165,10 +165,10 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
     // ── CCT-EF-01-B: Non-MCP_TOOL_CALL action types ─────────────────────────
 
     [Fact]
-    public async Task EvaluateAsync_NonMcpActionType_ReturnsDeny()
+    public async Task EvaluateAsync_NonMcpActionType_IsOutsideScope()
     {
         // Arrange — C-041 evaluator is scoped to MCP_TOOL_CALL; other action types
-        // are outside its scope; the constitutional default deny must hold.
+        // are outside its scope and must be decided by their owning evaluator.
         var evaluator = CreateEvaluator();
         var ctx = BuildContext("file_read", actionType: "MARKETING_POST");
 
@@ -177,13 +177,13 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
 
         // Assert
         result.Verdict.Should().Be(
-            EvaluationVerdict.Deny,
-            "C041 evaluator must not authorise non-MCP_TOOL_CALL action types");
+            EvaluationVerdict.Allow,
+            "C041 must not veto action types owned by another evaluator");
         result.ClaimId.Should().Be("C-041");
     }
 
     [Fact]
-    public async Task EvaluateAsync_TradeOrderActionType_ReturnsDeny()
+    public async Task EvaluateAsync_TradeOrderActionType_IsOutsideScope()
     {
         // Arrange — trading action types are not within C041 tool authorisation scope
         var evaluator = CreateEvaluator();
@@ -194,8 +194,8 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
 
         // Assert
         result.Verdict.Should().Be(
-            EvaluationVerdict.Deny,
-            "TRADE_ORDER action type is not a recognised MCP tool call; C-041 default deny applies");
+            EvaluationVerdict.Allow,
+            "TRADE_ORDER requires its own evaluator and is outside C-041 scope");
     }
 
     // ── CCT-EF-01-C: Result structural invariants ────────────────────────────

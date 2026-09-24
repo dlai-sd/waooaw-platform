@@ -183,6 +183,7 @@ public sealed record EmploymentRelationshipSummaryResponse(
     string ProfessionalType,
     string? ProfessionalVersion,
     string ProfessionalDisplayName,
+    string? AcquisitionMode,
     string LifecycleState,
     string? TrialStatus,
     string? CurrentGoalSummary,
@@ -222,6 +223,7 @@ public sealed record RelationshipTimelineEntryResponse(
 
 [ApiController]
 [Authorize]
+[CustomerIdentityRoute(requiresMembership: true)]
 [Route("api/v1/employment/relationships")]
 public sealed class EmploymentRelationshipsController : ControllerBase
 {
@@ -1427,6 +1429,7 @@ public sealed class EmploymentRelationshipsController : ControllerBase
             relationship.ProfessionalType,
             relationship.ProfessionalVersion,
             relationship.ProfessionalType,
+            relationship.AcquisitionMode,
             RelationshipStateCodec.ToDatabase(relationship.State),
             trialStatus,
             currentGoalSummary,

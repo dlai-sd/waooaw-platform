@@ -78,10 +78,10 @@ public sealed class AuthorityAndPolicyTests
         var record = await db.EvidenceRecords.SingleAsync();
         record.Id.Should().Be(licenseId);
         record.TenantId.Should().Be(tenantId);
-        record.EvidenceType.Should().Be("AUTHORITY_GRANT");
-        record.IdempotencyKey.Should().StartWith("GRANT:contract-42:");
-        record.Summary.Should().Contain("level 3").And.Contain("customer-7");
-        using var payload = JsonDocument.Parse(record.PayloadJson!);
+        record.ActionType.Should().Be("AUTHORITY_GRANT");
+        record.ActionInstanceId.Should().Be(licenseId);
+        record.State.Should().Be(EvidenceRecordState.Executed);
+        using var payload = JsonDocument.Parse(record.ExecutedContent!);
         payload.RootElement.GetProperty("evidenceIds").GetArrayLength().Should().Be(2);
     }
 
@@ -155,10 +155,10 @@ public sealed class AuthorityAndPolicyTests
         var record = await db.EvidenceRecords.SingleAsync();
         record.Id.Should().Be(licenseId);
         record.TenantId.Should().Be(tenantId);
-        record.EvidenceType.Should().Be("AUTHORITY_REVOKE");
-        record.IdempotencyKey.Should().StartWith("REVOKE:contract-42:");
-        record.Summary.Should().Contain("level 1").And.Contain("customer-7");
-        record.PayloadJson.Should().Contain("risk threshold changed");
+        record.ActionType.Should().Be("AUTHORITY_REVOKE");
+        record.ActionInstanceId.Should().Be(licenseId);
+        record.State.Should().Be(EvidenceRecordState.Executed);
+        record.ExecutedContent.Should().Contain("risk threshold changed");
     }
 
     [Fact]

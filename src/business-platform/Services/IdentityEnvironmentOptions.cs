@@ -346,12 +346,32 @@ public sealed record IdentityProviderProjection(
     string? UnavailableReason
 );
 
-public sealed class IdentityProviderProjectionService(IOptions<IdentityEnvironmentOptions> options)
+public sealed class IdentityProviderProjectionService
 {
-    private readonly IdentityEnvironmentOptions _options = options.Value;
+    private readonly IdentityEnvironmentOptions _options;
+    private readonly HashSet<string> _previewProviders;
+
+    public IdentityProviderProjectionService(
+        IOptions<IdentityEnvironmentOptions> options,
+        IConfiguration configuration
+    )
+    {
+        _options = options.Value;
+        _previewProviders = _options.Environment == "local"
+            ? configuration.GetSection("IdentityProviderPreview:EnabledProviders")
+                .GetChildren()
+                .Select(child => child.Value)
+                .OfType<string>()
+                .ToHashSet(StringComparer.Ordinal)
+            : [];
+    }
 
     public bool IsAvailable(string providerId) =>
-        _options.Providers.Any(provider => provider.Id == providerId && provider.Enabled);
+        _options.Providers.Any(provider =>
+            provider.Id == providerId && (provider.Enabled || _previewProviders.Contains(provider.Id))
+        );
+
+    public bool IsPreviewAvailable(string providerId) => _previewProviders.Contains(providerId);
 
     public IReadOnlyList<IdentityProviderProjection> GetProviders() =>
         _options
@@ -359,8 +379,8 @@ public sealed class IdentityProviderProjectionService(IOptions<IdentityEnvironme
                 provider.Id,
                 provider.DisplayName,
                 provider.AuthenticationPath,
-                provider.Enabled ? "AVAILABLE" : "UNAVAILABLE",
-                provider.Enabled ? null : provider.UnavailableReason
+                provider.Enabled || _previewProviders.Contains(provider.Id) ? "AVAILABLE" : "UNAVAILABLE",
+                provider.Enabled || _previewProviders.Contains(provider.Id) ? null : provider.UnavailableReason
             ))
             .ToArray();
 }

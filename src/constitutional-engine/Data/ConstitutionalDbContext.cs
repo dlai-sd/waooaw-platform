@@ -13,4 +13,42 @@ public sealed class ConstitutionalDbContext : DbContext
         : base(options) { }
 
     public DbSet<EvidenceRecord> EvidenceRecords => Set<EvidenceRecord>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.HasPostgresEnum<EvidenceRecordState>("constitutional", "evidence_state");
+        modelBuilder.Entity<EvidenceRecord>(entity =>
+        {
+            entity.ToTable("evidence_records", "constitutional");
+            entity.HasKey(record => record.Id);
+            entity.Property(record => record.Id).HasColumnName("id");
+            entity.Property(record => record.TenantId).HasColumnName("tenant_id");
+            entity.Property(record => record.ContractId).HasColumnName("contract_id");
+            entity.Property(record => record.ProfessionalId).HasColumnName("professional_id");
+            entity.Property(record => record.ActionInstanceId).HasColumnName("action_instance_id");
+            entity.Property(record => record.ActionType).HasColumnName("action_type");
+            entity.Property(record => record.State).HasColumnName("state");
+            entity.Property(record => record.ProposedContent)
+                .HasColumnName("proposed_content")
+                .HasColumnType("jsonb");
+            entity.Property(record => record.ExecutedContent)
+                .HasColumnName("executed_content")
+                .HasColumnType("jsonb");
+            entity.Property(record => record.IsScopeBoundary).HasColumnName("is_scope_boundary");
+            entity.Property(record => record.ScopeBoundaryName).HasColumnName("scope_boundary_name");
+            entity.Property(record => record.ScopeBoundaryAcknowledgment)
+                .HasColumnName("scope_boundary_acknowledgment");
+            entity.Property(record => record.DecisionSpaceVersion)
+                .HasColumnName("decision_space_version");
+            entity.Property(record => record.ConstitutionalBasis)
+                .HasColumnName("constitutional_basis");
+            entity.Property(record => record.CreatedAt).HasColumnName("created_at");
+            entity.HasIndex(record => new
+            {
+                record.TenantId,
+                record.ActionInstanceId,
+                record.State,
+            });
+        });
+    }
 }

@@ -38,7 +38,7 @@ export function DisclosureContinuation({
       termsVersion,
       idempotencyKey: crypto.randomUUID(),
     });
-    router.push(`/register?returnTo=${encodeURIComponent(`/marketplace?${continuation}`)}`);
+    router.push(`/marketplace?${continuation}`);
   }
 
   return (

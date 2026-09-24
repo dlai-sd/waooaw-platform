@@ -64,6 +64,7 @@ public sealed record RelationshipEvaluationProjection(
 
 [ApiController]
 [Authorize]
+[CustomerIdentityRoute(requiresMembership: true)]
 [Route("api/v1/employment/relationships/{relationshipId:guid}/evaluation")]
 public sealed class RelationshipEvaluationController(
     IDbContextFactory<EmploymentRelationshipDbContext> dbFactory

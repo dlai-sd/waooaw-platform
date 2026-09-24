@@ -41,16 +41,29 @@ describe('AcquisitionContinuation', () => {
   it('makes an uncertain outcome retryable without changing the idempotency key', async () => {
     global.fetch = jest
       .fn()
-      .mockResolvedValueOnce({ ok: false, json: async () => ({ title: 'Unavailable' }) })
+      .mockResolvedValueOnce({ ok: false, status: 503, json: async () => ({ title: 'Unavailable' }) })
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({ resumePath: '/relationships/22222222-2222-4222-8222-222222222222' }),
       });
     render(<AcquisitionContinuation {...props} />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Try same request again' }));
     await waitFor(() => expect(replace).toHaveBeenCalled());
     expect(JSON.parse(String(jest.mocked(fetch).mock.calls[0][1]?.body)).idempotencyKey).toBe(props.idempotencyKey);
     expect(JSON.parse(String(jest.mocked(fetch).mock.calls[1][1]?.body)).idempotencyKey).toBe(props.idempotencyKey);
+  });
+
+  it('does not offer a retry for a known unavailable Trial and directs the customer to My Agents', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 409,
+      json: async () => ({ title: 'Trial is currently unavailable' }),
+    });
+    render(<AcquisitionContinuation {...props} />);
+
+    expect(await screen.findByRole('heading', { name: 'Trial is currently unavailable' })).toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'View My Agents' })).toHaveAttribute('href', '/professionals/mine');
   });
 });

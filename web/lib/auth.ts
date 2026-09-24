@@ -13,6 +13,11 @@ interface KeycloakEnvironment {
   KEYCLOAK_ISSUER?: string;
 }
 
+interface PreviewSessionEnvironment {
+  AUTH_PREVIEW_DEPLOYMENT_ID?: string;
+  AUTH_PREVIEW_SESSION_MAX_AGE_SECONDS?: string;
+}
+
 export function keycloakClientConfig(environment: KeycloakEnvironment = process.env as KeycloakEnvironment) {
   const publicClient = environment.KEYCLOAK_PUBLIC_CLIENT === 'true';
   return {
@@ -68,6 +73,30 @@ function purgeAuthentication(token: JWT): JWT {
   Reflect.deleteProperty(token, 'refreshToken');
   token.founder = false;
   return token;
+}
+
+export function previewSessionMaxAge(
+  environment: PreviewSessionEnvironment = process.env as PreviewSessionEnvironment
+): number | undefined {
+  if (!environment.AUTH_PREVIEW_DEPLOYMENT_ID) return undefined;
+  const seconds = Number(environment.AUTH_PREVIEW_SESSION_MAX_AGE_SECONDS ?? '3600');
+  return Number.isInteger(seconds) && seconds >= 300 && seconds <= 28_800 ? seconds : 3600;
+}
+
+export function bindPreviewDeployment(
+  token: JWT,
+  accountReceived: boolean,
+  deploymentId = process.env.AUTH_PREVIEW_DEPLOYMENT_ID
+): JWT {
+  if (!deploymentId) return token;
+  if (accountReceived) {
+    token.previewDeploymentId = deploymentId;
+    return token;
+  }
+  if (token.previewDeploymentId === deploymentId) return token;
+  const purged = purgeAuthentication(token);
+  purged.previewDeploymentId = deploymentId;
+  return purged;
 }
 
 async function refreshAccessToken(token: JWT): Promise<JWT> {
@@ -186,6 +215,8 @@ export function projectSession(session: Session, token: JWT, nowSeconds?: number
   return session;
 }
 
+const sessionMaxAge = previewSessionMaxAge();
+
 export const authOptions: NextAuthOptions = {
   providers: [
     KeycloakProvider(keycloakClient),
@@ -193,7 +224,8 @@ export const authOptions: NextAuthOptions = {
     brokeredKeycloakProvider('keycloak-facebook', 'Facebook', process.env.KEYCLOAK_FACEBOOK_BROKER_ALIAS ?? 'facebook'),
     brokeredKeycloakProvider('keycloak-apple', 'Apple', process.env.KEYCLOAK_APPLE_BROKER_ALIAS ?? 'apple'),
   ],
-  session: { strategy: 'jwt' },
+  session: { strategy: 'jwt', ...(sessionMaxAge ? { maxAge: sessionMaxAge } : {}) },
+  jwt: { ...(sessionMaxAge ? { maxAge: sessionMaxAge } : {}) },
   callbacks: {
     async jwt({ token, account, profile }) {
       if (account?.access_token) {
@@ -203,6 +235,7 @@ export const authOptions: NextAuthOptions = {
       if (account?.refresh_token) token.refreshToken = account.refresh_token;
       if (account?.id_token) token.idToken = account.id_token;
       if (account) token.founder = hasFounderClaim(profile);
+      token = bindPreviewDeployment(token, Boolean(account));
       return activeAccessToken(token) ? token : refreshAccessToken(token);
     },
     session({ session, token }) {

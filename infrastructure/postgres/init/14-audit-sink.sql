@@ -50,4 +50,5 @@ CREATE POLICY evidence_insert_only ON audit_sink.evidence_records
 
 GRANT USAGE ON SCHEMA audit_sink TO ce_service_role;
 GRANT INSERT, SELECT ON audit_sink.evidence_records TO ce_service_role;
+GRANT ce_service_role TO constitutional_app;
 -- No UPDATE or DELETE granted — structural WORM enforcement.

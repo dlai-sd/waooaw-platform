@@ -75,7 +75,11 @@ public sealed class ServiceBoundaryTests
 
     private static RecordEvidenceRequest EvidenceRequest(string actionInstanceId) => new()
     {
-        ActionInstanceId = actionInstanceId,
+        ActionInstanceId = string.IsNullOrEmpty(actionInstanceId)
+            ? actionInstanceId
+            : DeterministicGuid(actionInstanceId).ToString(),
+        ContractId = Guid.NewGuid().ToString(),
+        ProfessionalId = Guid.NewGuid().ToString(),
         ActionType = "MCP_TOOL_CALL",
         State = EvidenceState.Proposed,
         ConstitutionalBasis = "C-023",
@@ -122,7 +126,15 @@ public sealed class ServiceBoundaryTests
 
         second.EvidenceRecordId.Should().Be(first.EvidenceRecordId);
         await using var db = new ConstitutionalDbContext(options);
-        (await db.EvidenceRecords.SingleAsync()).PayloadJson.Should().Be(request.ProposedContent);
+        (await db.EvidenceRecords.SingleAsync()).ProposedContent.Should().Be(request.ProposedContent);
+    }
+
+    private static Guid DeterministicGuid(string value)
+    {
+        var digest = System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(value)
+        );
+        return new Guid(digest.AsSpan(0, 16));
     }
 
     [Fact]

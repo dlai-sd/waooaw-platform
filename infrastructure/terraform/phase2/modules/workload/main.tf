@@ -331,6 +331,7 @@ locals {
       ASPNETCORE_URLS                                 = "http://+:5001"
       ConnectionStrings__DefaultConnection            = "Host=localhost;Port=5432;Database=waooaw;Username=postgres"
       ConstitutionalEngine__Address                   = local.service_urls.constitutional_engine
+      ConstitutionalEngine__GrpcUrl                   = local.service_urls.constitutional_engine
       Keycloak__Audience                              = "waooaw-platform"
       Keycloak__Authority                             = "${local.service_urls.identity_edge}/realms/waooaw"
       Keycloak__RequireHttpsMetadata                  = "true"
@@ -449,7 +450,7 @@ locals {
     "professional-runtime"                    = var.pr_min_replicas
     "business-platform"                       = var.bp_min_replicas
     "ai-runtime"                              = 0
-    "web"                                     = 0
+    "web"                                     = var.web_min_replicas
     "billing-engine"                          = 0
     "agent-runtime-adapter-digital-marketing" = 0
   }
@@ -618,6 +619,14 @@ resource "azurerm_container_app" "member" {
       }
 
       dynamic "env" {
+        for_each = contains(["constitutional-engine", "business-platform", "billing-engine"], each.key) ? [1] : []
+        content {
+          name        = "POSTGRES_PASSWORD"
+          secret_name = "runtime-reference"
+        }
+      }
+
+      dynamic "env" {
         for_each = each.key == "business-platform" ? local.identity_reader_secret_uris : {}
         content {
           name        = "IdentityBrokerRead__ClientSecret"
@@ -730,8 +739,12 @@ resource "azurerm_container_app" "member" {
           value = "waooaw"
         }
         env {
-          name  = "POSTGRES_HOST_AUTH_METHOD"
-          value = "trust"
+          name  = "POSTGRES_USER"
+          value = "postgres"
+        }
+        env {
+          name        = "POSTGRES_PASSWORD"
+          secret_name = "runtime-reference"
         }
         dynamic "env" {
           for_each = var.environment == "demo" ? {
@@ -825,6 +838,22 @@ resource "azurerm_container_app" "member" {
   ]
 }
 
+resource "azurerm_user_assigned_identity" "temporal" {
+  count = var.workload_enabled && var.environment == "demo" ? 1 : 0
+
+  name                = "id-${var.environment}-temporal"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+}
+
+resource "azurerm_role_assignment" "temporal_secret" {
+  count = var.workload_enabled && var.environment == "demo" ? 1 : 0
+
+  scope                = var.key_vault_secret_resource_ids["business-platform"]
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.temporal[0].principal_id
+}
+
 resource "azurerm_container_app" "temporal" {
   count = var.workload_enabled && var.environment == "demo" ? 1 : 0
 
@@ -832,6 +861,17 @@ resource "azurerm_container_app" "temporal" {
   container_app_environment_id = var.container_app_environment_id
   resource_group_name          = var.resource_group_name
   revision_mode                = "Single"
+
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.temporal[0].id]
+  }
+
+  secret {
+    name                = "postgres-password"
+    identity            = azurerm_user_assigned_identity.temporal[0].id
+    key_vault_secret_id = var.key_vault_secret_uris["business-platform"]
+  }
 
   template {
     min_replicas = 1
@@ -856,8 +896,8 @@ resource "azurerm_container_app" "temporal" {
         value = "postgres"
       }
       env {
-        name  = "POSTGRES_PWD"
-        value = "demo-local-only"
+        name        = "POSTGRES_PWD"
+        secret_name = "postgres-password"
       }
       env {
         name  = "POSTGRES_SEEDS"
@@ -886,8 +926,12 @@ resource "azurerm_container_app" "temporal" {
         value = "temporal"
       }
       env {
-        name  = "POSTGRES_HOST_AUTH_METHOD"
-        value = "trust"
+        name  = "POSTGRES_USER"
+        value = "postgres"
+      }
+      env {
+        name        = "POSTGRES_PASSWORD"
+        secret_name = "postgres-password"
       }
       env {
         name  = "WC091_GENERATION_ID"
@@ -908,6 +952,8 @@ resource "azurerm_container_app" "temporal" {
       storage_type = "EmptyDir"
     }
   }
+
+  depends_on = [azurerm_role_assignment.temporal_secret]
 
   ingress {
     external_enabled = false

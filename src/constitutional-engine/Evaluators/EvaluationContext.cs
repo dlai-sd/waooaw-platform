@@ -22,7 +22,9 @@ public sealed record EvaluationContext(
     long ApprovedBudgetInrPaise = 0,
     long CurrentSpendInrPaise = 0,
     long ProposedSpendInrPaise = 0,
-    string BudgetSkillType = ""
+    string BudgetSkillType = "",
+    ApprovalType ApprovalType = ApprovalType.Unspecified,
+    DcmCategory DcmCategory = DcmCategory.Unspecified
 )
 {
     public string? GetParameter(string key)
@@ -51,6 +53,10 @@ public sealed record EvaluationContext(
             ApprovedBudgetInrPaise: request.BudgetContext?.ApprovedMonthlyBudgetInrPaise ?? 0,
             CurrentSpendInrPaise: request.BudgetContext?.CurrentMonthSpendInrPaise ?? 0,
             ProposedSpendInrPaise: request.BudgetContext?.ProposedSpendInrPaise ?? 0,
-            BudgetSkillType: request.BudgetContext?.SkillType ?? ""
+            BudgetSkillType: request.BudgetContext?.SkillType ?? "",
+            ApprovalType: request.ApprovalType,
+            DcmCategory: request.HasDcmCategory
+                ? request.DcmCategory
+                : DcmCategory.Unspecified
         );
 }

@@ -19,6 +19,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AccountSwitchCommand, SignOutCommand } from '@/components/auth/SignOutCommand';
+import { SessionValidityGuard } from '@/components/auth/SessionValidityGuard';
 import { PersistentConversationDock } from '@/components/conversation/PersistentConversationDock';
 import type { IdentitySession } from '@/lib/api/generated/models/IdentitySession';
 import type { Messages } from '@/lib/i18n';
@@ -211,6 +212,7 @@ export function ProtectedAppShell({
 
   return (
     <>
+      {identitySession ? <SessionValidityGuard /> : null}
       <AppShell
         applicationControls={
           <div className="application-controls">

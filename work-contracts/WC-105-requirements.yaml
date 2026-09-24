@@ -1,6 +1,6 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-105
-contract_digest: d50fa0c5afbdd7b65109dfed3b01d2619550f0e84ba349f1b73c19f577270d46
+contract_digest: 80aa59a0bd4c794b4c3f2052c52d50ad94385aa1f63f98256b7189c9fc149784
 implementation_scope: true
 result: QUALIFIED
 requirements:
@@ -348,3 +348,314 @@ requirements:
     result: PASS
     evidence_refs:
       - Docker PublicExperience suite PASS 23/23 and WC105 residual Playwright acceptance PASS 2/2; square source aspect ratio renders at exact 108x108 desktop and 66x66 mobile/200-percent zoom without overflow in English or Urdu RTL
+  - requirement_id: WC105-R027
+    source: Founder-authorized session defect tranche, 2026-09-24
+    observable_outcome: One standard launcher starts current-source Web and real local portal services on the registered Codespaces origin.
+    component_owner: scripts/run_auth_preview.sh and docker-compose.auth-preview.yml
+    evidence_class: docker-compose-and-browser
+    test_path_or_plan: tests/pipeline/test_auth_preview.py and live Chromium desktop/mobile checks
+    initial_state: expected-fail
+    dependencies: Registered Demo waooaw-web-preview origin and Docker
+    completion_rule: All containers become healthy, routes use local Business Platform, repeated preparation preserves credentials, and the forwarded URL renders without browser errors.
+    residual_risk: Google and Facebook remain external identity dependencies.
+    result: PASS
+    evidence_refs:
+      - Focused Docker preview contract suite PASS 6/6
+      - Real Compose stack healthy; desktop/mobile Chromium render PASS; Codespaces proxy returned 302 authentication handoff
+  - requirement_id: WC105-R028
+    source: Keycloak REFRESH_TOKEN_ERROR session-not-active evidence, 2026-09-24
+    observable_outcome: Broker launch clears stale local NextAuth state before starting a fresh provider flow.
+    component_owner: web/components/auth/ProviderCommands.tsx
+    evidence_class: component-and-provider-acceptance
+    test_path_or_plan: web/components/auth/ProviderCommands.test.tsx and Founder Facebook journey
+    initial_state: expected-fail
+    dependencies: Real Facebook account and registered provider callback
+    completion_rule: Clear-before-sign-in ordering passes and a real Facebook return reaches registration or the requested route.
+    residual_risk: Automated tests cannot complete the external Facebook account interaction.
+    result: PLANNED
+    evidence_refs:
+      - Focused Docker Jest suites PASS 9/9 including clear-before-Facebook-sign-in; Founder acceptance pending
+  - requirement_id: WC105-R029
+    source: Founder-observed Marketplace and My Agents unavailable states, 2026-09-24
+    observable_outcome: Portal failures retain a privacy-safe reason class and correlation while successful responses render from the real Business Platform.
+    component_owner: web/lib/api/portal-failure.ts and portal pages
+    evidence_class: component-and-real-service-browser
+    test_path_or_plan: web/lib/api/portal-failure.test.ts and authenticated Codespaces journey
+    initial_state: expected-fail
+    dependencies: Authenticated customer identity and local Business Platform data
+    completion_rule: Typed diagnostics exclude response details and authenticated Marketplace/My Agents render or expose their retained correlation.
+    residual_risk: Authenticated browser completion requires Founder provider interaction.
+    result: PLANNED
+    evidence_refs:
+      - Focused Docker Jest suites PASS 9/9; real local Business Platform healthy; authenticated browser acceptance pending
+  - requirement_id: WC105-R030
+    source: Azure PostgreSQL trust-auth warning, 2026-09-24
+    observable_outcome: Local and Demo PostgreSQL containers require injected secret-backed passwords.
+    component_owner: Docker Compose, workload Terraform, CE, BP, and Billing startup
+    evidence_class: terraform-static-and-container-build
+    test_path_or_plan: tests/pipeline/test_auth_preview.py and production Docker builds
+    initial_state: expected-fail
+    dependencies: Existing workload Key Vault runtime references
+    completion_rule: No trust-auth setting remains, application and database receive the same secret reference, Terraform parses, and affected images build.
+    residual_risk: Exact Azure runtime behavior requires a separately authorized deployment.
+    result: PASS
+    evidence_refs:
+      - Focused Docker preview/infrastructure suite PASS 6/6; CE and Billing production image builds PASS
+  - requirement_id: WC105-R031
+    source: Azure trace-table inventory and swallowed Web exceptions, 2026-09-24
+    observable_outcome: Business Platform exports spans and portal failures log bounded correlation, reason, status class, and surface only.
+    component_owner: src/business-platform/Program.cs and web/lib/api/portal-failure.ts
+    evidence_class: local-trace-and-component
+    test_path_or_plan: Jaeger service/trace query and portal failure tests
+    initial_state: expected-fail
+    dependencies: Local Jaeger and authenticated portal journey
+    completion_rule: Jaeger retains service spans and portal failures are correlated without sensitive response content.
+    residual_risk: Web-to-Business-Platform shared trace propagation and Azure ingestion remain unproven.
+    result: PLANNED
+    evidence_refs:
+      - Jaeger service inventory contains waooaw-business-platform; privacy-safe diagnostic tests PASS 2/2
+  - requirement_id: WC105-R032
+    source: Azure Business Platform Data Protection warnings, 2026-09-24
+    observable_outcome: Business Platform persists certificate-encrypted Data Protection keys across restart.
+    component_owner: src/business-platform/Program.cs and Codespaces Compose
+    evidence_class: real-container-restart
+    test_path_or_plan: Preview restart with key-ring checksum and log assertions
+    initial_state: expected-fail
+    dependencies: Generated encrypted PFX and persistent Docker volume
+    completion_rule: Key file is encrypted, checksum survives restart, service returns healthy, and no ephemeral-key warning occurs.
+    residual_risk: Azure requires its own persistent volume and certificate deployment contract.
+    result: PASS
+    evidence_refs:
+      - Encrypted key detected; checksum unchanged across Business Platform restart; health restored
+  - requirement_id: WC105-R033
+    source: Azure ScaledObjectCheckFailed events, 2026-09-24
+    observable_outcome: Demo Web maintains one stable scaling target with minimum and maximum replicas equal to one.
+    component_owner: infrastructure/terraform/phase2 workload module
+    evidence_class: terraform-static-and-deployment
+    test_path_or_plan: tests/pipeline/test_auth_preview.py and separately authorized Azure revision observation
+    initial_state: expected-fail
+    dependencies: Exact candidate deployment
+    completion_rule: Rendered Demo sets Web min/max to one and the deployed revision emits no missing-target event.
+    residual_risk: Static Terraform cannot prove Azure control-plane event absence.
+    result: PLANNED
+    evidence_refs:
+      - Focused Docker scaling contract test PASS; Azure deployment not authorized
+  - requirement_id: WC105-R034
+    source: Route ownership review, 2026-09-24
+    observable_outcome: One tracked App Router page owns /professionals/mine.
+    component_owner: web/app/(application)/professionals/mine/page.tsx
+    evidence_class: route-manifest-contract
+    test_path_or_plan: tests/pipeline/test_auth_preview.py
+    initial_state: expected-fail
+    dependencies: Next.js route groups
+    completion_rule: The route-owner glob resolves to exactly the application page.
+    residual_risk: Untracked files in other worktrees are outside this branch and cannot affect its build.
+    result: PASS
+    evidence_refs:
+      - Focused Docker route-owner contract PASS
+  - requirement_id: WC105-R035
+    source: Founder-observed Codespaces Login redirect loop, 2026-09-24
+    observable_outcome: Login remains available when an existing session cannot be validated instead of redirecting into a protected-route error state.
+    component_owner: web/components/auth/LoginView.tsx
+    evidence_class: component-and-browser
+    test_path_or_plan: web/components/auth/AuthViews.test.tsx and intercepted Login dialog browser acceptance
+    initial_state: expected-fail
+    dependencies: Existing stale-session clearing in ProviderCommands
+    completion_rule: An unavailable identity-session response renders Login providers and selecting a provider starts fresh OAuth without first navigating to /home.
+    residual_risk: Successful external provider return still requires Founder account interaction.
+    result: PLANNED
+    evidence_refs:
+      - Focused Docker AuthViews and ProviderCommands suites PASS 15/15
+      - Deployed Chromium public-home Login click PASS with exactly one route-backed dialog at /login; Founder stale-session retest pending
+  - requirement_id: WC105-R036
+    source: Founder-observed Google login return to unchanged Login screen, 2026-09-24
+    observable_outcome: A locally validated broker JWT reaches registration-required or a ready session without private Keycloak Admin credentials.
+    component_owner: src/business-platform/Services/GoogleWorkspaceProofAdapter.cs and docker-compose.auth-preview.yml
+    evidence_class: signed-jwt-postgres-and-browser
+    test_path_or_plan: CustomerIdentityProgramHostTests and deployed Google launch acceptance
+    initial_state: expected-fail
+    dependencies: Local-only preview provider allowlist and normal ASP.NET JWT validation
+    completion_rule: Local opt-in claims proof returns registration-required for an unknown valid actor, permits registration start, and remains disabled outside local.
+    residual_risk: External Google account completion remains Founder-observed evidence because automation has no account credentials.
+    result: PLANNED
+    evidence_refs:
+      - Focused broker and provider suites PASS 77/77 including canonical identity_provider, conflicting-claim denial, and non-local denial
+      - Signed-JWT Program-host test using identity_provider with real PostgreSQL PASS; session returned registration-required and registration start returned Created
+      - Exact deployed Google button reached accounts.google.com with zero WAOOAW auth request failures; no session 403 or 503 since corrected BP startup; Founder return-path retest pending
+  - requirement_id: WC105-R037
+    source: Founder session-lifecycle review, 2026-09-24
+    observable_outcome: Codespaces preview sessions expire after one hour and a deliberate launcher deployment rejects browser authority issued by an earlier deployment.
+    component_owner: web/lib/auth.ts and scripts/run_auth_preview.sh
+    evidence_class: unit-launcher-and-browser
+    test_path_or_plan: web/lib/auth.test.ts and tests/pipeline/test_auth_preview.py
+    initial_state: expected-fail
+    dependencies: NextAuth JWT strategy and launcher-owned deployment generation
+    completion_rule: A deployment mismatch purges bearer, refresh, and Founder authority; new authentication binds to the active generation; session and JWT maxAge are one hour; an ordinary container restart retains the generation.
+    residual_risk: Browser acceptance requires a fresh deployment and Founder login interaction.
+    result: PASS
+    evidence_refs:
+      - Focused Docker portal suites PASS 31/31 including mismatch purge, new-login binding, and one-hour maxAge
+      - Exact launcher rebuild PASS with a fresh deployment generation and all six services running
+  - requirement_id: WC105-R038
+    source: Codespaces My Agents and Home 500 RCA, 2026-09-24
+    observable_outcome: The preview supplies a valid 256-bit continuity-envelope HMAC key so relationship controllers can be constructed and empty relationship lists return successfully.
+    component_owner: scripts/run_auth_preview.sh and docker-compose.auth-preview.yml
+    evidence_class: launcher-contract-and-live-http
+    test_path_or_plan: tests/pipeline/test_auth_preview.py and authenticated preview relationship request
+    initial_state: expected-fail
+    dependencies: ChannelContinuityService fail-closed key validation
+    completion_rule: The launcher creates and reuses a base64 256-bit key, Compose injects it into Business Platform, and the authenticated relationships endpoint no longer emits the constructor exception.
+    residual_risk: Live endpoint validation requires rebuilding the preview stack.
+    result: PASS
+    evidence_refs:
+      - RCA captured System.InvalidOperationException at ChannelContinuityService constructor because the required key was absent
+      - Focused Docker launcher contract PASS 6/6
+      - Injected continuity key decoded to 32 bytes; focused relationship and Marketplace controller suites PASS 22/22
+      - Post-rebuild Business Platform continuity, unhandled-exception, and 5xx log count was zero
+  - requirement_id: WC105-R039
+    source: Founder Codespaces walkthrough data-readiness request, 2026-09-24
+    observable_outcome: The isolated preview Marketplace contains the current DMA offer for existing and newly registered active local customer workspaces.
+    component_owner: infrastructure/postgres/auth-preview/seed-marketplace.sql and scripts/run_auth_preview.sh
+    evidence_class: launcher-contract-and-local-postgresql
+    test_path_or_plan: tests/pipeline/test_auth_preview.py and preview database catalog query
+    initial_state: expected-fail
+    dependencies: Local PostgreSQL identity memberships and agent admission schema
+    completion_rule: Launcher start installs the preview-only trigger, idempotently backfills active memberships, and leaves production Marketplace admission filtering unchanged.
+    residual_risk: The fixture is intentionally limited to the current DMA catalog version.
+    result: PASS
+    evidence_refs:
+      - Focused Docker launcher contract PASS 6/6
+      - Local PostgreSQL seed PASS with DIGITAL_MARKETING_LOCAL_SERVICE:1.0.0:ACTIVE
+  - requirement_id: WC105-R040
+    source: Codespaces Hire and Trial 503 RCA, 2026-09-24
+    observable_outcome: Business Platform relationship acquisition reaches Constitutional Engine through the configuration key consumed by the gRPC gateway.
+    component_owner: Business Platform Compose and Terraform configuration
+    evidence_class: configuration-contract-and-controller
+    test_path_or_plan: tests/pipeline preview and Terraform contracts plus AcquisitionControllerTests
+    initial_state: expected-fail
+    dependencies: Constitutional Engine health and Evidence First authorization
+    completion_rule: Every supported deployment supplies ConstitutionalEngine__GrpcUrl, acquisition controller tests pass, and preview acquisition reaches CE without partial persistence on denial.
+    residual_risk: A configured trial-owner outage can still leave an INTERVIEWING relationship after admission; three such preview rows proved the broad no-partial-persistence clause is not complete.
+    result: BLOCKED
+  - requirement_id: WC105-R041
+    source: Founder-observed intermediate Login page during Google launch, 2026-09-24
+    observable_outcome: Selecting Google starts the configured broker directly without a pre-launch local sign-out navigation.
+    component_owner: web/components/auth/ProviderCommands.tsx
+    evidence_class: component-test
+    test_path_or_plan: web/components/auth/ProviderCommands.test.tsx
+    initial_state: expected-fail
+    dependencies: Existing keycloak-google NextAuth provider and select_account prompt
+    completion_rule: Google command invokes only keycloak-google with account selection and does not call local signOut first.
+    residual_risk: External Google account selection and callback require Founder interaction after rebuild.
+    result: PASS
+    evidence_refs:
+      - Focused Docker provider command suite included in account command matrix PASS 15/15
+  - requirement_id: WC105-R042
+    source: Founder-observed Registration modal flash after authenticated Hire or Trial, 2026-09-24
+    observable_outcome: An authenticated customer accepting disclosure continues directly to Marketplace acquisition without routing through registration.
+    component_owner: web/components/acquisition/DisclosureContinuation.tsx
+    evidence_class: component-test
+    test_path_or_plan: DisclosureContinuation component tests
+    initial_state: expected-fail
+    dependencies: Resolved authenticated identity and sanitized Marketplace continuation
+    completion_rule: Authenticated acceptance invokes the acquisition continuation and never pushes /register.
+    residual_risk: Live visual acceptance and successful governed relationship persistence require the rebuilt preview.
+    result: PASS
+    evidence_refs:
+      - Focused Docker disclosure and account command matrix PASS 15/15
+  - requirement_id: WC105-R043
+    source: Founder-observed Sign out and Switch account failures, 2026-09-24
+    observable_outcome: Sign out exposes pending or failed state, clears local NextAuth after backend revocation, and Switch account launches Google account selection only after both authority layers are cleared.
+    component_owner: web/components/auth/SignOutCommand.tsx
+    evidence_class: component-failure-path
+    test_path_or_plan: web/components/auth/SignOutCommand.test.tsx
+    initial_state: expected-fail
+    dependencies: Identity session revocation endpoint and NextAuth local cookie clearing
+    completion_rule: Success, backend failure, local fallback, and account-switch ordering assertions pass without presenting Access not permitted as success.
+    residual_risk: Keycloak and Google broker completion remain external browser interactions.
+    result: PASS
+    evidence_refs:
+      - Focused Docker sign-out and account command matrix PASS 15/15
+  - requirement_id: WC105-R044
+    source: Founder session-lifecycle review of an old tab, 2026-09-24
+    observable_outcome: A protected tab revalidates backend authority when it regains focus or visibility and clears stale local UI only when authority is denied.
+    component_owner: web/components/auth/SessionValidityGuard.tsx and web/components/shell/ProtectedAppShell.tsx
+    evidence_class: component-session-lifecycle
+    test_path_or_plan: SessionValidityGuard and ProtectedAppShell component tests
+    initial_state: expected-fail
+    dependencies: Existing authenticated identity-session GET and NextAuth signOut
+    completion_rule: Focus, visibility, and cross-tab revocation clear denied sessions; dependency failures do not falsely log out the customer; unresolved identities do not mount the guard.
+    residual_risk: Final browser acceptance requires a fresh deployment generation and two-tab Founder walkthrough.
+    result: PASS
+    evidence_refs:
+      - Focused Docker stale-tab and protected-shell suites PASS 10/10
+  - requirement_id: WC105-R045
+    source: Deployed Trial false-concurrency RCA, 2026-09-24
+    observable_outcome: Tenant-scoped EF write batches preserve Npgsql affected-row accounting while PostgreSQL RLS evaluates the correct transaction-local tenant.
+    component_owner: src/business-platform/Infrastructure/TenantIsolationMiddleware.cs
+    evidence_class: postgres-integration-and-deployed-write
+    test_path_or_plan: TenantDbConnectionInterceptorPostgresTests and authenticated Codespaces Hire
+    initial_state: expected-fail
+    dependencies: PostgreSQL transactions, RLS, and Npgsql EF batching
+    completion_rule: A multi-entity SaveChanges succeeds under RLS without command-text mutation or false DbUpdateConcurrencyException.
+    residual_risk: The shared interceptor requires the broader Business Platform regression suite before merge.
+    result: PASS
+    evidence_refs:
+      - Real PostgreSQL focused interceptor suite PASS 2/2
+      - Deployed Hire persisted relationship 9d494557-0176-47e0-a9cc-dc8052d40505 in CONFIGURING state
+  - requirement_id: WC105-R046
+    source: Founder-observed Trial error with new My Agents entries, 2026-09-24
+    observable_outcome: Marketplace omits Trial when WBE and Professional Runtime trial owners are unconfigured, and direct Trial continuation rejects before any relationship write while Hire remains available.
+    component_owner: ProfessionalsController and AcquisitionController
+    evidence_class: controller-and-deployed-browser
+    test_path_or_plan: ProfessionalsControllerTests, AcquisitionControllerTests, and preview database row count
+    initial_state: expected-fail
+    dependencies: Explicit IRelationshipTrialOwnerGateway readiness
+    completion_rule: Unconfigured owners project HIRE only and return 409 before constitutional or relationship effects for a direct Trial command.
+    residual_risk: End-to-end Trial remains unavailable until the standard preview deploys and authenticates both real owner services.
+    result: PASS
+    evidence_refs:
+      - Focused Business Platform acquisition, Marketplace, and trial suite PASS 25/25
+      - Founder-observed rebuilt Marketplace showed Hire only and retained no additional failed-Trial relationship
+  - requirement_id: WC105-R047
+    source: Deployed relationship detail 403 after successful acquisition, 2026-09-24
+    observable_outcome: Valid customer membership is resolved for relationship detail and subordinate customer routes.
+    component_owner: CustomerMembershipMiddleware and relationship controllers
+    evidence_class: deployed-request
+    test_path_or_plan: Relationship controller tests and authenticated Codespaces detail navigation
+    initial_state: expected-fail
+    dependencies: CustomerIdentityRoute class metadata and active customer session
+    completion_rule: Relationship detail and timeline return 200 for the owning customer instead of IDENTITY_ACTION_DENIED 403.
+    residual_risk: Empty workspace projections remain 404 and owner-dependent evaluation remains 503 until those domain owners are configured.
+    result: PASS
+    evidence_refs:
+      - Deployed relationship detail GET 200 and timeline GET 200 after focused rebuild
+      - Founder-observed My Agents item opened successfully
+  - requirement_id: WC105-R048
+    source: Founder-observed false no-effects and safe-retry message, 2026-09-24
+    observable_outcome: Acquisition errors disclose uncertain completion and require checking My Agents before another attempt; known 409 outcomes do not offer retry.
+    component_owner: web/components/acquisition/AcquisitionContinuation.tsx
+    evidence_class: component-failure-path
+    test_path_or_plan: AcquisitionContinuation component tests
+    initial_state: expected-fail
+    dependencies: Preserved backend HTTP status and original idempotency key
+    completion_rule: A 409 offers no retry and links My Agents; a 503 may retry only the same idempotency key; no error claims zero effects without proof.
+    residual_risk: Three pre-fix INTERVIEWING preview relationships remain visible as truthful historical outcomes.
+    result: PASS
+    evidence_refs:
+      - Focused Docker AcquisitionContinuation suite PASS 3/3
+  - requirement_id: WC105-R049
+    source: Founder My Agents card mode request and screenshot, 2026-09-24
+    observable_outcome: Every My Agents card prominently displays its authoritative Hire or Trial acquisition mode independently of lifecycle state.
+    component_owner: Business Platform employment relationships and Web My Agents page
+    evidence_class: postgres-migration-api-and-component
+    test_path_or_plan: AcquisitionControllerTests, EmploymentRelationshipsControllerTests, My Agents page tests, production build, and preview database verification
+    initial_state: expected-fail
+    dependencies: Persisted business.employment_relationships.acquisition_mode and relationship trial bindings
+    completion_rule: New acquisition persists intent; API projects it; cards show a full-width mode band; legacy trial bindings backfill as Trial; ambiguous legacy rows remain unrecorded.
+    residual_risk: Founder visual acceptance in the authenticated browser remains pending; unsupported Trial acquisition remains unavailable despite truthful historical Trial labels.
+    result: PASS
+    evidence_refs:
+      - Focused Docker acquisition controller suite PASS 7/7 and relationship/acquisition matrix PASS 20/20
+      - Focused Docker My Agents suite PASS 5/5 and production Next.js image build PASS
+      - Preview migration updated 3 Trial and 1 Hire rows; live database verification returned HIRE/CONFIGURING 1 and TRIAL/INTERVIEWING 3

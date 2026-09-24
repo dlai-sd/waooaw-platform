@@ -2777,6 +2777,31 @@ select:focus-visible,
   border-radius: 8px;
   background: var(--surface);
 }
+.agent-mode {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: .7rem -.8rem .6rem;
+  padding: .65rem .8rem;
+  border-block: 1px solid var(--line);
+  background: color-mix(in srgb, var(--blue) 14%, var(--surface));
+  color: var(--ink);
+}
+.agent-mode[data-mode="TRIAL"] {
+  border-color: color-mix(in srgb, var(--orange) 65%, var(--line));
+  background: color-mix(in srgb, var(--orange) 13%, var(--surface));
+}
+.agent-mode span {
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.agent-mode strong {
+  font-size: .88rem;
+  letter-spacing: 0;
+}
 .agent-version {
   color: var(--muted);
   overflow-wrap: anywhere;

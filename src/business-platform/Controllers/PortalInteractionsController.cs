@@ -13,7 +13,10 @@ namespace Waooaw.BusinessPlatform.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/v1/customer-portal/interactions/portal/messages")]
-public sealed class PortalInteractionsController(PortalInteractionService service) : ControllerBase
+public sealed class PortalInteractionsController(
+    PortalInteractionService service,
+    ILogger<PortalInteractionsController> logger
+) : ControllerBase
 {
     [HttpGet]
     [CustomerIdentityRoute(requiresMembership: true)]
@@ -33,6 +36,7 @@ public sealed class PortalInteractionsController(PortalInteractionService servic
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
+            LogUnexpectedFailure(exception, tenantId, participantId);
             return MapProblem(exception);
         }
     }
@@ -72,8 +76,31 @@ public sealed class PortalInteractionsController(PortalInteractionService servic
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
+            LogUnexpectedFailure(exception, tenantId, participantId);
             return MapProblem(exception);
         }
+    }
+
+    private void LogUnexpectedFailure(Exception exception, Guid tenantId, Guid participantId)
+    {
+        if (
+            exception
+                is ConversationRequestException
+                    or ConversationIdempotencyConflictException
+                    or ConversationStateConflictException
+                    or ConversationCursorExpiredException
+        )
+        {
+            return;
+        }
+
+        logger.LogError(
+            exception,
+            "Portal interaction failed for tenant {TenantId}, participant {ParticipantId}, trace {TraceIdentifier}.",
+            tenantId,
+            participantId,
+            HttpContext.TraceIdentifier
+        );
     }
 
     private bool TryGetAuthority(out Guid tenantId, out Guid participantId)

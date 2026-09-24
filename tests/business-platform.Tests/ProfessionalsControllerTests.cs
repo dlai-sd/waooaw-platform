@@ -107,6 +107,27 @@ public sealed class ProfessionalsControllerTests
     }
 
     [Fact]
+    public async Task Marketplace_DoesNotOfferTrialWhenOwnerServicesAreUnconfigured()
+    {
+        await SeedAdmissionAsync(_factory, _membership.TenantId, "1.0.0");
+        var controller = Controller(
+            _catalog,
+            _factory,
+            _membership,
+            new UnconfiguredRelationshipTrialOwnerGateway()
+        );
+
+        var result = (await controller.BrowseMarketplace(null, 20))
+            .Should().BeOfType<OkObjectResult>().Subject;
+        var listing = System.Text.Json.JsonSerializer.SerializeToElement(result.Value)
+            .GetProperty("items").EnumerateArray().Should().ContainSingle().Subject;
+
+        listing.GetProperty("availableIntents").EnumerateArray()
+            .Select(value => value.GetString()).Should().Equal("HIRE");
+        listing.GetProperty("trialTerms").ValueKind.Should().Be(System.Text.Json.JsonValueKind.Null);
+    }
+
+    [Fact]
     public async Task Marketplace_FilterBoundCursorRejectsReuseAgainstDifferentQuery()
     {
         var catalog = new Mock<IProfessionalCatalog>();
@@ -183,9 +204,14 @@ public sealed class ProfessionalsControllerTests
     private static ProfessionalsController Controller(
         IProfessionalCatalog catalog,
         InMemoryEmploymentRelationshipFactory factory,
-        CustomerWorkspaceMembership membership)
+        CustomerWorkspaceMembership membership,
+        IRelationshipTrialOwnerGateway? trialOwners = null)
     {
-        var controller = new ProfessionalsController(catalog, factory)
+        var controller = new ProfessionalsController(
+            catalog,
+            factory,
+            trialOwners ?? new TrialOwnerGatewayStub()
+        )
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() },
         };

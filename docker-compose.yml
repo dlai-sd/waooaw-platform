@@ -299,7 +299,7 @@ services:
       POSTGRES_SEEDS: postgres
       DYNAMIC_CONFIG_FILE_PATH: /etc/temporal/dynamicconfig.yaml
     volumes:
-      - ./infrastructure/temporal:/etc/temporal
+      - ./infrastructure/temporal/dynamicconfig.yaml:/etc/temporal/dynamicconfig.yaml:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -394,6 +394,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=waooaw;Username=business_app;Password=${POSTGRES_PASSWORD:-waooaw-local-dev-only}"
       ConstitutionalEngine__Address: http://constitutional-engine:5002
+      ConstitutionalEngine__GrpcUrl: http://constitutional-engine:5002
       Temporal__Address: temporal:7233
       Keycloak__Authority: http://keycloak:8080/realms/waooaw
       Keycloak__Audience: waooaw-platform
