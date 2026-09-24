@@ -40,9 +40,9 @@ describe('ProviderCommands', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Log in with Google' }));
 
-    await waitFor(() => expect(signIn).toHaveBeenCalledWith(
-      'keycloak-google', { callbackUrl: '/home' }, { prompt: 'select_account' }
-    ));
+    await waitFor(() =>
+      expect(signIn).toHaveBeenCalledWith('keycloak-google', { callbackUrl: '/home' }, { prompt: 'select_account' })
+    );
     expect(screen.getByRole('button', { name: 'Log in with Facebook (Unavailable)' })).toBeDisabled();
   });
 

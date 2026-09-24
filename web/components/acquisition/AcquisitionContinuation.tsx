@@ -95,9 +95,7 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
 }
 
 class AcquisitionResponseError extends Error {
-  constructor(
-    readonly response: { status: number; title?: string }
-  ) {
+  constructor(readonly response: { status: number; title?: string }) {
     super(response.title);
   }
 }

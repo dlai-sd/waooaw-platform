@@ -387,19 +387,18 @@ public sealed class GoogleWorkspaceProofAdapter(
         provider = new IdentityBrokerProviderOptions
         {
             ProviderNamespace = $"urn:waooaw:identity:local-preview:{alias}:customer-login:v1",
-            TrustConfigDigest = Convert.ToHexString(
-                System.Security.Cryptography.SHA256.HashData(
-                    Encoding.UTF8.GetBytes($"local-preview-claims:{alias}")
+            TrustConfigDigest = Convert
+                .ToHexString(
+                    System.Security.Cryptography.SHA256.HashData(
+                        Encoding.UTF8.GetBytes($"local-preview-claims:{alias}")
+                    )
                 )
-            ).ToLowerInvariant(),
+                .ToLowerInvariant(),
         };
         return (alias, provider);
     }
 
-    private VerifiedCustomerActor ValidatePreviewActor(
-        ClaimsPrincipal principal,
-        bool requireFresh
-    )
+    private VerifiedCustomerActor ValidatePreviewActor(ClaimsPrincipal principal, bool requireFresh)
     {
         ConfiguredProvider(principal);
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();

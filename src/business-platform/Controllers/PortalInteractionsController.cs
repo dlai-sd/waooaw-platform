@@ -85,10 +85,10 @@ public sealed class PortalInteractionsController(
     {
         if (
             exception
-                is ConversationRequestException
-                    or ConversationIdempotencyConflictException
-                    or ConversationStateConflictException
-                    or ConversationCursorExpiredException
+            is ConversationRequestException
+                or ConversationIdempotencyConflictException
+                or ConversationStateConflictException
+                or ConversationCursorExpiredException
         )
         {
             return;

@@ -284,12 +284,7 @@ public sealed class TenantDbConnectionInterceptor : DbCommandInterceptor
         CancellationToken cancellationToken = default
     )
     {
-        return SetTenantAndContinueReaderAsync(
-            command,
-            eventData,
-            result,
-            cancellationToken
-        );
+        return SetTenantAndContinueReaderAsync(command, eventData, result, cancellationToken);
     }
 
     public override ValueTask<InterceptionResult<object>> ScalarExecutingAsync(
@@ -299,12 +294,7 @@ public sealed class TenantDbConnectionInterceptor : DbCommandInterceptor
         CancellationToken cancellationToken = default
     )
     {
-        return SetTenantAndContinueScalarAsync(
-            command,
-            eventData,
-            result,
-            cancellationToken
-        );
+        return SetTenantAndContinueScalarAsync(command, eventData, result, cancellationToken);
     }
 
     public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
@@ -314,12 +304,7 @@ public sealed class TenantDbConnectionInterceptor : DbCommandInterceptor
         CancellationToken cancellationToken = default
     )
     {
-        return SetTenantAndContinueNonQueryAsync(
-            command,
-            eventData,
-            result,
-            cancellationToken
-        );
+        return SetTenantAndContinueNonQueryAsync(command, eventData, result, cancellationToken);
     }
 
     public override ValueTask<object?> ScalarExecutedAsync(

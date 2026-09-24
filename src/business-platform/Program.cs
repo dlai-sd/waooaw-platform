@@ -1,5 +1,6 @@
 // Implements: architecture/reference/components/business-platform.md § Tenant Isolation
 // constitutional_basis: C-005, C-023, C-026, C-059
+using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -8,7 +9,6 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using System.Security.Cryptography.X509Certificates;
 using Temporalio.Extensions.Hosting;
 using Waooaw.BusinessPlatform.Controllers;
 using Waooaw.BusinessPlatform.Infrastructure;
@@ -23,17 +23,22 @@ var dataProtectionCertificatePath = builder.Configuration["DataProtection:Certif
 var dataProtectionCertificatePassword = builder.Configuration["DataProtection:CertificatePassword"];
 if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
 {
-    if (string.IsNullOrWhiteSpace(dataProtectionCertificatePath) || string.IsNullOrWhiteSpace(dataProtectionCertificatePassword))
+    if (
+        string.IsNullOrWhiteSpace(dataProtectionCertificatePath)
+        || string.IsNullOrWhiteSpace(dataProtectionCertificatePassword)
+    )
     {
-        throw new InvalidOperationException("Persistent Data Protection requires a certificate path and password.");
+        throw new InvalidOperationException(
+            "Persistent Data Protection requires a certificate path and password."
+        );
     }
 
     var certificate = X509CertificateLoader.LoadPkcs12FromFile(
         dataProtectionCertificatePath,
         dataProtectionCertificatePassword
     );
-    builder.Services
-        .AddDataProtection()
+    builder
+        .Services.AddDataProtection()
         .SetApplicationName("WAOOAW.BusinessPlatform")
         .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath))
         .ProtectKeysWithCertificate(certificate);
@@ -42,13 +47,15 @@ if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
 var otlpEndpoint = builder.Configuration["OTLP_ENDPOINT"];
 if (Uri.TryCreate(otlpEndpoint, UriKind.Absolute, out var otlpUri))
 {
-    builder.Services
-        .AddOpenTelemetry()
+    builder
+        .Services.AddOpenTelemetry()
         .ConfigureResource(resource => resource.AddService("waooaw-business-platform"))
-        .WithTracing(tracing => tracing
-            .AddAspNetCoreInstrumentation()
-            .AddSource("waooaw.business-platform.*")
-            .AddOtlpExporter(options => options.Endpoint = otlpUri));
+        .WithTracing(tracing =>
+            tracing
+                .AddAspNetCoreInstrumentation()
+                .AddSource("waooaw.business-platform.*")
+                .AddOtlpExporter(options => options.Endpoint = otlpUri)
+        );
 }
 
 // ── REST + OpenAPI ────────────────────────────────────────────────────────────

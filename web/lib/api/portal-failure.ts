@@ -16,7 +16,7 @@ async function responseCorrelationId(response: Response): Promise<string | undef
   const header = response.headers.get('x-correlation-id');
   if (header && safeCorrelationId.test(header)) return header;
   try {
-    const body = await response.clone().json() as { correlationId?: unknown };
+    const body = (await response.clone().json()) as { correlationId?: unknown };
     return typeof body.correlationId === 'string' && safeCorrelationId.test(body.correlationId)
       ? body.correlationId
       : undefined;
