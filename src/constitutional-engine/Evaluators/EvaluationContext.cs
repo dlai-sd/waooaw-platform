@@ -55,8 +55,6 @@ public sealed record EvaluationContext(
             ProposedSpendInrPaise: request.BudgetContext?.ProposedSpendInrPaise ?? 0,
             BudgetSkillType: request.BudgetContext?.SkillType ?? "",
             ApprovalType: request.ApprovalType,
-            DcmCategory: request.HasDcmCategory
-                ? request.DcmCategory
-                : DcmCategory.Unspecified
+            DcmCategory: request.HasDcmCategory ? request.DcmCategory : DcmCategory.Unspecified
         );
 }

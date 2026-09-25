@@ -28,19 +28,26 @@ public sealed class ConstitutionalDbContext : DbContext
             entity.Property(record => record.ActionInstanceId).HasColumnName("action_instance_id");
             entity.Property(record => record.ActionType).HasColumnName("action_type");
             entity.Property(record => record.State).HasColumnName("state");
-            entity.Property(record => record.ProposedContent)
+            entity
+                .Property(record => record.ProposedContent)
                 .HasColumnName("proposed_content")
                 .HasColumnType("jsonb");
-            entity.Property(record => record.ExecutedContent)
+            entity
+                .Property(record => record.ExecutedContent)
                 .HasColumnName("executed_content")
                 .HasColumnType("jsonb");
             entity.Property(record => record.IsScopeBoundary).HasColumnName("is_scope_boundary");
-            entity.Property(record => record.ScopeBoundaryName).HasColumnName("scope_boundary_name");
-            entity.Property(record => record.ScopeBoundaryAcknowledgment)
+            entity
+                .Property(record => record.ScopeBoundaryName)
+                .HasColumnName("scope_boundary_name");
+            entity
+                .Property(record => record.ScopeBoundaryAcknowledgment)
                 .HasColumnName("scope_boundary_acknowledgment");
-            entity.Property(record => record.DecisionSpaceVersion)
+            entity
+                .Property(record => record.DecisionSpaceVersion)
                 .HasColumnName("decision_space_version");
-            entity.Property(record => record.ConstitutionalBasis)
+            entity
+                .Property(record => record.ConstitutionalBasis)
                 .HasColumnName("constitutional_basis");
             entity.Property(record => record.CreatedAt).HasColumnName("created_at");
             entity.HasIndex(record => new

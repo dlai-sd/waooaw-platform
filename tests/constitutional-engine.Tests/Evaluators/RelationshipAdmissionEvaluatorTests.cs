@@ -54,6 +54,57 @@ public sealed class RelationshipAdmissionEvaluatorTests
         result.Verdict.Should().Be(EvaluationVerdict.Deny);
     }
 
+    [Fact]
+    public async Task UnrelatedActionIsOutsideAdmissionScope()
+    {
+        var result = await new RelationshipAdmissionEvaluator().EvaluateAsync(
+            Context() with
+            {
+                ActionType = "MCP_TOOL_CALL",
+            }
+        );
+
+        result.Verdict.Should().Be(EvaluationVerdict.Allow);
+    }
+
+    [Fact]
+    public async Task UnsupportedAcquisitionIntentIsDenied()
+    {
+        var context = Context() with
+        {
+            ActionParameters = JsonSerializer.Serialize(
+                new
+                {
+                    evaluation_intent_id = Guid.NewGuid(),
+                    initiating_participant_id = Guid.NewGuid(),
+                    agent_instance_id = Guid.NewGuid(),
+                    professional_type = "DIGITAL_MARKETING",
+                    target_state = "DISCOVERED",
+                    acquisition_intent = "LEASE",
+                }
+            ),
+        };
+
+        var result = await new RelationshipAdmissionEvaluator().EvaluateAsync(context);
+
+        result.Verdict.Should().Be(EvaluationVerdict.Deny);
+        result.Reason.Should().Contain("unsupported");
+    }
+
+    [Fact]
+    public async Task MalformedAdmissionEnvelopeIsDenied()
+    {
+        var result = await new RelationshipAdmissionEvaluator().EvaluateAsync(
+            Context() with
+            {
+                ActionParameters = "{",
+            }
+        );
+
+        result.Verdict.Should().Be(EvaluationVerdict.Deny);
+        result.Reason.Should().Contain("malformed");
+    }
+
     private static EvaluationContext Context(
         ApprovalType approval = ApprovalType.CustomerExplicit,
         DcmCategory category = DcmCategory.DeterministicRequired

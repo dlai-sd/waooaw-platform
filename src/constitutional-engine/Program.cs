@@ -51,9 +51,7 @@ builder.Services.AddDbContextFactory<EmergencyStopDbContext>(opts =>
 
 // ── Audit Sink DbContext — WORM evidence records (ADR-044) ───────────────────
 // Required for WriteAuditSinkRecordAsync on every ValidateAction call (C-059).
-var auditSinkConn =
-    builder.Configuration.GetConnectionString("AuditSink")
-    ?? defaultConnection;
+var auditSinkConn = builder.Configuration.GetConnectionString("AuditSink") ?? defaultConnection;
 builder.Services.AddDbContextFactory<AuditSinkDbContext>(opts => opts.UseNpgsql(auditSinkConn));
 
 var app = builder.Build();

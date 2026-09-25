@@ -50,7 +50,10 @@ public sealed class RelationshipAdmissionEvaluator : IClaimEvaluator
                 )
             )
             {
-                return Result(EvaluationVerdict.Deny, "Relationship admission envelope is incomplete.");
+                return Result(
+                    EvaluationVerdict.Deny,
+                    "Relationship admission envelope is incomplete."
+                );
             }
 
             var intent = StringValue(root, "acquisition_intent");
@@ -58,10 +61,12 @@ public sealed class RelationshipAdmissionEvaluator : IClaimEvaluator
                 return Result(EvaluationVerdict.Deny, "Acquisition intent is unsupported.");
             if (
                 intent is not null
-                && (!RequiredGuid(root, "professional_admission_id")
+                && (
+                    !RequiredGuid(root, "professional_admission_id")
                     || !RequiredString(root, "professional_version")
                     || !RequiredString(root, "disclosure_revision")
-                    || !RequiredString(root, "terms_version"))
+                    || !RequiredString(root, "terms_version")
+                )
             )
             {
                 return Result(

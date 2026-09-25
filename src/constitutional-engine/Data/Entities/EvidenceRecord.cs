@@ -29,14 +29,19 @@ public enum EvidenceRecordState
 {
     [PgName("PROPOSED")]
     Proposed = 1,
+
     [PgName("AWAITING_APPROVAL")]
     AwaitingApproval = 2,
+
     [PgName("APPROVED")]
     Approved = 3,
+
     [PgName("REJECTED")]
     Rejected = 4,
+
     [PgName("EXECUTED")]
     Executed = 5,
+
     [PgName("ABANDONED")]
     Abandoned = 6,
 }

@@ -90,7 +90,11 @@ public sealed class C041ToolAuthorizationEvaluator : IClaimEvaluator
                 );
 
                 return Task.FromResult(
-                    new EvaluationResult(ClaimId, EvaluationVerdict.Allow, "Outside C-041 MCP scope.")
+                    new EvaluationResult(
+                        ClaimId,
+                        EvaluationVerdict.Allow,
+                        "Outside C-041 MCP scope."
+                    )
                 );
             }
 
