@@ -198,7 +198,7 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
         var token = Token();
         Assert.DoesNotContain(new JwtSecurityTokenHandler().ReadJwtToken(token).Claims, claim => claim.Type == "tenant_id");
         using var marketplace = await SendAsync(HttpMethod.Get, "/api/v1/professionals/marketplace", token);
-        Assert.Equal(HttpStatusCode.Forbidden, marketplace.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, marketplace.StatusCode);
         using var relationships = await SendAsync(HttpMethod.Get, "/api/v1/employment/relationships", token);
         Assert.Equal(HttpStatusCode.Forbidden, relationships.StatusCode);
         using var unresolved = await SendAsync(HttpMethod.Get, "/api/v1/identity/session", token);

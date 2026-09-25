@@ -91,14 +91,18 @@ test('login loading and provider states keep identical customer-visible geometry
   await expect(dialog.getByText('Preparing the requested view.')).toHaveCount(0);
   const loadingBounds = await dialog.boundingBox();
   const loadingBrandBounds = await dialog.locator('.auth-brand').boundingBox();
-  expect(await dialog.locator('.auth-loading-bar').evaluate((element) => getComputedStyle(element, '::after').animationName))
-    .toBe('none');
+  expect(
+    await dialog.locator('.auth-loading-bar').evaluate((element) => getComputedStyle(element, '::after').animationName)
+  ).toBe('none');
 
-  await expect(dialog.getByRole('button', { name: loginJourney ? 'Log in with Google' : 'Sign up with Google' })).toBeVisible();
+  await expect(
+    dialog.getByRole('button', { name: loginJourney ? 'Log in with Google' : 'Sign up with Google' })
+  ).toBeVisible();
   const providerControls = dialog.locator('.provider-icon-command');
   await expect(providerControls).toHaveCount(4);
-  expect(await providerControls.evaluateAll((elements) => elements.map((element) => getComputedStyle(element).boxShadow)))
-    .toEqual(['none', 'none', 'none', 'none']);
+  expect(
+    await providerControls.evaluateAll((elements) => elements.map((element) => getComputedStyle(element).boxShadow))
+  ).toEqual(['none', 'none', 'none', 'none']);
   const providerBorders = await providerControls.evaluateAll((elements) =>
     elements.map((element) => getComputedStyle(element).borderColor)
   );

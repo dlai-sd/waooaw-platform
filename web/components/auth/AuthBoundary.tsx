@@ -35,7 +35,11 @@ export function AuthBoundary({
           title={intent === 'register' ? 'Create your WAOOAW account' : 'Log in to WAOOAW'}
         />
       )}
-      <div className={unavailable ? undefined : 'auth-loading-state'} role={unavailable ? 'alert' : 'status'} aria-live="polite">
+      <div
+        className={unavailable ? undefined : 'auth-loading-state'}
+        role={unavailable ? 'alert' : 'status'}
+        aria-live="polite"
+      >
         {!unavailable && <span className="auth-loading-bar" aria-hidden="true" />}
         <p>{unavailable ? messages.authErrorDescription : 'Loading secure sign-in options.'}</p>
       </div>

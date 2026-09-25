@@ -2144,7 +2144,7 @@ select:focus-visible,
   background: var(--line);
 }
 .auth-loading-bar::after {
-  content: '';
+  content: "";
   display: block;
   width: 42%;
   height: 100%;
