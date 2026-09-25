@@ -39,20 +39,93 @@ test('WC083-AUTH-01: a public auth command opens a route-backed dialog and Escap
   await expect(trigger).toBeFocused();
 });
 
-test('WC092-AUTH-01: launch state keeps the public page visible before the auth route resolves', async ({ page }) => {
+test('WC092-AUTH-01: login uses no preliminary dialog before the auth route resolves', async ({ page }) => {
+  let releaseRoute: () => void = () => undefined;
+  let markRouteRequested: () => void = () => undefined;
+  const routeGate = new Promise<void>((resolve) => {
+    releaseRoute = resolve;
+  });
+  const routeRequested = new Promise<void>((resolve) => {
+    markRouteRequested = resolve;
+  });
+  await page.route(
+    (url) => ['/login', '/register'].includes(url.pathname) && url.searchParams.has('_rsc'),
+    async (route) => {
+      markRouteRequested();
+      await routeGate;
+      await route.continue();
+    }
+  );
   await page.goto('/');
+
   const desktopLogin = page.getByRole('link', { name: 'Log in' });
   const compactRegister = page.locator('a.secondary-link[href="/register"]').first();
   const trigger = (await desktopLogin.isVisible()) ? desktopLogin : compactRegister;
   const dialogName = (await desktopLogin.isVisible()) ? 'Log in to WAOOAW' : 'Create your WAOOAW account';
-
-  await trigger.click();
+  const navigation = trigger.click();
+  await routeRequested;
 
   await expect(page.getByRole('heading', { name: 'Grow your business with WAOOAW AI professionals' })).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  releaseRoute();
+  await navigation;
   await expect(page.getByRole('dialog', { name: dialogName })).toBeVisible();
   await page.getByRole('button', { name: 'Close' }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
+test('login loading and provider states keep identical customer-visible geometry', async ({ page }) => {
+  await page.goto('/');
+
+  const desktopLogin = page.getByRole('link', { name: 'Log in' });
+  const compactRegister = page.locator('a.secondary-link[href="/register"]').first();
+  const loginJourney = await desktopLogin.isVisible();
+  await (loginJourney ? desktopLogin : compactRegister).click();
+  const dialog = page.getByRole('dialog', {
+    name: loginJourney ? 'Log in to WAOOAW' : 'Create your WAOOAW account',
+  });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText('Loading secure sign-in options.')).toBeVisible();
+  await expect(dialog.getByText('Preparing the requested view.')).toHaveCount(0);
+  const loadingBounds = await dialog.boundingBox();
+  const loadingBrandBounds = await dialog.locator('.auth-brand').boundingBox();
+  expect(await dialog.locator('.auth-loading-bar').evaluate((element) => getComputedStyle(element, '::after').animationName))
+    .toBe('none');
+
+  await expect(dialog.getByRole('button', { name: loginJourney ? 'Log in with Google' : 'Sign up with Google' })).toBeVisible();
+  const providerControls = dialog.locator('.provider-icon-command');
+  await expect(providerControls).toHaveCount(4);
+  expect(await providerControls.evaluateAll((elements) => elements.map((element) => getComputedStyle(element).boxShadow)))
+    .toEqual(['none', 'none', 'none', 'none']);
+  const providerBorders = await providerControls.evaluateAll((elements) =>
+    elements.map((element) => getComputedStyle(element).borderColor)
+  );
+  expect(new Set(providerBorders).size).toBe(1);
+  const providerBounds = await providerControls.evaluateAll((elements) =>
+    elements.map((element) => {
+      const bounds = element.getBoundingClientRect();
+      return { x: bounds.x, y: bounds.y };
+    })
+  );
+  expect(providerBounds[0].y).toBeCloseTo(providerBounds[1].y, 0);
+  expect(providerBounds[2].y).toBeCloseTo(providerBounds[3].y, 0);
+  expect(providerBounds[0].x).toBeCloseTo(providerBounds[2].x, 0);
+  expect(providerBounds[1].x).toBeCloseTo(providerBounds[3].x, 0);
+  const resolvedBounds = await dialog.boundingBox();
+  const resolvedBrandBounds = await dialog.locator('.auth-brand').boundingBox();
+
+  expect(loadingBounds).not.toBeNull();
+  expect(resolvedBounds).not.toBeNull();
+  expect(loadingBrandBounds).not.toBeNull();
+  expect(resolvedBrandBounds).not.toBeNull();
+  expect(resolvedBounds?.x).toBeCloseTo(loadingBounds?.x ?? 0, 0);
+  expect(resolvedBounds?.y).toBeCloseTo(loadingBounds?.y ?? 0, 0);
+  expect(resolvedBounds?.width).toBeCloseTo(loadingBounds?.width ?? 0, 0);
+  expect(resolvedBounds?.height).toBeCloseTo(loadingBounds?.height ?? 0, 0);
+  expect(resolvedBrandBounds?.x).toBeCloseTo(loadingBrandBounds?.x ?? 0, 0);
+  expect(resolvedBrandBounds?.y).toBeCloseTo(loadingBrandBounds?.y ?? 0, 0);
 });
 
 test('WC083-AUTH-02: backdrop dismissal returns to the originating public route', async ({ page }) => {
