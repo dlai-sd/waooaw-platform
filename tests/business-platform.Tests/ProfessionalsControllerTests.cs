@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Moq;
 using System.Runtime.CompilerServices;
 using Waooaw.BusinessPlatform.Controllers;
@@ -21,8 +20,6 @@ public sealed class ProfessionalsControllerTests
 {
     private readonly IProfessionalCatalog _catalog;
     private readonly ProfessionalsController _controller;
-    private readonly InMemoryEmploymentRelationshipFactory _factory;
-    private readonly CustomerWorkspaceMembership _membership;
 
     public ProfessionalsControllerTests()
     {
@@ -30,9 +27,7 @@ public sealed class ProfessionalsControllerTests
         environment.SetupGet(value => value.ContentRootPath)
             .Returns(FindBusinessPlatformRoot());
         _catalog = new ProfessionalCatalog(environment.Object);
-        _factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
-        _membership = new CustomerWorkspaceMembership(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), ["OWNER"]);
-        _controller = Controller(_catalog, _factory, _membership);
+        _controller = Controller(_catalog);
     }
 
     [Fact]
@@ -89,10 +84,9 @@ public sealed class ProfessionalsControllerTests
     }
 
     [Fact]
-    public async Task Marketplace_MapsActiveCatalogToServerOwnedOfferabilityAndPrice()
+    public void Marketplace_MapsActiveCatalogToServerOwnedOfferabilityAndPrice()
     {
-        await SeedAdmissionAsync(_factory, _membership.TenantId, "1.0.0");
-        var result = await _controller.BrowseMarketplace(null, 20);
+        var result = _controller.BrowseMarketplace(null, 20);
 
         var ok = result.Should().BeOfType<OkObjectResult>().Subject;
         var json = System.Text.Json.JsonSerializer.SerializeToElement(ok.Value);
@@ -107,17 +101,14 @@ public sealed class ProfessionalsControllerTests
     }
 
     [Fact]
-    public async Task Marketplace_DoesNotOfferTrialWhenOwnerServicesAreUnconfigured()
+    public void Marketplace_DoesNotOfferTrialWhenOwnerServicesAreUnconfigured()
     {
-        await SeedAdmissionAsync(_factory, _membership.TenantId, "1.0.0");
         var controller = Controller(
             _catalog,
-            _factory,
-            _membership,
             new UnconfiguredRelationshipTrialOwnerGateway()
         );
 
-        var result = (await controller.BrowseMarketplace(null, 20))
+        var result = controller.BrowseMarketplace(null, 20)
             .Should().BeOfType<OkObjectResult>().Subject;
         var listing = System.Text.Json.JsonSerializer.SerializeToElement(result.Value)
             .GetProperty("items").EnumerateArray().Should().ContainSingle().Subject;
@@ -128,35 +119,37 @@ public sealed class ProfessionalsControllerTests
     }
 
     [Fact]
-    public async Task Marketplace_FilterBoundCursorRejectsReuseAgainstDifferentQuery()
+    public void Marketplace_FilterBoundCursorRejectsReuseAgainstDifferentQuery()
     {
         var catalog = new Mock<IProfessionalCatalog>();
         catalog.Setup(value => value.Browse(null, null)).Returns(
         [
             Disclosure("A"), Disclosure("B"),
         ]);
-        await SeedAdmissionAsync(_factory, _membership.TenantId, "1.0.0", "A");
-        await SeedAdmissionAsync(_factory, _membership.TenantId, "1.0.0", "B");
-        var controller = Controller(catalog.Object, _factory, _membership);
-        var first = (await controller.BrowseMarketplace(null, 1)).Should().BeOfType<OkObjectResult>().Subject;
+        var controller = Controller(catalog.Object);
+        var first = controller.BrowseMarketplace(null, 1).Should().BeOfType<OkObjectResult>().Subject;
         var cursor = System.Text.Json.JsonSerializer.SerializeToElement(first.Value).GetProperty("nextCursor").GetString();
 
-        var invalid = (await controller.BrowseMarketplace(cursor, 1, query: "different"))
+        var invalid = controller.BrowseMarketplace(cursor, 1, query: "different")
             .Should().BeOfType<ObjectResult>().Subject;
 
         invalid.StatusCode.Should().Be(400);
     }
 
     [Fact]
-    public async Task Marketplace_HidesCatalogVersionWithoutExactActiveArtifact()
+    public void Marketplace_IsAvailableBeforeCustomerRegistration()
     {
-        await SeedAdmissionAsync(_factory, _membership.TenantId, "0.9.0");
-
-        var result = (await _controller.BrowseMarketplace(null, 20))
+        var result = _controller.BrowseMarketplace(null, 20)
             .Should().BeOfType<OkObjectResult>().Subject;
         var json = System.Text.Json.JsonSerializer.SerializeToElement(result.Value);
 
-        json.GetProperty("items").EnumerateArray().Should().BeEmpty();
+        json.GetProperty("items").EnumerateArray().Should().ContainSingle();
+        var route = typeof(ProfessionalsController)
+            .GetMethod(nameof(ProfessionalsController.BrowseMarketplace))!
+            .GetCustomAttributes(typeof(CustomerIdentityRouteAttribute), true)
+            .Cast<CustomerIdentityRouteAttribute>()
+            .Single();
+        route.RequiresMembership.Should().BeFalse();
     }
 
     [Theory]
@@ -203,40 +196,15 @@ public sealed class ProfessionalsControllerTests
 
     private static ProfessionalsController Controller(
         IProfessionalCatalog catalog,
-        InMemoryEmploymentRelationshipFactory factory,
-        CustomerWorkspaceMembership membership,
         IRelationshipTrialOwnerGateway? trialOwners = null)
     {
         var controller = new ProfessionalsController(
             catalog,
-            factory,
             trialOwners ?? new TrialOwnerGatewayStub()
         )
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() },
         };
-        controller.HttpContext.Items[CustomerMembershipMiddleware.MembershipItem] = membership;
         return controller;
-    }
-
-    private static async Task SeedAdmissionAsync(
-        InMemoryEmploymentRelationshipFactory factory,
-        Guid tenantId,
-        string version,
-        string professionalType = "DIGITAL_MARKETING_LOCAL_SERVICE")
-    {
-        await using var db = factory.CreateDbContext();
-        db.AgentAdmissions.Add(new AgentAdmission
-        {
-            TenantId = tenantId,
-            ProfessionalTypeId = professionalType,
-            ProfessionalVersion = version,
-            OwnerSubjectId = Guid.NewGuid(),
-            State = AgentAdmissionState.Active,
-            AdmissionContentDigest = "sha256:" + new string('a', 64),
-            EvidenceSetDigest = "sha256:" + new string('b', 64),
-            ArtifactDigest = "sha256:" + new string('c', 64),
-        });
-        await db.SaveChangesAsync();
     }
 }
