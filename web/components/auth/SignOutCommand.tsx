@@ -4,7 +4,7 @@
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
 import { LogOut, RefreshCw } from 'lucide-react';
-import { signIn } from 'next-auth/react';
+import { signIn, signOut as nextAuthSignOut } from 'next-auth/react';
 import { useState } from 'react';
 import { beginAuthTransition, recordAuthTransition } from '@/lib/auth-transition';
 
@@ -25,32 +25,55 @@ function announceIdentitySessionChange(action: 'SIGN_OUT' | 'ACCOUNT_SWITCH') {
 }
 
 export function SignOutCommand({ label }: { label: string }) {
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutFailed, setSignOutFailed] = useState(false);
+
   async function signOut() {
+    setSigningOut(true);
+    setSignOutFailed(false);
     clearProtectedClientState();
     announceIdentitySessionChange('SIGN_OUT');
-    const response = await fetch('/api/auth/keycloak-logout', {
-      method: 'POST',
-      headers: { Accept: 'application/json' },
-    });
-    if (!response.ok) throw new Error('Sign out request was denied.');
-    const result: unknown = await response.json();
-    if (
-      !result ||
-      typeof result !== 'object' ||
-      !('logoutPath' in result) ||
-      typeof result.logoutPath !== 'string' ||
-      !result.logoutPath.startsWith('/api/auth/keycloak-logout?nonce=')
-    ) {
-      throw new Error('Sign out response was invalid.');
+    try {
+      const response = await fetch('/api/auth/keycloak-logout', {
+        method: 'POST',
+        headers: { Accept: 'application/json' },
+      });
+      if (!response.ok) throw new Error('Sign out request was denied.');
+      const result: unknown = await response.json();
+      if (
+        !result ||
+        typeof result !== 'object' ||
+        !('logoutPath' in result) ||
+        typeof result.logoutPath !== 'string' ||
+        !result.logoutPath.startsWith('/api/auth/keycloak-logout?nonce=')
+      ) {
+        throw new Error('Sign out response was invalid.');
+      }
+      await nextAuthSignOut({ callbackUrl: '/' });
+    } catch {
+      try {
+        await nextAuthSignOut({ callbackUrl: '/' });
+      } catch {
+        setSigningOut(false);
+        setSignOutFailed(true);
+      }
     }
-    window.location.assign(result.logoutPath);
   }
 
   return (
-    <button aria-label={label} className="account-command" type="button" onClick={() => void signOut()}>
-      <LogOut aria-hidden="true" size={19} />
-      <span>{label}</span>
-    </button>
+    <>
+      <button
+        aria-label={label}
+        className="account-command"
+        disabled={signingOut}
+        type="button"
+        onClick={() => void signOut()}
+      >
+        <LogOut aria-hidden="true" size={19} />
+        <span>{signingOut ? 'Signing out...' : label}</span>
+      </button>
+      {signOutFailed ? <p role="alert">Sign out could not complete. Try again.</p> : null}
+    </>
   );
 }
 
@@ -70,10 +93,13 @@ export function AccountSwitchCommand({ label }: { label: string }) {
         method: 'DELETE',
         headers: { 'Idempotency-Key': crypto.randomUUID() },
       });
-      if (!response.ok) throw new Error('Session revocation was not confirmed.');
+      if (!response.ok && response.status !== 401 && response.status !== 403) {
+        throw new Error('Session revocation was not confirmed.');
+      }
       recordAuthTransition('ACCOUNT_SWITCH_COMPLETED', 'PRIOR_SESSION_REVOKED', 'UNKNOWN');
+      await nextAuthSignOut({ redirect: false });
       recordAuthTransition('BROKER_REDIRECT_REQUESTED', 'OK', 'UNKNOWN');
-      await signIn('keycloak', { callbackUrl: '/home' }, { prompt: 'select_account' });
+      await signIn('keycloak-google', { callbackUrl: '/home' }, { prompt: 'select_account' });
     } catch {
       recordAuthTransition('ACCOUNT_SWITCH_FAILED', 'SESSION_REVOCATION_UNCONFIRMED', 'UNKNOWN');
       setSwitching(false);

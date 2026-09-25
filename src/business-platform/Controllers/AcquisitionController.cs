@@ -33,6 +33,7 @@ public sealed class AcquisitionController(
     IDbContextFactory<EmploymentRelationshipDbContext> dbFactory,
     IProfessionalCatalog catalog,
     EmploymentRelationshipService relationships,
+    ILogger<AcquisitionController> logger,
     RelationshipTrialService? trials = null
 ) : ControllerBase
 {
@@ -54,6 +55,12 @@ public sealed class AcquisitionController(
             );
 
         var intent = request.Intent.Trim().ToUpperInvariant();
+        if (intent == "TRIAL" && (trials is null || !trials.IsConfigured))
+            return Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: "Trial is currently unavailable",
+                detail: "Trial owner services are not available. No relationship was created."
+            );
         var disclosure = catalog.GetDisclosure(request.ProfessionalType);
         if (
             request.Acceptance != "ACCEPT_DISCLOSURE"
@@ -188,6 +195,12 @@ public sealed class AcquisitionController(
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
+            logger.LogError(
+                exception,
+                "Acquisition continuation failed for correlation {CorrelationId} and intent {Intent}",
+                correlationId ?? idempotencyKey.Value,
+                intent
+            );
             return Problem(
                 statusCode: StatusCodes.Status503ServiceUnavailable,
                 title: "Acquisition continuation unavailable"

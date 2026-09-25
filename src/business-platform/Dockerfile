@@ -14,7 +14,8 @@ RUN apt-get update \
     && apt-get install --yes --no-install-recommends curl postgresql-client \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system waooaw \
-    && useradd --system --gid waooaw waooaw
+    && useradd --system --gid waooaw waooaw \
+    && install -d -o waooaw -g waooaw -m 0700 /var/lib/waooaw/dataprotection-keys
 WORKDIR /app
 COPY --from=build --chown=waooaw:waooaw /app/publish .
 COPY --chown=waooaw:waooaw infrastructure/postgres/init/ /app/postgres-init/

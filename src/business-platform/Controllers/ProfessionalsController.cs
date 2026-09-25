@@ -18,14 +18,17 @@ public sealed class ProfessionalsController : ControllerBase
 {
     private readonly IProfessionalCatalog _catalog;
     private readonly IDbContextFactory<EmploymentRelationshipDbContext> _dbFactory;
+    private readonly IRelationshipTrialOwnerGateway _trialOwners;
 
     public ProfessionalsController(
         IProfessionalCatalog catalog,
-        IDbContextFactory<EmploymentRelationshipDbContext> dbFactory
+        IDbContextFactory<EmploymentRelationshipDbContext> dbFactory,
+        IRelationshipTrialOwnerGateway trialOwners
     )
     {
         _catalog = catalog;
         _dbFactory = dbFactory;
+        _trialOwners = trialOwners;
     }
 
     [HttpGet]
@@ -124,7 +127,7 @@ public sealed class ProfessionalsController : ControllerBase
                 displayName = disclosure.DisplayName,
                 disclosurePath = $"/marketplace/{disclosure.CustomerRouteSlug}",
                 availableIntents = disclosure.Eligibility.Eligible
-                    ? disclosure.Trial.Available
+                    ? disclosure.Trial.Available && _trialOwners.IsConfigured
                         ? new[] { "TRIAL", "HIRE" }
                         : ["HIRE"]
                     : [],
@@ -132,11 +135,11 @@ public sealed class ProfessionalsController : ControllerBase
                 eligibility = disclosure.Eligibility,
                 indicativePrice = disclosure.IndicativePrice,
                 offerabilityState = disclosure.Eligibility.Eligible
-                    ? disclosure.Trial.Available
+                    ? disclosure.Trial.Available && _trialOwners.IsConfigured
                         ? "OFFERABLE"
                         : "TRIAL_ONLY"
                     : "NOT_OFFERABLE",
-                trialTerms = disclosure.Trial.Available
+                trialTerms = disclosure.Trial.Available && _trialOwners.IsConfigured
                     ? $"{disclosure.Trial.DurationDays}-day trial; no paid API calls or external actions."
                     : null,
                 nextAction = disclosure.Eligibility.Eligible ? "VIEW_DISCLOSURE" : "NONE",

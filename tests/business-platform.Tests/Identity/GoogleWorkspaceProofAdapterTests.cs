@@ -68,7 +68,8 @@ public sealed class GoogleWorkspaceProofAdapterTests
         string subject = "synthetic-actor",
         string? issuer = null,
         string provider = "google",
-        string authorizedParty = "waooaw-web"
+        string authorizedParty = "waooaw-web",
+        string providerClaim = "idp"
     )
     {
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -80,7 +81,7 @@ public sealed class GoogleWorkspaceProofAdapterTests
                     new Claim("sub", subject),
                     new Claim("aud", "waooaw-platform"),
                     new Claim("azp", authorizedParty),
-                    new Claim("idp", provider),
+                    new Claim(providerClaim, provider),
                     new Claim("email_verified", "true"),
                     new Claim("email", "customer@example.com"),
                     new Claim("realm_access", "{\"roles\":[\"customer\"]}"),
@@ -144,6 +145,147 @@ public sealed class GoogleWorkspaceProofAdapterTests
         configuration.AllowedAuthorizedParties = ["waooaw-web", "waooaw-web-preview"];
         var previewAdapter = new GoogleWorkspaceProofAdapter(client, Options.Create(configuration));
         previewAdapter.ValidateActor(previewPrincipal);
+    }
+
+    [Fact]
+    public async Task LocalClaimsProof_RequiresExplicitLocalPreviewConfiguration()
+    {
+        var handler = new SyntheticKeycloakHandler();
+        using var client = new HttpClient(handler);
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["IdentityProviderPreview:ClaimsProofEnabled"] = "true",
+            })
+            .Build();
+        var principal = Principal(
+            issuer: "https://preview.invalid/realms/waooaw",
+            authorizedParty: "waooaw-web-preview"
+        );
+        var adapter = new GoogleWorkspaceProofAdapter(
+            client,
+            Options.Create(new IdentityBrokerReadOptions()),
+            environment: Options.Create(new IdentityEnvironmentOptions { Environment = "local" }),
+            configuration: configuration
+        );
+
+        var proof = await adapter.ReadAsync(principal, default);
+
+        Assert.True(adapter.IsConfigured);
+        Assert.Equal("google", proof.BrokerAlias);
+        Assert.Empty(handler.Requests);
+
+        var nonLocal = new GoogleWorkspaceProofAdapter(
+            client,
+            Options.Create(new IdentityBrokerReadOptions()),
+            environment: Options.Create(new IdentityEnvironmentOptions { Environment = "demo" }),
+            configuration: configuration
+        );
+        Assert.False(nonLocal.IsConfigured);
+        Assert.Throws<CustomerWorkspaceException>(() => nonLocal.ValidateActor(principal));
+    }
+
+    [Fact]
+    public void LocalClaimsProof_AcceptsCanonicalIdentityProviderClaimAndRejectsConflict()
+    {
+        using var client = new HttpClient(new SyntheticKeycloakHandler());
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["IdentityProviderPreview:ClaimsProofEnabled"] = "true",
+            })
+            .Build();
+        var adapter = new GoogleWorkspaceProofAdapter(
+            client,
+            Options.Create(new IdentityBrokerReadOptions()),
+            environment: Options.Create(new IdentityEnvironmentOptions { Environment = "local" }),
+            configuration: configuration
+        );
+        var principal = Principal(
+            issuer: "https://preview.invalid/realms/waooaw",
+            authorizedParty: "waooaw-web-preview",
+            providerClaim: "identity_provider"
+        );
+
+        Assert.Equal(IdentityAuthenticationPath.Google, adapter.AuthenticationPath(principal));
+        adapter.ValidateActor(principal);
+
+        ((ClaimsIdentity)principal.Identity!).AddClaim(new Claim("idp", "facebook"));
+        Assert.Throws<IdentityActionDeniedException>(() => adapter.ValidateActor(principal));
+    }
+
+    [Theory]
+    [InlineData("authentication", "unauthenticated", false)]
+    [InlineData("iss", "", false)]
+    [InlineData("sub", "..", false)]
+    [InlineData("sub", "service-account-synthetic", false)]
+    [InlineData("azp", "other-client", false)]
+    [InlineData("aud", "other-audience", false)]
+    [InlineData("client_type", "service", false)]
+    [InlineData("iat", "invalid", false)]
+    [InlineData("iat", "future", false)]
+    [InlineData("exp", "invalid", false)]
+    [InlineData("exp", "expired", false)]
+    [InlineData("exp", "long-lived", false)]
+    [InlineData("auth_time", "invalid", false)]
+    [InlineData("auth_time", "future", false)]
+    [InlineData("auth_time", "stale", true)]
+    public void LocalClaimsProof_InvalidSecurityBoundary_Denies(
+        string claimType,
+        string value,
+        bool requiresFreshAuthentication
+    )
+    {
+        using var client = new HttpClient(new SyntheticKeycloakHandler());
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["IdentityProviderPreview:ClaimsProofEnabled"] = "true",
+            })
+            .Build();
+        var adapter = new GoogleWorkspaceProofAdapter(
+            client,
+            Options.Create(new IdentityBrokerReadOptions()),
+            environment: Options.Create(new IdentityEnvironmentOptions { Environment = "local" }),
+            configuration: configuration
+        );
+        var principal = Principal(
+            issuer: "https://preview.invalid/realms/waooaw",
+            authorizedParty: "waooaw-web-preview"
+        );
+        var identity = (ClaimsIdentity)principal.Identity!;
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        if (claimType == "authentication")
+        {
+            principal = new ClaimsPrincipal(new ClaimsIdentity(identity.Claims));
+        }
+        else
+        {
+            var existing = identity.FindFirst(claimType);
+            if (existing is not null)
+                identity.RemoveClaim(existing);
+            var replacement = value switch
+            {
+                "future" => (now + 60).ToString(),
+                "expired" => (now - 60).ToString(),
+                "long-lived" => (now + 901).ToString(),
+                "stale" => (now - 301).ToString(),
+                _ => value,
+            };
+            identity.AddClaim(new Claim(claimType, replacement));
+        }
+
+        if (requiresFreshAuthentication)
+        {
+            var failure = Assert.Throws<CustomerWorkspaceException>(() =>
+                adapter.ValidateActor(principal, requireFresh: true)
+            );
+            Assert.Equal(CustomerWorkspaceError.FreshAuthenticationRequired, failure.Error);
+        }
+        else
+        {
+            Assert.Throws<IdentityActionDeniedException>(() => adapter.ValidateActor(principal));
+        }
     }
 
     [Fact]
@@ -513,7 +655,8 @@ public sealed class GoogleWorkspaceProofAdapterTests
             new HttpClient(),
             Options.Create(Configuration()));
         var providers = new IdentityProviderProjectionService(
-            Options.Create(IdentityTestHelpers.TestEnvironment));
+            Options.Create(IdentityTestHelpers.TestEnvironment),
+            IdentityTestHelpers.EmptyConfiguration);
         var journey = new CustomerIdentityJourneyService(identity, factory, adapter, providers);
         var securityEvents = new IdentitySecurityEventService(
             factory,
@@ -585,7 +728,9 @@ public sealed class GoogleWorkspaceProofAdapterTests
         var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
         var identity = IdentityTestHelpers.CreateService(factory);
         var adapter = new GoogleWorkspaceProofAdapter(new HttpClient(), Options.Create(Configuration()));
-        var providers = new IdentityProviderProjectionService(Options.Create(IdentityTestHelpers.TestEnvironment));
+        var providers = new IdentityProviderProjectionService(
+            Options.Create(IdentityTestHelpers.TestEnvironment),
+            IdentityTestHelpers.EmptyConfiguration);
         var journey = new CustomerIdentityJourneyService(identity, factory, adapter, providers);
         var securityEvents = new IdentitySecurityEventService(
             factory,

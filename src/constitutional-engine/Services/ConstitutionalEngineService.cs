@@ -7,6 +7,8 @@ using System.Text.Json;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Temporalio.Client;
@@ -51,12 +53,13 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
     private readonly IDbContextFactory<AuditSinkDbContext>? _auditSinkDbContextFactory;
 
     // ─── Primary constructor (6 args — DI registration) ────────────────────
+    [ActivatorUtilitiesConstructor]
     public ConstitutionalEngineService(
         EvaluatorRegistry registry,
         ILogger<ConstitutionalEngineService> logger,
         IDbContextFactory<ConstitutionalDbContext> dbContextFactory,
         IDbContextFactory<EmergencyStopDbContext> emergencyStopDbContextFactory,
-        ITemporalClient temporalClient,
+        ITemporalClient? temporalClient = null,
         IDbContextFactory<AuditSinkDbContext>? auditSinkDbContextFactory = null
     )
     {
@@ -157,20 +160,41 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
             );
         }
 
+        if (
+            !Guid.TryParse(req.ActionInstanceId, out var actionInstanceId)
+            || !Guid.TryParse(req.ContractId, out var contractId)
+            || string.IsNullOrWhiteSpace(req.ProfessionalId)
+            || req.State == EvidenceState.Unspecified
+        )
+        {
+            throw new RpcException(
+                new Status(
+                    StatusCode.InvalidArgument,
+                    "action_instance_id, contract_id, professional_id, and state must identify canonical evidence values."
+                )
+            );
+        }
+
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ctx.CancellationToken);
         cts.CancelAfter(RecordEvidenceTimeout);
 
         try
         {
             await using var db = await _dbContextFactory.CreateDbContextAsync(cts.Token);
+            await using var transaction = await BeginTenantTransactionAsync(
+                db,
+                tenantGuid,
+                cts.Token
+            );
+            var evidenceState = (EvidenceRecordState)(int)req.State;
 
             // C-085: Idempotency — include State so each state transition gets its own row
             // (C-027 append-only: Proposed + Executed are different ledger entries).
             var existing = await db.Set<EvidenceRecord>()
                 .FirstOrDefaultAsync(
                     e =>
-                        e.IdempotencyKey == req.ActionInstanceId
-                        && e.StateCode == (int)req.State
+                        e.ActionInstanceId == actionInstanceId
+                        && e.State == evidenceState
                         && e.TenantId == tenantGuid,
                     cts.Token
                 );
@@ -186,24 +210,35 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
                 return new RecordEvidenceResponse
                 {
                     EvidenceRecordId = existing.Id.ToString(),
-                    RecordedAt = Timestamp.FromDateTimeOffset(existing.RecordedAt),
+                    RecordedAt = Timestamp.FromDateTimeOffset(existing.CreatedAt),
                 };
             }
 
             var record = new EvidenceRecord
             {
                 Id = Guid.NewGuid(),
-                IdempotencyKey = req.ActionInstanceId,
-                StateCode = (int)req.State,
                 TenantId = tenantGuid,
-                EvidenceType = req.ActionType,
-                Summary = req.ConstitutionalBasis,
-                PayloadJson = req.HasProposedContent ? req.ProposedContent : null,
-                RecordedAt = DateTimeOffset.UtcNow,
+                ContractId = contractId,
+                ProfessionalId = CanonicalGuid(req.ProfessionalId),
+                ActionInstanceId = actionInstanceId,
+                ActionType = req.ActionType,
+                State = evidenceState,
+                ProposedContent = req.HasProposedContent ? req.ProposedContent : null,
+                ExecutedContent = req.HasExecutedContent ? req.ExecutedContent : null,
+                IsScopeBoundary = req.IsScopeBoundary,
+                ScopeBoundaryName = req.HasScopeBoundaryName ? req.ScopeBoundaryName : null,
+                ScopeBoundaryAcknowledgment = req.HasScopeBoundaryAcknowledgment
+                    ? req.ScopeBoundaryAcknowledgment
+                    : null,
+                DecisionSpaceVersion = req.DecisionSpaceVersion,
+                ConstitutionalBasis = req.ConstitutionalBasis,
+                CreatedAt = DateTimeOffset.UtcNow,
             };
 
             await db.Set<EvidenceRecord>().AddAsync(record, cts.Token);
             await db.SaveChangesAsync(cts.Token);
+            if (transaction is not null)
+                await transaction.CommitAsync(cts.Token);
 
             _logger.LogInformation(
                 "RecordEvidence persisted. RecordId={RecordId} TenantId={TenantId} ActionType={ActionType}",
@@ -215,7 +250,7 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
             return new RecordEvidenceResponse
             {
                 EvidenceRecordId = record.Id.ToString(),
-                RecordedAt = Timestamp.FromDateTimeOffset(record.RecordedAt),
+                RecordedAt = Timestamp.FromDateTimeOffset(record.CreatedAt),
             };
         }
         catch (RpcException)
@@ -432,16 +467,22 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
             var recordedAt = DateTimeOffset.UtcNow;
 
             await using var db = await _dbContextFactory.CreateDbContextAsync(cts.Token);
+            await using var transaction = await BeginTenantTransactionAsync(
+                db,
+                tenantGuid,
+                cts.Token
+            );
 
             var record = new EvidenceRecord
             {
                 Id = licenseId,
-                IdempotencyKey = $"GRANT:{req.ContractId}:{licenseId}",
                 TenantId = tenantGuid,
-                EvidenceType = "AUTHORITY_GRANT",
-                Summary =
-                    $"Authority expanded to level {req.NewAuthorityLevel} by {req.GrantedBy}. Basis: {req.ConstitutionalBasis}",
-                PayloadJson = JsonSerializer.Serialize(
+                ContractId = CanonicalGuid(req.ContractId),
+                ProfessionalId = CanonicalGuid(req.GrantedBy),
+                ActionInstanceId = licenseId,
+                ActionType = "AUTHORITY_GRANT",
+                State = EvidenceRecordState.Executed,
+                ExecutedContent = JsonSerializer.Serialize(
                     new
                     {
                         contractId = req.ContractId,
@@ -450,11 +491,15 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
                         evidenceIds = req.EvidenceIds.ToArray(),
                     }
                 ),
-                RecordedAt = recordedAt,
+                DecisionSpaceVersion = 1,
+                ConstitutionalBasis = req.ConstitutionalBasis,
+                CreatedAt = recordedAt,
             };
 
             await db.Set<EvidenceRecord>().AddAsync(record, cts.Token);
             await db.SaveChangesAsync(cts.Token);
+            if (transaction is not null)
+                await transaction.CommitAsync(cts.Token);
 
             _logger.LogInformation(
                 "GrantAuthorityLicense persisted. LicenseId={LicenseId} ContractId={ContractId} Level={Level}",
@@ -518,16 +563,22 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
             var recordedAt = DateTimeOffset.UtcNow;
 
             await using var db = await _dbContextFactory.CreateDbContextAsync(cts.Token);
+            await using var transaction = await BeginTenantTransactionAsync(
+                db,
+                tenantGuid,
+                cts.Token
+            );
 
             var record = new EvidenceRecord
             {
                 Id = licenseId,
-                IdempotencyKey = $"REVOKE:{req.ContractId}:{licenseId}",
                 TenantId = tenantGuid,
-                EvidenceType = "AUTHORITY_REVOKE",
-                Summary =
-                    $"Authority restricted to level {req.NewAuthorityLevel} by {req.RevokedBy}. Basis: {req.ConstitutionalBasis}",
-                PayloadJson = JsonSerializer.Serialize(
+                ContractId = CanonicalGuid(req.ContractId),
+                ProfessionalId = CanonicalGuid(req.RevokedBy),
+                ActionInstanceId = licenseId,
+                ActionType = "AUTHORITY_REVOKE",
+                State = EvidenceRecordState.Executed,
+                ExecutedContent = JsonSerializer.Serialize(
                     new
                     {
                         contractId = req.ContractId,
@@ -536,11 +587,15 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
                         reason = req.Reason,
                     }
                 ),
-                RecordedAt = recordedAt,
+                DecisionSpaceVersion = 1,
+                ConstitutionalBasis = req.ConstitutionalBasis,
+                CreatedAt = recordedAt,
             };
 
             await db.Set<EvidenceRecord>().AddAsync(record, cts.Token);
             await db.SaveChangesAsync(cts.Token);
+            if (transaction is not null)
+                await transaction.CommitAsync(cts.Token);
 
             _logger.LogInformation(
                 "RevokeAuthorityLicense persisted. LicenseId={LicenseId} ContractId={ContractId} Level={Level}",
@@ -1143,5 +1198,29 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
     {
         var bytes = System.Text.Encoding.UTF8.GetBytes(input ?? string.Empty);
         return Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+    }
+
+    private static Guid CanonicalGuid(string value)
+    {
+        if (Guid.TryParse(value, out var parsed))
+            return parsed;
+        var digest = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(value));
+        return new Guid(digest.AsSpan(0, 16));
+    }
+
+    private static async Task<IDbContextTransaction?> BeginTenantTransactionAsync(
+        ConstitutionalDbContext db,
+        Guid tenantId,
+        CancellationToken cancellationToken
+    )
+    {
+        if (!db.Database.IsRelational())
+            return null;
+        var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        await db.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT pg_catalog.set_config('app.tenant_id', {tenantId.ToString("D")}, true), pg_catalog.set_config('app.current_tenant_id', {tenantId.ToString("D")}, true)",
+            cancellationToken
+        );
+        return transaction;
     }
 }

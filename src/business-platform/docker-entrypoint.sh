@@ -4,6 +4,10 @@
 
 set -eu
 
+if [ -n "${POSTGRES_PASSWORD:-}" ]; then
+  export ConnectionStrings__DefaultConnection="Host=localhost;Port=5432;Database=${POSTGRES_DB:-waooaw};Username=${POSTGRES_USER:-postgres};Password=$POSTGRES_PASSWORD"
+fi
+
 if [ "${WAOOAW_DEMO_DATABASE_BOOTSTRAP:-false}" = "true" ]; then
   : "${POSTGRES_USER:?POSTGRES_USER is required for Demo database bootstrap}"
   : "${POSTGRES_DB:?POSTGRES_DB is required for Demo database bootstrap}"

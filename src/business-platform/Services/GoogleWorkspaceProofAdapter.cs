@@ -8,6 +8,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Waooaw.BusinessPlatform.Infrastructure;
 
@@ -72,18 +73,25 @@ public sealed class IdentityBrokerProviderOptions
 public sealed class GoogleWorkspaceProofAdapter(
     HttpClient client,
     IOptions<IdentityBrokerReadOptions> options,
-    ILogger<GoogleWorkspaceProofAdapter>? logger = null
+    ILogger<GoogleWorkspaceProofAdapter>? logger = null,
+    IOptions<IdentityEnvironmentOptions>? environment = null,
+    IConfiguration? configuration = null
 )
 {
     private readonly IdentityBrokerReadOptions _options = options.Value;
+    private readonly bool _previewClaimsEnabled =
+        environment?.Value.Environment == "local"
+        && configuration?.GetValue<bool>("IdentityProviderPreview:ClaimsProofEnabled") == true;
 
-    public bool IsConfigured => _options.IsConfigured;
+    public bool IsConfigured => _options.IsConfigured || _previewClaimsEnabled;
 
     public CustomerWorkspaceTrust TrustFor(ClaimsPrincipal principal)
     {
         var (alias, provider) = ConfiguredProvider(principal);
         return new(
-            _options.ActorIssuer,
+            _previewClaimsEnabled && !_options.IsConfigured
+                ? ValidatePreviewActor(principal, requireFresh: false).Issuer
+                : _options.ActorIssuer,
             provider.ProviderNamespace,
             alias,
             provider.TrustConfigDigest
@@ -114,6 +122,8 @@ public sealed class GoogleWorkspaceProofAdapter(
 
     public VerifiedCustomerActor ValidateActor(ClaimsPrincipal principal, bool requireFresh = false)
     {
+        if (_previewClaimsEnabled && !_options.IsConfigured)
+            return ValidatePreviewActor(principal, requireFresh);
         RequireConfiguration();
         ConfiguredProvider(principal);
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -171,6 +181,25 @@ public sealed class GoogleWorkspaceProofAdapter(
         CancellationToken ct
     )
     {
+        if (_previewClaimsEnabled && !_options.IsConfigured)
+        {
+            var (previewBrokerAlias, previewProvider) = ConfiguredProvider(principal);
+            var previewActor = ValidatePreviewActor(principal, requireFresh: true);
+            if (!HasVerifiedEmail(principal))
+                throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
+            return new VerifiedGoogleWorkspaceProof(
+                previewActor,
+                previewProvider.ProviderNamespace,
+                previewBrokerAlias,
+                previewActor.Subject,
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.FromUnixTimeSeconds(
+                    long.Parse(SingleClaim(principal, "auth_time")!)
+                ),
+                previewProvider.TrustConfigDigest,
+                Guid.NewGuid()
+            );
+        }
         var (brokerAlias, provider) = ConfiguredProvider(principal);
         var actor = ValidateActor(principal, requireFresh: true);
         if (!HasVerifiedEmail(principal))
@@ -331,7 +360,7 @@ public sealed class GoogleWorkspaceProofAdapter(
 
     private void RequireConfiguration()
     {
-        if (!_options.IsConfigured)
+        if (!_options.IsConfigured && !_previewClaimsEnabled)
             throw new CustomerWorkspaceException(CustomerWorkspaceError.DependencyUnavailable);
     }
 
@@ -340,10 +369,67 @@ public sealed class GoogleWorkspaceProofAdapter(
     )
     {
         RequireConfiguration();
-        var alias = SingleClaim(principal, "idp");
-        if (alias is null || !_options.Providers.TryGetValue(alias, out var provider))
+        var brokerClaim = SingleClaim(principal, "idp");
+        var identityProviderClaim = SingleClaim(principal, "identity_provider");
+        if (
+            brokerClaim is not null
+            && identityProviderClaim is not null
+            && !string.Equals(brokerClaim, identityProviderClaim, StringComparison.Ordinal)
+        )
+            return Denied<(string, IdentityBrokerProviderOptions)>("actor_provider_conflict");
+        var alias = identityProviderClaim ?? brokerClaim;
+        if (alias is null)
             return Denied<(string, IdentityBrokerProviderOptions)>("actor_provider");
+        if (_options.Providers.TryGetValue(alias, out var provider))
+            return (alias, provider);
+        if (!_previewClaimsEnabled || alias is not ("google" or "facebook"))
+            return Denied<(string, IdentityBrokerProviderOptions)>("actor_provider");
+        provider = new IdentityBrokerProviderOptions
+        {
+            ProviderNamespace = $"urn:waooaw:identity:local-preview:{alias}:customer-login:v1",
+            TrustConfigDigest = Convert
+                .ToHexString(
+                    System.Security.Cryptography.SHA256.HashData(
+                        Encoding.UTF8.GetBytes($"local-preview-claims:{alias}")
+                    )
+                )
+                .ToLowerInvariant(),
+        };
         return (alias, provider);
+    }
+
+    private VerifiedCustomerActor ValidatePreviewActor(ClaimsPrincipal principal, bool requireFresh)
+    {
+        ConfiguredProvider(principal);
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var subject = principal.HasClaim(claim => claim.Type == "sub")
+            ? SingleClaim(principal, "sub")
+            : SingleClaim(principal, ClaimTypes.NameIdentifier);
+        var issuer = SingleClaim(principal, "iss");
+        if (
+            principal.Identity?.IsAuthenticated != true
+            || !ValidKey(issuer)
+            || !ValidKey(subject)
+            || subject is "." or ".."
+            || subject!.StartsWith("service-account-", StringComparison.Ordinal)
+            || SingleClaim(principal, "azp") != "waooaw-web-preview"
+            || !principal.FindAll("aud").Any(claim => claim.Value == "waooaw-platform")
+            || principal.HasClaim("client_type", "service")
+            || !Timestamp(principal, "iat", out var issued)
+            || issued > now + 30
+            || !Timestamp(principal, "exp", out var expires)
+            || expires <= now - 30
+            || expires <= issued
+            || expires - issued > 900
+            || !Timestamp(principal, "auth_time", out var authenticated)
+            || authenticated > issued + 30
+        )
+            return Denied<VerifiedCustomerActor>("preview_actor");
+        if (requireFresh && now - authenticated > 300)
+            throw new CustomerWorkspaceException(
+                CustomerWorkspaceError.FreshAuthenticationRequired
+            );
+        return new VerifiedCustomerActor(issuer!, subject);
     }
 
     private T Denied<T>(string rule)

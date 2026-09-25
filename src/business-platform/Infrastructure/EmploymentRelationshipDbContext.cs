@@ -37,6 +37,7 @@ public sealed class EmploymentRelationship
     public Guid? ProfessionalAdmissionId { get; init; }
     public string ProfessionalType { get; init; } = string.Empty;
     public string? ProfessionalVersion { get; init; }
+    public string? AcquisitionMode { get; init; }
     public DateTimeOffset AgentInstanceMintedAt { get; init; } = DateTimeOffset.UtcNow;
     public Guid EvaluationIntentId { get; init; }
     public Guid InitiatingParticipantId { get; init; }
@@ -657,6 +658,7 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity
                 .Property(value => value.ProfessionalVersion)
                 .HasColumnName("professional_version");
+            entity.Property(value => value.AcquisitionMode).HasColumnName("acquisition_mode");
             entity
                 .Property(value => value.AgentInstanceMintedAt)
                 .HasColumnName("agent_instance_minted_at");

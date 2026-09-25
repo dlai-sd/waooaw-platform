@@ -7,6 +7,7 @@ import { AcquisitionContinuation } from '@/components/acquisition/AcquisitionCon
 import { StateView } from '@/components/system/StateView';
 import { getRequestI18n } from '@/lib/i18n-server';
 import { browseMarketplaceProfessionals } from '@/lib/api/professionals';
+import { describePortalFailure } from '@/lib/api/portal-failure';
 import { portalMessages } from '@/lib/portal-i18n';
 import { getServerAccessToken } from '@/lib/server-auth';
 
@@ -149,12 +150,15 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
         ) : null}
       </section>
     );
-  } catch {
+  } catch (error) {
+    const failure = await describePortalFailure(error, 'MARKETPLACE');
     return (
       <StateView
         actionHref="/home"
         actionLabel={messages.returnHome}
+        correlationId={failure.correlationId}
         kind="error"
+        reasonCode={failure.reasonCode}
         title="Marketplace unavailable"
         description="Published professional offers could not be retrieved. Eligibility and pricing are not estimated in the browser."
       />

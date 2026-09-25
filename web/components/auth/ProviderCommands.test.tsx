@@ -31,14 +31,18 @@ const providers: IdentityProvider[] = [
 ];
 
 describe('ProviderCommands', () => {
-  beforeEach(() => jest.mocked(signIn).mockReset());
+  beforeEach(() => {
+    jest.mocked(signIn).mockReset();
+  });
 
-  it('starts Google account selection directly', () => {
+  it('starts Google account selection directly', async () => {
     render(<ProviderCommands callbackUrl="/home" intent="login" providers={providers} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Log in with Google' }));
 
-    expect(signIn).toHaveBeenCalledWith('keycloak-google', { callbackUrl: '/home' }, { prompt: 'select_account' });
+    await waitFor(() =>
+      expect(signIn).toHaveBeenCalledWith('keycloak-google', { callbackUrl: '/home' }, { prompt: 'select_account' })
+    );
     expect(screen.getByRole('button', { name: 'Log in with Facebook (Unavailable)' })).toBeDisabled();
   });
 
@@ -93,6 +97,20 @@ describe('ProviderCommands', () => {
 
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Facebook sign-in could not start.'));
     expect(screen.getByRole('alert')).toHaveAttribute('data-reason-code', 'BROKER_LAUNCH_FAILED');
+  });
+
+  it('starts Facebook broker sign-in without an intermediate local sign-out page', async () => {
+    render(
+      <ProviderCommands
+        callbackUrl="/home"
+        intent="login"
+        providers={[{ ...providers[1], availability: 'AVAILABLE', unavailableReason: undefined }]}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Log in with Facebook' }));
+
+    await waitFor(() => expect(signIn).toHaveBeenCalledWith('keycloak-facebook', { callbackUrl: '/home' }, undefined));
   });
 
   it('offers an actionable retry when provider readiness is temporarily unavailable', () => {

@@ -1,6 +1,7 @@
 // Implements: tests/QA-STRATEGY.md §5.1 Unit Tests
 // constitutional_basis: C-041 (Tool Authorization), C-076 (Test Coverage)
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Waooaw.ConstitutionalEngine.Evaluators;
 using Xunit;
@@ -15,10 +16,32 @@ namespace Waooaw.ConstitutionalEngine.Tests.Evaluators;
 /// </summary>
 public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
 {
+    private sealed class ThrowOnceLogger<T> : ILogger<T>
+    {
+        private int _hasThrown;
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter
+        )
+        {
+            if (Interlocked.Exchange(ref _hasThrown, 1) == 0)
+                throw new InvalidOperationException("logger unavailable");
+        }
+    }
+
     // ── Helpers ─────────────────────────────────────────────────────────────
 
-    private static C041ToolAuthorizationEvaluator CreateEvaluator()
-        => new C041ToolAuthorizationEvaluator(NullLogger<C041ToolAuthorizationEvaluator>.Instance);
+    private static C041ToolAuthorizationEvaluator CreateEvaluator() =>
+        new C041ToolAuthorizationEvaluator(NullLogger<C041ToolAuthorizationEvaluator>.Instance);
 
     /// <summary>
     /// Builds a minimal EvaluationContext for MCP tool call evaluation.
@@ -30,8 +53,9 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         string actionType = "MCP_TOOL_CALL",
         string contractId = "contract-cct-ef01",
         string tenantId = "tenant-cct-ef01",
-        int decisionSpaceVersion = 1)
-        => new EvaluationContext(
+        int decisionSpaceVersion = 1
+    ) =>
+        new EvaluationContext(
             ContractId: contractId,
             ActionType: actionType,
             ActionParameters: $"{{\"tool_name\": \"{toolName}\"}}",
@@ -41,14 +65,16 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
             ApprovedBudgetInrPaise: 0L,
             CurrentSpendInrPaise: 0L,
             ProposedSpendInrPaise: 0L,
-            BudgetSkillType: string.Empty);
+            BudgetSkillType: string.Empty
+        );
 
     private static EvaluationContext BuildContextWithRawParameters(
         string actionParameters,
         string actionType = "MCP_TOOL_CALL",
         string contractId = "contract-cct-ef01",
-        string tenantId = "tenant-cct-ef01")
-        => new EvaluationContext(
+        string tenantId = "tenant-cct-ef01"
+    ) =>
+        new EvaluationContext(
             ContractId: contractId,
             ActionType: actionType,
             ActionParameters: actionParameters,
@@ -58,7 +84,8 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
             ApprovedBudgetInrPaise: 0L,
             CurrentSpendInrPaise: 0L,
             ProposedSpendInrPaise: 0L,
-            BudgetSkillType: string.Empty);
+            BudgetSkillType: string.Empty
+        );
 
     // ── CCT-EF-01-A: Default Deny — C-041 Constitutional Floor ──────────────
 
@@ -74,11 +101,17 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
 
         // Assert
         result.Should().NotBeNull();
-        result.Verdict.Should().Be(
-            EvaluationVerdict.Deny,
-            "C-041 mandates default-deny for any tool not in the authorised whitelist");
-        result.Reason.Should().NotBeNullOrWhiteSpace(
-            "every DENY verdict must carry a human-readable reason for audit");
+        result
+            .Verdict.Should()
+            .Be(
+                EvaluationVerdict.Deny,
+                "C-041 mandates default-deny for any tool not in the authorised whitelist"
+            );
+        result
+            .Reason.Should()
+            .NotBeNullOrWhiteSpace(
+                "every DENY verdict must carry a human-readable reason for audit"
+            );
     }
 
     [Fact]
@@ -92,9 +125,12 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert — AD-008: every permission decision must name its constitutional basis
-        result.ClaimId.Should().Be(
-            "C-041",
-            "C041ToolAuthorizationEvaluator must stamp its decisions with claim C-041");
+        result
+            .ClaimId.Should()
+            .Be(
+                "C-041",
+                "C041ToolAuthorizationEvaluator must stamp its decisions with claim C-041"
+            );
     }
 
     [Fact]
@@ -108,9 +144,12 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert
-        result.Verdict.Should().Be(
-            EvaluationVerdict.Deny,
-            "an empty tool name cannot be matched to any authorised tool — default deny applies");
+        result
+            .Verdict.Should()
+            .Be(
+                EvaluationVerdict.Deny,
+                "an empty tool name cannot be matched to any authorised tool — default deny applies"
+            );
     }
 
     [Fact]
@@ -125,9 +164,12 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert
-        result.Verdict.Should().Be(
-            EvaluationVerdict.Deny,
-            "a missing tool_name parameter cannot be authorised; default deny (C-041) applies");
+        result
+            .Verdict.Should()
+            .Be(
+                EvaluationVerdict.Deny,
+                "a missing tool_name parameter cannot be authorised; default deny (C-041) applies"
+            );
     }
 
     [Fact]
@@ -141,9 +183,12 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert
-        result.Verdict.Should().Be(
-            EvaluationVerdict.Deny,
-            "empty action parameters yield no tool_name; default deny (C-041)");
+        result
+            .Verdict.Should()
+            .Be(
+                EvaluationVerdict.Deny,
+                "empty action parameters yield no tool_name; default deny (C-041)"
+            );
     }
 
     [Fact]
@@ -157,18 +202,21 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert
-        result.Verdict.Should().Be(
-            EvaluationVerdict.Deny,
-            "malformed JSON yields no tool_name; evaluator must not throw — default deny (C-041)");
+        result
+            .Verdict.Should()
+            .Be(
+                EvaluationVerdict.Deny,
+                "malformed JSON yields no tool_name; evaluator must not throw — default deny (C-041)"
+            );
     }
 
     // ── CCT-EF-01-B: Non-MCP_TOOL_CALL action types ─────────────────────────
 
     [Fact]
-    public async Task EvaluateAsync_NonMcpActionType_ReturnsDeny()
+    public async Task EvaluateAsync_NonMcpActionType_IsOutsideScope()
     {
         // Arrange — C-041 evaluator is scoped to MCP_TOOL_CALL; other action types
-        // are outside its scope; the constitutional default deny must hold.
+        // are outside its scope and must be decided by their owning evaluator.
         var evaluator = CreateEvaluator();
         var ctx = BuildContext("file_read", actionType: "MARKETING_POST");
 
@@ -176,14 +224,33 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert
-        result.Verdict.Should().Be(
-            EvaluationVerdict.Deny,
-            "C041 evaluator must not authorise non-MCP_TOOL_CALL action types");
+        result
+            .Verdict.Should()
+            .Be(
+                EvaluationVerdict.Allow,
+                "C041 must not veto action types owned by another evaluator"
+            );
         result.ClaimId.Should().Be("C-041");
     }
 
     [Fact]
-    public async Task EvaluateAsync_TradeOrderActionType_ReturnsDeny()
+    public async Task EvaluateAsync_WhenDependencyThrows_FailsClosed()
+    {
+        var evaluator = new C041ToolAuthorizationEvaluator(
+            new ThrowOnceLogger<C041ToolAuthorizationEvaluator>()
+        );
+
+        var result = await evaluator.EvaluateAsync(
+            BuildContext("file_read", actionType: "MARKETING_POST"),
+            CancellationToken.None
+        );
+
+        result.Verdict.Should().Be(EvaluationVerdict.Deny);
+        result.Reason.Should().Contain("failing closed");
+    }
+
+    [Fact]
+    public async Task EvaluateAsync_TradeOrderActionType_IsOutsideScope()
     {
         // Arrange — trading action types are not within C041 tool authorisation scope
         var evaluator = CreateEvaluator();
@@ -193,9 +260,12 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert
-        result.Verdict.Should().Be(
-            EvaluationVerdict.Deny,
-            "TRADE_ORDER action type is not a recognised MCP tool call; C-041 default deny applies");
+        result
+            .Verdict.Should()
+            .Be(
+                EvaluationVerdict.Allow,
+                "TRADE_ORDER requires its own evaluator and is outside C-041 scope"
+            );
     }
 
     // ── CCT-EF-01-C: Result structural invariants ────────────────────────────
@@ -211,8 +281,11 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert
-        result.Should().NotBeNull(
-            "public methods must never return null to indicate failure (constitutional error rule 2)");
+        result
+            .Should()
+            .NotBeNull(
+                "public methods must never return null to indicate failure (constitutional error rule 2)"
+            );
     }
 
     [Fact]
@@ -226,8 +299,11 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert
-        result.ClaimId.Should().NotBeNullOrWhiteSpace(
-            "AD-008 mandates that every permission decision carries its constitutional claim ID");
+        result
+            .ClaimId.Should()
+            .NotBeNullOrWhiteSpace(
+                "AD-008 mandates that every permission decision carries its constitutional claim ID"
+            );
     }
 
     [Fact]
@@ -241,8 +317,11 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert
-        result.Reason.Should().NotBeNullOrWhiteSpace(
-            "every verdict (Allow/Deny/Escalate) must carry a human-readable reason for the audit ledger");
+        result
+            .Reason.Should()
+            .NotBeNullOrWhiteSpace(
+                "every verdict (Allow/Deny/Escalate) must carry a human-readable reason for the audit ledger"
+            );
     }
 
     [Fact]
@@ -256,9 +335,17 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert
-        result.Verdict.Should().BeOneOf(
-            new[] { EvaluationVerdict.Allow, EvaluationVerdict.Deny, EvaluationVerdict.Escalate },
-            "verdict must always be a valid EvaluationVerdict enum member");
+        result
+            .Verdict.Should()
+            .BeOneOf(
+                new[]
+                {
+                    EvaluationVerdict.Allow,
+                    EvaluationVerdict.Deny,
+                    EvaluationVerdict.Escalate,
+                },
+                "verdict must always be a valid EvaluationVerdict enum member"
+            );
     }
 
     // ── CCT-EF-01-D: Cancellation token propagation ──────────────────────────
@@ -279,11 +366,15 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         // We give it a hard timeout to verify it does not block.
         var completedInTime = await Task.WhenAny(
             act().ContinueWith(_ => true),
-            Task.Delay(TimeSpan.FromSeconds(5)).ContinueWith(_ => false));
+            Task.Delay(TimeSpan.FromSeconds(5)).ContinueWith(_ => false)
+        );
 
         var finishedBeforeTimeout = await completedInTime;
-        finishedBeforeTimeout.Should().BeTrue(
-            "evaluator must not block indefinitely on a cancelled token (Error Handling Rule 4)");
+        finishedBeforeTimeout
+            .Should()
+            .BeTrue(
+                "evaluator must not block indefinitely on a cancelled token (Error Handling Rule 4)"
+            );
     }
 
     // ── CCT-EF-01-E: Tenant isolation — context fields propagated correctly ──
@@ -302,10 +393,18 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         var resultB = await evaluator.EvaluateAsync(ctxTenantB, CancellationToken.None);
 
         // Assert
-        resultA.Verdict.Should().Be(EvaluationVerdict.Deny,
-            "C-041 default deny applies to tenant-alpha for unlisted tools");
-        resultB.Verdict.Should().Be(EvaluationVerdict.Deny,
-            "C-041 default deny applies to tenant-beta for unlisted tools");
+        resultA
+            .Verdict.Should()
+            .Be(
+                EvaluationVerdict.Deny,
+                "C-041 default deny applies to tenant-alpha for unlisted tools"
+            );
+        resultB
+            .Verdict.Should()
+            .Be(
+                EvaluationVerdict.Deny,
+                "C-041 default deny applies to tenant-beta for unlisted tools"
+            );
     }
 
     [Fact]
@@ -338,8 +437,12 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert
-        result.Verdict.Should().Be(EvaluationVerdict.Deny,
-            "decision space version does not bypass C-041 default deny for unlisted tools");
+        result
+            .Verdict.Should()
+            .Be(
+                EvaluationVerdict.Deny,
+                "decision space version does not bypass C-041 default deny for unlisted tools"
+            );
     }
 
     [Fact]
@@ -353,8 +456,12 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert
-        result.Verdict.Should().Be(EvaluationVerdict.Deny,
-            "decision space version 0 is stale/invalid; C-041 default deny holds");
+        result
+            .Verdict.Should()
+            .Be(
+                EvaluationVerdict.Deny,
+                "decision space version 0 is stale/invalid; C-041 default deny holds"
+            );
     }
 
     // ── CCT-EF-01-G: Concurrent invocation safety ───────────────────────────
@@ -366,10 +473,14 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         var evaluator = CreateEvaluator();
         const int concurrency = 20;
 
-        var tasks = Enumerable.Range(0, concurrency)
-            .Select(i => evaluator.EvaluateAsync(
-                BuildContext($"concurrent_tool_{i}", tenantId: $"tenant-{i}"),
-                CancellationToken.None))
+        var tasks = Enumerable
+            .Range(0, concurrency)
+            .Select(i =>
+                evaluator.EvaluateAsync(
+                    BuildContext($"concurrent_tool_{i}", tenantId: $"tenant-{i}"),
+                    CancellationToken.None
+                )
+            )
             .ToArray();
 
         // Act
@@ -377,9 +488,12 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
 
         // Assert
         results.Should().HaveCount(concurrency);
-        results.Should().OnlyContain(
-            r => r.Verdict == EvaluationVerdict.Deny,
-            "all concurrent invocations must return DENY for unlisted tools (C-041 stateless default deny)");
+        results
+            .Should()
+            .OnlyContain(
+                r => r.Verdict == EvaluationVerdict.Deny,
+                "all concurrent invocations must return DENY for unlisted tools (C-041 stateless default deny)"
+            );
     }
 
     // ── CCT-EF-01-H: Whitespace and case sensitivity in tool names ───────────
@@ -395,8 +509,12 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert
-        result.Verdict.Should().Be(EvaluationVerdict.Deny,
-            "tool names with leading whitespace must not match authorised tools; C-041 default deny applies");
+        result
+            .Verdict.Should()
+            .Be(
+                EvaluationVerdict.Deny,
+                "tool names with leading whitespace must not match authorised tools; C-041 default deny applies"
+            );
     }
 
     [Fact]
@@ -410,8 +528,12 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert
-        result.Verdict.Should().Be(EvaluationVerdict.Deny,
-            "tool names with trailing whitespace must not match; C-041 default deny applies");
+        result
+            .Verdict.Should()
+            .Be(
+                EvaluationVerdict.Deny,
+                "tool names with trailing whitespace must not match; C-041 default deny applies"
+            );
     }
 
     [Fact]
@@ -425,8 +547,12 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert
-        result.Verdict.Should().Be(EvaluationVerdict.Deny,
-            "a null tool_name JSON value cannot be matched; C-041 default deny applies");
+        result
+            .Verdict.Should()
+            .Be(
+                EvaluationVerdict.Deny,
+                "a null tool_name JSON value cannot be matched; C-041 default deny applies"
+            );
     }
 
     // ── CCT-EF-01-I: EvaluationResult type integrity ─────────────────────────
@@ -442,8 +568,10 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert — ClaimId must be a meaningful constitutional reference, not padding
-        result.ClaimId.Trim().Should().NotBeEmpty(
-            "ClaimId must be a non-whitespace constitutional claim reference (AD-008)");
+        result
+            .ClaimId.Trim()
+            .Should()
+            .NotBeEmpty("ClaimId must be a non-whitespace constitutional claim reference (AD-008)");
     }
 
     [Fact]
@@ -457,8 +585,10 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert
-        result.Reason.Trim().Should().NotBeEmpty(
-            "Reason must be a meaningful audit string, not whitespace padding");
+        result
+            .Reason.Trim()
+            .Should()
+            .NotBeEmpty("Reason must be a meaningful audit string, not whitespace padding");
     }
 
     [Fact]
@@ -473,8 +603,11 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
 
         // Assert
         result.Verdict.Should().Be(EvaluationVerdict.Deny);
-        result.Reason.Should().NotBeNullOrWhiteSpace(
-            "DENY results must carry an audit-ready reason per Error Handling Rule 2");
+        result
+            .Reason.Should()
+            .NotBeNullOrWhiteSpace(
+                "DENY results must carry an audit-ready reason per Error Handling Rule 2"
+            );
     }
 
     // ── CCT-EF-01-J: Multiple sequential evaluations — statelessness ──────────
@@ -492,10 +625,15 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         var result3 = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert
-        result1.Verdict.Should().Be(result2.Verdict,
-            "evaluator must be deterministic — same input must produce same verdict");
-        result2.Verdict.Should().Be(result3.Verdict,
-            "evaluator must be deterministic across repeated calls");
+        result1
+            .Verdict.Should()
+            .Be(
+                result2.Verdict,
+                "evaluator must be deterministic — same input must produce same verdict"
+            );
+        result2
+            .Verdict.Should()
+            .Be(result3.Verdict, "evaluator must be deterministic across repeated calls");
         result1.ClaimId.Should().Be(result2.ClaimId);
         result2.ClaimId.Should().Be(result3.ClaimId);
     }
@@ -513,10 +651,15 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         var second = await evaluator.EvaluateAsync(ctxSecond, CancellationToken.None);
 
         // Assert
-        first.Verdict.Should().Be(EvaluationVerdict.Deny,
-            "first call with unknown tool must DENY (C-041)");
-        second.Verdict.Should().Be(EvaluationVerdict.Deny,
-            "subsequent call with another unknown tool must also DENY — evaluator is stateless");
+        first
+            .Verdict.Should()
+            .Be(EvaluationVerdict.Deny, "first call with unknown tool must DENY (C-041)");
+        second
+            .Verdict.Should()
+            .Be(
+                EvaluationVerdict.Deny,
+                "subsequent call with another unknown tool must also DENY — evaluator is stateless"
+            );
     }
 
     // ── CCT-EF-01-K: Action type sensitivity ─────────────────────────────────
@@ -532,8 +675,12 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert
-        result.Verdict.Should().Be(EvaluationVerdict.Deny,
-            "empty action type cannot be authorised; C-041 default deny applies");
+        result
+            .Verdict.Should()
+            .Be(
+                EvaluationVerdict.Deny,
+                "empty action type cannot be authorised; C-041 default deny applies"
+            );
     }
 
     [Fact]
@@ -547,10 +694,15 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert
-        result.Verdict.Should().Be(EvaluationVerdict.Deny,
-            "correct action type alone is not sufficient; tool name must also be authorised (C-041)");
-        result.ClaimId.Should().Be("C-041",
-            "the C041 evaluator must always stamp its constitutional basis");
+        result
+            .Verdict.Should()
+            .Be(
+                EvaluationVerdict.Deny,
+                "correct action type alone is not sufficient; tool name must also be authorised (C-041)"
+            );
+        result
+            .ClaimId.Should()
+            .Be("C-041", "the C041 evaluator must always stamp its constitutional basis");
     }
 
     // ── CCT-EF-01-L: Allow path — authorized tool invocations ──────────────
@@ -561,15 +713,16 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         // Arrange — tool_name is in the authorized_actions list; C-041 must Allow
         var evaluator = CreateEvaluator();
         var ctx = BuildContextWithRawParameters(
-            "{\"tool_name\": \"read_file\", \"authorized_actions\": \"read_file\"}");
+            "{\"tool_name\": \"read_file\", \"authorized_actions\": \"read_file\"}"
+        );
 
         // Act
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert
-        result.Verdict.Should().Be(
-            EvaluationVerdict.Allow,
-            "tool 'read_file' is in the authorized list");
+        result
+            .Verdict.Should()
+            .Be(EvaluationVerdict.Allow, "tool 'read_file' is in the authorized list");
         result.ClaimId.Should().Be("C-041");
     }
 
@@ -579,15 +732,19 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         // Arrange — tool_name matches the second entry in a comma-separated authorized list
         var evaluator = CreateEvaluator();
         var ctx = BuildContextWithRawParameters(
-            "{\"tool_name\": \"write_file\", \"authorized_actions\": \"read_file,write_file\"}");
+            "{\"tool_name\": \"write_file\", \"authorized_actions\": \"read_file,write_file\"}"
+        );
 
         // Act
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert
-        result.Verdict.Should().Be(
-            EvaluationVerdict.Allow,
-            "tool 'write_file' is the second entry in the authorized list");
+        result
+            .Verdict.Should()
+            .Be(
+                EvaluationVerdict.Allow,
+                "tool 'write_file' is the second entry in the authorized list"
+            );
     }
 
     [Fact]
@@ -596,15 +753,19 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         // Arrange — single-element authorized list exactly matching tool_name
         var evaluator = CreateEvaluator();
         var ctx = BuildContextWithRawParameters(
-            "{\"tool_name\": \"read_file\", \"authorized_actions\": \"read_file\"}");
+            "{\"tool_name\": \"read_file\", \"authorized_actions\": \"read_file\"}"
+        );
 
         // Act
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert
-        result.Verdict.Should().Be(
-            EvaluationVerdict.Allow,
-            "single-element authorized list must Allow the matching tool (C-041)");
+        result
+            .Verdict.Should()
+            .Be(
+                EvaluationVerdict.Allow,
+                "single-element authorized list must Allow the matching tool (C-041)"
+            );
     }
 
     [Fact]
@@ -613,15 +774,19 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         // Arrange — every Allow verdict must carry an audit-ready reason string
         var evaluator = CreateEvaluator();
         var ctx = BuildContextWithRawParameters(
-            "{\"tool_name\": \"read_file\", \"authorized_actions\": \"read_file\"}");
+            "{\"tool_name\": \"read_file\", \"authorized_actions\": \"read_file\"}"
+        );
 
         // Act
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert
         result.Verdict.Should().Be(EvaluationVerdict.Allow);
-        result.Reason.Should().NotBeNullOrWhiteSpace(
-            "Allow verdicts must carry a human-readable audit reason string");
+        result
+            .Reason.Should()
+            .NotBeNullOrWhiteSpace(
+                "Allow verdicts must carry a human-readable audit reason string"
+            );
     }
 
     [Fact]
@@ -630,45 +795,57 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
         // Arrange — tool name matching is case-sensitive (ordinal); READ_FILE ≠ read_file
         var evaluator = CreateEvaluator();
         var ctx = BuildContextWithRawParameters(
-            "{\"tool_name\": \"READ_FILE\", \"authorized_actions\": \"read_file\"}");
+            "{\"tool_name\": \"READ_FILE\", \"authorized_actions\": \"read_file\"}"
+        );
 
         // Act
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert
-        result.Verdict.Should().Be(
-            EvaluationVerdict.Deny,
-            "tool name matching is case-sensitive; READ_FILE does not equal read_file");
+        result
+            .Verdict.Should()
+            .Be(
+                EvaluationVerdict.Deny,
+                "tool name matching is case-sensitive; READ_FILE does not equal read_file"
+            );
     }
 
     public static IEnumerable<object[]> ToolMatrixData =>
-    [
-        new object[] { "read_file",      new[] { "read_file", "write_file" }, true  },
-        new object[] { "write_file",     new[] { "read_file", "write_file" }, true  },
-        new object[] { "exec_shell",     new[] { "read_file", "write_file" }, false },
-        new object[] { "list_directory", new[] { "read_file" },              false },
-        new object[] { "read_file",      new[] { "read_file" },              true  },
-    ];
+        [
+            new object[] { "read_file", new[] { "read_file", "write_file" }, true },
+            new object[] { "write_file", new[] { "read_file", "write_file" }, true },
+            new object[] { "exec_shell", new[] { "read_file", "write_file" }, false },
+            new object[] { "list_directory", new[] { "read_file" }, false },
+            new object[] { "read_file", new[] { "read_file" }, true },
+        ];
 
     [Theory]
     [MemberData(nameof(ToolMatrixData))]
     public async Task EvaluateAsync_ToolMatrix_ReturnsExpectedVerdict(
-        string toolName, string[] authorizedTools, bool expectAllow)
+        string toolName,
+        string[] authorizedTools,
+        bool expectAllow
+    )
     {
         // Arrange — parameterized matrix: (tool, authorized list, expected verdict)
         var evaluator = CreateEvaluator();
         var authList = string.Join(",", authorizedTools);
         var ctx = BuildContextWithRawParameters(
-            $"{{\"tool_name\": \"{toolName}\", \"authorized_actions\": \"{authList}\"}}");
+            $"{{\"tool_name\": \"{toolName}\", \"authorized_actions\": \"{authList}\"}}"
+        );
 
         // Act
         var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         // Assert
         var expected = expectAllow ? EvaluationVerdict.Allow : EvaluationVerdict.Deny;
-        result.Verdict.Should().Be(expected,
-            expectAllow
-                ? $"tool '{toolName}' is in the authorized list [{authList}]"
-                : $"tool '{toolName}' is NOT in the authorized list [{authList}] — C-041 default deny");
+        result
+            .Verdict.Should()
+            .Be(
+                expected,
+                expectAllow
+                    ? $"tool '{toolName}' is in the authorized list [{authList}]"
+                    : $"tool '{toolName}' is NOT in the authorized list [{authList}] — C-041 default deny"
+            );
     }
 }

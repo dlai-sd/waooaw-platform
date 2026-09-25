@@ -128,6 +128,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Release
       ConnectionStrings__DefaultConnection: Host=pgbouncer;Port=5433;Database=waooaw;Username=business_app;Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       ConstitutionalEngine__Address: http://constitutional-engine:5002
+      ConstitutionalEngine__GrpcUrl: http://constitutional-engine:5002
       Temporal__Host: temporal:7233
       Keycloak__Authority: http://keycloak:8080/realms/waooaw
       Keycloak__Audience: waooaw-platform

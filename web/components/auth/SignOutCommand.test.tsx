@@ -2,10 +2,15 @@
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { signIn } from 'next-auth/react';
+import { signIn, signOut } from 'next-auth/react';
 import { AccountSwitchCommand, SignOutCommand } from './SignOutCommand';
 
-jest.mock('next-auth/react', () => ({ signIn: jest.fn() }));
+jest.mock('next-auth/react', () => ({ signIn: jest.fn(), signOut: jest.fn() }));
+
+beforeEach(() => {
+  jest.mocked(signIn).mockReset();
+  jest.mocked(signOut).mockReset().mockResolvedValue({ url: '' });
+});
 
 afterEach(() => {
   jest.restoreAllMocks();
@@ -53,15 +58,29 @@ it('revokes prior server sessions before requesting a different Keycloak account
   expect(localStorage.getItem('unrelated-preference')).toBe('retain');
   expect(fetchMock).toHaveBeenCalledWith('/api/identity/sessions', expect.objectContaining({ method: 'DELETE' }));
   await waitFor(() =>
-    expect(signIn).toHaveBeenCalledWith('keycloak', { callbackUrl: '/home' }, { prompt: 'select_account' })
+    expect(signIn).toHaveBeenCalledWith('keycloak-google', { callbackUrl: '/home' }, { prompt: 'select_account' })
   );
+  expect(signOut).toHaveBeenCalledWith({ redirect: false });
+});
+
+it.each([401, 403])('switches account when prior backend authority is already absent (%s)', async (status) => {
+  Object.defineProperty(globalThis, 'fetch', {
+    configurable: true,
+    value: jest.fn().mockResolvedValue({ ok: false, status }),
+  });
+  render(<AccountSwitchCommand label="Switch account" />);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Switch account' }));
+
+  await waitFor(() => expect(signOut).toHaveBeenCalledWith({ redirect: false }));
+  expect(signIn).toHaveBeenCalledWith('keycloak-google', { callbackUrl: '/home' }, { prompt: 'select_account' });
 });
 
 it('does not launch account selection when prior-session revocation fails', async () => {
   jest.mocked(signIn).mockClear();
   Object.defineProperty(globalThis, 'fetch', {
     configurable: true,
-    value: jest.fn().mockResolvedValue({ ok: false }),
+    value: jest.fn().mockResolvedValue({ ok: false, status: 503 }),
   });
   render(<AccountSwitchCommand label="Switch account" />);
 
@@ -69,4 +88,31 @@ it('does not launch account selection when prior-session revocation fails', asyn
 
   expect(await screen.findByRole('alert')).toHaveTextContent('Account switch could not start. Try again.');
   expect(signIn).not.toHaveBeenCalled();
+});
+
+it('falls back to local NextAuth sign-out when broker logout cannot start', async () => {
+  Object.defineProperty(globalThis, 'fetch', {
+    configurable: true,
+    value: jest.fn().mockResolvedValue({ ok: false }),
+  });
+  render(<SignOutCommand label="Sign out" />);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+
+  await waitFor(() => expect(signOut).toHaveBeenCalledWith({ callbackUrl: '/' }));
+});
+
+it('clears local NextAuth after backend revocation without entering the Keycloak logout page', async () => {
+  Object.defineProperty(globalThis, 'fetch', {
+    configurable: true,
+    value: jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ logoutPath: '/api/auth/keycloak-logout?nonce=valid' }),
+    }),
+  });
+  render(<SignOutCommand label="Sign out" />);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+
+  await waitFor(() => expect(signOut).toHaveBeenCalledWith({ callbackUrl: '/' }));
 });

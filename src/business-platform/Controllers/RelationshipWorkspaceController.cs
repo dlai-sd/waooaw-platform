@@ -22,6 +22,7 @@ public sealed record RelationshipOnboardRequest(
 
 [ApiController]
 [Authorize]
+[CustomerIdentityRoute(requiresMembership: true)]
 [Route("api/v1/employment/relationships/{relationshipId:guid}/workspace")]
 public sealed class RelationshipWorkspaceController(
     EmploymentRelationshipService relationships,

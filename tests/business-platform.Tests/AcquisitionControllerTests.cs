@@ -63,6 +63,7 @@ public sealed class AcquisitionControllerTests
         var participant = Assert.Single(await db.RelationshipParticipants.ToListAsync());
         Assert.Equal(membership.TenantId, relationship.TenantId);
         Assert.Equal(membership.AccountId, relationship.InitiatingParticipantId);
+        Assert.Equal(intent, relationship.AcquisitionMode);
         Assert.Equal(membership.AccountId, participant.ParticipantId);
         Assert.Equal(
             intent == "TRIAL" ? EmploymentRelationshipState.TrialActive : EmploymentRelationshipState.Configuring,
@@ -103,6 +104,31 @@ public sealed class AcquisitionControllerTests
 
         var result = await controller.ContinueAsync(
             ValidRequest("HIRE"), Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None);
+
+        Assert.Equal(StatusCodes.Status409Conflict, Assert.IsType<ObjectResult>(result).StatusCode);
+        Assert.Equal(0, gateway.CallCount);
+        await using var db = factory.CreateDbContext();
+        Assert.Empty(db.EmploymentRelationships);
+    }
+
+    [Fact]
+    public async Task UnconfiguredTrialOwnersRejectBeforeRelationshipCreation()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var gateway = new RecordingRelationshipConstitutionalGateway();
+        var relationships = new EmploymentRelationshipService(
+            factory, gateway, NullLogger<EmploymentRelationshipService>.Instance);
+        var membership = new CustomerWorkspaceMembership(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), ["OWNER"]);
+        await SeedAdmissionAsync(factory, membership.TenantId);
+        var trials = new RelationshipTrialService(
+            factory,
+            relationships,
+            new UnconfiguredRelationshipTrialOwnerGateway()
+        );
+        var controller = Controller(factory, Catalog(), relationships, membership, trials);
+
+        var result = await controller.ContinueAsync(
+            ValidRequest("TRIAL"), Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None);
 
         Assert.Equal(StatusCodes.Status409Conflict, Assert.IsType<ObjectResult>(result).StatusCode);
         Assert.Equal(0, gateway.CallCount);
@@ -180,7 +206,13 @@ public sealed class AcquisitionControllerTests
         CustomerWorkspaceMembership? membership,
         RelationshipTrialService? trials = null)
     {
-        var controller = new AcquisitionController(factory, catalog, relationships, trials)
+        var controller = new AcquisitionController(
+            factory,
+            catalog,
+            relationships,
+            NullLogger<AcquisitionController>.Instance,
+            trials
+        )
         {
             ControllerContext = new ControllerContext
             {

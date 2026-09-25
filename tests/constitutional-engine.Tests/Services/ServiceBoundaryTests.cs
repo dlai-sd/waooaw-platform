@@ -36,8 +36,10 @@ public sealed class ServiceBoundaryTests
     {
         public string ClaimId => "TEST";
 
-        public Task<EvaluationResult> EvaluateAsync(EvaluationContext context, CancellationToken cancellationToken) =>
-            throw new InvalidOperationException("evaluation failed");
+        public Task<EvaluationResult> EvaluateAsync(
+            EvaluationContext context,
+            CancellationToken cancellationToken
+        ) => throw new InvalidOperationException("evaluation failed");
     }
 
     private static DbContextOptions<TContext> Options<TContext>()
@@ -51,36 +53,51 @@ public sealed class ServiceBoundaryTests
             evaluators is { Length: > 0 }
                 ? evaluators
                 :
-            [
-                new C041ToolAuthorizationEvaluator(NullLogger<C041ToolAuthorizationEvaluator>.Instance),
-                new C043BudgetCeilingEvaluator(NullLogger<C043BudgetCeilingEvaluator>.Instance),
-                new C048NonExploitationEvaluator(NullLogger<C048NonExploitationEvaluator>.Instance),
-                new C049HonestLimitationEvaluator(NullLogger<C049HonestLimitationEvaluator>.Instance),
-                new C062AiSecurityEvaluator(NullLogger<C062AiSecurityEvaluator>.Instance),
-            ],
-            NullLogger<EvaluatorRegistry>.Instance);
+                [
+                    new C041ToolAuthorizationEvaluator(
+                        NullLogger<C041ToolAuthorizationEvaluator>.Instance
+                    ),
+                    new C043BudgetCeilingEvaluator(NullLogger<C043BudgetCeilingEvaluator>.Instance),
+                    new C048NonExploitationEvaluator(
+                        NullLogger<C048NonExploitationEvaluator>.Instance
+                    ),
+                    new C049HonestLimitationEvaluator(
+                        NullLogger<C049HonestLimitationEvaluator>.Instance
+                    ),
+                    new C062AiSecurityEvaluator(NullLogger<C062AiSecurityEvaluator>.Instance),
+                ],
+            NullLogger<EvaluatorRegistry>.Instance
+        );
 
     private static ConstitutionalEngineService Service(
         IDbContextFactory<ConstitutionalDbContext>? constitutionalFactory = null,
         IDbContextFactory<EmergencyStopDbContext>? emergencyFactory = null,
         IDbContextFactory<AuditSinkDbContext>? auditFactory = null,
-        EvaluatorRegistry? registry = null) =>
+        EvaluatorRegistry? registry = null
+    ) =>
         new(
             registry ?? Registry(),
             NullLogger<ConstitutionalEngineService>.Instance,
-            constitutionalFactory ?? new Factory<ConstitutionalDbContext>(Options<ConstitutionalDbContext>()),
+            constitutionalFactory
+                ?? new Factory<ConstitutionalDbContext>(Options<ConstitutionalDbContext>()),
             emergencyFactory!,
             null!,
-            auditFactory);
+            auditFactory
+        );
 
-    private static RecordEvidenceRequest EvidenceRequest(string actionInstanceId) => new()
-    {
-        ActionInstanceId = actionInstanceId,
-        ActionType = "MCP_TOOL_CALL",
-        State = EvidenceState.Proposed,
-        ConstitutionalBasis = "C-023",
-        ProposedContent = "{\"tool\":\"read_file\"}",
-    };
+    private static RecordEvidenceRequest EvidenceRequest(string actionInstanceId) =>
+        new()
+        {
+            ActionInstanceId = string.IsNullOrEmpty(actionInstanceId)
+                ? actionInstanceId
+                : DeterministicGuid(actionInstanceId).ToString(),
+            ContractId = Guid.NewGuid().ToString(),
+            ProfessionalId = Guid.NewGuid().ToString(),
+            ActionType = "MCP_TOOL_CALL",
+            State = EvidenceState.Proposed,
+            ConstitutionalBasis = "C-023",
+            ProposedContent = "{\"tool\":\"read_file\"}",
+        };
 
     [Theory]
     [InlineData(null, StatusCode.Unauthenticated)]
@@ -88,9 +105,12 @@ public sealed class ServiceBoundaryTests
     [InlineData("not-a-uuid", StatusCode.Unauthenticated)]
     public async Task RecordEvidence_RejectsInvalidTenant(string? tenantId, StatusCode expected)
     {
-        var act = () => Service().RecordEvidence(
-            EvidenceRequest("action-1"),
-            FakeServerCallContext.Create(tenantId));
+        var act = () =>
+            Service()
+                .RecordEvidence(
+                    EvidenceRequest("action-1"),
+                    FakeServerCallContext.Create(tenantId)
+                );
 
         var error = await act.Should().ThrowAsync<RpcException>();
         error.Which.StatusCode.Should().Be(expected);
@@ -101,9 +121,57 @@ public sealed class ServiceBoundaryTests
     {
         var request = EvidenceRequest(string.Empty);
 
-        var act = () => Service().RecordEvidence(
-            request,
-            FakeServerCallContext.Create(Guid.NewGuid().ToString()));
+        var act = () =>
+            Service()
+                .RecordEvidence(request, FakeServerCallContext.Create(Guid.NewGuid().ToString()));
+
+        var error = await act.Should().ThrowAsync<RpcException>();
+        error.Which.StatusCode.Should().Be(StatusCode.InvalidArgument);
+    }
+
+    [Theory]
+    [InlineData(
+        "not-a-uuid",
+        "00000000-0000-0000-0000-000000000001",
+        "professional",
+        EvidenceState.Proposed
+    )]
+    [InlineData(
+        "00000000-0000-0000-0000-000000000001",
+        "not-a-uuid",
+        "professional",
+        EvidenceState.Proposed
+    )]
+    [InlineData(
+        "00000000-0000-0000-0000-000000000001",
+        "00000000-0000-0000-0000-000000000002",
+        "",
+        EvidenceState.Proposed
+    )]
+    [InlineData(
+        "00000000-0000-0000-0000-000000000001",
+        "00000000-0000-0000-0000-000000000002",
+        "professional",
+        EvidenceState.Unspecified
+    )]
+    public async Task RecordEvidence_RejectsNonCanonicalEvidenceValues(
+        string actionInstanceId,
+        string contractId,
+        string professionalId,
+        EvidenceState state
+    )
+    {
+        var request = new RecordEvidenceRequest
+        {
+            ActionInstanceId = actionInstanceId,
+            ContractId = contractId,
+            ProfessionalId = professionalId,
+            State = state,
+        };
+
+        var act = () =>
+            Service()
+                .RecordEvidence(request, FakeServerCallContext.Create(Guid.NewGuid().ToString()));
 
         var error = await act.Should().ThrowAsync<RpcException>();
         error.Which.StatusCode.Should().Be(StatusCode.InvalidArgument);
@@ -122,15 +190,28 @@ public sealed class ServiceBoundaryTests
 
         second.EvidenceRecordId.Should().Be(first.EvidenceRecordId);
         await using var db = new ConstitutionalDbContext(options);
-        (await db.EvidenceRecords.SingleAsync()).PayloadJson.Should().Be(request.ProposedContent);
+        (await db.EvidenceRecords.SingleAsync())
+            .ProposedContent.Should()
+            .Be(request.ProposedContent);
+    }
+
+    private static Guid DeterministicGuid(string value)
+    {
+        var digest = System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(value)
+        );
+        return new Guid(digest.AsSpan(0, 16));
     }
 
     [Fact]
     public async Task RecordEvidence_WhenDatabaseFails_ReturnsInternal()
     {
-        var act = () => Service(new ThrowingFactory<ConstitutionalDbContext>()).RecordEvidence(
-            EvidenceRequest("action-failure"),
-            FakeServerCallContext.Create(Guid.NewGuid().ToString()));
+        var act = () =>
+            Service(new ThrowingFactory<ConstitutionalDbContext>())
+                .RecordEvidence(
+                    EvidenceRequest("action-failure"),
+                    FakeServerCallContext.Create(Guid.NewGuid().ToString())
+                );
 
         var error = await act.Should().ThrowAsync<RpcException>();
         error.Which.StatusCode.Should().Be(StatusCode.Internal);
@@ -140,7 +221,8 @@ public sealed class ServiceBoundaryTests
     [Fact]
     public async Task ValidateAction_RequiresTenant()
     {
-        var act = () => Service().ValidateAction(new ValidateActionRequest(), FakeServerCallContext.Create());
+        var act = () =>
+            Service().ValidateAction(new ValidateActionRequest(), FakeServerCallContext.Create());
 
         var error = await act.Should().ThrowAsync<RpcException>();
         error.Which.StatusCode.Should().Be(StatusCode.Unauthenticated);
@@ -149,14 +231,17 @@ public sealed class ServiceBoundaryTests
     [Fact]
     public async Task ValidateAction_HonestLimitation_ReturnsEscalate()
     {
-        var response = await Service().ValidateAction(
-            new ValidateActionRequest
-            {
-                ContractId = "contract-escalate",
-                ActionType = "MCP_TOOL_CALL",
-                ActionParameters = "{\"tool_name\":\"read_file\",\"authorized_actions\":\"read_file\",\"uncertainty_acknowledged\":\"true\"}",
-            },
-            FakeServerCallContext.Create(Guid.NewGuid().ToString()));
+        var response = await Service()
+            .ValidateAction(
+                new ValidateActionRequest
+                {
+                    ContractId = "contract-escalate",
+                    ActionType = "MCP_TOOL_CALL",
+                    ActionParameters =
+                        "{\"tool_name\":\"read_file\",\"authorized_actions\":\"read_file\",\"uncertainty_acknowledged\":\"true\"}",
+                },
+                FakeServerCallContext.Create(Guid.NewGuid().ToString())
+            );
 
         response.Decision.Should().Be(ValidationDecision.Escalate);
         response.ConstitutionalBasis.Should().Be("C-049");
@@ -167,9 +252,11 @@ public sealed class ServiceBoundaryTests
     {
         var service = Service(registry: Registry(new ThrowingEvaluator()));
 
-        var act = () => service.ValidateAction(
-            new ValidateActionRequest { ContractId = "contract-failure" },
-            FakeServerCallContext.Create(Guid.NewGuid().ToString()));
+        var act = () =>
+            service.ValidateAction(
+                new ValidateActionRequest { ContractId = "contract-failure" },
+                FakeServerCallContext.Create(Guid.NewGuid().ToString())
+            );
 
         var error = await act.Should().ThrowAsync<RpcException>();
         error.Which.StatusCode.Should().Be(StatusCode.Internal);
@@ -181,13 +268,15 @@ public sealed class ServiceBoundaryTests
     {
         var service = Service(registry: Registry(new ThrowingEvaluator()));
 
-        var act = () => service.EvaluatePolicy(
-            new EvaluatePolicyRequest
-            {
-                ContractId = "contract-failure",
-                ActionType = "MCP_TOOL_CALL",
-            },
-            FakeServerCallContext.Create(Guid.NewGuid().ToString()));
+        var act = () =>
+            service.EvaluatePolicy(
+                new EvaluatePolicyRequest
+                {
+                    ContractId = "contract-failure",
+                    ActionType = "MCP_TOOL_CALL",
+                },
+                FakeServerCallContext.Create(Guid.NewGuid().ToString())
+            );
 
         var error = await act.Should().ThrowAsync<RpcException>();
         error.Which.StatusCode.Should().Be(StatusCode.Internal);
@@ -195,19 +284,41 @@ public sealed class ServiceBoundaryTests
     }
 
     [Theory]
-    [InlineData(null, "00000000-0000-0000-0000-000000000001", "customer", StatusCode.Unauthenticated)]
-    [InlineData("not-a-uuid", "00000000-0000-0000-0000-000000000001", "customer", StatusCode.Unauthenticated)]
-    [InlineData("00000000-0000-0000-0000-000000000001", "not-a-uuid", "customer", StatusCode.InvalidArgument)]
-    [InlineData("00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002", "", StatusCode.InvalidArgument)]
+    [InlineData(
+        null,
+        "00000000-0000-0000-0000-000000000001",
+        "customer",
+        StatusCode.Unauthenticated
+    )]
+    [InlineData(
+        "not-a-uuid",
+        "00000000-0000-0000-0000-000000000001",
+        "customer",
+        StatusCode.Unauthenticated
+    )]
+    [InlineData(
+        "00000000-0000-0000-0000-000000000001",
+        "not-a-uuid",
+        "customer",
+        StatusCode.InvalidArgument
+    )]
+    [InlineData(
+        "00000000-0000-0000-0000-000000000001",
+        "00000000-0000-0000-0000-000000000002",
+        "",
+        StatusCode.InvalidArgument
+    )]
     public async Task TriggerEmergencyStop_RejectsInvalidInput(
         string? tenantId,
         string contractId,
         string stoppedBy,
-        StatusCode expected)
+        StatusCode expected
+    )
     {
         var request = new EmergencyStopRequest { ContractId = contractId, StoppedBy = stoppedBy };
 
-        var act = () => Service().TriggerEmergencyStop(request, FakeServerCallContext.Create(tenantId));
+        var act = () =>
+            Service().TriggerEmergencyStop(request, FakeServerCallContext.Create(tenantId));
 
         var error = await act.Should().ThrowAsync<RpcException>();
         error.Which.StatusCode.Should().Be(expected);
@@ -216,13 +327,16 @@ public sealed class ServiceBoundaryTests
     [Fact]
     public async Task TriggerEmergencyStop_WithoutConfiguredDatabase_ReturnsInternal()
     {
-        var act = () => Service().TriggerEmergencyStop(
-            new EmergencyStopRequest
-            {
-                ContractId = Guid.NewGuid().ToString(),
-                StoppedBy = "customer-1",
-            },
-            FakeServerCallContext.Create(Guid.NewGuid().ToString()));
+        var act = () =>
+            Service()
+                .TriggerEmergencyStop(
+                    new EmergencyStopRequest
+                    {
+                        ContractId = Guid.NewGuid().ToString(),
+                        StoppedBy = "customer-1",
+                    },
+                    FakeServerCallContext.Create(Guid.NewGuid().ToString())
+                );
 
         var error = await act.Should().ThrowAsync<RpcException>();
         error.Which.StatusCode.Should().Be(StatusCode.Internal);
@@ -241,10 +355,8 @@ public sealed class ServiceBoundaryTests
         };
         request.ActiveSessionIds.Add("session-1");
 
-        var response = await Service(
-            emergencyFactory: new Factory<EmergencyStopDbContext>(options)).TriggerEmergencyStop(
-                request,
-                FakeServerCallContext.Create(tenantId.ToString()));
+        var response = await Service(emergencyFactory: new Factory<EmergencyStopDbContext>(options))
+            .TriggerEmergencyStop(request, FakeServerCallContext.Create(tenantId.ToString()));
 
         response.EmergencyStopRecordId.Should().StartWith("EMERGENCY_STOP:");
         response.AffectedSessions.Should().Equal("session-1");
@@ -258,14 +370,16 @@ public sealed class ServiceBoundaryTests
     [Fact]
     public async Task TriggerEmergencyStop_WhenDatabaseFails_ReturnsInternal()
     {
-        var act = () => Service(
-            emergencyFactory: new ThrowingFactory<EmergencyStopDbContext>()).TriggerEmergencyStop(
-                new EmergencyStopRequest
-                {
-                    ContractId = Guid.NewGuid().ToString(),
-                    StoppedBy = "customer-1",
-                },
-                FakeServerCallContext.Create(Guid.NewGuid().ToString()));
+        var act = () =>
+            Service(emergencyFactory: new ThrowingFactory<EmergencyStopDbContext>())
+                .TriggerEmergencyStop(
+                    new EmergencyStopRequest
+                    {
+                        ContractId = Guid.NewGuid().ToString(),
+                        StoppedBy = "customer-1",
+                    },
+                    FakeServerCallContext.Create(Guid.NewGuid().ToString())
+                );
 
         var error = await act.Should().ThrowAsync<RpcException>();
         error.Which.StatusCode.Should().Be(StatusCode.Internal);
@@ -274,11 +388,17 @@ public sealed class ServiceBoundaryTests
     [Theory]
     [InlineData(null, StatusCode.Unauthenticated)]
     [InlineData("not-a-uuid", StatusCode.Unauthenticated)]
-    public async Task QueryEvidenceRecords_RejectsInvalidTenant(string? tenantId, StatusCode expected)
+    public async Task QueryEvidenceRecords_RejectsInvalidTenant(
+        string? tenantId,
+        StatusCode expected
+    )
     {
-        var act = () => Service().QueryEvidenceRecords(
-            new QueryEvidenceRecordsRequest(),
-            FakeServerCallContext.Create(tenantId));
+        var act = () =>
+            Service()
+                .QueryEvidenceRecords(
+                    new QueryEvidenceRecordsRequest(),
+                    FakeServerCallContext.Create(tenantId)
+                );
 
         var error = await act.Should().ThrowAsync<RpcException>();
         error.Which.StatusCode.Should().Be(expected);
@@ -290,9 +410,12 @@ public sealed class ServiceBoundaryTests
         var request = new QueryEvidenceRecordsRequest { PageSize = 101 };
         request.EvidenceRecordIds.Add(Guid.NewGuid().ToString());
 
-        var act = () => Service().QueryEvidenceRecords(
-            request,
-            FakeServerCallContext.Create(Guid.NewGuid().ToString()));
+        var act = () =>
+            Service()
+                .QueryEvidenceRecords(
+                    request,
+                    FakeServerCallContext.Create(Guid.NewGuid().ToString())
+                );
 
         var error = await act.Should().ThrowAsync<RpcException>();
         error.Which.StatusCode.Should().Be(StatusCode.InvalidArgument);
@@ -304,9 +427,12 @@ public sealed class ServiceBoundaryTests
         var request = new QueryEvidenceRecordsRequest();
         request.EvidenceRecordIds.Add(Guid.NewGuid().ToString());
 
-        var act = () => Service().QueryEvidenceRecords(
-            request,
-            FakeServerCallContext.Create(Guid.NewGuid().ToString()));
+        var act = () =>
+            Service()
+                .QueryEvidenceRecords(
+                    request,
+                    FakeServerCallContext.Create(Guid.NewGuid().ToString())
+                );
 
         var error = await act.Should().ThrowAsync<RpcException>();
         error.Which.StatusCode.Should().Be(StatusCode.Unavailable);
@@ -318,8 +444,12 @@ public sealed class ServiceBoundaryTests
         var request = new QueryEvidenceRecordsRequest();
         request.EvidenceRecordIds.Add("not-a-uuid");
 
-        var act = () => Service(auditFactory: new Factory<AuditSinkDbContext>(Options<AuditSinkDbContext>()))
-            .QueryEvidenceRecords(request, FakeServerCallContext.Create(Guid.NewGuid().ToString()));
+        var act = () =>
+            Service(auditFactory: new Factory<AuditSinkDbContext>(Options<AuditSinkDbContext>()))
+                .QueryEvidenceRecords(
+                    request,
+                    FakeServerCallContext.Create(Guid.NewGuid().ToString())
+                );
 
         var error = await act.Should().ThrowAsync<RpcException>();
         error.Which.StatusCode.Should().Be(StatusCode.InvalidArgument);
@@ -369,9 +499,12 @@ public sealed class ServiceBoundaryTests
     [InlineData("00000000-0000-0000-0000-000000000001", "")]
     public async Task RecordErasure_RejectsInvalidRequest(string tenantId, string orderId)
     {
-        var act = () => Service().RecordErasure(
-            new RecordErasureRequest { TenantId = tenantId, ErasureOrderId = orderId },
-            FakeServerCallContext.Create(tenantId));
+        var act = () =>
+            Service()
+                .RecordErasure(
+                    new RecordErasureRequest { TenantId = tenantId, ErasureOrderId = orderId },
+                    FakeServerCallContext.Create(tenantId)
+                );
 
         var error = await act.Should().ThrowAsync<RpcException>();
         error.Which.StatusCode.Should().Be(StatusCode.InvalidArgument);
@@ -380,13 +513,15 @@ public sealed class ServiceBoundaryTests
     [Fact]
     public async Task RecordErasure_WithoutAuditSink_ReturnsSuccessfulNoOp()
     {
-        var response = await Service().RecordErasure(
-            new RecordErasureRequest
-            {
-                TenantId = Guid.NewGuid().ToString(),
-                ErasureOrderId = "order-1",
-            },
-            FakeServerCallContext.Create());
+        var response = await Service()
+            .RecordErasure(
+                new RecordErasureRequest
+                {
+                    TenantId = Guid.NewGuid().ToString(),
+                    ErasureOrderId = "order-1",
+                },
+                FakeServerCallContext.Create()
+            );
 
         response.Success.Should().BeTrue();
         response.RecordsUpdated.Should().Be(0);
@@ -395,13 +530,16 @@ public sealed class ServiceBoundaryTests
     [Fact]
     public async Task RecordErasure_WhenDatabaseFails_ReturnsInternal()
     {
-        var act = () => Service(auditFactory: new ThrowingFactory<AuditSinkDbContext>()).RecordErasure(
-            new RecordErasureRequest
-            {
-                TenantId = Guid.NewGuid().ToString(),
-                ErasureOrderId = "order-1",
-            },
-            FakeServerCallContext.Create());
+        var act = () =>
+            Service(auditFactory: new ThrowingFactory<AuditSinkDbContext>())
+                .RecordErasure(
+                    new RecordErasureRequest
+                    {
+                        TenantId = Guid.NewGuid().ToString(),
+                        ErasureOrderId = "order-1",
+                    },
+                    FakeServerCallContext.Create()
+                );
 
         var error = await act.Should().ThrowAsync<RpcException>();
         error.Which.StatusCode.Should().Be(StatusCode.Internal);

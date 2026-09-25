@@ -1,22 +1,130 @@
 services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: waooaw
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: waooaw
+      TEMPORAL_PASS: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - auth_preview_postgres:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./infrastructure/postgres/auth-preview/seed-marketplace.sql:/auth-preview/seed-marketplace.sql:ro
+      - ./infrastructure/postgres/auth-preview/ensure-ce-audit-role.sql:/auth-preview/ensure-ce-audit-role.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U waooaw -d waooaw"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  temporal:
+    image: temporalio/auto-setup:1.24
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_USER: waooaw
+      POSTGRES_PWD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_SEEDS: postgres
+      DYNAMIC_CONFIG_FILE_PATH: /etc/temporal/dynamicconfig.yaml
+    volumes:
+      - ./infrastructure/temporal/dynamicconfig.yaml:/etc/temporal/dynamicconfig.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.58
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+
+  constitutional-engine:
+    build:
+      context: .
+      dockerfile: src/constitutional-engine/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=waooaw;Username=constitutional_app;Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      OTLP_ENDPOINT: http://jaeger:4317
+      GRPC_PORT: "5002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "grpc_health_probe", "-addr=127.0.0.1:5002"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  business-platform:
+    build:
+      context: .
+      dockerfile: src/business-platform/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=waooaw;Username=business_app;Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      ConstitutionalEngine__Address: http://constitutional-engine:5002
+      ConstitutionalEngine__GrpcUrl: http://constitutional-engine:5002
+      Temporal__Address: temporal:7233
+      Keycloak__Authority: ${KEYCLOAK_ISSUER:?KEYCLOAK_ISSUER is required}
+      Keycloak__Audience: waooaw-platform
+      Identity__Hmac__Key: ${IDENTITY_HMAC_KEY:?IDENTITY_HMAC_KEY is required}
+      Identity__Hmac__ActiveVersion: v1
+      IdentitySecurityEvents__Ingest__SigningKey: ${IDENTITY_EVENT_SIGNING_KEY:?IDENTITY_EVENT_SIGNING_KEY is required}
+      PhoneIdentity__SigningKey: ${PHONE_IDENTITY_SIGNING_KEY:?PHONE_IDENTITY_SIGNING_KEY is required}
+      WhatsApp__WebhookSecret: ${WHATSAPP_WEBHOOK_SECRET:?WHATSAPP_WEBHOOK_SECRET is required}
+      WhatsApp__TenantTokenKey: ${WHATSAPP_TENANT_TOKEN_KEY:?WHATSAPP_TENANT_TOKEN_KEY is required}
+      Conversation__CursorHmacKey: ${CONVERSATION_CURSOR_HMAC_KEY:?CONVERSATION_CURSOR_HMAC_KEY is required}
+      ChannelContinuity__EnvelopeHmacKey: ${CHANNEL_CONTINUITY_HMAC_KEY:?CHANNEL_CONTINUITY_HMAC_KEY is required}
+      IdentityProviderPreview__EnabledProviders__0: GOOGLE
+      IdentityProviderPreview__EnabledProviders__1: FACEBOOK
+      IdentityProviderPreview__ClaimsProofEnabled: "true"
+      DataProtection__KeysPath: /var/lib/waooaw/dataprotection-keys
+      DataProtection__CertificatePath: /run/secrets/data-protection.pfx
+      DataProtection__CertificatePassword: ${DATA_PROTECTION_CERTIFICATE_PASSWORD:?DATA_PROTECTION_CERTIFICATE_PASSWORD is required}
+      OTLP_ENDPOINT: http://jaeger:4317
+    volumes:
+      - auth_preview_data_protection:/var/lib/waooaw/dataprotection-keys
+      - ./.auth-preview/data-protection.pfx:/run/secrets/data-protection.pfx:ro
+    depends_on:
+      constitutional-engine:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:5001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 20s
+
   auth-preview:
-    image: ${WAOOAW_WEB_IMAGE:?WAOOAW_WEB_IMAGE must be an immutable digest reference}
-    pull_policy: always
+    image: ${WAOOAW_WEB_IMAGE:-waooaw/auth-preview-web:${AUTH_PREVIEW_SOURCE_TAG:?AUTH_PREVIEW_SOURCE_TAG is required}}
+    build:
+      context: .
+      dockerfile: web/Dockerfile
     ports:
       - "${AUTH_PREVIEW_PORT:-3100}:3000"
     environment:
       NODE_ENV: production
       NEXTAUTH_URL: ${AUTH_PREVIEW_ORIGIN:?AUTH_PREVIEW_ORIGIN is required}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required}
+      AUTH_PREVIEW_DEPLOYMENT_ID: ${AUTH_PREVIEW_DEPLOYMENT_ID:?AUTH_PREVIEW_DEPLOYMENT_ID is required}
+      AUTH_PREVIEW_SESSION_MAX_AGE_SECONDS: ${AUTH_PREVIEW_SESSION_MAX_AGE_SECONDS:-3600}
       KEYCLOAK_ISSUER: ${KEYCLOAK_ISSUER:?KEYCLOAK_ISSUER is required}
       KEYCLOAK_CLIENT_ID: waooaw-web-preview
       KEYCLOAK_PUBLIC_CLIENT: "true"
-      BUSINESS_PLATFORM_URL: ${BUSINESS_PLATFORM_URL:?BUSINESS_PLATFORM_URL is required}
+      BUSINESS_PLATFORM_URL: http://business-platform:5001
       IDENTITY_EVENT_SIGNING_KEY: ${IDENTITY_EVENT_SIGNING_KEY:?IDENTITY_EVENT_SIGNING_KEY is required}
-    restart: unless-stopped
+    depends_on:
+      business-platform:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/login"]
       interval: 10s
       timeout: 3s
       retries: 12
       start_period: 15s
+
+volumes:
+  auth_preview_postgres:
+  auth_preview_data_protection:

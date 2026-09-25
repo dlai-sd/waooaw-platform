@@ -5,6 +5,7 @@
 import { redirect } from 'next/navigation';
 import { StateView } from '@/components/system/StateView';
 import { getIdentitySession } from '@/lib/api/identity';
+import { describePortalFailure } from '@/lib/api/portal-failure';
 import { listEmploymentRelationships } from '@/lib/api/relationships';
 import { getRequestI18n } from '@/lib/i18n-server';
 import { getServerAccessToken } from '@/lib/server-auth';
@@ -42,12 +43,15 @@ export default async function ApplicationHomePage() {
   let relationships: Awaited<ReturnType<typeof listEmploymentRelationships>>;
   try {
     relationships = await listEmploymentRelationships(accessToken);
-  } catch {
+  } catch (error) {
+    const failure = await describePortalFailure(error, 'HOME');
     return (
       <StateView
         actionHref="/home"
         actionLabel={messages.tryAgain}
         kind="error"
+        correlationId={failure.correlationId}
+        reasonCode={failure.reasonCode}
         title={messages.globalErrorTitle}
         description={messages.globalErrorDescription}
       />

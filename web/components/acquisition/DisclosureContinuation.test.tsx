@@ -33,12 +33,9 @@ describe('DisclosureContinuation', () => {
     fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(continueButton);
 
-    const registrationUrl = new URL(push.mock.calls[0][0], 'https://waooaw.test');
-    const returnToValue = registrationUrl.searchParams.get('returnTo');
-    expect(returnToValue).not.toBeNull();
-    const returnTo = new URL(returnToValue ?? '', 'https://waooaw.test');
-    expect(registrationUrl.pathname).toBe('/register');
-    expect(Object.fromEntries(returnTo.searchParams)).toEqual({
+    const continuationUrl = new URL(push.mock.calls[0][0], 'https://waooaw.test');
+    expect(continuationUrl.pathname).toBe('/marketplace');
+    expect(Object.fromEntries(continuationUrl.searchParams)).toEqual({
       professionalType: 'DIGITAL_MARKETING_LOCAL_SERVICE',
       version: '1.0.0',
       intent: 'trial',

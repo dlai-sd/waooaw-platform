@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-09-20 · **Version:** 1.45.0 · **Work Contracts:** 97 recorded (81 closed · 16 active · 1 blocked)
+**Last Updated:** 2026-09-24 · **Version:** 1.45.0 · **Work Contracts:** 97 recorded (81 closed · 16 active · 1 blocked)
 
 **Reference hierarchy:** This file is the canonical compact Work Contract and delivery index. `README.md`
 is the operator entry and routing summary; `constitution/PROJECT_STATE.md` records only the current
@@ -31,8 +31,9 @@ constitutional-repair record. Agents must select the record by title and Goal, n
 | **WC-099** | Demo Customer Journey And Application Shell Remediation | Customer journey repair | IMPLEMENTATION MERGED · ACTUAL-CLOUD INTEGRATED JOURNEY REMAINS GATED | WC-092→098 · PRs #452/#454 | Local evidence covers fresh account selection and journey repairs; exact-release Demo acceptance remains separate |
 | **WC-100** | Engineering Validation Efficiency | Validation control improvement | IMPLEMENTATION MERGED · SHADOW ACTIVATION EVIDENCE REMAINS GATED | WC-099 · PR #449 | Change-aware validation and immutable evidence controls merged without replacing authoritative CI |
 | **WC-102** | Docker-Only Validation Control Plane | Validation control implementation | IMPLEMENTATION MERGED · SELECTIVE ENFORCEMENT REMAINS GATED | WC-100 · WC-101 · ADR-050 · PR #456 | Docker-only control plane merged; 20-sample Shadow floor and Founder activation remain required |
-| **WC-103** | Multi-Tenant Authentication Journeys | Solution Architecture and constitutional closure | IMPLEMENTATION-READY SPECIFICATION · IMPLEMENTATION NOT AUTHORIZED | WC-083 · WC-090 · WC-092→094 · WC-098→099 · ADR-003/008/009/011 · Issue #458 | Defect-to-story-to-journey-to-DoD traceability plus one-pass Security/Data contracts; Founder review required |
-| **WC-104** | End-to-End Docker Runner Supply And Cache Reuse | Corrective validation architecture | IMPLEMENTATION-READY SPECIFICATION · IMPLEMENTATION NOT AUTHORIZED | WC-100→102 · ADR-012/013/045/050 | Immutable GHCR runner supply, remote BuildKit caches, catalog execution, exact evidence reuse and hosted build-count proof across local, PR and main lifecycles |
+| **WC-103** | Multi-Tenant Authentication Journeys | Customer identity and session integrity | IMPLEMENTATION MERGED · REAL PROVIDER ACCEPTANCE DEFERRED | WC-083 · WC-090 · WC-092→099 · PRs #459/#465/#469 | Provider-neutral authentication, registration, logout, account switching, stale-session controls and catalog-managed Demo secrets are merged; real Google/Facebook acceptance remains separate |
+| **WC-104** | End-to-End Docker Runner Supply And Cache Reuse | Validation infrastructure | IMPLEMENTATION AND FOLLOW-UP REPAIRS MERGED · SELECTIVE ENFORCEMENT GATED | WC-100→102 · ADR-050 · PRs #461/#462/#464/#466/#467 | Immutable Docker runner supply, deterministic evidence reuse and bounded validation repair are merged; selective enforcement remains Founder-gated |
+| **WC-105** | Authentication, Guide, Session And Landing Defect Repair | Customer journey and Codespaces review | PRs #470→#472 MERGED · FOLLOW-UP PR IN PREPARATION | WC-099 · WC-103 · WC-104 | Merged runtime repairs are followed by a repository-owned isolated Codespaces preview utility, session/acquisition integrity fixes and prominent authoritative Hire/Trial modes; Founder review remains pending |
 
 ### Parked Owner Contracts From Delivered WC-084
 
@@ -56,7 +57,7 @@ parked dependencies for later slices, not completed capabilities and not reasons
 
 ---
 
-## Recent PR Reconciliation — 2026-08-23 Through 2026-09-15
+## Recent PR Reconciliation — 2026-08-23 Through 2026-09-24
 
 | Work Contract | Merged PRs in period | Reconciled delivery state |
 |---|---|---|
@@ -90,6 +91,9 @@ parked dependencies for later slices, not completed capabilities and not reasons
 | WC-100 | #449 (`ecda846b`) | Engineering validation efficiency controls merged in Shadow mode |
 | WC-101 | #456 (`6b7fff2c`) | Founder-accepted Docker-only validation architecture delivered with WC-102 |
 | WC-102 | #456 (`6b7fff2c`), #457 (`502f70b5`) | Docker-only validation control plane merged; follow-up repaired squash-sensitive gitleaks behavior |
+| WC-103 | #459, #465, #469 (`818ec26`) | Multi-tenant authentication specification, implementation and catalog-managed Demo secret provisioning merged; real-provider acceptance remains deferred |
+| WC-104 | #461→#462, #464, #466→#467 (`6e8b738`) | End-to-end runner supply, deterministic carry-forward evidence, paginated release lookup and optimized validation execution merged without activating selective enforcement |
+| WC-105 | #470→#472 (`b50cb36`) | Authentication, Guide, session, landing, concurrency, tenant-RLS and customer-journey repairs merged; this session's Codespaces preview and acquisition-mode follow-up remains unmerged |
 
 PRs are grouped by the Work Contract references in their bodies. A merged planning PR proves delivery
 of the plan, not completion of future implementation tasks; rows above call implementation complete
@@ -184,8 +188,6 @@ only where an implementation PR merged.
 | WC-100 | Engineering Validation Efficiency | Platform IT Expert | 1.45.0 | Change-aware Shadow validation and immutable evidence controls merged in PR #449 |
 | WC-101 | Docker-Only Validation Architecture | Enterprise Architect | 1.45.0 | Founder-accepted architecture delivered with PR #456; no independent runtime component |
 | WC-102 | Docker-Only Validation Control Plane | Platform IT Expert | 1.45.0 | Docker-only control plane merged in PR #456 with PR #457 follow-up |
-| WC-103 | Multi-Tenant Authentication Journeys | Solution Architect | 1.45.0 | Implementation-ready authentication specification and one-pass Security/Data closure; implementation not authorized |
-| WC-104 | End-to-End Docker Runner Supply And Cache Reuse | Solution Architect | 1.45.0 | Corrective end-to-end validation-runner supply and cache architecture; implementation not authorized |
 
 ---
 

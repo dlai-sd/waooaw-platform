@@ -26,4 +26,4 @@ RUN DATABASE_URL=postgresql+asyncpg://postgres@localhost:5432/waooaw \
 	BILLING_CONTRACT_ID=build-validation \
 	python -c "import main"
 EXPOSE 8140
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8140"]
+CMD ["sh", "-c", "export DATABASE_URL=postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@localhost:5432/waooaw; exec uvicorn main:app --host 0.0.0.0 --port 8140"]

@@ -23,7 +23,9 @@ public sealed class IdentityProvidersController(
         var providers = providerProjectionService
             .GetProviders()
             .Select(provider =>
-                provider.AuthenticationPath == "CREDENTIAL" || brokerReadEnabled
+                provider.AuthenticationPath == "CREDENTIAL"
+                || brokerReadEnabled
+                || providerProjectionService.IsPreviewAvailable(provider.Id)
                     ? provider
                     : provider with
                     {

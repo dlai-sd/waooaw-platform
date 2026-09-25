@@ -31,7 +31,7 @@ public sealed class C041ToolAuthorizationEvaluator : IClaimEvaluator
     private const string AlwaysAskActionsKey = "always_ask_actions";
     private const string ToolNameKey = "tool_name";
 
-    // C-041 is scoped to MCP tool calls only; all other action types default-deny
+    // C-041 is scoped to MCP tool calls only; other action types are owned by their evaluators.
     private const string McpToolCallActionType = "MCP_TOOL_CALL";
 
     // C-041: constitutional floor — no tool invocation may pass without an explicit allow
@@ -81,8 +81,8 @@ public sealed class C041ToolAuthorizationEvaluator : IClaimEvaluator
             // ── Guard: C-041 is scoped to MCP_TOOL_CALL only ──────────────────────────
             if (!string.Equals(actionType, McpToolCallActionType, StringComparison.Ordinal))
             {
-                _logger.LogWarning(
-                    "C-041 DENY: ActionType={ActionType} is not MCP_TOOL_CALL — outside C041 scope. "
+                _logger.LogDebug(
+                    "C-041 not applicable to ActionType={ActionType}. "
                         + "ContractId={ContractId} TenantId={TenantId}",
                     actionType,
                     ctx.ContractId,
@@ -92,9 +92,8 @@ public sealed class C041ToolAuthorizationEvaluator : IClaimEvaluator
                 return Task.FromResult(
                     new EvaluationResult(
                         ClaimId,
-                        EvaluationVerdict.Deny,
-                        $"C-041: ActionType '{actionType}' is not MCP_TOOL_CALL. "
-                            + "C041 evaluates MCP tool invocations only. Default deny applied."
+                        EvaluationVerdict.Allow,
+                        "Outside C-041 MCP scope."
                     )
                 );
             }

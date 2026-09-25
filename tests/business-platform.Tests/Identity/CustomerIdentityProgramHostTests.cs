@@ -68,6 +68,7 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
             """);
         await OwnerAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/29-customer-workspace-provisioning.sql")));
         await OwnerAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/19-ae01-employment-relationship.sql")));
+        await OwnerAsync("ALTER TABLE business.employment_relationships ADD COLUMN acquisition_mode VARCHAR(8);");
         await OwnerAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/25-agent-admission.sql")));
         await OwnerAsync(await File.ReadAllTextAsync(RepositoryPaths.Resolve("infrastructure/postgres/init/31-agent-instance-binding.sql")));
         var contextConfiguration = await File.ReadAllTextAsync(
@@ -115,7 +116,11 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
         await _postgres.DisposeAsync();
     }
 
-    private void StartHost(bool brokerEnabled = true, bool googleEnabled = true)
+    private void StartHost(
+        bool brokerEnabled = true,
+        bool googleEnabled = true,
+        bool previewClaimsEnabled = false
+    )
     {
         _oidc = new SyntheticOidcHandler(_configuration.ActorIssuer, _signer);
         var settings = new Dictionary<string, string?>
@@ -152,6 +157,11 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
             settings["IdentityEnvironment:Providers:0:UnavailableReason"] = "";
             settings["IdentityEnvironment:Providers:0:SecretReference"] = "kv://synthetic/google";
             settings["IdentityEnvironment:Providers:0:ReadinessEvidenceReference"] = "SYNTHETIC-PROGRAM-HOST-ONLY";
+        }
+        if (previewClaimsEnabled)
+        {
+            settings["IdentityProviderPreview:ClaimsProofEnabled"] = "true";
+            settings["IdentityProviderPreview:EnabledProviders:0"] = "GOOGLE";
         }
         _baseFactory = new WebApplicationFactory<Program>();
         _factory = _baseFactory.WithWebHostBuilder(builder =>
@@ -248,6 +258,28 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
         await AssertRestrictedPoolAsync();
     }
 
+    [Fact]
+    public async Task Program_LocalPreviewClaims_ProgressesToRegistrationWithoutPrivateBrokerRead()
+    {
+        StartHost(brokerEnabled: false, googleEnabled: false, previewClaimsEnabled: true);
+        var token = Token(authorizedParty: "waooaw-web-preview", providerClaim: "identity_provider");
+
+        using var unresolved = await SendAsync(HttpMethod.Get, "/api/v1/identity/session", token);
+        Assert.Equal(
+            "REGISTRATION_REQUIRED",
+            (await ExpectAsync(unresolved, HttpStatusCode.Conflict)).GetProperty("code").GetString()
+        );
+
+        using var started = await SendAsync(
+            HttpMethod.Post,
+            "/api/v1/identity/registrations",
+            token,
+            new { languagePreference = "en" }
+        );
+        Assert.Equal(HttpStatusCode.Created, started.StatusCode);
+        Assert.Empty(_broker.Requests);
+    }
+
     [Theory]
     [InlineData("issuer")]
     [InlineData("audience")]
@@ -316,9 +348,14 @@ public sealed class CustomerIdentityProgramHostTests : IAsyncLifetime
     }
 
     private string Token(string? issuer = null, string audience = "waooaw-platform", RSA? signer = null,
-        Claim[]? extra = null, string subject = "synthetic-actor")
+        Claim[]? extra = null, string subject = "synthetic-actor", string authorizedParty = "waooaw-web",
+        string providerClaim = "idp")
     {
-        var claims = GoogleWorkspaceProofAdapterTests.Principal(subject).Claims
+        var claims = GoogleWorkspaceProofAdapterTests.Principal(
+            subject,
+            authorizedParty: authorizedParty,
+            providerClaim: providerClaim
+        ).Claims
             .Where(claim => claim.Type is not ("iss" or "aud" or "iat" or "exp")).Concat(extra ?? []);
         var now = DateTime.UtcNow;
         var token = new JwtSecurityToken(issuer ?? _configuration.ActorIssuer, audience, claims,

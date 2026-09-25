@@ -39,6 +39,7 @@ public sealed class Migration32PostgresIntegrationTests : IAsyncLifetime
             GRANT USAGE ON SCHEMA business, payload_store TO business_app;
             """);
         await ExecuteFileAsync(connection, "infrastructure/postgres/init/19-ae01-employment-relationship.sql");
+        await ExecuteAsync(connection, "ALTER TABLE business.employment_relationships ADD COLUMN acquisition_mode VARCHAR(8);");
         await ExecuteFileAsync(connection, "infrastructure/postgres/init/20b-ae01-context-configuration.sql");
         await ExecuteFileAsync(connection, "infrastructure/postgres/init/25-agent-admission.sql");
         await ExecuteFileAsync(connection, "infrastructure/postgres/init/31-agent-instance-binding.sql");

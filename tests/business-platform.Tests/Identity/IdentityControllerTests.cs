@@ -79,6 +79,7 @@ internal sealed class FailingVerificationDispatcher : IIdentityVerificationDispa
 internal static class IdentityTestHelpers
 {
     private const string TestHmacKey = "test-only-identity-hmac-key-32-bytes-minimum";
+    internal static IConfiguration EmptyConfiguration { get; } = new ConfigurationBuilder().Build();
 
     internal static readonly IdentityEnvironmentOptions TestEnvironment = new()
     {
@@ -133,7 +134,7 @@ internal static class IdentityTestHelpers
 
         return new IdentityController(
             service,
-            new IdentityProviderProjectionService(Options.Create(TestEnvironment)),
+            new IdentityProviderProjectionService(Options.Create(TestEnvironment), EmptyConfiguration),
             NullLogger<IdentityController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext },
@@ -187,7 +188,7 @@ internal static class IdentityTestHelpers
 
         return new IdentityController(
             service,
-            new IdentityProviderProjectionService(Options.Create(TestEnvironment)),
+            new IdentityProviderProjectionService(Options.Create(TestEnvironment), EmptyConfiguration),
             NullLogger<IdentityController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext },
@@ -204,7 +205,9 @@ public sealed class IdentityProviderProjectionTests
     public void F2_GetProviders_ReturnsOrderedReadinessWithoutSecrets()
     {
         var controller = new IdentityProvidersController(
-            new IdentityProviderProjectionService(Options.Create(IdentityTestHelpers.TestEnvironment)),
+            new IdentityProviderProjectionService(
+                Options.Create(IdentityTestHelpers.TestEnvironment),
+                IdentityTestHelpers.EmptyConfiguration),
             new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["IdentityBrokerRead:Enabled"] = "true",
@@ -231,14 +234,16 @@ public sealed class IdentityProviderProjectionTests
     [Fact]
     public void F2_GetProviders_UnconfiguredGoogleJourneyDoesNotDisableOtherProviders()
     {
-        var projection = new IdentityProviderProjectionService(Options.Create(new IdentityEnvironmentOptions
-        {
-            Providers =
-            [
-                new() { Id = "GOOGLE", DisplayName = "Google", AuthenticationPath = "GOOGLE", Enabled = true },
-                new() { Id = "EMAIL", DisplayName = "Email", AuthenticationPath = "CREDENTIAL", Enabled = true },
-            ],
-        }));
+        var projection = new IdentityProviderProjectionService(
+            Options.Create(new IdentityEnvironmentOptions
+            {
+                Providers =
+                [
+                    new() { Id = "GOOGLE", DisplayName = "Google", AuthenticationPath = "GOOGLE", Enabled = true },
+                    new() { Id = "EMAIL", DisplayName = "Email", AuthenticationPath = "CREDENTIAL", Enabled = true },
+                ],
+            }),
+            IdentityTestHelpers.EmptyConfiguration);
         var controller = new IdentityProvidersController(
             projection,
             new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
@@ -254,6 +259,41 @@ public sealed class IdentityProviderProjectionTests
 
         Assert.Equal("UNAVAILABLE", providers.Single(provider => provider.Id == "GOOGLE").Availability);
         Assert.Equal("AVAILABLE", providers.Single(provider => provider.Id == "EMAIL").Availability);
+    }
+
+    [Fact]
+    public void F2_GetProviders_LocalPreviewOverrideEnablesBrokerProviders()
+    {
+        var options = new IdentityEnvironmentOptions
+        {
+            Environment = "local",
+            Providers =
+            [
+                new() { Id = "GOOGLE", DisplayName = "Google", AuthenticationPath = "GOOGLE", Enabled = false, UnavailableReason = "NOT_CONFIGURED" },
+                new() { Id = "FACEBOOK", DisplayName = "Facebook", AuthenticationPath = "META", Enabled = false, UnavailableReason = "NOT_CONFIGURED" },
+            ],
+        };
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["IdentityProviderPreview:EnabledProviders:0"] = "GOOGLE",
+                ["IdentityProviderPreview:EnabledProviders:1"] = "FACEBOOK",
+            })
+            .Build();
+
+        var projection = new IdentityProviderProjectionService(Options.Create(options), configuration);
+        var controller = new IdentityProvidersController(projection, IdentityTestHelpers.EmptyConfiguration)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() },
+        };
+
+        var result = Assert.IsType<OkObjectResult>(controller.GetProviders());
+        var providers = Assert.IsType<IdentityProviderCollectionResponse>(result.Value).Providers;
+        Assert.All(providers, provider =>
+        {
+            Assert.Equal("AVAILABLE", provider.Availability);
+            Assert.Null(provider.UnavailableReason);
+        });
     }
 
     [Fact]
@@ -365,7 +405,9 @@ public sealed class IdentityProviderProjectionTests
 
         Assert.True(result.Succeeded, result.Failed ? string.Join("; ", result.Failures) : "");
         Assert.Equal("demo", options.Environment);
-        Assert.All(new IdentityProviderProjectionService(Options.Create(options)).GetProviders(),
+        Assert.All(new IdentityProviderProjectionService(
+            Options.Create(options),
+            IdentityTestHelpers.EmptyConfiguration).GetProviders(),
             provider => Assert.Equal("UNAVAILABLE", provider.Availability));
         Assert.Equal("", options.Providers[3].ReadinessEvidenceReference);
     }

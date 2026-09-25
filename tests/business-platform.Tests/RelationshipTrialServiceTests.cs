@@ -11,6 +11,8 @@ namespace Waooaw.BusinessPlatform.Tests;
 
 internal sealed class TrialOwnerGatewayStub : IRelationshipTrialOwnerGateway
 {
+    public bool IsConfigured { get; set; } = true;
+
     public WbeTrialEntitlement? Wbe { get; set; }
     public WbeTrialStatus? WbeStatus { get; set; }
     public PrTrialWorkflow? Pr { get; set; }

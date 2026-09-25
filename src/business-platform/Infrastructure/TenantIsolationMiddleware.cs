@@ -284,8 +284,7 @@ public sealed class TenantDbConnectionInterceptor : DbCommandInterceptor
         CancellationToken cancellationToken = default
     )
     {
-        SetTenantLocal(command);
-        return base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
+        return SetTenantAndContinueReaderAsync(command, eventData, result, cancellationToken);
     }
 
     public override ValueTask<InterceptionResult<object>> ScalarExecutingAsync(
@@ -295,8 +294,7 @@ public sealed class TenantDbConnectionInterceptor : DbCommandInterceptor
         CancellationToken cancellationToken = default
     )
     {
-        SetTenantLocal(command);
-        return base.ScalarExecutingAsync(command, eventData, result, cancellationToken);
+        return SetTenantAndContinueScalarAsync(command, eventData, result, cancellationToken);
     }
 
     public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
@@ -306,8 +304,7 @@ public sealed class TenantDbConnectionInterceptor : DbCommandInterceptor
         CancellationToken cancellationToken = default
     )
     {
-        SetTenantLocal(command);
-        return base.NonQueryExecutingAsync(command, eventData, result, cancellationToken);
+        return SetTenantAndContinueNonQueryAsync(command, eventData, result, cancellationToken);
     }
 
     public override ValueTask<object?> ScalarExecutedAsync(
@@ -355,7 +352,7 @@ public sealed class TenantDbConnectionInterceptor : DbCommandInterceptor
     // ── Private helpers ──────────────────────────────────────────────────────
 
     /// <summary>
-    /// C-026: Prepends SET LOCAL app.current_tenant_id = '...' to the command text
+    /// C-026: Sets app.current_tenant_id in the command transaction
     /// so that PostgreSQL RLS policies evaluate the correct tenant before any data access.
     /// If no tenant is present in context (e.g. health check) the command is left unmodified.
     /// </summary>
@@ -382,8 +379,6 @@ public sealed class TenantDbConnectionInterceptor : DbCommandInterceptor
             return;
         }
 
-        // Guard against injection: tenantId is a validated UUID string from TenantIsolationMiddleware.
-        // We validated Guid.TryParse upstream so this cannot carry SQL-injection characters.
         if (command.Transaction is null)
         {
             var connection =
@@ -402,15 +397,110 @@ public sealed class TenantDbConnectionInterceptor : DbCommandInterceptor
             }
         }
 
-        var setLocal = $"SET LOCAL app.current_tenant_id = '{tenantId}';";
-
-        // Prepend to the existing command text so it executes in the same statement batch.
-        command.CommandText = setLocal + command.CommandText;
+        using var tenantCommand = TenantCommand(command, tenantId);
+        tenantCommand.ExecuteNonQuery();
 
         _logger.LogTrace(
             "TenantDbInterceptor: injected SET LOCAL app.current_tenant_id for tenant {TenantId}",
             tenantId
         );
+    }
+
+    private async ValueTask SetTenantLocalAsync(
+        DbCommand command,
+        CancellationToken cancellationToken
+    )
+    {
+        var tenantId = CurrentTenantId();
+        if (tenantId is null)
+            return;
+
+        if (command.Transaction is null)
+        {
+            var connection =
+                command.Connection
+                ?? throw new InvalidOperationException(
+                    "Tenant-scoped database commands require an open connection."
+                );
+            var transaction = await connection.BeginTransactionAsync(cancellationToken);
+            command.Transaction = transaction;
+            if (!_ownedTransactions.TryAdd(command, transaction))
+            {
+                await transaction.DisposeAsync();
+                throw new InvalidOperationException(
+                    "Tenant-scoped database command already owns a transaction."
+                );
+            }
+        }
+
+        await using var tenantCommand = TenantCommand(command, tenantId);
+        await tenantCommand.ExecuteNonQueryAsync(cancellationToken);
+        _logger.LogTrace(
+            "TenantDbInterceptor: set app.current_tenant_id for tenant {TenantId}",
+            tenantId
+        );
+    }
+
+    private string? CurrentTenantId()
+    {
+        var httpContext = _httpContextAccessor.HttpContext;
+        if (
+            httpContext is null
+            || !httpContext.Items.TryGetValue(
+                TenantIsolationMiddleware.TenantIdItemKey,
+                out var tenantObj
+            )
+            || tenantObj is not string tenantId
+            || string.IsNullOrWhiteSpace(tenantId)
+        )
+            return null;
+        return tenantId;
+    }
+
+    private static DbCommand TenantCommand(DbCommand command, string tenantId)
+    {
+        var tenantCommand = command.Connection!.CreateCommand();
+        tenantCommand.Transaction = command.Transaction;
+        tenantCommand.CommandText =
+            "SELECT pg_catalog.set_config('app.current_tenant_id', @tenant_id, true)";
+        var parameter = tenantCommand.CreateParameter();
+        parameter.ParameterName = "tenant_id";
+        parameter.Value = tenantId;
+        tenantCommand.Parameters.Add(parameter);
+        return tenantCommand;
+    }
+
+    private async ValueTask<InterceptionResult<DbDataReader>> SetTenantAndContinueReaderAsync(
+        DbCommand command,
+        CommandEventData eventData,
+        InterceptionResult<DbDataReader> result,
+        CancellationToken cancellationToken
+    )
+    {
+        await SetTenantLocalAsync(command, cancellationToken);
+        return await base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
+    }
+
+    private async ValueTask<InterceptionResult<object>> SetTenantAndContinueScalarAsync(
+        DbCommand command,
+        CommandEventData eventData,
+        InterceptionResult<object> result,
+        CancellationToken cancellationToken
+    )
+    {
+        await SetTenantLocalAsync(command, cancellationToken);
+        return await base.ScalarExecutingAsync(command, eventData, result, cancellationToken);
+    }
+
+    private async ValueTask<InterceptionResult<int>> SetTenantAndContinueNonQueryAsync(
+        DbCommand command,
+        CommandEventData eventData,
+        InterceptionResult<int> result,
+        CancellationToken cancellationToken
+    )
+    {
+        await SetTenantLocalAsync(command, cancellationToken);
+        return await base.NonQueryExecutingAsync(command, eventData, result, cancellationToken);
     }
 
     private void CompleteOwnedTransaction(DbCommand command)

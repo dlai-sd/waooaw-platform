@@ -103,16 +103,15 @@ describe('authentication views', () => {
     expect(listIdentityProviders).not.toHaveBeenCalled();
   });
 
-  it('does not present another login when the identity API is temporarily unavailable', async () => {
+  it('offers a fresh provider login when existing session validation is temporarily unavailable', async () => {
     jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
     jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'unavailable' });
 
-    await expect(LoginView({ searchParams: Promise.resolve({ returnTo: '/settings' }) })).rejects.toThrow(
-      'NEXT_REDIRECT'
-    );
+    render(await LoginView({ searchParams: Promise.resolve({ returnTo: '/settings' }) }));
 
-    expect(redirect).toHaveBeenCalledWith('/settings');
-    expect(listIdentityProviders).not.toHaveBeenCalled();
+    expect(redirect).not.toHaveBeenCalled();
+    expect(screen.getByRole('heading', { name: 'Log in to WAOOAW' })).toBeInTheDocument();
+    expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-callback-url', '/login?returnTo=%2Fsettings');
   });
 
   it('offers projected providers before registration authentication', async () => {

@@ -23,6 +23,7 @@ public sealed record ConversationProblemDetail(
 
 [ApiController]
 [Authorize]
+[CustomerIdentityRoute(requiresMembership: true)]
 [Route("api/v1/employment/relationships/{relationshipId:guid}/conversation")]
 public sealed class ConversationController : ControllerBase
 {

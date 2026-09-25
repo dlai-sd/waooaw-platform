@@ -293,6 +293,7 @@ public sealed class EmploymentRelationshipService
             ProfessionalAdmissionId = professionalAdmissionId,
             ProfessionalType = normalizedProfessionalType,
             ProfessionalVersion = normalizedProfessionalVersion,
+            AcquisitionMode = acquisitionEvidence?.Intent,
             EvaluationIntentId = evaluationIntentId,
             InitiatingParticipantId = participantId,
         };

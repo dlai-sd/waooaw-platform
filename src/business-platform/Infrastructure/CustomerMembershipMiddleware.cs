@@ -12,7 +12,7 @@ using Waooaw.BusinessPlatform.Services;
 
 namespace Waooaw.BusinessPlatform.Infrastructure;
 
-[AttributeUsage(AttributeTargets.Method)]
+[AttributeUsage(AttributeTargets.Method | AttributeTargets.Class)]
 public sealed class CustomerIdentityRouteAttribute(
     bool requiresMembership = false,
     bool registrationRequiredWhenMissing = false

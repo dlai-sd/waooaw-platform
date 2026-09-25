@@ -38,6 +38,7 @@ describe('MyProfessionalsPage', () => {
           agentInstanceId: 'agent-1',
           professionalDisplayName: 'Local growth expert',
           professionalType: 'DMA',
+          acquisitionMode: 'TRIAL',
           lifecycleState: 'TRIAL_ACTIVE',
           trialStatus: 'EXPIRED',
           currentGoalSummary: 'Grow leads',
@@ -59,6 +60,7 @@ describe('MyProfessionalsPage', () => {
           agentInstanceId: 'agent-2',
           professionalDisplayName: 'Retention expert',
           professionalType: 'DMA',
+          acquisitionMode: 'HIRE',
           lifecycleState: 'ACTIVE',
           currentGoalSummary: 'Improve renewals',
           unreadState: 'ACTION_REQUIRED',
@@ -82,6 +84,7 @@ describe('MyProfessionalsPage', () => {
     expect(screen.getByRole('heading', { name: 'My Experts' })).toBeVisible();
     const experts = screen.getAllByRole('listitem');
     expect(experts).toHaveLength(2);
+    expect(within(experts[0]).getByText('TRIAL MODE')).toBeVisible();
     expect(within(experts[0]).getByText('EXPIRED')).toBeVisible();
     expect(within(experts[0]).getByText('2 enabled · 1 pending')).toBeVisible();
     expect(within(experts[0]).getByRole('link', { name: /Open conversation/ })).toHaveAttribute(
@@ -89,6 +92,7 @@ describe('MyProfessionalsPage', () => {
       '/relationships/resume-relationship-1'
     );
     expect(within(experts[1]).getByText('Contract review is required.')).toBeVisible();
+    expect(within(experts[1]).getByText('HIRE MODE')).toBeVisible();
     expect(within(experts[1]).getByRole('link', { name: /Review contract/ })).toHaveAttribute(
       'href',
       '/relationships/relationship-2'

@@ -4,6 +4,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Waooaw.BusinessPlatform.Controllers;
 using Waooaw.BusinessPlatform.Infrastructure;
@@ -39,7 +40,10 @@ public sealed class PortalInteractionsControllerTests
         context.Items[CustomerMembershipMiddleware.MembershipItem] =
             new CustomerWorkspaceMembership(participantId, tenantId, Guid.NewGuid(), ["OWNER"]);
         context.Request.Headers["Idempotency-Key"] = Guid.NewGuid().ToString();
-        var controller = new PortalInteractionsController(service)
+        var controller = new PortalInteractionsController(
+            service,
+            NullLogger<PortalInteractionsController>.Instance
+        )
         {
             ControllerContext = new ControllerContext { HttpContext = context },
         };
@@ -61,7 +65,10 @@ public sealed class PortalInteractionsControllerTests
         var factory = new InMemoryConversationFactory(Guid.NewGuid().ToString("N"));
         var service = new PortalInteractionService(factory, new ConversationCursorCodec(
             Options.Create(new ConversationCursorOptions { HmacKey = new string('c', 48) })));
-        var controller = new PortalInteractionsController(service)
+        var controller = new PortalInteractionsController(
+            service,
+            NullLogger<PortalInteractionsController>.Instance
+        )
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() },
         };
@@ -76,7 +83,10 @@ public sealed class PortalInteractionsControllerTests
         Assert.Equal(400, Assert.IsType<ObjectResult>(
             await controller.SendAsync(request, CancellationToken.None)).StatusCode);
 
-        var unauthenticated = new PortalInteractionsController(service)
+        var unauthenticated = new PortalInteractionsController(
+            service,
+            NullLogger<PortalInteractionsController>.Instance
+        )
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() },
         };
@@ -206,9 +216,17 @@ public sealed class PortalInteractionsControllerTests
         var httpContext = new DefaultHttpContext();
         httpContext.Items[CustomerMembershipMiddleware.MembershipItem] =
             new CustomerWorkspaceMembership(participantId, tenantId, Guid.NewGuid(), ["OWNER"]);
-        var controller = new PortalInteractionsController(new PortalInteractionService(
-            factory,
-            new ConversationCursorCodec(Options.Create(new ConversationCursorOptions { HmacKey = new string('c', 48) }))))
+        var controller = new PortalInteractionsController(
+            new PortalInteractionService(
+                factory,
+                new ConversationCursorCodec(
+                    Options.Create(
+                        new ConversationCursorOptions { HmacKey = new string('c', 48) }
+                    )
+                )
+            ),
+            NullLogger<PortalInteractionsController>.Instance
+        )
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext },
         };
@@ -234,7 +252,10 @@ public sealed class PortalInteractionsControllerTests
         var factory = new InMemoryConversationFactory(Guid.NewGuid().ToString("N"));
         var service = new PortalInteractionService(factory, new ConversationCursorCodec(
             Options.Create(new ConversationCursorOptions { HmacKey = new string('c', 48) })));
-        return new PortalInteractionsController(service)
+        return new PortalInteractionsController(
+            service,
+            NullLogger<PortalInteractionsController>.Instance
+        )
         {
             ControllerContext = new ControllerContext { HttpContext = context },
         };

@@ -237,8 +237,8 @@ public sealed class CCT_EF01_EvidenceFirstTests
         await using var assertCtx = new ConstitutionalDbContext(opts);
         var record = await assertCtx.EvidenceRecords.SingleAsync();
 
-        record.IdempotencyKey.Should().Be(actionInstanceId,
-            because: "action_instance_id must be stored as the idempotency key " +
+        record.ActionInstanceId.Should().Be(Guid.Parse(actionInstanceId),
+            because: "action_instance_id must be stored as the idempotency identity " +
                      "to enable duplicate detection without UPDATE (C-027)");
     }
 

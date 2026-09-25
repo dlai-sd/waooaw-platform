@@ -6029,6 +6029,11 @@ components:
         professionalType: { type: string, minLength: 1, maxLength: 100 }
         professionalVersion: { type: string, minLength: 1, maxLength: 64, nullable: true }
         professionalDisplayName: { type: string, minLength: 1, maxLength: 200 }
+        acquisitionMode:
+          type: string
+          nullable: true
+          enum: [TRIAL, HIRE]
+          description: The customer-selected acquisition mode. Null only for legacy or non-acquisition relationships.
         lifecycleState: { $ref: "#/components/schemas/EmploymentRelationshipState" }
         trialStatus:
           type: string

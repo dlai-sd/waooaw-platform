@@ -39,7 +39,7 @@ public sealed class TenantDbConnectionInterceptorPostgresTests : IAsyncLifetime
             CREATE POLICY tenant_probe_isolation ON tenant_probe
                 USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
                 WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
-            GRANT SELECT, UPDATE ON tenant_probe TO tenant_app;
+            GRANT SELECT, INSERT, UPDATE ON tenant_probe TO tenant_app;
             """,
             connection
         );
@@ -135,6 +135,38 @@ public sealed class TenantDbConnectionInterceptorPostgresTests : IAsyncLifetime
         );
         var leakedTenant = await command.ExecuteScalarAsync();
         Assert.True(leakedTenant is null or DBNull || string.IsNullOrEmpty(leakedTenant.ToString()));
+    }
+
+    [Fact]
+    public async Task TenantScopedSaveChanges_PreservesBatchedInsertRowCounts()
+    {
+        var tenantId = Guid.NewGuid();
+        var accessor = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext(),
+        };
+        accessor.HttpContext.Items[TenantIsolationMiddleware.TenantIdItemKey] = tenantId.ToString("D");
+        var interceptor = new TenantDbConnectionInterceptor(
+            accessor,
+            NullLogger<TenantDbConnectionInterceptor>.Instance
+        );
+        var appConnection = new NpgsqlConnectionStringBuilder(_postgres.GetConnectionString())
+        {
+            Username = "tenant_app",
+            Password = AppPassword,
+        }.ConnectionString;
+        var options = new DbContextOptionsBuilder<TenantProbeDbContext>()
+            .UseNpgsql(appConnection)
+            .AddInterceptors(interceptor)
+            .Options;
+        await using var db = new TenantProbeDbContext(options);
+        db.TenantProbes.AddRange(
+            new TenantProbe { Id = Guid.NewGuid(), TenantId = tenantId, Value = "first" },
+            new TenantProbe { Id = Guid.NewGuid(), TenantId = tenantId, Value = "second" }
+        );
+
+        Assert.Equal(2, await db.SaveChangesAsync());
+        Assert.Equal(2, await db.TenantProbes.CountAsync());
     }
 
     private async Task SeedAsync(Guid tenantA, Guid tenantB)
