@@ -46,6 +46,18 @@ describe('ProviderCommands', () => {
     expect(screen.getByRole('button', { name: 'Log in with Facebook (Unavailable)' })).toBeDisabled();
   });
 
+  it('orders provider icon controls into customer scanning order', () => {
+    render(<ProviderCommands callbackUrl="/login" intent="login" providers={[...providers].reverse()} />);
+
+    expect(screen.getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual([
+      'Log in with Google',
+      'Log in with Facebook (Unavailable)',
+      'Log in with Apple (Unavailable)',
+      'Log in with Email (Unavailable)',
+    ]);
+    expect(screen.getByText('Log in with Google')).toHaveClass('visually-hidden');
+  });
+
   it('does not start unavailable providers', () => {
     render(<ProviderCommands callbackUrl="/register" intent="register" providers={providers} />);
 

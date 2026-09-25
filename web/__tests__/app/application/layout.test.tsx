@@ -26,13 +26,14 @@ beforeEach(() => {
   });
 });
 
-it('requires registration before an authenticated visitor enters the application shell', async () => {
+it('allows an authenticated visitor to browse without customer registration', async () => {
   jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'registration-required' });
 
-  await expect(ApplicationLayout({ children: <p>Marketplace</p> })).rejects.toThrow('NEXT_REDIRECT');
+  render(await ApplicationLayout({ children: <p>Marketplace</p> }));
 
-  expect(redirect).toHaveBeenCalledWith('/register?returnTo=%2Fhome');
-  expect(screen.queryByTestId('application-shell')).not.toBeInTheDocument();
+  expect(redirect).not.toHaveBeenCalled();
+  expect(screen.getByTestId('application-shell')).toHaveAttribute('data-has-membership', 'false');
+  expect(screen.getByText('Marketplace')).toBeVisible();
 });
 
 it('keeps anonymous users outside the application shell', async () => {

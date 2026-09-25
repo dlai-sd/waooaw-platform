@@ -1,3 +1,4 @@
+import { render, screen } from '@testing-library/react';
 import { redirect } from 'next/navigation';
 import CustomerLayout from '@/app/(application)/layout';
 import { getIdentitySession } from '@/lib/api/identity';
@@ -25,10 +26,12 @@ beforeEach(() => {
   });
 });
 
-it('routes an authenticated visitor without membership through registration', async () => {
+it('allows an authenticated visitor without membership into the customer shell', async () => {
   jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'registration-required' });
 
-  await expect(CustomerLayout({ children: <p>My Agents</p> })).rejects.toThrow('NEXT_REDIRECT');
+  render(await CustomerLayout({ children: <p>My Agents</p> }));
 
-  expect(redirect).toHaveBeenCalledWith('/register?returnTo=%2Fhome');
+  expect(redirect).not.toHaveBeenCalled();
+  expect(screen.getByTestId('customer-shell')).toHaveAttribute('data-has-membership', 'false');
+  expect(screen.getByText('My Agents')).toBeVisible();
 });

@@ -343,6 +343,8 @@ locals {
       IdentityBrokerRead__ClientId                    = "waooaw-bp-identity-reader"
       }, var.environment == "demo" ? {
       WAOOAW_DEMO_DATABASE_BOOTSTRAP = "true"
+      DMA_ADMISSION_CONTENT_DIGEST   = var.dma_admission_content_digest
+      DMA_ARTIFACT_DIGEST            = split("@", var.image_digests["agent-runtime-adapter-digital-marketing"])[1]
       POSTGRES_USER                  = "postgres"
       POSTGRES_DB                    = "waooaw"
       } : {}, var.auth_preview_origin != null ? {

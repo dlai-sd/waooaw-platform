@@ -24,6 +24,8 @@ const icons = {
   EMAIL: FaEnvelope,
 } as const;
 
+const providerOrder: IdentityProvider['id'][] = ['GOOGLE', 'FACEBOOK', 'APPLE', 'EMAIL'];
+
 type ProviderIntent = 'login' | 'register';
 
 function supportsNextAuth(providerId: IdentityProvider['id']): providerId is keyof typeof nextAuthProvider {
@@ -47,8 +49,9 @@ export function ProviderCommands({
 }) {
   const [pendingProvider, setPendingProvider] = useState<string>();
   const [launchFailure, setLaunchFailure] = useState<string>();
-  const primary = providers.find((provider) => provider.id === 'GOOGLE');
-  const secondary = providers.filter((provider) => provider.id !== 'GOOGLE');
+  const orderedProviders = [...providers].sort(
+    (left, right) => providerOrder.indexOf(left.id) - providerOrder.indexOf(right.id)
+  );
 
   useEffect(() => {
     recordAuthTransition('PROVIDER_PROJECTION_READY');
@@ -81,28 +84,8 @@ export function ProviderCommands({
 
   return (
     <div className="provider-commands">
-      {primary
-        ? (() => {
-            const Icon = icons[primary.id];
-            const unavailable = !isActionable(primary);
-            const label = actionLabel(primary);
-            return (
-              <button
-                aria-label={unavailable ? `${label} (Unavailable)` : label}
-                className="provider-command provider-command-primary"
-                disabled={unavailable || pendingProvider !== undefined}
-                onClick={() => void begin(primary)}
-                title={unavailable ? `${primary.displayName} is unavailable` : label}
-                type="button"
-              >
-                <Icon aria-hidden="true" size={20} />
-                <span>{label}</span>
-              </button>
-            );
-          })()
-        : null}
-      <div className="provider-secondary">
-        {secondary.map((provider) => {
+      <div className="provider-grid">
+        {orderedProviders.map((provider) => {
           const Icon = icons[provider.id];
           const unavailable = !isActionable(provider);
           const label = actionLabel(provider);

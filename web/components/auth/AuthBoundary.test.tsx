@@ -1,20 +1,15 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { AuthBoundary } from './AuthBoundary';
 
 describe('auth loading boundary', () => {
-  beforeEach(() => jest.useFakeTimers());
-  afterEach(() => jest.useRealTimers());
-
-  it('announces loading, then exposes a bounded failure and retry', () => {
-    const retry = jest.fn();
-    render(<AuthBoundary retry={retry} />);
+  it('announces loading without inventing a timeout failure', () => {
+    render(<AuthBoundary />);
     expect(screen.getByRole('heading', { name: 'Log in to WAOOAW' })).toBeVisible();
     expect(screen.getByRole('img', { name: 'WAOOAW' })).toBeVisible();
     expect(screen.getByRole('status')).toBeVisible();
-    act(() => jest.advanceTimersByTime(15_000));
-    expect(screen.getByRole('alert')).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    expect(retry).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Loading secure sign-in options.')).toBeVisible();
+    expect(screen.queryByText('Preparing the requested view.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('brands registration loading for the intended journey', () => {
@@ -25,8 +20,11 @@ describe('auth loading boundary', () => {
   });
 
   it('renders a provider error without exposing server details', () => {
-    render(<AuthBoundary failed retry={jest.fn()} />);
+    const retry = jest.fn();
+    render(<AuthBoundary failed retry={retry} />);
     expect(screen.getByRole('heading', { name: 'Sign in could not be completed' })).toBeVisible();
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(retry).toHaveBeenCalledTimes(1);
   });
 });

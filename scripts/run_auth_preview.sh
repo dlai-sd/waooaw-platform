@@ -64,11 +64,16 @@ chmod 700 "$state_directory"
 source_revision=$(git -C "$repository_root" rev-parse HEAD)
 source_tag=$(printf '%s' "$source_revision" | cut -c1-12)
 source_tree_digest=$(
-  git -C "$repository_root" ls-files --cached --others --exclude-standard -z \
-    | sort -z \
-    | xargs -0 -I{} sha256sum "$repository_root/{}" \
-    | sha256sum \
-    | cut -d ' ' -f 1
+  (
+    cd "$repository_root"
+    {
+      git rev-parse HEAD
+      git diff --binary --no-ext-diff HEAD --
+      git ls-files --others --exclude-standard -z \
+        | sort -z \
+        | xargs -0 -r sha256sum
+    } | sha256sum | cut -d ' ' -f 1
+  )
 )
 auth_preview_deployment_id=$(openssl rand -hex 16)
 generated_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
@@ -136,7 +141,7 @@ if [ "$action" = start ]; then
   fi
   $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /auth-preview/ensure-ce-audit-role.sql
   $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /docker-entrypoint-initdb.d/41-relationship-acquisition-mode.sql
-  $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /auth-preview/seed-marketplace.sql
+  $compose exec -T postgres bash /docker-entrypoint-initdb.d/42-demo-marketplace-admission.sh
 fi
 
 web_image=${WAOOAW_WEB_IMAGE:-waooaw/auth-preview-web:$source_tag}

@@ -20,7 +20,7 @@ export default defineConfig({
     ? undefined
     : {
         command:
-          'node tests/e2e/fixtures/f1-services.mjs & fixture_pid=$!; trap \'kill "$fixture_pid"\' EXIT; rm -rf .next && BUSINESS_PLATFORM_URL=http://127.0.0.1:5001 NEXTAUTH_SECRET=playwright-only-not-a-runtime-secret NEXTAUTH_URL=http://127.0.0.1:3000 PROFESSIONAL_RUNTIME_URL=http://127.0.0.1:5001 npm run build && BUSINESS_PLATFORM_URL=http://127.0.0.1:5001 NEXTAUTH_SECRET=playwright-only-not-a-runtime-secret NEXTAUTH_URL=http://127.0.0.1:3000 PROFESSIONAL_RUNTIME_URL=http://127.0.0.1:5001 npm run start -- --hostname 127.0.0.1 --port 3000',
+          'IDENTITY_PROVIDER_DELAY_MS=2500 node tests/e2e/fixtures/f1-services.mjs & fixture_pid=$!; trap \'kill "$fixture_pid"\' EXIT; rm -rf .next && BUSINESS_PLATFORM_URL=http://127.0.0.1:5001 NEXTAUTH_SECRET=playwright-only-not-a-runtime-secret NEXTAUTH_URL=http://127.0.0.1:3000 PROFESSIONAL_RUNTIME_URL=http://127.0.0.1:5001 npm run build && BUSINESS_PLATFORM_URL=http://127.0.0.1:5001 NEXTAUTH_SECRET=playwright-only-not-a-runtime-secret NEXTAUTH_URL=http://127.0.0.1:3000 PROFESSIONAL_RUNTIME_URL=http://127.0.0.1:5001 npm run start -- --hostname 127.0.0.1 --port 3000',
         url: 'http://127.0.0.1:3000',
         reuseExistingServer: true,
         timeout: 180_000,

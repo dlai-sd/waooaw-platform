@@ -1883,29 +1883,10 @@ select:focus-visible,
   cursor: pointer;
   text-align: start;
 }
-.provider-command-primary {
-  display: flex;
-  justify-content: center;
-  width: 100%;
-  min-height: 48px;
-  color: var(--ink);
-  background: var(--surface-raised);
-  border-color: color-mix(in srgb, var(--color-brand-blue) 55%, var(--line));
-  box-shadow: 0 8px 22px rgb(26 102 194 / 10%);
-  font-weight: 700;
-}
-.provider-command-primary svg {
-  color: #4285f4;
-}
-.provider-command-primary:hover {
-  border-color: var(--blue);
-  background: var(--paper);
-}
-.provider-secondary {
+.provider-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: .75rem;
-  margin-block-start: .75rem;
 }
 .provider-icon-command {
   min-height: 46px;
@@ -1916,6 +1897,7 @@ select:focus-visible,
   border-radius: 6px;
   color: var(--ink);
   background: var(--surface-raised);
+  box-shadow: none;
   cursor: pointer;
 }
 .provider-icon-command:hover {
@@ -1932,8 +1914,8 @@ select:focus-visible,
   cursor: not-allowed;
   opacity: 0.62;
 }
-.provider-command-google:not(:disabled) {
-  border-color: var(--color-brand-blue);
+.provider-command-google svg {
+  color: #4285f4;
 }
 .provider-command-facebook:not(:disabled) svg {
   color: #1877f2;
@@ -2009,9 +1991,9 @@ select:focus-visible,
 }
 .auth-dialog-entry {
   width: min(calc(100% - 2rem), 520px);
-  height: fit-content;
-  min-height: 0;
-  overflow: hidden;
+  height: min(calc(100dvh - 2rem), 360px);
+  min-height: min(calc(100dvh - 2rem), 360px);
+  overflow: auto;
 }
 .auth-dialog::backdrop {
   background: rgb(15 31 48 / 58%);
@@ -2055,7 +2037,7 @@ select:focus-visible,
   min-height: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   margin-inline: auto;
   padding-block: 2rem 1.5rem;
 }
@@ -2147,18 +2129,27 @@ select:focus-visible,
 .auth-dialog .auth-boundary {
   min-height: 0;
 }
-.auth-loading-icon {
-  animation: auth-loading 1s linear infinite;
+.auth-loading-state {
+  min-height: 118px;
+  display: grid;
+  align-content: center;
 }
-@keyframes auth-loading {
-  to {
-    transform: rotate(360deg);
-  }
+.auth-loading-bar {
+  display: block;
+  width: min(100%, 280px);
+  height: 4px;
+  margin: 1.25rem auto .75rem;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--line);
 }
-@media (prefers-reduced-motion: reduce) {
-  .auth-loading-icon {
-    animation: none;
-  }
+.auth-loading-bar::after {
+  content: "";
+  display: block;
+  width: 42%;
+  height: 100%;
+  margin-inline: auto;
+  background: var(--blue);
 }
 [dir="rtl"] .auth-dialog .provider-command {
   grid-template-columns: 24px minmax(0, 1fr) auto;
@@ -3821,6 +3812,8 @@ select:focus-visible,
     height: fit-content;
   }
   .auth-dialog-entry {
+    height: min(calc(100dvh - 2rem), 500px);
+    min-height: min(calc(100dvh - 2rem), 500px);
     max-height: calc(100dvh - 2rem);
     overflow-y: auto;
   }
