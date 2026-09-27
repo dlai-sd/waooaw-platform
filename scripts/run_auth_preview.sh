@@ -38,6 +38,15 @@ base64_secret_value() {
   fi
 }
 
+optional_value() {
+  supplied_value=$2
+  if [ -n "$supplied_value" ]; then
+    printf '%s' "$supplied_value"
+  else
+    existing_setting "$1"
+  fi
+}
+
 case ${1:-start} in
   prepare | start | stop) action=${1:-start} ;;
   *) fail "usage: $0 [prepare|start|stop]" ;;
@@ -96,6 +105,21 @@ conversation_cursor_hmac_key=$(secret_value CONVERSATION_CURSOR_HMAC_KEY 32)
 channel_continuity_hmac_key=$(base64_secret_value CHANNEL_CONTINUITY_HMAC_KEY 32)
 wbe_ops_auth_token=$(secret_value WBE_OPS_AUTH_TOKEN 32)
 data_protection_certificate_password=$(secret_value DATA_PROTECTION_CERTIFICATE_PASSWORD 24)
+razorpay_key_id=$(optional_value RAZORPAY_KEY_ID "${RAZORPAY_KEY_ID:-}")
+razorpay_key_secret=$(optional_value RAZORPAY_KEY_SECRET "${RAZORPAY_KEY_SECRET:-}")
+razorpay_webhook_secret=$(optional_value RAZORPAY_WEBHOOK_SECRET "${RAZORPAY_WEBHOOK_SECRET:-}")
+razorpay_readiness_state=$(optional_value RAZORPAY_READINESS_STATE "${RAZORPAY_READINESS_STATE:-}")
+razorpay_readiness_state=${razorpay_readiness_state:-NOT_CONFIGURED}
+demo_promotion_enabled=$(optional_value DEMO_PROMOTION_ENABLED "${DEMO_PROMOTION_ENABLED:-}")
+demo_promotion_enabled=${demo_promotion_enabled:-true}
+printf '%s' "$razorpay_readiness_state" | grep -Eq '^(NOT_CONFIGURED|CONFIGURED_UNVERIFIED|READY_TEST)$' \
+  || fail "RAZORPAY_READINESS_STATE must be NOT_CONFIGURED, CONFIGURED_UNVERIFIED, or READY_TEST"
+printf '%s' "$demo_promotion_enabled" | grep -Eq '^(true|false)$' \
+  || fail "DEMO_PROMOTION_ENABLED must be true or false"
+if [ -n "$razorpay_key_id" ]; then
+  printf '%s' "$razorpay_key_id" | grep -Eq '^rzp_test_[A-Za-z0-9]+$' \
+    || fail "auth preview requires a Razorpay Test Mode key ID"
+fi
 data_protection_certificate="$state_directory/data-protection.pfx"
 if [ ! -f "$data_protection_certificate" ]; then
   certificate_key=$(mktemp)
@@ -129,6 +153,11 @@ CONVERSATION_CURSOR_HMAC_KEY=$conversation_cursor_hmac_key
 CHANNEL_CONTINUITY_HMAC_KEY=$channel_continuity_hmac_key
 WBE_OPS_AUTH_TOKEN=$wbe_ops_auth_token
 DATA_PROTECTION_CERTIFICATE_PASSWORD=$data_protection_certificate_password
+RAZORPAY_KEY_ID=$razorpay_key_id
+RAZORPAY_KEY_SECRET=$razorpay_key_secret
+RAZORPAY_WEBHOOK_SECRET=$razorpay_webhook_secret
+RAZORPAY_READINESS_STATE=$razorpay_readiness_state
+DEMO_PROMOTION_ENABLED=$demo_promotion_enabled
 EOF
 
 compose="docker compose --project-name $preview_project --env-file $runtime_environment -f $compose_file"
@@ -146,6 +175,7 @@ if [ "$action" = start ]; then
   $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /auth-preview/ensure-ce-audit-role.sql
   $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /auth-preview/ensure-business-runtime-grants.sql
   $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /docker-entrypoint-initdb.d/43-demo-coupon.sql
+  $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /docker-entrypoint-initdb.d/44-razorpay-checkout-orders.sql
   $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /docker-entrypoint-initdb.d/41-relationship-acquisition-mode.sql
   $compose exec -T postgres bash /docker-entrypoint-initdb.d/42-demo-marketplace-admission.sh
 fi

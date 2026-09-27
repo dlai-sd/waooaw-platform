@@ -46,6 +46,20 @@ from wallet.service import WalletService
 # ---------------------------------------------------------------------------
 
 _PAYMENT_DDL = [
+    """CREATE TABLE IF NOT EXISTS razorpay_checkout_orders (
+        checkout_intent_id TEXT PRIMARY KEY,
+        razorpay_order_id TEXT NOT NULL UNIQUE,
+        tenant_id TEXT NOT NULL,
+        customer_id TEXT NOT NULL,
+        relationship_id TEXT NOT NULL,
+        accepted_contract_id TEXT NOT NULL,
+        contract_version INTEGER NOT NULL,
+        contract_hash TEXT NOT NULL,
+        contract_acceptance_id TEXT NOT NULL,
+        payment_consent_evidence_id TEXT NOT NULL,
+        agent_type TEXT NOT NULL,
+        bundle_tier TEXT NOT NULL
+    )""",
     """CREATE TABLE IF NOT EXISTS payment_intents (
         razorpay_payment_id TEXT PRIMARY KEY,
         razorpay_order_id   TEXT NOT NULL,
@@ -151,6 +165,65 @@ async def test_relationship_checkout_reconciliation_is_exact_bound(payment_sessi
             body.model_copy(update={"tenant_id": uuid.uuid4()}),
         )
     assert conflict.value.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_signed_razorpay_checkout_confirmation_uses_persisted_order(payment_session, monkeypatch):
+    from payment import router as payment_router
+
+    class SessionContext:
+        async def __aenter__(self):
+            return payment_session
+
+        async def __aexit__(self, _type, _value, _traceback):
+            return False
+
+    monkeypatch.setattr(payment_router, "get_session_factory", lambda: lambda: SessionContext())
+    redis_client = fakeredis.aioredis.FakeRedis()
+    monkeypatch.setattr(payment_router.aioredis, "from_url", lambda *_args, **_kwargs: redis_client)
+    settings = MagicMock()
+    settings.RAZORPAY_KEY_SECRET = "test-secret"
+    settings.REDIS_URL = "redis://redis:6379/0"
+    monkeypatch.setattr(payment_router, "_settings", settings)
+    checkout_intent_id = uuid.uuid4()
+    ids = [uuid.uuid4() for _ in range(7)]
+    await payment_session.execute(text(
+        "INSERT INTO razorpay_checkout_orders "
+        "(checkout_intent_id, razorpay_order_id, tenant_id, customer_id, relationship_id, "
+        "accepted_contract_id, contract_version, contract_hash, contract_acceptance_id, "
+        "payment_consent_evidence_id, agent_type, bundle_tier) VALUES "
+        "(:checkout, 'order_test_123', :tenant, :customer, :relationship, :contract, 1, :hash, "
+        ":acceptance, :consent, 'DMA', 'STARTER')"
+    ).bindparams(
+        checkout=str(checkout_intent_id), tenant=str(ids[0]), customer=str(ids[1]),
+        relationship=str(ids[2]), contract=str(ids[3]), hash="a" * 64,
+        acceptance=str(ids[4]), consent=str(ids[5]),
+    ))
+    await payment_session.commit()
+    payment_id = "pay_test_123"
+    signature = hmac.new(
+        b"test-secret",
+        f"order_test_123|{payment_id}".encode(),
+        hashlib.sha256,
+    ).hexdigest()
+
+    result = await payment_router.confirm_razorpay_checkout(
+        checkout_intent_id,
+        payment_router.RazorpayCheckoutConfirmationBody(
+            razorpay_order_id="order_test_123",
+            razorpay_payment_id=payment_id,
+            razorpay_signature=signature,
+        ),
+    )
+
+    assert result.outcome_kind is CheckoutOutcomeKind.CAPTURED
+    assert result.relationship_id == ids[2]
+    assert result.commercial_outcome_reference == payment_id
+    stored = (await payment_session.execute(text(
+        "SELECT status, checkout_intent_id FROM payment_intents WHERE razorpay_payment_id = :payment_id"
+    ).bindparams(payment_id=payment_id))).fetchone()
+    assert stored.status == "CAPTURED"
+    assert stored.checkout_intent_id == str(checkout_intent_id)
 
 
 
@@ -545,6 +618,11 @@ async def test_non_demo_hire_preview_preserves_contract_bound_payment(monkeypatc
     settings = MagicMock()
     settings.WAOOAW_ENVIRONMENT = environment
     settings.DEMO_RENEWAL_CONSEQUENCE = "Standard paid renewal terms apply."
+    settings.RAZORPAY_KEY_ID = ""
+    settings.RAZORPAY_KEY_SECRET = ""
+    settings.RAZORPAY_MERCHANT_DISPLAY_NAME = "WAOOAW"
+    settings.RAZORPAY_ENABLED_METHOD_FAMILIES = "UPI,CARD,NETBANKING,WALLET"
+    settings.RAZORPAY_READINESS_STATE = "NOT_CONFIGURED"
     monkeypatch.setattr(payment_router, "_settings", settings)
 
     result = await payment_router.create_hire_commercial_preview(HireCommercialPreviewBody(
@@ -559,7 +637,39 @@ async def test_non_demo_hire_preview_preserves_contract_bound_payment(monkeypatc
     assert result.discount_inr_paise == 0
     assert result.payable_inr_paise == 118000
     assert result.payment_method_required is True
-    assert result.payments_enabled is (environment == "production")
+    assert result.payments_enabled is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("environment", "readiness"),
+    [("demo", "READY_TEST"), ("uat", "READY_TEST"), ("production", "READY_LIVE")],
+)
+async def test_hire_preview_enables_official_checkout_when_razorpay_is_ready(
+    monkeypatch,
+    environment,
+    readiness,
+):
+    from payment import router as payment_router
+
+    settings = MagicMock()
+    settings.WAOOAW_ENVIRONMENT = environment
+    settings.DEMO_RENEWAL_CONSEQUENCE = "Standard paid renewal terms apply."
+    settings.RAZORPAY_KEY_ID = "rzp_test_public" if environment != "production" else "rzp_live_public"
+    settings.RAZORPAY_KEY_SECRET = "configured-secret"
+    settings.RAZORPAY_MERCHANT_DISPLAY_NAME = "WAOOAW"
+    settings.RAZORPAY_ENABLED_METHOD_FAMILIES = "UPI,CARD,NETBANKING,WALLET"
+    settings.RAZORPAY_READINESS_STATE = readiness
+    monkeypatch.setattr(payment_router, "_settings", settings)
+
+    result = await payment_router.create_hire_commercial_preview(HireCommercialPreviewBody(
+        professional_type="TUTOR",
+        gross_amount_inr_paise=118000,
+        gst_amount_inr_paise=18000,
+        cadence="MONTHLY",
+    ))
+
+    assert result.payments_enabled is True
 
 
 # ---------------------------------------------------------------------------

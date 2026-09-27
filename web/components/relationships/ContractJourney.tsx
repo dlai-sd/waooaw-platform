@@ -63,7 +63,20 @@ interface CheckoutOutcome {
 }
 
 interface RazorpayCheckout {
+  on(event: 'payment.failed', handler: (response: RazorpayFailureResponse) => void): void;
   open(): void;
+}
+
+interface RazorpaySuccessResponse {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}
+
+interface RazorpayFailureResponse {
+  error?: {
+    description?: string;
+  };
 }
 
 declare global {
@@ -115,23 +128,32 @@ export function ContractJourney({ relationshipId, journey }: Props) {
   const idempotencyKeys = useRef<Record<string, string>>({});
   if (!journey) return null;
 
-  async function reconcileCheckout(checkoutIntentId: string) {
-    setStatus('Payment confirmation is being reconciled with Razorpay.');
-    const response = await fetch(
-      `/api/relationships/${encodeURIComponent(relationshipId)}/contract-journey?checkoutIntentId=${encodeURIComponent(checkoutIntentId)}`,
-      { cache: 'no-store' }
+  async function confirmRazorpayCheckout(
+    checkoutIntentId: string,
+    response: RazorpaySuccessResponse
+  ) {
+    setStatus('Razorpay received the payment. WAOOAW is verifying the signed payment evidence.');
+    const confirmation = await fetch(
+      `/api/relationships/${encodeURIComponent(relationshipId)}/contract-journey`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'confirm',
+          checkoutIntentId,
+          razorpayOrderId: response.razorpay_order_id,
+          razorpayPaymentId: response.razorpay_payment_id,
+          razorpaySignature: response.razorpay_signature,
+        }),
+      }
     );
-    const result = (await response.json().catch(() => ({}))) as CheckoutOutcome & { title?: string };
-    if (!response.ok) {
-      setStatus(result.title ?? 'Payment confirmation remains unresolved. No activation success was recorded.');
+    const result = (await confirmation.json().catch(() => ({}))) as CheckoutOutcome & { title?: string };
+    if (!confirmation.ok || result.outcomeKind !== 'CAPTURED') {
+      setStatus(result.title ?? 'Signed payment confirmation remains unresolved. No activation success was recorded.');
       return;
     }
     setCheckout(result);
-    setStatus(
-      result.outcomeKind === 'CAPTURED'
-        ? 'Payment captured and reconciled by WAOOAW. Activation is ready for your confirmation.'
-        : (result.customerSafeNextAction ?? 'Payment confirmation remains pending. Do not create another order.')
-    );
+    setStatus('Payment captured and signature-verified by WAOOAW. Activation is ready for your confirmation.');
   }
 
   async function launchRazorpay(outcome: CheckoutOutcome) {
@@ -151,19 +173,32 @@ export function ContractJourney({ relationshipId, journey }: Props) {
       const Checkout = window.Razorpay;
       if (!Checkout) throw new Error('Secure Razorpay Checkout could not be loaded.');
       const checkoutIntentId = outcome.checkoutIntentId;
-      new Checkout({
+      const razorpayCheckout = new Checkout({
         key: outcome.publicCheckoutKey,
         amount: outcome.amountInrPaise,
         currency: outcome.currency,
         name: outcome.merchantDisplayName,
         order_id: outcome.providerOrderReference,
-        handler: () => void reconcileCheckout(checkoutIntentId),
+        handler: (response: RazorpaySuccessResponse) => {
+          if (
+            response.razorpay_order_id !== outcome.providerOrderReference ||
+            !response.razorpay_payment_id ||
+            !response.razorpay_signature
+          ) {
+            setStatus('Razorpay returned an invalid payment confirmation. No payment success was recorded.');
+            return;
+          }
+          void confirmRazorpayCheckout(checkoutIntentId, response);
+        },
         modal: {
           ondismiss: () =>
             setStatus('Razorpay Checkout was closed. Payment is not marked failed; reconciliation remains available.'),
         },
-        retry: { enabled: false },
-      }).open();
+      });
+      razorpayCheckout.on('payment.failed', (response) => {
+        setStatus(response.error?.description ?? 'Razorpay could not complete the payment. No payment success was recorded.');
+      });
+      razorpayCheckout.open();
     } catch (caught) {
       setStatus(caught instanceof Error ? caught.message : 'Secure Razorpay Checkout could not be loaded.');
     }

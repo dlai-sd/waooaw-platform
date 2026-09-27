@@ -3,7 +3,7 @@
 // Implements: WC-096 §4.3 Marketplace And Disclosure
 // Constitutional basis: C-023 (Evidence First), C-049 (Honest Limitation), C-059 (Implementation Traceability)
 
-import { CheckCircle2, CreditCard, Landmark, LoaderCircle, QrCode, ShieldCheck, Tag, WalletCards, X } from 'lucide-react';
+import { CheckCircle2, LoaderCircle, ShieldCheck, Tag, X } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -48,19 +48,11 @@ const paymentsUnavailableMessage =
 const money = (paise: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(paise / 100);
 
-const paymentMethods = [
-  { id: 'card', label: 'Card', detail: 'Visa, Mastercard, RuPay and more', icon: CreditCard },
-  { id: 'upi', label: 'UPI / QR', detail: 'Any supported UPI app', icon: QrCode },
-  { id: 'netbanking', label: 'Netbanking', detail: 'All major Indian banks', icon: Landmark },
-  { id: 'wallet', label: 'Wallet', detail: 'Supported digital wallets', icon: WalletCards },
-] as const;
-
 export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
   const router = useRouter();
   const started = useRef(false);
   const [preview, setPreview] = useState<HireCommercialPreview | null>(null);
   const [basePreview, setBasePreview] = useState<HireCommercialPreview | null>(null);
-  const [selectedMethod, setSelectedMethod] = useState<(typeof paymentMethods)[number]['id']>('upi');
   const [couponCode, setCouponCode] = useState('');
   const [couponError, setCouponError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -213,8 +205,8 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
                 <Image alt="WAOOAW" height={32} priority src="/waooaw-platform-logo.png" width={32} />
               </div>
               <div>
-                <p>WAOOAW Secure Checkout</p>
-                <span><ShieldCheck aria-hidden="true" size={15} /> Razorpay payment options</span>
+                <p>WAOOAW Hire Review</p>
+                <span><ShieldCheck aria-hidden="true" size={15} /> Secure order and coupon review</span>
               </div>
               <Link aria-label="Close checkout" className="checkout-close" href="/marketplace">
                 <X aria-hidden="true" size={22} />
@@ -245,10 +237,9 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
               <div className="checkout-payment-panel">
                 <div className="checkout-payment-heading">
                   <div>
-                    <p className="eyebrow">Payment methods</p>
-                    <h3>{preview.payment_method_required ? 'Choose how to pay' : 'No payment method required'}</h3>
+                    <p className="eyebrow">Offer</p>
+                    <h3>{preview.payment_method_required ? 'Review your order' : 'No payment required'}</h3>
                   </div>
-                  <span className="checkout-provider">Secured by Razorpay</span>
                 </div>
                 <div className="checkout-coupon-control">
                   <label htmlFor="hire-coupon">Discount coupon</label>
@@ -281,30 +272,10 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
                     <p className="checkout-inline-error" role="alert">{couponError}</p>
                   ) : null}
                 </div>
-                <fieldset className="checkout-methods">
-                  <legend>Available payment methods</legend>
-                  {paymentMethods.map((method) => {
-                    const Icon = method.icon;
-                    return (
-                      <label key={method.id} className={selectedMethod === method.id ? 'selected' : undefined}>
-                        <input
-                          checked={selectedMethod === method.id}
-                          name="paymentMethod"
-                          onChange={() => setSelectedMethod(method.id)}
-                          type="radio"
-                          value={method.id}
-                        />
-                        <Icon aria-hidden="true" size={22} />
-                        <span><strong>{method.label}</strong><small>{method.detail}</small></span>
-                        {selectedMethod === method.id ? <CheckCircle2 aria-hidden="true" size={18} /> : null}
-                      </label>
-                    );
-                  })}
-                </fieldset>
                 <div className="checkout-method-note">
                   {preview.payable_inr_paise === 0
                     ? `Congratulations! ${preview.coupon_code ?? 'Your coupon'} gives you 100% off this hire. No payment details are needed today. We wish you great business success with your WAOOAW professional!`
-                    : 'Payment methods will be enabled when payments are available.'}
+                    : 'After configuration and acceptance of your exact contract, Razorpay’s official secure checkout will open for payment. Card, UPI, netbanking, and wallet details are entered only there.'}
                 </div>
                 {couponError === paymentsUnavailableMessage ? (
                   <p className="checkout-inline-error checkout-payment-error" role="alert">{couponError}</p>

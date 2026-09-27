@@ -133,6 +133,12 @@ class RelationshipCheckoutReconcileBody(BaseModel):
     payment_consent_evidence_id: UUID
 
 
+class RazorpayCheckoutConfirmationBody(BaseModel):
+    razorpay_order_id: str = Field(min_length=1, max_length=128)
+    razorpay_payment_id: str = Field(min_length=1, max_length=128)
+    razorpay_signature: str = Field(min_length=1, max_length=256)
+
+
 @router.post("/hire-preview", response_model=HireCommercialPreview)
 async def create_hire_commercial_preview(body: HireCommercialPreviewBody) -> HireCommercialPreview:
     """Return server-owned commercial truth before a Hire relationship is created."""
@@ -155,10 +161,21 @@ async def create_hire_commercial_preview(body: HireCommercialPreviewBody) -> Hir
         discount_pct = validation.discount_pct
     discount = body.gross_amount_inr_paise * discount_pct // 100
     fully_discounted = discount == body.gross_amount_inr_paise
-    payments_enabled = _settings.WAOOAW_ENVIRONMENT not in {
-        PaymentEnvironment.DEMO.value,
-        PaymentEnvironment.UAT.value,
-    }
+    expected_readiness = (
+        "READY_LIVE"
+        if _settings.WAOOAW_ENVIRONMENT == PaymentEnvironment.PRODUCTION.value
+        else "READY_TEST"
+    )
+    configured_values = (
+        _settings.RAZORPAY_KEY_ID,
+        _settings.RAZORPAY_KEY_SECRET,
+        _settings.RAZORPAY_MERCHANT_DISPLAY_NAME,
+        _settings.RAZORPAY_ENABLED_METHOD_FAMILIES,
+    )
+    payments_enabled = (
+        all(isinstance(value, str) and bool(value.strip()) for value in configured_values)
+        and _settings.RAZORPAY_READINESS_STATE == expected_readiness
+    )
     return HireCommercialPreview(
         outcome_kind="FULLY_DISCOUNTED" if fully_discounted else "PAYMENT_REQUIRED_AFTER_CONTRACT",
         professional_type=body.professional_type,
@@ -179,10 +196,93 @@ async def create_relationship_checkout(body: RelationshipCheckoutBody) -> Relati
     """Return WBE-owned commercial truth for one accepted relationship contract."""
     session_factory = get_session_factory()
     async with session_factory() as db:
-        return await OnboardingService(
+        result = await OnboardingService(
             settings=_settings,
             zero_price_outcomes=ZeroPriceCommercialOutcomeStore(db),
         ).create_relationship_checkout(RelationshipCheckoutRequest(**body.model_dump()))
+        if result.outcome_kind == CheckoutOutcomeKind.RAZORPAY_CHECKOUT_REQUIRED:
+            await db.execute(text(
+                "INSERT INTO razorpay_checkout_orders "
+                "(checkout_intent_id, razorpay_order_id, tenant_id, customer_id, relationship_id, "
+                "accepted_contract_id, contract_version, contract_hash, contract_acceptance_id, "
+                "payment_consent_evidence_id, agent_type, bundle_tier) "
+                "VALUES (:checkout_intent_id, :order_id, :tenant_id, :customer_id, :relationship_id, "
+                ":contract_id, :contract_version, :contract_hash, :acceptance_id, :consent_id, "
+                ":agent_type, :bundle_tier) ON CONFLICT (checkout_intent_id) DO NOTHING"
+            ).bindparams(
+                checkout_intent_id=str(body.checkout_intent_id),
+                order_id=result.provider_order_reference,
+                tenant_id=str(body.tenant_id),
+                customer_id=str(body.customer_id),
+                relationship_id=str(body.relationship_id),
+                contract_id=str(body.contract_id),
+                contract_version=body.contract_version,
+                contract_hash=body.contract_hash,
+                acceptance_id=str(body.contract_acceptance_id),
+                consent_id=str(body.payment_consent_evidence_id),
+                agent_type=body.agent_type,
+                bundle_tier=body.bundle_tier,
+            ))
+            await db.commit()
+        return result
+
+
+@router.post("/relationship-checkout/{checkout_intent_id}/confirm")
+async def confirm_razorpay_checkout(
+    checkout_intent_id: UUID,
+    body: RazorpayCheckoutConfirmationBody,
+) -> RelationshipCheckoutResult:
+    """Verify Razorpay Standard Checkout's signed browser response."""
+    session_factory = get_session_factory()
+    async with session_factory() as db:
+        row = (await db.execute(text(
+            "SELECT razorpay_order_id, tenant_id, customer_id, relationship_id, accepted_contract_id, "
+            "contract_version, contract_hash, contract_acceptance_id, payment_consent_evidence_id, "
+            "agent_type, bundle_tier FROM razorpay_checkout_orders "
+            "WHERE checkout_intent_id = :checkout_intent_id"
+        ).bindparams(checkout_intent_id=str(checkout_intent_id)))).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail={"code": "CHECKOUT_ORDER_NOT_FOUND"})
+        if row.razorpay_order_id != body.razorpay_order_id:
+            raise HTTPException(status_code=409, detail={"code": "CHECKOUT_ORDER_MISMATCH"})
+
+        event = PaymentCapturedEvent(
+            razorpay_order_id=body.razorpay_order_id,
+            razorpay_payment_id=body.razorpay_payment_id,
+            razorpay_signature=body.razorpay_signature,
+            customer_id=UUID(str(row.customer_id)),
+            agent_type=row.agent_type,
+            bundle_tier=row.bundle_tier,
+            tenant_id=UUID(str(row.tenant_id)),
+            relationship_id=UUID(str(row.relationship_id)),
+            accepted_contract_id=UUID(str(row.accepted_contract_id)),
+            contract_version=row.contract_version,
+            contract_hash=row.contract_hash,
+            contract_acceptance_id=UUID(str(row.contract_acceptance_id)),
+            payment_consent_evidence_id=UUID(str(row.payment_consent_evidence_id)),
+            payment_evidence_id=uuid5(NAMESPACE_URL, f"waooaw:payment:{body.razorpay_payment_id}"),
+            checkout_intent_id=checkout_intent_id,
+        )
+        redis_client = aioredis.from_url(_settings.REDIS_URL, decode_responses=True)
+        try:
+            result = await WebhookHandler(
+                db=db,
+                wallet_service=WalletService(db=db, redis_client=redis_client),
+                razorpay_client=RazorpayClient(settings=_settings),
+                settings=_settings,
+            ).handle_payment_captured(event)
+        finally:
+            await redis_client.aclose()
+        return RelationshipCheckoutResult(
+            outcome_kind=CheckoutOutcomeKind.CAPTURED,
+            checkout_intent_id=checkout_intent_id,
+            relationship_id=UUID(str(row.relationship_id)),
+            contract_version=row.contract_version,
+            produced_at=datetime.now(timezone.utc),
+            commercial_outcome_reference=result.payment_reference,
+            commercial_evidence_id=result.payment_evidence_id,
+            evidence_state="COMMITTED",
+        )
 
 
 @router.post("/relationship-checkout/{checkout_intent_id}/reconcile", response_model=RelationshipCheckoutResult)

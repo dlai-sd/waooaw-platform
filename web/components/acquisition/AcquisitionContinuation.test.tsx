@@ -85,10 +85,8 @@ describe('AcquisitionContinuation', () => {
     expect(screen.getByAltText('WAOOAW')).toBeVisible();
     expect(screen.getByLabelText('Discount coupon')).toHaveValue('');
     expect(screen.getByText('Total due now').nextSibling).toHaveTextContent('₹1,180.00');
-    for (const method of ['Card', 'UPI / QR', 'Netbanking', 'Wallet']) {
-      expect(screen.getByRole('radio', { name: new RegExp(method) })).toBeVisible();
-    }
-    expect(screen.getByText('Secured by Razorpay')).toBeVisible();
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+    expect(screen.queryByText('Secured by Razorpay')).not.toBeInTheDocument();
     expect(replace).not.toHaveBeenCalled();
     expect(jest.mocked(fetch)).toHaveBeenCalledTimes(1);
     expect(jest.mocked(fetch)).toHaveBeenNthCalledWith(
@@ -140,8 +138,7 @@ describe('AcquisitionContinuation', () => {
     });
     render(<AcquisitionContinuation {...props} intent="hire" />);
 
-    fireEvent.click(await screen.findByRole('radio', { name: /Card/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
 
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Great news! Hiring is free of charge in the Demo / UAT environment'

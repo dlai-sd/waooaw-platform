@@ -2911,12 +2911,6 @@ select:focus-visible,
   justify-content: space-between;
   gap: 1rem;
 }
-.checkout-provider {
-  color: var(--green);
-  font-size: .74rem;
-  font-weight: 800;
-  white-space: nowrap;
-}
 .checkout-coupon-control {
   display: grid;
   gap: .4rem;
@@ -2982,49 +2976,8 @@ select:focus-visible,
   border-inline-start: 3px solid var(--danger);
   background: color-mix(in srgb, var(--danger) 7%, var(--surface));
 }
-.checkout-methods {
-  display: grid;
-  gap: .6rem;
-  margin: 1.25rem 0;
-  padding: 0;
-  border: 0;
-}
-.checkout-methods legend {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-}
-.checkout-methods label {
-  display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: .8rem;
-  min-height: 64px;
-  padding: .65rem .8rem;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  cursor: pointer;
-}
-.checkout-methods label.selected {
-  border-color: var(--blue);
-  background: color-mix(in srgb, var(--blue) 6%, var(--surface));
-}
-.checkout-methods input {
-  margin: 0;
-}
-.checkout-methods label > svg {
-  color: var(--blue);
-}
-.checkout-methods label span {
-  display: grid;
-  gap: .15rem;
-}
-.checkout-methods small {
-  color: var(--muted);
-}
 .checkout-method-note {
+  margin-block-start: 1.25rem;
   padding: .75rem;
   border-inline-start: 3px solid var(--orange);
   background: var(--paper);
