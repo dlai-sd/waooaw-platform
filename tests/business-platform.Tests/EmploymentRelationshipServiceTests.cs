@@ -54,6 +54,55 @@ internal sealed class RecordingRelationshipConstitutionalGateway : IRelationship
 public sealed class EmploymentRelationshipServiceTests
 {
     [Fact]
+    public async Task LegacyConfiguringHireRepairsEvaluatorBindingExactlyOnce()
+    {
+        var (service, factory, gateway) = CreateService();
+        var tenantId = Guid.NewGuid();
+        var relationshipId = Guid.NewGuid();
+        var participantId = Guid.NewGuid();
+        await using (var seed = factory.CreateDbContext())
+        {
+            seed.EmploymentRelationships.Add(new EmploymentRelationship
+            {
+                RelationshipId = relationshipId,
+                TenantId = tenantId,
+                AgentInstanceId = Guid.NewGuid(),
+                ProfessionalType = "DMA",
+                ProfessionalVersion = "1.0.0",
+                AcquisitionMode = "HIRE",
+                EvaluationIntentId = Guid.NewGuid(),
+                InitiatingParticipantId = participantId,
+                State = EmploymentRelationshipState.Configuring,
+            });
+            seed.RelationshipParticipants.Add(new RelationshipParticipant
+            {
+                TenantId = tenantId,
+                RelationshipId = relationshipId,
+                ParticipantId = participantId,
+                Role = RelationshipParticipantRole.Evaluator,
+                BoundEvidenceId = Guid.NewGuid(),
+            });
+            await seed.SaveChangesAsync();
+        }
+
+        Assert.True(await service.EnsureHireEmployerRoleAsync(
+            tenantId, relationshipId, participantId, Guid.NewGuid(), CancellationToken.None));
+        Assert.False(await service.EnsureHireEmployerRoleAsync(
+            tenantId, relationshipId, participantId, Guid.NewGuid(), CancellationToken.None));
+
+        await using var db = factory.CreateDbContext();
+        var bindings = await db.RelationshipParticipants
+            .Where(value => value.RelationshipId == relationshipId)
+            .ToListAsync();
+        Assert.Contains(bindings, value =>
+            value.Role == RelationshipParticipantRole.Evaluator && value.Status == "REVOKED");
+        Assert.Contains(bindings, value =>
+            value.Role == RelationshipParticipantRole.Employer && value.Status == "ACTIVE");
+        Assert.Equal("REPAIR_HIRE_EMPLOYER_BINDING", gateway.LastActionType);
+        Assert.Equal(1, gateway.CallCount);
+    }
+
+    [Fact]
     public async Task CctAe01Rel01_DuplicateAdmissionReusesRelationship()
     {
         var (service, factory, gateway) = CreateService();

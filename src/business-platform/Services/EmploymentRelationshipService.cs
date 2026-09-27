@@ -297,6 +297,9 @@ public sealed class EmploymentRelationshipService
             EvaluationIntentId = evaluationIntentId,
             InitiatingParticipantId = participantId,
         };
+        var participantRole = string.Equals(acquisitionEvidence?.Intent, "HIRE", StringComparison.Ordinal)
+            ? RelationshipParticipantRole.Employer
+            : RelationshipParticipantRole.Evaluator;
         db.EmploymentRelationships.Add(relationship);
         db.RelationshipParticipants.Add(
             new RelationshipParticipant
@@ -304,7 +307,7 @@ public sealed class EmploymentRelationshipService
                 TenantId = tenantId,
                 RelationshipId = relationshipId,
                 ParticipantId = participantId,
-                Role = RelationshipParticipantRole.Evaluator,
+                Role = participantRole,
                 BoundEvidenceId = evidenceId,
             }
         );
@@ -316,7 +319,7 @@ public sealed class EmploymentRelationshipService
                 StateVersion = 0,
                 ToState = EmploymentRelationshipState.Discovered,
                 ActorParticipantId = participantId,
-                ActorRole = RelationshipParticipantRole.Evaluator,
+                ActorRole = participantRole,
                 CorrelationId = correlationId,
                 EvidenceId = evidenceId,
             }
@@ -608,6 +611,74 @@ public sealed class EmploymentRelationshipService
             .OrderBy(value => value.Role == RelationshipParticipantRole.Employer ? 0 : 1)
             .Select(value => (RelationshipParticipantRole?)value.Role)
             .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<bool> EnsureHireEmployerRoleAsync(
+        Guid tenantId,
+        Guid relationshipId,
+        Guid participantId,
+        Guid correlationId,
+        CancellationToken cancellationToken
+    )
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var relationship = await db.EmploymentRelationships.SingleOrDefaultAsync(
+            value => value.TenantId == tenantId && value.RelationshipId == relationshipId,
+            cancellationToken
+        );
+        if (relationship is null)
+            throw new KeyNotFoundException("Relationship not found.");
+        var bindings = await db.RelationshipParticipants
+            .Where(value =>
+                value.TenantId == tenantId
+                && value.RelationshipId == relationshipId
+                && value.ParticipantId == participantId
+                && value.Status == "ACTIVE"
+            )
+            .ToListAsync(cancellationToken);
+        if (bindings.Any(value => value.Role == RelationshipParticipantRole.Employer))
+            return false;
+        var evaluator = bindings.SingleOrDefault(value => value.Role == RelationshipParticipantRole.Evaluator);
+        if (
+            evaluator is null
+            || relationship.InitiatingParticipantId != participantId
+            || relationship.State != EmploymentRelationshipState.Configuring
+            || !string.Equals(relationship.AcquisitionMode, "HIRE", StringComparison.Ordinal)
+        )
+            throw new ConstitutionalActionDeniedException(
+                "Employer authority requires an active Hire relationship binding."
+            );
+
+        var evidenceId = await _constitutionalGateway.AuthorizeAndRecordAsync(
+            tenantId,
+            relationshipId,
+            relationship.ProfessionalType,
+            "REPAIR_HIRE_EMPLOYER_BINDING",
+            correlationId,
+            new
+            {
+                participant_id = participantId,
+                prior_role = RelationshipRoleCodec.ToDatabase(evaluator.Role),
+                target_role = RelationshipRoleCodec.ToDatabase(RelationshipParticipantRole.Employer),
+                prior_binding_evidence_id = evaluator.BoundEvidenceId,
+            },
+            cancellationToken
+        );
+        evaluator.Status = "REVOKED";
+        evaluator.RevokedEvidenceId = evidenceId;
+        evaluator.RevokedAt = DateTimeOffset.UtcNow;
+        db.RelationshipParticipants.Add(
+            new RelationshipParticipant
+            {
+                TenantId = tenantId,
+                RelationshipId = relationshipId,
+                ParticipantId = participantId,
+                Role = RelationshipParticipantRole.Employer,
+                BoundEvidenceId = evidenceId,
+            }
+        );
+        await db.SaveChangesAsync(cancellationToken);
+        return true;
     }
 
     public async Task<IReadOnlyList<RelationshipStateHistory>> GetTimelineAsync(

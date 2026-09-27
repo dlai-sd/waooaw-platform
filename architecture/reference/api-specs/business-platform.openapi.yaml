@@ -1337,6 +1337,41 @@ paths:
         "503":
           description: Contract composition or constitutional evidence is unavailable
 
+  /api/v1/employment/relationships/{relationshipId}/hire-setup:
+    post:
+      tags: [Employment]
+      summary: Configure a direct Hire and present its exact employment contract
+      description: |
+        Requires the initiating same-tenant EMPLOYER and a HIRE relationship in CONFIGURING.
+        BP validates selected capabilities against the current professional disclosure, records
+        customer-confirmed context, goal, skills, budget, and Decision Space, derives commercial
+        terms from the server-owned catalog, and then presents the immutable exact contract.
+        This operation never accepts the contract, initiates payment, or activates the professional.
+      operationId: prepareRelationshipHire
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrepareRelationshipHireRequest"
+      responses:
+        "200":
+          description: Configuration recorded and exact contract presented
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmploymentContractVersion"
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: Active same-tenant employer authority denied
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "503":
+          description: Configuration, contract, or constitutional evidence owner unavailable
+
   /api/v1/employment/relationships/{relationshipId}/contract-journey:
     get:
       tags: [Employment]
@@ -5367,6 +5402,38 @@ components:
       type: object
       additionalProperties: false
       properties:
+        correlationId:
+          type: string
+          format: uuid
+          nullable: true
+
+    PrepareRelationshipHireRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - businessName
+        - location
+        - businessNature
+        - goal
+        - successMeasure
+        - budgetCeilingInrPaise
+        - selectedSkillIds
+        - authorityScopeConfirmation
+      properties:
+        businessName: { type: string, minLength: 1, maxLength: 160 }
+        location: { type: string, minLength: 1, maxLength: 200 }
+        businessNature: { type: string, minLength: 1, maxLength: 1000 }
+        goal: { type: string, minLength: 1, maxLength: 1000 }
+        successMeasure: { type: string, minLength: 1, maxLength: 500 }
+        budgetCeilingInrPaise: { type: integer, format: int64, minimum: 0 }
+        selectedSkillIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: string, minLength: 1, maxLength: 128 }
+        authorityScopeConfirmation:
+          type: string
+          const: CONFIRM_AUTHORITY_SCOPE
         correlationId:
           type: string
           format: uuid

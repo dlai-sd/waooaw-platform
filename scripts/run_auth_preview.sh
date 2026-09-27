@@ -94,6 +94,7 @@ whatsapp_webhook_secret=$(secret_value WHATSAPP_WEBHOOK_SECRET 32)
 whatsapp_tenant_token_key=$(secret_value WHATSAPP_TENANT_TOKEN_KEY 32)
 conversation_cursor_hmac_key=$(secret_value CONVERSATION_CURSOR_HMAC_KEY 32)
 channel_continuity_hmac_key=$(base64_secret_value CHANNEL_CONTINUITY_HMAC_KEY 32)
+wbe_ops_auth_token=$(secret_value WBE_OPS_AUTH_TOKEN 32)
 data_protection_certificate_password=$(secret_value DATA_PROTECTION_CERTIFICATE_PASSWORD 24)
 data_protection_certificate="$state_directory/data-protection.pfx"
 if [ ! -f "$data_protection_certificate" ]; then
@@ -126,6 +127,7 @@ WHATSAPP_WEBHOOK_SECRET=$whatsapp_webhook_secret
 WHATSAPP_TENANT_TOKEN_KEY=$whatsapp_tenant_token_key
 CONVERSATION_CURSOR_HMAC_KEY=$conversation_cursor_hmac_key
 CHANNEL_CONTINUITY_HMAC_KEY=$channel_continuity_hmac_key
+WBE_OPS_AUTH_TOKEN=$wbe_ops_auth_token
 DATA_PROTECTION_CERTIFICATE_PASSWORD=$data_protection_certificate_password
 EOF
 

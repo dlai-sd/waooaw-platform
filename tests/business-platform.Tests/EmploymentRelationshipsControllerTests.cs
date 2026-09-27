@@ -347,6 +347,75 @@ public sealed class EmploymentRelationshipsControllerTests
     }
 
     [Fact]
+    public async Task HireSetupPersistsConfigurationAndPresentsExactContract()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var gateway = new RecordingRelationshipConstitutionalGateway();
+        var relationships = new EmploymentRelationshipService(
+            factory, gateway, NullLogger<EmploymentRelationshipService>.Instance);
+        var tenantId = Guid.NewGuid();
+        var participantId = Guid.NewGuid();
+        var relationshipId = Guid.NewGuid();
+        await using (var seed = factory.CreateDbContext())
+        {
+            seed.EmploymentRelationships.Add(new EmploymentRelationship
+            {
+                TenantId = tenantId,
+                RelationshipId = relationshipId,
+                AgentInstanceId = Guid.NewGuid(),
+                ProfessionalType = "DMA",
+                ProfessionalVersion = "1.0.0",
+                AcquisitionMode = "HIRE",
+                EvaluationIntentId = Guid.NewGuid(),
+                InitiatingParticipantId = participantId,
+                State = EmploymentRelationshipState.Configuring,
+            });
+            seed.RelationshipParticipants.Add(new RelationshipParticipant
+            {
+                TenantId = tenantId,
+                RelationshipId = relationshipId,
+                ParticipantId = participantId,
+                Role = RelationshipParticipantRole.Employer,
+                BoundEvidenceId = Guid.NewGuid(),
+            });
+            await seed.SaveChangesAsync();
+        }
+        var catalog = new HireTestCatalog();
+        var controller = new EmploymentRelationshipsController(
+            relationships,
+            contracts: new EmploymentContractService(factory, catalog),
+            configuration: new RelationshipConfigurationService(factory, gateway),
+            professionalCatalog: catalog)
+        {
+            ControllerContext = CreateControllerContext(tenantId, participantId),
+        };
+
+        var response = Assert.IsType<OkObjectResult>(await controller.PrepareHireAsync(
+            relationshipId,
+            new PrepareRelationshipHireRequest(
+                "North Star Dental",
+                "Pune",
+                "Dental clinic",
+                "Increase qualified appointments",
+                "Monthly qualified bookings",
+                250000,
+                ["MARKET_RESEARCH"],
+                "CONFIRM_AUTHORITY_SCOPE"),
+            CancellationToken.None));
+
+        Assert.IsType<EmploymentContractResponse>(response.Value);
+        await using var db = factory.CreateDbContext();
+        Assert.Equal(3, await db.RelationshipContextPayloads.CountAsync());
+        Assert.Single(await db.RelationshipGoals.Where(value => value.Status == "ACCEPTED").ToListAsync());
+        Assert.Single(await db.RelationshipSkillConfigurations.Where(value => value.Status == "ACCEPTED").ToListAsync());
+        Assert.Single(await db.DecisionSpaceSnapshots.ToListAsync());
+        Assert.Single(await db.EmploymentContractVersions.ToListAsync());
+        Assert.Equal(
+            EmploymentRelationshipState.ContractPendingAcceptance,
+            (await db.EmploymentRelationships.SingleAsync()).State);
+    }
+
+    [Fact]
     public async Task CctAe01Stop01_AuthenticatedParticipantStopsPreActiveRelationship()
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
@@ -413,6 +482,29 @@ public sealed class EmploymentRelationshipsControllerTests
         };
         context.Items[TenantIsolationMiddleware.TenantIdItemKey] = tenantId.ToString();
         return new ControllerContext { HttpContext = context };
+    }
+
+    private sealed class HireTestCatalog : IProfessionalCatalog
+    {
+        public IReadOnlyList<ProfessionalDiscoveryResult> Discover(string outcome) => [];
+
+        public ProfessionalDisclosure? GetDisclosure(string professionalType) =>
+            professionalType == "DMA"
+                ? new ProfessionalDisclosure(
+                    "DMA",
+                    "1.0.0",
+                    "digital-marketing",
+                    "Digital Marketing Professional",
+                    ["Local service marketing"],
+                    [new ProfessionalSkillDisclosure("MARKET_RESEARCH", "Market Research", true, null)],
+                    ["No guaranteed outcomes"],
+                    ["Customer-approved budget ceiling"],
+                    ["Emergency Stop"],
+                    new ProfessionalTrialDisclosure(true, 14, false, false),
+                    "Evidence-backed",
+                    new IndicativePriceDisclosure("INR", 249900, "MONTHLY", "Includes GST"),
+                    new ProfessionalEligibility(true, "Eligible"))
+                : null;
     }
 
     private static async Task<(EmploymentRelationshipService Service, EmploymentRelationshipsController Controller,

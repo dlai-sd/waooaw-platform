@@ -85,6 +85,18 @@ public sealed record ProposeEmploymentContractRequest(
     Guid? CorrelationId = null
 );
 
+public sealed record PrepareRelationshipHireRequest(
+    string BusinessName,
+    string Location,
+    string BusinessNature,
+    string Goal,
+    string SuccessMeasure,
+    long BudgetCeilingInrPaise,
+    IReadOnlyList<string> SelectedSkillIds,
+    string AuthorityScopeConfirmation,
+    Guid? CorrelationId = null
+);
+
 public sealed record AcceptEmploymentContractRequest(
     string ContractHash,
     string ScopeConfirmation,
@@ -235,6 +247,8 @@ public sealed class EmploymentRelationshipsController : ControllerBase
     private readonly ActivationWorkflowDispatchService? _activationDispatch;
     private readonly ChannelContinuityService? _continuity;
     private readonly RelationshipEmergencyStopService? _emergencyStops;
+    private readonly RelationshipConfigurationService? _configuration;
+    private readonly IProfessionalCatalog? _professionalCatalog;
 
     public EmploymentRelationshipsController(
         EmploymentRelationshipService service,
@@ -244,7 +258,9 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         RelationshipPaymentService? payments = null,
         ActivationWorkflowDispatchService? activationDispatch = null,
         ChannelContinuityService? continuity = null,
-        RelationshipEmergencyStopService? emergencyStops = null
+        RelationshipEmergencyStopService? emergencyStops = null,
+        RelationshipConfigurationService? configuration = null,
+        IProfessionalCatalog? professionalCatalog = null
     )
     {
         _service = service;
@@ -255,6 +271,8 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         _activationDispatch = activationDispatch;
         _continuity = continuity;
         _emergencyStops = emergencyStops;
+        _configuration = configuration;
+        _professionalCatalog = professionalCatalog;
     }
 
     [HttpGet]
@@ -760,6 +778,211 @@ public sealed class EmploymentRelationshipsController : ControllerBase
                 title: "Trial owner outcome unresolved",
                 detail: exception.Message
             );
+        }
+    }
+
+    [HttpPost("{relationshipId:guid}/hire-setup")]
+    public async Task<IActionResult> PrepareHireAsync(
+        Guid relationshipId,
+        [FromBody] PrepareRelationshipHireRequest request,
+        CancellationToken cancellationToken
+    )
+    {
+        if (!TryGetTenantId(out var tenantId) || !TryGetParticipantId(out var participantId))
+            return Forbid();
+        if (_configuration is null || _contracts is null || _professionalCatalog is null)
+            return Problem(statusCode: 503, title: "Hire setup unavailable");
+        if (
+            request.AuthorityScopeConfirmation != "CONFIRM_AUTHORITY_SCOPE"
+            || string.IsNullOrWhiteSpace(request.BusinessName)
+            || request.BusinessName.Length > 160
+            || string.IsNullOrWhiteSpace(request.Location)
+            || request.Location.Length > 200
+            || string.IsNullOrWhiteSpace(request.BusinessNature)
+            || request.BusinessNature.Length > 1000
+            || string.IsNullOrWhiteSpace(request.Goal)
+            || request.Goal.Length > 1000
+            || string.IsNullOrWhiteSpace(request.SuccessMeasure)
+            || request.SuccessMeasure.Length > 500
+            || request.BudgetCeilingInrPaise < 0
+            || request.SelectedSkillIds is null
+        )
+            return ValidationProblem("Hire setup fields and explicit authority confirmation are required.");
+
+        try
+        {
+            var relationship = await _service.GetAsync(tenantId, relationshipId, cancellationToken);
+            if (relationship is null)
+                return NotFound();
+            var correlationId = request.CorrelationId ?? Guid.NewGuid();
+            await _service.EnsureHireEmployerRoleAsync(
+                tenantId,
+                relationshipId,
+                participantId,
+                correlationId,
+                cancellationToken
+            );
+            var participantRole = await _service.GetActiveRoleAsync(
+                tenantId,
+                relationshipId,
+                participantId,
+                cancellationToken
+            );
+            if (
+                relationship.State == EmploymentRelationshipState.ContractPendingAcceptance
+                && string.Equals(relationship.AcquisitionMode, "HIRE", StringComparison.Ordinal)
+                && participantRole == RelationshipParticipantRole.Employer
+            )
+            {
+                var existing = await _contracts.GetLatestAsync(
+                    tenantId,
+                    relationshipId,
+                    cancellationToken
+                );
+                return existing is null
+                    ? Conflict(new { error = "HIRE_SETUP_INCOMPLETE" })
+                    : Ok(ToContractResponse(existing));
+            }
+            if (
+                relationship.State != EmploymentRelationshipState.Configuring
+                || !string.Equals(relationship.AcquisitionMode, "HIRE", StringComparison.Ordinal)
+                || participantRole != RelationshipParticipantRole.Employer
+            )
+                return Conflict(new { error = "HIRE_SETUP_STATE_CONFLICT" });
+
+            var disclosure = _professionalCatalog.GetDisclosure(relationship.ProfessionalType);
+            if (
+                disclosure is null
+                || !string.Equals(
+                    disclosure.ProjectionVersion,
+                    relationship.ProfessionalVersion,
+                    StringComparison.Ordinal
+                )
+            )
+                return Conflict(new { error = "PROFESSIONAL_DISCLOSURE_STALE" });
+            var selectedSkillIds = request.SelectedSkillIds
+                .Select(value => value.Trim().ToUpperInvariant())
+                .Where(value => value.Length > 0)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            var disclosedSkillIds = disclosure.Skills
+                .Select(value => value.SkillId)
+                .ToHashSet(StringComparer.Ordinal);
+            if (
+                selectedSkillIds.Length == 0
+                || selectedSkillIds.Any(value => !disclosedSkillIds.Contains(value))
+            )
+                return ValidationProblem("Select one or more disclosed professional capabilities.");
+
+            foreach (var context in new[]
+            {
+                (Field: "NAME", Value: request.BusinessName),
+                (Field: "LOCATION", Value: request.Location),
+                (Field: "BUSINESS_NATURE", Value: request.BusinessNature),
+            })
+            {
+                await _configuration.ConfirmContextAsync(
+                    tenantId,
+                    relationshipId,
+                    participantId,
+                    context.Field,
+                    JsonSerializer.SerializeToElement(context.Value.Trim()),
+                    "CUSTOMER_CONFIRMED",
+                    1m,
+                    null,
+                    correlationId,
+                    cancellationToken
+                );
+            }
+            var goal = await _configuration.SaveGoalAsync(
+                tenantId,
+                relationshipId,
+                request.Goal,
+                null,
+                request.SuccessMeasure,
+                null,
+                "CUSTOMER_CONFIRMED",
+                "ACCEPTED",
+                cancellationToken
+            );
+            foreach (var skillId in selectedSkillIds)
+            {
+                await _configuration.SaveSkillAsync(
+                    tenantId,
+                    relationshipId,
+                    skillId,
+                    disclosure.ProjectionVersion,
+                    goal.GoalId,
+                    "WITHIN_DECISION_SPACE",
+                    "APPLICABLE",
+                    null,
+                    "ACCEPTED",
+                    cancellationToken
+                );
+            }
+            await _configuration.CreateDecisionSpaceAsync(
+                tenantId,
+                relationshipId,
+                participantId,
+                request.BudgetCeilingInrPaise,
+                disclosure.AuthorityNeeds,
+                ["Customer Emergency Stop", "Budget ceiling reached"],
+                2,
+                [],
+                correlationId,
+                cancellationToken
+            );
+            var price = disclosure.IndicativePrice;
+            var composition = await _contracts.ComposeAsync(
+                tenantId,
+                relationshipId,
+                participantId,
+                new EmploymentContractCommercialTerms(
+                    price.Currency,
+                    price.AmountInrPaise,
+                    price.AmountInrPaise * 18 / 118,
+                    price.Cadence,
+                    "Renews at the disclosed cadence until cancelled.",
+                    "Advertising spend requires separate explicit approval and is not included.",
+                    "Cancellation and refund rights follow the accepted WAOOAW terms.",
+                    relationship.ProfessionalType,
+                    "STANDARD",
+                    disclosure.ProjectionVersion,
+                    "The disclosed recurring price applies at renewal unless a replacement contract is accepted."
+                ),
+                cancellationToken
+            );
+            await _service.TransitionAsync(
+                tenantId,
+                relationshipId,
+                participantId,
+                RelationshipParticipantRole.Employer,
+                EmploymentRelationshipState.ContractPendingAcceptance,
+                correlationId,
+                false,
+                cancellationToken
+            );
+            return Ok(ToContractResponse(composition));
+        }
+        catch (ArgumentException exception)
+        {
+            return ValidationProblem(exception.Message);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (ConstitutionalActionDeniedException exception)
+        {
+            return Problem(
+                statusCode: 403,
+                title: "Constitutional authorization denied",
+                detail: exception.Message
+            );
+        }
+        catch (InvalidOperationException exception)
+        {
+            return Conflict(new { error = "HIRE_SETUP_INCOMPLETE", detail = exception.Message });
         }
     }
 

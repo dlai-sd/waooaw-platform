@@ -101,7 +101,7 @@ public sealed class ProfessionalsControllerTests
     }
 
     [Fact]
-    public void Marketplace_DoesNotOfferTrialWhenOwnerServicesAreUnconfigured()
+    public void Marketplace_KeepsTrialChoiceVisibleWhenOwnerServicesAreUnconfigured()
     {
         var controller = Controller(
             _catalog,
@@ -114,8 +114,8 @@ public sealed class ProfessionalsControllerTests
             .GetProperty("items").EnumerateArray().Should().ContainSingle().Subject;
 
         listing.GetProperty("availableIntents").EnumerateArray()
-            .Select(value => value.GetString()).Should().Equal("HIRE");
-        listing.GetProperty("trialTerms").ValueKind.Should().Be(System.Text.Json.JsonValueKind.Null);
+            .Select(value => value.GetString()).Should().Equal("TRIAL", "HIRE");
+        listing.GetProperty("trialTerms").GetString().Should().Contain("14-day trial");
     }
 
     [Fact]

@@ -36,6 +36,47 @@ services:
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
 
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  billing-engine:
+    build:
+      context: .
+      dockerfile: src/billing-engine/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://wbe_app:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/waooaw
+      REDIS_URL: redis://redis:6379/0
+      OPS_AUTH_TOKEN: ${WBE_OPS_AUTH_TOKEN:?WBE_OPS_AUTH_TOKEN is required}
+      CONSTITUTIONAL_ENGINE_ADDRESS: constitutional-engine:5002
+      BILLING_CONTRACT_ID: auth-preview-demo
+      BILLING_DECISION_SPACE_VERSION: "1"
+      WAOOAW_ENVIRONMENT: demo
+      DEMO_PROMOTION_ENABLED: "true"
+      DEMO_PROMOTION_VERSION: auth-preview-100-percent-v1
+      DEMO_RENEWAL_CONSEQUENCE: Standard paid renewal terms apply after the Demo period.
+      MAX_DISCOUNT_PCT: "100"
+      RAZORPAY_READINESS_STATE: NOT_CONFIGURED
+      RAZORPAY_MERCHANT_DISPLAY_NAME: WAOOAW
+      RAZORPAY_ENABLED_METHOD_FAMILIES: UPI,CARD,NETBANKING,WALLET
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      constitutional-engine:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8140/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 20s
+
   constitutional-engine:
     build:
       context: .
@@ -64,6 +105,9 @@ services:
       ConstitutionalEngine__Address: http://constitutional-engine:5002
       ConstitutionalEngine__GrpcUrl: http://constitutional-engine:5002
       Temporal__Address: temporal:7233
+      Temporal__Host: temporal:7233
+      BillingEngine__BaseUrl: http://billing-engine:8140
+      BillingEngine__OpsAuthToken: ${WBE_OPS_AUTH_TOKEN:?WBE_OPS_AUTH_TOKEN is required}
       Keycloak__Authority: ${KEYCLOAK_ISSUER:?KEYCLOAK_ISSUER is required}
       Keycloak__Audience: waooaw-platform
       Identity__Hmac__Key: ${IDENTITY_HMAC_KEY:?IDENTITY_HMAC_KEY is required}
@@ -89,6 +133,8 @@ services:
         condition: service_healthy
       temporal:
         condition: service_started
+      billing-engine:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:5001/health"]
       interval: 10s
