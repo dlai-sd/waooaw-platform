@@ -3,7 +3,7 @@
 // Implements: WC-096 §4.3 Marketplace And Disclosure
 // Constitutional basis: C-023 (Evidence First), C-049 (Honest Limitation), C-059 (Implementation Traceability)
 
-import { LoaderCircle } from 'lucide-react';
+import { CheckCircle2, CreditCard, Landmark, LoaderCircle, QrCode, ShieldCheck, Tag, WalletCards, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -34,10 +34,18 @@ type HireCommercialPreview = {
 const money = (paise: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(paise / 100);
 
+const paymentMethods = [
+  { id: 'card', label: 'Card', detail: 'Visa, Mastercard, RuPay and more', icon: CreditCard },
+  { id: 'upi', label: 'UPI / QR', detail: 'Any supported UPI app', icon: QrCode },
+  { id: 'netbanking', label: 'Netbanking', detail: 'All major Indian banks', icon: Landmark },
+  { id: 'wallet', label: 'Wallet', detail: 'Supported digital wallets', icon: WalletCards },
+] as const;
+
 export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
   const router = useRouter();
   const started = useRef(false);
   const [preview, setPreview] = useState<HireCommercialPreview | null>(null);
+  const [selectedMethod, setSelectedMethod] = useState<(typeof paymentMethods)[number]['id']>('upi');
   const [submitting, setSubmitting] = useState(false);
   const [failure, setFailure] = useState<{
     action?: 'login' | 'register' | 'mine';
@@ -163,27 +171,92 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
           </div>
         </>
       ) : preview ? (
-        <div className="hire-commercial-review">
-          <p className="eyebrow">Payment review</p>
-          <h2>Confirm your Hire total</h2>
-          <dl className="contract-money">
-            <div><dt>Professional plan</dt><dd>{money(preview.list_price_inr_paise)}</dd></div>
-            <div><dt>{preview.coupon_code ?? 'Discount'}</dt><dd>-{money(preview.discount_inr_paise)}</dd></div>
-            <div><dt>GST included</dt><dd>{money(preview.tax_inr_paise)}</dd></div>
-            <div><dt>Amount payable now</dt><dd>{money(preview.payable_inr_paise)}</dd></div>
-          </dl>
-          <p>
-            {preview.payment_method_required
-              ? 'Razorpay payment is completed after configuration produces the exact contract.'
-              : '100% Demo discount applied. No card, UPI, bank account, wallet, or Razorpay payment is required.'}
-          </p>
-          <p>{preview.renewal_consequence}</p>
-          <div className="command-row">
-            <button className="primary-command" disabled={submitting} onClick={() => void continueAcquisition()} type="button">
-              {submitting ? 'Starting Hire...' : preview.payable_inr_paise === 0 ? 'Confirm ₹0 Hire' : 'Confirm and configure'}
-            </button>
-            <Link className="text-command" href="/marketplace">Cancel</Link>
-          </div>
+        <div className="checkout-backdrop">
+          <section aria-labelledby="hire-checkout-title" aria-modal="true" className="hire-checkout" role="dialog">
+            <header className="hire-checkout-header">
+              <div className="checkout-brand-mark" aria-hidden="true">W</div>
+              <div>
+                <p>WAOOAW Secure Checkout</p>
+                <span><ShieldCheck aria-hidden="true" size={15} /> Razorpay payment options</span>
+              </div>
+              <Link aria-label="Close checkout" className="checkout-close" href="/marketplace">
+                <X aria-hidden="true" size={22} />
+              </Link>
+            </header>
+
+            <div className="hire-checkout-body">
+              <aside className="checkout-order-summary" aria-label="Order summary">
+                <p className="eyebrow">Professional Hire</p>
+                <h2 id="hire-checkout-title">Complete your checkout</h2>
+                <dl>
+                  <div><dt>Professional plan</dt><dd>{money(preview.list_price_inr_paise)}</dd></div>
+                  <div className="checkout-coupon-row">
+                    <dt><Tag aria-hidden="true" size={16} /> {preview.coupon_code ?? 'Discount'}</dt>
+                    <dd>-{money(preview.discount_inr_paise)}</dd>
+                  </div>
+                  <div><dt>GST included</dt><dd>{money(preview.tax_inr_paise)}</dd></div>
+                  <div className="checkout-total"><dt>Total due now</dt><dd>{money(preview.payable_inr_paise)}</dd></div>
+                </dl>
+                {preview.payable_inr_paise === 0 ? (
+                  <p className="checkout-discount-state">
+                    <CheckCircle2 aria-hidden="true" size={18} /> 100% Demo discount applied
+                  </p>
+                ) : null}
+                <p className="checkout-renewal">{preview.renewal_consequence}</p>
+              </aside>
+
+              <div className="checkout-payment-panel">
+                <div className="checkout-payment-heading">
+                  <div>
+                    <p className="eyebrow">Payment methods</p>
+                    <h3>{preview.payment_method_required ? 'Choose how to pay' : 'No payment method required'}</h3>
+                  </div>
+                  <span className="checkout-provider">Secured by Razorpay</span>
+                </div>
+                {preview.coupon_code ? (
+                  <div className="checkout-coupon-control">
+                    <label htmlFor="hire-coupon">Discount coupon</label>
+                    <div>
+                      <Tag aria-hidden="true" size={18} />
+                      <input id="hire-coupon" readOnly value={preview.coupon_code} />
+                      <span><CheckCircle2 aria-hidden="true" size={16} /> Applied</span>
+                    </div>
+                  </div>
+                ) : null}
+                <fieldset className="checkout-methods">
+                  <legend>Available payment methods</legend>
+                  {paymentMethods.map((method) => {
+                    const Icon = method.icon;
+                    return (
+                      <label key={method.id} className={selectedMethod === method.id ? 'selected' : undefined}>
+                        <input
+                          checked={selectedMethod === method.id}
+                          name="paymentMethod"
+                          onChange={() => setSelectedMethod(method.id)}
+                          type="radio"
+                          value={method.id}
+                        />
+                        <Icon aria-hidden="true" size={22} />
+                        <span><strong>{method.label}</strong><small>{method.detail}</small></span>
+                        {selectedMethod === method.id ? <CheckCircle2 aria-hidden="true" size={18} /> : null}
+                      </label>
+                    );
+                  })}
+                </fieldset>
+                <div className="checkout-method-note">
+                  {preview.payment_method_required
+                    ? 'Your selected method becomes available after configuration produces the exact contract.'
+                    : `${preview.coupon_code ?? 'The Demo discount'} covers the full amount. No payment details will be collected.`}
+                </div>
+                <footer className="checkout-actions">
+                  <div><span>Amount payable</span><strong>{money(preview.payable_inr_paise)}</strong></div>
+                  <button className="primary-command" disabled={submitting} onClick={() => void continueAcquisition()} type="button">
+                    {submitting ? 'Starting Hire...' : preview.payable_inr_paise === 0 ? 'Apply DEMO100 & continue' : 'Continue to configuration'}
+                  </button>
+                </footer>
+              </div>
+            </div>
+          </section>
         </div>
       ) : (
         <>

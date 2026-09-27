@@ -64,9 +64,15 @@ describe('AcquisitionContinuation', () => {
 
     render(<AcquisitionContinuation {...props} intent="hire" />);
 
-    expect(await screen.findByRole('heading', { name: 'Confirm your Hire total' })).toBeVisible();
+    expect(await screen.findByRole('dialog', { name: 'Complete your checkout' })).toBeVisible();
     expect(screen.getByText('DEMO100')).toBeVisible();
-    expect(screen.getByText('Amount payable now').nextSibling).toHaveTextContent('₹0.00');
+    expect(screen.getByLabelText('Discount coupon')).toHaveValue('DEMO100');
+    expect(screen.getByText('Applied')).toBeVisible();
+    expect(screen.getByText('Total due now').nextSibling).toHaveTextContent('₹0.00');
+    for (const method of ['Card', 'UPI / QR', 'Netbanking', 'Wallet']) {
+      expect(screen.getByRole('radio', { name: new RegExp(method) })).toBeVisible();
+    }
+    expect(screen.getByText('Secured by Razorpay')).toBeVisible();
     expect(replace).not.toHaveBeenCalled();
     expect(jest.mocked(fetch)).toHaveBeenCalledTimes(1);
     expect(jest.mocked(fetch)).toHaveBeenNthCalledWith(
@@ -75,7 +81,7 @@ describe('AcquisitionContinuation', () => {
       expect.objectContaining({ method: 'POST' })
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm ₹0 Hire' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply DEMO100 & continue' }));
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/relationships/22222222-2222-4222-8222-222222222222'));
     expect(jest.mocked(fetch)).toHaveBeenNthCalledWith(
