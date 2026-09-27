@@ -2974,6 +2974,9 @@ select:focus-visible,
   font-size: .8rem;
   font-weight: 700;
 }
+.checkout-coupon-control .checkout-inline-error {
+  font-weight: 400;
+}
 .checkout-payment-error {
   padding: .7rem .8rem;
   border-inline-start: 3px solid var(--danger);
