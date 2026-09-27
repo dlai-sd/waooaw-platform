@@ -10,6 +10,7 @@ services:
       - auth_preview_postgres:/var/lib/postgresql/data
       - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d:ro
       - ./infrastructure/postgres/auth-preview/ensure-ce-audit-role.sql:/auth-preview/ensure-ce-audit-role.sql:ro
+      - ./infrastructure/postgres/auth-preview/ensure-business-runtime-grants.sql:/auth-preview/ensure-business-runtime-grants.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U waooaw -d waooaw"]
       interval: 5s

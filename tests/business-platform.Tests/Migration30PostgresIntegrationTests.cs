@@ -37,7 +37,7 @@ public sealed class Migration30PostgresFixture : IAsyncLifetime
                     CREATE ROLE business_app LOGIN PASSWORD '{Password}';
                 END IF;
             END $$;
-            GRANT USAGE ON SCHEMA business, payload_store TO business_app;
+            GRANT USAGE ON SCHEMA business TO business_app;
             """);
         await ExecuteFileAsync(connection, RepositoryPaths.Resolve("infrastructure/postgres/init/19-ae01-employment-relationship.sql"));
         await ExecuteAsync(connection, "ALTER TABLE business.employment_relationships ADD COLUMN acquisition_mode VARCHAR(8);");
@@ -74,6 +74,18 @@ public sealed class Migration30PostgresCollection : ICollectionFixture<Migration
 [Collection("Migration30Postgres")]
 public sealed class Migration30PostgresIntegrationTests(Migration30PostgresFixture fixture)
 {
+    [Fact]
+    public async Task ContextMigrationGrantsBusinessAppPayloadStoreAccess()
+    {
+        await using var connection = new NpgsqlConnection(fixture.BusinessConnectionString);
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            "SELECT has_schema_privilege(current_user, 'payload_store', 'USAGE')";
+
+        Assert.True((bool?)await command.ExecuteScalarAsync());
+    }
+
     [Fact]
     public async Task ConcurrentIdenticalVerificationAppendsOneDecisionAndOneEvidenceRecord()
     {

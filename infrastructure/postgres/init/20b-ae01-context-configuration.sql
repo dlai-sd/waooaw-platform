@@ -235,6 +235,7 @@ CREATE POLICY relationship_trial_bindings_tenant_isolation ON business.relations
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
     WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);
 
+GRANT USAGE ON SCHEMA payload_store TO business_app;
 GRANT SELECT, INSERT, UPDATE ON payload_store.relationship_context_payloads TO business_app;
 GRANT SELECT, INSERT ON business.context_confirmation_events TO business_app;
 GRANT SELECT, INSERT, UPDATE ON business.relationship_goals TO business_app;
