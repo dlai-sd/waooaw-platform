@@ -33,6 +33,18 @@ type HireCommercialPreview = {
   renewal_consequence: string;
 };
 
+const couponValidationMessages: Record<string, string> = {
+  COUPON_NOT_FOUND: 'We could not find that coupon. Check the code and try again.',
+  COUPON_EXPIRED: 'That coupon has expired. Please try another coupon.',
+  COUPON_USED: 'That coupon has reached its usage limit. Please try another coupon.',
+  COUPON_AGENT_MISMATCH: 'That coupon is not available for this professional. Please try another coupon.',
+  COUPON_TIER_MISMATCH: 'That coupon is not available for this plan. Please try another coupon.',
+  DISCOUNT_EXCEEDS_CAP: 'That coupon cannot be applied under the current discount policy.',
+};
+
+const paymentsUnavailableMessage =
+  'Great news! Hiring is free of charge in the Demo / UAT environment, so no card, UPI, bank, or wallet details are needed. Thank you for choosing WAOOAW, and we wish your business every success.';
+
 const money = (paise: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(paise / 100);
 
@@ -119,11 +131,19 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
           ...(code ? { couponCode: code } : {}),
         }),
       });
-      const result = (await response.json()) as HireCommercialPreview & { title?: string };
+      const result = (await response.json()) as HireCommercialPreview & {
+        detail?: { code?: string };
+        title?: string;
+      };
       if (!response.ok) {
         if (code && response.status === 422) {
           if (basePreview) setPreview(basePreview);
-          setCouponError('Coupon code is invalid or unavailable.');
+          const errorCode = result.detail?.code;
+          setCouponError(
+            errorCode && couponValidationMessages[errorCode]
+              ? couponValidationMessages[errorCode]
+              : 'We could not apply that coupon. Check the code and try again.'
+          );
           return;
         }
         throw new AcquisitionResponseError({ status: response.status, title: result.title });
@@ -257,7 +277,7 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
                       ) : 'Apply'}
                     </button>
                   </div>
-                  {couponError && couponError !== 'Payments are not enabled on "Demo" / "UAT" environment' ? (
+                  {couponError && couponError !== paymentsUnavailableMessage ? (
                     <p className="checkout-inline-error" role="alert">{couponError}</p>
                   ) : null}
                 </div>
@@ -283,17 +303,17 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
                 </fieldset>
                 <div className="checkout-method-note">
                   {preview.payable_inr_paise === 0
-                    ? `${preview.coupon_code ?? 'The coupon'} covers the full amount. No payment details will be collected.`
+                    ? `Congratulations! ${preview.coupon_code ?? 'Your coupon'} gives you 100% off this hire. No payment details are needed today. We wish you great business success with your WAOOAW professional!`
                     : 'Payment methods will be enabled when payments are available.'}
                 </div>
-                {couponError === 'Payments are not enabled on "Demo" / "UAT" environment' ? (
+                {couponError === paymentsUnavailableMessage ? (
                   <p className="checkout-inline-error checkout-payment-error" role="alert">{couponError}</p>
                 ) : null}
                 <footer className="checkout-actions">
                   <div><span>Amount payable</span><strong>{money(preview.payable_inr_paise)}</strong></div>
                   <button className="primary-command" disabled={submitting} onClick={() => {
                     if (preview.payable_inr_paise > 0 && !preview.payments_enabled) {
-                      setCouponError('Payments are not enabled on "Demo" / "UAT" environment');
+                      setCouponError(paymentsUnavailableMessage);
                       return;
                     }
                     void continueAcquisition();

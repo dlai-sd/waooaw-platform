@@ -102,6 +102,9 @@ describe('AcquisitionContinuation', () => {
 
     expect(await screen.findByText('Applied')).toBeVisible();
     expect(screen.getByText('Total due now').nextSibling).toHaveTextContent('₹0.00');
+    expect(screen.getByText(/Congratulations! DEMO100 gives you 100% off this hire/)).toHaveTextContent(
+      'We wish you great business success with your WAOOAW professional!'
+    );
     expect(JSON.parse(String(jest.mocked(fetch).mock.calls[1][1]?.body))).toEqual({
       professionalType: props.professionalType,
       professionalVersion: props.professionalVersion,
@@ -137,10 +140,55 @@ describe('AcquisitionContinuation', () => {
     });
     render(<AcquisitionContinuation {...props} intent="hire" />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+    fireEvent.click(await screen.findByRole('radio', { name: /Card/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Payments are not enabled on "Demo" / "UAT" environment');
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Great news! Hiring is free of charge in the Demo / UAT environment'
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent('Thank you for choosing WAOOAW');
     expect(jest.mocked(fetch)).toHaveBeenCalledTimes(1);
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['COUPON_NOT_FOUND', 'We could not find that coupon. Check the code and try again.'],
+    ['COUPON_EXPIRED', 'That coupon has expired. Please try another coupon.'],
+    ['COUPON_USED', 'That coupon has reached its usage limit. Please try another coupon.'],
+    ['COUPON_AGENT_MISMATCH', 'That coupon is not available for this professional. Please try another coupon.'],
+    ['COUPON_TIER_MISMATCH', 'That coupon is not available for this plan. Please try another coupon.'],
+    ['DISCOUNT_EXCEEDS_CAP', 'That coupon cannot be applied under the current discount policy.'],
+  ])('shows appropriate guidance for %s', async (code, message) => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          outcome_kind: 'PAYMENT_REQUIRED_AFTER_CONTRACT',
+          list_price_inr_paise: 118000,
+          discount_inr_paise: 0,
+          tax_inr_paise: 18000,
+          payable_inr_paise: 118000,
+          currency: 'INR',
+          cadence: 'MONTHLY',
+          provider: 'RAZORPAY',
+          payment_method_required: true,
+          payments_enabled: false,
+          renewal_consequence: 'Standard paid renewal terms apply.',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 422,
+        json: async () => ({ detail: { code } }),
+      });
+    render(<AcquisitionContinuation {...props} intent="hire" />);
+
+    fireEvent.change(await screen.findByLabelText('Discount coupon'), { target: { value: 'invalid-code' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(message);
+    expect(screen.getByText('Total due now').nextSibling).toHaveTextContent('₹1,180.00');
     expect(replace).not.toHaveBeenCalled();
   });
 
