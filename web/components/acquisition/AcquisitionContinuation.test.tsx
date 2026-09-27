@@ -38,6 +38,53 @@ describe('AcquisitionContinuation', () => {
     );
   });
 
+  it('requires a visible DEMO100 payment review before creating a Hire relationship', async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          outcome_kind: 'FULLY_DISCOUNTED',
+          list_price_inr_paise: 118000,
+          discount_inr_paise: 118000,
+          tax_inr_paise: 18000,
+          payable_inr_paise: 0,
+          currency: 'INR',
+          cadence: 'MONTHLY',
+          coupon_code: 'DEMO100',
+          provider: 'RAZORPAY',
+          payment_method_required: false,
+          renewal_consequence: 'Standard paid renewal terms apply after the Demo period.',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ resumePath: '/relationships/22222222-2222-4222-8222-222222222222' }),
+      });
+
+    render(<AcquisitionContinuation {...props} intent="hire" />);
+
+    expect(await screen.findByRole('heading', { name: 'Confirm your Hire total' })).toBeVisible();
+    expect(screen.getByText('DEMO100')).toBeVisible();
+    expect(screen.getByText('Amount payable now').nextSibling).toHaveTextContent('₹0.00');
+    expect(replace).not.toHaveBeenCalled();
+    expect(jest.mocked(fetch)).toHaveBeenCalledTimes(1);
+    expect(jest.mocked(fetch)).toHaveBeenNthCalledWith(
+      1,
+      '/api/acquisition/hire-preview',
+      expect.objectContaining({ method: 'POST' })
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm ₹0 Hire' }));
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/relationships/22222222-2222-4222-8222-222222222222'));
+    expect(jest.mocked(fetch)).toHaveBeenNthCalledWith(
+      2,
+      '/api/acquisition/continue',
+      expect.objectContaining({ method: 'POST' })
+    );
+  });
+
   it('makes an uncertain outcome retryable without changing the idempotency key', async () => {
     global.fetch = jest
       .fn()

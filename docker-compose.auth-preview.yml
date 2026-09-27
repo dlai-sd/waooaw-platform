@@ -161,6 +161,7 @@ services:
       KEYCLOAK_CLIENT_ID: waooaw-web-preview
       KEYCLOAK_PUBLIC_CLIENT: "true"
       BUSINESS_PLATFORM_URL: http://business-platform:5001
+      BILLING_ENGINE_URL: http://billing-engine:8140
       IDENTITY_EVENT_SIGNING_KEY: ${IDENTITY_EVENT_SIGNING_KEY:?IDENTITY_EVENT_SIGNING_KEY is required}
     depends_on:
       business-platform:

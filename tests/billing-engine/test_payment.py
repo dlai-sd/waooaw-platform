@@ -35,7 +35,7 @@ from payment.models import (
 from payment.onboarding import OnboardingService
 from payment.paid_activation import PaidActivationService
 from payment.razorpay_client import RazorpayClient
-from payment.router import OnboardingOrderBody
+from payment.router import HireCommercialPreviewBody, OnboardingOrderBody
 from payment.webhook import WebhookHandler
 from wallet.models import RenewalResult, SubscriptionActivationResult
 from wallet.service import WalletService
@@ -463,6 +463,65 @@ class TestWC095RelationshipCheckout:
         assert first.expires_at is not None
         assert first.reconciliation_target is not None
         assert razorpay.create_order.await_args.kwargs["amount_paise"] == request.gross_amount_inr_paise
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("professional_type", [
+    "DIGITAL_MARKETING_LOCAL_SERVICE",
+    "TUTOR",
+    "SHARE_TRADER",
+])
+async def test_demo_hire_preview_applies_demo100_before_relationship_creation(monkeypatch, professional_type):
+    from payment import router as payment_router
+
+    settings = MagicMock()
+    settings.WAOOAW_ENVIRONMENT = "demo"
+    settings.DEMO_PROMOTION_ENABLED = True
+    settings.DEMO_COUPON_CODE = "DEMO100"
+    settings.DEMO_RENEWAL_CONSEQUENCE = "Standard paid renewal terms apply after the Demo period."
+    settings.MAX_DISCOUNT_PCT = 100
+    monkeypatch.setattr(payment_router, "_settings", settings)
+
+    result = await payment_router.create_hire_commercial_preview(HireCommercialPreviewBody(
+        professional_type=professional_type,
+        gross_amount_inr_paise=118000,
+        gst_amount_inr_paise=18000,
+        cadence="MONTHLY",
+    ))
+
+    assert result.outcome_kind == "FULLY_DISCOUNTED"
+    assert result.professional_type == professional_type
+    assert result.coupon_code == "DEMO100"
+    assert result.discount_inr_paise == 118000
+    assert result.payable_inr_paise == 0
+    assert result.payment_method_required is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("environment", ["uat", "production"])
+async def test_non_demo_hire_preview_preserves_contract_bound_payment(monkeypatch, environment):
+    from payment import router as payment_router
+
+    settings = MagicMock()
+    settings.WAOOAW_ENVIRONMENT = environment
+    settings.DEMO_PROMOTION_ENABLED = False
+    settings.DEMO_COUPON_CODE = ""
+    settings.DEMO_RENEWAL_CONSEQUENCE = "Standard paid renewal terms apply."
+    settings.MAX_DISCOUNT_PCT = 100
+    monkeypatch.setattr(payment_router, "_settings", settings)
+
+    result = await payment_router.create_hire_commercial_preview(HireCommercialPreviewBody(
+        professional_type="TUTOR",
+        gross_amount_inr_paise=118000,
+        gst_amount_inr_paise=18000,
+        cadence="MONTHLY",
+    ))
+
+    assert result.outcome_kind == "PAYMENT_REQUIRED_AFTER_CONTRACT"
+    assert result.coupon_code is None
+    assert result.discount_inr_paise == 0
+    assert result.payable_inr_paise == 118000
+    assert result.payment_method_required is True
 
 
 # ---------------------------------------------------------------------------

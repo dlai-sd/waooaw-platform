@@ -19,6 +19,7 @@ from payment.models import (
     CheckoutOutcomeKind,
     OnboardingOrderRequest,
     PaymentCapturedEvent,
+    PaymentEnvironment,
     RelationshipCheckoutRequest,
     RelationshipCheckoutResult,
 )
@@ -79,6 +80,28 @@ class PaymentCaptureBody(BaseModel):
     is_bypass: bool = False
 
 
+class HireCommercialPreviewBody(BaseModel):
+    professional_type: str = Field(min_length=1, max_length=64)
+    gross_amount_inr_paise: int = Field(gt=0)
+    gst_amount_inr_paise: int = Field(ge=0)
+    cadence: str = Field(min_length=1, max_length=32)
+
+
+class HireCommercialPreview(BaseModel):
+    outcome_kind: str
+    professional_type: str
+    list_price_inr_paise: int
+    discount_inr_paise: int
+    tax_inr_paise: int
+    payable_inr_paise: int
+    currency: str = "INR"
+    cadence: str
+    coupon_code: str | None = None
+    provider: str = "RAZORPAY"
+    payment_method_required: bool
+    renewal_consequence: str
+
+
 class RelationshipCheckoutBody(BaseModel):
     checkout_intent_id: UUID
     tenant_id: UUID
@@ -105,6 +128,32 @@ class RelationshipCheckoutReconcileBody(BaseModel):
     contract_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     contract_acceptance_id: UUID
     payment_consent_evidence_id: UUID
+
+
+@router.post("/hire-preview", response_model=HireCommercialPreview)
+async def create_hire_commercial_preview(body: HireCommercialPreviewBody) -> HireCommercialPreview:
+    """Return server-owned commercial truth before a Hire relationship is created."""
+    if body.gst_amount_inr_paise > body.gross_amount_inr_paise:
+        raise HTTPException(status_code=422, detail={"code": "INVALID_COMMERCIAL_PREVIEW"})
+    fully_discounted = (
+        _settings.WAOOAW_ENVIRONMENT == PaymentEnvironment.DEMO.value
+        and _settings.DEMO_PROMOTION_ENABLED
+        and _settings.MAX_DISCOUNT_PCT >= 100
+        and bool(_settings.DEMO_COUPON_CODE)
+    )
+    discount = body.gross_amount_inr_paise if fully_discounted else 0
+    return HireCommercialPreview(
+        outcome_kind="FULLY_DISCOUNTED" if fully_discounted else "PAYMENT_REQUIRED_AFTER_CONTRACT",
+        professional_type=body.professional_type,
+        list_price_inr_paise=body.gross_amount_inr_paise,
+        discount_inr_paise=discount,
+        tax_inr_paise=body.gst_amount_inr_paise,
+        payable_inr_paise=body.gross_amount_inr_paise - discount,
+        cadence=body.cadence,
+        coupon_code=_settings.DEMO_COUPON_CODE if fully_discounted else None,
+        payment_method_required=not fully_discounted,
+        renewal_consequence=_settings.DEMO_RENEWAL_CONSEQUENCE,
+    )
 
 
 @router.post("/relationship-checkout", response_model=RelationshipCheckoutResult)
