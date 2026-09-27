@@ -216,7 +216,7 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
             <div className="hire-checkout-body">
               <aside className="checkout-order-summary" aria-label="Order summary">
                 <p className="eyebrow">Professional Hire</p>
-                <h2 id="hire-checkout-title">Complete your checkout</h2>
+                <h2 id="hire-checkout-title">Review your hire</h2>
                 <dl>
                   <div><dt>Professional plan</dt><dd>{money(preview.list_price_inr_paise)}</dd></div>
                   <div className="checkout-coupon-row">
@@ -289,7 +289,7 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
                     }
                     void continueAcquisition();
                   }} type="button">
-                    {submitting ? 'Starting Hire...' : 'Continue'}
+                    {submitting ? 'Starting Hire...' : 'Continue to agent configuration'}
                   </button>
                 </footer>
               </div>

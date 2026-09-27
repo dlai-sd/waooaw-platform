@@ -81,7 +81,7 @@ describe('AcquisitionContinuation', () => {
 
     render(<AcquisitionContinuation {...props} intent="hire" />);
 
-    expect(await screen.findByRole('dialog', { name: 'Complete your checkout' })).toBeVisible();
+    expect(await screen.findByRole('dialog', { name: 'Review your hire' })).toBeVisible();
     expect(screen.getByAltText('WAOOAW')).toBeVisible();
     expect(screen.getByLabelText('Discount coupon')).toHaveValue('');
     expect(screen.getByText('Total due now').nextSibling).toHaveTextContent('₹1,180.00');
@@ -109,7 +109,7 @@ describe('AcquisitionContinuation', () => {
       couponCode: 'DEMO100',
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to agent configuration' }));
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/relationships/22222222-2222-4222-8222-222222222222'));
     expect(jest.mocked(fetch)).toHaveBeenNthCalledWith(
@@ -138,7 +138,7 @@ describe('AcquisitionContinuation', () => {
     });
     render(<AcquisitionContinuation {...props} intent="hire" />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue to agent configuration' }));
 
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Great news! Hiring is free of charge in the Demo / UAT environment'
