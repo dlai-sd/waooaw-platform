@@ -119,8 +119,8 @@ describe('F2 registration flow', () => {
     global.fetch = jest.fn(() => jsonResponse({ code: 'IDENTITY_ACTION_DENIED' }, 403));
     render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} returnTo="/settings" />);
 
-    expect(await screen.findByRole('heading', { name: 'Sign in could not be completed' })).toBeVisible();
-    expect(screen.getByText(getIdentityMessages('en').signInRejected)).toBeVisible();
+    expect(await screen.findByText(getIdentityMessages('en').signInRejected)).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Create your WAOOAW account' })).toBeVisible();
     expect(screen.queryByRole('button', { name: getIdentityMessages('en').retry })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: getIdentityMessages('en').restartSignIn }));
@@ -163,17 +163,33 @@ describe('F2 registration flow', () => {
           { code: 'IDENTITY_RESOURCE_NOT_ACCESSIBLE', correlationId: '11111111-1111-4111-8111-111111111111' },
           404
         )
-      );
+      )
+      .mockImplementationOnce(() => jsonResponse({ ...baseRegistration, registrationId: 'new-registration' }));
     render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} returnTo="/settings" />);
     const profileForm = (await screen.findByLabelText('Your name')).closest('form');
     if (!profileForm) throw new Error('Profile form is required');
     fireEvent.submit(profileForm);
 
     expect(await screen.findByText(getIdentityMessages('en').registrationLost)).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: getIdentityMessages('en').restartSignIn }));
-    expect(replace).toHaveBeenCalledWith('/login?returnTo=%2Fsettings');
+    fireEvent.click(screen.getByRole('button', { name: getIdentityMessages('en').retry }));
+    expect(await screen.findByLabelText('Your name')).toBeVisible();
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(replace).not.toHaveBeenCalled();
     expect(screen.queryByText(/11111111/)).not.toBeInTheDocument();
   });
+
+  it.each([[401, {}], [403, { code: 'IDENTITY_SESSION_REQUIRED' }]])(
+    'returns a missing session to provider choice for status %s',
+    async (status, body) => {
+      global.fetch = jest.fn(() => jsonResponse(body, status));
+      render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} returnTo="/settings" />);
+
+      expect(await screen.findByText(getIdentityMessages('en').registrationLost)).toBeVisible();
+      fireEvent.click(screen.getByRole('button', { name: getIdentityMessages('en').restartSignIn }));
+      expect(replace).toHaveBeenCalledWith('/login?returnTo=%2Fsettings');
+      expect(fetch).toHaveBeenCalledTimes(1);
+    }
+  );
 
   it('returns an expired email challenge to the resend form', async () => {
     const verificationRequired = {
@@ -219,8 +235,10 @@ describe('F2 registration flow', () => {
     expect(screen.getByLabelText('Verified email')).toHaveAttribute('readonly');
     expect(screen.getByText('Verified by Google')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Mobile verification (optional)' })).toBeDisabled();
-    expect(screen.getByText(/approved India delivery provider and budget/)).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Complete registration' })).toBeEnabled();
+    expect(screen.queryByText(/approved India delivery provider and budget/)).not.toBeInTheDocument();
+    expect(screen.getByText('SMS verification is not available yet.')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Register' })).toBeEnabled();
     expect(screen.queryByLabelText('Mobile number')).not.toBeInTheDocument();
   });
 

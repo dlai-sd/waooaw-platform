@@ -12,6 +12,7 @@ type AuthJourneyState = {
   launching: boolean;
   cancelLaunch: () => void;
   completeLaunch: () => void;
+  dismiss: () => void;
 };
 const AuthJourneyContext = createContext<AuthJourneyState | null>(null);
 
@@ -21,6 +22,10 @@ export function AuthJourney({ children }: { children: ReactNode }) {
   const [launching, setLaunching] = useState(false);
   const cancelLaunch = useCallback(() => setLaunching(false), []);
   const completeLaunch = useCallback(() => setLaunching(false), []);
+  const dismiss = useCallback(() => {
+    setLaunching(false);
+    router.replace(safePublicReturnTarget(journey.current.origin), { scroll: false });
+  }, [router]);
 
   useEffect(() => {
     function capture(event: MouseEvent) {
@@ -50,6 +55,7 @@ export function AuthJourney({ children }: { children: ReactNode }) {
         launching,
         cancelLaunch,
         completeLaunch,
+        dismiss,
       }}
     >
       {children}

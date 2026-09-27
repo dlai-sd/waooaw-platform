@@ -7,6 +7,7 @@ runtime_environment="$state_directory/runtime.env"
 release_manifest="$state_directory/release-manifest.json"
 compose_file="$repository_root/docker-compose.auth-preview.yml"
 preview_port=${AUTH_PREVIEW_PORT:-3100}
+preview_project=${AUTH_PREVIEW_PROJECT:-waooaw-auth-preview}
 forwarding_domain=${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-app.github.dev}
 
 fail() {
@@ -80,7 +81,7 @@ generated_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
 if [ "$action" = stop ]; then
   [ -f "$runtime_environment" ] || fail "no prepared preview exists"
-  docker compose --project-name waooaw-auth-preview --env-file "$runtime_environment" -f "$compose_file" down
+  docker compose --project-name "$preview_project" --env-file "$runtime_environment" -f "$compose_file" down
   exit 0
 fi
 
@@ -128,7 +129,7 @@ CHANNEL_CONTINUITY_HMAC_KEY=$channel_continuity_hmac_key
 DATA_PROTECTION_CERTIFICATE_PASSWORD=$data_protection_certificate_password
 EOF
 
-compose="docker compose --project-name waooaw-auth-preview --env-file $runtime_environment -f $compose_file"
+compose="docker compose --project-name $preview_project --env-file $runtime_environment -f $compose_file"
 $compose config --quiet
 
 if [ "$action" = start ]; then

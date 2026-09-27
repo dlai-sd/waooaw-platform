@@ -1,4 +1,5 @@
 // Implements: work-contracts/WC-083-route-backed-auth-dialog.md §Milestone 3
+// Implements: architecture/reference/ux/wc-105-authentication-flow-defect-remediation-plan.md AUTH-UI-04, AUTH-UI-05, AUTH-STATE-01
 // Constitutional basis: C-023 (Evidence First), C-049 (Honest Limitation), C-071 (Accessible interaction)
 
 import AxeBuilder from '@axe-core/playwright';
@@ -48,15 +49,15 @@ test('WC092-AUTH-01: login uses no preliminary dialog before the auth route reso
   const routeRequested = new Promise<void>((resolve) => {
     markRouteRequested = resolve;
   });
+  await page.goto('/');
   await page.route(
-    (url) => ['/login', '/register'].includes(url.pathname) && url.searchParams.has('_rsc'),
+    (url) => ['/login', '/register'].includes(url.pathname),
     async (route) => {
       markRouteRequested();
       await routeGate;
       await route.continue();
     }
   );
-  await page.goto('/');
 
   const desktopLogin = page.getByRole('link', { name: 'Log in' });
   const compactRegister = page.locator('a.secondary-link[href="/register"]').first();
@@ -100,6 +101,12 @@ test('login loading and provider states keep identical customer-visible geometry
   ).toBeVisible();
   const providerControls = dialog.locator('.provider-icon-command');
   await expect(providerControls).toHaveCount(4);
+  const loadingProviderBounds = await providerControls.evaluateAll((elements) =>
+    elements.map((element) => {
+      const bounds = element.getBoundingClientRect();
+      return { x: bounds.x, y: bounds.y };
+    })
+  );
   expect(
     await providerControls.evaluateAll((elements) => elements.map((element) => getComputedStyle(element).boxShadow))
   ).toEqual(['none', 'none', 'none', 'none']);
@@ -117,8 +124,15 @@ test('login loading and provider states keep identical customer-visible geometry
   expect(providerBounds[2].y).toBeCloseTo(providerBounds[3].y, 0);
   expect(providerBounds[0].x).toBeCloseTo(providerBounds[2].x, 0);
   expect(providerBounds[1].x).toBeCloseTo(providerBounds[3].x, 0);
+  await expect(dialog.getByText('Loading secure sign-in options.')).toHaveCount(0);
   const resolvedBounds = await dialog.boundingBox();
   const resolvedBrandBounds = await dialog.locator('.auth-brand').boundingBox();
+  const resolvedProviderBounds = await providerControls.evaluateAll((elements) =>
+    elements.map((element) => {
+      const bounds = element.getBoundingClientRect();
+      return { x: bounds.x, y: bounds.y };
+    })
+  );
 
   expect(loadingBounds).not.toBeNull();
   expect(resolvedBounds).not.toBeNull();
@@ -130,6 +144,11 @@ test('login loading and provider states keep identical customer-visible geometry
   expect(resolvedBounds?.height).toBeCloseTo(loadingBounds?.height ?? 0, 0);
   expect(resolvedBrandBounds?.x).toBeCloseTo(loadingBrandBounds?.x ?? 0, 0);
   expect(resolvedBrandBounds?.y).toBeCloseTo(loadingBrandBounds?.y ?? 0, 0);
+  expect(resolvedProviderBounds).toEqual(loadingProviderBounds);
+  expect(resolvedBounds?.height).toBeLessThan(loginJourney ? 440 : 560);
+  expect(await dialog.locator('.auth-dialog-panel').evaluate((element) => getComputedStyle(element).borderTopWidth)).toBe(
+    '0px'
+  );
 });
 
 test('WC083-AUTH-02: backdrop dismissal returns to the originating public route', async ({ page }) => {
@@ -150,17 +169,29 @@ test('WC083-AUTH-02: backdrop dismissal returns to the originating public route'
   await expect(dialog).toHaveCount(0);
 });
 
-test('WC083-AUTH-03: direct auth routes remain standalone and provider readiness is truthful', async ({ page }) => {
+test('WC105-AUTH-01: direct login remains modal and provider readiness is truthful', async ({ page }) => {
   await page.goto('/login');
 
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: 'Log in to WAOOAW' })).toBeVisible();
-  await expect(page.getByRole('img', { name: 'WAOOAW' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Log in with Google' })).toBeEnabled();
-  await expect(page.getByRole('button', { name: 'Log in with Facebook' })).toBeEnabled();
-  await expect(page.getByRole('button', { name: 'Log in with Apple (Unavailable)' })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Log in with Email (Unavailable)' })).toBeDisabled();
+  const dialog = page.getByRole('dialog', { name: 'Log in to WAOOAW' });
+  await expect(dialog).toHaveCount(1);
+  await expect(dialog.getByRole('img', { name: 'WAOOAW' })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Log in with Google' })).toBeEnabled();
+  await expect(dialog.getByRole('button', { name: 'Log in with Facebook' })).toBeEnabled();
+  await expect(dialog.getByRole('button', { name: 'Log in with Apple (Unavailable)' })).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'Log in with Email (Unavailable)' })).toBeDisabled();
+  await expect(dialog.getByText("Don't have an account? Register")).toBeVisible();
   await expect(page).toHaveURL(/\/login$/);
+});
+
+test('WC105-AUTH-02: direct registration remains modal without baseline scrolling', async ({ page }) => {
+  await page.goto('/register');
+
+  const dialog = page.getByRole('dialog', { name: 'Create your WAOOAW account' });
+  await expect(dialog).toHaveCount(1);
+  await expect(dialog.getByRole('img', { name: 'WAOOAW' })).toBeVisible();
+  expect((await dialog.boundingBox())?.height).toBeLessThan(560);
+  expect(await dialog.evaluate((element) => element.scrollHeight <= element.clientHeight + 1)).toBe(true);
+  await expect(page).toHaveURL(/\/register$/);
 });
 
 test('WC092-AUTH-02: policy denial offers fresh sign-in without a retry loop', async ({ context, page }, testInfo) => {
@@ -183,10 +214,11 @@ test('WC092-AUTH-02: policy denial offers fresh sign-in without a retry loop', a
 
   await page.goto('/register?returnTo=%2Fsettings');
 
-  await expect(page.getByRole('heading', { name: 'Sign in could not be completed' })).toBeVisible();
-  await expect(page.getByText('We couldn’t complete your sign-in. Your account was not changed.')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Try again' })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Sign in again' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Create your WAOOAW account' });
+  await expect(dialog).toHaveCount(1);
+  await expect(dialog.getByText('We couldn’t complete your sign-in. Your account was not changed.')).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Try again' })).toHaveCount(0);
+  await dialog.getByRole('button', { name: 'Sign in again' }).click();
   await expect(page).toHaveURL(/\/login\?returnTo=%2Fsettings$/);
 });
 

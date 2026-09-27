@@ -50,7 +50,8 @@ export function AuthDialog({
   function dismiss() {
     journey?.cancelLaunch();
     dialogRef.current?.close();
-    router.replace(originRef.current, { scroll: false });
+    if (journey) journey.dismiss();
+    else router.replace(originRef.current, { scroll: false });
   }
 
   function dismissBackdrop(event: MouseEvent<HTMLDialogElement>) {

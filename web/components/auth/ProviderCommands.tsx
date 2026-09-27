@@ -2,6 +2,7 @@
 
 // Implements: work-contracts/WC-099-demo-customer-journey-and-application-shell-remediation.md §5.1 Identity And Disclosure
 // Implements: work-contracts/WC-105-auth-ui-runtime-defect-repair.md WC105-R001
+// Implements: architecture/reference/ux/wc-105-authentication-flow-defect-remediation-plan.md AUTH-UI-02
 // Constitutional basis: C-049 (Honest Limitation), C-063 (Data Minimisation)
 
 import { useEffect, useState } from 'react';
@@ -26,6 +27,13 @@ const icons = {
 
 const providerOrder: IdentityProvider['id'][] = ['GOOGLE', 'FACEBOOK', 'APPLE', 'EMAIL'];
 
+export const pendingIdentityProviders: IdentityProvider[] = [
+  { id: 'GOOGLE', displayName: 'Google', authenticationPath: 'GOOGLE', availability: 'UNAVAILABLE' },
+  { id: 'FACEBOOK', displayName: 'Facebook', authenticationPath: 'META', availability: 'UNAVAILABLE' },
+  { id: 'APPLE', displayName: 'Apple', authenticationPath: 'APPLE', availability: 'UNAVAILABLE' },
+  { id: 'EMAIL', displayName: 'Email', authenticationPath: 'CREDENTIAL', availability: 'UNAVAILABLE' },
+];
+
 type ProviderIntent = 'login' | 'register';
 
 function supportsNextAuth(providerId: IdentityProvider['id']): providerId is keyof typeof nextAuthProvider {
@@ -40,11 +48,13 @@ export function ProviderCommands({
   callbackUrl,
   intent,
   providers,
+  readinessPending = false,
   reload = () => window.location.reload(),
 }: {
   callbackUrl: string;
   intent: ProviderIntent;
   providers: IdentityProvider[];
+  readinessPending?: boolean;
   reload?: () => void;
 }) {
   const [pendingProvider, setPendingProvider] = useState<string>();
@@ -87,7 +97,7 @@ export function ProviderCommands({
       <div className="provider-grid">
         {orderedProviders.map((provider) => {
           const Icon = icons[provider.id];
-          const unavailable = !isActionable(provider);
+          const unavailable = readinessPending || !isActionable(provider);
           const label = actionLabel(provider);
           return (
             <button
@@ -105,7 +115,7 @@ export function ProviderCommands({
           );
         })}
       </div>
-      {readinessUnavailable ? (
+      {readinessUnavailable && !readinessPending ? (
         <output className="provider-readiness">
           <span>Sign-in services are still starting.</span>
           <button className="text-command" type="button" onClick={reload}>
