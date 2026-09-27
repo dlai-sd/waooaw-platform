@@ -31,6 +31,7 @@ import type {
   LegacyHireAgentResponse,
   PhaseBundleSubscription,
   PrepareRelationshipHandoffRequest,
+  PrepareRelationshipHireRequest,
   ProblemDetail,
   ProposeEmploymentContractRequest,
   RelationshipActivationOutcome,
@@ -87,6 +88,8 @@ import {
   PhaseBundleSubscriptionToJSON,
   PrepareRelationshipHandoffRequestFromJSON,
   PrepareRelationshipHandoffRequestToJSON,
+  PrepareRelationshipHireRequestFromJSON,
+  PrepareRelationshipHireRequestToJSON,
   ProblemDetailFromJSON,
   ProblemDetailToJSON,
   ProposeEmploymentContractRequestFromJSON,
@@ -225,6 +228,11 @@ export interface PrepareRelationshipHandoffOperationRequest {
   relationshipId: string;
   idempotencyKey: string;
   prepareRelationshipHandoffRequest: PrepareRelationshipHandoffRequest;
+}
+
+export interface PrepareRelationshipHireOperationRequest {
+  relationshipId: string;
+  prepareRelationshipHireRequest: PrepareRelationshipHireRequest;
 }
 
 export interface ProposeEmploymentContractOperationRequest {
@@ -1738,6 +1746,82 @@ export class EmploymentApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<RelationshipHandoff> {
     const response = await this.prepareRelationshipHandoffRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
+   * Requires the initiating same-tenant EMPLOYER and a HIRE relationship in CONFIGURING. BP validates selected capabilities against the current professional disclosure, records customer-confirmed context, goal, skills, budget, and Decision Space, derives commercial terms from the server-owned catalog, and then presents the immutable exact contract. This operation never accepts the contract, initiates payment, or activates the professional.
+   * Configure a direct Hire and present its exact employment contract
+   */
+  async prepareRelationshipHireRaw(
+    requestParameters: PrepareRelationshipHireOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<EmploymentContractVersion>> {
+    if (requestParameters["relationshipId"] == null) {
+      throw new runtime.RequiredError(
+        "relationshipId",
+        'Required parameter "relationshipId" was null or undefined when calling prepareRelationshipHire().',
+      );
+    }
+
+    if (requestParameters["prepareRelationshipHireRequest"] == null) {
+      throw new runtime.RequiredError(
+        "prepareRelationshipHireRequest",
+        'Required parameter "prepareRelationshipHireRequest" was null or undefined when calling prepareRelationshipHire().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("BearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/employment/relationships/{relationshipId}/hire-setup`;
+    urlPath = urlPath.replace(
+      `{${"relationshipId"}}`,
+      encodeURIComponent(String(requestParameters["relationshipId"])),
+    );
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "POST",
+        headers: headerParameters,
+        query: queryParameters,
+        body: PrepareRelationshipHireRequestToJSON(
+          requestParameters["prepareRelationshipHireRequest"],
+        ),
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      EmploymentContractVersionFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * Requires the initiating same-tenant EMPLOYER and a HIRE relationship in CONFIGURING. BP validates selected capabilities against the current professional disclosure, records customer-confirmed context, goal, skills, budget, and Decision Space, derives commercial terms from the server-owned catalog, and then presents the immutable exact contract. This operation never accepts the contract, initiates payment, or activates the professional.
+   * Configure a direct Hire and present its exact employment contract
+   */
+  async prepareRelationshipHire(
+    requestParameters: PrepareRelationshipHireOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<EmploymentContractVersion> {
+    const response = await this.prepareRelationshipHireRaw(
       requestParameters,
       initOverrides,
     );

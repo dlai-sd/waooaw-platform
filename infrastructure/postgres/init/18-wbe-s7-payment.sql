@@ -17,14 +17,13 @@ CREATE INDEX IF NOT EXISTS idx_payment_intents_customer ON business.payment_inte
 
 GRANT SELECT, INSERT, UPDATE ON business.payment_intents TO wbe_app;
 
--- Seed 100% discount coupons for demo and UAT environments. FA-029.
--- These coupons are valid indefinitely in lower environments only (WAOOAW_ENVIRONMENT gate in code).
+-- Seed lower-environment discounts. Additional dated or scoped coupons use the same table.
 INSERT INTO business.coupon_codes
     (coupon_id, code, discount_pct, bonus_credits_paise, agent_type, min_bundle_tier,
      max_uses, uses_count, valid_from, valid_until, is_active)
 VALUES
-    (gen_random_uuid(), 'DEMOWAOOAW', 100, 0, NULL, NULL,
-     999999, 0, NOW(), '2099-12-31'::TIMESTAMPTZ, TRUE),
+    (gen_random_uuid(), 'DEMO100', 100, 0, NULL, NULL,
+     NULL, 0, NOW(), NULL, TRUE),
     (gen_random_uuid(), 'UATWAOOAW', 100, 0, NULL, NULL,
      999999, 0, NOW(), '2099-12-31'::TIMESTAMPTZ, TRUE)
 ON CONFLICT (code) DO NOTHING;

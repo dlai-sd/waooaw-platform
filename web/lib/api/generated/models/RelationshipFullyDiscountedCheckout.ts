@@ -63,6 +63,12 @@ export interface RelationshipFullyDiscountedCheckout {
   promotionVersion: string;
   /**
    *
+   * @type {string}
+   * @memberof RelationshipFullyDiscountedCheckout
+   */
+  couponCode: string;
+  /**
+   *
    * @type {number}
    * @memberof RelationshipFullyDiscountedCheckout
    */
@@ -159,6 +165,8 @@ export function instanceOfRelationshipFullyDiscountedCheckout(
     return false;
   if (!("promotionVersion" in value) || value["promotionVersion"] === undefined)
     return false;
+  if (!("couponCode" in value) || value["couponCode"] === undefined)
+    return false;
   if (
     !("listPriceInrPaise" in value) ||
     value["listPriceInrPaise"] === undefined
@@ -211,6 +219,7 @@ export function RelationshipFullyDiscountedCheckoutFromJSONTyped(
     producedAt: new Date(json["producedAt"]),
     quoteVersion: json["quoteVersion"],
     promotionVersion: json["promotionVersion"],
+    couponCode: json["couponCode"],
     listPriceInrPaise: json["listPriceInrPaise"],
     discountInrPaise: json["discountInrPaise"],
     taxInrPaise: json["taxInrPaise"],
@@ -244,6 +253,7 @@ export function RelationshipFullyDiscountedCheckoutToJSONTyped(
     producedAt: value["producedAt"].toISOString(),
     quoteVersion: value["quoteVersion"],
     promotionVersion: value["promotionVersion"],
+    couponCode: value["couponCode"],
     listPriceInrPaise: value["listPriceInrPaise"],
     discountInrPaise: value["discountInrPaise"],
     taxInrPaise: value["taxInrPaise"],

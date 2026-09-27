@@ -208,6 +208,34 @@ async def test_validate_coupon_valid_returns_discount_pct(promotions_service, se
 
 
 @pytest.mark.asyncio
+async def test_validate_coupon_without_expiry_or_use_limit_remains_valid(
+    promotions_service,
+    session_factory,
+    mock_settings,
+):
+    mock_settings.MAX_DISCOUNT_PCT = 100
+    await _ins_coupon(
+        session_factory,
+        code="DEMO100",
+        discount_pct=100,
+        max_uses=None,
+        valid_until=None,
+    )
+
+    result = await promotions_service.validate_coupon(
+        "DEMO100",
+        uuid.uuid4(),
+        "DIGITAL_MARKETING_LOCAL_SERVICE",
+        "STANDARD",
+    )
+
+    assert result.valid is True
+    assert result.discount_pct == 100
+    assert result.expires_at is None
+    assert result.error_code is None
+
+
+@pytest.mark.asyncio
 async def test_validate_coupon_not_found(promotions_service):
     result = await promotions_service.validate_coupon("NOSUCHCODE", uuid.uuid4(), "DMA", "STANDARD")
     assert result.valid is False

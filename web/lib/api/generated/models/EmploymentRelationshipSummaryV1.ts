@@ -84,7 +84,11 @@ export interface EmploymentRelationshipSummaryV1 {
    * @memberof EmploymentRelationshipSummaryV1
    */
   professionalDisplayName: string;
-  /** Customer-selected acquisition mode. */
+  /**
+   * The customer-selected acquisition mode. Null only for legacy or non-acquisition relationships.
+   * @type {string}
+   * @memberof EmploymentRelationshipSummaryV1
+   */
   acquisitionMode?: EmploymentRelationshipSummaryV1AcquisitionModeEnum;
   /**
    *
@@ -183,6 +187,16 @@ export interface EmploymentRelationshipSummaryV1 {
    */
   resumeTarget: CustomerPortalDestinationV1;
 }
+
+/**
+ * @export
+ */
+export const EmploymentRelationshipSummaryV1AcquisitionModeEnum = {
+  Trial: "TRIAL",
+  Hire: "HIRE",
+} as const;
+export type EmploymentRelationshipSummaryV1AcquisitionModeEnum =
+  (typeof EmploymentRelationshipSummaryV1AcquisitionModeEnum)[keyof typeof EmploymentRelationshipSummaryV1AcquisitionModeEnum];
 
 /**
  * @export
@@ -308,7 +322,8 @@ export function EmploymentRelationshipSummaryV1FromJSONTyped(
         ? undefined
         : json["professionalVersion"],
     professionalDisplayName: json["professionalDisplayName"],
-    acquisitionMode: json["acquisitionMode"] == null ? undefined : json["acquisitionMode"],
+    acquisitionMode:
+      json["acquisitionMode"] == null ? undefined : json["acquisitionMode"],
     lifecycleState: EmploymentRelationshipStateFromJSON(json["lifecycleState"]),
     trialStatus: json["trialStatus"] == null ? undefined : json["trialStatus"],
     currentGoalSummary:
@@ -386,10 +401,3 @@ export function EmploymentRelationshipSummaryV1ToJSONTyped(
     resumeTarget: CustomerPortalDestinationV1ToJSON(value["resumeTarget"]),
   };
 }
-
-export const EmploymentRelationshipSummaryV1AcquisitionModeEnum = {
-  Trial: "TRIAL",
-  Hire: "HIRE",
-} as const;
-export type EmploymentRelationshipSummaryV1AcquisitionModeEnum =
-  (typeof EmploymentRelationshipSummaryV1AcquisitionModeEnum)[keyof typeof EmploymentRelationshipSummaryV1AcquisitionModeEnum];

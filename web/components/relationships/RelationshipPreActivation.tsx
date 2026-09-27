@@ -104,7 +104,7 @@ export function RelationshipPreActivation({
         <section className="contract-journey" aria-labelledby="hire-setup-title">
           <p className="section-label">Business setup</p>
           <h2 id="hire-setup-title">Define the work before commitment</h2>
-          <form className="onboard-form" onSubmit={submitSetup}>
+          <form className="portal-form onboard-form" onSubmit={submitSetup}>
             <label>
               Business name
               <input name="businessName" required maxLength={160} />

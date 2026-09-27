@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS business.zero_price_commercial_outcomes (
     bundle_tier VARCHAR(64) NOT NULL,
     quote_version VARCHAR(128) NOT NULL,
     promotion_version VARCHAR(128) NOT NULL,
+    coupon_code VARCHAR(20) NOT NULL,
     outcome_reference VARCHAR(128) NOT NULL UNIQUE,
     status VARCHAR(32) NOT NULL DEFAULT 'ZERO_PRICE_SATISFIED' CHECK (
         status IN ('ZERO_PRICE_SATISFIED', 'ACTIVATION_IN_PROGRESS', 'ACTIVATED', 'FAILED_RETRYABLE')
@@ -89,13 +90,13 @@ BEGIN
         OLD.accepted_contract_id, OLD.contract_version, OLD.contract_hash,
         OLD.contract_acceptance_id, OLD.payment_consent_evidence_id,
         OLD.commercial_evidence_id, OLD.agent_type, OLD.bundle_tier,
-        OLD.quote_version, OLD.promotion_version, OLD.outcome_reference, OLD.created_at
+        OLD.quote_version, OLD.promotion_version, OLD.coupon_code, OLD.outcome_reference, OLD.created_at
     ) IS DISTINCT FROM ROW(
         NEW.checkout_intent_id, NEW.tenant_id, NEW.customer_id, NEW.relationship_id,
         NEW.accepted_contract_id, NEW.contract_version, NEW.contract_hash,
         NEW.contract_acceptance_id, NEW.payment_consent_evidence_id,
         NEW.commercial_evidence_id, NEW.agent_type, NEW.bundle_tier,
-        NEW.quote_version, NEW.promotion_version, NEW.outcome_reference, NEW.created_at
+        NEW.quote_version, NEW.promotion_version, NEW.coupon_code, NEW.outcome_reference, NEW.created_at
     ) THEN
         RAISE EXCEPTION 'zero-price commercial outcome identity is immutable';
     END IF;

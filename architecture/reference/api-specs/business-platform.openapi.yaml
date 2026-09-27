@@ -5842,11 +5842,12 @@ components:
         - $ref: "#/components/schemas/RelationshipCheckoutBase"
         - type: object
           additionalProperties: false
-          required: [quoteVersion, promotionVersion, listPriceInrPaise, discountInrPaise, taxInrPaise, payableInrPaise, renewalConsequence, commercialOutcomeReference, commercialEvidenceId, evidenceState]
+          required: [quoteVersion, promotionVersion, couponCode, listPriceInrPaise, discountInrPaise, taxInrPaise, payableInrPaise, renewalConsequence, commercialOutcomeReference, commercialEvidenceId, evidenceState]
           properties:
             outcomeKind: { type: string, enum: [FULLY_DISCOUNTED] }
             quoteVersion: { type: string, minLength: 1 }
             promotionVersion: { type: string, minLength: 1 }
+            couponCode: { type: string, minLength: 1, maxLength: 20 }
             listPriceInrPaise: { type: integer, format: int64, minimum: 0 }
             discountInrPaise: { type: integer, format: int64, minimum: 0 }
             taxInrPaise: { type: integer, format: int64, minimum: 0 }

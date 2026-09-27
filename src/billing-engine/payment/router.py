@@ -174,7 +174,7 @@ async def reconcile_relationship_checkout(
 async def create_onboarding_order(body: OnboardingOrderBody) -> dict:
     """Create a Razorpay order combining first-month subscription + wallet seed (ADR-022 §1.2).
 
-    Demo/UAT: DEMOWAOOAW / UATWAOOAW coupon → ₹0 bypass order, no Razorpay API call. FA-029.
+    Demo/UAT: DEMO100 / UATWAOOAW coupon → ₹0 bypass order, no Razorpay API call. FA-029.
     """
     svc = OnboardingService(settings=_settings)
     req = OnboardingOrderRequest(

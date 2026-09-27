@@ -212,12 +212,12 @@ class TestCCT_ONBOARD_01:
                 **base, tenant_id=uuid.uuid4(), relationship_id=relationship_id, contract_id=uuid.uuid4(),
                 contract_version=1, contract_hash="a" * 64,
                 contract_acceptance_id=uuid.uuid4(), payment_consent_evidence_id=uuid.uuid4(),
-                coupon_code="DEMOWAOOAW",
+                coupon_code="DEMO100",
             )
 
     @pytest.mark.asyncio
     async def test_demo_coupon_bypasses_razorpay(self, mock_settings):
-        """DEMOWAOOAW coupon → ₹0 bypass order, no Razorpay HTTP call. FA-029."""
+        """DEMO100 coupon → ₹0 bypass order, no Razorpay HTTP call. FA-029."""
         svc = OnboardingService(settings=mock_settings)
         req = OnboardingOrderRequest(
             customer_id=uuid.uuid4(),
@@ -225,14 +225,14 @@ class TestCCT_ONBOARD_01:
             bundle_tier="STARTER",
             subscription_amount_paise=49900,
             wallet_seed_paise=100000,
-            coupon_code="DEMOWAOOAW",
+            coupon_code="DEMO100",
         )
         result = await svc.create_onboarding_order(req)
 
         assert result.is_bypass is True
         assert result.amount_paise == 0
         assert result.currency == "INR"
-        assert result.coupon_applied == "DEMOWAOOAW"
+        assert result.coupon_applied == "DEMO100"
         assert result.order_id.startswith("bypass-")
 
     @pytest.mark.asyncio
@@ -263,7 +263,7 @@ class TestCCT_ONBOARD_01:
             bundle_tier="STARTER",
             subscription_amount_paise=49900,
             wallet_seed_paise=50000,
-            coupon_code="demowaooaw",
+            coupon_code="demo100",
         )
         result = await svc.create_onboarding_order(req)
         assert result.is_bypass is True
@@ -383,6 +383,7 @@ class TestWC095RelationshipCheckout:
         settings.WAOOAW_ENVIRONMENT = "demo"
         settings.DEMO_PROMOTION_ENABLED = True
         settings.DEMO_PROMOTION_VERSION = "demo-100-v1"
+        settings.DEMO_COUPON_CODE = "DEMO100"
         settings.DEMO_RENEWAL_CONSEQUENCE = "Renews at the accepted monthly price."
         settings.MAX_DISCOUNT_PCT = 100
         settings.RAZORPAY_KEY_ID = ""
@@ -402,6 +403,7 @@ class TestWC095RelationshipCheckout:
         assert result.outcome_kind is CheckoutOutcomeKind.FULLY_DISCOUNTED
         assert result.payable_inr_paise == 0
         assert result.discount_inr_paise == result.list_price_inr_paise
+        assert result.coupon_code == "DEMO100"
         assert result.commercial_outcome_reference is not None
         assert result.commercial_evidence_id is not None
         assert result.evidence_state == "COMMITTED"
@@ -767,7 +769,7 @@ class TestPaymentRouterHTTP:
 
     @pytest.mark.asyncio
     async def test_onboarding_order_endpoint_demo_coupon(self):
-        """POST /payments/onboarding-order with DEMOWAOOAW → router returns bypass order."""
+        """POST /payments/onboarding-order with DEMO100 → router returns bypass order."""
         from httpx import ASGITransport, AsyncClient
         from main import app
 
@@ -777,7 +779,7 @@ class TestPaymentRouterHTTP:
             "bundle_tier": "STARTER",
             "subscription_amount_paise": 49900,
             "wallet_seed_paise": 100000,
-            "coupon_code": "DEMOWAOOAW",
+            "coupon_code": "DEMO100",
         }
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
@@ -788,7 +790,7 @@ class TestPaymentRouterHTTP:
         data = resp.json()
         assert data["is_bypass"] is True
         assert data["amount_paise"] == 0
-        assert data["coupon_applied"] == "DEMOWAOOAW"
+        assert data["coupon_applied"] == "DEMO100"
 
     @pytest.mark.asyncio
     async def test_webhook_ignores_non_payment_captured_events(self):

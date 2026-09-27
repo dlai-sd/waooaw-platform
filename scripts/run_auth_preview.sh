@@ -144,6 +144,7 @@ if [ "$action" = start ]; then
   fi
   $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /auth-preview/ensure-ce-audit-role.sql
   $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /auth-preview/ensure-business-runtime-grants.sql
+  $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /docker-entrypoint-initdb.d/43-demo-coupon.sql
   $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /docker-entrypoint-initdb.d/41-relationship-acquisition-mode.sql
   $compose exec -T postgres bash /docker-entrypoint-initdb.d/42-demo-marketplace-admission.sh
 fi

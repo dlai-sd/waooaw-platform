@@ -3,7 +3,7 @@
 """OnboardingService — creates combined Razorpay order for subscription + wallet seed.
 
 Lower environments (WAOOAW_ENVIRONMENT=demo|uat) skip the live Razorpay API when a
-100% discount coupon (DEMOWAOOAW / UATWAOOAW) is presented. FA-029.
+100% discount coupon (DEMO100 / UATWAOOAW) is presented. FA-029.
 """
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ class ZeroPriceOutcomeWriter(Protocol):
     ) -> None: ...
 
 _BYPASS_COUPONS: dict[str, PaymentEnvironment] = {
-    "DEMOWAOOAW": PaymentEnvironment.DEMO,
+    "DEMO100": PaymentEnvironment.DEMO,
     "UATWAOOAW":  PaymentEnvironment.UAT,
 }
 
@@ -58,7 +58,7 @@ class OnboardingService:
     ) -> OnboardingOrderResult:
         """Return a Razorpay order ID (or stub) for the frontend to complete payment.
 
-        For DEMOWAOOAW / UATWAOOAW coupons: returns a ₹0 bypass order without calling
+        For DEMO100 / UATWAOOAW coupons: returns a ₹0 bypass order without calling
         Razorpay. The webhook handler treats bypass orders as pre-confirmed. FA-029.
         """
         coupon = req.coupon_code.upper().strip()
@@ -127,7 +127,11 @@ class OnboardingService:
             self._settings.WAOOAW_ENVIRONMENT == PaymentEnvironment.DEMO.value
             and self._settings.DEMO_PROMOTION_ENABLED
         ):
-            if self._settings.MAX_DISCOUNT_PCT < 100 or not self._settings.DEMO_PROMOTION_VERSION:
+            if (
+                self._settings.MAX_DISCOUNT_PCT < 100
+                or not self._settings.DEMO_PROMOTION_VERSION
+                or not self._settings.DEMO_COUPON_CODE
+            ):
                 return RelationshipCheckoutResult(
                     outcome_kind=CheckoutOutcomeKind.COMMERCIAL_CONFLICT,
                     reason_code="PROMOTION_CHANGED",
@@ -138,6 +142,7 @@ class OnboardingService:
                 outcome_kind=CheckoutOutcomeKind.FULLY_DISCOUNTED,
                 quote_version=request.quote_version,
                 promotion_version=self._settings.DEMO_PROMOTION_VERSION,
+                coupon_code=self._settings.DEMO_COUPON_CODE,
                 list_price_inr_paise=request.gross_amount_inr_paise,
                 discount_inr_paise=request.gross_amount_inr_paise,
                 tax_inr_paise=request.gst_amount_inr_paise,

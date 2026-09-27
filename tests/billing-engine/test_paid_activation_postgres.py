@@ -131,6 +131,7 @@ async def postgres_zero_price_activation(postgres_activation):
         settings.WAOOAW_ENVIRONMENT = "demo"
         settings.DEMO_PROMOTION_ENABLED = True
         settings.DEMO_PROMOTION_VERSION = "demo-100-v1"
+        settings.DEMO_COUPON_CODE = "DEMO100"
         settings.DEMO_RENEWAL_CONSEQUENCE = "Renews at the accepted monthly price."
         settings.MAX_DISCOUNT_PCT = 100
         settings.RAZORPAY_KEY_ID = ""
@@ -224,7 +225,7 @@ async def test_postgres_zero_price_activation_replays_one_subscription(
             session, WalletService(db=session, redis_client=fakeredis.aioredis.FakeRedis())
         ).activate(request)
         outcome = (await session.execute(text("""
-            SELECT status, outcome_subscription_id
+            SELECT status, outcome_subscription_id, coupon_code
             FROM zero_price_commercial_outcomes
             WHERE outcome_reference = :outcome_reference
         """).bindparams(outcome_reference=request.commercial_outcome_reference))).one()
@@ -236,4 +237,5 @@ async def test_postgres_zero_price_activation_replays_one_subscription(
     assert replay.subscription_id == first.subscription_id
     assert outcome.status == "ACTIVATED"
     assert outcome.outcome_subscription_id == first.subscription_id
+    assert outcome.coupon_code == "DEMO100"
     assert subscription_count == 1

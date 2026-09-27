@@ -10,6 +10,7 @@
 | `professionalType`               | string                                                                                    |
 | `professionalVersion`            | string                                                                                    |
 | `professionalDisplayName`        | string                                                                                    |
+| `acquisitionMode`                | string                                                                                    |
 | `lifecycleState`                 | [EmploymentRelationshipState](EmploymentRelationshipState.md)                             |
 | `trialStatus`                    | string                                                                                    |
 | `currentGoalSummary`             | string                                                                                    |
@@ -40,6 +41,7 @@ const example = {
   professionalType: null,
   professionalVersion: null,
   professionalDisplayName: null,
+  acquisitionMode: null,
   lifecycleState: null,
   trialStatus: null,
   currentGoalSummary: null,

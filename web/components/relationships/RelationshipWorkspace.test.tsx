@@ -631,6 +631,7 @@ describe('RelationshipWorkspace', () => {
         listPriceInrPaise: 118000,
         discountInrPaise: 118000,
         taxInrPaise: 18000,
+        couponCode: 'DEMO100',
         renewalConsequence: 'Renews at the accepted monthly price',
         commercialOutcomeReference: 'zero-price:intent-1',
         commercialEvidenceId: '14eddf57-ef75-4a94-bfac-06b2b550dd44',
@@ -651,6 +652,7 @@ describe('RelationshipWorkspace', () => {
     expect(
       await screen.findByText('100% Demo discount applied. Amount paid: INR 0. No payment method charged.')
     ).toBeVisible();
+    expect(screen.getByText('DEMO100 discount')).toBeVisible();
     expect(screen.getByText('Amount paid').nextSibling).toHaveTextContent('INR 0');
     for (const method of ['Credit card', 'Debit card', 'UPI', 'Netbanking', 'Wallet']) {
       expect(screen.getByText(method)).toBeVisible();

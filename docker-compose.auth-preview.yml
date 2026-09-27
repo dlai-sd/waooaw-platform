@@ -59,6 +59,7 @@ services:
       WAOOAW_ENVIRONMENT: demo
       DEMO_PROMOTION_ENABLED: "true"
       DEMO_PROMOTION_VERSION: auth-preview-100-percent-v1
+      DEMO_COUPON_CODE: DEMO100
       DEMO_RENEWAL_CONSEQUENCE: Standard paid renewal terms apply after the Demo period.
       MAX_DISCOUNT_PCT: "100"
       RAZORPAY_READINESS_STATE: NOT_CONFIGURED

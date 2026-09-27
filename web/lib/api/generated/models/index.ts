@@ -149,6 +149,7 @@ export * from "./PortalInteractionSurfaceV1";
 export * from "./PortalInteractionTimelinePageV1";
 export * from "./PortalNavigationCapabilityV1";
 export * from "./PrepareRelationshipHandoffRequest";
+export * from "./PrepareRelationshipHireRequest";
 export * from "./ProblemDetail";
 export * from "./ProfessionalDisclosure";
 export * from "./ProfessionalDiscoveryResult";

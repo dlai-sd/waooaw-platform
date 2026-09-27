@@ -90,6 +90,7 @@ public sealed record RelationshipCheckoutOutcome(
     DateTimeOffset? ExpiresAt = null,
     string? ReconciliationTarget = null,
     string? PromotionVersion = null,
+    string? CouponCode = null,
     long? ListPriceInrPaise = null,
     long? DiscountInrPaise = null,
     long? TaxInrPaise = null,

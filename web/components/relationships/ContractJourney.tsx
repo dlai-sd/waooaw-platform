@@ -54,6 +54,7 @@ interface CheckoutOutcome {
   listPriceInrPaise?: number;
   discountInrPaise?: number;
   taxInrPaise?: number;
+  couponCode?: string;
   renewalConsequence?: string;
   commercialOutcomeReference?: string;
   commercialEvidenceId?: string;
@@ -299,7 +300,7 @@ export function ContractJourney({ relationshipId, journey }: Props) {
               <dd>{money(checkout.listPriceInrPaise ?? terms.grossAmountInrPaise)}</dd>
             </div>
             <div>
-              <dt>Demo discount</dt>
+              <dt>{checkout.couponCode ?? 'Demo'} discount</dt>
               <dd>-{money(checkout.discountInrPaise ?? terms.grossAmountInrPaise)}</dd>
             </div>
             <div>

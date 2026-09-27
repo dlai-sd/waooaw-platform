@@ -24,6 +24,7 @@ All URIs are relative to _http://localhost:5001_
 | [**listEmploymentContracts**](EmploymentApi.md#listemploymentcontracts)                              | **GET** /api/v1/employment/contracts                                                                     | List employment contracts for the authenticated customer                   |
 | [**listEmploymentRelationships**](EmploymentApi.md#listemploymentrelationships)                      | **GET** /api/v1/employment/relationships                                                                 | List the authenticated customer\&#39;s authorized employment relationships |
 | [**prepareRelationshipHandoff**](EmploymentApi.md#preparerelationshiphandoffoperation)               | **POST** /api/v1/employment/relationships/{relationshipId}/handoffs                                      | Prepare a channel handoff for the same employment relationship             |
+| [**prepareRelationshipHire**](EmploymentApi.md#preparerelationshiphireoperation)                     | **POST** /api/v1/employment/relationships/{relationshipId}/hire-setup                                    | Configure a direct Hire and present its exact employment contract          |
 | [**proposeEmploymentContract**](EmploymentApi.md#proposeemploymentcontractoperation)                 | **POST** /api/v1/employment/relationships/{relationshipId}/contracts                                     | Compose or replay the presented employment contract                        |
 | [**releaseEmploymentRelationshipStop**](EmploymentApi.md#releaseemploymentrelationshipstopoperation) | **POST** /api/v1/employment/relationships/{relationshipId}/emergency-stop/release                        | Release the active relationship Stop with fresh Tier-4 employer proof      |
 | [**renewEmploymentContract**](EmploymentApi.md#renewemploymentcontract)                              | **POST** /api/v1/employment/contracts/{contractId}/renew                                                 | Renew an employment contract                                               |
@@ -1528,6 +1529,84 @@ example().catch(console.error);
 | **409**     | Operation not valid in current state                                | -                |
 | **423**     | Relationship is stopped and the handoff is blocked                  | -                |
 | **503**     | Constitutional evidence or continuity persistence is unavailable    | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## prepareRelationshipHire
+
+> EmploymentContractVersion prepareRelationshipHire(relationshipId, prepareRelationshipHireRequest)
+
+Configure a direct Hire and present its exact employment contract
+
+Requires the initiating same-tenant EMPLOYER and a HIRE relationship in CONFIGURING. BP validates selected capabilities against the current professional disclosure, records customer-confirmed context, goal, skills, budget, and Decision Space, derives commercial terms from the server-owned catalog, and then presents the immutable exact contract. This operation never accepts the contract, initiates payment, or activates the professional.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  EmploymentApi,
+} from '';
+import type { PrepareRelationshipHireOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new EmploymentApi(config);
+
+  const body = {
+    // string | Tenant-scoped durable employment relationship UUID
+    relationshipId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // PrepareRelationshipHireRequest
+    prepareRelationshipHireRequest: ...,
+  } satisfies PrepareRelationshipHireOperationRequest;
+
+  try {
+    const data = await api.prepareRelationshipHire(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name                               | Type                                                                | Description                                        | Notes                     |
+| ---------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------- | ------------------------- |
+| **relationshipId**                 | `string`                                                            | Tenant-scoped durable employment relationship UUID | [Defaults to `undefined`] |
+| **prepareRelationshipHireRequest** | [PrepareRelationshipHireRequest](PrepareRelationshipHireRequest.md) |                                                    |                           |
+
+### Return type
+
+[**EmploymentContractVersion**](EmploymentContractVersion.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                                           | Response headers |
+| ----------- | --------------------------------------------------------------------- | ---------------- |
+| **200**     | Configuration recorded and exact contract presented                   | -                |
+| **400**     | Request body failed validation                                        | -                |
+| **401**     | JWT missing, expired, or invalid                                      | -                |
+| **403**     | Active same-tenant employer authority denied                          | -                |
+| **404**     | Resource not found (or not accessible to this tenant)                 | -                |
+| **409**     | Operation not valid in current state                                  | -                |
+| **503**     | Configuration, contract, or constitutional evidence owner unavailable | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 

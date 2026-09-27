@@ -11,6 +11,7 @@
 | `producedAt`                 | Date   |
 | `quoteVersion`               | string |
 | `promotionVersion`           | string |
+| `couponCode`                 | string |
 | `listPriceInrPaise`          | number |
 | `discountInrPaise`           | number |
 | `taxInrPaise`                | number |
@@ -34,6 +35,7 @@ const example = {
   producedAt: null,
   quoteVersion: null,
   promotionVersion: null,
+  couponCode: null,
   listPriceInrPaise: null,
   discountInrPaise: null,
   taxInrPaise: null,
