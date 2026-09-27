@@ -2,7 +2,8 @@
 
 import { InteractionRequiredAuthError, PublicClientApplication } from '@azure/msal-browser';
 import { KeyRound, Save } from 'lucide-react';
-import { FormEvent, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
+import type { FormEvent } from 'react';
 
 interface AzureKeyVaultWriterProps {
   adminEmail: string;
@@ -91,9 +92,9 @@ export function AzureKeyVaultWriter({ adminEmail, clientId, environment, tenantI
           <Save aria-hidden="true" size={18} />
           {status === 'saving' ? 'Authorizing and saving...' : 'Save to Azure Key Vault'}
         </button>
-        <p aria-live="polite" className={`form-status ${status === 'error' ? 'error-copy' : ''}`} role="status">
+        <output aria-live="polite" className={`form-status ${status === 'error' ? 'error-copy' : ''}`}>
           {message}
-        </p>
+        </output>
       </form>
     </section>
   );

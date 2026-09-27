@@ -297,7 +297,11 @@ public sealed class EmploymentRelationshipService
             EvaluationIntentId = evaluationIntentId,
             InitiatingParticipantId = participantId,
         };
-        var participantRole = string.Equals(acquisitionEvidence?.Intent, "HIRE", StringComparison.Ordinal)
+        var participantRole = string.Equals(
+            acquisitionEvidence?.Intent,
+            "HIRE",
+            StringComparison.Ordinal
+        )
             ? RelationshipParticipantRole.Employer
             : RelationshipParticipantRole.Evaluator;
         db.EmploymentRelationships.Add(relationship);
@@ -628,8 +632,8 @@ public sealed class EmploymentRelationshipService
         );
         if (relationship is null)
             throw new KeyNotFoundException("Relationship not found.");
-        var bindings = await db.RelationshipParticipants
-            .Where(value =>
+        var bindings = await db
+            .RelationshipParticipants.Where(value =>
                 value.TenantId == tenantId
                 && value.RelationshipId == relationshipId
                 && value.ParticipantId == participantId
@@ -638,7 +642,9 @@ public sealed class EmploymentRelationshipService
             .ToListAsync(cancellationToken);
         if (bindings.Any(value => value.Role == RelationshipParticipantRole.Employer))
             return false;
-        var evaluator = bindings.SingleOrDefault(value => value.Role == RelationshipParticipantRole.Evaluator);
+        var evaluator = bindings.SingleOrDefault(value =>
+            value.Role == RelationshipParticipantRole.Evaluator
+        );
         if (
             evaluator is null
             || relationship.InitiatingParticipantId != participantId
@@ -659,7 +665,9 @@ public sealed class EmploymentRelationshipService
             {
                 participant_id = participantId,
                 prior_role = RelationshipRoleCodec.ToDatabase(evaluator.Role),
-                target_role = RelationshipRoleCodec.ToDatabase(RelationshipParticipantRole.Employer),
+                target_role = RelationshipRoleCodec.ToDatabase(
+                    RelationshipParticipantRole.Employer
+                ),
                 prior_binding_evidence_id = evaluator.BoundEvidenceId,
             },
             cancellationToken

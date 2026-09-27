@@ -807,7 +807,9 @@ public sealed class EmploymentRelationshipsController : ControllerBase
             || request.BudgetCeilingInrPaise < 0
             || request.SelectedSkillIds is null
         )
-            return ValidationProblem("Hire setup fields and explicit authority confirmation are required.");
+            return ValidationProblem(
+                "Hire setup fields and explicit authority confirmation are required."
+            );
 
         try
         {
@@ -860,13 +862,13 @@ public sealed class EmploymentRelationshipsController : ControllerBase
                 )
             )
                 return Conflict(new { error = "PROFESSIONAL_DISCLOSURE_STALE" });
-            var selectedSkillIds = request.SelectedSkillIds
-                .Select(value => value.Trim().ToUpperInvariant())
+            var selectedSkillIds = request
+                .SelectedSkillIds.Select(value => value.Trim().ToUpperInvariant())
                 .Where(value => value.Length > 0)
                 .Distinct(StringComparer.Ordinal)
                 .ToArray();
-            var disclosedSkillIds = disclosure.Skills
-                .Select(value => value.SkillId)
+            var disclosedSkillIds = disclosure
+                .Skills.Select(value => value.SkillId)
                 .ToHashSet(StringComparer.Ordinal);
             if (
                 selectedSkillIds.Length == 0
@@ -874,12 +876,14 @@ public sealed class EmploymentRelationshipsController : ControllerBase
             )
                 return ValidationProblem("Select one or more disclosed professional capabilities.");
 
-            foreach (var context in new[]
-            {
-                (Field: "NAME", Value: request.BusinessName),
-                (Field: "LOCATION", Value: request.Location),
-                (Field: "BUSINESS_NATURE", Value: request.BusinessNature),
-            })
+            foreach (
+                var context in new[]
+                {
+                    (Field: "NAME", Value: request.BusinessName),
+                    (Field: "LOCATION", Value: request.Location),
+                    (Field: "BUSINESS_NATURE", Value: request.BusinessNature),
+                }
+            )
             {
                 await _configuration.ConfirmContextAsync(
                     tenantId,

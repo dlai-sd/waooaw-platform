@@ -17,7 +17,7 @@ const props: AcquisitionContinuationProps = {
 describe('AcquisitionContinuation', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    delete window.Razorpay;
+    window.Razorpay = undefined;
   });
 
   afterEach(() => {

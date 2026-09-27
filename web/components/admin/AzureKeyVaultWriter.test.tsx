@@ -35,7 +35,9 @@ test('uses Azure authorization, clears the value, and never displays it after sa
   );
   fireEvent.change(screen.getByLabelText('Secret name'), { target: { value: 'razorpay-test-key-id' } });
   fireEvent.change(screen.getByLabelText('Secret value'), { target: { value: 'sensitive-value' } });
-  fireEvent.submit(screen.getByRole('button', { name: 'Save to Azure Key Vault' }).closest('form')!);
+  const form = screen.getByRole('button', { name: 'Save to Azure Key Vault' }).closest('form');
+  if (!form) throw new Error('Expected the save command to belong to a form.');
+  fireEvent.submit(form);
 
   expect(await screen.findByText(/Saved razorpay-test-key-id to codespace/)).toBeVisible();
   expect(screen.queryByText('sensitive-value')).not.toBeInTheDocument();

@@ -103,7 +103,9 @@ public sealed class ProfessionalsController : ControllerBase
                 eligibility = disclosure.Eligibility,
                 indicativePrice = disclosure.IndicativePrice,
                 offerabilityState = disclosure.Eligibility.Eligible
-                    ? disclosure.Trial.Available ? "OFFERABLE" : "TRIAL_ONLY"
+                    ? disclosure.Trial.Available
+                        ? "OFFERABLE"
+                        : "TRIAL_ONLY"
                     : "NOT_OFFERABLE",
                 trialTerms = disclosure.Trial.Available
                     ? $"{disclosure.Trial.DurationDays}-day trial; no paid API calls or external actions."

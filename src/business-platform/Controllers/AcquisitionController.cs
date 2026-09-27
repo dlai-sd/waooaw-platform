@@ -129,9 +129,10 @@ public sealed class AcquisitionController(
                 cancellationToken
             );
             var lifecycleCorrelationId = correlationId ?? idempotencyKey.Value;
-            var participantRole = intent == "HIRE"
-                ? RelationshipParticipantRole.Employer
-                : RelationshipParticipantRole.Evaluator;
+            var participantRole =
+                intent == "HIRE"
+                    ? RelationshipParticipantRole.Employer
+                    : RelationshipParticipantRole.Evaluator;
             if (result.Relationship.State == EmploymentRelationshipState.Discovered)
             {
                 await relationships.TransitionAsync(
