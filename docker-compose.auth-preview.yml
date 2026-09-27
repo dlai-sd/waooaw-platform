@@ -11,6 +11,7 @@ services:
       - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d:ro
       - ./infrastructure/postgres/auth-preview/ensure-ce-audit-role.sql:/auth-preview/ensure-ce-audit-role.sql:ro
       - ./infrastructure/postgres/auth-preview/ensure-business-runtime-grants.sql:/auth-preview/ensure-business-runtime-grants.sql:ro
+      - ./infrastructure/postgres/auth-preview/ensure-wbe-runtime-role.sh:/auth-preview/ensure-wbe-runtime-role.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U waooaw -d waooaw"]
       interval: 5s

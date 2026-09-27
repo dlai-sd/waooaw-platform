@@ -142,6 +142,7 @@ if [ "$action" = start ]; then
   else
     $compose up -d --build --wait --wait-timeout 900
   fi
+  $compose exec -T postgres sh /auth-preview/ensure-wbe-runtime-role.sh
   $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /auth-preview/ensure-ce-audit-role.sql
   $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /auth-preview/ensure-business-runtime-grants.sql
   $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U waooaw -d waooaw -f /docker-entrypoint-initdb.d/43-demo-coupon.sql
