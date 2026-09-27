@@ -27,6 +27,7 @@ from payment.commercial_outcomes import ZeroPriceCommercialOutcomeStore
 from payment.onboarding import OnboardingService
 from payment.razorpay_client import RazorpayClient
 from payment.webhook import WebhookHandler
+from promotions.service import PromotionsService
 from wallet.service import WalletService
 
 logger = logging.getLogger(__name__)
@@ -85,6 +86,7 @@ class HireCommercialPreviewBody(BaseModel):
     gross_amount_inr_paise: int = Field(gt=0)
     gst_amount_inr_paise: int = Field(ge=0)
     cadence: str = Field(min_length=1, max_length=32)
+    coupon_code: str | None = Field(default=None, max_length=64)
 
 
 class HireCommercialPreview(BaseModel):
@@ -99,6 +101,7 @@ class HireCommercialPreview(BaseModel):
     coupon_code: str | None = None
     provider: str = "RAZORPAY"
     payment_method_required: bool
+    payments_enabled: bool
     renewal_consequence: str
 
 
@@ -135,13 +138,27 @@ async def create_hire_commercial_preview(body: HireCommercialPreviewBody) -> Hir
     """Return server-owned commercial truth before a Hire relationship is created."""
     if body.gst_amount_inr_paise > body.gross_amount_inr_paise:
         raise HTTPException(status_code=422, detail={"code": "INVALID_COMMERCIAL_PREVIEW"})
-    fully_discounted = (
-        _settings.WAOOAW_ENVIRONMENT == PaymentEnvironment.DEMO.value
-        and _settings.DEMO_PROMOTION_ENABLED
-        and _settings.MAX_DISCOUNT_PCT >= 100
-        and bool(_settings.DEMO_COUPON_CODE)
-    )
-    discount = body.gross_amount_inr_paise if fully_discounted else 0
+    coupon_code = body.coupon_code.strip().upper() if body.coupon_code else None
+    discount_pct = 0
+    if coupon_code:
+        redis_client = aioredis.from_url(_settings.REDIS_URL, decode_responses=False)
+        try:
+            validation = await PromotionsService(
+                session_factory=get_session_factory(),
+                redis_client=redis_client,
+                settings=_settings,
+            ).validate_commercial_preview_coupon(coupon_code, body.professional_type)
+        finally:
+            await redis_client.aclose()
+        if not validation.valid:
+            raise HTTPException(status_code=422, detail={"code": validation.error_code or "COUPON_INVALID"})
+        discount_pct = validation.discount_pct
+    discount = body.gross_amount_inr_paise * discount_pct // 100
+    fully_discounted = discount == body.gross_amount_inr_paise
+    payments_enabled = _settings.WAOOAW_ENVIRONMENT not in {
+        PaymentEnvironment.DEMO.value,
+        PaymentEnvironment.UAT.value,
+    }
     return HireCommercialPreview(
         outcome_kind="FULLY_DISCOUNTED" if fully_discounted else "PAYMENT_REQUIRED_AFTER_CONTRACT",
         professional_type=body.professional_type,
@@ -150,8 +167,9 @@ async def create_hire_commercial_preview(body: HireCommercialPreviewBody) -> Hir
         tax_inr_paise=body.gst_amount_inr_paise,
         payable_inr_paise=body.gross_amount_inr_paise - discount,
         cadence=body.cadence,
-        coupon_code=_settings.DEMO_COUPON_CODE if fully_discounted else None,
+        coupon_code=coupon_code,
         payment_method_required=not fully_discounted,
+        payments_enabled=payments_enabled,
         renewal_consequence=_settings.DEMO_RENEWAL_CONSEQUENCE,
     )
 
@@ -221,10 +239,7 @@ async def reconcile_relationship_checkout(
 
 @router.post("/onboarding-order")
 async def create_onboarding_order(body: OnboardingOrderBody) -> dict:
-    """Create a Razorpay order combining first-month subscription + wallet seed (ADR-022 §1.2).
-
-    Demo/UAT: DEMO100 / UATWAOOAW coupon → ₹0 bypass order, no Razorpay API call. FA-029.
-    """
+    """Create a Razorpay order combining first-month subscription + wallet seed (ADR-022 §1.2)."""
     svc = OnboardingService(settings=_settings)
     req = OnboardingOrderRequest(
         customer_id=body.customer_id,

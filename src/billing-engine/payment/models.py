@@ -91,7 +91,7 @@ class OnboardingOrderRequest:
     bundle_tier: str
     subscription_amount_paise: int   # first month subscription price
     wallet_seed_paise: int           # initial ad wallet seed amount
-    coupon_code: str = ""            # optional — DEMO100/UATWAOOAW bypasses Razorpay
+    coupon_code: str = ""
     tenant_id: UUID | None = None
     relationship_id: UUID | None = None
     contract_id: UUID | None = None

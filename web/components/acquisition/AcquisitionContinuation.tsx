@@ -4,6 +4,7 @@
 // Constitutional basis: C-023 (Evidence First), C-049 (Honest Limitation), C-059 (Implementation Traceability)
 
 import { CheckCircle2, CreditCard, Landmark, LoaderCircle, QrCode, ShieldCheck, Tag, WalletCards, X } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -28,6 +29,7 @@ type HireCommercialPreview = {
   coupon_code?: string;
   provider: 'RAZORPAY';
   payment_method_required: boolean;
+  payments_enabled: boolean;
   renewal_consequence: string;
 };
 
@@ -45,7 +47,10 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
   const router = useRouter();
   const started = useRef(false);
   const [preview, setPreview] = useState<HireCommercialPreview | null>(null);
+  const [basePreview, setBasePreview] = useState<HireCommercialPreview | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<(typeof paymentMethods)[number]['id']>('upi');
+  const [couponCode, setCouponCode] = useState('');
+  const [couponError, setCouponError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [failure, setFailure] = useState<{
     action?: 'login' | 'register' | 'mine';
@@ -101,8 +106,9 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
     }
   }
 
-  async function loadHirePreview() {
+  async function loadHirePreview(code?: string) {
     setFailure(null);
+    setCouponError(null);
     try {
       const response = await fetch('/api/acquisition/hire-preview', {
         method: 'POST',
@@ -110,11 +116,20 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
         body: JSON.stringify({
           professionalType: props.professionalType,
           professionalVersion: props.professionalVersion,
+          ...(code ? { couponCode: code } : {}),
         }),
       });
       const result = (await response.json()) as HireCommercialPreview & { title?: string };
-      if (!response.ok) throw new AcquisitionResponseError({ status: response.status, title: result.title });
+      if (!response.ok) {
+        if (code && response.status === 422) {
+          if (basePreview) setPreview(basePreview);
+          setCouponError('Coupon code is invalid or unavailable.');
+          return;
+        }
+        throw new AcquisitionResponseError({ status: response.status, title: result.title });
+      }
       setPreview(result);
+      if (!code) setBasePreview(result);
     } catch (error) {
       const response = error instanceof AcquisitionResponseError ? error.response : null;
       setFailure({ retryable: true, title: response?.title ?? 'Payment review is unavailable' });
@@ -174,7 +189,9 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
         <div className="checkout-backdrop">
           <section aria-labelledby="hire-checkout-title" aria-modal="true" className="hire-checkout" role="dialog">
             <header className="hire-checkout-header">
-              <div className="checkout-brand-mark" aria-hidden="true">W</div>
+              <div className="checkout-brand-mark">
+                <Image alt="WAOOAW" height={32} priority src="/waooaw-platform-logo.png" width={32} />
+              </div>
               <div>
                 <p>WAOOAW Secure Checkout</p>
                 <span><ShieldCheck aria-hidden="true" size={15} /> Razorpay payment options</span>
@@ -213,16 +230,37 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
                   </div>
                   <span className="checkout-provider">Secured by Razorpay</span>
                 </div>
-                {preview.coupon_code ? (
-                  <div className="checkout-coupon-control">
-                    <label htmlFor="hire-coupon">Discount coupon</label>
-                    <div>
-                      <Tag aria-hidden="true" size={18} />
-                      <input id="hire-coupon" readOnly value={preview.coupon_code} />
-                      <span><CheckCircle2 aria-hidden="true" size={16} /> Applied</span>
-                    </div>
+                <div className="checkout-coupon-control">
+                  <label htmlFor="hire-coupon">Discount coupon</label>
+                  <div>
+                    <Tag aria-hidden="true" size={18} />
+                    <input
+                      id="hire-coupon"
+                      onChange={(event) => {
+                        const nextCode = event.target.value.toUpperCase();
+                        setCouponCode(nextCode);
+                        setCouponError(null);
+                        if (preview.coupon_code && preview.coupon_code !== nextCode.trim() && basePreview) {
+                          setPreview(basePreview);
+                        }
+                      }}
+                      placeholder="Enter coupon code"
+                      value={couponCode}
+                    />
+                    <button
+                      disabled={!couponCode.trim() || submitting}
+                      onClick={() => void loadHirePreview(couponCode.trim())}
+                      type="button"
+                    >
+                      {preview.coupon_code === couponCode.trim() ? (
+                        <><CheckCircle2 aria-hidden="true" size={16} /> Applied</>
+                      ) : 'Apply'}
+                    </button>
                   </div>
-                ) : null}
+                  {couponError && couponError !== 'Payments are not enabled on "Demo" / "UAT" environment' ? (
+                    <p className="checkout-inline-error" role="alert">{couponError}</p>
+                  ) : null}
+                </div>
                 <fieldset className="checkout-methods">
                   <legend>Available payment methods</legend>
                   {paymentMethods.map((method) => {
@@ -244,14 +282,23 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
                   })}
                 </fieldset>
                 <div className="checkout-method-note">
-                  {preview.payment_method_required
-                    ? 'Your selected method becomes available after configuration produces the exact contract.'
-                    : `${preview.coupon_code ?? 'The Demo discount'} covers the full amount. No payment details will be collected.`}
+                  {preview.payable_inr_paise === 0
+                    ? `${preview.coupon_code ?? 'The coupon'} covers the full amount. No payment details will be collected.`
+                    : 'Payment methods will be enabled when payments are available.'}
                 </div>
+                {couponError === 'Payments are not enabled on "Demo" / "UAT" environment' ? (
+                  <p className="checkout-inline-error checkout-payment-error" role="alert">{couponError}</p>
+                ) : null}
                 <footer className="checkout-actions">
                   <div><span>Amount payable</span><strong>{money(preview.payable_inr_paise)}</strong></div>
-                  <button className="primary-command" disabled={submitting} onClick={() => void continueAcquisition()} type="button">
-                    {submitting ? 'Starting Hire...' : preview.payable_inr_paise === 0 ? 'Apply DEMO100 & continue' : 'Continue to configuration'}
+                  <button className="primary-command" disabled={submitting} onClick={() => {
+                    if (preview.payable_inr_paise > 0 && !preview.payments_enabled) {
+                      setCouponError('Payments are not enabled on "Demo" / "UAT" environment');
+                      return;
+                    }
+                    void continueAcquisition();
+                  }} type="button">
+                    {submitting ? 'Starting Hire...' : 'Continue'}
                   </button>
                 </footer>
               </div>

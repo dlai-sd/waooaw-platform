@@ -13,7 +13,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ title: 'Complete registration before hiring a professional.' }, { status: 409 });
   }
 
-  const body = (await request.json()) as { professionalType?: string; professionalVersion?: string };
+  const body = (await request.json()) as {
+    professionalType?: string;
+    professionalVersion?: string;
+    couponCode?: string;
+  };
   if (
     !body.professionalType ||
     !/^[A-Z][A-Z0-9_]{0,63}$/.test(body.professionalType) ||
@@ -40,6 +44,9 @@ export async function POST(request: NextRequest) {
         gross_amount_inr_paise: disclosure.indicativePrice.amountInrPaise,
         gst_amount_inr_paise: Math.floor(disclosure.indicativePrice.amountInrPaise * 18 / 118),
         cadence: disclosure.indicativePrice.cadence,
+        ...(typeof body.couponCode === 'string' && body.couponCode.trim()
+          ? { coupon_code: body.couponCode.trim().toUpperCase() }
+          : {}),
       }),
       cache: 'no-store',
     });

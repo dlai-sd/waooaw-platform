@@ -197,6 +197,9 @@ class TestCCT_ONBOARD_01:
         s.RAZORPAY_KEY_ID = "rzp_test_key"
         s.RAZORPAY_KEY_SECRET = "rzp_test_secret"
         s.RAZORPAY_WEBHOOK_SECRET = "rzp_wh_secret"
+        s.WAOOAW_ENVIRONMENT = "demo"
+        s.DEMO_PROMOTION_ENABLED = True
+        s.DEMO_COUPON_CODE = "DEMO100"
         return s
 
     def test_relationship_order_requires_complete_contract_link_and_forbids_coupon(self):
@@ -238,6 +241,8 @@ class TestCCT_ONBOARD_01:
     @pytest.mark.asyncio
     async def test_uat_coupon_bypasses_razorpay(self, mock_settings):
         """UATWAOOAW coupon → ₹0 bypass order. FA-029."""
+        mock_settings.WAOOAW_ENVIRONMENT = "uat"
+        mock_settings.DEMO_COUPON_CODE = "UATWAOOAW"
         svc = OnboardingService(settings=mock_settings)
         req = OnboardingOrderRequest(
             customer_id=uuid.uuid4(),
@@ -471,15 +476,12 @@ class TestWC095RelationshipCheckout:
     "TUTOR",
     "SHARE_TRADER",
 ])
-async def test_demo_hire_preview_applies_demo100_before_relationship_creation(monkeypatch, professional_type):
+async def test_demo_hire_preview_does_not_apply_a_coupon_automatically(monkeypatch, professional_type):
     from payment import router as payment_router
 
     settings = MagicMock()
     settings.WAOOAW_ENVIRONMENT = "demo"
-    settings.DEMO_PROMOTION_ENABLED = True
-    settings.DEMO_COUPON_CODE = "DEMO100"
     settings.DEMO_RENEWAL_CONSEQUENCE = "Standard paid renewal terms apply after the Demo period."
-    settings.MAX_DISCOUNT_PCT = 100
     monkeypatch.setattr(payment_router, "_settings", settings)
 
     result = await payment_router.create_hire_commercial_preview(HireCommercialPreviewBody(
@@ -489,9 +491,47 @@ async def test_demo_hire_preview_applies_demo100_before_relationship_creation(mo
         cadence="MONTHLY",
     ))
 
-    assert result.outcome_kind == "FULLY_DISCOUNTED"
+    assert result.outcome_kind == "PAYMENT_REQUIRED_AFTER_CONTRACT"
     assert result.professional_type == professional_type
-    assert result.coupon_code == "DEMO100"
+    assert result.coupon_code is None
+    assert result.discount_inr_paise == 0
+    assert result.payable_inr_paise == 118000
+    assert result.payment_method_required is True
+    assert result.payments_enabled is False
+
+
+@pytest.mark.asyncio
+async def test_hire_preview_applies_an_explicit_registry_validated_coupon(monkeypatch):
+    from payment import router as payment_router
+    from promotions.models import CouponValidation
+
+    settings = MagicMock()
+    settings.WAOOAW_ENVIRONMENT = "demo"
+    settings.REDIS_URL = "redis://redis:6379/0"
+    settings.DEMO_RENEWAL_CONSEQUENCE = "Standard paid renewal terms apply after the Demo period."
+    monkeypatch.setattr(payment_router, "_settings", settings)
+    redis_client = AsyncMock()
+    monkeypatch.setattr(payment_router.aioredis, "from_url", lambda *_args, **_kwargs: redis_client)
+    promotions = MagicMock()
+    promotions.validate_commercial_preview_coupon = AsyncMock(return_value=CouponValidation(
+        valid=True,
+        discount_pct=100,
+        bonus_credits={},
+        expires_at=None,
+    ))
+    monkeypatch.setattr(payment_router, "PromotionsService", lambda **_kwargs: promotions)
+
+    result = await payment_router.create_hire_commercial_preview(HireCommercialPreviewBody(
+        professional_type="TUTOR",
+        gross_amount_inr_paise=118000,
+        gst_amount_inr_paise=18000,
+        cadence="MONTHLY",
+        coupon_code=" welcome100 ",
+    ))
+
+    promotions.validate_commercial_preview_coupon.assert_awaited_once_with("WELCOME100", "TUTOR")
+    redis_client.aclose.assert_awaited_once()
+    assert result.coupon_code == "WELCOME100"
     assert result.discount_inr_paise == 118000
     assert result.payable_inr_paise == 0
     assert result.payment_method_required is False
@@ -504,10 +544,7 @@ async def test_non_demo_hire_preview_preserves_contract_bound_payment(monkeypatc
 
     settings = MagicMock()
     settings.WAOOAW_ENVIRONMENT = environment
-    settings.DEMO_PROMOTION_ENABLED = False
-    settings.DEMO_COUPON_CODE = ""
     settings.DEMO_RENEWAL_CONSEQUENCE = "Standard paid renewal terms apply."
-    settings.MAX_DISCOUNT_PCT = 100
     monkeypatch.setattr(payment_router, "_settings", settings)
 
     result = await payment_router.create_hire_commercial_preview(HireCommercialPreviewBody(
@@ -522,6 +559,7 @@ async def test_non_demo_hire_preview_preserves_contract_bound_payment(monkeypatc
     assert result.discount_inr_paise == 0
     assert result.payable_inr_paise == 118000
     assert result.payment_method_required is True
+    assert result.payments_enabled is (environment == "production")
 
 
 # ---------------------------------------------------------------------------
@@ -827,10 +865,15 @@ class TestPaymentRouterHTTP:
     """HTTP-level tests for payment/router.py route handlers."""
 
     @pytest.mark.asyncio
-    async def test_onboarding_order_endpoint_demo_coupon(self):
+    async def test_onboarding_order_endpoint_demo_coupon(self, monkeypatch):
         """POST /payments/onboarding-order with DEMO100 → router returns bypass order."""
         from httpx import ASGITransport, AsyncClient
         from main import app
+        from payment import router as payment_router
+
+        monkeypatch.setattr(payment_router._settings, "WAOOAW_ENVIRONMENT", "demo")
+        monkeypatch.setattr(payment_router._settings, "DEMO_PROMOTION_ENABLED", True)
+        monkeypatch.setattr(payment_router._settings, "DEMO_COUPON_CODE", "DEMO100")
 
         body = {
             "customer_id": str(uuid.uuid4()),

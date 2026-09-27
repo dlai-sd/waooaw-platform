@@ -38,9 +38,25 @@ describe('AcquisitionContinuation', () => {
     );
   });
 
-  it('requires a visible DEMO100 payment review before creating a Hire relationship', async () => {
+  it('requires an explicitly applied coupon before creating a zero-price Hire relationship', async () => {
     global.fetch = jest
       .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          outcome_kind: 'PAYMENT_REQUIRED_AFTER_CONTRACT',
+          list_price_inr_paise: 118000,
+          discount_inr_paise: 0,
+          tax_inr_paise: 18000,
+          payable_inr_paise: 118000,
+          currency: 'INR',
+          cadence: 'MONTHLY',
+          provider: 'RAZORPAY',
+          payment_method_required: true,
+          payments_enabled: false,
+          renewal_consequence: 'Standard paid renewal terms apply after the Demo period.',
+        }),
+      })
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
@@ -54,6 +70,7 @@ describe('AcquisitionContinuation', () => {
           coupon_code: 'DEMO100',
           provider: 'RAZORPAY',
           payment_method_required: false,
+          payments_enabled: false,
           renewal_consequence: 'Standard paid renewal terms apply after the Demo period.',
         }),
       })
@@ -65,10 +82,9 @@ describe('AcquisitionContinuation', () => {
     render(<AcquisitionContinuation {...props} intent="hire" />);
 
     expect(await screen.findByRole('dialog', { name: 'Complete your checkout' })).toBeVisible();
-    expect(screen.getByText('DEMO100')).toBeVisible();
-    expect(screen.getByLabelText('Discount coupon')).toHaveValue('DEMO100');
-    expect(screen.getByText('Applied')).toBeVisible();
-    expect(screen.getByText('Total due now').nextSibling).toHaveTextContent('₹0.00');
+    expect(screen.getByAltText('WAOOAW')).toBeVisible();
+    expect(screen.getByLabelText('Discount coupon')).toHaveValue('');
+    expect(screen.getByText('Total due now').nextSibling).toHaveTextContent('₹1,180.00');
     for (const method of ['Card', 'UPI / QR', 'Netbanking', 'Wallet']) {
       expect(screen.getByRole('radio', { name: new RegExp(method) })).toBeVisible();
     }
@@ -81,14 +97,51 @@ describe('AcquisitionContinuation', () => {
       expect.objectContaining({ method: 'POST' })
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Apply DEMO100 & continue' }));
+    fireEvent.change(screen.getByLabelText('Discount coupon'), { target: { value: 'demo100' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+
+    expect(await screen.findByText('Applied')).toBeVisible();
+    expect(screen.getByText('Total due now').nextSibling).toHaveTextContent('₹0.00');
+    expect(JSON.parse(String(jest.mocked(fetch).mock.calls[1][1]?.body))).toEqual({
+      professionalType: props.professionalType,
+      professionalVersion: props.professionalVersion,
+      couponCode: 'DEMO100',
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/relationships/22222222-2222-4222-8222-222222222222'));
     expect(jest.mocked(fetch)).toHaveBeenNthCalledWith(
-      2,
+      3,
       '/api/acquisition/continue',
       expect.objectContaining({ method: 'POST' })
     );
+  });
+
+  it('blocks a non-zero checkout when payments are disabled', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        outcome_kind: 'PAYMENT_REQUIRED_AFTER_CONTRACT',
+        list_price_inr_paise: 118000,
+        discount_inr_paise: 0,
+        tax_inr_paise: 18000,
+        payable_inr_paise: 118000,
+        currency: 'INR',
+        cadence: 'MONTHLY',
+        provider: 'RAZORPAY',
+        payment_method_required: true,
+        payments_enabled: false,
+        renewal_consequence: 'Standard paid renewal terms apply.',
+      }),
+    });
+    render(<AcquisitionContinuation {...props} intent="hire" />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Payments are not enabled on "Demo" / "UAT" environment');
+    expect(jest.mocked(fetch)).toHaveBeenCalledTimes(1);
+    expect(replace).not.toHaveBeenCalled();
   });
 
   it('makes an uncertain outcome retryable without changing the idempotency key', async () => {

@@ -236,6 +236,32 @@ async def test_validate_coupon_without_expiry_or_use_limit_remains_valid(
 
 
 @pytest.mark.asyncio
+async def test_validate_commercial_preview_coupon_reads_global_coupon_registry(
+    promotions_service,
+    session_factory,
+):
+    await _ins_coupon(session_factory, code="PREVIEW25", discount_pct=25)
+
+    result = await promotions_service.validate_commercial_preview_coupon("PREVIEW25", "TUTOR")
+
+    assert result.valid is True
+    assert result.discount_pct == 25
+
+
+@pytest.mark.asyncio
+async def test_validate_commercial_preview_coupon_rejects_tier_restricted_coupon(
+    promotions_service,
+    session_factory,
+):
+    await _ins_coupon(session_factory, code="TIER25", discount_pct=25, min_tier="PRO")
+
+    result = await promotions_service.validate_commercial_preview_coupon("TIER25", "TUTOR")
+
+    assert result.valid is False
+    assert result.error_code == "COUPON_TIER_MISMATCH"
+
+
+@pytest.mark.asyncio
 async def test_validate_coupon_not_found(promotions_service):
     result = await promotions_service.validate_coupon("NOSUCHCODE", uuid.uuid4(), "DMA", "STANDARD")
     assert result.valid is False

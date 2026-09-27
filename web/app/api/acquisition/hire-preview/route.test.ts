@@ -40,7 +40,7 @@ describe('Hire commercial preview boundary', () => {
     expect(getProfessionalDisclosure).not.toHaveBeenCalled();
   });
 
-  it('uses server disclosure price and Billing-owned coupon instead of browser values', async () => {
+  it('uses server disclosure price and forwards normalized coupon input for Billing validation', async () => {
     jest.mocked(getProfessionalDisclosure).mockResolvedValue({
       professionalType: 'DIGITAL_MARKETING_LOCAL_SERVICE',
       projectionVersion: '1.0.0',
@@ -75,6 +75,7 @@ describe('Hire commercial preview boundary', () => {
           gross_amount_inr_paise: 118000,
           gst_amount_inr_paise: 18000,
           cadence: 'MONTHLY',
+          coupon_code: 'ATTACKER100',
         }),
       })
     );

@@ -1,10 +1,6 @@
 # Implements: architecture/reference/api-specs/business-platform.openapi.yaml §RelationshipCheckoutOutcome
 # Constitutional basis: C-059, C-088 (billing profile gate and truthful commercial outcomes)
-"""OnboardingService — creates combined Razorpay order for subscription + wallet seed.
-
-Lower environments (WAOOAW_ENVIRONMENT=demo|uat) skip the live Razorpay API when a
-100% discount coupon (DEMO100 / UATWAOOAW) is presented. FA-029.
-"""
+"""OnboardingService — creates combined Razorpay order for subscription + wallet seed."""
 from __future__ import annotations
 
 import logging
@@ -33,12 +29,6 @@ class ZeroPriceOutcomeWriter(Protocol):
         outcome: RelationshipCheckoutResult,
     ) -> None: ...
 
-_BYPASS_COUPONS: dict[str, PaymentEnvironment] = {
-    "DEMO100": PaymentEnvironment.DEMO,
-    "UATWAOOAW":  PaymentEnvironment.UAT,
-}
-
-
 class OnboardingService:
     """Creates a single Razorpay order covering first-month subscription + wallet seed (ADR-022 §1.2)."""
 
@@ -56,18 +46,24 @@ class OnboardingService:
         self,
         req: OnboardingOrderRequest,
     ) -> OnboardingOrderResult:
-        """Return a Razorpay order ID (or stub) for the frontend to complete payment.
-
-        For DEMO100 / UATWAOOAW coupons: returns a ₹0 bypass order without calling
-        Razorpay. The webhook handler treats bypass orders as pre-confirmed. FA-029.
-        """
+        """Return a Razorpay order ID (or stub) for the frontend to complete payment."""
         coupon = req.coupon_code.upper().strip()
+        configured_coupon = self._settings.DEMO_COUPON_CODE.upper().strip()
+        lower_environment = self._settings.WAOOAW_ENVIRONMENT in {
+            PaymentEnvironment.DEMO.value,
+            PaymentEnvironment.UAT.value,
+        }
 
-        if coupon in _BYPASS_COUPONS:
-            env = _BYPASS_COUPONS[coupon]
+        if (
+            coupon
+            and configured_coupon
+            and coupon == configured_coupon
+            and lower_environment
+            and self._settings.DEMO_PROMOTION_ENABLED
+        ):
             logger.info(
                 "Payment bypass: coupon=%s env=%s customer_id=%s",
-                coupon, env, req.customer_id,
+                coupon, self._settings.WAOOAW_ENVIRONMENT, req.customer_id,
             )
             return OnboardingOrderResult(
                 order_id=f"bypass-{req.customer_id}",
