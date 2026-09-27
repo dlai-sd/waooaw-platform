@@ -1,8 +1,9 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AcquisitionContinuation, type AcquisitionContinuationProps } from './AcquisitionContinuation';
 
 const replace = jest.fn();
 jest.mock('next/navigation', () => ({ useRouter: () => ({ replace }) }));
+
 const originalFetch = global.fetch;
 const props: AcquisitionContinuationProps = {
   professionalType: 'DIGITAL_MARKETING_LOCAL_SERVICE',
@@ -16,12 +17,14 @@ const props: AcquisitionContinuationProps = {
 describe('AcquisitionContinuation', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    delete window.Razorpay;
   });
+
   afterEach(() => {
     global.fetch = originalFetch;
   });
 
-  it('submits the accepted binding and follows only the server resume path', async () => {
+  it('keeps Trial paymentless and follows only the server resume path', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ resumePath: '/relationships/22222222-2222-4222-8222-222222222222' }),
@@ -31,47 +34,30 @@ describe('AcquisitionContinuation', () => {
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/relationships/22222222-2222-4222-8222-222222222222'));
     expect(jest.mocked(fetch)).toHaveBeenCalledWith(
       '/api/acquisition/continue',
-      expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify(props),
-      })
+      expect.objectContaining({ method: 'POST', body: JSON.stringify(props) })
     );
   });
 
-  it('requires an explicitly applied coupon before creating a zero-price Hire relationship', async () => {
+  it('opens official Razorpay Checkout and submits its signed callback before starting Hire', async () => {
+    let checkoutOptions: Record<string, unknown> | undefined;
+    const open = jest.fn();
+    window.Razorpay = jest.fn().mockImplementation((options: Record<string, unknown>) => {
+      checkoutOptions = options;
+      return { on: jest.fn(), open };
+    });
     global.fetch = jest
       .fn()
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          outcome_kind: 'PAYMENT_REQUIRED_AFTER_CONTRACT',
-          list_price_inr_paise: 118000,
-          discount_inr_paise: 0,
-          tax_inr_paise: 18000,
-          payable_inr_paise: 118000,
+          outcome_kind: 'RAZORPAY_CHECKOUT_REQUIRED',
+          checkout_intent_id: props.idempotencyKey,
+          provider_order_reference: 'order_test123',
+          public_checkout_key: 'rzp_test_public',
+          amount_inr_paise: 118000,
           currency: 'INR',
-          cadence: 'MONTHLY',
-          provider: 'RAZORPAY',
-          payment_method_required: true,
-          payments_enabled: false,
-          renewal_consequence: 'Standard paid renewal terms apply after the Demo period.',
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          outcome_kind: 'FULLY_DISCOUNTED',
-          list_price_inr_paise: 118000,
-          discount_inr_paise: 118000,
-          tax_inr_paise: 18000,
-          payable_inr_paise: 0,
-          currency: 'INR',
-          cadence: 'MONTHLY',
-          coupon_code: 'DEMO100',
-          provider: 'RAZORPAY',
-          payment_method_required: false,
-          payments_enabled: false,
-          renewal_consequence: 'Standard paid renewal terms apply after the Demo period.',
+          merchant_display_name: 'WAOOAW',
+          enabled_method_families: ['card', 'upi'],
         }),
       })
       .mockResolvedValueOnce({
@@ -81,168 +67,96 @@ describe('AcquisitionContinuation', () => {
 
     render(<AcquisitionContinuation {...props} intent="hire" />);
 
-    expect(await screen.findByRole('dialog', { name: 'Review your hire' })).toBeVisible();
-    expect(screen.getByAltText('WAOOAW')).toBeVisible();
-    expect(screen.getByLabelText('Discount coupon')).toHaveValue('');
-    expect(screen.getByText('Total due now').nextSibling).toHaveTextContent('₹1,180.00');
-    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
-    expect(screen.queryByText('Secured by Razorpay')).not.toBeInTheDocument();
-    expect(replace).not.toHaveBeenCalled();
-    expect(jest.mocked(fetch)).toHaveBeenCalledTimes(1);
-    expect(jest.mocked(fetch)).toHaveBeenNthCalledWith(
-      1,
-      '/api/acquisition/hire-preview',
-      expect.objectContaining({ method: 'POST' })
-    );
-
-    fireEvent.change(screen.getByLabelText('Discount coupon'), { target: { value: 'demo100' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
-
-    expect(await screen.findByText('Applied')).toBeVisible();
-    expect(screen.getByText('Total due now').nextSibling).toHaveTextContent('₹0.00');
-    expect(screen.getByText(/Congratulations! DEMO100 gives you 100% off this hire/)).toHaveTextContent(
-      'We wish you great business success with your WAOOAW professional!'
-    );
-    expect(JSON.parse(String(jest.mocked(fetch).mock.calls[1][1]?.body))).toEqual({
-      professionalType: props.professionalType,
-      professionalVersion: props.professionalVersion,
-      couponCode: 'DEMO100',
+    await waitFor(() => expect(open).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(checkoutOptions).toEqual(expect.objectContaining({
+      key: 'rzp_test_public',
+      amount: 118000,
+      currency: 'INR',
+      image: 'https://raw.githubusercontent.com/dlai-sd/waooaw-platform/main/web/public/waooaw-platform-logo.png',
+      order_id: 'order_test123',
+    }));
+    await act(async () => {
+      await (checkoutOptions?.handler as (payment: object) => void)({
+        razorpay_order_id: 'order_test123',
+        razorpay_payment_id: 'pay_test123',
+        razorpay_signature: 'a'.repeat(64),
+      });
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to agent configuration' }));
-
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/relationships/22222222-2222-4222-8222-222222222222'));
-    expect(jest.mocked(fetch)).toHaveBeenNthCalledWith(
-      3,
-      '/api/acquisition/continue',
-      expect.objectContaining({ method: 'POST' })
-    );
+    expect(JSON.parse(String(jest.mocked(fetch).mock.calls[1][1]?.body))).toEqual(expect.objectContaining({
+      action: 'confirm',
+      razorpayOrderId: 'order_test123',
+      razorpayPaymentId: 'pay_test123',
+      razorpaySignature: 'a'.repeat(64),
+    }));
   });
 
-  it('blocks a non-zero checkout when payments are disabled', async () => {
+  it('bypasses Razorpay for a server-validated fully discounted Hire', async () => {
+    const razorpay = jest.fn();
+    window.Razorpay = razorpay;
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
-        outcome_kind: 'PAYMENT_REQUIRED_AFTER_CONTRACT',
-        list_price_inr_paise: 118000,
-        discount_inr_paise: 0,
-        tax_inr_paise: 18000,
-        payable_inr_paise: 118000,
-        currency: 'INR',
-        cadence: 'MONTHLY',
-        provider: 'RAZORPAY',
-        payment_method_required: true,
-        payments_enabled: false,
-        renewal_consequence: 'Standard paid renewal terms apply.',
+        outcome_kind: 'FULLY_DISCOUNTED',
+        resumePath: '/relationships/22222222-2222-4222-8222-222222222222',
       }),
     });
-    render(<AcquisitionContinuation {...props} intent="hire" />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Continue to agent configuration' }));
+    render(<AcquisitionContinuation {...props} couponCode="DEMO100" intent="hire" />);
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'Great news! Hiring is free of charge in the Demo / UAT environment'
-    );
-    expect(screen.getByRole('alert')).toHaveTextContent('Thank you for choosing WAOOAW');
-    expect(jest.mocked(fetch)).toHaveBeenCalledTimes(1);
-    expect(replace).not.toHaveBeenCalled();
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/relationships/22222222-2222-4222-8222-222222222222'));
+    expect(razorpay).not.toHaveBeenCalled();
+    expect(JSON.parse(String(jest.mocked(fetch).mock.calls[0][1]?.body))).toEqual(expect.objectContaining({
+      action: 'start',
+      couponCode: 'DEMO100',
+    }));
   });
 
-  it.each([
-    ['COUPON_NOT_FOUND', 'We could not find that coupon. Check the code and try again.'],
-    ['COUPON_EXPIRED', 'That coupon has expired. Please try another coupon.'],
-    ['COUPON_USED', 'That coupon has reached its usage limit. Please try another coupon.'],
-    ['COUPON_AGENT_MISMATCH', 'That coupon is not available for this professional. Please try another coupon.'],
-    ['COUPON_TIER_MISMATCH', 'That coupon is not available for this plan. Please try another coupon.'],
-    ['DISCOUNT_EXCEEDS_CAP', 'That coupon cannot be applied under the current discount policy.'],
-  ])('shows appropriate guidance for %s', async (code, message) => {
-    global.fetch = jest
-      .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          outcome_kind: 'PAYMENT_REQUIRED_AFTER_CONTRACT',
-          list_price_inr_paise: 118000,
-          discount_inr_paise: 0,
-          tax_inr_paise: 18000,
-          payable_inr_paise: 118000,
-          currency: 'INR',
-          cadence: 'MONTHLY',
-          provider: 'RAZORPAY',
-          payment_method_required: true,
-          payments_enabled: false,
-          renewal_consequence: 'Standard paid renewal terms apply.',
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 422,
-        json: async () => ({ detail: { code } }),
-      });
+  it('stops loading and offers an exit when Razorpay is not configured', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        outcome_kind: 'PROVIDER_CONFIGURATION_PENDING',
+        customer_safe_next_action: 'Razorpay Checkout is not configured for this environment.',
+      }),
+    });
+
     render(<AcquisitionContinuation {...props} intent="hire" />);
 
-    fireEvent.change(await screen.findByLabelText('Discount coupon'), { target: { value: 'invalid-code' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(message);
-    expect(screen.getByText('Total due now').nextSibling).toHaveTextContent('₹1,180.00');
-    expect(replace).not.toHaveBeenCalled();
+    expect(await screen.findByText('Razorpay Checkout is not configured for this environment.')).toBeVisible();
+    expect(screen.queryByText('Opening secure Razorpay Checkout...')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Open Razorpay Checkout' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', '/marketplace');
   });
 
-  it('makes an uncertain outcome retryable without changing the idempotency key', async () => {
-    global.fetch = jest
-      .fn()
-      .mockResolvedValueOnce({ ok: false, status: 503, json: async () => ({ title: 'Unavailable' }) })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ resumePath: '/relationships/22222222-2222-4222-8222-222222222222' }),
-      });
-    render(<AcquisitionContinuation {...props} />);
+  it('replays the same intent after Razorpay is dismissed', async () => {
+    let checkoutOptions: Record<string, unknown> | undefined;
+    window.Razorpay = jest.fn().mockImplementation((options: Record<string, unknown>) => {
+      checkoutOptions = options;
+      return { on: jest.fn(), open: jest.fn() };
+    });
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        outcome_kind: 'RAZORPAY_CHECKOUT_REQUIRED',
+        checkout_intent_id: props.idempotencyKey,
+        provider_order_reference: 'order_test123',
+        public_checkout_key: 'rzp_test_public',
+        amount_inr_paise: 118000,
+        currency: 'INR',
+        merchant_display_name: 'WAOOAW',
+      }),
+    });
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Try same request again' }));
-    await waitFor(() => expect(replace).toHaveBeenCalled());
+    render(<AcquisitionContinuation {...props} intent="hire" />);
+    await waitFor(() => expect(checkoutOptions).toBeDefined());
+    act(() => (checkoutOptions?.modal as { ondismiss: () => void }).ondismiss());
+    fireEvent.click(await screen.findByRole('button', { name: 'Open Razorpay Checkout' }));
+
+    await waitFor(() => expect(jest.mocked(fetch)).toHaveBeenCalledTimes(2));
     expect(JSON.parse(String(jest.mocked(fetch).mock.calls[0][1]?.body)).idempotencyKey).toBe(props.idempotencyKey);
     expect(JSON.parse(String(jest.mocked(fetch).mock.calls[1][1]?.body)).idempotencyKey).toBe(props.idempotencyKey);
-  });
-
-  it('does not offer a retry for a known unavailable Trial and directs the customer to My Agents', async () => {
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: false,
-      status: 409,
-      json: async () => ({ title: 'Trial is currently unavailable' }),
-    });
-    render(<AcquisitionContinuation {...props} />);
-
-    expect(await screen.findByRole('heading', { name: 'Trial is currently unavailable' })).toBeInTheDocument();
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'View My Agents' })).toHaveAttribute('href', '/professionals/mine');
-  });
-
-  it('requires registration without implying that a professional was started', async () => {
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: false,
-      status: 409,
-      json: async () => ({ code: 'REGISTRATION_REQUIRED', title: 'Complete registration first' }),
-    });
-    render(<AcquisitionContinuation {...props} />);
-
-    expect(await screen.findByRole('heading', { name: 'Complete registration first' })).toBeInTheDocument();
-    expect(screen.getByText('The request was not accepted and no professional was started.')).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Complete registration' })).toHaveAttribute('href', '/register');
-    expect(screen.queryByRole('link', { name: 'View My Agents' })).not.toBeInTheDocument();
-    expect(replace).not.toHaveBeenCalled();
-  });
-
-  it('requires sign in after an expired session without implying success', async () => {
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: false,
-      status: 401,
-      json: async () => ({ title: 'Secure sign in is required.' }),
-    });
-    render(<AcquisitionContinuation {...props} />);
-
-    expect(await screen.findByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
-    expect(screen.queryByRole('link', { name: 'View My Agents' })).not.toBeInTheDocument();
-    expect(replace).not.toHaveBeenCalled();
   });
 });

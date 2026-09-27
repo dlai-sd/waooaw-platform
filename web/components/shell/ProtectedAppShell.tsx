@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   Store,
   UserRound,
+  Vault,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -43,6 +44,7 @@ export function ProtectedAppShell({
   identitySession,
   locale = 'en',
   messages,
+  showKeyVaultAdmin = false,
   stopContext,
   variant,
 }: {
@@ -50,6 +52,7 @@ export function ProtectedAppShell({
   identitySession?: IdentitySession;
   locale?: SupportedLocale;
   messages: Messages;
+  showKeyVaultAdmin?: boolean;
   stopContext?: StopContext;
   variant: ProtectedVariant;
 }) {
@@ -65,6 +68,7 @@ export function ProtectedAppShell({
     { href: '/marketplace', label: portal.marketplace, icon: Store },
     { href: '/alerts', label: portal.alerts, icon: Bell },
     { href: '/settings', label: messages.settings, icon: Settings },
+    ...(showKeyVaultAdmin ? [{ href: '/admin/azure-key-vault', label: 'Azure Key Vault', icon: Vault }] : []),
   ];
   const links =
     variant === 'founder' ? [{ href: '/founder', label: messages.founderHome, icon: ShieldCheck }] : customerLinks;

@@ -24,7 +24,13 @@ function announceIdentitySessionChange(action: 'SIGN_OUT' | 'ACCOUNT_SWITCH') {
   window.localStorage.removeItem(identitySessionChangeKey);
 }
 
-export function SignOutCommand({ label }: { label: string }) {
+export function SignOutCommand({
+  label,
+  navigate = (path) => window.location.assign(path),
+}: {
+  label: string;
+  navigate?: (path: string) => void;
+}) {
   const [signingOut, setSigningOut] = useState(false);
   const [signOutFailed, setSignOutFailed] = useState(false);
 
@@ -49,7 +55,7 @@ export function SignOutCommand({ label }: { label: string }) {
       ) {
         throw new Error('Sign out response was invalid.');
       }
-      await nextAuthSignOut({ callbackUrl: '/' });
+      navigate(result.logoutPath);
     } catch {
       try {
         await nextAuthSignOut({ callbackUrl: '/' });

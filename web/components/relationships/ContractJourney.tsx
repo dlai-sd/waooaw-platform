@@ -93,6 +93,8 @@ interface Props {
 const money = (paise: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(paise / 100);
 const razorpayScriptId = 'razorpay-checkout-script';
+const razorpayLogoUrl =
+  'https://raw.githubusercontent.com/dlai-sd/waooaw-platform/main/web/public/waooaw-platform-logo.png';
 
 async function loadRazorpayCheckout() {
   if (window.Razorpay) return;
@@ -178,6 +180,7 @@ export function ContractJourney({ relationshipId, journey }: Props) {
         amount: outcome.amountInrPaise,
         currency: outcome.currency,
         name: outcome.merchantDisplayName,
+        image: razorpayLogoUrl,
         order_id: outcome.providerOrderReference,
         handler: (response: RazorpaySuccessResponse) => {
           if (
@@ -229,7 +232,7 @@ export function ContractJourney({ relationshipId, journey }: Props) {
     const result = await response.json().catch(() => ({}));
     if (response.ok && action === 'accept') {
       setAccepted(true);
-      setStatus('Contract accepted and evidenced. Payment has not started.');
+      setStatus('Exact monthly contract accepted and evidenced. Existing funding will be verified before activation.');
     } else if (response.ok && action === 'pay') {
       const outcome = result as CheckoutOutcome;
       setCheckout(outcome);
@@ -238,6 +241,8 @@ export function ContractJourney({ relationshipId, journey }: Props) {
         await launchRazorpay(outcome);
       } else if (outcome.outcomeKind === 'FULLY_DISCOUNTED') {
         setStatus('100% Demo discount applied. Amount paid: INR 0. No payment method charged.');
+      } else if (outcome.outcomeKind === 'CAPTURED') {
+        setStatus('Existing Razorpay payment is now bound to this exact contract. Activation is ready for confirmation.');
       } else {
         setStatus(
           outcome.customerSafeNextAction ??
@@ -381,12 +386,12 @@ export function ContractJourney({ relationshipId, journey }: Props) {
       <fieldset className="decision-actions" aria-label="Contract decisions">
         {!accepted && (
           <button type="button" disabled={busy} onClick={() => command('accept')}>
-            Hire and accept exact contract
+            Accept exact monthly contract
           </button>
         )}
         {accepted && journey.activationState !== 'ACTIVE' && (
           <button type="button" disabled={busy} onClick={() => command('pay')}>
-            Continue to payment
+            Confirm contract funding
           </button>
         )}
         <button

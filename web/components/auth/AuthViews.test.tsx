@@ -106,6 +106,18 @@ describe('authentication views', () => {
     expect(listIdentityProviders).not.toHaveBeenCalled();
   });
 
+  it('does not restart login for an authenticated identity requiring recovery', async () => {
+    jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
+    jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'forbidden' });
+
+    await expect(LoginView({ searchParams: Promise.resolve({ returnTo: '/settings' }) })).rejects.toThrow(
+      'NEXT_REDIRECT'
+    );
+
+    expect(redirect).toHaveBeenCalledWith('/403');
+    expect(listIdentityProviders).not.toHaveBeenCalled();
+  });
+
   it('offers a fresh provider login when existing session validation is temporarily unavailable', async () => {
     jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
     jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'unavailable' });

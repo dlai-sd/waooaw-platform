@@ -31,7 +31,7 @@ locals {
     trustEmail                = true
     storeToken                = false
     addReadTokenRoleOnCreate  = false
-    firstBrokerLoginFlowAlias = "first broker login"
+    firstBrokerLoginFlowAlias = "google verified email first login"
     config = {
       clientId     = "$${GOOGLE_CLIENT_ID}"
       clientSecret = "$${GOOGLE_CLIENT_SECRET}"

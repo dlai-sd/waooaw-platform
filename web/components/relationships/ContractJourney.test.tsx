@@ -61,7 +61,7 @@ describe('ContractJourney Razorpay Standard Checkout', () => {
       });
 
     render(<ContractJourney journey={journey} relationshipId="33333333-3333-4333-8333-333333333333" />);
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to payment' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm contract funding' }));
 
     await waitFor(() => expect(Razorpay).toHaveBeenCalledTimes(1));
     const options = Razorpay.mock.calls[0][0] as Record<string, unknown> & {
@@ -72,6 +72,7 @@ describe('ContractJourney Razorpay Standard Checkout', () => {
       amount: 118000,
       currency: 'INR',
       name: 'WAOOAW',
+      image: 'https://raw.githubusercontent.com/dlai-sd/waooaw-platform/main/web/public/waooaw-platform-logo.png',
       order_id: 'order_test_123',
     }));
     expect(on).toHaveBeenCalledWith('payment.failed', expect.any(Function));

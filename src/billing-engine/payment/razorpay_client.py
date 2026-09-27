@@ -59,6 +59,16 @@ class RazorpayClient:
         logger.info("Razorpay order created: order_id=%s amount=%d", resp.json().get("id"), amount_paise)
         return resp.json()
 
+    async def fetch_payment(self, payment_id: str) -> dict:
+        """Fetch provider-owned payment status without exposing credentials to the browser."""
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                f"{_RAZORPAY_BASE}/payments/{payment_id}",
+                headers={"Authorization": self._auth_header()},
+            )
+        resp.raise_for_status()
+        return resp.json()
+
     def verify_webhook_signature(self, body: bytes, signature: str) -> bool:
         """Verify Razorpay webhook signature (HMAC-SHA256 of raw body)."""
         secret = self._settings.RAZORPAY_WEBHOOK_SECRET.encode()

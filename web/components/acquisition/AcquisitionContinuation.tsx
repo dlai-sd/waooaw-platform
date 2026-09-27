@@ -3,8 +3,7 @@
 // Implements: WC-096 §4.3 Marketplace And Disclosure
 // Constitutional basis: C-023 (Evidence First), C-049 (Honest Limitation), C-059 (Implementation Traceability)
 
-import { CheckCircle2, LoaderCircle, ShieldCheck, Tag, X } from 'lucide-react';
-import Image from 'next/image';
+import { CircleAlert, LoaderCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -16,292 +15,219 @@ export type AcquisitionContinuationProps = {
   disclosureRevision: string;
   termsVersion: string;
   idempotencyKey: string;
+  couponCode?: string;
 };
 
-type HireCommercialPreview = {
-  outcome_kind: 'FULLY_DISCOUNTED' | 'PAYMENT_REQUIRED_AFTER_CONTRACT';
-  list_price_inr_paise: number;
-  discount_inr_paise: number;
-  tax_inr_paise: number;
-  payable_inr_paise: number;
-  currency: 'INR';
-  cadence: string;
-  coupon_code?: string;
-  provider: 'RAZORPAY';
-  payment_method_required: boolean;
-  payments_enabled: boolean;
-  renewal_consequence: string;
-};
+interface CheckoutOutcome {
+  outcome_kind?: string;
+  checkout_intent_id?: string;
+  provider_order_reference?: string;
+  public_checkout_key?: string;
+  amount_inr_paise?: number;
+  currency?: string;
+  merchant_display_name?: string;
+  enabled_method_families?: string[];
+  resumePath?: string;
+  title?: string;
+  customer_safe_next_action?: string;
+}
 
-const couponValidationMessages: Record<string, string> = {
-  COUPON_NOT_FOUND: 'We could not find that coupon. Check the code and try again.',
-  COUPON_EXPIRED: 'That coupon has expired. Please try another coupon.',
-  COUPON_USED: 'That coupon has reached its usage limit. Please try another coupon.',
-  COUPON_AGENT_MISMATCH: 'That coupon is not available for this professional. Please try another coupon.',
-  COUPON_TIER_MISMATCH: 'That coupon is not available for this plan. Please try another coupon.',
-  DISCOUNT_EXCEEDS_CAP: 'That coupon cannot be applied under the current discount policy.',
-};
+interface RazorpayCheckout {
+  on(event: 'payment.failed', handler: (response: RazorpayFailureResponse) => void): void;
+  open(): void;
+}
 
-const paymentsUnavailableMessage =
-  'Great news! Hiring is free of charge in the Demo / UAT environment, so no card, UPI, bank, or wallet details are needed. Thank you for choosing WAOOAW, and we wish your business every success.';
+interface RazorpaySuccessResponse {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}
 
-const money = (paise: number) =>
-  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(paise / 100);
+interface RazorpayFailureResponse {
+  error?: { description?: string };
+}
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: Record<string, unknown>) => RazorpayCheckout;
+  }
+}
+
+const razorpayScriptId = 'razorpay-checkout-script';
+const razorpayLogoUrl =
+  'https://raw.githubusercontent.com/dlai-sd/waooaw-platform/main/web/public/waooaw-platform-logo.png';
+
+async function loadRazorpayCheckout() {
+  if (window.Razorpay) return;
+  await new Promise<void>((resolve, reject) => {
+    const existing = document.getElementById(razorpayScriptId) as HTMLScriptElement | null;
+    const script = existing ?? document.createElement('script');
+    script.addEventListener('load', () => resolve(), { once: true });
+    script.addEventListener('error', () => reject(new Error('Secure Razorpay Checkout could not be loaded.')), {
+      once: true,
+    });
+    if (!existing) {
+      script.id = razorpayScriptId;
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      document.head.appendChild(script);
+    }
+  });
+  if (!window.Razorpay) throw new Error('Secure Razorpay Checkout could not be loaded.');
+}
 
 export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
   const router = useRouter();
   const started = useRef(false);
-  const [preview, setPreview] = useState<HireCommercialPreview | null>(null);
-  const [basePreview, setBasePreview] = useState<HireCommercialPreview | null>(null);
-  const [couponCode, setCouponCode] = useState('');
-  const [couponError, setCouponError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [failure, setFailure] = useState<{
-    action?: 'login' | 'register' | 'mine';
-    retryable: boolean;
-    title: string;
-  } | null>(null);
+  const [status, setStatus] = useState(
+    props.intent === 'trial' ? 'Preparing your trial workspace...' : 'Opening secure Razorpay Checkout...'
+  );
+  const [busy, setBusy] = useState(true);
+  const [retryable, setRetryable] = useState(false);
 
-  async function continueAcquisition() {
-    setSubmitting(true);
-    setFailure(null);
-    try {
-      const response = await fetch('/api/acquisition/continue', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(props),
-      });
-      const result: unknown = await response.json();
-      if (!response.ok) {
-        const title =
-          result && typeof result === 'object' && 'title' in result && typeof result.title === 'string'
-            ? result.title
-            : undefined;
-        const code =
-          result && typeof result === 'object' && 'code' in result && typeof result.code === 'string'
-            ? result.code
-            : undefined;
-        throw new AcquisitionResponseError({ code, status: response.status, title });
-      }
-      if (
-        !result ||
-        typeof result !== 'object' ||
-        !('resumePath' in result) ||
-        typeof result.resumePath !== 'string' ||
-        !/^\/relationships\/[0-9a-f-]+$/i.test(result.resumePath)
-      )
-        throw new Error();
-      router.replace(result.resumePath);
-    } catch (error) {
-      const response = error instanceof AcquisitionResponseError ? error.response : null;
-      setFailure({
-        action:
-          response?.status === 401
-            ? 'login'
-            : response?.code === 'REGISTRATION_REQUIRED'
-              ? 'register'
-              : response?.status === 409
-                ? 'mine'
-                : undefined,
-        retryable: response?.status === 503,
-        title: response?.title ?? 'We could not continue yet',
-      });
-      setSubmitting(false);
+  async function continueTrial() {
+    const response = await fetch('/api/acquisition/continue', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(props),
+    });
+    const result = (await response.json().catch(() => ({}))) as CheckoutOutcome & { code?: string };
+    if (!response.ok || !result.resumePath) {
+      throw new AcquisitionResponseError({ code: result.code, status: response.status, title: result.title });
     }
+    router.replace(result.resumePath);
   }
 
-  async function loadHirePreview(code?: string) {
-    setFailure(null);
-    setCouponError(null);
+  async function completeRazorpayPayment(response: RazorpaySuccessResponse) {
+    setBusy(true);
+    setStatus('Razorpay received the payment. WAOOAW is verifying the signed confirmation...');
+    const confirmation = await fetch('/api/acquisition/hire-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...props,
+        action: 'confirm',
+        razorpayOrderId: response.razorpay_order_id,
+        razorpayPaymentId: response.razorpay_payment_id,
+        razorpaySignature: response.razorpay_signature,
+      }),
+    });
+    const outcome = (await confirmation.json().catch(() => ({}))) as CheckoutOutcome;
+    if (!confirmation.ok || !outcome.resumePath) {
+      setStatus(outcome.title ?? 'Payment confirmation is unresolved. Retry to reconcile the same payment.');
+      setBusy(false);
+      setRetryable(true);
+      return;
+    }
+    router.replace(outcome.resumePath);
+  }
+
+  async function startHireCheckout() {
+    setBusy(true);
+    setRetryable(false);
+    setStatus('Opening secure Razorpay Checkout...');
     try {
-      const response = await fetch('/api/acquisition/hire-preview', {
+      const response = await fetch('/api/acquisition/hire-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          professionalType: props.professionalType,
-          professionalVersion: props.professionalVersion,
-          ...(code ? { couponCode: code } : {}),
-        }),
+        body: JSON.stringify({ ...props, action: 'start' }),
       });
-      const result = (await response.json()) as HireCommercialPreview & {
-        detail?: { code?: string };
-        title?: string;
-      };
-      if (!response.ok) {
-        if (code && response.status === 422) {
-          if (basePreview) setPreview(basePreview);
-          const errorCode = result.detail?.code;
-          setCouponError(
-            errorCode && couponValidationMessages[errorCode]
-              ? couponValidationMessages[errorCode]
-              : 'We could not apply that coupon. Check the code and try again.'
-          );
-          return;
-        }
-        throw new AcquisitionResponseError({ status: response.status, title: result.title });
+      const outcome = (await response.json().catch(() => ({}))) as CheckoutOutcome;
+      if (!response.ok) throw new AcquisitionResponseError({ status: response.status, title: outcome.title });
+      if (outcome.resumePath) {
+        router.replace(outcome.resumePath);
+        return;
       }
-      setPreview(result);
-      if (!code) setBasePreview(result);
+      if (
+        outcome.outcome_kind !== 'RAZORPAY_CHECKOUT_REQUIRED' ||
+        !outcome.checkout_intent_id ||
+        !outcome.provider_order_reference ||
+        !outcome.public_checkout_key ||
+        !outcome.amount_inr_paise ||
+        outcome.currency !== 'INR' ||
+        !outcome.merchant_display_name
+      ) {
+        setStatus(outcome.customer_safe_next_action ?? 'Secure Razorpay Checkout is not available yet.');
+        setBusy(false);
+        setRetryable(outcome.outcome_kind === 'OUTCOME_UNRESOLVED');
+        return;
+      }
+      await loadRazorpayCheckout();
+      const Checkout = window.Razorpay;
+      if (!Checkout) throw new Error('Secure Razorpay Checkout could not be loaded.');
+      const checkout = new Checkout({
+        key: outcome.public_checkout_key,
+        amount: outcome.amount_inr_paise,
+        currency: outcome.currency,
+        name: outcome.merchant_display_name,
+        image: razorpayLogoUrl,
+        order_id: outcome.provider_order_reference,
+        handler: (payment: RazorpaySuccessResponse) => {
+          if (
+            payment.razorpay_order_id !== outcome.provider_order_reference ||
+            !payment.razorpay_payment_id ||
+            !payment.razorpay_signature
+          ) {
+            setStatus('Razorpay returned an invalid payment confirmation. No Hire was started.');
+            setBusy(false);
+            setRetryable(true);
+            return;
+          }
+          void completeRazorpayPayment(payment);
+        },
+        modal: {
+          ondismiss: () => {
+            setStatus('Razorpay Checkout was closed. No Hire was started.');
+            setBusy(false);
+            setRetryable(true);
+          },
+        },
+      });
+      checkout.on('payment.failed', (failure) => {
+        setStatus(failure.error?.description ?? 'Razorpay could not complete the payment. No Hire was started.');
+        setBusy(false);
+        setRetryable(true);
+      });
+      checkout.open();
+      setStatus('Complete payment in the secure Razorpay window.');
+      setBusy(false);
     } catch (error) {
       const response = error instanceof AcquisitionResponseError ? error.response : null;
-      setFailure({ retryable: true, title: response?.title ?? 'Payment review is unavailable' });
+      setStatus(response?.title ?? (error instanceof Error ? error.message : 'Secure checkout is unavailable.'));
+      setBusy(false);
+      setRetryable(response?.status === 503);
     }
   }
 
   useEffect(() => {
     if (started.current) return;
     started.current = true;
-    if (props.intent === 'hire') void loadHirePreview();
-    else void continueAcquisition();
+    if (props.intent === 'hire') void startHireCheckout();
+    else void continueTrial().catch((error) => {
+      const response = error instanceof AcquisitionResponseError ? error.response : null;
+      setStatus(response?.title ?? 'We could not continue yet.');
+      setBusy(false);
+      setRetryable(response?.status === 503);
+    });
     // The accepted continuation is immutable for this mounted return route.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <section className="portal-status" aria-live="polite">
-      {failure ? (
-        <>
-          <h2>{failure.title}</h2>
-          <p>
-            {failure.retryable
-              ? 'The outcome is uncertain. Retry the same request to check it without creating a duplicate.'
-              : failure.action === 'mine'
-                ? 'The request was not accepted. Check My Agents before making another attempt.'
-                : 'The request was not accepted and no professional was started.'}
-          </p>
-          <div className="command-row">
-            {failure.retryable ? (
-              <button
-                className="primary-command"
-                onClick={() => void (props.intent === 'hire' && !preview ? loadHirePreview() : continueAcquisition())}
-                type="button"
-              >
-                Try same request again
-              </button>
-            ) : null}
-            {failure.action === 'login' ? (
-              <Link className="secondary-link" href="/login">
-                Sign in
-              </Link>
-            ) : failure.action === 'register' ? (
-              <Link className="secondary-link" href="/register">
-                Complete registration
-              </Link>
-            ) : failure.action === 'mine' ? (
-              <Link className="secondary-link" href="/professionals/mine">
-                View My Agents
-              </Link>
-            ) : null}
-            <Link className="text-command" href="/marketplace">
-              Cancel
-            </Link>
-          </div>
-        </>
-      ) : preview ? (
-        <div className="checkout-backdrop">
-          <section aria-labelledby="hire-checkout-title" aria-modal="true" className="hire-checkout" role="dialog">
-            <header className="hire-checkout-header">
-              <div className="checkout-brand-mark">
-                <Image alt="WAOOAW" height={32} priority src="/waooaw-platform-logo.png" width={32} />
-              </div>
-              <div>
-                <p>WAOOAW Hire Review</p>
-                <span><ShieldCheck aria-hidden="true" size={15} /> Secure order and coupon review</span>
-              </div>
-              <Link aria-label="Close checkout" className="checkout-close" href="/marketplace">
-                <X aria-hidden="true" size={22} />
-              </Link>
-            </header>
-
-            <div className="hire-checkout-body">
-              <aside className="checkout-order-summary" aria-label="Order summary">
-                <p className="eyebrow">Professional Hire</p>
-                <h2 id="hire-checkout-title">Review your hire</h2>
-                <dl>
-                  <div><dt>Professional plan</dt><dd>{money(preview.list_price_inr_paise)}</dd></div>
-                  <div className="checkout-coupon-row">
-                    <dt><Tag aria-hidden="true" size={16} /> {preview.coupon_code ?? 'Discount'}</dt>
-                    <dd>-{money(preview.discount_inr_paise)}</dd>
-                  </div>
-                  <div><dt>GST included</dt><dd>{money(preview.tax_inr_paise)}</dd></div>
-                  <div className="checkout-total"><dt>Total due now</dt><dd>{money(preview.payable_inr_paise)}</dd></div>
-                </dl>
-                {preview.payable_inr_paise === 0 ? (
-                  <p className="checkout-discount-state">
-                    <CheckCircle2 aria-hidden="true" size={18} /> 100% Demo discount applied
-                  </p>
-                ) : null}
-                <p className="checkout-renewal">{preview.renewal_consequence}</p>
-              </aside>
-
-              <div className="checkout-payment-panel">
-                <div className="checkout-payment-heading">
-                  <div>
-                    <p className="eyebrow">Offer</p>
-                    <h3>{preview.payment_method_required ? 'Review your order' : 'No payment required'}</h3>
-                  </div>
-                </div>
-                <div className="checkout-coupon-control">
-                  <label htmlFor="hire-coupon">Discount coupon</label>
-                  <div>
-                    <Tag aria-hidden="true" size={18} />
-                    <input
-                      id="hire-coupon"
-                      onChange={(event) => {
-                        const nextCode = event.target.value.toUpperCase();
-                        setCouponCode(nextCode);
-                        setCouponError(null);
-                        if (preview.coupon_code && preview.coupon_code !== nextCode.trim() && basePreview) {
-                          setPreview(basePreview);
-                        }
-                      }}
-                      placeholder="Enter coupon code"
-                      value={couponCode}
-                    />
-                    <button
-                      disabled={!couponCode.trim() || submitting}
-                      onClick={() => void loadHirePreview(couponCode.trim())}
-                      type="button"
-                    >
-                      {preview.coupon_code === couponCode.trim() ? (
-                        <><CheckCircle2 aria-hidden="true" size={16} /> Applied</>
-                      ) : 'Apply'}
-                    </button>
-                  </div>
-                  {couponError && couponError !== paymentsUnavailableMessage ? (
-                    <p className="checkout-inline-error" role="alert">{couponError}</p>
-                  ) : null}
-                </div>
-                <div className="checkout-method-note">
-                  {preview.payable_inr_paise === 0
-                    ? `Congratulations! ${preview.coupon_code ?? 'Your coupon'} gives you 100% off this hire. No payment details are needed today. We wish you great business success with your WAOOAW professional!`
-                    : 'After configuration and acceptance of your exact contract, Razorpay’s official secure checkout will open for payment. Card, UPI, netbanking, and wallet details are entered only there.'}
-                </div>
-                {couponError === paymentsUnavailableMessage ? (
-                  <p className="checkout-inline-error checkout-payment-error" role="alert">{couponError}</p>
-                ) : null}
-                <footer className="checkout-actions">
-                  <div><span>Amount payable</span><strong>{money(preview.payable_inr_paise)}</strong></div>
-                  <button className="primary-command" disabled={submitting} onClick={() => {
-                    if (preview.payable_inr_paise > 0 && !preview.payments_enabled) {
-                      setCouponError(paymentsUnavailableMessage);
-                      return;
-                    }
-                    void continueAcquisition();
-                  }} type="button">
-                    {submitting ? 'Starting Hire...' : 'Continue to agent configuration'}
-                  </button>
-                </footer>
-              </div>
-            </div>
-          </section>
+      {busy ? <LoaderCircle aria-hidden="true" className="spin" /> : <CircleAlert aria-hidden="true" />}
+      <h2>{props.intent === 'hire' ? 'Secure payment' : 'Starting your trial'}</h2>
+      <p>{status}</p>
+      {!busy ? (
+        <div className="command-row">
+          {retryable ? (
+            <button className="primary-command" onClick={() => void startHireCheckout()} type="button">
+              Open Razorpay Checkout
+            </button>
+          ) : null}
+          <Link className="text-command" href="/marketplace">Cancel</Link>
         </div>
-      ) : (
-        <>
-          <LoaderCircle aria-hidden="true" className="spin" />
-          <p>{props.intent === 'trial' ? 'Preparing your trial workspace...' : 'Preparing your payment review...'}</p>
-        </>
-      )}
+      ) : null}
     </section>
   );
 }

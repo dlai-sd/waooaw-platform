@@ -28,7 +28,7 @@
 | AEEC-04 | Interview and trial expose proposed behavior only. Trial mode is explicit and cannot execute consequential external action or silently become paid employment. | C-001, C-038, C-049, C-088 |
 | AEEC-05 | Configure outcome, Decision Space, budget ceiling, skills, review cadence, and stop conditions conversationally in business language. | C-030, C-037, C-039, C-043 |
 | AEEC-06 | Contract formation requires explicit acceptance by an authorized same-tenant participant and immutable evidence of accepted terms and authority scope. Ordinary approval is distinct from explicit scope-boundary confirmation. | C-009, C-010, C-011, C-034 |
-| AEEC-07 | Activation uses the tuple tenant + relationship + accepted contract + activation-eligible payment. Purpose is fixed as `ACTIVATE_EMPLOYMENT_RELATIONSHIP` and excluded from uniqueness. Replay returns the prior outcome without duplicate activation, charge, or relationship. | C-023, C-038, C-088, C-090; D-03 |
+| AEEC-07 | Marketplace Hire payment may precede setup and exact monthly contract formation, but it grants no operational authority. Activation uses the tuple tenant + relationship + accepted contract + activation-eligible payment. The payment must be bound once to the matching relationship and contract price; replay returns the prior outcome without duplicate activation, charge, or relationship. Purpose is fixed as `ACTIVATE_EMPLOYMENT_RELATIONSHIP` and excluded from uniqueness. | C-023, C-038, C-088, C-090; D-03 |
 | AEEC-08 | Every consequential transition is attributable and reconstructable; it cannot report success unless constitutional evidence commits. | C-002, C-005, C-007, C-023 |
 | AEEC-09 | Emergency Stop remains reachable across channels. Release to `PAUSED` or `ACTIVE` requires explicit same-tenant customer authority linked to the stop evidence; non-customer action may only terminate. | C-001, C-024, C-038; D-03 |
 | AEEC-10 | Channel changes presentation only, never relationship identity, rights, authority, billing state, or lifecycle ownership. | C-006, C-026, C-034, C-035 |
@@ -46,7 +46,7 @@
 3. The customer can always discover current authority, active work, material evidence, cost state, and Emergency Stop.
 4. A channel handoff requires authenticated continuity and cannot silently merge people, tenants, or conversations.
 5. A trial carries constitutional rights from its first consequential interaction.
-6. Hire is an explicit evidenced transition; conversation alone cannot silently create a paid relationship.
+6. Hire is an explicit evidenced transition: Marketplace consent and captured or fully discounted commercial evidence precede relationship setup, while exact monthly contract acceptance precedes activation. Conversation alone cannot silently create a paid relationship.
 7. Domain vocabulary may specialize presentation but cannot weaken common rights or hide limitations.
 8. Loss of a channel must not destroy the relationship or authorize work that was not previously authorized.
 

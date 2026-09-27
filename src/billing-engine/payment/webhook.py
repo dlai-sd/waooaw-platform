@@ -26,6 +26,10 @@ from wallet.service import WalletService
 logger = logging.getLogger(__name__)
 
 
+def _uuid_bind(db: AsyncSession, value: UUID) -> UUID | str:
+    return value if db.bind is not None and db.bind.dialect.name == "postgresql" else str(value)
+
+
 class WebhookHandler:
     """Handles Razorpay webhook events with idempotency and signature verification."""
 
@@ -87,14 +91,16 @@ class WebhookHandler:
                     "ON CONFLICT (razorpay_payment_id) DO NOTHING"
                 ).bindparams(
                     oid=event.razorpay_order_id, pid=event.razorpay_payment_id,
-                    cid=str(event.customer_id), rid=str(event.relationship_id),
-                    tenant_id=str(event.tenant_id),
-                    contract_id=str(event.accepted_contract_id),
+                    cid=_uuid_bind(self._db, event.customer_id),
+                    rid=_uuid_bind(self._db, event.relationship_id),
+                    tenant_id=_uuid_bind(self._db, event.tenant_id),
+                    contract_id=_uuid_bind(self._db, event.accepted_contract_id),
                     contract_version=event.contract_version,
                     contract_hash=event.contract_hash,
-                    acceptance_id=str(event.contract_acceptance_id),
-                    consent_id=str(event.payment_consent_evidence_id),
-                    evidence_id=str(event.payment_evidence_id), checkout_intent_id=str(event.checkout_intent_id),
+                    acceptance_id=_uuid_bind(self._db, event.contract_acceptance_id),
+                    consent_id=_uuid_bind(self._db, event.payment_consent_evidence_id),
+                    evidence_id=_uuid_bind(self._db, event.payment_evidence_id),
+                    checkout_intent_id=_uuid_bind(self._db, event.checkout_intent_id),
                     agent_type=event.agent_type,
                     bundle_tier=event.bundle_tier,
                 )
@@ -135,7 +141,7 @@ class WebhookHandler:
                 text(
                     "SELECT subscription_id AS id FROM paid_subscriptions WHERE organisation_id = :cid "
                     "AND razorpay_payment_id = :pid LIMIT 1"
-                ).bindparams(cid=str(event.customer_id), pid=event.razorpay_payment_id)
+                ).bindparams(cid=_uuid_bind(self._db, event.customer_id), pid=event.razorpay_payment_id)
             )
             sub_row = result_row.fetchone()
             return SubscriptionActivationResult(
@@ -156,7 +162,7 @@ class WebhookHandler:
             ).bindparams(
                 oid=event.razorpay_order_id,
                 pid=event.razorpay_payment_id,
-                cid=str(event.customer_id),
+                cid=_uuid_bind(self._db, event.customer_id),
             )
         )
         await self._db.commit()

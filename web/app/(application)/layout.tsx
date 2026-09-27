@@ -8,6 +8,7 @@ import { ProtectedAppShell } from '@/components/shell/ProtectedAppShell';
 import { StateView } from '@/components/system/StateView';
 import { getIdentitySession } from '@/lib/api/identity';
 import { getRequestI18n } from '@/lib/i18n-server';
+import { isKeyVaultPortalAdministrator, keyVaultTarget } from '@/lib/key-vault-admin';
 import { getServerAccessToken } from '@/lib/server-auth';
 
 export default async function ApplicationLayout({ children }: { children: ReactNode }) {
@@ -48,6 +49,7 @@ export default async function ApplicationLayout({ children }: { children: ReactN
       identitySession={identity.kind === 'ready' ? identity.session : undefined}
       locale={locale}
       messages={messages}
+      showKeyVaultAdmin={isKeyVaultPortalAdministrator(accessToken) && keyVaultTarget() !== undefined}
       variant="customer"
     >
       {children}

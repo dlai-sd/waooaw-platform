@@ -1,6 +1,6 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-105
-contract_digest: 80aa59a0bd4c794b4c3f2052c52d50ad94385aa1f63f98256b7189c9fc149784
+contract_digest: 112c54a451fa86a68c3d0c1cbc587d278924ffec47a1b0acf0f72b02c07210f1
 implementation_scope: true
 result: QUALIFIED
 requirements:
@@ -659,3 +659,18 @@ requirements:
       - Focused Docker acquisition controller suite PASS 7/7 and relationship/acquisition matrix PASS 20/20
       - Focused Docker My Agents suite PASS 5/5 and production Next.js image build PASS
       - Preview migration updated 3 Trial and 1 Hire rows; live database verification returned HIRE/CONFIGURING 1 and TRIAL/INTERVIEWING 3
+  - requirement_id: WC105-R050
+    source: Founder-directed Marketplace Hire billing sequence, current working session
+    observable_outcome: Terms acceptance and Continue to hire open official Razorpay Standard Checkout directly; verified payment or server-validated zero price precedes relationship setup, exact monthly contract follows setup, and activation consumes the same commercial outcome without a second charge.
+    component_owner: Billing Engine, Web acquisition, and relationship contract journey
+    evidence_class: billing-unit-route-component-and-preview-browser
+    test_path_or_plan: tests/billing-engine/test_payment.py, web/app/api/acquisition/hire-checkout/route.test.ts, acquisition and relationship component suites, TypeScript, PostgreSQL migration, and authenticated preview browser
+    initial_state: expected-fail
+    dependencies: Canonical Marketplace disclosure, WBE coupon registry, Razorpay Standard Checkout, and Business Platform idempotent acquisition
+    completion_rule: The WAOOAW Hire review modal is absent; paid Hire opens official Razorpay from Continue to hire; DEMO100 bypasses provider collection; webhook capture cannot activate before contract; exact price and one-time binding are enforced; Trial remains paymentless.
+    residual_risk: Razorpay Test Checkout rendering is proven, but payment capture, webhook reconciliation, and subsequent activation were not executed; UPI app visibility remains merchant-account and device eligible.
+    result: PLANNED
+    evidence_refs:
+      - Focused Billing payment suite PASS 38/38; full Web suite PASS 460/460; production Next.js image build PASS
+      - Preview rebuilt healthy with migration 45 applied and Razorpay READY_TEST; authenticated no-coupon order creation returned 200
+      - Founder screenshot confirms official Razorpay Test Mode Checkout rendered at INR 2,499; payment capture and activation remain untested

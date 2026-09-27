@@ -22,7 +22,9 @@ The deep link is random, one-time, relationship/action bound, expires in 15 minu
 
 ## Payment Consent
 
-The portal displays contract version/hash, exact INR amount, GST, subscription terms, ad-spend treatment, refund/cancellation terms, and provider-hosted payment action. Customer explicitly selects “Proceed to Razorpay”; BP records a payment-authorization proposal evidence event. Razorpay captures payment credentials and returns signed webhook evidence. Contract acceptance and payment authorization are separate. Dispute/refund uses existing WBE records and exposes order, payment, invoice, refund/chargeback, and status evidence without secrets.
+For a Marketplace Hire, the portal displays the selected versioned offer, exact INR amount, included GST, cadence, cancellation/refund terms, and any server-validated coupon before the customer accepts Terms and selects `Continue to hire`. That action opens Razorpay Standard Checkout directly; WAOOAW does not render or collect provider payment fields. WBE derives pricing from the canonical offer, creates the provider order, and retains the signed callback or webhook outcome before BP may create the Hire relationship. A fully discounted server-validated outcome follows the same evidence boundary without opening Razorpay.
+
+Setup and goal definition occur only after that funded Hire decision. The resulting exact monthly operational contract remains a separate authority instrument: the customer reviews and accepts its version/hash, scope, subscription terms, ad-spend treatment, and stop conditions before activation. WBE binds the existing payment outcome to that accepted contract and rejects price mismatch, reuse by another contract, or an unresolved payment; it must not charge again. Contract acceptance, payment authorization, and activation authorization remain independent. Dispute/refund uses existing WBE records and exposes order, payment, invoice, refund/chargeback, and status evidence without secrets.
 
 ## Participant and Stop Release
 

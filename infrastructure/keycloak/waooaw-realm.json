@@ -195,7 +195,7 @@
       "providerId": "google",
       "enabled": false,
       "trustEmail": true,
-      "firstBrokerLoginFlowAlias": "first broker login",
+      "firstBrokerLoginFlowAlias": "google verified email first login",
       "config": {
         "clientId": "${GOOGLE_CLIENT_ID}",
         "clientSecret": "${GOOGLE_CLIENT_SECRET}",
@@ -217,6 +217,32 @@
         "defaultScope": "email public_profile",
         "syncMode": "IMPORT"
       }
+    }
+  ],
+
+  "authenticationFlows": [
+    {
+      "alias": "google verified email first login",
+      "description": "Create unique Google users or link an existing account by Google's verified email.",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "idp-create-user-if-unique",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "idp-auto-link",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 20,
+          "userSetupAllowed": false
+        }
+      ]
     }
   ],
 
