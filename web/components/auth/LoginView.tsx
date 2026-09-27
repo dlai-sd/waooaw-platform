@@ -19,7 +19,7 @@ export async function LoginView({ searchParams }: { searchParams?: Promise<{ ret
   if (accessToken) {
     const identity = await getIdentitySession(accessToken);
     if (identity.kind === 'ready') redirect(returnTo);
-    if (identity.kind === 'registration-required') redirect('/marketplace');
+    if (identity.kind === 'registration-required') redirect(`/register?returnTo=${encodeURIComponent(returnTo)}`);
   }
   const providers = await listIdentityProviders();
   return (

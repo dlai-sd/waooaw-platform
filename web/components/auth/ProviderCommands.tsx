@@ -81,7 +81,7 @@ export function ProviderCommands({
       await signIn(
         nextAuthProvider[provider.id],
         { callbackUrl },
-        provider.id === 'GOOGLE' ? { prompt: 'select_account' } : undefined
+        provider.id === 'GOOGLE' ? { max_age: '0', prompt: 'select_account' } : undefined
       );
     } catch {
       setPendingProvider(undefined);

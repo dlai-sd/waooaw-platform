@@ -15,6 +15,7 @@ export default async function ApplicationLayout({ children }: { children: ReactN
   if (!accessToken) redirect('/login');
   const identity = await getIdentitySession(accessToken);
   if (identity.kind === 'expired' || identity.kind === 'unauthorized') redirect('/login');
+  if (identity.kind === 'registration-required') redirect('/register');
   const { locale, messages } = await getRequestI18n();
   if (identity.kind === 'step-up' || identity.kind === 'forbidden') {
     return (

@@ -66,4 +66,32 @@ describe('AcquisitionContinuation', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'View My Agents' })).toHaveAttribute('href', '/professionals/mine');
   });
+
+  it('requires registration without implying that a professional was started', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 409,
+      json: async () => ({ code: 'REGISTRATION_REQUIRED', title: 'Complete registration first' }),
+    });
+    render(<AcquisitionContinuation {...props} />);
+
+    expect(await screen.findByRole('heading', { name: 'Complete registration first' })).toBeInTheDocument();
+    expect(screen.getByText('The request was not accepted and no professional was started.')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Complete registration' })).toHaveAttribute('href', '/register');
+    expect(screen.queryByRole('link', { name: 'View My Agents' })).not.toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it('requires sign in after an expired session without implying success', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ title: 'Secure sign in is required.' }),
+    });
+    render(<AcquisitionContinuation {...props} />);
+
+    expect(await screen.findByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
+    expect(screen.queryByRole('link', { name: 'View My Agents' })).not.toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
+  });
 });

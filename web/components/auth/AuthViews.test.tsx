@@ -75,7 +75,7 @@ describe('authentication views', () => {
     expect(screen.getByRole('link', { name: 'Register' })).toHaveAttribute('href', '/register?returnTo=%2Fsettings');
   });
 
-  it('sends an authenticated visitor to browse Marketplace without registration', async () => {
+  it('sends an authenticated broker identity to registration before the customer portal', async () => {
     jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
     jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'registration-required' });
 
@@ -83,7 +83,7 @@ describe('authentication views', () => {
       'NEXT_REDIRECT'
     );
 
-    expect(redirect).toHaveBeenCalledWith('/marketplace');
+    expect(redirect).toHaveBeenCalledWith('/register?returnTo=%2Fsettings');
     expect(listIdentityProviders).not.toHaveBeenCalled();
   });
 

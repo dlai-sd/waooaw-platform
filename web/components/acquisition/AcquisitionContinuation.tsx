@@ -20,7 +20,11 @@ export type AcquisitionContinuationProps = {
 export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
   const router = useRouter();
   const started = useRef(false);
-  const [failure, setFailure] = useState<{ retryable: boolean; title: string } | null>(null);
+  const [failure, setFailure] = useState<{
+    action?: 'login' | 'register' | 'mine';
+    retryable: boolean;
+    title: string;
+  } | null>(null);
 
   async function continueAcquisition() {
     setFailure(null);
@@ -36,7 +40,11 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
           result && typeof result === 'object' && 'title' in result && typeof result.title === 'string'
             ? result.title
             : undefined;
-        throw new AcquisitionResponseError({ status: response.status, title });
+        const code =
+          result && typeof result === 'object' && 'code' in result && typeof result.code === 'string'
+            ? result.code
+            : undefined;
+        throw new AcquisitionResponseError({ code, status: response.status, title });
       }
       if (
         !result ||
@@ -50,6 +58,14 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
     } catch (error) {
       const response = error instanceof AcquisitionResponseError ? error.response : null;
       setFailure({
+        action:
+          response?.status === 401
+            ? 'login'
+            : response?.code === 'REGISTRATION_REQUIRED'
+              ? 'register'
+              : response?.status === 409
+                ? 'mine'
+                : undefined,
         retryable: response?.status === 503,
         title: response?.title ?? 'We could not continue yet',
       });
@@ -69,16 +85,32 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
       {failure ? (
         <>
           <h2>{failure.title}</h2>
-          <p>This request did not complete cleanly. Check My Agents before making another attempt.</p>
+          <p>
+            {failure.retryable
+              ? 'The outcome is uncertain. Retry the same request to check it without creating a duplicate.'
+              : failure.action === 'mine'
+                ? 'The request was not accepted. Check My Agents before making another attempt.'
+                : 'The request was not accepted and no professional was started.'}
+          </p>
           <div className="command-row">
             {failure.retryable ? (
               <button className="primary-command" onClick={() => void continueAcquisition()} type="button">
                 Try same request again
               </button>
             ) : null}
-            <Link className="secondary-link" href="/professionals/mine">
-              View My Agents
-            </Link>
+            {failure.action === 'login' ? (
+              <Link className="secondary-link" href="/login">
+                Sign in
+              </Link>
+            ) : failure.action === 'register' ? (
+              <Link className="secondary-link" href="/register">
+                Complete registration
+              </Link>
+            ) : failure.action === 'mine' ? (
+              <Link className="secondary-link" href="/professionals/mine">
+                View My Agents
+              </Link>
+            ) : null}
             <Link className="text-command" href="/marketplace">
               Cancel
             </Link>
@@ -95,7 +127,7 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
 }
 
 class AcquisitionResponseError extends Error {
-  constructor(readonly response: { status: number; title?: string }) {
+  constructor(readonly response: { code?: string; status: number; title?: string }) {
     super(response.title);
   }
 }

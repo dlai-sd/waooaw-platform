@@ -26,12 +26,11 @@ beforeEach(() => {
   });
 });
 
-it('allows an authenticated visitor without membership into the customer shell', async () => {
+it('keeps an authenticated visitor without registration outside the customer shell', async () => {
   jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'registration-required' });
 
-  render(await CustomerLayout({ children: <p>My Agents</p> }));
+  await expect(CustomerLayout({ children: <p>My Agents</p> })).rejects.toThrow('NEXT_REDIRECT');
 
-  expect(redirect).not.toHaveBeenCalled();
-  expect(screen.getByTestId('customer-shell')).toHaveAttribute('data-has-membership', 'false');
-  expect(screen.getByText('My Agents')).toBeVisible();
+  expect(redirect).toHaveBeenCalledWith('/register');
+  expect(screen.queryByTestId('customer-shell')).not.toBeInTheDocument();
 });

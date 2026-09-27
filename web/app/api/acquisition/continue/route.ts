@@ -4,6 +4,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { ProfessionalsApi } from '@/lib/api/generated/apis/ProfessionalsApi';
 import { Configuration, ResponseError } from '@/lib/api/generated/runtime';
+import { getIdentitySession } from '@/lib/api/identity';
 import { accessTokenFromRequest } from '@/lib/server-auth';
 
 type AcquisitionCommand = {
@@ -21,6 +22,24 @@ const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 export async function POST(request: NextRequest) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) return NextResponse.json({ title: 'Secure sign in is required.' }, { status: 401 });
+
+  const identity = await getIdentitySession(accessToken);
+  if (identity.kind === 'registration-required') {
+    return NextResponse.json(
+      { code: 'REGISTRATION_REQUIRED', title: 'Complete registration before starting a professional.' },
+      { status: 409, headers: { 'Cache-Control': 'no-store' } }
+    );
+  }
+  if (identity.kind !== 'ready') {
+    const status = identity.kind === 'unauthorized' || identity.kind === 'expired' ? 401 : 403;
+    return NextResponse.json(
+      {
+        code: identity.kind === 'forbidden' ? identity.code : undefined,
+        title: status === 401 ? 'Secure sign in is required.' : 'Acquisition is not permitted.',
+      },
+      { status, headers: { 'Cache-Control': 'no-store' } }
+    );
+  }
 
   const body = (await request.json()) as AcquisitionCommand;
   if (
