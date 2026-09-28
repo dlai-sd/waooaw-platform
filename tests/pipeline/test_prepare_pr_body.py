@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 import sys
 from types import SimpleNamespace
@@ -22,6 +23,7 @@ from prepare_pr_body import (  # noqa: E402
     release_qualification_gate_required,
     run_ci_prechecks,
     runner_digest,
+    update_pull_request,
     validate_static_repository,
     validate_precheck_evidence,
 )
@@ -261,6 +263,43 @@ def test_expected_pr_labels_include_lifecycle_and_branch_tier() -> None:
         "awaiting:review",
     )
     assert expected_pr_labels("feature/new-flow")[0] == "tier:2-feature"
+
+
+def test_update_pull_request_uses_bounded_rest_calls(monkeypatch, tmp_path: Path) -> None:
+    body_file = tmp_path / "pr-body.md"
+    body_file.write_text("prepared body\n", encoding="utf-8")
+    calls: list[tuple[list[str], dict[str, object]]] = []
+
+    def run(command: list[str], **kwargs: object) -> SimpleNamespace:
+        calls.append((command, kwargs))
+        return SimpleNamespace(returncode=0, stdout="dlai-sd/waooaw-platform\n")
+
+    monkeypatch.setattr("prepare_pr_body.shutil.which", lambda executable: f"/usr/bin/{executable}")
+    monkeypatch.setattr("prepare_pr_body.subprocess.run", run)
+
+    update_pull_request(476, body_file, "wc/106-unified-docker-process")
+
+    assert calls[0][0] == ["/usr/bin/gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"]
+    assert calls[1][0] == [
+        "/usr/bin/gh",
+        "api",
+        "--method",
+        "PATCH",
+        "repos/dlai-sd/waooaw-platform/pulls/476",
+        "--input",
+        "-",
+    ]
+    assert json.loads(calls[1][1]["input"]) == {"body": "prepared body\n"}
+    assert calls[2][0] == [
+        "/usr/bin/gh",
+        "api",
+        "--method",
+        "POST",
+        "repos/dlai-sd/waooaw-platform/issues/476/labels",
+        "--input",
+        "-",
+    ]
+    assert json.loads(calls[2][1]["input"])["labels"] == ["tier:2-feature", "status:pr-open", "awaiting:review"]
 
 
 def test_precheck_evidence_must_match_base_and_head() -> None:

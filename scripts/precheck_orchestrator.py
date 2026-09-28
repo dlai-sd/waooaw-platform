@@ -221,8 +221,15 @@ def _load_reusable_results(
             prior = prior_by_name.get(node.name)
             if not isinstance(prior, dict) or prior.get("status") != "PASS":
                 continue
+            configuration_rebound = False
             if prior.get("evidence_identity") != _node_identity(node, identity_inputs):
-                continue
+                source_configuration_digest = evidence.get("configuration_digest")
+                if not isinstance(source_configuration_digest, str):
+                    continue
+                source_identity_inputs = {**identity_inputs, "configuration_digest": source_configuration_digest}
+                if prior.get("evidence_identity") != _node_identity(node, source_identity_inputs):
+                    continue
+                configuration_rebound = True
             if source_head != identity_inputs["head_sha"]:
                 if not node.input_patterns or not node.input_digest:
                     continue
@@ -251,12 +258,14 @@ def _load_reusable_results(
                 "provenance": "exact-candidate",
                 "trust_source": "local-exact-candidate",
                 "invalidation_reason": None,
+                "configuration_rebound": configuration_rebound,
             }
             if source_head != identity_inputs["head_sha"]:
                 reuse = {
                     **reuse,
                     "provenance": "carry-forward",
                     "trust_source": "local-verified-carry-forward",
+                    "configuration_rebound": configuration_rebound,
                     "carry_forward": {
                         "current_base_sha": identity_inputs["base_sha"],
                         "current_head_sha": identity_inputs["head_sha"],

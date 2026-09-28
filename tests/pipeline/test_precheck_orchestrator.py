@@ -162,6 +162,38 @@ def test_unaffected_success_is_carried_forward_with_current_head_proof(tmp_path:
     assert marker.read_text() == "x"
 
 
+def test_unchanged_node_rebinds_prior_configuration_without_execution(tmp_path: Path) -> None:
+    source_dir = tmp_path / "source"
+    marker = tmp_path / "executions"
+    node = replace(
+        python_node(
+            "gate",
+            f"from pathlib import Path; p=Path({str(marker)!r}); p.write_text(p.read_text() + 'x' if p.exists() else 'x')",
+        ),
+        input_digest="i" * 64,
+        input_patterns=("release/**",),
+    )
+    run([node], source_dir, preflight=lambda: (True, []))
+
+    manifest = run_prechecks(
+        [node],
+        base_sha="b" * 40,
+        head_sha="c" * 40,
+        changed_file_digest="e" * 64,
+        graph_version="test-v1",
+        configuration_digest="z" * 64,
+        runner_digest="r" * 64,
+        artifact_dir=tmp_path / "current",
+        reuse_evidence_paths=[source_dir / "precheck-manifest.json"],
+        carry_forward_verifier=lambda source, current, patterns: (True, ["scripts/prepare_pr_body.py"], 1),
+        preflight=lambda: (True, []),
+    )
+
+    assert manifest["executed_count"] == 0
+    assert manifest["nodes"][0]["reuse"]["configuration_rebound"] is True
+    assert marker.read_text() == "x"
+
+
 def test_candidate_arguments_do_not_invalidate_unchanged_gate_command(tmp_path: Path) -> None:
     source_dir = tmp_path / "source"
     source = replace(
