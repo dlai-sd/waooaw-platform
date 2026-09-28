@@ -61,6 +61,7 @@ PRECHECK_CONFIGURATION_PATHS = (
     Path(__file__).parent / "validation_control/orchestrator.py",
     Path(__file__).parent / "validation_control/runner_supply.py",
     Path(__file__).parent / "validation_control/run_execution_contract.sh",
+    Path(__file__).resolve().parents[1] / ".github/actions/run-validation-gate/action.yml",
     Path(__file__).parent / "validation_control/run_gitleaks_gate.sh",
     Path(__file__).parent / "validation_control/run_dotnet_test_gate.sh",
     VALIDATION_POLICY_PATH,

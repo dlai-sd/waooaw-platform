@@ -88,6 +88,8 @@ def execution_binding(
     implementation_digest = hashlib.sha256()
     for relative in (
         "docker-compose.yml",
+        "validation/engineering-validation.yaml",
+        "scripts/validation_control/catalog_execution.py",
         "scripts/validation_control/execution_contract.py",
         "scripts/validation_control/run_execution_contract.sh",
     ):
@@ -177,7 +179,14 @@ def prepare_evidence(repository: Path, namespace: str, gate_id: str, digest: str
 
 
 def evidence_is_current(path: Path, token: str) -> bool:
+    host_temporary = path.with_suffix(path.suffix + f".host-{os.getpid()}")
     try:
-        return path.is_file() and os.access(path, os.R_OK | os.W_OK) and path.read_text(encoding="utf-8") == token + "\n"
+        if not path.is_file() or path.read_text(encoding="utf-8") != token + "\n":
+            return False
+        host_temporary.write_text(token + "\n", encoding="utf-8")
+        os.replace(host_temporary, path)
+        return os.access(path, os.R_OK | os.W_OK) and path.read_text(encoding="utf-8") == token + "\n"
     except OSError:
         return False
+    finally:
+        host_temporary.unlink(missing_ok=True)

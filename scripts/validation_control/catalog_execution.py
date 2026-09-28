@@ -130,10 +130,13 @@ def run_execution_preflight(
         env=preflight_environment,
     )
     if completed.returncode != 0:
-        record_failure(repository, node["gate_id"], digest, f"exact-container-preflight:{completed.returncode}")
-        return completed.returncode
+        reason = f"exact-container-preflight:{completed.returncode}"
+        record_failure(repository, node["gate_id"], digest, reason)
+        print(f"WC-106 execution contract failed for {node['gate_id']}: {reason}")
+        return 78
     if not evidence_is_current(proof, token):
         record_failure(repository, node["gate_id"], digest, "host-visible-evidence-missing")
+        print(f"WC-106 execution contract failed for {node['gate_id']}: host cannot atomically publish {proof}")
         return 78
     clear_failure(repository, node["gate_id"])
     return 0

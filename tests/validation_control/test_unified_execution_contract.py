@@ -1,7 +1,9 @@
 """WC-106 exact-container readiness and unchanged-retry contracts."""
 
 import json
+import os
 from pathlib import Path
+import subprocess
 from types import SimpleNamespace
 
 import pytest
@@ -12,6 +14,7 @@ from validation_control.execution_contract import (
     UnchangedExecutionFailureError,
     assert_retry_allowed,
     binding_digest,
+    evidence_is_current,
     evidence_path,
     execution_binding,
     orchestration_preflight,
@@ -92,7 +95,7 @@ def test_environment_defects_stop_before_costly_execution(
 
     monkeypatch.setattr(catalog_execution.subprocess, "run", fail_preflight)
 
-    assert catalog_execution.run_execution_preflight(plan, node, IMAGE_ID, "docker", {}, tmp_path) == 71
+    assert catalog_execution.run_execution_preflight(plan, node, IMAGE_ID, "docker", {}, tmp_path) == 78
     assert calls == 1, defect
 
 
@@ -137,6 +140,19 @@ def test_unchanged_failure_is_blocked_until_bound_environment_changes(tmp_path: 
     assert_retry_allowed(tmp_path, node["gate_id"], changed_digest)
 
 
+def test_catalog_control_change_invalidates_execution_binding(tmp_path: Path) -> None:
+    plan, node = plan_and_node()
+    (tmp_path / "test-results").mkdir()
+    catalog = tmp_path / "validation/engineering-validation.yaml"
+    catalog.parent.mkdir()
+    catalog.write_text("version: first\n", encoding="utf-8")
+    first = binding_digest(execution_binding(plan, node, IMAGE_ID, tmp_path))
+
+    catalog.write_text("version: second\n", encoding="utf-8")
+
+    assert binding_digest(execution_binding(plan, node, IMAGE_ID, tmp_path)) != first
+
+
 def test_prepare_evidence_removes_stale_output(tmp_path: Path) -> None:
     path = evidence_path(tmp_path, "wc106-test", "gate")
     path.parent.mkdir(parents=True)
@@ -147,6 +163,36 @@ def test_prepare_evidence_removes_stale_output(tmp_path: Path) -> None:
     assert prepared == path
     assert not prepared.exists()
     assert len(token) == 64
+
+
+def test_host_atomically_republishes_read_only_container_proof(tmp_path: Path) -> None:
+    path = tmp_path / "test-results/wc106/proof"
+    path.parent.mkdir(parents=True)
+    path.write_text("token\n", encoding="utf-8")
+    path.chmod(0o444)
+
+    assert evidence_is_current(path, "token") is True
+    assert os.access(path, os.W_OK)
+
+
+def test_hosted_action_stops_execution_contract_retries() -> None:
+    root = Path(__file__).resolve().parents[2]
+    action = yaml.safe_load((root / ".github/actions/run-validation-gate/action.yml").read_text(encoding="utf-8"))
+    execution = action["runs"]["steps"][-1]["run"]
+    syntax = subprocess.run(["bash", "-n"], input=execution, text=True, capture_output=True, check=False)
+
+    assert syntax.returncode == 0, syntax.stderr
+    assert "if ((execution_status == 78)); then" in execution
+    assert "unchanged retry is prohibited" in execution
+
+
+def test_scripts_quality_gate_enforces_execution_contract_self_test() -> None:
+    root = Path(__file__).resolve().parents[2]
+    catalog = yaml.safe_load((root / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
+
+    assert "pytest tests/validation_control/test_unified_execution_contract.py -q" in catalog["commands"][
+        "quality-scripts"
+    ]["shell"]
 
 
 def test_execution_identity_segments_cannot_escape_probe_roots() -> None:
