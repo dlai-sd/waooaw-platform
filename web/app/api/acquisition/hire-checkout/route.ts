@@ -45,7 +45,12 @@ export async function POST(request: NextRequest) {
   const identity = await getIdentitySession(accessToken);
   if (identity.kind !== 'ready') {
     return NextResponse.json(
-      { title: identity.kind === 'registration-required' ? 'Complete registration before hiring.' : 'Hiring is not permitted.' },
+      {
+        title:
+          identity.kind === 'registration-required'
+            ? 'Complete registration before hiring.'
+            : 'Hiring is not permitted.',
+      },
       { status: identity.kind === 'registration-required' ? 409 : 403 }
     );
   }
@@ -77,7 +82,10 @@ export async function POST(request: NextRequest) {
       disclosure.termsVersion !== body.termsVersion ||
       disclosure.indicativePrice.currency !== 'INR'
     ) {
-      return NextResponse.json({ title: 'Professional commercial terms have changed. Review the offer again.' }, { status: 409 });
+      return NextResponse.json(
+        { title: 'Professional commercial terms have changed. Review the offer again.' },
+        { status: 409 }
+      );
     }
 
     let outcome: BillingCheckoutOutcome;
@@ -93,7 +101,7 @@ export async function POST(request: NextRequest) {
           disclosure_revision: disclosure.disclosureRevision,
           terms_version: disclosure.termsVersion,
           gross_amount_inr_paise: disclosure.indicativePrice.amountInrPaise,
-          gst_amount_inr_paise: Math.floor(disclosure.indicativePrice.amountInrPaise * 18 / 118),
+          gst_amount_inr_paise: Math.floor((disclosure.indicativePrice.amountInrPaise * 18) / 118),
           cadence: disclosure.indicativePrice.cadence,
           ...(typeof body.couponCode === 'string' && body.couponCode.trim()
             ? { coupon_code: body.couponCode.trim().toUpperCase() }

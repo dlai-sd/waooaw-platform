@@ -2813,7 +2813,7 @@ select:focus-visible,
 }
 .disclosure-coupon button:disabled {
   cursor: not-allowed;
-  opacity: .55;
+  opacity: 0.55;
 }
 .disclosure-coupon > p {
   margin: 0;

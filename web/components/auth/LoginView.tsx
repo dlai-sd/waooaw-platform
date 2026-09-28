@@ -29,8 +29,7 @@ export async function LoginView({ searchParams }: { searchParams?: Promise<{ ret
       <div aria-hidden="true" className="auth-provider-status auth-provider-status-ready" />
       <ProviderCommands callbackUrl={callbackUrl} intent="login" providers={providers} />
       <p className="auth-switch">
-        Don&apos;t have an account?{' '}
-        <Link href={`/register?returnTo=${encodeURIComponent(returnTo)}`}>Register</Link>
+        Don&apos;t have an account? <Link href={`/register?returnTo=${encodeURIComponent(returnTo)}`}>Register</Link>
       </p>
     </section>
   );

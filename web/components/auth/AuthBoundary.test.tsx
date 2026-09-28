@@ -11,13 +11,10 @@ describe('auth loading boundary', () => {
     expect(screen.getByRole('img', { name: 'WAOOAW' })).toBeVisible();
     expect(screen.getByRole('status')).toBeVisible();
     expect(screen.getByText('Loading secure sign-in options.')).toBeVisible();
-      expect(screen.getByRole('button', { name: 'Log in with Google (Unavailable)' })).toBeDisabled();
-      expect(screen.getAllByRole('button')).toHaveLength(4);
-      expect(screen.getByText("Don't have an account?")).toBeVisible();
-      expect(screen.getByRole('link', { name: 'Register' })).toHaveAttribute(
-        'href',
-        '/register?returnTo=%2Fsettings'
-      );
+    expect(screen.getByRole('button', { name: 'Log in with Google (Unavailable)' })).toBeDisabled();
+    expect(screen.getAllByRole('button')).toHaveLength(4);
+    expect(screen.getByText("Don't have an account?")).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Register' })).toHaveAttribute('href', '/register?returnTo=%2Fsettings');
     expect(screen.queryByText('Preparing the requested view.')).not.toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });

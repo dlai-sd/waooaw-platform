@@ -130,25 +130,19 @@ export function ContractJourney({ relationshipId, journey }: Props) {
   const idempotencyKeys = useRef<Record<string, string>>({});
   if (!journey) return null;
 
-  async function confirmRazorpayCheckout(
-    checkoutIntentId: string,
-    response: RazorpaySuccessResponse
-  ) {
+  async function confirmRazorpayCheckout(checkoutIntentId: string, response: RazorpaySuccessResponse) {
     setStatus('Razorpay received the payment. WAOOAW is verifying the signed payment evidence.');
-    const confirmation = await fetch(
-      `/api/relationships/${encodeURIComponent(relationshipId)}/contract-journey`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'confirm',
-          checkoutIntentId,
-          razorpayOrderId: response.razorpay_order_id,
-          razorpayPaymentId: response.razorpay_payment_id,
-          razorpaySignature: response.razorpay_signature,
-        }),
-      }
-    );
+    const confirmation = await fetch(`/api/relationships/${encodeURIComponent(relationshipId)}/contract-journey`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'confirm',
+        checkoutIntentId,
+        razorpayOrderId: response.razorpay_order_id,
+        razorpayPaymentId: response.razorpay_payment_id,
+        razorpaySignature: response.razorpay_signature,
+      }),
+    });
     const result = (await confirmation.json().catch(() => ({}))) as CheckoutOutcome & { title?: string };
     if (!confirmation.ok || result.outcomeKind !== 'CAPTURED') {
       setStatus(result.title ?? 'Signed payment confirmation remains unresolved. No activation success was recorded.');
@@ -199,7 +193,9 @@ export function ContractJourney({ relationshipId, journey }: Props) {
         },
       });
       razorpayCheckout.on('payment.failed', (response) => {
-        setStatus(response.error?.description ?? 'Razorpay could not complete the payment. No payment success was recorded.');
+        setStatus(
+          response.error?.description ?? 'Razorpay could not complete the payment. No payment success was recorded.'
+        );
       });
       razorpayCheckout.open();
     } catch (caught) {
@@ -242,7 +238,9 @@ export function ContractJourney({ relationshipId, journey }: Props) {
       } else if (outcome.outcomeKind === 'FULLY_DISCOUNTED') {
         setStatus('100% Demo discount applied. Amount paid: INR 0. No payment method charged.');
       } else if (outcome.outcomeKind === 'CAPTURED') {
-        setStatus('Existing Razorpay payment is now bound to this exact contract. Activation is ready for confirmation.');
+        setStatus(
+          'Existing Razorpay payment is now bound to this exact contract. Activation is ready for confirmation.'
+        );
       } else {
         setStatus(
           outcome.customerSafeNextAction ??

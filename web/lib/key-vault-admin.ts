@@ -51,10 +51,7 @@ export function keyVaultAdminEmail(): string {
 export function isKeyVaultPortalAdministrator(accessToken: string): boolean {
   const claims = claimsFromToken(accessToken);
   return Boolean(
-    claims &&
-      claimEmail(claims) === keyVaultAdminEmail() &&
-      claims.email_verified === true &&
-      hasFounderClaim(claims)
+    claims && claimEmail(claims) === keyVaultAdminEmail() && claims.email_verified === true && hasFounderClaim(claims)
   );
 }
 

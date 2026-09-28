@@ -488,7 +488,11 @@ describe('RelationshipWorkspace', () => {
     fireEvent.click(within(decisions).getByRole('button', { name: 'Accept exact monthly contract' }));
     const proceed = await within(decisions).findByRole('button', { name: 'Confirm contract funding' });
     expect(proceed).toBeVisible();
-    expect(screen.getByText('Exact monthly contract accepted and evidenced. Existing funding will be verified before activation.')).toBeVisible();
+    expect(
+      screen.getByText(
+        'Exact monthly contract accepted and evidenced. Existing funding will be verified before activation.'
+      )
+    ).toBeVisible();
     fireEvent.click(proceed);
     expect(await screen.findByText(/Checkout remains unresolved/)).toBeVisible();
     fireEvent.click(within(decisions).getByRole('button', { name: 'Not now' }));
@@ -522,11 +526,13 @@ describe('RelationshipWorkspace', () => {
 
   it('launches official Razorpay Checkout and treats its callback only as a reconciliation prompt', async () => {
     let checkoutOptions: Record<string, unknown> | undefined;
-    const open = jest.fn(() => (checkoutOptions?.handler as (response: object) => void)({
-      razorpay_order_id: 'order_exact',
-      razorpay_payment_id: 'pay_exact',
-      razorpay_signature: 'a'.repeat(64),
-    }));
+    const open = jest.fn(() =>
+      (checkoutOptions?.handler as (response: object) => void)({
+        razorpay_order_id: 'order_exact',
+        razorpay_payment_id: 'pay_exact',
+        razorpay_signature: 'a'.repeat(64),
+      })
+    );
     Object.defineProperty(window, 'Razorpay', {
       configurable: true,
       value: function Razorpay(options: Record<string, unknown>) {
@@ -582,12 +588,14 @@ describe('RelationshipWorkspace', () => {
     );
     const reconciliationCall = (global.fetch as jest.Mock).mock.calls[1];
     expect(reconciliationCall[0]).toContain('/contract-journey');
-    expect(JSON.parse(reconciliationCall[1].body)).toEqual(expect.objectContaining({
-      action: 'confirm',
-      checkoutIntentId: '7bc5b28a-a674-4c77-b3e0-7da0f8bf1e50',
-      razorpayOrderId: 'order_exact',
-      razorpayPaymentId: 'pay_exact',
-    }));
+    expect(JSON.parse(reconciliationCall[1].body)).toEqual(
+      expect.objectContaining({
+        action: 'confirm',
+        checkoutIntentId: '7bc5b28a-a674-4c77-b3e0-7da0f8bf1e50',
+        razorpayOrderId: 'order_exact',
+        razorpayPaymentId: 'pay_exact',
+      })
+    );
     expect(screen.getByText(/signature-verified and reconciled/)).toBeVisible();
   });
 

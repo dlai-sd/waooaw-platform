@@ -42,10 +42,10 @@ export function RegistrationProgress({ action, pending }: { action: IdentityNext
                 : 'upcoming';
           return (
             <li data-state={state} key={id}>
-                <span className="registration-progress-marker">{label}</span>
-                {index < letters.length - 1 ? (
-                  <ArrowRight aria-hidden="true" className="registration-progress-arrow" size={14} />
-                ) : null}
+              <span className="registration-progress-marker">{label}</span>
+              {index < letters.length - 1 ? (
+                <ArrowRight aria-hidden="true" className="registration-progress-arrow" size={14} />
+              ) : null}
             </li>
           );
         })}

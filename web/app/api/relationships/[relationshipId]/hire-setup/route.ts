@@ -3,10 +3,7 @@ import { accessTokenFromRequest } from '@/lib/server-auth';
 
 const businessPlatformUrl = process.env.BUSINESS_PLATFORM_URL ?? 'http://localhost:5001';
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ relationshipId: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ relationshipId: string }> }) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) return NextResponse.json({ title: 'Secure sign in is required.' }, { status: 401 });
   const idempotencyKey = request.headers.get('Idempotency-Key');

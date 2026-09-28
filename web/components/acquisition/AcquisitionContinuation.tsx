@@ -203,12 +203,13 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
     if (started.current) return;
     started.current = true;
     if (props.intent === 'hire') void startHireCheckout();
-    else void continueTrial().catch((error) => {
-      const response = error instanceof AcquisitionResponseError ? error.response : null;
-      setStatus(response?.title ?? 'We could not continue yet.');
-      setBusy(false);
-      setRetryable(response?.status === 503);
-    });
+    else
+      void continueTrial().catch((error) => {
+        const response = error instanceof AcquisitionResponseError ? error.response : null;
+        setStatus(response?.title ?? 'We could not continue yet.');
+        setBusy(false);
+        setRetryable(response?.status === 503);
+      });
     // The accepted continuation is immutable for this mounted return route.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -225,7 +226,9 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
               Open Razorpay Checkout
             </button>
           ) : null}
-          <Link className="text-command" href="/marketplace">Cancel</Link>
+          <Link className="text-command" href="/marketplace">
+            Cancel
+          </Link>
         </div>
       ) : null}
     </section>

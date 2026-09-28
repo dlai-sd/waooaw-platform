@@ -139,13 +139,9 @@ export function RelationshipPreActivation({
               ))}
             </fieldset>
             <label>
-              <input
-                name="authorityScopeConfirmation"
-                type="checkbox"
-                value="CONFIRM_AUTHORITY_SCOPE"
-                required
-              />
-              I confirm this budget and scope for contract preparation. This does not accept the contract or authorize payment.
+              <input name="authorityScopeConfirmation" type="checkbox" value="CONFIRM_AUTHORITY_SCOPE" required />I
+              confirm this budget and scope for contract preparation. This does not accept the contract or authorize
+              payment.
             </label>
             {error ? <p role="alert">{error}</p> : null}
             <button className="primary-action" disabled={submitting} type="submit">

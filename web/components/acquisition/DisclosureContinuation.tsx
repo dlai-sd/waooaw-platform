@@ -102,7 +102,9 @@ export function DisclosureContinuation({
       <p className="offer-terms-version">Terms version {termsVersion}. Nothing starts until you continue.</p>
       {intents.includes('hire') ? (
         <div className="disclosure-coupon">
-          <label htmlFor="disclosure-coupon-code">Coupon code <span>(optional)</span></label>
+          <label htmlFor="disclosure-coupon-code">
+            Coupon code <span>(optional)</span>
+          </label>
           <div>
             <input
               id="disclosure-coupon-code"

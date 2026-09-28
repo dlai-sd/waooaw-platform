@@ -67,14 +67,16 @@ describe('ContractJourney Razorpay Standard Checkout', () => {
     const options = Razorpay.mock.calls[0][0] as Record<string, unknown> & {
       handler: (response: Record<string, string>) => void;
     };
-    expect(options).toEqual(expect.objectContaining({
-      key: 'rzp_test_public',
-      amount: 118000,
-      currency: 'INR',
-      name: 'WAOOAW',
-      image: 'https://raw.githubusercontent.com/dlai-sd/waooaw-platform/main/web/public/waooaw-platform-logo.png',
-      order_id: 'order_test_123',
-    }));
+    expect(options).toEqual(
+      expect.objectContaining({
+        key: 'rzp_test_public',
+        amount: 118000,
+        currency: 'INR',
+        name: 'WAOOAW',
+        image: 'https://raw.githubusercontent.com/dlai-sd/waooaw-platform/main/web/public/waooaw-platform-logo.png',
+        order_id: 'order_test_123',
+      })
+    );
     expect(on).toHaveBeenCalledWith('payment.failed', expect.any(Function));
     expect(open).toHaveBeenCalledTimes(1);
 

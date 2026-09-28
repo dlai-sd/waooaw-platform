@@ -178,18 +178,18 @@ describe('F2 registration flow', () => {
     expect(screen.queryByText(/11111111/)).not.toBeInTheDocument();
   });
 
-  it.each([[401, {}], [403, { code: 'IDENTITY_SESSION_REQUIRED' }]])(
-    'returns a missing session to provider choice for status %s',
-    async (status, body) => {
-      global.fetch = jest.fn(() => jsonResponse(body, status));
-      render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} returnTo="/settings" />);
+  it.each([
+    [401, {}],
+    [403, { code: 'IDENTITY_SESSION_REQUIRED' }],
+  ])('returns a missing session to provider choice for status %s', async (status, body) => {
+    global.fetch = jest.fn(() => jsonResponse(body, status));
+    render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} returnTo="/settings" />);
 
-      expect(await screen.findByText(getIdentityMessages('en').registrationLost)).toBeVisible();
-      fireEvent.click(screen.getByRole('button', { name: getIdentityMessages('en').restartSignIn }));
-      expect(replace).toHaveBeenCalledWith('/login?returnTo=%2Fsettings');
-      expect(fetch).toHaveBeenCalledTimes(1);
-    }
-  );
+    expect(await screen.findByText(getIdentityMessages('en').registrationLost)).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: getIdentityMessages('en').restartSignIn }));
+    expect(replace).toHaveBeenCalledWith('/login?returnTo=%2Fsettings');
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
 
   it('returns an expired email challenge to the resend form', async () => {
     const verificationRequired = {

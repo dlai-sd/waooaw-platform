@@ -15,7 +15,13 @@ interface AzureKeyVaultWriterProps {
 
 const vaultScopes = ['https://vault.azure.net/user_impersonation'];
 
-export function AzureKeyVaultWriter({ adminEmail, clientId, environment, tenantId, vaultHost }: AzureKeyVaultWriterProps) {
+export function AzureKeyVaultWriter({
+  adminEmail,
+  clientId,
+  environment,
+  tenantId,
+  vaultHost,
+}: AzureKeyVaultWriterProps) {
   const client = useRef<PublicClientApplication>();
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [message, setMessage] = useState('');
@@ -38,7 +44,9 @@ export function AzureKeyVaultWriter({ adminEmail, clientId, environment, tenantI
         cache: { cacheLocation: 'memoryStorage' },
       });
       await client.current.initialize();
-      let account = client.current.getAllAccounts().find((candidate) => candidate.username.toLowerCase() === adminEmail);
+      let account = client.current
+        .getAllAccounts()
+        .find((candidate) => candidate.username.toLowerCase() === adminEmail);
       if (!account) {
         const login = await client.current.loginPopup({ scopes: vaultScopes, loginHint: adminEmail });
         account = login.account;

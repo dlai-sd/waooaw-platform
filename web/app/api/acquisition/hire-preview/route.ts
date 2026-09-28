@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         professional_type: disclosure.professionalType,
         gross_amount_inr_paise: disclosure.indicativePrice.amountInrPaise,
-        gst_amount_inr_paise: Math.floor(disclosure.indicativePrice.amountInrPaise * 18 / 118),
+        gst_amount_inr_paise: Math.floor((disclosure.indicativePrice.amountInrPaise * 18) / 118),
         cadence: disclosure.indicativePrice.cadence,
         ...(typeof body.couponCode === 'string' && body.couponCode.trim()
           ? { coupon_code: body.couponCode.trim().toUpperCase() }

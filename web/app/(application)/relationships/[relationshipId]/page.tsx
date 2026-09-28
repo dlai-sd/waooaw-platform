@@ -27,9 +27,7 @@ export default async function RelationshipPage({ params }: { params: Promise<{ r
   ]);
   if (!operational) {
     const disclosure =
-      relationship.state === 'CONFIGURING'
-        ? await getProfessionalDisclosure(relationship.professionalType)
-        : null;
+      relationship.state === 'CONFIGURING' ? await getProfessionalDisclosure(relationship.professionalType) : null;
     return (
       <RelationshipPreActivation
         relationship={relationship}

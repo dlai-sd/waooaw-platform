@@ -22,8 +22,12 @@ test('authorizes only the verified Founder email', () => {
     realm_access: { roles: ['founder'] },
   });
   expect(isKeyVaultPortalAdministrator(authorized)).toBe(true);
-  expect(isKeyVaultPortalAdministrator(token({ email: 'yogesh.khandge@dlaisd.com', email_verified: false, founder: true }))).toBe(false);
-  expect(isKeyVaultPortalAdministrator(token({ email: 'other@dlaisd.com', email_verified: true, founder: true }))).toBe(false);
+  expect(
+    isKeyVaultPortalAdministrator(token({ email: 'yogesh.khandge@dlaisd.com', email_verified: false, founder: true }))
+  ).toBe(false);
+  expect(isKeyVaultPortalAdministrator(token({ email: 'other@dlaisd.com', email_verified: true, founder: true }))).toBe(
+    false
+  );
 });
 
 test('binds Codespace, demo, and UAT to server-owned vault targets', () => {
@@ -50,12 +54,9 @@ test('requires an unexpired same-tenant Key Vault token for the same administrat
     tid: 'tenant',
   };
   expect(isAuthorizedAzureVaultToken(token(claims), target)).toBe(true);
-  expect(
-    isAuthorizedAzureVaultToken(
-      token({ ...claims, aud: 'cfa8b339-82a2-471a-a3c9-0fc0be7a4093' }),
-      target
-    )
-  ).toBe(true);
+  expect(isAuthorizedAzureVaultToken(token({ ...claims, aud: 'cfa8b339-82a2-471a-a3c9-0fc0be7a4093' }), target)).toBe(
+    true
+  );
   expect(isAuthorizedAzureVaultToken(token({ ...claims, tid: 'other' }), target)).toBe(false);
   expect(isAuthorizedAzureVaultToken(token({ ...claims, preferred_username: 'other@dlaisd.com' }), target)).toBe(false);
 });

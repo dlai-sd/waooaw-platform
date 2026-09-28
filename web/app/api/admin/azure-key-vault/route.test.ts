@@ -2,11 +2,7 @@
 import type { NextRequest } from 'next/server';
 import { POST } from './route';
 import { accessTokenFromRequest } from '@/lib/server-auth';
-import {
-  isAuthorizedAzureVaultToken,
-  isKeyVaultPortalAdministrator,
-  keyVaultTarget,
-} from '@/lib/key-vault-admin';
+import { isAuthorizedAzureVaultToken, isKeyVaultPortalAdministrator, keyVaultTarget } from '@/lib/key-vault-admin';
 
 jest.mock('@/lib/server-auth', () => ({ accessTokenFromRequest: jest.fn() }));
 jest.mock('@/lib/key-vault-admin', () => ({
@@ -69,7 +65,10 @@ test('accepts a proxy-preserved same-origin browser request when Origin is omitt
 });
 
 test('prefers trusted browser fetch metadata when a proxy rewrites Origin', async () => {
-  const sameOriginRequest = request({ name: 'razorpay-test-key-id', value: 'sensitive-value' }, 'http://localhost:3000');
+  const sameOriginRequest = request(
+    { name: 'razorpay-test-key-id', value: 'sensitive-value' },
+    'http://localhost:3000'
+  );
   sameOriginRequest.headers.set('Sec-Fetch-Site', 'same-origin');
 
   expect((await POST(sameOriginRequest)).status).toBe(200);

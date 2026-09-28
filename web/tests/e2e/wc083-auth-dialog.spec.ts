@@ -146,9 +146,9 @@ test('login loading and provider states keep identical customer-visible geometry
   expect(resolvedBrandBounds?.y).toBeCloseTo(loadingBrandBounds?.y ?? 0, 0);
   expect(resolvedProviderBounds).toEqual(loadingProviderBounds);
   expect(resolvedBounds?.height).toBeLessThan(loginJourney ? 440 : 560);
-  expect(await dialog.locator('.auth-dialog-panel').evaluate((element) => getComputedStyle(element).borderTopWidth)).toBe(
-    '0px'
-  );
+  expect(
+    await dialog.locator('.auth-dialog-panel').evaluate((element) => getComputedStyle(element).borderTopWidth)
+  ).toBe('0px');
 });
 
 test('WC083-AUTH-02: backdrop dismissal returns to the originating public route', async ({ page }) => {

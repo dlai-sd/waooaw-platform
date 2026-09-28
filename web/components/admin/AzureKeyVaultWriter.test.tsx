@@ -42,11 +42,13 @@ test('uses Azure authorization, clears the value, and never displays it after sa
   expect(await screen.findByText(/Saved razorpay-test-key-id to codespace/)).toBeVisible();
   expect(screen.queryByText('sensitive-value')).not.toBeInTheDocument();
   expect(screen.getByLabelText('Secret value')).toHaveValue('');
-  await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(
-    '/api/admin/azure-key-vault',
-    expect.objectContaining({
-      headers: expect.objectContaining({ Authorization: 'Bearer azure-access-token' }),
-      method: 'POST',
-    })
-  ));
+  await waitFor(() =>
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/admin/azure-key-vault',
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer azure-access-token' }),
+        method: 'POST',
+      })
+    )
+  );
 });

@@ -69,13 +69,15 @@ describe('AcquisitionContinuation', () => {
 
     await waitFor(() => expect(open).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(checkoutOptions).toEqual(expect.objectContaining({
-      key: 'rzp_test_public',
-      amount: 118000,
-      currency: 'INR',
-      image: 'https://raw.githubusercontent.com/dlai-sd/waooaw-platform/main/web/public/waooaw-platform-logo.png',
-      order_id: 'order_test123',
-    }));
+    expect(checkoutOptions).toEqual(
+      expect.objectContaining({
+        key: 'rzp_test_public',
+        amount: 118000,
+        currency: 'INR',
+        image: 'https://raw.githubusercontent.com/dlai-sd/waooaw-platform/main/web/public/waooaw-platform-logo.png',
+        order_id: 'order_test123',
+      })
+    );
     await act(async () => {
       await (checkoutOptions?.handler as (payment: object) => void)({
         razorpay_order_id: 'order_test123',
@@ -85,12 +87,14 @@ describe('AcquisitionContinuation', () => {
     });
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/relationships/22222222-2222-4222-8222-222222222222'));
-    expect(JSON.parse(String(jest.mocked(fetch).mock.calls[1][1]?.body))).toEqual(expect.objectContaining({
-      action: 'confirm',
-      razorpayOrderId: 'order_test123',
-      razorpayPaymentId: 'pay_test123',
-      razorpaySignature: 'a'.repeat(64),
-    }));
+    expect(JSON.parse(String(jest.mocked(fetch).mock.calls[1][1]?.body))).toEqual(
+      expect.objectContaining({
+        action: 'confirm',
+        razorpayOrderId: 'order_test123',
+        razorpayPaymentId: 'pay_test123',
+        razorpaySignature: 'a'.repeat(64),
+      })
+    );
   });
 
   it('bypasses Razorpay for a server-validated fully discounted Hire', async () => {
@@ -108,10 +112,12 @@ describe('AcquisitionContinuation', () => {
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/relationships/22222222-2222-4222-8222-222222222222'));
     expect(razorpay).not.toHaveBeenCalled();
-    expect(JSON.parse(String(jest.mocked(fetch).mock.calls[0][1]?.body))).toEqual(expect.objectContaining({
-      action: 'start',
-      couponCode: 'DEMO100',
-    }));
+    expect(JSON.parse(String(jest.mocked(fetch).mock.calls[0][1]?.body))).toEqual(
+      expect.objectContaining({
+        action: 'start',
+        couponCode: 'DEMO100',
+      })
+    );
   });
 
   it('stops loading and offers an exit when Razorpay is not configured', async () => {

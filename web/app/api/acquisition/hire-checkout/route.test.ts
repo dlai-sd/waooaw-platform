@@ -26,10 +26,11 @@ const baseBody = {
   couponCode: 'demo100',
 };
 
-const request = (body: object) => new NextRequest('http://localhost/api/acquisition/hire-checkout', {
-  method: 'POST',
-  body: JSON.stringify(body),
-});
+const request = (body: object) =>
+  new NextRequest('http://localhost/api/acquisition/hire-checkout', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 
 describe('pre-hire checkout boundary', () => {
   beforeEach(() => {
@@ -111,13 +112,15 @@ describe('pre-hire checkout boundary', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ outcome_kind: 'CAPTURED' }) });
     const { POST } = await import('./route');
 
-    const response = await POST(request({
-      ...baseBody,
-      action: 'confirm',
-      razorpayOrderId: 'order_test123',
-      razorpayPaymentId: 'pay_test123',
-      razorpaySignature: 'a'.repeat(64),
-    }));
+    const response = await POST(
+      request({
+        ...baseBody,
+        action: 'confirm',
+        razorpayOrderId: 'order_test123',
+        razorpayPaymentId: 'pay_test123',
+        razorpaySignature: 'a'.repeat(64),
+      })
+    );
 
     expect(response.status).toBe(200);
     expect(continueAcquisition).toHaveBeenCalledTimes(1);

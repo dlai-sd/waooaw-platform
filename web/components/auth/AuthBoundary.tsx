@@ -65,8 +65,7 @@ export function AuthBoundary({
       ) : null}
       {!unavailable && intent === 'login' ? (
         <p className="auth-switch">
-          Don&apos;t have an account?{' '}
-          <Link href={`/register?returnTo=${encodeURIComponent(returnTo)}`}>Register</Link>
+          Don&apos;t have an account? <Link href={`/register?returnTo=${encodeURIComponent(returnTo)}`}>Register</Link>
         </p>
       ) : null}
       {!unavailable && intent === 'register' ? (
