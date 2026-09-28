@@ -8,6 +8,8 @@ describe('RegistrationProgress', () => {
     expect(screen.getByRole('status')).toHaveAccessibleName('Registration progress: Email verification');
     expect(container.querySelectorAll('[data-state="complete"]')).toHaveLength(2);
     expect(container.querySelectorAll('[data-state="active"]')).toHaveLength(1);
+    expect(container.querySelectorAll('.registration-progress-marker')).toHaveLength(6);
+    expect(container.querySelectorAll('.registration-progress-arrow')).toHaveLength(5);
     expect(screen.getByRole('status')).not.toHaveAttribute('aria-valuenow');
 
     rerender(<RegistrationProgress action="CONTINUE_TO_DEFAULT_TARGET" pending={false} />);

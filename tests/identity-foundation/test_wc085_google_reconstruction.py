@@ -64,7 +64,14 @@ def test_fresh_import_recreates_google_client_flow_and_default_role() -> None:
     assert provider["enabled"] is True
     assert provider["config"]["clientId"] == "synthetic.apps.googleusercontent.com"
     assert provider["config"]["clientSecret"] != "${GOOGLE_CLIENT_SECRET}"
-    assert provider["firstBrokerLoginFlowAlias"] == "first broker login"
+    assert provider["firstBrokerLoginFlowAlias"] == "google verified email first login"
+    flow = next(item for item in admin("authentication/flows")
+                if item["alias"] == "google verified email first login")
+    executions = admin("authentication/flows/" + flow["id"] + "/executions")
+    assert [(item.get("providerId"), item["requirement"]) for item in executions] == [
+        ("idp-create-user-if-unique", "ALTERNATIVE"),
+        ("idp-auto-link", "ALTERNATIVE"),
+    ]
     clients = admin("clients?clientId=waooaw-web")
     assert clients[0]["redirectUris"] == [
         "https://ca-demo-web.local.waooaw.test/api/auth/callback/keycloak",

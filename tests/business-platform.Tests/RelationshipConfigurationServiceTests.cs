@@ -20,12 +20,19 @@ public sealed class RelationshipConfigurationServiceTests
         var relationships = new EmploymentRelationshipService(
             factory,
             gateway,
-            NullLogger<EmploymentRelationshipService>.Instance);
+            NullLogger<EmploymentRelationshipService>.Instance
+        );
         var service = new RelationshipConfigurationService(factory, gateway);
         var tenantId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
         var admitted = await relationships.AdmitAsync(
-            tenantId, actorId, Guid.NewGuid(), "DMA", Guid.NewGuid(), CancellationToken.None);
+            tenantId,
+            actorId,
+            Guid.NewGuid(),
+            "DMA",
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
 
         var first = await service.ConfirmContextAsync(
             tenantId,
@@ -37,7 +44,8 @@ public sealed class RelationshipConfigurationServiceTests
             null,
             null,
             Guid.NewGuid(),
-            CancellationToken.None);
+            CancellationToken.None
+        );
         var corrected = await service.ConfirmContextAsync(
             tenantId,
             admitted.Relationship.RelationshipId,
@@ -48,17 +56,25 @@ public sealed class RelationshipConfigurationServiceTests
             null,
             first.PayloadReference,
             Guid.NewGuid(),
-            CancellationToken.None);
+            CancellationToken.None
+        );
 
         var active = await service.GetActiveContextAsync(
-            tenantId, admitted.Relationship.RelationshipId, CancellationToken.None);
+            tenantId,
+            admitted.Relationship.RelationshipId,
+            CancellationToken.None
+        );
         Assert.Single(active);
         Assert.Equal(corrected.PayloadReference, active[0].PayloadReference);
         Assert.Equal("Pune", active[0].Value.GetString());
 
         await using var db = factory.CreateDbContext();
-        var payloads = await db.RelationshipContextPayloads.OrderBy(item => item.CreatedAt).ToListAsync();
-        var events = await db.ContextConfirmationEvents.OrderBy(item => item.OccurredAt).ToListAsync();
+        var payloads = await db
+            .RelationshipContextPayloads.OrderBy(item => item.CreatedAt)
+            .ToListAsync();
+        var events = await db
+            .ContextConfirmationEvents.OrderBy(item => item.OccurredAt)
+            .ToListAsync();
         Assert.Equal(2, payloads.Count);
         Assert.NotNull(payloads[0].InvalidatedAt);
         Assert.Equal("CORRECTED", payloads[0].ConfirmationStatus);
@@ -74,49 +90,125 @@ public sealed class RelationshipConfigurationServiceTests
         var (service, relationship, tenantId, actorId, _) = await CreateServiceAsync();
 
         var firstQuestion = await service.GetNextContextQuestionAsync(
-            tenantId, relationship.RelationshipId, CancellationToken.None);
+            tenantId,
+            relationship.RelationshipId,
+            CancellationToken.None
+        );
         Assert.Equal("NAME", firstQuestion?.FieldType);
 
         foreach (var field in new[] { "name", "location", "business_nature" })
         {
             await service.ConfirmContextAsync(
-                tenantId, relationship.RelationshipId, actorId, field,
-                JsonSerializer.SerializeToElement($"value-{field}"), "customer", null, null,
-                Guid.NewGuid(), CancellationToken.None);
+                tenantId,
+                relationship.RelationshipId,
+                actorId,
+                field,
+                JsonSerializer.SerializeToElement($"value-{field}"),
+                "customer",
+                null,
+                null,
+                Guid.NewGuid(),
+                CancellationToken.None
+            );
         }
 
-        Assert.Null(await service.GetNextContextQuestionAsync(
-            tenantId, relationship.RelationshipId, CancellationToken.None));
+        Assert.Null(
+            await service.GetNextContextQuestionAsync(
+                tenantId,
+                relationship.RelationshipId,
+                CancellationToken.None
+            )
+        );
     }
 
     [Fact]
     public async Task ConfigurationPersistsIndependentDecisionsAndImmutableSnapshots()
     {
-        var (service, relationship, tenantId, actorId, _) = await CreateServiceAsync();
+        var (service, relationship, tenantId, actorId, factory) = await CreateServiceAsync();
         var goal = await service.SaveGoalAsync(
-            tenantId, relationship.RelationshipId, "Increase bookings", "10 monthly", "Confirmed bookings",
-            "15 monthly", "customer records", "ACCEPTED", CancellationToken.None);
+            tenantId,
+            relationship.RelationshipId,
+            "Increase bookings",
+            "10 monthly",
+            "Confirmed bookings",
+            "15 monthly",
+            "customer records",
+            "ACCEPTED",
+            CancellationToken.None
+        );
         var skill = await service.SaveSkillAsync(
-            tenantId, relationship.RelationshipId, "local-seo", "1.0.0", goal.GoalId,
-            "NOT_GRANTED", "APPLICABLE", null, "DEFERRED", CancellationToken.None);
+            tenantId,
+            relationship.RelationshipId,
+            "local-seo",
+            "1.0.0",
+            goal.GoalId,
+            "NOT_GRANTED",
+            "APPLICABLE",
+            null,
+            "DEFERRED",
+            CancellationToken.None
+        );
         var first = await service.CreateDecisionSpaceAsync(
-            tenantId, relationship.RelationshipId, actorId, 250000,
-            ["No publishing"], ["Stop on customer request"], 2, [Guid.NewGuid()],
-            Guid.NewGuid(), CancellationToken.None);
+            tenantId,
+            relationship.RelationshipId,
+            actorId,
+            250000,
+            ["No publishing"],
+            ["Stop on customer request"],
+            2,
+            [Guid.NewGuid()],
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
         var second = await service.CreateDecisionSpaceAsync(
-            tenantId, relationship.RelationshipId, actorId, 300000,
-            ["Approval required"], ["Stop at budget ceiling"], 2, [Guid.NewGuid()],
-            Guid.NewGuid(), CancellationToken.None);
+            tenantId,
+            relationship.RelationshipId,
+            actorId,
+            300000,
+            ["Approval required"],
+            ["Stop at budget ceiling"],
+            2,
+            [Guid.NewGuid()],
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
 
         Assert.Equal(2, goal.ReviewCadenceMonths);
         Assert.Equal("DEFERRED", skill.Status);
         Assert.Equal(1, first.Version);
         Assert.Equal(2, second.Version);
 
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => service.CreateDecisionSpaceAsync(
-            tenantId, relationship.RelationshipId, actorId, 300000,
-            ["Approval required"], ["Stop at budget ceiling"], 1, [],
-            Guid.NewGuid(), CancellationToken.None));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            service.CreateDecisionSpaceAsync(
+                tenantId,
+                relationship.RelationshipId,
+                actorId,
+                -1,
+                ["Approval required"],
+                ["Stop at budget ceiling"],
+                2,
+                [],
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            service.CreateDecisionSpaceAsync(
+                tenantId,
+                relationship.RelationshipId,
+                actorId,
+                300000,
+                ["Approval required"],
+                ["Stop at budget ceiling"],
+                1,
+                [],
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
+
+        await using var db = factory.CreateDbContext();
+        Assert.Equal(2, await db.DecisionSpaceSnapshots.CountAsync());
     }
 
     [Fact]
@@ -124,14 +216,33 @@ public sealed class RelationshipConfigurationServiceTests
     {
         var (service, relationship, tenantId, actorId, factory) = await CreateServiceAsync();
         await service.ConfirmContextAsync(
-            tenantId, relationship.RelationshipId, actorId, "name",
-            JsonSerializer.SerializeToElement("Sensitive Name"), "customer", null, null,
-            Guid.NewGuid(), CancellationToken.None);
+            tenantId,
+            relationship.RelationshipId,
+            actorId,
+            "name",
+            JsonSerializer.SerializeToElement("Sensitive Name"),
+            "customer",
+            null,
+            null,
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
 
-        Assert.Equal(1, await service.EraseContextPayloadsAsync(
-            tenantId, relationship.RelationshipId, CancellationToken.None));
-        Assert.Empty(await service.GetActiveContextAsync(
-            tenantId, relationship.RelationshipId, CancellationToken.None));
+        Assert.Equal(
+            1,
+            await service.EraseContextPayloadsAsync(
+                tenantId,
+                relationship.RelationshipId,
+                CancellationToken.None
+            )
+        );
+        Assert.Empty(
+            await service.GetActiveContextAsync(
+                tenantId,
+                relationship.RelationshipId,
+                CancellationToken.None
+            )
+        );
 
         await using var db = factory.CreateDbContext();
         var payload = await db.RelationshipContextPayloads.SingleAsync();
@@ -147,18 +258,37 @@ public sealed class RelationshipConfigurationServiceTests
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
         var gateway = new RecordingRelationshipConstitutionalGateway();
         var relationships = new EmploymentRelationshipService(
-            factory, gateway, NullLogger<EmploymentRelationshipService>.Instance);
+            factory,
+            gateway,
+            NullLogger<EmploymentRelationshipService>.Instance
+        );
         var tenantId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
         var admitted = await relationships.AdmitAsync(
-            tenantId, actorId, Guid.NewGuid(), "DMA", Guid.NewGuid(), CancellationToken.None);
+            tenantId,
+            actorId,
+            Guid.NewGuid(),
+            "DMA",
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
         gateway.FailNext = true;
         var service = new RelationshipConfigurationService(factory, gateway);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.ConfirmContextAsync(
-            tenantId, admitted.Relationship.RelationshipId, actorId, "name",
-            JsonSerializer.SerializeToElement("Sensitive Name"), "customer", null, null,
-            Guid.NewGuid(), CancellationToken.None));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.ConfirmContextAsync(
+                tenantId,
+                admitted.Relationship.RelationshipId,
+                actorId,
+                "name",
+                JsonSerializer.SerializeToElement("Sensitive Name"),
+                "customer",
+                null,
+                null,
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
 
         await using var db = factory.CreateDbContext();
         Assert.Empty(await db.RelationshipContextPayloads.ToListAsync());
@@ -171,14 +301,25 @@ public sealed class RelationshipConfigurationServiceTests
         var (service, relationship, tenantId, actorId, factory) = await CreateServiceAsync();
         await using (var db = factory.CreateDbContext())
         {
-            (await db.EmploymentRelationships.SingleAsync()).State = EmploymentRelationshipState.StoppedEmergency;
+            (await db.EmploymentRelationships.SingleAsync()).State =
+                EmploymentRelationshipState.StoppedEmergency;
             await db.SaveChangesAsync();
         }
 
-        await Assert.ThrowsAsync<ConstitutionalActionDeniedException>(() => service.ConfirmContextAsync(
-            tenantId, relationship.RelationshipId, actorId, "name",
-            JsonSerializer.SerializeToElement("Blocked value"), "customer", null, null,
-            Guid.NewGuid(), CancellationToken.None));
+        await Assert.ThrowsAsync<ConstitutionalActionDeniedException>(() =>
+            service.ConfirmContextAsync(
+                tenantId,
+                relationship.RelationshipId,
+                actorId,
+                "name",
+                JsonSerializer.SerializeToElement("Blocked value"),
+                "customer",
+                null,
+                null,
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
 
         await using var verificationDb = factory.CreateDbContext();
         Assert.Empty(await verificationDb.RelationshipContextPayloads.ToListAsync());
@@ -190,48 +331,118 @@ public sealed class RelationshipConfigurationServiceTests
     {
         var (service, relationship, tenantId, actorId, factory) = await CreateServiceAsync();
         var goal = await service.SaveGoalAsync(
-            tenantId, relationship.RelationshipId, "Increase bookings", "10 monthly",
-            "Confirmed bookings", "15 monthly", "customer records", "ACCEPTED", CancellationToken.None);
+            tenantId,
+            relationship.RelationshipId,
+            "Increase bookings",
+            "10 monthly",
+            "Confirmed bookings",
+            "15 monthly",
+            "customer records",
+            "ACCEPTED",
+            CancellationToken.None
+        );
         await service.SaveSkillAsync(
-            tenantId, relationship.RelationshipId, "local-seo", "1.0.0", goal.GoalId,
-            "NOT_GRANTED", "APPLICABLE", null, "ACCEPTED", CancellationToken.None);
+            tenantId,
+            relationship.RelationshipId,
+            "local-seo",
+            "1.0.0",
+            goal.GoalId,
+            "NOT_GRANTED",
+            "APPLICABLE",
+            null,
+            "ACCEPTED",
+            CancellationToken.None
+        );
         var goalVersion = RelationshipConfigurationService.GetGoalVersion(goal);
         var workspaceVersion = $"relationship-{relationship.StateVersion}";
         var key = Guid.NewGuid();
 
         var first = await service.VerifyGoalAsync(
-            tenantId, relationship.RelationshipId, actorId, key, new string('a', 64),
-            workspaceVersion, goalVersion, goal.GoalId, goalVersion, "VERIFIED", null,
-            Guid.NewGuid(), CancellationToken.None);
+            tenantId,
+            relationship.RelationshipId,
+            actorId,
+            key,
+            new string('a', 64),
+            workspaceVersion,
+            goalVersion,
+            goal.GoalId,
+            goalVersion,
+            "VERIFIED",
+            null,
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
         var replay = await service.VerifyGoalAsync(
-            tenantId, relationship.RelationshipId, actorId, key, new string('a', 64),
-            workspaceVersion, goalVersion, goal.GoalId, goalVersion, "VERIFIED", null,
-            Guid.NewGuid(), CancellationToken.None);
+            tenantId,
+            relationship.RelationshipId,
+            actorId,
+            key,
+            new string('a', 64),
+            workspaceVersion,
+            goalVersion,
+            goal.GoalId,
+            goalVersion,
+            "VERIFIED",
+            null,
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
 
         Assert.False(first.Replayed);
         Assert.True(replay.Replayed);
         Assert.Equal(first.Decision.DecisionId, replay.Decision.DecisionId);
-        await Assert.ThrowsAsync<RelationshipConfigurationConflictException>(() => service.VerifyGoalAsync(
-            tenantId, relationship.RelationshipId, actorId, key, new string('b', 64),
-            workspaceVersion, goalVersion, goal.GoalId, goalVersion, "VERIFIED", null,
-            Guid.NewGuid(), CancellationToken.None));
+        await Assert.ThrowsAsync<RelationshipConfigurationConflictException>(() =>
+            service.VerifyGoalAsync(
+                tenantId,
+                relationship.RelationshipId,
+                actorId,
+                key,
+                new string('b', 64),
+                workspaceVersion,
+                goalVersion,
+                goal.GoalId,
+                goalVersion,
+                "VERIFIED",
+                null,
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
 
         var changed = await service.VerifyGoalAsync(
-            tenantId, relationship.RelationshipId, actorId, Guid.NewGuid(), new string('c', 64),
-            workspaceVersion, goalVersion, goal.GoalId, goalVersion, "CHANGES_REQUESTED", "Clarify attribution.",
-            Guid.NewGuid(), CancellationToken.None);
+            tenantId,
+            relationship.RelationshipId,
+            actorId,
+            Guid.NewGuid(),
+            new string('c', 64),
+            workspaceVersion,
+            goalVersion,
+            goal.GoalId,
+            goalVersion,
+            "CHANGES_REQUESTED",
+            "Clarify attribution.",
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
         Assert.Equal(first.Decision.DecisionId, changed.Decision.PriorDecisionId);
 
         await using (var db = factory.CreateDbContext())
         {
-            var storedGoal = await db.RelationshipGoals.SingleAsync(item => item.GoalId == goal.GoalId);
+            var storedGoal = await db.RelationshipGoals.SingleAsync(item =>
+                item.GoalId == goal.GoalId
+            );
             storedGoal.Measure = "Qualified confirmed bookings";
             storedGoal.UpdatedAt = storedGoal.UpdatedAt.AddTicks(1);
             await db.SaveChangesAsync();
         }
 
-        var projection = Assert.Single(await service.GetPortalGoalsAsync(
-            tenantId, relationship.RelationshipId, CancellationToken.None));
+        var projection = Assert.Single(
+            await service.GetPortalGoalsAsync(
+                tenantId,
+                relationship.RelationshipId,
+                CancellationToken.None
+            )
+        );
         Assert.Null(projection.CurrentDecision);
         Assert.True(projection.HasPriorDecision);
         await using var verificationDb = factory.CreateDbContext();
@@ -243,37 +454,100 @@ public sealed class RelationshipConfigurationServiceTests
     {
         var (service, relationship, tenantId, actorId, factory) = await CreateServiceAsync();
         var goal = await service.SaveGoalAsync(
-            tenantId, relationship.RelationshipId, "Increase bookings", null,
-            "Confirmed bookings", null, null, "ACCEPTED", CancellationToken.None);
+            tenantId,
+            relationship.RelationshipId,
+            "Increase bookings",
+            null,
+            "Confirmed bookings",
+            null,
+            null,
+            "ACCEPTED",
+            CancellationToken.None
+        );
         await service.SaveSkillAsync(
-            tenantId, relationship.RelationshipId, "local-seo", "1.0.0", goal.GoalId,
-            "NOT_GRANTED", "APPLICABLE", null, "ACCEPTED", CancellationToken.None);
+            tenantId,
+            relationship.RelationshipId,
+            "local-seo",
+            "1.0.0",
+            goal.GoalId,
+            "NOT_GRANTED",
+            "APPLICABLE",
+            null,
+            "ACCEPTED",
+            CancellationToken.None
+        );
 
-        await Assert.ThrowsAsync<RelationshipGoalVersionConflictException>(() => service.VerifyGoalAsync(
-            tenantId, relationship.RelationshipId, actorId, Guid.NewGuid(), new string('a', 64),
-            $"relationship-{relationship.StateVersion}", "goal-stale", goal.GoalId, "goal-stale",
-            "VERIFIED", null, Guid.NewGuid(), CancellationToken.None));
-        await Assert.ThrowsAsync<ArgumentException>(() => service.VerifyGoalAsync(
-            tenantId, relationship.RelationshipId, actorId, Guid.NewGuid(), new string('b', 64),
-            $"relationship-{relationship.StateVersion}", RelationshipConfigurationService.GetGoalVersion(goal),
-            goal.GoalId, RelationshipConfigurationService.GetGoalVersion(goal),
-            "CHANGES_REQUESTED", null, Guid.NewGuid(), CancellationToken.None));
+        await Assert.ThrowsAsync<RelationshipGoalVersionConflictException>(() =>
+            service.VerifyGoalAsync(
+                tenantId,
+                relationship.RelationshipId,
+                actorId,
+                Guid.NewGuid(),
+                new string('a', 64),
+                $"relationship-{relationship.StateVersion}",
+                "goal-stale",
+                goal.GoalId,
+                "goal-stale",
+                "VERIFIED",
+                null,
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.VerifyGoalAsync(
+                tenantId,
+                relationship.RelationshipId,
+                actorId,
+                Guid.NewGuid(),
+                new string('b', 64),
+                $"relationship-{relationship.StateVersion}",
+                RelationshipConfigurationService.GetGoalVersion(goal),
+                goal.GoalId,
+                RelationshipConfigurationService.GetGoalVersion(goal),
+                "CHANGES_REQUESTED",
+                null,
+                Guid.NewGuid(),
+                CancellationToken.None
+            )
+        );
 
         await using var db = factory.CreateDbContext();
         Assert.Empty(await db.RelationshipGoalDecisions.ToListAsync());
         Assert.Empty(await db.RelationshipIdempotency.ToListAsync());
     }
 
-    private static async Task<(RelationshipConfigurationService Service, EmploymentRelationship Relationship, Guid TenantId, Guid ActorId, InMemoryEmploymentRelationshipFactory Factory)> CreateServiceAsync()
+    private static async Task<(
+        RelationshipConfigurationService Service,
+        EmploymentRelationship Relationship,
+        Guid TenantId,
+        Guid ActorId,
+        InMemoryEmploymentRelationshipFactory Factory
+    )> CreateServiceAsync()
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
         var gateway = new RecordingRelationshipConstitutionalGateway();
         var relationships = new EmploymentRelationshipService(
-            factory, gateway, NullLogger<EmploymentRelationshipService>.Instance);
+            factory,
+            gateway,
+            NullLogger<EmploymentRelationshipService>.Instance
+        );
         var tenantId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
         var admitted = await relationships.AdmitAsync(
-            tenantId, actorId, Guid.NewGuid(), "DMA", Guid.NewGuid(), CancellationToken.None);
-        return (new RelationshipConfigurationService(factory, gateway), admitted.Relationship, tenantId, actorId, factory);
+            tenantId,
+            actorId,
+            Guid.NewGuid(),
+            "DMA",
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
+        return (
+            new RelationshipConfigurationService(factory, gateway),
+            admitted.Relationship,
+            tenantId,
+            actorId,
+            factory
+        );
     }
 }

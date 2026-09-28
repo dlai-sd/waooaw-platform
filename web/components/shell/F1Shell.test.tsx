@@ -66,6 +66,18 @@ describe('F1 shell primitives', () => {
     expect(screen.getByRole('button', { name: 'Sign out' })).toHaveTextContent('Sign out');
   });
 
+  it('shows Azure Key Vault only in the authorized desktop navigation', () => {
+    render(
+      <ProtectedAppShell messages={messages.en} showKeyVaultAdmin variant="customer">
+        <p>Administrator content</p>
+      </ProtectedAppShell>
+    );
+    expect(screen.getByRole('link', { name: 'Azure Key Vault' })).toHaveAttribute('href', '/admin/azure-key-vault');
+    expect(screen.getByRole('navigation', { name: messages.en.customerMobileNavigation })).not.toHaveTextContent(
+      'Azure Key Vault'
+    );
+  });
+
   it('composes registered customer navigation with persistent Stop', () => {
     const { container } = render(
       <ProtectedAppShell

@@ -95,7 +95,7 @@ public sealed class ProfessionalsController : ControllerBase
                 displayName = disclosure.DisplayName,
                 disclosurePath = $"/marketplace/{disclosure.CustomerRouteSlug}",
                 availableIntents = disclosure.Eligibility.Eligible
-                    ? disclosure.Trial.Available && _trialOwners.IsConfigured
+                    ? disclosure.Trial.Available
                         ? new[] { "TRIAL", "HIRE" }
                         : ["HIRE"]
                     : [],
@@ -103,11 +103,11 @@ public sealed class ProfessionalsController : ControllerBase
                 eligibility = disclosure.Eligibility,
                 indicativePrice = disclosure.IndicativePrice,
                 offerabilityState = disclosure.Eligibility.Eligible
-                    ? disclosure.Trial.Available && _trialOwners.IsConfigured
+                    ? disclosure.Trial.Available
                         ? "OFFERABLE"
                         : "TRIAL_ONLY"
                     : "NOT_OFFERABLE",
-                trialTerms = disclosure.Trial.Available && _trialOwners.IsConfigured
+                trialTerms = disclosure.Trial.Available
                     ? $"{disclosure.Trial.DurationDays}-day trial; no paid API calls or external actions."
                     : null,
                 nextAction = disclosure.Eligibility.Eligible ? "VIEW_DISCLOSURE" : "NONE",

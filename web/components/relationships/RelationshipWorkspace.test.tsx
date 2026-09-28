@@ -479,16 +479,20 @@ describe('RelationshipWorkspace', () => {
     expect(screen.getByText('₹180.00')).toBeVisible();
     expect(screen.getByText(/Ad spend is separate/)).toBeVisible();
     const decisions = screen.getByRole('group', { name: 'Contract decisions' });
-    for (const name of ['Hire and accept exact contract', 'Not now', 'Cancel', 'Exit']) {
+    for (const name of ['Accept exact monthly contract', 'Not now', 'Cancel', 'Exit']) {
       expect(within(decisions).getByRole(name === 'Exit' ? 'link' : 'button', { name })).toBeVisible();
     }
-    expect(within(decisions).queryByRole('button', { name: 'Continue to payment' })).not.toBeInTheDocument();
+    expect(within(decisions).queryByRole('button', { name: 'Confirm contract funding' })).not.toBeInTheDocument();
     expect(within(decisions).queryByRole('checkbox')).not.toBeInTheDocument();
     expect(screen.queryByText(/hurry|expires in|last chance/i)).not.toBeInTheDocument();
-    fireEvent.click(within(decisions).getByRole('button', { name: 'Hire and accept exact contract' }));
-    const proceed = await within(decisions).findByRole('button', { name: 'Continue to payment' });
+    fireEvent.click(within(decisions).getByRole('button', { name: 'Accept exact monthly contract' }));
+    const proceed = await within(decisions).findByRole('button', { name: 'Confirm contract funding' });
     expect(proceed).toBeVisible();
-    expect(screen.getByText('Contract accepted and evidenced. Payment has not started.')).toBeVisible();
+    expect(
+      screen.getByText(
+        'Exact monthly contract accepted and evidenced. Existing funding will be verified before activation.'
+      )
+    ).toBeVisible();
     fireEvent.click(proceed);
     expect(await screen.findByText(/Checkout remains unresolved/)).toBeVisible();
     fireEvent.click(within(decisions).getByRole('button', { name: 'Not now' }));
@@ -514,7 +518,7 @@ describe('RelationshipWorkspace', () => {
     const contractSection = screen.getByRole('heading', { name: 'Employment contract' }).closest('section');
     if (!contractSection) throw new Error('Contract section is required');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to payment' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm contract funding' }));
 
     expect(await within(contractSection).findByText('Payment owner is unavailable.')).toBeVisible();
     expect(screen.queryByText(/payment succeeded/i)).not.toBeInTheDocument();
@@ -522,12 +526,18 @@ describe('RelationshipWorkspace', () => {
 
   it('launches official Razorpay Checkout and treats its callback only as a reconciliation prompt', async () => {
     let checkoutOptions: Record<string, unknown> | undefined;
-    const open = jest.fn(() => (checkoutOptions?.handler as () => void)());
+    const open = jest.fn(() =>
+      (checkoutOptions?.handler as (response: object) => void)({
+        razorpay_order_id: 'order_exact',
+        razorpay_payment_id: 'pay_exact',
+        razorpay_signature: 'a'.repeat(64),
+      })
+    );
     Object.defineProperty(window, 'Razorpay', {
       configurable: true,
       value: function Razorpay(options: Record<string, unknown>) {
         checkoutOptions = options;
-        return { open };
+        return { on: jest.fn(), open };
       },
     });
     global.fetch = jest
@@ -564,7 +574,7 @@ describe('RelationshipWorkspace', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to payment' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm contract funding' }));
 
     expect(await screen.findByRole('button', { name: 'Complete paid activation' })).toBeVisible();
     expect(open).toHaveBeenCalledTimes(1);
@@ -577,8 +587,15 @@ describe('RelationshipWorkspace', () => {
       })
     );
     const reconciliationCall = (global.fetch as jest.Mock).mock.calls[1];
-    expect(reconciliationCall[0]).toContain('checkoutIntentId=7bc5b28a-a674-4c77-b3e0-7da0f8bf1e50');
-    expect(reconciliationCall[1]).not.toHaveProperty('body');
+    expect(reconciliationCall[0]).toContain('/contract-journey');
+    expect(JSON.parse(reconciliationCall[1].body)).toEqual(
+      expect.objectContaining({
+        action: 'confirm',
+        checkoutIntentId: '7bc5b28a-a674-4c77-b3e0-7da0f8bf1e50',
+        razorpayOrderId: 'order_exact',
+        razorpayPaymentId: 'pay_exact',
+      })
+    );
     expect(screen.getByText(/signature-verified and reconciled/)).toBeVisible();
   });
 
@@ -588,7 +605,7 @@ describe('RelationshipWorkspace', () => {
       configurable: true,
       value: function Razorpay(options: Record<string, unknown>) {
         checkoutOptions = options;
-        return { open: () => (options.modal as { ondismiss(): void }).ondismiss() };
+        return { on: jest.fn(), open: () => (options.modal as { ondismiss(): void }).ondismiss() };
       },
     });
     global.fetch = jest.fn().mockResolvedValue({
@@ -613,7 +630,7 @@ describe('RelationshipWorkspace', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to payment' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm contract funding' }));
 
     expect(await screen.findByText(/closed. Payment is not marked failed/)).toBeVisible();
     expect(checkoutOptions).toBeDefined();
@@ -631,6 +648,7 @@ describe('RelationshipWorkspace', () => {
         listPriceInrPaise: 118000,
         discountInrPaise: 118000,
         taxInrPaise: 18000,
+        couponCode: 'DEMO100',
         renewalConsequence: 'Renews at the accepted monthly price',
         commercialOutcomeReference: 'zero-price:intent-1',
         commercialEvidenceId: '14eddf57-ef75-4a94-bfac-06b2b550dd44',
@@ -646,11 +664,12 @@ describe('RelationshipWorkspace', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to payment' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm contract funding' }));
 
     expect(
       await screen.findByText('100% Demo discount applied. Amount paid: INR 0. No payment method charged.')
     ).toBeVisible();
+    expect(screen.getByText('DEMO100 discount')).toBeVisible();
     expect(screen.getByText('Amount paid').nextSibling).toHaveTextContent('INR 0');
     for (const method of ['Credit card', 'Debit card', 'UPI', 'Netbanking', 'Wallet']) {
       expect(screen.getByText(method)).toBeVisible();

@@ -57,6 +57,16 @@
     }
   },
   "files": {
-    "ignore": ["node_modules", ".next", "dist", "build", "coverage", "lib/api/generated", "*.min.js"]
+    "ignore": [
+      "node_modules",
+      ".next",
+      "dist",
+      "build",
+      "coverage",
+      "lib/api/generated",
+      "public/sw.js",
+      "public/workbox-*.js",
+      "*.min.js"
+    ]
   }
 }

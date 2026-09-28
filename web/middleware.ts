@@ -5,15 +5,22 @@ import { withAuth, type NextRequestWithAuth } from 'next-auth/middleware';
 import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server';
 import { listPublishedArticles } from '@/config/blogs';
 import { listPublicProfessionals } from '@/config/professionals';
+import { contentSecurityPolicy } from '@/lib/content-security-policy';
 
 const protectedMiddleware = withAuth({});
 const professionalSlugs = new Set(listPublicProfessionals().map(({ slug }) => slug));
 const articleSlugs = new Set(listPublishedArticles().map(({ slug }) => slug));
-const protectedFamilies = new Set(['home', 'relationships', 'marketplace', 'alerts', 'settings', 'profile', 'founder']);
-
-function contentSecurityPolicy(nonce: string): string {
-  return `default-src 'self'; script-src 'self' 'nonce-${nonce}' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`;
-}
+const protectedFamilies = new Set([
+  'home',
+  'relationships',
+  'marketplace',
+  'professionals',
+  'alerts',
+  'settings',
+  'profile',
+  'founder',
+  'admin',
+]);
 
 function publicResponse(request: NextRequest, nonce: string): NextResponse {
   const requestHeaders = new Headers(request.headers);

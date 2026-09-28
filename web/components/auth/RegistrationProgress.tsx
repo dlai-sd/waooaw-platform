@@ -1,6 +1,8 @@
 // Implements: work-contracts/WC-083-route-backed-auth-dialog.md §Milestone 2
+// Implements: architecture/reference/ux/wc-105-authentication-flow-defect-remediation-plan.md AUTH-UI-07
 // Constitutional basis: C-049 (Honest Limitation), C-071 (Accessible status)
 
+import { ArrowRight } from 'lucide-react';
 import type { IdentityNextAction } from '@/lib/api/generated/models/IdentityNextAction';
 
 const letters = [
@@ -40,7 +42,10 @@ export function RegistrationProgress({ action, pending }: { action: IdentityNext
                 : 'upcoming';
           return (
             <li data-state={state} key={id}>
-              {label}
+              <span className="registration-progress-marker">{label}</span>
+              {index < letters.length - 1 ? (
+                <ArrowRight aria-hidden="true" className="registration-progress-arrow" size={14} />
+              ) : null}
             </li>
           );
         })}

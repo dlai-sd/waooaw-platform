@@ -41,7 +41,11 @@ describe('ProviderCommands', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Log in with Google' }));
 
     await waitFor(() =>
-      expect(signIn).toHaveBeenCalledWith('keycloak-google', { callbackUrl: '/home' }, { prompt: 'select_account' })
+      expect(signIn).toHaveBeenCalledWith(
+        'keycloak-google',
+        { callbackUrl: '/home' },
+        { max_age: '0', prompt: 'select_account' }
+      )
     );
     expect(screen.getByRole('button', { name: 'Log in with Facebook (Unavailable)' })).toBeDisabled();
   });
@@ -143,5 +147,20 @@ describe('ProviderCommands', () => {
     expect(screen.getByText('Sign-in services are still starting.')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps every provider visible and disabled while readiness is pending', () => {
+    render(
+      <ProviderCommands
+        callbackUrl="/login"
+        intent="login"
+        providers={providers.map((provider) => ({ ...provider, availability: 'AVAILABLE' }))}
+        readinessPending
+      />
+    );
+
+    expect(screen.getAllByRole('button')).toHaveLength(4);
+    for (const button of screen.getAllByRole('button')) expect(button).toBeDisabled();
+    expect(screen.queryByText('Sign-in services are still starting.')).not.toBeInTheDocument();
   });
 });

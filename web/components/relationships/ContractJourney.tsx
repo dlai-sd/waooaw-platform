@@ -54,6 +54,7 @@ interface CheckoutOutcome {
   listPriceInrPaise?: number;
   discountInrPaise?: number;
   taxInrPaise?: number;
+  couponCode?: string;
   renewalConsequence?: string;
   commercialOutcomeReference?: string;
   commercialEvidenceId?: string;
@@ -62,7 +63,20 @@ interface CheckoutOutcome {
 }
 
 interface RazorpayCheckout {
+  on(event: 'payment.failed', handler: (response: RazorpayFailureResponse) => void): void;
   open(): void;
+}
+
+interface RazorpaySuccessResponse {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}
+
+interface RazorpayFailureResponse {
+  error?: {
+    description?: string;
+  };
 }
 
 declare global {
@@ -79,6 +93,8 @@ interface Props {
 const money = (paise: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(paise / 100);
 const razorpayScriptId = 'razorpay-checkout-script';
+const razorpayLogoUrl =
+  'https://raw.githubusercontent.com/dlai-sd/waooaw-platform/main/web/public/waooaw-platform-logo.png';
 
 async function loadRazorpayCheckout() {
   if (window.Razorpay) return;
@@ -114,23 +130,26 @@ export function ContractJourney({ relationshipId, journey }: Props) {
   const idempotencyKeys = useRef<Record<string, string>>({});
   if (!journey) return null;
 
-  async function reconcileCheckout(checkoutIntentId: string) {
-    setStatus('Payment confirmation is being reconciled with Razorpay.');
-    const response = await fetch(
-      `/api/relationships/${encodeURIComponent(relationshipId)}/contract-journey?checkoutIntentId=${encodeURIComponent(checkoutIntentId)}`,
-      { cache: 'no-store' }
-    );
-    const result = (await response.json().catch(() => ({}))) as CheckoutOutcome & { title?: string };
-    if (!response.ok) {
-      setStatus(result.title ?? 'Payment confirmation remains unresolved. No activation success was recorded.');
+  async function confirmRazorpayCheckout(checkoutIntentId: string, response: RazorpaySuccessResponse) {
+    setStatus('Razorpay received the payment. WAOOAW is verifying the signed payment evidence.');
+    const confirmation = await fetch(`/api/relationships/${encodeURIComponent(relationshipId)}/contract-journey`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'confirm',
+        checkoutIntentId,
+        razorpayOrderId: response.razorpay_order_id,
+        razorpayPaymentId: response.razorpay_payment_id,
+        razorpaySignature: response.razorpay_signature,
+      }),
+    });
+    const result = (await confirmation.json().catch(() => ({}))) as CheckoutOutcome & { title?: string };
+    if (!confirmation.ok || result.outcomeKind !== 'CAPTURED') {
+      setStatus(result.title ?? 'Signed payment confirmation remains unresolved. No activation success was recorded.');
       return;
     }
     setCheckout(result);
-    setStatus(
-      result.outcomeKind === 'CAPTURED'
-        ? 'Payment captured and reconciled by WAOOAW. Activation is ready for your confirmation.'
-        : (result.customerSafeNextAction ?? 'Payment confirmation remains pending. Do not create another order.')
-    );
+    setStatus('Payment captured and signature-verified by WAOOAW. Activation is ready for your confirmation.');
   }
 
   async function launchRazorpay(outcome: CheckoutOutcome) {
@@ -150,19 +169,35 @@ export function ContractJourney({ relationshipId, journey }: Props) {
       const Checkout = window.Razorpay;
       if (!Checkout) throw new Error('Secure Razorpay Checkout could not be loaded.');
       const checkoutIntentId = outcome.checkoutIntentId;
-      new Checkout({
+      const razorpayCheckout = new Checkout({
         key: outcome.publicCheckoutKey,
         amount: outcome.amountInrPaise,
         currency: outcome.currency,
         name: outcome.merchantDisplayName,
+        image: razorpayLogoUrl,
         order_id: outcome.providerOrderReference,
-        handler: () => void reconcileCheckout(checkoutIntentId),
+        handler: (response: RazorpaySuccessResponse) => {
+          if (
+            response.razorpay_order_id !== outcome.providerOrderReference ||
+            !response.razorpay_payment_id ||
+            !response.razorpay_signature
+          ) {
+            setStatus('Razorpay returned an invalid payment confirmation. No payment success was recorded.');
+            return;
+          }
+          void confirmRazorpayCheckout(checkoutIntentId, response);
+        },
         modal: {
           ondismiss: () =>
             setStatus('Razorpay Checkout was closed. Payment is not marked failed; reconciliation remains available.'),
         },
-        retry: { enabled: false },
-      }).open();
+      });
+      razorpayCheckout.on('payment.failed', (response) => {
+        setStatus(
+          response.error?.description ?? 'Razorpay could not complete the payment. No payment success was recorded.'
+        );
+      });
+      razorpayCheckout.open();
     } catch (caught) {
       setStatus(caught instanceof Error ? caught.message : 'Secure Razorpay Checkout could not be loaded.');
     }
@@ -193,7 +228,7 @@ export function ContractJourney({ relationshipId, journey }: Props) {
     const result = await response.json().catch(() => ({}));
     if (response.ok && action === 'accept') {
       setAccepted(true);
-      setStatus('Contract accepted and evidenced. Payment has not started.');
+      setStatus('Exact monthly contract accepted and evidenced. Existing funding will be verified before activation.');
     } else if (response.ok && action === 'pay') {
       const outcome = result as CheckoutOutcome;
       setCheckout(outcome);
@@ -202,6 +237,10 @@ export function ContractJourney({ relationshipId, journey }: Props) {
         await launchRazorpay(outcome);
       } else if (outcome.outcomeKind === 'FULLY_DISCOUNTED') {
         setStatus('100% Demo discount applied. Amount paid: INR 0. No payment method charged.');
+      } else if (outcome.outcomeKind === 'CAPTURED') {
+        setStatus(
+          'Existing Razorpay payment is now bound to this exact contract. Activation is ready for confirmation.'
+        );
       } else {
         setStatus(
           outcome.customerSafeNextAction ??
@@ -299,7 +338,7 @@ export function ContractJourney({ relationshipId, journey }: Props) {
               <dd>{money(checkout.listPriceInrPaise ?? terms.grossAmountInrPaise)}</dd>
             </div>
             <div>
-              <dt>Demo discount</dt>
+              <dt>{checkout.couponCode ?? 'Demo'} discount</dt>
               <dd>-{money(checkout.discountInrPaise ?? terms.grossAmountInrPaise)}</dd>
             </div>
             <div>
@@ -345,12 +384,12 @@ export function ContractJourney({ relationshipId, journey }: Props) {
       <fieldset className="decision-actions" aria-label="Contract decisions">
         {!accepted && (
           <button type="button" disabled={busy} onClick={() => command('accept')}>
-            Hire and accept exact contract
+            Accept exact monthly contract
           </button>
         )}
         {accepted && journey.activationState !== 'ACTIVE' && (
           <button type="button" disabled={busy} onClick={() => command('pay')}>
-            Continue to payment
+            Confirm contract funding
           </button>
         )}
         <button

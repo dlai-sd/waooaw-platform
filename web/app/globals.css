@@ -1978,8 +1978,8 @@ select:focus-visible,
   color: var(--ink);
 }
 .auth-dialog {
-  width: min(calc(100% - 2rem), 700px);
-  height: min(calc(100dvh - 2rem), calc((100vw - 2rem) * 0.5625), 394px);
+  width: min(calc(100% - 2rem), 560px);
+  height: fit-content;
   max-height: calc(100dvh - 2rem);
   padding: 0;
   border: 1px solid var(--line);
@@ -1990,10 +1990,10 @@ select:focus-visible,
   overflow: auto;
 }
 .auth-dialog-entry {
-  width: min(calc(100% - 2rem), 520px);
-  height: min(calc(100dvh - 2rem), 360px);
-  min-height: min(calc(100dvh - 2rem), 360px);
-  overflow: auto;
+  width: min(calc(100% - 2rem), 560px);
+  height: fit-content;
+  min-height: 0;
+  overflow: visible;
 }
 .auth-dialog::backdrop {
   background: rgb(15 31 48 / 58%);
@@ -2001,9 +2001,7 @@ select:focus-visible,
 }
 .auth-dialog-panel {
   position: relative;
-  min-height: 100%;
-  border-block-start: 5px solid transparent;
-  border-image: linear-gradient(90deg, var(--color-brand-blue), var(--color-brand-green), var(--color-brand-orange)) 1;
+  min-height: 0;
 }
 .auth-dialog-entry .auth-dialog-panel {
   min-height: 0;
@@ -2034,12 +2032,11 @@ select:focus-visible,
 }
 .auth-dialog .auth-entry-view {
   max-width: 440px;
-  min-height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   margin-inline: auto;
-  padding-block: 2rem 1.5rem;
+  padding-block: 1.5rem 1.25rem;
 }
 .auth-dialog-entry .auth-entry-view {
   min-height: 0;
@@ -2060,7 +2057,7 @@ select:focus-visible,
   display: grid;
   justify-items: center;
   gap: .75rem;
-  margin-block-end: 1.5rem;
+  margin-block-end: 1rem;
   text-align: center;
 }
 .auth-brand-logo {
@@ -2129,16 +2126,24 @@ select:focus-visible,
 .auth-dialog .auth-boundary {
   min-height: 0;
 }
-.auth-loading-state {
-  min-height: 118px;
+.auth-provider-status {
+  height: 74px;
+  min-height: 74px;
   display: grid;
   align-content: center;
+}
+.auth-provider-status p {
+  margin: 0;
+  text-align: center;
+}
+.auth-provider-status-ready {
+  visibility: hidden;
 }
 .auth-loading-bar {
   display: block;
   width: min(100%, 280px);
   height: 4px;
-  margin: 1.25rem auto .75rem;
+  margin: .25rem auto .65rem;
   overflow: hidden;
   border-radius: 2px;
   background: var(--line);
@@ -2168,36 +2173,52 @@ select:focus-visible,
   font-size: .85rem;
 }
 .registration-progress ol {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: .5rem;
+  display: flex;
+  align-items: center;
+  gap: .25rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 .registration-progress li {
-  aspect-ratio: 1;
   min-width: 0;
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: .25rem;
+}
+.registration-progress-marker {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
   display: grid;
   place-items: center;
   border: 2px solid var(--line);
   border-radius: 50%;
   color: var(--muted);
   background: var(--surface);
+  font-size: .75rem;
   font-weight: 800;
 }
-.registration-progress li[data-state="complete"] {
+.registration-progress-arrow {
+  flex: 0 0 14px;
+  color: var(--muted);
+}
+[dir="rtl"] .registration-progress-arrow {
+  transform: scaleX(-1);
+}
+.registration-progress li[data-state="complete"] .registration-progress-marker {
   border-color: var(--color-brand-green);
   color: #fff;
   background: var(--color-brand-green);
 }
-.registration-progress li[data-state="active"] {
+.registration-progress li[data-state="active"] .registration-progress-marker {
   border-color: var(--color-brand-blue);
   color: var(--color-brand-navy);
   background: color-mix(in srgb, var(--color-brand-orange) 22%, var(--surface));
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-brand-blue) 18%, transparent);
 }
-.registration-progress[data-pending="true"] li[data-state="active"] {
+.registration-progress[data-pending="true"] li[data-state="active"] .registration-progress-marker {
   animation: registration-wave 1.4s ease-in-out infinite;
 }
 @keyframes registration-wave {
@@ -2749,6 +2770,57 @@ select:focus-visible,
 .disclosure-continuation input {
   margin-block-start: .25rem;
 }
+.disclosure-coupon {
+  display: grid;
+  gap: .4rem;
+  margin-block: 1rem;
+}
+.disclosure-coupon > label {
+  display: block;
+  font-size: .82rem;
+  font-weight: 750;
+}
+.disclosure-coupon > label span {
+  color: var(--muted);
+  font-weight: 500;
+}
+.disclosure-coupon > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: .5rem;
+}
+.disclosure-coupon input {
+  min-width: 0;
+  min-height: 42px;
+  margin: 0;
+  padding-inline: .7rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  text-transform: uppercase;
+}
+.disclosure-coupon button {
+  min-height: 42px;
+  padding-inline: .9rem;
+  border: 1px solid var(--green);
+  border-radius: 4px;
+  background: var(--green);
+  color: white;
+  cursor: pointer;
+  font-weight: 750;
+}
+.disclosure-coupon button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.disclosure-coupon > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: .78rem;
+  line-height: 1.4;
+}
 .offer-terms-version {
   color: var(--muted);
   font-size: .76rem;
@@ -2925,7 +2997,8 @@ select:focus-visible,
   gap: .35rem;
   font-weight: 700;
 }
-.portal-form input,
+.portal-form input:not([type="checkbox"]),
+.portal-form textarea,
 .portal-form select {
   min-width: 0;
   min-height: 44px;
@@ -2935,6 +3008,16 @@ select:focus-visible,
   color: var(--ink);
   background: var(--surface);
   font: inherit;
+}
+.portal-form textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+.portal-form fieldset {
+  margin: 0;
+  padding: .8rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
 }
 .portal-form [role="status"] {
   min-height: 1.5rem;
@@ -3074,6 +3157,35 @@ select:focus-visible,
 }
 .settings-wide {
   grid-column: 1 / -1;
+}
+.key-vault-writer {
+  width: min(100%, 42rem);
+  margin-block-start: 2rem;
+  padding-block: 1.5rem;
+  border-block: 1px solid var(--line);
+}
+.key-vault-writer > header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+.key-vault-writer > header > svg {
+  color: var(--green);
+}
+.key-vault-writer h2,
+.key-vault-writer header p {
+  margin-block: 0 .35rem;
+}
+.key-vault-writer header p:last-child {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.key-vault-writer .primary-command {
+  justify-self: start;
+}
+.key-vault-writer .error-copy {
+  color: var(--color-error);
 }
 .relationship-workspace-grid > .lifecycle-panel {
   position: sticky;
@@ -3812,13 +3924,13 @@ select:focus-visible,
     height: fit-content;
   }
   .auth-dialog-entry {
-    height: min(calc(100dvh - 2rem), 500px);
-    min-height: min(calc(100dvh - 2rem), 500px);
+    height: fit-content;
+    min-height: 0;
     max-height: calc(100dvh - 2rem);
     overflow-y: auto;
   }
   .auth-dialog-panel {
-    min-height: min(406px, calc(100dvh - 2rem));
+    min-height: 0;
   }
   .auth-dialog .auth-view {
     padding: 1.4rem;
@@ -3826,6 +3938,12 @@ select:focus-visible,
   }
   .auth-dialog .auth-entry-view {
     min-height: 0;
+  }
+  .registration-progress-marker {
+    width: 32px;
+    height: 32px;
+    flex-basis: 32px;
+    font-size: .7rem;
   }
 }
 

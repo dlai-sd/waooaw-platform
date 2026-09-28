@@ -273,6 +273,8 @@ describe('Keycloak broker configuration', () => {
     expect(providers.find((provider) => provider.id === 'keycloak-google')?.authorization?.params).toEqual({
       scope: 'openid profile email',
       kc_idp_hint: 'google',
+      prompt: 'select_account',
+      max_age: '0',
     });
     expect(providers.find((provider) => provider.id === 'keycloak-facebook')?.authorization?.params).toEqual({
       scope: 'openid profile email',

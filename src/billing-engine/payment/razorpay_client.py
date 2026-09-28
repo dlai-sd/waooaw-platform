@@ -6,7 +6,9 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
+import re
 from base64 import b64encode
+from urllib.parse import quote
 
 import httpx
 
@@ -15,6 +17,7 @@ from config import Settings
 logger = logging.getLogger(__name__)
 
 _RAZORPAY_BASE = "https://api.razorpay.com/v1"
+_RAZORPAY_PAYMENT_ID = re.compile(r"pay_[A-Za-z0-9]{1,64}\Z")
 
 # Bundle tier → Razorpay plan_id env var lookup
 _PLAN_ENV_KEYS: dict[str, str] = {
@@ -57,6 +60,19 @@ class RazorpayClient:
             )
         resp.raise_for_status()
         logger.info("Razorpay order created: order_id=%s amount=%d", resp.json().get("id"), amount_paise)
+        return resp.json()
+
+    async def fetch_payment(self, payment_id: str) -> dict:
+        """Fetch provider-owned payment status without exposing credentials to the browser."""
+        if not _RAZORPAY_PAYMENT_ID.fullmatch(payment_id):
+            raise ValueError("Invalid Razorpay payment identifier.")
+        encoded_payment_id = quote(payment_id, safe="")
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                f"{_RAZORPAY_BASE}/payments/{encoded_payment_id}",
+                headers={"Authorization": self._auth_header()},
+            )
+        resp.raise_for_status()
         return resp.json()
 
     def verify_webhook_signature(self, body: bytes, signature: str) -> bool:

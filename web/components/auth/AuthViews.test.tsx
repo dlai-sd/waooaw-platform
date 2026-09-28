@@ -60,6 +60,8 @@ describe('authentication views', () => {
 
     expect(screen.getByRole('img', { name: 'WAOOAW' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Log in to WAOOAW' })).toBeInTheDocument();
+    expect(screen.getByText("Don't have an account?")).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Register' })).toHaveAttribute('href', '/register?returnTo=%2Fhome');
     expect(screen.getByText('Welcome back.')).toBeInTheDocument();
     expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-callback-url', '/login?returnTo=%2Fhome');
     expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-intent', 'login');
@@ -70,9 +72,10 @@ describe('authentication views', () => {
     render(await LoginView({ searchParams: Promise.resolve({ returnTo: '/settings' }) }));
 
     expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-callback-url', '/login?returnTo=%2Fsettings');
+    expect(screen.getByRole('link', { name: 'Register' })).toHaveAttribute('href', '/register?returnTo=%2Fsettings');
   });
 
-  it('sends an authenticated visitor to browse Marketplace without registration', async () => {
+  it('sends an authenticated broker identity to registration before the customer portal', async () => {
     jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
     jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'registration-required' });
 
@@ -80,7 +83,7 @@ describe('authentication views', () => {
       'NEXT_REDIRECT'
     );
 
-    expect(redirect).toHaveBeenCalledWith('/marketplace');
+    expect(redirect).toHaveBeenCalledWith('/register?returnTo=%2Fsettings');
     expect(listIdentityProviders).not.toHaveBeenCalled();
   });
 
@@ -100,6 +103,18 @@ describe('authentication views', () => {
     );
 
     expect(redirect).toHaveBeenCalledWith('/settings');
+    expect(listIdentityProviders).not.toHaveBeenCalled();
+  });
+
+  it('does not restart login for an authenticated identity requiring recovery', async () => {
+    jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
+    jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'forbidden', code: 'IDENTITY_FORBIDDEN' });
+
+    await expect(LoginView({ searchParams: Promise.resolve({ returnTo: '/settings' }) })).rejects.toThrow(
+      'NEXT_REDIRECT'
+    );
+
+    expect(redirect).toHaveBeenCalledWith('/403');
     expect(listIdentityProviders).not.toHaveBeenCalled();
   });
 

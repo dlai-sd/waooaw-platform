@@ -24,6 +24,7 @@ from httpx import Response
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
+from starlette.requests import Request
 
 from payment.models import (
     CheckoutOutcomeKind,
@@ -35,10 +36,19 @@ from payment.models import (
 from payment.onboarding import OnboardingService
 from payment.paid_activation import PaidActivationService
 from payment.razorpay_client import RazorpayClient
-from payment.router import OnboardingOrderBody
+from payment.router import HireCommercialPreviewBody, OnboardingOrderBody
 from payment.webhook import WebhookHandler
 from wallet.models import RenewalResult, SubscriptionActivationResult
 from wallet.service import WalletService
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("payment_id", ["../orders", "pay_../orders", "https://attacker.invalid", "pay_id?expand=card"])
+async def test_razorpay_fetch_payment_rejects_non_opaque_identifiers(payment_id):
+    client = RazorpayClient(settings=MagicMock())
+
+    with pytest.raises(ValueError, match="Invalid Razorpay payment identifier"):
+        await client.fetch_payment(payment_id)
 
 
 # ---------------------------------------------------------------------------
@@ -46,6 +56,42 @@ from wallet.service import WalletService
 # ---------------------------------------------------------------------------
 
 _PAYMENT_DDL = [
+    """CREATE TABLE IF NOT EXISTS pre_hire_checkout_orders (
+        checkout_intent_id TEXT PRIMARY KEY,
+        customer_id TEXT NOT NULL,
+        professional_type TEXT NOT NULL,
+        professional_version TEXT NOT NULL,
+        disclosure_revision TEXT NOT NULL,
+        terms_version TEXT NOT NULL,
+        cadence TEXT NOT NULL,
+        list_price_inr_paise INTEGER NOT NULL,
+        discount_inr_paise INTEGER NOT NULL,
+        tax_inr_paise INTEGER NOT NULL,
+        payable_inr_paise INTEGER NOT NULL,
+        coupon_code TEXT,
+        razorpay_order_id TEXT UNIQUE,
+        razorpay_payment_id TEXT UNIQUE,
+        commercial_evidence_id TEXT,
+        relationship_id TEXT UNIQUE,
+        contract_checkout_intent_id TEXT UNIQUE,
+        status TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )""",
+    """CREATE TABLE IF NOT EXISTS razorpay_checkout_orders (
+        checkout_intent_id TEXT PRIMARY KEY,
+        razorpay_order_id TEXT NOT NULL UNIQUE,
+        tenant_id TEXT NOT NULL,
+        customer_id TEXT NOT NULL,
+        relationship_id TEXT NOT NULL,
+        accepted_contract_id TEXT NOT NULL,
+        contract_version INTEGER NOT NULL,
+        contract_hash TEXT NOT NULL,
+        contract_acceptance_id TEXT NOT NULL,
+        payment_consent_evidence_id TEXT NOT NULL,
+        agent_type TEXT NOT NULL,
+        bundle_tier TEXT NOT NULL
+    )""",
     """CREATE TABLE IF NOT EXISTS payment_intents (
         razorpay_payment_id TEXT PRIMARY KEY,
         razorpay_order_id   TEXT NOT NULL,
@@ -153,6 +199,374 @@ async def test_relationship_checkout_reconciliation_is_exact_bound(payment_sessi
     assert conflict.value.status_code == 409
 
 
+@pytest.mark.asyncio
+async def test_signed_razorpay_checkout_confirmation_uses_persisted_order(payment_session, monkeypatch):
+    from payment import router as payment_router
+
+    class SessionContext:
+        async def __aenter__(self):
+            return payment_session
+
+        async def __aexit__(self, _type, _value, _traceback):
+            return False
+
+    monkeypatch.setattr(payment_router, "get_session_factory", lambda: lambda: SessionContext())
+    redis_client = fakeredis.aioredis.FakeRedis()
+    monkeypatch.setattr(payment_router.aioredis, "from_url", lambda *_args, **_kwargs: redis_client)
+    settings = MagicMock()
+    settings.RAZORPAY_KEY_SECRET = "test-secret"
+    settings.REDIS_URL = "redis://redis:6379/0"
+    monkeypatch.setattr(payment_router, "_settings", settings)
+    monkeypatch.setattr(payment_router.RazorpayClient, "fetch_payment", AsyncMock(return_value={
+        "id": "pay_test_123", "order_id": "order_test_123", "status": "captured", "currency": "INR",
+    }))
+    checkout_intent_id = uuid.uuid4()
+    ids = [uuid.uuid4() for _ in range(7)]
+    await payment_session.execute(text(
+        "INSERT INTO razorpay_checkout_orders "
+        "(checkout_intent_id, razorpay_order_id, tenant_id, customer_id, relationship_id, "
+        "accepted_contract_id, contract_version, contract_hash, contract_acceptance_id, "
+        "payment_consent_evidence_id, agent_type, bundle_tier) VALUES "
+        "(:checkout, 'order_test_123', :tenant, :customer, :relationship, :contract, 1, :hash, "
+        ":acceptance, :consent, 'DMA', 'STARTER')"
+    ).bindparams(
+        checkout=str(checkout_intent_id), tenant=str(ids[0]), customer=str(ids[1]),
+        relationship=str(ids[2]), contract=str(ids[3]), hash="a" * 64,
+        acceptance=str(ids[4]), consent=str(ids[5]),
+    ))
+    await payment_session.commit()
+    payment_id = "pay_test_123"
+    signature = hmac.new(
+        b"test-secret",
+        f"order_test_123|{payment_id}".encode(),
+        hashlib.sha256,
+    ).hexdigest()
+
+    result = await payment_router.confirm_razorpay_checkout(
+        checkout_intent_id,
+        payment_router.RazorpayCheckoutConfirmationBody(
+            razorpay_order_id="order_test_123",
+            razorpay_payment_id=payment_id,
+            razorpay_signature=signature,
+        ),
+    )
+
+    assert result.outcome_kind is CheckoutOutcomeKind.CAPTURED
+    assert result.relationship_id == ids[2]
+    assert result.commercial_outcome_reference == payment_id
+    stored = (await payment_session.execute(text(
+        "SELECT status, checkout_intent_id FROM payment_intents WHERE razorpay_payment_id = :payment_id"
+    ).bindparams(payment_id=payment_id))).fetchone()
+    assert stored.status == "CAPTURED"
+    assert stored.checkout_intent_id == str(checkout_intent_id)
+
+
+@pytest.mark.asyncio
+async def test_pre_hire_checkout_is_idempotent_and_signature_verified(payment_session, monkeypatch):
+    from payment import router as payment_router
+
+    class SessionContext:
+        async def __aenter__(self):
+            return payment_session
+
+        async def __aexit__(self, _type, _value, _traceback):
+            return False
+
+    monkeypatch.setattr(payment_router, "get_session_factory", lambda: lambda: SessionContext())
+    settings = MagicMock()
+    settings.WAOOAW_ENVIRONMENT = "demo"
+    settings.RAZORPAY_KEY_ID = "rzp_test_key"
+    settings.RAZORPAY_KEY_SECRET = "test-secret"
+    settings.RAZORPAY_MERCHANT_DISPLAY_NAME = "WAOOAW"
+    settings.RAZORPAY_READINESS_STATE = "READY_TEST"
+    settings.RAZORPAY_CHECKOUT_TTL_SECONDS = 900
+    settings.razorpay_enabled_method_families = ("UPI", "CARD")
+    monkeypatch.setattr(payment_router, "_settings", settings)
+    fetch_payment = AsyncMock(return_value={
+        "id": "pay_pre_hire_1", "order_id": "order_pre_hire_1", "status": "captured",
+        "currency": "INR", "amount": 249900,
+    })
+    monkeypatch.setattr(payment_router.RazorpayClient, "fetch_payment", fetch_payment)
+    preview = payment_router.HireCommercialPreview(
+        outcome_kind="PAYMENT_REQUIRED",
+        professional_type="DIGITAL_MARKETING_LOCAL_SERVICE",
+        list_price_inr_paise=249900,
+        discount_inr_paise=0,
+        tax_inr_paise=38120,
+        payable_inr_paise=249900,
+        cadence="MONTHLY",
+        payment_method_required=True,
+        payments_enabled=True,
+        renewal_consequence="Renews monthly.",
+    )
+    create_preview = AsyncMock(return_value=preview)
+    monkeypatch.setattr(payment_router, "create_hire_commercial_preview", create_preview)
+    create_order = AsyncMock(return_value={"id": "order_pre_hire_1"})
+    monkeypatch.setattr(payment_router.RazorpayClient, "create_order", create_order)
+    checkout_id = uuid.uuid4()
+    customer_id = uuid.uuid4()
+    body = payment_router.PreHireCheckoutBody(
+        checkout_intent_id=checkout_id,
+        customer_id=customer_id,
+        professional_type="DIGITAL_MARKETING_LOCAL_SERVICE",
+        professional_version="1.0.0",
+        disclosure_revision="1.0.0",
+        terms_version="2026-07-18",
+        gross_amount_inr_paise=249900,
+        gst_amount_inr_paise=38120,
+        cadence="MONTHLY",
+    )
+
+    created = await payment_router.create_pre_hire_checkout(body)
+    replayed = await payment_router.create_pre_hire_checkout(body)
+
+    assert created.outcome_kind == "RAZORPAY_CHECKOUT_REQUIRED"
+    assert created.provider_order_reference == "order_pre_hire_1"
+    assert created.public_checkout_key == "rzp_test_key"
+    assert replayed.provider_order_reference == created.provider_order_reference
+    create_order.assert_awaited_once()
+    create_preview.assert_awaited_once()
+
+    payment_id = "pay_pre_hire_1"
+    signature = hmac.new(
+        b"test-secret",
+        f"order_pre_hire_1|{payment_id}".encode(),
+        hashlib.sha256,
+    ).hexdigest()
+    fetch_payment.return_value = {
+        "id": payment_id, "order_id": "order_pre_hire_1", "status": "authorized",
+        "currency": "INR", "amount": 249900,
+    }
+    with pytest.raises(HTTPException) as not_captured:
+        await payment_router.confirm_pre_hire_checkout(
+            checkout_id,
+            payment_router.PreHireCheckoutConfirmationBody(
+                customer_id=customer_id,
+                razorpay_order_id="order_pre_hire_1",
+                razorpay_payment_id=payment_id,
+                razorpay_signature=signature,
+            ),
+        )
+    assert not_captured.value.status_code == 409
+    assert not_captured.value.detail["code"] == "PAYMENT_NOT_CAPTURED"
+    fetch_payment.return_value = {
+        "id": payment_id, "order_id": "order_pre_hire_1", "status": "captured",
+        "currency": "INR", "amount": 249900,
+    }
+    captured = await payment_router.confirm_pre_hire_checkout(
+        checkout_id,
+        payment_router.PreHireCheckoutConfirmationBody(
+            customer_id=customer_id,
+            razorpay_order_id="order_pre_hire_1",
+            razorpay_payment_id=payment_id,
+            razorpay_signature=signature,
+        ),
+    )
+
+    assert captured.outcome_kind == "CAPTURED"
+    assert captured.commercial_outcome_reference == payment_id
+    assert captured.commercial_evidence_id is not None
+
+
+@pytest.mark.asyncio
+async def test_pre_hire_checkout_rejects_invalid_signature(payment_session, monkeypatch):
+    from payment import router as payment_router
+
+    class SessionContext:
+        async def __aenter__(self):
+            return payment_session
+
+        async def __aexit__(self, _type, _value, _traceback):
+            return False
+
+    monkeypatch.setattr(payment_router, "get_session_factory", lambda: lambda: SessionContext())
+    settings = MagicMock()
+    settings.RAZORPAY_KEY_SECRET = "test-secret"
+    monkeypatch.setattr(payment_router, "_settings", settings)
+    checkout_id = uuid.uuid4()
+    customer_id = uuid.uuid4()
+    await payment_session.execute(text(
+        "INSERT INTO pre_hire_checkout_orders "
+        "(checkout_intent_id, customer_id, professional_type, professional_version, "
+        "disclosure_revision, terms_version, cadence, list_price_inr_paise, "
+        "discount_inr_paise, tax_inr_paise, payable_inr_paise, razorpay_order_id, "
+        "commercial_evidence_id, status) VALUES "
+        "(:checkout, :customer, 'DIGITAL_MARKETING_LOCAL_SERVICE', '1.0.0', '1.0.0', "
+        "'2026-07-18', 'MONTHLY', 249900, 0, 38120, 249900, 'order_pre_hire_2', "
+        ":evidence, 'AWAITING_PROVIDER')"
+    ).bindparams(
+        checkout=str(checkout_id), customer=str(customer_id), evidence=str(uuid.uuid4())
+    ))
+    await payment_session.commit()
+
+    with pytest.raises(HTTPException) as invalid:
+        await payment_router.confirm_pre_hire_checkout(
+            checkout_id,
+            payment_router.PreHireCheckoutConfirmationBody(
+                customer_id=customer_id,
+                razorpay_order_id="order_pre_hire_2",
+                razorpay_payment_id="pay_pre_hire_2",
+                razorpay_signature="0" * 64,
+            ),
+        )
+
+    assert invalid.value.status_code == 400
+    stored = (await payment_session.execute(text(
+        "SELECT status FROM pre_hire_checkout_orders WHERE checkout_intent_id = :checkout"
+    ).bindparams(checkout=str(checkout_id)))).one()
+    assert stored.status == "AWAITING_PROVIDER"
+
+
+@pytest.mark.asyncio
+async def test_pre_hire_webhook_records_capture_without_activating_wallet(payment_session, monkeypatch):
+    from payment import router as payment_router
+
+    class SessionContext:
+        async def __aenter__(self):
+            return payment_session
+
+        async def __aexit__(self, _type, _value, _traceback):
+            return False
+
+    monkeypatch.setattr(payment_router, "get_session_factory", lambda: lambda: SessionContext())
+    monkeypatch.setattr(payment_router.RazorpayClient, "verify_webhook_signature", lambda *_args: True)
+    monkeypatch.setattr(
+        payment_router,
+        "WalletService",
+        MagicMock(side_effect=AssertionError("pre-hire capture must not activate a wallet")),
+    )
+    checkout_id = uuid.uuid4()
+    customer_id = uuid.uuid4()
+    evidence_id = uuid.uuid4()
+    await payment_session.execute(text(
+        "INSERT INTO pre_hire_checkout_orders "
+        "(checkout_intent_id, customer_id, professional_type, professional_version, disclosure_revision, "
+        "terms_version, cadence, list_price_inr_paise, discount_inr_paise, tax_inr_paise, "
+        "payable_inr_paise, razorpay_order_id, commercial_evidence_id, status) VALUES "
+        "(:checkout, :customer, 'DIGITAL_MARKETING_LOCAL_SERVICE', '1.0.0', '1.0.0', '2026-07-18', "
+        "'MONTHLY', 249900, 0, 38120, 249900, 'order_webhook_1', :evidence, 'AWAITING_PROVIDER')"
+    ).bindparams(checkout=str(checkout_id), customer=str(customer_id), evidence=str(evidence_id)))
+    await payment_session.commit()
+    payload = json.dumps({
+        "event": "payment.captured",
+        "payload": {"payment": {"entity": {
+            "id": "pay_webhook_1",
+            "order_id": "order_webhook_1",
+            "notes": {
+                "checkout_kind": "PRE_HIRE",
+                "checkout_intent_id": str(checkout_id),
+                "customer_id": str(customer_id),
+                "agent_type": "DIGITAL_MARKETING_LOCAL_SERVICE",
+                "professional_version": "1.0.0",
+            },
+        }}},
+    }).encode()
+
+    async def receive():
+        return {"type": "http.request", "body": payload, "more_body": False}
+
+    request = Request({
+        "type": "http",
+        "method": "POST",
+        "path": "/payments/webhooks/razorpay",
+        "headers": [(b"x-razorpay-signature", b"valid")],
+    }, receive)
+    result = await payment_router.razorpay_webhook(request)
+
+    assert result == {
+        "status": "CAPTURED",
+        "payment_reference": "pay_webhook_1",
+        "payment_evidence_id": str(evidence_id),
+    }
+    stored = (await payment_session.execute(text(
+        "SELECT status, razorpay_payment_id FROM pre_hire_checkout_orders "
+        "WHERE checkout_intent_id = :checkout"
+    ).bindparams(checkout=str(checkout_id)))).one()
+    assert stored.status == "CAPTURED"
+    assert stored.razorpay_payment_id == "pay_webhook_1"
+    assert (await payment_session.execute(text("SELECT COUNT(*) FROM paid_subscriptions"))).scalar_one() == 0
+
+
+@pytest.mark.asyncio
+async def test_bound_pre_hire_capture_funds_exact_contract_without_second_order(payment_session, monkeypatch):
+    from payment import router as payment_router
+
+    class SessionContext:
+        async def __aenter__(self):
+            return payment_session
+
+        async def __aexit__(self, _type, _value, _traceback):
+            return False
+
+    monkeypatch.setattr(payment_router, "get_session_factory", lambda: lambda: SessionContext())
+    monkeypatch.setattr(
+        payment_router,
+        "OnboardingService",
+        MagicMock(side_effect=AssertionError("a funded relationship must not create another order")),
+    )
+    pre_hire_checkout_id = uuid.uuid4()
+    relationship_checkout_id = uuid.uuid4()
+    customer_id = uuid.uuid4()
+    relationship_id = uuid.uuid4()
+    evidence_id = uuid.uuid4()
+    await payment_session.execute(text(
+        "INSERT INTO pre_hire_checkout_orders "
+        "(checkout_intent_id, customer_id, professional_type, professional_version, disclosure_revision, "
+        "terms_version, cadence, list_price_inr_paise, discount_inr_paise, tax_inr_paise, "
+        "payable_inr_paise, razorpay_order_id, razorpay_payment_id, commercial_evidence_id, "
+        "relationship_id, status) VALUES (:checkout, :customer, 'DIGITAL_MARKETING_LOCAL_SERVICE', "
+        "'1.0.0', '1.0.0', '2026-07-18', 'MONTHLY', 249900, 0, 38120, 249900, "
+        "'order_funded_1', 'pay_funded_1', :evidence, :relationship, 'CAPTURED')"
+    ).bindparams(
+        checkout=str(pre_hire_checkout_id), customer=str(customer_id), evidence=str(evidence_id),
+        relationship=str(relationship_id),
+    ))
+    await payment_session.commit()
+    body = payment_router.RelationshipCheckoutBody(
+        checkout_intent_id=relationship_checkout_id,
+        tenant_id=uuid.uuid4(),
+        customer_id=customer_id,
+        relationship_id=relationship_id,
+        contract_id=uuid.uuid4(),
+        contract_version=1,
+        contract_hash="a" * 64,
+        contract_acceptance_id=uuid.uuid4(),
+        payment_consent_evidence_id=uuid.uuid4(),
+        agent_type="DIGITAL_MARKETING_LOCAL_SERVICE",
+        bundle_tier="STARTER",
+        gross_amount_inr_paise=249900,
+        gst_amount_inr_paise=38120,
+        quote_version="quote-v1",
+        idempotency_key="contract-checkout-1",
+    )
+
+    with pytest.raises(HTTPException) as price_mismatch:
+        await payment_router.create_relationship_checkout(body.model_copy(update={
+            "gross_amount_inr_paise": 249901,
+        }))
+    assert price_mismatch.value.status_code == 409
+    assert price_mismatch.value.detail["code"] == "PRE_HIRE_CONTRACT_PRICE_MISMATCH"
+
+    result = await payment_router.create_relationship_checkout(body)
+
+    assert result.outcome_kind is CheckoutOutcomeKind.CAPTURED
+    assert result.commercial_outcome_reference == "pay_funded_1"
+    payment = (await payment_session.execute(text(
+        "SELECT relationship_id, accepted_contract_id, checkout_intent_id, status "
+        "FROM payment_intents WHERE razorpay_payment_id = 'pay_funded_1'"
+    ))).one()
+    assert payment.relationship_id == str(relationship_id)
+    assert payment.accepted_contract_id == str(body.contract_id)
+    assert payment.checkout_intent_id == str(relationship_checkout_id)
+    assert payment.status == "CAPTURED"
+    with pytest.raises(HTTPException) as second_contract:
+        await payment_router.create_relationship_checkout(body.model_copy(update={
+            "checkout_intent_id": uuid.uuid4(),
+        }))
+    assert second_contract.value.status_code == 409
+    assert second_contract.value.detail["code"] == "PRE_HIRE_CONTRACT_CONFLICT"
+
+
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -197,6 +611,9 @@ class TestCCT_ONBOARD_01:
         s.RAZORPAY_KEY_ID = "rzp_test_key"
         s.RAZORPAY_KEY_SECRET = "rzp_test_secret"
         s.RAZORPAY_WEBHOOK_SECRET = "rzp_wh_secret"
+        s.WAOOAW_ENVIRONMENT = "demo"
+        s.DEMO_PROMOTION_ENABLED = True
+        s.DEMO_COUPON_CODE = "DEMO100"
         return s
 
     def test_relationship_order_requires_complete_contract_link_and_forbids_coupon(self):
@@ -212,12 +629,12 @@ class TestCCT_ONBOARD_01:
                 **base, tenant_id=uuid.uuid4(), relationship_id=relationship_id, contract_id=uuid.uuid4(),
                 contract_version=1, contract_hash="a" * 64,
                 contract_acceptance_id=uuid.uuid4(), payment_consent_evidence_id=uuid.uuid4(),
-                coupon_code="DEMOWAOOAW",
+                coupon_code="DEMO100",
             )
 
     @pytest.mark.asyncio
     async def test_demo_coupon_bypasses_razorpay(self, mock_settings):
-        """DEMOWAOOAW coupon → ₹0 bypass order, no Razorpay HTTP call. FA-029."""
+        """DEMO100 coupon → ₹0 bypass order, no Razorpay HTTP call. FA-029."""
         svc = OnboardingService(settings=mock_settings)
         req = OnboardingOrderRequest(
             customer_id=uuid.uuid4(),
@@ -225,19 +642,21 @@ class TestCCT_ONBOARD_01:
             bundle_tier="STARTER",
             subscription_amount_paise=49900,
             wallet_seed_paise=100000,
-            coupon_code="DEMOWAOOAW",
+            coupon_code="DEMO100",
         )
         result = await svc.create_onboarding_order(req)
 
         assert result.is_bypass is True
         assert result.amount_paise == 0
         assert result.currency == "INR"
-        assert result.coupon_applied == "DEMOWAOOAW"
+        assert result.coupon_applied == "DEMO100"
         assert result.order_id.startswith("bypass-")
 
     @pytest.mark.asyncio
     async def test_uat_coupon_bypasses_razorpay(self, mock_settings):
         """UATWAOOAW coupon → ₹0 bypass order. FA-029."""
+        mock_settings.WAOOAW_ENVIRONMENT = "uat"
+        mock_settings.DEMO_COUPON_CODE = "UATWAOOAW"
         svc = OnboardingService(settings=mock_settings)
         req = OnboardingOrderRequest(
             customer_id=uuid.uuid4(),
@@ -263,7 +682,7 @@ class TestCCT_ONBOARD_01:
             bundle_tier="STARTER",
             subscription_amount_paise=49900,
             wallet_seed_paise=50000,
-            coupon_code="demowaooaw",
+            coupon_code="demo100",
         )
         result = await svc.create_onboarding_order(req)
         assert result.is_bypass is True
@@ -383,6 +802,7 @@ class TestWC095RelationshipCheckout:
         settings.WAOOAW_ENVIRONMENT = "demo"
         settings.DEMO_PROMOTION_ENABLED = True
         settings.DEMO_PROMOTION_VERSION = "demo-100-v1"
+        settings.DEMO_COUPON_CODE = "DEMO100"
         settings.DEMO_RENEWAL_CONSEQUENCE = "Renews at the accepted monthly price."
         settings.MAX_DISCOUNT_PCT = 100
         settings.RAZORPAY_KEY_ID = ""
@@ -402,6 +822,7 @@ class TestWC095RelationshipCheckout:
         assert result.outcome_kind is CheckoutOutcomeKind.FULLY_DISCOUNTED
         assert result.payable_inr_paise == 0
         assert result.discount_inr_paise == result.list_price_inr_paise
+        assert result.coupon_code == "DEMO100"
         assert result.commercial_outcome_reference is not None
         assert result.commercial_evidence_id is not None
         assert result.evidence_state == "COMMITTED"
@@ -461,6 +882,135 @@ class TestWC095RelationshipCheckout:
         assert first.expires_at is not None
         assert first.reconciliation_target is not None
         assert razorpay.create_order.await_args.kwargs["amount_paise"] == request.gross_amount_inr_paise
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("professional_type", [
+    "DIGITAL_MARKETING_LOCAL_SERVICE",
+    "TUTOR",
+    "SHARE_TRADER",
+])
+async def test_demo_hire_preview_does_not_apply_a_coupon_automatically(monkeypatch, professional_type):
+    from payment import router as payment_router
+
+    settings = MagicMock()
+    settings.WAOOAW_ENVIRONMENT = "demo"
+    settings.DEMO_RENEWAL_CONSEQUENCE = "Standard paid renewal terms apply after the Demo period."
+    monkeypatch.setattr(payment_router, "_settings", settings)
+
+    result = await payment_router.create_hire_commercial_preview(HireCommercialPreviewBody(
+        professional_type=professional_type,
+        gross_amount_inr_paise=118000,
+        gst_amount_inr_paise=18000,
+        cadence="MONTHLY",
+    ))
+
+    assert result.outcome_kind == "PAYMENT_REQUIRED_AFTER_CONTRACT"
+    assert result.professional_type == professional_type
+    assert result.coupon_code is None
+    assert result.discount_inr_paise == 0
+    assert result.payable_inr_paise == 118000
+    assert result.payment_method_required is True
+    assert result.payments_enabled is False
+
+
+@pytest.mark.asyncio
+async def test_hire_preview_applies_an_explicit_registry_validated_coupon(monkeypatch):
+    from payment import router as payment_router
+    from promotions.models import CouponValidation
+
+    settings = MagicMock()
+    settings.WAOOAW_ENVIRONMENT = "demo"
+    settings.REDIS_URL = "redis://redis:6379/0"
+    settings.DEMO_RENEWAL_CONSEQUENCE = "Standard paid renewal terms apply after the Demo period."
+    monkeypatch.setattr(payment_router, "_settings", settings)
+    redis_client = AsyncMock()
+    monkeypatch.setattr(payment_router.aioredis, "from_url", lambda *_args, **_kwargs: redis_client)
+    promotions = MagicMock()
+    promotions.validate_commercial_preview_coupon = AsyncMock(return_value=CouponValidation(
+        valid=True,
+        discount_pct=100,
+        bonus_credits={},
+        expires_at=None,
+    ))
+    monkeypatch.setattr(payment_router, "PromotionsService", lambda **_kwargs: promotions)
+
+    result = await payment_router.create_hire_commercial_preview(HireCommercialPreviewBody(
+        professional_type="TUTOR",
+        gross_amount_inr_paise=118000,
+        gst_amount_inr_paise=18000,
+        cadence="MONTHLY",
+        coupon_code=" welcome100 ",
+    ))
+
+    promotions.validate_commercial_preview_coupon.assert_awaited_once_with("WELCOME100", "TUTOR")
+    redis_client.aclose.assert_awaited_once()
+    assert result.coupon_code == "WELCOME100"
+    assert result.discount_inr_paise == 118000
+    assert result.payable_inr_paise == 0
+    assert result.payment_method_required is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("environment", ["uat", "production"])
+async def test_non_demo_hire_preview_preserves_contract_bound_payment(monkeypatch, environment):
+    from payment import router as payment_router
+
+    settings = MagicMock()
+    settings.WAOOAW_ENVIRONMENT = environment
+    settings.DEMO_RENEWAL_CONSEQUENCE = "Standard paid renewal terms apply."
+    settings.RAZORPAY_KEY_ID = ""
+    settings.RAZORPAY_KEY_SECRET = ""
+    settings.RAZORPAY_MERCHANT_DISPLAY_NAME = "WAOOAW"
+    settings.RAZORPAY_ENABLED_METHOD_FAMILIES = "UPI,CARD,NETBANKING,WALLET"
+    settings.RAZORPAY_READINESS_STATE = "NOT_CONFIGURED"
+    monkeypatch.setattr(payment_router, "_settings", settings)
+
+    result = await payment_router.create_hire_commercial_preview(HireCommercialPreviewBody(
+        professional_type="TUTOR",
+        gross_amount_inr_paise=118000,
+        gst_amount_inr_paise=18000,
+        cadence="MONTHLY",
+    ))
+
+    assert result.outcome_kind == "PAYMENT_REQUIRED_AFTER_CONTRACT"
+    assert result.coupon_code is None
+    assert result.discount_inr_paise == 0
+    assert result.payable_inr_paise == 118000
+    assert result.payment_method_required is True
+    assert result.payments_enabled is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("environment", "readiness"),
+    [("demo", "READY_TEST"), ("uat", "READY_TEST"), ("production", "READY_LIVE")],
+)
+async def test_hire_preview_enables_official_checkout_when_razorpay_is_ready(
+    monkeypatch,
+    environment,
+    readiness,
+):
+    from payment import router as payment_router
+
+    settings = MagicMock()
+    settings.WAOOAW_ENVIRONMENT = environment
+    settings.DEMO_RENEWAL_CONSEQUENCE = "Standard paid renewal terms apply."
+    settings.RAZORPAY_KEY_ID = "rzp_test_public" if environment != "production" else "rzp_live_public"
+    settings.RAZORPAY_KEY_SECRET = "configured-secret"
+    settings.RAZORPAY_MERCHANT_DISPLAY_NAME = "WAOOAW"
+    settings.RAZORPAY_ENABLED_METHOD_FAMILIES = "UPI,CARD,NETBANKING,WALLET"
+    settings.RAZORPAY_READINESS_STATE = readiness
+    monkeypatch.setattr(payment_router, "_settings", settings)
+
+    result = await payment_router.create_hire_commercial_preview(HireCommercialPreviewBody(
+        professional_type="TUTOR",
+        gross_amount_inr_paise=118000,
+        gst_amount_inr_paise=18000,
+        cadence="MONTHLY",
+    ))
+
+    assert result.payments_enabled is True
 
 
 # ---------------------------------------------------------------------------
@@ -766,10 +1316,15 @@ class TestPaymentRouterHTTP:
     """HTTP-level tests for payment/router.py route handlers."""
 
     @pytest.mark.asyncio
-    async def test_onboarding_order_endpoint_demo_coupon(self):
-        """POST /payments/onboarding-order with DEMOWAOOAW → router returns bypass order."""
+    async def test_onboarding_order_endpoint_demo_coupon(self, monkeypatch):
+        """POST /payments/onboarding-order with DEMO100 → router returns bypass order."""
         from httpx import ASGITransport, AsyncClient
         from main import app
+        from payment import router as payment_router
+
+        monkeypatch.setattr(payment_router._settings, "WAOOAW_ENVIRONMENT", "demo")
+        monkeypatch.setattr(payment_router._settings, "DEMO_PROMOTION_ENABLED", True)
+        monkeypatch.setattr(payment_router._settings, "DEMO_COUPON_CODE", "DEMO100")
 
         body = {
             "customer_id": str(uuid.uuid4()),
@@ -777,7 +1332,7 @@ class TestPaymentRouterHTTP:
             "bundle_tier": "STARTER",
             "subscription_amount_paise": 49900,
             "wallet_seed_paise": 100000,
-            "coupon_code": "DEMOWAOOAW",
+            "coupon_code": "DEMO100",
         }
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
@@ -788,7 +1343,7 @@ class TestPaymentRouterHTTP:
         data = resp.json()
         assert data["is_bypass"] is True
         assert data["amount_paise"] == 0
-        assert data["coupon_applied"] == "DEMOWAOOAW"
+        assert data["coupon_applied"] == "DEMO100"
 
     @pytest.mark.asyncio
     async def test_webhook_ignores_non_payment_captured_events(self):

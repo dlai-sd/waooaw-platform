@@ -21,6 +21,7 @@ interface MarketplacePageProps {
     disclosureRevision?: string;
     termsVersion?: string;
     idempotencyKey?: string;
+    couponCode?: string;
   }>;
 }
 
@@ -53,6 +54,7 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
         professionalType={filters.professionalType}
         professionalVersion={filters.version}
         termsVersion={filters.termsVersion}
+        couponCode={filters.couponCode}
       />
     ) : null;
 

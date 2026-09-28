@@ -163,6 +163,7 @@ docs/PortalInteractionSurfaceV1.md
 docs/PortalInteractionTimelinePageV1.md
 docs/PortalNavigationCapabilityV1.md
 docs/PrepareRelationshipHandoffRequest.md
+docs/PrepareRelationshipHireRequest.md
 docs/ProblemDetail.md
 docs/ProfessionalDisclosure.md
 docs/ProfessionalDiscoveryResult.md
@@ -458,6 +459,7 @@ models/PortalInteractionSurfaceV1.ts
 models/PortalInteractionTimelinePageV1.ts
 models/PortalNavigationCapabilityV1.ts
 models/PrepareRelationshipHandoffRequest.ts
+models/PrepareRelationshipHireRequest.ts
 models/ProblemDetail.ts
 models/ProfessionalDisclosure.ts
 models/ProfessionalDiscoveryResult.ts

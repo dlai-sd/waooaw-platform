@@ -24,6 +24,7 @@ export async function RegisterView({
     return (
       <section className="auth-view auth-entry-view identity-view">
         <AuthBrand subtitle="Start your professional journey." title="Create your WAOOAW account" />
+        <div aria-hidden="true" className="auth-provider-status auth-provider-status-ready" />
         <ProviderCommands
           callbackUrl={`/register?returnTo=${encodeURIComponent(returnTo)}`}
           intent="register"

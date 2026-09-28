@@ -30,12 +30,17 @@ export function keycloakClientConfig(environment: KeycloakEnvironment = process.
 
 const keycloakClient = keycloakClientConfig();
 
-function brokeredKeycloakProvider(id: string, name: string, brokerAlias: string) {
+function brokeredKeycloakProvider(
+  id: string,
+  name: string,
+  brokerAlias: string,
+  authorization: Record<string, string> = {}
+) {
   return {
     ...KeycloakProvider(keycloakClient),
     id,
     name,
-    authorization: { params: { scope: 'openid profile email', kc_idp_hint: brokerAlias } },
+    authorization: { params: { scope: 'openid profile email', kc_idp_hint: brokerAlias, ...authorization } },
   };
 }
 
@@ -220,7 +225,10 @@ const sessionMaxAge = previewSessionMaxAge();
 export const authOptions: NextAuthOptions = {
   providers: [
     KeycloakProvider(keycloakClient),
-    brokeredKeycloakProvider('keycloak-google', 'Google', process.env.KEYCLOAK_GOOGLE_BROKER_ALIAS ?? 'google'),
+    brokeredKeycloakProvider('keycloak-google', 'Google', process.env.KEYCLOAK_GOOGLE_BROKER_ALIAS ?? 'google', {
+      prompt: 'select_account',
+      max_age: '0',
+    }),
     brokeredKeycloakProvider('keycloak-facebook', 'Facebook', process.env.KEYCLOAK_FACEBOOK_BROKER_ALIAS ?? 'facebook'),
     brokeredKeycloakProvider('keycloak-apple', 'Apple', process.env.KEYCLOAK_APPLE_BROKER_ALIAS ?? 'apple'),
   ],

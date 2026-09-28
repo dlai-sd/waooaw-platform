@@ -62,6 +62,7 @@ class RelationshipCheckoutResult:
     reconciliation_target: str | None = None
     quote_version: str | None = None
     promotion_version: str | None = None
+    coupon_code: str | None = None
     list_price_inr_paise: int | None = None
     discount_inr_paise: int | None = None
     tax_inr_paise: int | None = None
@@ -90,7 +91,7 @@ class OnboardingOrderRequest:
     bundle_tier: str
     subscription_amount_paise: int   # first month subscription price
     wallet_seed_paise: int           # initial ad wallet seed amount
-    coupon_code: str = ""            # optional — DEMOWAOOAW/UATWAOOAW bypasses Razorpay
+    coupon_code: str = ""
     tenant_id: UUID | None = None
     relationship_id: UUID | None = None
     contract_id: UUID | None = None

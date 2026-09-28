@@ -66,6 +66,9 @@ public sealed class AcquisitionControllerTests
         Assert.Equal(intent, relationship.AcquisitionMode);
         Assert.Equal(membership.AccountId, participant.ParticipantId);
         Assert.Equal(
+            intent == "TRIAL" ? RelationshipParticipantRole.Evaluator : RelationshipParticipantRole.Employer,
+            participant.Role);
+        Assert.Equal(
             intent == "TRIAL" ? EmploymentRelationshipState.TrialActive : EmploymentRelationshipState.Configuring,
             relationship.State);
         Assert.Equal(intent == "TRIAL" ? 1 : 0, trialOwners.WbeCalls);

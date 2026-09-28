@@ -1,12 +1,15 @@
 'use client';
 
 // Implements: architecture/reference/ux/wc-034-implementation-decomposition.md §F2
+// Implements: architecture/reference/ux/wc-105-authentication-flow-defect-remediation-plan.md AUTH-STATE-01, AUTH-COPY-01, AUTH-UI-06, AUTH-UI-08
 // Constitutional basis: C-049 (Honest Limitation), C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
 import { ArrowRight, CheckCircle2, LoaderCircle, Mail, Smartphone } from 'lucide-react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { AuthBrand } from '@/components/auth/AuthBrand';
+import { useAuthJourney } from '@/components/auth/AuthJourney';
 import { RegistrationProgress } from '@/components/auth/RegistrationProgress';
 import { identitySessionChangeKey } from '@/components/auth/SignOutCommand';
 import type { IdentityRegistration, IdentityVerificationChallenge } from '@/lib/api/generated';
@@ -15,7 +18,7 @@ import type { SupportedLocale } from '@/lib/preferences';
 
 type Draft = { displayName: string; businessName: string; businessDomain: string };
 type Command = Record<string, string> & { action: string };
-type ErrorKind = '' | 'expired' | 'rejected' | 'restart' | 'step-up' | 'unavailable';
+type ErrorKind = '' | 'expired' | 'lost' | 'rejected' | 'restart' | 'step-up' | 'unavailable';
 const draftKey = 'waooaw:identity:registration-draft';
 
 export function RegistrationFlow({
@@ -24,6 +27,7 @@ export function RegistrationFlow({
   returnTo = '/home',
 }: { locale: SupportedLocale; messages: IdentityMessages; returnTo?: string }) {
   const router = useRouter();
+  const journey = useAuthJourney();
   const [registration, setRegistration] = useState<IdentityRegistration>();
   const [challenge, setChallenge] = useState<IdentityVerificationChallenge>();
   const [draft, setDraft] = useState<Draft>({ displayName: '', businessName: '', businessDomain: '' });
@@ -53,10 +57,16 @@ export function RegistrationFlow({
       if (controller.signal.aborted) throw new Error();
       if (!response.ok) {
         const code = typeof body?.code === 'string' ? body.code : '';
-        if (response.status === 401 || code === 'IDENTITY_RESOURCE_NOT_ACCESSIBLE') {
+        if (response.status === 401 || code === 'IDENTITY_SESSION_REQUIRED') {
           setChallenge(undefined);
           setRegistration(undefined);
           setError('restart');
+          return;
+        }
+        if (code === 'IDENTITY_RESOURCE_NOT_ACCESSIBLE') {
+          setChallenge(undefined);
+          setRegistration(undefined);
+          setError('lost');
           return;
         }
         if (code === 'IDENTITY_CHALLENGE_EXPIRED') {
@@ -141,12 +151,22 @@ export function RegistrationFlow({
     return command({ action, registrationId: registration.registrationId, ...fields });
   }
 
+  function cancelRegistration() {
+    activeRequest.current?.abort();
+    activeRequest.current = undefined;
+    keys.current.clear();
+    sessionStorage.removeItem(draftKey);
+    setChallenge(undefined);
+    setRegistration(undefined);
+    journey?.dismiss();
+  }
+
   const errorMessage =
     error === 'rejected'
       ? messages.signInRejected
       : error === 'step-up'
         ? messages.freshSignInRequired
-        : error === 'restart'
+        : error === 'restart' || error === 'lost'
           ? messages.registrationLost
           : error === 'expired'
             ? messages.verificationExpired
@@ -212,9 +232,7 @@ export function RegistrationFlow({
   if (!registration)
     return (
       <>
-        <p className="eyebrow">Secure access</p>
-        <h1 id="auth-dialog-title">{error ? 'Sign in could not be completed' : messages.resolvingTitle}</h1>
-        <p>{errorMessage || messages.resolvingDescription}</p>
+        <AuthBrand subtitle={errorMessage || messages.resolvingDescription} title={messages.title} />
         <div aria-live="polite" className="identity-status">
           {pending ? (
             <>
@@ -233,6 +251,14 @@ export function RegistrationFlow({
               }
             >
               {messages.continueSecurely}
+            </button>
+          ) : error === 'lost' ? (
+            <button
+              className="primary-command"
+              type="button"
+              onClick={() => void command({ action: 'start', languagePreference: locale })}
+            >
+              {messages.retry}
             </button>
           ) : error === 'rejected' || error === 'restart' ? (
             <button
@@ -258,9 +284,7 @@ export function RegistrationFlow({
   const action = registration.nextAction;
   return (
     <>
-      <p className="eyebrow">{messages.eyebrow}</p>
-      <h1 id="auth-dialog-title">{messages.title}</h1>
-      <p>{messages.description}</p>
+      <AuthBrand subtitle={messages.description} title={messages.title} />
       <div className="registration-flow">
         <RegistrationProgress action={action} pending={pending} />
         {error ? (
@@ -331,15 +355,16 @@ export function RegistrationFlow({
             <p>
               <strong>{messages.optionalMobile}</strong>
             </p>
-            <p>
-              {messages.smsUnavailable} {messages.smsBudget}
-            </p>
+            <p>{messages.smsUnavailable}</p>
             <div className="command-row">
-              <button className="primary-command" disabled type="button">
+              <button className="secondary-command" disabled type="button">
                 {messages.optionalMobile}
               </button>
+              <button className="text-command" disabled={pending} onClick={cancelRegistration} type="button">
+                {messages.cancel}
+              </button>
               <button
-                className="text-command"
+                className="primary-command"
                 disabled={pending}
                 type="button"
                 onClick={() => void registrationCommand('complete')}
@@ -351,14 +376,19 @@ export function RegistrationFlow({
         ) : null}
         {action === 'RESOLVE_DUPLICATE' ? <output>{messages.duplicate}</output> : null}
         {action === 'CONTINUE_TO_DEFAULT_TARGET' || action === 'NONE' ? (
-          <button
-            className="primary-command"
-            disabled={pending}
-            type="button"
-            onClick={() => void registrationCommand('complete')}
-          >
-            {messages.complete}
-          </button>
+          <div className="command-row">
+            <button className="text-command" disabled={pending} onClick={cancelRegistration} type="button">
+              {messages.cancel}
+            </button>
+            <button
+              className="primary-command"
+              disabled={pending}
+              type="button"
+              onClick={() => void registrationCommand('complete')}
+            >
+              {messages.complete}
+            </button>
+          </div>
         ) : null}
         {pending ? (
           <span aria-live="polite" className="identity-pending">

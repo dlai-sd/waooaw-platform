@@ -23,13 +23,13 @@ class ZeroPriceCommercialOutcomeStore:
                 accepted_contract_id, contract_version, contract_hash,
                 contract_acceptance_id, payment_consent_evidence_id,
                 commercial_evidence_id, agent_type, bundle_tier, quote_version,
-                promotion_version, outcome_reference)
+                promotion_version, coupon_code, outcome_reference)
             VALUES (
                 :checkout_intent_id, :tenant_id, :customer_id, :relationship_id,
                 :accepted_contract_id, :contract_version, :contract_hash,
                 :contract_acceptance_id, :payment_consent_evidence_id,
                 :commercial_evidence_id, :agent_type, :bundle_tier, :quote_version,
-                :promotion_version, :outcome_reference)
+                :promotion_version, :coupon_code, :outcome_reference)
             ON CONFLICT (checkout_intent_id) DO NOTHING
         """).bindparams(
             checkout_intent_id=request.checkout_intent_id,
@@ -46,13 +46,14 @@ class ZeroPriceCommercialOutcomeStore:
             bundle_tier=request.bundle_tier,
             quote_version=request.quote_version,
             promotion_version=outcome.promotion_version,
+            coupon_code=outcome.coupon_code,
             outcome_reference=outcome.commercial_outcome_reference,
         ))
         stored = (await self._db.execute(text("""
             SELECT tenant_id, customer_id, relationship_id, accepted_contract_id,
                 contract_version, contract_hash, contract_acceptance_id,
                 payment_consent_evidence_id, commercial_evidence_id, agent_type,
-                bundle_tier, quote_version, promotion_version, outcome_reference
+                bundle_tier, quote_version, promotion_version, coupon_code, outcome_reference
             FROM zero_price_commercial_outcomes
             WHERE checkout_intent_id = :checkout_intent_id
         """).bindparams(checkout_intent_id=request.checkout_intent_id))).one()
@@ -61,7 +62,7 @@ class ZeroPriceCommercialOutcomeStore:
             str(request.contract_id), request.contract_version, request.contract_hash,
             str(request.contract_acceptance_id), str(request.payment_consent_evidence_id),
             str(outcome.commercial_evidence_id), request.agent_type, request.bundle_tier,
-            request.quote_version, outcome.promotion_version,
+            request.quote_version, outcome.promotion_version, outcome.coupon_code,
             outcome.commercial_outcome_reference,
         )
         if tuple(str(value) if index not in {4} else value for index, value in enumerate(stored)) != expected:

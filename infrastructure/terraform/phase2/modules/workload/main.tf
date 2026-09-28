@@ -99,6 +99,29 @@ locals {
     revokeRefreshToken     = true
     passwordPolicy         = "length(12) and upperCase(1) and digits(1) and specialChars(1) and notUsername"
     identityProviders      = concat(local.google_identity_providers, local.facebook_identity_providers)
+    authenticationFlows = var.google_login_enabled ? [{
+      alias       = "google verified email first login"
+      description = "Create unique Google users or link an existing account by Google's verified email."
+      providerId  = "basic-flow"
+      topLevel    = true
+      builtIn     = false
+      authenticationExecutions = [
+        {
+          authenticator     = "idp-create-user-if-unique"
+          authenticatorFlow = false
+          requirement       = "ALTERNATIVE"
+          priority          = 10
+          userSetupAllowed  = false
+        },
+        {
+          authenticator     = "idp-auto-link"
+          authenticatorFlow = false
+          requirement       = "ALTERNATIVE"
+          priority          = 20
+          userSetupAllowed  = false
+        },
+      ]
+    }] : []
     clients = concat([
       {
         clientId                  = "waooaw-web"
@@ -381,20 +404,22 @@ locals {
       PLATFORM_PHASE                = "IMPLEMENTATION"
     }
     "web" = {
-      BUSINESS_PLATFORM_URL = local.service_urls.business_platform
-      KEYCLOAK_CLIENT_ID    = "waooaw-web"
-      KEYCLOAK_ISSUER       = "${local.service_urls.identity_edge}/realms/waooaw"
-      NEXTAUTH_URL          = local.service_urls.web
-      NODE_ENV              = "production"
+      AZURE_KEY_VAULT_URL              = trimsuffix(var.key_vault_secret_uris["web"], "/secrets/web")
+      AZURE_KEY_VAULT_WRITER_CLIENT_ID = "710af8d6-8e2c-4f9d-9b1c-2230de9de1f8"
+      AZURE_TENANT_ID                  = "0471534c-1bbe-40ab-ae65-3f721b62582c"
+      BUSINESS_PLATFORM_URL            = local.service_urls.business_platform
+      KEYCLOAK_CLIENT_ID               = "waooaw-web"
+      KEYCLOAK_ISSUER                  = "${local.service_urls.identity_edge}/realms/waooaw"
+      NEXTAUTH_URL                     = local.service_urls.web
+      NODE_ENV                         = "production"
+      WAOOAW_ENVIRONMENT               = var.environment
     }
     "billing-engine" = {
       BILLING_CONTRACT_ID            = "goal006-demo"
       BILLING_DECISION_SPACE_VERSION = "1"
       CONSTITUTIONAL_ENGINE_ADDRESS  = "ca-${var.environment}-constitutional-engine:80"
       DATABASE_URL                   = "postgresql+asyncpg://postgres@localhost:5432/waooaw"
-      RAZORPAY_KEY_ID                = "demo-disabled"
-      RAZORPAY_KEY_SECRET            = "demo-disabled"
-      RAZORPAY_WEBHOOK_SECRET        = "demo-disabled"
+      RAZORPAY_READINESS_STATE       = contains(["demo", "uat"], var.environment) ? "READY_TEST" : "NOT_CONFIGURED"
       REDIS_URL                      = "redis://localhost:6379/0"
       WBE_INTERNAL_BASE_URL          = local.service_urls.billing_engine
     }
@@ -447,6 +472,16 @@ locals {
   conversation_cursor_secret_resource_ids = {
     conversation-cursor-hmac = "${trimsuffix(var.key_vault_secret_resource_ids["business-platform"], "/business-platform")}/conversation-cursor-hmac"
   }
+  razorpay_secret_uris = contains(["demo", "uat"], var.environment) ? {
+    razorpay-test-key-id         = "${trimsuffix(var.key_vault_secret_uris["billing-engine"], "/billing-engine")}/razorpay-test-key-id"
+    razorpay-test-key-secret     = "${trimsuffix(var.key_vault_secret_uris["billing-engine"], "/billing-engine")}/razorpay-test-key-secret"
+    razorpay-test-webhook-secret = "${trimsuffix(var.key_vault_secret_uris["billing-engine"], "/billing-engine")}/razorpay-test-webhook-secret"
+  } : {}
+  razorpay_secret_resource_ids = contains(["demo", "uat"], var.environment) ? {
+    razorpay-test-key-id         = "${trimsuffix(var.key_vault_secret_resource_ids["billing-engine"], "/billing-engine")}/razorpay-test-key-id"
+    razorpay-test-key-secret     = "${trimsuffix(var.key_vault_secret_resource_ids["billing-engine"], "/billing-engine")}/razorpay-test-key-secret"
+    razorpay-test-webhook-secret = "${trimsuffix(var.key_vault_secret_resource_ids["billing-engine"], "/billing-engine")}/razorpay-test-webhook-secret"
+  } : {}
   minimum_replicas = {
     "constitutional-engine"                   = var.ce_min_replicas
     "professional-runtime"                    = var.pr_min_replicas
@@ -516,6 +551,14 @@ resource "azurerm_role_assignment" "conversation_cursor_secret" {
   principal_id         = azurerm_user_assigned_identity.member["business-platform"].principal_id
 }
 
+resource "azurerm_role_assignment" "razorpay_secret" {
+  for_each = var.workload_enabled ? local.razorpay_secret_resource_ids : {}
+
+  scope                = each.value
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.member["billing-engine"].principal_id
+}
+
 resource "azurerm_container_app" "member" {
   for_each = local.active_members
 
@@ -573,6 +616,15 @@ resource "azurerm_container_app" "member" {
 
   dynamic "secret" {
     for_each = each.key == "business-platform" ? local.conversation_cursor_secret_uris : {}
+    content {
+      name                = secret.key
+      identity            = azurerm_user_assigned_identity.member[each.key].id
+      key_vault_secret_id = secret.value
+    }
+  }
+
+  dynamic "secret" {
+    for_each = each.key == "billing-engine" ? local.razorpay_secret_uris : {}
     content {
       name                = secret.key
       identity            = azurerm_user_assigned_identity.member[each.key].id
@@ -665,6 +717,18 @@ resource "azurerm_container_app" "member" {
         content {
           name        = "Conversation__CursorHmacKey"
           secret_name = env.key
+        }
+      }
+
+      dynamic "env" {
+        for_each = each.key == "billing-engine" ? {
+          RAZORPAY_KEY_ID         = "razorpay-test-key-id"
+          RAZORPAY_KEY_SECRET     = "razorpay-test-key-secret"
+          RAZORPAY_WEBHOOK_SECRET = "razorpay-test-webhook-secret"
+        } : {}
+        content {
+          name        = env.key
+          secret_name = env.value
         }
       }
 

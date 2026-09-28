@@ -29,6 +29,9 @@ CREATE USER runtime_app WITH PASSWORD '${POSTGRES_PASSWORD}';
 -- AI Runtime: scoped grants are applied by the schema migrations
 CREATE USER ai_runtime_app WITH PASSWORD '${POSTGRES_PASSWORD}';
 
+-- Billing Engine: grants are applied by the billing schema migrations
+CREATE USER wbe_app WITH PASSWORD '${POSTGRES_PASSWORD}';
+
 -- Temporal workflow server
 CREATE USER temporal WITH PASSWORD '${TEMPORAL_PASS}';
 

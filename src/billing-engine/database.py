@@ -14,7 +14,12 @@ _session_factory: async_sessionmaker[AsyncSession] | None = None
 
 async def init_db() -> None:
     global _engine, _session_factory
-    _engine = create_async_engine(settings.DATABASE_URL, echo=False)
+    connect_args = (
+        {"server_settings": {"search_path": "business,institutional,public"}}
+        if settings.DATABASE_URL.startswith("postgresql")
+        else {}
+    )
+    _engine = create_async_engine(settings.DATABASE_URL, echo=False, connect_args=connect_args)
     _session_factory = async_sessionmaker(_engine, class_=AsyncSession, expire_on_commit=False)
 
 

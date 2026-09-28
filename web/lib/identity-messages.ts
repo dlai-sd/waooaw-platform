@@ -1,4 +1,5 @@
 // Implements: architecture/reference/ux/hybrid-ui-acceptance-contract.md §UX-AUTH-01–06
+// Implements: architecture/reference/ux/wc-105-authentication-flow-defect-remediation-plan.md AUTH-COPY-01, AUTH-UI-08
 // Constitutional basis: C-042 (Vocabulary Mandate), C-059 (Implementation Traceability)
 
 import type { SupportedLocale } from './preferences';
@@ -16,12 +17,12 @@ const en = {
   saveProfile: 'Save and continue',
   sendCode: 'Send verification code',
   verifyCode: 'Verify code',
-  complete: 'Complete registration',
+  complete: 'Register',
+  cancel: 'Cancel',
   optionalMobile: 'Mobile verification (optional)',
   verifiedEmail: 'Verified email',
   verifiedBy: 'Verified by',
   smsUnavailable: 'SMS verification is not available yet.',
-  smsBudget: 'It will remain optional and disabled until an approved India delivery provider and budget are active.',
   working: 'Securing your registration…',
   retry: 'Try again',
   signInFirst: 'Continue securely to create your account',
@@ -60,7 +61,8 @@ const translations: Partial<Record<SupportedLocale, Partial<IdentityMessages>>> 
     saveProfile: 'सहेजें और जारी रखें',
     sendCode: 'सत्यापन कोड भेजें',
     verifyCode: 'कोड सत्यापित करें',
-    complete: 'पंजीकरण पूरा करें',
+    complete: 'पंजीकरण करें',
+    cancel: 'रद्द करें',
     retry: 'फिर प्रयास करें',
   },
   mr: {
@@ -74,7 +76,8 @@ const translations: Partial<Record<SupportedLocale, Partial<IdentityMessages>>> 
     saveProfile: 'जतन करून पुढे जा',
     sendCode: 'पडताळणी कोड पाठवा',
     verifyCode: 'कोड पडताळा',
-    complete: 'नोंदणी पूर्ण करा',
+    complete: 'नोंदणी करा',
+    cancel: 'रद्द करा',
     retry: 'पुन्हा प्रयत्न करा',
   },
   ta: {
@@ -88,7 +91,8 @@ const translations: Partial<Record<SupportedLocale, Partial<IdentityMessages>>> 
     saveProfile: 'சேமித்து தொடரவும்',
     sendCode: 'சரிபார்ப்புக் குறியீட்டை அனுப்பவும்',
     verifyCode: 'குறியீட்டைச் சரிபார்க்கவும்',
-    complete: 'பதிவை முடிக்கவும்',
+    complete: 'பதிவு செய்யவும்',
+    cancel: 'ரத்துசெய்',
     retry: 'மீண்டும் முயலவும்',
   },
   te: {
@@ -102,7 +106,8 @@ const translations: Partial<Record<SupportedLocale, Partial<IdentityMessages>>> 
     saveProfile: 'సేవ్ చేసి కొనసాగండి',
     sendCode: 'ధృవీకరణ కోడ్ పంపండి',
     verifyCode: 'కోడ్‌ను ధృవీకరించండి',
-    complete: 'నమోదు పూర్తి చేయండి',
+    complete: 'నమోదు చేయండి',
+    cancel: 'రద్దు చేయండి',
     retry: 'మళ్లీ ప్రయత్నించండి',
   },
   kn: {
@@ -116,7 +121,8 @@ const translations: Partial<Record<SupportedLocale, Partial<IdentityMessages>>> 
     saveProfile: 'ಉಳಿಸಿ ಮುಂದುವರಿಯಿರಿ',
     sendCode: 'ಪರಿಶೀಲನಾ ಕೋಡ್ ಕಳುಹಿಸಿ',
     verifyCode: 'ಕೋಡ್ ಪರಿಶೀಲಿಸಿ',
-    complete: 'ನೋಂದಣಿ ಪೂರ್ಣಗೊಳಿಸಿ',
+    complete: 'ನೋಂದಾಯಿಸಿ',
+    cancel: 'ರದ್ದುಮಾಡಿ',
     retry: 'ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ',
   },
   gu: {
@@ -130,7 +136,8 @@ const translations: Partial<Record<SupportedLocale, Partial<IdentityMessages>>> 
     saveProfile: 'સાચવો અને આગળ વધો',
     sendCode: 'ચકાસણી કોડ મોકલો',
     verifyCode: 'કોડ ચકાસો',
-    complete: 'નોંધણી પૂર્ણ કરો',
+    complete: 'નોંધણી કરો',
+    cancel: 'રદ કરો',
     retry: 'ફરી પ્રયાસ કરો',
   },
   bn: {
@@ -144,7 +151,8 @@ const translations: Partial<Record<SupportedLocale, Partial<IdentityMessages>>> 
     saveProfile: 'সংরক্ষণ করে এগিয়ে যান',
     sendCode: 'যাচাইকরণ কোড পাঠান',
     verifyCode: 'কোড যাচাই করুন',
-    complete: 'নিবন্ধন সম্পূর্ণ করুন',
+    complete: 'নিবন্ধন করুন',
+    cancel: 'বাতিল করুন',
     retry: 'আবার চেষ্টা করুন',
   },
   ml: {
@@ -158,7 +166,8 @@ const translations: Partial<Record<SupportedLocale, Partial<IdentityMessages>>> 
     saveProfile: 'സംരക്ഷിച്ച് തുടരുക',
     sendCode: 'സ്ഥിരീകരണ കോഡ് അയയ്ക്കുക',
     verifyCode: 'കോഡ് സ്ഥിരീകരിക്കുക',
-    complete: 'രജിസ്ട്രേഷൻ പൂർത്തിയാക്കുക',
+    complete: 'രജിസ്റ്റർ ചെയ്യുക',
+    cancel: 'റദ്ദാക്കുക',
     retry: 'വീണ്ടും ശ്രമിക്കുക',
   },
   pa: {
@@ -172,7 +181,8 @@ const translations: Partial<Record<SupportedLocale, Partial<IdentityMessages>>> 
     saveProfile: 'ਸੰਭਾਲੋ ਅਤੇ ਅੱਗੇ ਵਧੋ',
     sendCode: 'ਤਸਦੀਕ ਕੋਡ ਭੇਜੋ',
     verifyCode: 'ਕੋਡ ਦੀ ਤਸਦੀਕ ਕਰੋ',
-    complete: 'ਰਜਿਸਟ੍ਰੇਸ਼ਨ ਪੂਰੀ ਕਰੋ',
+    complete: 'ਰਜਿਸਟਰ ਕਰੋ',
+    cancel: 'ਰੱਦ ਕਰੋ',
     retry: 'ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ',
   },
   ur: {
@@ -191,7 +201,8 @@ const translations: Partial<Record<SupportedLocale, Partial<IdentityMessages>>> 
     saveProfile: 'محفوظ کریں اور جاری رکھیں',
     sendCode: 'تصدیقی کوڈ بھیجیں',
     verifyCode: 'کوڈ کی تصدیق کریں',
-    complete: 'رجسٹریشن مکمل کریں',
+    complete: 'رجسٹر کریں',
+    cancel: 'منسوخ کریں',
     retry: 'دوبارہ کوشش کریں',
   },
 };

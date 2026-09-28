@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     WAOOAW_ENVIRONMENT: Literal["demo", "uat", "production"] = "production"
     DEMO_PROMOTION_ENABLED: bool = False
     DEMO_PROMOTION_VERSION: str = ""
+    DEMO_COUPON_CODE: str = ""
     DEMO_RENEWAL_CONSEQUENCE: str = "Standard paid renewal terms apply after the Demo period."
     CONSTITUTIONAL_ENGINE_ADDRESS: str = Field(min_length=1)
     BILLING_CONTRACT_ID: str = Field(min_length=1)

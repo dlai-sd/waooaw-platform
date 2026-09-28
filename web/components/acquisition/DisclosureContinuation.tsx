@@ -26,6 +26,10 @@ export function DisclosureContinuation({
 }) {
   const router = useRouter();
   const [accepted, setAccepted] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [couponStatus, setCouponStatus] = useState<string | null>(null);
+  const [checkingCoupon, setCheckingCoupon] = useState(false);
   const intents: AcquisitionIntent[] = initialIntent ? [initialIntent] : trialAvailable ? ['trial', 'hire'] : ['hire'];
 
   function continueWith(intent: AcquisitionIntent) {
@@ -38,7 +42,51 @@ export function DisclosureContinuation({
       termsVersion,
       idempotencyKey: crypto.randomUUID(),
     });
+    if (intent === 'hire' && appliedCoupon) continuation.set('couponCode', appliedCoupon);
     router.push(`/marketplace?${continuation}`);
+  }
+
+  async function applyCoupon() {
+    const normalized = couponCode.trim().toUpperCase();
+    if (!normalized) return;
+    setCheckingCoupon(true);
+    setCouponStatus(null);
+    try {
+      const response = await fetch('/api/acquisition/hire-preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ professionalType, professionalVersion, couponCode: normalized }),
+      });
+      const result = (await response.json().catch(() => ({}))) as {
+        coupon_code?: string;
+        payable_inr_paise?: number;
+        title?: string;
+        detail?: { code?: string };
+      };
+      if (!response.ok || result.coupon_code !== normalized || typeof result.payable_inr_paise !== 'number') {
+        setAppliedCoupon(null);
+        setCouponStatus(
+          result.detail?.code === 'COUPON_EXPIRED'
+            ? 'That coupon has expired.'
+            : result.detail?.code === 'COUPON_USED'
+              ? 'That coupon has reached its usage limit.'
+              : 'That coupon is not available for this offer.'
+        );
+        return;
+      }
+      setAppliedCoupon(normalized);
+      setCouponStatus(
+        `Coupon applied. Amount due now: ${new Intl.NumberFormat('en-IN', {
+          style: 'currency',
+          currency: 'INR',
+        }).format(result.payable_inr_paise / 100)}.`
+      );
+    } catch {
+      setAppliedCoupon(null);
+      setCouponStatus('Coupon validation is unavailable. You can continue without a coupon or try again.');
+    } finally {
+      setCheckingCoupon(false);
+    }
   }
 
   return (
@@ -52,6 +100,30 @@ export function DisclosureContinuation({
         </span>
       </label>
       <p className="offer-terms-version">Terms version {termsVersion}. Nothing starts until you continue.</p>
+      {intents.includes('hire') ? (
+        <div className="disclosure-coupon">
+          <label htmlFor="disclosure-coupon-code">
+            Coupon code <span>(optional)</span>
+          </label>
+          <div>
+            <input
+              id="disclosure-coupon-code"
+              autoComplete="off"
+              placeholder="Enter coupon code"
+              onChange={(event) => {
+                setCouponCode(event.target.value.toUpperCase());
+                setAppliedCoupon(null);
+                setCouponStatus(null);
+              }}
+              value={couponCode}
+            />
+            <button disabled={!couponCode.trim() || checkingCoupon} onClick={() => void applyCoupon()} type="button">
+              {checkingCoupon ? 'Checking...' : 'Apply'}
+            </button>
+          </div>
+          {couponStatus ? <p aria-live="polite">{couponStatus}</p> : null}
+        </div>
+      ) : null}
       <div className="command-row">
         {intents.includes('trial') ? (
           <button className="primary-command" disabled={!accepted} onClick={() => continueWith('trial')} type="button">

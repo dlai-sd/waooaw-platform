@@ -102,7 +102,8 @@ it('falls back to local NextAuth sign-out when broker logout cannot start', asyn
   await waitFor(() => expect(signOut).toHaveBeenCalledWith({ callbackUrl: '/' }));
 });
 
-it('clears local NextAuth after backend revocation without entering the Keycloak logout page', async () => {
+it('preserves the NextAuth session until the nonce-bound Keycloak logout page reads its ID token', async () => {
+  const navigate = jest.fn();
   Object.defineProperty(globalThis, 'fetch', {
     configurable: true,
     value: jest.fn().mockResolvedValue({
@@ -110,9 +111,10 @@ it('clears local NextAuth after backend revocation without entering the Keycloak
       json: async () => ({ logoutPath: '/api/auth/keycloak-logout?nonce=valid' }),
     }),
   });
-  render(<SignOutCommand label="Sign out" />);
+  render(<SignOutCommand label="Sign out" navigate={navigate} />);
 
   fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
 
-  await waitFor(() => expect(signOut).toHaveBeenCalledWith({ callbackUrl: '/' }));
+  await waitFor(() => expect(navigate).toHaveBeenCalledWith('/api/auth/keycloak-logout?nonce=valid'));
+  expect(signOut).not.toHaveBeenCalled();
 });

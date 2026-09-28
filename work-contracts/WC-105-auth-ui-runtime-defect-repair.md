@@ -13,15 +13,15 @@
 ## Authority And Scope
 
 The Founder authorized repair and complete testing of the reported authentication, customer portal,
-identity-session, Guide, and landing-page defects. The Founder accepted the revised landing preview
-on 2026-09-21 and authorized conversion of that preview into durable requirements and executable
-evidence.
+identity-session, Guide, landing-page, and Marketplace Hire billing defects. The Founder accepted the
+revised landing preview on 2026-09-21 and directed the pay-first Razorpay Hire sequence in the current
+working session, authorizing conversion into durable requirements and executable evidence.
 
-Authorized changes are limited to the existing Business Platform and Web Application components,
-focused tests, this Work Contract and ledger, local Docker validation, the Codespace preview, and one
-unmerged PR. Google consent-screen configuration and Google branding are deferred. No cloud mutation,
-deployment, provider configuration, customer traffic, Production action, approval, or merge is
-authorized.
+Authorized changes are limited to the existing Business Platform, Billing Engine, and Web Application
+components, focused tests, additive local schema, this Work Contract and ledger, local Docker
+validation, the Codespace preview, and one unmerged PR. Google consent-screen configuration and Google
+branding are deferred. No cloud mutation, provider configuration, customer traffic, Production action,
+approval, or merge is authorized.
 
 ## Inputs
 
@@ -55,6 +55,7 @@ authorized.
 | WC105-R024 | Three exact platform features appear one at a time below `Control remains yours.` with accessible controls, swipe, keyboard, pause, and reduced motion. | Component and responsive browser assertions. |
 | WC105-R025 | Section `02` uses the exact approved small-business trust and owner-control copy across required presentation modes. | Copy, locale, RTL, zoom, and responsive browser assertions. |
 | WC105-R026 | The top-left logo renders exactly 50% larger with preserved ratio and no control or layout regression. | Component dimension and responsive browser geometry assertions. |
+| WC105-R050 | After Marketplace Terms/Privacy acceptance, `Continue to hire` opens official Razorpay Standard Checkout directly. Only verified capture or a server-validated zero-price outcome creates the Hire relationship; setup and exact monthly contract follow payment, activation still requires contract acceptance, and no second charge is created. | Billing idempotency, signature, webhook-isolation, exact-contract binding, authenticated BFF, component, TypeScript, migration, and preview-browser evidence. |
 
 ## Definition Of Done
 
