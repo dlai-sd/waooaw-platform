@@ -108,7 +108,7 @@ describe('authentication views', () => {
 
   it('does not restart login for an authenticated identity requiring recovery', async () => {
     jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
-    jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'forbidden' });
+    jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'forbidden', code: 'IDENTITY_FORBIDDEN' });
 
     await expect(LoginView({ searchParams: Promise.resolve({ returnTo: '/settings' }) })).rejects.toThrow(
       'NEXT_REDIRECT'
