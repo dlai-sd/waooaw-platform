@@ -773,9 +773,36 @@ jobs:
           credential_names=$(python3 scripts/goal006_deployment_credentials.py \
             --catalog infrastructure/environment-readiness/secret-catalog.json \
             --environment "$TARGET_ENVIRONMENT")
+          external_credential_names=$(python3 scripts/goal006_deployment_credentials.py \
+            --catalog infrastructure/environment-readiness/secret-catalog.json \
+            --environment "$TARGET_ENVIRONMENT" \
+            --kind required-external)
           credential_schema=$(printf '%s\n%s\n' "$SEEDER_IMAGE" "$credential_names" | sha256sum | cut -d' ' -f1)
           seeding_required=false
           jq -n --arg schema "$credential_schema" '{schema: $schema, credentials: []}' > credential-inventory.json
+          for name in $external_credential_names; do
+            lookup_error=$(mktemp)
+            if enabled=$(az keyvault secret show --vault-name "$KEY_VAULT_NAME" --name "$name" \
+              --query attributes.enabled -o tsv 2>"$lookup_error"); then
+              rm -f "$lookup_error"
+              test "$enabled" = true || {
+                echo "Required external credential $name is disabled" >&2
+                exit 1
+              }
+            elif grep -q "SecretNotFound" "$lookup_error"; then
+              rm -f "$lookup_error"
+              echo "Required external credential $name is missing; provision it through the Founder Key Vault admin path" >&2
+              exit 1
+            else
+              cat "$lookup_error" >&2
+              rm -f "$lookup_error"
+              exit 1
+            fi
+            jq --arg name "$name" \
+              '.credentials += [{name: $name, status: "ready", schema: "external-operator"}]' \
+              credential-inventory.json > credential-inventory.next.json
+            mv credential-inventory.next.json credential-inventory.json
+          done
           for name in $credential_names; do
             lookup_error=$(mktemp)
             if az keyvault secret show --vault-name "$KEY_VAULT_NAME" --name "$name" -o json \
