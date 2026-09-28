@@ -57,8 +57,11 @@ PRECHECK_CONFIGURATION_PATHS = (
     Path(__file__).with_name("precheck_orchestrator.py"),
     Path(__file__).parent / "validation_control/local_catalog_gate.py",
     Path(__file__).parent / "validation_control/catalog_execution.py",
+    Path(__file__).parent / "validation_control/execution_contract.py",
     Path(__file__).parent / "validation_control/orchestrator.py",
     Path(__file__).parent / "validation_control/runner_supply.py",
+    Path(__file__).parent / "validation_control/run_execution_contract.sh",
+    Path(__file__).resolve().parents[1] / ".github/actions/run-validation-gate/action.yml",
     Path(__file__).parent / "validation_control/run_gitleaks_gate.sh",
     Path(__file__).parent / "validation_control/run_dotnet_test_gate.sh",
     VALIDATION_POLICY_PATH,
@@ -457,10 +460,28 @@ def run_ci_prechecks(base: str, head: str, changed_files: list[str]) -> dict[str
 
 
 def update_pull_request(pr_number: int, body_file: Path, branch: str) -> None:
-    command = ["gh", "pr", "edit", str(pr_number), "--body-file", str(body_file)]
-    for label in expected_pr_labels(branch):
-        command.extend(("--add-label", label))
-    subprocess.run(command, check=True)  # noqa: S603
+    gh = shutil.which("gh")
+    if gh is None:
+        raise ValueError("GitHub CLI is required to update the pull request")
+    repository = subprocess.run(  # noqa: S603
+        [gh, "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository):
+        raise ValueError("GitHub repository identity is invalid")
+    requests = (
+        ("PATCH", f"repos/{repository}/pulls/{pr_number}", {"body": body_file.read_text(encoding="utf-8")}),
+        ("POST", f"repos/{repository}/issues/{pr_number}/labels", {"labels": expected_pr_labels(branch)}),
+    )
+    for method, endpoint, payload in requests:
+        subprocess.run(  # noqa: S603
+            [gh, "api", "--method", method, endpoint, "--input", "-"],
+            input=json.dumps(payload),
+            text=True,
+            check=True,
+        )
 
 
 def validate_prepared_body(body: str, base: str, head: str) -> list[str]:

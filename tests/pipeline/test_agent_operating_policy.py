@@ -26,7 +26,7 @@ def test_platform_it_expert_compact_inventory_maps_all_active_skills() -> None:
     assert headings == list(range(1, 18))
     assert "Skills 1–17 ACTIVE" in entry
     assert "Skill 17 Governed Cloud Delivery Engineering activated by FA-049" in entry
-    assert "Platform IT Expert v1.3.4" in entry
+    assert "Platform IT Expert v1.3.5" in entry
     assert "deterministic-first token efficiency" in entry
     assert "read only that skill section" in card
 
@@ -173,3 +173,25 @@ def test_platform_it_policy_requires_static_first_focused_validation() -> None:
         "Run full hosted qualification once on the final pushed head",
     ):
         assert requirement in normalized
+
+
+def test_platform_it_policy_enforces_unified_docker_process() -> None:
+    card = IT_EXPERT_CARD.read_text(encoding="utf-8")
+    canonical = IT_EXPERT_SPEC.read_text(encoding="utf-8")
+
+    for policy in (card, canonical):
+        normalized = " ".join(policy.split())
+        for requirement in (
+            "static contract",
+            "exact-container execution contract",
+            "focused gate",
+            "atomic host-visible evidence",
+            "diagnostic only",
+            "cannot produce authoritative",
+            "unchanged execution-contract or infrastructure failure",
+        ):
+            assert requirement in normalized
+    assert "one final qualification" in card
+    assert "Run one final qualification" in canonical
+    assert "scripts/validation_control/local_catalog_gate.py" in card
+    assert "scripts/validation_control/catalog_execution.py" in canonical

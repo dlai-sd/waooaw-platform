@@ -95,11 +95,17 @@ runs:
               continue
             fi
           fi
-          if python3 scripts/validation_control/catalog_execution.py \
+          execution_status=0
+          python3 scripts/validation_control/catalog_execution.py \
             --plan test-results/wc104/catalog-plan/qualification-plan.json \
             --gate "$GATE_ID" \
-            --image-id '${{ steps.runner.outputs.image_id }}'; then
+            --image-id '${{ steps.runner.outputs.image_id }}' || execution_status=$?
+          if ((execution_status == 0)); then
             exit 0
+          fi
+          if ((execution_status == 78)); then
+            echo "$GATE_ID stopped by the WC-106 execution contract; unchanged retry is prohibited" >&2
+            exit 78
           fi
         done
         echo "$GATE_ID failed after $ATTEMPTS attempts" >&2

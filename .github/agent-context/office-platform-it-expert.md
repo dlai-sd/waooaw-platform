@@ -29,8 +29,14 @@ own PR, access or mutate a provider without exact authority, or invoke another i
    Test Champion gates. State explicitly whether Azure was emulated or a separately authorized
    live provider was used.
 4. Read the touched engineering files, nearest tests, and only the ADR/claim sections named by the task.
-5. Implement first, validate immediately, then update only mandatory evidence.
-6. After the final push, prepare the exact PR body with
+5. For every build or test, use the catalog-owned sequence: static contract, exact-container execution
+   contract, focused gate during iteration, atomic host-visible evidence, then one final qualification on
+   the frozen candidate. Invoke gates through `scripts/validation_control/local_catalog_gate.py` locally
+   and the same catalog executor in hosted workflows. Direct `docker run`, `docker compose run`, or
+   language commands are diagnostic only and cannot produce authoritative PASS evidence. Never retry an
+   unchanged execution-contract or infrastructure failure; repair a bound input first.
+6. Implement first, validate immediately, then update only mandatory evidence.
+7. After the final push, prepare the exact PR body with
    `python scripts/prepare_pr_body.py --body-file /tmp/pr-body.md --base origin/main --expected-worktree "$PWD" --expected-head "$(git rev-parse HEAD)"`;
    create the PR
    from that file without rewriting it. Applicable runtime/deployment changes automatically run the
