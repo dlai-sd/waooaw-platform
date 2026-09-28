@@ -42,6 +42,15 @@ from wallet.models import RenewalResult, SubscriptionActivationResult
 from wallet.service import WalletService
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("payment_id", ["../orders", "pay_../orders", "https://attacker.invalid", "pay_id?expand=card"])
+async def test_razorpay_fetch_payment_rejects_non_opaque_identifiers(payment_id):
+    client = RazorpayClient(settings=MagicMock())
+
+    with pytest.raises(ValueError, match="Invalid Razorpay payment identifier"):
+        await client.fetch_payment(payment_id)
+
+
 # ---------------------------------------------------------------------------
 # Schema DDL (SQLite in-memory)
 # ---------------------------------------------------------------------------
