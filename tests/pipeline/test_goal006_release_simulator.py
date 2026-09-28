@@ -214,7 +214,8 @@ def test_ci_audits_billing_dependencies_and_release_qualification_has_no_provide
     enforce_step = next(
         step for step in release_job["steps"] if step.get("name") == "Enforce catalog release qualification result"
     )
-    assert "pip-audit -r src/billing-engine/requirements.txt --strict" in dependency_runner
+    assert 'pip-audit -r "$1" --strict' in dependency_runner
+    assert "audit_python_requirements src/billing-engine/requirements.txt" in dependency_runner
     assert release_job["permissions"] == {"contents": "read", "packages": "read", "attestations": "read"}
     assert "gate-id\": \"release-qualification" in release_job_text
     assert "release-qualification: {shell: \"sh scripts/run_release_qualification.sh\"" in catalog_text
