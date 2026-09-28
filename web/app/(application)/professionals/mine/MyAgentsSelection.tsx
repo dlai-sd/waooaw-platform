@@ -38,7 +38,7 @@ export function MyAgentsSelection() {
   }, []);
 
   return (
-    <div className="my-agents-confirmation" id="my-agents-selection-confirmation" role="status">
+    <output className="my-agents-confirmation" id="my-agents-selection-confirmation">
       {selection ? (
         <>
           <CheckCircle2 aria-hidden="true" size={20} />
@@ -47,6 +47,6 @@ export function MyAgentsSelection() {
           </span>
         </>
       ) : null}
-    </div>
+    </output>
   );
 }

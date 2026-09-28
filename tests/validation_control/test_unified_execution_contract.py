@@ -1,9 +1,11 @@
 """WC-106 exact-container readiness and unchanged-retry contracts."""
 
+from concurrent.futures import ThreadPoolExecutor
 import json
 import os
 from pathlib import Path
 import subprocess
+from threading import Barrier, Lock
 from types import SimpleNamespace
 
 import pytest
@@ -252,6 +254,36 @@ def test_orchestration_preflight_rejects_unwritable_home_before_supply(
 
     with pytest.raises(ValueError, match="HOME is not writable"):
         orchestration_preflight(tmp_path, socket)
+
+
+def test_orchestration_preflight_isolates_parallel_output_probes(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    socket = tmp_path / "docker.sock"
+    socket.touch()
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setattr(Path, "is_socket", lambda self: self == socket)
+    original_read_text = Path.read_text
+    read_barrier = Barrier(2)
+    read_paths: list[Path] = []
+    read_paths_lock = Lock()
+
+    def synchronized_read_text(path: Path, *args: object, **kwargs: object) -> str:
+        if path.name.startswith(".orchestration-probe-"):
+            with read_paths_lock:
+                read_paths.append(path)
+            read_barrier.wait()
+        return original_read_text(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", synchronized_read_text)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [executor.submit(orchestration_preflight, tmp_path, socket) for _ in range(2)]
+        for future in futures:
+            future.result()
+
+    assert len(set(read_paths)) == 2
+    assert not list((tmp_path / "test-results/wc106").glob(".orchestration-probe-*"))
 
 
 def test_all_catalog_runners_use_writable_tmpfs_home() -> None:
