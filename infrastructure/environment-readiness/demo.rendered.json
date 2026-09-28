@@ -1,5 +1,5 @@
 {
-  "catalogDigest": "sha256:0d2eb278d2e5f288e288af8656a34eacbc40527c594c8cb1e336246342307f35",
+  "catalogDigest": "sha256:78b49173e23adb2ba6bf88e3dbda8f03d3b76e41884f893bf3d762b50a752c90",
   "configuration": {
     "channels": {
       "mobile": false,
@@ -127,7 +127,7 @@
   },
   "environment": "demo",
   "manifestDigest": "sha256:1acff7076972dc785dd6ad23ff077c8ab635ae62e1a643c377edabe5baef1028",
-  "renderDigest": "sha256:eb3ca8bc7f9bf349f94a6c0996dfe37a0a5983ff050e105d48d073147caded13",
+  "renderDigest": "sha256:fae07df5da689cc1cf1532c76f77d3aa648fcf4e8ee3aecc6b2c2b8764305d84",
   "schemaVersion": "1.0",
   "secretBindings": [
     {
@@ -219,6 +219,39 @@
       "id": "facebook-login-client",
       "principal": "keycloak",
       "reference": "kv://kv-waooaw-demo/secrets/meta-login-client-secret"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "billing-engine:RAZORPAY_KEY_ID"
+      ],
+      "id": "razorpay-test-key-id",
+      "principal": "billing-engine",
+      "reference": "kv://kv-waooaw-demo/secrets/razorpay-test-key-id"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "billing-engine:RAZORPAY_KEY_SECRET"
+      ],
+      "id": "razorpay-test-key-secret",
+      "principal": "billing-engine",
+      "reference": "kv://kv-waooaw-demo/secrets/razorpay-test-key-secret"
+    },
+    {
+      "allowedOperations": [
+        "get"
+      ],
+      "consumers": [
+        "billing-engine:RAZORPAY_WEBHOOK_SECRET"
+      ],
+      "id": "razorpay-test-webhook-secret",
+      "principal": "billing-engine",
+      "reference": "kv://kv-waooaw-demo/secrets/razorpay-test-webhook-secret"
     },
     {
       "allowedOperations": [

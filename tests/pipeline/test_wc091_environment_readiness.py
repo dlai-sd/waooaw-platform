@@ -162,6 +162,57 @@ def test_demo_deployment_provisions_and_orders_every_hmac_secret_dependency() ->
     assert 'scripts/goal006_keyvault_retry.py"' in workflow
 
 
+def test_external_razorpay_credentials_are_validated_but_not_seeded() -> None:
+    catalog = {
+        "entries": [
+            {
+                "vaultSecretName": "razorpay-test-key-id",
+                "source": "external-operator",
+                "provisioner": "founder-key-vault-admin",
+                "environments": ["demo", "uat"],
+            },
+            {
+                "vaultSecretName": "managed-secret",
+                "source": "platform-generated",
+                "provisioner": "environment-deployment",
+                "environments": ["demo"],
+            },
+        ]
+    }
+
+    assert goal006_deployment_credentials.required_external_credentials(catalog, "demo") == [
+        "razorpay-test-key-id"
+    ]
+    assert "razorpay-test-key-id" not in goal006_deployment_credentials.deployment_credentials(catalog, "demo")
+    assert "managed-secret" in goal006_deployment_credentials.deployment_credentials(catalog, "demo")
+
+
+def test_demo_deployment_requires_external_razorpay_credentials_before_apply() -> None:
+    root = wc091_environment.ROOT
+    catalog = json.loads((root / "infrastructure/environment-readiness/secret-catalog.json").read_text())
+    workflow = (root / ".github/workflows/environment-deployment.yaml").read_text()
+    module = (root / "infrastructure/terraform/phase2/modules/workload/main.tf").read_text()
+    expected = {
+        "razorpay-test-key-id",
+        "razorpay-test-key-secret",
+        "razorpay-test-webhook-secret",
+    }
+    entries = {entry["vaultSecretName"]: entry for entry in catalog["entries"] if entry["vaultSecretName"] in expected}
+    member = module.split('resource "azurerm_container_app" "member"', maxsplit=1)[1].split(
+        'resource "azurerm_user_assigned_identity" "temporal"', maxsplit=1
+    )[0]
+
+    assert set(entries) == expected
+    assert all(entry["source"] == "external-operator" for entry in entries.values())
+    assert all(entry["provisioner"] == "founder-key-vault-admin" for entry in entries.values())
+    assert set(goal006_deployment_credentials.required_external_credentials(catalog, "demo")) == expected
+    assert expected.isdisjoint(goal006_deployment_credentials.deployment_credentials(catalog, "demo"))
+    assert "--kind required-external" in workflow
+    assert "Required external credential $name is missing" in workflow
+    assert workflow.index("external_credential_names=") < workflow.index("Terraform workload plan")
+    assert "azurerm_role_assignment.razorpay_secret" in member
+
+
 def test_private_deployment_seeder_creates_missing_hmac_secret(tmp_path) -> None:
     workflow = (wc091_environment.ROOT / ".github/workflows/environment-deployment.yaml").read_text()
     seeder = re.search(r"^\s*seeder_script='(.*)'$", workflow, re.MULTILINE)
@@ -228,6 +279,11 @@ exit 0
         (
             "Unable to get value using Managed identity for secret identity-event-ingest-hmac",
             {"credentials": [{"name": "identity-event-ingest-hmac"}]},
+            True,
+        ),
+        (
+            "Unable to get value using Managed identity for secret razorpay-test-key-secret",
+            {"credentials": [{"name": "razorpay-test-key-secret", "status": "ready"}]},
             True,
         ),
         (
