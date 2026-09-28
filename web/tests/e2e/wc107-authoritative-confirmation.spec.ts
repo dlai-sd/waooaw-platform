@@ -52,7 +52,9 @@ test.beforeEach(async ({ context }, testInfo) => {
   await addSession(context, testInfo.project.name);
 });
 
-test('WC107-R015-R016: Trial confirmation selects and focuses the authoritative card once', async ({ page }, testInfo) => {
+test('WC107-R015-R016: Trial confirmation selects and focuses the authoritative card once', async ({
+  page,
+}, testInfo) => {
   test.skip(
     !['chromium-expanded', 'chromium-compact-360'].includes(testInfo.project.name),
     'Desktop and compact Chromium prove the spatial contract.'
@@ -68,13 +70,14 @@ test('WC107-R015-R016: Trial confirmation selects and focuses the authoritative 
   await page.goto(started.body.resumePath);
 
   await expect(page.getByText('Trial started', { exact: true })).toBeVisible();
-  const selected = page.locator(
-    `.agent-dashboard:visible > li[data-relationship-id="${started.body.relationshipId}"]`
-  );
+  const selected = page.locator(`.agent-dashboard:visible > li[data-relationship-id="${started.body.relationshipId}"]`);
   await expect(selected).toHaveAttribute('data-selected', 'true');
   await expect(selected).toBeFocused();
-  expect(await page.locator('.agent-dashboard:visible > li').evaluateAll((cards) => cards.map((card) => card.getAttribute('data-relationship-id'))))
-    .toEqual(['relationship-active', 'relationship-second', started.body.relationshipId]);
+  expect(
+    await page
+      .locator('.agent-dashboard:visible > li')
+      .evaluateAll((cards) => cards.map((card) => card.getAttribute('data-relationship-id')))
+  ).toEqual(['relationship-active', 'relationship-second', started.body.relationshipId]);
   expect(new URL(page.url()).pathname).toBe('/professionals/mine');
   expect(new URL(page.url()).search).toBe('');
   expect(await selected.evaluate((card) => getComputedStyle(card).boxShadow)).not.toBe('none');
@@ -85,15 +88,15 @@ test('WC107-R015-R016: Trial confirmation selects and focuses the authoritative 
 
   const cdp = await page.context().newCDPSession(page);
   const history = await cdp.send('Page.getNavigationHistory');
-  const prohibitedValues = [
-    '77777777-7777-4777-8777-777777777777',
-    String(started.body.relationshipId),
-  ];
+  const prohibitedValues = ['77777777-7777-4777-8777-777777777777', String(started.body.relationshipId)];
   for (const value of prohibitedValues) {
-    expect(requestUrls, `request URL leaked ${value}`).not.toEqual(expect.arrayContaining([expect.stringContaining(value)]));
-    expect(history.entries.map(({ url }) => url), `browser history leaked ${value}`).not.toEqual(
+    expect(requestUrls, `request URL leaked ${value}`).not.toEqual(
       expect.arrayContaining([expect.stringContaining(value)])
     );
+    expect(
+      history.entries.map(({ url }) => url),
+      `browser history leaked ${value}`
+    ).not.toEqual(expect.arrayContaining([expect.stringContaining(value)]));
     expect(consoleMessages.join('\n'), `console log leaked ${value}`).not.toContain(value);
   }
 
@@ -102,12 +105,11 @@ test('WC107-R015-R016: Trial confirmation selects and focuses the authoritative 
   await expect(page.locator('[data-selected="true"]')).toHaveCount(0);
 });
 
-test('WC107-R015: paid, zero-price, and pending confirmation text is bounded by server outcome', async ({ page }, testInfo) => {
+test('WC107-R015: paid, zero-price, and pending confirmation text is bounded by server outcome', async ({
+  page,
+}, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium-expanded', 'One desktop browser proves the exact outcome copy.');
-  const cases = [
-    'Payment confirmed. Professional hired.',
-    'Professional hired. No payment was due.',
-  ];
+  const cases = ['Payment confirmed. Professional hired.', 'Professional hired. No payment was due.'];
   for (const confirmation of cases) {
     await page.route('**/professionals/mine/selection', (route) =>
       route.fulfill({

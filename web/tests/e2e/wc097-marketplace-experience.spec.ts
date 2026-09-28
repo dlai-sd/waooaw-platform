@@ -113,10 +113,14 @@ test('WC107-MARKETPLACE-02: cancelling leaves acquisition state and browser hist
   await page.locator('.marketplace-offer').first().getByRole('link', { name: 'Not now' }).click();
   await expect(page).toHaveURL(cleanUrl);
   expect(await page.evaluate(() => history.length)).toBe(historyLength);
-  await expect(page.locator('.marketplace-offer').first().getByRole('button', { name: 'Start 14-day trial' })).toBeDisabled();
+  await expect(
+    page.locator('.marketplace-offer').first().getByRole('button', { name: 'Start 14-day trial' })
+  ).toBeDisabled();
 });
 
-test('WC107-MARKETPLACE-03: validated coupon updates Hire without entering URL or history', async ({ page }, testInfo) => {
+test('WC107-MARKETPLACE-03: validated coupon updates Hire without entering URL or history', async ({
+  page,
+}, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium-expanded', 'One desktop journey proves private pre-checkout state.');
   await page.route('**/api/acquisition/hire-preview', async (route) => {
     expect(JSON.parse(route.request().postData() ?? '{}')).toEqual({

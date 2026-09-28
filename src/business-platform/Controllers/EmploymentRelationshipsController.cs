@@ -223,8 +223,11 @@ public sealed record EmploymentRelationshipCollectionResponse(
 );
 
 public sealed record CreateMyAgentsSelectionRequest(string OutcomeKind);
+
 public sealed record ConsumeMyAgentsSelectionRequest(string Handle);
+
 public sealed record MyAgentsSelectionResponse(string Handle, DateTimeOffset ExpiresAt);
+
 public sealed record ConsumedMyAgentsSelectionResponse(Guid RelationshipId, string OutcomeKind);
 
 public sealed record RelationshipTimelineEntryResponse(
@@ -365,7 +368,12 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         try
         {
             var result = await _selections.CreateAsync(
-                tenantId, participantId, relationshipId, request.OutcomeKind, cancellationToken);
+                tenantId,
+                participantId,
+                relationshipId,
+                request.OutcomeKind,
+                cancellationToken
+            );
             return Ok(new MyAgentsSelectionResponse(result.Handle, result.ExpiresAt));
         }
         catch (ArgumentException exception)
@@ -390,7 +398,11 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         if (_selections is null)
             return NoContent();
         var result = await _selections.ConsumeAsync(
-            tenantId, participantId, request.Handle, cancellationToken);
+            tenantId,
+            participantId,
+            request.Handle,
+            cancellationToken
+        );
         return result is null
             ? NoContent()
             : Ok(new ConsumedMyAgentsSelectionResponse(result.RelationshipId, result.OutcomeKind));

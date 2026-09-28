@@ -23,10 +23,7 @@ function outcome(operation: string, status: number) {
   return 'REJECTED';
 }
 
-export async function withJourneyTrace(
-  operation: keyof typeof successfulOutcomes,
-  command: () => Promise<Response>
-) {
+export async function withJourneyTrace(operation: keyof typeof successfulOutcomes, command: () => Promise<Response>) {
   return trace.getTracer('waooaw.web.journeys').startActiveSpan(operation, async (span) => {
     span.setAttribute('waooaw.journey.operation', operation);
     span.setAttribute('waooaw.correlation_id', span.spanContext().traceId);

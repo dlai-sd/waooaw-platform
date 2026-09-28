@@ -550,9 +550,7 @@ const server = createServer(async (request, response) => {
     return;
   }
 
-  const selectionCreate = url.pathname.match(
-    /^\/api\/v1\/employment\/relationships\/([^/]+)\/selection-flash$/
-  );
+  const selectionCreate = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/selection-flash$/);
   if (request.method === 'POST' && selectionCreate) {
     const body = await readBody(request);
     const relationshipId = decodeURIComponent(selectionCreate[1]);

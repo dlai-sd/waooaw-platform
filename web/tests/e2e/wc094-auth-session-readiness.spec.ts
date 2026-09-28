@@ -118,7 +118,7 @@ test('WC107-AUTH-03: account switch revokes prior state and requires explicit br
       transition: expect.not.stringContaining('prior-account'),
       unrelated: 'preserve',
     });
-  await expect.poll(async () => context.cookies()).toEqual(
-    expect.not.arrayContaining([expect.objectContaining({ name: 'next-auth.session-token' })])
-  );
+  await expect
+    .poll(async () => context.cookies())
+    .toEqual(expect.not.arrayContaining([expect.objectContaining({ name: 'next-auth.session-token' })]));
 });

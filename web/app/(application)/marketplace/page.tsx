@@ -125,9 +125,17 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
                 <details className="offer-details">
                   <summary>Scope, safeguards and your control</summary>
                   <h3>Honest limits</h3>
-                  <ul>{professional.limitations.map((item) => <li key={item}>{item}</li>)}</ul>
+                  <ul>
+                    {professional.limitations.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
                   <h3>Your control</h3>
-                  <ul>{professional.customerRights.map((item) => <li key={item}>{item}</li>)}</ul>
+                  <ul>
+                    {professional.customerRights.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
                   <Link href={professional.disclosurePath}>Open expanded disclosure</Link>
                 </details>
                 {professional.indicativePrice ? (

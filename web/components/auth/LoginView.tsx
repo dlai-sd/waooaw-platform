@@ -30,10 +30,7 @@ export async function LoginView({ searchParams }: { searchParams?: Promise<{ ret
   const providers = await listIdentityProviders();
   return (
     <section className="auth-view auth-entry-view">
-      <AuthBrand
-        subtitle={recovery ? 'Sign in again to continue safely.' : 'Welcome back.'}
-        title="Log in to WAOOAW"
-      />
+      <AuthBrand subtitle={recovery ? 'Sign in again to continue safely.' : 'Welcome back.'} title="Log in to WAOOAW" />
       {recovery ? (
         <div className="identity-status" data-reason-code={recovery.code} role="alert">
           <p>We couldn&apos;t continue with the current session. Choose your account and try again.</p>

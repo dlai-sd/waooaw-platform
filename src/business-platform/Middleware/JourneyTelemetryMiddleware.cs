@@ -7,18 +7,22 @@ namespace Waooaw.BusinessPlatform.Middleware;
 
 public sealed class JourneyTelemetryMiddleware(RequestDelegate next)
 {
-    private static readonly IReadOnlyDictionary<string, string> Operations =
-        new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["api/v1/identity/session"] = "identity.session",
-            ["api/v1/identity/registrations"] = "identity.registration.start",
-            ["api/v1/identity/registrations/{registrationId:guid}/complete"] = "identity.registration.complete",
-            ["api/v1/identity/sessions"] = "identity.sessions",
-            ["api/v1/acquisition/continuations"] = "acquisition.continue",
-            ["api/v1/employment/relationships"] = "relationships.list",
-            ["api/v1/employment/relationships/{relationshipId:guid}/selection-flash"] = "my_agents.selection.create",
-            ["api/v1/employment/relationships/selection-flash/consume"] = "my_agents.selection.consume",
-        };
+    private static readonly IReadOnlyDictionary<string, string> Operations = new Dictionary<
+        string,
+        string
+    >(StringComparer.Ordinal)
+    {
+        ["api/v1/identity/session"] = "identity.session",
+        ["api/v1/identity/registrations"] = "identity.registration.start",
+        ["api/v1/identity/registrations/{registrationId:guid}/complete"] =
+            "identity.registration.complete",
+        ["api/v1/identity/sessions"] = "identity.sessions",
+        ["api/v1/acquisition/continuations"] = "acquisition.continue",
+        ["api/v1/employment/relationships"] = "relationships.list",
+        ["api/v1/employment/relationships/{relationshipId:guid}/selection-flash"] =
+            "my_agents.selection.create",
+        ["api/v1/employment/relationships/selection-flash/consume"] = "my_agents.selection.consume",
+    };
 
     public async Task InvokeAsync(HttpContext context)
     {
@@ -42,7 +46,8 @@ public sealed class JourneyTelemetryMiddleware(RequestDelegate next)
         activity?.SetTag("waooaw.journey.outcome", TypedOutcome(operation, status));
     }
 
-    internal static string StatusClass(int status) => status is >= 100 and <= 599 ? $"{status / 100}xx" : "unknown";
+    internal static string StatusClass(int status) =>
+        status is >= 100 and <= 599 ? $"{status / 100}xx" : "unknown";
 
     internal static string TypedOutcome(string operation, int status)
     {
@@ -56,11 +61,15 @@ public sealed class JourneyTelemetryMiddleware(RequestDelegate next)
                 "acquisition.continue" => "ACQUISITION_CONTINUED",
                 "relationships.list" => "AUTHORIZED_PROJECTION_RETURNED",
                 "my_agents.selection.create" => "SELECTION_CREATED",
-                "my_agents.selection.consume" => status == 204 ? "NO_AUTHORIZED_SELECTION" : "SELECTION_CONSUMED",
+                "my_agents.selection.consume" => status == 204
+                    ? "NO_AUTHORIZED_SELECTION"
+                    : "SELECTION_CONSUMED",
                 _ => "SUCCEEDED",
             };
-        if (status == 409) return "CONFLICT";
-        if (status is 502 or 503 or 504) return "DEPENDENCY_UNAVAILABLE";
+        if (status == 409)
+            return "CONFLICT";
+        if (status is 502 or 503 or 504)
+            return "DEPENDENCY_UNAVAILABLE";
         return "REJECTED";
     }
 }

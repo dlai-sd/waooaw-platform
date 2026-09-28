@@ -218,7 +218,9 @@ test('WC107-AUTH-01: policy denial returns Register to bounded Login recovery', 
   const dialog = page.getByRole('dialog', { name: 'Log in to WAOOAW' });
   await expect(dialog).toHaveCount(1);
   await expect(dialog.getByRole('alert')).toHaveAttribute('data-reason-code', 'IDENTITY_ACTION_DENIED');
-  await expect(dialog.getByText("We couldn't continue with the current session. Choose your account and try again.")).toBeVisible();
+  await expect(
+    dialog.getByText("We couldn't continue with the current session. Choose your account and try again.")
+  ).toBeVisible();
 });
 
 test('WC107-AUTH-04: Login without an account reaches Marketplace without starting Registration', async ({
@@ -318,15 +320,21 @@ test('WC107-AUTH-02: registration progress is compact, semantic, and overflow-fr
   ]) {
     await page.setViewportSize(viewport);
     const overflow = await dialog.evaluate(
-      (element) => element.scrollWidth > element.clientWidth || document.documentElement.scrollWidth > document.documentElement.clientWidth
+      (element) =>
+        element.scrollWidth > element.clientWidth ||
+        document.documentElement.scrollWidth > document.documentElement.clientWidth
     );
     expect(overflow, `registration must not overflow at ${viewport.width}x${viewport.height}`).toBe(false);
-    expect(await progress.locator('ol').evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+    expect(await progress.locator('ol').evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(
+      true
+    );
   }
 
   await page.setViewportSize({ width: 360, height: 800 });
   await page.locator('html').evaluate((element) => element.setAttribute('dir', 'rtl'));
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(
+    true
+  );
   await page.evaluate(() => {
     document.documentElement.style.fontSize = '200%';
   });

@@ -16,11 +16,7 @@ export async function register() {
 
   const { context, propagation } = await import('@opentelemetry/api');
   const internalOrigins = new Set(
-    [
-      process.env.BUSINESS_PLATFORM_URL,
-      process.env.BILLING_ENGINE_URL,
-      process.env.PROFESSIONAL_RUNTIME_URL,
-    ]
+    [process.env.BUSINESS_PLATFORM_URL, process.env.BILLING_ENGINE_URL, process.env.PROFESSIONAL_RUNTIME_URL]
       .filter((value): value is string => Boolean(value))
       .map((value) => new URL(value).origin)
   );

@@ -185,9 +185,9 @@ describe('authentication views', () => {
 
   it.each(['forbidden', 'step-up'] as const)('routes typed %s registration denial to Login recovery', async (kind) => {
     jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
-    jest.mocked(getIdentitySession).mockResolvedValue(
-      kind === 'forbidden' ? { kind, code: 'IDENTITY_ACTION_DENIED' } : { kind }
-    );
+    jest
+      .mocked(getIdentitySession)
+      .mockResolvedValue(kind === 'forbidden' ? { kind, code: 'IDENTITY_ACTION_DENIED' } : { kind });
 
     await expect(RegisterView({ searchParams: Promise.resolve({ returnTo: '/settings' }) })).rejects.toThrow(
       'NEXT_REDIRECT'
@@ -205,6 +205,9 @@ describe('authentication views', () => {
 
     expect(redirect).not.toHaveBeenCalled();
     expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-intent', 'register');
-    expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-callback-url', '/register?returnTo=%2Fsettings');
+    expect(screen.getByTestId('provider-commands')).toHaveAttribute(
+      'data-callback-url',
+      '/register?returnTo=%2Fsettings'
+    );
   });
 });

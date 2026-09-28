@@ -1765,14 +1765,25 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.HasKey(value => value.SelectionId);
             entity.HasIndex(value => value.HandleHash).IsUnique();
             entity.Property(value => value.SelectionId).HasColumnName("selection_id");
-            entity.Property(value => value.HandleHash).HasColumnName("handle_hash").HasMaxLength(64);
+            entity
+                .Property(value => value.HandleHash)
+                .HasColumnName("handle_hash")
+                .HasMaxLength(64);
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
-            entity.Property(value => value.ActorParticipantId).HasColumnName("actor_participant_id");
+            entity
+                .Property(value => value.ActorParticipantId)
+                .HasColumnName("actor_participant_id");
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
-            entity.Property(value => value.OutcomeKind).HasColumnName("outcome_kind").HasMaxLength(20);
+            entity
+                .Property(value => value.OutcomeKind)
+                .HasColumnName("outcome_kind")
+                .HasMaxLength(20);
             entity.Property(value => value.CreatedAt).HasColumnName("created_at");
             entity.Property(value => value.ExpiresAt).HasColumnName("expires_at");
-            entity.Property(value => value.ConsumedAt).HasColumnName("consumed_at").IsConcurrencyToken();
+            entity
+                .Property(value => value.ConsumedAt)
+                .HasColumnName("consumed_at")
+                .IsConcurrencyToken();
             entity
                 .HasOne<EmploymentRelationship>()
                 .WithMany()

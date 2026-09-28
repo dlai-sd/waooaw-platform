@@ -59,5 +59,4 @@ async function resolveSelection(request: NextRequest) {
   }
 }
 
-export const POST = (request: NextRequest) =>
-  withJourneyTrace('my_agents.selection', () => resolveSelection(request));
+export const POST = (request: NextRequest) => withJourneyTrace('my_agents.selection', () => resolveSelection(request));

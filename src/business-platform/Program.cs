@@ -45,13 +45,16 @@ if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
         .ProtectKeysWithCertificate(certificate);
 }
 
-var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] ?? builder.Configuration["OTLP_ENDPOINT"];
+var otlpEndpoint =
+    builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] ?? builder.Configuration["OTLP_ENDPOINT"];
 if (Uri.TryCreate(otlpEndpoint, UriKind.Absolute, out var otlpUri))
 {
     var serviceRevision = builder.Configuration["SERVICE_REVISION"] ?? "development";
     builder
         .Services.AddOpenTelemetry()
-        .ConfigureResource(resource => resource.AddService("waooaw-business-platform", serviceVersion: serviceRevision))
+        .ConfigureResource(resource =>
+            resource.AddService("waooaw-business-platform", serviceVersion: serviceRevision)
+        )
         .WithTracing(tracing =>
             tracing
                 .AddAspNetCoreInstrumentation()

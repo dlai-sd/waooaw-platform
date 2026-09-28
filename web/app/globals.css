@@ -3988,7 +3988,9 @@ select:focus-visible,
   .auth-dialog .auth-entry-view {
     min-height: 0;
   }
-  .registration-progress-marker { font-size: .7rem; }
+  .registration-progress-marker {
+    font-size: .7rem;
+  }
 }
 
 @media (max-width: 899px) {

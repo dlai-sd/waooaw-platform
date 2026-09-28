@@ -46,7 +46,9 @@ describe('My Agents authoritative selection boundary', () => {
       nextActionLabel: 'Open conversation',
     });
     expect(response.headers.get('set-cookie')).toEqual(
-      expect.stringMatching(/waooaw_my_agents_selection=;.*Path=\/professionals\/mine;.*Max-Age=0;.*Secure;.*HttpOnly;.*SameSite=strict/i)
+      expect.stringMatching(
+        /waooaw_my_agents_selection=;.*Path=\/professionals\/mine;.*Max-Age=0;.*Secure;.*HttpOnly;.*SameSite=strict/i
+      )
     );
   });
 
@@ -56,9 +58,9 @@ describe('My Agents authoritative selection boundary', () => {
     ['missing authoritative card', true, { items: [] }, true],
     ['non-active Trial state', true, { items: [relationship({ trialStatus: 'UNRESOLVED' })] }, true],
   ])('emits no success for %s', async (_name, withCookie, page, consumed) => {
-    jest.mocked(consumeMyAgentsSelection).mockResolvedValue(
-      consumed ? { relationshipId, outcomeKind: 'TRIAL_STARTED' } : null
-    );
+    jest
+      .mocked(consumeMyAgentsSelection)
+      .mockResolvedValue(consumed ? { relationshipId, outcomeKind: 'TRIAL_STARTED' } : null);
     jest.mocked(listEmploymentRelationships).mockResolvedValue(page as never);
     const { POST } = await import('./route');
 

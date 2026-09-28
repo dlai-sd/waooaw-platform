@@ -131,18 +131,21 @@ describe('F2 registration flow', () => {
     expect(screen.getByRole('button', { name: getIdentityMessages('en').retry })).toBeVisible();
   });
 
-  it.each([403, 429])('requires a fresh sign-in after an HTTP %s policy denial without offering a retry loop', async (status) => {
-    global.fetch = jest.fn(() => jsonResponse({ code: 'IDENTITY_ACTION_DENIED' }, status));
-    render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} returnTo="/settings" />);
+  it.each([403, 429])(
+    'requires a fresh sign-in after an HTTP %s policy denial without offering a retry loop',
+    async (status) => {
+      global.fetch = jest.fn(() => jsonResponse({ code: 'IDENTITY_ACTION_DENIED' }, status));
+      render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} returnTo="/settings" />);
 
-    expect(await screen.findByText(getIdentityMessages('en').signInRejected)).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Create your WAOOAW account' })).toBeVisible();
-    expect(screen.queryByRole('button', { name: getIdentityMessages('en').retry })).not.toBeInTheDocument();
+      expect(await screen.findByText(getIdentityMessages('en').signInRejected)).toBeVisible();
+      expect(screen.getByRole('heading', { name: 'Create your WAOOAW account' })).toBeVisible();
+      expect(screen.queryByRole('button', { name: getIdentityMessages('en').retry })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: getIdentityMessages('en').restartSignIn }));
-    expect(replace).toHaveBeenCalledWith('/login?returnTo=%2Fsettings');
-    expect(fetch).toHaveBeenCalledTimes(1);
-  });
+      fireEvent.click(screen.getByRole('button', { name: getIdentityMessages('en').restartSignIn }));
+      expect(replace).toHaveBeenCalledWith('/login?returnTo=%2Fsettings');
+      expect(fetch).toHaveBeenCalledTimes(1);
+    }
+  );
 
   it.each(['trial', 'hire'] as const)(
     'reauthenticates directly when %s registration requires a fresh session',

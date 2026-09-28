@@ -9,6 +9,7 @@ using Waooaw.BusinessPlatform.Infrastructure;
 namespace Waooaw.BusinessPlatform.Services;
 
 public sealed record MyAgentsSelectionCreated(string Handle, DateTimeOffset ExpiresAt);
+
 public sealed record MyAgentsSelectionConsumed(Guid RelationshipId, string OutcomeKind);
 
 public sealed class MyAgentsSelectionService(
@@ -35,12 +36,14 @@ public sealed class MyAgentsSelectionService(
             throw new ArgumentException("Selection outcome is invalid.", nameof(outcomeKind));
         var now = timeProvider.GetUtcNow();
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        var relationship = await db.EmploymentRelationships.SingleOrDefaultAsync(
-            value => value.TenantId == tenantId && value.RelationshipId == relationshipId,
-            cancellationToken
-        ) ?? throw new InvalidOperationException("Relationship is unavailable.");
+        var relationship =
+            await db.EmploymentRelationships.SingleOrDefaultAsync(
+                value => value.TenantId == tenantId && value.RelationshipId == relationshipId,
+                cancellationToken
+            ) ?? throw new InvalidOperationException("Relationship is unavailable.");
         var authorized = await db.RelationshipParticipants.AnyAsync(
-            value => value.TenantId == tenantId
+            value =>
+                value.TenantId == tenantId
                 && value.RelationshipId == relationshipId
                 && value.ParticipantId == actorParticipantId
                 && value.Status == "ACTIVE",
@@ -51,7 +54,8 @@ public sealed class MyAgentsSelectionService(
         if (outcomeKind == "TRIAL_STARTED")
         {
             var activeTrial = await db.RelationshipTrialBindings.AnyAsync(
-                value => value.TenantId == tenantId
+                value =>
+                    value.TenantId == tenantId
                     && value.RelationshipId == relationshipId
                     && value.Status == "ACTIVE"
                     && value.TrialId != null,
@@ -90,7 +94,8 @@ public sealed class MyAgentsSelectionService(
         var now = timeProvider.GetUtcNow();
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var record = await db.MyAgentsSelectionFlash.SingleOrDefaultAsync(
-            value => value.HandleHash == Hash(handle)
+            value =>
+                value.HandleHash == Hash(handle)
                 && value.TenantId == tenantId
                 && value.ActorParticipantId == actorParticipantId
                 && value.ConsumedAt == null
@@ -100,7 +105,8 @@ public sealed class MyAgentsSelectionService(
         if (record is null)
             return null;
         var authorized = await db.RelationshipParticipants.AnyAsync(
-            value => value.TenantId == tenantId
+            value =>
+                value.TenantId == tenantId
                 && value.RelationshipId == record.RelationshipId
                 && value.ParticipantId == actorParticipantId
                 && value.Status == "ACTIVE",
@@ -120,7 +126,10 @@ public sealed class MyAgentsSelectionService(
         return new(record.RelationshipId, record.OutcomeKind);
     }
 
-    private static bool IsAuthoritativeOutcome(EmploymentRelationship relationship, string outcomeKind) =>
+    private static bool IsAuthoritativeOutcome(
+        EmploymentRelationship relationship,
+        string outcomeKind
+    ) =>
         outcomeKind switch
         {
             "TRIAL_STARTED" => relationship.AcquisitionMode == "TRIAL"

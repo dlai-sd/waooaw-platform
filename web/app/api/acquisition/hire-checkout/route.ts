@@ -127,21 +127,18 @@ async function hireCheckout(request: NextRequest) {
       ) {
         return NextResponse.json({ title: 'Razorpay payment confirmation is invalid.' }, { status: 400 });
       }
-      const billingResponse = await fetch(
-        `${billingEngineUrl}/payments/hire-checkout/confirm`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            checkout_intent_id: body.idempotencyKey,
-            customer_id: identity.session.accountReference,
-            razorpay_order_id: body.razorpayOrderId,
-            razorpay_payment_id: body.razorpayPaymentId,
-            razorpay_signature: body.razorpaySignature,
-          }),
-          cache: 'no-store',
-        }
-      );
+      const billingResponse = await fetch(`${billingEngineUrl}/payments/hire-checkout/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          checkout_intent_id: body.idempotencyKey,
+          customer_id: identity.session.accountReference,
+          razorpay_order_id: body.razorpayOrderId,
+          razorpay_payment_id: body.razorpayPaymentId,
+          razorpay_signature: body.razorpaySignature,
+        }),
+        cache: 'no-store',
+      });
       const result = await billingResponse.json().catch(() => ({ title: 'Payment confirmation is unavailable.' }));
       if (!billingResponse.ok) {
         return NextResponse.json(result, { status: billingResponse.status, headers: { 'Cache-Control': 'no-store' } });
@@ -171,19 +168,16 @@ async function hireCheckout(request: NextRequest) {
       },
       { cache: 'no-store' }
     );
-    const bindResponse = await fetch(
-      `${billingEngineUrl}/payments/hire-checkout/bind`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          checkout_intent_id: body.idempotencyKey,
-          customer_id: identity.session.accountReference,
-          relationship_id: continuation.relationshipId,
-        }),
-        cache: 'no-store',
-      }
-    );
+    const bindResponse = await fetch(`${billingEngineUrl}/payments/hire-checkout/bind`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        checkout_intent_id: body.idempotencyKey,
+        customer_id: identity.session.accountReference,
+        relationship_id: continuation.relationshipId,
+      }),
+      cache: 'no-store',
+    });
     if (!bindResponse.ok) {
       return NextResponse.json(
         { title: 'Payment was received, but Hire setup is still being reconciled. Retry the same request.' },

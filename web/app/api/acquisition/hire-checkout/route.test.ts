@@ -185,7 +185,9 @@ describe('pre-hire checkout boundary', () => {
     expect(completed.status).toBe(200);
     expect(continueAcquisition).toHaveBeenCalledTimes(2);
     expect(global.fetch).toHaveBeenCalledTimes(4);
-    expect(jest.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/payments/hire-checkout'))).toHaveLength(0);
+    expect(
+      jest.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/payments/hire-checkout'))
+    ).toHaveLength(0);
     expect(jest.mocked(fetch).mock.calls.filter(([url]) => String(url).includes('/confirm'))).toHaveLength(2);
     expect(jest.mocked(fetch).mock.calls.filter(([url]) => String(url).includes('/bind'))).toHaveLength(2);
     expect(await completed.json()).toEqual(expect.objectContaining({ resumePath: '/professionals/mine' }));
@@ -220,7 +222,9 @@ describe('pre-hire checkout boundary', () => {
     expect(pending.status).toBe(503);
     expect(completed.status).toBe(200);
     expect(continueAcquisition).toHaveBeenCalledTimes(1);
-    expect(jest.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/payments/hire-checkout'))).toHaveLength(0);
+    expect(
+      jest.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/payments/hire-checkout'))
+    ).toHaveLength(0);
     expect(jest.mocked(fetch).mock.calls.filter(([url]) => String(url).includes('/confirm'))).toHaveLength(2);
     expect(jest.mocked(fetch).mock.calls.filter(([url]) => String(url).includes('/bind'))).toHaveLength(1);
   });

@@ -185,11 +185,7 @@ for (const intent of ['trial', 'hire'] as const) {
       'One Chromium broker-boundary journey per acquisition intent proves fresh-auth continuation parameters.'
     );
     const acquisitionTarget = `/marketplace?professionalType=DIGITAL_MARKETING&version=3.1.0&intent=${intent}`;
-    await addSession(
-      context,
-      testInfo.project.name,
-      `fixture-registration-required-wc099-${testInfo.project.name}`
-    );
+    await addSession(context, testInfo.project.name, `fixture-registration-required-wc099-${testInfo.project.name}`);
     await page.route('**/api/identity/registration', async (route) =>
       route.fulfill({
         status: 403,

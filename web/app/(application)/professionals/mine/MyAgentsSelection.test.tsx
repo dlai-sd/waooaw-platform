@@ -37,7 +37,8 @@ describe('MyAgentsSelection', () => {
 
   it('shows no confirmation or selection for an empty consume response', async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 204 });
-    document.body.innerHTML = '<div data-relationship-id="22222222-2222-4222-8222-222222222222" tabindex="-1">Agent</div>';
+    document.body.innerHTML =
+      '<div data-relationship-id="22222222-2222-4222-8222-222222222222" tabindex="-1">Agent</div>';
 
     render(<MyAgentsSelection />);
 
