@@ -142,7 +142,12 @@ public sealed class EmploymentRelationshipsControllerTests
             .ToArray();
 
         Assert.Equal(
-            [nameof(EmploymentRelationshipsController.ListAsync), nameof(EmploymentRelationshipsController.AdmitAsync)],
+            [
+                nameof(EmploymentRelationshipsController.ListAsync),
+                nameof(EmploymentRelationshipsController.CreateSelectionFlashAsync),
+                nameof(EmploymentRelationshipsController.ConsumeSelectionFlashAsync),
+                nameof(EmploymentRelationshipsController.AdmitAsync),
+            ],
             adapted);
     }
 
