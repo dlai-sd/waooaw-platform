@@ -1,0 +1,186 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-106
+contract_path: work-contracts/WC-106-unified-docker-build-and-test-process.md
+contract_digest: 17c93b626791ef2e92ef9b063beb550d25e8cdb2056f685edc916cf4991906ad
+contract_status: IMPLEMENTATION_AUTHORIZED
+implementation_scope: true
+result: QUALIFIED
+requirements:
+  - requirement_id: WC106-R001
+    source: Process Contract; Phase Matrix
+    observable_outcome: Every authoritative delivery phase resolves validation through the versioned catalog and common executor.
+    component_owner: Validation catalog and lifecycle entry points
+    evidence_class: Contract and workflow topology
+    test_path_or_plan: tests/validation_control/test_unified_execution_contract.py; tests/pipeline/test_agent_operating_policy.py
+    initial_state: expected-fail
+    dependencies: WC-104 catalog, common executor and lifecycle entry points
+    completion_rule: Implementation, PR preparation, hosted PR and main entry points expose no alternate authoritative command path.
+    residual_risk: Diagnostic commands remain possible but cannot emit authoritative evidence.
+    evidence_refs:
+      - validation/engineering-validation.yaml
+      - scripts/validation_control/catalog_execution.py
+      - tests/validation_control/test_catalog_contract.py
+    result: PASS
+  - requirement_id: WC106-R002
+    source: Process Contract step 1 and step 2
+    observable_outcome: No costly gate starts before static and exact-container contracts pass.
+    component_owner: Catalog executor
+    evidence_class: Failure ordering
+    test_path_or_plan: tests/validation_control/test_unified_execution_contract.py
+    initial_state: expected-fail
+    dependencies: Static preflight, exact-container preflight and costly-command spy
+    completion_rule: Every injected static or execution-contract defect records zero costly command executions.
+    residual_risk: Host state can change after the probe and must still fail without publishing PASS.
+    evidence_refs:
+      - tests/pipeline/test_ci_validation_efficiency.py::test_static_preflight_blocks_runner_supply_and_compiles_docker_graphs
+      - tests/validation_control/test_unified_execution_contract.py::test_environment_defects_stop_before_costly_execution
+    result: PASS
+  - requirement_id: WC106-R003
+    source: Process Contract step 2
+    observable_outcome: The selected runner proves source readability and host-visible temp, cache and evidence lifecycle under its selected user.
+    component_owner: Exact-container execution preflight
+    evidence_class: Docker integration and mount contract
+    test_path_or_plan: tests/validation_control/test_unified_execution_contract.py
+    initial_state: expected-fail
+    dependencies: Immutable runner, selected container user and declared writable mounts
+    completion_rule: Create, read, atomic replace and delete succeed for all declared writable paths; each missing or read-only mount fails.
+    residual_risk: Remote filesystem semantics can change after preflight.
+    evidence_refs:
+      - scripts/validation_control/run_execution_contract.sh
+      - tests/validation_control/test_unified_execution_contract.py::test_exact_container_preflight_precedes_costly_command
+      - catalog quality:scripts exact-runner PASS
+    result: PASS
+  - requirement_id: WC106-R004
+    source: Process Contract step 2
+    observable_outcome: Socket-dependent gates prove Docker access from inside the exact runner before execution.
+    component_owner: Exact-container execution preflight
+    evidence_class: Docker integration and permission failure injection
+    test_path_or_plan: tests/validation_control/test_unified_execution_contract.py
+    initial_state: expected-fail
+    dependencies: Docker socket, bounded socket group and exact runner
+    completion_rule: A Docker info probe succeeds inside socket-enabled runners and missing or denied socket fixtures execute zero costly commands.
+    residual_risk: Daemon failure after preflight remains an infrastructure failure, never a PASS.
+    evidence_refs:
+      - scripts/validation_control/run_execution_contract.sh
+      - tests/validation_control/test_unified_execution_contract.py::test_environment_defects_stop_before_costly_execution[absent-docker-socket]
+      - catalog quality:scripts exact-runner Docker _ping PASS
+    result: PASS
+  - requirement_id: WC106-R005
+    source: Canonical Requirements WC106-R005
+    observable_outcome: Tool caches and correctness evidence never target read-only source paths.
+    component_owner: Compose runner environment and execution contract
+    evidence_class: Configuration and negative filesystem tests
+    test_path_or_plan: tests/validation_control/test_unified_execution_contract.py; tests/validation_control/test_runner_contracts.py
+    initial_state: expected-fail
+    dependencies: Compose environment and writable-path declaration
+    completion_rule: Pytest, coverage, NuGet, pnpm and evidence paths are declared writable and a source-write mutation fails policy.
+    residual_risk: New tools require an explicit writable-path declaration.
+    evidence_refs:
+      - docker-compose.yml
+      - tests/validation_control/test_unified_execution_contract.py::test_all_catalog_runners_use_writable_tmpfs_home
+      - tests/pipeline/test_ci_validation_efficiency.py::test_language_tests_use_docker_runners
+    result: PASS
+  - requirement_id: WC106-R006
+    source: Process Contract step 4
+    observable_outcome: Run-scoped artifacts are host-visible and atomically published without stale evidence authority.
+    component_owner: Execution preflight and evidence publisher
+    evidence_class: Artifact integrity and stale-state failure injection
+    test_path_or_plan: tests/validation_control/test_unified_execution_contract.py; tests/pipeline/test_precheck_orchestrator.py
+    initial_state: expected-fail
+    dependencies: Run identity, host-visible evidence root and atomic replacement
+    completion_rule: Stale, container-only, missing and ownership-invalid artifacts cannot publish PASS; valid artifacts publish atomically.
+    residual_risk: Artifact upload service availability can block completion.
+    evidence_refs:
+      - scripts/validation_control/execution_contract.py
+      - tests/validation_control/test_unified_execution_contract.py::test_non_current_evidence_cannot_authorize_execution
+      - tests/validation_control/test_unified_execution_contract.py::test_prepare_evidence_removes_stale_output
+    result: PASS
+  - requirement_id: WC106-R007
+    source: Process Contract step 5
+    observable_outcome: An unchanged execution-contract or infrastructure fingerprint cannot consume another costly run.
+    component_owner: Failure fingerprint store and precheck orchestrator
+    evidence_class: Deterministic retry control
+    test_path_or_plan: tests/validation_control/test_unified_execution_contract.py; tests/pipeline/test_precheck_orchestrator.py
+    initial_state: expected-fail
+    dependencies: Failure classifier, environment digest and durable fingerprint record
+    completion_rule: Identical gate, runner, environment and failure fingerprint is blocked until a bound input digest changes.
+    residual_risk: Conservative invalidation may permit a rerun but cannot authorize PASS.
+    evidence_refs:
+      - scripts/validation_control/execution_contract.py
+      - tests/validation_control/test_unified_execution_contract.py::test_unchanged_failure_is_blocked_until_bound_environment_changes
+      - tests/validation_control/test_unified_execution_contract.py::test_corrupt_failure_record_blocks_costly_retry
+    result: PASS
+  - requirement_id: WC106-R008
+    source: Phase Matrix; Implementation
+    observable_outcome: Implementation uses static and focused gates before one final broad qualification.
+    component_owner: Platform IT Expert operating policy and local planner
+    evidence_class: Policy and selection contract
+    test_path_or_plan: tests/pipeline/test_agent_operating_policy.py; tests/pipeline/test_prepare_pr_body.py
+    initial_state: expected-fail
+    dependencies: Changed-path policy, focused catalog plan and Platform IT Expert instructions
+    completion_rule: Policy requires focused iteration and rejects broad qualification after every edit.
+    residual_risk: Explicit exceptional qualification remains possible when recorded.
+    evidence_refs:
+      - .github/agent-context/office-platform-it-expert.md
+      - tests/pipeline/test_agent_operating_policy.py::test_platform_it_policy_requires_static_first_focused_validation
+    result: PASS
+  - requirement_id: WC106-R009
+    source: Phase Matrix; Main / release
+    observable_outcome: Trusted equivalent runner and application candidates are consumed or promoted by immutable identity instead of rebuilt without reason.
+    component_owner: Runner supply and CI publication workflows
+    evidence_class: Workflow contract and hosted evidence
+    test_path_or_plan: tests/validation_control/test_runner_supply.py; tests/validation_control/test_unified_execution_contract.py
+    initial_state: expected-fail
+    dependencies: Immutable candidate digest, attestation and trusted registry lookup
+    completion_rule: Equivalent identity resolves to the existing attested digest; a rebuild requires a miss or explicit recorded invalidation.
+    residual_risk: Registry or attestation outage can force a blocked result rather than promotion.
+    evidence_refs:
+      - tests/pipeline/test_ci_validation_efficiency.py::test_candidate_image_is_built_once_and_consumed_by_image_id
+      - tests/validation_control/test_runner_supply.py::test_manifest_accepts_verified_zero_build_cache_outcomes
+      - tests/pipeline/test_ci_validation_efficiency.py::test_release_qualification_accepts_exact_runner_without_hidden_rebuild
+    result: PASS
+  - requirement_id: WC106-R010
+    source: Canonical Requirements WC106-R010
+    observable_outcome: Platform IT Expert is required to use the canonical phase sequence and cannot invent authoritative Docker paths.
+    component_owner: Platform IT Expert specification and quick-start card
+    evidence_class: Agent policy contract
+    test_path_or_plan: tests/pipeline/test_agent_operating_policy.py
+    initial_state: expected-fail
+    dependencies: Full agent specification, compact office card and policy test
+    completion_rule: Both compact and full instructions name the enforced entry point, sequence and diagnostic-only boundary.
+    residual_risk: Human operators can still run diagnostics; resulting output remains non-authoritative.
+    evidence_refs:
+      - .github/agent-context/office-platform-it-expert.md
+      - architecture/reference/agents/platform-it-expert-agent.md
+      - tests/pipeline/test_agent_operating_policy.py::test_platform_it_policy_enforces_unified_docker_process
+    result: PASS
+  - requirement_id: WC106-R011
+    source: Canonical Requirements WC106-R011
+    observable_outcome: Every named environment defect fails before costly execution.
+    component_owner: Execution-contract negative suite
+    evidence_class: Failure injection
+    test_path_or_plan: tests/validation_control/test_unified_execution_contract.py
+    initial_state: expected-fail
+    dependencies: Exact-container fixtures and costly-command spy
+    completion_rule: Missing mounts, read-only output/cache, wrong user, absent socket, stale artifacts, container-only output and unchanged retry each execute zero costly commands.
+    residual_risk: Unmodeled environment failures require a new fixture before regression closure.
+    evidence_refs:
+      - tests/validation_control/test_unified_execution_contract.py
+      - focused Docker regression 147 passed
+    result: PASS
+  - requirement_id: WC106-R012
+    source: Definition Of Done
+    observable_outcome: Exact-head author review finds no unresolved correctness, isolation, compatibility, rollback or WC-104 equivalence issue.
+    component_owner: Platform IT Expert author review
+    evidence_class: Complete ledger and executable qualification
+    test_path_or_plan: WC-106 ledger validation, focused Docker tests, exact-head PR preparation and author review
+    initial_state: expected-fail
+    dependencies: WC106-R001 through WC106-R011 and one frozen implementation candidate
+    completion_rule: R001 through R011 are independently PASS, rollback is bounded and final review records no unresolved finding.
+    residual_risk: Founder review, hosted status completion and merge remain external.
+    evidence_refs:
+      - git diff --check PASS
+      - quality:scripts catalog gate PASS
+      - focused Docker regression 147 passed
+      - WC-106 requirement ledger validation PASS
+    result: PASS

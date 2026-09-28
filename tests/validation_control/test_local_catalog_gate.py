@@ -127,6 +127,7 @@ def test_host_gate_executes_plan_without_resolving_runner(monkeypatch, tmp_path:
         "load_supply_config",
         lambda unused: pytest.fail("host execution resolved a validation runner"),
     )
+    monkeypatch.setattr(local_catalog_gate, "orchestration_preflight", lambda unused: None)
     monkeypatch.setattr(local_catalog_gate, "docker_socket_group", lambda: "321")
     captured: list[list[str]] = []
     captured_environment: dict[str, str] = {}

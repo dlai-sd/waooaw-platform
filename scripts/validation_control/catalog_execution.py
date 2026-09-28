@@ -10,8 +10,26 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
+
+SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
+if str(SCRIPTS_ROOT) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_ROOT))
+
+from validation_control.execution_contract import (  # noqa: E402
+    UnchangedExecutionFailureError,
+    assert_retry_allowed,
+    binding_digest,
+    clear_failure,
+    evidence_is_current,
+    execution_binding,
+    orchestration_preflight,
+    prepare_evidence,
+    record_failure,
+    safe_segment,
+)
 
 
 def select_plan_node(plan: dict[str, Any], gate_id: str) -> dict[str, Any]:
@@ -75,6 +93,52 @@ def runner_environment(image_id: str, docker_socket: Path = Path("/var/run/docke
     return environment
 
 
+def run_execution_preflight(
+    plan: dict[str, Any],
+    node: dict[str, Any],
+    image_id: str,
+    docker: str,
+    environment: dict[str, str],
+    repository: Path,
+    git_common_dir: str | None = None,
+) -> int:
+    namespace = plan.get("execution_namespace")
+    if not isinstance(namespace, str) or not namespace:
+        raise ValueError("validation plan execution namespace is required")
+    binding = execution_binding(plan, node, image_id, repository)
+    digest = binding_digest(binding)
+    assert_retry_allowed(repository, node["gate_id"], digest)
+    proof, token = prepare_evidence(repository, namespace, node["gate_id"], digest)
+    resources = node.get("resources")
+    if not isinstance(resources, dict):
+        raise ValueError("validation plan node resources must be a mapping")
+    preflight_variables = {
+        "WC106_DOCKER_SOCKET_REQUIRED": "1" if resources.get("docker_socket") is True else "0",
+        "WC106_EVIDENCE_PATH": f"/workspace/{proof.relative_to(repository)}",
+        "WC106_EVIDENCE_TOKEN": token,
+        "WC106_EXECUTION_NAMESPACE": safe_segment(namespace),
+        "WC106_EXPECTED_UID": "1000",
+        "WC106_GATE_ID": safe_segment(node["gate_id"]),
+    }
+    preflight_node = dict(node)
+    preflight_node["command"] = "sh scripts/validation_control/run_execution_contract.sh"
+    preflight_node["environment"] = [*node.get("environment", []), *preflight_variables]
+    preflight_environment = {**environment, **preflight_variables}
+    completed = subprocess.run(  # noqa: S603
+        execution_command(preflight_node, docker, git_common_dir),
+        check=False,
+        env=preflight_environment,
+    )
+    if completed.returncode != 0:
+        record_failure(repository, node["gate_id"], digest, f"exact-container-preflight:{completed.returncode}")
+        return completed.returncode
+    if not evidence_is_current(proof, token):
+        record_failure(repository, node["gate_id"], digest, "host-visible-evidence-missing")
+        return 78
+    clear_failure(repository, node["gate_id"])
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--plan", type=Path, required=True)
@@ -99,6 +163,7 @@ def main() -> int:
     if arguments.image_id is None:
         raise ValueError("--image-id is required for runner-backed catalog execution")
 
+    orchestration_preflight(Path.cwd())
     artifact_root = Path("test-results")
     artifact_root.mkdir(exist_ok=True)
     artifact_root.chmod(0o777)
@@ -112,6 +177,21 @@ def main() -> int:
     if verification.returncode != 0:
         return verification.returncode
     environment = runner_environment(arguments.image_id)
+    try:
+        preflight_result = run_execution_preflight(
+            plan,
+            node,
+            arguments.image_id,
+            docker,
+            environment,
+            Path.cwd(),
+            git_common_dir,
+        )
+    except UnchangedExecutionFailureError as error:
+        print(f"WC-106 retry blocked: {error}")
+        return 78
+    if preflight_result != 0:
+        return preflight_result
     return subprocess.run(execution_command(node, docker, git_common_dir), check=False, env=environment).returncode  # noqa: S603
 
 

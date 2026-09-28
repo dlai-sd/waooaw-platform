@@ -25,6 +25,7 @@ if str(SCRIPTS_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_ROOT))
 
 from validation_control.orchestrator import build_execution_plan  # noqa: E402
+from validation_control.execution_contract import orchestration_preflight  # noqa: E402
 from validation_control.runner_supply import (  # noqa: E402
     create_context,
     load_supply_config,
@@ -269,6 +270,7 @@ def execute_gate(
     base_sha: str,
     git_common_dir: Path,
 ) -> int:
+    orchestration_preflight(repository)
     write_commit_metadata(repository, base_sha, head_sha)
     catalog = yaml.safe_load((repository / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
     if not isinstance(catalog, dict):

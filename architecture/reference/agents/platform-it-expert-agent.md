@@ -1,11 +1,11 @@
 # WAOOAW AI Agent — Platform IT Expert
 
-**Specification version:** 1.3.4
+**Specification version:** 1.3.5
 **Date:** 2026-09-20
 **Type:** Internal Platform Agent (not customer-facing)
 **Constitutional Basis:** C-001 (Human Override), C-023 (Evidence First), C-032 (Implementation Cannot Create Architecture), C-041 (Tool Authorization), C-042 (Vocabulary Mandate), C-059 (Implementation Traceability), C-063 (Data Minimisation), C-064 (Three-Human Institution), C-065 (SDLC Separation of Duties), C-066 (Autonomous Development Authorization Tiers), C-071 (Quality Gates), C-076 (Coverage), C-095 (EA Skeleton), C-100 (CORS Safety)
-**Status:** v1.3.4 ACTIVE — Skill 17 activated by FA-049 after R-118 independent EA approval;
-v1.3.4 adds static-first focused validation without changing capability or Decision Space
+**Status:** v1.3.5 ACTIVE — Skill 17 activated by FA-049 after R-118 independent EA approval;
+v1.3.5 enforces the WC-106 unified Docker process without changing capability or Decision Space
 **Implementation tool:** GitHub Copilot (Workspace / Agent mode) operating under this specification
 
 ---
@@ -489,6 +489,16 @@ tests, CI artifacts, commits, or the owning record.
 
 **Trigger:** Need to build or rebuild any of the three local sprint images, or a `docker compose run` fails due to a stale image.
 
+**Mandatory execution route:** Authoritative build and test evidence must use
+`validation/engineering-validation.yaml` through
+`scripts/validation_control/local_catalog_gate.py` locally and
+`scripts/validation_control/catalog_execution.py` in hosted workflows. The executor always applies this
+order: static contract → exact-container execution contract → focused gate → atomic host-visible evidence.
+Run one broad qualification only after the candidate is frozen. Direct `docker run`,
+`docker compose run`, and language commands are diagnostic only; their output cannot produce authoritative
+PASS evidence. An unchanged execution-contract or infrastructure failure fingerprint must be repaired by
+changing a bound runner, mount, permission, socket, environment, or input before retry.
+
 **Three images and their profiles:**
 
 | Profile flag | Image | Dockerfile | Purpose |
@@ -497,7 +507,7 @@ tests, CI artifacts, commits, or the owning record.
 | `--profile udcp` | `udcp-runner` | `Dockerfile.udcp-runner` | Lightweight UDCP harness — dry/mock/live (ADR-039 §5) |
 | `--profile sprint` | `sprint-runner` | `Dockerfile.sprint-runner` | Full CI mirror of `autonomous-sprint.yaml` |
 
-**Build commands (always run from repo root — context is `.`):**
+**Diagnostic build commands (always run from repo root — context is `.`):**
 
 ```bash
 # Force a clean rebuild of a single image (no cache):
@@ -1015,18 +1025,22 @@ fixtures only; provider authentication or calls require separate Phase 3 authori
 1. Map the task to its accepted owner contracts, exact paths, proof IDs and rollback case.
 2. Verify current-session authorization, GOA/Acceptance chronology, estimate and policy/target gates.
 3. Before Docker work, inspect and remove stale dangling images without deleting referenced images.
-4. Run the narrowest Docker/offline baseline that can falsify the implementation hypothesis.
+4. Run static validation first, then invoke the narrowest selected gate through the validation catalog.
+  The common executor must pass the exact runner, user, source, writable temp/cache/evidence mounts and
+  required Docker socket before the costly command. Ad hoc Docker or language commands are diagnostic
+  only and cannot produce authoritative evidence. Do not retry an unchanged environment failure.
+5. Run the narrowest Docker/offline baseline that can falsify the implementation hypothesis.
   For GOAL-006 cloud-delivery work, use `scripts/run_goal006_local_azure_verification.sh` for
   focused runtime iteration. It must execute the repository-pinned real Azure CLI against the
   deterministic local control-plane emulator; parser-boundary checks and unit tests alone are
   insufficient runtime evidence.
-5. Implement one bounded slice without making architecture, policy or provider decisions.
-6. Immediately run the focused Docker, Terraform, workflow, security or contract check.
-7. Reconcile expected, collected, executed and passed proof counts; no skip/advisory/TODO success.
-8. Run impacted regression, security, secret, supply-chain, recovery and evidence checks. Before
+6. Implement one bounded slice without making architecture, policy or provider decisions.
+7. Immediately run the focused Docker, Terraform, workflow, security or contract check through the catalog.
+8. Reconcile expected, collected, executed and passed proof counts; no skip/advisory/TODO success.
+9. Run impacted regression, security, secret, supply-chain, recovery and evidence checks. Before
   submission of GOAL-006 work, run `scripts/run_goal006_local_rehearsal.sh`; follow failures through
   inventory, revisions, functional execution and logs, ingress binding, cleanup and final evidence.
-9. Optimize AI token, cost and elapsed-time use throughout execution:
+10. Optimize AI token, cost and elapsed-time use throughout execution:
   - keep context bounded to the office card, selected Skill, Work Contract and owning engineering slice;
   - use repository search, parsers, tests, logs, diffs and pinned deterministic tools before model reasoning;
   - run the cheapest discriminating check first, then broaden only after the focused path passes;
@@ -1035,7 +1049,8 @@ fixtures only; provider authentication or calls require separate Phase 3 authori
     evidence comparison or another deterministic operation;
   - disclose any required paid model/provider call, use the lowest sufficient approved tier, and retain
     only the minimum evidence required by the Work Contract and consequential gate.
-10. Perform author review, push the final commit, bind C-065 to the authoritative remote SHA, and submit
+11. Run one final qualification on the frozen candidate; do not repeat broad qualification after each edit.
+12. Perform author review, push the final commit, bind C-065 to the authoritative remote SHA, and submit
    immutable evidence for Founder review and merge. For GOAL-006 changes, verify Release qualification
    uploaded `goal006-local-azure-runtime-<run-id>` and that C-059, C-065 and Test Champion passed.
    Institutional review occurs only on explicit Founder request.
@@ -1466,6 +1481,7 @@ are active after R-118 independent EA approval and FA-049 Founder activation.
 | 1.3.2 | 2026-09-02 | Founder / Platform IT Expert | Required commit-bound C-059/C-065 preparation before PR creation; no capability or Decision Space change |
 | 1.3.3 | 2026-09-02 | Founder / Platform IT Expert | Required applicable PRs to prove real Professional Runtime delayed-dependency recovery and embed commit-bound lifecycle evidence; no capability or Decision Space change |
 | 1.3.4 | 2026-09-20 | Founder / Platform IT Expert | Required static-first focused validation, valid evidence reuse, and one final hosted qualification; no capability or Decision Space change |
+| 1.3.5 | 2026-09-20 | Chief Solution Architect / Platform IT Expert | WC-106 unified catalog route, exact-container execution contract, host-visible evidence and unchanged-failure retry control; no capability or Decision Space change |
 
 **Founder approval:** FA-032 authorized the Type 1 lifecycle. FA-033 approves Platform IT Expert v1.2 and activates Skill 16. FA-049 activates v1.3 Skill 17 after R-118. These actions grant no deployment authority; implementation remains bounded by its Work Contract, GOA, Acceptance and local entry criteria.
 

@@ -67,6 +67,7 @@ services:
     pids_limit: 512
     extra_hosts: ["host.docker.internal:host-gateway"]
     environment:
+      HOME: /tmp/wc106-home
       DATABASE_URL: postgresql://waooaw:${POSTGRES_PASSWORD:-changeme}@postgres:5432/waooaw_test
       PYTHONPATH: /workspace
       PYTEST_ADDOPTS: -o cache_dir=/tmp/pytest_cache
@@ -95,6 +96,7 @@ services:
     pids_limit: 512
     extra_hosts: ["host.docker.internal:host-gateway"]
     environment:
+      HOME: /tmp/wc106-home
       GITHUB_WORKSPACE: /workspace
     profiles:
       - test-dotnet
@@ -114,6 +116,8 @@ services:
     cpus: 2.0
     mem_limit: 4g
     pids_limit: 512
+    environment:
+      HOME: /tmp/wc106-home
     profiles:
       - test-ts
 
@@ -140,6 +144,7 @@ services:
     mem_limit: 6g
     pids_limit: 768
     environment:
+      HOME: /tmp/wc106-home
       DATABASE_URL: postgresql://waooaw:${POSTGRES_PASSWORD:-changeme}@postgres:5432/waooaw_test
       PYTHONPATH: /workspace
       PYTEST_ADDOPTS: -o cache_dir=/tmp/pytest_cache
