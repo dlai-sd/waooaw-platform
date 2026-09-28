@@ -14,10 +14,17 @@ const props: AcquisitionContinuationProps = {
   idempotencyKey: '11111111-1111-4111-8111-111111111111',
 };
 
+function getRazorpayScript() {
+  const script = document.getElementById('razorpay-checkout-script');
+  if (!script) throw new Error('Expected the Razorpay checkout script.');
+  return script;
+}
+
 describe('AcquisitionContinuation', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     window.Razorpay = undefined;
+    document.getElementById('razorpay-checkout-script')?.remove();
   });
 
   afterEach(() => {
@@ -164,5 +171,163 @@ describe('AcquisitionContinuation', () => {
     await waitFor(() => expect(jest.mocked(fetch)).toHaveBeenCalledTimes(2));
     expect(JSON.parse(String(jest.mocked(fetch).mock.calls[0][1]?.body)).idempotencyKey).toBe(props.idempotencyKey);
     expect(JSON.parse(String(jest.mocked(fetch).mock.calls[1][1]?.body)).idempotencyKey).toBe(props.idempotencyKey);
+  });
+
+  it('rejects an invalid Razorpay callback and permits the same checkout to be retried', async () => {
+    let checkoutOptions: Record<string, unknown> | undefined;
+    window.Razorpay = jest.fn().mockImplementation((options: Record<string, unknown>) => {
+      checkoutOptions = options;
+      return { on: jest.fn(), open: jest.fn() };
+    });
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        outcome_kind: 'RAZORPAY_CHECKOUT_REQUIRED',
+        checkout_intent_id: props.idempotencyKey,
+        provider_order_reference: 'order_test123',
+        public_checkout_key: 'rzp_test_public',
+        amount_inr_paise: 118000,
+        currency: 'INR',
+        merchant_display_name: 'WAOOAW',
+      }),
+    });
+
+    render(<AcquisitionContinuation {...props} intent="hire" />);
+    await waitFor(() => expect(checkoutOptions).toBeDefined());
+    act(() => {
+      (checkoutOptions?.handler as (payment: object) => void)({
+        razorpay_order_id: 'different_order',
+        razorpay_payment_id: '',
+        razorpay_signature: '',
+      });
+    });
+
+    expect(
+      await screen.findByText('Razorpay returned an invalid payment confirmation. No Hire was started.')
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Open Razorpay Checkout' })).toBeEnabled();
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps an unresolved signed confirmation retryable', async () => {
+    let checkoutOptions: Record<string, unknown> | undefined;
+    window.Razorpay = jest.fn().mockImplementation((options: Record<string, unknown>) => {
+      checkoutOptions = options;
+      return { on: jest.fn(), open: jest.fn() };
+    });
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          outcome_kind: 'RAZORPAY_CHECKOUT_REQUIRED',
+          checkout_intent_id: props.idempotencyKey,
+          provider_order_reference: 'order_test123',
+          public_checkout_key: 'rzp_test_public',
+          amount_inr_paise: 118000,
+          currency: 'INR',
+          merchant_display_name: 'WAOOAW',
+        }),
+      })
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ title: 'Payment is still reconciling.' }) });
+
+    render(<AcquisitionContinuation {...props} intent="hire" />);
+    await waitFor(() => expect(checkoutOptions).toBeDefined());
+    await act(async () => {
+      (checkoutOptions?.handler as (payment: object) => void)({
+        razorpay_order_id: 'order_test123',
+        razorpay_payment_id: 'pay_test123',
+        razorpay_signature: 'a'.repeat(64),
+      });
+    });
+
+    expect(await screen.findByText('Payment is still reconciling.')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Open Razorpay Checkout' })).toBeEnabled();
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it('shows the Razorpay provider failure without recording Hire success', async () => {
+    const on = jest.fn();
+    window.Razorpay = jest.fn().mockImplementation(() => ({ on, open: jest.fn() }));
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        outcome_kind: 'RAZORPAY_CHECKOUT_REQUIRED',
+        checkout_intent_id: props.idempotencyKey,
+        provider_order_reference: 'order_test123',
+        public_checkout_key: 'rzp_test_public',
+        amount_inr_paise: 118000,
+        currency: 'INR',
+        merchant_display_name: 'WAOOAW',
+      }),
+    });
+
+    render(<AcquisitionContinuation {...props} intent="hire" />);
+    await waitFor(() => expect(on).toHaveBeenCalledWith('payment.failed', expect.any(Function)));
+    act(() => on.mock.calls[0][1]({ error: { description: 'Payment was declined.' } }));
+
+    expect(await screen.findByText('Payment was declined.')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Open Razorpay Checkout' })).toBeEnabled();
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it('surfaces a retryable trial continuation outage', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({ title: 'Customer service is temporarily unavailable.' }),
+    });
+
+    render(<AcquisitionContinuation {...props} />);
+
+    expect(await screen.findByText('Customer service is temporarily unavailable.')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Open Razorpay Checkout' })).toBeEnabled();
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it('loads the official Razorpay script when Checkout is not already present', async () => {
+    const open = jest.fn();
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        outcome_kind: 'RAZORPAY_CHECKOUT_REQUIRED',
+        checkout_intent_id: props.idempotencyKey,
+        provider_order_reference: 'order_test123',
+        public_checkout_key: 'rzp_test_public',
+        amount_inr_paise: 118000,
+        currency: 'INR',
+        merchant_display_name: 'WAOOAW',
+      }),
+    });
+
+    render(<AcquisitionContinuation {...props} intent="hire" />);
+    await waitFor(() => expect(document.getElementById('razorpay-checkout-script')).toBeInTheDocument());
+    window.Razorpay = jest.fn().mockImplementation(() => ({ on: jest.fn(), open }));
+    fireEvent.load(getRazorpayScript());
+
+    await waitFor(() => expect(open).toHaveBeenCalledTimes(1));
+    expect(getRazorpayScript()).toHaveAttribute('src', 'https://checkout.razorpay.com/v1/checkout.js');
+  });
+
+  it('reports a failure to load the official Razorpay script', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        outcome_kind: 'RAZORPAY_CHECKOUT_REQUIRED',
+        checkout_intent_id: props.idempotencyKey,
+        provider_order_reference: 'order_test123',
+        public_checkout_key: 'rzp_test_public',
+        amount_inr_paise: 118000,
+        currency: 'INR',
+        merchant_display_name: 'WAOOAW',
+      }),
+    });
+
+    render(<AcquisitionContinuation {...props} intent="hire" />);
+    await waitFor(() => expect(document.getElementById('razorpay-checkout-script')).toBeInTheDocument());
+    fireEvent.error(getRazorpayScript());
+
+    expect(await screen.findByText('Secure Razorpay Checkout could not be loaded.')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Cancel' })).toBeVisible();
   });
 });
