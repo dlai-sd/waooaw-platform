@@ -121,6 +121,7 @@ def run_execution_preflight(
         "WC106_GATE_ID": safe_segment(node["gate_id"]),
     }
     preflight_node = dict(node)
+    preflight_node.pop("execution", None)
     preflight_node["command"] = "sh scripts/validation_control/run_execution_contract.sh"
     preflight_node["environment"] = [*node.get("environment", []), *preflight_variables]
     preflight_environment = {**environment, **preflight_variables}

@@ -70,6 +70,32 @@ def test_exact_container_preflight_precedes_costly_command(monkeypatch: pytest.M
     assert evidence_path(tmp_path, "wc106-test", node["gate_id"]).is_file()
 
 
+def test_host_gate_preflight_still_runs_in_declared_container(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    plan, node = plan_and_node()
+    node["execution"] = "host"
+    (tmp_path / "test-results").mkdir()
+    commands: list[list[str]] = []
+
+    def execute(command: list[str], **kwargs: object) -> SimpleNamespace:
+        commands.append(command)
+        environment = kwargs["env"]
+        proof = tmp_path / environment["WC106_EVIDENCE_PATH"].removeprefix("/workspace/")
+        proof.write_text(environment["WC106_EVIDENCE_TOKEN"] + "\n", encoding="utf-8")
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(catalog_execution.subprocess, "run", execute)
+
+    result = catalog_execution.run_execution_preflight(
+        plan, node, IMAGE_ID, "/usr/bin/docker", {}, tmp_path
+    )
+
+    assert result == 0
+    assert commands[0][:3] == ["/usr/bin/docker", "compose", "--profile"]
+    assert commands[0][-1] == "sh scripts/validation_control/run_execution_contract.sh"
+
+
 @pytest.mark.parametrize(
     "defect",
     (
