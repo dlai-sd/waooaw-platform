@@ -912,8 +912,7 @@ public sealed class RelationshipConfigurationService(
         CancellationToken cancellationToken
     )
     {
-        if (budgetCeilingInrPaise < 0)
-            throw new ArgumentOutOfRangeException(nameof(budgetCeilingInrPaise));
+        ArgumentOutOfRangeException.ThrowIfNegative(budgetCeilingInrPaise);
         if (reviewCadenceMonths != 2)
             throw new ArgumentOutOfRangeException(
                 nameof(reviewCadenceMonths),
