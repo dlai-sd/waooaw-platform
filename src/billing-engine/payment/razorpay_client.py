@@ -59,7 +59,7 @@ class RazorpayClient:
                 headers={"Authorization": self._auth_header()},
             )
         resp.raise_for_status()
-        logger.info("Razorpay order created: order_id=%s amount=%d", resp.json().get("id"), amount_paise)
+        logger.info("Razorpay order created")
         return resp.json()
 
     async def fetch_payment(self, payment_id: str) -> dict:

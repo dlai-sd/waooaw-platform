@@ -334,14 +334,9 @@ public sealed class EmploymentRelationshipService
             await db.SaveChangesAsync(cancellationToken);
             return new AdmitRelationshipResult(relationship, true);
         }
-        catch (DbUpdateException exception)
+        catch (DbUpdateException)
         {
-            _logger.LogInformation(
-                exception,
-                "Concurrent first admission detected for tenant {TenantId}, intent {EvaluationIntentId}",
-                tenantId,
-                evaluationIntentId
-            );
+            _logger.LogInformation("Concurrent first admission detected");
 
             await using var replayDb = await _dbFactory.CreateDbContextAsync(cancellationToken);
             var replay = await FindByAdmissionKeyAsync(

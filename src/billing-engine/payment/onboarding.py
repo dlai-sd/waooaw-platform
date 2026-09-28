@@ -62,8 +62,8 @@ class OnboardingService:
             and self._settings.DEMO_PROMOTION_ENABLED
         ):
             logger.info(
-                "Payment bypass: coupon=%s env=%s customer_id=%s",
-                coupon, self._settings.WAOOAW_ENVIRONMENT, req.customer_id,
+                "Approved zero-price payment outcome: env=%s",
+                self._settings.WAOOAW_ENVIRONMENT,
             )
             return OnboardingOrderResult(
                 order_id=f"bypass-{req.customer_id}",

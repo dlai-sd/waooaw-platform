@@ -1,4 +1,4 @@
-// Implements: work-contracts/WC-097-marketplace-acquisition-experience.md A01-A07
+// Implements: work-contracts/WC-107-fundamental-customer-journey-integrity.md R009, R010, R012, R017
 // Constitutional basis: C-023, C-049, C-059
 
 import AxeBuilder from '@axe-core/playwright';
@@ -45,13 +45,12 @@ async function expectIntegrity(page: Page) {
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious')).toEqual([]);
   if ((page.viewportSize()?.width ?? 0) <= 599) {
-    await expect(page.locator('.conversation-launcher')).toBeHidden();
     await expect(page.getByRole('button', { name: 'Ask about professionals' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'No active work to stop' })).toHaveCount(0);
   }
 }
 
 async function expectShellReady(page: Page) {
+  if ((page.viewportSize()?.width ?? 0) <= 599) return;
   await page.getByRole('button', { name: 'Expand navigation' }).click();
   await expect(page.getByRole('button', { name: 'Collapse navigation' })).toBeVisible();
   await page.getByRole('button', { name: 'Collapse navigation' }).click();
@@ -63,7 +62,7 @@ test.beforeEach(async ({ context }, testInfo) => {
   await addSession(context, testInfo.project.name);
 });
 
-test('WC097-A01-A07: professional offer stays in the customer shell through Trial review', async ({
+test('WC107-MARKETPLACE-01: complete card exposes a consent-gated Trial and Hire decision', async ({
   page,
 }, testInfo) => {
   const documents: string[] = [];
@@ -82,45 +81,66 @@ test('WC097-A01-A07: professional offer stays in the customer shell through Tria
   ).toBeVisible();
   await expect(page.getByText('DIGITAL_MARKETING_LOCAL_SERVICE')).toHaveCount(0);
   await expect(page.getByText(/Eligibility depends only/)).toHaveCount(0);
-  await expect(page.getByRole('link', { name: /Hire/ }).first()).toHaveAttribute('href', /intent=hire/);
+  const card = page.locator('.marketplace-offer').first();
+  await expect(card.getByRole('list', { name: 'Included capabilities' }).getByRole('listitem')).toHaveCount(3);
+  await card.getByText('Scope, safeguards and your control').click();
+  await expect(card.getByText('No guaranteed outcome')).toBeVisible();
+  await expect(card.getByText('Stop at any time')).toBeVisible();
+  const consent = card.getByRole('checkbox');
+  const trial = card.getByRole('button', { name: 'Start 14-day trial' });
+  const hire = card.getByRole('button', { name: 'Hire for ₹2,499.00' });
+  await expect(trial).toBeDisabled();
+  await expect(hire).toBeDisabled();
+  await consent.check();
+  await expect(trial).toBeEnabled();
+  await expect(hire).toBeEnabled();
+  await consent.uncheck();
+  await expect(trial).toBeDisabled();
+  await expect(hire).toBeDisabled();
+  expect(new URL(page.url()).search).toBe('');
   await page.screenshot({ path: testInfo.outputPath('marketplace-card.png'), fullPage: true });
-
-  await page
-    .getByRole('link', { name: /Start trial/ })
-    .first()
-    .click();
-
-  await expect(page).toHaveURL(/\/marketplace\/digital-marketing\?.*intent=trial/);
   expect(await shellElement?.evaluate((element) => element.isConnected)).toBe(true);
-  await expect(page.getByRole('link', { name: 'WAOOAW home' })).toBeVisible();
-  await expect(page.getByText('You chose to start a trial.')).toBeVisible();
-  await expect(page.getByText('No paid tools')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms');
-  await expect(page.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy');
-  await expect(page.getByText('Terms version 2026-07-18.')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Continue to trial' })).toBeDisabled();
+  await expect(card.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms');
+  await expect(card.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy');
   expect(documents).toHaveLength(1);
   await expectIntegrity(page);
-  await page.screenshot({ path: testInfo.outputPath('marketplace-trial-review.png'), fullPage: true });
 });
 
-test('WC097-A04-A07: Hire review preserves intent and the customer shell', async ({ page }, testInfo) => {
-  const documents: string[] = [];
-  page.on('request', (request) => {
-    if (request.resourceType() === 'document') documents.push(request.url());
+test('WC107-MARKETPLACE-02: cancelling leaves acquisition state and browser history unchanged', async ({ page }) => {
+  await page.goto('/marketplace');
+  const cleanUrl = page.url();
+  const historyLength = await page.evaluate(() => history.length);
+  await page.locator('.marketplace-offer').first().getByRole('link', { name: 'Not now' }).click();
+  await expect(page).toHaveURL(cleanUrl);
+  expect(await page.evaluate(() => history.length)).toBe(historyLength);
+  await expect(page.locator('.marketplace-offer').first().getByRole('button', { name: 'Start 14-day trial' })).toBeDisabled();
+});
+
+test('WC107-MARKETPLACE-03: validated coupon updates Hire without entering URL or history', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-expanded', 'One desktop journey proves private pre-checkout state.');
+  await page.route('**/api/acquisition/hire-preview', async (route) => {
+    expect(JSON.parse(route.request().postData() ?? '{}')).toEqual({
+      professionalType: 'DIGITAL_MARKETING_LOCAL_SERVICE',
+      professionalVersion: '1.0.0',
+      couponCode: 'DEMO100',
+    });
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ coupon_code: 'DEMO100', payable_inr_paise: 0 }),
+    });
   });
   await page.goto('/marketplace');
-  await expectShellReady(page);
-  const shellElement = await page.locator('.app-shell-customer:visible').elementHandle();
+  const cleanUrl = page.url();
+  const historyLength = await page.evaluate(() => history.length);
+  const card = page.locator('.marketplace-offer').first();
 
-  await page.getByRole('link', { name: /Hire/ }).first().click();
+  await card.getByLabel('Coupon code (optional)').fill('demo100');
+  await card.getByRole('button', { name: 'Apply' }).click();
+  await expect(card.getByRole('button', { name: 'Hire for ₹0.00' })).toBeDisabled();
+  expect(page.url()).toBe(cleanUrl);
+  expect(await page.evaluate(() => history.length)).toBe(historyLength);
 
-  await expect(page).toHaveURL(/\/marketplace\/digital-marketing\?.*intent=hire/);
-  expect(await shellElement?.evaluate((element) => element.isConnected)).toBe(true);
-  await expect(page.getByText('You chose to hire this professional.')).toBeVisible();
-  await expect(page.getByText('Professional plan')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Continue to hire' })).toBeDisabled();
-  expect(documents).toHaveLength(1);
-  await expectIntegrity(page);
-  await page.screenshot({ path: testInfo.outputPath('marketplace-hire-review.png'), fullPage: true });
+  await card.getByLabel('Coupon code (optional)').fill('changed');
+  await expect(card.getByRole('button', { name: 'Hire for ₹2,499.00' })).toBeDisabled();
+  await expect(card.getByText('Coupon applied. Amount due now: ₹0.00.')).toHaveCount(0);
 });

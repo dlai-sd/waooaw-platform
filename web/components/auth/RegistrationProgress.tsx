@@ -1,4 +1,5 @@
 // Implements: work-contracts/WC-083-route-backed-auth-dialog.md §Milestone 2
+// Implements: work-contracts/WC-107-requirements.yaml WC107-R007
 // Implements: architecture/reference/ux/wc-105-authentication-flow-defect-remediation-plan.md AUTH-UI-07
 // Constitutional basis: C-049 (Honest Limitation), C-071 (Accessible status)
 
@@ -50,7 +51,7 @@ export function RegistrationProgress({ action, pending }: { action: IdentityNext
           );
         })}
       </ol>
-      <span>{progress.label}</span>
+      <span className="visually-hidden">{progress.label}</span>
     </output>
   );
 }

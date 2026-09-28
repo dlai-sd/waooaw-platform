@@ -1,4 +1,5 @@
 // Implements: architecture/reference/product/wc085-identity-architecture-decision.md First Discriminating Parent Check
+// Implements: work-contracts/WC-107-requirements.yaml WC107-R003, WC107-R004, WC107-R005, WC107-R008
 // constitutional_basis: C-023, C-026, C-059
 
 using System.IdentityModel.Tokens.Jwt;
@@ -369,11 +370,10 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests : IAsyncLifetime
     public async Task Http_RevokeAllDeniesTheSameBearerOnEveryMembershipProtectedRoute()
     {
         var token = Token("revoked-actor");
-        await CompleteAsync(token, await RegisterAsync(token));
-        Assert.Equal(
-            HttpStatusCode.OK,
-            (await SendAsync(HttpMethod.Get, "/api/v1/identity/session", token)).StatusCode
-        );
+        var completion = await CompleteAsync(token, await RegisterAsync(token));
+        var accountReference = completion.GetProperty("accountReference").GetGuid();
+        Assert.Equal(HttpStatusCode.OK,
+            (await SendAsync(HttpMethod.Get, "/api/v1/identity/session", token)).StatusCode);
 
         var revoked = await SendAsync(
             HttpMethod.Delete,
@@ -387,6 +387,20 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests : IAsyncLifetime
             HttpStatusCode.Forbidden,
             (await SendAsync(HttpMethod.Get, "/api/v1/identity/profile", token)).StatusCode
         );
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await SendAsync(HttpMethod.Get, "/api/v1/identity/session", token)).StatusCode);
+
+        var freshToken = Token(
+            "revoked-actor",
+            authenticatedAt: DateTimeOffset.UtcNow.AddSeconds(1),
+            sessionId: $"fresh-{Guid.NewGuid():D}"
+        );
+        var restored = await SendAsync(HttpMethod.Get, "/api/v1/identity/session", freshToken);
+        Assert.Equal(HttpStatusCode.OK, restored.StatusCode);
+        Assert.Equal(accountReference,
+            (await JsonAsync(restored)).GetProperty("accountReference").GetGuid());
+        Assert.Equal(1L, await OwnerScalarAsync("SELECT count(*) FROM identity.accounts"));
+        Assert.Equal(1L, await OwnerScalarAsync("SELECT count(*) FROM identity.memberships WHERE status = 'ACTIVE'"));
         Assert.Equal(1L, await OwnerScalarAsync(
             "SELECT count(*) FROM institutional.identity_security_events WHERE event_type = 'SESSION_REVOCATION_ALL'"
         ));
@@ -442,16 +456,20 @@ public sealed class CustomerIdentityJourneyHttpPostgresTests : IAsyncLifetime
     }
 
     private string Token(string subject, string? issuer = null, RSA? signer = null, Claim[]? extra = null,
-        string provider = "google", string? emailVerified = "true")
+        string provider = "google", string? emailVerified = "true", DateTimeOffset? authenticatedAt = null,
+        string? sessionId = null)
     {
+        var authenticated = authenticatedAt ?? DateTimeOffset.UtcNow;
         var claims = GoogleWorkspaceProofAdapterTests.Principal(subject, provider: provider).Claims
-            .Where(claim => claim.Type is not ("iss" or "aud" or "iat" or "exp" or "email_verified"))
+            .Where(claim => claim.Type is not ("iss" or "aud" or "iat" or "exp" or "auth_time" or "email_verified"))
             .Concat(emailVerified is null ? [] : [new Claim("email_verified", emailVerified)])
+            .Concat([new Claim("auth_time", authenticated.ToUnixTimeSeconds().ToString())])
+            .Concat(sessionId is null ? [] : [new Claim("sid", sessionId)])
             .Concat(extra ?? []);
         var now = DateTime.UtcNow;
         var token = new JwtSecurityToken(issuer ?? _configuration.ActorIssuer, "waooaw-platform", claims,
             now.AddSeconds(-1), now.AddMinutes(10), new SigningCredentials(new RsaSecurityKey(signer ?? _signer), SecurityAlgorithms.RsaSha256));
-        token.Payload["iat"] = new DateTimeOffset(now).ToUnixTimeSeconds();
+        token.Payload["iat"] = authenticated.ToUnixTimeSeconds();
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 

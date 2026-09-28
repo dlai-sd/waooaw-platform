@@ -62,10 +62,7 @@ class WebhookHandler:
                 signature=event.razorpay_signature,
             )
             if not valid:
-                logger.warning(
-                    "Invalid Razorpay signature: order_id=%s payment_id=%s",
-                    event.razorpay_order_id, event.razorpay_payment_id,
-                )
+                logger.warning("Invalid Razorpay payment signature")
                 raise HTTPException(status_code=400, detail={"code": "INVALID_SIGNATURE"})
 
         if event.relationship_id is not None:
@@ -135,7 +132,7 @@ class WebhookHandler:
         )
         row = existing.fetchone()
         if row is not None and row.status == "ACTIVATED":
-            logger.info("Idempotent: payment already activated. payment_id=%s", event.razorpay_payment_id)
+            logger.info("Payment capture replay: already activated")
             # Return existing result without error — webhook replay handled gracefully
             result_row = await self._db.execute(
                 text(
@@ -185,8 +182,5 @@ class WebhookHandler:
         )
         await self._db.commit()
 
-        logger.info(
-            "payment.captured processed: order_id=%s payment_id=%s customer_id=%s",
-            event.razorpay_order_id, event.razorpay_payment_id, event.customer_id,
-        )
+        logger.info("payment.captured processed: status=activated")
         return result

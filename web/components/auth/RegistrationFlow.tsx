@@ -313,6 +313,7 @@ export function RegistrationFlow({
               {messages.displayName}
               <input
                 autoComplete="name"
+                autoFocus
                 maxLength={120}
                 onChange={(event) => updateDraft('displayName', event.target.value)}
                 required

@@ -12,6 +12,7 @@ using OpenTelemetry.Trace;
 using Temporalio.Extensions.Hosting;
 using Waooaw.BusinessPlatform.Controllers;
 using Waooaw.BusinessPlatform.Infrastructure;
+using Waooaw.BusinessPlatform.Middleware;
 using Waooaw.BusinessPlatform.Services;
 using Waooaw.BusinessPlatform.Workflows;
 using Waooaw.ConstitutionalEngine.Grpc;
@@ -44,15 +45,19 @@ if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
         .ProtectKeysWithCertificate(certificate);
 }
 
-var otlpEndpoint = builder.Configuration["OTLP_ENDPOINT"];
+var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] ?? builder.Configuration["OTLP_ENDPOINT"];
 if (Uri.TryCreate(otlpEndpoint, UriKind.Absolute, out var otlpUri))
 {
+    var serviceRevision = builder.Configuration["SERVICE_REVISION"] ?? "development";
     builder
         .Services.AddOpenTelemetry()
-        .ConfigureResource(resource => resource.AddService("waooaw-business-platform"))
+        .ConfigureResource(resource => resource.AddService("waooaw-business-platform", serviceVersion: serviceRevision))
         .WithTracing(tracing =>
             tracing
                 .AddAspNetCoreInstrumentation()
+                .AddHttpClientInstrumentation(options =>
+                    options.EnrichWithHttpRequestMessage = JourneyHttpTelemetry.ScrubRequestUrl
+                )
                 .AddSource("waooaw.business-platform.*")
                 .AddOtlpExporter(options => options.Endpoint = otlpUri)
         );
@@ -258,6 +263,8 @@ builder.Services.AddScoped<IRelationshipConstitutionalGateway, RelationshipConst
 builder.Services.AddSingleton<AgentAdmissionValidator>();
 builder.Services.AddScoped<AgentAdmissionService>();
 builder.Services.AddScoped<EmploymentRelationshipService>();
+builder.Services.AddScoped<MyAgentsSelectionService>();
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<
     IRelationshipEmergencyStopGateway,
     GrpcRelationshipEmergencyStopGateway
@@ -489,6 +496,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseRouting();
+app.UseMiddleware<JourneyTelemetryMiddleware>();
 
 // C-026: authentication MUST be validated before any tenant context is extracted.
 // An unauthenticated request must never reach TenantIsolationMiddleware with

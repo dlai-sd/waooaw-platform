@@ -2,6 +2,7 @@
 
 import { NextRequest } from 'next/server';
 import { getIdentitySession } from '@/lib/api/identity';
+import { createMyAgentsSelection } from '@/lib/api/my-agents-selection';
 import { getProfessionalDisclosure } from '@/lib/api/professionals';
 import { accessTokenFromRequest } from '@/lib/server-auth';
 
@@ -9,6 +10,10 @@ const continueAcquisition = jest.fn();
 jest.mock('@/lib/server-auth', () => ({ accessTokenFromRequest: jest.fn() }));
 jest.mock('@/lib/api/identity', () => ({ getIdentitySession: jest.fn() }));
 jest.mock('@/lib/api/professionals', () => ({ getProfessionalDisclosure: jest.fn() }));
+jest.mock('@/lib/api/my-agents-selection', () => ({
+  createMyAgentsSelection: jest.fn(),
+  myAgentsSelectionCookie: 'waooaw_my_agents_selection',
+}));
 jest.mock('@/lib/api/generated/apis/ProfessionalsApi', () => ({
   ProfessionalsApi: jest.fn(() => ({ continueAcquisition })),
 }));
@@ -58,6 +63,10 @@ describe('pre-hire checkout boundary', () => {
       indicativePrice: { currency: 'INR', amountInrPaise: 118000, cadence: 'MONTHLY', qualification: 'Indicative' },
     });
     continueAcquisition.mockResolvedValue({ relationshipId, resumePath: `/relationships/${relationshipId}` });
+    jest.mocked(createMyAgentsSelection).mockResolvedValue({
+      handle: 'b'.repeat(64),
+      expiresAt: '2026-09-28T12:05:00.000Z',
+    });
   });
 
   afterEach(() => {
@@ -126,9 +135,145 @@ describe('pre-hire checkout boundary', () => {
     expect(continueAcquisition).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenNthCalledWith(
       2,
-      `http://localhost:8140/payments/hire-checkout/${baseBody.idempotencyKey}/bind`,
-      expect.objectContaining({ body: JSON.stringify({ customer_id: customerId, relationship_id: relationshipId }) })
+      'http://localhost:8140/payments/hire-checkout/bind',
+      expect.objectContaining({
+        body: JSON.stringify({
+          checkout_intent_id: baseBody.idempotencyKey,
+          customer_id: customerId,
+          relationship_id: relationshipId,
+        }),
+      })
     );
-    expect(await response.json()).toEqual(expect.objectContaining({ resumePath: `/relationships/${relationshipId}` }));
+    expect(jest.mocked(fetch).mock.calls.map(([url]) => String(url))).not.toEqual(
+      expect.arrayContaining([expect.stringContaining(baseBody.idempotencyKey)])
+    );
+    expect(createMyAgentsSelection).toHaveBeenCalledWith('access-token', relationshipId, 'HIRE_PAID');
+    expect(await response.json()).toEqual(expect.objectContaining({ resumePath: '/professionals/mine' }));
+    expect(response.headers.get('set-cookie')).toEqual(
+      expect.stringMatching(/Path=\/professionals\/mine;.*Secure;.*HttpOnly;.*SameSite=strict/i)
+    );
+  });
+
+  it('reconciles the same captured payment after a bind failure without starting another order', async () => {
+    const captured = {
+      outcome_kind: 'CAPTURED',
+      checkout_intent_id: baseBody.idempotencyKey,
+      commercial_outcome_reference: 'pay_test123',
+      commercial_evidence_id: '44444444-4444-4444-8444-444444444444',
+      amount_inr_paise: 118000,
+      currency: 'INR',
+    };
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => captured })
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ title: 'Bind unavailable' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => captured })
+      .mockResolvedValueOnce({ ok: true, json: async () => captured });
+    const { POST } = await import('./route');
+    const confirmation = {
+      ...baseBody,
+      action: 'confirm',
+      razorpayOrderId: 'order_test123',
+      razorpayPaymentId: 'pay_test123',
+      razorpaySignature: 'a'.repeat(64),
+    };
+
+    const pending = await POST(request(confirmation));
+    const completed = await POST(request(confirmation));
+
+    expect(pending.status).toBe(503);
+    expect(completed.status).toBe(200);
+    expect(continueAcquisition).toHaveBeenCalledTimes(2);
+    expect(global.fetch).toHaveBeenCalledTimes(4);
+    expect(jest.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/payments/hire-checkout'))).toHaveLength(0);
+    expect(jest.mocked(fetch).mock.calls.filter(([url]) => String(url).includes('/confirm'))).toHaveLength(2);
+    expect(jest.mocked(fetch).mock.calls.filter(([url]) => String(url).includes('/bind'))).toHaveLength(2);
+    expect(await completed.json()).toEqual(expect.objectContaining({ resumePath: '/professionals/mine' }));
+  });
+
+  it('reconciles the same captured payment after a confirmation timeout without starting another order', async () => {
+    const captured = {
+      outcome_kind: 'CAPTURED',
+      checkout_intent_id: baseBody.idempotencyKey,
+      commercial_outcome_reference: 'pay_test123',
+      commercial_evidence_id: '44444444-4444-4444-8444-444444444444',
+      amount_inr_paise: 118000,
+      currency: 'INR',
+    };
+    global.fetch = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('connection closed after capture'))
+      .mockResolvedValueOnce({ ok: true, json: async () => captured })
+      .mockResolvedValueOnce({ ok: true, json: async () => captured });
+    const { POST } = await import('./route');
+    const confirmation = {
+      ...baseBody,
+      action: 'confirm',
+      razorpayOrderId: 'order_test123',
+      razorpayPaymentId: 'pay_test123',
+      razorpaySignature: 'a'.repeat(64),
+    };
+
+    const pending = await POST(request(confirmation));
+    const completed = await POST(request(confirmation));
+
+    expect(pending.status).toBe(503);
+    expect(completed.status).toBe(200);
+    expect(continueAcquisition).toHaveBeenCalledTimes(1);
+    expect(jest.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/payments/hire-checkout'))).toHaveLength(0);
+    expect(jest.mocked(fetch).mock.calls.filter(([url]) => String(url).includes('/confirm'))).toHaveLength(2);
+    expect(jest.mocked(fetch).mock.calls.filter(([url]) => String(url).includes('/bind'))).toHaveLength(1);
+  });
+
+  it('does not confirm captured payment when authoritative selection creation fails', async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          outcome_kind: 'CAPTURED',
+          checkout_intent_id: baseBody.idempotencyKey,
+          amount_inr_paise: 118000,
+          currency: 'INR',
+        }),
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ outcome_kind: 'CAPTURED' }) });
+    jest.mocked(createMyAgentsSelection).mockRejectedValue(new Error('authoritative state unavailable'));
+    const { POST } = await import('./route');
+
+    const response = await POST(
+      request({
+        ...baseBody,
+        action: 'confirm',
+        razorpayOrderId: 'order_test123',
+        razorpayPaymentId: 'pay_test123',
+        razorpaySignature: 'a'.repeat(64),
+      })
+    );
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get('set-cookie')).toBeNull();
+  });
+
+  it('maps an authoritative fully discounted outcome to zero-price confirmation state', async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          outcome_kind: 'FULLY_DISCOUNTED',
+          checkout_intent_id: baseBody.idempotencyKey,
+          amount_inr_paise: 0,
+          currency: 'INR',
+        }),
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ outcome_kind: 'FULLY_DISCOUNTED' }) });
+    const { POST } = await import('./route');
+
+    const response = await POST(request(baseBody));
+
+    expect(response.status).toBe(200);
+    expect(createMyAgentsSelection).toHaveBeenCalledWith('access-token', relationshipId, 'HIRE_ZERO_PRICE');
+    expect(await response.json()).toEqual(expect.objectContaining({ resumePath: '/professionals/mine' }));
   });
 });

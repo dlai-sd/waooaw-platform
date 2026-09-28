@@ -10,7 +10,8 @@ from datetime import datetime, timedelta, timezone
 
 import redis.asyncio as aioredis
 from fastapi import HTTPException
-from sqlalchemy import text
+from sqlalchemy import DateTime, String, bindparam, text
+from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUuid
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from config import Settings
@@ -20,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 _GRANDFATHER_DAYS = 14
 _TRIAL_DURATION_DAYS = 14
+_UUID_BIND_TYPE = String(36).with_variant(PostgreSQLUuid(as_uuid=False), "postgresql")
 
 
 class TrialService:
@@ -81,7 +83,7 @@ class TrialService:
                 text(
                     "SELECT trial_id FROM trial_allocations "
                     "WHERE customer_id = :cid AND agent_type = :at"
-                ).bindparams(cid=str(customer_id), at=agent_type)
+                ).bindparams(bindparam("cid", str(customer_id), type_=_UUID_BIND_TYPE), at=agent_type)
             )
             if existing.fetchone():
                 raise HTTPException(
@@ -101,11 +103,11 @@ class TrialService:
                     "(trial_id, customer_id, agent_type, started_at, expires_at, status) "
                     "VALUES (:trial_id, :cid, :at, :started_at, :expires_at, 'ACTIVE')"
                 ).bindparams(
-                    trial_id=str(trial_id),
-                    cid=str(customer_id),
+                    bindparam("trial_id", str(trial_id), type_=_UUID_BIND_TYPE),
+                    bindparam("cid", str(customer_id), type_=_UUID_BIND_TYPE),
+                    bindparam("started_at", now, type_=DateTime(timezone=True)),
+                    bindparam("expires_at", expires_at, type_=DateTime(timezone=True)),
                     at=agent_type,
-                    started_at=now.isoformat(),
-                    expires_at=expires_at.isoformat(),
                 )
             )
 
@@ -118,9 +120,9 @@ class TrialService:
                         "(id, customer_id, employment_contract_id, thread_type, balance_paise, is_active) "
                         "VALUES (:id, :cid, :ec_id, :thread_type, :balance, 1)"
                     ).bindparams(
-                        id=str(bucket_id),
-                        cid=str(customer_id),
-                        ec_id=str(trial_ec_id),
+                        bindparam("id", str(bucket_id), type_=_UUID_BIND_TYPE),
+                        bindparam("cid", str(customer_id), type_=_UUID_BIND_TYPE),
+                        bindparam("ec_id", str(trial_ec_id), type_=_UUID_BIND_TYPE),
                         thread_type=thread_type,
                         balance=units * 100,  # 1 rupee per unit as nominal trial credit
                     )
@@ -133,10 +135,10 @@ class TrialService:
                         "(trial_id, thread_type, units_granted, units_consumed, updated_at) "
                         "VALUES (:trial_id, :thread_type, :units, 0, :now)"
                     ).bindparams(
-                        trial_id=str(trial_id),
+                        bindparam("trial_id", str(trial_id), type_=_UUID_BIND_TYPE),
+                        bindparam("now", now, type_=DateTime(timezone=True)),
                         thread_type=thread_type,
                         units=units,
-                        now=now.isoformat(),
                     )
                 )
 
@@ -147,11 +149,11 @@ class TrialService:
         try:
             await self._redis.set(f"wbe:customer:{customer_id}:mode", "TRIAL", ex=ttl)
         except Exception:
-            logger.error("Failed to set trial Redis key for customer_id=%s", customer_id, exc_info=True)
+            logger.error("Failed to set Trial mode in Redis", exc_info=True)
 
         logger.info(
-            "Trial started: trial_id=%s customer_id=%s agent_type=%s expires_at=%s",
-            trial_id, customer_id, agent_type, expires_at.isoformat(),
+            "Trial started: agent_type=%s expires_at=%s",
+            agent_type, expires_at.isoformat(),
         )
         return TrialStartResult(
             trial_id=trial_id,
@@ -171,7 +173,7 @@ class TrialService:
             result = await session.execute(
                 text(
                     "SELECT customer_id, status FROM trial_allocations WHERE trial_id = :trial_id"
-                ).bindparams(trial_id=str(trial_id))
+                ).bindparams(bindparam("trial_id", str(trial_id), type_=_UUID_BIND_TYPE))
             )
             row = result.fetchone()
             if row is None:
@@ -182,7 +184,7 @@ class TrialService:
             await session.execute(
                 text(
                     "UPDATE trial_allocations SET status = 'EXPIRED' WHERE trial_id = :trial_id"
-                ).bindparams(trial_id=str(trial_id))
+                ).bindparams(bindparam("trial_id", str(trial_id), type_=_UUID_BIND_TYPE))
             )
             await session.commit()
             customer_id = row[0]
@@ -190,9 +192,9 @@ class TrialService:
         try:
             await self._redis.delete(f"wbe:customer:{customer_id}:mode")
         except Exception:
-            logger.error("Failed to clear trial Redis key for trial_id=%s", trial_id, exc_info=True)
+            logger.error("Failed to clear Trial mode in Redis", exc_info=True)
 
-        logger.info("Trial expired: trial_id=%s customer_id=%s", trial_id, customer_id)
+        logger.info("Trial expired")
         return "EXPIRED"
 
     # ------------------------------------------------------------------
@@ -218,7 +220,7 @@ class TrialService:
                 text(
                     "SELECT customer_id, agent_type, started_at, status "
                     "FROM trial_allocations WHERE trial_id = :trial_id"
-                ).bindparams(trial_id=str(trial_id))
+                ).bindparams(bindparam("trial_id", str(trial_id), type_=_UUID_BIND_TYPE))
             )
             row = result.fetchone()
             if row is None:
@@ -248,9 +250,9 @@ class TrialService:
                     "SET status = 'CONVERTED', converted_at = :converted_at, new_subscription_id = :sub_id "
                     "WHERE trial_id = :trial_id AND status = 'ACTIVE'"
                 ).bindparams(
-                    converted_at=converted_at.isoformat(),
-                    sub_id=str(new_subscription_id),
-                    trial_id=str(trial_id),
+                    bindparam("sub_id", str(new_subscription_id), type_=_UUID_BIND_TYPE),
+                    bindparam("trial_id", str(trial_id), type_=_UUID_BIND_TYPE),
+                    bindparam("converted_at", converted_at, type_=DateTime(timezone=True)),
                 )
             )
             await session.commit()
@@ -269,11 +271,11 @@ class TrialService:
         try:
             await self._redis.set(f"wbe:customer:{customer_id}:mode", "ACTIVE")
         except Exception:
-            logger.error("Failed to set ACTIVE Redis key for customer_id=%s", customer_id, exc_info=True)
+            logger.error("Failed to set Active mode in Redis", exc_info=True)
 
         logger.info(
-            "Trial converted: trial_id=%s customer_id=%s grandfather_applied=%s",
-            trial_id, customer_id, grandfather_applied,
+            "Trial converted: grandfather_applied=%s",
+            grandfather_applied,
         )
         return ConvertResult(
             new_subscription_id=new_subscription_id,
@@ -292,18 +294,19 @@ class TrialService:
         """Return an exact trial status, or the customer's most recent trial when unspecified."""
         async with self._session_factory() as session:
             trial_filter = "AND trial_id = :trial_id " if trial_id is not None else ""
-            parameters = {"cid": str(customer_id)}
+            parameters: dict[str, object] = {"cid": str(customer_id)}
             if trial_id is not None:
                 parameters["trial_id"] = str(trial_id)
-            result = await session.execute(
-                text(
+            query = text(
                     "SELECT trial_id, agent_type, started_at, expires_at, status "
                     "FROM trial_allocations "
                     "WHERE customer_id = :cid "
                     f"{trial_filter}"
                     "ORDER BY started_at DESC LIMIT 1"
-                ).bindparams(**parameters)
-            )
+                ).bindparams(bindparam("cid", type_=_UUID_BIND_TYPE))
+            if trial_id is not None:
+                query = query.bindparams(bindparam("trial_id", type_=_UUID_BIND_TYPE))
+            result = await session.execute(query, parameters)
             row = result.fetchone()
             if row is None:
                 return None
@@ -313,7 +316,7 @@ class TrialService:
                 text(
                     "SELECT thread_type, units_granted, units_consumed "
                     "FROM trial_free_unit_ledger WHERE trial_id = :trial_id"
-                ).bindparams(trial_id=str(trial_id))
+                ).bindparams(bindparam("trial_id", str(trial_id), type_=_UUID_BIND_TYPE))
             )
             units_consumed: dict[str, int] = {}
             units_remaining: dict[str, int] = {}

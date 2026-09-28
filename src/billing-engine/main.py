@@ -25,6 +25,7 @@ from wallet.router import router as wallet_router
 from reconciliation.service import ReconciliationService, FounderActionGenerator as _FAGBase
 from relationship_workspace import configure_relationship_workspace
 from relationship_workspace import router as relationship_workspace_router
+from telemetry import configure_telemetry
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +124,7 @@ def create_app() -> FastAPI:
         version="1.0.0",
         lifespan=lifespan,
     )
+    configure_telemetry(app)
 
     # allow_credentials=False with wildcard origin -- OWASP A05 compliance (C-100).
     # Prevents CSRF attacks when credentials are not required.

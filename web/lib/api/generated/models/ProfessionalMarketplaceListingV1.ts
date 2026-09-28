@@ -27,6 +27,13 @@ import {
   ProfessionalEligibilityToJSON,
   ProfessionalEligibilityToJSONTyped,
 } from "./ProfessionalEligibility";
+import type { ProfessionalTrialDisclosure } from "./ProfessionalTrialDisclosure";
+import {
+  ProfessionalTrialDisclosureFromJSON,
+  ProfessionalTrialDisclosureFromJSONTyped,
+  ProfessionalTrialDisclosureToJSON,
+  ProfessionalTrialDisclosureToJSONTyped,
+} from "./ProfessionalTrialDisclosure";
 
 /**
  *
@@ -66,10 +73,40 @@ export interface ProfessionalMarketplaceListingV1 {
   availableIntents: Set<ProfessionalMarketplaceListingV1AvailableIntentsEnum>;
   /**
    *
+   * @type {string}
+   * @memberof ProfessionalMarketplaceListingV1
+   */
+  disclosureRevision: string;
+  /**
+   *
+   * @type {string}
+   * @memberof ProfessionalMarketplaceListingV1
+   */
+  termsVersion: string;
+  /**
+   *
    * @type {Array<string>}
    * @memberof ProfessionalMarketplaceListingV1
    */
   suitability?: Array<string>;
+  /**
+   *
+   * @type {Array<string>}
+   * @memberof ProfessionalMarketplaceListingV1
+   */
+  capabilitySignals: Array<string>;
+  /**
+   *
+   * @type {Array<string>}
+   * @memberof ProfessionalMarketplaceListingV1
+   */
+  limitations: Array<string>;
+  /**
+   *
+   * @type {Array<string>}
+   * @memberof ProfessionalMarketplaceListingV1
+   */
+  customerRights: Array<string>;
   /**
    *
    * @type {ProfessionalEligibility}
@@ -82,6 +119,18 @@ export interface ProfessionalMarketplaceListingV1 {
    * @memberof ProfessionalMarketplaceListingV1
    */
   indicativePrice?: IndicativePriceDisclosure;
+  /**
+   *
+   * @type {ProfessionalTrialDisclosure}
+   * @memberof ProfessionalMarketplaceListingV1
+   */
+  trial: ProfessionalTrialDisclosure;
+  /**
+   *
+   * @type {string}
+   * @memberof ProfessionalMarketplaceListingV1
+   */
+  evidencePosture: string;
   /**
    *
    * @type {string}
@@ -151,7 +200,26 @@ export function instanceOfProfessionalMarketplaceListingV1(
     return false;
   if (!("availableIntents" in value) || value["availableIntents"] === undefined)
     return false;
+  if (
+    !("disclosureRevision" in value) ||
+    value["disclosureRevision"] === undefined
+  )
+    return false;
+  if (!("termsVersion" in value) || value["termsVersion"] === undefined)
+    return false;
+  if (
+    !("capabilitySignals" in value) ||
+    value["capabilitySignals"] === undefined
+  )
+    return false;
+  if (!("limitations" in value) || value["limitations"] === undefined)
+    return false;
+  if (!("customerRights" in value) || value["customerRights"] === undefined)
+    return false;
   if (!("eligibility" in value) || value["eligibility"] === undefined)
+    return false;
+  if (!("trial" in value) || value["trial"] === undefined) return false;
+  if (!("evidencePosture" in value) || value["evidencePosture"] === undefined)
     return false;
   if (
     !("offerabilityState" in value) ||
@@ -182,12 +250,19 @@ export function ProfessionalMarketplaceListingV1FromJSONTyped(
     displayName: json["displayName"],
     disclosurePath: json["disclosurePath"],
     availableIntents: new Set(json["availableIntents"]),
+    disclosureRevision: json["disclosureRevision"],
+    termsVersion: json["termsVersion"],
     suitability: json["suitability"] == null ? undefined : json["suitability"],
+    capabilitySignals: json["capabilitySignals"],
+    limitations: json["limitations"],
+    customerRights: json["customerRights"],
     eligibility: ProfessionalEligibilityFromJSON(json["eligibility"]),
     indicativePrice:
       json["indicativePrice"] == null
         ? undefined
         : IndicativePriceDisclosureFromJSON(json["indicativePrice"]),
+    trial: ProfessionalTrialDisclosureFromJSON(json["trial"]),
+    evidencePosture: json["evidencePosture"],
     offerabilityState: json["offerabilityState"],
     trialTerms: json["trialTerms"] == null ? undefined : json["trialTerms"],
     nextAction: json["nextAction"],
@@ -214,9 +289,16 @@ export function ProfessionalMarketplaceListingV1ToJSONTyped(
     displayName: value["displayName"],
     disclosurePath: value["disclosurePath"],
     availableIntents: Array.from(value["availableIntents"] as Set<any>),
+    disclosureRevision: value["disclosureRevision"],
+    termsVersion: value["termsVersion"],
     suitability: value["suitability"],
+    capabilitySignals: value["capabilitySignals"],
+    limitations: value["limitations"],
+    customerRights: value["customerRights"],
     eligibility: ProfessionalEligibilityToJSON(value["eligibility"]),
     indicativePrice: IndicativePriceDisclosureToJSON(value["indicativePrice"]),
+    trial: ProfessionalTrialDisclosureToJSON(value["trial"]),
+    evidencePosture: value["evidencePosture"],
     offerabilityState: value["offerabilityState"],
     trialTerms: value["trialTerms"],
     nextAction: value["nextAction"],

@@ -152,10 +152,12 @@ export default async function ProfessionalPage({ params, searchParams }: Profess
       <DisclosureContinuation
         disclosureRevision={disclosureRevision}
         initialIntent={intent}
-        professionalType={professionalType}
-        professionalVersion={version}
-        termsVersion={termsVersion}
-        trialAvailable={disclosure?.trial.available ?? true}
+            professionalType={professionalType}
+            professionalVersion={version}
+            termsVersion={termsVersion}
+            trialAvailable={disclosure?.trial.available ?? true}
+            priceInrPaise={disclosure?.indicativePrice.amountInrPaise}
+            trialDurationDays={disclosure?.trial.durationDays}
       />
     </article>
   );

@@ -99,9 +99,16 @@ public sealed class ProfessionalsController : ControllerBase
                         ? new[] { "TRIAL", "HIRE" }
                         : ["HIRE"]
                     : [],
+                disclosureRevision = disclosure.DisclosureRevision,
+                termsVersion = disclosure.TermsVersion,
                 suitability = disclosure.Suitability,
+                capabilitySignals = disclosure.Skills.Take(3).Select(skill => skill.DisplayName),
+                limitations = disclosure.Limitations,
+                customerRights = disclosure.CustomerRights,
                 eligibility = disclosure.Eligibility,
                 indicativePrice = disclosure.IndicativePrice,
+                trial = disclosure.Trial,
+                evidencePosture = disclosure.EvidencePosture,
                 offerabilityState = disclosure.Eligibility.Eligible
                     ? disclosure.Trial.Available
                         ? "OFFERABLE"

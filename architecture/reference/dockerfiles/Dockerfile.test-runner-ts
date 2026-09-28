@@ -22,6 +22,11 @@ RUN --mount=type=cache,id=wc104-typescript-pnpm,target=/home/node/.local/share/p
 		chmod 0755 "/usr/local/bin/$name"; \
 	done
 
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN cd /opt/waooaw-web \
+	&& pnpm exec playwright install --with-deps chromium-headless-shell \
+	&& chmod -R a+rX "$PLAYWRIGHT_BROWSERS_PATH"
+
 ENV NODE_PATH=/opt/waooaw-web/node_modules \
 	PATH=/opt/waooaw-web/node_modules/.bin:$PATH
 

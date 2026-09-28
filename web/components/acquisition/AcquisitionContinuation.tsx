@@ -84,6 +84,7 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
   );
   const [busy, setBusy] = useState(true);
   const [retryable, setRetryable] = useState(false);
+  const [pendingPayment, setPendingPayment] = useState<RazorpaySuccessResponse | null>(null);
 
   async function continueTrial() {
     const response = await fetch('/api/acquisition/continue', {
@@ -98,7 +99,22 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
     router.replace(result.resumePath);
   }
 
+  async function startTrial() {
+    setBusy(true);
+    setRetryable(false);
+    setStatus('Preparing your trial workspace...');
+    try {
+      await continueTrial();
+    } catch (error) {
+      const response = error instanceof AcquisitionResponseError ? error.response : null;
+      setStatus(response?.title ?? 'We could not continue yet.');
+      setBusy(false);
+      setRetryable(response?.status === 503);
+    }
+  }
+
   async function completeRazorpayPayment(response: RazorpaySuccessResponse) {
+    setPendingPayment(response);
     setBusy(true);
     setStatus('Razorpay received the payment. WAOOAW is verifying the signed confirmation...');
     const confirmation = await fetch('/api/acquisition/hire-checkout', {
@@ -119,6 +135,7 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
       setRetryable(true);
       return;
     }
+    setPendingPayment(null);
     router.replace(outcome.resumePath);
   }
 
@@ -203,13 +220,7 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
     if (started.current) return;
     started.current = true;
     if (props.intent === 'hire') void startHireCheckout();
-    else
-      void continueTrial().catch((error) => {
-        const response = error instanceof AcquisitionResponseError ? error.response : null;
-        setStatus(response?.title ?? 'We could not continue yet.');
-        setBusy(false);
-        setRetryable(response?.status === 503);
-      });
+    else void startTrial();
     // The accepted continuation is immutable for this mounted return route.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -222,8 +233,22 @@ export function AcquisitionContinuation(props: AcquisitionContinuationProps) {
       {!busy ? (
         <div className="command-row">
           {retryable ? (
-            <button className="primary-command" onClick={() => void startHireCheckout()} type="button">
-              Open Razorpay Checkout
+            <button
+              className="primary-command"
+              onClick={() =>
+                void (props.intent === 'trial'
+                  ? startTrial()
+                  : pendingPayment
+                    ? completeRazorpayPayment(pendingPayment)
+                    : startHireCheckout())
+              }
+              type="button"
+            >
+              {props.intent === 'trial'
+                ? 'Retry trial'
+                : pendingPayment
+                  ? 'Retry payment confirmation'
+                  : 'Open Razorpay Checkout'}
             </button>
           ) : null}
           <Link className="text-command" href="/marketplace">

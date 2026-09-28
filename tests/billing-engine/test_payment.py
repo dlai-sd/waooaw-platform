@@ -339,8 +339,8 @@ async def test_pre_hire_checkout_is_idempotent_and_signature_verified(payment_se
     }
     with pytest.raises(HTTPException) as not_captured:
         await payment_router.confirm_pre_hire_checkout(
-            checkout_id,
             payment_router.PreHireCheckoutConfirmationBody(
+                checkout_intent_id=checkout_id,
                 customer_id=customer_id,
                 razorpay_order_id="order_pre_hire_1",
                 razorpay_payment_id=payment_id,
@@ -354,8 +354,8 @@ async def test_pre_hire_checkout_is_idempotent_and_signature_verified(payment_se
         "currency": "INR", "amount": 249900,
     }
     captured = await payment_router.confirm_pre_hire_checkout(
-        checkout_id,
         payment_router.PreHireCheckoutConfirmationBody(
+            checkout_intent_id=checkout_id,
             customer_id=customer_id,
             razorpay_order_id="order_pre_hire_1",
             razorpay_payment_id=payment_id,
@@ -401,8 +401,8 @@ async def test_pre_hire_checkout_rejects_invalid_signature(payment_session, monk
 
     with pytest.raises(HTTPException) as invalid:
         await payment_router.confirm_pre_hire_checkout(
-            checkout_id,
             payment_router.PreHireCheckoutConfirmationBody(
+                checkout_intent_id=checkout_id,
                 customer_id=customer_id,
                 razorpay_order_id="order_pre_hire_2",
                 razorpay_payment_id="pay_pre_hire_2",

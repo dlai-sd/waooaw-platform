@@ -149,10 +149,12 @@ class PreHireCheckoutBody(HireCommercialPreviewBody):
 
 
 class PreHireCheckoutConfirmationBody(RazorpayCheckoutConfirmationBody):
+    checkout_intent_id: UUID
     customer_id: UUID
 
 
 class PreHireCheckoutBindingBody(BaseModel):
+    checkout_intent_id: UUID
     customer_id: UUID
     relationship_id: UUID
 
@@ -401,9 +403,8 @@ async def create_pre_hire_checkout(body: PreHireCheckoutBody) -> PreHireCheckout
         return _pre_hire_outcome(stored)
 
 
-@router.post("/hire-checkout/{checkout_intent_id}/confirm", response_model=PreHireCheckoutOutcome)
+@router.post("/hire-checkout/confirm", response_model=PreHireCheckoutOutcome)
 async def confirm_pre_hire_checkout(
-    checkout_intent_id: UUID,
     body: PreHireCheckoutConfirmationBody,
 ) -> PreHireCheckoutOutcome:
     """Verify and retain Razorpay's signed browser result without activating an unconfigured agent."""
@@ -411,7 +412,7 @@ async def confirm_pre_hire_checkout(
     async with session_factory() as db:
         row = (await db.execute(text(
             "SELECT * FROM pre_hire_checkout_orders WHERE checkout_intent_id = :checkout_intent_id"
-        ).bindparams(checkout_intent_id=_uuid_bind(db, checkout_intent_id)))).fetchone()
+        ).bindparams(checkout_intent_id=_uuid_bind(db, body.checkout_intent_id)))).fetchone()
         if row is None:
             raise HTTPException(status_code=404, detail={"code": "PRE_HIRE_CHECKOUT_NOT_FOUND"})
         if str(row.customer_id) != str(body.customer_id) or row.razorpay_order_id != body.razorpay_order_id:
@@ -447,18 +448,17 @@ async def confirm_pre_hire_checkout(
             "WHERE checkout_intent_id = :checkout_intent_id AND status = 'AWAITING_PROVIDER'"
         ).bindparams(
             payment_id=body.razorpay_payment_id,
-            checkout_intent_id=_uuid_bind(db, checkout_intent_id),
+            checkout_intent_id=_uuid_bind(db, body.checkout_intent_id),
         ))
         await db.commit()
         stored = (await db.execute(text(
             "SELECT * FROM pre_hire_checkout_orders WHERE checkout_intent_id = :checkout_intent_id"
-        ).bindparams(checkout_intent_id=_uuid_bind(db, checkout_intent_id)))).one()
+        ).bindparams(checkout_intent_id=_uuid_bind(db, body.checkout_intent_id)))).one()
         return _pre_hire_outcome(stored)
 
 
-@router.post("/hire-checkout/{checkout_intent_id}/bind", response_model=PreHireCheckoutOutcome)
+@router.post("/hire-checkout/bind", response_model=PreHireCheckoutOutcome)
 async def bind_pre_hire_checkout(
-    checkout_intent_id: UUID,
     body: PreHireCheckoutBindingBody,
 ) -> PreHireCheckoutOutcome:
     """Bind one captured or zero-price outcome to the relationship created after payment."""
@@ -466,7 +466,7 @@ async def bind_pre_hire_checkout(
     async with session_factory() as db:
         row = (await db.execute(text(
             "SELECT * FROM pre_hire_checkout_orders WHERE checkout_intent_id = :checkout_intent_id"
-        ).bindparams(checkout_intent_id=_uuid_bind(db, checkout_intent_id)))).fetchone()
+        ).bindparams(checkout_intent_id=_uuid_bind(db, body.checkout_intent_id)))).fetchone()
         if row is None:
             raise HTTPException(status_code=404, detail={"code": "PRE_HIRE_CHECKOUT_NOT_FOUND"})
         if str(row.customer_id) != str(body.customer_id) or row.status not in {"CAPTURED", "FULLY_DISCOUNTED"}:
@@ -478,12 +478,12 @@ async def bind_pre_hire_checkout(
             "updated_at = CURRENT_TIMESTAMP WHERE checkout_intent_id = :checkout_intent_id"
         ).bindparams(
             relationship_id=_uuid_bind(db, body.relationship_id),
-            checkout_intent_id=_uuid_bind(db, checkout_intent_id),
+            checkout_intent_id=_uuid_bind(db, body.checkout_intent_id),
         ))
         await db.commit()
         stored = (await db.execute(text(
             "SELECT * FROM pre_hire_checkout_orders WHERE checkout_intent_id = :checkout_intent_id"
-        ).bindparams(checkout_intent_id=_uuid_bind(db, checkout_intent_id)))).one()
+        ).bindparams(checkout_intent_id=_uuid_bind(db, body.checkout_intent_id)))).one()
         return _pre_hire_outcome(stored)
 
 

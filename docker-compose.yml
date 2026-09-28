@@ -410,6 +410,8 @@ services:
       WhatsApp__WebhookSecret: ${WHATSAPP_WEBHOOK_SECRET:-waooaw-webhook-local-dev-only-32chars}
       WhatsApp__TenantTokenKey: ${WHATSAPP_TENANT_TOKEN_KEY:-waooaw-tenant-token-local-dev-only-32chars}
       OTLP_ENDPOINT: http://jaeger:4317
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      SERVICE_REVISION: ${SERVICE_REVISION:-development}
     depends_on:
       constitutional-engine:
         condition: service_healthy
@@ -632,6 +634,8 @@ services:
       REDIS_URL: "redis://redis:6379/0"
       THREAD_CATALOG_CACHE_TTL_SECONDS: "30"
       OTLP_ENDPOINT: http://jaeger:4317
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      SERVICE_REVISION: ${SERVICE_REVISION:-development}
     depends_on:
       postgres:
         condition: service_healthy
@@ -1328,9 +1332,16 @@ services:
       NEXT_PUBLIC_KEYCLOAK_REALM: waooaw
       NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: waooaw-web
       BUSINESS_PLATFORM_URL: http://business-platform:5001
+      BILLING_ENGINE_URL: http://billing-engine:8140
       IDENTITY_EVENT_SIGNING_KEY: ${IDENTITY_EVENT_SIGNING_KEY:-waooaw-identity-event-local-dev-only-32chars}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      NEXT_OTEL_FETCH_DISABLED: "1"
+      SERVICE_REVISION: ${SERVICE_REVISION:-development}
     depends_on:
       business-platform:
+        condition: service_healthy
+      billing-engine:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000 > /dev/null 2>&1 || exit 1"]

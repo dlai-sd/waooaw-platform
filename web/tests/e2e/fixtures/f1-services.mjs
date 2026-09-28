@@ -8,6 +8,7 @@ const portalTimelines = new Map();
 const continuityStates = new Map();
 const voiceSessions = new Map();
 const acquisitionStates = new Map();
+const selectionFlashes = new Map();
 const goalVerificationStates = new Map();
 const identityProviderDelayMs = Number.parseInt(process.env.IDENTITY_PROVIDER_DELAY_MS ?? '0', 10) || 0;
 
@@ -146,6 +147,12 @@ function relationshipSummary(relationshipId, professionalType, professionalDispl
     professionalType,
     professionalVersion: '1.0.0',
     professionalDisplayName,
+    acquisitionMode:
+      lifecycleState === 'TRIAL_ACTIVE'
+        ? 'TRIAL'
+        : lifecycleState === 'CONTRACT_PENDING_ACCEPTANCE'
+          ? 'HIRE'
+          : undefined,
     lifecycleState,
     trialStatus: lifecycleState === 'TRIAL_ACTIVE' ? 'ACTIVE' : undefined,
     currentGoalSummary: 'Increase qualified enquiries',
@@ -242,6 +249,8 @@ const server = createServer(async (request, response) => {
   const url = new URL(request.url ?? '/', 'http://127.0.0.1:5001');
   const scope = scopeFor(request);
   const policyDenied = request.headers.authorization?.startsWith('Bearer fixture-policy-denied-') === true;
+  const registrationRequired =
+    request.headers.authorization?.startsWith('Bearer fixture-registration-required-') === true;
   const relationshipMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)$/);
   const timelineMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/timeline$/);
   const messagesMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/conversation\/messages$/);
@@ -404,6 +413,10 @@ const server = createServer(async (request, response) => {
       json(response, { code: 'IDENTITY_ACTION_DENIED' }, 403);
       return;
     }
+    if (registrationRequired) {
+      json(response, { code: 'REGISTRATION_REQUIRED' }, 409);
+      return;
+    }
     json(response, {
       accountReference: 'account-fixture',
       roles: ['OWNER'],
@@ -419,8 +432,30 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  if (request.method === 'DELETE' && url.pathname === '/api/v1/identity/sessions') {
+    json(response, { scope: 'ALL', revokedSessionCount: 1 });
+    return;
+  }
+
   if (request.method === 'POST' && url.pathname === '/api/v1/identity/registrations' && policyDenied) {
     json(response, { code: 'IDENTITY_ACTION_DENIED' }, 403);
+    return;
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/v1/identity/registrations' && registrationRequired) {
+    json(response, {
+      registrationId: '11111111-1111-4111-8111-111111111107',
+      state: 'PROFILE_COMPLETION_REQUIRED',
+      nextAction: 'COMPLETE_PROFILE',
+      authenticationPath: 'GOOGLE',
+      providerLabel: 'google',
+      emailVerified: true,
+      mobileVerified: false,
+      maskedEmail: 'as***@example.test',
+      profile: { languagePreference: 'en' },
+      expiresAt: '2099-09-28T12:00:00Z',
+      updatedAt: '2026-09-28T12:00:00Z',
+    });
     return;
   }
 
@@ -515,6 +550,30 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  const selectionCreate = url.pathname.match(
+    /^\/api\/v1\/employment\/relationships\/([^/]+)\/selection-flash$/
+  );
+  if (request.method === 'POST' && selectionCreate) {
+    const body = await readBody(request);
+    const relationshipId = decodeURIComponent(selectionCreate[1]);
+    const handle = `${selectionFlashes.size + 1}`.padStart(64, 'a');
+    selectionFlashes.set(handle, { relationshipId, outcomeKind: body.outcomeKind, scope, consumed: false });
+    json(response, { handle, expiresAt: new Date(Date.now() + 5 * 60_000).toISOString() });
+    return;
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/v1/employment/relationships/selection-flash/consume') {
+    const body = await readBody(request);
+    const selection = selectionFlashes.get(body.handle);
+    if (!selection || selection.scope !== scope || selection.consumed) {
+      response.writeHead(204).end();
+      return;
+    }
+    selection.consumed = true;
+    json(response, { relationshipId: selection.relationshipId, outcomeKind: selection.outcomeKind });
+    return;
+  }
+
   if (request.method === 'POST' && url.pathname === '/api/v1/acquisition/continuations') {
     const body = await readBody(request);
     const idempotencyKey = request.headers['idempotency-key'];
@@ -538,6 +597,11 @@ const server = createServer(async (request, response) => {
   if (request.method === 'GET' && url.pathname === '/api/v1/professionals/marketplace') {
     const sharedOffer = {
       availableIntents: ['TRIAL', 'HIRE'],
+      disclosureRevision: '1.0.0',
+      termsVersion: '2026-07-18',
+      capabilitySignals: ['Customer Profiling', 'Market Research and Maturity Scoring', 'Content Strategy'],
+      limitations: ['No guaranteed outcome'],
+      customerRights: ['Stop at any time'],
       eligibility: { eligible: true, explanation: 'Available to this organization.' },
       indicativePrice: {
         currency: 'INR',
@@ -545,6 +609,8 @@ const server = createServer(async (request, response) => {
         cadence: 'MONTHLY',
         qualification: 'Final terms follow configuration.',
       },
+      trial: { available: true, durationDays: 14, paidApiCallsAllowed: false, externalActionsAllowed: false },
+      evidencePosture: 'Every claim links to retained evidence.',
       offerabilityState: 'OFFERABLE',
       trialTerms: '14-day trial; no paid API calls or external actions.',
       nextAction: 'VIEW_DISCLOSURE',
@@ -1385,6 +1451,31 @@ const server = createServer(async (request, response) => {
 
 const identityServer = createServer((request, response) => {
   const url = new URL(request.url ?? '/', 'http://localhost:8080');
+  if (request.method === 'GET' && url.pathname === '/realms/waooaw/.well-known/openid-configuration') {
+    json(response, {
+      issuer: 'http://localhost:8080/realms/waooaw',
+      authorization_endpoint: 'http://localhost:8080/realms/waooaw/protocol/openid-connect/auth',
+      token_endpoint: 'http://localhost:8080/realms/waooaw/protocol/openid-connect/token',
+      userinfo_endpoint: 'http://localhost:8080/realms/waooaw/protocol/openid-connect/userinfo',
+      jwks_uri: 'http://localhost:8080/realms/waooaw/protocol/openid-connect/certs',
+      end_session_endpoint: 'http://localhost:8080/realms/waooaw/protocol/openid-connect/logout',
+      response_types_supported: ['code'],
+      subject_types_supported: ['public'],
+      id_token_signing_alg_values_supported: ['RS256'],
+    });
+    return;
+  }
+  if (request.method === 'GET' && url.pathname === '/realms/waooaw/protocol/openid-connect/auth') {
+    if (url.searchParams.get('prompt') !== 'select_account' || url.searchParams.get('kc_idp_hint') !== 'google') {
+      response.statusCode = 400;
+      response.end('Explicit account selection is required.');
+      return;
+    }
+    response.statusCode = 302;
+    response.setHeader('Location', 'http://127.0.0.1:3000/login');
+    response.end();
+    return;
+  }
   const redirectTarget = url.searchParams.get('post_logout_redirect_uri');
   if (
     !/^\/realms\/[^/]+\/protocol\/openid-connect\/logout$/.test(url.pathname) ||

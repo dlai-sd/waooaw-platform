@@ -1,4 +1,5 @@
 // Implements: work-contracts/WC-094-demo-auth-session-readiness-repair.md WC094-A01, WC094-A03
+// Implements: work-contracts/WC-107-requirements.yaml WC107-R004, WC107-R005
 // Constitutional basis: C-049 (Honest Limitation), C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
 import { expect, test, type BrowserContext } from '@playwright/test';
@@ -83,4 +84,41 @@ test('WC094-A01: logout clears WAOOAW state and returns through Keycloak to the 
       }))
     )
     .toEqual({ localWaaoawKeys: [], sessionWaaoawKeys: [], unrelated: 'preserve' });
+});
+
+test('WC107-AUTH-03: account switch revokes prior state and requires explicit broker selection', async ({
+  context,
+  page,
+}) => {
+  await addSession(context);
+  await page.goto('/home');
+  await page.waitForURL('**/professionals/mine');
+  await page.evaluate(() => {
+    localStorage.setItem('waooaw:conversation:prior-account:draft', 'must not survive');
+    sessionStorage.setItem('waooaw:relationship:draft', 'must not survive');
+    localStorage.setItem('unrelated-preference', 'preserve');
+  });
+
+  await page.locator('summary[aria-label="Account"]').first().click();
+  await page.getByRole('button', { name: 'Switch account' }).click();
+
+  await expect(page).toHaveURL(`${baseURL}/login`);
+  await expect
+    .poll(() =>
+      page.evaluate(() => ({
+        localProtectedKeys: Object.keys(localStorage).filter((key) => key.startsWith('waooaw:conversation:')),
+        sessionProtectedKeys: Object.keys(sessionStorage).filter((key) => key === 'waooaw:relationship:draft'),
+        transition: sessionStorage.getItem('waooaw:auth-transition'),
+        unrelated: localStorage.getItem('unrelated-preference'),
+      }))
+    )
+    .toEqual({
+      localProtectedKeys: [],
+      sessionProtectedKeys: [],
+      transition: expect.not.stringContaining('prior-account'),
+      unrelated: 'preserve',
+    });
+  await expect.poll(async () => context.cookies()).toEqual(
+    expect.not.arrayContaining([expect.objectContaining({ name: 'next-auth.session-token' })])
+  );
 });
