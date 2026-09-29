@@ -124,6 +124,8 @@ public sealed class JourneyTelemetryMiddlewareTests
     [InlineData("api/v1/identity/session", 503, "DEPENDENCY_UNAVAILABLE")]
     [InlineData("api/v1/identity/session", 504, "DEPENDENCY_UNAVAILABLE")]
     [InlineData("api/v1/identity/session", 400, "REJECTED")]
+    [InlineData("api/v1/identity/session", 100, "REJECTED")]
+    [InlineData("api/v1/identity/session", 599, "REJECTED")]
     public async Task JourneyRoute_RecordsTypedOutcome(string template, int status, string expected)
     {
         using var listener = new ActivityListener
