@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import fcntl
 import hashlib
 import json
@@ -27,6 +28,12 @@ if str(SCRIPTS_ROOT) not in sys.path:
 
 from validation_control.orchestrator import build_execution_plan  # noqa: E402
 from validation_control.execution_contract import orchestration_preflight  # noqa: E402
+from validation_control.evidence_controller import (  # noqa: E402
+    catalog_invocation_signature,
+    publish_envelope,
+    route_failure,
+)
+from validation_control.identity import evidence_manifest, test_execution_manifest  # noqa: E402
 from validation_control.runner_supply import (  # noqa: E402
     create_context,
     load_supply_config,
@@ -327,12 +334,15 @@ def execute_gate(
         resolution = resolve_runner(repository, runner_id)
         environment[f"WAOOAW_RUNNER_{runner_id.upper()}_IMAGE"] = resolution["image"]
         command.extend(("--image-id", resolution["image_id"]))
+    started_at = datetime.now(timezone.utc).isoformat()
+    started_monotonic = time.monotonic()
     completed = subprocess.run(  # noqa: S603
         command,
         cwd=repository,
         env=environment,
         check=False,
     )
+    duration_ms = round((time.monotonic() - started_monotonic) * 1000)
     record_path = repository / node["output_directory"] / "wc109-execution.json"
     record_path.parent.mkdir(parents=True, exist_ok=True)
     record = {
@@ -356,6 +366,101 @@ def execute_gate(
     temporary = record_path.with_suffix(f".tmp-{os.getpid()}")
     temporary.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     os.replace(temporary, record_path)
+    runner_digest = record["runner_digest"]
+    if not isinstance(runner_digest, str):
+        raise ValueError("catalog execution has no runner digest for evidence binding")
+    source_identity = "sha256:" + hashlib.sha256(head_sha.encode()).hexdigest()
+    environment_identity = [
+        {
+            "name_digest": hashlib.sha256(name.encode()).hexdigest(),
+            "value_digest": hashlib.sha256(str(environment.get(name)).encode()).hexdigest(),
+        }
+        for name in sorted(node.get("environment", []))
+    ]
+    execution_identity = test_execution_manifest(
+        {
+            "mounted_source_identity": source_identity,
+            "runner_digest": runner_digest,
+            "command_id": node["command_id"],
+            "policy_version": str(plan["catalog_version"]),
+            "environment": environment_identity,
+            "service_identities": {},
+            "disposable_state_contract": {
+                "compose_project": node["compose_project"],
+                "output_directory": node["output_directory"],
+            },
+            "architecture": "amd64",
+            "platform": "linux",
+            "test_execution_schema_version": "v1",
+        }
+    )["digest"]
+    evidence_identity = evidence_manifest(
+        {
+            "subject_identity": source_identity,
+            "test_execution_identity": execution_identity,
+            "runner_digest": runner_digest,
+            "command_id": node["command_id"],
+            "policy_version": str(plan["catalog_version"]),
+            "environment": environment_identity,
+            "evidence_schema_version": "v1",
+            "trust_source": "local-diagnostic",
+            "freshness": {"head_sha": head_sha, "policy": "executed-now"},
+        }
+    )["digest"]
+    claim = {
+        "namespace": plan["execution_namespace"],
+        "gate_id": gate_id,
+        "command_id": node["command_id"],
+        "head_sha": head_sha,
+    }
+    control_key = os.urandom(32)
+    routing_class = (
+        "NONE"
+        if completed.returncode == 0
+        else (
+            "RUNNER" if completed.returncode == 78 else "WORKFLOW" if completed.returncode == 124 else route_failure("assertion")
+        )
+    )
+    envelope = {
+        "schema": "waooaw.validation-evidence-envelope/v1",
+        "base_sha": base_sha,
+        "head_sha": head_sha,
+        "identities": {
+            "runner": runner_digest,
+            "test_execution": execution_identity,
+            "subject": source_identity,
+            "evidence": evidence_identity,
+        },
+        "component": ",".join(node["components"]) if node["components"] else "cross-cutting",
+        "gate_id": gate_id,
+        "command_id": node["command_id"],
+        "started_at": started_at,
+        "duration_ms": duration_ms,
+        "result": record["result"],
+        "routing_class": routing_class,
+        "first_cause": "none" if completed.returncode == 0 else f"exit-code:{completed.returncode}",
+        "artifacts": [
+            {
+                "path": str(record_path.relative_to(repository)),
+                "digest": "sha256:" + hashlib.sha256(record_path.read_bytes()).hexdigest(),
+            }
+        ],
+        "disposition": "executed",
+        "disposition_proof": {"execution_fresh": True},
+        "invocation": {
+            "source": "catalog",
+            "namespace": plan["execution_namespace"],
+            "signature": catalog_invocation_signature(claim, control_key),
+        },
+        "trust_source": "local-diagnostic",
+    }
+    publish_envelope(
+        repository / node["output_directory"] / "evidence-envelope.json",
+        envelope,
+        control_key,
+        required_trust_source="local-diagnostic",
+        artifact_root=repository,
+    )
     return completed.returncode
 
 

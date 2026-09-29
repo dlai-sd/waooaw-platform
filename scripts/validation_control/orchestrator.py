@@ -33,8 +33,14 @@ def build_execution_plan(
     gates = catalog.get("gates")
     commands = catalog.get("commands")
     runners = catalog.get("runners")
-    if not isinstance(gates, dict) or not isinstance(commands, dict) or not isinstance(runners, dict):
-        raise ValueError("catalog gates, commands and runners must be mappings")
+    components = catalog.get("components")
+    if (
+        not isinstance(gates, dict)
+        or not isinstance(commands, dict)
+        or not isinstance(runners, dict)
+        or not isinstance(components, dict)
+    ):
+        raise ValueError("catalog gates, commands, runners and components must be mappings")
 
     execution_namespace = "wc109-" + hashlib.sha256(f"{run_id}:{mode}:{head_sha}".encode()).hexdigest()[:16]
     nodes: list[dict[str, Any]] = []
@@ -50,6 +56,11 @@ def build_execution_plan(
             raise ValueError(f"gate {gate_id} has unknown command: {command_id}")
         if not isinstance(runner, dict) or not isinstance(runner.get("compose_service"), str):
             raise ValueError(f"gate {gate_id} has unknown runner: {runner_id}")
+        component_owners = sorted(
+            component_id
+            for component_id, component in components.items()
+            if isinstance(component, dict) and gate_id in component.get("gates", [])
+        )
         nodes.append(
             {
                 "gate_id": gate_id,
@@ -58,6 +69,7 @@ def build_execution_plan(
                 "profile": runner["profile"],
                 "command_id": command_id,
                 "command": command["shell"],
+                "components": component_owners,
                 "execution": command.get("execution", "container"),
                 "runner_required": command.get("runner_required", True),
                 "tool_digest": command.get("tool_digest"),

@@ -51,6 +51,7 @@ def test_focused_and_qualification_modes_resolve_identical_commands() -> None:
     assert qualification["requires_clean_commit"] is True
     assert focused["nodes"][0]["runner_manifest"].endswith("/typescript.json")
     assert focused["nodes"][0]["profile"] == "test-ts"
+    assert focused["nodes"][0]["components"] == ["web"]
 
 
 def test_typescript_plan_uses_immutable_dependencies_outside_read_only_source() -> None:

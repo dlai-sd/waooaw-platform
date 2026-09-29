@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Literal
 
 import yaml
 
@@ -132,7 +133,12 @@ def classify_paths(
     base_sha: str = "",
     head_sha: str = "",
     event: str = "pull_request",
+    boundary: Literal["story", "milestone"] = "milestone",
+    gate_trust: dict[str, dict[str, bool]] | None = None,
+    parser_agreement: bool = True,
 ) -> dict[str, object]:
+    if boundary not in {"story", "milestone"}:
+        raise ValueError(f"unsupported selection boundary: {boundary}")
     full_gates = policy.get("full_gates")
     components_value = policy.get("components")
     if not isinstance(full_gates, list) or not all(isinstance(gate, str) for gate in full_gates):
@@ -142,6 +148,9 @@ def classify_paths(
     components: dict[str, dict[str, object]] = components_value
     reasons = validate_policy(policy)
     force_full = event in {"push", "release"} or bool(reasons)
+    if not parser_agreement:
+        force_full = True
+        reasons.append("impact parser disagreement")
     if event in {"push", "release"}:
         reasons.append(f"{event} requires full inventory")
     selected: set[str] = set()
@@ -191,15 +200,16 @@ def classify_paths(
             reasons.append(f"unknown path: {path}")
 
     impacted = set(selected)
-    changed = True
-    while changed:
-        changed = False
-        for component in list(impacted):
-            reverse_dependencies = components[component].get("reverse_dependencies", [])
-            if isinstance(reverse_dependencies, list):
-                additions = set(reverse_dependencies) - impacted
-                impacted.update(additions)
-                changed = changed or bool(additions)
+    if boundary == "milestone":
+        changed = True
+        while changed:
+            changed = False
+            for component in list(impacted):
+                reverse_dependencies = components[component].get("reverse_dependencies", [])
+                if isinstance(reverse_dependencies, list):
+                    additions = set(reverse_dependencies) - impacted
+                    impacted.update(additions)
+                    changed = changed or bool(additions)
 
     selected_components = sorted(components) if force_full else sorted(impacted)
     impacted_gates = {
@@ -209,6 +219,14 @@ def classify_paths(
     if not isinstance(always_on_gates, list) or not all(isinstance(gate, str) for gate in always_on_gates):
         raise ValueError("validation policy always_on_gates must be a string list")
     selected_gates = list(full_gates) if force_full else sorted(impacted_gates | set(always_on_gates))
+    blocked_gates: dict[str, list[str]] = {}
+    if gate_trust is not None:
+        required_trust = ("identity", "provenance", "signature", "trust")
+        for gate_id in selected_gates:
+            trust = gate_trust.get(gate_id, {})
+            missing = [field for field in required_trust if trust.get(field) is not True]
+            if missing:
+                blocked_gates[gate_id] = missing
     gates = policy.get("gates", {})
     required_runners = sorted(
         {
@@ -309,9 +327,11 @@ def classify_paths(
         "head_sha": head_sha,
         "changed_file_digest": changed_digest,
         "changed_paths": changed_paths,
+        "boundary": boundary,
         "full": force_full,
         "selected_components": selected_components,
         "selected_gates": selected_gates,
+        "blocked_gates": blocked_gates,
         "required_runners": required_runners,
         "service_builds": service_builds,
         "service_build_matrix": service_build_matrix,

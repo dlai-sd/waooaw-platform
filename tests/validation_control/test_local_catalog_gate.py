@@ -107,7 +107,15 @@ def test_host_gate_executes_plan_without_resolving_runner(monkeypatch, tmp_path:
         "schema": "waooaw.validation-catalog/v1",
         "version": "test",
         "runners": {"python": {"compose_service": "runner", "profile": "test"}},
-        "commands": {"host": {"shell": "true", "execution": "host", "runner_required": False}},
+        "components": {},
+        "commands": {
+            "host": {
+                "shell": "true",
+                "execution": "host",
+                "runner_required": False,
+                "tool_digest": "sha256:" + "d" * 64,
+            }
+        },
         "gates": {
             "host": {
                 "runner_id": "python",
@@ -160,6 +168,13 @@ def test_host_gate_executes_plan_without_resolving_runner(monkeypatch, tmp_path:
     assert record["base_sha"] == "b" * 40
     assert record["runner_build_events"] == 0
     assert record["product_image_build_events"] == 0
+    envelopes = list((tmp_path / "test-results/wc109/runs").glob("**/evidence-envelope.json"))
+    assert len(envelopes) == 1
+    envelope = json.loads(envelopes[0].read_text(encoding="utf-8"))
+    assert envelope["result"] == "PASS"
+    assert envelope["routing_class"] == "NONE"
+    assert envelope["disposition"] == "executed"
+    assert envelope["invocation"]["source"] == "catalog"
     assert (tmp_path / "test-results/wc104/metadata/base-sha.txt").read_text() == "b" * 40 + "\n"
     assert (tmp_path / "test-results/wc104/metadata/head-sha.txt").read_text() == "a" * 40 + "\n"
     assert (tmp_path / "test-results/wc104/c059/base-sha.txt").read_text() == "b" * 40 + "\n"
@@ -197,6 +212,7 @@ def test_gate_identity_hashes_only_declared_environment(monkeypatch, tmp_path: P
         "schema": "waooaw.validation-catalog/v1",
         "version": "test-v1",
         "runners": {"python": {"compose_service": "runner", "profile": "test"}},
+        "components": {},
         "commands": {
             "host": {
                 "shell": "true",
