@@ -140,6 +140,11 @@ requirements:
     component_owner: Tier Orchestrator
     test_path_or_plan: Exercise direct and reverse-dependency fixtures at story and milestone transitions.
     completion_rule: Story edits remain focused while declared milestones include every affected dependency.
+    evidence_refs:
+      - scripts/validation_policy.py
+      - tests/pipeline/test_validation_policy.py
+      - validation/evidence/wc109-stage3.json
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R011
@@ -218,6 +223,10 @@ requirements:
     component_owner: Catalog And Impact Selector
     test_path_or_plan: Exercise unknown path, missing owner, rename, deletion, cycle, malformed catalog and parser-disagreement fixtures.
     completion_rule: Every uncertainty broadens deterministically to the complete applicable gate set.
+    evidence_refs:
+      - scripts/validation_policy.py
+      - tests/pipeline/test_validation_policy.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R018
@@ -226,6 +235,12 @@ requirements:
     component_owner: Catalog And Impact Selector
     test_path_or_plan: Remove each trust input independently and attempt broader execution and evidence publication.
     completion_rule: The affected gate remains BLOCKED and no amount of additional execution creates the missing authority.
+    evidence_refs:
+      - scripts/validation_policy.py
+      - tests/pipeline/test_validation_policy.py
+      - scripts/validation_control/evidence_controller.py
+      - tests/validation_control/test_wc109_evidence_controller.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R019
@@ -234,6 +249,11 @@ requirements:
     component_owner: Evidence And Freshness Controller
     test_path_or_plan: Produce and validate one fixture for each disposition plus malformed and mislabeled cases.
     completion_rule: Every accepted evidence row has exactly one valid disposition with its required proof.
+    evidence_refs:
+      - scripts/validation_control/evidence_controller.py
+      - tests/validation_control/test_wc109_evidence_controller.py
+      - tests/pipeline/test_precheck_orchestrator.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R020
@@ -242,6 +262,12 @@ requirements:
     component_owner: Evidence And Freshness Controller
     test_path_or_plan: Exercise impacted, non-impacted, ambiguous-range and wrong-head carry-forward fixtures.
     completion_rule: Only exact non-impact proof is accepted and retained execution time is not represented as fresh.
+    evidence_refs:
+      - scripts/validation_control/evidence_controller.py
+      - tests/validation_control/test_wc109_evidence_controller.py
+      - scripts/precheck_orchestrator.py
+      - tests/pipeline/test_precheck_orchestrator.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R021
@@ -250,6 +276,13 @@ requirements:
     component_owner: Evidence And Freshness Controller
     test_path_or_plan: Exercise success, failure, interruption, missing output, malformed schema and publication collision.
     completion_rule: Each invocation has one terminal envelope and atomic digest-bound artifacts; missing output never passes.
+    evidence_refs:
+      - validation/evidence/wc109-stage3.json
+      - scripts/validation_control/evidence_controller.py
+      - scripts/validation_control/local_catalog_gate.py
+      - tests/validation_control/test_wc109_evidence_controller.py
+      - tests/validation_control/test_local_catalog_gate.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R022
@@ -258,6 +291,12 @@ requirements:
     component_owner: Evidence And Freshness Controller
     test_path_or_plan: Inject classified canary values into command, environment, logs and framework output.
     completion_rule: Canaries are absent from every published identity, envelope and retained artifact.
+    evidence_refs:
+      - scripts/validation_control/evidence_controller.py
+      - scripts/validation_control/identity.py
+      - tests/validation_control/test_wc109_evidence_controller.py
+      - tests/validation_control/test_wc109_identity_preflight.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R023
@@ -266,6 +305,12 @@ requirements:
     component_owner: Failure Router
     test_path_or_plan: Execute representative first-cause fixtures for every routing class and ambiguous downstream cascades.
     completion_rule: First cause has one owning class, dependent noise is secondary and no failure becomes PASS.
+    evidence_refs:
+      - scripts/validation_control/evidence_controller.py
+      - scripts/precheck_orchestrator.py
+      - tests/validation_control/test_wc109_evidence_controller.py
+      - tests/pipeline/test_precheck_orchestrator.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R024
@@ -274,6 +319,12 @@ requirements:
     component_owner: Failure Router
     test_path_or_plan: Exercise deterministic, assertion, coverage, security, transient external and changed-input retry fixtures.
     completion_rule: Only declared transient failures retry within bound and unchanged deterministic fingerprints stop.
+    evidence_refs:
+      - scripts/validation_control/evidence_controller.py
+      - scripts/validation_control/execution_contract.py
+      - tests/validation_control/test_wc109_evidence_controller.py
+      - tests/validation_control/test_unified_execution_contract.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R025
@@ -306,6 +357,12 @@ requirements:
     component_owner: Tier Orchestrator
     test_path_or_plan: Run equivalent catalogued and direct commands and attempt to publish both outputs.
     completion_rule: Only the catalog-controlled invocation can produce accepted evidence.
+    evidence_refs:
+      - validation/evidence/wc109-stage3.json
+      - scripts/validation_control/evidence_controller.py
+      - scripts/validation_control/local_catalog_gate.py
+      - tests/validation_control/test_wc109_evidence_controller.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R029
