@@ -6,6 +6,7 @@ import fnmatch
 import hashlib
 import os
 from pathlib import Path
+import re
 import stat
 from typing import Any
 
@@ -13,6 +14,7 @@ from validation_control.identity import candidate_manifest
 
 
 SHA256_PREFIX = "sha256:"
+PINNED_BASE_PATTERN = re.compile(r"^FROM\s+(?:--platform=\S+\s+)?([^\s]+)(?:\s+AS\s+\S+)?$", re.IGNORECASE)
 
 
 def _sha256(content: bytes) -> str:
@@ -98,6 +100,51 @@ def effective_context_manifest(repository: Path) -> list[dict[str, object]]:
                 }
             )
     return sorted(entries, key=lambda entry: str(entry["path"]))
+
+
+def catalog_candidate_inputs(repository: Path, catalog: dict[str, Any]) -> dict[str, object]:
+    components = catalog.get("components")
+    full_gates = catalog.get("full_gates")
+    if not isinstance(components, dict) or not isinstance(full_gates, list) or not full_gates:
+        raise ValueError("candidate catalog inventory is invalid")
+    images: set[str] = set()
+    generated_paths: set[Path] = set()
+    base_images: dict[str, str] = {}
+    dockerfiles: dict[str, str] = {}
+    for component_id, component in components.items():
+        if not isinstance(component, dict):
+            raise ValueError(f"candidate component is invalid: {component_id}")
+        images.add(str(component["service_image"]))
+        dockerfile_path = repository / str(component["service_dockerfile"])
+        if not dockerfile_path.is_file():
+            raise ValueError(f"candidate Dockerfile is missing: {component_id}")
+        dockerfile_relative = dockerfile_path.relative_to(repository).as_posix()
+        dockerfiles[dockerfile_relative] = _sha256(dockerfile_path.read_bytes())
+        for line_number, line in enumerate(dockerfile_path.read_text(encoding="utf-8").splitlines(), start=1):
+            if not line.lstrip().upper().startswith("FROM "):
+                continue
+            match = PINNED_BASE_PATTERN.fullmatch(line.strip())
+            if not match or "@" not in match.group(1):
+                raise ValueError(f"candidate base image is not pinned: {dockerfile_relative}:{line_number}")
+            image, digest = match.group(1).rsplit("@", 1)
+            base_images[f"{dockerfile_relative}:{line_number}:{image}"] = _require_digest("base image", digest)
+        for pattern in component.get("generated_artifacts", []):
+            matches = [path for path in repository.glob(str(pattern)) if path.is_file()]
+            if not matches:
+                raise ValueError(f"generated artifact pattern is empty: {component_id}:{pattern}")
+            generated_paths.update(matches)
+    generated_artifacts = {
+        path.relative_to(repository).as_posix(): _sha256(path.read_bytes()) for path in sorted(generated_paths)
+    }
+    return {
+        "required_images": images,
+        "required_gates": list(full_gates),
+        "generated_artifacts": generated_artifacts,
+        "dockerfile_frontend_digest": _sha256(
+            "".join(f"{path}\0{digest}\n" for path, digest in sorted(dockerfiles.items())).encode()
+        ),
+        "base_image_digests": base_images,
+    }
 
 
 def freeze_candidate(

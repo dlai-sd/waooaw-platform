@@ -1,5 +1,5 @@
 schema: waooaw.validation-catalog/v1
-version: wc104-efficient-execution-v2
+version: wc109-candidate-identity-v1
 mode: shadow
 runner_supply: validation/runner-supply.json
 enforced_activation:
@@ -232,6 +232,7 @@ components:
     service_image: constitutional-engine
     service_context: .
     service_dockerfile: src/constitutional-engine/Dockerfile
+    generated_artifacts: [src/constitutional-engine/Protos/constitutional_service.proto]
     paths: [src/constitutional-engine/**, tests/constitutional-engine.Tests/**, architecture/reference/proto/**]
     gates: [build:constitutional-engine, test-dotnet:constitutional-engine, spec-lint, sast:csharp, "dep-scan:dotnet"]
     reverse_dependencies: [business-platform, professional-runtime, ai-runtime, billing-engine]
@@ -240,6 +241,7 @@ components:
     service_image: business-platform
     service_context: .
     service_dockerfile: src/business-platform/Dockerfile
+    generated_artifacts: []
     paths: [src/business-platform/**, tests/business-platform.Tests/**, infrastructure/postgres/init/**, architecture/reference/api-specs/business-platform.openapi.yaml]
     gates: [build:business-platform, test-dotnet:business-platform, spec-lint, sast:csharp, "dep-scan:dotnet", release-qualification]
     reverse_dependencies: [professional-runtime, billing-engine, web]
@@ -248,6 +250,7 @@ components:
     service_image: professional-runtime
     service_context: .
     service_dockerfile: src/professional-runtime/Dockerfile
+    generated_artifacts: [src/professional-runtime/proto/constitutional_service.proto]
     paths: [src/professional-runtime/**, tests/professional-runtime/**, architecture/reference/api-specs/professional-runtime.openapi.yaml]
     gates: [build:professional-runtime, test-python:professional-runtime, spec-lint, sast:python, "dep-scan:python"]
     reverse_dependencies: [agent-runtime-adapter-digital-marketing, web]
@@ -256,6 +259,7 @@ components:
     service_image: ai-runtime
     service_context: .
     service_dockerfile: src/ai-runtime/Dockerfile
+    generated_artifacts: [src/ai-runtime/proto/constitutional_service.proto]
     paths: [src/ai-runtime/**, tests/ai-runtime/**, src/trust-layer/**, tests/trust-layer/**]
     gates: [build:ai-runtime, test-python:ai-runtime, sast:python, "dep-scan:python"]
     reverse_dependencies: [agent-runtime-adapter-digital-marketing]
@@ -264,6 +268,7 @@ components:
     service_image: billing-engine
     service_context: .
     service_dockerfile: src/billing-engine/Dockerfile
+    generated_artifacts: []
     paths: [src/billing-engine/**, tests/billing-engine/**, tests/pipeline/test_billing_ce_validator.py]
     gates: [build:billing-engine, test-python:billing-engine, sast:python, "dep-scan:python", release-qualification]
     reverse_dependencies: []
@@ -272,6 +277,7 @@ components:
     service_image: agent-runtime-adapter-digital-marketing
     service_context: src/agent-adapters
     service_dockerfile: src/agent-adapters/digital_marketing/Dockerfile
+    generated_artifacts: []
     paths: [src/agent-adapters/**, tests/agent-adapters/**, tests/professional-runtime/test_dma_release_1_skills.py]
     gates: [build:agent-runtime-adapter-digital-marketing, test-python:professional-runtime, sast:python, "dep-scan:python"]
     reverse_dependencies: []
@@ -280,6 +286,7 @@ components:
     service_image: web
     service_context: .
     service_dockerfile: web/Dockerfile
+    generated_artifacts: [web/lib/api/generated/**/*]
     paths: [web/**]
     gates: [build:web, test-web, sast:javascript, "dep-scan:typescript"]
     reverse_dependencies: []

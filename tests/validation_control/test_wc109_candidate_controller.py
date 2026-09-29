@@ -7,6 +7,7 @@ import pytest
 
 from validation_control.candidate_controller import (
     bind_candidate_supply,
+    catalog_candidate_inputs,
     effective_context_manifest,
     freeze_candidate,
     qualify_candidate,
@@ -27,6 +28,20 @@ def repository_fixture(tmp_path: Path) -> Path:
     (tmp_path / "retained.log").write_text("included\n", encoding="utf-8")
     (tmp_path / "link.py").symlink_to("src/app.py")
     return tmp_path
+
+
+def catalog_fixture(repository: Path) -> dict[str, object]:
+    (repository / "Dockerfile").write_text(f"FROM python:3.12-alpine@{DIGESTS[0]}\n", encoding="utf-8")
+    return {
+        "full_gates": ["test-api"],
+        "components": {
+            "api": {
+                "service_image": "api",
+                "service_dockerfile": "Dockerfile",
+                "generated_artifacts": ["src/*.py"],
+            }
+        },
+    }
 
 
 def freeze(tmp_path: Path) -> dict[str, object]:
@@ -82,6 +97,32 @@ def test_effective_context_honors_exclusions_negation_modes_and_symlinks(tmp_pat
     assert "ignored/input.txt" not in by_path
     assert by_path["link.py"]["type"] == "symlink"
     assert by_path["link.py"]["digest"] != by_path["src/app.py"]["digest"]
+
+
+def test_catalog_derives_complete_pinned_build_and_generated_artifact_inventory(tmp_path: Path) -> None:
+    repository = repository_fixture(tmp_path)
+
+    inputs = catalog_candidate_inputs(repository, catalog_fixture(repository))
+
+    assert inputs["required_images"] == {"api"}
+    assert inputs["required_gates"] == ["test-api"]
+    assert set(inputs["generated_artifacts"]) == {"src/app.py"}
+    assert set(inputs["base_image_digests"].values()) == {DIGESTS[0]}
+    assert inputs["dockerfile_frontend_digest"].startswith("sha256:")
+
+
+def test_catalog_rejects_mutable_base_or_missing_generated_artifact(tmp_path: Path) -> None:
+    repository = repository_fixture(tmp_path)
+    catalog = catalog_fixture(repository)
+    (repository / "Dockerfile").write_text("FROM python:3.12-alpine\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="base image is not pinned"):
+        catalog_candidate_inputs(repository, catalog)
+
+    (repository / "Dockerfile").write_text(f"FROM python:3.12-alpine@{DIGESTS[0]}\n", encoding="utf-8")
+    catalog["components"]["api"]["generated_artifacts"] = ["missing/**"]
+    with pytest.raises(ValueError, match="generated artifact pattern is empty"):
+        catalog_candidate_inputs(repository, catalog)
 
 
 @pytest.mark.parametrize(

@@ -14,6 +14,7 @@ from validation_control.catalog_execution import (
     runner_environment,
     select_plan_node,
 )
+from validation_control.candidate_controller import catalog_candidate_inputs
 from validation_control.orchestrator import build_execution_plan
 
 
@@ -37,6 +38,15 @@ def test_catalog_matches_schema_and_defines_every_referenced_gate() -> None:
         referenced.update(component["gates"])
 
     assert referenced <= defined
+
+
+def test_catalog_defines_complete_immutable_candidate_build_inputs() -> None:
+    inputs = catalog_candidate_inputs(ROOT, load_catalog())
+
+    assert inputs["required_images"] == set(load_catalog()["components"])
+    assert inputs["required_gates"] == load_catalog()["full_gates"]
+    assert inputs["generated_artifacts"]
+    assert inputs["base_image_digests"]
 
 
 def test_focused_and_qualification_modes_resolve_identical_commands() -> None:
