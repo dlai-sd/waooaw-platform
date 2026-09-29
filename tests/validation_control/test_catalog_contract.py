@@ -266,6 +266,9 @@ def test_dotnet_mutation_thresholds_match_pinned_stryker_cli() -> None:
 
     assert "--threshold-high 80 --threshold-low 75 --break-at 65" in source
     assert "--threshold-break" not in source
+    assert "tests/constitutional-engine.Tests" in source
+    assert 'cd "$worktree/tests/constitutional-engine.Tests"' in source
+    assert "--project constitutional-engine.csproj" in source
 
 
 def test_host_orchestration_declares_whether_it_consumes_a_runner() -> None:
