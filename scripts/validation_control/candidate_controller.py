@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import fnmatch
 import hashlib
+import json
 import os
 from pathlib import Path
 import re
 import stat
+import tarfile
 from typing import Any
 
 from validation_control.identity import candidate_manifest
@@ -144,6 +146,130 @@ def catalog_candidate_inputs(repository: Path, catalog: dict[str, Any]) -> dict[
             "".join(f"{path}\0{digest}\n" for path, digest in sorted(dockerfiles.items())).encode()
         ),
         "base_image_digests": base_images,
+    }
+
+
+def _verified_oci_blob(archive: tarfile.TarFile, descriptor: dict[str, Any]) -> bytes:
+    digest = _require_digest("OCI descriptor", descriptor.get("digest"))
+    member = archive.extractfile(f"blobs/sha256/{digest.removeprefix(SHA256_PREFIX)}")
+    if member is None:
+        raise ValueError(f"OCI descriptor blob is missing: {digest}")
+    content = member.read()
+    if len(content) != descriptor.get("size") or _sha256(content) != digest:
+        raise ValueError(f"OCI descriptor integrity failed: {digest}")
+    return content
+
+
+def _verified_oci_json(archive: tarfile.TarFile, descriptor: dict[str, Any]) -> dict[str, Any]:
+    try:
+        value = json.loads(_verified_oci_blob(archive, descriptor))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError("OCI descriptor is not valid JSON") from error
+    if not isinstance(value, dict):
+        raise ValueError("OCI descriptor must contain a JSON object")
+    return value
+
+
+def inspect_oci_candidate(
+    archive_path: Path,
+    *,
+    source_sha: str,
+    candidate_identity: str,
+    architecture: str,
+    platform: str,
+    expected_base_digests: set[str],
+) -> dict[str, object]:
+    _require_digest("candidate identity", candidate_identity)
+    with tarfile.open(archive_path, mode="r") as archive:
+        root_member = archive.extractfile("index.json")
+        if root_member is None:
+            raise ValueError("OCI index is missing")
+        root_index = json.load(root_member)
+        root_descriptors = root_index.get("manifests", [])
+        if len(root_descriptors) != 1:
+            raise ValueError("OCI archive must contain exactly one candidate index")
+        candidate_index = _verified_oci_json(archive, root_descriptors[0])
+        manifests = candidate_index.get("manifests", [])
+        image_descriptors = [
+            descriptor for descriptor in manifests if descriptor.get("platform") == {"architecture": architecture, "os": platform}
+        ]
+        if len(image_descriptors) != 1:
+            raise ValueError("OCI archive must contain exactly one requested platform image")
+        image_descriptor = image_descriptors[0]
+        image_digest = _require_digest("candidate image", image_descriptor.get("digest"))
+        _verified_oci_json(archive, image_descriptor)
+        attestation_descriptors = [
+            descriptor
+            for descriptor in manifests
+            if descriptor.get("annotations", {}).get("vnd.docker.reference.type") == "attestation-manifest"
+            and descriptor.get("annotations", {}).get("vnd.docker.reference.digest") == image_digest
+        ]
+        if len(attestation_descriptors) != 1:
+            raise ValueError("OCI image must have exactly one subject-bound attestation manifest")
+        attestation_manifest = _verified_oci_json(archive, attestation_descriptors[0])
+        layers = {
+            layer.get("annotations", {}).get("in-toto.io/predicate-type"): layer
+            for layer in attestation_manifest.get("layers", [])
+        }
+        if set(layers) != {"https://spdx.dev/Document", "https://slsa.dev/provenance/v1"}:
+            raise ValueError("OCI image must contain exact SPDX and SLSA attestations")
+        sbom_layer = layers["https://spdx.dev/Document"]
+        provenance_layer = layers["https://slsa.dev/provenance/v1"]
+        sbom = _verified_oci_json(archive, sbom_layer)
+        provenance = _verified_oci_json(archive, provenance_layer)
+    if (
+        sbom.get("_type") != "https://in-toto.io/Statement/v0.1"
+        or sbom.get("predicateType") != "https://spdx.dev/Document"
+        or sbom.get("predicate", {}).get("spdxVersion") != "SPDX-2.3"
+    ):
+        raise ValueError("candidate SBOM statement is invalid")
+    if (
+        provenance.get("_type") != "https://in-toto.io/Statement/v0.1"
+        or provenance.get("predicateType") != "https://slsa.dev/provenance/v1"
+    ):
+        raise ValueError("candidate provenance statement is invalid")
+    predicate = provenance.get("predicate", {})
+    build_definition = predicate.get("buildDefinition", {})
+    run_details = predicate.get("runDetails", {})
+    metadata = run_details.get("metadata", {})
+    buildkit_metadata = metadata.get("buildkit_metadata", {})
+    revision = buildkit_metadata.get("vcs", {}).get("revision")
+    external = build_definition.get("externalParameters", {})
+    internal = build_definition.get("internalParameters", {})
+    platform_value = internal.get("builderPlatform")
+    resolved = build_definition.get("resolvedDependencies", [])
+    resolved_digests = {
+        SHA256_PREFIX + digest
+        for material in resolved
+        for digest in material.get("digest", {}).values()
+        if isinstance(digest, str) and len(digest) == 64
+    }
+    if revision != source_sha:
+        raise ValueError("candidate provenance source revision is not exact")
+    if platform_value != f"{platform}/{architecture}":
+        raise ValueError("candidate provenance platform is not exact")
+    if external.get("request", {}).get("frontend") != "dockerfile.v0":
+        raise ValueError("candidate provenance Dockerfile frontend is not exact")
+    if not expected_base_digests <= resolved_digests:
+        raise ValueError("candidate provenance omits a pinned base material")
+    build_type = build_definition.get("buildType")
+    if not isinstance(build_type, str) or not build_type:
+        raise ValueError("candidate provenance builder identity is missing")
+    return {
+        "image_digest": image_digest,
+        "sbom": {
+            "format": "spdx-json-2.3",
+            "subject_digest": image_digest,
+            "artifact_digest": sbom_layer["digest"],
+        },
+        "provenance": {
+            "format": "slsa-provenance-v1",
+            "subject_digest": image_digest,
+            "candidate_identity": candidate_identity,
+            "builder_identity": build_type,
+            "artifact_digest": provenance_layer["digest"],
+            "source_sha": source_sha,
+        },
     }
 
 

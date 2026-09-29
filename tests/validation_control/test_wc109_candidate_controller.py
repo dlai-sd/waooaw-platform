@@ -1,7 +1,11 @@
 """WC-109 candidate context, freeze, supply-chain, and qualification boundaries."""
 
 from copy import deepcopy
+import hashlib
+import io
+import json
 from pathlib import Path
+import tarfile
 
 import pytest
 
@@ -10,6 +14,7 @@ from validation_control.candidate_controller import (
     catalog_candidate_inputs,
     effective_context_manifest,
     freeze_candidate,
+    inspect_oci_candidate,
     qualify_candidate,
 )
 
@@ -42,6 +47,80 @@ def catalog_fixture(repository: Path) -> dict[str, object]:
             }
         },
     }
+
+
+def write_oci_fixture(path: Path, *, tamper_image: bool = False) -> None:
+    blobs: dict[str, bytes] = {}
+
+    def descriptor(value: dict[str, object]) -> dict[str, object]:
+        content = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+        digest = "sha256:" + hashlib.sha256(content).hexdigest()
+        blobs[digest] = content
+        return {"digest": digest, "size": len(content)}
+
+    image = descriptor({"schemaVersion": 2})
+    sbom_statement = descriptor(
+        {
+            "_type": "https://in-toto.io/Statement/v0.1",
+            "predicateType": "https://spdx.dev/Document",
+            "subject": [],
+            "predicate": {"spdxVersion": "SPDX-2.3"},
+        }
+    )
+    provenance_statement = descriptor(
+        {
+            "_type": "https://in-toto.io/Statement/v0.1",
+            "predicateType": "https://slsa.dev/provenance/v1",
+            "subject": [],
+            "predicate": {
+                "buildDefinition": {
+                    "buildType": "buildkit-v1",
+                    "externalParameters": {"request": {"frontend": "dockerfile.v0"}},
+                    "internalParameters": {"builderPlatform": "linux/amd64"},
+                    "resolvedDependencies": [{"digest": {"sha256": DIGESTS[0].removeprefix("sha256:")}}],
+                },
+                "runDetails": {"metadata": {"buildkit_metadata": {"vcs": {"revision": HEAD}}}},
+            },
+        }
+    )
+    attestation = descriptor(
+        {
+            "schemaVersion": 2,
+            "layers": [
+                {
+                    **sbom_statement,
+                    "annotations": {"in-toto.io/predicate-type": "https://spdx.dev/Document"},
+                },
+                {
+                    **provenance_statement,
+                    "annotations": {"in-toto.io/predicate-type": "https://slsa.dev/provenance/v1"},
+                },
+            ],
+        }
+    )
+    candidate_index = descriptor(
+        {
+            "schemaVersion": 2,
+            "manifests": [
+                {**image, "platform": {"architecture": "amd64", "os": "linux"}},
+                {
+                    **attestation,
+                    "annotations": {
+                        "vnd.docker.reference.type": "attestation-manifest",
+                        "vnd.docker.reference.digest": image["digest"],
+                    },
+                },
+            ],
+        }
+    )
+    root = json.dumps({"schemaVersion": 2, "manifests": [candidate_index]}, separators=(",", ":")).encode()
+    if tamper_image:
+        blobs[image["digest"]] = b'{"schemaVersion":1}'
+    with tarfile.open(path, "w") as archive:
+        for name, content in {"index.json": root, **{f"blobs/sha256/{key[7:]}": value for key, value in blobs.items()}}.items():
+            member = tarfile.TarInfo(name)
+            member.size = len(content)
+            archive.addfile(member, io.BytesIO(content))
 
 
 def freeze(tmp_path: Path) -> dict[str, object]:
@@ -123,6 +202,33 @@ def test_catalog_rejects_mutable_base_or_missing_generated_artifact(tmp_path: Pa
     catalog["components"]["api"]["generated_artifacts"] = ["missing/**"]
     with pytest.raises(ValueError, match="generated artifact pattern is empty"):
         catalog_candidate_inputs(repository, catalog)
+
+
+def test_oci_attestations_bind_exact_source_platform_materials_and_reject_tampering(tmp_path: Path) -> None:
+    archive = tmp_path / "candidate.tar"
+    write_oci_fixture(archive)
+
+    result = inspect_oci_candidate(
+        archive,
+        source_sha=HEAD,
+        candidate_identity=DIGESTS[1],
+        architecture="amd64",
+        platform="linux",
+        expected_base_digests={DIGESTS[0]},
+    )
+
+    assert result["sbom"]["subject_digest"] == result["image_digest"]
+    assert result["provenance"]["source_sha"] == HEAD
+    write_oci_fixture(archive, tamper_image=True)
+    with pytest.raises(ValueError, match="descriptor integrity failed"):
+        inspect_oci_candidate(
+            archive,
+            source_sha=HEAD,
+            candidate_identity=DIGESTS[1],
+            architecture="amd64",
+            platform="linux",
+            expected_base_digests={DIGESTS[0]},
+        )
 
 
 @pytest.mark.parametrize(
