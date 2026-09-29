@@ -175,10 +175,11 @@ def test_host_gate_executes_plan_without_resolving_runner(monkeypatch, tmp_path:
     assert envelope["routing_class"] == "NONE"
     assert envelope["disposition"] == "executed"
     assert envelope["invocation"]["source"] == "catalog"
-    assert (tmp_path / "test-results/wc104/metadata/base-sha.txt").read_text() == "b" * 40 + "\n"
-    assert (tmp_path / "test-results/wc104/metadata/head-sha.txt").read_text() == "a" * 40 + "\n"
-    assert (tmp_path / "test-results/wc104/c059/base-sha.txt").read_text() == "b" * 40 + "\n"
-    assert not (tmp_path / "test-results/wc104/c059/pr-body.md").exists()
+    artifact_root = records[0].parent
+    assert (artifact_root / "wc104/metadata/base-sha.txt").read_text() == "b" * 40 + "\n"
+    assert (artifact_root / "wc104/metadata/head-sha.txt").read_text() == "a" * 40 + "\n"
+    assert (artifact_root / "wc104/c059/base-sha.txt").read_text() == "b" * 40 + "\n"
+    assert not (artifact_root / "wc104/c059/pr-body.md").exists()
 
 
 def test_requirement_scope_is_explicit_deduplicated_and_repository_relative(tmp_path: Path) -> None:
@@ -204,6 +205,30 @@ def test_requirement_scope_is_explicit_deduplicated_and_repository_relative(tmp_
     isolated = tmp_path / "test-results/wc109/runs/namespace/gate"
     local_catalog_gate.write_requirement_scope(tmp_path, ["constitution/PROJECT_STATE.md"], isolated)
     assert (isolated / "wc102/changed-files.txt").read_text(encoding="utf-8") == "constitution/PROJECT_STATE.md\n"
+
+
+def test_constitutional_inputs_are_staged_inside_isolated_artifact_root(tmp_path: Path) -> None:
+    isolated = tmp_path / "test-results/wc109/runs/namespace/constitutional-commit-gate"
+    body = tmp_path / "pr-body.md"
+    body.write_text("Work Contract: WC-109\n", encoding="utf-8")
+
+    local_catalog_gate.write_commit_metadata(tmp_path, "b" * 40, "a" * 40, isolated)
+    local_catalog_gate.write_pr_body(body, "constitutional-commit-gate", isolated)
+
+    assert (isolated / "wc104/c059/base-sha.txt").read_text(encoding="utf-8") == "b" * 40 + "\n"
+    assert (isolated / "wc104/c059/head-sha.txt").read_text(encoding="utf-8") == "a" * 40 + "\n"
+    assert (isolated / "wc104/c059/pr-body.md").read_text(encoding="utf-8") == "Work Contract: WC-109\n"
+    assert not (tmp_path / "test-results/wc104/c059/base-sha.txt").exists()
+
+
+def test_constitutional_inputs_require_explicit_pr_body(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="requires --pr-body-file"):
+        local_catalog_gate.write_pr_body(None, "constitutional-commit-gate", tmp_path)
+
+    with pytest.raises(ValueError, match="requires --pr-body-file"):
+        local_catalog_gate.write_pr_body(None, "author-review-gate", tmp_path)
+
+    local_catalog_gate.write_pr_body(None, "build", tmp_path)
 
 
 def test_gate_identity_hashes_only_declared_environment(monkeypatch, tmp_path: Path) -> None:

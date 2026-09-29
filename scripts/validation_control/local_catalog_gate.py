@@ -262,13 +262,25 @@ def gate_execution_identity(repository: Path, gate_id: str, head_sha: str) -> di
     }
 
 
-def write_commit_metadata(repository: Path, base_sha: str, head_sha: str) -> None:
-    evidence_root = repository / "test-results/wc104"
+def write_commit_metadata(repository: Path, base_sha: str, head_sha: str, artifact_root: Path | None = None) -> None:
+    evidence_root = (artifact_root if artifact_root is not None else repository / "test-results") / "wc104"
     for relative in ("metadata", "c059", "c065"):
         directory = evidence_root / relative
         directory.mkdir(parents=True, exist_ok=True)
         (directory / "base-sha.txt").write_text(base_sha + "\n", encoding="utf-8")
         (directory / "head-sha.txt").write_text(head_sha + "\n", encoding="utf-8")
+
+
+def write_pr_body(pr_body_file: Path | None, gate_id: str, artifact_root: Path) -> None:
+    if gate_id not in {"constitutional-commit-gate", "author-review-gate"}:
+        return
+    if pr_body_file is None:
+        raise ValueError(f"{gate_id} local execution requires --pr-body-file")
+    if not pr_body_file.is_file():
+        raise ValueError(f"PR body file does not exist: {pr_body_file}")
+    destination = artifact_root / "wc104" / ("c059" if gate_id == "constitutional-commit-gate" else "c065")
+    destination.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(pr_body_file, destination / "pr-body.md")
 
 
 def write_requirement_scope(repository: Path, changed_files: list[str], artifact_root: Path | None = None) -> None:
@@ -293,19 +305,22 @@ def execute_gate(
     git_common_dir: Path,
     changed_files: list[str] | None = None,
     mode: str = "qualification",
+    pr_body_file: Path | None = None,
 ) -> int:
     if mode not in {"focused", "qualification"}:
         raise ValueError(f"unsupported local execution mode: {mode}")
     orchestration_preflight(repository)
-    write_commit_metadata(repository, base_sha, head_sha)
     catalog = yaml.safe_load((repository / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
     if not isinstance(catalog, dict):
         raise ValueError("validation catalog root must be a mapping")
     run_id = f"local-{gate_id}-{os.getpid()}-{time.time_ns()}"
     plan = build_execution_plan(catalog, [gate_id], mode=mode, head_sha=head_sha, run_id=run_id)
     node = plan["nodes"][0]
+    artifact_root = repository / node["output_directory"]
+    write_commit_metadata(repository, base_sha, head_sha, artifact_root)
+    write_pr_body(pr_body_file, gate_id, artifact_root)
     if gate_id == "requirement-ledger":
-        write_requirement_scope(repository, changed_files or [], repository / node["output_directory"])
+        write_requirement_scope(repository, changed_files or [], artifact_root)
     plan_path = repository / "test-results/wc104/local-plans" / f"{gate_id.replace(':', '-')}.json"
     plan_path.parent.mkdir(parents=True, exist_ok=True)
     plan_path.write_text(json.dumps(plan, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -471,6 +486,7 @@ def main() -> int:
     parser.add_argument("--base", required=True)
     parser.add_argument("--git-common-dir", type=Path, required=True)
     parser.add_argument("--changed-file", action="append", default=[])
+    parser.add_argument("--pr-body-file", type=Path)
     parser.add_argument("--mode", choices=("focused", "qualification"), default="qualification")
     arguments = parser.parse_args()
     repository = Path.cwd().resolve()
@@ -482,6 +498,7 @@ def main() -> int:
         arguments.git_common_dir.resolve(),
         arguments.changed_file,
         arguments.mode,
+        arguments.pr_body_file.resolve() if arguments.pr_body_file is not None else None,
     )
 
 
