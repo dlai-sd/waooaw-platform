@@ -10,6 +10,8 @@ from pathlib import Path
 from threading import get_ident
 from typing import Any
 
+from validation_control.identity import MANIFEST_SCHEMAS, digest_identity
+
 
 SAFE_SEGMENT = re.compile(r"[^A-Za-z0-9_.-]+")
 
@@ -70,6 +72,44 @@ def orchestration_preflight(
     finally:
         temporary.unlink(missing_ok=True)
         probe.unlink(missing_ok=True)
+
+
+def static_preflight(manifests: list[dict[str, Any]], execution: dict[str, Any]) -> dict[str, Any]:
+    """Reject deterministic execution defects without building or executing a gate."""
+    violations: list[str] = []
+    by_type = {manifest.get("identity_type"): manifest for manifest in manifests}
+    for identity_type, schema in MANIFEST_SCHEMAS.items():
+        manifest = by_type.get(identity_type)
+        if not isinstance(manifest, dict) or manifest.get("schema") != schema:
+            violations.append(f"manifest:{identity_type}")
+            continue
+        inputs = manifest.get("inputs")
+        if not isinstance(inputs, dict) or manifest.get("digest") != digest_identity(identity_type, inputs):
+            violations.append(f"manifest-digest:{identity_type}")
+
+    checks = (
+        (execution.get("catalog_valid") is True, "catalog"),
+        (execution.get("syntax_valid") is True, "syntax"),
+        (execution.get("uid") not in (None, 0), "uid"),
+        (execution.get("gid") not in (None, 0), "gid"),
+        (isinstance(execution.get("mounts"), list) and bool(execution["mounts"]), "mount"),
+        (execution.get("permissions_valid") is True, "permission"),
+        (execution.get("output_writable") is True, "output"),
+        (
+            execution.get("docker_socket_requested") is not True or execution.get("docker_socket_allowed") is True,
+            "socket",
+        ),
+        (execution.get("workflow_placement") == "container", "workflow-placement"),
+    )
+    violations.extend(label for passed, label in checks if not passed)
+    return {
+        "schema": "waooaw.static-preflight-result/v1",
+        "result": "PASS" if not violations else "FAIL",
+        "first_cause": violations[0] if violations else None,
+        "violations": violations,
+        "build_events": 0,
+        "execution_events": 0,
+    }
 
 
 def execution_binding(
