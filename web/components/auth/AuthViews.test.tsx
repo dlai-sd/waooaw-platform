@@ -75,7 +75,7 @@ describe('authentication views', () => {
     expect(screen.getByRole('link', { name: 'Register' })).toHaveAttribute('href', '/register?returnTo=%2Fsettings');
   });
 
-  it('sends an authenticated broker identity to registration before the customer portal', async () => {
+  it('sends an authenticated visitor without an account to Marketplace without registration', async () => {
     jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
     jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'registration-required' });
 
@@ -83,7 +83,7 @@ describe('authentication views', () => {
       'NEXT_REDIRECT'
     );
 
-    expect(redirect).toHaveBeenCalledWith('/register?returnTo=%2Fsettings');
+    expect(redirect).toHaveBeenCalledWith('/marketplace');
     expect(listIdentityProviders).not.toHaveBeenCalled();
   });
 
@@ -106,16 +106,31 @@ describe('authentication views', () => {
     expect(listIdentityProviders).not.toHaveBeenCalled();
   });
 
-  it('does not restart login for an authenticated identity requiring recovery', async () => {
+  it('keeps an authenticated identity denial in bounded login recovery', async () => {
     jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
-    jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'forbidden', code: 'IDENTITY_FORBIDDEN' });
+    jest.mocked(getIdentitySession).mockResolvedValue({
+      kind: 'forbidden',
+      code: 'IDENTITY_ACTION_DENIED',
+      correlationId: 'correlation-403',
+    });
 
-    await expect(LoginView({ searchParams: Promise.resolve({ returnTo: '/settings' }) })).rejects.toThrow(
-      'NEXT_REDIRECT'
-    );
+    render(await LoginView({ searchParams: Promise.resolve({ returnTo: '/settings' }) }));
 
-    expect(redirect).toHaveBeenCalledWith('/403');
-    expect(listIdentityProviders).not.toHaveBeenCalled();
+    expect(redirect).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveAttribute('data-reason-code', 'IDENTITY_ACTION_DENIED');
+    expect(screen.getByText('Reference: correlation-403')).toBeInTheDocument();
+    expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-intent', 'login');
+  });
+
+  it('keeps step-up recovery in the login modal', async () => {
+    jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
+    jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'step-up', correlationId: 'correlation-step-up' });
+
+    render(await LoginView({ searchParams: Promise.resolve({ returnTo: '/settings' }) }));
+
+    expect(redirect).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveAttribute('data-reason-code', 'IDENTITY_STEP_UP_REQUIRED');
+    expect(screen.getByText('Reference: correlation-step-up')).toBeInTheDocument();
   });
 
   it('offers a fresh provider login when existing session validation is temporarily unavailable', async () => {
@@ -145,6 +160,7 @@ describe('authentication views', () => {
 
   it('reuses the registration flow for an authenticated session', async () => {
     jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
+    jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'registration-required' });
 
     render(await RegisterView({ searchParams: Promise.resolve({ returnTo: '/settings' }) }));
 
@@ -153,5 +169,45 @@ describe('authentication views', () => {
     expect(screen.queryByRole('heading')).not.toBeInTheDocument();
     expect(screen.queryByTestId('provider-commands')).not.toBeInTheDocument();
     expect(listIdentityProviders).not.toHaveBeenCalled();
+  });
+
+  it('continues a completed account safely instead of restarting registration', async () => {
+    jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
+    jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'ready', session: {} as never });
+
+    await expect(RegisterView({ searchParams: Promise.resolve({ returnTo: '/settings' }) })).rejects.toThrow(
+      'NEXT_REDIRECT'
+    );
+
+    expect(redirect).toHaveBeenCalledWith('/settings');
+    expect(listIdentityProviders).not.toHaveBeenCalled();
+  });
+
+  it.each(['forbidden', 'step-up'] as const)('routes typed %s registration denial to Login recovery', async (kind) => {
+    jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
+    jest
+      .mocked(getIdentitySession)
+      .mockResolvedValue(kind === 'forbidden' ? { kind, code: 'IDENTITY_ACTION_DENIED' } : { kind });
+
+    await expect(RegisterView({ searchParams: Promise.resolve({ returnTo: '/settings' }) })).rejects.toThrow(
+      'NEXT_REDIRECT'
+    );
+
+    expect(redirect).toHaveBeenCalledWith('/login?returnTo=%2Fsettings');
+    expect(listIdentityProviders).not.toHaveBeenCalled();
+  });
+
+  it('offers explicit registration authentication when session validation is unavailable', async () => {
+    jest.mocked(getServerAccessToken).mockResolvedValue('access-token');
+    jest.mocked(getIdentitySession).mockResolvedValue({ kind: 'unavailable', correlationId: 'correlation-503' });
+
+    render(await RegisterView({ searchParams: Promise.resolve({ returnTo: '/settings' }) }));
+
+    expect(redirect).not.toHaveBeenCalled();
+    expect(screen.getByTestId('provider-commands')).toHaveAttribute('data-intent', 'register');
+    expect(screen.getByTestId('provider-commands')).toHaveAttribute(
+      'data-callback-url',
+      '/register?returnTo=%2Fsettings'
+    );
   });
 });

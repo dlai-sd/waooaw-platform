@@ -125,10 +125,12 @@ export default async function MarketplaceOfferPage({
           <DisclosureContinuation
             disclosureRevision={disclosure.disclosureRevision}
             initialIntent={intent}
+            priceInrPaise={disclosure.indicativePrice.amountInrPaise}
             professionalType={disclosure.professionalType}
             professionalVersion={disclosure.projectionVersion}
             termsVersion={disclosure.termsVersion}
             trialAvailable={disclosure.trial.available}
+            trialDurationDays={disclosure.trial.durationDays}
           />
         </aside>
       </div>

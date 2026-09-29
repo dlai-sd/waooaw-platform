@@ -1,0 +1,321 @@
+schema: waooaw.requirement-evidence-ledger/v1
+contract_digest: b9f69f33cfdad801618db9417ea6944335ea339d6042f672309c1ca0ef99347d
+implementation_scope: true
+result: QUALIFIED
+work_contract: WC-107
+title: Fundamental Customer Journey Integrity
+baseline: 27ffe882eecd972d75c47282c434601c2bad98ea
+status: LOCAL_IMPLEMENTATION_QUALIFIED_DEMO_RESERVED
+completion_rule: >-
+  Every requirement must be PASS with its named direct executable evidence. Partial, deferred,
+  mocked-only, local-only, aggregate, or substituted evidence does not qualify the Work Component.
+
+requirement_defaults: &requirement_defaults
+  evidence_class: Docker executable evidence
+  initial_state: expected-fail
+  residual_risk: Deployed environment behavior remains subject to separately authorized Demo acceptance.
+
+implementation_groups:
+  - id: G1
+    requirements: [WC107-R001, WC107-R002, WC107-R003, WC107-R004, WC107-R005, WC107-R006, WC107-R007, WC107-R008]
+    result: PASS
+  - id: G2
+    requirements: [WC107-R009, WC107-R010, WC107-R012, WC107-R017]
+    result: PASS
+  - id: G3
+    requirements: [WC107-R011, WC107-R013, WC107-R014, WC107-R015, WC107-R016, WC107-R017]
+    result: PASS
+  - id: G4
+    requirements: [WC107-R017, WC107-R018, WC107-R020]
+    result: BLOCKED
+  - id: DEPLOYED
+    requirements: [WC107-R019]
+    result: FOUNDER_RESERVED
+
+requirements:
+  - <<: *requirement_defaults
+    requirement_id: WC107-R001
+    source: architecture/reference/components/identity-boundary.md section 3.0
+    observable_outcome: Login reaches Marketplace without creating an account or forcing Registration.
+    component_owner: Web Application and Business Platform Identity
+    test_path_or_plan: Exercise a new visitor Login and assert zero account or registration mutation.
+    dependencies: NextAuth visitor session and Business Platform identity boundary
+    completion_rule: New authenticated visitor reaches Marketplace with no account or registration mutation.
+    result: PASS
+    evidence_refs:
+      - web/tests/e2e/wc083-auth-dialog.spec.ts
+      - web/app/api/wc084-portal-boundaries.test.ts
+
+  - <<: *requirement_defaults
+    requirement_id: WC107-R002
+    source: architecture/reference/components/fundamental-customer-journeys.md sections 4.1 and 4.2
+    observable_outcome: Registration starts only from Register, Trial, or Hire and resumes one safe intent.
+    component_owner: Web Application
+    test_path_or_plan: Test three allowed intents plus external, arbitrary, and stale target rejection.
+    dependencies: Route-backed authentication dialog and safe-target allowlist
+    completion_rule: Login never registers; allowed intents resume once; unsafe targets fall back.
+    result: PASS
+    evidence_refs:
+      - web/components/auth/RegistrationFlow.test.tsx
+      - web/tests/e2e/wc083-auth-dialog.spec.ts
+
+  - <<: *requirement_defaults
+    requirement_id: WC107-R003
+    source: architecture/reference/components/identity-boundary.md sections 5 and 7.1
+    observable_outcome: Concurrent and replayed registration creates or reuses one durable identity graph.
+    component_owner: Business Platform Identity
+    test_path_or_plan: Execute concurrency, replay, same-actor, and returning-account PostgreSQL cases.
+    dependencies: PostgreSQL identity transaction and renewed identity-session resolution
+    completion_rule: One account, tenant, membership, and binding exist for the proven identity.
+    result: PASS
+    evidence_refs:
+      - tests/business-platform.Tests/Identity/CustomerIdentityJourneyHttpPostgresTests.cs
+
+  - <<: *requirement_defaults
+    requirement_id: WC107-R004
+    source: architecture/reference/components/identity-boundary.md Sign-out and account switch
+    observable_outcome: Logout and account switch clear protected state and prevent silent restoration.
+    component_owner: Web Application and Keycloak boundary
+    test_path_or_plan: Exercise storage, cache, history, RP logout, account selection, and prior-account sentinels.
+    dependencies: NextAuth sign-out, Keycloak end-session, and prompt=select_account
+    completion_rule: Public routes stay unauthenticated until explicit Login and no prior-account state survives.
+    result: PASS
+    evidence_refs:
+      - web/tests/e2e/wc083-auth-dialog.spec.ts
+      - web/tests/e2e/wc094-auth-session-readiness.spec.ts
+      - web/app/api/auth/keycloak-logout/route.ts
+
+  - <<: *requirement_defaults
+    requirement_id: WC107-R005
+    source: architecture/reference/components/fundamental-customer-journeys.md section 4.3
+    observable_outcome: Login after Logout resolves the same account and safe target without Registration or generic denial.
+    component_owner: Business Platform Identity and Web Application
+    test_path_or_plan: Execute logout and renewed Login for the same proven identity.
+    dependencies: Durable identity binding and typed identity-session response
+    completion_rule: The same identity resolves one account and reaches the safe target.
+    result: PASS
+    evidence_refs:
+      - tests/business-platform.Tests/Identity/CustomerIdentityJourneyHttpPostgresTests.cs
+      - web/tests/e2e/wc083-auth-dialog.spec.ts
+
+  - <<: *requirement_defaults
+    requirement_id: WC107-R006
+    source: architecture/reference/components/fundamental-customer-journeys.md section 4.3
+    observable_outcome: Register selected by an existing account continues without duplicate registration.
+    component_owner: Web Application and Business Platform Identity
+    test_path_or_plan: Select Register from an already completed account and assert bounded continuation.
+    dependencies: Typed already-registered identity response
+    completion_rule: No new registration starts and no fatal registration error appears.
+    result: PASS
+    evidence_refs:
+      - web/components/auth/AuthViews.test.tsx
+      - web/tests/e2e/wc107-authoritative-confirmation.spec.ts
+
+  - <<: *requirement_defaults
+    requirement_id: WC107-R007
+    source: architecture/reference/components/fundamental-customer-journeys.md section 4.4
+    observable_outcome: Authentication copy, focus, controls, and geometry remain usable at every required viewport.
+    component_owner: Web Application
+    evidence_class: Semantic, accessibility, geometry, RTL, zoom, and browser evidence
+    test_path_or_plan: Test laptop, tablet, 390, 360, 320, RTL, reduced motion, keyboard, axe, and 200 percent text.
+    dependencies: Route-backed Login and Registration dialogs
+    completion_rule: Copy, focus, reading order, Close, actions, and overflow assertions all pass.
+    result: PASS
+    evidence_refs:
+      - web/components/auth/AuthViews.test.tsx
+      - web/components/auth/RegistrationFlow.test.tsx
+      - web/components/auth/RegistrationProgress.test.tsx
+      - web/tests/e2e/wc083-auth-dialog.spec.ts
+
+  - <<: *requirement_defaults
+    requirement_id: WC107-R008
+    source: architecture/reference/components/identity-boundary.md section 9
+    observable_outcome: Every typed identity denial preserves code and correlation and maps to bounded recovery.
+    component_owner: Web Application and Business Platform Identity
+    test_path_or_plan: Test 400, 401, typed 403 and 409 variants, 404, 410, 422, 429, and 503.
+    dependencies: IdentityProblemDetail contract and Web recovery mapping
+    completion_rule: No typed denial becomes forced Registration, generic 403, or false success.
+    result: PASS
+    evidence_refs:
+      - tests/business-platform.Tests/Identity/CustomerIdentityJourneyHttpPostgresTests.cs
+      - web/components/auth/AuthViews.test.tsx
+
+  - <<: *requirement_defaults
+    requirement_id: WC107-R009
+    source: architecture/reference/components/fundamental-customer-journeys.md section 5.1
+    observable_outcome: The main professional card presents the complete concise offer and direct actions.
+    component_owner: Web Application and Business Platform catalog
+    test_path_or_plan: Assert all canonical offer fields and actions together on desktop and compact viewports.
+    dependencies: ProfessionalMarketplaceListingV1 projection
+    completion_rule: Offer, charge, trial, consent, and actions are visible without a mandatory detail detour.
+    result: PASS
+    evidence_refs:
+      - web/__tests__/app/application/marketplace/page.test.tsx
+      - web/tests/e2e/wc097-marketplace-experience.spec.ts
+
+  - <<: *requirement_defaults
+    requirement_id: WC107-R010
+    source: architecture/reference/components/fundamental-customer-journeys.md section 5.1
+    observable_outcome: One Terms and Privacy consent gates Trial and Hire and cancellation is inert.
+    component_owner: Web Application
+    test_path_or_plan: Test unchecked, checked, withdrawn, cancelled, changed-terms, and resumed-intent states.
+    dependencies: Disclosure continuation and versioned terms state
+    completion_rule: No action starts unchecked and changed terms require fresh consent.
+    result: PASS
+    evidence_refs:
+      - web/components/acquisition/DisclosureContinuation.test.tsx
+      - web/tests/e2e/wc097-marketplace-experience.spec.ts
+
+  - <<: *requirement_defaults
+    requirement_id: WC107-R011
+    source: architecture/reference/components/fundamental-customer-journeys.md section 5.2
+    observable_outcome: One post-consent Trial command creates one durable Trial and never calls Hire or payment code.
+    component_owner: Web Application, Business Platform Acquisition, and Billing Engine
+    test_path_or_plan: Exercise Trial success, replay, quota, provider failure, expiry, and no-paid-fallback cases.
+    dependencies: Trial continuation boundary, relationship transaction, and trial billing ledger
+    completion_rule: One Trial and billing state exist; retries stay Trial-only; failure never charges.
+    result: PASS
+    evidence_refs:
+      - web/app/api/acquisition/continue/route.test.ts
+      - tests/business-platform.Tests/AcquisitionTrialPostgresIntegrationTests.cs
+      - tests/billing-engine/test_trial_postgres.py
+
+  - <<: *requirement_defaults
+    requirement_id: WC107-R012
+    source: architecture/reference/components/fundamental-customer-journeys.md section 5.3
+    observable_outcome: Coupon validation updates the payable amount before order creation without URL state.
+    component_owner: Web Application and Billing Engine
+    test_path_or_plan: Test cap, mismatch, amount change, expiry, usage, replay, direct checkout, and URL privacy.
+    dependencies: Billing coupon validation and Hire checkout boundary
+    completion_rule: The validated amount enters Hire and coupon or command state never enters a URL.
+    result: PASS
+    evidence_refs:
+      - web/app/api/acquisition/hire-checkout/route.test.ts
+      - tests/billing-engine/test_payment.py
+
+  - <<: *requirement_defaults
+    requirement_id: WC107-R013
+    source: architecture/reference/product/ae01-security-contract.md Payment Consent
+    observable_outcome: Hire binds one relationship only after signed payment or approved zero-payable evidence.
+    component_owner: Billing Engine and Business Platform Acquisition
+    test_path_or_plan: Exercise checkout, cancellation, signature, callback, webhook, zero-payable, tamper, and replay.
+    dependencies: Razorpay evidence verification and Business Platform commercial binding
+    completion_rule: Exact terms precede payment and relationship plus binding become durable exactly once.
+    result: PASS
+    evidence_refs:
+      - tests/billing-engine/test_payment.py
+      - tests/business-platform.Tests/ProfessionalsControllerTests.cs
+      - web/app/api/acquisition/hire-checkout/route.test.ts
+
+  - <<: *requirement_defaults
+    requirement_id: WC107-R014
+    source: architecture/reference/components/fundamental-customer-journeys.md sections 5.3 and 6
+    observable_outcome: Capture or binding uncertainty reconciles the same payment without a second charge.
+    component_owner: Billing Engine, Web Application, and Business Platform Acquisition
+    test_path_or_plan: Inject timeout after capture and relationship-binding failure, then replay reconciliation.
+    dependencies: Stable checkout intent and idempotent payment reconciliation
+    completion_rule: Pending is truthful, replay converges, and order and payment cardinality remain one.
+    result: PASS
+    evidence_refs:
+      - tests/billing-engine/test_payment.py
+      - web/app/api/acquisition/hire-checkout/route.test.ts
+
+  - <<: *requirement_defaults
+    requirement_id: WC107-R015
+    source: architecture/reference/components/fundamental-customer-journeys.md section 5.4
+    observable_outcome: Trial and Hire confirmation appears only after fresh authoritative projection.
+    component_owner: Web Application and Business Platform
+    test_path_or_plan: Test Trial, paid, zero-payable, pending, replay, missing-card, and selection failure.
+    dependencies: Authoritative My Agents projection and one-use selection state
+    completion_rule: Navigation, local state, HTTP success, or payment alone cannot confirm success.
+    result: PASS
+    evidence_refs:
+      - web/app/(application)/professionals/mine/MyAgentsSelection.test.tsx
+      - web/tests/e2e/wc107-authoritative-confirmation.spec.ts
+
+  - <<: *requirement_defaults
+    requirement_id: WC107-R016
+    source: architecture/reference/components/fundamental-customer-journeys.md section 5.4
+    observable_outcome: My Agents selects only the authorized result using one-use server state.
+    component_owner: Business Platform relationship projection and Web Application
+    test_path_or_plan: Test actor binding, expiry, replay, foreign access, ordering, focus, cookie scope, and clean URL.
+    dependencies: Selection flash repository, authorized projection, and opaque scoped cookie
+    completion_rule: The matching card selects once and invalid, stale, or foreign state discloses nothing.
+    result: PASS
+    evidence_refs:
+      - tests/business-platform.Tests/MyAgentsSelectionServiceTests.cs
+      - tests/business-platform.Tests/MyAgentsSelectionPostgresIntegrationTests.cs
+      - web/app/(application)/professionals/mine/MyAgentsSelection.test.tsx
+      - web/tests/e2e/wc107-authoritative-confirmation.spec.ts
+
+  - <<: *requirement_defaults
+    requirement_id: WC107-R017
+    source: architecture/reference/components/fundamental-customer-journeys.md sections 5.3 and 7
+    observable_outcome: Command, coupon, identity, relationship, and payment values stay out of URLs, history, unsafe logs, and traces.
+    component_owner: All journey components
+    evidence_class: Browser history, log, trace-field, and secret scans
+    test_path_or_plan: Scan exact-image Trial and Hire requests, history, logs, and retained trace attributes.
+    dependencies: Static Billing routes and privacy-bounded telemetry middleware
+    completion_rule: Scans contain zero prohibited values while typed diagnostics remain usable.
+    residual_risk: New auto-instrumentation requires renewed attribute scans.
+    result: PASS
+    evidence_refs:
+      - tests/billing-engine/test_wc107_telemetry.py
+      - tests/business-platform.Tests/JourneyTelemetryMiddlewareTests.cs
+      - web/lib/journey-telemetry.test.ts
+      - web/tests/e2e/wc107-authoritative-confirmation.spec.ts
+
+  - <<: *requirement_defaults
+    requirement_id: WC107-R018
+    source: architecture/reference/components/fundamental-customer-journeys.md section 7
+    observable_outcome: Each fundamental journey retains one queryable privacy-safe cross-service trace.
+    component_owner: Web Application, Business Platform, Billing Engine, and platform telemetry
+    evidence_class: Exact-image Demo trace queries
+    test_path_or_plan: Query complete traces for Login, Registration, Logout/relogin, Trial, and Hire.
+    initial_state: new
+    dependencies: Active Demo OTLP backend, exact deployment, and controlled test traffic
+    completion_rule: All five traces share context and expose revision, operation, status, outcome, and latency.
+    residual_risk: Demo has no active OTLP backend and deployment is prohibited in this session.
+    result: BLOCKED
+    evidence_refs:
+      - web/lib/journey-telemetry.test.ts
+      - tests/business-platform.Tests/JourneyTelemetryMiddlewareTests.cs
+      - tests/billing-engine/test_wc107_telemetry.py
+    remaining_gap: Local instrumentation passes, but local-only traces cannot substitute for required Demo evidence.
+
+  - <<: *requirement_defaults
+    requirement_id: WC107-R019
+    source: architecture/reference/components/fundamental-customer-journeys.md section 8
+    observable_outcome: Exact candidate images pass all five complete Demo journeys on desktop and mobile.
+    component_owner: Platform IT Expert under separate deployment authority
+    evidence_class: Demo browser, route, trace, image-digest, and rollback evidence
+    test_path_or_plan: Deploy exact images and execute all five journeys on desktop and mobile.
+    initial_state: Founder-reserved
+    dependencies: Founder authorization for Demo mutation, controlled traffic, and provider use
+    completion_rule: Every story passes without residual blocker or untested stage on the same candidate.
+    residual_risk: Founder kept Demo deployment and customer traffic prohibited in this session.
+    result: FOUNDER_RESERVED
+    evidence_refs:
+      - work-contracts/WC-107-fundamental-customer-journey-integrity.md
+
+  - <<: *requirement_defaults
+    requirement_id: WC107-R020
+    source: constitution/BOOTSTRAP.md Mandatory Author Review Technique
+    observable_outcome: The submitted head passes all quality gates and author review with no unresolved finding.
+    component_owner: Implementing author
+    evidence_class: Exact-head validation, ledger, tests, and author-review record
+    test_path_or_plan: Run the complete local gate, repair findings, bind evidence to the commit, and review the diff.
+    initial_state: new
+    dependencies: WC107-R001 through WC107-R019 and an exact final commit
+    completion_rule: No unresolved finding, blocker, pending gate, or post-review commit remains.
+    residual_risk: R018 is blocked and R019 is Founder-reserved, so full closure is impossible.
+    result: BLOCKED
+    evidence_refs:
+      - work-contracts/WC-107-fundamental-customer-journey-integrity.md
+      - work-contracts/WC-107-requirements.yaml
+      - scripts/validate_requirement_ledger.py
+    findings:
+      - Privacy defects in prefetch, Billing URLs, log values, and automatic fetch spans were repaired.
+      - Exact component images build and final desktop plus compact browser checks pass.
+      - OpenAPI, locks, whitespace, privacy scans, and retained local Trial trace checks pass.
+      - Demo telemetry and deployed acceptance remain unresolved by explicit authority choice.

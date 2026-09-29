@@ -156,6 +156,8 @@ export default async function ProfessionalPage({ params, searchParams }: Profess
         professionalVersion={version}
         termsVersion={termsVersion}
         trialAvailable={disclosure?.trial.available ?? true}
+        priceInrPaise={disclosure?.indicativePrice.amountInrPaise}
+        trialDurationDays={disclosure?.trial.durationDays}
       />
     </article>
   );

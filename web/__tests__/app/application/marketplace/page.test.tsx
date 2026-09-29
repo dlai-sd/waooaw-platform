@@ -52,9 +52,16 @@ it('uses the canonical disclosure route and preserves each available intent', as
         displayName: 'Digital Marketing Agent',
         disclosurePath: '/marketplace/digital-marketing',
         availableIntents: new Set(['TRIAL', 'HIRE']),
+        disclosureRevision: '1.0.0',
+        termsVersion: '2026-07-18',
         suitability: ['Build an evidence-backed marketing plan.'],
+        capabilitySignals: ['Customer Profiling', 'Market Research', 'Content Strategy'],
+        limitations: ['No guaranteed outcome'],
+        customerRights: ['Stop at any time'],
         eligibility: { isEligible: true, explanation: 'Available for your business.' },
         indicativePrice: { currency: 'INR', amountInrPaise: 249900, cadence: 'MONTHLY', qualification: 'Indicative' },
+        trial: { available: true, durationDays: 14, paidApiCallsAllowed: false, externalActionsAllowed: false },
+        evidencePosture: 'Every claim links to retained evidence.',
         offerabilityState: 'OFFERABLE',
         trialTerms: '14-day governed trial',
         nextAction: 'VIEW_DISCLOSURE',
@@ -64,19 +71,23 @@ it('uses the canonical disclosure route and preserves each available intent', as
 
   render(await MarketplacePage({ searchParams: Promise.resolve({}) }));
 
-  expect(screen.getByRole('link', { name: /Start trial/ })).toHaveAttribute(
+  expect(screen.getByRole('button', { name: 'Start 14-day trial' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Hire for ₹2,499.00' })).toBeDisabled();
+  expect(screen.getByRole('link', { name: 'Open expanded disclosure' })).toHaveAttribute(
     'href',
-    '/marketplace/digital-marketing?professionalType=DIGITAL_MARKETING_LOCAL_SERVICE&version=1.0.0&intent=trial'
-  );
-  expect(screen.getByRole('link', { name: /Hire/ })).toHaveAttribute(
-    'href',
-    '/marketplace/digital-marketing?professionalType=DIGITAL_MARKETING_LOCAL_SERVICE&version=1.0.0&intent=hire'
+    '/marketplace/digital-marketing'
   );
   expect(document.querySelector('a[href*="digital-marketing-local-service"]')).not.toBeInTheDocument();
   expect(screen.queryByText('DIGITAL_MARKETING_LOCAL_SERVICE')).not.toBeInTheDocument();
   expect(screen.queryByText(/Eligibility depends only/)).not.toBeInTheDocument();
   expect(screen.getByText('Build an evidence-backed marketing plan.')).toBeInTheDocument();
+  expect(screen.getByRole('list', { name: 'Included capabilities' }).children).toHaveLength(3);
+  expect(screen.getByText('No guaranteed outcome')).toBeInTheDocument();
+  expect(screen.getByText('Stop at any time')).toBeInTheDocument();
+  expect(screen.getByRole('checkbox')).not.toBeChecked();
+  expect(screen.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms');
+  expect(screen.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy');
   expect(screen.getByText('14-day governed trial')).toBeInTheDocument();
   expect(screen.queryByRole('search')).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Apply' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Apply' })).toBeDisabled();
 });

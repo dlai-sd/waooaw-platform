@@ -229,7 +229,11 @@ describe('AcquisitionContinuation', () => {
           merchant_display_name: 'WAOOAW',
         }),
       })
-      .mockResolvedValueOnce({ ok: false, json: async () => ({ title: 'Payment is still reconciling.' }) });
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ title: 'Payment is still reconciling.' }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ resumePath: '/relationships/22222222-2222-4222-8222-222222222222' }),
+      });
 
     render(<AcquisitionContinuation {...props} intent="hire" />);
     await waitFor(() => expect(checkoutOptions).toBeDefined());
@@ -242,8 +246,21 @@ describe('AcquisitionContinuation', () => {
     });
 
     expect(await screen.findByText('Payment is still reconciling.')).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Open Razorpay Checkout' })).toBeEnabled();
-    expect(replace).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry payment confirmation' }));
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/relationships/22222222-2222-4222-8222-222222222222'));
+    expect(global.fetch).toHaveBeenCalledTimes(3);
+    expect(JSON.parse(String(jest.mocked(fetch).mock.calls[0][1]?.body)).action).toBe('start');
+    expect(JSON.parse(String(jest.mocked(fetch).mock.calls[1][1]?.body))).toEqual(
+      JSON.parse(String(jest.mocked(fetch).mock.calls[2][1]?.body))
+    );
+    expect(JSON.parse(String(jest.mocked(fetch).mock.calls[2][1]?.body))).toEqual(
+      expect.objectContaining({
+        action: 'confirm',
+        razorpayOrderId: 'order_test123',
+        razorpayPaymentId: 'pay_test123',
+      })
+    );
   });
 
   it('shows the Razorpay provider failure without recording Hire success', async () => {
@@ -272,17 +289,27 @@ describe('AcquisitionContinuation', () => {
   });
 
   it('surfaces a retryable trial continuation outage', async () => {
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: false,
-      status: 503,
-      json: async () => ({ title: 'Customer service is temporarily unavailable.' }),
-    });
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        json: async () => ({ title: 'Customer service is temporarily unavailable.' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ resumePath: '/relationships/22222222-2222-4222-8222-222222222222' }),
+      });
 
     render(<AcquisitionContinuation {...props} />);
 
     expect(await screen.findByText('Customer service is temporarily unavailable.')).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Open Razorpay Checkout' })).toBeEnabled();
-    expect(replace).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry trial' }));
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/relationships/22222222-2222-4222-8222-222222222222'));
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(jest.mocked(fetch).mock.calls.every(([url]) => url === '/api/acquisition/continue')).toBe(true);
+    expect(JSON.parse(String(jest.mocked(fetch).mock.calls[1][1]?.body))).toEqual(props);
   });
 
   it('loads the official Razorpay script when Checkout is not already present', async () => {

@@ -10,6 +10,7 @@ import { getIdentitySession } from '@/lib/api/identity';
 import { describePortalFailure } from '@/lib/api/portal-failure';
 import { listEmploymentRelationships } from '@/lib/api/relationships';
 import { getServerAccessToken } from '@/lib/server-auth';
+import { MyAgentsSelection } from './MyAgentsSelection';
 
 function resumeHref(destination: CustomerPortalDestinationV1): string {
   if (destination.relationshipId) return `/relationships/${encodeURIComponent(destination.relationshipId)}`;
@@ -65,9 +66,10 @@ export default async function MyProfessionalsPage() {
           <h1 id="my-experts-title">{messages.myExperts}</h1>
           <p>Review setup, current work, evidence and the next decision for each agent.</p>
         </header>
+        <MyAgentsSelection />
         <ul className="agent-dashboard">
           {page.items.map((item) => (
-            <li key={item.relationshipId}>
+            <li data-relationship-id={item.relationshipId} key={item.relationshipId} tabIndex={-1}>
               <div className="portal-item-heading">
                 <Bot aria-hidden="true" size={22} />
                 <h2>{item.professionalDisplayName}</h2>
@@ -116,7 +118,7 @@ export default async function MyProfessionalsPage() {
                     item.lastAuthoritativelyConfirmedAt
                   )}
                 </span>
-                <Link className="primary-link" href={resumeHref(item.resumeTarget)}>
+                <Link className="primary-link" href={resumeHref(item.resumeTarget)} prefetch={false}>
                   {item.nextActionLabel} <ArrowRight aria-hidden="true" size={18} />
                 </Link>
               </footer>

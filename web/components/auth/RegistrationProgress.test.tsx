@@ -11,9 +11,21 @@ describe('RegistrationProgress', () => {
     expect(container.querySelectorAll('.registration-progress-marker')).toHaveLength(6);
     expect(container.querySelectorAll('.registration-progress-arrow')).toHaveLength(5);
     expect(screen.getByRole('status')).not.toHaveAttribute('aria-valuenow');
+    expect(screen.getByText('Email verification')).toHaveClass('visually-hidden');
 
     rerender(<RegistrationProgress action="CONTINUE_TO_DEFAULT_TARGET" pending={false} />);
     expect(screen.getByRole('status')).toHaveAccessibleName('Registration progress: Registration complete');
     expect(container.querySelectorAll('[data-state="complete"]')).toHaveLength(6);
+    expect(screen.getByText('Registration complete')).toHaveClass('visually-hidden');
+  });
+
+  it.each([
+    ['COMPLETE_PROFILE', 'Profile details'],
+    ['COMPLETE_REGISTRATION', 'Registration review'],
+  ] as const)('keeps %s progress text accessible without displaying %s', (action, label) => {
+    render(<RegistrationProgress action={action} pending={false} />);
+
+    expect(screen.getByRole('status')).toHaveAccessibleName(`Registration progress: ${label}`);
+    expect(screen.getByText(label)).toHaveClass('visually-hidden');
   });
 });

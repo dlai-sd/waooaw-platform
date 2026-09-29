@@ -8,12 +8,12 @@ import { supportedLocales } from '../../lib/preferences';
 
 const secret = 'playwright-only-not-a-runtime-secret';
 
-async function addSession(context: BrowserContext, projectName: string) {
+async function addSession(context: BrowserContext, projectName: string, accessToken?: string) {
   const value = await encode({
     secret,
     maxAge: 3600,
     token: {
-      accessToken: `fixture-access-token-wc099-${projectName}`,
+      accessToken: accessToken ?? `fixture-access-token-wc099-${projectName}`,
       accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
       founder: false,
       sub: `fixture-user-wc099-${projectName}`,
@@ -185,7 +185,7 @@ for (const intent of ['trial', 'hire'] as const) {
       'One Chromium broker-boundary journey per acquisition intent proves fresh-auth continuation parameters.'
     );
     const acquisitionTarget = `/marketplace?professionalType=DIGITAL_MARKETING&version=3.1.0&intent=${intent}`;
-    await addSession(context, testInfo.project.name);
+    await addSession(context, testInfo.project.name, `fixture-registration-required-wc099-${testInfo.project.name}`);
     await page.route('**/api/identity/registration', async (route) =>
       route.fulfill({
         status: 403,

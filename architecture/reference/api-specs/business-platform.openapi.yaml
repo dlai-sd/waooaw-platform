@@ -1065,6 +1065,57 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/employment/relationships/{relationshipId}/selection-flash:
+    post:
+      tags: [Employment]
+      summary: Create a short-lived My Agents selection handoff
+      description: |
+        Creates an actor/account-bound, five-minute, one-use server record only when the
+        relationship and requested Trial or Hire outcome are authoritative. The returned
+        random handle carries no relationship, account, payment, or outcome value.
+      operationId: createMyAgentsSelectionFlash
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateMyAgentsSelectionRequest" }
+      responses:
+        "200":
+          description: Opaque selection handle created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MyAgentsSelectionHandle" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/employment/relationships/selection-flash/consume:
+    post:
+      tags: [Employment]
+      summary: Atomically consume a My Agents selection handoff
+      description: |
+        Returns the selected relationship and authoritative outcome once only when the
+        current actor/account still has access. Invalid, foreign, stale, expired, and
+        replayed handles return the same empty response without existence disclosure.
+      operationId: consumeMyAgentsSelectionFlash
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConsumeMyAgentsSelectionRequest" }
+      responses:
+        "200":
+          description: Authorized selection consumed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConsumedMyAgentsSelection" }
+        "204":
+          description: No consumable authorized selection exists
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
   /api/v1/employment/relationships/{relationshipId}/timeline:
     get:
       tags: [Employment]
@@ -4297,6 +4348,12 @@ components:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/ProblemDetail"
+    ServiceUnavailable:
+      description: Required service dependency is unavailable
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
 
     ConversationInvalidRequest:
       description: Conversation request or schema version is malformed or unsupported
@@ -6140,6 +6197,43 @@ components:
           type: array
           items: { $ref: "#/components/schemas/EmploymentRelationshipSummaryV1" }
 
+    MyAgentsSelectionOutcomeKind:
+      type: string
+      enum: [TRIAL_STARTED, HIRE_PAID, HIRE_ZERO_PRICE]
+
+    CreateMyAgentsSelectionRequest:
+      type: object
+      additionalProperties: false
+      required: [outcomeKind]
+      properties:
+        outcomeKind: { $ref: "#/components/schemas/MyAgentsSelectionOutcomeKind" }
+
+    ConsumeMyAgentsSelectionRequest:
+      type: object
+      additionalProperties: false
+      required: [handle]
+      properties:
+        handle:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+          description: Random opaque handle containing no relationship, actor, account, payment, or outcome value.
+
+    MyAgentsSelectionHandle:
+      type: object
+      additionalProperties: false
+      required: [handle, expiresAt]
+      properties:
+        handle: { type: string, pattern: '^[0-9a-f]{64}$' }
+        expiresAt: { type: string, format: date-time }
+
+    ConsumedMyAgentsSelection:
+      type: object
+      additionalProperties: false
+      required: [relationshipId, outcomeKind]
+      properties:
+        relationshipId: { type: string, format: uuid }
+        outcomeKind: { $ref: "#/components/schemas/MyAgentsSelectionOutcomeKind" }
+
     RelationshipConfigurationStepStateV1:
       type: string
       enum: [NOT_STARTED, IN_PROGRESS, VERIFIED, BLOCKED, UNAVAILABLE]
@@ -6405,7 +6499,7 @@ components:
     ProfessionalMarketplaceListingV1:
       type: object
       additionalProperties: false
-      required: [professionalType, version, displayName, disclosurePath, availableIntents, offerabilityState, eligibility, nextAction]
+      required: [professionalType, version, displayName, disclosurePath, availableIntents, disclosureRevision, termsVersion, capabilitySignals, limitations, customerRights, offerabilityState, eligibility, trial, evidencePosture, nextAction]
       properties:
         professionalType: { type: string, minLength: 1, maxLength: 100 }
         version: { type: string, minLength: 1, maxLength: 32 }
@@ -6421,11 +6515,26 @@ components:
           items:
             type: string
             enum: [TRIAL, HIRE]
+        disclosureRevision: { type: string, minLength: 1, maxLength: 64 }
+        termsVersion: { type: string, minLength: 1, maxLength: 64 }
         suitability:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 500 }
+        capabilitySignals:
+          type: array
+          minItems: 1
+          maxItems: 3
+          items: { type: string, minLength: 1, maxLength: 200 }
+        limitations:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 500 }
+        customerRights:
           type: array
           items: { type: string, minLength: 1, maxLength: 500 }
         eligibility: { $ref: "#/components/schemas/ProfessionalEligibility" }
         indicativePrice: { $ref: "#/components/schemas/IndicativePriceDisclosure" }
+        trial: { $ref: "#/components/schemas/ProfessionalTrialDisclosure" }
+        evidencePosture: { type: string, minLength: 1, maxLength: 500 }
         offerabilityState:
           type: string
           enum: [OFFERABLE, TRIAL_ONLY, NOT_OFFERABLE, UNKNOWN]

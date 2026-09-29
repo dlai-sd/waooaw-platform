@@ -194,7 +194,7 @@ test('WC105-AUTH-02: direct registration remains modal without baseline scrollin
   await expect(page).toHaveURL(/\/register$/);
 });
 
-test('WC092-AUTH-02: policy denial offers fresh sign-in without a retry loop', async ({ context, page }, testInfo) => {
+test('WC107-AUTH-01: policy denial returns Register to bounded Login recovery', async ({ context, page }, testInfo) => {
   await context.addInitScript(() => {
     if (!crypto.randomUUID) {
       Object.defineProperty(crypto, 'randomUUID', { value: () => '11111111-1111-4111-8111-111111111111' });
@@ -214,12 +214,131 @@ test('WC092-AUTH-02: policy denial offers fresh sign-in without a retry loop', a
 
   await page.goto('/register?returnTo=%2Fsettings');
 
-  const dialog = page.getByRole('dialog', { name: 'Create your WAOOAW account' });
-  await expect(dialog).toHaveCount(1);
-  await expect(dialog.getByText('We couldn’t complete your sign-in. Your account was not changed.')).toBeVisible();
-  await expect(dialog.getByRole('button', { name: 'Try again' })).toHaveCount(0);
-  await dialog.getByRole('button', { name: 'Sign in again' }).click();
   await expect(page).toHaveURL(/\/login\?returnTo=%2Fsettings$/);
+  const dialog = page.getByRole('dialog', { name: 'Log in to WAOOAW' });
+  await expect(dialog).toHaveCount(1);
+  await expect(dialog.getByRole('alert')).toHaveAttribute('data-reason-code', 'IDENTITY_ACTION_DENIED');
+  await expect(
+    dialog.getByText("We couldn't continue with the current session. Choose your account and try again.")
+  ).toBeVisible();
+});
+
+test('WC107-AUTH-04: Login without an account reaches Marketplace without starting Registration', async ({
+  context,
+  page,
+}, testInfo) => {
+  const value = await encode({
+    secret: nextAuthSecret,
+    maxAge: 3600,
+    token: {
+      accessToken: `fixture-registration-required-${testInfo.project.name}`,
+      accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+      founder: false,
+      sub: 'fixture-new-customer',
+    },
+  });
+  await context.addCookies([{ name: 'next-auth.session-token', value, httpOnly: true, sameSite: 'Lax', url: baseURL }]);
+
+  await page.goto('/login?returnTo=%2Fsettings');
+
+  await expect(page).toHaveURL(`${baseURL}/marketplace`);
+  await expect(page.getByRole('dialog', { name: 'Create your WAOOAW account' })).toHaveCount(0);
+});
+
+test('WC107-AUTH-05: Register with a completed account continues without restarting Registration', async ({
+  context,
+  page,
+}, testInfo) => {
+  const value = await encode({
+    secret: nextAuthSecret,
+    maxAge: 3600,
+    token: {
+      accessToken: `fixture-ready-account-${testInfo.project.name}`,
+      accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+      founder: false,
+      sub: 'fixture-returning-customer',
+    },
+  });
+  await context.addCookies([{ name: 'next-auth.session-token', value, httpOnly: true, sameSite: 'Lax', url: baseURL }]);
+
+  await page.goto('/register?returnTo=%2Fsettings');
+
+  await expect(page).toHaveURL(`${baseURL}/settings`);
+  await expect(page.getByRole('dialog', { name: 'Create your WAOOAW account' })).toHaveCount(0);
+});
+
+test('WC107-AUTH-02: registration progress is compact, semantic, and overflow-free', async ({
+  context,
+  page,
+}, testInfo) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const value = await encode({
+    secret: nextAuthSecret,
+    maxAge: 3600,
+    token: {
+      accessToken: `fixture-registration-required-${testInfo.project.name}`,
+      accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+      founder: false,
+      sub: 'fixture-registration-customer',
+    },
+  });
+  await context.addCookies([{ name: 'next-auth.session-token', value, httpOnly: true, sameSite: 'Lax', url: baseURL }]);
+
+  await page.goto('/register');
+
+  const dialog = page.getByRole('dialog', { name: 'Create your WAOOAW account' });
+  const progress = dialog.getByRole('status', { name: 'Registration progress: Profile details' });
+  await expect(progress).toBeVisible();
+  const currentLabel = dialog.getByText('Profile details');
+  await expect(currentLabel).toHaveClass('visually-hidden');
+  expect(
+    await currentLabel.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { clipPath: style.clipPath, height: style.height, overflow: style.overflow, width: style.width };
+    })
+  ).toEqual({ clipPath: 'inset(50%)', height: '1px', overflow: 'hidden', width: '1px' });
+  await expect(dialog.getByText('Registration review')).toHaveCount(0);
+  expect(
+    await dialog
+      .getByRole('heading', { name: 'Create your WAOOAW account' })
+      .evaluate((element) => getComputedStyle(element).fontSize)
+  ).toBe('16px');
+  expect(await dialog.locator('.auth-brand p').evaluate((element) => getComputedStyle(element).fontSize)).toBe('12px');
+  await expect(dialog.getByLabel('Your name')).toBeFocused();
+
+  const blocking = (await new AxeBuilder({ page }).include('.auth-dialog').analyze()).violations.filter(
+    (violation) => violation.impact === 'critical' || violation.impact === 'serious'
+  );
+  expect(blocking).toEqual([]);
+
+  for (const viewport of [
+    { width: 320, height: 568 },
+    { width: 360, height: 800 },
+    { width: 390, height: 844 },
+    { width: 768, height: 1024 },
+    { width: 1440, height: 900 },
+  ]) {
+    await page.setViewportSize(viewport);
+    const overflow = await dialog.evaluate(
+      (element) =>
+        element.scrollWidth > element.clientWidth ||
+        document.documentElement.scrollWidth > document.documentElement.clientWidth
+    );
+    expect(overflow, `registration must not overflow at ${viewport.width}x${viewport.height}`).toBe(false);
+    expect(await progress.locator('ol').evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(
+      true
+    );
+  }
+
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.locator('html').evaluate((element) => element.setAttribute('dir', 'rtl'));
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(
+    true
+  );
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '200%';
+  });
+  expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
 });
 
 test('WC083-AUTH-04: modal is accessible, reduced-motion safe, responsive, and RTL-aware', async ({

@@ -95,6 +95,18 @@ public sealed class ProfessionalsControllerTests
         listing.GetProperty("disclosurePath").GetString().Should().Be("/marketplace/digital-marketing");
         listing.GetProperty("availableIntents").EnumerateArray()
             .Select(value => value.GetString()).Should().Equal("TRIAL", "HIRE");
+        listing.GetProperty("disclosureRevision").GetString().Should().Be("1.0.0");
+        listing.GetProperty("termsVersion").GetString().Should().Be("2026-07-18");
+        listing.GetProperty("capabilitySignals").EnumerateArray()
+            .Select(value => value.GetString()).Should().Equal(
+                "Customer Profiling",
+                "Market Research and Maturity Scoring",
+                "Content Strategy"
+            );
+        listing.GetProperty("limitations").EnumerateArray().Should().NotBeEmpty();
+        listing.GetProperty("customerRights").EnumerateArray().Should().NotBeEmpty();
+        listing.GetProperty("trial").GetProperty("DurationDays").GetInt32().Should().Be(14);
+        listing.GetProperty("evidencePosture").GetString().Should().NotBeNullOrWhiteSpace();
         listing.GetProperty("offerabilityState").GetString().Should().Be("OFFERABLE");
         listing.GetProperty("nextAction").GetString().Should().Be("VIEW_DISCLOSURE");
         listing.GetProperty("indicativePrice").GetProperty("Currency").GetString().Should().Be("INR");

@@ -4,6 +4,7 @@
 import { ArrowRight, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { AcquisitionContinuation } from '@/components/acquisition/AcquisitionContinuation';
+import { DisclosureContinuation } from '@/components/acquisition/DisclosureContinuation';
 import { StateView } from '@/components/system/StateView';
 import { getRequestI18n } from '@/lib/i18n-server';
 import { browseMarketplaceProfessionals } from '@/lib/api/professionals';
@@ -94,6 +95,11 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
                   </span>
                 </header>
                 {professional.suitability?.[0] ? <p className="offer-promise">{professional.suitability[0]}</p> : null}
+                <ul className="offer-capabilities" aria-label="Included capabilities">
+                  {professional.capabilitySignals.map((capability) => (
+                    <li key={capability}>{capability}</li>
+                  ))}
+                </ul>
                 <div className="offer-commercial">
                   {professional.indicativePrice ? (
                     <p>
@@ -105,6 +111,7 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
                         }).format(professional.indicativePrice.amountInrPaise / 100)}
                       </strong>
                       <span>/ {professional.indicativePrice.cadence.toLowerCase()}</span>
+                      <small>{professional.indicativePrice.qualification}</small>
                     </p>
                   ) : (
                     <p>Price available during review</p>
@@ -115,26 +122,33 @@ export default async function MarketplacePage({ searchParams }: MarketplacePageP
                     </p>
                   ) : null}
                 </div>
-                <footer className="offer-actions">
-                  <div className="command-row">
-                    {professional.availableIntents.has('TRIAL') ? (
-                      <Link
-                        className="secondary-link"
-                        href={`${professional.disclosurePath}?${new URLSearchParams({ professionalType: professional.professionalType, version: professional.version, intent: 'trial' })}`}
-                      >
-                        Start trial <ArrowRight aria-hidden="true" size={18} />
-                      </Link>
-                    ) : null}
-                    {professional.availableIntents.has('HIRE') ? (
-                      <Link
-                        className="primary-link"
-                        href={`${professional.disclosurePath}?${new URLSearchParams({ professionalType: professional.professionalType, version: professional.version, intent: 'hire' })}`}
-                      >
-                        Hire <ArrowRight aria-hidden="true" size={18} />
-                      </Link>
-                    ) : null}
-                  </div>
-                </footer>
+                <details className="offer-details">
+                  <summary>Scope, safeguards and your control</summary>
+                  <h3>Honest limits</h3>
+                  <ul>
+                    {professional.limitations.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                  <h3>Your control</h3>
+                  <ul>
+                    {professional.customerRights.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                  <Link href={professional.disclosurePath}>Open expanded disclosure</Link>
+                </details>
+                {professional.indicativePrice ? (
+                  <DisclosureContinuation
+                    disclosureRevision={professional.disclosureRevision}
+                    priceInrPaise={professional.indicativePrice.amountInrPaise}
+                    professionalType={professional.professionalType}
+                    professionalVersion={professional.version}
+                    termsVersion={professional.termsVersion}
+                    trialAvailable={professional.availableIntents.has('TRIAL')}
+                    trialDurationDays={professional.trial.durationDays}
+                  />
+                ) : null}
                 <p className="offer-footnote">
                   Review what is included before you decide. Nothing starts until you confirm.
                 </p>

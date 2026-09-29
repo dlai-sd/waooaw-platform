@@ -5,6 +5,7 @@ import { getToken } from 'next-auth/jwt';
 import { type NextRequest, NextResponse } from 'next/server';
 import { activeAccessToken } from '@/lib/auth';
 import { recordWebIdentitySecurityEvent } from '@/lib/identity-security-events';
+import { withJourneyTrace } from '@/lib/journey-telemetry';
 
 const sessionCookie = /^(?:(?:__Secure-|__Host-)?next-auth\.|waooaw[.-])/i;
 const logoutContinuationCookie = 'waooaw.logout-continuation';
@@ -79,7 +80,7 @@ function clearSessionCookies(response: NextResponse, request: NextRequest) {
   return response;
 }
 
-export async function POST(request: NextRequest) {
+async function logoutPost(request: NextRequest) {
   const applicationOrigin = new URL(process.env.NEXTAUTH_URL ?? request.nextUrl.origin).origin;
   if (!isSameOriginSubmission(request, applicationOrigin)) {
     return NextResponse.json(
@@ -133,7 +134,7 @@ export async function POST(request: NextRequest) {
   return clearSessionCookies(NextResponse.redirect(logout, 303), request);
 }
 
-export async function GET(request: NextRequest) {
+async function logoutGet(request: NextRequest) {
   const nonce = request.nextUrl.searchParams.get('nonce');
   if (!nonce || request.cookies.get(logoutContinuationCookie)?.value !== nonce) {
     return NextResponse.json(
@@ -162,3 +163,6 @@ export async function GET(request: NextRequest) {
   });
   return response;
 }
+
+export const POST = (request: NextRequest) => withJourneyTrace('identity.logout', () => logoutPost(request));
+export const GET = (request: NextRequest) => withJourneyTrace('identity.logout', () => logoutGet(request));

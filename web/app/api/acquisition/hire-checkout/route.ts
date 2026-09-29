@@ -2,7 +2,9 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { ProfessionalsApi } from '@/lib/api/generated/apis/ProfessionalsApi';
 import { Configuration, ResponseError } from '@/lib/api/generated/runtime';
 import { getIdentitySession } from '@/lib/api/identity';
+import { createMyAgentsSelection, myAgentsSelectionCookie } from '@/lib/api/my-agents-selection';
 import { getProfessionalDisclosure } from '@/lib/api/professionals';
+import { withJourneyTrace } from '@/lib/journey-telemetry';
 import { accessTokenFromRequest } from '@/lib/server-auth';
 
 const billingEngineUrl = process.env.BILLING_ENGINE_URL ?? 'http://localhost:8140';
@@ -39,7 +41,7 @@ interface BillingCheckoutOutcome {
   customer_safe_next_action?: string;
 }
 
-export async function POST(request: NextRequest) {
+async function hireCheckout(request: NextRequest) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) return NextResponse.json({ title: 'Secure sign in is required.' }, { status: 401 });
   const identity = await getIdentitySession(accessToken);
@@ -125,20 +127,18 @@ export async function POST(request: NextRequest) {
       ) {
         return NextResponse.json({ title: 'Razorpay payment confirmation is invalid.' }, { status: 400 });
       }
-      const billingResponse = await fetch(
-        `${billingEngineUrl}/payments/hire-checkout/${encodeURIComponent(body.idempotencyKey)}/confirm`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            customer_id: identity.session.accountReference,
-            razorpay_order_id: body.razorpayOrderId,
-            razorpay_payment_id: body.razorpayPaymentId,
-            razorpay_signature: body.razorpaySignature,
-          }),
-          cache: 'no-store',
-        }
-      );
+      const billingResponse = await fetch(`${billingEngineUrl}/payments/hire-checkout/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          checkout_intent_id: body.idempotencyKey,
+          customer_id: identity.session.accountReference,
+          razorpay_order_id: body.razorpayOrderId,
+          razorpay_payment_id: body.razorpayPaymentId,
+          razorpay_signature: body.razorpaySignature,
+        }),
+        cache: 'no-store',
+      });
       const result = await billingResponse.json().catch(() => ({ title: 'Payment confirmation is unavailable.' }));
       if (!billingResponse.ok) {
         return NextResponse.json(result, { status: billingResponse.status, headers: { 'Cache-Control': 'no-store' } });
@@ -168,28 +168,39 @@ export async function POST(request: NextRequest) {
       },
       { cache: 'no-store' }
     );
-    const bindResponse = await fetch(
-      `${billingEngineUrl}/payments/hire-checkout/${encodeURIComponent(body.idempotencyKey)}/bind`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customer_id: identity.session.accountReference,
-          relationship_id: continuation.relationshipId,
-        }),
-        cache: 'no-store',
-      }
-    );
+    const bindResponse = await fetch(`${billingEngineUrl}/payments/hire-checkout/bind`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        checkout_intent_id: body.idempotencyKey,
+        customer_id: identity.session.accountReference,
+        relationship_id: continuation.relationshipId,
+      }),
+      cache: 'no-store',
+    });
     if (!bindResponse.ok) {
       return NextResponse.json(
         { title: 'Payment was received, but Hire setup is still being reconciled. Retry the same request.' },
         { status: 503, headers: { 'Cache-Control': 'no-store' } }
       );
     }
-    return NextResponse.json(
-      { ...outcome, resumePath: continuation.resumePath },
+    const selection = await createMyAgentsSelection(
+      accessToken,
+      continuation.relationshipId,
+      outcome.outcome_kind === 'CAPTURED' ? 'HIRE_PAID' : 'HIRE_ZERO_PRICE'
+    );
+    const response = NextResponse.json(
+      { ...outcome, resumePath: '/professionals/mine' },
       { headers: { 'Cache-Control': 'no-store' } }
     );
+    response.cookies.set(myAgentsSelectionCookie, selection.handle, {
+      expires: new Date(selection.expiresAt),
+      httpOnly: true,
+      path: '/professionals/mine',
+      sameSite: 'strict',
+      secure: true,
+    });
+    return response;
   } catch (error) {
     if (error instanceof ResponseError) {
       const payload = await error.response.json().catch(() => ({ title: 'Hire could not continue.' }));
@@ -201,3 +212,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = (request: NextRequest) => withJourneyTrace('hire.checkout', () => hireCheckout(request));

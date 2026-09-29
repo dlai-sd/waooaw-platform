@@ -293,19 +293,31 @@ describe('WC085 registration handoff', () => {
     expect(identityProblem).not.toHaveBeenCalled();
   });
 
-  it('preserves approved registration recovery fields and excludes upstream details', async () => {
+  it.each([
+    [400, 'IDENTITY_REQUEST_INVALID'],
+    [401, 'IDENTITY_SESSION_REQUIRED'],
+    [403, 'IDENTITY_ACTION_DENIED'],
+    [403, 'IDENTITY_STEP_UP_REQUIRED'],
+    [404, 'IDENTITY_RESOURCE_NOT_ACCESSIBLE'],
+    [409, 'IDENTITY_DUPLICATE_RESOLUTION_REQUIRED'],
+    [409, 'IDENTITY_IDEMPOTENCY_CONFLICT'],
+    [410, 'IDENTITY_CHALLENGE_EXPIRED'],
+    [422, 'IDENTITY_VERIFICATION_REQUIRED'],
+    [429, 'IDENTITY_ACTION_DENIED'],
+    [503, 'IDENTITY_DEPENDENCY_UNAVAILABLE'],
+  ])('preserves approved HTTP %s registration code %s and excludes upstream details', async (status, code) => {
     const { ResponseError } = await import('@/lib/api/generated/runtime');
     const correlationId = '11111111-1111-4111-8111-111111111111';
     updateIdentityRegistrationProfile.mockRejectedValue(
       new ResponseError(
         new Response(
           JSON.stringify({
-            code: 'IDENTITY_RESOURCE_NOT_ACCESSIBLE',
+            code,
             correlationId,
             detail: 'private-token other-account',
             accountReference,
           }),
-          { status: 404 }
+          { status }
         )
       )
     );
@@ -325,9 +337,9 @@ describe('WC085 registration handoff', () => {
       })
     );
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(status);
     expect(await response.json()).toEqual({
-      code: 'IDENTITY_RESOURCE_NOT_ACCESSIBLE',
+      code,
       title: 'Identity request could not be completed.',
       correlationId,
     });

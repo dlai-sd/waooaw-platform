@@ -5,6 +5,8 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { ProfessionalsApi } from '@/lib/api/generated/apis/ProfessionalsApi';
 import { Configuration, ResponseError } from '@/lib/api/generated/runtime';
 import { getIdentitySession } from '@/lib/api/identity';
+import { createMyAgentsSelection, myAgentsSelectionCookie } from '@/lib/api/my-agents-selection';
+import { withJourneyTrace } from '@/lib/journey-telemetry';
 import { accessTokenFromRequest } from '@/lib/server-auth';
 
 type AcquisitionCommand = {
@@ -19,7 +21,7 @@ type AcquisitionCommand = {
 const versionPattern = /^\d+\.\d+\.\d+$/;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export async function POST(request: NextRequest) {
+async function continueTrial(request: NextRequest) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) return NextResponse.json({ title: 'Secure sign in is required.' }, { status: 401 });
 
@@ -47,7 +49,7 @@ export async function POST(request: NextRequest) {
     !/^[A-Z][A-Z0-9_]{0,63}$/.test(body.professionalType) ||
     !body.professionalVersion ||
     !versionPattern.test(body.professionalVersion) ||
-    (body.intent !== 'trial' && body.intent !== 'hire') ||
+    body.intent !== 'trial' ||
     !body.disclosureRevision ||
     !versionPattern.test(body.disclosureRevision) ||
     !body.termsVersion ||
@@ -80,7 +82,19 @@ export async function POST(request: NextRequest) {
       },
       { cache: 'no-store' }
     );
-    return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } });
+    const selection = await createMyAgentsSelection(accessToken, result.relationshipId, 'TRIAL_STARTED');
+    const response = NextResponse.json(
+      { ...result, resumePath: '/professionals/mine' },
+      { headers: { 'Cache-Control': 'no-store' } }
+    );
+    response.cookies.set(myAgentsSelectionCookie, selection.handle, {
+      expires: new Date(selection.expiresAt),
+      httpOnly: true,
+      path: '/professionals/mine',
+      sameSite: 'strict',
+      secure: true,
+    });
+    return response;
   } catch (error) {
     if (error instanceof ResponseError) {
       const payload = await error.response.json().catch(() => ({ title: 'Acquisition could not continue.' }));
@@ -92,3 +106,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = (request: NextRequest) => withJourneyTrace('trial.continue', () => continueTrial(request));

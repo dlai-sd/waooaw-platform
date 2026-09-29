@@ -122,6 +122,7 @@ Full CCT specs: `tests/constitutional/README.md`
 
 | Need | Document |
 |---|---|
+| Fundamental Login/Registration/Logout and Trial/Hire journeys | `architecture/reference/components/fundamental-customer-journeys.md` |
 | SLOs (latency, availability, cost) | `architecture/reference/slo.md` |
 | Graceful degradation / on-call runbook | `architecture/reference/graceful-degradation.md` |
 | PII masking pipeline | `architecture/reference/pii-masking-pipeline.md` |

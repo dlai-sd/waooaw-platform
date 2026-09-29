@@ -4,6 +4,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { createIdentityApi } from '@/lib/api/identity';
 import { ResponseError } from '@/lib/api/generated/runtime';
+import { withJourneyTrace } from '@/lib/journey-telemetry';
 import { accessTokenFromRequest } from '@/lib/server-auth';
 
 type CommandBody = Record<string, unknown> & { action?: unknown };
@@ -51,7 +52,7 @@ function requiredString(body: CommandBody, name: string): string {
   return value;
 }
 
-export async function POST(request: NextRequest) {
+async function registrationPost(request: NextRequest) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) {
     return NextResponse.json(
@@ -247,3 +248,6 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = (request: NextRequest) =>
+  withJourneyTrace('identity.registration', () => registrationPost(request));

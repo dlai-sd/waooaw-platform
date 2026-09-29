@@ -2,19 +2,26 @@
 
 ## Properties
 
-| Name                | Type                                                      |
-| ------------------- | --------------------------------------------------------- |
-| `professionalType`  | string                                                    |
-| `version`           | string                                                    |
-| `displayName`       | string                                                    |
-| `disclosurePath`    | string                                                    |
-| `availableIntents`  | Set&lt;string&gt;                                         |
-| `suitability`       | Array&lt;string&gt;                                       |
-| `eligibility`       | [ProfessionalEligibility](ProfessionalEligibility.md)     |
-| `indicativePrice`   | [IndicativePriceDisclosure](IndicativePriceDisclosure.md) |
-| `offerabilityState` | string                                                    |
-| `trialTerms`        | string                                                    |
-| `nextAction`        | string                                                    |
+| Name                 | Type                                                          |
+| -------------------- | ------------------------------------------------------------- |
+| `professionalType`   | string                                                        |
+| `version`            | string                                                        |
+| `displayName`        | string                                                        |
+| `disclosurePath`     | string                                                        |
+| `availableIntents`   | Set&lt;string&gt;                                             |
+| `disclosureRevision` | string                                                        |
+| `termsVersion`       | string                                                        |
+| `suitability`        | Array&lt;string&gt;                                           |
+| `capabilitySignals`  | Array&lt;string&gt;                                           |
+| `limitations`        | Array&lt;string&gt;                                           |
+| `customerRights`     | Array&lt;string&gt;                                           |
+| `eligibility`        | [ProfessionalEligibility](ProfessionalEligibility.md)         |
+| `indicativePrice`    | [IndicativePriceDisclosure](IndicativePriceDisclosure.md)     |
+| `trial`              | [ProfessionalTrialDisclosure](ProfessionalTrialDisclosure.md) |
+| `evidencePosture`    | string                                                        |
+| `offerabilityState`  | string                                                        |
+| `trialTerms`         | string                                                        |
+| `nextAction`         | string                                                        |
 
 ## Example
 
@@ -28,9 +35,16 @@ const example = {
   displayName: null,
   disclosurePath: null,
   availableIntents: null,
+  disclosureRevision: null,
+  termsVersion: null,
   suitability: null,
+  capabilitySignals: null,
+  limitations: null,
+  customerRights: null,
   eligibility: null,
   indicativePrice: null,
+  trial: null,
+  evidencePosture: null,
   offerabilityState: null,
   trialTerms: null,
   nextAction: null,

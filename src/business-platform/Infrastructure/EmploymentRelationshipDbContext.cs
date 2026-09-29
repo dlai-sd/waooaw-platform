@@ -447,6 +447,19 @@ public sealed class RelationshipTrialBinding
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class MyAgentsSelectionFlash
+{
+    public Guid SelectionId { get; init; } = Guid.NewGuid();
+    public string HandleHash { get; init; } = string.Empty;
+    public Guid TenantId { get; init; }
+    public Guid ActorParticipantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public string OutcomeKind { get; init; } = string.Empty;
+    public DateTimeOffset CreatedAt { get; init; }
+    public DateTimeOffset ExpiresAt { get; init; }
+    public DateTimeOffset? ConsumedAt { get; set; }
+}
+
 public sealed class WhatsAppJourneyContact
 {
     public Guid ContactId { get; init; } = Guid.NewGuid();
@@ -606,6 +619,7 @@ public sealed class EmploymentRelationshipDbContext : DbContext
         Set<OfferabilityDecisionRecord>();
     public DbSet<RelationshipTrialBinding> RelationshipTrialBindings =>
         Set<RelationshipTrialBinding>();
+    public DbSet<MyAgentsSelectionFlash> MyAgentsSelectionFlash => Set<MyAgentsSelectionFlash>();
     public DbSet<WhatsAppJourneyContact> WhatsAppJourneyContacts => Set<WhatsAppJourneyContact>();
     public DbSet<WhatsAppMessageReceipt> WhatsAppMessageReceipts => Set<WhatsAppMessageReceipt>();
     public DbSet<ChannelBinding> ChannelBindings => Set<ChannelBinding>();
@@ -1738,6 +1752,38 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.UnresolvedOwner).HasColumnName("unresolved_owner");
             entity.Property(value => value.CreatedAt).HasColumnName("created_at");
             entity.Property(value => value.UpdatedAt).HasColumnName("updated_at");
+            entity
+                .HasOne<EmploymentRelationship>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+        });
+
+        modelBuilder.Entity<MyAgentsSelectionFlash>(entity =>
+        {
+            entity.ToTable("my_agents_selection_flash", "business");
+            entity.HasKey(value => value.SelectionId);
+            entity.HasIndex(value => value.HandleHash).IsUnique();
+            entity.Property(value => value.SelectionId).HasColumnName("selection_id");
+            entity
+                .Property(value => value.HandleHash)
+                .HasColumnName("handle_hash")
+                .HasMaxLength(64);
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity
+                .Property(value => value.ActorParticipantId)
+                .HasColumnName("actor_participant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity
+                .Property(value => value.OutcomeKind)
+                .HasColumnName("outcome_kind")
+                .HasMaxLength(20);
+            entity.Property(value => value.CreatedAt).HasColumnName("created_at");
+            entity.Property(value => value.ExpiresAt).HasColumnName("expires_at");
+            entity
+                .Property(value => value.ConsumedAt)
+                .HasColumnName("consumed_at")
+                .IsConcurrencyToken();
             entity
                 .HasOne<EmploymentRelationship>()
                 .WithMany()

@@ -1,4 +1,5 @@
 // Implements: architecture/reference/ux/hybrid-ui-acceptance-contract.md §UX-AUTH-01, §UX-AUTH-03, §UX-AUTH-06, §UX-PRIV-01
+// Implements: work-contracts/WC-107-requirements.yaml WC107-R002, WC107-R008
 // Constitutional basis: C-059 (Implementation Traceability), C-063 (Data Minimisation)
 
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -56,6 +57,7 @@ describe('F2 registration flow', () => {
     render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} />);
 
     expect(await screen.findByLabelText('Your name')).toHaveValue('Asha');
+    expect(screen.getByLabelText('Your name')).toHaveFocus();
     fireEvent.change(screen.getByLabelText('Business name'), { target: { value: 'Field Works' } });
     expect(sessionStorage.getItem('waooaw:identity:registration-draft')).toContain('Field Works');
     expect(sessionStorage.getItem('waooaw:identity:registration-draft')).not.toMatch(/email|mobile|code/i);
@@ -115,18 +117,35 @@ describe('F2 registration flow', () => {
     expect(second.idempotencyKey).toBe(first.idempotencyKey);
   });
 
-  it('requires a fresh sign-in after a policy denial without offering a retry loop', async () => {
-    global.fetch = jest.fn(() => jsonResponse({ code: 'IDENTITY_ACTION_DENIED' }, 403));
-    render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} returnTo="/settings" />);
+  it.each([
+    [400, 'IDENTITY_REQUEST_INVALID'],
+    [409, 'IDENTITY_DUPLICATE_RESOLUTION_REQUIRED'],
+    [409, 'IDENTITY_IDEMPOTENCY_CONFLICT'],
+    [422, 'IDENTITY_VERIFICATION_REQUIRED'],
+    [503, 'IDENTITY_DEPENDENCY_UNAVAILABLE'],
+  ])('offers bounded retry recovery for HTTP %s code %s', async (status, code) => {
+    global.fetch = jest.fn(() => jsonResponse({ code }, status));
+    render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} />);
 
-    expect(await screen.findByText(getIdentityMessages('en').signInRejected)).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Create your WAOOAW account' })).toBeVisible();
-    expect(screen.queryByRole('button', { name: getIdentityMessages('en').retry })).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: getIdentityMessages('en').restartSignIn }));
-    expect(replace).toHaveBeenCalledWith('/login?returnTo=%2Fsettings');
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText(getIdentityMessages('en').unavailable)).toBeVisible();
+    expect(screen.getByRole('button', { name: getIdentityMessages('en').retry })).toBeVisible();
   });
+
+  it.each([403, 429])(
+    'requires a fresh sign-in after an HTTP %s policy denial without offering a retry loop',
+    async (status) => {
+      global.fetch = jest.fn(() => jsonResponse({ code: 'IDENTITY_ACTION_DENIED' }, status));
+      render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} returnTo="/settings" />);
+
+      expect(await screen.findByText(getIdentityMessages('en').signInRejected)).toBeVisible();
+      expect(screen.getByRole('heading', { name: 'Create your WAOOAW account' })).toBeVisible();
+      expect(screen.queryByRole('button', { name: getIdentityMessages('en').retry })).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: getIdentityMessages('en').restartSignIn }));
+      expect(replace).toHaveBeenCalledWith('/login?returnTo=%2Fsettings');
+      expect(fetch).toHaveBeenCalledTimes(1);
+    }
+  );
 
   it.each(['trial', 'hire'] as const)(
     'reauthenticates directly when %s registration requires a fresh session',

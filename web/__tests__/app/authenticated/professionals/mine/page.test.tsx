@@ -4,6 +4,8 @@ import { getServerAccessToken } from '@/lib/server-auth';
 import { getIdentitySession } from '@/lib/api/identity';
 import { listEmploymentRelationships } from '@/lib/api/relationships';
 
+const originalFetch = global.fetch;
+
 jest.mock('@/lib/server-auth', () => ({ getServerAccessToken: jest.fn() }));
 jest.mock('@/lib/api/identity', () => ({ getIdentitySession: jest.fn() }));
 jest.mock('@/lib/api/relationships', () => ({ listEmploymentRelationships: jest.fn() }));
@@ -24,8 +26,13 @@ const mockListEmploymentRelationships = jest.mocked(listEmploymentRelationships)
 describe('MyProfessionalsPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 204 });
     mockGetServerAccessToken.mockResolvedValue('server-token');
     mockGetIdentitySession.mockResolvedValue({ kind: 'ready', session: {} as never });
+  });
+
+  afterAll(() => {
+    global.fetch = originalFetch;
   });
 
   it('renders each authoritative relationship as a separate expert workspace', async () => {

@@ -222,6 +222,14 @@ public sealed record EmploymentRelationshipCollectionResponse(
     IReadOnlyList<EmploymentRelationshipSummaryResponse> Items
 );
 
+public sealed record CreateMyAgentsSelectionRequest(string OutcomeKind);
+
+public sealed record ConsumeMyAgentsSelectionRequest(string Handle);
+
+public sealed record MyAgentsSelectionResponse(string Handle, DateTimeOffset ExpiresAt);
+
+public sealed record ConsumedMyAgentsSelectionResponse(Guid RelationshipId, string OutcomeKind);
+
 public sealed record RelationshipTimelineEntryResponse(
     int StateVersion,
     string? FromState,
@@ -260,7 +268,8 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         ChannelContinuityService? continuity = null,
         RelationshipEmergencyStopService? emergencyStops = null,
         RelationshipConfigurationService? configuration = null,
-        IProfessionalCatalog? professionalCatalog = null
+        IProfessionalCatalog? professionalCatalog = null,
+        MyAgentsSelectionService? selections = null
     )
     {
         _service = service;
@@ -273,7 +282,10 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         _emergencyStops = emergencyStops;
         _configuration = configuration;
         _professionalCatalog = professionalCatalog;
+        _selections = selections;
     }
+
+    private readonly MyAgentsSelectionService? _selections;
 
     [HttpGet]
     [CustomerIdentityRoute(requiresMembership: true)]
@@ -339,6 +351,61 @@ public sealed class EmploymentRelationshipsController : ControllerBase
                 detail: exception.Message
             );
         }
+    }
+
+    [HttpPost("{relationshipId:guid}/selection-flash")]
+    [CustomerIdentityRoute(requiresMembership: true)]
+    public async Task<IActionResult> CreateSelectionFlashAsync(
+        Guid relationshipId,
+        [FromBody] CreateMyAgentsSelectionRequest request,
+        CancellationToken cancellationToken
+    )
+    {
+        if (!TryGetTenantId(out var tenantId) || !TryGetParticipantId(out var participantId))
+            return Unauthorized();
+        if (_selections is null)
+            return Problem(statusCode: 503, title: "Selection handoff unavailable");
+        try
+        {
+            var result = await _selections.CreateAsync(
+                tenantId,
+                participantId,
+                relationshipId,
+                request.OutcomeKind,
+                cancellationToken
+            );
+            return Ok(new MyAgentsSelectionResponse(result.Handle, result.ExpiresAt));
+        }
+        catch (ArgumentException exception)
+        {
+            return ValidationProblem(exception.Message);
+        }
+        catch (InvalidOperationException)
+        {
+            return Conflict(new { code = "RELATIONSHIP_OUTCOME_NOT_AUTHORITATIVE" });
+        }
+    }
+
+    [HttpPost("selection-flash/consume")]
+    [CustomerIdentityRoute(requiresMembership: true)]
+    public async Task<IActionResult> ConsumeSelectionFlashAsync(
+        [FromBody] ConsumeMyAgentsSelectionRequest request,
+        CancellationToken cancellationToken
+    )
+    {
+        if (!TryGetTenantId(out var tenantId) || !TryGetParticipantId(out var participantId))
+            return Unauthorized();
+        if (_selections is null)
+            return NoContent();
+        var result = await _selections.ConsumeAsync(
+            tenantId,
+            participantId,
+            request.Handle,
+            cancellationToken
+        );
+        return result is null
+            ? NoContent()
+            : Ok(new ConsumedMyAgentsSelectionResponse(result.RelationshipId, result.OutcomeKind));
     }
 
     [HttpPost]

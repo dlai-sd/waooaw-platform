@@ -1,11 +1,11 @@
 'use client';
 
-// Implements: work-contracts/WC-097-marketplace-acquisition-experience.md A06
+// Implements: work-contracts/WC-107-fundamental-customer-journey-integrity.md R009, R010, R012, R017
 // Constitutional basis: C-023 (Evidence First), C-049 (Honest Limitation), C-059 (Implementation Traceability)
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { AcquisitionContinuation, type AcquisitionContinuationProps } from './AcquisitionContinuation';
 
 type AcquisitionIntent = 'trial' | 'hire';
 
@@ -15,35 +15,48 @@ export function DisclosureContinuation({
   professionalType,
   professionalVersion,
   termsVersion,
+  priceInrPaise,
   trialAvailable,
+  trialDurationDays,
 }: {
   disclosureRevision: string;
   initialIntent?: AcquisitionIntent;
   professionalType: string;
   professionalVersion: string;
   termsVersion: string;
+  priceInrPaise?: number;
   trialAvailable: boolean;
+  trialDurationDays?: number;
 }) {
-  const router = useRouter();
   const [accepted, setAccepted] = useState(false);
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [payableInrPaise, setPayableInrPaise] = useState(priceInrPaise ?? 0);
   const [couponStatus, setCouponStatus] = useState<string | null>(null);
   const [checkingCoupon, setCheckingCoupon] = useState(false);
+  const [continuation, setContinuation] = useState<AcquisitionContinuationProps | null>(null);
   const intents: AcquisitionIntent[] = initialIntent ? [initialIntent] : trialAvailable ? ['trial', 'hire'] : ['hire'];
+
+  useEffect(() => {
+    setAccepted(false);
+    setAppliedCoupon(null);
+    setCouponCode('');
+    setCouponStatus(null);
+    setPayableInrPaise(priceInrPaise ?? 0);
+    setContinuation(null);
+  }, [disclosureRevision, priceInrPaise, professionalType, professionalVersion, termsVersion]);
 
   function continueWith(intent: AcquisitionIntent) {
     if (!accepted) return;
-    const continuation = new URLSearchParams({
+    setContinuation({
       professionalType,
-      version: professionalVersion,
+      professionalVersion,
       intent,
       disclosureRevision,
       termsVersion,
       idempotencyKey: crypto.randomUUID(),
+      ...(intent === 'hire' && appliedCoupon ? { couponCode: appliedCoupon } : {}),
     });
-    if (intent === 'hire' && appliedCoupon) continuation.set('couponCode', appliedCoupon);
-    router.push(`/marketplace?${continuation}`);
   }
 
   async function applyCoupon() {
@@ -65,6 +78,7 @@ export function DisclosureContinuation({
       };
       if (!response.ok || result.coupon_code !== normalized || typeof result.payable_inr_paise !== 'number') {
         setAppliedCoupon(null);
+        setPayableInrPaise(priceInrPaise ?? 0);
         setCouponStatus(
           result.detail?.code === 'COUPON_EXPIRED'
             ? 'That coupon has expired.'
@@ -75,6 +89,7 @@ export function DisclosureContinuation({
         return;
       }
       setAppliedCoupon(normalized);
+      setPayableInrPaise(result.payable_inr_paise);
       setCouponStatus(
         `Coupon applied. Amount due now: ${new Intl.NumberFormat('en-IN', {
           style: 'currency',
@@ -83,11 +98,19 @@ export function DisclosureContinuation({
       );
     } catch {
       setAppliedCoupon(null);
+      setPayableInrPaise(priceInrPaise ?? 0);
       setCouponStatus('Coupon validation is unavailable. You can continue without a coupon or try again.');
     } finally {
       setCheckingCoupon(false);
     }
   }
+
+  if (continuation) return <AcquisitionContinuation {...continuation} />;
+
+  const hireAmount = new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+  }).format(payableInrPaise / 100);
 
   return (
     <section className="disclosure-continuation" aria-labelledby="disclosure-decision-title">
@@ -113,6 +136,7 @@ export function DisclosureContinuation({
               onChange={(event) => {
                 setCouponCode(event.target.value.toUpperCase());
                 setAppliedCoupon(null);
+                setPayableInrPaise(priceInrPaise ?? 0);
                 setCouponStatus(null);
               }}
               value={couponCode}
@@ -127,7 +151,7 @@ export function DisclosureContinuation({
       <div className="command-row">
         {intents.includes('trial') ? (
           <button className="primary-command" disabled={!accepted} onClick={() => continueWith('trial')} type="button">
-            Continue to trial
+            {trialDurationDays ? `Start ${trialDurationDays}-day trial` : 'Start trial'}
           </button>
         ) : null}
         {intents.includes('hire') ? (
@@ -137,7 +161,7 @@ export function DisclosureContinuation({
             onClick={() => continueWith('hire')}
             type="button"
           >
-            Continue to hire
+            {priceInrPaise !== undefined ? `Hire for ${hireAmount}` : 'Hire'}
           </button>
         ) : null}
         <Link className="text-command" href="/marketplace">

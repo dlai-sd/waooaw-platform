@@ -7,6 +7,7 @@ import json
 import os
 import re
 from pathlib import Path
+from threading import get_ident
 from typing import Any
 
 
@@ -56,7 +57,7 @@ def orchestration_preflight(
     if not docker_socket.is_socket() or not os.access(docker_socket, os.R_OK | os.W_OK):
         raise ValueError(f"execution preflight: Docker socket is unavailable: {docker_socket}")
 
-    probe = repository / "test-results/wc106/.orchestration-probe"
+    probe = repository / f"test-results/wc106/.orchestration-probe-{os.getpid()}-{get_ident()}"
     temporary = probe.with_suffix(f".tmp-{os.getpid()}")
     try:
         probe.parent.mkdir(parents=True, exist_ok=True)
