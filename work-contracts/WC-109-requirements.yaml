@@ -2,7 +2,7 @@ schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-109
 contract_path: work-contracts/WC-109-agentic-validation-implementation.md
 contract_digest: 825f64553f452e4df006dcf0952f7cacb76314c3a5b3741e0baca36d73d1eb94
-contract_status: AUTHORIZED_SOLUTION_ARCHITECTURE_COMPLETE_IMPLEMENTATION_NOT_STARTED
+contract_status: AUTHORIZED_IMPLEMENTATION_IN_PROGRESS
 implementation_scope: true
 result: PLANNED
 completion_rule: >-
@@ -113,6 +113,12 @@ requirements:
     component_owner: Stack Execution Adapter
     test_path_or_plan: Run representative Python, .NET and TypeScript focused commands against mounted source in disposable containers.
     completion_rule: Each stack executes its catalogued command with isolated state and host-visible evidence.
+    evidence_refs:
+      - validation/evidence/wc109-stage2.json
+      - scripts/validation_control/catalog_execution.py
+      - tests/validation_control/test_catalog_contract.py
+      - tests/validation_control/test_runner_contracts.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R009
@@ -121,6 +127,11 @@ requirements:
     component_owner: Stack Execution Adapter
     test_path_or_plan: Instrument build events across representative source-only edits for each supported stack.
     completion_rule: Build-event count is zero for both runner and product image during every ordinary Tier 2 sample.
+    evidence_refs:
+      - validation/evidence/wc109-stage2.json
+      - scripts/validation_control/local_catalog_gate.py
+      - tests/validation_control/test_local_catalog_gate.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R010
@@ -153,6 +164,10 @@ requirements:
     component_owner: Catalog And Impact Selector
     test_path_or_plan: Compare command, fixture and threshold identities emitted for both modes across representative gates.
     completion_rule: Mode changes execution boundary only and cannot redefine test semantics or thresholds.
+    evidence_refs:
+      - scripts/validation_control/orchestrator.py
+      - tests/validation_control/test_catalog_contract.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R014
@@ -161,6 +176,13 @@ requirements:
     component_owner: Stack Execution Adapter
     test_path_or_plan: Run concurrent UID, HOME, network, volume, port, output, CPU, memory and disk isolation fixtures.
     completion_rule: Runs cannot collide, escape declared resources or write through another run's authority boundary.
+    evidence_refs:
+      - validation/evidence/wc109-stage2.json
+      - docker-compose.yml
+      - scripts/validation_control/catalog_execution.py
+      - tests/validation_control/test_catalog_contract.py
+      - tests/validation_control/test_runner_contracts.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R015
@@ -169,6 +191,13 @@ requirements:
     component_owner: Stack Execution Adapter
     test_path_or_plan: Inspect and execute ordinary and Testcontainers runner socket fixtures.
     completion_rule: Ordinary runners have no socket while every exception has catalogued trust and resource classification.
+    evidence_refs:
+      - docker-compose.yml
+      - validation/catalog.schema.json
+      - validation/engineering-validation.yaml
+      - tests/validation_control/test_catalog_contract.py
+      - tests/validation_control/test_runner_contracts.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R016
@@ -177,6 +206,10 @@ requirements:
     component_owner: Cache Controller
     test_path_or_plan: Run namespace, concurrent-write, corruption, eviction, clean-cache and false-PASS fixtures.
     completion_rule: Cache defects cannot authorize PASS, cross identities or prevent clean execution.
+    evidence_refs:
+      - scripts/validation_control/cache_controller.py
+      - tests/validation_control/test_wc109_cache_controller.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R017
