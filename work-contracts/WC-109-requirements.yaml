@@ -39,6 +39,14 @@ requirements:
     component_owner: Identity Manifest Resolver
     test_path_or_plan: Run Docker golden vectors and negative secret fixtures for all four manifest schemas.
     completion_rule: Four schema-versioned deterministic manifests exist and secret fixtures are rejected or redacted.
+    evidence_refs:
+      - scripts/validation_control/identity.py
+      - validation/runner-identity.schema.json
+      - validation/test-execution-identity.schema.json
+      - validation/candidate-identity.schema.json
+      - validation/evidence-identity.schema.json
+      - tests/validation_control/test_wc109_identity_preflight.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R003
@@ -47,6 +55,11 @@ requirements:
     component_owner: Identity Manifest Resolver
     test_path_or_plan: Execute runner invalidation matrix for Dockerfile, base, install, lock, policy, architecture, platform and source-only changes.
     completion_rule: Every runner input changes identity and an ordinary source-only edit does not.
+    evidence_refs:
+      - scripts/validation_control/identity.py
+      - tests/validation_control/test_identity.py
+      - tests/validation_control/test_wc109_identity_preflight.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R004
@@ -55,6 +68,10 @@ requirements:
     component_owner: Identity Manifest Resolver
     test_path_or_plan: Execute independent mutation vectors for every declared test-execution input.
     completion_rule: Every governing execution input changes identity and unrelated candidate metadata does not substitute for it.
+    evidence_refs:
+      - scripts/validation_control/identity.py
+      - tests/validation_control/test_wc109_identity_preflight.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R005
@@ -71,6 +88,10 @@ requirements:
     component_owner: Evidence And Freshness Controller
     test_path_or_plan: Hold candidate identity constant while changing command, policy, environment, trust, schema and freshness fixtures.
     completion_rule: Every applicable evidence input independently invalidates evidence reuse.
+    evidence_refs:
+      - scripts/validation_control/identity.py
+      - tests/validation_control/test_wc109_identity_preflight.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R007
@@ -79,6 +100,11 @@ requirements:
     component_owner: Tier Orchestrator
     test_path_or_plan: Run modeled catalog, syntax, UID, mount, permission, socket, output and workflow-placement failures.
     completion_rule: Every modeled defect stops before test execution, runner build or candidate build and emits a bounded envelope.
+    evidence_refs:
+      - scripts/validation_control/execution_contract.py
+      - tests/validation_control/test_wc109_identity_preflight.py
+      - tests/validation_control/test_unified_execution_contract.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R008
