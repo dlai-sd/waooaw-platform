@@ -4348,6 +4348,12 @@ components:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/ProblemDetail"
+    ServiceUnavailable:
+      description: Required service dependency is unavailable
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
 
     ConversationInvalidRequest:
       description: Conversation request or schema version is malformed or unsupported
