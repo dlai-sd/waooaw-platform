@@ -1,0 +1,309 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-109
+contract_path: work-contracts/WC-109-agentic-validation-implementation.md
+contract_digest: 825f64553f452e4df006dcf0952f7cacb76314c3a5b3741e0baca36d73d1eb94
+contract_status: AUTHORIZED_SOLUTION_ARCHITECTURE_COMPLETE_IMPLEMENTATION_NOT_STARTED
+implementation_scope: true
+result: PLANNED
+completion_rule: >-
+  Every implementation and pilot requirement must be PASS with direct executable evidence from the
+  governed Docker or hosted boundary. Documentation, implementation-shaped mocks, a smaller test set,
+  elapsed-time improvement or one pilot PR cannot substitute for any missing normative outcome.
+
+requirement_defaults: &requirement_defaults
+  evidence_class: Docker control-plane implementation and executable evidence
+  initial_state: expected-fail
+  dependencies: Merged WC-108, ADR-050, Docker validation strategy and existing validation catalog
+  residual_risk: Implementation and bounded two-PR pilot evidence do not yet exist.
+  evidence_refs:
+    - work-contracts/WC-109-agentic-validation-implementation.md
+  result: PLANNED
+
+requirements:
+  - <<: *requirement_defaults
+    requirement_id: WC109-R001
+    source: Sections 2 and 6 Stage 0
+    observable_outcome: Implementation is based on the exact merged WC-108 authority and a digest-bound WC-109 ledger.
+    component_owner: Implementation baseline control
+    test_path_or_plan: Verify merged predecessor commit, clean implementation branch, contract digest and selected requirement IDs before edits.
+    completion_rule: Baseline evidence binds one merged WC-108 commit, this exact contract and the implementation head.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R002
+    source: Section 4.1
+    observable_outcome: Four independently versioned canonical identity manifests are produced without raw secrets.
+    component_owner: Identity Manifest Resolver
+    test_path_or_plan: Run Docker golden vectors and negative secret fixtures for all four manifest schemas.
+    completion_rule: Four schema-versioned deterministic manifests exist and secret fixtures are rejected or redacted.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R003
+    source: Section 4.1 Runner
+    observable_outcome: Runner identity includes every environment-producing input and excludes ordinary application source.
+    component_owner: Identity Manifest Resolver
+    test_path_or_plan: Execute runner invalidation matrix for Dockerfile, base, install, lock, policy, architecture, platform and source-only changes.
+    completion_rule: Every runner input changes identity and an ordinary source-only edit does not.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R004
+    source: Section 4.1 Test execution
+    observable_outcome: Test-execution identity binds mounted source, runner, command, policy, environment, services and disposable state.
+    component_owner: Identity Manifest Resolver
+    test_path_or_plan: Execute independent mutation vectors for every declared test-execution input.
+    completion_rule: Every governing execution input changes identity and unrelated candidate metadata does not substitute for it.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R005
+    source: Sections 4.1 Candidate and 4.5
+    observable_outcome: Candidate identity covers every effective build input and binds digest, SBOM and provenance.
+    component_owner: Candidate Builder And Supply-Chain Binder
+    test_path_or_plan: Mutate effective context, generated artifacts, frontend, build arguments, base, architecture and platform in Docker fixtures.
+    completion_rule: Each effective input produces a new candidate and the resulting digest, SBOM and provenance are captured together.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R006
+    source: Sections 4.1 Evidence and 4.7
+    observable_outcome: Evidence identity binds execution inputs, trust and gate-specific freshness independently of candidate identity.
+    component_owner: Evidence And Freshness Controller
+    test_path_or_plan: Hold candidate identity constant while changing command, policy, environment, trust, schema and freshness fixtures.
+    completion_rule: Every applicable evidence input independently invalidates evidence reuse.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R007
+    source: Section 4.2 Tier 1
+    observable_outcome: Tier 1 rejects deterministic execution-contract defects before costly work or image construction.
+    component_owner: Tier Orchestrator
+    test_path_or_plan: Run modeled catalog, syntax, UID, mount, permission, socket, output and workflow-placement failures.
+    completion_rule: Every modeled defect stops before test execution, runner build or candidate build and emits a bounded envelope.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R008
+    source: Sections 4.2 Tier 2 and 4.3
+    observable_outcome: Tier 2 uses existing stack runners and disposable mounted-source execution.
+    component_owner: Stack Execution Adapter
+    test_path_or_plan: Run representative Python, .NET and TypeScript focused commands against mounted source in disposable containers.
+    completion_rule: Each stack executes its catalogued command with isolated state and host-visible evidence.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R009
+    source: Sections 4.2 Tier 2 and 4.3
+    observable_outcome: Ordinary Tier 2 source edits cause zero runner and product-image builds.
+    component_owner: Stack Execution Adapter
+    test_path_or_plan: Instrument build events across representative source-only edits for each supported stack.
+    completion_rule: Build-event count is zero for both runner and product image during every ordinary Tier 2 sample.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R010
+    source: Section 4.2 Tier 3
+    observable_outcome: Tier 3 executes dependency-complete checks only at declared milestone boundaries.
+    component_owner: Tier Orchestrator
+    test_path_or_plan: Exercise direct and reverse-dependency fixtures at story and milestone transitions.
+    completion_rule: Story edits remain focused while declared milestones include every affected dependency.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R011
+    source: Section 4.2 Tier 4
+    observable_outcome: Tier 4 qualifies one immutable candidate against the complete applicable inventory.
+    component_owner: Tier Orchestrator
+    test_path_or_plan: Freeze a fixture candidate and compare executed qualification inventory with the catalog-computed complete inventory.
+    completion_rule: One exact candidate digest is bound to every applicable result with no missing required gate.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R012
+    source: Sections 4.2 and 7
+    observable_outcome: A post-freeze repair creates a new candidate and invalidates affected evidence.
+    component_owner: Candidate Builder And Supply-Chain Binder
+    test_path_or_plan: Mutate one effective input after freeze and attempt to reuse prior qualification evidence.
+    completion_rule: Candidate identity changes, affected evidence is rejected and qualification targets the new bytes.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R013
+    source: Sections 4.3 and 5.4
+    observable_outcome: Focused and qualification modes consume the same catalogued test definitions and thresholds.
+    component_owner: Catalog And Impact Selector
+    test_path_or_plan: Compare command, fixture and threshold identities emitted for both modes across representative gates.
+    completion_rule: Mode changes execution boundary only and cannot redefine test semantics or thresholds.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R014
+    source: Section 4.3
+    observable_outcome: Every run is non-root, resource-bounded and isolated across state, namespace and output.
+    component_owner: Stack Execution Adapter
+    test_path_or_plan: Run concurrent UID, HOME, network, volume, port, output, CPU, memory and disk isolation fixtures.
+    completion_rule: Runs cannot collide, escape declared resources or write through another run's authority boundary.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R015
+    source: Section 4.3
+    observable_outcome: Docker-socket access is absent by default and limited to classified runners.
+    component_owner: Stack Execution Adapter
+    test_path_or_plan: Inspect and execute ordinary and Testcontainers runner socket fixtures.
+    completion_rule: Ordinary runners have no socket while every exception has catalogued trust and resource classification.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R016
+    source: Section 4.6
+    observable_outcome: Caches are namespaced, concurrency-safe, integrity-checked and never correctness authority.
+    component_owner: Cache Controller
+    test_path_or_plan: Run namespace, concurrent-write, corruption, eviction, clean-cache and false-PASS fixtures.
+    completion_rule: Cache defects cannot authorize PASS, cross identities or prevent clean execution.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R017
+    source: Section 4.4
+    observable_outcome: Unknown or ambiguous impact selects the complete applicable inventory.
+    component_owner: Catalog And Impact Selector
+    test_path_or_plan: Exercise unknown path, missing owner, rename, deletion, cycle, malformed catalog and parser-disagreement fixtures.
+    completion_rule: Every uncertainty broadens deterministically to the complete applicable gate set.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R018
+    source: Section 4.4
+    observable_outcome: Missing identity, provenance, signature or trust blocks rather than broadening into false authority.
+    component_owner: Catalog And Impact Selector
+    test_path_or_plan: Remove each trust input independently and attempt broader execution and evidence publication.
+    completion_rule: The affected gate remains BLOCKED and no amount of additional execution creates the missing authority.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R019
+    source: Section 4.7
+    observable_outcome: Evidence disposition distinguishes execution, exact-candidate reuse and verified carry-forward.
+    component_owner: Evidence And Freshness Controller
+    test_path_or_plan: Produce and validate one fixture for each disposition plus malformed and mislabeled cases.
+    completion_rule: Every accepted evidence row has exactly one valid disposition with its required proof.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R020
+    source: Section 4.7
+    observable_outcome: Carry-forward requires exact-range deterministic non-impact proof and explicit new-head binding.
+    component_owner: Evidence And Freshness Controller
+    test_path_or_plan: Exercise impacted, non-impacted, ambiguous-range and wrong-head carry-forward fixtures.
+    completion_rule: Only exact non-impact proof is accepted and retained execution time is not represented as fresh.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R021
+    source: Sections 4.7 and 5.2-5.3
+    observable_outcome: Every node publishes one atomic bounded envelope plus framework-native evidence.
+    component_owner: Evidence And Freshness Controller
+    test_path_or_plan: Exercise success, failure, interruption, missing output, malformed schema and publication collision.
+    completion_rule: Each invocation has one terminal envelope and atomic digest-bound artifacts; missing output never passes.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R022
+    source: Section 4.7
+    observable_outcome: Evidence and artifacts exclude secrets, authorization material, customer data and conversation content.
+    component_owner: Evidence And Freshness Controller
+    test_path_or_plan: Inject classified canary values into command, environment, logs and framework output.
+    completion_rule: Canaries are absent from every published identity, envelope and retained artifact.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R023
+    source: Section 4.8
+    observable_outcome: Failures route as RUNNER, WORKFLOW, PRODUCT, EXTERNAL or EVIDENCE without changing result authority.
+    component_owner: Failure Router
+    test_path_or_plan: Execute representative first-cause fixtures for every routing class and ambiguous downstream cascades.
+    completion_rule: First cause has one owning class, dependent noise is secondary and no failure becomes PASS.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R024
+    source: Section 4.8
+    observable_outcome: Automatic retries are limited to catalogued transient conditions and unchanged failures cannot rerun.
+    component_owner: Failure Router
+    test_path_or_plan: Exercise deterministic, assertion, coverage, security, transient external and changed-input retry fixtures.
+    completion_rule: Only declared transient failures retry within bound and unchanged deterministic fingerprints stop.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R025
+    source: Section 4.9
+    observable_outcome: Hosted policy rejects host test execution, virtual environments and unclassified authority paths.
+    component_owner: Hosted Policy Enforcer
+    test_path_or_plan: Run workflow policy fixtures for host pytest, dotnet test, Jest, Playwright, package install and direct Docker authority.
+    completion_rule: Every prohibited pattern fails before hosted test execution while permitted orchestration remains explicit.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R026
+    source: Section 4.9
+    observable_outcome: Hosted-only and provider-backed gates retain their authoritative environment.
+    component_owner: Hosted Policy Enforcer
+    test_path_or_plan: Attempt to satisfy hosted, provider, deployment and customer-traffic fixtures with local evidence.
+    completion_rule: Local or cached evidence cannot satisfy a gate whose authority requires another environment.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R027
+    source: Sections 3.2 and 4.9
+    observable_outcome: Current full CI, complete main and release safety nets and all thresholds remain intact.
+    component_owner: Hosted Policy Enforcer
+    test_path_or_plan: Compare pre-change and frozen-candidate inventories, required checks and configured thresholds.
+    completion_rule: No required check, threshold, main gate or release gate is removed, weakened or made advisory.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R028
+    source: Section 4.3
+    observable_outcome: Direct Docker diagnostics cannot publish authoritative PASS evidence.
+    component_owner: Tier Orchestrator
+    test_path_or_plan: Run equivalent catalogued and direct commands and attempt to publish both outputs.
+    completion_rule: Only the catalog-controlled invocation can produce accepted evidence.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R029
+    source: Section 4.5
+    observable_outcome: Candidate build inputs and supply-chain evidence are captured before qualification.
+    component_owner: Candidate Builder And Supply-Chain Binder
+    test_path_or_plan: Attempt qualification with missing commit, dirty state, context input, digest, SBOM, provenance, platform or base digest.
+    completion_rule: Every omission blocks qualification and the complete bound record precedes test authority.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R030
+    source: Section 7
+    observable_outcome: Required Docker tests exercise identity, tier, isolation, cache, selection, evidence and failure boundaries.
+    component_owner: Validation control-plane test suite
+    test_path_or_plan: Map all Section 7 families to Docker-executed tests and retained results.
+    completion_rule: Every family has direct boundary evidence; implementation-shaped mocks do not replace integration proof.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R031
+    source: Sections 4.10 and 8
+    observable_outcome: Two eligible product PRs produce complete comparable pilot records.
+    component_owner: Pilot Recorder
+    test_path_or_plan: Validate eligibility and required fields for the first two post-implementation product PRs.
+    completion_rule: Two non-advanced PRs each provide exact identities, distributions, builds, failures, inventories and quality results.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R032
+    source: Sections 4.10 and 8
+    observable_outcome: Pilot reports observations and limitations without unsupported percentage or fixed-duration claims.
+    component_owner: Pilot Recorder
+    test_path_or_plan: Validate pilot reports for samples, ranges, medians, cache state, limitations and prohibited extrapolation.
+    completion_rule: Every performance statement is traceable to recorded observations and scoped limitations.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R033
+    source: Section 8
+    observable_outcome: Pilot comparison has zero unresolved selection false negatives and no quality reduction.
+    component_owner: Pilot Recorder
+    test_path_or_plan: Compare shadow selections and outcomes with unchanged full CI for both pilot PRs.
+    completion_rule: No required gate is missed and every prior quality, coverage, security and CCT threshold is preserved.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R034
+    source: Sections 6 and 12
+    observable_outcome: Rollback restores full clean qualification without reinterpreting incompatible evidence.
+    component_owner: Tier Orchestrator
+    test_path_or_plan: Execute staged rollback fixtures across manifest and envelope schema changes.
+    completion_rule: Full clean qualification resumes and no evidence crosses an incompatible identity or schema boundary.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R035
+    source: Sections 3.2, 4.9 and 8
+    observable_outcome: Selective hosted validation remains disabled pending separate Founder approval.
+    component_owner: Hosted Policy Enforcer
+    test_path_or_plan: Inspect and execute hosted configuration after shadow and pilot completion.
+    completion_rule: Current full PR CI remains authoritative and no selector suppresses a required hosted gate.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R036
+    source: Sections 10 and 13
+    observable_outcome: Author review, independent Enterprise Architecture review and Founder merge authority remain separate.
+    component_owner: WC-109 governance
+    test_path_or_plan: Inspect exact-head review and approval evidence before DONE or merge recommendation.
+    completion_rule: Implementer author review is complete, EA review is independent and only Founder action authorizes merge.

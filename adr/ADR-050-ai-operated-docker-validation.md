@@ -1,9 +1,9 @@
 # ADR-050 - AI-Operated Docker Validation
 
-**Status:** Accepted by Founder - 2026-09-19
+**Status:** Accepted by Founder - 2026-09-19; WC-108 amendment authorized by Founder - 2026-09-29
 **Date:** 2026-09-19
 **Author:** Chief Enterprise Architect (INST-004)
-**Work Contract:** WC-101
+**Work Contracts:** WC-101; WC-108
 **Constitutional Basis:** C-059, C-065, C-071, C-076, C-077, C-080 and C-086
 **Related Decisions:** ADR-012, ADR-013, ADR-037, ADR-038 and ADR-045
 **Amends:** ADR-045 execution and evidence model; preserves its per-stack image boundaries
@@ -48,6 +48,21 @@ WAOOAW adopts the following validation architecture:
 8. **Selective PR validation activates only after shadow proof.** Current full PR CI remains
    authoritative while impact selection is compared against it. Enforced selection requires zero
    unresolved false negatives and separate Founder approval.
+9. **Four identities remain independent.** Runner identity, test-execution identity, candidate identity
+   and evidence identity have separate input manifests and invalidation rules. A match in one identity
+   never implies a match in another. Raw secrets are excluded; non-secret authority or secret-version
+   references are included only when behavior depends on them.
+10. **AI implementation uses four ordered tiers.** Static preflight precedes a disposable mounted-source
+    story run, bounded milestone checks and one clean qualification per immutable candidate identity.
+    Ordinary source edits build neither runner nor product image. A repair after freeze creates a new
+    candidate and requires new affected evidence and qualification.
+
+| Identity | Governing inputs | Authority boundary |
+|---|---|---|
+| Runner | Toolchain Dockerfile, pinned base digest, installation inputs, dependency lockfiles, policy and target platform | Reusable environment; ordinary application source is excluded |
+| Test execution | Mounted-source identity, runner digest, gate command, policy, declared environment, service identities and disposable-state contract | Focused or milestone feedback; no persistent correctness state |
+| Candidate | Complete effective application build context, generated artifacts, Dockerfile frontend, build arguments, base digests and target platform | Exact releasable bytes with image digest, SBOM and provenance |
+| Evidence | Candidate or source identity, runner digest, command, policy, environment, trust source, schema and gate-specific freshness | PASS authority only after exact equality and required non-impact proof |
 
 The detailed contract is `architecture/reference/docker-only-validation-strategy.md`.
 
@@ -61,6 +76,8 @@ The detailed contract is `architecture/reference/docker-only-validation-strategy
 | Run language tools directly on the Codespace or GitHub host | Rejected: violates C-080 and creates a second execution environment |
 | Adopt a third-party test-impact platform | Deferred: adds cost, authority and supply-chain complexity before existing GitHub Actions, GHCR and Docker capabilities are exhausted |
 | Run only the complete suite after every edit | Rejected: safe but wasteful; focused feedback plus one clean frozen-candidate qualification preserves safety with lower turnaround |
+| One generic persistent test executive | Rejected: retained state and cross-stack dependencies create false-pass and contamination risk |
+| Mutable workspace build marker | Rejected: branch, worktree and artifact identity cannot be proven from local mutable state |
 
 ## Consequences
 
@@ -90,6 +107,9 @@ The detailed contract is `architecture/reference/docker-only-validation-strategy
 | Concurrent collision | Unique Compose project, network, volume, port and output namespaces |
 | Docker socket escalation | Socket only for classified Testcontainers runners; non-root default and bounded resources |
 | Faster feedback weakens gates | Same catalogued commands and thresholds; complete `main` and release safety nets |
+| Identity conflation | Separate canonical manifests; equality of one identity cannot authorize reuse of another |
+| Download-cache poisoning | Integrity verification, identity namespaces, concurrency control, size limits and periodic clean-cache execution |
+| Hosted/local divergence | Hosted-only and environment-sensitive gates remain authoritative in candidate qualification |
 
 ## Compatibility And Migration
 
@@ -111,10 +131,16 @@ The implementation Work Contract must require executable proof that:
 - unknown impact selects full applicable validation;
 - structured failure evidence is emitted without secrets or customer data;
 - concurrent runs cannot collide; and
-- shadow selection has zero unresolved false negatives before activation.
+- shadow selection has zero unresolved false negatives before activation;
+- ordinary story source edits cause zero runner or product-image builds;
+- candidate identity changes for every effective application build-input change;
+- package caches cannot retain generated output, database, process or verdict authority;
+- known UID, mount, socket, output and workflow-placement defects fail before costly execution; and
+- pilot timing and repair outcomes are reported as observations with sample sizes and limitations,
+  never as unsupported percentage guarantees.
 
 ## Decision Authority
 
-The Founder accepted this ADR on 2026-09-19. Enterprise Architecture author review remains
-self-verification, not approval. Acceptance of this decision does not authorize implementation under
-ADR-050 or WC-101.
+The Founder accepted this ADR on 2026-09-19 and authorized the WC-108 operating-model documentation
+amendment on 2026-09-29. Enterprise Architecture author review remains self-verification, not approval.
+Acceptance of this decision does not authorize implementation under ADR-050, WC-101 or WC-108.

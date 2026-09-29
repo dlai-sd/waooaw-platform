@@ -1,8 +1,8 @@
 # WAOOAW Docker-Only Validation Strategy
 
-**Status:** ACCEPTED BY FOUNDER - 2026-09-19
+**Status:** ACCEPTED BY FOUNDER - 2026-09-19; WC-108 AMENDMENT AUTHORIZED - 2026-09-29
 **Owner:** Chief Enterprise Architect (INST-004)
-**Work Contract:** WC-101
+**Work Contracts:** WC-101; WC-108
 **Decision:** ADR-050
 **Amends:** ADR-045 execution model; does not replace its per-stack runner boundaries
 
@@ -80,6 +80,38 @@ changed files + approved obligation ledger
 This is a repository and CI control plane, not a deployable service. It is implemented through
 versioned manifests, Docker runner definitions, qualification scripts and GitHub Actions.
 
+### 4.1 Four Independent Identities
+
+| Identity | Complete authority inputs | Lifecycle |
+|---|---|---|
+| Runner | Toolchain Dockerfile, pinned base-image digest, installation scripts, system and language dependency lockfiles, runner policy, target architecture and platform | Build or pull once per exact identity. Ordinary application-source edits never invalidate it. |
+| Test execution | Canonical mounted-source identity, runner digest, exact gate command, policy version, declared non-secret environment, service-image identities and disposable-state contract | Run in a stack-specific disposable container. It produces focused or milestone evidence, not release bytes. |
+| Candidate | Complete `.dockerignore`-resolved build context, generated contract artifacts, Dockerfile frontend, build arguments, base digests and target platform | Build once per exact identity and immediately capture image digest, SBOM and provenance. |
+| Evidence | Candidate or source identity, runner digest, command identity, policy identity, declared environment, schema, trust source and gate-specific freshness inputs | Reuse only on exact equality and deterministic non-impact proof; bind carry-forward to the new head. |
+
+Identity manifests use structured parsing and deterministic canonicalization. Relevant content, path,
+executable mode, symlink target, generated-artifact state, architecture, dirty state and untracked state
+must be represented where they can affect the result. Raw secrets never enter an identity; a non-secret
+authority or secret-version reference is included only when behavior depends on it.
+
+Equality of one identity never implies equality of another. In particular, an unchanged runner does not
+mean the candidate is unchanged, and an unchanged candidate does not make time-sensitive security or
+provider evidence fresh.
+
+### 4.2 Four-Tier Agentic Lifecycle
+
+| Tier | Purpose | Required boundary | Evidence authority |
+|---|---|---|---|
+| 1 - Static preflight | Reject deterministic contract, syntax, policy, identity, mount, permission and output defects | Already-pinned micro-runner or stack runner; no runner/candidate build and no host test-language tooling | Diagnostic and planning only |
+| 2 - Disposable story run | Fast feedback for the active requirement | Stack-specific disposable container, read-only mounted source where practical, isolated outputs and untrusted download caches | Focused local only |
+| 3 - Milestone checks | Prevent late cross-component failure | Catalog-selected dependency-complete unit, component and integration checks at declared boundaries | Milestone only |
+| 4 - Frozen-candidate qualification | Prove exact releasable bytes | Immutable candidate and runner digests, clean state, complete applicable inventory and hosted-only gates | PR/release when produced by the trusted boundary |
+
+Performance budgets are pilot hypotheses until measured. They do not authorize skipping work, declaring
+failure when a valid workload is slower, or promising a percentage saving. A repair after freeze creates
+a new candidate identity; "one qualification" means one successful qualification attempt per immutable
+candidate, not one attempt regardless of changed bytes.
+
 ## 5. Architectural Contracts
 
 ### 5.1 Validation Catalog
@@ -139,6 +171,23 @@ runner images and bounded dependency/build caches, not from reusing correctness 
 A cache hit cannot authorize PASS. Failed, missing, stale, malformed or identity-mismatched evidence
 fails closed.
 
+Download and compiler caches must be namespaced by runner identity, platform and applicable lockfile
+identity; concurrent writes require safe locking or isolation. They are size-bounded and integrity-checked,
+and periodic clean-cache execution must remain possible. Executable dependency trees, generated output,
+databases, browser state, process state and prior verdicts are not shared cache authority.
+
+### 5.4.1 Candidate And Evidence Invalidation
+
+A candidate changes when any effective build input changes, including application source, generated
+contracts, Dockerfile/frontend, `.dockerignore` selection, build arguments, base digest or target platform.
+The resulting digest, SBOM and provenance are captured together. Mutable workspace marker files cannot
+stand in for candidate identity.
+
+Evidence freshness is gate-specific. Vulnerability database state, provider state, external policy and
+hosted environment identity are explicit inputs where relevant. Selection uncertainty broadens to the
+full applicable inventory. Missing provenance, signature, identity or trust blocks the affected gate;
+running more tests cannot manufacture the missing authority.
+
 ### 5.5 Structured Failure Evidence
 
 Every validation node emits framework-native JUnit, TRX, JSON, SARIF or coverage output plus one
@@ -164,6 +213,10 @@ Provider tokens, secrets, customer data, authorization material and conversation
 included. The agent receives the envelope first and opens the bounded raw artifact only when needed.
 Assertion, compilation, coverage and security failures are not retried automatically. Only catalogued
 transient infrastructure failures receive a bounded retry.
+
+The common routing classes are `RUNNER`, `WORKFLOW`, `PRODUCT`, `EXTERNAL` and `EVIDENCE`. Classification
+selects the owning repair path but never converts failure to PASS. Bounded raw evidence remains available,
+and an unchanged deterministic or infrastructure fingerprint cannot consume another costly attempt.
 
 ### 5.6 Gate Topology
 
@@ -201,6 +254,7 @@ tests or language validation.
 | 2 - Common evidence | Add catalog, focused command and structured result envelope | Implementation WC + Founder authorization |
 | 3 - Shadow selection | Compare proposed affected set with unchanged full PR CI | Implementation WC + Founder authorization |
 | 4 - Enforced selection | Use affected PR gates with fail-closed fallback; retain full `main` and release gates | Separate Founder approval after shadow evidence |
+| WC-108 functional proof | Apply the four identities and four tiers to the next two eligible product PRs from implementation start | Separate implementation WC and current-session Founder authorization |
 
 Rollback at every phase restores full clean qualification. No rollback may interpret newer evidence
 under an older schema or retain a passing verdict whose inputs cannot be proven.
@@ -224,6 +278,11 @@ Baseline and candidate measurements must report medians, ranges, cache state and
 .NET, Python, shared-contract and global-workflow changes. Full qualification may remain longer than
 five minutes; the architectural objective is to run it once per frozen candidate rather than after
 every edit.
+
+The WC-108 functional proof measures only the outcomes already promised by WC-100 through WC-106:
+elapsed validation time, repeated builds, first-pass precheck result, repair-loop count and preserved
+quality. Two PRs prove operability but do not establish a trend or authorize selective hosted validation.
+Already-advanced PRs are excluded because their implementation history cannot provide a clean baseline.
 
 ## 8. Solution Architecture Handoff
 

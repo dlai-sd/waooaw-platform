@@ -1,0 +1,187 @@
+schema: waooaw.requirement-evidence-ledger/v1
+work_contract: WC-108
+contract_path: work-contracts/WC-108-agentic-validation-operating-model.md
+contract_digest: 9efafb5376947a96a873122cfce4c223c11942a0b6e345867148070530104390
+contract_status: ARCHITECTURE_AND_GOVERNANCE_DOCUMENTATION_PASS_COMPLETE
+implementation_scope: true
+result: DONE
+completion_rule: >-
+  Every documentation requirement must be PASS with direct evidence in the amended authority chain.
+  No runtime implementation, pilot result, percentage saving or selective-validation activation may
+  substitute for a missing documentation outcome.
+
+requirement_defaults: &requirement_defaults
+  evidence_class: Architecture and governance document inspection
+  initial_state: expected-fail
+  dependencies: ADR-050, Docker validation strategy, ratified claims and Platform IT Expert process
+  residual_risk: Runtime effectiveness remains unproven until a separately authorized bounded pilot.
+  evidence_refs:
+    - adr/ADR-050-ai-operated-docker-validation.md
+    - architecture/reference/docker-only-validation-strategy.md
+    - knowledge/claims/C-080.md
+    - architecture/reference/agents/platform-it-expert-agent.md
+    - .github/agent-context/office-platform-it-expert.md
+    - constitution/AGENT-ENTRY.md
+    - adr/ADR-INDEX.md
+  result: PASS
+
+requirements:
+  - <<: *requirement_defaults
+    requirement_id: WC108-R001
+    source: Section 4.1
+    observable_outcome: ADR-050 explicitly distinguishes runner, test-execution, candidate and evidence identities.
+    component_owner: Enterprise Architecture decision record
+    test_path_or_plan: Inspect ADR-050 decision and identity table for four non-conflated identities.
+    completion_rule: ADR-050 names all four identities and assigns distinct authority inputs and lifecycle behavior.
+
+  - <<: *requirement_defaults
+    requirement_id: WC108-R002
+    source: Sections 4.1 and 4.3
+    observable_outcome: Runner identity excludes ordinary application source and includes every environment-producing input.
+    component_owner: Docker validation reference architecture
+    test_path_or_plan: Inspect runner identity inputs and invalidation rules in the amended strategy.
+    completion_rule: Source-only edits preserve runner identity while every declared toolchain or dependency input invalidates it.
+
+  - <<: *requirement_defaults
+    requirement_id: WC108-R003
+    source: Sections 4.1 and 4.2
+    observable_outcome: Test execution is stack-specific, disposable and isolated from persistent correctness state.
+    component_owner: Docker validation reference architecture
+    test_path_or_plan: Inspect stack-runner, disposable-state and cache-boundary clauses.
+    completion_rule: The strategy prohibits persistent process, database, generated-output and verdict authority.
+
+  - <<: *requirement_defaults
+    requirement_id: WC108-R004
+    source: Sections 4.1 and 4.3
+    observable_outcome: Candidate identity covers the complete effective build context and produces digest, SBOM and provenance.
+    component_owner: Docker validation reference architecture
+    test_path_or_plan: Inspect candidate-input and output requirements in ADR-050 and the strategy.
+    completion_rule: Every effective build input is represented and every candidate emits immutable supply-chain evidence.
+
+  - <<: *requirement_defaults
+    requirement_id: WC108-R005
+    source: Sections 4.1 and 4.4
+    observable_outcome: Evidence reuse requires exact declared inputs, trust, freshness and new-head non-impact proof.
+    component_owner: Validation evidence architecture
+    test_path_or_plan: Inspect evidence identity and carry-forward clauses for equality, freshness and provenance.
+    completion_rule: Reuse cannot occur on ambiguous, stale, untrusted or impacted inputs and is explicitly classified.
+
+  - <<: *requirement_defaults
+    requirement_id: WC108-R006
+    source: Section 4.2 Tier 1
+    observable_outcome: Static preflight precedes costly execution without using host language test tooling.
+    component_owner: Validation lifecycle architecture
+    test_path_or_plan: Inspect Tier 1 ordering and C-080 execution constraints.
+    completion_rule: Tier 1 is first, bounded, Docker-executed and performs no runner or candidate build.
+
+  - <<: *requirement_defaults
+    requirement_id: WC108-R007
+    source: Section 4.2 Tier 2
+    observable_outcome: Story feedback uses mounted source and does not build runners or product images for ordinary edits.
+    component_owner: Platform IT Expert implementation process
+    test_path_or_plan: Inspect Tier 2 and agent-process requirements for mounted disposable execution.
+    completion_rule: Ordinary story edits resolve an existing runner and execute focused tests without image build.
+
+  - <<: *requirement_defaults
+    requirement_id: WC108-R008
+    source: Section 4.2 Tier 3
+    observable_outcome: Milestone checks are dependency-complete and bounded rather than full qualification after every edit.
+    component_owner: Validation lifecycle architecture
+    test_path_or_plan: Inspect Tier 3 selection, reverse-dependency and milestone-boundary clauses.
+    completion_rule: Milestone checks cover affected dependencies without invoking the complete inventory per edit.
+
+  - <<: *requirement_defaults
+    requirement_id: WC108-R009
+    source: Sections 4.2 Tier 4 and 4.3
+    observable_outcome: Full qualification occurs once per immutable candidate identity and every repair creates a new candidate.
+    component_owner: Candidate qualification architecture
+    test_path_or_plan: Inspect freeze, repair and requalification semantics.
+    completion_rule: Qualification authority is bound to exact candidate bytes and cannot survive candidate mutation.
+
+  - <<: *requirement_defaults
+    requirement_id: WC108-R010
+    source: Section 4.3
+    observable_outcome: Cache policy separates untrusted download acceleration from disposable correctness state.
+    component_owner: Runner and cache architecture
+    test_path_or_plan: Inspect namespace, integrity, concurrency and prohibited-state clauses.
+    completion_rule: No cache, executable dependency tree, generated output or verdict can independently authorize PASS.
+
+  - <<: *requirement_defaults
+    requirement_id: WC108-R011
+    source: Section 4.4
+    observable_outcome: Unknown impact selects full applicable validation while trust ambiguity blocks rather than fabricates authority.
+    component_owner: Validation selection and trust architecture
+    test_path_or_plan: Inspect separate fail-closed behavior for impact uncertainty and trust uncertainty.
+    completion_rule: Selection uncertainty broadens execution; missing identity or trust remains a blocker.
+
+  - <<: *requirement_defaults
+    requirement_id: WC108-R012
+    source: Section 4.5
+    observable_outcome: Failure evidence uses bounded routing classes without converting infrastructure failure into PASS.
+    component_owner: Validation failure evidence architecture
+    test_path_or_plan: Inspect RUNNER, WORKFLOW, PRODUCT, EXTERNAL and EVIDENCE definitions and authority rule.
+    completion_rule: Every class routes ownership, retains raw evidence and preserves failure status.
+
+  - <<: *requirement_defaults
+    requirement_id: WC108-R013
+    source: Section 5
+    observable_outcome: Platform IT Expert process enforces the four-tier order and reports story evidence before advancing.
+    component_owner: Platform IT Expert specification and office card
+    test_path_or_plan: Inspect full and compact process instructions for ordered tiers and advancement conditions.
+    completion_rule: Both agent routes require Tier 1, Tier 2, bounded Tier 3, freeze and Tier 4 in order.
+
+  - <<: *requirement_defaults
+    requirement_id: WC108-R014
+    source: Section 5
+    observable_outcome: Direct Docker commands cannot produce authoritative evidence outside the catalog executor.
+    component_owner: Platform IT Expert specification
+    test_path_or_plan: Inspect diagnostic-command and catalog-authority clauses.
+    completion_rule: Direct commands are diagnostic only and hosted policy remains the enforcement boundary.
+
+  - <<: *requirement_defaults
+    requirement_id: WC108-R015
+    source: Section 6
+    observable_outcome: Pilot measures the same speed, build, precheck, repair-loop and quality outcomes promised by prior contracts.
+    component_owner: Enterprise Architecture pilot contract
+    test_path_or_plan: Compare pilot outcome table with WC-100 through WC-106 objectives and evidence.
+    completion_rule: No unrelated metric is introduced as a substitute for the original promised outcomes.
+
+  - <<: *requirement_defaults
+    requirement_id: WC108-R016
+    source: Sections 4.2 and 6
+    observable_outcome: Pilot targets are observations rather than unsupported percentage or fixed-duration guarantees.
+    component_owner: Enterprise Architecture pilot contract
+    test_path_or_plan: Search amended artifacts for prohibited unsupported performance guarantees.
+    completion_rule: Budgets are labeled hypotheses and reported results include samples, ranges and limitations.
+
+  - <<: *requirement_defaults
+    requirement_id: WC108-R017
+    source: Sections 4.4 and 6
+    observable_outcome: Selective hosted validation remains disabled until ADR-050 shadow proof and separate Founder approval.
+    component_owner: ADR-050 activation boundary
+    test_path_or_plan: Inspect activation language in ADR, strategy and agent process.
+    completion_rule: No documentation amendment activates or implies selective hosted validation authority.
+
+  - <<: *requirement_defaults
+    requirement_id: WC108-R018
+    source: Sections 2 and 8
+    observable_outcome: C-080 interpretation permits mounted source only inside Docker and requires disposable test execution without changing the ratified claim statement.
+    component_owner: Knowledge claim interpretation
+    test_path_or_plan: Compare C-080 statement byte-for-byte and inspect its bounded ADR-050 interpretation note.
+    completion_rule: Ratified statement is unchanged and interpretation remains inside Docker-only authority.
+
+  - <<: *requirement_defaults
+    requirement_id: WC108-R019
+    source: Sections 2 and 8
+    observable_outcome: C-077 and C-086 retain their ratified scope and are traced without architecture-driven expansion.
+    component_owner: Enterprise Architecture traceability
+    test_path_or_plan: Inspect constitutional basis and amendment diff for absence of C-077 or C-086 statement changes.
+    completion_rule: Existing claims are cited only for their ratified economy and pre-execution-proof obligations.
+
+  - <<: *requirement_defaults
+    requirement_id: WC108-R020
+    source: Sections 2 and 10
+    observable_outcome: No implementation, cloud, registry, deployment, approval or merge authority is inferred from this documentation pass.
+    component_owner: WC-108 authority boundary
+    test_path_or_plan: Inspect all amended artifacts for explicit implementation and activation stops.
+    completion_rule: Every downstream implementation or pilot action remains separately Founder-authorized.
