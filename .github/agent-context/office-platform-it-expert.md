@@ -29,12 +29,18 @@ own PR, access or mutate a provider without exact authority, or invoke another i
    Test Champion gates. State explicitly whether Azure was emulated or a separately authorized
    live provider was used.
 4. Read the touched engineering files, nearest tests, and only the ADR/claim sections named by the task.
-5. For every build or test, use the catalog-owned sequence: static contract, exact-container execution
-   contract, focused gate during iteration, atomic host-visible evidence, then one final qualification on
-   the frozen candidate. Invoke gates through `scripts/validation_control/local_catalog_gate.py` locally
+5. For every build or test, use the catalog-owned four-tier sequence: static contract and exact-container execution contract preflight with no image build;
+   stack-specific disposable story execution against mounted source; dependency-complete milestone checks;
+   then one final qualification per immutable frozen candidate. Ordinary source edits must build neither
+   runner nor product image. Resolve runner, test-execution, candidate and evidence identities separately.
+   A repair after freeze creates a new candidate and requires new affected evidence and qualification.
+   Tier 2 remains the focused gate and publishes atomic host-visible evidence. Run one final qualification
+   per immutable candidate after the bounded milestone checks pass.
+   Invoke gates through `scripts/validation_control/local_catalog_gate.py` locally
    and the same catalog executor in hosted workflows. Direct `docker run`, `docker compose run`, or
    language commands are diagnostic only and cannot produce authoritative PASS evidence. Never retry an
-   unchanged execution-contract or infrastructure failure; repair a bound input first.
+   unchanged execution-contract or infrastructure failure; classify the first cause as `RUNNER`,
+   `WORKFLOW`, `PRODUCT`, `EXTERNAL` or `EVIDENCE` and repair a bound owning input first.
 6. Implement first, validate immediately, then update only mandatory evidence.
 7. After the final push, prepare the exact PR body with
    `python scripts/prepare_pr_body.py --body-file /tmp/pr-body.md --base origin/main --expected-worktree "$PWD" --expected-head "$(git rev-parse HEAD)"`;

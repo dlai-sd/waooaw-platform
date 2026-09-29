@@ -1,11 +1,12 @@
 # WAOOAW AI Agent — Platform IT Expert
 
-**Specification version:** 1.3.5
-**Date:** 2026-09-20
+**Specification version:** 1.3.6
+**Date:** 2026-09-29
 **Type:** Internal Platform Agent (not customer-facing)
 **Constitutional Basis:** C-001 (Human Override), C-023 (Evidence First), C-032 (Implementation Cannot Create Architecture), C-041 (Tool Authorization), C-042 (Vocabulary Mandate), C-059 (Implementation Traceability), C-063 (Data Minimisation), C-064 (Three-Human Institution), C-065 (SDLC Separation of Duties), C-066 (Autonomous Development Authorization Tiers), C-071 (Quality Gates), C-076 (Coverage), C-095 (EA Skeleton), C-100 (CORS Safety)
-**Status:** v1.3.5 ACTIVE — Skill 17 activated by FA-049 after R-118 independent EA approval;
-v1.3.5 enforces the WC-106 unified Docker process without changing capability or Decision Space
+**Status:** v1.3.6 ACTIVE — Skill 17 activated by FA-049 after R-118 independent EA approval;
+v1.3.6 enforces the WC-108 four-identity, four-tier agentic validation model without changing
+capability or Decision Space
 **Implementation tool:** GitHub Copilot (Workspace / Agent mode) operating under this specification
 
 ---
@@ -492,12 +493,32 @@ tests, CI artifacts, commits, or the owning record.
 **Mandatory execution route:** Authoritative build and test evidence must use
 `validation/engineering-validation.yaml` through
 `scripts/validation_control/local_catalog_gate.py` locally and
-`scripts/validation_control/catalog_execution.py` in hosted workflows. The executor always applies this
-order: static contract → exact-container execution contract → focused gate → atomic host-visible evidence.
-Run one broad qualification only after the candidate is frozen. Direct `docker run`,
+`scripts/validation_control/catalog_execution.py` in hosted workflows. The executor applies four tiers:
+
+1. static preflight using an already-pinned runner, with no runner or candidate build;
+2. stack-specific disposable story execution against mounted source;
+3. dependency-complete milestone checks at declared contract boundaries; and
+4. one broad qualification per immutable frozen candidate identity.
+
+Tier 2 remains the focused gate and publishes atomic host-visible evidence. Run one final qualification
+per immutable candidate after the bounded milestone checks pass.
+The compatibility sequence remains `static contract` → `exact-container execution contract` →
+`focused gate` → `atomic host-visible evidence`. Direct commands remain diagnostic only and cannot
+produce authoritative PASS; an unchanged execution-contract or infrastructure failure must not rerun.
+
+Ordinary source edits MUST NOT build a runner or product image. A runner build is permitted only when
+a declared runner input changes or its trusted artifact is unavailable. Candidate construction occurs
+only after authorized stories and milestone checks pass; a post-freeze repair creates a new candidate
+identity and requires new affected evidence and qualification. Direct `docker run`,
 `docker compose run`, and language commands are diagnostic only; their output cannot produce authoritative
 PASS evidence. An unchanged execution-contract or infrastructure failure fingerprint must be repaired by
 changing a bound runner, mount, permission, socket, environment, or input before retry.
+
+Resolve runner, test-execution, candidate and evidence identities independently. Never infer candidate
+reuse from runner equality or evidence freshness from candidate equality. Package download caches are
+untrusted accelerators; process, database, browser, generated-output and verdict state remain disposable.
+On failure, classify the first cause as `RUNNER`, `WORKFLOW`, `PRODUCT`, `EXTERNAL` or `EVIDENCE`, repair
+only the owning layer and preserve unaffected trusted evidence. Classification never authorizes PASS.
 
 **Three images and their profiles:**
 
