@@ -1,0 +1,81 @@
+{
+  "schema": "waooaw.wc109-baseline/v1",
+  "captured_at": "2026-09-29",
+  "branch": "wc/109-agentic-validation-implementation",
+  "merged_wc108_commit": "b55e1323ea1a83997ad13e604a77999536bebb43",
+  "baseline_head": "c8652f6872eb9eb1023c6568b2956dade8b9bbb2",
+  "worktree_identity": {
+    "initial_head": "b55e1323ea1a83997ad13e604a77999536bebb43",
+    "initial_tracked_and_untracked_clean": true,
+    "baseline_head_tracked_source_clean": true,
+    "generated_evidence_present": [
+      "test-results/wc104",
+      "test-results/wc106"
+    ]
+  },
+  "authority": {
+    "contract_path": "work-contracts/WC-109-agentic-validation-implementation.md",
+    "contract_sha256": "825f64553f452e4df006dcf0952f7cacb76314c3a5b3741e0baca36d73d1eb94",
+    "ledger_path": "work-contracts/WC-109-requirements.yaml",
+    "ledger_sha256": "85bc73a52c86f0e3dc15e35fe955c5cf9d0f87161f1b92f90af9c99cafc1871e",
+    "ledger_result": "PLANNED",
+    "process_control_version": "wc100-r033-v1"
+  },
+  "validation_inventory": {
+    "catalog_version": "wc104-efficient-execution-v2",
+    "catalog_mode": "shadow",
+    "defined_gate_count": 59,
+    "full_gate_count": 43,
+    "workflow_catalog_gate_count": 41,
+    "workflow_external_job_count": 8,
+    "required_evidence_classes": [
+      "CCT",
+      "browser",
+      "contract",
+      "coverage",
+      "integration",
+      "release",
+      "security",
+      "static"
+    ],
+    "main_full_inventory": true,
+    "release_full_inventory": true,
+    "selective_hosted_validation_founder_approved": false
+  },
+  "runner_availability": {
+    "python": {
+      "runner_identity": "sha256:b8a7b0d0e04522a79cdce69e6299888ce69ad3941d29b715bf0251c9fe80aa8e",
+      "image_digest": "sha256:97aa50c218fcbf9ea1562acc4b7a52c82d8879807e813fc96aa4f495f44fa833",
+      "build_count": 1,
+      "build_elapsed_ms": 133800,
+      "trust_source": "local-identity-build",
+      "authority": "diagnostic-local-only"
+    },
+    "dotnet": {"state": "resolve-trusted-or-build-once-before-first-use"},
+    "typescript": {"state": "resolve-trusted-or-build-once-before-first-use"},
+    "full": {"state": "resolve-trusted-or-build-once-before-first-use"}
+  },
+  "elapsed_baseline": {
+    "source": "validation/evidence/wc102-baseline.json",
+    "source_base_sha": "ff09197debf331a75d8f50bb6a817a683544ed33",
+    "current_wc109_samples": {
+      "python_runner_build_ms": [133800],
+      "runner_build_sample_count": 1
+    },
+    "limitations": [
+      "WC-102 timings predate WC-109 and remain comparison inputs, not current performance claims.",
+      "The single WC-109 runner build is not a distribution and cannot support a savings claim.",
+      "Hosted and full-qualification elapsed baselines remain unchanged until direct pilot observations exist."
+    ]
+  },
+  "implementation_order": [
+    {"stage": 0, "requirements": ["WC109-R001"]},
+    {"stage": 1, "requirements": ["WC109-R002", "WC109-R003", "WC109-R004", "WC109-R006", "WC109-R007"]},
+    {"stage": 2, "requirements": ["WC109-R008", "WC109-R009", "WC109-R013", "WC109-R014", "WC109-R015", "WC109-R016", "WC109-R028"]},
+    {"stage": 3, "requirements": ["WC109-R010", "WC109-R017", "WC109-R018", "WC109-R019", "WC109-R020", "WC109-R021", "WC109-R022", "WC109-R023", "WC109-R024"]},
+    {"stage": 4, "requirements": ["WC109-R005", "WC109-R011", "WC109-R012", "WC109-R029", "WC109-R034"]},
+    {"stage": 5, "requirements": ["WC109-R025", "WC109-R026", "WC109-R027", "WC109-R035"]},
+    {"stage": 6, "requirements": ["WC109-R031", "WC109-R032", "WC109-R033"]},
+    {"stage": 7, "requirements": ["WC109-R030", "WC109-R036"]}
+  ]
+}

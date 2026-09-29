@@ -6,7 +6,7 @@
 | `record_id` | `CB-010` |
 | `record_type` | Constitutional Blocker |
 | `produced_at` | `2026-09-29` |
-| Status | **OPEN** |
+| Status | **RESOLVED - 2026-09-29** |
 | Raised by | INST-010 - Platform IT Expert |
 | Affected work | WC-109 Stage 0 intake, strategic plan and implementation |
 | Constitutional basis | C-023, C-059, C-065, C-080; Platform IT Expert v1.3.6 process intake |
@@ -46,3 +46,17 @@ the catalog-controlled Docker route, and establish freshness before the strategi
 published.
 
 Changing or bypassing the check silently is prohibited.
+
+## Resolution
+
+The Founder explicitly authorized the deterministic WC-109 Stage 0 repair. Commit `636340bc` updated
+only the stale compact-card digest; all three process-control source checks then passed. Commit
+`c8652f68` repaired the pre-existing catalog ledger command so local execution requires an explicit,
+repository-relative changed-file scope while the hosted workflow retains its existing standard file.
+
+The catalog-controlled `requirement-ledger` gate reused Python runner identity
+`sha256:b8a7b0d0e04522a79cdce69e6299888ce69ad3941d29b715bf0251c9fe80aa8e` and passed
+the exact WC-109 contract/ledger pair. `validation/evidence/wc109-baseline.json` binds the merged
+predecessor, authority digests, clean initial worktree, current inventory, runner state and all 36
+requirements; its Docker test passes. CB-010 is closed without bypassing process intake or changing
+selective hosted-validation authority.

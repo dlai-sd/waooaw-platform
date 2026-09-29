@@ -27,6 +27,10 @@ requirements:
     component_owner: Implementation baseline control
     test_path_or_plan: Verify merged predecessor commit, clean implementation branch, contract digest and selected requirement IDs before edits.
     completion_rule: Baseline evidence binds one merged WC-108 commit, this exact contract and the implementation head.
+    evidence_refs:
+      - validation/evidence/wc109-baseline.json
+      - tests/validation_control/test_wc109_baseline.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R002
