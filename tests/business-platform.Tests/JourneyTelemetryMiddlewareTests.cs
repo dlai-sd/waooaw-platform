@@ -161,4 +161,35 @@ public sealed class JourneyTelemetryMiddlewareTests
         Assert.Equal(expected, activity!.GetTagItem("waooaw.journey.outcome"));
         Assert.Equal($"{status / 100}xx", activity.GetTagItem("waooaw.journey.status_class"));
     }
+
+    [Fact]
+    public async Task JourneyRoute_ContinuesWithoutCurrentActivity()
+    {
+        var context = new DefaultHttpContext();
+        context.SetEndpoint(
+            new Endpoint(
+                _ => Task.CompletedTask,
+                new EndpointMetadataCollection(
+                    new ControllerActionDescriptor
+                    {
+                        AttributeRouteInfo = new AttributeRouteInfo
+                        {
+                            Template = "api/v1/identity/session",
+                        },
+                    }
+                ),
+                "journey-without-activity"
+            )
+        );
+        var nextCalled = false;
+        var middleware = new JourneyTelemetryMiddleware(_ =>
+        {
+            nextCalled = true;
+            return Task.CompletedTask;
+        });
+
+        await middleware.InvokeAsync(context);
+
+        Assert.True(nextCalled);
+    }
 }
