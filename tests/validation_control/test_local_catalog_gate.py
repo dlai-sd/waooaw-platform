@@ -231,6 +231,35 @@ def test_constitutional_inputs_require_explicit_pr_body(tmp_path: Path) -> None:
     local_catalog_gate.write_pr_body(None, "build", tmp_path)
 
 
+def test_authorization_context_is_staged_inside_isolated_artifact_root(tmp_path: Path) -> None:
+    isolated = tmp_path / "test-results/wc109/runs/namespace/authorization-tier-check"
+
+    local_catalog_gate.write_authorization_context(
+        "authorization-tier-check",
+        isolated,
+        "main",
+        "0",
+        "dlai-sd/waooaw",
+    )
+
+    assert (isolated / "wc104/c066/base-branch.txt").read_text(encoding="utf-8") == "main\n"
+    assert (isolated / "wc104/c066/pr-number.txt").read_text(encoding="utf-8") == "0\n"
+    assert (isolated / "wc104/c066/repository.txt").read_text(encoding="utf-8") == "dlai-sd/waooaw\n"
+
+
+def test_authorization_context_requires_explicit_pr_values(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="requires explicit PR context"):
+        local_catalog_gate.write_authorization_context(
+            "authorization-tier-check",
+            tmp_path,
+            "main",
+            None,
+            "dlai-sd/waooaw",
+        )
+
+    local_catalog_gate.write_authorization_context("build", tmp_path, None, None, None)
+
+
 def test_gate_identity_hashes_only_declared_environment(monkeypatch, tmp_path: Path) -> None:
     tool_digest = "sha256:" + "d" * 64
     catalog = {

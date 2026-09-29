@@ -283,6 +283,30 @@ def write_pr_body(pr_body_file: Path | None, gate_id: str, artifact_root: Path) 
     shutil.copyfile(pr_body_file, destination / "pr-body.md")
 
 
+def write_authorization_context(
+    gate_id: str,
+    artifact_root: Path,
+    base_branch: str | None,
+    pr_number: str | None,
+    repository_name: str | None,
+) -> None:
+    if gate_id != "authorization-tier-check":
+        return
+    values = {
+        "base-branch.txt": base_branch,
+        "pr-number.txt": pr_number,
+        "repository.txt": repository_name,
+    }
+    missing = [name for name, value in values.items() if not value]
+    if missing:
+        raise ValueError("authorization-tier-check local execution requires explicit PR context")
+    destination = artifact_root / "wc104/c066"
+    destination.mkdir(parents=True, exist_ok=True)
+    for name, value in values.items():
+        assert value is not None
+        (destination / name).write_text(value + "\n", encoding="utf-8")
+
+
 def write_requirement_scope(repository: Path, changed_files: list[str], artifact_root: Path | None = None) -> None:
     if not changed_files:
         raise ValueError("requirement-ledger local execution requires --changed-file")
@@ -306,6 +330,9 @@ def execute_gate(
     changed_files: list[str] | None = None,
     mode: str = "qualification",
     pr_body_file: Path | None = None,
+    base_branch: str | None = None,
+    pr_number: str | None = None,
+    repository_name: str | None = None,
 ) -> int:
     if mode not in {"focused", "qualification"}:
         raise ValueError(f"unsupported local execution mode: {mode}")
@@ -319,6 +346,7 @@ def execute_gate(
     artifact_root = repository / node["output_directory"]
     write_commit_metadata(repository, base_sha, head_sha, artifact_root)
     write_pr_body(pr_body_file, gate_id, artifact_root)
+    write_authorization_context(gate_id, artifact_root, base_branch, pr_number, repository_name)
     if gate_id == "requirement-ledger":
         write_requirement_scope(repository, changed_files or [], artifact_root)
     plan_path = repository / "test-results/wc104/local-plans" / f"{gate_id.replace(':', '-')}.json"
@@ -487,6 +515,9 @@ def main() -> int:
     parser.add_argument("--git-common-dir", type=Path, required=True)
     parser.add_argument("--changed-file", action="append", default=[])
     parser.add_argument("--pr-body-file", type=Path)
+    parser.add_argument("--base-branch")
+    parser.add_argument("--pr-number")
+    parser.add_argument("--repository")
     parser.add_argument("--mode", choices=("focused", "qualification"), default="qualification")
     arguments = parser.parse_args()
     repository = Path.cwd().resolve()
@@ -499,6 +530,9 @@ def main() -> int:
         arguments.changed_file,
         arguments.mode,
         arguments.pr_body_file.resolve() if arguments.pr_body_file is not None else None,
+        arguments.base_branch,
+        arguments.pr_number,
+        arguments.repository,
     )
 
 
