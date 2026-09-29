@@ -28,6 +28,7 @@ def test_local_fallback_builds_once_then_reuses_identity_image(monkeypatch, tmp_
     builds: list[list[str]] = []
     runner_digest = "sha256:" + "c" * 64
     monkeypatch.setattr(local_catalog_gate, "image_id", lambda image, repository: next(inspected))
+    monkeypatch.setattr(local_catalog_gate, "docker_executable", lambda: "/usr/bin/docker")
     monkeypatch.setattr(local_catalog_gate, "create_context", lambda repository, context, spec: context.mkdir(parents=True))
 
     def build(command: list[str], **unused: object) -> SimpleNamespace:
@@ -84,6 +85,7 @@ def test_rollback_bypasses_trusted_manifest_and_existing_local_image(monkeypatch
     inspected = iter((IMAGE_ID, IMAGE_ID))
     builds: list[list[str]] = []
     monkeypatch.setattr(local_catalog_gate, "image_id", lambda image, repository: next(inspected))
+    monkeypatch.setattr(local_catalog_gate, "docker_executable", lambda: "/usr/bin/docker")
     monkeypatch.setattr(local_catalog_gate, "create_context", lambda repository, context, spec: context.mkdir(parents=True))
 
     def build(command: list[str], **unused: object) -> SimpleNamespace:
@@ -146,11 +148,18 @@ def test_host_gate_executes_plan_without_resolving_runner(monkeypatch, tmp_path:
     assert local_catalog_gate.execute_gate(tmp_path, "host", "a" * 40, "b" * 40, tmp_path) == 0
     assert "--image-id" not in captured[0]
     assert captured_environment["DOCKER_GID"] == "321"
-    assert captured_environment["GOAL006_EVIDENCE_DIR"] == str(
-        tmp_path / "test-results/wc104/goal006-local-azure-runtime"
-    )
+    assert captured_environment["GOAL006_EVIDENCE_DIR"] == str(tmp_path / "test-results/wc104/goal006-local-azure-runtime")
     plan = json.loads((tmp_path / "test-results/wc104/local-plans/host.json").read_text(encoding="utf-8"))
     assert plan["nodes"][0]["command"] == "true"
+    records = list((tmp_path / "test-results/wc109/runs").glob("**/wc109-execution.json"))
+    assert len(records) == 1
+    record = json.loads(records[0].read_text(encoding="utf-8"))
+    assert record["catalog_controlled"] is True
+    assert record["authority"] == "diagnostic-local-only"
+    assert record["head_sha"] == "a" * 40
+    assert record["base_sha"] == "b" * 40
+    assert record["runner_build_events"] == 0
+    assert record["product_image_build_events"] == 0
     assert (tmp_path / "test-results/wc104/metadata/base-sha.txt").read_text() == "b" * 40 + "\n"
     assert (tmp_path / "test-results/wc104/metadata/head-sha.txt").read_text() == "a" * 40 + "\n"
     assert (tmp_path / "test-results/wc104/c059/base-sha.txt").read_text() == "b" * 40 + "\n"
@@ -174,9 +183,12 @@ def test_requirement_scope_is_explicit_deduplicated_and_repository_relative(tmp_
     )
 
     assert (tmp_path / "test-results/wc102/changed-files.txt").read_text(encoding="utf-8") == (
-        "work-contracts/WC-109-agentic-validation-implementation.md\n"
-        "work-contracts/WC-109-requirements.yaml\n"
+        "work-contracts/WC-109-agentic-validation-implementation.md\nwork-contracts/WC-109-requirements.yaml\n"
     )
+
+    isolated = tmp_path / "test-results/wc109/runs/namespace/gate"
+    local_catalog_gate.write_requirement_scope(tmp_path, ["constitution/PROJECT_STATE.md"], isolated)
+    assert (isolated / "wc102/changed-files.txt").read_text(encoding="utf-8") == "constitution/PROJECT_STATE.md\n"
 
 
 def test_gate_identity_hashes_only_declared_environment(monkeypatch, tmp_path: Path) -> None:

@@ -7,7 +7,13 @@ import jsonschema
 import pytest
 import yaml
 
-from validation_control.catalog_execution import compose_command, execution_command, runner_environment, select_plan_node
+from validation_control.catalog_execution import (
+    cleanup_command,
+    compose_command,
+    execution_command,
+    runner_environment,
+    select_plan_node,
+)
 from validation_control.orchestrator import build_execution_plan
 
 
@@ -107,7 +113,14 @@ def test_concurrent_runs_receive_distinct_namespaces() -> None:
     second = build_execution_plan(catalog, ["test-web"], mode="focused", head_sha="a" * 40, run_id="two")
 
     assert first["execution_namespace"] != second["execution_namespace"]
-    assert first["nodes"] == second["nodes"]
+    assert first["nodes"][0]["compose_project"] == first["execution_namespace"]
+    assert second["nodes"][0]["compose_project"] == second["execution_namespace"]
+    assert first["nodes"][0]["output_directory"] != second["nodes"][0]["output_directory"]
+    assert first["nodes"][0]["output_directory"].endswith("/test-web")
+    stable_fields = {"gate_id", "runner_id", "compose_service", "profile", "command_id", "command"}
+    assert {field: first["nodes"][0][field] for field in stable_fields} == {
+        field: second["nodes"][0][field] for field in stable_fields
+    }
 
 
 def test_catalog_gate_selection_controls_compose_execution() -> None:
@@ -119,12 +132,16 @@ def test_catalog_gate_selection_controls_compose_execution() -> None:
     assert compose_command(node) == [
         "docker",
         "compose",
+        "--project-name",
+        plan["execution_namespace"],
         "--profile",
         "test-ts",
         "run",
         "--rm",
         "--pull",
         "never",
+        "--volume",
+        f"./{node['output_directory']}:/workspace/test-results",
         "test-runner-ts",
         "sh",
         "-lc",
@@ -146,7 +163,21 @@ def test_catalog_gate_forwards_only_declared_environment() -> None:
     command = compose_command(node)
 
     assert node["environment"] == ["DATABASE_URL"]
-    assert command[command.index("--pull") + 2 : command.index("test-runner-python")] == ["-e", "DATABASE_URL"]
+    environment_position = command.index("-e")
+    assert command[environment_position : environment_position + 2] == ["-e", "DATABASE_URL"]
+    assert "/var/run/docker.sock:/var/run/docker.sock" not in command
+
+
+def test_only_classified_gates_receive_the_docker_socket() -> None:
+    catalog = load_catalog()
+    classified = {gate_id for gate_id, gate in catalog["gates"].items() if gate["resources"]["docker_socket"] is True}
+
+    assert classified == {"spec-lint", "release-qualification", "contract:rest"}
+    for gate_id in classified:
+        resources = catalog["gates"][gate_id]["resources"]
+        assert resources["socket_classification"] in {"nested-docker", "host-orchestration", "testcontainers"}
+        plan = build_execution_plan(catalog, [gate_id], mode="focused", head_sha="a" * 40, run_id=gate_id)
+        assert "/var/run/docker.sock:/var/run/docker.sock" in compose_command(plan["nodes"][0])
 
 
 def test_catalog_gate_mounts_linked_worktree_git_directory_read_only() -> None:
@@ -155,7 +186,30 @@ def test_catalog_gate_mounts_linked_worktree_git_directory_read_only() -> None:
 
     command = compose_command(plan["nodes"][0], "/workspaces/repository/.git")
 
-    assert command[command.index("--volume") + 1] == "/workspaces/repository/.git:/workspaces/repository/.git:ro"
+    assert "/workspaces/repository/.git:/workspaces/repository/.git:ro" in command
+
+
+def test_disposable_project_cleanup_removes_namespaced_volumes() -> None:
+    catalog = load_catalog()
+    plan = build_execution_plan(
+        catalog,
+        ["build:constitutional-engine"],
+        mode="focused",
+        head_sha="a" * 40,
+        run_id="cleanup",
+    )
+    node = plan["nodes"][0]
+
+    assert node["output_directory"].endswith("/build-constitutional-engine")
+    assert cleanup_command(node, "/usr/bin/docker") == [
+        "/usr/bin/docker",
+        "compose",
+        "--project-name",
+        plan["execution_namespace"],
+        "down",
+        "--volumes",
+        "--remove-orphans",
+    ]
 
 
 def test_catalog_gate_forwards_docker_socket_group(tmp_path: Path) -> None:
@@ -179,6 +233,21 @@ def test_python_builds_write_bytecode_only_to_disposable_state() -> None:
         command = catalog["commands"][command_id]["shell"]
         assert command.startswith("PYTHONPYCACHEPREFIX=/tmp/pycache/")
         assert "python -m compileall -q src/" in command
+
+
+def test_dotnet_builds_restore_and_build_in_the_same_disposable_artifact_path() -> None:
+    catalog = load_catalog()
+
+    for command_id, service in (
+        ("build-constitutional-engine", "constitutional-engine"),
+        ("build-business-platform", "business-platform"),
+    ):
+        command = catalog["commands"][command_id]["shell"]
+        artifact_path = f"--artifacts-path /tmp/artifacts/{service}"
+        assert command.count(artifact_path) == 2
+        assert "dotnet restore" in command
+        assert "dotnet build" in command
+        assert command.endswith("--no-restore")
 
 
 def test_dotnet_mutation_thresholds_match_pinned_stryker_cli() -> None:

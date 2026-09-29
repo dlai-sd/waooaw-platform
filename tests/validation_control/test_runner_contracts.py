@@ -37,12 +37,15 @@ def test_stack_runners_are_non_root_bounded_and_source_mounted() -> None:
     assert all(":/workspace/web/" not in volume for volume in COMPOSE["services"]["test-runner"]["volumes"])
 
 
-def test_socket_is_absent_from_typescript_runner_and_bounded_elsewhere() -> None:
-    assert all("docker.sock" not in volume for volume in COMPOSE["services"]["test-runner-ts"]["volumes"])
-    for runner_name in ("test-runner-python", "test-runner-dotnet", "test-runner"):
+def test_socket_is_absent_from_every_runner_by_default() -> None:
+    for runner_name in (*RUNNERS, "test-runner"):
         runner = COMPOSE["services"][runner_name]
-        assert "/var/run/docker.sock:/var/run/docker.sock" in runner["volumes"]
-        assert runner["group_add"] == ["${DOCKER_GID:-0}"]
+        assert all("docker.sock" not in volume for volume in runner["volumes"])
+
+
+def test_stack_runners_declare_non_root_uid_and_gid() -> None:
+    for runner_name in (*RUNNERS, "test-runner"):
+        assert COMPOSE["services"][runner_name]["user"] == "1000:1000"
 
 
 def test_runner_images_exclude_application_source() -> None:
@@ -86,12 +89,12 @@ def test_compose_accepts_only_explicit_supplied_runner_images() -> None:
         assert COMPOSE["services"][service]["image"] == image
 
 
-def test_dotnet_cache_path_is_aligned() -> None:
+def test_dotnet_immutable_dependencies_are_not_masked_by_a_mutable_volume() -> None:
     dockerfile = (ROOT / "architecture/reference/dockerfiles/Dockerfile.test-runner-dotnet").read_text(encoding="utf-8")
     volumes = COMPOSE["services"]["test-runner-dotnet"]["volumes"]
 
     assert "NUGET_PACKAGES=/opt/nuget/packages" in dockerfile
-    assert "wc102_nuget_cache:/opt/nuget/packages" in volumes
+    assert all(":/opt/nuget/packages" not in volume for volume in volumes)
     assert "/tmp/nuget" not in str(COMPOSE["services"]["test-runner-dotnet"])
 
 

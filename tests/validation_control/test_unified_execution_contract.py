@@ -38,6 +38,8 @@ def plan_and_node() -> tuple[dict[str, object], dict[str, object]]:
         "command": "costly-command",
         "resources": {"docker_socket": True},
         "environment": [],
+        "compose_project": "wc109-test",
+        "output_directory": "test-results/wc109/runs/wc109-test/test-python-professional-runtime",
     }
     plan = {
         "schema": "waooaw.validation-execution-plan/v1",
@@ -48,6 +50,11 @@ def plan_and_node() -> tuple[dict[str, object], dict[str, object]]:
     return plan, node
 
 
+def proof_path(tmp_path: Path, node: dict[str, object], environment: dict[str, str]) -> Path:
+    relative = environment["WC106_EVIDENCE_PATH"].removeprefix("/workspace/test-results/")
+    return tmp_path / str(node["output_directory"]) / relative
+
+
 def test_exact_container_preflight_precedes_costly_command(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     plan, node = plan_and_node()
     (tmp_path / "test-results").mkdir()
@@ -56,25 +63,26 @@ def test_exact_container_preflight_precedes_costly_command(monkeypatch: pytest.M
     def execute(command: list[str], **kwargs: object) -> SimpleNamespace:
         commands.append(command)
         environment = kwargs["env"]
-        proof = tmp_path / environment["WC106_EVIDENCE_PATH"].removeprefix("/workspace/")
+        proof = proof_path(tmp_path, node, environment)
         proof.write_text(environment["WC106_EVIDENCE_TOKEN"] + "\n", encoding="utf-8")
         return SimpleNamespace(returncode=0)
 
     monkeypatch.setattr(catalog_execution.subprocess, "run", execute)
 
-    result = catalog_execution.run_execution_preflight(
-        plan, node, IMAGE_ID, "/usr/bin/docker", {}, tmp_path
-    )
+    result = catalog_execution.run_execution_preflight(plan, node, IMAGE_ID, "/usr/bin/docker", {}, tmp_path)
 
     assert result == 0
     assert len(commands) == 1
     assert commands[0][-1] == "sh scripts/validation_control/run_execution_contract.sh"
-    assert evidence_path(tmp_path, "wc106-test", node["gate_id"]).is_file()
+    assert evidence_path(
+        tmp_path,
+        "wc106-test",
+        node["gate_id"],
+        tmp_path / str(node["output_directory"]),
+    ).is_file()
 
 
-def test_host_gate_preflight_still_runs_in_declared_container(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_host_gate_preflight_still_runs_in_declared_container(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     plan, node = plan_and_node()
     node["execution"] = "host"
     (tmp_path / "test-results").mkdir()
@@ -83,18 +91,16 @@ def test_host_gate_preflight_still_runs_in_declared_container(
     def execute(command: list[str], **kwargs: object) -> SimpleNamespace:
         commands.append(command)
         environment = kwargs["env"]
-        proof = tmp_path / environment["WC106_EVIDENCE_PATH"].removeprefix("/workspace/")
+        proof = proof_path(tmp_path, node, environment)
         proof.write_text(environment["WC106_EVIDENCE_TOKEN"] + "\n", encoding="utf-8")
         return SimpleNamespace(returncode=0)
 
     monkeypatch.setattr(catalog_execution.subprocess, "run", execute)
 
-    result = catalog_execution.run_execution_preflight(
-        plan, node, IMAGE_ID, "/usr/bin/docker", {}, tmp_path
-    )
+    result = catalog_execution.run_execution_preflight(plan, node, IMAGE_ID, "/usr/bin/docker", {}, tmp_path)
 
     assert result == 0
-    assert commands[0][:3] == ["/usr/bin/docker", "compose", "--profile"]
+    assert commands[0][:5] == ["/usr/bin/docker", "compose", "--project-name", "wc109-test", "--profile"]
     assert commands[0][-1] == "sh scripts/validation_control/run_execution_contract.sh"
 
 
@@ -108,9 +114,7 @@ def test_host_gate_preflight_still_runs_in_declared_container(
         "absent-docker-socket",
     ),
 )
-def test_environment_defects_stop_before_costly_execution(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, defect: str
-) -> None:
+def test_environment_defects_stop_before_costly_execution(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, defect: str) -> None:
     plan, node = plan_and_node()
     (tmp_path / "test-results").mkdir()
     calls = 0
@@ -128,12 +132,15 @@ def test_environment_defects_stop_before_costly_execution(
 
 
 @pytest.mark.parametrize("defect", ("stale-artifact", "container-only-output"))
-def test_non_current_evidence_cannot_authorize_execution(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, defect: str
-) -> None:
+def test_non_current_evidence_cannot_authorize_execution(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, defect: str) -> None:
     plan, node = plan_and_node()
     (tmp_path / "test-results").mkdir()
-    stale = evidence_path(tmp_path, "wc106-test", node["gate_id"])
+    stale = evidence_path(
+        tmp_path,
+        "wc106-test",
+        node["gate_id"],
+        tmp_path / str(node["output_directory"]),
+    )
     stale.parent.mkdir(parents=True)
     stale.write_text("stale\n", encoding="utf-8")
     monkeypatch.setattr(
@@ -153,9 +160,7 @@ def test_unchanged_failure_is_blocked_until_bound_environment_changes(tmp_path: 
     digest = binding_digest(execution_binding(plan, node, IMAGE_ID, tmp_path))
     record_failure(tmp_path, node["gate_id"], digest, "read-only-cache")
     failure = json.loads(
-        (tmp_path / "test-results/wc106/execution-failures/test-python-professional-runtime.json").read_text(
-            encoding="utf-8"
-        )
+        (tmp_path / "test-results/wc106/execution-failures/test-python-professional-runtime.json").read_text(encoding="utf-8")
     )
 
     with pytest.raises(UnchangedExecutionFailureError):
@@ -218,9 +223,9 @@ def test_scripts_quality_gate_enforces_execution_contract_self_test() -> None:
     root = Path(__file__).resolve().parents[2]
     catalog = yaml.safe_load((root / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
 
-    assert "pytest tests/validation_control/test_unified_execution_contract.py -q" in catalog["commands"][
-        "quality-scripts"
-    ]["shell"]
+    assert (
+        "pytest tests/validation_control/test_unified_execution_contract.py -q" in catalog["commands"]["quality-scripts"]["shell"]
+    )
 
 
 def test_execution_identity_segments_cannot_escape_probe_roots() -> None:
@@ -236,9 +241,7 @@ def test_corrupt_failure_record_blocks_costly_retry(tmp_path: Path) -> None:
         assert_retry_allowed(tmp_path, "gate", "digest")
 
 
-def test_orchestration_preflight_rejects_unwritable_home_before_supply(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_orchestration_preflight_rejects_unwritable_home_before_supply(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     socket = tmp_path / "docker.sock"
     socket.touch()
     monkeypatch.setenv("HOME", str(tmp_path / "read-only-home"))
@@ -256,9 +259,7 @@ def test_orchestration_preflight_rejects_unwritable_home_before_supply(
         orchestration_preflight(tmp_path, socket)
 
 
-def test_orchestration_preflight_isolates_parallel_output_probes(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_orchestration_preflight_isolates_parallel_output_probes(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     socket = tmp_path / "docker.sock"
     socket.touch()
     monkeypatch.setenv("HOME", str(tmp_path / "home"))

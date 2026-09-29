@@ -55,6 +55,8 @@ def compose_command(node: dict[str, Any], git_common_dir: str | None = None) -> 
     command = [
         "docker",
         "compose",
+        "--project-name",
+        node["compose_project"],
         "--profile",
         node["profile"],
         "run",
@@ -64,6 +66,15 @@ def compose_command(node: dict[str, Any], git_common_dir: str | None = None) -> 
     ]
     for name in environment:
         command.extend(("-e", name))
+    output_directory = node.get("output_directory")
+    if not isinstance(output_directory, str) or not output_directory.startswith("test-results/wc109/runs/"):
+        raise ValueError("validation plan node has invalid output directory")
+    command.extend(("--volume", f"./{output_directory}:/workspace/test-results"))
+    resources = node.get("resources")
+    if not isinstance(resources, dict):
+        raise ValueError("validation plan node resources must be a mapping")
+    if resources.get("docker_socket") is True:
+        command.extend(("--volume", "/var/run/docker.sock:/var/run/docker.sock"))
     if git_common_dir:
         command.extend(("--volume", f"{git_common_dir}:{git_common_dir}:ro"))
     command.extend(
@@ -83,6 +94,28 @@ def execution_command(node: dict[str, Any], docker: str, git_common_dir: str | N
     command = compose_command(node, git_common_dir)
     command[0] = docker
     return command
+
+
+def cleanup_command(node: dict[str, Any], docker: str) -> list[str]:
+    return [
+        docker,
+        "compose",
+        "--project-name",
+        node["compose_project"],
+        "down",
+        "--volumes",
+        "--remove-orphans",
+    ]
+
+
+def cleanup_execution(node: dict[str, Any], docker: str, environment: dict[str, str]) -> None:
+    subprocess.run(  # noqa: S603
+        cleanup_command(node, docker),
+        check=False,
+        env=environment,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
 
 
 def runner_environment(image_id: str, docker_socket: Path = Path("/var/run/docker.sock")) -> dict[str, str]:
@@ -108,13 +141,17 @@ def run_execution_preflight(
     binding = execution_binding(plan, node, image_id, repository)
     digest = binding_digest(binding)
     assert_retry_allowed(repository, node["gate_id"], digest)
-    proof, token = prepare_evidence(repository, namespace, node["gate_id"], digest)
+    output_directory = node.get("output_directory")
+    if not isinstance(output_directory, str):
+        raise ValueError("validation plan node output directory is required")
+    artifact_root = repository / output_directory
+    proof, token = prepare_evidence(repository, namespace, node["gate_id"], digest, artifact_root)
     resources = node.get("resources")
     if not isinstance(resources, dict):
         raise ValueError("validation plan node resources must be a mapping")
     preflight_variables = {
         "WC106_DOCKER_SOCKET_REQUIRED": "1" if resources.get("docker_socket") is True else "0",
-        "WC106_EVIDENCE_PATH": f"/workspace/{proof.relative_to(repository)}",
+        "WC106_EVIDENCE_PATH": f"/workspace/test-results/{proof.relative_to(artifact_root)}",
         "WC106_EVIDENCE_TOKEN": token,
         "WC106_EXECUTION_NAMESPACE": safe_segment(namespace),
         "WC106_EXPECTED_UID": "1000",
@@ -168,8 +205,11 @@ def main() -> int:
         raise ValueError("--image-id is required for runner-backed catalog execution")
 
     orchestration_preflight(Path.cwd())
-    artifact_root = Path("test-results")
-    artifact_root.mkdir(exist_ok=True)
+    output_directory = node.get("output_directory")
+    if not isinstance(output_directory, str):
+        raise ValueError("validation plan node output directory is required")
+    artifact_root = Path(output_directory)
+    artifact_root.mkdir(parents=True, exist_ok=True)
     artifact_root.chmod(0o777)
     verifier = Path("scripts/verify_runner_image.sh").resolve()
     if not verifier.is_file():
@@ -195,8 +235,21 @@ def main() -> int:
         print(f"WC-106 retry blocked: {error}")
         return 78
     if preflight_result != 0:
+        cleanup_execution(node, docker, environment)
         return preflight_result
-    return subprocess.run(execution_command(node, docker, git_common_dir), check=False, env=environment).returncode  # noqa: S603
+    try:
+        try:
+            return subprocess.run(  # noqa: S603
+                execution_command(node, docker, git_common_dir),
+                check=False,
+                env=environment,
+                timeout=node["resources"]["timeout_seconds"],
+            ).returncode
+        except subprocess.TimeoutExpired:
+            print(f"validation gate timed out: {node['gate_id']}")
+            return 124
+    finally:
+        cleanup_execution(node, docker, environment)
 
 
 if __name__ == "__main__":

@@ -15,6 +15,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -263,7 +264,7 @@ def write_commit_metadata(repository: Path, base_sha: str, head_sha: str) -> Non
         (directory / "head-sha.txt").write_text(head_sha + "\n", encoding="utf-8")
 
 
-def write_requirement_scope(repository: Path, changed_files: list[str]) -> None:
+def write_requirement_scope(repository: Path, changed_files: list[str], artifact_root: Path | None = None) -> None:
     if not changed_files:
         raise ValueError("requirement-ledger local execution requires --changed-file")
     normalized: set[str] = set()
@@ -272,7 +273,7 @@ def write_requirement_scope(repository: Path, changed_files: list[str]) -> None:
         if path.is_absolute() or ".." in path.parts:
             raise ValueError(f"changed file must be repository-relative: {changed_file}")
         normalized.add(path.as_posix())
-    output = repository / "test-results/wc102/changed-files.txt"
+    output = (artifact_root if artifact_root is not None else repository / "test-results") / "wc102/changed-files.txt"
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text("".join(f"{path}\n" for path in sorted(normalized)), encoding="utf-8")
 
@@ -284,16 +285,20 @@ def execute_gate(
     base_sha: str,
     git_common_dir: Path,
     changed_files: list[str] | None = None,
+    mode: str = "qualification",
 ) -> int:
+    if mode not in {"focused", "qualification"}:
+        raise ValueError(f"unsupported local execution mode: {mode}")
     orchestration_preflight(repository)
     write_commit_metadata(repository, base_sha, head_sha)
-    if gate_id == "requirement-ledger":
-        write_requirement_scope(repository, changed_files or [])
     catalog = yaml.safe_load((repository / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
     if not isinstance(catalog, dict):
         raise ValueError("validation catalog root must be a mapping")
-    plan = build_execution_plan(catalog, [gate_id], mode="qualification", head_sha=head_sha, run_id=f"local-{gate_id}")
+    run_id = f"local-{gate_id}-{os.getpid()}-{time.time_ns()}"
+    plan = build_execution_plan(catalog, [gate_id], mode=mode, head_sha=head_sha, run_id=run_id)
     node = plan["nodes"][0]
+    if gate_id == "requirement-ledger":
+        write_requirement_scope(repository, changed_files or [], repository / node["output_directory"])
     plan_path = repository / "test-results/wc104/local-plans" / f"{gate_id.replace(':', '-')}.json"
     plan_path.parent.mkdir(parents=True, exist_ok=True)
     plan_path.write_text(json.dumps(plan, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -316,6 +321,7 @@ def execute_gate(
         "--gate",
         gate_id,
     ]
+    resolution: dict[str, Any] | None = None
     if node.get("runner_required", True):
         runner_id = node["runner_id"]
         resolution = resolve_runner(repository, runner_id)
@@ -327,6 +333,29 @@ def execute_gate(
         env=environment,
         check=False,
     )
+    record_path = repository / node["output_directory"] / "wc109-execution.json"
+    record_path.parent.mkdir(parents=True, exist_ok=True)
+    record = {
+        "schema": "waooaw.wc109-tier2-execution/v1",
+        "authority": "diagnostic-local-only",
+        "catalog_controlled": True,
+        "compose_project": node["compose_project"],
+        "execution_namespace": plan["execution_namespace"],
+        "base_sha": base_sha,
+        "gate_id": gate_id,
+        "head_sha": head_sha,
+        "invocation_source": "catalog",
+        "mode": mode,
+        "output_directory": node["output_directory"],
+        "product_image_build_events": 0,
+        "result": "PASS" if completed.returncode == 0 else "FAIL",
+        "return_code": completed.returncode,
+        "runner_build_events": resolution["build_count"] if resolution is not None else 0,
+        "runner_digest": resolution["runner_digest"] if resolution is not None else node.get("tool_digest"),
+    }
+    temporary = record_path.with_suffix(f".tmp-{os.getpid()}")
+    temporary.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    os.replace(temporary, record_path)
     return completed.returncode
 
 
@@ -337,6 +366,7 @@ def main() -> int:
     parser.add_argument("--base", required=True)
     parser.add_argument("--git-common-dir", type=Path, required=True)
     parser.add_argument("--changed-file", action="append", default=[])
+    parser.add_argument("--mode", choices=("focused", "qualification"), default="qualification")
     arguments = parser.parse_args()
     repository = Path.cwd().resolve()
     return execute_gate(
@@ -346,6 +376,7 @@ def main() -> int:
         arguments.base,
         arguments.git_common_dir.resolve(),
         arguments.changed_file,
+        arguments.mode,
     )
 
 

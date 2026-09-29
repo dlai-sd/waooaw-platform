@@ -110,15 +110,24 @@
         "evidence_class": {"enum": ["static", "unit", "coverage", "integration", "contract", "browser", "security", "CCT", "release"]},
         "resources": {
           "type": "object",
-          "required": ["cpus", "memory_mb", "timeout_seconds", "docker_socket", "concurrency_class"],
+          "required": ["cpus", "memory_mb", "disk_mb", "timeout_seconds", "docker_socket", "concurrency_class"],
           "properties": {
             "cpus": {"type": "number", "exclusiveMinimum": 0},
             "memory_mb": {"type": "integer", "minimum": 128},
+            "disk_mb": {"type": "integer", "minimum": 16},
             "timeout_seconds": {"type": "integer", "minimum": 1},
             "docker_socket": {"type": "boolean"},
+            "socket_classification": {"enum": ["nested-docker", "host-orchestration", "testcontainers"]},
             "concurrency_class": {"type": "string"}
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {"properties": {"docker_socket": {"const": true}}},
+              "then": {"required": ["socket_classification"]},
+              "else": {"not": {"required": ["socket_classification"]}}
+            }
+          ]
         },
         "retry_policy": {"enum": ["none", "transient-infrastructure-once"]},
         "artifacts": {

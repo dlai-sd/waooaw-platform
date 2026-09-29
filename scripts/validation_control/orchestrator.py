@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 from typing import Any, Literal
 
@@ -12,6 +13,14 @@ import yaml
 
 
 Mode = Literal["focused", "qualification"]
+UNSAFE_PATH_SEGMENT = re.compile(r"[^A-Za-z0-9_.-]+")
+
+
+def safe_path_segment(value: str) -> str:
+    segment = UNSAFE_PATH_SEGMENT.sub("-", value).strip("-.")
+    if not segment:
+        raise ValueError("gate ID does not contain a safe path segment")
+    return segment
 
 
 def build_execution_plan(
@@ -27,6 +36,7 @@ def build_execution_plan(
     if not isinstance(gates, dict) or not isinstance(commands, dict) or not isinstance(runners, dict):
         raise ValueError("catalog gates, commands and runners must be mappings")
 
+    execution_namespace = "wc109-" + hashlib.sha256(f"{run_id}:{mode}:{head_sha}".encode()).hexdigest()[:16]
     nodes: list[dict[str, Any]] = []
     for gate_id in gate_ids:
         gate = gates.get(gate_id)
@@ -56,6 +66,8 @@ def build_execution_plan(
                 "artifacts": gate["artifacts"],
                 "environment": gate.get("environment", []),
                 "runner_manifest": f"test-results/wc104/runner-manifests/{runner_id}.json",
+                "compose_project": execution_namespace,
+                "output_directory": f"test-results/wc109/runs/{execution_namespace}/{safe_path_segment(gate_id)}",
             }
         )
 
@@ -66,7 +78,7 @@ def build_execution_plan(
         "authoritative": False,
         "requires_clean_commit": mode == "qualification",
         "head_sha": head_sha,
-        "execution_namespace": "wc102-" + hashlib.sha256(f"{run_id}:{mode}:{head_sha}".encode()).hexdigest()[:16],
+        "execution_namespace": execution_namespace,
         "nodes": nodes,
     }
 

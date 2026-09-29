@@ -163,8 +163,9 @@ def failure_path(repository: Path, gate_id: str) -> Path:
     return repository / "test-results/wc106/execution-failures" / f"{safe_segment(gate_id)}.json"
 
 
-def evidence_path(repository: Path, namespace: str, gate_id: str) -> Path:
-    return repository / "test-results/wc106/execution-contract" / safe_segment(namespace) / f"{safe_segment(gate_id)}.proof"
+def evidence_path(repository: Path, namespace: str, gate_id: str, artifact_root: Path | None = None) -> Path:
+    root = artifact_root if artifact_root is not None else repository / "test-results"
+    return root / "wc106/execution-contract" / safe_segment(namespace) / f"{safe_segment(gate_id)}.proof"
 
 
 def assert_retry_allowed(repository: Path, gate_id: str, digest: str) -> None:
@@ -210,8 +211,14 @@ def clear_failure(repository: Path, gate_id: str) -> None:
     failure_path(repository, gate_id).unlink(missing_ok=True)
 
 
-def prepare_evidence(repository: Path, namespace: str, gate_id: str, digest: str) -> tuple[Path, str]:
-    path = evidence_path(repository, namespace, gate_id)
+def prepare_evidence(
+    repository: Path,
+    namespace: str,
+    gate_id: str,
+    digest: str,
+    artifact_root: Path | None = None,
+) -> tuple[Path, str]:
+    path = evidence_path(repository, namespace, gate_id, artifact_root)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.parent.chmod(0o777)
     path.unlink(missing_ok=True)

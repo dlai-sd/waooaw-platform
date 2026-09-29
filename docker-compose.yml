@@ -53,10 +53,10 @@ services:
     build:
       context: .
       dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner-python
+    user: "1000:1000"
     volumes:
       - .:/workspace:ro
       - ./test-results:/workspace/test-results
-      - /var/run/docker.sock:/var/run/docker.sock
     group_add: ["${DOCKER_GID:-0}"]
     read_only: true
     tmpfs: ["/tmp:size=1g,mode=1777,exec"]
@@ -81,11 +81,10 @@ services:
     build:
       context: .
       dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner-dotnet
+    user: "1000:1000"
     volumes:
       - .:/workspace:ro
       - ./test-results:/workspace/test-results
-      - wc102_nuget_cache:/opt/nuget/packages
-      - /var/run/docker.sock:/var/run/docker.sock
     group_add: ["${DOCKER_GID:-0}"]
     read_only: true
     tmpfs: ["/tmp:size=2g,mode=1777,exec"]
@@ -106,6 +105,7 @@ services:
     build:
       context: .
       dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner-ts
+    user: "1000:1000"
     volumes:
       - .:/workspace:ro
       - ./test-results:/workspace/test-results
@@ -131,10 +131,10 @@ services:
     build:
       context: .
       dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner
+    user: "1000:1000"
     volumes:
       - .:/workspace:ro                 # source is current but cannot become retained correctness state
       - ./test-results:/workspace/test-results
-      - /var/run/docker.sock:/var/run/docker.sock  # testcontainers: access to Docker daemon
     group_add: ["${DOCKER_GID:-0}"]
     read_only: true
     tmpfs: ["/tmp:size=2g,mode=1777,exec", "/workspace/.deepeval:size=16m,mode=1770"]
@@ -1351,7 +1351,6 @@ services:
 volumes:
   postgres_data:
   ollama_data:      # Persists downloaded models across restarts (ADR-029 — LOCAL tier)
-  wc102_nuget_cache:
 
 networks:
   agent-runtime-private:
