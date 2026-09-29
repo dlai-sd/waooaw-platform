@@ -263,15 +263,32 @@ def write_commit_metadata(repository: Path, base_sha: str, head_sha: str) -> Non
         (directory / "head-sha.txt").write_text(head_sha + "\n", encoding="utf-8")
 
 
+def write_requirement_scope(repository: Path, changed_files: list[str]) -> None:
+    if not changed_files:
+        raise ValueError("requirement-ledger local execution requires --changed-file")
+    normalized: set[str] = set()
+    for changed_file in changed_files:
+        path = Path(changed_file)
+        if path.is_absolute() or ".." in path.parts:
+            raise ValueError(f"changed file must be repository-relative: {changed_file}")
+        normalized.add(path.as_posix())
+    output = repository / "test-results/wc102/changed-files.txt"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text("".join(f"{path}\n" for path in sorted(normalized)), encoding="utf-8")
+
+
 def execute_gate(
     repository: Path,
     gate_id: str,
     head_sha: str,
     base_sha: str,
     git_common_dir: Path,
+    changed_files: list[str] | None = None,
 ) -> int:
     orchestration_preflight(repository)
     write_commit_metadata(repository, base_sha, head_sha)
+    if gate_id == "requirement-ledger":
+        write_requirement_scope(repository, changed_files or [])
     catalog = yaml.safe_load((repository / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
     if not isinstance(catalog, dict):
         raise ValueError("validation catalog root must be a mapping")
@@ -319,9 +336,17 @@ def main() -> int:
     parser.add_argument("--head", required=True)
     parser.add_argument("--base", required=True)
     parser.add_argument("--git-common-dir", type=Path, required=True)
+    parser.add_argument("--changed-file", action="append", default=[])
     arguments = parser.parse_args()
     repository = Path.cwd().resolve()
-    return execute_gate(repository, arguments.gate, arguments.head, arguments.base, arguments.git_common_dir.resolve())
+    return execute_gate(
+        repository,
+        arguments.gate,
+        arguments.head,
+        arguments.base,
+        arguments.git_common_dir.resolve(),
+        arguments.changed_file,
+    )
 
 
 if __name__ == "__main__":

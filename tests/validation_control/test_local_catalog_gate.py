@@ -157,6 +157,28 @@ def test_host_gate_executes_plan_without_resolving_runner(monkeypatch, tmp_path:
     assert not (tmp_path / "test-results/wc104/c059/pr-body.md").exists()
 
 
+def test_requirement_scope_is_explicit_deduplicated_and_repository_relative(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="requires --changed-file"):
+        local_catalog_gate.write_requirement_scope(tmp_path, [])
+
+    with pytest.raises(ValueError, match="repository-relative"):
+        local_catalog_gate.write_requirement_scope(tmp_path, ["../outside.yaml"])
+
+    local_catalog_gate.write_requirement_scope(
+        tmp_path,
+        [
+            "work-contracts/WC-109-requirements.yaml",
+            "work-contracts/WC-109-agentic-validation-implementation.md",
+            "work-contracts/WC-109-requirements.yaml",
+        ],
+    )
+
+    assert (tmp_path / "test-results/wc102/changed-files.txt").read_text(encoding="utf-8") == (
+        "work-contracts/WC-109-agentic-validation-implementation.md\n"
+        "work-contracts/WC-109-requirements.yaml\n"
+    )
+
+
 def test_gate_identity_hashes_only_declared_environment(monkeypatch, tmp_path: Path) -> None:
     tool_digest = "sha256:" + "d" * 64
     catalog = {

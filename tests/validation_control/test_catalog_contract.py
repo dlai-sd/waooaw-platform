@@ -91,6 +91,15 @@ def test_local_precheck_commands_are_catalog_owned_and_tool_pinned() -> None:
     assert "zricethezav/gitleaks:v" not in gitleaks
 
 
+def test_requirement_ledger_command_consumes_the_standard_changed_file_scope() -> None:
+    catalog = load_catalog()
+
+    assert catalog["commands"]["requirement-ledger"]["shell"] == (
+        "python scripts/validate_requirement_ledger.py --repository-root /workspace "
+        "--changed-file-list test-results/wc102/changed-files.txt"
+    )
+
+
 def test_concurrent_runs_receive_distinct_namespaces() -> None:
     catalog = load_catalog()
 
