@@ -313,6 +313,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "tctl --address \"$$(hostname -i | awk '{print $$1}'):7233\" cluster health"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
 
   temporal-ui:
     image: temporalio/ui:2.26
@@ -404,15 +409,24 @@ services:
       ConstitutionalEngine__Address: http://constitutional-engine:5002
       ConstitutionalEngine__GrpcUrl: http://constitutional-engine:5002
       Temporal__Address: temporal:7233
+      Temporal__Host: temporal:7233
       Keycloak__Authority: http://keycloak:8080/realms/waooaw
       Keycloak__Audience: waooaw-platform
+      IdentityProviderPreview__ClaimsProofEnabled: "true"
+      IdentityEnvironment__Providers__0__Enabled: "true"
+      IdentityEnvironment__Providers__0__UnavailableReason: ""
+      IdentityEnvironment__Providers__0__SecretReference: kv://local-preview/google
+      IdentityEnvironment__Providers__0__ReadinessEvidenceReference: LOCAL-CONTRACT-TESTING
       Identity__Hmac__Key: ${IDENTITY_HMAC_KEY:-waooaw-identity-local-dev-only-32chars}
       Identity__Hmac__ActiveVersion: ${IDENTITY_HMAC_ACTIVE_VERSION:-v1}
+      IdentityVerification__LocalDispatchEnabled: "true"
       IdentitySecurityEvents__Ingest__SigningKey: ${IDENTITY_EVENT_SIGNING_KEY:-waooaw-identity-event-local-dev-only-32chars}
       PhoneIdentity__SigningKey: ${PHONE_IDENTITY_SIGNING_KEY:-waooaw-phone-proof-local-dev-only-32chars}
       WhatsApp__WebhookSecret: ${WHATSAPP_WEBHOOK_SECRET:-waooaw-webhook-local-dev-only-32chars}
       WhatsApp__TenantTokenKey: ${WHATSAPP_TENANT_TOKEN_KEY:-waooaw-tenant-token-local-dev-only-32chars}
       Conversation__CursorHmacKey: ${CONVERSATION_CURSOR_HMAC_KEY:-waooaw-conversation-cursor-local-dev-only}
+      ChannelContinuity__EnvelopeHmacKey: ${CHANNEL_CONTINUITY_HMAC_KEY:-d2Fvb2F3LWNvbnRpbnVpdHktbG9jYWwtZGV2LWtleSE=}
+      Voice__ContentEncryptionKey: ${VOICE_CONTENT_ENCRYPTION_KEY:-d2Fvb2F3LXZvaWNlLWNvbnRlbnQtbG9jYWwta2V5ISE=}
       OTLP_ENDPOINT: http://jaeger:4317
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
       SERVICE_REVISION: ${SERVICE_REVISION:-development}
@@ -422,7 +436,7 @@ services:
       keycloak:
         condition: service_healthy
       temporal:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:5001/health || exit 1"]
       interval: 10s
