@@ -154,3 +154,14 @@ def test_contract_workflow_starts_services_and_blocks_on_failure() -> None:
         "-c",
         "import urllib.request; urllib.request.urlopen('http://localhost:5003/health', timeout=3)",
     ]
+
+
+def test_accessibility_gate_runs_required_product_states_and_emits_native_evidence() -> None:
+    gate = (ROOT / "scripts/validation_control/run_accessibility_gate.sh").read_text(encoding="utf-8")
+
+    assert "tests/e2e/f1-acceptance.spec.ts" in gate
+    assert 'UX-RESP-01|CCT-UX-A11Y-01|active relationship Stop' in gate
+    assert "--project chromium-expanded" in gate
+    assert "--project chromium-compact-360" in gate
+    assert 'PLAYWRIGHT_JUNIT_OUTPUT_FILE="$workspace/test-results/accessibility.xml"' in gate
+    assert 'PLAYWRIGHT_HTML_OUTPUT_DIR="$report_directory"' in gate

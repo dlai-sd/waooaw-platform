@@ -38,11 +38,11 @@ export function AppShell({
   const hasTopBar = variant === 'public' || variant === 'auth';
   return (
     <>
+      <a className="skip-link" href="#main-content">
+        {messages.skipToContent}
+      </a>
       {variant === 'public' ? <AnnouncementBar announcement={siteConfig.announcement} /> : null}
       <div className={`app-shell app-shell-${variant}`}>
-        <a className="skip-link" href="#main-content">
-          {messages.skipToContent}
-        </a>
         {hasTopBar ? (
           <header className="top-bar">
             {variant === 'public' ? <HeaderScrollState /> : null}
