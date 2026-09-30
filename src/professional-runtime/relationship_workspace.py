@@ -357,6 +357,10 @@ def _canonical_digest(value: object | None) -> str:
 
 
 def _problem(code: str, status: int, correlation_id: str) -> JSONResponse:
+    try:
+        normalized_correlation_id = str(uuid.UUID(correlation_id))
+    except ValueError:
+        normalized_correlation_id = str(uuid.uuid4())
     return JSONResponse(
         status_code=status,
         media_type="application/problem+json",
@@ -365,7 +369,7 @@ def _problem(code: str, status: int, correlation_id: str) -> JSONResponse:
             "title": "The requested execution operation could not be completed",
             "status": status,
             "code": code,
-            "correlationId": correlation_id,
+            "correlationId": normalized_correlation_id,
         },
     )
 

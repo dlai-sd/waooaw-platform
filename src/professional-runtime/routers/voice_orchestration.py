@@ -14,7 +14,7 @@ from datetime import datetime
 from typing import Protocol
 
 import httpx
-from fastapi import APIRouter, Depends, Header, Path, Request
+from fastapi import APIRouter, Depends, Header, Path, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -322,6 +322,11 @@ async def get_voice_orchestration(
     if existing is None or existing[3] != context.tenant_id or existing[4] != context.relationship_id:
         return _problem(404, "relationship_forbidden", correlation_id)
     return JSONResponse(status_code=200, content=existing[1].model_dump(by_alias=True, mode="json", exclude_none=True))
+
+
+@router.options("/{relationshipId}/voice-orchestrations/{orchestrationId}", include_in_schema=False)
+async def voice_orchestration_options() -> Response:
+    return Response(status_code=204, headers={"Allow": "GET, DELETE, OPTIONS"})
 
 
 @router.delete(

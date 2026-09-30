@@ -914,11 +914,13 @@ async def test_missing_service_secret_is_unauthorized(client: Any) -> None:
     assert response.status_code == 401
 
 
-async def test_non_conversation_validation_remains_generic() -> None:
+async def test_non_conversation_validation_uses_problem_contract() -> None:
     request = MagicMock()
     request.url.path = "/other"
+    request.headers = {}
     response = await validation_error(request, RequestValidationError([]))
-    assert response.status_code == 422
+    assert response.status_code == 400
+    assert response.media_type == "application/problem+json"
 
 
 async def test_lifespan_registers_conversation_worker(monkeypatch: pytest.MonkeyPatch) -> None:

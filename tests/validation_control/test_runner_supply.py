@@ -322,8 +322,10 @@ def test_e2e_jobs_execute_catalog_gates() -> None:
         assert "docker compose" not in rendered, job_id
         assert '"runner-id"' not in rendered, job_id
 
-    assert catalog["gates"]["e2e:accessibility"]["runner_id"] == "full"
-    for gate_id in set(expected_gates.values()) - {"e2e:accessibility"}:
+    full_runner_gates = {"e2e:accessibility", "e2e:emergency-stop"}
+    for gate_id in full_runner_gates:
+        assert catalog["gates"][gate_id]["runner_id"] == "full"
+    for gate_id in set(expected_gates.values()) - full_runner_gates:
         assert catalog["gates"][gate_id]["runner_id"] == "python"
     assert jobs["accessibility"]["steps"][-1]["if"] == "always()"
     assert jobs["as-001-dma"]["steps"][-1]["if"] == "always()"

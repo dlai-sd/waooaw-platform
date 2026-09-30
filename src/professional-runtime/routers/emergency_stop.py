@@ -16,8 +16,9 @@ from typing import Any
 import httpx
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Header, HTTPException, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict, Field
 
 from routers.conversation_execution import ConstitutionalGatewayUnavailableError
 
@@ -41,6 +42,19 @@ class EmergencyStopAuthority:
     tenant_id: str
     customer_id: str
     contract_id: str
+
+
+class EmergencyStopCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    contractId: uuid.UUID
+    activeSessionIds: list[uuid.UUID] = Field(default_factory=list)
+
+
+class EmergencyStopConfirmation(BaseModel):
+    emergencyStopRecordId: uuid.UUID
+    affectedSessions: list[uuid.UUID]
+    confirmedAt: datetime
 
 
 def _decode_segment(value: str) -> bytes:
@@ -140,6 +154,50 @@ async def _refuse_unauthorized(websocket: WebSocket) -> None:
         content={"type": "about:blank", "title": "Unauthorized", "status": 401},
     )
     await websocket.send_denial_response(response)
+
+
+@router.post(
+    "/api/v1/emergency-stop",
+    response_model=EmergencyStopConfirmation,
+    operation_id="triggerEmergencyStopREST",
+)
+async def emergency_stop_rest(
+    command: EmergencyStopCommand,
+    request: Request,
+    authorization: str | None = Header(default=None, alias="Authorization"),
+) -> EmergencyStopConfirmation:
+    validator = getattr(request.app.state, "emergency_stop_jwt_validator", None)
+    if validator is None or not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+    try:
+        authority = await validator.validate(authorization.removeprefix("Bearer ").strip())
+    except Exception as error:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized") from error
+    if str(command.contractId) != authority.contract_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contract not found")
+    gateway = getattr(request.app.state, "conversation_constitutional_gateway", None)
+    if gateway is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Emergency Stop is unavailable")
+    try:
+        result = await asyncio.wait_for(
+            gateway.trigger_emergency_stop(
+                contract_id=authority.contract_id,
+                tenant_id=authority.tenant_id,
+                stopped_by=authority.customer_id,
+                active_session_ids=[str(session_id) for session_id in command.activeSessionIds],
+            ),
+            timeout=CE_STOP_TIMEOUT_SECONDS,
+        )
+    except (ConstitutionalGatewayUnavailableError, TimeoutError, asyncio.TimeoutError) as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Emergency Stop could not be confirmed",
+        ) from error
+    return EmergencyStopConfirmation(
+        emergencyStopRecordId=result.emergency_stop_record_id,
+        affectedSessions=result.affected_sessions,
+        confirmedAt=result.recorded_at,
+    )
 
 
 @router.websocket("/ws/emergency-stop")

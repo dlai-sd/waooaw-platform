@@ -10,6 +10,9 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 COMPOSE = yaml.safe_load((ROOT / "docker-compose.yml").read_text(encoding="utf-8"))
+DYNAMIC_CONFIG = yaml.safe_load(
+    (ROOT / "infrastructure/temporal/dynamicconfig.yaml").read_text(encoding="utf-8")
+)
 RUNNERS = ("test-runner-python", "test-runner-dotnet", "test-runner-ts")
 
 
@@ -128,8 +131,17 @@ def test_contract_workflow_starts_services_and_blocks_on_failure() -> None:
     assert "docker compose up --detach --wait" in contract_gate
     assert "business-platform professional-runtime" in contract_gate
     assert "COMPOSE_PROJECT_NAME" not in contract_gate
-    assert contract_gate.count("cd /tmp && schemathesis run /workspace/") == 2
-    assert "--report-junit-path /workspace/test-results/schemathesis-bp.xml" in contract_gate
+    assert contract_gate.count("cd /tmp && schemathesis run /workspace/") == 4
+    assert "--include-path-regex \"$customer_product_path_regex\"" in contract_gate
+    assert "--include-path-regex \"$customer_identity_path_regex\"" in contract_gate
+    assert "--exclude-path-regex \"$customer_path_regex\"" in contract_gate
+    assert contract_gate.count("--suppress-health-check=filter_too_much") == 4
+    assert contract_gate.index('test "$customer_product_status" -eq 0') < contract_gate.index(
+        "merge_junit_reports.py"
+    )
+    assert "rm -f /workspace/test-results/schemathesis-bp.xml" in contract_gate
+    assert "merge_junit_reports.py" in contract_gate
+    assert "--output /workspace/test-results/schemathesis-bp.xml" in contract_gate
     assert "--report-junit-path /workspace/test-results/schemathesis-pr.xml" in contract_gate
     assert "gate-id: contract:rest" in contract_job
     assert "continue-on-error: true" not in contract_job
@@ -148,12 +160,40 @@ def test_contract_workflow_starts_services_and_blocks_on_failure() -> None:
         COMPOSE["services"]["business-platform"]["environment"]["Conversation__CursorHmacKey"]
         == "${CONVERSATION_CURSOR_HMAC_KEY:-waooaw-conversation-cursor-local-dev-only}"
     )
+    assert COMPOSE["services"]["business-platform"]["environment"]["Temporal__Host"] == "temporal:7233"
+    assert COMPOSE["services"]["business-platform"]["depends_on"]["temporal"]["condition"] == "service_healthy"
+    assert "tctl --address" in COMPOSE["services"]["temporal"]["healthcheck"]["test"][-1]
+    assert (
+        COMPOSE["services"]["business-platform"]["environment"][
+            "ChannelContinuity__EnvelopeHmacKey"
+        ]
+        == "${CHANNEL_CONTINUITY_HMAC_KEY:-d2Fvb2F3LWNvbnRpbnVpdHktbG9jYWwtZGV2LWtleSE=}"
+    )
+    assert (
+        COMPOSE["services"]["business-platform"]["environment"][
+            "Voice__ContentEncryptionKey"
+        ]
+        == "${VOICE_CONTENT_ENCRYPTION_KEY:-d2Fvb2F3LXZvaWNlLWNvbnRlbnQtbG9jYWwta2V5ISE=}"
+    )
     assert COMPOSE["services"]["professional-runtime"]["healthcheck"]["test"] == [
         "CMD",
         "python",
         "-c",
         "import urllib.request; urllib.request.urlopen('http://localhost:5003/health', timeout=3)",
     ]
+
+
+def test_temporal_dynamic_config_uses_native_scalar_types() -> None:
+    assert DYNAMIC_CONFIG["system.forceSearchAttributesCacheRefreshOnRead"][0]["value"] is True
+    for key in (
+        "limit.maxIDLength",
+        "frontend.namespaceRPS",
+        "frontend.globalNamespaceRPS",
+        "matching.numTaskqueueReadPartitions",
+        "matching.numTaskqueueWritePartitions",
+    ):
+        value = DYNAMIC_CONFIG[key][0]["value"]
+        assert isinstance(value, int) and not isinstance(value, bool)
 
 
 def test_accessibility_gate_runs_required_product_states_and_emits_native_evidence() -> None:
