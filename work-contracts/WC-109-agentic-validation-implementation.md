@@ -112,8 +112,20 @@ extends the existing catalog-controlled route rather than creating a second comm
 | 3 - Milestone checks | Declared dependency boundary reached | Resolve direct ownership and reverse dependencies; execute dependency-complete affected unit, component and integration gates | Milestone envelopes and native artifacts |
 | 4 - Frozen-candidate qualification | Authorized stories and required milestones PASS; candidate frozen | Build or resolve exact candidate once, capture supply-chain evidence and run complete applicable qualification with hosted-only gates in their authoritative environment | Candidate-bound qualification inventory |
 
-A Tier 2 or Tier 3 PASS cannot be promoted to Tier 4 authority. A repair after candidate freeze creates a
-new candidate identity and invalidates affected qualification evidence.
+A Tier 2 or Tier 3 PASS cannot be promoted to Tier 4 authority. Before candidate freeze, independent
+component lanes and cheap cross-cutting controls execute separately under their catalogued resource and
+dependency boundaries; all required lanes must pass before the candidate build begins.
+
+Tier 4 gates do not require one serial shell. They may execute as separately scheduled component or
+cross-cutting lanes and complete in any order. Each result must bind the same frozen candidate, gate
+identity, execution identity, trust and freshness inputs. A failed lane does not invalidate an unchanged,
+valid PASS from another lane: repair and rerun only the failed or affected lane, then assemble all required
+results in canonical catalog order. Missing, stale or mismatched results still block qualification.
+
+A same-candidate runner, service or environment repair preserves only evidence whose complete binding
+remains unchanged. A source or effective candidate-input repair requires refreeze and invalidates every
+qualification result affected by the changed candidate, execution or freshness identity; no prior PASS is
+silently promoted to the new candidate.
 
 ### 4.3 Stack Execution Adapter
 
@@ -271,7 +283,7 @@ The compatibility sequence `static contract`, `exact-container execution contrac
 | 1 - Identity and preflight | Stage 0 PASS | Four manifest schemas, canonicalizer, Tier 1 policies and fixtures | Identity vectors and modeled defects pass in Docker |
 | 2 - Disposable focused execution | Stage 1 PASS | Stack adapters, mounted-source Tier 2, output isolation and cache boundaries | Source-only edits execute with zero runner/product builds |
 | 3 - Milestones and evidence | Stage 2 PASS | Reverse-dependency selection, Tier 3, envelopes, freshness and failure routing | Dependency-complete fixtures and failure routes pass |
-| 4 - Candidate qualification | Stage 3 PASS | Freeze/build/bind route, SBOM/provenance binding and Tier 4 qualification | Exact candidate consumes complete applicable inventory |
+| 4 - Candidate qualification | Stage 3 PASS | Pre-freeze component lanes, freeze/build/bind route, SBOM/provenance binding, independently scheduled Tier 4 gates and canonical result assembly | Exact candidate consumes complete applicable inventory with only failed or identity-affected lanes rerun |
 | 5 - Hosted shadow operation | Stage 4 PASS | Hosted policy enforcement and selection shadow comparison | Full CI remains authoritative; zero unresolved false negatives in observed runs |
 | 6 - Two-PR pilot | Stage 5 PASS | Two complete pilot records | Both records satisfy Section 8 without unsupported extrapolation |
 | 7 - Closeout | Stage 6 PASS | Final ledger, author review, independent EA review request and Founder-ready evidence | No unresolved requirement; implementation remains unmerged until Founder review |
@@ -337,9 +349,9 @@ quality conditions blocks completion.
 | WC109-R007 | Tier 1 rejects deterministic execution-contract defects before costly work or image construction. |
 | WC109-R008 | Tier 2 uses existing stack runners and disposable mounted-source execution. |
 | WC109-R009 | Ordinary Tier 2 source edits cause zero runner and product-image builds. |
-| WC109-R010 | Tier 3 executes dependency-complete checks only at declared milestone boundaries. |
-| WC109-R011 | Tier 4 qualifies one immutable candidate against the complete applicable inventory. |
-| WC109-R012 | A post-freeze repair creates a new candidate and invalidates affected evidence. |
+| WC109-R010 | Tier 3 executes independently completable component lanes and assembles dependency-complete checks at declared milestone boundaries. |
+| WC109-R011 | Tier 4 assembles independently emitted results for one immutable candidate against the complete applicable inventory without replaying unchanged PASS lanes. |
+| WC109-R012 | Same-candidate recovery reruns only failed or identity-affected lanes; a candidate-input repair refreezes and invalidates affected evidence. |
 | WC109-R013 | Focused and qualification modes consume the same catalogued test definitions and thresholds. |
 | WC109-R014 | Every run is non-root, resource-bounded and isolated across state, namespace and output. |
 | WC109-R015 | Docker-socket access is absent by default and limited to classified runners. |

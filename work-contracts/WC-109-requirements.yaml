@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-109
 contract_path: work-contracts/WC-109-agentic-validation-implementation.md
-contract_digest: 825f64553f452e4df006dcf0952f7cacb76314c3a5b3741e0baca36d73d1eb94
+contract_digest: b3431d77977959fe49b7687a7317d62fccba5121649870f9571c2d0bb9f9ac9c
 contract_status: AUTHORIZED_IMPLEMENTATION_IN_PROGRESS
 implementation_scope: true
 result: PLANNED
@@ -136,10 +136,10 @@ requirements:
   - <<: *requirement_defaults
     requirement_id: WC109-R010
     source: Section 4.2 Tier 3
-    observable_outcome: Tier 3 executes dependency-complete checks only at declared milestone boundaries.
+    observable_outcome: Tier 3 executes independently completable component lanes and assembles dependency-complete checks at declared milestone boundaries.
     component_owner: Tier Orchestrator
-    test_path_or_plan: Exercise direct and reverse-dependency fixtures at story and milestone transitions.
-    completion_rule: Story edits remain focused while declared milestones include every affected dependency.
+    test_path_or_plan: Exercise separately scheduled component lanes plus direct and reverse-dependency fixtures at story and milestone transitions.
+    completion_rule: Component lanes complete independently, story edits remain focused and declared milestones include every affected dependency before candidate freeze.
     evidence_refs:
       - scripts/validation_policy.py
       - tests/pipeline/test_validation_policy.py
@@ -149,18 +149,24 @@ requirements:
   - <<: *requirement_defaults
     requirement_id: WC109-R011
     source: Section 4.2 Tier 4
-    observable_outcome: Tier 4 qualifies one immutable candidate against the complete applicable inventory.
+    observable_outcome: Tier 4 assembles independently emitted gate results for one immutable candidate against the complete applicable inventory.
     component_owner: Tier Orchestrator
-    test_path_or_plan: Freeze a fixture candidate and compare executed qualification inventory with the catalog-computed complete inventory.
-    completion_rule: One exact candidate digest is bound to every applicable result with no missing required gate.
+    test_path_or_plan: Freeze a fixture candidate, submit component results out of order, replace one failed lane and compare the assembled inventory with the catalog-computed complete inventory.
+    completion_rule: One exact candidate digest is bound to every applicable result with no missing required gate; unchanged valid PASS lanes are preserved and canonical assembly does not require serial execution.
+    evidence_refs:
+      - scripts/validation_control/candidate_controller.py
+      - tests/validation_control/test_wc109_candidate_controller.py
 
   - <<: *requirement_defaults
     requirement_id: WC109-R012
     source: Sections 4.2 and 7
-    observable_outcome: A post-freeze repair creates a new candidate and invalidates affected evidence.
+    observable_outcome: A same-candidate failure reruns only failed or identity-affected lanes, while an effective candidate-input repair creates a new candidate and invalidates affected evidence.
     component_owner: Candidate Builder And Supply-Chain Binder
-    test_path_or_plan: Mutate one effective input after freeze and attempt to reuse prior qualification evidence.
-    completion_rule: Candidate identity changes, affected evidence is rejected and qualification targets the new bytes.
+    test_path_or_plan: Replace one failed gate result without changing candidate inputs, then mutate one effective input after freeze and attempt to reuse prior qualification evidence.
+    completion_rule: Same-candidate PASS evidence remains valid; failed or changed-identity lanes rerun; candidate-input changes refreeze, reject affected evidence and target the new bytes.
+    evidence_refs:
+      - scripts/validation_control/candidate_controller.py
+      - tests/validation_control/test_wc109_candidate_controller.py
 
   - <<: *requirement_defaults
     requirement_id: WC109-R013

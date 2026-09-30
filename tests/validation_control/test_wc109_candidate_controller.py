@@ -340,3 +340,25 @@ def test_exact_candidate_consumes_complete_inventory_and_post_freeze_change_inva
     changed_binding = supply(changed)
     with pytest.raises(ValueError, match="CANDIDATE_CHANGED"):
         qualify_candidate(changed_binding, observed_candidate_identity=identity, gate_evidence=evidence)
+
+
+def test_exact_candidate_preserves_passing_lanes_and_replaces_only_failed_evidence(tmp_path: Path) -> None:
+    binding = supply(freeze(tmp_path))
+    identity = binding["candidate_identity"]
+    passing_web = {"candidate_identity": identity, "result": "PASS"}
+    gate_evidence = {
+        "test-api": {"candidate_identity": identity, "result": "FAIL"},
+        "test-web": passing_web,
+    }
+
+    failed = qualify_candidate(binding, observed_candidate_identity=identity, gate_evidence=gate_evidence)
+
+    assert failed["result"] == "FAIL"
+    assert failed["failed_gates"] == ["test-api"]
+    gate_evidence["test-api"] = {"candidate_identity": identity, "result": "PASS"}
+
+    repaired = qualify_candidate(binding, observed_candidate_identity=identity, gate_evidence=gate_evidence)
+
+    assert gate_evidence["test-web"] is passing_web
+    assert repaired["result"] == "PASS"
+    assert repaired["executed_gates"] == ["test-web", "test-api"]
