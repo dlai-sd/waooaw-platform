@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-110
 contract_path: work-contracts/WC-110-product-validation-qualification-repair.md
-contract_digest: 6d27966614446fb76e55a6d233f5db497f66a655424c19a229ecb11a5d8a21e3
+contract_digest: c5e5f9d6fc3fc1b2fcb4366a8d22f03117ac67e220768c599930613aa4704221
 contract_status: AUTHORIZED_IMPLEMENTATION_IN_PROGRESS
 implementation_scope: true
 result: PLANNED
@@ -62,6 +62,9 @@ requirements:
     component_owner: Digital Marketing Agent acceptance
     test_path_or_plan: Execute deterministic AS-001 through real owning application boundaries with local adapters.
     completion_rule: The complete scenario reaches its governed outcome with evidence and no external provider traffic.
+    dependencies: Founder-directed later DMA product Work Contract implementing the complete theme-to-performance lifecycle.
+    residual_risk: AS-001 cannot execute or qualify until the missing governed DMA capabilities exist.
+    result: BLOCKED
 
   - <<: *requirement_defaults
     requirement_id: WC110-R006
@@ -70,6 +73,9 @@ requirements:
     component_owner: Trading Agent acceptance
     test_path_or_plan: Execute deterministic AS-003 and measure the Emergency Stop outcome at the service boundary.
     completion_rule: The scenario passes all governance assertions and measured Emergency Stop latency is at most 250 ms.
+    dependencies: Later Trading product Work Contract implementing compliant trade briefs and durable crash recovery.
+    residual_risk: AS-003 cannot execute or qualify against the signal-analysis-only Trading adapter.
+    result: BLOCKED
 
   - <<: *requirement_defaults
     requirement_id: WC110-R007
@@ -78,6 +84,9 @@ requirements:
     component_owner: Agricultural Agent acceptance
     test_path_or_plan: Execute deterministic AS-005 with local signal/provider adapters and privacy-safe evidence assertions.
     completion_rule: Multilingual warning and guidance outcomes pass without customer-content leakage.
+    dependencies: Later Agricultural product Work Contract implementing warnings, feedback, sell timing and WhatsApp stop.
+    residual_risk: AS-005 cannot execute or qualify because no Agricultural runtime adapter implements its governed path.
+    result: BLOCKED
 
   - <<: *requirement_defaults
     requirement_id: WC110-R008

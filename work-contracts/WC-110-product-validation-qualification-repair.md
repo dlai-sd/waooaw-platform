@@ -7,7 +7,7 @@
 | Office | Platform IT Expert (INST-012) |
 | Authorized by | Founder instruction in the 2026-09-30 continuous working session |
 | Implementation authorization | Founder confirmed product-validation implementation in the current session |
-| Status | IMPLEMENTATION AUTHORIZED - NOT YET QUALIFIED |
+| Status | IMPLEMENTATION AUTHORIZED - CUSTOMER SCENARIOS PARKED |
 | Baseline | WC-109 branch commit `b1b60303` |
 | Parent delivery | WC-109 Stage 4 and CB-011 |
 | Delivery unit | One bounded local product-validation repair tranche |
@@ -31,6 +31,15 @@ providers and synthetic tenants, actors and content, but must cross the real own
 Static text checks, empty collections, skips, broad baselines, suppressed Schemathesis checks and smaller
 substitutes cannot qualify a requirement.
 
+### Founder Parking Direction - 2026-09-30
+
+The Founder directed that AS-001 remain parked rather than adding DMA theme-to-publishing, advertising
+and performance-improvement capabilities under WC-110. Review confirmed AS-003 also requires Trading
+brief/compliance and crash-recovery capabilities beyond the shipped signal-analysis adapter, while AS-005
+requires Agricultural warning, action-feedback, sell-timing and WhatsApp-stop capabilities absent from
+the current product. WC110-R005, WC110-R006 and WC110-R007 therefore remain BLOCKED for a later agent
+product Work Contract. Their catalog gates remain mandatory and may not be skipped or substituted.
+
 ## Requirements
 
 | Requirement | Normative outcome |
@@ -53,7 +62,7 @@ substitutes cannot qualify a requirement.
 |---|---|---|
 | A - REST shared contract | Repair shared authentication, validation and problem-response semantics first; then address remaining endpoint-specific drift | Both Schemathesis specifications pass all checks and publish nonempty JUnit |
 | B - Accessibility | Reuse the production Web fixture and existing accessibility helpers for default desktop/mobile customer states | Playwright report plus explicit axe, focus, overflow and action assertions |
-| C - Customer acceptance | Implement AS-001, AS-003 and AS-005 against existing owning service APIs with deterministic local adapters | Three nonempty JUnit reports and Grade-A assertions |
+| C - Customer acceptance | PARKED by Founder direction; later agent product contracts must implement the missing governed capabilities before these scenarios can execute | BLOCKED; no substitute evidence accepted |
 | D - Constitutional resilience | Implement PSE injected-rate-limit fallback and service-boundary Emergency Stop latency/evidence tests | Nonempty AS-PSE and CCT-HO-01 JUnit reports |
 | E - Requalification | Re-run only changed lanes until green, freeze once, then assemble the complete inventory | One exact candidate and canonical 43-result assembly |
 
@@ -71,3 +80,6 @@ substitute for runtime behavior, or a change to an unrelated product contract.
 - WC-109 binds a fresh candidate and assembles all 43 same-candidate results.
 - CB-011 is resolved with exact evidence; hosted shadow and pilot obligations remain separate WC-109 work.
 - No deployment, provider, customer-traffic, Production, approval or merge claim is made.
+
+The Definition of Done cannot be reached while the three parked customer-scenario requirements remain
+BLOCKED. REST and other independent lanes may continue and retain their own valid evidence.

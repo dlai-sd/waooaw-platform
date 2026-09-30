@@ -59,3 +59,13 @@ After those product-owned changes merge, WC-109 may refreeze a new exact candida
 or identity-changed lanes, and assemble all 43 results against that one immutable candidate. WC-109's
 current authority does not permit the required product behavior changes, gate removal, threshold
 reduction, selective enforcement, deployment or customer traffic.
+
+## Founder Direction - 2026-09-30
+
+The Founder directed that AS-001 remain parked and that its missing DMA lifecycle not be implemented
+under WC-110. A careful adjacent review found the same product-boundary condition for AS-003 and AS-005:
+their ratified Grade-A paths require capabilities absent from the current Trading and Agricultural
+runtimes. All three customer-scenario gates remain mandatory and blocked for later agent product Work
+Contracts. Independent WC-110 REST, accessibility, PSE and Emergency Stop work may continue, but this
+blocker cannot close and WC-109 Stage 4 cannot qualify until the parked scenarios execute without
+substitution.
