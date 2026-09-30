@@ -48,6 +48,12 @@ requirements:
     component_owner: Web Application
     test_path_or_plan: Run Playwright with axe, keyboard, focus, overflow and visible-primary-action assertions.
     completion_rule: Required desktop and mobile projects collect and pass the complete accessibility suite.
+    evidence_refs:
+      - scripts/validation_control/run_accessibility_gate.sh
+      - web/tests/e2e/f1-acceptance.spec.ts
+      - web/components/shell/AppShell.tsx
+      - test-results/wc109/runs/wc109-cce195af9faf55f2/e2e-accessibility/evidence-envelope.json
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC110-R005
