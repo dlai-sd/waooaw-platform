@@ -94,6 +94,12 @@ requirements:
     component_owner: Constitutional Engine Emergency Stop
     test_path_or_plan: Invoke the executable Emergency Stop service boundary with synthetic sessions and measure end-to-end latency.
     completion_rule: The response, persisted evidence and affected-session identities are correct and complete within 250 ms.
+    evidence_refs:
+      - tests/constitutional/test_cct_ho_01_emergency_stop_latency.py
+      - tests/constitutional-engine.Tests/EmergencyStop/CCT_HO01_EmergencyStopLatencyTests.cs
+      - scripts/validation_control/run_emergency_stop_gate.sh
+      - test-results/wc109/runs/wc109-b57bb4200f68cdd4/e2e-emergency-stop/evidence-envelope.json
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC110-R010
