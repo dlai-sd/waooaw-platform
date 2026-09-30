@@ -80,6 +80,12 @@ requirements:
     component_owner: AI Runtime Provider Selection Engine
     test_path_or_plan: Inject a rate-limit response through the real PSE routing boundary and assert fallback behavior and evidence.
     completion_rule: Fallback returns the expected behavior and records privacy-safe dispatch metadata without prompt content.
+    evidence_refs:
+      - src/ai-runtime/pse/router.py
+      - src/trust-layer/ctg/exception_translator.py
+      - tests/acceptance/test_as_pse_failover.py
+      - test-results/as-pse.xml
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC110-R009

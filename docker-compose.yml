@@ -150,6 +150,7 @@ services:
       DATABASE_URL: postgresql://waooaw:${POSTGRES_PASSWORD:-waooaw-local-dev-only}@postgres:5432/waooaw
       PYTHONPATH: /workspace
       PYTEST_ADDOPTS: -o cache_dir=/tmp/pytest_cache
+      HYPOTHESIS_STORAGE_DIRECTORY: /tmp/hypothesis
     profiles:
       - test                            # only starts when --profile test is specified
 

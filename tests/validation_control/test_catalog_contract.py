@@ -84,6 +84,7 @@ def test_full_runner_is_limited_to_cross_stack_release_gates() -> None:
         "release-qualification",
         "spec-lint",
         "e2e:accessibility",
+        "e2e:emergency-stop",
     }
 
 
