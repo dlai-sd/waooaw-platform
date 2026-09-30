@@ -1,6 +1,10 @@
 #!/bin/sh
 set -eu
 
-pytest tests/integration/test_pr_ce_*.py tests/integration/test_air_pse_*.py \
+pytest \
+    tests/professional-runtime/test_paas_runtime.py \
+    tests/professional-runtime/test_conversation_execution.py \
+    tests/ai-runtime/test_pse_router.py \
+    tests/trust-layer/test_ctg.py \
     -v --tb=short \
-    --junit-xml=test-results/service-integration.xml
+    --junitxml=test-results/python-service-integration.xml

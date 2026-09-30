@@ -206,8 +206,6 @@ def test_only_database_integration_gates_start_postgres() -> None:
     assert database_gates == {
         "integration:multi-tenant",
         "integration:postgres-migrations",
-        "integration:dotnet",
-        "integration:python",
     }
     assert all(catalog["gates"][gate_id]["required_services"] == ["postgres"] for gate_id in database_gates)
 
@@ -249,11 +247,58 @@ def test_multi_tenant_gate_runs_exact_http_and_postgres_rls_suites() -> None:
     assert gate["resources"]["socket_classification"] == "testcontainers"
 
 
+def test_postgres_migration_gate_verifies_fresh_service_initialization() -> None:
+    command = (ROOT / "scripts/validation_control/run_postgres_migrations.sh").read_text(encoding="utf-8")
+
+    assert 'psql "$DATABASE_URL" -v ON_ERROR_STOP=1' in command
+    assert "infrastructure/postgres/init/*.sql" not in command
+    assert "business.my_agents_selection_flash" in command
+    assert "relation.relrowsecurity" in command
+    assert "constitutional evidence grants violate append-only policy" in command
+    assert "append-only rule inventory is incomplete" in command
+
+
+def test_dotnet_integration_gate_runs_real_postgres_classes() -> None:
+    catalog = load_catalog()
+    command = (ROOT / "scripts/validation_control/run_dotnet_integration_gate.sh").read_text(encoding="utf-8")
+    gate = catalog["gates"]["integration:dotnet"]
+
+    assert "tests/business-platform.Tests/business-platform.Tests.csproj" in command
+    assert "FullyQualifiedName~IntegrationTests|FullyQualifiedName~PostgresTests" in command
+    assert "cp -a /opt/nuget/packages/." in command
+    assert "dotnet build" in command and "--no-restore" in command
+    assert "dotnet test" in command and "--no-build" in command
+    assert "trx;LogFileName=dotnet-integration.trx" in command
+    assert gate["environment"] == ["TESTCONTAINERS_HOST_OVERRIDE"]
+    assert "required_services" not in gate
+    assert gate["resources"]["socket_classification"] == "testcontainers"
+
+
+def test_python_integration_gate_runs_real_cross_service_suites() -> None:
+    catalog = load_catalog()
+    command = (ROOT / "scripts/validation_control/run_python_integration_gate.sh").read_text(encoding="utf-8")
+    gate = catalog["gates"]["integration:python"]
+
+    assert "tests/professional-runtime/test_paas_runtime.py" in command
+    assert "tests/professional-runtime/test_conversation_execution.py" in command
+    assert "tests/ai-runtime/test_pse_router.py" in command
+    assert "tests/trust-layer/test_ctg.py" in command
+    assert "tests/integration/" not in command
+    assert gate.get("environment", []) == []
+    assert "required_services" not in gate
+
+
 def test_only_classified_gates_receive_the_docker_socket() -> None:
     catalog = load_catalog()
     classified = {gate_id for gate_id, gate in catalog["gates"].items() if gate["resources"]["docker_socket"] is True}
 
-    assert classified == {"spec-lint", "release-qualification", "contract:rest", "integration:multi-tenant"}
+    assert classified == {
+        "spec-lint",
+        "release-qualification",
+        "contract:rest",
+        "integration:multi-tenant",
+        "integration:dotnet",
+    }
     for gate_id in classified:
         resources = catalog["gates"][gate_id]["resources"]
         assert resources["socket_classification"] in {"nested-docker", "host-orchestration", "testcontainers"}

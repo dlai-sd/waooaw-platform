@@ -291,7 +291,8 @@ def test_integration_jobs_execute_catalog_gates() -> None:
         "DATABASE_URL",
         "TESTCONTAINERS_HOST_OVERRIDE",
     ]
-    assert catalog["gates"]["integration:dotnet"]["environment"] == ["DATABASE_URL"]
+    assert catalog["gates"]["integration:dotnet"]["environment"] == ["TESTCONTAINERS_HOST_OVERRIDE"]
+    assert catalog["gates"]["integration:python"].get("environment", []) == []
     assert "--pull never test-runner-python" in (root / "scripts/validation_control/run_rest_contract_gate.sh").read_text(
         encoding="utf-8"
     )
