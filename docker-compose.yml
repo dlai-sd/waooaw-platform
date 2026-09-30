@@ -68,7 +68,7 @@ services:
     extra_hosts: ["host.docker.internal:host-gateway"]
     environment:
       HOME: /tmp/wc106-home
-      DATABASE_URL: postgresql://waooaw:${POSTGRES_PASSWORD:-changeme}@postgres:5432/waooaw_test
+      DATABASE_URL: postgresql://waooaw:${POSTGRES_PASSWORD:-waooaw-local-dev-only}@postgres:5432/waooaw
       PYTHONPATH: /workspace
       PYTEST_ADDOPTS: -o cache_dir=/tmp/pytest_cache
       HYPOTHESIS_STORAGE_DIRECTORY: /tmp/hypothesis
@@ -97,6 +97,8 @@ services:
     environment:
       HOME: /tmp/wc106-home
       GITHUB_WORKSPACE: /workspace
+      DATABASE_URL: postgresql://waooaw:${POSTGRES_PASSWORD:-waooaw-local-dev-only}@postgres:5432/waooaw
+      TESTCONTAINERS_HOST_OVERRIDE: host.docker.internal
     profiles:
       - test-dotnet
 
@@ -145,7 +147,7 @@ services:
     pids_limit: 768
     environment:
       HOME: /tmp/wc106-home
-      DATABASE_URL: postgresql://waooaw:${POSTGRES_PASSWORD:-changeme}@postgres:5432/waooaw_test
+      DATABASE_URL: postgresql://waooaw:${POSTGRES_PASSWORD:-waooaw-local-dev-only}@postgres:5432/waooaw
       PYTHONPATH: /workspace
       PYTEST_ADDOPTS: -o cache_dir=/tmp/pytest_cache
     profiles:
@@ -203,7 +205,7 @@ services:
   # ─── Infrastructure ────────────────────────────────────────────────────────
 
   postgres:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b
     ports:
       - "5432:5432"
     environment:
@@ -214,7 +216,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U waooaw"]
+      test: ["CMD-SHELL", "test \"$(head -n 1 /var/lib/postgresql/data/postmaster.pid)\" = 1 && pg_isready -U waooaw -d waooaw"]
       interval: 5s
       timeout: 5s
       retries: 10

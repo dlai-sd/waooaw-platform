@@ -13,6 +13,7 @@ from validation_control.catalog_execution import (
     execution_command,
     runner_environment,
     select_plan_node,
+    service_start_command,
 )
 from validation_control.candidate_controller import catalog_candidate_inputs
 from validation_control.orchestrator import build_execution_plan
@@ -173,17 +174,86 @@ def test_catalog_gate_forwards_only_declared_environment() -> None:
     node = select_plan_node(plan, "integration:multi-tenant")
     command = compose_command(node)
 
-    assert node["environment"] == ["DATABASE_URL"]
+    assert node["runner_id"] == "dotnet"
+    assert node["environment"] == ["DATABASE_URL", "TESTCONTAINERS_HOST_OVERRIDE"]
+    assert node["required_services"] == ["postgres"]
     environment_position = command.index("-e")
     assert command[environment_position : environment_position + 2] == ["-e", "DATABASE_URL"]
-    assert "/var/run/docker.sock:/var/run/docker.sock" not in command
+    assert command[environment_position + 2 : environment_position + 4] == ["-e", "TESTCONTAINERS_HOST_OVERRIDE"]
+    assert "/var/run/docker.sock:/var/run/docker.sock" in command
+
+    assert service_start_command(node, "/usr/bin/docker") == [
+        "/usr/bin/docker",
+        "compose",
+        "--project-name",
+        plan["execution_namespace"],
+        "--profile",
+        "test-dotnet",
+        "up",
+        "--detach",
+        "--no-build",
+        "--pull",
+        "missing",
+        "--wait",
+        "postgres",
+    ]
+
+
+def test_only_database_integration_gates_start_postgres() -> None:
+    catalog = load_catalog()
+    database_gates = {gate_id for gate_id, gate in catalog["gates"].items() if gate.get("required_services")}
+
+    assert database_gates == {
+        "integration:multi-tenant",
+        "integration:postgres-migrations",
+        "integration:dotnet",
+        "integration:python",
+    }
+    assert all(catalog["gates"][gate_id]["required_services"] == ["postgres"] for gate_id in database_gates)
+
+
+def test_python_runner_database_url_matches_postgres_defaults() -> None:
+    compose = yaml.safe_load((ROOT / "docker-compose.yml").read_text(encoding="utf-8"))
+    services = compose["services"]
+
+    assert services["test-runner-python"]["environment"]["DATABASE_URL"] == (
+        "postgresql://waooaw:${POSTGRES_PASSWORD:-waooaw-local-dev-only}@postgres:5432/waooaw"
+    )
+    assert services["postgres"]["environment"] == {
+        "POSTGRES_USER": "waooaw",
+        "POSTGRES_PASSWORD": "${POSTGRES_PASSWORD:-waooaw-local-dev-only}",
+        "POSTGRES_DB": "waooaw",
+    }
+    assert services["postgres"]["image"] == (
+        "pgvector/pgvector@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b"
+    )
+    assert services["postgres"]["healthcheck"]["test"] == [
+        "CMD-SHELL",
+        'test "$(head -n 1 /var/lib/postgresql/data/postmaster.pid)" = 1 && pg_isready -U waooaw -d waooaw',
+    ]
+
+
+def test_multi_tenant_gate_runs_exact_http_and_postgres_rls_suites() -> None:
+    catalog = load_catalog()
+    command = (ROOT / "scripts/validation_control/run_multi_tenant_integration_gate.sh").read_text(encoding="utf-8")
+    gate = catalog["gates"]["integration:multi-tenant"]
+
+    assert "tests/business-platform.Tests/business-platform.Tests.csproj" in command
+    assert "FullyQualifiedName~CCT_MT01_TenantIsolationTests" in command
+    assert "FullyQualifiedName~TenantDbConnectionInterceptorPostgresTests" in command
+    assert "cp -a /opt/nuget/packages/." in command
+    assert "dotnet restore" in command
+    assert "dotnet build" in command and "--no-restore" in command
+    assert "dotnet test" in command and "--no-build" in command
+    assert "trx;LogFileName=multi-tenant.trx" in command
+    assert gate["resources"]["socket_classification"] == "testcontainers"
 
 
 def test_only_classified_gates_receive_the_docker_socket() -> None:
     catalog = load_catalog()
     classified = {gate_id for gate_id, gate in catalog["gates"].items() if gate["resources"]["docker_socket"] is True}
 
-    assert classified == {"spec-lint", "release-qualification", "contract:rest"}
+    assert classified == {"spec-lint", "release-qualification", "contract:rest", "integration:multi-tenant"}
     for gate_id in classified:
         resources = catalog["gates"][gate_id]["resources"]
         assert resources["socket_classification"] in {"nested-docker", "host-orchestration", "testcontainers"}

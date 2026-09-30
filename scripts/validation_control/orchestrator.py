@@ -77,6 +77,7 @@ def build_execution_plan(
                 "retry_policy": gate["retry_policy"],
                 "artifacts": gate["artifacts"],
                 "environment": gate.get("environment", []),
+                "required_services": gate.get("required_services", []),
                 "runner_manifest": f"test-results/wc104/runner-manifests/{runner_id}.json",
                 "compose_project": execution_namespace,
                 "output_directory": f"test-results/wc109/runs/{execution_namespace}/{safe_path_segment(gate_id)}",

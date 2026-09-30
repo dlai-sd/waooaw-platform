@@ -255,7 +255,7 @@ def test_integration_jobs_execute_catalog_gates() -> None:
     catalog = yaml.safe_load((root / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
     jobs = workflow["jobs"]
     expected_gates = {
-        "integration:multi-tenant": "python",
+        "integration:multi-tenant": "dotnet",
         "integration:postgres-migrations": "python",
         "integration:dotnet": "dotnet",
         "integration:python": "python",
@@ -284,8 +284,13 @@ def test_integration_jobs_execute_catalog_gates() -> None:
     for gate_id in expected_gates:
         assert gate_id in rendered_workflow
     assert jobs["multi-tenant-isolation"]["steps"][-1]["if"] == "always()"
+    assert "services" not in jobs["multi-tenant-isolation"]
+    assert "services" not in jobs["service-integration"]
     assert catalog["commands"]["contract-rest"]["execution"] == "host"
-    assert catalog["gates"]["integration:multi-tenant"]["environment"] == ["DATABASE_URL"]
+    assert catalog["gates"]["integration:multi-tenant"]["environment"] == [
+        "DATABASE_URL",
+        "TESTCONTAINERS_HOST_OVERRIDE",
+    ]
     assert catalog["gates"]["integration:dotnet"]["environment"] == ["DATABASE_URL"]
     assert "--pull never test-runner-python" in (root / "scripts/validation_control/run_rest_contract_gate.sh").read_text(
         encoding="utf-8"

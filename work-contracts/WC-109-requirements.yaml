@@ -70,7 +70,9 @@ requirements:
     completion_rule: Every governing execution input changes identity and unrelated candidate metadata does not substitute for it.
     evidence_refs:
       - scripts/validation_control/identity.py
+      - scripts/validation_control/local_catalog_gate.py
       - tests/validation_control/test_wc109_identity_preflight.py
+      - tests/validation_control/test_local_catalog_gate.py
     result: PASS
 
   - <<: *requirement_defaults

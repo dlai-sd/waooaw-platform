@@ -96,6 +96,27 @@ def execution_command(node: dict[str, Any], docker: str, git_common_dir: str | N
     return command
 
 
+def service_start_command(node: dict[str, Any], docker: str) -> list[str]:
+    required_services = node.get("required_services", [])
+    if not isinstance(required_services, list) or not all(isinstance(service, str) and service for service in required_services):
+        raise ValueError("validation plan node has invalid required services")
+    return [
+        docker,
+        "compose",
+        "--project-name",
+        node["compose_project"],
+        "--profile",
+        node["profile"],
+        "up",
+        "--detach",
+        "--no-build",
+        "--pull",
+        "missing",
+        "--wait",
+        *required_services,
+    ]
+
+
 def cleanup_command(node: dict[str, Any], docker: str) -> list[str]:
     return [
         docker,
@@ -221,6 +242,17 @@ def main() -> int:
     if verification.returncode != 0:
         return verification.returncode
     environment = runner_environment(arguments.image_id)
+    required_services = node.get("required_services", [])
+    if required_services:
+        service_start = subprocess.run(  # noqa: S603
+            service_start_command(node, docker),
+            check=False,
+            env=environment,
+        )
+        if service_start.returncode != 0:
+            cleanup_execution(node, docker, environment)
+            print(f"validation service startup failed for {node['gate_id']}: {service_start.returncode}")
+            return 78
     try:
         preflight_result = run_execution_preflight(
             plan,

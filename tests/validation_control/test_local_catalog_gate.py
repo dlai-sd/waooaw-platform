@@ -71,6 +71,54 @@ def test_untrusted_manifest_is_a_miss_without_pull(monkeypatch, tmp_path: Path) 
     assert commands == []
 
 
+def test_required_services_bind_rendered_images_to_immutable_ids(monkeypatch, tmp_path: Path) -> None:
+    compose = {
+        "services": {
+            "postgres": {"image": "pgvector/pgvector:pg16"},
+            "runner": {"image": "runner:local"},
+        }
+    }
+    commands: list[list[str]] = []
+    monkeypatch.setattr(local_catalog_gate, "docker_executable", lambda: "/usr/bin/docker")
+    monkeypatch.setattr(
+        local_catalog_gate.subprocess,
+        "run",
+        lambda command, **unused: commands.append(command) or SimpleNamespace(returncode=0, stdout=json.dumps(compose)),
+    )
+    monkeypatch.setattr(
+        local_catalog_gate,
+        "image_id",
+        lambda image, repository: IMAGE_ID if image == "pgvector/pgvector:pg16" else None,
+    )
+
+    identities = local_catalog_gate.required_service_identities(
+        tmp_path,
+        {"profile": "test-dotnet", "required_services": ["postgres"]},
+    )
+
+    assert identities == {"postgres": IMAGE_ID}
+    assert commands == [["/usr/bin/docker", "compose", "--profile", "test-dotnet", "config", "--format", "json"]]
+
+
+def test_required_service_without_local_image_fails_closed(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(local_catalog_gate, "docker_executable", lambda: "/usr/bin/docker")
+    monkeypatch.setattr(
+        local_catalog_gate.subprocess,
+        "run",
+        lambda command, **unused: SimpleNamespace(
+            returncode=0,
+            stdout=json.dumps({"services": {"postgres": {"image": "postgres:missing"}}}),
+        ),
+    )
+    monkeypatch.setattr(local_catalog_gate, "image_id", lambda image, repository: None)
+
+    with pytest.raises(ValueError, match="required service image is unavailable: postgres"):
+        local_catalog_gate.required_service_identities(
+            tmp_path,
+            {"profile": "test-dotnet", "required_services": ["postgres"]},
+        )
+
+
 def test_rollback_bypasses_trusted_manifest_and_existing_local_image(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("WC104_DISABLE_REGISTRY_REUSE", "1")
     monkeypatch.setattr(
@@ -168,6 +216,7 @@ def test_host_gate_executes_plan_without_resolving_runner(monkeypatch, tmp_path:
     assert record["base_sha"] == "b" * 40
     assert record["runner_build_events"] == 0
     assert record["product_image_build_events"] == 0
+    assert record["service_identities"] == {}
     envelopes = list((tmp_path / "test-results/wc109/runs").glob("**/evidence-envelope.json"))
     assert len(envelopes) == 1
     envelope = json.loads(envelopes[0].read_text(encoding="utf-8"))
@@ -301,6 +350,46 @@ def test_gate_identity_hashes_only_declared_environment(monkeypatch, tmp_path: P
     assert original["runner_digest"] == tool_digest
     assert undeclared_changed["environment_digest"] == original["environment_digest"]
     assert declared_changed["environment_digest"] != original["environment_digest"]
+    assert original["service_digest"] == local_catalog_gate.hashlib.sha256(b"{}").hexdigest()
+
+
+def test_gate_identity_changes_with_required_service_image(monkeypatch, tmp_path: Path) -> None:
+    catalog = {
+        "schema": "waooaw.validation-catalog/v1",
+        "version": "test-v1",
+        "runners": {"python": {"compose_service": "runner", "profile": "test"}},
+        "components": {},
+        "commands": {"integration": {"shell": "true"}},
+        "gates": {
+            "integration": {
+                "runner_id": "python",
+                "command_id": "integration",
+                "resources": {},
+                "retry_policy": "none",
+                "artifacts": {},
+                "required_services": ["postgres"],
+            }
+        },
+    }
+    validation = tmp_path / "validation"
+    validation.mkdir()
+    (validation / "engineering-validation.yaml").write_text(yaml.safe_dump(catalog), encoding="utf-8")
+    monkeypatch.setattr(
+        local_catalog_gate,
+        "resolve_runner",
+        lambda repository, runner_id: {"runner_digest": "sha256:" + "d" * 64},
+    )
+    service_identity = {"postgres": "sha256:" + "e" * 64}
+    monkeypatch.setattr(local_catalog_gate, "required_service_identities", lambda repository, node: service_identity)
+
+    identity = local_catalog_gate.gate_execution_identity(tmp_path, "integration", "a" * 40)
+
+    assert (
+        identity["service_digest"]
+        == local_catalog_gate.hashlib.sha256(
+            json.dumps(service_identity, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+    )
 
 
 def test_runner_backed_execution_requires_exact_image_and_disables_pull() -> None:

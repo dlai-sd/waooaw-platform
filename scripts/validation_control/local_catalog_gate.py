@@ -70,6 +70,34 @@ def image_id(image: str, repository: Path) -> str | None:
     return candidate if completed.returncode == 0 and SHA256.fullmatch(candidate) else None
 
 
+def required_service_identities(repository: Path, node: dict[str, Any]) -> dict[str, str]:
+    required_services = node.get("required_services", [])
+    if not required_services:
+        return {}
+    completed = subprocess.run(  # noqa: S603
+        [docker_executable(), "compose", "--profile", node["profile"], "config", "--format", "json"],
+        cwd=repository,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    compose = json.loads(completed.stdout)
+    services = compose.get("services")
+    if not isinstance(services, dict):
+        raise ValueError("rendered Compose services must be a mapping")
+    identities: dict[str, str] = {}
+    for service_name in required_services:
+        service = services.get(service_name)
+        image = service.get("image") if isinstance(service, dict) else None
+        if not isinstance(image, str) or not image:
+            raise ValueError(f"required service has no rendered image: {service_name}")
+        resolved_id = image_id(image, repository)
+        if resolved_id is None:
+            raise ValueError(f"required service image is unavailable: {service_name}")
+        identities[service_name] = resolved_id
+    return identities
+
+
 def trusted_runner(
     repository: Path,
     runner_id: str,
@@ -249,6 +277,7 @@ def gate_execution_identity(repository: Path, gate_id: str, head_sha: str) -> di
         if not isinstance(runner_digest, str) or not SHA256.fullmatch(runner_digest):
             raise ValueError(f"host-only gate has no immutable tool digest: {gate_id}")
     environment = {name: os.environ.get(name) for name in node.get("environment", [])}
+    service_identities = required_service_identities(repository, node)
     implementation = {key: value for key, value in node.items() if key not in {"runner_manifest"}}
     return {
         "catalog_version": str(plan["catalog_version"]),
@@ -259,6 +288,9 @@ def gate_execution_identity(repository: Path, gate_id: str, head_sha: str) -> di
         ).hexdigest(),
         "runner_digest": runner_digest,
         "environment_digest": hashlib.sha256(json.dumps(environment, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
+        "service_digest": hashlib.sha256(
+            json.dumps(service_identities, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest(),
     }
 
 
@@ -344,6 +376,7 @@ def execute_gate(
     plan = build_execution_plan(catalog, [gate_id], mode=mode, head_sha=head_sha, run_id=run_id)
     node = plan["nodes"][0]
     artifact_root = repository / node["output_directory"]
+    service_identities = required_service_identities(repository, node)
     write_commit_metadata(repository, base_sha, head_sha, artifact_root)
     write_pr_body(pr_body_file, gate_id, artifact_root)
     write_authorization_context(gate_id, artifact_root, base_branch, pr_number, repository_name)
@@ -405,6 +438,7 @@ def execute_gate(
         "return_code": completed.returncode,
         "runner_build_events": resolution["build_count"] if resolution is not None else 0,
         "runner_digest": resolution["runner_digest"] if resolution is not None else node.get("tool_digest"),
+        "service_identities": service_identities,
     }
     temporary = record_path.with_suffix(f".tmp-{os.getpid()}")
     temporary.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -427,7 +461,7 @@ def execute_gate(
             "command_id": node["command_id"],
             "policy_version": str(plan["catalog_version"]),
             "environment": environment_identity,
-            "service_identities": {},
+            "service_identities": service_identities,
             "disposable_state_contract": {
                 "compose_project": node["compose_project"],
                 "output_directory": node["output_directory"],
