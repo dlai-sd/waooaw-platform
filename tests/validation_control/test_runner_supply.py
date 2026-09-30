@@ -168,7 +168,7 @@ def test_reusable_validation_plan_preserves_consumer_contract() -> None:
     assert '"runner-id": "full"' in rendered
     assert "wc104-qualification-plan-${{ github.run_id }}" in rendered
     assert "--all-gates" in rendered
-    assert ".selected_gates | index(\"release-qualification\") != null" in source
+    assert '.selected_gates | index("release-qualification") != null' in source
     assert '[[ "$EVENT_NAME" == "schedule" || "$EVENT_NAME" == "workflow_dispatch" ]]' in source
     assert 'git rev-parse "$head_sha^"' in source
 
@@ -233,6 +233,19 @@ def test_code_quality_jobs_execute_catalog_gates() -> None:
     dotnet_mutation = (root / "scripts/validation_control/run_dotnet_mutation_gate.sh").read_text(encoding="utf-8")
     python_mutation = (root / "scripts/validation_control/run_python_mutation_gate.sh").read_text(encoding="utf-8")
     assert "--threshold-high 80 --threshold-low 75 --break-at 65" in dotnet_mutation
+    assert "tests/ai-runtime" in python_mutation
+    assert "tests/unit/ai-runtime" not in python_mutation
+    assert "cp -a src/ai-runtime/." in python_mutation
+    assert "source_paths =\n" in python_mutation
+    assert "    skeleton" in python_mutation
+    assert "also_copy = trust-layer" in python_mutation
+    assert "pytest_add_cli_args_test_selection = tests/ai-runtime" in python_mutation
+    assert "asyncio_mode = auto" in python_mutation
+    assert "--paths-to-mutate" not in python_mutation
+    assert "--tests-dir" not in python_mutation
+    assert "mutmut export-cicd-stats" in python_mutation
+    assert 'stats["total"]-stats["skipped"]' in python_mutation
+    assert 'stats["killed"]+stats["timeout"]' in python_mutation
     assert '"${score:-0}" -lt 60' in python_mutation
 
 
@@ -274,9 +287,9 @@ def test_integration_jobs_execute_catalog_gates() -> None:
     assert catalog["commands"]["contract-rest"]["execution"] == "host"
     assert catalog["gates"]["integration:multi-tenant"]["environment"] == ["DATABASE_URL"]
     assert catalog["gates"]["integration:dotnet"]["environment"] == ["DATABASE_URL"]
-    assert "--pull never test-runner-python" in (
-        root / "scripts/validation_control/run_rest_contract_gate.sh"
-    ).read_text(encoding="utf-8")
+    assert "--pull never test-runner-python" in (root / "scripts/validation_control/run_rest_contract_gate.sh").read_text(
+        encoding="utf-8"
+    )
 
 
 def test_e2e_jobs_execute_catalog_gates() -> None:
@@ -359,9 +372,7 @@ def test_dotnet_ci_executes_catalog_gates_without_duplicate_commands_or_runner_m
     rendered = json.dumps(job)
 
     assert set(job["needs"]) == {"runner-supply", "validation-plan"}
-    assert job["strategy"]["matrix"]["include"] == (
-        "${{ fromJSON(needs.validation-plan.outputs.dotnet_test_matrix) }}"
-    )
+    assert job["strategy"]["matrix"]["include"] == ("${{ fromJSON(needs.validation-plan.outputs.dotnet_test_matrix) }}")
     assert "./.github/actions/run-validation-gate" in rendered
     assert '"runner-id": "dotnet"' not in rendered
     assert "dotnet restore" not in rendered
@@ -376,9 +387,7 @@ def test_python_ci_executes_catalog_gates_without_duplicate_commands_or_runner_m
     rendered = json.dumps(job)
 
     assert set(job["needs"]) == {"runner-supply", "validation-plan"}
-    assert job["strategy"]["matrix"]["include"] == (
-        "${{ fromJSON(needs.validation-plan.outputs.python_test_matrix) }}"
-    )
+    assert job["strategy"]["matrix"]["include"] == ("${{ fromJSON(needs.validation-plan.outputs.python_test_matrix) }}")
     assert "./.github/actions/run-validation-gate" in rendered
     assert '"runner-id": "python"' not in rendered
     assert "matrix.source" not in rendered
@@ -411,9 +420,7 @@ def test_dependency_ci_executes_catalog_gates_without_duplicate_commands_or_runn
     assert set(job["needs"]) == {"runner-supply", "validation-plan"}
     assert rendered.count("./.github/actions/run-validation-gate") == 3
     assert {
-        step["with"]["gate-id"]
-        for step in job["steps"]
-        if step.get("uses") == "./.github/actions/run-validation-gate"
+        step["with"]["gate-id"] for step in job["steps"] if step.get("uses") == "./.github/actions/run-validation-gate"
     } == split_gates
     assert split_gates.issubset(catalog["full_gates"])
     assert "dep-scan" not in catalog["full_gates"]
