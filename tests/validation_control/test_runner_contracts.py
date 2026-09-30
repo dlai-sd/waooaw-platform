@@ -127,5 +127,30 @@ def test_contract_workflow_starts_services_and_blocks_on_failure() -> None:
 
     assert "docker compose up --detach --wait" in contract_gate
     assert "business-platform professional-runtime" in contract_gate
+    assert "COMPOSE_PROJECT_NAME" not in contract_gate
+    assert contract_gate.count("cd /tmp && schemathesis run /workspace/") == 2
+    assert "--report-junit-path /workspace/test-results/schemathesis-bp.xml" in contract_gate
+    assert "--report-junit-path /workspace/test-results/schemathesis-pr.xml" in contract_gate
     assert "gate-id: contract:rest" in contract_job
     assert "continue-on-error: true" not in contract_job
+    assert COMPOSE["services"]["keycloak"]["environment"]["DEV_TEST_PASSWORD"] == (
+        "${DEV_TEST_PASSWORD:-Waooaw-local-dev-only-1!}"
+    )
+    assert COMPOSE["services"]["keycloak"]["environment"]["KC_HEALTH_ENABLED"] == "true"
+    assert COMPOSE["services"]["keycloak"]["healthcheck"]["test"][:3] == ["CMD", "/bin/bash", "-c"]
+    assert "127.0.0.1/9000" in COMPOSE["services"]["keycloak"]["healthcheck"]["test"][3]
+    assert COMPOSE["services"]["constitutional-engine"]["healthcheck"]["test"] == [
+        "CMD",
+        "grpc_health_probe",
+        "-addr=localhost:5002",
+    ]
+    assert (
+        COMPOSE["services"]["business-platform"]["environment"]["Conversation__CursorHmacKey"]
+        == "${CONVERSATION_CURSOR_HMAC_KEY:-waooaw-conversation-cursor-local-dev-only}"
+    )
+    assert COMPOSE["services"]["professional-runtime"]["healthcheck"]["test"] == [
+        "CMD",
+        "python",
+        "-c",
+        "import urllib.request; urllib.request.urlopen('http://localhost:5003/health', timeout=3)",
+    ]

@@ -259,6 +259,8 @@ services:
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-waooaw-keycloak-local-dev-only}
+      DEV_TEST_PASSWORD: ${DEV_TEST_PASSWORD:-Waooaw-local-dev-only-1!}
+      KC_HEALTH_ENABLED: "true"
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/waooaw
       KC_DB_USERNAME: waooaw
@@ -270,7 +272,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health/ready || exit 1"]
+      test: ["CMD", "/bin/bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9000; printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3; grep -q '200 OK' <&3"]
       interval: 10s
       timeout: 5s
       retries: 15
@@ -385,9 +387,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      # Dev: TCP port check (nc). Production Dockerfile installs grpc_health_probe.
-      # See architecture/reference/dockerfiles/Dockerfile.dotnet-service for full spec.
-      test: ["CMD-SHELL", "nc -z localhost 5002 || exit 1"]
+      test: ["CMD", "grpc_health_probe", "-addr=localhost:5002"]
       interval: 10s
       retries: 5
 
@@ -411,6 +411,7 @@ services:
       PhoneIdentity__SigningKey: ${PHONE_IDENTITY_SIGNING_KEY:-waooaw-phone-proof-local-dev-only-32chars}
       WhatsApp__WebhookSecret: ${WHATSAPP_WEBHOOK_SECRET:-waooaw-webhook-local-dev-only-32chars}
       WhatsApp__TenantTokenKey: ${WHATSAPP_TENANT_TOKEN_KEY:-waooaw-tenant-token-local-dev-only-32chars}
+      Conversation__CursorHmacKey: ${CONVERSATION_CURSOR_HMAC_KEY:-waooaw-conversation-cursor-local-dev-only}
       OTLP_ENDPOINT: http://jaeger:4317
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
       SERVICE_REVISION: ${SERVICE_REVISION:-development}
@@ -472,7 +473,7 @@ services:
       business-platform:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:5003/health || exit 1"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5003/health', timeout=3)"]
       interval: 10s
       retries: 5
 

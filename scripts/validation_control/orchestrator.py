@@ -78,6 +78,7 @@ def build_execution_plan(
                 "artifacts": gate["artifacts"],
                 "environment": gate.get("environment", []),
                 "required_services": gate.get("required_services", []),
+                "product_image_builds": gate.get("product_image_builds", []),
                 "runner_manifest": f"test-results/wc104/runner-manifests/{runner_id}.json",
                 "compose_project": execution_namespace,
                 "output_directory": f"test-results/wc109/runs/{execution_namespace}/{safe_path_segment(gate_id)}",

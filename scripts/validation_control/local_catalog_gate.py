@@ -433,7 +433,7 @@ def execute_gate(
         "invocation_source": "catalog",
         "mode": mode,
         "output_directory": node["output_directory"],
-        "product_image_build_events": 0,
+        "product_image_build_events": len(node.get("product_image_builds", [])),
         "result": "PASS" if completed.returncode == 0 else "FAIL",
         "return_code": completed.returncode,
         "runner_build_events": resolution["build_count"] if resolution is not None else 0,

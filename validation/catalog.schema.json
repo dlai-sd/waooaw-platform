@@ -150,6 +150,11 @@
           "items": {"type": "string", "minLength": 1},
           "uniqueItems": true
         },
+        "product_image_builds": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "uniqueItems": true
+        },
         "global_trigger": {"type": "boolean"}
       },
       "additionalProperties": false

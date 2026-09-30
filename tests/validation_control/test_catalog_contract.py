@@ -288,6 +288,14 @@ def test_python_integration_gate_runs_real_cross_service_suites() -> None:
     assert "required_services" not in gate
 
 
+def test_seed_prompts_contract_executes_nonempty_synthetic_fixtures() -> None:
+    command = (ROOT / "scripts/validation_control/run_seed_prompts_contract_gate.sh").read_text(encoding="utf-8")
+
+    assert "pytest tests/scripts/test_seed_prompts.py" in command
+    assert "seed-prompts.py --dry-run" not in command
+    assert "--junitxml=test-results/seed-prompts-contract.xml" in command
+
+
 def test_only_classified_gates_receive_the_docker_socket() -> None:
     catalog = load_catalog()
     classified = {gate_id for gate_id, gate in catalog["gates"].items() if gate["resources"]["docker_socket"] is True}
@@ -405,6 +413,21 @@ def test_host_orchestration_declares_whether_it_consumes_a_runner() -> None:
 
     assert release["execution"] == "host" and release["runner_required"] is True
     assert gitleaks["execution"] == "host" and gitleaks["runner_required"] is False
+
+
+def test_rest_contract_declares_product_builds_and_isolated_host_orchestration() -> None:
+    catalog = load_catalog()
+    node = build_execution_plan(
+        catalog,
+        ["contract:rest"],
+        mode="focused",
+        head_sha="a" * 40,
+        run_id="rest-contract",
+    )["nodes"][0]
+
+    assert node["execution"] == "host"
+    assert node["product_image_builds"] == ["business-platform", "professional-runtime"]
+    assert node["compose_project"].startswith("wc109-")
 
 
 def test_catalog_gate_selection_rejects_missing_or_duplicate_nodes() -> None:
