@@ -45,16 +45,18 @@ class EmergencyStopAuthority:
 
 
 class EmergencyStopCommand(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
-    contractId: uuid.UUID
-    activeSessionIds: list[uuid.UUID] = Field(default_factory=list)
+    contract_id: uuid.UUID = Field(alias="contractId")
+    active_session_ids: list[uuid.UUID] = Field(default_factory=list, alias="activeSessionIds")
 
 
 class EmergencyStopConfirmation(BaseModel):
-    emergencyStopRecordId: uuid.UUID
-    affectedSessions: list[uuid.UUID]
-    confirmedAt: datetime
+    model_config = ConfigDict(populate_by_name=True)
+
+    emergency_stop_record_id: uuid.UUID = Field(alias="emergencyStopRecordId")
+    affected_sessions: list[uuid.UUID] = Field(alias="affectedSessions")
+    confirmed_at: datetime = Field(alias="confirmedAt")
 
 
 def _decode_segment(value: str) -> bytes:
@@ -173,7 +175,7 @@ async def emergency_stop_rest(
         authority = await validator.validate(authorization.removeprefix("Bearer ").strip())
     except Exception as error:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized") from error
-    if str(command.contractId) != authority.contract_id:
+    if str(command.contract_id) != authority.contract_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contract not found")
     gateway = getattr(request.app.state, "conversation_constitutional_gateway", None)
     if gateway is None:
@@ -184,7 +186,7 @@ async def emergency_stop_rest(
                 contract_id=authority.contract_id,
                 tenant_id=authority.tenant_id,
                 stopped_by=authority.customer_id,
-                active_session_ids=[str(session_id) for session_id in command.activeSessionIds],
+                active_session_ids=[str(session_id) for session_id in command.active_session_ids],
             ),
             timeout=CE_STOP_TIMEOUT_SECONDS,
         )
@@ -193,10 +195,12 @@ async def emergency_stop_rest(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Emergency Stop could not be confirmed",
         ) from error
-    return EmergencyStopConfirmation(
-        emergencyStopRecordId=result.emergency_stop_record_id,
-        affectedSessions=result.affected_sessions,
-        confirmedAt=result.recorded_at,
+    return EmergencyStopConfirmation.model_validate(
+        {
+            "emergencyStopRecordId": result.emergency_stop_record_id.removeprefix("EMERGENCY_STOP:"),
+            "affectedSessions": result.affected_sessions,
+            "confirmedAt": result.recorded_at,
+        }
     )
 
 
