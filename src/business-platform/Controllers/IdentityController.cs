@@ -356,11 +356,15 @@ public sealed class IdentityController(
 
     private static bool IsValidEmail(string value)
     {
+        var separator = value.IndexOf('@');
+        if (separator <= 0 || separator != value.LastIndexOf('@') || separator == value.Length - 1)
+            return false;
+
         try
         {
             return new MailAddress(value).Address == value;
         }
-        catch (FormatException)
+        catch (Exception exception) when (exception is ArgumentException or FormatException)
         {
             return false;
         }
@@ -557,6 +561,14 @@ public sealed class IdentityController(
                 HttpContext.Items[CustomerMembershipMiddleware.MembershipItem]
                     as CustomerWorkspaceMembership
                 ?? await customerJourney.ResolveAsync(User, ct);
+            if (
+                HttpContext.Items[CustomerMembershipMiddleware.AuthenticationTimeItem]
+                    is not DateTimeOffset authenticatedAt
+            )
+                return Problem(
+                    statusCode: StatusCodes.Status401Unauthorized,
+                    title: "Identity session is unavailable"
+                );
             return Ok(
                 new IdentitySessionResponse(
                     membership.AccountId,
@@ -566,9 +578,7 @@ public sealed class IdentityController(
                     "PORTAL",
                     true,
                     false,
-                    DateTimeOffset.FromUnixTimeSeconds(
-                        long.Parse(GoogleWorkspaceProofAdapter.SingleClaim(User, "auth_time")!)
-                    ),
+                    authenticatedAt,
                     DateTimeOffset.FromUnixTimeSeconds(
                         long.Parse(GoogleWorkspaceProofAdapter.SingleClaim(User, "exp")!)
                     ),
@@ -683,16 +693,27 @@ public sealed class IdentityController(
                 "IDENTITY_DEPENDENCY_UNAVAILABLE",
                 "Session management is unavailable."
             );
-        var membership = (CustomerWorkspaceMembership)
-            HttpContext.Items[CustomerMembershipMiddleware.MembershipItem]!;
-        var count = await sessionService.RevokeOneAsync(
-            membership.AccountId,
-            ActorSubject,
-            sessionId,
-            $"revoke-one:{IdempotencyKey:D}",
-            ct
-        );
-        return Ok(new IdentitySessionRevocationResponse("ONE", count));
+        try
+        {
+            var membership = (CustomerWorkspaceMembership)
+                HttpContext.Items[CustomerMembershipMiddleware.MembershipItem]!;
+            var count = await sessionService.RevokeOneAsync(
+                membership.AccountId,
+                ActorSubject,
+                sessionId,
+                $"revoke-one:{IdempotencyKey:D}",
+                ct
+            );
+            return Ok(new IdentitySessionRevocationResponse("ONE", count));
+        }
+        catch (ArgumentException)
+        {
+            return IdentityProblem(
+                400,
+                "IDENTITY_REQUEST_INVALID",
+                "Invalid or missing Idempotency-Key header."
+            );
+        }
     }
 
     [HttpDelete("sessions")]
@@ -705,15 +726,26 @@ public sealed class IdentityController(
                 "IDENTITY_DEPENDENCY_UNAVAILABLE",
                 "Session management is unavailable."
             );
-        var membership = (CustomerWorkspaceMembership)
-            HttpContext.Items[CustomerMembershipMiddleware.MembershipItem]!;
-        var count = await sessionService.RevokeAllAsync(
-            membership.AccountId,
-            ActorSubject,
-            $"revoke-all:{IdempotencyKey:D}",
-            ct
-        );
-        return Ok(new IdentitySessionRevocationResponse("ALL", count));
+        try
+        {
+            var membership = (CustomerWorkspaceMembership)
+                HttpContext.Items[CustomerMembershipMiddleware.MembershipItem]!;
+            var count = await sessionService.RevokeAllAsync(
+                membership.AccountId,
+                ActorSubject,
+                $"revoke-all:{IdempotencyKey:D}",
+                ct
+            );
+            return Ok(new IdentitySessionRevocationResponse("ALL", count));
+        }
+        catch (ArgumentException)
+        {
+            return IdentityProblem(
+                400,
+                "IDENTITY_REQUEST_INVALID",
+                "Invalid or missing Idempotency-Key header."
+            );
+        }
     }
 
     [HttpGet("profile")]
@@ -996,17 +1028,13 @@ public sealed class IdentityController(
             Request.Path
         );
 
-        var body = new
-        {
-            type = $"https://waooaw.com/errors/identity/{code.ToLowerInvariant().Replace('_', '-')}",
-            title = code,
+        return IdentityProblemResponses.Create(
             status,
-            detail,
             code,
-            correlationId,
+            detail,
             stepUpIntentId,
-        };
-        return StatusCode(status, body);
+            correlationId
+        );
     }
 
     // ── POST /api/v1/identity/registrations ──────────────────────────────────
@@ -1137,10 +1165,13 @@ public sealed class IdentityController(
         if (
             string.IsNullOrWhiteSpace(req.DisplayName)
             || req.DisplayName.Length > 120
+            || req.DisplayName.Contains('\0')
             || string.IsNullOrWhiteSpace(req.BusinessName)
             || req.BusinessName.Length > 160
+            || req.BusinessName.Contains('\0')
             || string.IsNullOrWhiteSpace(req.BusinessDomain)
             || req.BusinessDomain.Length > 100
+            || req.BusinessDomain.Contains('\0')
             || string.IsNullOrWhiteSpace(req.LanguagePreference)
             || !LanguagePattern.IsMatch(req.LanguagePreference)
         )
@@ -1451,15 +1482,17 @@ public sealed class IdentityController(
         {
             var idempotencyKey = IdempotencyKey;
             var hash = ComputeHash(req);
+            var actor = customerJourney?.ValidateActor(User);
 
             var (result, _) = await identityService.ConfirmMobileVerificationAsync(
                 registrationId,
-                ActorSubject,
+                actor?.Subject ?? ActorSubject,
                 idempotencyKey,
                 hash,
                 req.ChallengeId,
                 req.Code,
-                ct
+                ct,
+                actor
             );
 
             if (result is IdentityRegistrationRecord reg)
@@ -1573,14 +1606,18 @@ public sealed class IdentityController(
         }
         catch (IdentityVerificationRequiredException ex)
         {
-            return IdentityProblem(422, "IDENTITY_VERIFICATION_REQUIRED", ex.Message);
+            return IdentityProblem(409, "IDENTITY_VERIFICATION_REQUIRED", ex.Message);
+        }
+        catch (IdentityDuplicateResolutionRequiredException ex)
+        {
+            return IdentityProblem(409, "DUPLICATE_RESOLUTION_REQUIRED", ex.Message);
         }
         catch (ArgumentException)
         {
             return IdentityProblem(
-                400,
-                "IDENTITY_REQUEST_INVALID",
-                "Invalid or missing Idempotency-Key header."
+                409,
+                "IDENTITY_IDEMPOTENCY_CONFLICT",
+                "A valid Idempotency-Key is required for registration completion."
             );
         }
     }
@@ -1601,15 +1638,25 @@ public sealed class IdentityController(
         {
             var idempotencyKey = IdempotencyKey;
             var hash = ComputeHash(req);
+            var actor = customerJourney?.ValidateActor(User);
 
-            var (challenge, _) = await identityService.StartMobileVerificationAsync(
-                null,
-                ActorSubject,
-                idempotencyKey,
-                hash,
-                req.Mobile,
-                ct
-            );
+            var (challenge, _) = actor is null
+                ? await identityService.StartMobileVerificationAsync(
+                    null,
+                    ActorSubject,
+                    idempotencyKey,
+                    hash,
+                    req.Mobile,
+                    ct
+                )
+                : await identityService.StartMobileVerificationAsync(
+                    null,
+                    actor,
+                    idempotencyKey,
+                    hash,
+                    req.Mobile,
+                    ct
+                );
 
             return StatusCode(202, ToResponse(challenge));
         }
@@ -1659,15 +1706,17 @@ public sealed class IdentityController(
         {
             var idempotencyKey = IdempotencyKey;
             var hash = ComputeHash(req);
+            var actor = customerJourney?.ValidateActor(User);
 
             var (result, _) = await identityService.ConfirmMobileVerificationAsync(
                 null,
-                ActorSubject,
+                actor?.Subject ?? ActorSubject,
                 idempotencyKey,
                 hash,
                 req.ChallengeId,
                 req.Code,
-                ct
+                ct,
+                actor
             );
 
             var status = (IdentityMobileStatusResult)result;

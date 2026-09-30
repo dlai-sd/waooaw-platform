@@ -111,9 +111,10 @@ public sealed class CustomerWorkspaceException(
             or CustomerWorkspaceError.MembershipRequired
             or CustomerWorkspaceError.MembershipInactive => 403,
             CustomerWorkspaceError.RegistrationNotFound => 404,
-            CustomerWorkspaceError.IdempotencyConflict or CustomerWorkspaceError.RecoveryRequired =>
+            CustomerWorkspaceError.IdempotencyConflict
+            or CustomerWorkspaceError.RecoveryRequired
+            or CustomerWorkspaceError.RegistrationIneligible =>
                 409,
-            CustomerWorkspaceError.RegistrationIneligible => 422,
             _ => 503,
         };
 }
@@ -208,7 +209,10 @@ public sealed class CustomerWorkspaceProvisioningService
                 }
                 throw new CustomerWorkspaceException(
                     databaseError.SqlState == PostgresErrorCodes.UniqueViolation
-                        && databaseError.ConstraintName == "login_methods_provider_unique"
+                        && databaseError.ConstraintName
+                            is "login_methods_provider_unique"
+                                or "registrations_email_match_key_idx"
+                                or "registrations_mobile_match_key_idx"
                             ? CustomerWorkspaceError.RecoveryRequired
                         : databaseError.SqlState
                             is PostgresErrorCodes.CheckViolation

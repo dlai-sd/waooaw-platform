@@ -30,7 +30,7 @@ public sealed class EmploymentRelationshipsControllerTests
         await service.AdmitAsync(
             tenantId, Guid.NewGuid(), Guid.NewGuid(), "SALES", Guid.NewGuid(), CancellationToken.None);
         await service.AdmitAsync(
-            Guid.NewGuid(), participantId, Guid.NewGuid(), "HR", Guid.NewGuid(), CancellationToken.None);
+            Guid.NewGuid(), participantId, Guid.NewGuid(), "HRA", Guid.NewGuid(), CancellationToken.None);
         await using (var seed = factory.CreateDbContext())
         {
             seed.RelationshipSkillConfigurations.AddRange(
@@ -134,6 +134,128 @@ public sealed class EmploymentRelationshipsControllerTests
     }
 
     [Fact]
+    public async Task List_ProjectsEveryLifecycleStateWithoutClientOwnedInterpretation()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var service = new EmploymentRelationshipService(
+            factory,
+            new RecordingRelationshipConstitutionalGateway(),
+            NullLogger<EmploymentRelationshipService>.Instance
+        );
+        var tenantId = Guid.NewGuid();
+        var participantId = Guid.NewGuid();
+        var states = Enum.GetValues<EmploymentRelationshipState>();
+        var relationships = new List<EmploymentRelationship>();
+        foreach (var (state, index) in states.Select((state, index) => (state, index)))
+        {
+            var admitted = await service.AdmitAsync(
+                tenantId,
+                participantId,
+                Guid.NewGuid(),
+                $"TYPE{index}",
+                Guid.NewGuid(),
+                CancellationToken.None
+            );
+            relationships.Add(admitted.Relationship);
+            admitted.Relationship.State = state;
+        }
+        await using (var db = factory.CreateDbContext())
+        {
+            db.EmploymentRelationships.UpdateRange(relationships);
+            await db.SaveChangesAsync();
+        }
+        var controller = new EmploymentRelationshipsController(service)
+        {
+            ControllerContext = CreateControllerContext(tenantId, participantId),
+        };
+
+        var result = Assert.IsType<OkObjectResult>(
+            await controller.ListAsync(null, 100, CancellationToken.None)
+        );
+        var items = JsonSerializer.SerializeToElement(result.Value)
+            .GetProperty("Items").EnumerateArray().ToArray();
+
+        Assert.Equal(states.Length, items.Length);
+        Assert.Contains(items, item => item.GetProperty("AvailabilityState").GetString() == "PAUSED");
+        Assert.Contains(items, item => item.GetProperty("AvailabilityState").GetString() == "STOPPED");
+        Assert.Contains(items, item => item.GetProperty("AvailabilityState").GetString() == "UNAVAILABLE");
+        Assert.Contains(items, item => item.GetProperty("ResumeTarget").GetProperty("Surface").GetString() == "CONVERSATION");
+        Assert.Contains(items, item => item.GetProperty("ResumeTarget").GetProperty("Surface").GetString() == "CONFIGURATION");
+        Assert.Contains(items, item => item.GetProperty("ResumeTarget").GetProperty("Surface").GetString() == "WORK");
+        Assert.Contains(items, item => item.GetProperty("UnreadState").GetString() == "ACTION_REQUIRED");
+        Assert.Contains(items, item => item.GetProperty("ConfigurationState").GetString() == "BLOCKED");
+        Assert.Contains(items, item => item.GetProperty("NextActionLabel").GetString() == "Review contract");
+        Assert.Contains(items, item => item.GetProperty("NextActionLabel").GetString() == "Review stopped agent");
+        Assert.Contains(items, item => item.GetProperty("CurrentWorkSummary").ValueKind == JsonValueKind.String);
+    }
+
+    [Fact]
+    public async Task SelectionHandoff_ValidatesAuthorityAvailabilityAndHandleShape()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var service = new EmploymentRelationshipService(
+            factory,
+            new RecordingRelationshipConstitutionalGateway(),
+            NullLogger<EmploymentRelationshipService>.Instance
+        );
+        var tenantId = Guid.NewGuid();
+        var participantId = Guid.NewGuid();
+        var controller = new EmploymentRelationshipsController(service)
+        {
+            ControllerContext = CreateControllerContext(tenantId, participantId),
+        };
+
+        var unavailable = Assert.IsType<ObjectResult>(
+            await controller.CreateSelectionFlashAsync(
+                Guid.NewGuid(),
+                new CreateMyAgentsSelectionRequest("HIRE_PAID"),
+                CancellationToken.None
+            )
+        );
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, unavailable.StatusCode);
+
+        foreach (var handle in new[] { "short", new string('g', 64) })
+        {
+            var invalid = Assert.IsType<ObjectResult>(
+                await controller.ConsumeSelectionFlashAsync(
+                    new ConsumeMyAgentsSelectionRequest(handle),
+                    CancellationToken.None
+                )
+            );
+            Assert.Contains(
+                "Selection handle is invalid.",
+                JsonSerializer.Serialize(invalid.Value),
+                StringComparison.Ordinal
+            );
+        }
+
+        Assert.IsType<NoContentResult>(
+            await controller.ConsumeSelectionFlashAsync(
+                new ConsumeMyAgentsSelectionRequest(new string('a', 64)),
+                CancellationToken.None
+            )
+        );
+
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext(),
+        };
+        Assert.IsType<UnauthorizedResult>(
+            await controller.CreateSelectionFlashAsync(
+                Guid.NewGuid(),
+                new CreateMyAgentsSelectionRequest("HIRE_PAID"),
+                CancellationToken.None
+            )
+        );
+        Assert.IsType<UnauthorizedResult>(
+            await controller.ConsumeSelectionFlashAsync(
+                new ConsumeMyAgentsSelectionRequest(new string('a', 64)),
+                CancellationToken.None
+            )
+        );
+    }
+
+    [Fact]
     public void RelationshipCollectionAndAdmissionRequireCustomerMembership()
     {
         var adapted = typeof(EmploymentRelationshipsController).GetMethods()
@@ -175,7 +297,49 @@ public sealed class EmploymentRelationshipsControllerTests
 
         var invalid = Assert.IsType<ObjectResult>(
             await controller.ListAsync(Convert.ToBase64String(Guid.NewGuid().ToByteArray()), 1, CancellationToken.None));
-        Assert.Equal(400, invalid.StatusCode);
+        Assert.Equal(404, invalid.StatusCode);
+    }
+
+    [Fact]
+    public async Task List_RejectsEveryInvalidPaginationBoundary()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var service = new EmploymentRelationshipService(
+            factory,
+            new RecordingRelationshipConstitutionalGateway(),
+            NullLogger<EmploymentRelationshipService>.Instance
+        );
+        var tenantId = Guid.NewGuid();
+        var participantId = Guid.NewGuid();
+        var cases = new[]
+        {
+            (Query: "?limit=0", Cursor: (string?)null, Limit: 0),
+            (Query: "?limit=101", Cursor: (string?)null, Limit: 101),
+            (Query: "?unknown=value", Cursor: (string?)null, Limit: 20),
+            (Query: "?cursor", Cursor: (string?)null, Limit: 20),
+            (Query: "?cursor=", Cursor: "", Limit: 20),
+            (Query: "?cursor=short", Cursor: "short", Limit: 20),
+            (Query: "?cursor=" + new string('x', 2049), Cursor: new string('x', 2049), Limit: 20),
+        };
+
+        foreach (var testCase in cases)
+        {
+            var controller = new EmploymentRelationshipsController(service)
+            {
+                ControllerContext = CreateControllerContext(tenantId, participantId),
+            };
+            controller.Request.QueryString = new QueryString(testCase.Query);
+
+            var result = Assert.IsType<ObjectResult>(
+                await controller.ListAsync(
+                    testCase.Cursor,
+                    testCase.Limit,
+                    CancellationToken.None
+                )
+            );
+
+            Assert.Equal(StatusCodes.Status400BadRequest, result.StatusCode);
+        }
     }
 
     [Fact]

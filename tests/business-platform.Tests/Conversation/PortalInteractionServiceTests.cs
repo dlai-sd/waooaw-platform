@@ -69,7 +69,7 @@ public sealed class PortalInteractionServiceTests
             valid with { Content = [] },
             valid with { Content = [new("1.0", "IMAGE", "Help me navigate", "en-IN")] },
             valid with { Content = [new("1.0", "TEXT", " ", "en-IN")] },
-            valid with { Content = [new("1.0", "TEXT", new string('x', 4001), "en-IN")] },
+            valid with { Content = [new("1.0", "TEXT", new string('x', 32001), "en-IN")] },
             valid with { Locale = " " },
             valid with { CurrentSurface = "UNKNOWN" },
         };

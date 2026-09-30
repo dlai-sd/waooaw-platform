@@ -200,10 +200,16 @@ public sealed class EmploymentRelationshipService
     )
     {
         var normalizedProfessionalType = professionalType.Trim().ToUpperInvariant();
-        if (normalizedProfessionalType.Length is 0 or > 64)
+        if (
+            normalizedProfessionalType.Length is < 3 or > 64
+            || normalizedProfessionalType[0] is < 'A' or > 'Z'
+            || normalizedProfessionalType[1..].Any(value =>
+                value is not (>= 'A' and <= 'Z') and not (>= '0' and <= '9') and not '_'
+            )
+        )
         {
             throw new ArgumentException(
-                "Professional type must contain 1 to 64 characters.",
+                "Professional type must be an uppercase identifier of 3 to 64 characters.",
                 nameof(professionalType)
             );
         }
@@ -230,6 +236,7 @@ public sealed class EmploymentRelationshipService
                 professionalAdmissionId == Guid.Empty
                 || string.IsNullOrWhiteSpace(normalizedProfessionalVersion)
                 || normalizedProfessionalVersion.Length > 64
+                || !IsCoreSemanticVersion(normalizedProfessionalVersion)
                 || !await IsActiveProfessionalAdmissionAsync(
                     db,
                     professionalAdmissionId.Value,
@@ -355,6 +362,17 @@ public sealed class EmploymentRelationshipService
             EnsureBindingMatches(replay, professionalAdmissionId, normalizedProfessionalVersion);
             return new AdmitRelationshipResult(replay, false);
         }
+    }
+
+    private static bool IsCoreSemanticVersion(string value)
+    {
+        var components = value.Split('.');
+        return components.Length == 3
+            && components.All(component =>
+                component.Length > 0
+                && component.All(char.IsAsciiDigit)
+                && (component.Length == 1 || component[0] != '0')
+            );
     }
 
     private static void EnsureBindingMatches(

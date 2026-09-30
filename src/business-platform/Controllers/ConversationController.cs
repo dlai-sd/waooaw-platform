@@ -92,6 +92,13 @@ public sealed class ConversationController : ControllerBase
                 correlationId
             );
         }
+        if (request.Content.Any(block => block is null))
+            return ConversationProblem(
+                StatusCodes.Status400BadRequest,
+                "CONVERSATION_REQUEST_INVALID",
+                "Message content must contain a text block.",
+                correlationId
+            );
 
         if (!TryGetIdempotencyKey(out var idempotencyKey))
         {

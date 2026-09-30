@@ -80,9 +80,9 @@ paths:
         "200":
           description: Service is healthy
           content:
-            application/json:
+            text/plain:
               schema:
-                $ref: "#/components/schemas/HealthResponse"
+                type: string
 
   # ─── Identity and Registration ────────────────────────────────────────────
 
@@ -155,6 +155,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IdentitySessionRevocation"
+        "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
         "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
         "409": { $ref: "#/components/responses/IdentityConflict" }
@@ -178,6 +179,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IdentitySessionRevocation"
+        "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
         "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
         "404": { $ref: "#/components/responses/IdentityNotFound" }
@@ -216,6 +218,7 @@ paths:
             schema:
               $ref: "#/components/schemas/UpdateCustomerProfileRequestV1"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Profile updated or replayed
           content:
@@ -260,6 +263,7 @@ paths:
             schema:
               $ref: "#/components/schemas/UpdateCustomerSettingsRequestV1"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Settings updated or replayed
           content:
@@ -329,6 +333,7 @@ paths:
         "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
         "409": { $ref: "#/components/responses/IdentityConflict" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "429": { $ref: "#/components/responses/IdentityRateLimited" }
         "503": { $ref: "#/components/responses/IdentityUnavailable" }
 
@@ -370,6 +375,7 @@ paths:
             schema:
               $ref: "#/components/schemas/IdentityRegistrationProfileRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Registration profile accepted or replayed
           content:
@@ -378,6 +384,7 @@ paths:
                 $ref: "#/components/schemas/IdentityRegistration"
         "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "404": { $ref: "#/components/responses/IdentityNotFound" }
         "409": { $ref: "#/components/responses/IdentityConflict" }
         "422": { $ref: "#/components/responses/IdentityVerificationRequired" }
@@ -400,6 +407,7 @@ paths:
             schema:
               $ref: "#/components/schemas/StartEmailVerificationRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "202":
           description: Challenge accepted or replayed without identity-existence disclosure
           content:
@@ -408,6 +416,7 @@ paths:
                 $ref: "#/components/schemas/IdentityVerificationChallenge"
         "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "404": { $ref: "#/components/responses/IdentityNotFound" }
         "409": { $ref: "#/components/responses/IdentityConflict" }
         "429": { $ref: "#/components/responses/IdentityRateLimited" }
@@ -430,6 +439,7 @@ paths:
             schema:
               $ref: "#/components/schemas/ConfirmIdentityVerificationRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Email proof accepted or replayed
           content:
@@ -463,6 +473,7 @@ paths:
             schema:
               $ref: "#/components/schemas/StartMobileVerificationRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "202":
           description: Challenge accepted or replayed without identity-existence disclosure
           content:
@@ -493,6 +504,7 @@ paths:
             schema:
               $ref: "#/components/schemas/ConfirmIdentityVerificationRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Mobile proof accepted or replayed
           content:
@@ -520,7 +532,7 @@ paths:
         - PreAccountBearerAuth: []
       parameters:
         - $ref: "#/components/parameters/RegistrationId"
-        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/OptionalIdempotencyKey"
       responses:
         "200":
           description: Account created, reused, or replayed
@@ -532,7 +544,6 @@ paths:
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
         "404": { $ref: "#/components/responses/IdentityNotFound" }
         "409": { $ref: "#/components/responses/IdentityConflict" }
-        "422": { $ref: "#/components/responses/IdentityVerificationRequired" }
         "503": { $ref: "#/components/responses/IdentityUnavailable" }
 
   /api/v1/identity/account-links:
@@ -552,6 +563,7 @@ paths:
             schema:
               $ref: "#/components/schemas/StartIdentityAccountLinkRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "201":
           description: Link challenge started
           content:
@@ -608,6 +620,7 @@ paths:
                 $ref: "#/components/schemas/IdentityAccountLink"
         "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "404": { $ref: "#/components/responses/IdentityNotFound" }
 
   /api/v1/identity/mobile-verifications:
@@ -628,6 +641,7 @@ paths:
             schema:
               $ref: "#/components/schemas/StartMobileVerificationRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "202":
           description: Challenge accepted or replayed without identity-existence disclosure
           content:
@@ -636,6 +650,7 @@ paths:
                 $ref: "#/components/schemas/IdentityVerificationChallenge"
         "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
         "409": { $ref: "#/components/responses/IdentityConflict" }
         "429": { $ref: "#/components/responses/IdentityRateLimited" }
         "503": { $ref: "#/components/responses/IdentityUnavailable" }
@@ -654,6 +669,7 @@ paths:
             schema:
               $ref: "#/components/schemas/ConfirmIdentityVerificationRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Mobile proof accepted or replayed
           content:
@@ -662,6 +678,8 @@ paths:
                 $ref: "#/components/schemas/IdentityMobileStatus"
         "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityForbidden" }
+        "404": { $ref: "#/components/responses/IdentityNotFound" }
         "409": { $ref: "#/components/responses/IdentityConflict" }
         "410": { $ref: "#/components/responses/IdentityChallengeExpired" }
         "429": { $ref: "#/components/responses/IdentityRateLimited" }
@@ -677,6 +695,7 @@ paths:
         stated business outcome. Results explain suitability without preferred-customer
         scoring, ranking by customer value, or disclosure of protected eligibility facts.
       operationId: discoverProfessionals
+      security: []
       parameters:
         - name: outcome
           in: query
@@ -702,13 +721,14 @@ paths:
         - name: professionalType
           in: path
           required: true
-          schema: { type: string, minLength: 1, maxLength: 100 }
+          schema: { type: string, minLength: 1, maxLength: 100, pattern: '.*\S.*' }
       responses:
         "200":
           description: Complete suitability, rights, limits, authority, trial, evidence, and price disclosure
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ProfessionalDisclosure" }
+        "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
 
@@ -729,6 +749,7 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/OfferableProfessionalVersion" } }
+        "400": { $ref: "#/components/responses/ValidationError" }
 
   /api/v1/acquisition/continuations:
     post:
@@ -758,6 +779,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { description: Customer membership or constitutional authorization denied }
         "409": { $ref: "#/components/responses/Conflict" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "503": { description: Constitutional evidence or relationship owner unavailable }
 
   /api/v1/professionals/marketplace:
@@ -788,7 +810,7 @@ paths:
         - name: q
           in: query
           required: false
-          schema: { type: string, minLength: 1, maxLength: 120 }
+          schema: { type: string, minLength: 1, maxLength: 120, pattern: '.*\S.*' }
       responses:
         "200":
           description: Portal marketplace page
@@ -796,7 +818,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProfessionalMarketplacePageV1"
+        "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "414": { description: Request target exceeds server limits }
 
   /api/v1/professionals/{type}/versions/{version}/admission/drafts:
     post:
@@ -811,10 +836,12 @@ paths:
         required: true
         content: { application/json: { schema: { $ref: "#/components/schemas/CreateAgentAdmissionDraftRequest" } } }
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200": { description: Existing identical draft replayed, content: { application/json: { schema: { $ref: "#/components/schemas/AgentAdmission" } } } }
         "201": { description: Draft created, content: { application/json: { schema: { $ref: "#/components/schemas/AgentAdmission" } } } }
         "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }
         "401": { $ref: "#/components/responses/AdmissionUnauthorized" }
+        "403": { $ref: "#/components/responses/AdmissionForbidden" }
         "404": { $ref: "#/components/responses/AdmissionNotFound" }
         "409": { $ref: "#/components/responses/AdmissionConflict" }
 
@@ -833,6 +860,7 @@ paths:
         required: true
         content: { application/json: { schema: { $ref: "#/components/schemas/PutAgentAdmissionRevisionRequest" } } }
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200": { description: Revision stored, content: { application/json: { schema: { $ref: "#/components/schemas/AgentAdmission" } } } }
         "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }
         "401": { $ref: "#/components/responses/AdmissionUnauthorized" }
@@ -853,6 +881,7 @@ paths:
         required: true
         content: { application/json: { schema: { $ref: "#/components/schemas/ValidateAgentAdmissionRequest" } } }
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200": { description: Existing identical validation replayed, content: { application/json: { schema: { $ref: "#/components/schemas/AgentAdmissionValidation" } } } }
         "202": { description: Validation completed, content: { application/json: { schema: { $ref: "#/components/schemas/AgentAdmissionValidation" } } } }
         "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }
@@ -885,7 +914,7 @@ paths:
         - $ref: "#/components/parameters/AdmissionProfessionalVersion"
         - $ref: "#/components/parameters/IdempotencyKey"
       requestBody: { $ref: "#/components/requestBodies/AdmissionTransition" }
-      responses: { "200": { $ref: "#/components/responses/AdmissionTransitioned" }, "201": { $ref: "#/components/responses/AdmissionTransitioned" }, "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }, "401": { $ref: "#/components/responses/AdmissionUnauthorized" }, "404": { $ref: "#/components/responses/AdmissionNotFound" }, "409": { $ref: "#/components/responses/AdmissionConflict" }, "423": { $ref: "#/components/responses/AdmissionBlocked" }, "503": { $ref: "#/components/responses/AdmissionUnavailable" } }
+      responses: { "200": { $ref: "#/components/responses/AdmissionTransitioned" }, "201": { $ref: "#/components/responses/AdmissionTransitioned" }, "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }, "401": { $ref: "#/components/responses/AdmissionUnauthorized" }, "404": { $ref: "#/components/responses/AdmissionNotFound" }, "409": { $ref: "#/components/responses/AdmissionConflict" }, "415": { $ref: "#/components/responses/UnsupportedMediaType" }, "423": { $ref: "#/components/responses/AdmissionBlocked" }, "503": { $ref: "#/components/responses/AdmissionUnavailable" } }
 
   /api/v1/professionals/{type}/versions/{version}/admission/approvals:
     post:
@@ -894,7 +923,7 @@ paths:
       operationId: approveAgentAdmission
       parameters: [{ $ref: "#/components/parameters/AdmissionProfessionalType" }, { $ref: "#/components/parameters/AdmissionProfessionalVersion" }, { $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody: { $ref: "#/components/requestBodies/AdmissionTransition" }
-      responses: { "200": { $ref: "#/components/responses/AdmissionTransitioned" }, "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }, "401": { $ref: "#/components/responses/AdmissionUnauthorized" }, "404": { $ref: "#/components/responses/AdmissionNotFound" }, "409": { $ref: "#/components/responses/AdmissionConflict" }, "423": { $ref: "#/components/responses/AdmissionBlocked" }, "503": { $ref: "#/components/responses/AdmissionUnavailable" } }
+      responses: { "200": { $ref: "#/components/responses/AdmissionTransitioned" }, "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }, "401": { $ref: "#/components/responses/AdmissionUnauthorized" }, "403": { $ref: "#/components/responses/AdmissionForbidden" }, "404": { $ref: "#/components/responses/AdmissionNotFound" }, "409": { $ref: "#/components/responses/AdmissionConflict" }, "415": { $ref: "#/components/responses/UnsupportedMediaType" }, "423": { $ref: "#/components/responses/AdmissionBlocked" }, "503": { $ref: "#/components/responses/AdmissionUnavailable" } }
 
   /api/v1/professionals/{type}/versions/{version}/admission/rejections:
     post:
@@ -903,7 +932,7 @@ paths:
       operationId: rejectAgentAdmission
       parameters: [{ $ref: "#/components/parameters/AdmissionProfessionalType" }, { $ref: "#/components/parameters/AdmissionProfessionalVersion" }, { $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody: { $ref: "#/components/requestBodies/AdmissionTransition" }
-      responses: { "200": { $ref: "#/components/responses/AdmissionTransitioned" }, "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }, "401": { $ref: "#/components/responses/AdmissionUnauthorized" }, "404": { $ref: "#/components/responses/AdmissionNotFound" }, "409": { $ref: "#/components/responses/AdmissionConflict" }, "423": { $ref: "#/components/responses/AdmissionBlocked" }, "503": { $ref: "#/components/responses/AdmissionUnavailable" } }
+      responses: { "200": { $ref: "#/components/responses/AdmissionTransitioned" }, "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }, "401": { $ref: "#/components/responses/AdmissionUnauthorized" }, "403": { $ref: "#/components/responses/AdmissionForbidden" }, "404": { $ref: "#/components/responses/AdmissionNotFound" }, "409": { $ref: "#/components/responses/AdmissionConflict" }, "415": { $ref: "#/components/responses/UnsupportedMediaType" }, "423": { $ref: "#/components/responses/AdmissionBlocked" }, "503": { $ref: "#/components/responses/AdmissionUnavailable" } }
 
   /api/v1/professionals/{type}/versions/{version}/admission/activations:
     post:
@@ -912,7 +941,7 @@ paths:
       operationId: activateAgentAdmission
       parameters: [{ $ref: "#/components/parameters/AdmissionProfessionalType" }, { $ref: "#/components/parameters/AdmissionProfessionalVersion" }, { $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody: { $ref: "#/components/requestBodies/AdmissionTransition" }
-      responses: { "200": { $ref: "#/components/responses/AdmissionTransitioned" }, "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }, "401": { $ref: "#/components/responses/AdmissionUnauthorized" }, "404": { $ref: "#/components/responses/AdmissionNotFound" }, "409": { $ref: "#/components/responses/AdmissionConflict" }, "423": { $ref: "#/components/responses/AdmissionBlocked" }, "503": { $ref: "#/components/responses/AdmissionUnavailable" } }
+      responses: { "200": { $ref: "#/components/responses/AdmissionTransitioned" }, "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }, "401": { $ref: "#/components/responses/AdmissionUnauthorized" }, "403": { $ref: "#/components/responses/AdmissionForbidden" }, "404": { $ref: "#/components/responses/AdmissionNotFound" }, "409": { $ref: "#/components/responses/AdmissionConflict" }, "415": { $ref: "#/components/responses/UnsupportedMediaType" }, "423": { $ref: "#/components/responses/AdmissionBlocked" }, "503": { $ref: "#/components/responses/AdmissionUnavailable" } }
 
   /api/v1/professionals/{type}/versions/{version}/admission/suspensions:
     post:
@@ -921,7 +950,7 @@ paths:
       operationId: suspendAgentAdmission
       parameters: [{ $ref: "#/components/parameters/AdmissionProfessionalType" }, { $ref: "#/components/parameters/AdmissionProfessionalVersion" }, { $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody: { $ref: "#/components/requestBodies/AdmissionTransition" }
-      responses: { "200": { $ref: "#/components/responses/AdmissionTransitioned" }, "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }, "401": { $ref: "#/components/responses/AdmissionUnauthorized" }, "404": { $ref: "#/components/responses/AdmissionNotFound" }, "409": { $ref: "#/components/responses/AdmissionConflict" }, "423": { $ref: "#/components/responses/AdmissionBlocked" }, "503": { $ref: "#/components/responses/AdmissionUnavailable" } }
+      responses: { "200": { $ref: "#/components/responses/AdmissionTransitioned" }, "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }, "401": { $ref: "#/components/responses/AdmissionUnauthorized" }, "403": { $ref: "#/components/responses/AdmissionForbidden" }, "404": { $ref: "#/components/responses/AdmissionNotFound" }, "409": { $ref: "#/components/responses/AdmissionConflict" }, "415": { $ref: "#/components/responses/UnsupportedMediaType" }, "423": { $ref: "#/components/responses/AdmissionBlocked" }, "503": { $ref: "#/components/responses/AdmissionUnavailable" } }
 
   /api/v1/professionals/{type}/versions/{version}/admission/supersessions:
     post:
@@ -930,7 +959,7 @@ paths:
       operationId: supersedeAgentAdmission
       parameters: [{ $ref: "#/components/parameters/AdmissionProfessionalType" }, { $ref: "#/components/parameters/AdmissionProfessionalVersion" }, { $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody: { $ref: "#/components/requestBodies/AdmissionTransition" }
-      responses: { "200": { $ref: "#/components/responses/AdmissionTransitioned" }, "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }, "401": { $ref: "#/components/responses/AdmissionUnauthorized" }, "404": { $ref: "#/components/responses/AdmissionNotFound" }, "409": { $ref: "#/components/responses/AdmissionConflict" }, "423": { $ref: "#/components/responses/AdmissionBlocked" }, "503": { $ref: "#/components/responses/AdmissionUnavailable" } }
+      responses: { "200": { $ref: "#/components/responses/AdmissionTransitioned" }, "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }, "401": { $ref: "#/components/responses/AdmissionUnauthorized" }, "403": { $ref: "#/components/responses/AdmissionForbidden" }, "404": { $ref: "#/components/responses/AdmissionNotFound" }, "409": { $ref: "#/components/responses/AdmissionConflict" }, "415": { $ref: "#/components/responses/UnsupportedMediaType" }, "423": { $ref: "#/components/responses/AdmissionBlocked" }, "503": { $ref: "#/components/responses/AdmissionUnavailable" } }
 
   /api/v1/professionals/{type}/versions/{version}/admission/retirements:
     post:
@@ -939,7 +968,7 @@ paths:
       operationId: retireAgentAdmission
       parameters: [{ $ref: "#/components/parameters/AdmissionProfessionalType" }, { $ref: "#/components/parameters/AdmissionProfessionalVersion" }, { $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody: { $ref: "#/components/requestBodies/AdmissionTransition" }
-      responses: { "200": { $ref: "#/components/responses/AdmissionTransitioned" }, "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }, "401": { $ref: "#/components/responses/AdmissionUnauthorized" }, "404": { $ref: "#/components/responses/AdmissionNotFound" }, "409": { $ref: "#/components/responses/AdmissionConflict" }, "423": { $ref: "#/components/responses/AdmissionBlocked" }, "503": { $ref: "#/components/responses/AdmissionUnavailable" } }
+      responses: { "200": { $ref: "#/components/responses/AdmissionTransitioned" }, "400": { $ref: "#/components/responses/AdmissionInvalidRequest" }, "401": { $ref: "#/components/responses/AdmissionUnauthorized" }, "403": { $ref: "#/components/responses/AdmissionForbidden" }, "404": { $ref: "#/components/responses/AdmissionNotFound" }, "409": { $ref: "#/components/responses/AdmissionConflict" }, "415": { $ref: "#/components/responses/UnsupportedMediaType" }, "423": { $ref: "#/components/responses/AdmissionBlocked" }, "503": { $ref: "#/components/responses/AdmissionUnavailable" } }
 
   /api/v1/whatsapp/webhook:
     post:
@@ -967,6 +996,7 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/WhatsAppJourneyInbound" }
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Message accepted or deterministically replayed; internal tenant credentials are never returned
           content:
@@ -1004,8 +1034,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EmploymentRelationshipCollectionV1"
+        "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
+        "414": { description: Request target exceeds server limits }
     post:
       tags: [Employment]
       summary: Admit or replay an employment relationship
@@ -1023,6 +1055,7 @@ paths:
             schema:
               $ref: "#/components/schemas/AdmitEmploymentRelationshipRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "201":
           description: Relationship admitted
           content:
@@ -1039,6 +1072,8 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "403":
           description: Authenticated identity lacks tenant or participant authority
         "409":
@@ -1060,6 +1095,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EmploymentRelationship"
+        "400": { $ref: "#/components/responses/BadRequest" }
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -1082,6 +1118,7 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/CreateMyAgentsSelectionRequest" }
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Opaque selection handle created
           content:
@@ -1089,6 +1126,7 @@ paths:
               schema: { $ref: "#/components/schemas/MyAgentsSelectionHandle" }
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
         "503": { $ref: "#/components/responses/ServiceUnavailable" }
 
@@ -1107,6 +1145,7 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/ConsumeMyAgentsSelectionRequest" }
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Authorized selection consumed
           content:
@@ -1114,6 +1153,7 @@ paths:
               schema: { $ref: "#/components/schemas/ConsumedMyAgentsSelection" }
         "204":
           description: No consumable authorized selection exists
+        "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/v1/employment/relationships/{relationshipId}/timeline:
@@ -1159,6 +1199,7 @@ paths:
             schema:
               $ref: "#/components/schemas/PrepareRelationshipHandoffRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "201":
           description: Target binding and continuity checkpoint prepared
           content:
@@ -1204,6 +1245,7 @@ paths:
             schema:
               $ref: "#/components/schemas/ActivateRelationshipHandoffRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Target binding activated or prior identical outcome replayed
           content:
@@ -1239,6 +1281,8 @@ paths:
             schema:
               $ref: "#/components/schemas/TransitionEmploymentRelationshipRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "200":
           description: Relationship transitioned with evidence committed
           content:
@@ -1273,6 +1317,8 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/StopEmploymentRelationshipRequest" }
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "200":
           description: Relationship Stop is durably projected
           content:
@@ -1302,6 +1348,8 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/ReleaseEmploymentRelationshipStopRequest" }
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "200":
           description: Stop released after release evidence commitment
           content:
@@ -1332,6 +1380,8 @@ paths:
             schema:
               $ref: "#/components/schemas/StartRelationshipTrialRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "200":
           description: Owner-confirmed trial is active
           content:
@@ -1367,6 +1417,7 @@ paths:
             schema:
               $ref: "#/components/schemas/ProposeEmploymentContractRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "201":
           description: New immutable contract version presented
           content:
@@ -1408,6 +1459,7 @@ paths:
             schema:
               $ref: "#/components/schemas/PrepareRelationshipHireRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Configuration recorded and exact contract presented
           content:
@@ -1475,6 +1527,7 @@ paths:
             schema:
               $ref: "#/components/schemas/AcceptEmploymentContractRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "201":
           description: Exact contract accepted with committed constitutional evidence
           content:
@@ -1554,6 +1607,7 @@ paths:
             schema:
               $ref: "#/components/schemas/RelationshipPaymentProceedRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Existing checkout intent replayed or current outcome returned
           content:
@@ -1638,8 +1692,10 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403":
           description: Fresh portal assurance or active same-tenant EMPLOYER authority denied
+        "404": { $ref: "#/components/responses/NotFound" }
         "409":
           description: Relationship is ineligible or canonical activation material conflicts
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "503":
           description: Temporal, constitutional evidence, or WBE activation outcome remains unresolved
 
@@ -1667,6 +1723,7 @@ paths:
             schema:
               $ref: "#/components/schemas/EvaluateRelationshipOfferabilityRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Evidence-backed offerability decision
           content:
@@ -1686,7 +1743,7 @@ paths:
           description: WBE or Constitutional Engine outcome is unavailable
 
   /api/v1/employment/contracts:
-    get:
+    x-deprecated-get:
       tags: [Employment]
       summary: List employment contracts for the authenticated customer
       operationId: listEmploymentContracts
@@ -1719,7 +1776,7 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
-    post:
+    x-deprecated-post:
       tags: [Employment]
       summary: Compatibility adapter for relationship admission
       deprecated: true
@@ -1735,6 +1792,7 @@ paths:
             schema:
               $ref: "#/components/schemas/LegacyFormEmploymentContractRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "201":
           description: Canonical relationship admitted through the compatibility adapter
           headers:
@@ -1766,7 +1824,7 @@ paths:
           $ref: "#/components/responses/ValidationError"
 
   /api/v1/employment/contracts/{contractId}:
-    get:
+    x-deprecated-get:
       tags: [Employment]
       summary: Compatibility projection of an employment relationship
       deprecated: true
@@ -1790,7 +1848,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-    delete:
+    x-deprecated-delete:
       tags: [Employment]
       summary: Terminate an employment contract
       description: |
@@ -1807,6 +1865,7 @@ paths:
             schema:
               $ref: "#/components/schemas/TerminateContractRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Contract terminated
           content:
@@ -1815,13 +1874,15 @@ paths:
                 $ref: "#/components/schemas/EmploymentContract"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
 
   /api/v1/agents/hire:
-    post:
+    x-deprecated-post:
       tags: [Employment]
       summary: Deprecated v1 hire compatibility adapter
       deprecated: true
@@ -1833,6 +1894,7 @@ paths:
             schema:
               $ref: "#/components/schemas/LegacyHireAgentRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "201":
           description: Relationship admitted through the hire adapter
           headers:
@@ -1853,9 +1915,11 @@ paths:
                 $ref: "#/components/schemas/LegacyHireAgentResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
 
   /api/agents/hire:
-    post:
+    x-deprecated-post:
       tags: [Employment]
       summary: Deprecated unversioned hire compatibility adapter
       deprecated: true
@@ -1867,6 +1931,7 @@ paths:
             schema:
               $ref: "#/components/schemas/LegacyHireAgentRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Canonical relationship projected through the legacy hire response
           headers:
@@ -1915,6 +1980,7 @@ paths:
             schema:
               $ref: "#/components/schemas/SuspendContractRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Contract suspended
           content:
@@ -1929,7 +1995,7 @@ paths:
           $ref: "#/components/responses/Conflict"
 
   /api/v1/employment/contracts/{contractId}/skills:
-    get:
+    x-deprecated-get:
       tags: [Skills]
       summary: List skills in an employment contract (C-036)
       operationId: listSkills
@@ -1952,7 +2018,7 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
-    post:
+    x-deprecated-post:
       tags: [Skills]
       summary: Add a skill to an employment contract
       operationId: addSkill
@@ -1965,6 +2031,7 @@ paths:
             schema:
               $ref: "#/components/schemas/AddSkillRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "201":
           description: Skill added
           content:
@@ -1975,7 +2042,7 @@ paths:
           $ref: "#/components/responses/Unauthorized"
 
   /api/v1/employment/contracts/{contractId}/skills/{skillId}/pause:
-    put:
+    x-deprecated-put:
       tags: [Skills]
       summary: Pause a skill (pro-rata billing stops — C-038)
       operationId: pauseSkill
@@ -1998,7 +2065,7 @@ paths:
           $ref: "#/components/responses/Unauthorized"
 
   /api/v1/employment/contracts/{contractId}/skills/{skillId}/resume:
-    put:
+    x-deprecated-put:
       tags: [Skills]
       summary: Resume a paused skill (pro-rata billing resumes — C-038)
       operationId: resumeSkill
@@ -2021,7 +2088,7 @@ paths:
           $ref: "#/components/responses/Unauthorized"
 
   /api/v1/employment/contracts/{contractId}/skills/{skillId}/goals:
-    put:
+    x-deprecated-put:
       tags: [Skills]
       summary: Update skill business KPI goals (C-037)
       operationId: updateSkillGoals
@@ -2040,6 +2107,7 @@ paths:
             schema:
               $ref: "#/components/schemas/UpdateSkillGoalsRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Goals updated
           content:
@@ -2050,7 +2118,7 @@ paths:
           $ref: "#/components/responses/Unauthorized"
 
   /api/v1/employment/contracts/{contractId}/performance:
-    get:
+    x-deprecated-get:
       tags: [Performance]
       summary: Get skill performance against business KPIs (C-037, AD-012)
       description: "Returns business KPI metrics as primary data. Technical metrics are available in supporting_metrics only."
@@ -2082,7 +2150,7 @@ paths:
           $ref: "#/components/responses/Unauthorized"
 
   /api/v1/billing:
-    get:
+    x-deprecated-get:
       tags: [Billing]
       summary: Get itemised billing statement (C-038, AD-014)
       description: "Pro-rata billing calculated from event ledger. Itemised per skill. For COMBINED billing preference, returns the consolidated invoice; for SEPARATE, returns per-agent invoices."
@@ -2105,7 +2173,7 @@ paths:
           $ref: "#/components/responses/Unauthorized"
 
   /api/v1/billing/preference:
-    get:
+    x-deprecated-get:
       tags: [Billing]
       summary: Get billing preference (SEPARATE or COMBINED)
       description: Returns the customer's current multi-agent billing preference.
@@ -2121,7 +2189,7 @@ paths:
                   billing_preference: { type: string, enum: [SEPARATE, COMBINED] }
                   combined_billing_anchor_day: { type: integer, minimum: 1, maximum: 28 }
                   active_agents: { type: integer, description: "Count of currently active employment contracts" }
-    put:
+    x-deprecated-put:
       tags: [Billing]
       summary: Update billing preference
       description: |
@@ -2143,13 +2211,14 @@ paths:
                   maximum: 28
                   description: "Day of month for consolidated invoice. Default 1."
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Preference updated. Effective from next billing period.
         "422":
           $ref: "#/components/responses/ValidationError"
 
   /api/v1/billing/invoices:
-    get:
+    x-deprecated-get:
       tags: [Billing]
       summary: List all GST invoices
       description: |
@@ -2178,7 +2247,7 @@ paths:
                   $ref: "#/components/schemas/GstInvoiceSummary"
 
   /api/v1/billing/summary:
-    get:
+    x-deprecated-get:
       tags: [Billing]
       summary: Get the customer portal billing summary
       description: |
@@ -2196,7 +2265,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/v1/billing/subscription-tiers:
-    get:
+    x-deprecated-get:
       tags: [Billing]
       summary: List available subscription tiers for an agent type
       description: Returns available tiers and pricing for a given professional_type.
@@ -2218,7 +2287,7 @@ paths:
                   $ref: "#/components/schemas/SubscriptionTier"
 
   /api/v1/billing/whatsapp-upi-link:
-    post:
+    x-deprecated-post:
       tags: [Billing]
       summary: Generate WhatsApp UPI AutoPay mandate link (Agricultural Advisor)
       description: |
@@ -2245,6 +2314,7 @@ paths:
               properties:
                 contract_id: { type: string, format: uuid }
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: UPI AutoPay mandate link ready for WhatsApp delivery
           content:
@@ -2261,7 +2331,7 @@ paths:
           description: Agent type not eligible for UPI AutoPay or farmer language not available
 
   /api/v1/configure/conversational:
-    post:
+    x-deprecated-post:
       tags: [Configuration]
       summary: Configure agent via natural language conversation (C-039, AD-013)
       description: |
@@ -2278,6 +2348,7 @@ paths:
             schema:
               $ref: "#/components/schemas/ConversationalConfigRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Clarifying question or proposed configuration
           content:
@@ -2301,6 +2372,7 @@ paths:
             schema:
               $ref: "#/components/schemas/RenewContractRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Contract renewed
           content:
@@ -2345,7 +2417,7 @@ paths:
   # ─── Approvals ────────────────────────────────────────────────────────────
 
   /api/v1/approvals:
-    get:
+    x-deprecated-get:
       tags: [Approvals]
       summary: List pending approval requests
       operationId: listApprovals
@@ -2443,6 +2515,7 @@ paths:
             schema:
               $ref: "#/components/schemas/RejectActionRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Action rejected and evidence recorded
           content:
@@ -2474,6 +2547,7 @@ paths:
             schema:
               $ref: "#/components/schemas/ConfirmBoundaryRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Boundary confirmed and evidence recorded
           content:
@@ -2488,7 +2562,7 @@ paths:
   # ─── Evidence ─────────────────────────────────────────────────────────────
 
   /api/v1/evidence:
-    get:
+    x-deprecated-get:
       tags: [Evidence]
       summary: List evidence records (read-only view of Constitutional Audit Ledger)
       description: Returns evidence records for the authenticated customer's contracts. All records are immutable.
@@ -2565,7 +2639,7 @@ paths:
           $ref: "#/components/responses/NotFound"
 
   /api/v1/evidence/export:
-    get:
+    x-deprecated-get:
       tags: [Evidence]
       summary: Export full evidence ledger (data portability — Article IX right)
       description: |
@@ -2600,7 +2674,7 @@ paths:
   # ─── Authority ────────────────────────────────────────────────────────────
 
   /api/v1/authority/current:
-    get:
+    x-deprecated-get:
       tags: [Authority]
       summary: Get current authority level for a contract
       operationId: getCurrentAuthority
@@ -2624,7 +2698,7 @@ paths:
           $ref: "#/components/responses/NotFound"
 
   /api/v1/authority/expand:
-    post:
+    x-deprecated-post:
       tags: [Authority]
       summary: Expand professional authority level
       description: |
@@ -2638,6 +2712,7 @@ paths:
             schema:
               $ref: "#/components/schemas/ModifyAuthorityRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Authority expanded and license recorded
           content:
@@ -2652,7 +2727,7 @@ paths:
           $ref: "#/components/responses/ValidationError"
 
   /api/v1/authority/restrict:
-    post:
+    x-deprecated-post:
       tags: [Authority]
       summary: Restrict professional authority level
       description: |
@@ -2666,6 +2741,7 @@ paths:
             schema:
               $ref: "#/components/schemas/ModifyAuthorityRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Authority restricted and license recorded
           content:
@@ -2697,7 +2773,7 @@ paths:
                 $ref: "#/components/schemas/SkillRuntimeConfig"
         "404":
           $ref: "#/components/responses/NotFound"
-    put:
+    x-deprecated-put:
       tags: [Skills]
       summary: Update skill runtime configuration
       description: |
@@ -2716,6 +2792,7 @@ paths:
             schema:
               $ref: "#/components/schemas/SkillRuntimeConfigUpdate"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Configuration updated. If approval_mode changed, evidence_record_id is populated.
           content:
@@ -2746,7 +2823,7 @@ paths:
                 $ref: "#/components/schemas/DigitalMarketingProfile"
         "404":
           description: No profile exists yet (profiling not completed)
-    put:
+    x-deprecated-put:
       tags: [DigitalMarketing]
       summary: Update customer digital marketing profile
       description: |
@@ -2762,6 +2839,7 @@ paths:
             schema:
               $ref: "#/components/schemas/DigitalMarketingProfileUpdate"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Profile updated
           content:
@@ -2770,7 +2848,7 @@ paths:
                 $ref: "#/components/schemas/DigitalMarketingProfile"
 
   /api/v1/digital-marketing/maturity-scores/{organisationId}:
-    get:
+    x-deprecated-get:
       tags: [DigitalMarketing]
       summary: Get maturity score history
       description: Returns all Digital Marketing Maturity assessments for the organisation, most recent first. Append-only — no updates.
@@ -2810,7 +2888,7 @@ paths:
           description: No maturity report generated yet
 
   /api/v1/digital-marketing/needs-heatmap/{organisationId}:
-    get:
+    x-deprecated-get:
       tags: [DigitalMarketing]
       summary: Get current needs heat map
       description: Returns the 8-need assessment from the most recent Market Research run.
@@ -2828,7 +2906,7 @@ paths:
                   $ref: "#/components/schemas/NeedsHeatmapEntry"
 
   /api/v1/employment/contracts/{contractId}/phase-bundle:
-    get:
+    x-deprecated-get:
       tags: [Employment]
       summary: Get active phase bundle
       operationId: getPhaseBundle
@@ -2841,7 +2919,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PhaseBundleSubscription"
-    put:
+    x-deprecated-put:
       tags: [Employment]
       summary: Upgrade or change phase bundle
       description: |
@@ -2867,6 +2945,7 @@ paths:
                   minimum: 1
                   maximum: 7
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Phase bundle updated
           content:
@@ -2875,7 +2954,7 @@ paths:
                 $ref: "#/components/schemas/PhaseBundleSubscription"
 
   /api/v1/approvals/{approvalId}/synthetic:
-    post:
+    x-deprecated-post:
       tags: [Approvals]
       summary: Record a synthetic approval
       description: |
@@ -2893,6 +2972,7 @@ paths:
             schema:
               $ref: "#/components/schemas/SyntheticApprovalRecord"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "201":
           description: Synthetic approval recorded. Customer notification dispatched.
           content:
@@ -2901,7 +2981,7 @@ paths:
                 $ref: "#/components/schemas/SyntheticApprovalRecord"
 
   /api/v1/approvals/{approvalId}/override:
-    post:
+    x-deprecated-post:
       tags: [Approvals]
       summary: Customer retrospective override of synthetic approval
       description: |
@@ -2923,6 +3003,7 @@ paths:
                 reason:
                   type: string
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Override recorded. Reversal initiated where possible.
         "409":
@@ -2933,7 +3014,7 @@ paths:
                 $ref: "#/components/schemas/ProblemDetail"
 
   /api/v1/payments/subscriptions:
-    post:
+    x-deprecated-post:
       tags: [Billing]
       summary: Create a Razorpay subscription for a contract
       description: |
@@ -2949,6 +3030,7 @@ paths:
             schema:
               $ref: "#/components/schemas/CreateSubscriptionRequest"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "201":
           description: Subscription created. Razorpay payment link returned.
           content:
@@ -2959,7 +3041,7 @@ paths:
           description: Payment required — Razorpay subscription creation failed
 
   /api/v1/payments/webhooks/razorpay:
-    post:
+    x-deprecated-post:
       tags: [Billing]
       summary: Razorpay webhook receiver
       description: |
@@ -2977,6 +3059,7 @@ paths:
               type: object
               description: Razorpay webhook payload (varies by event type)
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Webhook processed
         "400":
@@ -3004,7 +3087,9 @@ paths:
               schema: { $ref: "#/components/schemas/PortalInteractionTimelinePageV1" }
         "400": { $ref: "#/components/responses/ConversationInvalidRequest" }
         "401": { $ref: "#/components/responses/ConversationUnauthorized" }
+        "404": { $ref: "#/components/responses/ConversationNotFound" }
         "410": { $ref: "#/components/responses/ConversationCursorExpired" }
+        "414": { description: Request target exceeds server limits }
         "503": { $ref: "#/components/responses/ConversationUnavailable" }
     post:
       tags: [Conversation]
@@ -3021,6 +3106,7 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/SendPortalInteractionMessageRequestV1" }
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "202":
           description: Portal contribution and Guide response accepted
           content:
@@ -3033,6 +3119,7 @@ paths:
               schema: { $ref: "#/components/schemas/PortalInteractionSubmissionV1" }
         "400": { $ref: "#/components/responses/ConversationInvalidRequest" }
         "401": { $ref: "#/components/responses/ConversationUnauthorized" }
+        "404": { $ref: "#/components/responses/ConversationNotFound" }
         "409": { $ref: "#/components/responses/ConversationConflict" }
         "503": { $ref: "#/components/responses/ConversationUnavailable" }
 
@@ -3060,7 +3147,9 @@ paths:
         "400": { $ref: "#/components/responses/ConversationInvalidRequest" }
         "401": { $ref: "#/components/responses/ConversationUnauthorized" }
         "404": { $ref: "#/components/responses/ConversationNotFound" }
+        "409": { $ref: "#/components/responses/ConversationConflict" }
         "410": { $ref: "#/components/responses/ConversationCursorExpired" }
+        "414": { description: Request target exceeds server limits }
         "503": { $ref: "#/components/responses/ConversationUnavailable" }
     post:
       tags: [Conversation]
@@ -3080,6 +3169,7 @@ paths:
             schema:
               $ref: "#/components/schemas/SendConversationMessageRequestV1"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "202":
           description: Message accepted and professional execution queued
           content:
@@ -3114,6 +3204,7 @@ paths:
         - $ref: "#/components/parameters/ConversationMessageId"
         - $ref: "#/components/parameters/IdempotencyKey"
       responses:
+        "400": { $ref: "#/components/responses/ConversationInvalidRequest" }
         "202":
           description: Existing logical message accepted for retry
           content:
@@ -3151,6 +3242,7 @@ paths:
             schema:
               $ref: "#/components/schemas/UpdateConversationReadPositionRequestV1"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Read position advanced or identical outcome replayed
           content:
@@ -3205,6 +3297,7 @@ paths:
         - $ref: "#/components/parameters/ConversationExecutionId"
         - $ref: "#/components/parameters/IdempotencyKey"
       responses:
+        "400": { $ref: "#/components/responses/ConversationInvalidRequest" }
         "202":
           description: Cancellation accepted
           content:
@@ -3289,6 +3382,7 @@ paths:
             schema:
               $ref: "#/components/schemas/RelationshipOnboardRequestV1"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Onboard preferences updated or replayed
           content:
@@ -3565,6 +3659,7 @@ paths:
             schema:
               $ref: "#/components/schemas/SubmitRelationshipCommandRequestV1"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "202":
           description: Command accepted with durable reconciliation responsibility
           content:
@@ -3677,6 +3772,7 @@ paths:
             schema:
               $ref: "#/components/schemas/RequestRelationshipEvidenceExportV1"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "202":
           description: Export request accepted
           content:
@@ -3734,6 +3830,7 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/CreateVoiceContributionSessionRequestV1" }
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "201": { description: Session created, content: { application/json: { schema: { $ref: "#/components/schemas/VoiceContributionSessionV1" } } } }
         "200": { description: Prior identical session replayed, content: { application/json: { schema: { $ref: "#/components/schemas/VoiceContributionSessionV1" } } } }
         "400": { $ref: "#/components/responses/VoiceContributionInvalidRequest" }
@@ -3816,6 +3913,7 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/VoiceCorrectionRequestV1" }
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200": { description: Correction version recorded, content: { application/json: { schema: { $ref: "#/components/schemas/VoiceCorrectionReceiptV1" } } } }
         "400": { $ref: "#/components/responses/VoiceContributionInvalidRequest" }
         "401": { $ref: "#/components/responses/VoiceContributionUnauthorized" }
@@ -3838,6 +3936,7 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/SendVoiceContributionRequestV1" }
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200": { description: Authoritative Evidence First outcome, content: { application/json: { schema: { $ref: "#/components/schemas/VoiceContributionOutcomeV1" } } } }
         "400": { $ref: "#/components/responses/VoiceContributionInvalidRequest" }
         "401": { $ref: "#/components/responses/VoiceContributionUnauthorized" }
@@ -3861,6 +3960,8 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/CancelVoiceContributionRequestV1" }
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "400": { $ref: "#/components/responses/VoiceContributionInvalidRequest" }
         "200": { description: Cancellation or prior terminal outcome, content: { application/json: { schema: { $ref: "#/components/schemas/VoiceContributionOutcomeV1" } } } }
         "401": { $ref: "#/components/responses/VoiceContributionUnauthorized" }
         "404": { $ref: "#/components/responses/VoiceContributionNotAccessible" }
@@ -3882,6 +3983,8 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/VoicePayloadErasureRequestV1" }
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "400": { $ref: "#/components/responses/VoiceContributionInvalidRequest" }
         "202": { description: Erasure accepted, content: { application/json: { schema: { $ref: "#/components/schemas/VoicePayloadErasureReceiptV1" } } } }
         "200": { description: Prior identical outcome replayed, content: { application/json: { schema: { $ref: "#/components/schemas/VoicePayloadErasureReceiptV1" } } } }
         "401": { $ref: "#/components/responses/VoiceContributionUnauthorized" }
@@ -3891,7 +3994,7 @@ paths:
         "503": { $ref: "#/components/responses/VoiceContributionUnavailable" }
 
   /api/v1/notifications/preferences:
-    get:
+    x-deprecated-get:
       tags: [Notifications]
       summary: Get customer notification preferences
       operationId: getNotificationPreferences
@@ -3902,7 +4005,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/NotificationPreferences"
-    put:
+    x-deprecated-put:
       tags: [Notifications]
       summary: Update customer notification preferences
       description: |
@@ -3917,6 +4020,7 @@ paths:
             schema:
               $ref: "#/components/schemas/NotificationPreferences"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Preferences updated
 
@@ -3938,6 +4042,7 @@ paths:
           required: false
           schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
       responses:
+        "400": { $ref: "#/components/responses/BadRequest" }
         "200":
           description: Customer alerts page
           content:
@@ -3945,6 +4050,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/CustomerAlertPageV1"
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "414": { description: Request target exceeds server limits }
 
   /api/v1/notifications/alerts/{alertId}/read:
     post:
@@ -3964,6 +4071,7 @@ paths:
             schema:
               $ref: "#/components/schemas/CustomerAlertMutationRequestV1"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Alert marked read or replayed
           content:
@@ -3993,6 +4101,7 @@ paths:
             schema:
               $ref: "#/components/schemas/CustomerAlertMutationRequestV1"
       responses:
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "200":
           description: Alert acknowledged or replayed
           content:
@@ -4029,6 +4138,15 @@ components:
         type: string
         format: uuid
       description: Same key and canonical request hash replay the prior outcome; divergent reuse conflicts.
+
+    OptionalIdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: A valid key is required to complete registration; omission produces an identity state conflict.
 
     RegistrationId:
       name: registrationId
@@ -4193,7 +4311,7 @@ components:
       name: revision
       in: path
       required: true
-      schema: { type: integer, minimum: 1 }
+      schema: { type: integer, format: int32, minimum: 1, maximum: 2147483647 }
     AdmissionValidationId:
       name: validationId
       in: path
@@ -4213,6 +4331,9 @@ components:
       content: { application/problem+json: { schema: { $ref: "#/components/schemas/AdmissionProblem" } } }
     AdmissionUnauthorized:
       description: Authentication is required
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/AdmissionProblem" } } }
+    AdmissionForbidden:
+      description: The authenticated actor lacks authority for the admission operation
       content: { application/problem+json: { schema: { $ref: "#/components/schemas/AdmissionProblem" } } }
     AdmissionNotFound:
       description: Admission resource is absent or inaccessible
@@ -4262,6 +4383,12 @@ components:
             $ref: "#/components/schemas/IdentityProblemDetail"
     IdentityUnauthorized:
       description: Identity session is missing, invalid, or expired
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/IdentityProblemDetail"
+    IdentityForbidden:
+      description: Identity action is not available to the authenticated actor
       content:
         application/problem+json:
           schema:
@@ -4344,6 +4471,12 @@ components:
             $ref: "#/components/schemas/ProblemDetail"
     ValidationError:
       description: Request body failed validation
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    UnsupportedMediaType:
+      description: Request content type is not supported
       content:
         application/problem+json:
           schema:
@@ -4459,7 +4592,7 @@ components:
       additionalProperties: false
       required: [expectedStateVersion, admissionContentDigest, admissionContent]
       properties:
-        expectedStateVersion: { type: integer, minimum: 0 }
+        expectedStateVersion: { type: integer, format: int32, minimum: 0, maximum: 2147483647 }
         admissionContentDigest: { $ref: "#/components/schemas/AdmissionDigest" }
         admissionContent: { $ref: "./schemas/agent-admission-contract-v1.schema.json" }
     ValidateAgentAdmissionRequest:
@@ -4467,7 +4600,7 @@ components:
       additionalProperties: false
       required: [revision, admissionContentDigest, validatorProfile]
       properties:
-        revision: { type: integer, minimum: 1 }
+        revision: { type: integer, format: int32, minimum: 1, maximum: 2147483647 }
         admissionContentDigest: { $ref: "#/components/schemas/AdmissionDigest" }
         validatorProfile: { const: AAV-1.0.0 }
     AgentAdmissionTransitionRequest:
@@ -4475,8 +4608,8 @@ components:
       additionalProperties: false
       required: [expectedStateVersion, revision, admissionContentDigest, evidenceSetDigest, policyVersion]
       properties:
-        expectedStateVersion: { type: integer, minimum: 0 }
-        revision: { type: integer, minimum: 1 }
+        expectedStateVersion: { type: integer, format: int32, minimum: 0, maximum: 2147483647 }
+        revision: { type: integer, format: int32, minimum: 1, maximum: 2147483647 }
         admissionContentDigest: { $ref: "#/components/schemas/AdmissionDigest" }
         evidenceSetDigest: { $ref: "#/components/schemas/AdmissionDigest" }
         artifactDigest: { $ref: "#/components/schemas/AdmissionDigest" }
@@ -5059,14 +5192,17 @@ components:
           type: string
           minLength: 1
           maxLength: 120
+          pattern: '^[^\x00]*[^\s\x00][^\x00]*$'
         businessName:
           type: string
           minLength: 1
           maxLength: 160
+          pattern: '^[^\x00]*[^\s\x00][^\x00]*$'
         businessDomain:
           type: string
           minLength: 1
           maxLength: 100
+          pattern: '^[^\x00]*[^\s\x00][^\x00]*$'
           description: Plain-language business type, not an internet domain
         languagePreference:
           type: string
@@ -5077,9 +5213,9 @@ components:
       type: object
       additionalProperties: false
       properties:
-        displayName: { type: string, maxLength: 120 }
-        businessName: { type: string, maxLength: 160 }
-        businessDomain: { type: string, maxLength: 100 }
+        displayName: { type: [string, "null"], maxLength: 120 }
+        businessName: { type: [string, "null"], maxLength: 160 }
+        businessDomain: { type: [string, "null"], maxLength: 100 }
         languagePreference: { type: string, maxLength: 5 }
 
     IdentityProviderCollection:
@@ -5150,7 +5286,7 @@ components:
         expiresAt: { type: string, format: date-time }
         nextAction:
           type: string
-          enum: [NONE, VERIFY_EMAIL, VERIFY_MOBILE, REAUTHENTICATE]
+          enum: [NONE, VERIFY_EMAIL, VERIFY_MOBILE, REAUTHENTICATE, CONTINUE_TO_DEFAULT_TARGET]
 
     IdentityManagedSessionCollection:
       type: object
@@ -5354,15 +5490,13 @@ components:
           format: uuid
         professionalType:
           type: string
-          minLength: 1
-          maxLength: 64
+          pattern: '^[A-Z][A-Z0-9_]{2,63}$'
         professionalAdmissionId:
           type: string
           format: uuid
         professionalVersion:
           type: string
-          minLength: 1
-          maxLength: 64
+          pattern: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
         correlationId:
           type: string
           format: uuid
@@ -5477,11 +5611,11 @@ components:
         - selectedSkillIds
         - authorityScopeConfirmation
       properties:
-        businessName: { type: string, minLength: 1, maxLength: 160 }
-        location: { type: string, minLength: 1, maxLength: 200 }
-        businessNature: { type: string, minLength: 1, maxLength: 1000 }
-        goal: { type: string, minLength: 1, maxLength: 1000 }
-        successMeasure: { type: string, minLength: 1, maxLength: 500 }
+        businessName: { type: string, minLength: 1, maxLength: 160, pattern: '.*\S.*' }
+        location: { type: string, minLength: 1, maxLength: 200, pattern: '.*\S.*' }
+        businessNature: { type: string, minLength: 1, maxLength: 1000, pattern: '.*\S.*' }
+        goal: { type: string, minLength: 1, maxLength: 1000, pattern: '.*\S.*' }
+        successMeasure: { type: string, minLength: 1, maxLength: 500, pattern: '.*\S.*' }
         budgetCeilingInrPaise: { type: integer, format: int64, minimum: 0 }
         selectedSkillIds:
           type: array
@@ -6191,8 +6325,11 @@ components:
       properties:
         schemaVersion: { $ref: "#/components/schemas/CustomerPortalSchemaVersion" }
         producedAt: { type: string, format: date-time }
-        nextCursor: { type: string, minLength: 16, maxLength: 2048 }
-        defaultResumeTarget: { $ref: "#/components/schemas/CustomerPortalDestinationV1" }
+        nextCursor: { type: [string, "null"], minLength: 16, maxLength: 2048 }
+        defaultResumeTarget:
+          oneOf:
+            - $ref: "#/components/schemas/CustomerPortalDestinationV1"
+            - type: "null"
         items:
           type: array
           items: { $ref: "#/components/schemas/EmploymentRelationshipSummaryV1" }
@@ -6550,7 +6687,7 @@ components:
       properties:
         schemaVersion: { $ref: "#/components/schemas/CustomerPortalSchemaVersion" }
         producedAt: { type: string, format: date-time }
-        nextCursor: { type: string, minLength: 16, maxLength: 2048 }
+        nextCursor: { type: [string, "null"], minLength: 16, maxLength: 2048 }
         items:
           type: array
           items: { $ref: "#/components/schemas/ProfessionalMarketplaceListingV1" }
@@ -6591,7 +6728,7 @@ components:
       properties:
         schemaVersion: { $ref: "#/components/schemas/CustomerPortalSchemaVersion" }
         producedAt: { type: string, format: date-time }
-        nextCursor: { type: string, minLength: 16, maxLength: 2048 }
+        nextCursor: { type: [string, "null"], minLength: 16, maxLength: 2048 }
         items:
           type: array
           items: { $ref: "#/components/schemas/CustomerAlertV1" }
@@ -7753,7 +7890,7 @@ components:
 
     ConversationProblemCode:
       type: string
-      enum: [CONVERSATION_REQUEST_INVALID, CONVERSATION_SESSION_REQUIRED, CONVERSATION_NOT_ACCESSIBLE, CONVERSATION_IDEMPOTENCY_CONFLICT, CONVERSATION_STATE_CONFLICT, CONVERSATION_CURSOR_EXPIRED, CONVERSATION_RETRY_NOT_ALLOWED, CONVERSATION_STOPPED, CONVERSATION_RATE_LIMITED, CONVERSATION_EXECUTION_UNAVAILABLE, CONSTITUTIONAL_ENGINE_UNAVAILABLE]
+      enum: [CONVERSATION_REQUEST_INVALID, PORTAL_INTERACTION_REQUEST_INVALID, CONVERSATION_SESSION_REQUIRED, PORTAL_INTERACTION_SESSION_REQUIRED, IDENTITY_SESSION_REQUIRED, CONVERSATION_NOT_ACCESSIBLE, PORTAL_INTERACTION_CURSOR_NOT_ACCESSIBLE, CONVERSATION_IDEMPOTENCY_CONFLICT, PORTAL_INTERACTION_IDEMPOTENCY_CONFLICT, CONVERSATION_STATE_CONFLICT, PORTAL_INTERACTION_STATE_CONFLICT, CONVERSATION_CURSOR_EXPIRED, PORTAL_INTERACTION_CURSOR_EXPIRED, CONVERSATION_RETRY_NOT_ALLOWED, CONVERSATION_STOPPED, CONVERSATION_RATE_LIMITED, CONVERSATION_EXECUTION_UNAVAILABLE, PORTAL_INTERACTION_UNAVAILABLE, CONSTITUTIONAL_ENGINE_UNAVAILABLE]
 
     ConversationProblemDetail:
       type: object
@@ -7764,6 +7901,7 @@ components:
         type: { type: string, format: uri }
         title: { type: string }
         status: { type: integer }
+        detail: { type: string, maxLength: 400 }
         code: { $ref: "#/components/schemas/ConversationProblemCode" }
         correlationId: { type: string, format: uuid }
         retryAfterSeconds: { type: integer, minimum: 1 }
@@ -8443,8 +8581,7 @@ components:
       required: [schemaVersion, purpose]
       properties:
         schemaVersion: { $ref: "#/components/schemas/RelationshipWorkspaceSchemaVersion" }
-        purpose: { type: string, minLength: 1, maxLength: 200 }
-        expectedEvidenceVersion: { type: string, minLength: 1, maxLength: 64 }
+        purpose: { type: string, minLength: 1, maxLength: 200, pattern: '.*\S.*' }
 
     RelationshipEvidenceExportReceiptV1:
       type: object
@@ -8573,7 +8710,7 @@ components:
       required: [schemaVersion, expectedVersion, correctedText]
       properties:
         schemaVersion: { type: string, const: "1.0.0" }
-        expectedVersion: { type: integer, minimum: 1 }
+        expectedVersion: { type: integer, format: int32, minimum: 1, maximum: 2147483647 }
         correctedText: { type: string, minLength: 1, maxLength: 20000 }
 
     VoiceCorrectionReceiptV1:
@@ -8593,7 +8730,7 @@ components:
       required: [schemaVersion, acceptedTranscriptVersion, explicitSend]
       properties:
         schemaVersion: { type: string, const: "1.0.0" }
-        acceptedTranscriptVersion: { type: integer, minimum: 1 }
+        acceptedTranscriptVersion: { type: integer, format: int32, minimum: 1, maximum: 2147483647 }
         explicitSend: { type: boolean, const: true }
 
     CancelVoiceContributionRequestV1:
@@ -8641,6 +8778,7 @@ components:
       enum: [
         RELATIONSHIP_WORKSPACE_REQUEST_INVALID,
         RELATIONSHIP_WORKSPACE_SESSION_REQUIRED,
+        IDENTITY_SESSION_REQUIRED,
         RELATIONSHIP_WORKSPACE_NOT_ACCESSIBLE,
         RELATIONSHIP_STATE_CONFLICT,
         RELATIONSHIP_IDEMPOTENCY_CONFLICT,

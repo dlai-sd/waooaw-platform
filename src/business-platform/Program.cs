@@ -1,9 +1,11 @@
 // Implements: architecture/reference/components/business-platform.md § Tenant Isolation
 // constitutional_basis: C-005, C-023, C-026, C-059
 using System.Security.Cryptography.X509Certificates;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -18,6 +20,7 @@ using Waooaw.BusinessPlatform.Workflows;
 using Waooaw.ConstitutionalEngine.Grpc;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestLineSize = 65536);
 
 var dataProtectionKeysPath = builder.Configuration["DataProtection:KeysPath"];
 var dataProtectionCertificatePath = builder.Configuration["DataProtection:CertificatePath"];
@@ -67,7 +70,56 @@ if (Uri.TryCreate(otlpEndpoint, UriKind.Absolute, out var otlpUri))
 }
 
 // ── REST + OpenAPI ────────────────────────────────────────────────────────────
-builder.Services.AddControllers();
+builder
+    .Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow;
+        options.JsonSerializerOptions.Converters.Add(new JsonSchemaInt32Converter());
+        options.JsonSerializerOptions.Converters.Add(new JsonSchemaInt64Converter());
+    })
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        var defaultFactory = options.InvalidModelStateResponseFactory;
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var path = context.HttpContext.Request.Path;
+            if (path.StartsWithSegments("/api/v1/identity"))
+                return IdentityProblemResponses.Create(
+                    StatusCodes.Status400BadRequest,
+                    "IDENTITY_REQUEST_INVALID",
+                    "The identity request is invalid."
+                );
+
+            var code = path.StartsWithSegments(
+                "/api/v1/customer-portal/interactions/portal/messages"
+            ) || path.Value?.Contains("/conversation", StringComparison.Ordinal) == true
+                ? "CONVERSATION_REQUEST_INVALID"
+                : path.Value?.Contains("/workspace", StringComparison.Ordinal) == true
+                    || path.Value?.Contains("/evaluation", StringComparison.Ordinal) == true
+                ? "RELATIONSHIP_WORKSPACE_REQUEST_INVALID"
+                : path.Value?.Contains("/admission/", StringComparison.Ordinal) == true
+                    ? "ADMISSION_REQUEST_INVALID"
+                    : null;
+            if (code is null)
+                return defaultFactory(context);
+
+            return new ObjectResult(
+                new
+                {
+                    type = $"https://waooaw.com/problems/{code.ToLowerInvariant().Replace('_', '-')}",
+                    title = "The request is invalid",
+                    status = StatusCodes.Status400BadRequest,
+                    code,
+                    correlationId = Guid.NewGuid(),
+                }
+            )
+            {
+                StatusCode = StatusCodes.Status400BadRequest,
+                ContentTypes = { "application/problem+json" },
+            };
+        };
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder
@@ -396,10 +448,23 @@ builder
     )
     .ValidateOnStart();
 builder.Services.AddSingleton<IdentityProviderProjectionService>();
-builder.Services.AddSingleton<
-    Waooaw.BusinessPlatform.Services.IIdentityVerificationDispatcher,
-    Waooaw.BusinessPlatform.Services.UnconfiguredVerificationDispatcher
->();
+var localIdentityVerificationEnabled = builder.Configuration.GetValue<bool>(
+    "IdentityVerification:LocalDispatchEnabled"
+);
+if (localIdentityVerificationEnabled && !builder.Environment.IsDevelopment())
+    throw new InvalidOperationException(
+        "Local identity verification dispatch is restricted to Development."
+    );
+if (localIdentityVerificationEnabled)
+    builder.Services.AddSingleton<
+        Waooaw.BusinessPlatform.Services.IIdentityVerificationDispatcher,
+        Waooaw.BusinessPlatform.Services.LocalIdentityVerificationDispatcher
+    >();
+else
+    builder.Services.AddSingleton<
+        Waooaw.BusinessPlatform.Services.IIdentityVerificationDispatcher,
+        Waooaw.BusinessPlatform.Services.UnconfiguredVerificationDispatcher
+    >();
 builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.IdentityService>();
 builder.Services.AddScoped<
     Waooaw.BusinessPlatform.Services.IIdentityConstitutionalGateway,
@@ -499,6 +564,48 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseRouting();
+app.UseStatusCodePages(async statusCodeContext =>
+{
+    var httpContext = statusCodeContext.HttpContext;
+    var response = httpContext.Response;
+    var status = response.StatusCode;
+    var path = httpContext.Request.Path;
+    var isInvalidRequest = status == StatusCodes.Status405MethodNotAllowed;
+    var code = path.StartsWithSegments("/api/v1/identity")
+        ? isInvalidRequest ? "IDENTITY_REQUEST_INVALID" : "IDENTITY_RESOURCE_NOT_ACCESSIBLE"
+        : path.StartsWithSegments("/api/v1/customer-portal/interactions/portal/messages")
+            || path.Value?.Contains("/conversation", StringComparison.Ordinal) == true
+        ? isInvalidRequest ? "CONVERSATION_REQUEST_INVALID" : "CONVERSATION_NOT_ACCESSIBLE"
+        : path.Value?.Contains("/workspace", StringComparison.Ordinal) == true
+            || path.Value?.Contains("/evaluation", StringComparison.Ordinal) == true
+        ? isInvalidRequest
+            ? "RELATIONSHIP_WORKSPACE_REQUEST_INVALID"
+            : "RELATIONSHIP_WORKSPACE_NOT_ACCESSIBLE"
+        : path.Value?.Contains("/admission/", StringComparison.Ordinal) == true
+        ? isInvalidRequest ? "ADMISSION_REQUEST_INVALID" : "ADMISSION_NOT_FOUND"
+        : isInvalidRequest
+            ? "REQUEST_INVALID"
+            : "RESOURCE_NOT_FOUND";
+    var title = status switch
+    {
+        StatusCodes.Status404NotFound => "Resource not found",
+        StatusCodes.Status405MethodNotAllowed => "Method not allowed",
+        _ => "Request failed",
+    };
+    await response.WriteAsJsonAsync(
+        new
+        {
+            type = $"https://waooaw.com/problems/{code.ToLowerInvariant().Replace('_', '-')}",
+            title,
+            status,
+            code,
+            correlationId = Guid.NewGuid(),
+        },
+        options: null,
+        contentType: "application/problem+json",
+        cancellationToken: httpContext.RequestAborted
+    );
+});
 app.UseMiddleware<JourneyTelemetryMiddleware>();
 
 // C-026: authentication MUST be validated before any tenant context is extracted.
@@ -516,12 +623,14 @@ app.UseWhen(
 );
 
 app.MapControllers();
-app.MapHealthChecks("/health");
-app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
+app.MapHealthChecks("/health").WithMetadata(new HttpMethodMetadata(["GET"]));
+app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false })
+    .WithMetadata(new HttpMethodMetadata(["GET"]));
 app.MapHealthChecks(
-    "/health/ready",
-    new HealthCheckOptions { Predicate = registration => registration.Tags.Contains("ready") }
-);
+        "/health/ready",
+        new HealthCheckOptions { Predicate = registration => registration.Tags.Contains("ready") }
+    )
+    .WithMetadata(new HttpMethodMetadata(["GET"]));
 
 app.Run();
 

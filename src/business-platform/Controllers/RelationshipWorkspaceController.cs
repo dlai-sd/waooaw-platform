@@ -1468,8 +1468,9 @@ public sealed class RelationshipWorkspaceController(
     private IActionResult NotFoundProblem() =>
         WorkspaceProblem(404, "RELATIONSHIP_WORKSPACE_NOT_ACCESSIBLE");
 
-    private ObjectResult WorkspaceProblem(int status, string code) =>
-        StatusCode(
+    private ObjectResult WorkspaceProblem(int status, string code)
+    {
+        var problem = StatusCode(
             status,
             new
             {
@@ -1480,6 +1481,9 @@ public sealed class RelationshipWorkspaceController(
                 correlationId = User.FindFirstValue("correlation_id") ?? Guid.NewGuid().ToString(),
             }
         );
+        problem.ContentTypes.Add("application/problem+json");
+        return problem;
+    }
 
     private static object Section(string type, string state, string version, DateTimeOffset now) =>
         new

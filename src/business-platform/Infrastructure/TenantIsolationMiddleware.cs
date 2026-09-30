@@ -111,8 +111,17 @@ public sealed class TenantIsolationMiddleware
                     status = 401,
                     detail = "A valid Keycloak-issued Bearer token is required.",
                     traceId = context.TraceIdentifier,
-                }
+                },
+                options: null,
+                contentType: "application/problem+json",
+                cancellationToken: context.RequestAborted
             );
+            return;
+        }
+
+        if (context.GetEndpoint()?.DisplayName == "405 HTTP Method Not Supported")
+        {
+            await _next(context);
             return;
         }
 
@@ -137,7 +146,10 @@ public sealed class TenantIsolationMiddleware
                     detail = "The JWT does not carry the required tenant_id claim. "
                         + "This indicates a Keycloak misconfiguration — contact support.",
                     traceId = context.TraceIdentifier,
-                }
+                },
+                options: null,
+                contentType: "application/problem+json",
+                cancellationToken: context.RequestAborted
             );
             return;
         }
@@ -159,7 +171,10 @@ public sealed class TenantIsolationMiddleware
                     status = 403,
                     detail = "The tenant_id claim is not a valid UUID.",
                     traceId = context.TraceIdentifier,
-                }
+                },
+                options: null,
+                contentType: "application/problem+json",
+                cancellationToken: context.RequestAborted
             );
             return;
         }

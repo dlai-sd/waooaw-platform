@@ -139,10 +139,20 @@ public sealed class RelationshipStateJsonConverter : JsonConverter<EmploymentRel
         ref Utf8JsonReader reader,
         Type typeToConvert,
         JsonSerializerOptions options
-    ) =>
-        RelationshipStateCodec.FromDatabase(
-            reader.GetString() ?? throw new JsonException("Relationship state must be a string.")
-        );
+    )
+    {
+        try
+        {
+            return RelationshipStateCodec.FromDatabase(
+                reader.GetString()
+                    ?? throw new JsonException("Relationship state must be a string.")
+            );
+        }
+        catch (InvalidOperationException exception)
+        {
+            throw new JsonException("Relationship state is invalid.", exception);
+        }
+    }
 
     public override void Write(
         Utf8JsonWriter writer,
@@ -157,10 +167,20 @@ public sealed class RelationshipRoleJsonConverter : JsonConverter<RelationshipPa
         ref Utf8JsonReader reader,
         Type typeToConvert,
         JsonSerializerOptions options
-    ) =>
-        RelationshipRoleCodec.FromDatabase(
-            reader.GetString() ?? throw new JsonException("Relationship role must be a string.")
-        );
+    )
+    {
+        try
+        {
+            return RelationshipRoleCodec.FromDatabase(
+                reader.GetString()
+                    ?? throw new JsonException("Relationship role must be a string.")
+            );
+        }
+        catch (InvalidOperationException exception)
+        {
+            throw new JsonException("Relationship role is invalid.", exception);
+        }
+    }
 
     public override void Write(
         Utf8JsonWriter writer,
@@ -297,7 +317,12 @@ public sealed class EmploymentRelationshipsController : ControllerBase
     {
         if (!TryGetTenantId(out var tenantId) || !TryGetParticipantId(out var participantId))
             return Unauthorized();
-        if (limit is < 1 or > 100)
+        if (
+            limit is < 1 or > 100
+            || Request.Query.Keys.Any(key => key is not "cursor" and not "limit")
+            || Request.Query.ContainsKey("cursor")
+                && (cursor is null || cursor.Length is < 16 or > 2048)
+        )
             return Problem(
                 statusCode: StatusCodes.Status400BadRequest,
                 title: "Invalid pagination",
@@ -343,13 +368,22 @@ public sealed class EmploymentRelationshipsController : ControllerBase
                 )
             );
         }
-        catch (ArgumentException exception)
+        catch (ArgumentException)
         {
-            return Problem(
-                statusCode: StatusCodes.Status400BadRequest,
-                title: "Invalid pagination",
-                detail: exception.Message
-            );
+            return new ObjectResult(
+                new
+                {
+                    type = "https://waooaw.com/problems/relationship-workspace-not-accessible",
+                    title = "The relationship workspace is not accessible",
+                    status = StatusCodes.Status404NotFound,
+                    code = "RELATIONSHIP_WORKSPACE_NOT_ACCESSIBLE",
+                    correlationId = Guid.NewGuid(),
+                }
+            )
+            {
+                StatusCode = StatusCodes.Status404NotFound,
+                ContentTypes = { "application/problem+json" },
+            };
         }
     }
 
@@ -382,7 +416,14 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         }
         catch (InvalidOperationException)
         {
-            return Conflict(new { code = "RELATIONSHIP_OUTCOME_NOT_AUTHORITATIVE" });
+            return Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: "Relationship outcome is not authoritative",
+                extensions: new Dictionary<string, object?>
+                {
+                    ["code"] = "RELATIONSHIP_OUTCOME_NOT_AUTHORITATIVE",
+                }
+            );
         }
     }
 
@@ -395,6 +436,11 @@ public sealed class EmploymentRelationshipsController : ControllerBase
     {
         if (!TryGetTenantId(out var tenantId) || !TryGetParticipantId(out var participantId))
             return Unauthorized();
+        if (
+            request.Handle.Length != 64
+            || request.Handle.Any(character => character is not (>= '0' and <= '9') and not (>= 'a' and <= 'f'))
+        )
+            return ValidationProblem("Selection handle is invalid.");
         if (_selections is null)
             return NoContent();
         var result = await _selections.ConsumeAsync(
@@ -1106,7 +1152,11 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         }
         catch (ArgumentException exception)
         {
-            return ValidationProblem(exception.Message);
+            return Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: "Contract terms conflict",
+                detail: exception.Message
+            );
         }
         catch (KeyNotFoundException)
         {

@@ -151,7 +151,7 @@ public sealed class PortalInteractionsControllerTests
             new CustomerWorkspaceMembership(Guid.NewGuid(), tenantId, Guid.NewGuid(), ["OWNER"]);
         var expired = Assert.IsType<ObjectResult>(
             await controller.ListAsync(initial.AuthoritativeCursor, 20, CancellationToken.None));
-        Assert.Equal(410, expired.StatusCode);
+        Assert.Equal(StatusCodes.Status410Gone, expired.StatusCode);
     }
 
     [Theory]
