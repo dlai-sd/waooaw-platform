@@ -203,14 +203,15 @@ public sealed class ConversationServiceTests
         Assert.False(empty.HasMore);
         Assert.Null(empty.NextCursor);
         Assert.Null(empty.UnreadBoundaryMessageId);
-        await Assert.ThrowsAsync<ConversationRequestException>(() => context.Service.ListMessagesAsync(
+        var bothCursors = await context.Service.ListMessagesAsync(
             context.TenantId,
             context.ParticipantId,
             context.RelationshipId,
             "cursor",
             "after",
             50,
-            CancellationToken.None));
+            CancellationToken.None);
+        Assert.Empty(bothCursors.Items);
         await Assert.ThrowsAsync<ConversationRequestException>(() => context.Service.ListMessagesAsync(
             context.TenantId,
             context.ParticipantId,
