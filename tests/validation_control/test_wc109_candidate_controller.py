@@ -362,3 +362,65 @@ def test_exact_candidate_preserves_passing_lanes_and_replaces_only_failed_eviden
     assert gate_evidence["test-web"] is passing_web
     assert repaired["result"] == "PASS"
     assert repaired["executed_gates"] == ["test-web", "test-api"]
+
+
+def test_candidate_qualification_preserves_exact_blocked_deferred_gates(tmp_path: Path) -> None:
+    candidate = freeze(tmp_path)
+    binding = supply(candidate)
+    identity = binding["candidate_identity"]
+    binding["required_gates"] = [
+        "test-web",
+        "acceptance:as-001",
+        "acceptance:as-003",
+        "acceptance:as-005",
+    ]
+    evidence = {
+        "test-web": {"candidate_identity": identity, "result": "PASS"},
+        **{
+            gate: {
+                "candidate_identity": identity,
+                "result": "BLOCKED",
+                "disposition": "BLOCKED-DEFERRED",
+            }
+            for gate in binding["required_gates"][1:]
+        },
+    }
+
+    result = qualify_candidate(binding, observed_candidate_identity=identity, gate_evidence=evidence)
+
+    assert result["result"] == "PASS"
+    assert result["passed_gates"] == ["test-web"]
+    assert result["blocked_deferred_gates"] == binding["required_gates"][1:]
+    assert result["failed_gates"] == []
+
+
+@pytest.mark.parametrize(
+    ("gate_id", "result", "disposition"),
+    (
+        ("acceptance:pse-failover", "BLOCKED", "BLOCKED-DEFERRED"),
+        ("acceptance:as-001", "PASS", "BLOCKED-DEFERRED"),
+        ("acceptance:as-001", "PASS", "executed"),
+        ("acceptance:as-001", "BLOCKED", "executed"),
+    ),
+)
+def test_candidate_qualification_rejects_false_deferred_passes(
+    tmp_path: Path, gate_id: str, result: str, disposition: str
+) -> None:
+    binding = supply(freeze(tmp_path))
+    identity = binding["candidate_identity"]
+    binding["required_gates"] = [gate_id]
+
+    qualification = qualify_candidate(
+        binding,
+        observed_candidate_identity=identity,
+        gate_evidence={
+            gate_id: {
+                "candidate_identity": identity,
+                "result": result,
+                "disposition": disposition,
+            }
+        },
+    )
+
+    assert qualification["result"] == "FAIL"
+    assert qualification["failed_gates"] == [gate_id]

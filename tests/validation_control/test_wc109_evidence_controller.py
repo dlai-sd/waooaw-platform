@@ -44,6 +44,12 @@ def envelope(disposition: str = "executed") -> dict[str, object]:
             "non_impact_proven": True,
             "execution_fresh": False,
         },
+        "BLOCKED-DEFERRED": {
+            "founder_scope_amendment": (
+                "2026-10-01_AS001_AS003_AS005_BLOCKED_DEFERRED_AND_SINGLE_IMPLEMENTATION_PR_PILOT"
+            ),
+            "release_blocking": True,
+        },
     }
     return {
         "schema": "waooaw.validation-evidence-envelope/v1",
@@ -76,9 +82,52 @@ def envelope(disposition: str = "executed") -> dict[str, object]:
     }
 
 
+def blocked_deferred_envelope() -> dict[str, object]:
+    record = envelope("BLOCKED-DEFERRED")
+    record.update(
+        {
+            "gate_id": "acceptance:as-001",
+            "command_id": "acceptance-as-001",
+            "result": "BLOCKED",
+            "routing_class": "EXTERNAL",
+            "first_cause": "Founder-approved product acceptance deferral",
+        }
+    )
+    claim = {
+        "namespace": record["invocation"]["namespace"],
+        "gate_id": record["gate_id"],
+        "command_id": record["command_id"],
+        "head_sha": record["head_sha"],
+    }
+    record["invocation"]["signature"] = catalog_invocation_signature(claim, CONTROL_KEY)
+    return record
+
+
 @pytest.mark.parametrize("disposition", ["executed", "exact-candidate-reuse", "verified-carry-forward"])
 def test_all_three_evidence_dispositions_are_explicit_and_accepted(disposition: str) -> None:
     assert validate_envelope(envelope(disposition), CONTROL_KEY, required_trust_source="local-diagnostic") == []
+
+
+def test_founder_approved_blocked_deferred_evidence_is_accepted() -> None:
+    assert validate_envelope(
+        blocked_deferred_envelope(), CONTROL_KEY, required_trust_source="local-diagnostic"
+    ) == []
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        {"gate_id": "acceptance:pse-failover"},
+        {"result": "PASS"},
+        {"disposition_proof": {"release_blocking": False}},
+    ),
+)
+def test_blocked_deferred_evidence_fails_closed_outside_exact_amendment(mutation: dict[str, object]) -> None:
+    record = {**blocked_deferred_envelope(), **mutation}
+
+    assert "BLOCKED_DEFERRED_PROOF_INVALID" in validate_envelope(
+        record, CONTROL_KEY, required_trust_source="local-diagnostic"
+    )
 
 
 @pytest.mark.parametrize(

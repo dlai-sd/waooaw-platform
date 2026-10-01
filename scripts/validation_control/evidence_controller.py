@@ -19,7 +19,9 @@ COMMIT = re.compile(r"^[0-9a-f]{40}$")
 RESULTS = {"PASS", "FAIL", "BLOCKED", "CANCELLED"}
 ROUTING_CLASSES = {"RUNNER", "WORKFLOW", "PRODUCT", "EXTERNAL", "EVIDENCE"}
 ENVELOPE_ROUTING_CLASSES = {*ROUTING_CLASSES, "NONE"}
-DISPOSITIONS = {"executed", "exact-candidate-reuse", "verified-carry-forward"}
+DISPOSITIONS = {"executed", "exact-candidate-reuse", "verified-carry-forward", "BLOCKED-DEFERRED"}
+BLOCKED_DEFERRED_GATES = {"acceptance:as-001", "acceptance:as-003", "acceptance:as-005"}
+BLOCKED_DEFERRED_AMENDMENT = "2026-10-01_AS001_AS003_AS005_BLOCKED_DEFERRED_AND_SINGLE_IMPLEMENTATION_PR_PILOT"
 PROHIBITED_KEYS = {
     "authorization",
     "conversation",
@@ -142,7 +144,18 @@ def _validate_disposition(envelope: dict[str, Any]) -> list[str]:
     identities = envelope.get("identities", {})
     if disposition not in DISPOSITIONS or not isinstance(proof, dict):
         return ["DISPOSITION_INVALID"]
-    if disposition == "executed":
+    if disposition == "BLOCKED-DEFERRED":
+        if (
+            envelope.get("gate_id") not in BLOCKED_DEFERRED_GATES
+            or envelope.get("result") != "BLOCKED"
+            or proof
+            != {
+                "founder_scope_amendment": BLOCKED_DEFERRED_AMENDMENT,
+                "release_blocking": True,
+            }
+        ):
+            violations.append("BLOCKED_DEFERRED_PROOF_INVALID")
+    elif disposition == "executed":
         if proof != {"execution_fresh": True}:
             violations.append("EXECUTED_PROOF_INVALID")
     elif disposition == "exact-candidate-reuse":

@@ -12,6 +12,7 @@ import stat
 import tarfile
 from typing import Any
 
+from validation_control.evidence_controller import BLOCKED_DEFERRED_GATES
 from validation_control.identity import candidate_manifest
 
 
@@ -379,9 +380,21 @@ def qualify_candidate(
     if not isinstance(required_gates, list) or set(gate_evidence) != set(required_gates):
         raise ValueError("QUALIFICATION_INVENTORY_INCOMPLETE")
     failures: list[str] = []
+    passed: list[str] = []
+    blocked_deferred: list[str] = []
     for gate_id in required_gates:
         evidence = gate_evidence[gate_id]
-        if evidence.get("candidate_identity") != candidate_identity or evidence.get("result") != "PASS":
+        if evidence.get("candidate_identity") != candidate_identity:
+            failures.append(gate_id)
+        elif gate_id not in BLOCKED_DEFERRED_GATES and evidence.get("result") == "PASS":
+            passed.append(gate_id)
+        elif (
+            gate_id in BLOCKED_DEFERRED_GATES
+            and evidence.get("result") == "BLOCKED"
+            and evidence.get("disposition") == "BLOCKED-DEFERRED"
+        ):
+            blocked_deferred.append(gate_id)
+        else:
             failures.append(gate_id)
     return {
         "schema": "waooaw.candidate-qualification/v1",
@@ -390,5 +403,7 @@ def qualify_candidate(
         "required_gates": required_gates,
         "executed_gates": list(required_gates),
         "result": "PASS" if not failures else "FAIL",
+        "passed_gates": passed,
+        "blocked_deferred_gates": blocked_deferred,
         "failed_gates": failures,
     }
