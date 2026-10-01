@@ -43,7 +43,7 @@ def workflow_catalog_gates(workflow: dict[str, Any]) -> set[str]:
                 gates.update(row["gate"] for row in include if isinstance(row, dict) and isinstance(row.get("gate"), str))
         condition = job.get("if", "")
         if isinstance(condition, str):
-            gates.update(re.findall(r"selected_gates\), '([^']+)'", condition))
+            gates.update(re.findall(r"(?:selected|execution)_gates\), '([^']+)'", condition))
             for output, output_gates in MATRIX_OUTPUT_GATES.items():
                 if f"needs.validation-plan.outputs.{output}" in condition:
                     gates.update(output_gates)

@@ -7,8 +7,11 @@ on:
         description: Whether the selected change requires release qualification
         value: ${{ jobs.plan.outputs.release_required }}
       selected_gates:
-        description: JSON array of selected validation gates
+        description: JSON array of observational Shadow-selected validation gates
         value: ${{ jobs.plan.outputs.selected_gates }}
+      execution_gates:
+        description: JSON array of gates executed by hosted CI; full inventory in Shadow mode
+        value: ${{ jobs.plan.outputs.execution_gates }}
       required_runners:
         description: JSON array of required validation runners
         value: ${{ jobs.plan.outputs.required_runners }}
@@ -38,6 +41,7 @@ jobs:
     outputs:
       release_required: ${{ steps.plan.outputs.release_required }}
       selected_gates: ${{ steps.plan.outputs.selected_gates }}
+      execution_gates: ${{ steps.plan.outputs.execution_gates }}
       required_runners: ${{ steps.plan.outputs.required_runners }}
       service_build_matrix: ${{ steps.plan.outputs.service_build_matrix }}
       has_service_builds: ${{ steps.plan.outputs.has_service_builds }}
@@ -117,22 +121,28 @@ jobs:
                 --run-id "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-qualification" \
                 --all-gates \
                 --output test-results/wc102/qualification-plan.json
+              python scripts/validation_control/shadow.py plan \
+                --selection test-results/wc102/change-impact.json \
+                --output test-results/wc102/hosted-execution-plan.json
+              python scripts/validation_control/hosted_policy.py \
+                --repository /workspace \
+                --output test-results/wc102/hosted-policy.json
               python scripts/validate_requirement_ledger.py \
                 --repository-root /workspace \
                 --changed-file-list test-results/wc102/changed-files.txt
             '
-          release_required=$(jq -r '.selected_gates | index("release-qualification") != null' \
-            test-results/wc102/change-impact.json)
+          release_required=$(jq -r '.release_required' test-results/wc102/hosted-execution-plan.json)
           {
             echo "release_required=$release_required"
             echo "selected_gates=$(jq -c '.selected_gates' test-results/wc102/change-impact.json)"
-            echo "required_runners=$(jq -c '.required_runners' test-results/wc102/change-impact.json)"
-            echo "service_build_matrix=$(jq -c '.service_build_matrix' test-results/wc102/change-impact.json)"
-            echo "has_service_builds=$(jq -r '.service_build_matrix | length > 0' test-results/wc102/change-impact.json)"
-            echo "dotnet_test_matrix=$(jq -c '.dotnet_test_matrix' test-results/wc102/change-impact.json)"
-            echo "python_test_matrix=$(jq -c '.python_test_matrix' test-results/wc102/change-impact.json)"
-            echo "dotnet_quality_matrix=$(jq -c '.dotnet_quality_matrix' test-results/wc102/change-impact.json)"
-            echo "python_quality_matrix=$(jq -c '.python_quality_matrix' test-results/wc102/change-impact.json)"
+            echo "execution_gates=$(jq -c '.execution_gates' test-results/wc102/hosted-execution-plan.json)"
+            echo "required_runners=$(jq -c '.required_runners' test-results/wc102/hosted-execution-plan.json)"
+            echo "service_build_matrix=$(jq -c '.service_build_matrix' test-results/wc102/hosted-execution-plan.json)"
+            echo "has_service_builds=$(jq -r '.service_build_matrix | length > 0' test-results/wc102/hosted-execution-plan.json)"
+            echo "dotnet_test_matrix=$(jq -c '.dotnet_test_matrix' test-results/wc102/hosted-execution-plan.json)"
+            echo "python_test_matrix=$(jq -c '.python_test_matrix' test-results/wc102/hosted-execution-plan.json)"
+            echo "dotnet_quality_matrix=$(jq -c '.dotnet_quality_matrix' test-results/wc102/hosted-execution-plan.json)"
+            echo "python_quality_matrix=$(jq -c '.python_quality_matrix' test-results/wc102/hosted-execution-plan.json)"
           } >> "$GITHUB_OUTPUT"
       - name: Retain Shadow selection and validation evidence
         if: always()
@@ -145,6 +155,8 @@ jobs:
             test-results/wc102/changed-files.status
             test-results/wc102/focused-plan.json
             test-results/wc102/qualification-plan.json
+            test-results/wc102/hosted-execution-plan.json
+            test-results/wc102/hosted-policy.json
             ${{ runner.temp }}/build-evidence/validation-plan.json
           if-no-files-found: error
           retention-days: 90
@@ -153,5 +165,15 @@ jobs:
         with:
           name: wc104-qualification-plan-${{ github.run_id }}
           path: test-results/wc102/qualification-plan.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Retain hosted Shadow plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: wc109-shadow-plan-${{ github.run_id }}
+          path: |
+            test-results/wc102/change-impact.json
+            test-results/wc102/hosted-execution-plan.json
+            test-results/wc102/hosted-policy.json
           if-no-files-found: error
           retention-days: 90

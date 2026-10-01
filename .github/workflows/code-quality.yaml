@@ -80,8 +80,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [runner-supply, validation-plan]
     if: >-
-      contains(fromJSON(needs.validation-plan.outputs.selected_gates), 'quality:dotnet:constitutional-engine') ||
-      contains(fromJSON(needs.validation-plan.outputs.selected_gates), 'quality:dotnet:business-platform')
+      contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'quality:dotnet:constitutional-engine') ||
+      contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'quality:dotnet:business-platform')
     strategy:
       matrix:
         include: ${{ fromJSON(needs.validation-plan.outputs.dotnet_quality_matrix) }}
@@ -98,8 +98,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [runner-supply, validation-plan]
     if: >-
-      contains(fromJSON(needs.validation-plan.outputs.selected_gates), 'quality:python:professional-runtime') ||
-      contains(fromJSON(needs.validation-plan.outputs.selected_gates), 'quality:python:ai-runtime')
+      contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'quality:python:professional-runtime') ||
+      contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'quality:python:ai-runtime')
     strategy:
       matrix:
         include: ${{ fromJSON(needs.validation-plan.outputs.python_quality_matrix) }}
@@ -115,7 +115,7 @@ jobs:
     name: Python scripts — ruff + mypy
     runs-on: ubuntu-latest
     needs: [runner-supply, validation-plan]
-    if: contains(fromJSON(needs.validation-plan.outputs.selected_gates), 'quality:scripts')
+    if: contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'quality:scripts')
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/run-validation-gate
@@ -128,7 +128,7 @@ jobs:
     name: TypeScript — Biome + tsc strict
     runs-on: ubuntu-latest
     needs: [runner-supply, validation-plan]
-    if: contains(fromJSON(needs.validation-plan.outputs.selected_gates), 'quality:typescript')
+    if: contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'quality:typescript')
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/run-validation-gate
@@ -141,7 +141,7 @@ jobs:
     name: SQL — sqlfluff lint
     runs-on: ubuntu-latest
     needs: [runner-supply, validation-plan]
-    if: contains(fromJSON(needs.validation-plan.outputs.selected_gates), 'quality:sql')
+    if: contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'quality:sql')
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/run-validation-gate
@@ -154,7 +154,7 @@ jobs:
     name: Proto — buf lint + breaking
     runs-on: ubuntu-latest
     needs: [runner-supply, validation-plan]
-    if: contains(fromJSON(needs.validation-plan.outputs.selected_gates), 'quality:proto')
+    if: contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'quality:proto')
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/run-validation-gate
@@ -167,7 +167,7 @@ jobs:
     name: OTel span PII audit
     runs-on: ubuntu-latest
     needs: [runner-supply, validation-plan]
-    if: contains(fromJSON(needs.validation-plan.outputs.selected_gates), 'quality:observability')
+    if: contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'quality:observability')
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/run-validation-gate
@@ -182,7 +182,7 @@ jobs:
     needs: [runner-supply, validation-plan]
     if: >-
       github.event_name == 'pull_request' &&
-      contains(fromJSON(needs.validation-plan.outputs.selected_gates), 'quality:traceability')
+      contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'quality:traceability')
     steps:
       - uses: actions/checkout@v4
         with:
@@ -206,7 +206,7 @@ jobs:
     needs: [runner-supply, validation-plan]
     if: >-
       github.event_name == 'pull_request' &&
-      contains(fromJSON(needs.validation-plan.outputs.selected_gates), 'quality:constitutional-naming')
+      contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'quality:constitutional-naming')
     steps:
       - uses: actions/checkout@v4
         with:
@@ -249,3 +249,37 @@ jobs:
         with:
           gate-id: mutation:python
           token: ${{ secrets.GITHUB_TOKEN }}
+
+  shadow-comparison:
+    name: Hosted Shadow comparison
+    runs-on: ubuntu-latest
+    if: always() && github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      packages: read
+      attestations: read
+    needs:
+      - validation-plan
+      - commitlint
+      - dotnet-quality
+      - python-quality
+      - scripts-quality
+      - typescript-quality
+      - sql-quality
+      - proto-quality
+      - observability-security
+      - traceability-scan
+      - constitutional-naming
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/record-shadow-comparison
+        with:
+          change-class: code-quality
+          head-sha: ${{ github.event.pull_request.head.sha }}
+          expected-gates: >-
+            ["quality:commitlint","quality:dotnet:constitutional-engine","quality:dotnet:business-platform",
+            "quality:python:professional-runtime","quality:python:ai-runtime","quality:scripts",
+            "quality:typescript","quality:sql","quality:proto","quality:observability",
+            "quality:traceability","quality:constitutional-naming"]
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifact-name: wc109-shadow-code-quality-${{ github.run_id }}

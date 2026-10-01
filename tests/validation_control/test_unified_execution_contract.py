@@ -211,7 +211,7 @@ def test_host_atomically_republishes_read_only_container_proof(tmp_path: Path) -
 def test_hosted_action_stops_execution_contract_retries() -> None:
     root = Path(__file__).resolve().parents[2]
     action = yaml.safe_load((root / ".github/actions/run-validation-gate/action.yml").read_text(encoding="utf-8"))
-    execution = action["runs"]["steps"][-1]["run"]
+    execution = next(step["run"] for step in action["runs"]["steps"] if step.get("id") == "execution")
     syntax = subprocess.run(["bash", "-n"], input=execution, text=True, capture_output=True, check=False)
 
     assert syntax.returncode == 0, syntax.stderr

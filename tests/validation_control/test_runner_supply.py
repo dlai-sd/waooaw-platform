@@ -167,8 +167,11 @@ def test_reusable_validation_plan_preserves_consumer_contract() -> None:
     assert rendered.count("./.github/actions/use-validation-runner") == 1
     assert '"runner-id": "full"' in rendered
     assert "wc104-qualification-plan-${{ github.run_id }}" in rendered
+    assert "wc109-shadow-plan-${{ github.run_id }}" in rendered
     assert "--all-gates" in rendered
-    assert '.selected_gates | index("release-qualification") != null' in source
+    assert "scripts/validation_control/shadow.py plan" in source
+    assert "jq -r '.release_required' test-results/wc102/hosted-execution-plan.json" in source
+    assert plan["outputs"]["execution_gates"] == "${{ steps.plan.outputs.execution_gates }}"
     assert '[[ "$EVENT_NAME" == "schedule" || "$EVENT_NAME" == "workflow_dispatch" ]]' in source
     assert 'git rev-parse "$head_sha^"' in source
 
@@ -204,7 +207,7 @@ def test_code_quality_jobs_execute_catalog_gates() -> None:
     assert workflow[True]["schedule"] == [{"cron": "0 0 * * 0"}]
 
     for job_id in catalog_jobs - {"commitlint", "mutation-dotnet", "mutation-python"}:
-        assert "needs.validation-plan.outputs.selected_gates" in jobs[job_id].get("if", ""), job_id
+        assert "needs.validation-plan.outputs.execution_gates" in jobs[job_id].get("if", ""), job_id
 
     expected_runners = {
         "quality:commitlint": "typescript",

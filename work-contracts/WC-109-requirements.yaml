@@ -342,6 +342,12 @@ requirements:
     component_owner: Hosted Policy Enforcer
     test_path_or_plan: Run workflow policy fixtures for host pytest, dotnet test, Jest, Playwright, package install and direct Docker authority.
     completion_rule: Every prohibited pattern fails before hosted test execution while permitted orchestration remains explicit.
+    evidence_refs:
+      - scripts/validation_control/hosted_policy.py
+      - tests/validation_control/test_hosted_policy.py
+      - .github/workflows/validation-plan.yaml
+      - .github/actions/record-shadow-comparison/action.yml
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R026
@@ -358,6 +364,12 @@ requirements:
     component_owner: Hosted Policy Enforcer
     test_path_or_plan: Compare pre-change and frozen-candidate inventories, required checks and configured thresholds.
     completion_rule: No required check, threshold, main gate or release gate is removed, weakened or made advisory.
+    evidence_refs:
+      - validation/authoritative-gate-baseline.yaml
+      - scripts/validation_control/gate_equivalence.py
+      - tests/validation_control/test_gate_equivalence.py
+      - tests/validation_control/test_shadow.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R028

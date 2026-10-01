@@ -455,7 +455,7 @@ jobs:
     name: Web unit tests + type check
     runs-on: ubuntu-latest
     needs: [runner-supply, validation-plan]
-    if: contains(fromJSON(needs.validation-plan.outputs.selected_gates), 'test-web')
+    if: contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'test-web')
     steps:
       - uses: actions/checkout@v4
       - name: Execute catalog web gate (C-076, C-080)
@@ -492,7 +492,7 @@ jobs:
     name: OpenAPI + Proto lint
     runs-on: ubuntu-latest
     needs: [runner-supply, validation-plan]
-    if: contains(fromJSON(needs.validation-plan.outputs.selected_gates), 'spec-lint')
+    if: contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'spec-lint')
     steps:
       - uses: actions/checkout@v4
         with:
@@ -509,10 +509,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: validation-plan
     if: >-
-      contains(fromJSON(needs.validation-plan.outputs.selected_gates), 'sast') ||
-      contains(fromJSON(needs.validation-plan.outputs.selected_gates), 'sast:csharp') ||
-      contains(fromJSON(needs.validation-plan.outputs.selected_gates), 'sast:python') ||
-      contains(fromJSON(needs.validation-plan.outputs.selected_gates), 'sast:javascript')
+      contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'sast') ||
+      contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'sast:csharp') ||
+      contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'sast:python') ||
+      contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'sast:javascript')
     permissions:
       security-events: write
       contents: read
@@ -587,9 +587,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [runner-supply, validation-plan]
     if: >-
-      contains(fromJSON(needs.validation-plan.outputs.selected_gates), 'dep-scan:python') ||
-      contains(fromJSON(needs.validation-plan.outputs.selected_gates), 'dep-scan:dotnet') ||
-      contains(fromJSON(needs.validation-plan.outputs.selected_gates), 'dep-scan:typescript')
+      contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'dep-scan:python') ||
+      contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'dep-scan:dotnet') ||
+      contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'dep-scan:typescript')
     steps:
       - uses: actions/checkout@v4
       - name: Execute catalog Python dependency scan
@@ -666,7 +666,7 @@ jobs:
     name: License compliance
     runs-on: ubuntu-latest
     needs: [runner-supply, validation-plan]
-    if: contains(fromJSON(needs.validation-plan.outputs.selected_gates), 'license-check')
+    if: contains(fromJSON(needs.validation-plan.outputs.execution_gates), 'license-check')
     steps:
       - uses: actions/checkout@v4
       - name: Execute catalog license check
@@ -768,6 +768,10 @@ jobs:
     name: Test Champion QA Campaign
     runs-on: ubuntu-latest
     if: always()
+    permissions:
+      contents: read
+      packages: read
+      attestations: read
     needs:
       - validation-plan
       - static-preflight
@@ -786,6 +790,7 @@ jobs:
       - author-review-gate
       - authorization-tier-check
     steps:
+      - uses: actions/checkout@v4
       - name: Synthesize immutable gate evidence
         env:
           GATE_RESULTS: ${{ toJSON(needs) }}
@@ -826,6 +831,23 @@ jobs:
             exit 1
           fi
           echo "Test Champion recommendation: PASS"
+
+      - name: Record non-authoritative hosted Shadow comparison
+        if: always() && github.event_name == 'pull_request'
+        uses: ./.github/actions/record-shadow-comparison
+        with:
+          change-class: ci
+          head-sha: ${{ github.event.pull_request.head.sha }}
+          expected-gates: >-
+            ["build","secrets","test-dotnet:constitutional-engine","test-dotnet:business-platform",
+            "test-python:professional-runtime","test-python:ai-runtime","test-web","spec-lint","sast",
+            "dep-scan:python","dep-scan:dotnet","dep-scan:typescript","license-check","release-qualification",
+            "constitutional-commit-gate","requirement-ledger","author-review-gate","authorization-tier-check"]
+          external-results: >-
+            {"build":"${{ needs.build.result }}","secrets":"${{ needs.secrets.result }}",
+            "sast":"${{ needs.sast.result }}","requirement-ledger":"${{ needs.validation-plan.result }}"}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifact-name: wc109-shadow-ci-${{ github.run_id }}
 
       - name: Retain Test Champion evidence
         if: always()

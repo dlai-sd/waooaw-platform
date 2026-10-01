@@ -1,0 +1,74 @@
+name: Record hosted Shadow comparison
+description: Compare observational gate selection with exact-head authoritative hosted outcomes.
+inputs:
+  change-class:
+    description: Stable hosted workflow class
+    required: true
+  head-sha:
+    description: Exact pull-request head commit
+    required: true
+  expected-gates:
+    description: JSON array of gate IDs expected from this workflow
+    required: true
+  external-results:
+    description: JSON object mapping externally executed gate IDs to GitHub job conclusions
+    required: false
+    default: "{}"
+  token:
+    description: GitHub token used to consume the immutable validation runner
+    required: true
+  artifact-name:
+    description: Unique comparison artifact name
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: wc109-shadow-plan-${{ github.run_id }}
+        path: test-results/wc109/shadow-plan
+    - uses: actions/download-artifact@v4
+      with:
+        pattern: wc109-gate-*
+        path: test-results/wc109/hosted-gates
+    - uses: ./.github/actions/use-validation-runner
+      id: runner
+      with:
+        runner-id: full
+        token: ${{ inputs.token }}
+    - name: Build exact-head hosted Shadow comparison
+      shell: bash
+      env:
+        CHANGE_CLASS: ${{ inputs.change-class }}
+        HEAD_SHA: ${{ inputs.head-sha }}
+        EXPECTED_GATES: ${{ inputs.expected-gates }}
+        EXTERNAL_RESULTS: ${{ inputs.external-results }}
+      run: |
+        mkdir -p test-results/wc109/hosted-shadow
+        chmod 0777 test-results/wc109/hosted-shadow
+        jq -e 'type == "array" and length > 0 and all(.[]; type == "string")' <<< "$EXPECTED_GATES" >/dev/null
+        jq -e 'type == "object" and all(to_entries[]; (.key | type) == "string" and (.value | type) == "string")' <<< "$EXTERNAL_RESULTS" >/dev/null
+        printf '%s\n' "$EXTERNAL_RESULTS" > test-results/wc109/hosted-shadow/external-results.json
+        mapfile -t expected_gates < <(jq -r '.[]' <<< "$EXPECTED_GATES")
+        gate_arguments=()
+        for gate_id in "${expected_gates[@]}"; do
+          gate_arguments+=(--expected-gate "$gate_id")
+        done
+        scripts/verify_runner_image.sh test test-runner '${{ steps.runner.outputs.image_id }}'
+        docker compose --profile test run --rm --no-deps test-runner \
+          python scripts/validation_control/shadow.py compare \
+          --selection test-results/wc109/shadow-plan/change-impact.json \
+          --execution-root test-results/wc109/hosted-gates \
+          --external-results test-results/wc109/hosted-shadow/external-results.json \
+          --head "$HEAD_SHA" \
+          --change-class "$CHANGE_CLASS" \
+          --output "test-results/wc109/hosted-shadow/$CHANGE_CLASS-comparison.json" \
+          "${gate_arguments[@]}"
+    - name: Retain hosted Shadow comparison
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: test-results/wc109/hosted-shadow/${{ inputs.change-class }}-comparison.json
+        if-no-files-found: error
+        retention-days: 90

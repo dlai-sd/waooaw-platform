@@ -56,13 +56,20 @@ runs:
         count=$(jq --arg gate "$GATE_ID" '[.nodes[] | select(.gate_id == $gate)] | length' "$plan")
         [[ "$count" == 1 ]]
         runner_id=$(jq -r --arg gate "$GATE_ID" '.nodes[] | select(.gate_id == $gate) | .runner_id' "$plan")
-        echo "runner_id=$runner_id" >> "$GITHUB_OUTPUT"
+        output_directory=$(jq -r --arg gate "$GATE_ID" '.nodes[] | select(.gate_id == $gate) | .output_directory' "$plan")
+        artifact_gate=$(tr -c 'A-Za-z0-9_.-' '-' <<< "$GATE_ID" | sed 's/-$//')
+        {
+          echo "runner_id=$runner_id"
+          echo "output_directory=$output_directory"
+          echo "artifact_name=wc109-gate-${GITHUB_JOB}-${artifact_gate}"
+        } >> "$GITHUB_OUTPUT"
     - uses: ./.github/actions/use-validation-runner
       id: runner
       with:
         runner-id: ${{ steps.gate.outputs.runner_id }}
         token: ${{ inputs.token }}
     - name: Execute catalog command
+      id: execution
       shell: bash
       env:
         GATE_ID: ${{ inputs.gate-id }}
@@ -77,6 +84,7 @@ runs:
       run: |
         [[ "$ATTEMPTS" =~ ^[1-9][0-9]*$ ]]
         [[ "$RETRY_DELAY_SECONDS" =~ ^[0-9]+$ ]]
+        final_status=1
         if [[ -n "$PR_NUMBER" ]]; then
           [[ -n "$REPOSITORY" && -n "$METADATA_DIRECTORY" && -n "$BASE_SHA" && -n "$HEAD_SHA" ]]
           mkdir -p "$METADATA_DIRECTORY"
@@ -101,12 +109,30 @@ runs:
             --gate "$GATE_ID" \
             --image-id '${{ steps.runner.outputs.image_id }}' || execution_status=$?
           if ((execution_status == 0)); then
-            exit 0
+            final_status=0
+            break
           fi
           if ((execution_status == 78)); then
             echo "$GATE_ID stopped by the WC-106 execution contract; unchanged retry is prohibited" >&2
-            exit 78
+            final_status=78
+            break
           fi
         done
-        echo "$GATE_ID failed after $ATTEMPTS attempts" >&2
-        exit 1
+        if ((final_status != 0)); then
+          echo "$GATE_ID failed after $ATTEMPTS attempts" >&2
+        fi
+        echo "return_code=$final_status" >> "$GITHUB_OUTPUT"
+    - name: Retain exact gate execution evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.gate.outputs.artifact_name }}
+        path: ${{ steps.gate.outputs.output_directory }}/wc109-execution.json
+        if-no-files-found: error
+        retention-days: 90
+    - name: Enforce catalog command result
+      if: steps.execution.outputs.return_code != '0'
+      shell: bash
+      env:
+        RETURN_CODE: ${{ steps.execution.outputs.return_code }}
+      run: exit "$RETURN_CODE"
