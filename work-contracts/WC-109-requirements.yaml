@@ -1,7 +1,7 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-109
 contract_path: work-contracts/WC-109-agentic-validation-implementation.md
-contract_digest: e0f3c6fe0745654775dac9c37c718e5e49f234e446897dd924c9f2a143a67925
+contract_digest: 2206b0f85734f31ec0cc6b03f097248761d69252545d38b9136ce965cbb1189c
 contract_status: AUTHORIZED_IMPLEMENTATION_IN_PROGRESS
 founder_scope_amendment: 2026-10-01_AS001_AS003_AS005_BLOCKED_DEFERRED_AND_SINGLE_IMPLEMENTATION_PR_PILOT
 implementation_scope: true

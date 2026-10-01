@@ -7,8 +7,8 @@
 | Authoring office | Solution Architect (INST-005) |
 | Assigned by | Founder instruction in the 2026-09-29 continuous working session |
 | Implementation authorization | Explicit Founder confirmation in the 2026-09-29 continuous working session |
-| Scope amendment | Founder-approved 2026-10-01 disposition for AS-001, AS-003 and AS-005 |
-| Status | AUTHORIZED - SOLUTION ARCHITECTURE COMPLETE - IMPLEMENTATION NOT STARTED |
+| Scope amendments | Founder-approved 2026-10-01 dispositions for AS-001/AS-003/AS-005 and the single implementation-PR hosted pilot |
+| Status | AUTHORIZED - IMPLEMENTATION IN PROGRESS - HOSTED SELF-PILOT PENDING |
 | Required predecessor | WC-108 merged with ADR-050 and Docker validation strategy amendments intact |
 | Governing decision | ADR-050 as amended by WC-108 |
 | Constitutional basis | C-023, C-059, C-065, C-071, C-076, C-077, C-080 and C-086 |
