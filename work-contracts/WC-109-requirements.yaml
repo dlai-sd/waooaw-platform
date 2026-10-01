@@ -411,6 +411,7 @@ requirements:
     evidence_refs:
       - scripts/validation_control/pilot.py
       - tests/validation_control/test_pilot.py
+      - validation/evidence/wc109-implementation-availability.json
 
   - <<: *requirement_defaults
     requirement_id: WC109-R032
