@@ -63,6 +63,7 @@ def test_manifest_binds_inputs_and_node_results(tmp_path: Path) -> None:
         gate_implementation_digest="i" * 64,
         runner_digest="sha256:" + "r" * 64,
         environment_digest="e" * 64,
+        service_digest="s" * 64,
     )
     manifest = run([node], tmp_path, preflight=lambda: (True, []))
 
@@ -84,8 +85,9 @@ def test_manifest_binds_inputs_and_node_results(tmp_path: Path) -> None:
         "gate_implementation_digest": "i" * 64,
         "runner_digest": "sha256:" + "r" * 64,
         "environment_digest": "e" * 64,
+        "service_digest": "s" * 64,
         "input_digest": "",
-        "selector_version": "wc104-gate-inputs-v2",
+        "selector_version": "wc104-gate-inputs-v3",
         "evidence_schema": "waooaw.pr-prechecks/v4",
     }
     assert manifest["nodes"][0]["reuse"]["provenance"] == "executed"

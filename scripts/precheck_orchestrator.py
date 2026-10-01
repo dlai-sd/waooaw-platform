@@ -35,7 +35,7 @@ ACTIVE_PROCESSES_LOCK = threading.Lock()
 DEFAULT_PROGRESS_INTERVAL_SECONDS = 30.0
 EVIDENCE_FILE_NAME = "precheck-manifest.json"
 EVIDENCE_SCHEMA = "waooaw.pr-prechecks/v4"
-CARRY_FORWARD_SELECTOR_VERSION = "wc104-gate-inputs-v2"
+CARRY_FORWARD_SELECTOR_VERSION = "wc104-gate-inputs-v3"
 
 
 @dataclass(frozen=True)
@@ -53,6 +53,7 @@ class PrecheckNode:
     gate_implementation_digest: str = ""
     runner_digest: str = ""
     environment_digest: str = ""
+    service_digest: str = ""
     input_digest: str = ""
     input_patterns: tuple[str, ...] = ()
 
@@ -147,6 +148,7 @@ def _node_identity(node: PrecheckNode, identity_inputs: dict[str, str]) -> str:
         "gate_implementation_digest": node.gate_implementation_digest,
         "runner_digest": node.runner_digest,
         "environment_digest": node.environment_digest,
+        "service_digest": node.service_digest,
         "input_digest": node.input_digest,
     }
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
@@ -160,6 +162,7 @@ def _node_authority(node: PrecheckNode) -> dict[str, str]:
         "gate_implementation_digest": node.gate_implementation_digest,
         "runner_digest": node.runner_digest,
         "environment_digest": node.environment_digest,
+        "service_digest": node.service_digest,
         "input_digest": node.input_digest,
         "selector_version": CARRY_FORWARD_SELECTOR_VERSION,
         "evidence_schema": EVIDENCE_SCHEMA,
