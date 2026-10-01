@@ -67,6 +67,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 - **Cloud state:** Demo and UAT remain on the previously accepted exact-six release. Exact-seven is code-qualified but not deployed; Production remains plan-only.
 - **Canonical route:** strategy is owned by `architecture/reference/pipeline/azure-deployment-topology.md`; operators enter through `.github/workflows/deploy.yaml`; detailed immutable evidence remains in `goals/GOAL-006-cloud-platform-finalization-evidence.md`.
 - **Boundary:** no Production plan/apply, DNS activation, customer traffic, Platform Operations activation, final Goal acceptance, self-approval or self-merge without separate current authority.
+- **WC-109 hosted pilot:** the second hosted attempt at `4efd8c72` completed Shadow plan and comparison publication but exposed isolated metadata and coverage-path mismatches. Retrospective repair `eecf9bed` adds executor-owned input projection, publishes the authoritative gate output directory and retains Python/.NET coverage from that directory. Real isolated execution passes C-059, C-065, C-066, commitlint, constitutional naming and 232 Professional Runtime tests with 90.60% line and 80.64% branch coverage. A fresh hosted run remains mandatory; pilot qualification, selective enforcement, approval, merge and DONE remain unclaimed.
 
 ## Authorization Boundary
 
