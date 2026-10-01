@@ -463,6 +463,7 @@ def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path)
     )
     assert all("docker compose" not in " ".join(node.command) for node in nodes)
     assert all("run_release_qualification.sh" not in " ".join(node.command) for node in nodes)
+    assert all(node.command[node.command.index("--base") + 1] == "b" * 40 for node in nodes)
     assert captured["graph_version"] == "wc103-prechecks-v6"
     assert captured["configuration_digest"] == configuration_digest()
     assert captured["runner_digest"] == runner_digest(nodes)
@@ -482,6 +483,7 @@ def test_runner_digest_binds_every_per_node_authority_field() -> None:
         {"gate_implementation_digest": "i" * 64},
         {"runner_digest": "sha256:" + "r" * 64},
         {"environment_digest": "e" * 64},
+        {"service_digest": "s" * 64},
         {"input_digest": "i" * 64},
         {"input_patterns": ("src/**",)},
     )

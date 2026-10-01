@@ -327,6 +327,7 @@ def runner_digest(nodes: list[PrecheckNode]) -> str:
             "gate_implementation_digest": node.gate_implementation_digest,
             "runner_digest": node.runner_digest,
             "environment_digest": node.environment_digest,
+            "service_digest": node.service_digest,
             "input_digest": node.input_digest,
             "input_patterns": node.input_patterns,
         }
@@ -443,12 +444,13 @@ def precheck_nodes(
 def run_ci_prechecks(base: str, head: str, changed_files: list[str]) -> dict[str, object]:
     repository_root = Path(git("rev-parse", "--show-toplevel"))
     git_common_dir = Path(git("rev-parse", "--path-format=absolute", "--git-common-dir"))
-    nodes = precheck_nodes(repository_root, git_common_dir, base, head, changed_files)
+    base_sha = git("rev-parse", base)
+    nodes = precheck_nodes(repository_root, git_common_dir, base_sha, head, changed_files)
     artifact_dir = repository_root / "test-results/wc100/prechecks" / head
     prior_evidence = sorted(path for path in artifact_dir.parent.glob(f"*/{EVIDENCE_FILE_NAME}") if path.parent != artifact_dir)
     return run_prechecks(
         nodes,
-        base_sha=git("rev-parse", base),
+        base_sha=base_sha,
         head_sha=head,
         changed_file_digest=changed_files_digest(changed_files),
         graph_version=PRECHECK_GRAPH_VERSION,
