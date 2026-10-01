@@ -147,6 +147,27 @@ def runner_environment(image_id: str, docker_socket: Path = Path("/var/run/docke
     return environment
 
 
+def stage_input_directory(repository: Path, input_directory: Path, artifact_root: Path) -> Path:
+    repository = repository.resolve()
+    test_results = (repository / "test-results").resolve()
+    source = (repository / input_directory).resolve()
+    resolved_artifact_root = (repository / artifact_root).resolve()
+    hosted_runs = (test_results / "wc109/runs").resolve()
+    if source == test_results or not source.is_relative_to(test_results):
+        raise ValueError("catalog input directory must be below test-results")
+    if not source.is_dir():
+        raise ValueError(f"catalog input directory does not exist: {input_directory}")
+    if not resolved_artifact_root.is_relative_to(hosted_runs):
+        raise ValueError("catalog artifact root must be below test-results/wc109/runs")
+
+    target = resolved_artifact_root / source.relative_to(test_results)
+    if target.exists():
+        shutil.rmtree(target)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(source, target)
+    return target
+
+
 def run_execution_preflight(
     plan: dict[str, Any],
     node: dict[str, Any],
@@ -206,6 +227,7 @@ def main() -> int:
     parser.add_argument("--plan", type=Path, required=True)
     parser.add_argument("--gate", required=True)
     parser.add_argument("--image-id")
+    parser.add_argument("--input-directory", action="append", default=[], type=Path)
     arguments = parser.parse_args()
 
     plan = json.loads(arguments.plan.read_text(encoding="utf-8"))
@@ -232,6 +254,8 @@ def main() -> int:
     artifact_root = Path(output_directory)
     artifact_root.mkdir(parents=True, exist_ok=True)
     artifact_root.chmod(0o777)
+    for input_directory in arguments.input_directory:
+        stage_input_directory(Path.cwd(), input_directory, artifact_root)
     verifier = Path("scripts/verify_runner_image.sh").resolve()
     if not verifier.is_file():
         raise ValueError("runner verification tools are unavailable")

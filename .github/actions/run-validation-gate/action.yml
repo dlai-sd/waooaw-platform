@@ -39,6 +39,9 @@ outputs:
   image_id:
     description: Verified Docker image ID used by the gate
     value: ${{ steps.runner.outputs.image_id }}
+  output_directory:
+    description: Host directory containing the isolated gate outputs
+    value: ${{ steps.gate.outputs.output_directory }}
 runs:
   using: composite
   steps:
@@ -93,6 +96,10 @@ runs:
           printf '%s\n' "$BASE_SHA" > "$METADATA_DIRECTORY/base-sha.txt"
           printf '%s\n' "$HEAD_SHA" > "$METADATA_DIRECTORY/head-sha.txt"
         fi
+        input_arguments=()
+        if [[ -n "$METADATA_DIRECTORY" ]]; then
+          input_arguments=(--input-directory "$METADATA_DIRECTORY")
+        fi
         for ((attempt = 1; attempt <= ATTEMPTS; attempt++)); do
           if [[ -n "$PR_NUMBER" ]]; then
             if ((attempt > 1)); then
@@ -109,7 +116,8 @@ runs:
           python3 scripts/validation_control/catalog_execution.py \
             --plan test-results/wc104/catalog-plan/qualification-plan.json \
             --gate "$GATE_ID" \
-            --image-id '${{ steps.runner.outputs.image_id }}' || execution_status=$?
+            --image-id '${{ steps.runner.outputs.image_id }}' \
+            "${input_arguments[@]}" || execution_status=$?
           if ((execution_status == 0)); then
             final_status=0
             break

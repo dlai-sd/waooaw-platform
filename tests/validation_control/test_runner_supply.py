@@ -389,6 +389,8 @@ def test_dotnet_ci_executes_catalog_gates_without_duplicate_commands_or_runner_m
     assert "dotnet restore" not in rendered
     assert "dotnet test" not in rendered
     assert "line-rate" not in rendered
+    assert rendered.count("steps.runner-build.outputs.output_directory") == 2
+    assert "dotnet-coverage-${{ matrix.service }}-${{ github.run_id }}" in rendered
 
 
 def test_python_ci_executes_catalog_gates_without_duplicate_commands_or_runner_mapping() -> None:
@@ -405,6 +407,7 @@ def test_python_ci_executes_catalog_gates_without_duplicate_commands_or_runner_m
     assert "matrix.tests" not in rendered
     assert "matrix.mypy_path" not in rendered
     assert "docker compose" not in rendered
+    assert rendered.count("steps.runner-build.outputs.output_directory") == 2
 
 
 def test_release_ci_executes_catalog_gate_without_duplicate_command_or_runner_mapping() -> None:
@@ -468,6 +471,7 @@ def test_c059_ci_executes_catalog_gate_without_duplicate_command_or_runner_mappi
     assert set(job["needs"]) == {"runner-supply", "validation-plan"}
     gate_step = next(step for step in job["steps"] if step.get("uses") == "./.github/actions/run-validation-gate")
     assert gate_step["with"]["gate-id"] == "constitutional-commit-gate"
+    assert gate_step["with"]["metadata-directory"] == "test-results/wc104/c059"
     assert '"runner-id"' not in rendered
     assert "python scripts/validate_c059.py" not in rendered
     assert "docker compose" not in rendered
@@ -519,6 +523,7 @@ def test_c066_ci_executes_catalog_gate_without_duplicate_command_or_runner_mappi
     assert set(job["needs"]) == {"runner-supply", "validation-plan"}
     gate_step = next(step for step in job["steps"] if step.get("uses") == "./.github/actions/run-validation-gate")
     assert gate_step["with"]["gate-id"] == "authorization-tier-check"
+    assert gate_step["with"]["metadata-directory"] == "test-results/wc104/c066"
     assert '"runner-id"' not in rendered
     assert 'test "$BASE_BRANCH" = "main"' not in rendered
     assert "docker compose" not in rendered

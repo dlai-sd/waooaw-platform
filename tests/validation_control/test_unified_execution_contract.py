@@ -219,6 +219,16 @@ def test_hosted_action_stops_execution_contract_retries() -> None:
     assert "unchanged retry is prohibited" in execution
 
 
+def test_hosted_action_projects_declared_inputs_into_isolated_gate_root() -> None:
+    root = Path(__file__).resolve().parents[2]
+    action = yaml.safe_load((root / ".github/actions/run-validation-gate/action.yml").read_text(encoding="utf-8"))
+    execution = next(step["run"] for step in action["runs"]["steps"] if step.get("id") == "execution")
+
+    assert action["outputs"]["output_directory"]["value"] == "${{ steps.gate.outputs.output_directory }}"
+    assert 'input_arguments=(--input-directory "$METADATA_DIRECTORY")' in execution
+    assert '"${input_arguments[@]}"' in execution
+
+
 def test_scripts_quality_gate_enforces_execution_contract_self_test() -> None:
     root = Path(__file__).resolve().parents[2]
     catalog = yaml.safe_load((root / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))

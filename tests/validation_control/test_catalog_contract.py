@@ -14,6 +14,7 @@ from validation_control.catalog_execution import (
     runner_environment,
     select_plan_node,
     service_start_command,
+    stage_input_directory,
 )
 from validation_control.candidate_controller import catalog_candidate_inputs
 from validation_control.orchestrator import build_execution_plan
@@ -355,6 +356,36 @@ def test_catalog_gate_forwards_docker_socket_group(tmp_path: Path) -> None:
     environment = runner_environment("sha256:" + "a" * 64, docker_socket)
 
     assert environment["DOCKER_GID"] == str(docker_socket.stat().st_gid)
+
+
+def test_hosted_inputs_are_mirrored_inside_isolated_artifact_root(tmp_path: Path) -> None:
+    source = tmp_path / "test-results/wc104/c065"
+    source.mkdir(parents=True)
+    (source / "base-sha.txt").write_text("b" * 40 + "\n", encoding="utf-8")
+    artifact_root = tmp_path / "test-results/wc109/runs/hosted/author-review-gate"
+    artifact_root.mkdir(parents=True)
+
+    target = stage_input_directory(tmp_path, Path("test-results/wc104/c065"), artifact_root)
+
+    assert target == artifact_root / "wc104/c065"
+    assert (target / "base-sha.txt").read_text(encoding="utf-8") == "b" * 40 + "\n"
+
+    (target / "stale.txt").write_text("stale\n", encoding="utf-8")
+    (source / "base-sha.txt").write_text("c" * 40 + "\n", encoding="utf-8")
+    stage_input_directory(tmp_path, Path("test-results/wc104/c065"), artifact_root)
+
+    assert (target / "base-sha.txt").read_text(encoding="utf-8") == "c" * 40 + "\n"
+    assert not (target / "stale.txt").exists()
+
+
+def test_hosted_input_staging_rejects_paths_outside_test_results(tmp_path: Path) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    artifact_root = tmp_path / "test-results/wc109/runs/hosted/gate"
+    artifact_root.mkdir(parents=True)
+
+    with pytest.raises(ValueError, match="below test-results"):
+        stage_input_directory(tmp_path, outside, artifact_root)
 
 
 def test_python_builds_write_bytecode_only_to_disposable_state() -> None:

@@ -321,9 +321,17 @@ jobs:
         if: always()
         continue-on-error: true  # geo-restricted runners must not break the gate
         with:
-          directory: ./test-results/coverage/${{ matrix.service }}
+          directory: ${{ steps.runner-build.outputs.output_directory }}/coverage/${{ matrix.service }}
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
+      - name: Retain raw coverage evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnet-coverage-${{ matrix.service }}-${{ github.run_id }}
+          path: ${{ steps.runner-build.outputs.output_directory }}/coverage/${{ matrix.service }}/
+          if-no-files-found: error
+          retention-days: 90
       - name: Enforce catalog .NET gate result
         if: steps.runner-build.outcome != 'success'
         run: exit 1
@@ -372,7 +380,7 @@ jobs:
         uses: codecov/codecov-action@v4
         continue-on-error: true  # geo-restricted runners must not break the gate
         with:
-          files: test-results/coverage/${{ matrix.service }}/coverage.xml
+          files: ${{ steps.runner-build.outputs.output_directory }}/coverage/${{ matrix.service }}/coverage.xml
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
@@ -381,7 +389,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: python-coverage-${{ matrix.service }}-${{ github.run_id }}
-          path: test-results/coverage/${{ matrix.service }}/
+          path: ${{ steps.runner-build.outputs.output_directory }}/coverage/${{ matrix.service }}/
           if-no-files-found: error
           retention-days: 90
       - name: Enforce catalog Python gate result
@@ -708,6 +716,7 @@ jobs:
         with:
           gate-id: constitutional-commit-gate
           token: ${{ secrets.GITHUB_TOKEN }}
+          metadata-directory: test-results/wc104/c059
 
   # ─── Author review gate (C-065) ──────────────────────────────────────────
   # Review evidence is bound to the exact PR head. A later commit invalidates
@@ -760,6 +769,7 @@ jobs:
         with:
           gate-id: authorization-tier-check
           token: ${{ secrets.GITHUB_TOKEN }}
+          metadata-directory: test-results/wc104/c066
 
   # ─── Test Champion campaign verdict (INST-015; C-023/C-065/C-099) ─────────
   # Deterministically synthesizes every CI prerequisite. This job recommends
