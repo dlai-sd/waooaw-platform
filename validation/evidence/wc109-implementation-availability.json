@@ -7,7 +7,7 @@
   "observed_published_ref": "c5d5a64e034eb79355fe7b44eceff4f23cfce1e1",
   "observed_at": "2026-10-01T08:06:47Z",
   "observation_method": "git ls-remote --heads origin wc/109-agentic-validation-implementation",
-  "eligibility_rule": "Pilot PR created_at must be at or after observed_at and must contain the hosted Shadow implementation.",
+  "eligibility_rule": "The Founder-approved WC-109 implementation PR created_at must be at or after observed_at and must contain the hosted Shadow implementation.",
   "hosted_execution_claimed": false,
   "pilot_completion_claimed": false
 }

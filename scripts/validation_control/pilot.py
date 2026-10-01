@@ -43,7 +43,7 @@ def _digest(value: object, field: str) -> str:
 
 
 def validate_pilot_record(record: dict[str, Any]) -> dict[str, Any]:
-    if record.get("schema") != "waooaw.wc109-pilot-record/v1":
+    if record.get("schema") != "waooaw.wc109-pilot-record/v2":
         raise ValueError("unsupported pilot record schema")
     pull_request = record.get("pull_request")
     if not isinstance(pull_request, dict) or not isinstance(pull_request.get("number"), int):
@@ -59,11 +59,12 @@ def validate_pilot_record(record: dict[str, Any]) -> dict[str, Any]:
 
     eligibility = record.get("eligibility")
     if not isinstance(eligibility, dict) or eligibility != {
-        "product_pr": True,
+        "implementation_pr": True,
+        "founder_approved_single_pilot": True,
         "began_after_implementation": True,
         "already_advanced": False,
     }:
-        raise ValueError("pilot must be a non-advanced product PR begun after implementation availability")
+        raise ValueError("pilot must be the Founder-approved non-advanced WC-109 implementation PR")
     if created_at < available_at:
         raise ValueError("pilot PR predates implementation availability")
     stacks = record.get("applicable_stacks")
@@ -180,6 +181,17 @@ def validate_pilot_record(record: dict[str, Any]) -> dict[str, Any]:
     limitations = record.get("limitations")
     if not isinstance(limitations, list) or not limitations or not all(isinstance(item, str) and item for item in limitations):
         raise ValueError("pilot limitations must be recorded")
+    retrospective_fixes = record.get("retrospective_fixes")
+    if not isinstance(retrospective_fixes, list):
+        raise ValueError("retrospective_fixes must be a list")
+    for fix in retrospective_fixes:
+        if not isinstance(fix, dict) or not isinstance(fix.get("first_cause"), str):
+            raise ValueError("every retrospective fix requires a first cause")
+        _full_commit(fix.get("fix_commit"), "retrospective_fixes.fix_commit")
+        if not isinstance(fix.get("regression_fixture"), str) or not fix["regression_fixture"]:
+            raise ValueError("every retrospective fix requires a bounded regression fixture")
+    if record.get("unresolved_pilot_defects") != []:
+        raise ValueError("pilot qualification requires zero unresolved pilot defects")
 
     return {
         "pull_request_number": pull_request["number"],
@@ -189,22 +201,20 @@ def validate_pilot_record(record: dict[str, Any]) -> dict[str, Any]:
         "repair_loop_count": repair_loops["count"],
         "selected_gate_count": len(selected),
         "complete_applicable_gate_count": len(complete),
+        "retrospective_fix_count": len(retrospective_fixes),
         "limitations": limitations,
         "passed": True,
     }
 
 
 def build_pilot_report(records: list[dict[str, Any]]) -> dict[str, Any]:
-    if len(records) != 2:
-        raise ValueError("exactly two pilot records are required")
+    if len(records) != 1:
+        raise ValueError("exactly one Founder-approved implementation PR pilot record is required")
     observations = [validate_pilot_record(record) for record in records]
-    pr_numbers = [observation["pull_request_number"] for observation in observations]
-    head_shas = [observation["head_sha"] for observation in observations]
-    if len(set(pr_numbers)) != 2 or len(set(head_shas)) != 2:
-        raise ValueError("pilot records must identify two distinct PRs and commits")
     return {
-        "schema": "waooaw.wc109-pilot-report/v1",
-        "pilot_count": 2,
+        "schema": "waooaw.wc109-pilot-report/v2",
+        "pilot_count": 1,
+        "pilot_scope": "founder-approved-wc109-implementation-pr",
         "observations": observations,
         "unresolved_selection_false_negatives": 0,
         "thresholds_preserved": True,

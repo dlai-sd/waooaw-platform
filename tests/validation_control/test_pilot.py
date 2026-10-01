@@ -1,6 +1,4 @@
-"""WC-109 two-PR pilot recorder contracts."""
-
-from copy import deepcopy
+"""WC-109 implementation-PR pilot recorder contracts."""
 
 import pytest
 
@@ -9,7 +7,7 @@ from validation_control.pilot import build_pilot_report, validate_pilot_record
 
 def pilot_record(number: int, head_character: str = "a") -> dict[str, object]:
     return {
-        "schema": "waooaw.wc109-pilot-record/v1",
+        "schema": "waooaw.wc109-pilot-record/v2",
         "pull_request": {
             "number": number,
             "repository": "dlai-sd/waooaw-platform",
@@ -20,7 +18,8 @@ def pilot_record(number: int, head_character: str = "a") -> dict[str, object]:
         },
         "implementation_available_at": "2026-09-10T10:00:00Z",
         "eligibility": {
-            "product_pr": True,
+            "implementation_pr": True,
+            "founder_approved_single_pilot": True,
             "began_after_implementation": True,
             "already_advanced": False,
         },
@@ -54,15 +53,18 @@ def pilot_record(number: int, head_character: str = "a") -> dict[str, object]:
             "security": "PRESERVED",
             "cct": "PRESERVED",
         },
-        "limitations": ["Two observations do not establish a performance trend."],
+        "limitations": ["One implementation PR observation does not establish a performance trend."],
+        "retrospective_fixes": [],
+        "unresolved_pilot_defects": [],
     }
 
 
-def test_pilot_report_accepts_two_distinct_complete_records() -> None:
-    report = build_pilot_report([pilot_record(201), pilot_record(202, "c")])
+def test_pilot_report_accepts_one_complete_implementation_pr_record() -> None:
+    report = build_pilot_report([pilot_record(201)])
 
     assert report["passed"] is True
-    assert report["pilot_count"] == 2
+    assert report["pilot_count"] == 1
+    assert report["pilot_scope"] == "founder-approved-wc109-implementation-pr"
     assert report["unresolved_selection_false_negatives"] == 0
     assert report["selective_hosted_validation_authorized"] is False
     assert report["observations"][0]["tier_elapsed_distributions"]["tier1"] == {
@@ -76,7 +78,7 @@ def test_pilot_report_accepts_two_distinct_complete_records() -> None:
 @pytest.mark.parametrize(
     ("mutation", "message"),
     [
-        (lambda record: record["eligibility"].update({"already_advanced": True}), "non-advanced product PR"),
+        (lambda record: record["eligibility"].update({"already_advanced": True}), "implementation PR"),
         (lambda record: record.update({"cache_runs": record["cache_runs"][:1]}), "cold and warm"),
         (lambda record: record["shadow_comparison"].update({"false_negatives": ["test-web"]}), "false negatives"),
         (lambda record: record["threshold_outcomes"].update({"coverage": "REDUCED"}), "must not be reduced"),
@@ -99,11 +101,9 @@ def test_source_only_tier2_rejects_builds() -> None:
         validate_pilot_record(record)
 
 
-def test_pilot_report_requires_two_distinct_real_observations() -> None:
-    record = pilot_record(201)
-
-    with pytest.raises(ValueError, match="distinct PRs and commits"):
-        build_pilot_report([record, deepcopy(record)])
+def test_pilot_report_rejects_multiple_records() -> None:
+    with pytest.raises(ValueError, match="exactly one"):
+        build_pilot_report([pilot_record(201), pilot_record(202, "c")])
 
 
 def test_deterministic_repair_loop_requires_regression_fixture() -> None:
@@ -114,4 +114,20 @@ def test_deterministic_repair_loop_requires_regression_fixture() -> None:
     }
 
     with pytest.raises(ValueError, match="regression fixture"):
+        validate_pilot_record(record)
+
+
+def test_retrospective_fix_requires_exact_commit_and_regression_fixture() -> None:
+    record = pilot_record(201)
+    record["retrospective_fixes"] = [{"first_cause": "hosted-publication", "fix_commit": "invalid"}]
+
+    with pytest.raises(ValueError, match="full lowercase hexadecimal commit"):
+        validate_pilot_record(record)
+
+
+def test_pilot_rejects_unresolved_retrospective_defect() -> None:
+    record = pilot_record(201)
+    record["unresolved_pilot_defects"] = ["hosted-publication"]
+
+    with pytest.raises(ValueError, match="zero unresolved"):
         validate_pilot_record(record)

@@ -1,21 +1,21 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-109
 contract_path: work-contracts/WC-109-agentic-validation-implementation.md
-contract_digest: b60d70fb3af7a3e184bf8beb240ade72ebb287b6b451b739c05d69867a41ed58
+contract_digest: e0f3c6fe0745654775dac9c37c718e5e49f234e446897dd924c9f2a143a67925
 contract_status: AUTHORIZED_IMPLEMENTATION_IN_PROGRESS
-founder_scope_amendment: 2026-10-01_AS001_AS003_AS005_BLOCKED_DEFERRED
+founder_scope_amendment: 2026-10-01_AS001_AS003_AS005_BLOCKED_DEFERRED_AND_SINGLE_IMPLEMENTATION_PR_PILOT
 implementation_scope: true
 result: PLANNED
 completion_rule: >-
   Every implementation and pilot requirement must be PASS with direct executable evidence from the
   governed Docker or hosted boundary. Documentation, implementation-shaped mocks, a smaller test set,
-  elapsed-time improvement or one pilot PR cannot substitute for any missing normative outcome.
+  elapsed-time improvement or local-only evidence cannot substitute for any missing normative outcome.
 
 requirement_defaults: &requirement_defaults
   evidence_class: Docker control-plane implementation and executable evidence
   initial_state: expected-fail
   dependencies: Merged WC-108, ADR-050, Docker validation strategy and existing validation catalog
-  residual_risk: Implementation and bounded two-PR pilot evidence do not yet exist.
+  residual_risk: Implementation and the Founder-approved implementation-PR hosted pilot evidence do not yet exist.
   evidence_refs:
     - work-contracts/WC-109-agentic-validation-implementation.md
   result: PLANNED
@@ -404,10 +404,10 @@ requirements:
   - <<: *requirement_defaults
     requirement_id: WC109-R031
     source: Sections 4.10 and 8
-    observable_outcome: Two eligible product PRs produce complete comparable pilot records.
+    observable_outcome: The Founder-approved WC-109 implementation PR produces one complete hosted pilot record.
     component_owner: Pilot Recorder
-    test_path_or_plan: Validate eligibility and required fields for the first two post-implementation product PRs.
-    completion_rule: Two non-advanced PRs each provide exact identities, distributions, builds, failures, inventories and quality results.
+    test_path_or_plan: Validate the implementation PR eligibility and every required hosted pilot field.
+    completion_rule: One Founder-approved implementation PR provides exact identities, distributions, builds, failures, inventories, retrospective fixes and quality results.
     evidence_refs:
       - scripts/validation_control/pilot.py
       - tests/validation_control/test_pilot.py
@@ -429,7 +429,7 @@ requirements:
     source: Section 8
     observable_outcome: Pilot comparison has zero unresolved selection false negatives and no quality reduction.
     component_owner: Pilot Recorder
-    test_path_or_plan: Compare shadow selections and outcomes with unchanged full CI for both pilot PRs.
+    test_path_or_plan: Compare the implementation PR Shadow selection and outcomes with unchanged full CI.
     completion_rule: No required gate is missed and every prior quality, coverage, security and CCT threshold is preserved.
     evidence_refs:
       - scripts/validation_control/pilot.py

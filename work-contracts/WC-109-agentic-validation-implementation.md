@@ -15,7 +15,7 @@
 | Implementing office | Platform IT Expert (INST-012) |
 | Architecture reviewer | Enterprise Architect (INST-004) |
 | Branch after predecessor merge | `wc/109-agentic-validation-implementation` |
-| Completion boundary | Control-plane implementation plus bounded two-PR pilot evidence |
+| Completion boundary | Control-plane implementation plus one bounded hosted self-pilot on its implementation PR |
 
 ## 1. Objective
 
@@ -48,6 +48,19 @@ No gate is deleted and no threshold is reduced. Each scenario requires a separat
 product Work Contract and becomes mandatory before release of its corresponding product. This amendment
 does not authorize a 43/43 claim or any product-readiness claim.
 
+### 2.2 Founder-Approved Hosted Pilot Disposition
+
+On 2026-10-01, the Founder approved the WC-109 implementation PR as the single hosted pilot and removed
+the two-product-PR pilot requirement. This amendment resolves the dependency cycle in which the hosted
+control plane had to be merged before ordinary product PRs could exercise it, while WC-109 previously
+required those product PR observations before its own PR could be created.
+
+The implementation PR must execute unchanged full CI as the authoritative result and retain Shadow
+selection as observational only. Its exact-head pilot record must satisfy Section 8. One observation is
+not trend or performance-improvement proof. Every deterministic control-plane defect observed during the
+pilot must be repaired retrospectively on the implementation PR with a bounded regression fixture before
+qualification. This amendment does not authorize selective hosted validation, self-approval or self-merge.
+
 Before the first implementation edit, the implementing office must record:
 
 1. exact merged WC-108 commit;
@@ -75,8 +88,7 @@ Before the first implementation edit, the implementing office must record:
 - hosted workflow integration in shadow or full-safe mode while current full CI remains authoritative;
 - Docker-executed unit, component, integration, policy and regression tests for this control plane;
 - operator and agent-facing command documentation required to execute the four tiers; and
-- bounded pilot instrumentation and evidence for the next two eligible product PRs that begin after
-  the implementation becomes available.
+- bounded pilot instrumentation and evidence for the Founder-approved WC-109 implementation PR.
 
 ### 3.2 Out of scope
 
@@ -89,7 +101,7 @@ Before the first implementation edit, the implementing office must record:
 - reduction of tests, thresholds, security checks, CCTs, author review or Founder review;
 - selective hosted-validation enforcement or removal of current full `main` and release safety nets;
 - unsupported fixed-duration or percentage-saving commitments; and
-- treating the two-PR pilot as statistical trend proof.
+- treating the single implementation-PR pilot as statistical trend or performance-improvement proof.
 
 ## 4. Component Decomposition
 
@@ -243,8 +255,8 @@ declared environments. Current full PR CI remains authoritative during shadow co
 
 ### 4.10 Pilot Recorder
 
-The recorder produces one comparable record for each of the next two eligible product PRs beginning after
-the implementation is available. Already-advanced PRs are excluded. Each record must include:
+The recorder produces one record for the Founder-approved WC-109 implementation PR created after the
+implementation became available. The record must include:
 
 - PR and exact commit identities;
 - applicable stack and change class;
@@ -256,6 +268,9 @@ the implementation is available. Already-advanced PRs are excluded. Each record 
 - selected and complete applicable gate inventories;
 - selection false-negative comparison against unchanged full CI; and
 - quality, coverage, security and CCT outcomes.
+
+The record also lists every retrospective pilot fix, its first-cause class, exact fix commit and bounded
+regression fixture, and must contain no unresolved pilot defect at qualification.
 
 The recorder reports observations, ranges, medians, samples and limitations. It must not claim an
 unsupported percentage improvement or authorize selective hosted validation.
@@ -299,7 +314,7 @@ The compatibility sequence `static contract`, `exact-container execution contrac
 | 3 - Milestones and evidence | Stage 2 PASS | Reverse-dependency selection, Tier 3, envelopes, freshness and failure routing | Dependency-complete fixtures and failure routes pass |
 | 4 - Candidate qualification | Stage 3 PASS | Pre-freeze component lanes, freeze/build/bind route, SBOM/provenance binding, independently scheduled Tier 4 gates and canonical result assembly | Exact candidate consumes the complete inventory; the Section 2.1 amendment permits 40 executable PASS results plus three exact BLOCKED-DEFERRED results |
 | 5 - Hosted shadow operation | Stage 4 PASS | Hosted policy enforcement and selection shadow comparison | Full CI remains authoritative; zero unresolved false negatives in observed runs |
-| 6 - Two-PR pilot | Stage 5 PASS | Two complete pilot records | Both records satisfy Section 8 without unsupported extrapolation |
+| 6 - Implementation-PR pilot | Stage 5 PASS | One complete hosted pilot record | The Founder-approved implementation PR record satisfies Section 8 without unsupported extrapolation |
 | 7 - Closeout | Stage 6 PASS | Final ledger, author review, independent EA review request and Founder-ready evidence | No unresolved requirement; implementation remains unmerged until Founder review |
 
 Each milestone commit must leave the branch executable or explicitly record why the next requirement is
@@ -332,7 +347,7 @@ requirement that governs those boundaries.
 
 ## 8. Pilot Success Conditions
 
-Both eligible pilot PRs must satisfy all applicable conditions:
+The Founder-approved WC-109 implementation PR pilot must satisfy all applicable conditions:
 
 | Outcome | Completion condition |
 |---|---|
@@ -345,6 +360,7 @@ Both eligible pilot PRs must satisfy all applicable conditions:
 | Quality | 100% of the previously applicable final gate inventory executes or has authorized exact evidence disposition |
 | Thresholds | No coverage, quality, security or CCT threshold is reduced |
 | Reporting | Timings include distributions, sample counts, cache state and limitations |
+| Retrospective fixes | Every observed deterministic control-plane defect is fixed on the implementation PR with exact commit and bounded regression evidence; none remains unresolved |
 
 Failure to meet a speed hypothesis does not fail valid product behavior or authorize gate removal. It
 records a pilot limitation for Founder disposition. Failure of identity, trust, isolation, selection or
@@ -384,7 +400,7 @@ quality conditions blocks completion.
 | WC109-R028 | Direct Docker diagnostics cannot publish authoritative PASS evidence. |
 | WC109-R029 | Candidate build inputs and supply-chain evidence are captured before qualification. |
 | WC109-R030 | Required Docker tests exercise identity, tier, isolation, cache, selection, evidence and failure boundaries. |
-| WC109-R031 | Two eligible product PRs produce complete comparable pilot records. |
+| WC109-R031 | The Founder-approved WC-109 implementation PR produces one complete hosted pilot record. |
 | WC109-R032 | Pilot reports observations and limitations without unsupported percentage or fixed-duration claims. |
 | WC109-R033 | Pilot comparison has zero unresolved selection false negatives and no quality reduction. |
 | WC109-R034 | Rollback restores full clean qualification without reinterpreting incompatible evidence. |
@@ -401,14 +417,14 @@ WC-109 is DONE only when:
 - the complete Docker validation suite and current full qualification satisfy the Section 2.1 disposition
   against the frozen candidate;
 - no applicable quality, security, coverage, CCT or evidence threshold is weakened;
-- both eligible pilot PR records satisfy Section 8;
+- the Founder-approved implementation PR pilot record satisfies Section 8;
 - every partial, deferred, untested or externally blocked obligation remains visibly not PASS;
 - the implementing office completes a requirement-by-requirement author review;
 - the Enterprise Architect independently reviews architectural conformance; and
 - the Founder receives the exact-head evidence package for review and merge.
 
-Passing tests, implementation-shaped mocks, one pilot PR, a smaller substitute, or elapsed-time
-improvement cannot compensate for an incomplete normative requirement.
+Passing tests, implementation-shaped mocks, a local-only substitute, or elapsed-time improvement cannot
+compensate for incomplete hosted pilot evidence.
 
 ## 11. Stop Conditions
 
