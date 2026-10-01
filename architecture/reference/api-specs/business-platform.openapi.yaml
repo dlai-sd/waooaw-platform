@@ -7550,7 +7550,7 @@ components:
       properties:
         schemaVersion: { $ref: "#/components/schemas/ConversationSchemaVersion" }
         blockType: { type: string, const: TEXT }
-        text: { type: string, minLength: 1, maxLength: 32000, pattern: '^[^\u0000]+$' }
+        text: { type: string, minLength: 1, maxLength: 32000, pattern: '^(?=.*\S)[^\u0000]+$' }
         language:
           oneOf:
             - $ref: "#/components/schemas/ConversationLanguageTag"
