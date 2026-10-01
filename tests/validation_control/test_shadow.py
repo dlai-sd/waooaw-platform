@@ -1,6 +1,9 @@
 """WC102 Shadow selection comparison contracts."""
 
+import json
+import os
 from pathlib import Path
+import subprocess
 
 import pytest
 import yaml
@@ -109,7 +112,58 @@ def test_catalog_action_retains_exact_gate_evidence_before_enforcement() -> None
 
     assert "wc109-gate-${GITHUB_JOB}-${artifact_gate}" in action
     assert "${{ steps.gate.outputs.output_directory }}/wc109-execution.json" in action
+    assert "Record exact hosted gate evidence" in action
+    assert "authority: $authority" in action
+    assert "workflow_run_id: $workflow_run_id" in action
+    assert "duration_ms: $duration_ms" in action
+    assert action.index("Record exact hosted gate evidence") < action.index("Retain exact gate execution evidence")
     assert action.index("Retain exact gate execution evidence") < action.index("Enforce catalog command result")
+
+
+def test_catalog_action_publishes_exact_hosted_manifest(tmp_path: Path) -> None:
+    action = yaml.safe_load((ROOT / ".github/actions/run-validation-gate/action.yml").read_text(encoding="utf-8"))
+    record_step = next(step for step in action["runs"]["steps"] if step.get("name") == "Record exact hosted gate evidence")
+    plan_path = tmp_path / "test-results/wc104/catalog-plan/qualification-plan.json"
+    plan_path.parent.mkdir(parents=True)
+    plan_path.write_text(
+        json.dumps(
+            {
+                "execution_namespace": "wc109-hosted-test",
+                "nodes": [
+                    {
+                        "gate_id": "quality:scripts",
+                        "compose_project": "wc109-hosted-test",
+                        "product_image_builds": [],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    environment = {
+        **os.environ,
+        "ARTIFACT_NAME": "wc109-gate-quality-scripts",
+        "BASE_SHA": "b" * 40,
+        "DURATION_MS": "1250",
+        "GATE_ID": "quality:scripts",
+        "GITHUB_RUN_ATTEMPT": "2",
+        "GITHUB_RUN_ID": "12345",
+        "HEAD_SHA": "c" * 40,
+        "OUTPUT_DIRECTORY": "test-results/wc109/quality-scripts",
+        "RETURN_CODE": "0",
+        "RUNNER_DIGEST": "sha256:" + "d" * 64,
+        "STARTED_AT": "2026-10-01T10:00:00Z",
+    }
+
+    subprocess.run(["bash", "-c", record_step["run"]], cwd=tmp_path, env=environment, check=True)
+
+    record = json.loads((tmp_path / "test-results/wc109/quality-scripts/wc109-execution.json").read_text())
+    assert record["authority"] == "hosted-authoritative"
+    assert record["head_sha"] == "c" * 40
+    assert record["result"] == "PASS"
+    assert record["duration_ms"] == 1250
+    assert record["workflow_run_id"] == 12345
+    assert record["artifact_name"] == "wc109-gate-quality-scripts"
 
 
 def test_shadow_comparison_action_executes_analysis_inside_immutable_runner() -> None:
