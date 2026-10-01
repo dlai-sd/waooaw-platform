@@ -7,6 +7,7 @@
     "overrides": {
       "@rollup/plugin-terser>serialize-javascript": "7.1.0",
       "axios@>=1.0.0 <1.20.0": "1.20.0",
+      "basic-ftp@<=6.2.0": "6.2.1",
       "brace-expansion@>=1.0.0 <1.1.20": "1.1.20",
       "brace-expansion@>=2.0.0 <2.1.6": "2.1.6",
       "brace-expansion@>=5.0.0 <5.0.11": "5.0.11",
