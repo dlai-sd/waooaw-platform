@@ -1,8 +1,9 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-109
 contract_path: work-contracts/WC-109-agentic-validation-implementation.md
-contract_digest: b3431d77977959fe49b7687a7317d62fccba5121649870f9571c2d0bb9f9ac9c
+contract_digest: b60d70fb3af7a3e184bf8beb240ade72ebb287b6b451b739c05d69867a41ed58
 contract_status: AUTHORIZED_IMPLEMENTATION_IN_PROGRESS
+founder_scope_amendment: 2026-10-01_AS001_AS003_AS005_BLOCKED_DEFERRED
 implementation_scope: true
 result: PLANNED
 completion_rule: >-
@@ -151,10 +152,10 @@ requirements:
   - <<: *requirement_defaults
     requirement_id: WC109-R011
     source: Section 4.2 Tier 4
-    observable_outcome: Tier 4 assembles independently emitted gate results for one immutable candidate against the complete applicable inventory.
+    observable_outcome: Tier 4 assembles independently emitted gate results for one immutable candidate against the complete inventory and preserves the Section 2.1 blocked dispositions.
     component_owner: Tier Orchestrator
     test_path_or_plan: Freeze a fixture candidate, submit component results out of order, replace one failed lane and compare the assembled inventory with the catalog-computed complete inventory.
-    completion_rule: One exact candidate digest is bound to every applicable result with no missing required gate; unchanged valid PASS lanes are preserved and canonical assembly does not require serial execution.
+    completion_rule: One exact candidate digest is bound to every gate with no missing result; 40 executable gates PASS, AS-001/003/005 remain exact BLOCKED-DEFERRED, and canonical assembly does not require serial execution.
     evidence_refs:
       - scripts/validation_control/candidate_controller.py
       - tests/validation_control/test_wc109_candidate_controller.py
@@ -435,3 +436,11 @@ requirements:
     component_owner: WC-109 governance
     test_path_or_plan: Inspect exact-head review and approval evidence before DONE or merge recommendation.
     completion_rule: Implementer author review is complete, EA review is independent and only Founder action authorizes merge.
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R037
+    source: Sections 2.1, 5.2, 6 Stage 4 and 10
+    observable_outcome: WC-109 qualification preserves AS-001, AS-003 and AS-005 as exact BLOCKED-DEFERRED evidence while all 40 executable control-plane gates PASS.
+    component_owner: Tier Orchestrator and WC-109 governance
+    test_path_or_plan: Assemble the exact-candidate 43-gate inventory and validate 40 PASS results plus three BLOCKED results carrying only the Founder-approved deferred disposition.
+    completion_rule: The inventory contains no missing gate, no false PASS, no reduced threshold and no 43/43 or product-readiness claim; each deferred scenario remains release-blocking for its corresponding product.

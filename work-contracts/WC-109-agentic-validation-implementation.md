@@ -7,6 +7,7 @@
 | Authoring office | Solution Architect (INST-005) |
 | Assigned by | Founder instruction in the 2026-09-29 continuous working session |
 | Implementation authorization | Explicit Founder confirmation in the 2026-09-29 continuous working session |
+| Scope amendment | Founder-approved 2026-10-01 disposition for AS-001, AS-003 and AS-005 |
 | Status | AUTHORIZED - SOLUTION ARCHITECTURE COMPLETE - IMPLEMENTATION NOT STARTED |
 | Required predecessor | WC-108 merged with ADR-050 and Docker validation strategy amendments intact |
 | Governing decision | ADR-050 as amended by WC-108 |
@@ -36,6 +37,16 @@ Architecture rather than being resolved in code.
 Current-session Founder authorization permits the bounded implementation and validation described here.
 It does not authorize deployment, customer traffic, cloud mutation, new paid services, Production access,
 selective hosted-validation enforcement, self-approval or self-merge.
+
+### 2.1 Founder-Approved Acceptance-Gate Disposition
+
+For the WC-109 control-plane PR only, `acceptance:as-001`, `acceptance:as-003` and
+`acceptance:as-005` remain visible with terminal result `BLOCKED` and disposition
+`BLOCKED-DEFERRED`; they must not be represented as PASS. WC-109 qualification may proceed with exact
+evidence for 40/40 executable control-plane gates plus exact BLOCKED evidence for the three named gates.
+No gate is deleted and no threshold is reduced. Each scenario requires a separate Founder-authorized
+product Work Contract and becomes mandatory before release of its corresponding product. This amendment
+does not authorize a 43/43 claim or any product-readiness claim.
 
 Before the first implementation edit, the implementing office must record:
 
@@ -263,6 +274,9 @@ Every invoked node returns exactly one terminal result: `PASS`, `FAIL`, `BLOCKED
 Missing output, process termination, schema failure or publication failure is `BLOCKED` or `FAIL`, never
 implicit PASS. Dependent nodes stop without erasing independent results already produced.
 
+`BLOCKED-DEFERRED` is an evidence disposition, not a fifth terminal result. It is valid only for the
+three gates named in Section 2.1 and only when the terminal result remains `BLOCKED`.
+
 ### 5.3 Artifact contract
 
 Artifacts are written atomically into a unique host-visible run directory. Publication records digest,
@@ -283,7 +297,7 @@ The compatibility sequence `static contract`, `exact-container execution contrac
 | 1 - Identity and preflight | Stage 0 PASS | Four manifest schemas, canonicalizer, Tier 1 policies and fixtures | Identity vectors and modeled defects pass in Docker |
 | 2 - Disposable focused execution | Stage 1 PASS | Stack adapters, mounted-source Tier 2, output isolation and cache boundaries | Source-only edits execute with zero runner/product builds |
 | 3 - Milestones and evidence | Stage 2 PASS | Reverse-dependency selection, Tier 3, envelopes, freshness and failure routing | Dependency-complete fixtures and failure routes pass |
-| 4 - Candidate qualification | Stage 3 PASS | Pre-freeze component lanes, freeze/build/bind route, SBOM/provenance binding, independently scheduled Tier 4 gates and canonical result assembly | Exact candidate consumes complete applicable inventory with only failed or identity-affected lanes rerun |
+| 4 - Candidate qualification | Stage 3 PASS | Pre-freeze component lanes, freeze/build/bind route, SBOM/provenance binding, independently scheduled Tier 4 gates and canonical result assembly | Exact candidate consumes the complete inventory; the Section 2.1 amendment permits 40 executable PASS results plus three exact BLOCKED-DEFERRED results |
 | 5 - Hosted shadow operation | Stage 4 PASS | Hosted policy enforcement and selection shadow comparison | Full CI remains authoritative; zero unresolved false negatives in observed runs |
 | 6 - Two-PR pilot | Stage 5 PASS | Two complete pilot records | Both records satisfy Section 8 without unsupported extrapolation |
 | 7 - Closeout | Stage 6 PASS | Final ledger, author review, independent EA review request and Founder-ready evidence | No unresolved requirement; implementation remains unmerged until Founder review |
@@ -376,14 +390,16 @@ quality conditions blocks completion.
 | WC109-R034 | Rollback restores full clean qualification without reinterpreting incompatible evidence. |
 | WC109-R035 | Selective hosted validation remains disabled pending separate Founder approval. |
 | WC109-R036 | Author review, independent Enterprise Architecture review and Founder merge authority remain separate. |
+| WC109-R037 | WC-109 qualification records 40/40 executable gates as PASS and AS-001, AS-003 and AS-005 as exact BLOCKED-DEFERRED evidence without a 43/43 or product-readiness claim. |
 
 ## 10. Definition Of Done
 
 WC-109 is DONE only when:
 
-- all 36 ledger requirements are PASS with direct source and executable evidence;
+- all 37 ledger requirements are PASS with direct source and executable evidence;
 - all four identities and tiers operate through the catalog-controlled route;
-- the complete Docker validation suite and current full qualification pass against the frozen candidate;
+- the complete Docker validation suite and current full qualification satisfy the Section 2.1 disposition
+  against the frozen candidate;
 - no applicable quality, security, coverage, CCT or evidence threshold is weakened;
 - both eligible pilot PR records satisfy Section 8;
 - every partial, deferred, untested or externally blocked obligation remains visibly not PASS;
