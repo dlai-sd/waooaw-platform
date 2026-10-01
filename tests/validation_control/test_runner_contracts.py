@@ -149,6 +149,8 @@ def test_contract_workflow_starts_services_and_blocks_on_failure() -> None:
     assert contract_gate.count('-H "Authorization:Bearer $identity_token"') == 2
     assert '--exclude-path-regex "$customer_path_regex"' in contract_gate
     assert contract_gate.count("--suppress-health-check=filter_too_much") == 4
+    assert "WAOOAW_VALIDATION_OUTPUT_DIRECTORY" in contract_gate
+    assert contract_gate.count('--volume "$validation_output_directory:/workspace/test-results"') == 2
     assert SCHEMATHESIS["checks"]["positive_data_acceptance"]["expected-statuses"] == [
         "2xx",
         "401",
@@ -198,6 +200,24 @@ def test_contract_workflow_starts_services_and_blocks_on_failure() -> None:
         "-c",
         "import urllib.request; urllib.request.urlopen('http://localhost:5003/health', timeout=3)",
     ]
+
+
+def test_customer_contract_rejects_unpersistable_fuzz_inputs_and_documents_step_up() -> None:
+    specification = yaml.safe_load(
+        (ROOT / "architecture/reference/api-specs/business-platform.openapi.yaml").read_text(encoding="utf-8")
+    )
+    paths = specification["paths"]
+    schemas = specification["components"]["schemas"]
+
+    for path in (
+        "/api/v1/identity/registrations",
+        "/api/v1/identity/registrations/{registrationId}/complete",
+    ):
+        assert paths[path]["post"]["responses"]["403"] == {"$ref": "#/components/responses/IdentityStepUpRequired"}
+    assert schemas["ConversationLanguageTag"]["pattern"] == "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$"
+    assert schemas["ConversationTextBlockV1"]["properties"]["text"]["pattern"] == r"^[^\u0000]+$"
+    for request_schema in ("SendPortalInteractionMessageRequestV1", "SendConversationMessageRequestV1"):
+        assert schemas[request_schema]["properties"]["locale"] == {"$ref": "#/components/schemas/ConversationLanguageTag"}
 
 
 def test_temporal_dynamic_config_uses_native_scalar_types() -> None:

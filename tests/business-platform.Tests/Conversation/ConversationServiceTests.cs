@@ -135,6 +135,31 @@ internal sealed class OperationalMandateResolverStub : IOperationalMandateResolv
 public sealed class ConversationServiceTests
 {
     [Fact]
+    public async Task SendRejectsNonPersistableTextAndInvalidLanguageTags()
+    {
+        var context = await CreateContextAsync();
+        var valid = CreateRequest("valid");
+        var malformed = new[]
+        {
+            valid with { Locale = "not a language tag" },
+            valid with { Locale = "AA-00000000-00000000-0000000-0000000" },
+            valid with { Content = [new("1.0", "TEXT", "not\0persistable", "en-IN")] },
+            valid with { Content = [new("1.0", "TEXT", "valid", "en\0IN")] },
+        };
+
+        foreach (var request in malformed)
+        {
+            await Assert.ThrowsAsync<ConversationRequestException>(() => context.Service.SendAsync(
+                context.TenantId,
+                context.ParticipantId,
+                context.RelationshipId,
+                Guid.NewGuid(),
+                request,
+                CancellationToken.None));
+        }
+    }
+
+    [Fact]
     public async Task Timeline_PaginatesInBothDirectionsAndReportsUnreadBoundary()
     {
         var context = await CreateContextAsync();

@@ -289,9 +289,10 @@ public sealed class PortalInteractionService
             || request.Content[0].BlockType != "TEXT"
             || string.IsNullOrWhiteSpace(request.Content[0].Text)
             || request.Content[0].Text.Length > 32000
-            || string.IsNullOrWhiteSpace(request.Locale)
-            || request.Locale.Length is < 2 or > 35
-            || request.Content[0].Language is { Length: < 2 or > 35 }
+            || !ConversationInputContract.IsPersistableText(request.Content[0].Text)
+            || !ConversationInputContract.IsLanguageTag(request.Locale)
+            || request.Content[0].Language is { } language
+                && !ConversationInputContract.IsLanguageTag(language)
             || !SupportedSurfaces.Contains(request.CurrentSurface)
         )
         {

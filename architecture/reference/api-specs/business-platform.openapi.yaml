@@ -332,6 +332,7 @@ paths:
                 $ref: "#/components/schemas/IdentityRegistration"
         "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
         "409": { $ref: "#/components/responses/IdentityConflict" }
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
         "429": { $ref: "#/components/responses/IdentityRateLimited" }
@@ -542,6 +543,7 @@ paths:
                 $ref: "#/components/schemas/IdentityCompletion"
         "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
         "404": { $ref: "#/components/responses/IdentityNotFound" }
         "409": { $ref: "#/components/responses/IdentityConflict" }
         "503": { $ref: "#/components/responses/IdentityUnavailable" }
@@ -7511,6 +7513,12 @@ components:
       type: string
       const: "1.0"
 
+    ConversationLanguageTag:
+      type: string
+      minLength: 2
+      maxLength: 35
+      pattern: "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$"
+
     ConversationActorType:
       type: string
       enum: [CUSTOMER, PROFESSIONAL, SYSTEM]
@@ -7542,8 +7550,11 @@ components:
       properties:
         schemaVersion: { $ref: "#/components/schemas/ConversationSchemaVersion" }
         blockType: { type: string, const: TEXT }
-        text: { type: string, minLength: 1, maxLength: 32000 }
-        language: { type: string, nullable: true, minLength: 2, maxLength: 35 }
+        text: { type: string, minLength: 1, maxLength: 32000, pattern: '^[^\u0000]+$' }
+        language:
+          oneOf:
+            - $ref: "#/components/schemas/ConversationLanguageTag"
+            - type: "null"
 
     PortalInteractionSurfaceV1:
       type: string
@@ -7606,7 +7617,7 @@ components:
           minItems: 1
           maxItems: 1
           items: { $ref: "#/components/schemas/ConversationTextBlockV1" }
-        locale: { type: string, minLength: 2, maxLength: 35 }
+        locale: { $ref: "#/components/schemas/ConversationLanguageTag" }
         currentSurface: { $ref: "#/components/schemas/PortalInteractionSurfaceV1" }
         expectedCursor: { type: string, nullable: true, minLength: 16, maxLength: 2048 }
 
@@ -7774,7 +7785,7 @@ components:
           minItems: 1
           maxItems: 1
           items: { $ref: "#/components/schemas/ConversationTextBlockV1" }
-        locale: { type: string, minLength: 2, maxLength: 35 }
+        locale: { $ref: "#/components/schemas/ConversationLanguageTag" }
         expectedCursor: { type: string, minLength: 16, maxLength: 2048 }
 
     ConversationSubmissionV1:

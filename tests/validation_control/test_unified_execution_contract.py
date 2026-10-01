@@ -223,10 +223,12 @@ def test_hosted_action_projects_declared_inputs_into_isolated_gate_root() -> Non
     root = Path(__file__).resolve().parents[2]
     action = yaml.safe_load((root / ".github/actions/run-validation-gate/action.yml").read_text(encoding="utf-8"))
     execution = next(step["run"] for step in action["runs"]["steps"] if step.get("id") == "execution")
+    catalog_executor = (root / "scripts/validation_control/catalog_execution.py").read_text(encoding="utf-8")
 
     assert action["outputs"]["output_directory"]["value"] == "${{ steps.gate.outputs.output_directory }}"
     assert 'input_arguments=(--input-directory "$METADATA_DIRECTORY")' in execution
     assert '"${input_arguments[@]}"' in execution
+    assert 'environment["WAOOAW_VALIDATION_OUTPUT_DIRECTORY"] = str(artifact_root.resolve())' in catalog_executor
 
 
 def test_scripts_quality_gate_enforces_execution_contract_self_test() -> None:

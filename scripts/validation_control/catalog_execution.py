@@ -267,6 +267,7 @@ def main() -> int:
         return verification.returncode
     environment = runner_environment(arguments.image_id)
     environment["COMPOSE_PROJECT_NAME"] = node["compose_project"]
+    environment["WAOOAW_VALIDATION_OUTPUT_DIRECTORY"] = str(artifact_root.resolve())
     required_services = node.get("required_services", [])
     if required_services:
         service_start = subprocess.run(  # noqa: S603
