@@ -1173,6 +1173,16 @@ public sealed class IdentityEmailVerificationTests
             CancellationToken.None));
 
         Assert.Equal(400, result.StatusCode);
+
+        IdentityTestHelpers.RefreshIdempotencyKey(ctrl);
+        var oversized = Assert.IsType<ObjectResult>(
+            await ctrl.StartEmailVerificationAsync(
+                registrationId,
+                new StartEmailVerificationRequest($"{new string('a', 245)}@example.com"),
+                CancellationToken.None
+            )
+        );
+        Assert.Equal(400, oversized.StatusCode);
     }
 
     [Fact]

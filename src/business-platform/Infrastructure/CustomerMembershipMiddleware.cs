@@ -48,6 +48,8 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
                     StatusCodes.Status403Forbidden,
                     "IDENTITY_ACTION_DENIED"
                 );
+            else if (customer)
+                await ContinueCustomerJourneyAsync(context);
             else
                 await next(context);
             return;
@@ -60,6 +62,8 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
                     StatusCodes.Status403Forbidden,
                     "IDENTITY_ACTION_DENIED"
                 );
+            else if (customer)
+                await ContinueCustomerJourneyAsync(context);
             else
                 await next(context);
             return;
@@ -182,6 +186,19 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
             context.Items.Remove(SessionIdItem);
             context.Items.Remove(AuthenticationTimeItem);
             context.Items.Remove(TenantIsolationMiddleware.TenantIdItemKey);
+        }
+    }
+
+    private async Task ContinueCustomerJourneyAsync(HttpContext context)
+    {
+        context.Items[JourneyItem] = true;
+        try
+        {
+            await next(context);
+        }
+        finally
+        {
+            context.Items.Remove(JourneyItem);
         }
     }
 

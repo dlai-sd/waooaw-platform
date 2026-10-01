@@ -461,13 +461,6 @@ public sealed class ConversationService
     )
     {
         using var activity = StartActivity("bp.conversation.timeline", relationshipId);
-        if (cursor is not null && afterCursor is not null)
-        {
-            throw new ConversationRequestException(
-                "cursor and afterCursor are mutually exclusive."
-            );
-        }
-
         if (limit is < 1 or > 100)
         {
             throw new ConversationRequestException("limit must be between 1 and 100.");

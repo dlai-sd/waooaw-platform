@@ -14,33 +14,33 @@ docker compose --profile test-python run --rm --pull never test-runner-python \
         customer_product_path_regex="^/api/v1/(acquisition/continuations(?:/|$)|customer-portal/interactions/portal/messages(?:/|$)|professionals/marketplace(?:/|$)|employment/relationships(?:$|/(?![^/]+/(?:transitions|offerability)(?:/|$))))"
         customer_path_regex="^/api/v1/(identity(?:/|$)|acquisition/continuations(?:/|$)|customer-portal/interactions/portal/messages(?:/|$)|professionals/marketplace(?:/|$)|employment/relationships(?:$|/(?![^/]+/(?:transitions|offerability)(?:/|$))))"
         python /workspace/scripts/validation_control/bootstrap_rest_identity.py \
-        --customer-token-file /tmp/business-platform-customer-token \
+        --identity-token-file /tmp/business-platform-identity-token \
         --service-token-file /tmp/business-platform-service-token
-        customer_token=$(cat /tmp/business-platform-customer-token)
+        identity_token=$(cat /tmp/business-platform-identity-token)
         service_token=$(cat /tmp/business-platform-service-token)
         customer_product_status=0
         customer_identity_status=0
         service_status=0
         rm -f /workspace/test-results/schemathesis-bp.xml
-        cd /tmp && schemathesis run /workspace/architecture/reference/api-specs/business-platform.openapi.yaml \
+        cd /tmp && schemathesis --config-file /workspace/validation/schemathesis.toml run /workspace/architecture/reference/api-specs/business-platform.openapi.yaml \
         --url http://business-platform:5001 \
         --include-path-regex "$customer_product_path_regex" \
-        -H "Authorization:Bearer $customer_token" \
+        -H "Authorization:Bearer $identity_token" \
         --checks all \
         --max-examples 100 \
         --suppress-health-check=filter_too_much \
         --report junit \
         --report-junit-path /workspace/test-results/schemathesis-bp-customer-product.xml || customer_product_status=$?
-        cd /tmp && schemathesis run /workspace/architecture/reference/api-specs/business-platform.openapi.yaml \
+        cd /tmp && schemathesis --config-file /workspace/validation/schemathesis.toml run /workspace/architecture/reference/api-specs/business-platform.openapi.yaml \
         --url http://business-platform:5001 \
         --include-path-regex "$customer_identity_path_regex" \
-        -H "Authorization:Bearer $customer_token" \
+        -H "Authorization:Bearer $identity_token" \
         --checks all \
         --max-examples 100 \
         --suppress-health-check=filter_too_much \
         --report junit \
         --report-junit-path /workspace/test-results/schemathesis-bp-customer-identity.xml || customer_identity_status=$?
-        cd /tmp && schemathesis run /workspace/architecture/reference/api-specs/business-platform.openapi.yaml \
+        cd /tmp && schemathesis --config-file /workspace/validation/schemathesis.toml run /workspace/architecture/reference/api-specs/business-platform.openapi.yaml \
         --url http://business-platform:5001 \
         --exclude-path-regex "$customer_path_regex" \
         -H "Authorization:Bearer $service_token" \
@@ -63,7 +63,7 @@ docker compose --profile test-python run --rm --pull never test-runner-python \
             false
         fi'
 docker compose --profile test-python run --rm --pull never test-runner-python \
-    sh -c "cd /tmp && schemathesis run /workspace/architecture/reference/api-specs/professional-runtime.openapi.yaml \
+    sh -c "cd /tmp && schemathesis --config-file /workspace/validation/schemathesis.toml run /workspace/architecture/reference/api-specs/professional-runtime.openapi.yaml \
         --url http://professional-runtime:5003 \
         --checks all \
         --max-examples 100 \

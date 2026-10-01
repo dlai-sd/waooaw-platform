@@ -115,21 +115,21 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--business-platform-url", default="http://business-platform:5001")
     parser.add_argument("--keycloak-url", default="http://keycloak:8080")
-    parser.add_argument("--customer-token-file", type=Path, required=True)
+    parser.add_argument("--identity-token-file", type=Path, required=True)
     parser.add_argument("--service-token-file", type=Path, required=True)
     args = parser.parse_args()
 
     username = os.environ.get("REST_TEST_USERNAME", "dev@waooaw.local")
     password = os.environ.get("DEV_TEST_PASSWORD", "Waooaw-local-dev-only-1!")
-    token = acquire_customer_token(args.keycloak_url, username, password)
+    identity_token = acquire_customer_token(args.keycloak_url, username, password)
     service_token = acquire_service_token(
         args.keycloak_url,
         os.environ.get("REST_TEST_SERVICE_CLIENT_SECRET", "${KEYCLOAK_CLIENT_SECRET}"),
     )
     write_token(args.service_token_file, service_token)
-    session = request_json(f"{args.business_platform_url}/api/v1/identity/session", token=token)
+    session = request_json(f"{args.business_platform_url}/api/v1/identity/session", token=identity_token)
     if session[0] == 200:
-        write_token(args.customer_token_file, token)
+        write_token(args.identity_token_file, identity_token)
         return
     problem = expect(session, {409}, "read unprovisioned identity session")
     if problem.get("code") != "REGISTRATION_REQUIRED":
@@ -139,7 +139,7 @@ def main() -> None:
         request_json(
             f"{args.business_platform_url}/api/v1/identity/registrations",
             method="POST",
-            token=token,
+            token=identity_token,
             payload={"languagePreference": "en"},
             idempotency_key=uuid.UUID("10000000-0000-4000-8000-000000000001"),
         ),
@@ -154,7 +154,7 @@ def main() -> None:
         request_json(
             f"{args.business_platform_url}/api/v1/identity/registrations/{registration_id}/profile",
             method="PUT",
-            token=token,
+            token=identity_token,
             payload={
                 "displayName": "REST Contract Customer",
                 "businessName": "REST Contract Workspace",
@@ -170,18 +170,18 @@ def main() -> None:
         request_json(
             f"{args.business_platform_url}/api/v1/identity/registrations/{registration_id}/complete",
             method="POST",
-            token=token,
+            token=identity_token,
             idempotency_key=uuid.UUID("10000000-0000-4000-8000-000000000003"),
         ),
         {200},
         "complete identity registration",
     )
     expect(
-        request_json(f"{args.business_platform_url}/api/v1/identity/session", token=token),
+        request_json(f"{args.business_platform_url}/api/v1/identity/session", token=identity_token),
         {200},
         "read provisioned identity session",
     )
-    write_token(args.customer_token_file, token)
+    write_token(args.identity_token_file, identity_token)
 
 
 if __name__ == "__main__":

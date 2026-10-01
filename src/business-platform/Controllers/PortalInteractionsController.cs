@@ -60,7 +60,10 @@ public sealed class PortalInteractionsController(
     {
         if (!TryGetAuthority(out var tenantId, out var participantId))
             return SessionRequired();
-        if (request.Content.Any(block => block is null))
+        if (
+            request.Content.Any(block => block is null)
+            || request.ExpectedCursor is not null && request.ExpectedCursor.Length is < 16 or > 2048
+        )
             return Problem(
                 StatusCodes.Status400BadRequest,
                 "PORTAL_INTERACTION_REQUEST_INVALID",

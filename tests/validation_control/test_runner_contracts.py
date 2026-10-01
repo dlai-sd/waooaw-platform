@@ -4,15 +4,15 @@
 # Constitutional basis: C-059, C-071, C-080
 
 from pathlib import Path
+import tomllib
 
 import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
 COMPOSE = yaml.safe_load((ROOT / "docker-compose.yml").read_text(encoding="utf-8"))
-DYNAMIC_CONFIG = yaml.safe_load(
-    (ROOT / "infrastructure/temporal/dynamicconfig.yaml").read_text(encoding="utf-8")
-)
+DYNAMIC_CONFIG = yaml.safe_load((ROOT / "infrastructure/temporal/dynamicconfig.yaml").read_text(encoding="utf-8"))
+SCHEMATHESIS = tomllib.loads((ROOT / "validation/schemathesis.toml").read_text(encoding="utf-8"))
 RUNNERS = ("test-runner-python", "test-runner-dotnet", "test-runner-ts")
 
 
@@ -131,14 +131,26 @@ def test_contract_workflow_starts_services_and_blocks_on_failure() -> None:
     assert "docker compose up --detach --wait" in contract_gate
     assert "business-platform professional-runtime" in contract_gate
     assert "COMPOSE_PROJECT_NAME" not in contract_gate
-    assert contract_gate.count("cd /tmp && schemathesis run /workspace/") == 4
-    assert "--include-path-regex \"$customer_product_path_regex\"" in contract_gate
-    assert "--include-path-regex \"$customer_identity_path_regex\"" in contract_gate
-    assert "--exclude-path-regex \"$customer_path_regex\"" in contract_gate
-    assert contract_gate.count("--suppress-health-check=filter_too_much") == 4
-    assert contract_gate.index('test "$customer_product_status" -eq 0') < contract_gate.index(
-        "merge_junit_reports.py"
+    assert (
+        contract_gate.count("cd /tmp && schemathesis --config-file /workspace/validation/schemathesis.toml run /workspace/") == 4
     )
+    assert '--include-path-regex "$customer_product_path_regex"' in contract_gate
+    assert '--include-path-regex "$customer_identity_path_regex"' in contract_gate
+    assert "--identity-token-file /tmp/business-platform-identity-token" in contract_gate
+    assert contract_gate.count('-H "Authorization:Bearer $identity_token"') == 2
+    assert '--exclude-path-regex "$customer_path_regex"' in contract_gate
+    assert contract_gate.count("--suppress-health-check=filter_too_much") == 4
+    assert SCHEMATHESIS["checks"]["positive_data_acceptance"]["expected-statuses"] == [
+        "2xx",
+        "401",
+        "403",
+        "404",
+        "409",
+        "410",
+        "429",
+        "5xx",
+    ]
+    assert contract_gate.index('test "$customer_product_status" -eq 0') < contract_gate.index("merge_junit_reports.py")
     assert "rm -f /workspace/test-results/schemathesis-bp.xml" in contract_gate
     assert "merge_junit_reports.py" in contract_gate
     assert "--output /workspace/test-results/schemathesis-bp.xml" in contract_gate
@@ -164,15 +176,11 @@ def test_contract_workflow_starts_services_and_blocks_on_failure() -> None:
     assert COMPOSE["services"]["business-platform"]["depends_on"]["temporal"]["condition"] == "service_healthy"
     assert "tctl --address" in COMPOSE["services"]["temporal"]["healthcheck"]["test"][-1]
     assert (
-        COMPOSE["services"]["business-platform"]["environment"][
-            "ChannelContinuity__EnvelopeHmacKey"
-        ]
+        COMPOSE["services"]["business-platform"]["environment"]["ChannelContinuity__EnvelopeHmacKey"]
         == "${CHANNEL_CONTINUITY_HMAC_KEY:-d2Fvb2F3LWNvbnRpbnVpdHktbG9jYWwtZGV2LWtleSE=}"
     )
     assert (
-        COMPOSE["services"]["business-platform"]["environment"][
-            "Voice__ContentEncryptionKey"
-        ]
+        COMPOSE["services"]["business-platform"]["environment"]["Voice__ContentEncryptionKey"]
         == "${VOICE_CONTENT_ENCRYPTION_KEY:-d2Fvb2F3LXZvaWNlLWNvbnRlbnQtbG9jYWwta2V5ISE=}"
     )
     assert COMPOSE["services"]["professional-runtime"]["healthcheck"]["test"] == [
@@ -200,7 +208,7 @@ def test_accessibility_gate_runs_required_product_states_and_emits_native_eviden
     gate = (ROOT / "scripts/validation_control/run_accessibility_gate.sh").read_text(encoding="utf-8")
 
     assert "tests/e2e/f1-acceptance.spec.ts" in gate
-    assert 'UX-RESP-01|CCT-UX-A11Y-01|active relationship Stop' in gate
+    assert "UX-RESP-01|CCT-UX-A11Y-01|active relationship Stop" in gate
     assert "--project chromium-expanded" in gate
     assert "--project chromium-compact-360" in gate
     assert 'PLAYWRIGHT_JUNIT_OUTPUT_FILE="$workspace/test-results/accessibility.xml"' in gate

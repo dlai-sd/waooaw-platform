@@ -285,10 +285,13 @@ public sealed class PortalInteractionService
             request.SchemaVersion != SchemaVersion
             || request.ClientMessageId == Guid.Empty
             || request.Content.Count != 1
+            || request.Content[0].SchemaVersion != SchemaVersion
             || request.Content[0].BlockType != "TEXT"
             || string.IsNullOrWhiteSpace(request.Content[0].Text)
             || request.Content[0].Text.Length > 32000
             || string.IsNullOrWhiteSpace(request.Locale)
+            || request.Locale.Length is < 2 or > 35
+            || request.Content[0].Language is { Length: < 2 or > 35 }
             || !SupportedSurfaces.Contains(request.CurrentSurface)
         )
         {

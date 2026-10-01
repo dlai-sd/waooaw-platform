@@ -3125,6 +3125,7 @@ paths:
         "401": { $ref: "#/components/responses/ConversationUnauthorized" }
         "404": { $ref: "#/components/responses/ConversationNotFound" }
         "409": { $ref: "#/components/responses/ConversationConflict" }
+        "410": { $ref: "#/components/responses/ConversationCursorExpired" }
         "503": { $ref: "#/components/responses/ConversationUnavailable" }
 
   /api/v1/employment/relationships/{relationshipId}/conversation/messages:
@@ -3133,7 +3134,7 @@ paths:
       summary: Read the authoritative durable conversation timeline
       description: |
         Returns tenant- and relationship-authorized messages in ascending canonical sequence.
-        `cursor` pages backward and `afterCursor` reconciles forward; they are mutually exclusive.
+        `cursor` pages backward and takes precedence when present; otherwise `afterCursor` reconciles forward.
         Cursors are opaque and relationship-bound. This read does not advance the unread position.
       operationId: listConversationMessages
       parameters:
@@ -7542,7 +7543,7 @@ components:
         schemaVersion: { $ref: "#/components/schemas/ConversationSchemaVersion" }
         blockType: { type: string, const: TEXT }
         text: { type: string, minLength: 1, maxLength: 32000 }
-        language: { type: string, minLength: 2, maxLength: 35 }
+        language: { type: string, nullable: true, minLength: 2, maxLength: 35 }
 
     PortalInteractionSurfaceV1:
       type: string
@@ -7607,7 +7608,7 @@ components:
           items: { $ref: "#/components/schemas/ConversationTextBlockV1" }
         locale: { type: string, minLength: 2, maxLength: 35 }
         currentSurface: { $ref: "#/components/schemas/PortalInteractionSurfaceV1" }
-        expectedCursor: { type: string, minLength: 16, maxLength: 2048 }
+        expectedCursor: { type: string, nullable: true, minLength: 16, maxLength: 2048 }
 
     PortalInteractionSubmissionV1:
       type: object

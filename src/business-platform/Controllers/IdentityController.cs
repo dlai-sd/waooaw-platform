@@ -356,6 +356,8 @@ public sealed class IdentityController(
 
     private static bool IsValidEmail(string value)
     {
+        if (value.Length > 254)
+            return false;
         var separator = value.IndexOf('@');
         if (separator <= 0 || separator != value.LastIndexOf('@') || separator == value.Length - 1)
             return false;
