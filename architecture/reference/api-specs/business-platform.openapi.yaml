@@ -6746,7 +6746,7 @@ components:
       required: [schemaVersion, expectedAlertVersion]
       properties:
         schemaVersion: { $ref: "#/components/schemas/CustomerPortalSchemaVersion" }
-        expectedAlertVersion: { type: string, minLength: 1, maxLength: 64 }
+        expectedAlertVersion: { type: string, pattern: '^alert-[1-9][0-9]*$', maxLength: 64 }
 
     BillingAllowanceSummaryV1:
       type: object

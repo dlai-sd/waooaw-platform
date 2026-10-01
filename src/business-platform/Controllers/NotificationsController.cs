@@ -33,6 +33,7 @@ public sealed class NotificationsController(CustomerAlertService alerts) : Contr
             return Unauthorized();
         if (
             limit is < 1 or > 100
+            || Request.Query.ContainsKey("cursor") && cursor is null
             || cursor is not null && cursor.Length is < 16 or > 2048
             || Request.Query.Keys.Any(key => key is not "cursor" and not "limit")
         )

@@ -67,6 +67,18 @@ public sealed class CustomerAlertControllerTests
     }
 
     [Fact]
+    public async Task ListRejectsExplicitEmptyCursorNormalizedToNull()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var controller = Controller(factory, Guid.NewGuid());
+        controller.Request.QueryString = new QueryString("?cursor=");
+
+        var result = Assert.IsType<ObjectResult>(await controller.ListAsync(null, 20));
+
+        Assert.Equal(400, result.StatusCode);
+    }
+
+    [Fact]
     public async Task MutationsReplayConflictAndNeverDowngradeAcknowledgedState()
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
