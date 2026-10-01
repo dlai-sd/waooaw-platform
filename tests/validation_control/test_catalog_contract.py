@@ -307,6 +307,7 @@ def test_only_classified_gates_receive_the_docker_socket() -> None:
         "contract:rest",
         "integration:multi-tenant",
         "integration:dotnet",
+        "test-dotnet:business-platform",
     }
     for gate_id in classified:
         resources = catalog["gates"][gate_id]["resources"]

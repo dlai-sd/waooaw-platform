@@ -12,6 +12,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 COMPOSE = yaml.safe_load((ROOT / "docker-compose.yml").read_text(encoding="utf-8"))
 DYNAMIC_CONFIG = yaml.safe_load((ROOT / "infrastructure/temporal/dynamicconfig.yaml").read_text(encoding="utf-8"))
+VALIDATION_CATALOG = yaml.safe_load((ROOT / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
 SCHEMATHESIS = tomllib.loads((ROOT / "validation/schemathesis.toml").read_text(encoding="utf-8"))
 RUNNERS = ("test-runner-python", "test-runner-dotnet", "test-runner-ts")
 
@@ -44,6 +45,14 @@ def test_socket_is_absent_from_every_runner_by_default() -> None:
     for runner_name in (*RUNNERS, "test-runner"):
         runner = COMPOSE["services"][runner_name]
         assert all("docker.sock" not in volume for volume in runner["volumes"])
+
+
+def test_business_platform_test_gate_requests_testcontainers_socket() -> None:
+    resources = VALIDATION_CATALOG["gates"]["test-dotnet:business-platform"]["resources"]
+
+    assert resources["docker_socket"] is True
+    assert resources["socket_classification"] == "testcontainers"
+    assert VALIDATION_CATALOG["gates"]["test-dotnet:business-platform"]["environment"] == ["TESTCONTAINERS_HOST_OVERRIDE"]
 
 
 def test_stack_runners_declare_non_root_uid_and_gid() -> None:

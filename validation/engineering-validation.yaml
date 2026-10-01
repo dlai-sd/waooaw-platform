@@ -112,7 +112,7 @@ gates:
     resources: *dotnet_resources
     artifacts: &dotnet_artifacts {native: [test-results/**/*.trx, test-results/coverage/**/*.xml], common: test-results/validation/test-dotnet.json}
   test-dotnet:constitutional-engine: {<<: *dotnet_test, gate_id: "test-dotnet:constitutional-engine", command_id: test-constitutional-engine}
-  test-dotnet:business-platform: {<<: *dotnet_test, gate_id: "test-dotnet:business-platform", command_id: test-business-platform}
+  test-dotnet:business-platform: {<<: *dotnet_test, gate_id: "test-dotnet:business-platform", command_id: test-business-platform, resources: {cpus: 2, memory_mb: 4096, disk_mb: 2048, timeout_seconds: 1800, docker_socket: true, socket_classification: testcontainers, concurrency_class: integration}, environment: [TESTCONTAINERS_HOST_OVERRIDE]}
   test-python: &python_test
     <<: *python_static
     gate_id: test-python
