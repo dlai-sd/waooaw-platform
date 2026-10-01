@@ -172,8 +172,7 @@ public sealed class RelationshipRoleJsonConverter : JsonConverter<RelationshipPa
         try
         {
             return RelationshipRoleCodec.FromDatabase(
-                reader.GetString()
-                    ?? throw new JsonException("Relationship role must be a string.")
+                reader.GetString() ?? throw new JsonException("Relationship role must be a string.")
             );
         }
         catch (InvalidOperationException exception)
@@ -438,7 +437,9 @@ public sealed class EmploymentRelationshipsController : ControllerBase
             return Unauthorized();
         if (
             request.Handle.Length != 64
-            || request.Handle.Any(character => character is not (>= '0' and <= '9') and not (>= 'a' and <= 'f'))
+            || request.Handle.Any(character =>
+                character is not (>= '0' and <= '9') and not (>= 'a' and <= 'f')
+            )
         )
             return ValidationProblem("Selection handle is invalid.");
         if (_selections is null)

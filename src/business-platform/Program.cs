@@ -91,16 +91,16 @@ builder
                     "The identity request is invalid."
                 );
 
-            var code = path.StartsWithSegments(
-                "/api/v1/customer-portal/interactions/portal/messages"
-            ) || path.Value?.Contains("/conversation", StringComparison.Ordinal) == true
-                ? "CONVERSATION_REQUEST_INVALID"
+            var code =
+                path.StartsWithSegments("/api/v1/customer-portal/interactions/portal/messages")
+                || path.Value?.Contains("/conversation", StringComparison.Ordinal) == true
+                    ? "CONVERSATION_REQUEST_INVALID"
                 : path.Value?.Contains("/workspace", StringComparison.Ordinal) == true
-                    || path.Value?.Contains("/evaluation", StringComparison.Ordinal) == true
-                ? "RELATIONSHIP_WORKSPACE_REQUEST_INVALID"
+                || path.Value?.Contains("/evaluation", StringComparison.Ordinal) == true
+                    ? "RELATIONSHIP_WORKSPACE_REQUEST_INVALID"
                 : path.Value?.Contains("/admission/", StringComparison.Ordinal) == true
                     ? "ADMISSION_REQUEST_INVALID"
-                    : null;
+                : null;
             if (code is null)
                 return defaultFactory(context);
 
@@ -572,20 +572,26 @@ app.UseStatusCodePages(async statusCodeContext =>
     var path = httpContext.Request.Path;
     var isInvalidRequest = status == StatusCodes.Status405MethodNotAllowed;
     var code = path.StartsWithSegments("/api/v1/identity")
-        ? isInvalidRequest ? "IDENTITY_REQUEST_INVALID" : "IDENTITY_RESOURCE_NOT_ACCESSIBLE"
-        : path.StartsWithSegments("/api/v1/customer-portal/interactions/portal/messages")
-            || path.Value?.Contains("/conversation", StringComparison.Ordinal) == true
-        ? isInvalidRequest ? "CONVERSATION_REQUEST_INVALID" : "CONVERSATION_NOT_ACCESSIBLE"
-        : path.Value?.Contains("/workspace", StringComparison.Ordinal) == true
-            || path.Value?.Contains("/evaluation", StringComparison.Ordinal) == true
         ? isInvalidRequest
-            ? "RELATIONSHIP_WORKSPACE_REQUEST_INVALID"
-            : "RELATIONSHIP_WORKSPACE_NOT_ACCESSIBLE"
-        : path.Value?.Contains("/admission/", StringComparison.Ordinal) == true
-        ? isInvalidRequest ? "ADMISSION_REQUEST_INVALID" : "ADMISSION_NOT_FOUND"
-        : isInvalidRequest
-            ? "REQUEST_INVALID"
-            : "RESOURCE_NOT_FOUND";
+            ? "IDENTITY_REQUEST_INVALID"
+            : "IDENTITY_RESOURCE_NOT_ACCESSIBLE"
+        : path.StartsWithSegments("/api/v1/customer-portal/interactions/portal/messages")
+        || path.Value?.Contains("/conversation", StringComparison.Ordinal) == true
+            ? isInvalidRequest
+                ? "CONVERSATION_REQUEST_INVALID"
+                : "CONVERSATION_NOT_ACCESSIBLE"
+            : path.Value?.Contains("/workspace", StringComparison.Ordinal) == true
+            || path.Value?.Contains("/evaluation", StringComparison.Ordinal) == true
+                ? isInvalidRequest
+                    ? "RELATIONSHIP_WORKSPACE_REQUEST_INVALID"
+                    : "RELATIONSHIP_WORKSPACE_NOT_ACCESSIBLE"
+                : path.Value?.Contains("/admission/", StringComparison.Ordinal) == true
+                    ? isInvalidRequest
+                        ? "ADMISSION_REQUEST_INVALID"
+                        : "ADMISSION_NOT_FOUND"
+                    : isInvalidRequest
+                        ? "REQUEST_INVALID"
+                        : "RESOURCE_NOT_FOUND";
     var title = status switch
     {
         StatusCodes.Status404NotFound => "Resource not found",

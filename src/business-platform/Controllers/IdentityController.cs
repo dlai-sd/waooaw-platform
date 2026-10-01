@@ -563,7 +563,7 @@ public sealed class IdentityController(
                 ?? await customerJourney.ResolveAsync(User, ct);
             if (
                 HttpContext.Items[CustomerMembershipMiddleware.AuthenticationTimeItem]
-                    is not DateTimeOffset authenticatedAt
+                is not DateTimeOffset authenticatedAt
             )
                 return Problem(
                     statusCode: StatusCodes.Status401Unauthorized,
@@ -1028,13 +1028,7 @@ public sealed class IdentityController(
             Request.Path
         );
 
-        return IdentityProblemResponses.Create(
-            status,
-            code,
-            detail,
-            stepUpIntentId,
-            correlationId
-        );
+        return IdentityProblemResponses.Create(status, code, detail, stepUpIntentId, correlationId);
     }
 
     // ── POST /api/v1/identity/registrations ──────────────────────────────────

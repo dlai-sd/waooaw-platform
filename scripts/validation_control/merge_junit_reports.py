@@ -24,7 +24,7 @@ def merge(output: Path, inputs: list[Path]) -> None:
         "time": 0.0,
     }
     for source in inputs:
-        for suite in suites(ET.parse(source).getroot()):
+        for suite in suites(ET.parse(source).getroot()):  # noqa: S314 - Inputs are local test reports.
             merged.append(suite)
             for field in ("tests", "failures", "errors", "skipped"):
                 totals[field] += int(suite.get(field, "0"))
@@ -33,7 +33,7 @@ def merge(output: Path, inputs: list[Path]) -> None:
         raise ValueError("refusing to publish an empty JUnit report")
     for field in ("tests", "failures", "errors", "skipped"):
         merged.set(field, str(int(totals[field])))
-    merged.set("time", f'{totals["time"]:.6f}')
+    merged.set("time", f"{totals['time']:.6f}")
 
     output.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary_name = tempfile.mkstemp(dir=output.parent, prefix=f".{output.name}.")

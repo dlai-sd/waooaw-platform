@@ -9,6 +9,13 @@ import uuid
 from pathlib import Path
 
 
+def require_http_url(url: str) -> str:
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise ValueError("URL must use HTTP or HTTPS and include a hostname")
+    return url
+
+
 def request_json(
     url: str,
     *,
@@ -26,9 +33,11 @@ def request_json(
     if payload is not None:
         headers["Content-Type"] = "application/json"
         body = json.dumps(payload, separators=(",", ":")).encode()
-    request = urllib.request.Request(url, data=body, headers=headers, method=method)
+    request = urllib.request.Request(  # noqa: S310 - URL scheme is constrained below.
+        require_http_url(url), data=body, headers=headers, method=method
+    )
     try:
-        with urllib.request.urlopen(request, timeout=30) as response:
+        with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
             return response.status, json.load(response)
     except urllib.error.HTTPError as error:
         try:
@@ -48,13 +57,13 @@ def acquire_customer_token(keycloak_url: str, username: str, password: str) -> s
             "password": password,
         }
     ).encode()
-    request = urllib.request.Request(
-        f"{keycloak_url}/realms/waooaw/protocol/openid-connect/token",
+    request = urllib.request.Request(  # noqa: S310 - URL scheme is constrained here.
+        require_http_url(f"{keycloak_url}/realms/waooaw/protocol/openid-connect/token"),
         data=body,
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         method="POST",
     )
-    with urllib.request.urlopen(request, timeout=30) as response:
+    with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
         document = json.load(response)
     token = document.get("access_token")
     if not isinstance(token, str) or not token:
@@ -70,13 +79,13 @@ def acquire_service_token(keycloak_url: str, client_secret: str) -> str:
             "client_secret": client_secret,
         }
     ).encode()
-    request = urllib.request.Request(
-        f"{keycloak_url}/realms/waooaw/protocol/openid-connect/token",
+    request = urllib.request.Request(  # noqa: S310 - URL scheme is constrained here.
+        require_http_url(f"{keycloak_url}/realms/waooaw/protocol/openid-connect/token"),
         data=body,
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         method="POST",
     )
-    with urllib.request.urlopen(request, timeout=30) as response:
+    with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
         document = json.load(response)
     token = document.get("access_token")
     if not isinstance(token, str) or not token:

@@ -1239,9 +1239,10 @@ public sealed class IdentityService
         var matchedAccountId = emailAccountId ?? mobileAccountId;
         var isNew = reg.State != IdentityRegistrationState.Completed;
         var accountId = reg.AccountId ?? matchedAccountId ?? Guid.NewGuid();
-        var outcome = (reg.AccountId is not null || matchedAccountId is not null)
-            ? "ACCOUNT_REUSED"
-            : "ACCOUNT_CREATED";
+        var outcome =
+            (reg.AccountId is not null || matchedAccountId is not null)
+                ? "ACCOUNT_REUSED"
+                : "ACCOUNT_CREATED";
 
         reg.AccountId = accountId;
         reg.State = IdentityRegistrationState.Completed;

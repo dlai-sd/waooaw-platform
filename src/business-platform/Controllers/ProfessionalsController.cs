@@ -37,16 +37,16 @@ public sealed class ProfessionalsController : ControllerBase
         if (string.IsNullOrWhiteSpace(outcome) || outcomeLength is < 3 or > 500)
         {
             var problem = new ValidationProblemDetails(
-                    new Dictionary<string, string[]>
-                    {
-                        [nameof(outcome)] = ["Outcome must contain between 3 and 500 characters."],
-                    }
-                )
+                new Dictionary<string, string[]>
                 {
-                    Type = "https://waooaw.com/problems/validation-error",
-                    Title = "The request is invalid",
-                    Status = StatusCodes.Status400BadRequest,
-                };
+                    [nameof(outcome)] = ["Outcome must contain between 3 and 500 characters."],
+                }
+            )
+            {
+                Type = "https://waooaw.com/problems/validation-error",
+                Title = "The request is invalid",
+                Status = StatusCodes.Status400BadRequest,
+            };
             return BadRequest(problem);
         }
 

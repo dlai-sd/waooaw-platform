@@ -77,9 +77,10 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
             return;
         }
         var identityController = controllerAction?.ControllerTypeInfo == typeof(IdentityController);
-        var internalServiceRoute = endpoint
-            .Metadata.GetOrderedMetadata<IAuthorizeData>()
-            .Any(authorize => authorize.Policy == "InternalService") == true;
+        var internalServiceRoute =
+            endpoint
+                .Metadata.GetOrderedMetadata<IAuthorizeData>()
+                .Any(authorize => authorize.Policy == "InternalService") == true;
         if (internalServiceRoute && !customer)
         {
             await next(context);
@@ -148,8 +149,7 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
                         "IDENTITY_RESOURCE_NOT_ACCESSIBLE",
                     CustomerWorkspaceError.FreshAuthenticationRequired =>
                         "IDENTITY_STEP_UP_REQUIRED",
-                    CustomerWorkspaceError.RecoveryRequired =>
-                        "DUPLICATE_RESOLUTION_REQUIRED",
+                    CustomerWorkspaceError.RecoveryRequired => "DUPLICATE_RESOLUTION_REQUIRED",
                     CustomerWorkspaceError.RegistrationIneligible =>
                         "IDENTITY_VERIFICATION_REQUIRED",
                     CustomerWorkspaceError.MembershipRequired => "IDENTITY_ACTION_DENIED",

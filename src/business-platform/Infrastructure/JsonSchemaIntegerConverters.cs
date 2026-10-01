@@ -5,7 +5,11 @@ namespace Waooaw.BusinessPlatform.Infrastructure;
 
 public sealed class JsonSchemaInt32Converter : JsonConverter<int>
 {
-    public override int Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    public override int Read(
+        ref Utf8JsonReader reader,
+        Type typeToConvert,
+        JsonSerializerOptions options
+    )
     {
         if (
             reader.TokenType != JsonTokenType.Number
@@ -25,7 +29,11 @@ public sealed class JsonSchemaInt32Converter : JsonConverter<int>
 
 public sealed class JsonSchemaInt64Converter : JsonConverter<long>
 {
-    public override long Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    public override long Read(
+        ref Utf8JsonReader reader,
+        Type typeToConvert,
+        JsonSerializerOptions options
+    )
     {
         if (
             reader.TokenType != JsonTokenType.Number

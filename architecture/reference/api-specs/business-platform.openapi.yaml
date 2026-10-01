@@ -2769,6 +2769,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SkillRuntimeConfig"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
     x-deprecated-put:
@@ -2819,6 +2821,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DigitalMarketingProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "404":
           description: No profile exists yet (profiling not completed)
     x-deprecated-put:
@@ -2882,6 +2886,8 @@ paths:
                 properties:
                   pdf_url: { type: string, format: uri }
                   expires_at: { type: string, format: date-time }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "404":
           description: No maturity report generated yet
 

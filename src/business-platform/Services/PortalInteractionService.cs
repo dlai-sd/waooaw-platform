@@ -98,7 +98,9 @@ public sealed class PortalInteractionService
         if (limit is < 1 or > 100)
             throw new ConversationRequestException("limit must be between 1 and 100.");
         if (cursor is not null && cursor.Length is < 16 or > 2048)
-            throw new ConversationRequestException("cursor must be between 16 and 2048 characters.");
+            throw new ConversationRequestException(
+                "cursor must be between 16 and 2048 characters."
+            );
         await using var db = await _factory.CreateDbContextAsync(cancellationToken);
         var context = await GetOrCreateContextAsync(db, tenantId, participantId, cancellationToken);
         var query = db
@@ -190,13 +192,15 @@ public sealed class PortalInteractionService
             );
         }
         if (
-            await db.PortalInteractionMessages.AsNoTracking().AnyAsync(
-                value =>
-                    value.TenantId == tenantId
-                    && value.ParticipantId == participantId
-                    && value.ClientMessageId == request.ClientMessageId,
-                cancellationToken
-            )
+            await db
+                .PortalInteractionMessages.AsNoTracking()
+                .AnyAsync(
+                    value =>
+                        value.TenantId == tenantId
+                        && value.ParticipantId == participantId
+                        && value.ClientMessageId == request.ClientMessageId,
+                    cancellationToken
+                )
         )
             throw new ConversationIdempotencyConflictException();
 

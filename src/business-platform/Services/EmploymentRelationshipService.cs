@@ -203,9 +203,10 @@ public sealed class EmploymentRelationshipService
         if (
             normalizedProfessionalType.Length is < 3 or > 64
             || normalizedProfessionalType[0] is < 'A' or > 'Z'
-            || normalizedProfessionalType[1..].Any(value =>
-                value is not (>= 'A' and <= 'Z') and not (>= '0' and <= '9') and not '_'
-            )
+            || normalizedProfessionalType[1..]
+                .Any(value =>
+                    value is not (>= 'A' and <= 'Z') and not (>= '0' and <= '9') and not '_'
+                )
         )
         {
             throw new ArgumentException(

@@ -24,17 +24,46 @@ public sealed class CustomerAlertControllerTests
             db.CustomerAlerts.AddRange(
                 Alert(tenantId, DateTimeOffset.UtcNow.AddMinutes(-1), "LOW"),
                 Alert(tenantId, DateTimeOffset.UtcNow, "HIGH"),
-                Alert(Guid.NewGuid(), DateTimeOffset.UtcNow.AddMinutes(1), "CRITICAL"));
+                Alert(Guid.NewGuid(), DateTimeOffset.UtcNow.AddMinutes(1), "CRITICAL")
+            );
             await db.SaveChangesAsync();
         }
         var controller = Controller(factory, tenantId);
 
         var result = Assert.IsType<OkObjectResult>(await controller.ListAsync(null, 20));
-        var items = JsonSerializer.SerializeToElement(result.Value).GetProperty("items").EnumerateArray().ToArray();
+        var items = JsonSerializer
+            .SerializeToElement(result.Value)
+            .GetProperty("items")
+            .EnumerateArray()
+            .ToArray();
 
         Assert.Equal(2, items.Length);
         Assert.Equal("HIGH", items[0].GetProperty("severity").GetString());
         Assert.Equal("LOW", items[1].GetProperty("severity").GetString());
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("short")]
+    public async Task ListRejectsCursorOutsideDocumentedLength(string cursor)
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var result = Assert.IsType<ObjectResult>(
+            await Controller(factory, Guid.NewGuid()).ListAsync(cursor, 20)
+        );
+
+        Assert.Equal(400, result.StatusCode);
+    }
+
+    [Fact]
+    public async Task ListRejectsOversizedCursor()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var result = Assert.IsType<ObjectResult>(
+            await Controller(factory, Guid.NewGuid()).ListAsync(new string('a', 2049), 20)
+        );
+
+        Assert.Equal(400, result.StatusCode);
     }
 
     [Fact]
@@ -52,20 +81,55 @@ public sealed class CustomerAlertControllerTests
         var acknowledgeKey = Guid.NewGuid().ToString();
         var request = new CustomerAlertMutationRequest("1.0.0", "alert-1");
 
-        var acknowledged = Assert.IsType<OkObjectResult>(await controller.AcknowledgeAsync(
-            alert.AlertId, request, acknowledgeKey, CancellationToken.None));
-        Assert.Equal("ACKNOWLEDGED", JsonSerializer.SerializeToElement(acknowledged.Value).GetProperty("readState").GetString());
-        Assert.IsType<OkObjectResult>(await controller.AcknowledgeAsync(
-            alert.AlertId, request, acknowledgeKey, CancellationToken.None));
+        var acknowledged = Assert.IsType<OkObjectResult>(
+            await controller.AcknowledgeAsync(
+                alert.AlertId,
+                request,
+                acknowledgeKey,
+                CancellationToken.None
+            )
+        );
+        Assert.Equal(
+            "ACKNOWLEDGED",
+            JsonSerializer
+                .SerializeToElement(acknowledged.Value)
+                .GetProperty("readState")
+                .GetString()
+        );
+        Assert.IsType<OkObjectResult>(
+            await controller.AcknowledgeAsync(
+                alert.AlertId,
+                request,
+                acknowledgeKey,
+                CancellationToken.None
+            )
+        );
 
-        var conflict = Assert.IsType<ObjectResult>(await controller.AcknowledgeAsync(
-            alert.AlertId, request with { ExpectedAlertVersion = "alert-99" }, acknowledgeKey, CancellationToken.None));
+        var conflict = Assert.IsType<ObjectResult>(
+            await controller.AcknowledgeAsync(
+                alert.AlertId,
+                request with
+                {
+                    ExpectedAlertVersion = "alert-99",
+                },
+                acknowledgeKey,
+                CancellationToken.None
+            )
+        );
         Assert.Equal(409, conflict.StatusCode);
 
-        var read = Assert.IsType<OkObjectResult>(await controller.MarkReadAsync(
-            alert.AlertId, new CustomerAlertMutationRequest("1.0.0", "alert-2"),
-            Guid.NewGuid().ToString(), CancellationToken.None));
-        Assert.Equal("ACKNOWLEDGED", JsonSerializer.SerializeToElement(read.Value).GetProperty("readState").GetString());
+        var read = Assert.IsType<OkObjectResult>(
+            await controller.MarkReadAsync(
+                alert.AlertId,
+                new CustomerAlertMutationRequest("1.0.0", "alert-2"),
+                Guid.NewGuid().ToString(),
+                CancellationToken.None
+            )
+        );
+        Assert.Equal(
+            "ACKNOWLEDGED",
+            JsonSerializer.SerializeToElement(read.Value).GetProperty("readState").GetString()
+        );
     }
 
     [Fact]
@@ -79,19 +143,30 @@ public sealed class CustomerAlertControllerTests
             await db.SaveChangesAsync();
         }
 
-        var result = await Controller(factory, Guid.NewGuid()).MarkReadAsync(
-            alert.AlertId, new CustomerAlertMutationRequest("1.0.0", "alert-1"),
-            Guid.NewGuid().ToString(), CancellationToken.None);
+        var result = await Controller(factory, Guid.NewGuid())
+            .MarkReadAsync(
+                alert.AlertId,
+                new CustomerAlertMutationRequest("1.0.0", "alert-1"),
+                Guid.NewGuid().ToString(),
+                CancellationToken.None
+            );
 
         Assert.IsType<NotFoundResult>(result);
     }
 
-    private static NotificationsController Controller(InMemoryEmploymentRelationshipFactory factory, Guid tenantId)
+    private static NotificationsController Controller(
+        InMemoryEmploymentRelationshipFactory factory,
+        Guid tenantId
+    )
     {
         var context = new DefaultHttpContext
         {
-            User = new ClaimsPrincipal(new ClaimsIdentity(
-                [new Claim(ClaimTypes.NameIdentifier, "customer-subject")], "Test")),
+            User = new ClaimsPrincipal(
+                new ClaimsIdentity(
+                    [new Claim(ClaimTypes.NameIdentifier, "customer-subject")],
+                    "Test"
+                )
+            ),
         };
         context.Items[TenantIsolationMiddleware.TenantIdItemKey] = tenantId.ToString();
         return new NotificationsController(new CustomerAlertService(factory))
@@ -100,14 +175,15 @@ public sealed class CustomerAlertControllerTests
         };
     }
 
-    private static CustomerAlert Alert(Guid tenantId, DateTimeOffset occurredAt, string severity) => new()
-    {
-        TenantId = tenantId,
-        AlertType = severity == "HIGH" ? "ACTIONABLE" : "INFORMATIONAL",
-        Severity = severity,
-        Source = "SYSTEM",
-        OccurredAt = occurredAt,
-        DestinationSurface = "ALERTS",
-        AvailableAction = severity == "HIGH" ? "ACKNOWLEDGE" : "NONE",
-    };
+    private static CustomerAlert Alert(Guid tenantId, DateTimeOffset occurredAt, string severity) =>
+        new()
+        {
+            TenantId = tenantId,
+            AlertType = severity == "HIGH" ? "ACTIONABLE" : "INFORMATIONAL",
+            Severity = severity,
+            Source = "SYSTEM",
+            OccurredAt = occurredAt,
+            DestinationSurface = "ALERTS",
+            AvailableAction = severity == "HIGH" ? "ACKNOWLEDGE" : "NONE",
+        };
 }

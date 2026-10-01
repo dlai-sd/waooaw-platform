@@ -113,8 +113,7 @@ public sealed class CustomerWorkspaceException(
             CustomerWorkspaceError.RegistrationNotFound => 404,
             CustomerWorkspaceError.IdempotencyConflict
             or CustomerWorkspaceError.RecoveryRequired
-            or CustomerWorkspaceError.RegistrationIneligible =>
-                409,
+            or CustomerWorkspaceError.RegistrationIneligible => 409,
             _ => 503,
         };
 }

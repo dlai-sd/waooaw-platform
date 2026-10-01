@@ -1,23 +1,16 @@
-using Microsoft.AspNetCore.Mvc;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Waooaw.BusinessPlatform.Infrastructure;
 
 public sealed record IdentityProblemResponse(
-    [property: JsonPropertyName("type")]
-    string Type,
-    [property: JsonPropertyName("title")]
-    string Title,
-    [property: JsonPropertyName("status")]
-    int Status,
-    [property: JsonPropertyName("detail")]
-    string Detail,
-    [property: JsonPropertyName("code")]
-    string Code,
-    [property: JsonPropertyName("correlationId")]
-    Guid CorrelationId,
-    [property: JsonPropertyName("stepUpIntentId")]
-    Guid? StepUpIntentId
+    [property: JsonPropertyName("type")] string Type,
+    [property: JsonPropertyName("title")] string Title,
+    [property: JsonPropertyName("status")] int Status,
+    [property: JsonPropertyName("detail")] string Detail,
+    [property: JsonPropertyName("code")] string Code,
+    [property: JsonPropertyName("correlationId")] Guid CorrelationId,
+    [property: JsonPropertyName("stepUpIntentId")] Guid? StepUpIntentId
 );
 
 public static class IdentityProblemResponses
