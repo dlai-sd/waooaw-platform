@@ -5,12 +5,17 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-from validation_policy import classify_paths, compare_shadow
+SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
+if str(SCRIPTS_ROOT) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_ROOT))
+
+from validation_policy import classify_paths, compare_shadow  # noqa: E402
 
 
 GITHUB_RESULTS = {

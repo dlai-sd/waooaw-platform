@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 
 import pytest
 import yaml
@@ -17,6 +18,22 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def load_catalog() -> dict[str, object]:
     return yaml.safe_load((ROOT / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
+
+
+def test_shadow_cli_resolves_scripts_without_pythonpath() -> None:
+    environment = os.environ.copy()
+    environment.pop("PYTHONPATH", None)
+
+    completed = subprocess.run(
+        [sys.executable, "scripts/validation_control/shadow.py", "--help"],
+        cwd=ROOT,
+        env=environment,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
 
 
 @pytest.mark.parametrize(
