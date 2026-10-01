@@ -408,6 +408,9 @@ requirements:
     component_owner: Pilot Recorder
     test_path_or_plan: Validate eligibility and required fields for the first two post-implementation product PRs.
     completion_rule: Two non-advanced PRs each provide exact identities, distributions, builds, failures, inventories and quality results.
+    evidence_refs:
+      - scripts/validation_control/pilot.py
+      - tests/validation_control/test_pilot.py
 
   - <<: *requirement_defaults
     requirement_id: WC109-R032
@@ -416,6 +419,9 @@ requirements:
     component_owner: Pilot Recorder
     test_path_or_plan: Validate pilot reports for samples, ranges, medians, cache state, limitations and prohibited extrapolation.
     completion_rule: Every performance statement is traceable to recorded observations and scoped limitations.
+    evidence_refs:
+      - scripts/validation_control/pilot.py
+      - tests/validation_control/test_pilot.py
 
   - <<: *requirement_defaults
     requirement_id: WC109-R033
@@ -424,6 +430,10 @@ requirements:
     component_owner: Pilot Recorder
     test_path_or_plan: Compare shadow selections and outcomes with unchanged full CI for both pilot PRs.
     completion_rule: No required gate is missed and every prior quality, coverage, security and CCT threshold is preserved.
+    evidence_refs:
+      - scripts/validation_control/pilot.py
+      - scripts/validation_control/shadow.py
+      - tests/validation_control/test_pilot.py
 
   - <<: *requirement_defaults
     requirement_id: WC109-R034
