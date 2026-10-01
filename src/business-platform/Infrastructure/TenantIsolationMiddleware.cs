@@ -106,11 +106,12 @@ public sealed class TenantIsolationMiddleware
             await context.Response.WriteAsJsonAsync(
                 new
                 {
-                    type = "https://waooaw.com/errors/unauthorized",
-                    title = "Authentication required",
+                    type = "https://waooaw.com/errors/identity/identity-session-required",
+                    title = "IDENTITY_SESSION_REQUIRED",
                     status = 401,
                     detail = "A valid Keycloak-issued Bearer token is required.",
-                    traceId = context.TraceIdentifier,
+                    code = "IDENTITY_SESSION_REQUIRED",
+                    correlationId = Guid.NewGuid(),
                 },
                 options: null,
                 contentType: "application/problem+json",

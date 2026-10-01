@@ -2,6 +2,7 @@
 // constitutional_basis: C-005, C-023, C-049, C-059, C-076
 using System.Net;
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -52,6 +53,11 @@ public sealed class InfrastructureWorkflowCoverageTests
 
         Assert.Equal(401, context.Response.StatusCode);
         Assert.Equal("application/problem+json", context.Response.ContentType);
+        context.Response.Body.Position = 0;
+        using var problem = await JsonDocument.ParseAsync(context.Response.Body);
+        Assert.Equal("IDENTITY_SESSION_REQUIRED", problem.RootElement.GetProperty("code").GetString());
+        Assert.True(Guid.TryParse(problem.RootElement.GetProperty("correlationId").GetString(), out _));
+        Assert.False(problem.RootElement.TryGetProperty("traceId", out _));
     }
 
     [Fact]
