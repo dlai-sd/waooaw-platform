@@ -9,6 +9,7 @@ import subprocess
 import pytest
 import yaml
 
+from validation_control.build_repair_context import build_repair_context
 from validation_control.evidence_controller import BLOCKED_DEFERRED_AMENDMENT, BLOCKED_DEFERRED_GATES
 from validation_control.orchestrator import (
     NEGATIVE_CONTROL_FAMILIES,
@@ -288,6 +289,56 @@ def completed_repair_context(gate_id: str) -> dict[str, object]:
             }
         ],
     }
+
+
+def repair_evidence(result: str, mode: str, binding: str) -> tuple[dict[str, object], dict[str, object]]:
+    gate_id = "contract:rest"
+    envelope = {
+        "schema": "waooaw.validation-evidence-envelope/v1",
+        "result": result,
+        "gate_id": gate_id,
+        "head_sha": HEAD_SHA if mode == "focused" else BASE_SHA,
+        "routing_class": "NONE" if result == "PASS" else "PRODUCT",
+        "first_cause": "none" if result == "PASS" else "exit-code:1",
+        "identities": {"test_execution": binding, "evidence": "sha256:" + "3" * 64},
+        "invocation": {"source": "catalog"},
+    }
+    execution = {
+        "schema": "waooaw.wc109-tier2-execution/v1",
+        "result": result,
+        "gate_id": gate_id,
+        "head_sha": envelope["head_sha"],
+        "mode": mode,
+        "catalog_controlled": True,
+        "invocation_source": "catalog",
+    }
+    return envelope, execution
+
+
+def test_repair_context_is_derived_from_catalog_execution_identities() -> None:
+    failed_envelope, failed_execution = repair_evidence("FAIL", "qualification", "sha256:" + "1" * 64)
+    focused_envelope, focused_execution = repair_evidence("PASS", "focused", "sha256:" + "2" * 64)
+
+    context = build_repair_context(failed_envelope, failed_execution, focused_envelope, focused_execution)
+
+    assert context == completed_repair_context("contract:rest") | {
+        "failure": {
+            "routing_class": "PRODUCT",
+            "gate_id": "contract:rest",
+            "first_cause": "exit-code:1",
+            "binding_digest": "sha256:" + "1" * 64,
+        }
+    }
+
+
+@pytest.mark.parametrize("unchanged_binding,focused_mode", [(True, "focused"), (False, "qualification")])
+def test_repair_context_rejects_unchanged_or_nonfocused_evidence(unchanged_binding: bool, focused_mode: str) -> None:
+    failed_envelope, failed_execution = repair_evidence("FAIL", "qualification", "sha256:" + "1" * 64)
+    focused_binding = "sha256:" + ("1" if unchanged_binding else "2") * 64
+    focused_envelope, focused_execution = repair_evidence("PASS", focused_mode, focused_binding)
+
+    with pytest.raises(ValueError):
+        build_repair_context(failed_envelope, failed_execution, focused_envelope, focused_execution)
 
 
 def copy_contract_authority(repository: Path) -> None:
