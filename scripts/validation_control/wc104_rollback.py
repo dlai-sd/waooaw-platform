@@ -23,6 +23,7 @@ from typing import Any
 import yaml
 
 from validation_control.evidence_controller import BLOCKED_DEFERRED_AMENDMENT, BLOCKED_DEFERRED_GATES
+from validation_control.execution_contract import orchestration_preflight
 from validation_control.qualification import build_wc104_rollback_manifest, render_manifest
 from validation_control.local_catalog_gate import execute_gate, required_service_identities, resolve_runner
 from validation_control.orchestrator import build_execution_plan
@@ -170,6 +171,7 @@ def execute_rollback(
     checkpoint_path: Path | None = None,
     resume_checkpoint: dict[str, Any] | None = None,
     context_resolver: Callable[[Path, str, str], QualificationContext] = resolve_qualification_context,
+    execution_preflight: Callable[[Path], None] = orchestration_preflight,
     runner_resolver: Callable[[Path, str], dict[str, Any]] = resolve_runner,
     service_resolver: Callable[[Path, dict[str, Any]], dict[str, str]] = required_service_identities,
     gate_executor: Callable[..., int] = execute_gate,
@@ -267,6 +269,10 @@ def execute_rollback(
         head_sha=candidate_sha,
         run_id=f"rollback-preflight-{candidate_sha}",
     )
+    try:
+        execution_preflight(repository)
+    except Exception as exception:
+        return block_preflight("preflight:execution-contract", str(manifest["required_gates"][0]), exception)
     for node in plan["nodes"]:
         if not node["required_services"] or node["gate_id"] in service_results:
             continue

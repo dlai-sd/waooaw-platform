@@ -52,13 +52,20 @@ fi
 repository=$(git rev-parse --show-toplevel)
 repository=$(realpath "$repository")
 git_common_dir=$(realpath "$(git -C "$repository" rev-parse --git-common-dir)")
+docker_socket=/var/run/docker.sock
+if [ ! -S "$docker_socket" ] || [ ! -r "$docker_socket" ] || [ ! -w "$docker_socket" ]; then
+    printf '%s\n' 'Docker socket is required for rollback runner supply' >&2
+    exit 2
+fi
+docker_gid=$(stat -c '%g' "$docker_socket")
 mkdir -p "$repository/$(dirname "$output")"
 
-docker compose --project-directory "$repository" --profile test run --rm \
+DOCKER_GID=$docker_gid docker compose --project-directory "$repository" --profile test run --rm \
     -e GITHUB_TOKEN \
     -v "$repository:$repository:ro" \
     -v "$repository/test-results:$repository/test-results" \
     -v "$git_common_dir:$git_common_dir:ro" \
+    -v "$docker_socket:$docker_socket" \
     -w "$repository" \
     test-runner sh -lc '
         export PYTHONPATH="$PWD/scripts"

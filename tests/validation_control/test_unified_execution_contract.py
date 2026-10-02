@@ -329,6 +329,8 @@ def test_rollback_launcher_preserves_docker_authority_and_identity_boundaries() 
     assert "-e GITHUB_TOKEN" in launcher
     assert '"$repository:$repository:ro"' in launcher
     assert '"$git_common_dir:$git_common_dir:ro"' in launcher
+    assert "DOCKER_GID=$docker_gid docker compose" in launcher
+    assert '"$docker_socket:$docker_socket"' in launcher
     assert "--user root" not in launcher
     assert "GITHUB_TOKEN is required" in launcher
     assert 'export PYTHONPATH="$PWD/scripts"' in launcher
