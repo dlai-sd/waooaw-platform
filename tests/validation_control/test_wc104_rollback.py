@@ -133,7 +133,7 @@ def test_rollback_clean_builds_each_runner_once_then_executes_full_inventory(tmp
         assert os.environ["WC100_DISABLE_REUSE"] == "1"
         assert os.environ["WC100_PRECHECK_MODE"] == "serial"
         assert context["changed_files"] == ["scripts/example.py"]
-        assert Path(str(context["pr_body_file"])).read_text(encoding="utf-8") == "## Required Traceability\n"
+        assert Path(str(context["pr_body_file"])).read_text(encoding="utf-8") == qualification_context().pr_body
         assert context["base_branch"] == "main"
         assert context["pr_number"] == "481"
         assert context["repository_name"] == "dlai-sd/waooaw-platform"
