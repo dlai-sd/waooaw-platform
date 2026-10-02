@@ -61,6 +61,26 @@ def suppression_reason(plan: dict[str, Any], gate_id: str, first_cause_gate: str
     return None
 
 
+def plan_execution_order(plan: dict[str, Any]) -> list[str]:
+    nodes = plan.get("nodes")
+    if not isinstance(nodes, list) or not all(isinstance(node, dict) for node in nodes):
+        raise ValueError("execution plan nodes must be a mapping list")
+    original_order = {node.get("gate_id"): index for index, node in enumerate(nodes)}
+    if len(original_order) != len(nodes) or None in original_order:
+        raise ValueError("execution plan gate IDs must be unique strings")
+    prerequisites = {node["gate_id"]: set(node.get("direct_prerequisites", [])) for node in nodes}
+    resolved: set[str] = set()
+    ordered: list[str] = []
+    while len(ordered) < len(nodes):
+        ready = [gate_id for gate_id, required in prerequisites.items() if gate_id not in resolved and required <= resolved]
+        if not ready:
+            raise ValueError("execution plan dependency graph contains a cycle")
+        ready.sort(key=lambda gate_id: (COST_ORDER.index(nodes[original_order[gate_id]]["cost_class"]), original_order[gate_id]))
+        ordered.extend(ready)
+        resolved.update(ready)
+    return ordered
+
+
 def build_execution_plan(
     catalog: dict[str, Any], gate_ids: list[str], *, mode: Mode, head_sha: str, run_id: str
 ) -> dict[str, Any]:
@@ -199,16 +219,7 @@ def build_execution_plan(
     for node in nodes:
         for prerequisite in node["direct_prerequisites"]:
             by_gate[prerequisite]["downstream_dependents"].append(node["gate_id"])
-    unresolved = {node["gate_id"]: set(node["direct_prerequisites"]) for node in nodes}
-    resolved: set[str] = set()
-    while ready := [
-        gate_id for gate_id, prerequisites in unresolved.items() if gate_id not in resolved and prerequisites <= resolved
-    ]:
-        resolved.update(ready)
-    if len(resolved) != len(nodes):
-        raise ValueError("execution plan dependency graph contains a cycle")
-
-    return {
+    plan = {
         "schema": "waooaw.validation-execution-plan/v1",
         "machine_checkable": True,
         "catalog_version": catalog.get("version"),
@@ -219,6 +230,8 @@ def build_execution_plan(
         "execution_namespace": execution_namespace,
         "nodes": nodes,
     }
+    plan_execution_order(plan)
+    return plan
 
 
 def main() -> int:

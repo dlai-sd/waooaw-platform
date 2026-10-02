@@ -17,7 +17,7 @@ from validation_control.catalog_execution import (
     stage_input_directory,
 )
 from validation_control.candidate_controller import catalog_candidate_inputs
-from validation_control.orchestrator import build_execution_plan, suppression_reason
+from validation_control.orchestrator import build_execution_plan, plan_execution_order, suppression_reason
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -136,6 +136,9 @@ def test_full_plan_graph_is_acyclic_and_every_node_has_complete_contract() -> No
         for node in plan["nodes"]
         for prerequisite in node["direct_prerequisites"]
     )
+    ordered_nodes = [by_gate[gate_id] for gate_id in plan_execution_order(plan)]
+    assert [phase_order[node["phase"]] for node in ordered_nodes] == sorted(phase_order[node["phase"]] for node in ordered_nodes)
+    assert ordered_nodes[-1]["gate_id"] == "release-qualification"
 
 
 def test_plan_rejects_duplicate_gate_chunks() -> None:

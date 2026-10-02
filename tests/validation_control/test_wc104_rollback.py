@@ -8,7 +8,7 @@ import pytest
 import yaml
 
 from validation_control.evidence_controller import BLOCKED_DEFERRED_AMENDMENT, BLOCKED_DEFERRED_GATES
-from validation_control.orchestrator import build_execution_plan, suppression_reason
+from validation_control.orchestrator import build_execution_plan, plan_execution_order, suppression_reason
 from validation_control.wc104_rollback import QualificationContext, execute_rollback
 
 
@@ -85,9 +85,13 @@ def test_rollback_clean_builds_each_runner_once_then_executes_full_inventory(tmp
     )
 
     executable_gates = [gate for gate in catalog["full_gates"] if gate not in BLOCKED_DEFERRED_GATES]
-    assert events == [("runner", runner) for runner in catalog["runners"]] + [("gate", gate) for gate in executable_gates]
+    plan = build_execution_plan(catalog, catalog["full_gates"], mode="qualification", head_sha=HEAD_SHA, run_id="clean")
+    ordered_gates = plan_execution_order(plan)
+    assert events == [("runner", runner) for runner in catalog["runners"]] + [
+        ("gate", gate) for gate in ordered_gates if gate not in BLOCKED_DEFERRED_GATES
+    ]
     assert result["passed"] is True
-    assert [item["gate_id"] for item in result["gate_results"]] == catalog["full_gates"]
+    assert [item["gate_id"] for item in result["gate_results"]] == ordered_gates
     deferred = [item for item in result["gate_results"] if item["gate_id"] in BLOCKED_DEFERRED_GATES]
     assert all(item["result"] == "BLOCKED" and item["disposition"] == "BLOCKED-DEFERRED" for item in deferred)
     assert all(
@@ -107,6 +111,7 @@ def test_rollback_failure_suppresses_remaining_executable_inventory(tmp_path: Pa
     catalog = load_catalog()
     executed: list[str] = []
     plan = build_execution_plan(catalog, catalog["full_gates"], mode="qualification", head_sha=HEAD_SHA, run_id="failure")
+    ordered_gates = plan_execution_order(plan)
 
     def execute(repository: Path, gate: str, head: str, base: str, common: Path, **context: object) -> int:
         executed.append(gate)
@@ -135,9 +140,9 @@ def test_rollback_failure_suppresses_remaining_executable_inventory(tmp_path: Pa
     assert result["gate_results"][1]["result"] == "FAIL"
     expected_executed = [
         gate
-        for gate in catalog["full_gates"]
+        for gate in ordered_gates
         if gate not in BLOCKED_DEFERRED_GATES
-        and (gate in catalog["full_gates"][:2] or suppression_reason(plan, gate, catalog["full_gates"][1]) is None)
+        and (gate in ordered_gates[:2] or suppression_reason(plan, gate, catalog["full_gates"][1]) is None)
     ]
     assert executed == expected_executed
     assert result["first_cause_gate"] == catalog["full_gates"][1]
@@ -145,7 +150,7 @@ def test_rollback_failure_suppresses_remaining_executable_inventory(tmp_path: Pa
     assert result["execution_summary"]["resumed_gate_count"] == 0
     assert result["execution_summary"]["suppressed_gate_count"] == sum(
         gate not in BLOCKED_DEFERRED_GATES and suppression_reason(plan, gate, catalog["full_gates"][1]) is not None
-        for gate in catalog["full_gates"][2:]
+        for gate in ordered_gates[2:]
     )
     assert all(
         item["result"] == "BLOCKED"
@@ -160,6 +165,7 @@ def test_rollback_records_gate_exception_and_suppresses_remaining_inventory(tmp_
     catalog = load_catalog()
     executed: list[str] = []
     plan = build_execution_plan(catalog, catalog["full_gates"], mode="qualification", head_sha=HEAD_SHA, run_id="exception")
+    ordered_gates = plan_execution_order(plan)
 
     def execute(repository: Path, gate_id: str, head_sha: str, base_sha: str, git_common_dir: Path, **context: object) -> int:
         executed.append(gate_id)
@@ -187,9 +193,9 @@ def test_rollback_records_gate_exception_and_suppresses_remaining_inventory(tmp_
 
     assert executed == [
         gate
-        for gate in catalog["full_gates"]
+        for gate in ordered_gates
         if gate not in BLOCKED_DEFERRED_GATES
-        and (gate in catalog["full_gates"][:2] or suppression_reason(plan, gate, catalog["full_gates"][1]) is None)
+        and (gate in ordered_gates[:2] or suppression_reason(plan, gate, catalog["full_gates"][1]) is None)
     ]
     assert result["passed"] is False
     assert result["gate_results"][1]["error"] == "ValueError: modeled execution defect"
