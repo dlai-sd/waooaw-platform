@@ -10,11 +10,18 @@ import pytest
 import yaml
 
 from validation_control.evidence_controller import BLOCKED_DEFERRED_AMENDMENT, BLOCKED_DEFERRED_GATES
-from validation_control.orchestrator import build_execution_plan, plan_execution_order, suppression_reason
+from validation_control.orchestrator import (
+    NEGATIVE_CONTROL_FAMILIES,
+    PREQUALIFICATION_GROUPS,
+    build_execution_plan,
+    plan_execution_order,
+    suppression_reason,
+)
 from validation_control.wc104_rollback import (
     QualificationContext,
     execute_rollback,
     resolve_qualification_context,
+    rollback_catalog_digest,
     validate_contract_authority,
 )
 
@@ -52,6 +59,22 @@ def resources_ready(repository: Path, nodes: list[dict[str, object]], namespace:
     return {"result": "PASS"}
 
 
+def complete_qualification_handoff(catalog: dict[str, object]) -> dict[str, object]:
+    identity = {"head_sha": HEAD_SHA, "catalog_digest": rollback_catalog_digest(catalog)}
+    return {
+        "schema": "waooaw.qualification-handoff/v1",
+        **identity,
+        "negative_control_families": {
+            family: {"result": "PASS", **identity, "evidence_ref": f"tests/{family.lower()}"}
+            for family in NEGATIVE_CONTROL_FAMILIES
+        },
+        "strategic_groups": {
+            group: {"result": "PASS", **identity, "evidence_ref": f"validation/evidence/{group.lower()}.json"}
+            for group in PREQUALIFICATION_GROUPS
+        },
+    }
+
+
 def test_rollback_clean_builds_each_runner_once_then_executes_full_inventory(tmp_path: Path) -> None:
     catalog = load_catalog()
     events: list[tuple[str, str]] = []
@@ -84,6 +107,8 @@ def test_rollback_clean_builds_each_runner_once_then_executes_full_inventory(tmp
         base_sha=BASE_SHA,
         git_common_dir=tmp_path,
         qualification_context=qualification_context(),
+        qualification_handoff=complete_qualification_handoff(catalog),
+        enforce_qualification_handoff=True,
         execution_preflight=execution_ready,
         resource_preflight=resources_ready,
         runner_resolver=resolve,
@@ -98,6 +123,7 @@ def test_rollback_clean_builds_each_runner_once_then_executes_full_inventory(tmp
         ("gate", gate) for gate in ordered_gates if gate not in BLOCKED_DEFERRED_GATES
     ]
     assert result["passed"] is True
+    assert result["qualification_handoff"]["result"] == "PASS"
     assert [item["gate_id"] for item in result["gate_results"]] == ordered_gates
     deferred = [item for item in result["gate_results"] if item["gate_id"] in BLOCKED_DEFERRED_GATES]
     assert all(item["result"] == "BLOCKED" and item["disposition"] == "BLOCKED-DEFERRED" for item in deferred)
@@ -537,6 +563,34 @@ def test_rollback_plan_failure_publishes_complete_preflight_block(tmp_path: Path
     assert result["execution_summary"]["executed_gate_count"] == 0
     assert result["runner_results"] == {}
     assert result["service_results"] == {}
+    assert len(result["gate_results"]) == len(catalog["full_gates"])
+    assert json.loads(checkpoint.read_text(encoding="utf-8")) == result
+
+
+def test_rollback_missing_qualification_handoff_blocks_before_costly_work(tmp_path: Path) -> None:
+    catalog = load_catalog()
+    checkpoint = tmp_path / "rollback.json"
+
+    result = execute_rollback(
+        tmp_path,
+        catalog,
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        checkpoint_path=checkpoint,
+        enforce_qualification_handoff=True,
+        execution_preflight=lambda repository: pytest.fail("execution preflight must not run"),
+        resource_preflight=lambda repository, nodes, namespace: pytest.fail("resource preflight must not run"),
+        runner_resolver=lambda repository, runner: pytest.fail("runner must not resolve"),
+        service_resolver=lambda repository, node: pytest.fail("service must not resolve"),
+        gate_executor=lambda repository, gate, head, base, common, **context: pytest.fail("gate must not execute"),
+    )
+
+    assert result["run_state"] == "BLOCKED"
+    assert result["first_cause_gate"] == "preflight:qualification-handoff"
+    assert result["qualification_handoff"]["result"] == "BLOCKED"
+    assert result["execution_summary"]["executed_gate_count"] == 0
     assert len(result["gate_results"]) == len(catalog["full_gates"])
     assert json.loads(checkpoint.read_text(encoding="utf-8")) == result
 

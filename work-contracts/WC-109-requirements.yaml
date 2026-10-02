@@ -586,8 +586,13 @@ requirements:
     test_path_or_plan: Execute every Section 14.6 negative family through repository-defined Docker and workflow boundaries.
     completion_rule: Every family fails closed with direct boundary evidence and qualification remains BLOCKED until Groups 1 through 4 have compatible PASS evidence.
     evidence_refs:
-      - tests/validation_control/test_wc109_execution_outcomes.py
-      - validation/evidence/wc109-execution-outcomes.json
+      - scripts/validation_control/orchestrator.py
+      - scripts/validation_control/wc104_rollback.py
+      - tests/validation_control/test_catalog_contract.py
+      - tests/validation_control/test_wc104_rollback.py
+      - tests/validation_control/test_wc109_evidence_controller.py
+      - tests/validation_control/test_unified_execution_contract.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R047

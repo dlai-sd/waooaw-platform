@@ -32,6 +32,7 @@ from validation_control.orchestrator import (
     phase_transition_record,
     plan_execution_order,
     prerequisite_evidence_blockers,
+    qualification_handoff_outcome,
 )
 from validate_requirement_ledger import validate_changed_ledgers
 
@@ -202,6 +203,8 @@ def execute_rollback(
     resume_checkpoint: dict[str, Any] | None = None,
     repair_context: dict[str, Any] | None = None,
     invalidated_gates: tuple[str, ...] = (),
+    qualification_handoff: dict[str, Any] | None = None,
+    enforce_qualification_handoff: bool = False,
     context_resolver: Callable[[Path, str, str], QualificationContext] = resolve_qualification_context,
     execution_preflight: Callable[[Path], None] = orchestration_preflight,
     resource_preflight: Callable[[Path, list[dict[str, Any]], str], dict[str, Any]] = resource_capacity_preflight,
@@ -332,6 +335,19 @@ def execute_rollback(
         manifest["invalidated_gates"] = [gate_id for gate_id in plan_execution_order(plan) if gate_id in invalidated]
         for gate_id in invalidated:
             resumed_results.pop(gate_id, None)
+    if enforce_qualification_handoff:
+        handoff = qualification_handoff_outcome(
+            qualification_handoff,
+            head_sha=candidate_sha,
+            catalog_digest=manifest["catalog_digest"],
+        )
+        manifest["qualification_handoff"] = handoff
+        if handoff["result"] != "PASS":
+            return block_preflight(
+                "preflight:qualification-handoff",
+                str(manifest["required_gates"][0]),
+                ValueError(f"qualification handoff is blocked: {handoff['blockers'][0]}"),
+            )
     if resume_checkpoint is not None and resume_checkpoint.get("run_state") == "FAILED":
         prior_first_cause = resume_checkpoint.get("first_cause_gate")
         try:
@@ -574,6 +590,7 @@ def main() -> int:
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--repair-context", type=Path)
     parser.add_argument("--invalidate-gate", action="append", default=[])
+    parser.add_argument("--handoff-evidence", type=Path)
     arguments = parser.parse_args()
     repository = arguments.repository.resolve()
     catalog = yaml.safe_load((repository / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
@@ -591,6 +608,11 @@ def main() -> int:
         repair_context = json.loads(arguments.repair_context.read_text(encoding="utf-8"))
         if not isinstance(repair_context, dict):
             raise ValueError("repair context root must be a mapping")
+    qualification_handoff = None
+    if arguments.handoff_evidence is not None:
+        qualification_handoff = json.loads(arguments.handoff_evidence.read_text(encoding="utf-8"))
+        if not isinstance(qualification_handoff, dict):
+            raise ValueError("qualification handoff root must be a mapping")
     manifest = execute_rollback(
         repository,
         catalog,
@@ -601,6 +623,8 @@ def main() -> int:
         resume_checkpoint=resume_checkpoint,
         repair_context=repair_context,
         invalidated_gates=tuple(arguments.invalidate_gate),
+        qualification_handoff=qualification_handoff,
+        enforce_qualification_handoff=True,
     )
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
     temporary_output = arguments.output.with_suffix(arguments.output.suffix + ".tmp")

@@ -20,12 +20,15 @@ from validation_control.catalog_execution import (
 from validation_control.candidate_controller import catalog_candidate_inputs
 from validation_control.evidence_controller import BLOCKED_DEFERRED_AMENDMENT
 from validation_control.orchestrator import (
+    NEGATIVE_CONTROL_FAMILIES,
+    PREQUALIFICATION_GROUPS,
     build_execution_plan,
     failure_lane_disposition,
     phase_transition_record,
     plan_execution_order,
     plan_preflight_outcome,
     prerequisite_evidence_blockers,
+    qualification_handoff_outcome,
     suppression_reason,
 )
 
@@ -363,6 +366,75 @@ def test_failure_lane_dispositions_retain_only_reusable_work() -> None:
         failure_lane_disposition(plan, "independent", "failed", execution_state="TERMINAL", result_reusable=True)
         == "RETAIN_REUSABLE_RESULT"
     )
+
+
+def qualification_handoff_evidence() -> dict[str, object]:
+    identity = {"head_sha": "a" * 40, "catalog_digest": "sha256:" + "d" * 64}
+    return {
+        "schema": "waooaw.qualification-handoff/v1",
+        **identity,
+        "negative_control_families": {
+            family: {"result": "PASS", **identity, "evidence_ref": f"tests/{family.lower()}"}
+            for family in NEGATIVE_CONTROL_FAMILIES
+        },
+        "strategic_groups": {
+            group: {"result": "PASS", **identity, "evidence_ref": f"validation/evidence/{group.lower()}.json"}
+            for group in PREQUALIFICATION_GROUPS
+        },
+    }
+
+
+@pytest.mark.parametrize(
+    ("section", "name"),
+    (
+        *(("negative_control_families", family) for family in NEGATIVE_CONTROL_FAMILIES),
+        *(("strategic_groups", group) for group in PREQUALIFICATION_GROUPS),
+    ),
+)
+def test_qualification_handoff_blocks_every_missing_required_outcome(section: str, name: str) -> None:
+    evidence = qualification_handoff_evidence()
+    del evidence[section][name]
+
+    outcome = qualification_handoff_outcome(
+        evidence,
+        head_sha="a" * 40,
+        catalog_digest="sha256:" + "d" * 64,
+    )
+
+    assert outcome["result"] == "BLOCKED"
+    assert outcome["blockers"] == [f"{'family' if section == 'negative_control_families' else 'group'}:{name}"]
+    assert outcome["build_events"] == 0
+    assert outcome["execution_events"] == 0
+
+
+def test_qualification_handoff_rejects_absent_or_stale_evidence() -> None:
+    missing = qualification_handoff_outcome(
+        None,
+        head_sha="a" * 40,
+        catalog_digest="sha256:" + "d" * 64,
+    )
+    stale_evidence = qualification_handoff_evidence()
+    stale_evidence["head_sha"] = "b" * 40
+    stale = qualification_handoff_outcome(
+        stale_evidence,
+        head_sha="a" * 40,
+        catalog_digest="sha256:" + "d" * 64,
+    )
+
+    assert missing["result"] == "BLOCKED"
+    assert missing["blockers"][0] == "handoff:schema"
+    assert stale["blockers"] == ["handoff:identity"]
+
+
+def test_qualification_handoff_accepts_complete_compatible_evidence() -> None:
+    outcome = qualification_handoff_outcome(
+        qualification_handoff_evidence(),
+        head_sha="a" * 40,
+        catalog_digest="sha256:" + "d" * 64,
+    )
+
+    assert outcome["result"] == "PASS"
+    assert outcome["blockers"] == []
 
 
 def test_typescript_plan_uses_immutable_dependencies_outside_read_only_source() -> None:

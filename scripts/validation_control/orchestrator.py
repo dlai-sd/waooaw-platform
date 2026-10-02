@@ -49,6 +49,17 @@ PLAN_NODE_REQUIRED_FIELDS = {
     "expected_evidence",
     "invalidation_rule",
 }
+NEGATIVE_CONTROL_FAMILIES = (
+    "PREFLIGHT_ZERO_WORK",
+    "FAIL_FAST_DEPENDENCY_COST",
+    "INTERRUPTION_RECOVERY",
+    "UNCHANGED_FAILURE_BLOCK",
+    "FOCUSED_REPAIR_RESTITCH",
+    "STALE_EVIDENCE_BLOCK",
+    "RESOURCE_SAFE_RECOVERY",
+    "PHASE_HANDOFF_BLOCK",
+)
+PREQUALIFICATION_GROUPS = ("GROUP_1", "GROUP_2", "GROUP_3", "GROUP_4")
 
 
 def safe_path_segment(value: str) -> str:
@@ -179,6 +190,57 @@ def phase_transition_record(
         "blockers": blockers,
         "head_sha": plan.get("head_sha"),
         "catalog_digest": catalog_digest,
+    }
+
+
+def qualification_handoff_outcome(
+    evidence: dict[str, Any] | None,
+    *,
+    head_sha: str,
+    catalog_digest: str,
+) -> dict[str, Any]:
+    blockers: list[str] = []
+    if not isinstance(evidence, dict) or evidence.get("schema") != "waooaw.qualification-handoff/v1":
+        blockers.append("handoff:schema")
+        evidence = {}
+    if evidence.get("head_sha") != head_sha or evidence.get("catalog_digest") != catalog_digest:
+        blockers.append("handoff:identity")
+    families = evidence.get("negative_control_families")
+    if not isinstance(families, dict):
+        families = {}
+    groups = evidence.get("strategic_groups")
+    if not isinstance(groups, dict):
+        groups = {}
+    for family in NEGATIVE_CONTROL_FAMILIES:
+        item = families.get(family)
+        if (
+            not isinstance(item, dict)
+            or item.get("result") != "PASS"
+            or item.get("head_sha") != head_sha
+            or item.get("catalog_digest") != catalog_digest
+            or not isinstance(item.get("evidence_ref"), str)
+            or not item.get("evidence_ref")
+        ):
+            blockers.append(f"family:{family}")
+    for group in PREQUALIFICATION_GROUPS:
+        item = groups.get(group)
+        if (
+            not isinstance(item, dict)
+            or item.get("result") != "PASS"
+            or item.get("head_sha") != head_sha
+            or item.get("catalog_digest") != catalog_digest
+            or not isinstance(item.get("evidence_ref"), str)
+            or not item.get("evidence_ref")
+        ):
+            blockers.append(f"group:{group}")
+    return {
+        "schema": "waooaw.qualification-handoff-result/v1",
+        "result": "PASS" if not blockers else "BLOCKED",
+        "head_sha": head_sha,
+        "catalog_digest": catalog_digest,
+        "blockers": blockers,
+        "build_events": 0,
+        "execution_events": 0,
     }
 
 
