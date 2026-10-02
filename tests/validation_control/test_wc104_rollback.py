@@ -8,6 +8,7 @@ import pytest
 import yaml
 
 from validation_control.evidence_controller import BLOCKED_DEFERRED_AMENDMENT, BLOCKED_DEFERRED_GATES
+from validation_control.orchestrator import build_execution_plan, suppression_reason
 from validation_control.wc104_rollback import QualificationContext, execute_rollback
 
 
@@ -105,6 +106,7 @@ def test_rollback_clean_builds_each_runner_once_then_executes_full_inventory(tmp
 def test_rollback_failure_suppresses_remaining_executable_inventory(tmp_path: Path) -> None:
     catalog = load_catalog()
     executed: list[str] = []
+    plan = build_execution_plan(catalog, catalog["full_gates"], mode="qualification", head_sha=HEAD_SHA, run_id="failure")
 
     def execute(repository: Path, gate: str, head: str, base: str, common: Path, **context: object) -> int:
         executed.append(gate)
@@ -131,21 +133,33 @@ def test_rollback_failure_suppresses_remaining_executable_inventory(tmp_path: Pa
     assert result["passed"] is False
     assert len(result["gate_results"]) == len(catalog["full_gates"])
     assert result["gate_results"][1]["result"] == "FAIL"
-    assert executed == catalog["full_gates"][:2]
+    expected_executed = [
+        gate
+        for gate in catalog["full_gates"]
+        if gate not in BLOCKED_DEFERRED_GATES
+        and (gate in catalog["full_gates"][:2] or suppression_reason(plan, gate, catalog["full_gates"][1]) is None)
+    ]
+    assert executed == expected_executed
     assert result["first_cause_gate"] == catalog["full_gates"][1]
-    assert result["execution_summary"]["executed_gate_count"] == 2
+    assert result["execution_summary"]["executed_gate_count"] == len(expected_executed)
     assert result["execution_summary"]["resumed_gate_count"] == 0
-    assert result["execution_summary"]["suppressed_gate_count"] == len(catalog["full_gates"]) - 5
+    assert result["execution_summary"]["suppressed_gate_count"] == sum(
+        gate not in BLOCKED_DEFERRED_GATES and suppression_reason(plan, gate, catalog["full_gates"][1]) is not None
+        for gate in catalog["full_gates"][2:]
+    )
     assert all(
-        item["result"] == "BLOCKED" and item["first_cause_gate"] == catalog["full_gates"][1]
+        item["result"] == "BLOCKED"
+        and item["first_cause_gate"] == catalog["full_gates"][1]
+        and item["suppression_reason"] in {"DEPENDENT_ON_FIRST_CAUSE", "HIGHER_COST_THAN_FIRST_CAUSE"}
         for item in result["gate_results"][2:]
-        if item["gate_id"] not in BLOCKED_DEFERRED_GATES
+        if item.get("disposition") == "SUPPRESSED_AFTER_FAILURE"
     )
 
 
 def test_rollback_records_gate_exception_and_suppresses_remaining_inventory(tmp_path: Path) -> None:
     catalog = load_catalog()
     executed: list[str] = []
+    plan = build_execution_plan(catalog, catalog["full_gates"], mode="qualification", head_sha=HEAD_SHA, run_id="exception")
 
     def execute(repository: Path, gate_id: str, head_sha: str, base_sha: str, git_common_dir: Path, **context: object) -> int:
         executed.append(gate_id)
@@ -171,7 +185,12 @@ def test_rollback_records_gate_exception_and_suppresses_remaining_inventory(tmp_
         gate_executor=execute,
     )
 
-    assert executed == catalog["full_gates"][:2]
+    assert executed == [
+        gate
+        for gate in catalog["full_gates"]
+        if gate not in BLOCKED_DEFERRED_GATES
+        and (gate in catalog["full_gates"][:2] or suppression_reason(plan, gate, catalog["full_gates"][1]) is None)
+    ]
     assert result["passed"] is False
     assert result["gate_results"][1]["error"] == "ValueError: modeled execution defect"
     assert result["first_cause_gate"] == catalog["full_gates"][1]
@@ -423,7 +442,9 @@ def test_rollback_resume_reuses_only_same_identity_pass_results(tmp_path: Path) 
     assert "build" not in resumed_calls
     assert resumed_calls[0] == "secrets"
     assert resumed["passed"] is True
-    assert resumed["execution_summary"]["resumed_gate_count"] == 1
+    assert resumed["execution_summary"]["resumed_gate_count"] == sum(
+        result["result"] == "PASS" for result in failed["gate_results"]
+    )
     assert next(item for item in resumed["gate_results"] if item["gate_id"] == "build")["evidence_disposition"] == (
         "same-run-checkpoint"
     )

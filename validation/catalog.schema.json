@@ -103,12 +103,13 @@
   "$defs": {
     "gate": {
       "type": "object",
-      "required": ["gate_id", "runner_id", "command_id", "evidence_class", "resources", "retry_policy", "artifacts", "global_trigger"],
+      "required": ["gate_id", "runner_id", "command_id", "evidence_class", "cost_class", "resources", "retry_policy", "artifacts", "global_trigger"],
       "properties": {
         "gate_id": {"type": "string"},
         "runner_id": {"type": "string"},
         "command_id": {"type": "string"},
         "evidence_class": {"enum": ["static", "unit", "coverage", "integration", "contract", "browser", "security", "CCT", "release"]},
+        "cost_class": {"enum": ["STATIC", "FOCUSED", "INTEGRATION", "MUTATION", "BROWSER", "FUZZ", "HOSTED", "QUALIFICATION"]},
         "resources": {
           "type": "object",
           "required": ["cpus", "memory_mb", "disk_mb", "timeout_seconds", "docker_socket", "concurrency_class"],

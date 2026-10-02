@@ -14,6 +14,17 @@ import yaml
 
 Mode = Literal["focused", "qualification"]
 UNSAFE_PATH_SEGMENT = re.compile(r"[^A-Za-z0-9_.-]+")
+COST_ORDER = ("STATIC", "FOCUSED", "INTEGRATION", "MUTATION", "BROWSER", "FUZZ", "HOSTED", "QUALIFICATION")
+PHASE_BY_COST = {
+    "STATIC": "A_DESIGN",
+    "FOCUSED": "B_COMPONENT",
+    "INTEGRATION": "C_DEPENDENCY_INTEGRATION",
+    "MUTATION": "D_SYSTEM_STITCHING",
+    "BROWSER": "D_SYSTEM_STITCHING",
+    "FUZZ": "D_SYSTEM_STITCHING",
+    "HOSTED": "D_SYSTEM_STITCHING",
+    "QUALIFICATION": "E_QUALIFICATION_HANDOFF",
+}
 
 
 def safe_path_segment(value: str) -> str:
@@ -23,6 +34,33 @@ def safe_path_segment(value: str) -> str:
     return segment
 
 
+def suppression_reason(plan: dict[str, Any], gate_id: str, first_cause_gate: str) -> str | None:
+    nodes = plan.get("nodes")
+    if not isinstance(nodes, list):
+        raise ValueError("execution plan nodes must be a list")
+    by_gate = {node.get("gate_id"): node for node in nodes if isinstance(node, dict)}
+    node = by_gate.get(gate_id)
+    first_cause = by_gate.get(first_cause_gate)
+    if not isinstance(node, dict) or not isinstance(first_cause, dict):
+        raise ValueError("suppression decision requires known plan gates")
+    unresolved = list(node.get("direct_prerequisites", []))
+    visited: set[str] = set()
+    while unresolved:
+        prerequisite = unresolved.pop()
+        if prerequisite == first_cause_gate:
+            return "DEPENDENT_ON_FIRST_CAUSE"
+        if prerequisite in visited:
+            continue
+        visited.add(prerequisite)
+        dependency = by_gate.get(prerequisite)
+        if not isinstance(dependency, dict):
+            raise ValueError(f"execution plan has unknown prerequisite: {prerequisite}")
+        unresolved.extend(dependency.get("direct_prerequisites", []))
+    if COST_ORDER.index(node["cost_class"]) > COST_ORDER.index(first_cause["cost_class"]):
+        return "HIGHER_COST_THAN_FIRST_CAUSE"
+    return None
+
+
 def build_execution_plan(
     catalog: dict[str, Any], gate_ids: list[str], *, mode: Mode, head_sha: str, run_id: str
 ) -> dict[str, Any]:
@@ -30,6 +68,8 @@ def build_execution_plan(
         raise ValueError("head_sha must be a full 40-character commit")
     if not run_id:
         raise ValueError("run_id is required for execution isolation")
+    if len(gate_ids) != len(set(gate_ids)):
+        raise ValueError("execution plan gate IDs must be unique")
     gates = catalog.get("gates")
     commands = catalog.get("commands")
     runners = catalog.get("runners")
@@ -61,9 +101,20 @@ def build_execution_plan(
             for component_id, component in components.items()
             if isinstance(component, dict) and gate_id in component.get("gates", [])
         )
+        owner = component_owners[0] if len(component_owners) == 1 else "validation-control"
+        cost_class = gate.get("cost_class")
+        if cost_class not in COST_ORDER:
+            raise ValueError(f"gate {gate_id} has invalid cost class: {cost_class}")
+        owner_paths = components.get(owner, {}).get("paths", []) if owner != "validation-control" else []
+        if not isinstance(owner_paths, list) or not all(isinstance(path, str) and path for path in owner_paths):
+            raise ValueError(f"gate {gate_id} owner has invalid path contract: {owner}")
+        output_directory = f"test-results/wc109/runs/{execution_namespace}/{safe_path_segment(gate_id)}"
         nodes.append(
             {
                 "gate_id": gate_id,
+                "owner": owner,
+                "cost_class": cost_class,
+                "phase": PHASE_BY_COST[cost_class],
                 "runner_id": runner_id,
                 "compose_service": runner["compose_service"],
                 "profile": runner["profile"],
@@ -81,12 +132,81 @@ def build_execution_plan(
                 "product_image_builds": gate.get("product_image_builds", []),
                 "runner_manifest": f"test-results/wc104/runner-manifests/{runner_id}.json",
                 "compose_project": execution_namespace,
-                "output_directory": f"test-results/wc109/runs/{execution_namespace}/{safe_path_segment(gate_id)}",
+                "output_directory": output_directory,
+                "inputs": {
+                    "head_sha": head_sha,
+                    "catalog_version": catalog.get("version"),
+                    "command_id": command_id,
+                    "runner_id": runner_id,
+                    "environment": gate.get("environment", []),
+                    "required_services": gate.get("required_services", []),
+                },
+                "acceptance_check": command["shell"],
+                "expected_evidence": {
+                    "directory": output_directory,
+                    "artifacts": gate["artifacts"],
+                },
+                "invalidation_rule": {
+                    "changed_paths": sorted(
+                        {
+                            "validation/catalog.schema.json",
+                            "validation/engineering-validation.yaml",
+                            "scripts/validation_control/orchestrator.py",
+                            *owner_paths,
+                        }
+                    ),
+                    "identity_fields": ["head_sha", "catalog_version", "command_id", "runner_id", "environment"],
+                },
+                "direct_prerequisites": [],
+                "downstream_dependents": [],
             }
         )
 
+    component_prerequisites: dict[str, set[str]] = {component_id: set() for component_id in components}
+    for component_id, component in components.items():
+        if not isinstance(component, dict):
+            raise ValueError(f"component definition must be a mapping: {component_id}")
+        reverse_dependencies = component.get("reverse_dependencies")
+        if not isinstance(reverse_dependencies, list) or not all(
+            isinstance(dependent, str) and dependent in components for dependent in reverse_dependencies
+        ):
+            raise ValueError(f"component has invalid reverse dependencies: {component_id}")
+        for dependent in reverse_dependencies:
+            component_prerequisites[dependent].add(component_id)
+
+    gate_order = {gate_id: index for index, gate_id in enumerate(gate_ids)}
+    for node in nodes:
+        node_rank = COST_ORDER.index(node["cost_class"])
+        prerequisites = {
+            candidate["gate_id"]
+            for candidate in nodes
+            if candidate["gate_id"] != node["gate_id"]
+            and (
+                (candidate["owner"] == node["owner"] and COST_ORDER.index(candidate["cost_class"]) < node_rank)
+                or (
+                    node["owner"] in component_prerequisites
+                    and candidate["owner"] in component_prerequisites[node["owner"]]
+                    and COST_ORDER.index(candidate["cost_class"]) <= node_rank
+                )
+            )
+        }
+        node["direct_prerequisites"] = sorted(prerequisites, key=gate_order.__getitem__)
+    by_gate = {node["gate_id"]: node for node in nodes}
+    for node in nodes:
+        for prerequisite in node["direct_prerequisites"]:
+            by_gate[prerequisite]["downstream_dependents"].append(node["gate_id"])
+    unresolved = {node["gate_id"]: set(node["direct_prerequisites"]) for node in nodes}
+    resolved: set[str] = set()
+    while ready := [
+        gate_id for gate_id, prerequisites in unresolved.items() if gate_id not in resolved and prerequisites <= resolved
+    ]:
+        resolved.update(ready)
+    if len(resolved) != len(nodes):
+        raise ValueError("execution plan dependency graph contains a cycle")
+
     return {
         "schema": "waooaw.validation-execution-plan/v1",
+        "machine_checkable": True,
         "catalog_version": catalog.get("version"),
         "mode": mode,
         "authoritative": False,

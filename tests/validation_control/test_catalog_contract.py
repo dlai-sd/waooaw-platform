@@ -17,7 +17,7 @@ from validation_control.catalog_execution import (
     stage_input_directory,
 )
 from validation_control.candidate_controller import catalog_candidate_inputs
-from validation_control.orchestrator import build_execution_plan
+from validation_control.orchestrator import build_execution_plan, suppression_reason
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -64,6 +64,103 @@ def test_focused_and_qualification_modes_resolve_identical_commands() -> None:
     assert focused["nodes"][0]["runner_manifest"].endswith("/typescript.json")
     assert focused["nodes"][0]["profile"] == "test-ts"
     assert focused["nodes"][0]["components"] == ["web"]
+
+
+def test_plan_declares_machine_checkable_component_cost_and_evidence_graph() -> None:
+    catalog = load_catalog()
+    plan = build_execution_plan(
+        catalog,
+        ["build:web", "test-web", "e2e:accessibility"],
+        mode="focused",
+        head_sha="a" * 40,
+        run_id="graph",
+    )
+    by_gate = {node["gate_id"]: node for node in plan["nodes"]}
+
+    assert plan["machine_checkable"] is True
+    assert by_gate["build:web"]["owner"] == "web"
+    assert by_gate["build:web"]["cost_class"] == "STATIC"
+    assert by_gate["build:web"]["phase"] == "A_DESIGN"
+    assert by_gate["build:web"]["direct_prerequisites"] == []
+    assert by_gate["build:web"]["downstream_dependents"] == ["test-web"]
+    assert by_gate["test-web"]["direct_prerequisites"] == ["build:web"]
+    assert by_gate["test-web"]["phase"] == "B_COMPONENT"
+    assert "web/**" in by_gate["test-web"]["invalidation_rule"]["changed_paths"]
+    assert by_gate["test-web"]["acceptance_check"] == catalog["commands"]["test-web"]["shell"]
+    assert by_gate["test-web"]["expected_evidence"]["artifacts"] == catalog["gates"]["test-web"]["artifacts"]
+    assert by_gate["e2e:accessibility"]["owner"] == "validation-control"
+    assert by_gate["e2e:accessibility"]["cost_class"] == "BROWSER"
+
+
+def test_plan_uses_component_reverse_dependencies_as_direct_prerequisites() -> None:
+    plan = build_execution_plan(
+        load_catalog(),
+        ["build:constitutional-engine", "build:business-platform"],
+        mode="focused",
+        head_sha="a" * 40,
+        run_id="component-dependency",
+    )
+
+    assert plan["nodes"][1]["direct_prerequisites"] == ["build:constitutional-engine"]
+    assert plan["nodes"][0]["downstream_dependents"] == ["build:business-platform"]
+
+
+def test_full_plan_graph_is_acyclic_and_every_node_has_complete_contract() -> None:
+    catalog = load_catalog()
+    plan = build_execution_plan(
+        catalog,
+        catalog["full_gates"],
+        mode="qualification",
+        head_sha="a" * 40,
+        run_id="full-graph",
+    )
+    resolved: set[str] = set()
+
+    while ready := [
+        node for node in plan["nodes"] if node["gate_id"] not in resolved and set(node["direct_prerequisites"]) <= resolved
+    ]:
+        resolved.update(node["gate_id"] for node in ready)
+
+    assert resolved == set(catalog["full_gates"])
+    assert all(node["inputs"] and node["acceptance_check"] and node["expected_evidence"] for node in plan["nodes"])
+    phase_order = {
+        "A_DESIGN": 0,
+        "B_COMPONENT": 1,
+        "C_DEPENDENCY_INTEGRATION": 2,
+        "D_SYSTEM_STITCHING": 3,
+        "E_QUALIFICATION_HANDOFF": 4,
+    }
+    by_gate = {node["gate_id"]: node for node in plan["nodes"]}
+    assert all(
+        phase_order[by_gate[prerequisite]["phase"]] <= phase_order[node["phase"]]
+        for node in plan["nodes"]
+        for prerequisite in node["direct_prerequisites"]
+    )
+
+
+def test_plan_rejects_duplicate_gate_chunks() -> None:
+    with pytest.raises(ValueError, match="must be unique"):
+        build_execution_plan(
+            load_catalog(),
+            ["test-web", "test-web"],
+            mode="focused",
+            head_sha="a" * 40,
+            run_id="duplicate",
+        )
+
+
+def test_plan_classifies_dependent_higher_cost_and_independent_suppression() -> None:
+    plan = build_execution_plan(
+        load_catalog(),
+        ["build:web", "test-web", "e2e:accessibility", "build:constitutional-engine"],
+        mode="focused",
+        head_sha="a" * 40,
+        run_id="suppression",
+    )
+
+    assert suppression_reason(plan, "test-web", "build:web") == "DEPENDENT_ON_FIRST_CAUSE"
+    assert suppression_reason(plan, "e2e:accessibility", "build:web") == "HIGHER_COST_THAN_FIRST_CAUSE"
+    assert suppression_reason(plan, "build:constitutional-engine", "build:web") is None
 
 
 def test_typescript_plan_uses_immutable_dependencies_outside_read_only_source() -> None:

@@ -26,7 +26,7 @@ from validation_control.evidence_controller import BLOCKED_DEFERRED_AMENDMENT, B
 from validation_control.execution_contract import orchestration_preflight, resource_capacity_preflight
 from validation_control.qualification import build_wc104_rollback_manifest, render_manifest
 from validation_control.local_catalog_gate import execute_gate, required_service_identities, resolve_runner
-from validation_control.orchestrator import build_execution_plan
+from validation_control.orchestrator import build_execution_plan, suppression_reason
 
 
 @dataclass(frozen=True)
@@ -184,6 +184,7 @@ def execute_rollback(
     service_results: dict[str, Any] = {}
     gate_results: list[dict[str, Any]] = []
     first_cause_gate: str | None = None
+    stop_all_after_first_cause = False
     resumed_results = (
         resume_pass_results(
             resume_checkpoint,
@@ -326,13 +327,21 @@ def execute_rollback(
                     )
                     checkpoint()
                     continue
-                if first_cause_gate is not None:
+                suppression = (
+                    "OPERATOR_CANCELLED"
+                    if first_cause_gate is not None and stop_all_after_first_cause
+                    else suppression_reason(plan, gate_id, first_cause_gate)
+                    if first_cause_gate is not None
+                    else None
+                )
+                if suppression is not None:
                     gate_results.append(
                         {
                             "gate_id": gate_id,
                             "result": "BLOCKED",
                             "disposition": "SUPPRESSED_AFTER_FAILURE",
                             "first_cause_gate": first_cause_gate,
+                            "suppression_reason": suppression,
                             "duration_seconds": 0.0,
                         }
                     )
@@ -374,7 +383,10 @@ def execute_rollback(
                     result["disposition"] = disposition
                 gate_results.append(result)
                 if result["result"] in {"FAIL", "BLOCKED"}:
-                    first_cause_gate = gate_id
+                    if first_cause_gate is None:
+                        first_cause_gate = gate_id
+                    if disposition == "OPERATOR_CANCELLED":
+                        stop_all_after_first_cause = True
                 checkpoint()
     finally:
         for name, value in previous.items():
