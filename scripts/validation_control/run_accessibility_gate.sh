@@ -14,7 +14,7 @@ cd "$web_copy"
 PLAYWRIGHT_HTML_OPEN=never \
 PLAYWRIGHT_HTML_OUTPUT_DIR="$report_directory" \
 PLAYWRIGHT_JUNIT_OUTPUT_FILE="$workspace/test-results/accessibility.xml" \
-playwright test tests/e2e/f1-acceptance.spec.ts \
+pnpm exec playwright test tests/e2e/f1-acceptance.spec.ts \
     --grep "UX-RESP-01|CCT-UX-A11Y-01|active relationship Stop" \
     --project chromium-expanded \
     --project chromium-compact-360 \

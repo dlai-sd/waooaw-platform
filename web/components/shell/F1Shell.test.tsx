@@ -1,6 +1,10 @@
 // Implements: architecture/reference/ux/hybrid-ui-acceptance-contract.md §F1 Acceptance Matrix
 // Constitutional basis: C-001 (Human Override), C-042 (Vocabulary Mandate), C-059 (Implementation Traceability)
 
+import { AppleSignInCommand } from '@/components/auth/AppleSignInCommand';
+import { SignInCommand } from '@/components/auth/SignInCommand';
+import { StateView } from '@/components/system/StateView';
+import { messages } from '@/lib/i18n';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { signIn } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
@@ -8,10 +12,6 @@ import { AppShell } from './AppShell';
 import { ExperienceControls } from './ExperienceControls';
 import { OfflineNotice } from './OfflineNotice';
 import { ProtectedAppShell } from './ProtectedAppShell';
-import { SignInCommand } from '@/components/auth/SignInCommand';
-import { AppleSignInCommand } from '@/components/auth/AppleSignInCommand';
-import { StateView } from '@/components/system/StateView';
-import { messages } from '@/lib/i18n';
 
 jest.mock('next-auth/react', () => ({ signIn: jest.fn() }));
 jest.mock('next/navigation', () => ({ usePathname: jest.fn() }));
@@ -45,6 +45,9 @@ describe('F1 shell primitives', () => {
         <p>Public content</p>
       </AppShell>
     );
+    const skipLink = screen.getByRole('link', { name: messages.en.skipToContent });
+    const announcement = screen.getByRole('region', { name: 'Announcement' });
+    expect(skipLink.compareDocumentPosition(announcement) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByRole('navigation', { name: messages.en.publicNavigation })).toBeVisible();
     expect(screen.getByRole('link', { name: messages.en.register })).toHaveAttribute('href', '/register');
     expect(screen.queryByRole('button', { name: /Emergency Stop/i })).not.toBeInTheDocument();

@@ -623,6 +623,13 @@ def test_python_runner_database_url_matches_postgres_defaults() -> None:
     ]
 
 
+def test_accessibility_gate_uses_project_playwright_cli() -> None:
+    launcher = (ROOT / "scripts/validation_control/run_accessibility_gate.sh").read_text(encoding="utf-8")
+
+    assert "pnpm exec playwright test" in launcher
+    assert "\nplaywright test" not in launcher
+
+
 def test_multi_tenant_gate_runs_exact_http_and_postgres_rls_suites() -> None:
     catalog = load_catalog()
     command = (ROOT / "scripts/validation_control/run_multi_tenant_integration_gate.sh").read_text(encoding="utf-8")
