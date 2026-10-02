@@ -6,6 +6,8 @@ import hashlib
 import json
 import os
 import re
+import shutil
+import subprocess
 from pathlib import Path
 from threading import get_ident
 from typing import Any
@@ -14,6 +16,7 @@ from validation_control.identity import MANIFEST_SCHEMAS, digest_identity
 
 
 SAFE_SEGMENT = re.compile(r"[^A-Za-z0-9_.-]+")
+MINIMUM_FREE_RATIO = 0.05
 
 
 class UnchangedExecutionFailureError(ValueError):
@@ -72,6 +75,98 @@ def orchestration_preflight(
     finally:
         temporary.unlink(missing_ok=True)
         probe.unlink(missing_ok=True)
+
+
+def disposable_cleanup_commands(projects: list[dict[str, Any]], docker: str) -> list[list[str]]:
+    commands: list[list[str]] = []
+    for project in projects:
+        name = project.get("Name")
+        status = str(project.get("Status", "")).lower()
+        if isinstance(name, str) and name.startswith("wc109-") and not status.startswith("running"):
+            commands.append([docker, "compose", "--project-name", name, "down", "--volumes", "--remove-orphans"])
+    commands.extend(
+        (
+            [docker, "builder", "prune", "--force", "--filter", "until=24h"],
+            [docker, "image", "prune", "--force"],
+        )
+    )
+    return commands
+
+
+def cleanup_disposable_validation_state(repository: Path) -> list[str]:
+    docker = shutil.which("docker")
+    if docker is None:
+        raise ValueError("resource preflight: Docker executable is unavailable for bounded cleanup")
+    listed = subprocess.run(  # noqa: S603
+        [docker, "compose", "ls", "--format", "json"],
+        cwd=repository,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if listed.returncode != 0:
+        raise ValueError("resource preflight: disposable Compose inventory is unavailable")
+    try:
+        projects = json.loads(listed.stdout or "[]")
+    except json.JSONDecodeError as error:
+        raise ValueError("resource preflight: disposable Compose inventory is malformed") from error
+    if not isinstance(projects, list) or not all(isinstance(project, dict) for project in projects):
+        raise ValueError("resource preflight: disposable Compose inventory must be a list")
+    actions: list[str] = []
+    for command in disposable_cleanup_commands(projects, docker):
+        completed = subprocess.run(  # noqa: S603
+            command,
+            cwd=repository,
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        action = " ".join(command[1:])
+        actions.append(f"{action}:{completed.returncode}")
+    return actions
+
+
+def resource_capacity_preflight(
+    repository: Path,
+    nodes: list[dict[str, Any]],
+    execution_namespace: str,
+    *,
+    disk_usage: Any = shutil.disk_usage,
+    cleanup: Any = cleanup_disposable_validation_state,
+) -> dict[str, Any]:
+    disk_requirements = [
+        node.get("resources", {}).get("disk_mb")
+        for node in nodes
+        if isinstance(node, dict) and isinstance(node.get("resources"), dict)
+    ]
+    if len(disk_requirements) != len(nodes) or any(
+        not isinstance(required, int) or isinstance(required, bool) or required <= 0 for required in disk_requirements
+    ):
+        raise ValueError("resource preflight: every plan node must declare a positive disk_mb bound")
+    required_bytes = max(disk_requirements, default=0) * 1024 * 1024
+    before = disk_usage(repository)
+    before_ratio = before.free / before.total if before.total else 0.0
+    cleanup_actions: list[str] = []
+    if before_ratio < MINIMUM_FREE_RATIO:
+        cleanup_actions = cleanup(repository)
+    after = disk_usage(repository)
+    after_ratio = after.free / after.total if after.total else 0.0
+    passed = after_ratio >= MINIMUM_FREE_RATIO and after.free >= required_bytes
+    record = {
+        "schema": "waooaw.resource-capacity-preflight/v1",
+        "execution_namespace": execution_namespace,
+        "minimum_free_ratio": MINIMUM_FREE_RATIO,
+        "required_disk_bytes": required_bytes,
+        "before": {"free_bytes": before.free, "total_bytes": before.total, "free_ratio": before_ratio},
+        "cleanup_actions": cleanup_actions,
+        "after": {"free_bytes": after.free, "total_bytes": after.total, "free_ratio": after_ratio},
+        "result": "PASS" if passed else "BLOCKED",
+    }
+    evidence = repository / "test-results/wc109/runs" / safe_segment(execution_namespace) / "resource-preflight.json"
+    _atomic_json(evidence, record)
+    if not passed:
+        raise ValueError("resource preflight: workspace capacity remains below the declared safe bound")
+    return record
 
 
 def static_preflight(manifests: list[dict[str, Any]], execution: dict[str, Any]) -> dict[str, Any]:

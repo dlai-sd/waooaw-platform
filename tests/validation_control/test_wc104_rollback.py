@@ -37,6 +37,13 @@ def execution_ready(repository: Path) -> None:
     assert repository.is_dir()
 
 
+def resources_ready(repository: Path, nodes: list[dict[str, object]], namespace: str) -> dict[str, object]:
+    assert repository.is_dir()
+    assert nodes
+    assert namespace
+    return {"result": "PASS"}
+
+
 def test_rollback_clean_builds_each_runner_once_then_executes_full_inventory(tmp_path: Path) -> None:
     catalog = load_catalog()
     events: list[tuple[str, str]] = []
@@ -70,6 +77,7 @@ def test_rollback_clean_builds_each_runner_once_then_executes_full_inventory(tmp
         git_common_dir=tmp_path,
         qualification_context=qualification_context(),
         execution_preflight=execution_ready,
+        resource_preflight=resources_ready,
         runner_resolver=resolve,
         service_resolver=resolve_services,
         gate_executor=execute,
@@ -110,6 +118,7 @@ def test_rollback_failure_suppresses_remaining_executable_inventory(tmp_path: Pa
         git_common_dir=tmp_path,
         qualification_context=qualification_context(),
         execution_preflight=execution_ready,
+        resource_preflight=resources_ready,
         runner_resolver=lambda repository, runner: {
             "build_count": 1,
             "trust_source": "local-identity-build",
@@ -152,6 +161,7 @@ def test_rollback_records_gate_exception_and_suppresses_remaining_inventory(tmp_
         git_common_dir=tmp_path,
         qualification_context=qualification_context(),
         execution_preflight=execution_ready,
+        resource_preflight=resources_ready,
         runner_resolver=lambda repository, runner: {
             "build_count": 1,
             "trust_source": "local-identity-build",
@@ -180,6 +190,7 @@ def test_rollback_atomically_checkpoints_each_terminal_gate(tmp_path: Path) -> N
         qualification_context=qualification_context(),
         checkpoint_path=checkpoint,
         execution_preflight=execution_ready,
+        resource_preflight=resources_ready,
         runner_resolver=lambda repository, runner: {
             "build_count": 1,
             "trust_source": "local-identity-build",
@@ -216,6 +227,7 @@ def test_rollback_records_operator_cancellation_and_suppresses_later_work(tmp_pa
         qualification_context=qualification_context(),
         checkpoint_path=checkpoint,
         execution_preflight=execution_ready,
+        resource_preflight=resources_ready,
         runner_resolver=lambda repository, runner: {
             "build_count": 1,
             "trust_source": "local-identity-build",
@@ -249,6 +261,7 @@ def test_rollback_service_supply_failure_blocks_before_runner_build(tmp_path: Pa
         qualification_context=qualification_context(),
         checkpoint_path=checkpoint,
         execution_preflight=execution_ready,
+        resource_preflight=resources_ready,
         runner_resolver=lambda repository, runner: runner_calls.append(runner) or {},
         service_resolver=fail_postgres,
         gate_executor=lambda repository, gate, head, base, common, **context: gate_calls.append(gate) or 0,
@@ -334,6 +347,35 @@ def test_rollback_execution_preflight_failure_blocks_before_supply(tmp_path: Pat
     assert json.loads(checkpoint.read_text(encoding="utf-8")) == result
 
 
+def test_rollback_resource_failure_blocks_before_supply(tmp_path: Path) -> None:
+    catalog = load_catalog()
+    checkpoint = tmp_path / "rollback.json"
+
+    result = execute_rollback(
+        tmp_path,
+        catalog,
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        checkpoint_path=checkpoint,
+        execution_preflight=execution_ready,
+        resource_preflight=lambda repository, nodes, namespace: (_ for _ in ()).throw(
+            ValueError("resource preflight: workspace capacity remains below the declared safe bound")
+        ),
+        runner_resolver=lambda repository, runner: pytest.fail("runner must not resolve"),
+        service_resolver=lambda repository, node: pytest.fail("service must not resolve"),
+        gate_executor=lambda repository, gate, head, base, common, **context: pytest.fail("gate must not execute"),
+    )
+
+    assert result["run_state"] == "BLOCKED"
+    assert result["first_cause_gate"] == "preflight:resources"
+    assert result["runner_results"] == {}
+    assert result["service_results"] == {}
+    assert result["execution_summary"]["executed_gate_count"] == 0
+    assert json.loads(checkpoint.read_text(encoding="utf-8")) == result
+
+
 def test_rollback_resume_reuses_only_same_identity_pass_results(tmp_path: Path) -> None:
     catalog = load_catalog()
     checkpoint = tmp_path / "rollback.json"
@@ -347,6 +389,7 @@ def test_rollback_resume_reuses_only_same_identity_pass_results(tmp_path: Path) 
         qualification_context=qualification_context(),
         checkpoint_path=checkpoint,
         execution_preflight=execution_ready,
+        resource_preflight=resources_ready,
         runner_resolver=lambda repository, runner: {
             "build_count": 1,
             "trust_source": "local-identity-build",
@@ -367,6 +410,7 @@ def test_rollback_resume_reuses_only_same_identity_pass_results(tmp_path: Path) 
         checkpoint_path=checkpoint,
         resume_checkpoint=failed,
         execution_preflight=execution_ready,
+        resource_preflight=resources_ready,
         runner_resolver=lambda repository, runner: {
             "build_count": 1,
             "trust_source": "local-identity-build",
@@ -395,6 +439,7 @@ def test_rollback_resume_rejects_identity_mismatch_before_execution(tmp_path: Pa
         git_common_dir=tmp_path,
         qualification_context=qualification_context(),
         execution_preflight=execution_ready,
+        resource_preflight=resources_ready,
         runner_resolver=lambda repository, runner: {
             "build_count": 1,
             "trust_source": "local-identity-build",

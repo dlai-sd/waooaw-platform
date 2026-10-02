@@ -16,12 +16,14 @@ from validation_control.execution_contract import (
     UnchangedExecutionFailureError,
     assert_retry_allowed,
     binding_digest,
+    disposable_cleanup_commands,
     evidence_is_current,
     evidence_path,
     execution_binding,
     orchestration_preflight,
     prepare_evidence,
     record_failure,
+    resource_capacity_preflight,
     safe_segment,
 )
 
@@ -335,3 +337,82 @@ def test_rollback_launcher_preserves_docker_authority_and_identity_boundaries() 
     assert "GITHUB_TOKEN is required" in launcher
     assert 'export PYTHONPATH="$PWD/scripts"' in launcher
     assert "--output must be repository-relative below test-results" in launcher
+
+
+def test_resource_capacity_preflight_passes_without_cleanup_when_capacity_is_safe(tmp_path: Path) -> None:
+    usage = SimpleNamespace(total=10_000_000_000, used=8_000_000_000, free=2_000_000_000)
+    cleanup_calls: list[Path] = []
+
+    record = resource_capacity_preflight(
+        tmp_path,
+        [{"resources": {"disk_mb": 1024}}],
+        "wc109-capacity-safe",
+        disk_usage=lambda path: usage,
+        cleanup=lambda path: cleanup_calls.append(path) or [],
+    )
+
+    assert record["result"] == "PASS"
+    assert record["cleanup_actions"] == []
+    assert cleanup_calls == []
+
+
+def test_resource_capacity_preflight_cleans_once_then_rechecks(tmp_path: Path) -> None:
+    usages = iter(
+        (
+            SimpleNamespace(total=10_000_000_000, used=9_600_000_000, free=400_000_000),
+            SimpleNamespace(total=10_000_000_000, used=8_000_000_000, free=2_000_000_000),
+        )
+    )
+
+    record = resource_capacity_preflight(
+        tmp_path,
+        [{"resources": {"disk_mb": 1024}}],
+        "wc109-capacity-recovered",
+        disk_usage=lambda path: next(usages),
+        cleanup=lambda path: ["builder prune:0", "image prune:0"],
+    )
+
+    assert record["result"] == "PASS"
+    assert record["before"]["free_ratio"] < 0.05
+    assert record["after"]["free_ratio"] >= 0.05
+    assert record["cleanup_actions"] == ["builder prune:0", "image prune:0"]
+
+
+def test_resource_capacity_preflight_publishes_block_when_cleanup_is_insufficient(tmp_path: Path) -> None:
+    usages = iter(
+        (
+            SimpleNamespace(total=10_000_000_000, used=9_600_000_000, free=400_000_000),
+            SimpleNamespace(total=10_000_000_000, used=9_550_000_000, free=450_000_000),
+        )
+    )
+
+    with pytest.raises(ValueError, match="capacity remains below"):
+        resource_capacity_preflight(
+            tmp_path,
+            [{"resources": {"disk_mb": 1024}}],
+            "wc109-capacity-blocked",
+            disk_usage=lambda path: next(usages),
+            cleanup=lambda path: ["builder prune:0"],
+        )
+
+    evidence = tmp_path / "test-results/wc109/runs/wc109-capacity-blocked/resource-preflight.json"
+    assert json.loads(evidence.read_text(encoding="utf-8"))["result"] == "BLOCKED"
+
+
+def test_disposable_cleanup_never_targets_running_or_foreign_projects() -> None:
+    commands = disposable_cleanup_commands(
+        [
+            {"Name": "wc109-stale", "Status": "exited(2)"},
+            {"Name": "wc109-active", "Status": "running(3)"},
+            {"Name": "customer-stack", "Status": "exited(1)"},
+        ],
+        "/usr/bin/docker",
+    )
+
+    rendered = [" ".join(command) for command in commands]
+    assert any("--project-name wc109-stale down" in command for command in rendered)
+    assert all("wc109-active" not in command and "customer-stack" not in command for command in rendered)
+    assert rendered[-2:] == [
+        "/usr/bin/docker builder prune --force --filter until=24h",
+        "/usr/bin/docker image prune --force",
+    ]
