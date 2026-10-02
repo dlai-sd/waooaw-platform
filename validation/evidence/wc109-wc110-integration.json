@@ -1,0 +1,37 @@
+{
+  "schema": "waooaw.wc109-wc110-integration/v1",
+  "base_sha": "b55e1323ea1a83997ad13e604a77999536bebb43",
+  "partition_commit": "323bb1ea185ab376fe6d41d3e5b89a1f1f8b98e3",
+  "preserved_head": "cccc2ad8306a512bf0f80c149c89b599a74160a2",
+  "preservation_branch": "wc/110-product-validation-qualification-repair",
+  "preserved_authority_files": [
+    "work-contracts/WC-110-product-validation-qualification-repair.md",
+    "work-contracts/WC-110-requirements.yaml"
+  ],
+  "wc109_candidate": {
+    "path_count": 86,
+    "scope_violations": [],
+    "product_owned_files_removed": 72,
+    "historical_results_promoted": false,
+    "allowed_product_paths": [
+      "src/agent-adapters/digital_marketing/Dockerfile",
+      "src/ai-runtime/Dockerfile",
+      "src/billing-engine/Dockerfile",
+      "src/business-platform/Dockerfile",
+      "src/constitutional-engine/Dockerfile",
+      "src/professional-runtime/Dockerfile",
+      "web/Dockerfile"
+    ],
+    "allowed_product_path_basis": "Immutable candidate-image inputs owned by WC-109 supply-chain control; no product behavior source is retained."
+  },
+  "validation": {
+    "result": "PASS",
+    "test_count": 186,
+    "execution_boundary": "repository-docker-runner",
+    "scope_check": "candidate_paths=86 violations=0"
+  },
+  "limitations": [
+    "This record proves repository scope partition and local Docker control-plane regression only.",
+    "It does not promote historical product results, prove WC-110 completion, or authorize qualification, hosted execution, deployment, or product readiness."
+  ]
+}

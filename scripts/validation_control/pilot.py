@@ -15,6 +15,8 @@ from typing import Any
 TIERS = ("tier1", "tier2", "tier3", "tier4")
 OUTCOMES = ("quality", "coverage", "security", "cct")
 VALUE_BASELINE_SCHEMA = "waooaw.wc109-value-baseline/v1"
+WC109_WC110_INTEGRATION_SCHEMA = "waooaw.wc109-wc110-integration/v1"
+WC109_PRESERVED_HEAD = "cccc2ad8306a512bf0f80c149c89b599a74160a2"
 WC109_ALLOWED_PREFIXES = (
     ".github/",
     "architecture/reference/dockerfiles/",
@@ -50,6 +52,50 @@ def wc109_scope_violations(changed_paths: list[str]) -> list[str]:
         elif normalized not in WC109_ALLOWED_FILES and not normalized.startswith(WC109_ALLOWED_PREFIXES):
             violations.append(path)
     return sorted(set(violations))
+
+
+def validate_wc109_wc110_integration(record: dict[str, Any]) -> dict[str, Any]:
+    if record.get("schema") != WC109_WC110_INTEGRATION_SCHEMA:
+        raise ValueError("unsupported WC-109/WC-110 integration schema")
+    if _full_commit(record.get("preserved_head"), "preserved_head") != WC109_PRESERVED_HEAD:
+        raise ValueError("WC-110 preserved head does not match authorized source")
+    base_sha = _full_commit(record.get("base_sha"), "base_sha")
+    partition_commit = _full_commit(record.get("partition_commit"), "partition_commit")
+    if record.get("preservation_branch") != "wc/110-product-validation-qualification-repair":
+        raise ValueError("WC-110 preservation branch is invalid")
+    authority_files = record.get("preserved_authority_files")
+    if authority_files != [
+        "work-contracts/WC-110-product-validation-qualification-repair.md",
+        "work-contracts/WC-110-requirements.yaml",
+    ]:
+        raise ValueError("WC-110 authority files are incomplete")
+    candidate = record.get("wc109_candidate")
+    if not isinstance(candidate, dict):
+        raise ValueError("WC-109 candidate scope evidence is required")
+    if (
+        not isinstance(candidate.get("path_count"), int)
+        or candidate["path_count"] <= 0
+        or candidate.get("scope_violations") != []
+        or candidate.get("product_owned_files_removed") != 72
+        or candidate.get("historical_results_promoted") is not False
+    ):
+        raise ValueError("WC-109 candidate scope evidence is invalid")
+    validation = record.get("validation")
+    if (
+        not isinstance(validation, dict)
+        or validation.get("result") != "PASS"
+        or validation.get("test_count") != 186
+        or validation.get("execution_boundary") != "repository-docker-runner"
+    ):
+        raise ValueError("WC-109 partition validation is incomplete")
+    return {
+        "base_sha": base_sha,
+        "partition_commit": partition_commit,
+        "preserved_head": WC109_PRESERVED_HEAD,
+        "candidate_path_count": candidate["path_count"],
+        "product_owned_files_removed": candidate["product_owned_files_removed"],
+        "passed": True,
+    }
 
 
 def _full_commit(value: object, field: str) -> str:

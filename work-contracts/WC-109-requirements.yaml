@@ -614,5 +614,7 @@ requirements:
     test_path_or_plan: Classify changed surfaces, preserve the authorized head, and validate merged-base or stacked product-only dependency evidence before candidate freeze.
     completion_rule: PR 481 candidate diff contains only WC-109 control-plane, remediation and pilot work; product changes are preserved in WC-110 and mismatched historical evidence is not promoted.
     evidence_refs:
+      - scripts/validation_control/pilot.py
       - validation/evidence/wc109-wc110-integration.json
       - tests/validation_control/test_wc109_value_pilot.py
+    result: PASS

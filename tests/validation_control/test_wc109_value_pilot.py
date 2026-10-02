@@ -6,7 +6,12 @@ from pathlib import Path
 
 import pytest
 
-from validation_control.pilot import validate_value_baseline, validate_value_baseline_source, wc109_scope_violations
+from validation_control.pilot import (
+    validate_value_baseline,
+    validate_value_baseline_source,
+    validate_wc109_wc110_integration,
+    wc109_scope_violations,
+)
 
 
 REPOSITORY = Path(__file__).resolve().parents[2]
@@ -30,6 +35,27 @@ def value_baseline() -> dict[str, object]:
         },
         "limitations": ["Summed gate durations are not wall-clock elapsed time."],
         "customer_value_claimed": False,
+    }
+
+
+def integration_record() -> dict[str, object]:
+    return {
+        "schema": "waooaw.wc109-wc110-integration/v1",
+        "base_sha": "b" * 40,
+        "partition_commit": "3" * 40,
+        "preserved_head": "cccc2ad8306a512bf0f80c149c89b599a74160a2",
+        "preservation_branch": "wc/110-product-validation-qualification-repair",
+        "preserved_authority_files": [
+            "work-contracts/WC-110-product-validation-qualification-repair.md",
+            "work-contracts/WC-110-requirements.yaml",
+        ],
+        "wc109_candidate": {
+            "path_count": 86,
+            "scope_violations": [],
+            "product_owned_files_removed": 72,
+            "historical_results_promoted": False,
+        },
+        "validation": {"result": "PASS", "test_count": 186, "execution_boundary": "repository-docker-runner"},
     }
 
 
@@ -105,3 +131,39 @@ def test_wc109_scope_rejects_product_and_wc110_surfaces() -> None:
     ]
 
     assert wc109_scope_violations(paths) == sorted(paths)
+
+
+def test_wc109_wc110_integration_accepts_preserved_clean_partition() -> None:
+    result = validate_wc109_wc110_integration(integration_record())
+
+    assert result["preserved_head"] == "cccc2ad8306a512bf0f80c149c89b599a74160a2"
+    assert result["candidate_path_count"] == 86
+    assert result["product_owned_files_removed"] == 72
+    assert result["passed"] is True
+
+
+def test_repository_wc109_wc110_integration_record_is_valid() -> None:
+    record = json.loads((REPOSITORY / "validation/evidence/wc109-wc110-integration.json").read_text(encoding="utf-8"))
+
+    result = validate_wc109_wc110_integration(record)
+
+    assert result["partition_commit"] == "323bb1ea185ab376fe6d41d3e5b89a1f1f8b98e3"
+    assert result["passed"] is True
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    (
+        (lambda record: record.update({"preserved_head": "d" * 40}), "preserved head"),
+        (lambda record: record["preserved_authority_files"].pop(), "authority files"),
+        (lambda record: record["wc109_candidate"].update({"scope_violations": ["src/product.py"]}), "scope evidence"),
+        (lambda record: record["wc109_candidate"].update({"historical_results_promoted": True}), "scope evidence"),
+        (lambda record: record["validation"].update({"result": "FAIL"}), "validation is incomplete"),
+    ),
+)
+def test_wc109_wc110_integration_rejects_incomplete_partition(mutation: object, message: str) -> None:
+    record = deepcopy(integration_record())
+    mutation(record)
+
+    with pytest.raises(ValueError, match=message):
+        validate_wc109_wc110_integration(record)
