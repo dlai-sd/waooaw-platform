@@ -54,6 +54,8 @@ def wc109_scope_violations(changed_paths: list[str]) -> list[str]:
         elif normalized not in WC109_ALLOWED_FILES and not normalized.startswith(WC109_ALLOWED_PREFIXES):
             violations.append(path)
     return sorted(set(violations))
+
+
 def validate_wc109_wc110_integration(record: dict[str, Any]) -> dict[str, Any]:
     if record.get("schema") != WC109_WC110_INTEGRATION_SCHEMA:
         raise ValueError("unsupported WC-109/WC-110 integration schema")
