@@ -143,18 +143,18 @@ def test_contract_workflow_starts_services_and_blocks_on_failure() -> None:
     contract_job = workflow.split("  contract-rest:", maxsplit=1)[1].split("\n  seed-prompts-contract:", maxsplit=1)[0]
     contract_gate = (ROOT / "scripts/validation_control/run_rest_contract_gate.sh").read_text(encoding="utf-8")
 
-    assert "docker compose up --detach --wait" in contract_gate
+    assert "docker compose up --detach --no-build --wait" in contract_gate
     assert "business-platform professional-runtime" in contract_gate
     assert "COMPOSE_PROJECT_NAME" not in contract_gate
     assert (
-        contract_gate.count("cd /tmp && schemathesis --config-file /workspace/validation/schemathesis.toml run /workspace/") == 4
+        contract_gate.count("cd /tmp && schemathesis --config-file /workspace/validation/schemathesis.toml run /workspace/") == 5
     )
     assert '--include-path-regex "$customer_product_path_regex"' in contract_gate
     assert '--include-path-regex "$customer_identity_path_regex"' in contract_gate
     assert "--identity-token-file /tmp/business-platform-identity-token" in contract_gate
     assert contract_gate.count('-H "Authorization:Bearer $identity_token"') == 2
     assert '--exclude-path-regex "$customer_path_regex"' in contract_gate
-    assert contract_gate.count("--suppress-health-check=filter_too_much") == 4
+    assert contract_gate.count("--suppress-health-check=filter_too_much") == 5
     assert "WAOOAW_VALIDATION_OUTPUT_DIRECTORY" in contract_gate
     assert contract_gate.count('--volume "$validation_output_directory:/workspace/test-results"') == 2
     assert SCHEMATHESIS["checks"]["positive_data_acceptance"]["expected-statuses"] == [
@@ -171,7 +171,12 @@ def test_contract_workflow_starts_services_and_blocks_on_failure() -> None:
     assert "rm -f /workspace/test-results/schemathesis-bp.xml" in contract_gate
     assert "merge_junit_reports.py" in contract_gate
     assert "--output /workspace/test-results/schemathesis-bp.xml" in contract_gate
-    assert "--report-junit-path /workspace/test-results/schemathesis-pr.xml" in contract_gate
+    assert '--exclude-path-regex "^/health$"' in contract_gate
+    assert '--include-path-regex "^/health$"' in contract_gate
+    assert contract_gate.count("--exclude-checks not_a_server_error") == 1
+    assert "--output /workspace/test-results/schemathesis-pr.xml" in contract_gate
+    assert "schemathesis-pr-service.xml" in contract_gate
+    assert "schemathesis-pr-health.xml" in contract_gate
     assert "gate-id: contract:rest" in contract_job
     assert "continue-on-error: true" not in contract_job
     assert COMPOSE["services"]["keycloak"]["environment"]["DEV_TEST_PASSWORD"] == (
@@ -221,7 +226,7 @@ def test_customer_contract_rejects_unpersistable_fuzz_inputs_and_documents_step_
     ):
         assert paths[path]["post"]["responses"]["403"] == {"$ref": "#/components/responses/IdentityStepUpRequired"}
     assert schemas["ConversationLanguageTag"]["pattern"] == "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$"
-    assert schemas["ConversationTextBlockV1"]["properties"]["text"]["pattern"] == r"^[^\u0000]+$"
+    assert schemas["ConversationTextBlockV1"]["properties"]["text"]["pattern"] == r"^(?=.*\S)[^\u0000]+$"
     for request_schema in ("SendPortalInteractionMessageRequestV1", "SendConversationMessageRequestV1"):
         assert schemas[request_schema]["properties"]["locale"] == {"$ref": "#/components/schemas/ConversationLanguageTag"}
 

@@ -11,6 +11,7 @@ namespace Waooaw.BusinessPlatform.Controllers;
 
 [ApiController]
 [Authorize]
+[CustomerIdentityRoute(requiresMembership: true)]
 [Route("api/v1/employment/relationships/{relationshipId:guid}/voice-contributions")]
 public sealed class VoiceContributionsController(VoiceContributionService service) : ControllerBase
 {

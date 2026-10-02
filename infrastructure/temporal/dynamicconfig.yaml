@@ -10,11 +10,11 @@
 #   waooaw-uat:   all workflows = 7 days
 
 system.forceSearchAttributesCacheRefreshOnRead:
-  - value: "true"
+  - value: true
     constraints: {}
 
 limit.maxIDLength:
-  - value: "255"
+  - value: 255
     constraints: {}
 
 # Workflow execution retention — O-03 optimization
@@ -35,11 +35,11 @@ matching.longPollExpirationInterval:
 
 # Rate limiting — generous for dev (single developer, no load testing)
 frontend.namespaceRPS:
-  - value: "100"
+  - value: 100
     constraints: {}
 
 frontend.globalNamespaceRPS:
-  - value: "200"
+  - value: 200
     constraints: {}
 
 # Activity heartbeat timeout (PAAS sessions may run for hours)
@@ -71,9 +71,9 @@ limit.historySize.error:
 
 # Concurrent task polling — increase for higher throughput at scale
 matching.numTaskqueueReadPartitions:
-  - value: "4"
+  - value: 4
     constraints: {}
 
 matching.numTaskqueueWritePartitions:
-  - value: "4"
+  - value: 4
     constraints: {}

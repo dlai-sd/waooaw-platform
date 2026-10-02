@@ -142,7 +142,7 @@ public sealed class AgentAdmissionsControllerTests
             fixture.Type, fixture.Version, admission.AdmissionId, 1,
             new(0, "sha256:" + new string('0', 64), contract.RootElement),
             Guid.NewGuid(), CancellationToken.None),
-            400, "ADMISSION_INVALID_REQUEST");
+            409, "ADMISSION_STATE_CONFLICT");
 
         AssertProblem(await fixture.Controller.CreateDraftAsync(
             fixture.Type, fixture.Version, new(fixture.ActorId), Guid.NewGuid(), CancellationToken.None),

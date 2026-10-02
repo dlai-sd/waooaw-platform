@@ -9,6 +9,7 @@ import subprocess
 import pytest
 import yaml
 
+from validation_control.build_repair_context import build_repair_context
 from validation_control.evidence_controller import BLOCKED_DEFERRED_AMENDMENT, BLOCKED_DEFERRED_GATES
 from validation_control.orchestrator import (
     NEGATIVE_CONTROL_FAMILIES,
@@ -34,11 +35,49 @@ BASE_SHA = "b" * 40
 def qualification_context() -> QualificationContext:
     return QualificationContext(
         changed_files=("scripts/example.py",),
-        pr_body="## Required Traceability\n",
+        pr_body=f"""## Author Review
+- [x] Reviewed the complete diff against the authorized scope
+- [x] Reviewed test and quality-gate results
+- [x] Reviewed security, constitutional, and rollback impact
+- [x] Resolved every finding or recorded no findings
+
+Reviewed Commit: {HEAD_SHA}
+Author Review Result: PASS
+""",
         base_branch="main",
         pr_number="481",
         repository_name="dlai-sd/waooaw-platform",
     )
+
+
+def test_qualification_stale_author_review_blocks_before_execution(tmp_path: Path) -> None:
+    stale_context = qualification_context()
+    stale_context = QualificationContext(
+        changed_files=stale_context.changed_files,
+        pr_body=stale_context.pr_body.replace(HEAD_SHA, "d" * 40),
+        base_branch=stale_context.base_branch,
+        pr_number=stale_context.pr_number,
+        repository_name=stale_context.repository_name,
+    )
+
+    result = execute_rollback(
+        tmp_path,
+        load_catalog(),
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=stale_context,
+        execution_profile="qualification",
+        execution_preflight=lambda repository: pytest.fail("execution preflight must not run"),
+        resource_preflight=lambda repository, nodes, namespace: pytest.fail("resource preflight must not run"),
+        runner_resolver=lambda repository, runner: pytest.fail("runner must not resolve"),
+        service_resolver=lambda repository, node: pytest.fail("service must not resolve"),
+        gate_executor=lambda repository, gate, head, base, common, **context: pytest.fail("gate must not execute"),
+    )
+
+    assert result["run_state"] == "BLOCKED"
+    assert result["first_cause_gate"] == "preflight:author-review"
+    assert result["execution_summary"]["executed_gate_count"] == 0
 
 
 def load_catalog() -> dict[str, object]:
@@ -94,7 +133,7 @@ def test_rollback_clean_builds_each_runner_once_then_executes_full_inventory(tmp
         assert os.environ["WC100_DISABLE_REUSE"] == "1"
         assert os.environ["WC100_PRECHECK_MODE"] == "serial"
         assert context["changed_files"] == ["scripts/example.py"]
-        assert Path(str(context["pr_body_file"])).read_text(encoding="utf-8") == "## Required Traceability\n"
+        assert Path(str(context["pr_body_file"])).read_text(encoding="utf-8") == qualification_context().pr_body
         assert context["base_branch"] == "main"
         assert context["pr_number"] == "481"
         assert context["repository_name"] == "dlai-sd/waooaw-platform"
@@ -288,6 +327,56 @@ def completed_repair_context(gate_id: str) -> dict[str, object]:
             }
         ],
     }
+
+
+def repair_evidence(result: str, mode: str, binding: str) -> tuple[dict[str, object], dict[str, object]]:
+    gate_id = "contract:rest"
+    envelope = {
+        "schema": "waooaw.validation-evidence-envelope/v1",
+        "result": result,
+        "gate_id": gate_id,
+        "head_sha": HEAD_SHA if mode == "focused" else BASE_SHA,
+        "routing_class": "NONE" if result == "PASS" else "PRODUCT",
+        "first_cause": "none" if result == "PASS" else "exit-code:1",
+        "identities": {"test_execution": binding, "evidence": "sha256:" + "3" * 64},
+        "invocation": {"source": "catalog"},
+    }
+    execution = {
+        "schema": "waooaw.wc109-tier2-execution/v1",
+        "result": result,
+        "gate_id": gate_id,
+        "head_sha": envelope["head_sha"],
+        "mode": mode,
+        "catalog_controlled": True,
+        "invocation_source": "catalog",
+    }
+    return envelope, execution
+
+
+def test_repair_context_is_derived_from_catalog_execution_identities() -> None:
+    failed_envelope, failed_execution = repair_evidence("FAIL", "qualification", "sha256:" + "1" * 64)
+    focused_envelope, focused_execution = repair_evidence("PASS", "focused", "sha256:" + "2" * 64)
+
+    context = build_repair_context(failed_envelope, failed_execution, focused_envelope, focused_execution)
+
+    assert context == completed_repair_context("contract:rest") | {
+        "failure": {
+            "routing_class": "PRODUCT",
+            "gate_id": "contract:rest",
+            "first_cause": "exit-code:1",
+            "binding_digest": "sha256:" + "1" * 64,
+        }
+    }
+
+
+@pytest.mark.parametrize("unchanged_binding,focused_mode", [(True, "focused"), (False, "qualification")])
+def test_repair_context_rejects_unchanged_or_nonfocused_evidence(unchanged_binding: bool, focused_mode: str) -> None:
+    failed_envelope, failed_execution = repair_evidence("FAIL", "qualification", "sha256:" + "1" * 64)
+    focused_binding = "sha256:" + ("1" if unchanged_binding else "2") * 64
+    focused_envelope, focused_execution = repair_evidence("PASS", focused_mode, focused_binding)
+
+    with pytest.raises(ValueError):
+        build_repair_context(failed_envelope, failed_execution, focused_envelope, focused_execution)
 
 
 def copy_contract_authority(repository: Path) -> None:
@@ -1004,6 +1093,40 @@ def test_rollback_resume_runs_only_invalidated_dependency_closure(tmp_path: Path
     assert resumed["invalidated_gates"] == [gate for gate in ordered_gates if gate in invalidated]
     assert resumed["execution_summary"]["resumed_gate_count"] == sum(
         gate not in invalidated and gate not in BLOCKED_DEFERRED_GATES for gate in ordered_gates
+    )
+
+
+def test_qualification_records_actual_phased_gate_evidence_directory(tmp_path: Path) -> None:
+    evidence_root = tmp_path / "test-results/wc109/runs/actual"
+
+    def execute_with_evidence(repository: Path, gate: str, *_args: object, **_context: object) -> tuple[int, str]:
+        evidence = evidence_root / gate.replace(":", "-")
+        evidence.mkdir(parents=True, exist_ok=True)
+        return 0, str(evidence.relative_to(repository))
+
+    result = execute_rollback(
+        tmp_path,
+        load_catalog(),
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        execution_preflight=execution_ready,
+        resource_preflight=resources_ready,
+        runner_resolver=lambda repository, runner: {
+            "build_count": 0,
+            "trust_source": "test",
+            "runner_id": runner,
+        },
+        service_resolver=resolve_services,
+        gate_executor=execute_with_evidence,
+        execution_profile="qualification",
+    )
+
+    assert result["passed"] is True
+    assert all(
+        item.get("evidence_disposition") != "executed" or item["evidence_ref"].startswith("test-results/wc109/runs/actual/")
+        for item in result["gate_results"]
     )
 
 
