@@ -421,7 +421,8 @@ def test_resource_fallback_and_failure_semantics(tmp_path: Path) -> None:
     assert manifest["mode"] == "serial"
     assert manifest["fallback_reasons"] == ["low_memory"]
     assert manifest["passed"] is False
-    assert [node["classification"] for node in manifest["nodes"]] == ["assertion", "coverage"]
+    assert [node["status"] for node in manifest["nodes"]] == ["FAIL", "SUPPRESSED_FAILURE"]
+    assert manifest["nodes"][1]["attempts"] == 0
     assert manifest["first_causal_failure"] == "assertion"
 
 
@@ -438,6 +439,62 @@ def test_dependency_is_not_started_after_prerequisite_failure(tmp_path: Path) ->
 
     assert manifest["nodes"][1]["status"] == "SKIPPED_DEPENDENCY"
     assert not marker.exists()
+
+
+def test_serial_independent_node_is_suppressed_after_first_failure(tmp_path: Path) -> None:
+    marker = tmp_path / "independent-ran"
+    manifest = run(
+        [
+            python_node("first", "import sys; sys.exit(1)"),
+            python_node("independent", f"from pathlib import Path; Path({str(marker)!r}).touch()"),
+        ],
+        tmp_path / "artifacts",
+        force_serial=True,
+        preflight=lambda: (True, []),
+    )
+
+    assert manifest["nodes"][1]["status"] == "SUPPRESSED_FAILURE"
+    assert manifest["nodes"][1]["attempts"] == 0
+    assert not marker.exists()
+
+
+def test_parallel_heavy_node_queued_before_failure_never_starts_after_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    blocker_started = tmp_path / "blocker-started"
+    queued_started = tmp_path / "queued-started"
+    blocker = python_node(
+        "blocker",
+        f"from pathlib import Path; import time; Path({str(blocker_started)!r}).touch(); time.sleep(0.1)",
+    )
+    failing = python_node(
+        "failing",
+        f"from pathlib import Path; import sys, time; marker=Path({str(blocker_started)!r}); "
+        "next(None for _ in iter(int, 1) if marker.exists() or time.sleep(0.005)); sys.exit(1)",
+    )
+    queued = python_node("queued", f"from pathlib import Path; Path({str(queued_started)!r}).touch()")
+    run_node = precheck_orchestrator._run_node
+
+    def ordered_run_node(node: object, *args: object) -> dict[str, object]:
+        if node.name == "queued":
+            while not blocker_started.exists():
+                time.sleep(0.005)
+        return run_node(node, *args)
+
+    monkeypatch.setattr(precheck_orchestrator, "_run_node", ordered_run_node)
+
+    manifest = run(
+        [blocker, queued, replace(failing, heavy=False)],
+        tmp_path / "artifacts",
+        max_heavy=1,
+        preflight=lambda: (True, []),
+    )
+
+    assert manifest["nodes"][1]["status"] == "SUPPRESSED_FAILURE"
+    assert manifest["nodes"][1]["attempts"] == 0
+    assert manifest["first_causal_failure"] == "failing"
+    assert not queued_started.exists()
 
 
 def test_cancellation_cannot_produce_passing_aggregate(tmp_path: Path) -> None:
