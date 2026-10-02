@@ -671,6 +671,15 @@ def test_seed_prompts_contract_executes_nonempty_synthetic_fixtures() -> None:
     assert "--junitxml=test-results/seed-prompts-contract.xml" in command
 
 
+def test_web_gate_retains_bounded_failure_evidence() -> None:
+    command = (ROOT / "scripts/validation_control/run_web_test_gate.sh").read_text(encoding="utf-8")
+
+    assert '--json --outputFile="$result_file"' in command
+    assert '>"$log_file" 2>&1' in command
+    assert 'cat "$log_file"' in command
+    assert 'exit "$result"' in command
+
+
 def test_only_classified_gates_receive_the_docker_socket() -> None:
     catalog = load_catalog()
     classified = {gate_id for gate_id, gate in catalog["gates"].items() if gate["resources"]["docker_socket"] is True}
