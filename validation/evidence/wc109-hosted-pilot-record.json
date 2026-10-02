@@ -48,7 +48,7 @@
     "modeled_defect_recurrence": []
   },
   "repair_loops": {
-    "count": 10,
+    "count": 11,
     "first_causes": [
       {"classification":"hosted-import-boundary","deterministic_control_plane_defect":true,"regression_fixture":"tests/pipeline/test_wc109_shadow_policy.py"},
       {"classification":"isolated-artifact-preservation","deterministic_control_plane_defect":true,"regression_fixture":"tests/pipeline/test_workflow_execution.py"},
@@ -59,7 +59,8 @@
       {"classification":"post-push-exact-head-ordering","deterministic_control_plane_defect":true,"regression_fixture":"tests/pipeline/test_prepare_pr_body.py"},
       {"classification":"hosted-sandbox-baseline-access","deterministic_control_plane_defect":true,"regression_fixture":"tests/validation_control/test_wc109_value_pilot.py"},
       {"classification":"volatile-dependency-advisory","deterministic_control_plane_defect":true,"regression_fixture":"tests/pipeline/test_precheck_orchestrator.py"},
-      {"classification":"contract-ledger-cheap-binding","deterministic_control_plane_defect":true,"regression_fixture":"tests/pipeline/test_requirement_ledger.py"}
+      {"classification":"contract-ledger-cheap-binding","deterministic_control_plane_defect":true,"regression_fixture":"tests/pipeline/test_requirement_ledger.py"},
+      {"classification":"scope-partition-gate-target","deterministic_control_plane_defect":true,"regression_fixture":"tests/validation_control/test_catalog_contract.py"}
     ]
   },
   "gate_inventories": {
@@ -87,7 +88,8 @@
     {"first_cause":"Post-push evidence could become stale.","fix_commit":"b786e7dbb981b12cfc6f09d4a15c78bb3f74b7db","regression_fixture":"tests/pipeline/test_prepare_pr_body.py"},
     {"first_cause":"Hosted sandbox lacked Git and hid generated baseline source.","fix_commit":"3d5d3d12124deeba49e9a1b73508274deef5d8a1","regression_fixture":"tests/validation_control/test_wc109_value_pilot.py"},
     {"first_cause":"High-severity TypeScript advisories were present and advisory PASS was reusable.","fix_commit":"af608849c15641482449b8bb1e7cafabd2de3b02","regression_fixture":"tests/pipeline/test_precheck_orchestrator.py"},
-    {"first_cause":"WC-109 contract binding was not tested in the cheap ledger suite.","fix_commit":"d1451891a367b117dc532d45e83bfc20045e4602","regression_fixture":"tests/pipeline/test_requirement_ledger.py"}
+    {"first_cause":"WC-109 contract binding was not tested in the cheap ledger suite.","fix_commit":"d1451891a367b117dc532d45e83bfc20045e4602","regression_fixture":"tests/pipeline/test_requirement_ledger.py"},
+    {"first_cause":"WC-110 scope partition removed the seed contract test while the canonical gate retained its deleted path.","fix_commit":"97365af69d8b4df4fc5a556b8d2a201958f29f12","regression_fixture":"tests/validation_control/test_catalog_contract.py"}
   ],
   "unresolved_pilot_defects": [],
   "limitations": [
