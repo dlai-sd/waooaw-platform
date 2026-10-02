@@ -168,6 +168,7 @@ def test_host_gate_executes_plan_without_resolving_runner(monkeypatch, tmp_path:
             "host": {
                 "runner_id": "python",
                 "command_id": "host",
+                "cost_class": "STATIC",
                 "resources": {},
                 "retry_policy": "none",
                 "artifacts": {},
@@ -328,6 +329,7 @@ def test_gate_identity_hashes_only_declared_environment(monkeypatch, tmp_path: P
             "host": {
                 "runner_id": "python",
                 "command_id": "host",
+                "cost_class": "STATIC",
                 "resources": {},
                 "retry_policy": "none",
                 "artifacts": {},
@@ -364,6 +366,7 @@ def test_gate_identity_changes_with_required_service_image(monkeypatch, tmp_path
             "integration": {
                 "runner_id": "python",
                 "command_id": "integration",
+                "cost_class": "STATIC",
                 "resources": {},
                 "retry_policy": "none",
                 "artifacts": {},
