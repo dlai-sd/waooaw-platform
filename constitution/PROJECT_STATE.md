@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 228
+**State Revision:** 229
 **Last Updated:** 2026-10-02 (WC-109 OUTCOME REMEDIATION AUTHORIZED)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -82,6 +82,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 - **WC-109 PLAN/DAG milestone:** Commits `86813abf` and `13289ea3` add schema-required cost classes and deterministic plan nodes containing owner, ordered phase, exact inputs, acceptance command, evidence destination, invalidation paths, direct prerequisites and downstream dependents. Rollback now suppresses transitive dependents and every higher-cost lane after ordinary failure while retaining independent same/lower-cost PASS evidence; operator cancellation still halts all lanes. Exact artifact `test-results/wc109/execution-plan-13289ea3.json` binds 43 nodes and 96 direct edges to commit `13289ea3`; 108 focused tests pass. R039, R040 and R042 remain PLANNED pending complete omission-to-BLOCKED fixtures, current-compatible phase transition enforcement and already-running lane evidence.
 - **WC-109 ordered-execution milestone:** Commit `be6483bd` adds deterministic topological scheduling by declared cost and direct prerequisites; rollback now follows PLAN order rather than legacy catalog order. Full-plan tests prove monotonic A-through-E phases and `release-qualification` last, while fail-fast and resume behavior remain intact across 108 focused tests. R040 remains PLANNED pending explicit prerequisite terminal-evidence checks at each transition.
 - **WC-109 prerequisite-evidence milestone:** Commit `5af05970` requires every non-deferred node, including exact PASS reuse, to find accepted terminal evidence for each direct PLAN prerequisite before execution. Missing, failed and forged deferred evidence block; only PASS or exact Founder-approved AS-001/003/005 `BLOCKED-DEFERRED` proof is accepted. Direct CLI execution and 110 focused tests pass. R040 remains PLANNED pending explicit transition records and stale-evidence phase fixtures.
+- **WC-109 ordered-phase completion:** Commit `3f56d85c` publishes atomic identity-bound A-through-E transition records and binds each terminal gate to candidate and catalog identity. Missing, failed, stale-head, catalog-mismatched and broad-phase bypass fixtures block; a complete run records five PASS transitions with qualification last. Ruff, format, 111 focused tests, the 48-row ledger validator and eight ledger regressions pass; R040 is PASS. R039 and R042 remain PLANNED for complete omission-to-BLOCKED and already-running-lane evidence.
 
 ## Authorization Boundary
 
