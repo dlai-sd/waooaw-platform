@@ -664,7 +664,9 @@ def test_python_integration_gate_runs_real_cross_service_suites() -> None:
 def test_seed_prompts_contract_executes_nonempty_synthetic_fixtures() -> None:
     command = (ROOT / "scripts/validation_control/run_seed_prompts_contract_gate.sh").read_text(encoding="utf-8")
 
-    assert "pytest tests/scripts/test_seed_prompts.py" in command
+    test_path = "tests/validation_control/test_seed_prompts_contract.py"
+    assert f"pytest {test_path}" in command
+    assert (ROOT / test_path).is_file()
     assert "seed-prompts.py --dry-run" not in command
     assert "--junitxml=test-results/seed-prompts-contract.xml" in command
 
