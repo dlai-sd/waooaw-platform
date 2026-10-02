@@ -5,6 +5,7 @@ from pathlib import Path
 
 import yaml
 
+from validation_control.evidence_controller import BLOCKED_DEFERRED_AMENDMENT, BLOCKED_DEFERRED_GATES
 from validation_control.wc104_rollback import QualificationContext, execute_rollback
 
 
@@ -62,9 +63,16 @@ def test_rollback_clean_builds_each_runner_once_then_executes_full_inventory_ser
         gate_executor=execute,
     )
 
-    assert events == [("runner", runner) for runner in catalog["runners"]] + [("gate", gate) for gate in catalog["full_gates"]]
+    executable_gates = [gate for gate in catalog["full_gates"] if gate not in BLOCKED_DEFERRED_GATES]
+    assert events == [("runner", runner) for runner in catalog["runners"]] + [("gate", gate) for gate in executable_gates]
     assert result["passed"] is True
     assert [item["gate_id"] for item in result["gate_results"]] == catalog["full_gates"]
+    deferred = [item for item in result["gate_results"] if item["gate_id"] in BLOCKED_DEFERRED_GATES]
+    assert all(item["result"] == "BLOCKED" and item["disposition"] == "BLOCKED-DEFERRED" for item in deferred)
+    assert all(
+        item["disposition_proof"] == {"founder_scope_amendment": BLOCKED_DEFERRED_AMENDMENT, "release_blocking": True}
+        for item in deferred
+    )
 
 
 def test_rollback_records_failure_without_reusing_prior_result(tmp_path: Path) -> None:
@@ -115,6 +123,6 @@ def test_rollback_records_gate_exception_and_continues_inventory(tmp_path: Path)
         gate_executor=execute,
     )
 
-    assert executed == catalog["full_gates"]
+    assert executed == [gate for gate in catalog["full_gates"] if gate not in BLOCKED_DEFERRED_GATES]
     assert result["passed"] is False
     assert result["gate_results"][1]["error"] == "ValueError: modeled execution defect"

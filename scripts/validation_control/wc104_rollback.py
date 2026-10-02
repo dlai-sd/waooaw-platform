@@ -21,6 +21,7 @@ from typing import Any
 
 import yaml
 
+from validation_control.evidence_controller import BLOCKED_DEFERRED_AMENDMENT, BLOCKED_DEFERRED_GATES
 from validation_control.qualification import build_wc104_rollback_manifest, render_manifest
 from validation_control.local_catalog_gate import execute_gate, resolve_runner
 
@@ -122,6 +123,20 @@ def execute_rollback(
             pr_body_file.write_text(qualification_context.pr_body, encoding="utf-8")
             for gate_id in manifest["required_gates"]:
                 started = time.monotonic()
+                if gate_id in BLOCKED_DEFERRED_GATES:
+                    gate_results.append(
+                        {
+                            "gate_id": gate_id,
+                            "result": "BLOCKED",
+                            "disposition": "BLOCKED-DEFERRED",
+                            "disposition_proof": {
+                                "founder_scope_amendment": BLOCKED_DEFERRED_AMENDMENT,
+                                "release_blocking": True,
+                            },
+                            "duration_seconds": round(time.monotonic() - started, 3),
+                        }
+                    )
+                    continue
                 error: str | None = None
                 try:
                     returncode = gate_executor(
@@ -158,7 +173,8 @@ def execute_rollback(
     manifest["runner_results"] = runner_results
     manifest["gate_results"] = gate_results
     manifest["passed"] = len(gate_results) == len(manifest["required_gates"]) and all(
-        result["returncode"] == 0 for result in gate_results
+        result["result"] == "PASS" or (result["result"] == "BLOCKED" and result.get("disposition") == "BLOCKED-DEFERRED")
+        for result in gate_results
     )
     return manifest
 

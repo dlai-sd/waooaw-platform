@@ -70,6 +70,21 @@ def image_id(image: str, repository: Path) -> str | None:
     return candidate if completed.returncode == 0 and SHA256.fullmatch(candidate) else None
 
 
+def ensure_service_image(repository: Path, image: str) -> str:
+    resolved_id = image_id(image, repository)
+    if resolved_id is not None:
+        return resolved_id
+    pull = subprocess.run(  # noqa: S603
+        [docker_executable(), "pull", image],
+        cwd=repository,
+        check=False,
+    )
+    resolved_id = image_id(image, repository)
+    if pull.returncode != 0 or resolved_id is None:
+        raise ValueError(f"required service image is unavailable: {image}")
+    return resolved_id
+
+
 def required_service_identities(repository: Path, node: dict[str, Any]) -> dict[str, str]:
     required_services = node.get("required_services", [])
     if not required_services:
@@ -91,10 +106,7 @@ def required_service_identities(repository: Path, node: dict[str, Any]) -> dict[
         image = service.get("image") if isinstance(service, dict) else None
         if not isinstance(image, str) or not image:
             raise ValueError(f"required service has no rendered image: {service_name}")
-        resolved_id = image_id(image, repository)
-        if resolved_id is None:
-            raise ValueError(f"required service image is unavailable: {service_name}")
-        identities[service_name] = resolved_id
+        identities[service_name] = ensure_service_image(repository, image)
     return identities
 
 
