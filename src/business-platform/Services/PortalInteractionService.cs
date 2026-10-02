@@ -97,10 +97,6 @@ public sealed class PortalInteractionService
     {
         if (limit is < 1 or > 100)
             throw new ConversationRequestException("limit must be between 1 and 100.");
-        if (cursor is not null && cursor.Length is < 16 or > 2048)
-            throw new ConversationRequestException(
-                "cursor must be between 16 and 2048 characters."
-            );
         await using var db = await _factory.CreateDbContextAsync(cancellationToken);
         var context = await GetOrCreateContextAsync(db, tenantId, participantId, cancellationToken);
         var query = db
@@ -191,18 +187,6 @@ public sealed class PortalInteractionService
                 true
             );
         }
-        if (
-            await db
-                .PortalInteractionMessages.AsNoTracking()
-                .AnyAsync(
-                    value =>
-                        value.TenantId == tenantId
-                        && value.ParticipantId == participantId
-                        && value.ClientMessageId == request.ClientMessageId,
-                    cancellationToken
-                )
-        )
-            throw new ConversationIdempotencyConflictException();
 
         var context = await GetOrCreateContextAsync(db, tenantId, participantId, cancellationToken);
         var maximumSequence =
@@ -285,14 +269,10 @@ public sealed class PortalInteractionService
             request.SchemaVersion != SchemaVersion
             || request.ClientMessageId == Guid.Empty
             || request.Content.Count != 1
-            || request.Content[0].SchemaVersion != SchemaVersion
             || request.Content[0].BlockType != "TEXT"
             || string.IsNullOrWhiteSpace(request.Content[0].Text)
-            || request.Content[0].Text.Length > 32000
-            || !ConversationInputContract.IsPersistableText(request.Content[0].Text)
-            || !ConversationInputContract.IsLanguageTag(request.Locale)
-            || request.Content[0].Language is { } language
-                && !ConversationInputContract.IsLanguageTag(language)
+            || request.Content[0].Text.Length > 4000
+            || string.IsNullOrWhiteSpace(request.Locale)
             || !SupportedSurfaces.Contains(request.CurrentSurface)
         )
         {

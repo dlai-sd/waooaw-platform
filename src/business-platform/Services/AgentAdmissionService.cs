@@ -163,7 +163,9 @@ public sealed class AgentAdmissionService(
         var canonicalJson = AgentAdmissionCanonicalizer.Canonicalize(content);
         var actualDigest = AgentAdmissionCanonicalizer.Digest(content);
         if (!string.Equals(actualDigest, suppliedDigest, StringComparison.Ordinal))
-            throw new AdmissionStateConflictException();
+            throw new ArgumentException(
+                "Admission content digest does not match canonical content."
+            );
 
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var admission = await RequireAsync(

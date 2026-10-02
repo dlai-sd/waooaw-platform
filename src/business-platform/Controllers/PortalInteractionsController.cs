@@ -28,16 +28,6 @@ public sealed class PortalInteractionsController(
     {
         if (!TryGetAuthority(out var tenantId, out var participantId))
             return SessionRequired();
-        if (
-            Request.Query.Keys.Any(key => key is not "cursor" and not "limit")
-            || Request.Query.ContainsKey("cursor")
-                && (cursor is null || cursor.Length is < 16 or > 2048)
-        )
-            return Problem(
-                StatusCodes.Status400BadRequest,
-                "PORTAL_INTERACTION_REQUEST_INVALID",
-                "The portal interaction query is invalid."
-            );
         try
         {
             return Ok(
@@ -60,15 +50,6 @@ public sealed class PortalInteractionsController(
     {
         if (!TryGetAuthority(out var tenantId, out var participantId))
             return SessionRequired();
-        if (
-            request.Content.Any(block => block is null)
-            || request.ExpectedCursor is not null && request.ExpectedCursor.Length is < 16 or > 2048
-        )
-            return Problem(
-                StatusCodes.Status400BadRequest,
-                "PORTAL_INTERACTION_REQUEST_INVALID",
-                "Message content must contain a text block."
-            );
         if (
             !Guid.TryParse(
                 Request.Headers["Idempotency-Key"].FirstOrDefault(),
@@ -171,8 +152,8 @@ public sealed class PortalInteractionsController(
             ),
             ConversationCursorExpiredException => Problem(
                 StatusCodes.Status410Gone,
-                "CONVERSATION_CURSOR_EXPIRED",
-                "Portal interaction cursor has expired."
+                "PORTAL_INTERACTION_CURSOR_EXPIRED",
+                "Portal interaction cursor can no longer be resumed."
             ),
             _ => Problem(
                 StatusCodes.Status503ServiceUnavailable,

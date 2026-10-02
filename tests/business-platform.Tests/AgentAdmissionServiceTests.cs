@@ -150,7 +150,7 @@ public sealed class AgentAdmissionServiceTests
         var context = Context();
         using var content = JsonDocument.Parse("{}");
 
-        await Assert.ThrowsAsync<AdmissionStateConflictException>(() => context.Service.PutRevisionAsync(
+        await Assert.ThrowsAsync<ArgumentException>(() => context.Service.PutRevisionAsync(
             context.TenantId, context.Type, context.Version, Guid.NewGuid(), 1, 0,
             "sha256:" + new string('0', 64), content.RootElement, context.OwnerId, Guid.NewGuid(), CancellationToken.None));
     }

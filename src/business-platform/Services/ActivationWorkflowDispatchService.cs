@@ -3,7 +3,6 @@
 
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Temporalio.Api.Enums.V1;
 using Temporalio.Client;
@@ -13,7 +12,6 @@ using Waooaw.BusinessPlatform.Workflows;
 
 namespace Waooaw.BusinessPlatform.Services;
 
-[method: JsonConstructor]
 public sealed record StartPaidActivationRequest(
     string CommercialOutcomeKind,
     string CommercialOutcomeReference,

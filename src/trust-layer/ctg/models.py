@@ -22,13 +22,7 @@ class SessionContext:
 class MCPToolError:
     """Sanitized error returned to callers — no credential content permitted (ADR-042 §4)."""
 
-    code: Literal[
-        "CONSTITUTIONAL_BLOCKED",
-        "PROVIDER_ERROR",
-        "RATE_LIMIT",
-        "TOKEN_DEGRADED",
-        "TIMEOUT",
-    ]
+    code: Literal["CONSTITUTIONAL_BLOCKED", "PROVIDER_ERROR", "TOKEN_DEGRADED", "TIMEOUT"]
     message: str
     retry_eligible: bool
 

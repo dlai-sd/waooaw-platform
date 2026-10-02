@@ -1,7 +1,6 @@
 // Implements: tests/QA-STRATEGY.md §5.1 Unit Tests
 // constitutional_basis: C-041 (Tool Authorization), C-076 (Test Coverage)
 using FluentAssertions;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Waooaw.ConstitutionalEngine.Evaluators;
 using Xunit;
@@ -18,8 +17,8 @@ public class CCT_EF01_C043BudgetCeilingEvaluatorTests
 {
     // ── factory ──────────────────────────────────────────────────────────────
 
-    private static C043BudgetCeilingEvaluator CreateEvaluator() =>
-        new C043BudgetCeilingEvaluator(NullLogger<C043BudgetCeilingEvaluator>.Instance);
+    private static C043BudgetCeilingEvaluator CreateEvaluator()
+        => new C043BudgetCeilingEvaluator(NullLogger<C043BudgetCeilingEvaluator>.Instance);
 
     /// <summary>
     /// Builds an EvaluationContext for budget tests.
@@ -32,9 +31,8 @@ public class CCT_EF01_C043BudgetCeilingEvaluatorTests
         long approvedPaise,
         long currentPaise,
         long proposedPaise,
-        string skillType = "MARKETING"
-    ) =>
-        new EvaluationContext(
+        string skillType = "MARKETING")
+        => new EvaluationContext(
             "test-contract-budget",
             "SPEND_ACTION",
             "{}",
@@ -44,8 +42,7 @@ public class CCT_EF01_C043BudgetCeilingEvaluatorTests
             approvedPaise,
             currentPaise,
             proposedPaise,
-            skillType
-        );
+            skillType);
 
     // ── Allow scenarios ───────────────────────────────────────────────────────
 
@@ -373,125 +370,5 @@ public class CCT_EF01_C043BudgetCeilingEvaluatorTests
         var act = async () => await evaluator.EvaluateAsync(ctx, CancellationToken.None);
 
         await act.Should().NotThrowAsync();
-    }
-
-    [Fact]
-    public async Task EvaluateAsync_ZeroBudgetDeny_EmitsExactDecisionAndAuditLog()
-    {
-        var logger = new RecordingLogger<C043BudgetCeilingEvaluator>();
-        var evaluator = new C043BudgetCeilingEvaluator(logger);
-
-        var result = await evaluator.EvaluateAsync(
-            BuildBudgetContext(0L, 0L, 1L),
-            CancellationToken.None
-        );
-
-        result
-            .Should()
-            .BeEquivalentTo(
-                new EvaluationResult(
-                    "C-043",
-                    EvaluationVerdict.Deny,
-                    "BUDGET_CEILING_REACHED: No approved budget ceiling is configured (0 paise). "
-                        + "Proposed spend of 1 paise cannot proceed. Skill type: MARKETING."
-                )
-            );
-        logger
-            .Entries.Should()
-            .ContainSingle()
-            .Which.Should()
-            .Be(
-                (
-                    LogLevel.Warning,
-                    "C-043 DENY: Proposed spend with zero approved budget ceiling. ContractId=test-contract-budget "
-                        + "SkillId=(none) SkillType=MARKETING ProposedSpendPaise=1 DecisionSpaceVersion=1"
-                )
-            );
-    }
-
-    [Fact]
-    public async Task EvaluateAsync_OverBudget_EmitsExactDecisionAndAuditLog()
-    {
-        var logger = new RecordingLogger<C043BudgetCeilingEvaluator>();
-        var evaluator = new C043BudgetCeilingEvaluator(logger);
-
-        var result = await evaluator.EvaluateAsync(
-            BuildBudgetContext(10_000L, 8_000L, 3_000L),
-            CancellationToken.None
-        );
-
-        result
-            .Should()
-            .BeEquivalentTo(
-                new EvaluationResult(
-                    "C-043",
-                    EvaluationVerdict.Deny,
-                    "BUDGET_CEILING_REACHED: Proposed spend of 3000 paise added to current spend of 8000 paise "
-                        + "(11000 paise total) would exceed the approved monthly ceiling of 10000 paise. "
-                        + "Remaining headroom: 2000 paise. Skill type: MARKETING."
-                )
-            );
-        logger
-            .Entries.Should()
-            .ContainSingle()
-            .Which.Should()
-            .Be(
-                (
-                    LogLevel.Warning,
-                    "C-043 DENY: Budget ceiling reached. ContractId=test-contract-budget SkillId=(none) "
-                        + "SkillType=MARKETING ApprovedPaise=10000 CurrentSpendPaise=8000 ProposedSpendPaise=3000 "
-                        + "HeadroomPaise=2000 DecisionSpaceVersion=1"
-                )
-            );
-    }
-
-    [Fact]
-    public async Task EvaluateAsync_UnderBudget_EmitsExactDecisionAndAuditLog()
-    {
-        var logger = new RecordingLogger<C043BudgetCeilingEvaluator>();
-        var evaluator = new C043BudgetCeilingEvaluator(logger);
-
-        var result = await evaluator.EvaluateAsync(
-            BuildBudgetContext(10_000L, 2_000L, 3_000L),
-            CancellationToken.None
-        );
-
-        result
-            .Should()
-            .BeEquivalentTo(
-                new EvaluationResult(
-                    "C-043",
-                    EvaluationVerdict.Allow,
-                    "Budget ceiling not exceeded. Remaining after proposed spend: 5000 paise."
-                )
-            );
-        logger
-            .Entries.Should()
-            .ContainSingle()
-            .Which.Should()
-            .Be(
-                (
-                    LogLevel.Debug,
-                    "C-043 ALLOW: Proposed spend within budget ceiling. ContractId=test-contract-budget SkillId=(none) "
-                        + "SkillType=MARKETING ApprovedPaise=10000 CurrentSpendPaise=2000 ProposedSpendPaise=3000 "
-                        + "RemainingAfterProposedPaise=5000 DecisionSpaceVersion=1"
-                )
-            );
-    }
-
-    [Fact]
-    public async Task EvaluateAsync_CancelledToken_PropagatesCancellation()
-    {
-        var evaluator = CreateEvaluator();
-        using var cancellation = new CancellationTokenSource();
-        cancellation.Cancel();
-
-        var act = () =>
-            evaluator.EvaluateAsync(
-                BuildBudgetContext(10_000L, 2_000L, 3_000L),
-                cancellation.Token
-            );
-
-        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 }

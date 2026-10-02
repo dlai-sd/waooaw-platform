@@ -4,7 +4,6 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -186,15 +185,6 @@ public sealed class WhatsAppJourneyServiceTests
             NullLogger<TenantIsolationMiddleware>.Instance);
         var context = new DefaultHttpContext();
         context.Request.Path = path;
-        context.SetEndpoint(
-            new Endpoint(
-                _ => Task.CompletedTask,
-                path == "/api/v1/whatsapp/webhook"
-                    ? new EndpointMetadataCollection(new AllowAnonymousAttribute())
-                    : new EndpointMetadataCollection(),
-                path
-            )
-        );
 
         await middleware.InvokeAsync(context);
 

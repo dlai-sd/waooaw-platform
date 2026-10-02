@@ -8,7 +8,7 @@ import os
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from temporalio.client import Client as TemporalClient
 from temporalio.client import WorkflowExecutionStatus
@@ -16,7 +16,6 @@ from temporalio.service import RPCError
 
 from admission_guard import AdmissionActivationBinding, AdmissionActivationGuard, AdmissionGuardError
 from relationship_workspace import authorize_paas_session_start
-from routers.conversation_execution import BPServiceContext, get_bp_service_context
 from workload_identity import DelegatedContext, ServiceAuthError
 from workflows.paas_workflow import (
     PAASSessionInput,
@@ -128,7 +127,7 @@ async def require_session_workload_context(request: Request, body: SessionStartR
     try:
         relationship_id = uuid.UUID(body.contract_id)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="INVALID_CONTRACT_ID") from exc
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="INVALID_CONTRACT_ID") from exc
 
     try:
         return await authorize_paas_session_start(
@@ -263,19 +262,16 @@ async def start_session(
     summary="Get PAAS session workflow status",
 )
 async def get_session_status(
-    session_id: uuid.UUID,
+    session_id: str,
     temporal: TemporalClient = Depends(get_temporal_client),
-    context: BPServiceContext | None = Depends(get_bp_service_context),
 ) -> SessionStatusResponse:
     """
     C-025: Describe the Temporal workflow state for the given session.
     The session_id is the Temporal workflow_id (ADR-018).
     C-063: session_id is a UUID — no PII in log output.
     """
-    if context is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="SERVICE_AUTHENTICATION_FAILED")
     try:
-        handle = temporal.get_workflow_handle(str(session_id))
+        handle = temporal.get_workflow_handle(session_id)
         description = await handle.describe()
     except asyncio.CancelledError:
         raise
@@ -308,8 +304,8 @@ async def get_session_status(
     )
 
     return SessionStatusResponse(
-        session_id=str(session_id),
-        workflow_id=str(session_id),
+        session_id=session_id,
+        workflow_id=session_id,
         status=mapped_status,
         started_at=start_time,
         closed_at=close_time,
@@ -323,9 +319,8 @@ async def get_session_status(
     summary="Terminate a PAAS session workflow",
 )
 async def terminate_session(
-    session_id: uuid.UUID,
+    session_id: str,
     body: SessionTerminateRequest,
-    context: BPServiceContext | None = Depends(get_bp_service_context),
     temporal: TemporalClient = Depends(get_temporal_client),
 ) -> SessionTerminateResponse:
     """
@@ -334,16 +329,14 @@ async def terminate_session(
     any in-flight action (C-023) before halting.
     C-063: stopped_by is an operator UUID — never logged as PII.
     """
-    if context is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="SERVICE_AUTHENTICATION_FAILED")
     terminated_at = _now_iso()
     terminate_input = TerminateSessionInput(
-        session_id=str(session_id),
+        session_id=session_id,
         reason=body.reason,
     )
 
     try:
-        handle = temporal.get_workflow_handle(str(session_id))
+        handle = temporal.get_workflow_handle(session_id)
         await handle.signal(PAASSessionWorkflow.signal_terminate, terminate_input)
         signal_sent = True
     except asyncio.CancelledError:
@@ -366,15 +359,10 @@ async def terminate_session(
     )
 
     return SessionTerminateResponse(
-        session_id=str(session_id),
+        session_id=session_id,
         signal_sent=signal_sent,
         terminated_at=terminated_at,
     )
-
-
-@router.options("/{session_id}", include_in_schema=False)
-async def session_options(session_id: str) -> Response:
-    return Response(status_code=204, headers={"Allow": "GET, DELETE, OPTIONS"})
 
 
 @router.post(

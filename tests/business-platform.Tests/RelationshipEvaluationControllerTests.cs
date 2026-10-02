@@ -176,8 +176,7 @@ public sealed class RelationshipEvaluationControllerTests
 
         var result = await Controller(factory, Guid.NewGuid()).GetAsync(relationshipId, CancellationToken.None);
 
-        var problem = Assert.IsType<ObjectResult>(result);
-        Assert.Equal(StatusCodes.Status404NotFound, problem.StatusCode);
+        Assert.IsType<NotFoundResult>(result);
     }
 
     [Fact]

@@ -27,69 +27,20 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
     public const string JourneyItem = "waooaw:customer-identity-journey";
     public const string MembershipItem = "waooaw:customer-membership";
     public const string SessionIdItem = "waooaw:customer-session-id";
-    public const string AuthenticationTimeItem = "waooaw:customer-authentication-time";
 
     public async Task InvokeAsync(HttpContext context)
     {
-        var customer = IsCustomer(context.User);
-        var forgedAuthority =
-            customer
-            && (
-                context.User.HasClaim(claim => claim.Type == "tenant_id")
-                || context.User.HasClaim(claim => claim.Type == "waooaw_roles")
-            );
-
         var endpoint = context.GetEndpoint();
-        if (endpoint is null)
-        {
-            if (forgedAuthority)
-                await ProblemAsync(
-                    context,
-                    StatusCodes.Status403Forbidden,
-                    "IDENTITY_ACTION_DENIED"
-                );
-            else if (customer)
-                await ContinueCustomerJourneyAsync(context);
-            else
-                await next(context);
-            return;
-        }
-        if (endpoint.DisplayName == "405 HTTP Method Not Supported")
-        {
-            if (forgedAuthority)
-                await ProblemAsync(
-                    context,
-                    StatusCodes.Status403Forbidden,
-                    "IDENTITY_ACTION_DENIED"
-                );
-            else if (customer)
-                await ContinueCustomerJourneyAsync(context);
-            else
-                await next(context);
-            return;
-        }
-        if (endpoint.Metadata.GetMetadata<IAllowAnonymous>() is not null)
+        if (endpoint?.Metadata.GetMetadata<IAllowAnonymous>() is not null)
         {
             await next(context);
             return;
         }
-        var route = endpoint.Metadata.GetMetadata<CustomerIdentityRouteAttribute>();
-        var controllerAction = endpoint.Metadata.GetMetadata<ControllerActionDescriptor>();
-        if (route is null && controllerAction is null)
-        {
-            await next(context);
-            return;
-        }
-        var identityController = controllerAction?.ControllerTypeInfo == typeof(IdentityController);
-        var internalServiceRoute =
-            endpoint
-                .Metadata.GetOrderedMetadata<IAuthorizeData>()
-                .Any(authorize => authorize.Policy == "InternalService") == true;
-        if (internalServiceRoute && !customer)
-        {
-            await next(context);
-            return;
-        }
+        var route = endpoint?.Metadata.GetMetadata<CustomerIdentityRouteAttribute>();
+        var identityController =
+            endpoint?.Metadata.GetMetadata<ControllerActionDescriptor>()?.ControllerTypeInfo
+            == typeof(IdentityController);
+        var customer = IsCustomer(context.User);
         if (route is null && !identityController && !customer)
         {
             await next(context);
@@ -114,12 +65,11 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
                     context.User.FindFirstValue("sid")
                     ?? context.User.FindFirstValue("jti")
                     ?? $"{journey.ValidateActor(context.User).Subject}\u001f{TokenTime(context, "auth_time"):O}";
-                var authenticatedAt = TokenTime(context, "auth_time");
                 var sessionId = await sessions.ObserveAsync(
                     membership.AccountId,
                     $"{journey.ValidateActor(context.User).Issuer}\u001f{journey.ValidateActor(context.User).Subject}",
                     sourceSessionId,
-                    authenticatedAt,
+                    TokenTime(context, "auth_time"),
                     TokenTime(context, "exp"),
                     AssuranceClass(context),
                     ProviderClass(context),
@@ -127,7 +77,6 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
                 );
                 context.Items[MembershipItem] = membership;
                 context.Items[SessionIdItem] = sessionId;
-                context.Items[AuthenticationTimeItem] = authenticatedAt;
                 context.Items[TenantIsolationMiddleware.TenantIdItemKey] =
                     membership.TenantId.ToString();
             }
@@ -153,7 +102,8 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
                         "IDENTITY_RESOURCE_NOT_ACCESSIBLE",
                     CustomerWorkspaceError.FreshAuthenticationRequired =>
                         "IDENTITY_STEP_UP_REQUIRED",
-                    CustomerWorkspaceError.RecoveryRequired => "DUPLICATE_RESOLUTION_REQUIRED",
+                    CustomerWorkspaceError.RecoveryRequired =>
+                        "IDENTITY_DUPLICATE_RESOLUTION_REQUIRED",
                     CustomerWorkspaceError.RegistrationIneligible =>
                         "IDENTITY_VERIFICATION_REQUIRED",
                     CustomerWorkspaceError.MembershipRequired => "IDENTITY_ACTION_DENIED",
@@ -184,38 +134,14 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
             context.Items.Remove(JourneyItem);
             context.Items.Remove(MembershipItem);
             context.Items.Remove(SessionIdItem);
-            context.Items.Remove(AuthenticationTimeItem);
             context.Items.Remove(TenantIsolationMiddleware.TenantIdItemKey);
         }
     }
 
-    private async Task ContinueCustomerJourneyAsync(HttpContext context)
-    {
-        context.Items[JourneyItem] = true;
-        try
-        {
-            await next(context);
-        }
-        finally
-        {
-            context.Items.Remove(JourneyItem);
-        }
-    }
-
-    private static DateTimeOffset TokenTime(HttpContext context, string claim)
-    {
-        var value = context.User.FindFirstValue(claim);
-        if (
-            value is null
-            && claim == "auth_time"
-            && context.RequestServices.GetRequiredService<IHostEnvironment>().IsDevelopment()
-            && context.User.HasClaim("azp", "waooaw-web-preview")
-        )
-            value = context.User.FindFirstValue("iat");
-        return value is not null && long.TryParse(value, out var seconds)
+    private static DateTimeOffset TokenTime(HttpContext context, string claim) =>
+        context.User.FindFirstValue(claim) is string value && long.TryParse(value, out var seconds)
             ? DateTimeOffset.FromUnixTimeSeconds(seconds)
             : throw new IdentityActionDeniedException("IDENTITY_SESSION_REQUIRED");
-    }
 
     private static string AssuranceClass(HttpContext context) =>
         DateTimeOffset.UtcNow - TokenTime(context, "auth_time") <= TimeSpan.FromMinutes(5)
@@ -247,8 +173,6 @@ public sealed class CustomerMembershipMiddleware(RequestDelegate next)
 
     private static bool IsCustomer(ClaimsPrincipal principal)
     {
-        if (principal.HasClaim("client_type", "service"))
-            return false;
         if (
             principal.HasClaim("azp", "waooaw-web")
             || principal.HasClaim("azp", "waooaw-mobile")

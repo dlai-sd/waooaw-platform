@@ -15,6 +15,41 @@ from typing import Any
 TIERS = ("tier1", "tier2", "tier3", "tier4")
 OUTCOMES = ("quality", "coverage", "security", "cct")
 VALUE_BASELINE_SCHEMA = "waooaw.wc109-value-baseline/v1"
+WC109_ALLOWED_PREFIXES = (
+    ".github/",
+    "architecture/reference/dockerfiles/",
+    "blockers/",
+    "scripts/",
+    "test-results/wc109/",
+    "tests/pipeline/",
+    "tests/validation_control/",
+    "validation/",
+)
+WC109_ALLOWED_FILES = {
+    "constitution/PROJECT_STATE.md",
+    "docker-compose.yml",
+    "src/agent-adapters/digital_marketing/Dockerfile",
+    "src/ai-runtime/Dockerfile",
+    "src/billing-engine/Dockerfile",
+    "src/business-platform/Dockerfile",
+    "src/constitutional-engine/Dockerfile",
+    "src/professional-runtime/Dockerfile",
+    "web/Dockerfile",
+    "work-contracts/WC-109-agentic-validation-implementation.md",
+    "work-contracts/WC-109-requirements.yaml",
+}
+
+
+def wc109_scope_violations(changed_paths: list[str]) -> list[str]:
+    violations: list[str] = []
+    for path in changed_paths:
+        candidate = Path(path)
+        normalized = candidate.as_posix()
+        if candidate.is_absolute() or ".." in candidate.parts or normalized in {"", "."}:
+            violations.append(path)
+        elif normalized not in WC109_ALLOWED_FILES and not normalized.startswith(WC109_ALLOWED_PREFIXES):
+            violations.append(path)
+    return sorted(set(violations))
 
 
 def _full_commit(value: object, field: str) -> str:

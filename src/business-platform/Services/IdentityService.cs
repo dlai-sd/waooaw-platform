@@ -6,7 +6,6 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Npgsql;
 using Waooaw.BusinessPlatform.Infrastructure;
 
 namespace Waooaw.BusinessPlatform.Services;
@@ -45,16 +44,6 @@ public sealed class UnconfiguredVerificationDispatcher : IIdentityVerificationDi
         throw new InvalidOperationException(
             "No IIdentityVerificationDispatcher is configured. OTP delivery cannot proceed."
         );
-}
-
-public sealed class LocalIdentityVerificationDispatcher : IIdentityVerificationDispatcher
-{
-    public Task DispatchAsync(
-        IdentityVerificationPurpose purpose,
-        string destination,
-        string code,
-        CancellationToken ct
-    ) => Task.CompletedTask;
 }
 
 // ── Additional result type ────────────────────────────────────────────────────
@@ -112,8 +101,6 @@ public sealed class IdentityResourceNotFoundException(string reason) : Exception
 public sealed class IdentityChallengeExpiredException(string reason) : Exception(reason);
 
 public sealed class IdentityVerificationRequiredException(string reason) : Exception(reason);
-
-public sealed class IdentityDuplicateResolutionRequiredException(string reason) : Exception(reason);
 
 public sealed class IdentityDeliveryUnavailableException(string reason) : Exception(reason);
 
@@ -682,7 +669,6 @@ public sealed class IdentityService
             reg is null
             || reg.ActorSubject != actorSubject
             || actor is not null && reg.ActorIssuer != actor.Issuer
-            || reg.State == IdentityRegistrationState.Completed
         )
             throw new IdentityResourceNotFoundException(
                 "Registration not found or not accessible."
@@ -694,8 +680,7 @@ public sealed class IdentityService
             idempotencyKey,
             "StartEmailVerification",
             canonicalHash,
-            ct,
-            actor?.Issuer
+            ct
         );
         if (conflict)
             throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
@@ -756,8 +741,7 @@ public sealed class IdentityService
             canonicalHash,
             202,
             challenge.ChallengeId.ToString(),
-            ct,
-            actor?.Issuer
+            ct
         );
         if (transaction is not null)
             await transaction.CommitAsync(ct);
@@ -845,7 +829,7 @@ public sealed class IdentityService
         IdentityVerificationChallengeRecord challenge,
         bool isNew
     )> StartMobileVerificationAsync(
-        Guid? registrationId,
+        Guid registrationId,
         VerifiedCustomerActor actor,
         Guid idempotencyKey,
         string canonicalHash,
@@ -911,7 +895,6 @@ public sealed class IdentityService
                 reg is null
                 || reg.ActorSubject != actorSubject
                 || actor is not null && reg.ActorIssuer != actor.Issuer
-                || reg.State == IdentityRegistrationState.Completed
             )
                 throw new IdentityResourceNotFoundException(
                     "Registration not found or not accessible."
@@ -924,8 +907,7 @@ public sealed class IdentityService
             idempotencyKey,
             "StartMobileVerification",
             canonicalHash,
-            ct,
-            actor?.Issuer
+            ct
         );
         if (conflict)
             throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
@@ -992,8 +974,7 @@ public sealed class IdentityService
             canonicalHash,
             202,
             challenge.ChallengeId.ToString(),
-            ct,
-            actor?.Issuer
+            ct
         );
         if (transaction is not null)
             await transaction.CommitAsync(ct);
@@ -1008,16 +989,10 @@ public sealed class IdentityService
         string canonicalHash,
         Guid challengeId,
         string code,
-        CancellationToken ct,
-        VerifiedCustomerActor? actor = null
+        CancellationToken ct
     )
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
-        await using var transaction = actor is null
-            ? null
-            : await db.Database.BeginTransactionAsync(ct);
-        if (actor is not null)
-            await SetActorContextAsync(db, actor, ct);
 
         var (replay, conflict) = await CheckIdempotencyAsync(
             db,
@@ -1025,8 +1000,7 @@ public sealed class IdentityService
             idempotencyKey,
             "ConfirmMobileVerification",
             canonicalHash,
-            ct,
-            actor?.Issuer
+            ct
         );
         if (conflict)
             throw new IdentityIdempotencyConflict(idempotencyKey.ToString());
@@ -1037,13 +1011,9 @@ public sealed class IdentityService
             if (registrationId.HasValue)
             {
                 var replayReg = await db.Registrations.FindAsync([registrationId.Value], ct);
-                if (transaction is not null)
-                    await transaction.CommitAsync(ct);
                 return (replayReg!, false);
             }
             var replayCh = await db.VerificationChallenges.FindAsync([challengeId], ct);
-            if (transaction is not null)
-                await transaction.CommitAsync(ct);
             return (
                 new IdentityMobileStatusResult(
                     true,
@@ -1105,11 +1075,8 @@ public sealed class IdentityService
                 canonicalHash,
                 200,
                 reg!.RegistrationId.ToString(),
-                ct,
-                actor?.Issuer
+                ct
             );
-            if (transaction is not null)
-                await transaction.CommitAsync(ct);
             return (reg!, false);
         }
 
@@ -1122,11 +1089,8 @@ public sealed class IdentityService
             canonicalHash,
             200,
             $"mobile:{challenge.MaskedDestination}",
-            ct,
-            actor?.Issuer
+            ct
         );
-        if (transaction is not null)
-            await transaction.CommitAsync(ct);
 
         return (
             new IdentityMobileStatusResult(true, challenge.MaskedDestination, verifiedAt),
@@ -1193,56 +1157,9 @@ public sealed class IdentityService
                 "Minimum profile fields are required before registration can be finalized."
             );
 
-        Guid? emailAccountId = null;
-        if (reg.EmailHmacKey is not null)
-            emailAccountId = await db
-                .Registrations.Where(value =>
-                    value.RegistrationId != registrationId
-                    && value.State == IdentityRegistrationState.Completed
-                    && value.AccountId != null
-                    && value.EmailHmacDomain == reg.EmailHmacDomain
-                    && value.EmailHmacVersion == reg.EmailHmacVersion
-                    && value.EmailHmacKey == reg.EmailHmacKey
-                )
-                .Select(value => value.AccountId)
-                .FirstOrDefaultAsync(ct);
-
-        Guid? mobileAccountId = null;
-        if (reg.MobileHmacKey is not null)
-            mobileAccountId = await db
-                .Registrations.Where(value =>
-                    value.RegistrationId != registrationId
-                    && value.State == IdentityRegistrationState.Completed
-                    && value.AccountId != null
-                    && value.MobileHmacDomain == reg.MobileHmacDomain
-                    && value.MobileHmacVersion == reg.MobileHmacVersion
-                    && value.MobileHmacKey == reg.MobileHmacKey
-                )
-                .Select(value => value.AccountId)
-                .FirstOrDefaultAsync(ct);
-
-        if (
-            emailAccountId.HasValue != mobileAccountId.HasValue
-            || emailAccountId.HasValue
-                && mobileAccountId.HasValue
-                && emailAccountId != mobileAccountId
-        )
-        {
-            reg.State = IdentityRegistrationState.DuplicateResolutionRequired;
-            reg.UpdatedAt = DateTimeOffset.UtcNow;
-            await db.SaveChangesAsync(ct);
-            throw new IdentityDuplicateResolutionRequiredException(
-                "Verified identity claims require explicit duplicate resolution."
-            );
-        }
-
-        var matchedAccountId = emailAccountId ?? mobileAccountId;
         var isNew = reg.State != IdentityRegistrationState.Completed;
-        var accountId = reg.AccountId ?? matchedAccountId ?? Guid.NewGuid();
-        var outcome =
-            (reg.AccountId is not null || matchedAccountId is not null)
-                ? "ACCOUNT_REUSED"
-                : "ACCOUNT_CREATED";
+        var accountId = reg.AccountId ?? Guid.NewGuid();
+        var outcome = (reg.AccountId is null) ? "ACCOUNT_CREATED" : "ACCOUNT_REUSED";
 
         reg.AccountId = accountId;
         reg.State = IdentityRegistrationState.Completed;
@@ -1254,37 +1171,19 @@ public sealed class IdentityService
             "AAL2_ACCOUNT",
             "APPLICATION_HOME"
         );
-        try
-        {
-            await RecordIdempotencyAsync(
-                db,
-                actorSubject,
-                idempotencyKey,
-                "CompleteRegistration",
-                canonicalHash,
-                200,
-                $"{outcome}:{accountId}",
-                ct
-            );
-        }
-        catch (DbUpdateException exception) when (IsIdentityMatchKeyConflict(exception))
-        {
-            throw new IdentityDuplicateResolutionRequiredException(
-                "Verified identity claims require explicit duplicate resolution."
-            );
-        }
+        await RecordIdempotencyAsync(
+            db,
+            actorSubject,
+            idempotencyKey,
+            "CompleteRegistration",
+            canonicalHash,
+            200,
+            $"{outcome}:{accountId}",
+            ct
+        );
 
         return (result, isNew);
     }
-
-    private static bool IsIdentityMatchKeyConflict(DbUpdateException exception) =>
-        exception.InnerException
-            is PostgresException
-            {
-                SqlState: PostgresErrorCodes.UniqueViolation,
-                ConstraintName: "registrations_email_match_key_idx"
-                    or "registrations_mobile_match_key_idx",
-            };
 
     public async Task<IdentitySessionState> GetSessionStateAsync(
         string actorSubject,
@@ -1809,15 +1708,13 @@ public sealed class IdentityService
         Guid idempotencyKey,
         string operationFamily,
         string canonicalHash,
-        CancellationToken ct,
-        string? actorIssuer = null
+        CancellationToken ct
     )
     {
         var key = idempotencyKey.ToString();
         var existing = await db.IdempotencyLedger.FirstOrDefaultAsync(
             e =>
                 e.ActorSubject == actorSubject
-                && (actorIssuer == null || e.ActorIssuer == actorIssuer)
                 && e.IdempotencyKey == key
                 && e.OperationFamily == operationFamily,
             ct
@@ -1838,14 +1735,12 @@ public sealed class IdentityService
         string canonicalHash,
         int statusCode,
         string? responseRef,
-        CancellationToken ct,
-        string? actorIssuer = null
+        CancellationToken ct
     )
     {
         db.IdempotencyLedger.Add(
             new IdentityIdempotencyEntry
             {
-                ActorIssuer = actorIssuer,
                 ActorSubject = actorSubject,
                 IdempotencyKey = idempotencyKey.ToString(),
                 OperationFamily = operationFamily,

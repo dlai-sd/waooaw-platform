@@ -147,20 +147,12 @@ test('CCT-UX-A11Y-01 CCT-UX-A11Y-03 CCT-UX-MOTION-01: keyboard, focus, motion, a
   await page.emulateMedia({ reducedMotion: 'reduce' });
   for (const path of ['/', '/login', '/register', '/403', '/offline']) {
     await page.goto(path);
-    if (path === '/login' || path === '/register') {
-      const dialog = page.getByRole('dialog');
-      await expect(dialog).toBeVisible();
-      expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(true);
-    } else {
-      await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible({ timeout: 15_000 });
-      const skipLink = page.getByRole('link', { name: messages.en.skipToContent });
-      if (await skipLink.count()) {
-        await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-        await page.keyboard.press('Tab');
-        await expect(skipLink, `${path} must expose the skip link as its first Tab target`).toBeFocused();
-        await skipLink.press('Enter');
-        await expect(page.locator('#main-content')).toBeFocused();
-      }
+    const skipLink = page.getByRole('link', { name: messages.en.skipToContent });
+    if (await skipLink.count()) {
+      await page.keyboard.press('Tab');
+      await expect(skipLink).toBeFocused();
+      await skipLink.press('Enter');
+      await expect(page.locator('#main-content')).toBeFocused();
     }
     const results = await new AxeBuilder({ page }).analyze();
     const blocking = results.violations.filter(

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from validation_control.pilot import validate_value_baseline, validate_value_baseline_source
+from validation_control.pilot import validate_value_baseline, validate_value_baseline_source, wc109_scope_violations
 
 
 REPOSITORY = Path(__file__).resolve().parents[2]
@@ -74,3 +74,34 @@ def test_value_baseline_rejects_unreliable_claims(mutation: object, message: str
 
     with pytest.raises(ValueError, match=message):
         validate_value_baseline(record)
+
+
+def test_wc109_scope_accepts_control_plane_and_exact_candidate_dockerfiles() -> None:
+    assert (
+        wc109_scope_violations(
+            [
+                ".github/workflows/ci.yaml",
+                "scripts/validation_control/orchestrator.py",
+                "tests/validation_control/test_catalog_contract.py",
+                "validation/engineering-validation.yaml",
+                "src/business-platform/Dockerfile",
+                "web/Dockerfile",
+                "work-contracts/WC-109-requirements.yaml",
+            ]
+        )
+        == []
+    )
+
+
+def test_wc109_scope_rejects_product_and_wc110_surfaces() -> None:
+    paths = [
+        "architecture/reference/api-specs/business-platform.openapi.yaml",
+        "infrastructure/keycloak/waooaw-realm.json",
+        "src/business-platform/Program.cs",
+        "tests/business-platform.Tests/IdentityControllerTests.cs",
+        "web/components/shell/AppShell.tsx",
+        "work-contracts/WC-110-requirements.yaml",
+        "../outside",
+    ]
+
+    assert wc109_scope_violations(paths) == sorted(paths)

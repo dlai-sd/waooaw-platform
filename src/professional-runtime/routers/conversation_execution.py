@@ -64,7 +64,6 @@ STREAM_RESPONSES: ApiResponses = {
         "content": {"text/event-stream": {}},
         "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}},
     },
-    400: {"model": ExecutionProblemDetail},
     401: {"model": ExecutionProblemDetail},
     404: {"model": ExecutionProblemDetail},
     410: {"model": ExecutionProblemDetail},
@@ -74,7 +73,6 @@ STREAM_RESPONSES: ApiResponses = {
 CANCEL_RESPONSES: ApiResponses = {
     200: {"model": ProfessionalExecutionV1},
     202: {"model": ProfessionalExecutionV1},
-    400: {"model": ExecutionProblemDetail},
     401: {"model": ExecutionProblemDetail},
     404: {"model": ExecutionProblemDetail},
     409: {"model": ExecutionProblemDetail},

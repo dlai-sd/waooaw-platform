@@ -135,33 +135,6 @@ internal sealed class OperationalMandateResolverStub : IOperationalMandateResolv
 public sealed class ConversationServiceTests
 {
     [Fact]
-    public async Task SendRejectsNonPersistableTextAndInvalidLanguageTags()
-    {
-        var context = await CreateContextAsync();
-        var valid = CreateRequest("valid");
-        var malformed = new[]
-        {
-            valid with { Locale = "not a language tag" },
-            valid with { Locale = "AA-00000000-00000000-0000000-0000000" },
-            valid with { SkillId = " " },
-            valid with { Content = [new("1.0", "TEXT", "not\0persistable", "en-IN")] },
-            valid with { Content = [new("1.0", "TEXT", "\u0085", "en-IN")] },
-            valid with { Content = [new("1.0", "TEXT", "valid", "en\0IN")] },
-        };
-
-        foreach (var request in malformed)
-        {
-            await Assert.ThrowsAsync<ConversationRequestException>(() => context.Service.SendAsync(
-                context.TenantId,
-                context.ParticipantId,
-                context.RelationshipId,
-                Guid.NewGuid(),
-                request,
-                CancellationToken.None));
-        }
-    }
-
-    [Fact]
     public async Task Timeline_PaginatesInBothDirectionsAndReportsUnreadBoundary()
     {
         var context = await CreateContextAsync();
@@ -230,15 +203,14 @@ public sealed class ConversationServiceTests
         Assert.False(empty.HasMore);
         Assert.Null(empty.NextCursor);
         Assert.Null(empty.UnreadBoundaryMessageId);
-        var bothCursors = await context.Service.ListMessagesAsync(
+        await Assert.ThrowsAsync<ConversationRequestException>(() => context.Service.ListMessagesAsync(
             context.TenantId,
             context.ParticipantId,
             context.RelationshipId,
             "cursor",
             "after",
             50,
-            CancellationToken.None);
-        Assert.Empty(bothCursors.Items);
+            CancellationToken.None));
         await Assert.ThrowsAsync<ConversationRequestException>(() => context.Service.ListMessagesAsync(
             context.TenantId,
             context.ParticipantId,

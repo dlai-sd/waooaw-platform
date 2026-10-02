@@ -86,20 +86,7 @@ public sealed class RelationshipEvaluationController(
                 cancellationToken
             );
         if (relationship is null)
-            return new ObjectResult(
-                new
-                {
-                    type = "https://waooaw.com/problems/relationship-workspace-not-accessible",
-                    title = "The relationship evaluation is not accessible",
-                    status = StatusCodes.Status404NotFound,
-                    code = "RELATIONSHIP_WORKSPACE_NOT_ACCESSIBLE",
-                    correlationId = Guid.NewGuid(),
-                }
-            )
-            {
-                StatusCode = StatusCodes.Status404NotFound,
-                ContentTypes = { "application/problem+json" },
-            };
+            return NotFound();
 
         var contextRows = await db
             .RelationshipContextPayloads.AsNoTracking()

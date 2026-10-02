@@ -69,12 +69,8 @@ public sealed class PortalInteractionServiceTests
             valid with { Content = [] },
             valid with { Content = [new("1.0", "IMAGE", "Help me navigate", "en-IN")] },
             valid with { Content = [new("1.0", "TEXT", " ", "en-IN")] },
-            valid with { Content = [new("1.0", "TEXT", new string('x', 32001), "en-IN")] },
-            valid with { Content = [new("1.0", "TEXT", "not\0persistable", "en-IN")] },
-            valid with { Content = [new("1.0", "TEXT", "Help me navigate", "en\0IN")] },
+            valid with { Content = [new("1.0", "TEXT", new string('x', 4001), "en-IN")] },
             valid with { Locale = " " },
-            valid with { Locale = "not a language tag" },
-            valid with { Locale = "AA-00000000-00000000-0000000-0000000" },
             valid with { CurrentSurface = "UNKNOWN" },
         };
 

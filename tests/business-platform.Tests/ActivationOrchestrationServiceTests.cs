@@ -1,7 +1,6 @@
 // Implements: work-contracts/WC-059-goal005-ae01-contract-payment-activation.md §WC059-05
 // constitutional_basis: C-002, C-023, C-026, C-059, C-088
 
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Temporalio.Testing;
@@ -15,28 +14,6 @@ namespace Waooaw.BusinessPlatform.Tests;
 
 public sealed class ActivationOrchestrationServiceTests
 {
-    [Fact]
-    public void CanonicalActivationRequestDeserializesFromContractPayload()
-    {
-        var evidenceId = Guid.NewGuid();
-
-        var request = JsonSerializer.Deserialize<StartPaidActivationRequest>(
-            $$"""
-            {
-              "commercialOutcomeKind": "CAPTURED",
-              "commercialOutcomeReference": "payment-123",
-              "commercialEvidenceId": "{{evidenceId}}"
-            }
-            """,
-            new JsonSerializerOptions(JsonSerializerDefaults.Web)
-        );
-
-        Assert.NotNull(request);
-        Assert.Equal("CAPTURED", request.CommercialOutcomeKind);
-        Assert.Equal("payment-123", request.CommercialOutcomeReference);
-        Assert.Equal(evidenceId, request.CommercialEvidenceId);
-    }
-
     [Fact]
     public async Task CanonicalTupleHasStableTemporalWorkflowIdentity()
     {

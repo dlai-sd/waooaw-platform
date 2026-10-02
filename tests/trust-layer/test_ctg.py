@@ -372,20 +372,6 @@ class TestExceptionTranslator:
         assert err.code == "TOKEN_DEGRADED"
         assert err.retry_eligible is True
 
-    def test_429_maps_to_rate_limit_retry(self):
-        import httpx
-        import respx
-
-        tr = ExceptionTranslator()
-        with respx.mock:
-            respx.get("http://test/").mock(return_value=httpx.Response(429))
-            resp = httpx.get("http://test/")
-        exc = httpx.HTTPStatusError("rate limited", request=resp.request, response=resp)
-        err = tr.translate(exc, "google")
-        assert err.code == "RATE_LIMIT"
-        assert err.message == "Provider rate limit exceeded"
-        assert err.retry_eligible is True
-
     def test_500_maps_to_provider_error_retry_true(self):
         import httpx
         import respx

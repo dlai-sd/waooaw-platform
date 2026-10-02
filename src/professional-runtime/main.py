@@ -16,7 +16,6 @@ from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
-from starlette.exceptions import HTTPException as StarletteHTTPException
 from temporalio.client import Client as TemporalClient
 from temporalio.client import TLSConfig
 from temporalio.service import RPCError
@@ -443,7 +442,6 @@ def canonical_openapi() -> dict[str, Any]:
                 "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}},
                 "content": {"text/event-stream": {"schema": {"$ref": "#/components/schemas/ProfessionalExecutionEventV1"}}},
             },
-            "400": _execution_problem_response("ExecutionInvalidRequest"),
             "401": _execution_problem_response("ExecutionUnauthorized"),
             "404": _execution_problem_response("ExecutionNotFound"),
             "410": _execution_problem_response("ExecutionCursorExpired"),
@@ -470,7 +468,6 @@ def canonical_openapi() -> dict[str, Any]:
                 "description": "Existing terminal outcome replayed",
                 "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ProfessionalExecutionV1"}}},
             },
-            "400": _execution_problem_response("ExecutionInvalidRequest"),
             "401": _execution_problem_response("ExecutionUnauthorized"),
             "404": _execution_problem_response("ExecutionNotFound"),
             "409": _execution_problem_response("ExecutionConflict"),
@@ -489,24 +486,12 @@ app_override.openapi = canonical_openapi
 @app.exception_handler(RequestValidationError)
 async def validation_error(request: Request, _error: RequestValidationError) -> JSONResponse:
     """Return the F3 RFC 9457 shape without echoing rejected request content."""
-    raw_correlation_id = request.headers.get("X-Correlation-Id", "")
-    try:
-        correlation_id = str(uuid.UUID(raw_correlation_id))
-    except ValueError:
-        correlation_id = str(uuid.uuid4())
-    if request.url.path.startswith("/api/v1/internal/relationships/") and "/voice-orchestrations" in request.url.path:
-        return JSONResponse(
-            status_code=400,
-            media_type="application/problem+json",
-            content={
-                "type": "https://waooaw.com/problems/voice-orchestration-invalid-request",
-                "title": "Voice orchestration request is invalid",
-                "status": 400,
-                "code": "invalid_media",
-                "correlationId": correlation_id,
-            },
-        )
-    if request.url.path.startswith(("/api/v1/internal/conversations/", "/api/v1/internal/relationships/")):
+    if request.url.path.startswith("/api/v1/internal/conversations/"):
+        raw_correlation_id = request.headers.get("X-Correlation-Id", "")
+        try:
+            correlation_id = str(uuid.UUID(raw_correlation_id))
+        except ValueError:
+            correlation_id = str(uuid.uuid4())
         return JSONResponse(
             status_code=400,
             media_type="application/problem+json",
@@ -518,33 +503,7 @@ async def validation_error(request: Request, _error: RequestValidationError) -> 
                 "correlationId": correlation_id,
             },
         )
-    return JSONResponse(
-        status_code=400,
-        media_type="application/problem+json",
-        content={
-            "type": "https://waooaw.com/problems/request-invalid",
-            "title": "Request validation failed",
-            "status": 400,
-            "detail": "The request does not satisfy the operation contract.",
-        },
-    )
-
-
-@app.exception_handler(StarletteHTTPException)
-async def http_error(request: Request, error: StarletteHTTPException) -> JSONResponse:
-    if error.status_code == 400:
-        return await validation_error(request, RequestValidationError([]))
-    return JSONResponse(
-        status_code=error.status_code,
-        media_type="application/problem+json",
-        content={
-            "type": f"https://waooaw.com/problems/http-{error.status_code}",
-            "title": "The requested runtime operation could not be completed",
-            "status": error.status_code,
-            "detail": str(error.detail),
-        },
-        headers=error.headers,
-    )
+    return JSONResponse(status_code=422, content={"detail": "Request validation failed"})
 
 
 @app.get("/health", operation_id="getPRHealth", response_model=HealthResponse, tags=["Health"])

@@ -53,10 +53,6 @@ _OLLAMA_GENERATE_PATH = "/api/generate"
 _OLLAMA_MODEL = "llama3.2:3b"
 
 _OLLAMA_TIMEOUT_SECONDS = 30
-_AZURE_FALLBACK_MODELS = {
-    LlmTier.MID: "gpt-4o-mini",
-    LlmTier.FRONTIER: "gpt-4o",
-}
 
 _DB_INSERT_DISPATCH_EVENT = text(
     """
@@ -414,44 +410,10 @@ async def route_and_dispatch(
                     status,
                     error_detail,
                 )
-                fallback_model = _AZURE_FALLBACK_MODELS.get(tier)
-                if not gw_result.error.retry_eligible or fallback_model is None:
-                    raise RuntimeError(f"CTG tool error: {gw_result.error.code}")
-
-                event_id = str(uuid.uuid4())
-                provider_id = "azure"
-                model_id = fallback_model
-                fallback_result: GatewayResult = await gw.call(
-                    "llm.complete",
-                    {
-                        "provider": provider_id,
-                        "model": model_id,
-                        "prompt": prompt,
-                        "language": language,
-                    },
-                    _ctx,
-                )
-                if fallback_result.error is not None:
-                    error_detail = fallback_result.error.message
-                    await _record_dispatch_event(
-                        async_session_factory,
-                        event_id,
-                        tier,
-                        provider_id,
-                        model_id,
-                        task_complexity,
-                        language,
-                        "failed",
-                        error_detail,
-                    )
-                    raise RuntimeError(f"CTG tool error: {fallback_result.error.code}")
-                result = fallback_result.result or {}
-                status = "success"
-                error_detail = ""
-            else:
-                result = gw_result.result or {}
-                status = "success"
-                error_detail = ""
+                raise RuntimeError(f"CTG tool error: {gw_result.error.code}")
+            result = gw_result.result or {}
+            status = "success"
+            error_detail = ""
         except asyncio.CancelledError:
             await _record_dispatch_event(
                 async_session_factory,

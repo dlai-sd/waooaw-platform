@@ -31,12 +31,7 @@ public sealed class NotificationsController(CustomerAlertService alerts) : Contr
     {
         if (!TryGetTenantId(out var tenantId))
             return Unauthorized();
-        if (
-            limit is < 1 or > 100
-            || Request.Query.ContainsKey("cursor") && cursor is null
-            || cursor is not null && cursor.Length is < 16 or > 2048
-            || Request.Query.Keys.Any(key => key is not "cursor" and not "limit")
-        )
+        if (limit is < 1 or > 100)
             return Problem(statusCode: 400, title: "Invalid alerts query");
         try
         {
@@ -54,8 +49,8 @@ public sealed class NotificationsController(CustomerAlertService alerts) : Contr
         catch (ArgumentException exception)
         {
             return Problem(
-                statusCode: 404,
-                title: "Alerts cursor is not accessible",
+                statusCode: 400,
+                title: "Invalid alerts cursor",
                 detail: exception.Message
             );
         }

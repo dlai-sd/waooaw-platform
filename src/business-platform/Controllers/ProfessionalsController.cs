@@ -33,21 +33,16 @@ public sealed class ProfessionalsController : ControllerBase
         [FromQuery] string outcome
     )
     {
-        var outcomeLength = outcome?.EnumerateRunes().Count() ?? 0;
-        if (string.IsNullOrWhiteSpace(outcome) || outcomeLength is < 3 or > 500)
+        if (string.IsNullOrWhiteSpace(outcome) || outcome.Trim().Length < 3 || outcome.Length > 500)
         {
-            var problem = new ValidationProblemDetails(
-                new Dictionary<string, string[]>
-                {
-                    [nameof(outcome)] = ["Outcome must contain between 3 and 500 characters."],
-                }
-            )
-            {
-                Type = "https://waooaw.com/problems/validation-error",
-                Title = "The request is invalid",
-                Status = StatusCodes.Status400BadRequest,
-            };
-            return BadRequest(problem);
+            return BadRequest(
+                new ValidationProblemDetails(
+                    new Dictionary<string, string[]>
+                    {
+                        [nameof(outcome)] = ["Outcome must contain between 3 and 500 characters."],
+                    }
+                )
+            );
         }
 
         return Ok(_catalog.Discover(outcome));
@@ -74,15 +69,8 @@ public sealed class ProfessionalsController : ControllerBase
     {
         if (
             limit is < 1 or > 100
-            || Request.Query.Keys.Any(key =>
-                key is not "cursor" and not "limit" and not "professionalType" and not "q"
-            )
-            || Request.Query.ContainsKey("cursor")
-                && (string.IsNullOrWhiteSpace(cursor) || cursor.Length is < 16 or > 2048)
-            || Request.Query.ContainsKey("professionalType")
-                && (string.IsNullOrWhiteSpace(professionalType) || professionalType.Length > 100)
-            || Request.Query.ContainsKey("q")
-                && (string.IsNullOrWhiteSpace(query) || query.Length > 120)
+            || professionalType is { Length: > 100 }
+            || query is { Length: > 120 }
         )
             return Problem(
                 statusCode: StatusCodes.Status400BadRequest,
@@ -93,8 +81,8 @@ public sealed class ProfessionalsController : ControllerBase
         var offset = 0;
         if (!string.IsNullOrWhiteSpace(cursor) && !TryParseCursor(cursor, filterHash, out offset))
             return Problem(
-                statusCode: StatusCodes.Status404NotFound,
-                title: "Marketplace cursor is not accessible"
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Invalid marketplace cursor"
             );
 
         var listings = _catalog.Browse(professionalType, query);

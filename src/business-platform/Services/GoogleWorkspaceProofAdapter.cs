@@ -187,15 +187,15 @@ public sealed class GoogleWorkspaceProofAdapter(
             var previewActor = ValidatePreviewActor(principal, requireFresh: true);
             if (!HasVerifiedEmail(principal))
                 throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
-            if (!PreviewAuthenticationTime(principal, out var authenticated))
-                throw new IdentityActionDeniedException("IDENTITY_ACTION_DENIED");
             return new VerifiedGoogleWorkspaceProof(
                 previewActor,
                 previewProvider.ProviderNamespace,
                 previewBrokerAlias,
                 previewActor.Subject,
                 DateTimeOffset.UtcNow,
-                DateTimeOffset.FromUnixTimeSeconds(authenticated),
+                DateTimeOffset.FromUnixTimeSeconds(
+                    long.Parse(SingleClaim(principal, "auth_time")!)
+                ),
                 previewProvider.TrustConfigDigest,
                 Guid.NewGuid()
             );
@@ -421,7 +421,7 @@ public sealed class GoogleWorkspaceProofAdapter(
             || expires <= now - 30
             || expires <= issued
             || expires - issued > 900
-            || !PreviewAuthenticationTime(principal, out var authenticated)
+            || !Timestamp(principal, "auth_time", out var authenticated)
             || authenticated > issued + 30
         )
             return Denied<VerifiedCustomerActor>("preview_actor");
@@ -459,11 +459,6 @@ public sealed class GoogleWorkspaceProofAdapter(
         long.TryParse(SingleClaim(principal, type), out value)
         && value > 0
         && value <= 253402300799;
-
-    private static bool PreviewAuthenticationTime(ClaimsPrincipal principal, out long value) =>
-        principal.HasClaim(claim => claim.Type == "auth_time")
-            ? Timestamp(principal, "auth_time", out value)
-            : Timestamp(principal, "iat", out value);
 
     private static bool CustomerRolesOnly(ClaimsPrincipal principal)
     {

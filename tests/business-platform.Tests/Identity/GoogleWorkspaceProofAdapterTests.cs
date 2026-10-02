@@ -162,8 +162,6 @@ public sealed class GoogleWorkspaceProofAdapterTests
             issuer: "https://preview.invalid/realms/waooaw",
             authorizedParty: "waooaw-web-preview"
         );
-        var identity = Assert.IsType<ClaimsIdentity>(principal.Identity);
-        identity.RemoveClaim(Assert.Single(identity.FindAll("auth_time")));
         var adapter = new GoogleWorkspaceProofAdapter(
             client,
             Options.Create(new IdentityBrokerReadOptions()),

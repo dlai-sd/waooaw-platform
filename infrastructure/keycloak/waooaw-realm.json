@@ -161,43 +161,7 @@
       "standardFlowEnabled": false,
       "serviceAccountsEnabled": true,
       "directAccessGrantsEnabled": true,
-      "secret": "${KEYCLOAK_CLIENT_SECRET}",
-      "protocolMappers": [
-        {
-          "name": "business_platform_audience",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-audience-mapper",
-          "config": {
-            "included.custom.audience": "waooaw-platform",
-            "id.token.claim": "false",
-            "access.token.claim": "true"
-          }
-        },
-        {
-          "name": "service_client_type",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-hardcoded-claim-mapper",
-          "config": {
-            "claim.name": "client_type",
-            "claim.value": "service",
-            "jsonType.label": "String",
-            "id.token.claim": "false",
-            "access.token.claim": "true"
-          }
-        },
-        {
-          "name": "service_tenant",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-hardcoded-claim-mapper",
-          "config": {
-            "claim.name": "tenant_id",
-            "claim.value": "00000000-0000-0000-0000-000000000001",
-            "jsonType.label": "String",
-            "id.token.claim": "false",
-            "access.token.claim": "true"
-          }
-        }
-      ]
+      "secret": "${KEYCLOAK_CLIENT_SECRET}"
     },
     {
       "clientId": "waooaw-dev-client",
@@ -218,48 +182,6 @@
             "id.token.claim": "true",
             "access.token.claim": "true",
             "userinfo.token.claim": "true"
-          }
-        },
-        {
-          "name": "business_platform_audience",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-audience-mapper",
-          "config": {
-            "included.custom.audience": "waooaw-platform",
-            "id.token.claim": "false",
-            "access.token.claim": "true"
-          }
-        }
-      ]
-    },
-    {
-      "clientId": "waooaw-web-preview",
-      "name": "WAOOAW Web Preview (local contract testing only)",
-      "enabled": true,
-      "publicClient": true,
-      "standardFlowEnabled": false,
-      "directAccessGrantsEnabled": true,
-      "protocolMappers": [
-        {
-          "name": "business_platform_audience",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-audience-mapper",
-          "config": {
-            "included.custom.audience": "waooaw-platform",
-            "id.token.claim": "false",
-            "access.token.claim": "true"
-          }
-        },
-        {
-          "name": "preview_identity_provider",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-hardcoded-claim-mapper",
-          "config": {
-            "claim.name": "identity_provider",
-            "claim.value": "google",
-            "jsonType.label": "String",
-            "id.token.claim": "true",
-            "access.token.claim": "true"
           }
         }
       ]
