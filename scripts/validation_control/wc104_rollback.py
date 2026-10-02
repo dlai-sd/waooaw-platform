@@ -157,7 +157,7 @@ def publish_rollback_checkpoint(
         "phase_transitions": phase_transitions,
         "first_cause_gate": first_cause_gate,
         "run_state": manifest.get("run_state", "FAILED" if first_cause_gate is not None else "IN_PROGRESS"),
-        "passed": False,
+        "passed": manifest.get("passed", False),
     }
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + f".tmp-{os.getpid()}")
@@ -179,6 +179,7 @@ def execute_rollback(
     checkpoint_path: Path | None = None,
     resume_checkpoint: dict[str, Any] | None = None,
     repair_context: dict[str, Any] | None = None,
+    invalidated_gates: tuple[str, ...] = (),
     context_resolver: Callable[[Path, str, str], QualificationContext] = resolve_qualification_context,
     execution_preflight: Callable[[Path], None] = orchestration_preflight,
     resource_preflight: Callable[[Path, list[dict[str, Any]], str], dict[str, Any]] = resource_capacity_preflight,
@@ -289,6 +290,26 @@ def execute_rollback(
         )
     except Exception as exception:
         return block_preflight("preflight:plan", str(manifest["required_gates"][0]), exception)
+    nodes_by_gate = {node["gate_id"]: node for node in plan["nodes"]}
+    unknown_invalidations = sorted(set(invalidated_gates) - set(nodes_by_gate))
+    if unknown_invalidations:
+        return block_preflight(
+            "preflight:invalidation",
+            unknown_invalidations[0],
+            ValueError(f"unknown invalidated gates: {','.join(unknown_invalidations)}"),
+        )
+    invalidated = set(invalidated_gates)
+    pending_invalidations = list(invalidated)
+    while pending_invalidations:
+        gate_id = pending_invalidations.pop()
+        for dependent in nodes_by_gate[gate_id]["downstream_dependents"]:
+            if dependent not in invalidated:
+                invalidated.add(dependent)
+                pending_invalidations.append(dependent)
+    if invalidated:
+        manifest["invalidated_gates"] = [gate_id for gate_id in plan_execution_order(plan) if gate_id in invalidated]
+        for gate_id in invalidated:
+            resumed_results.pop(gate_id, None)
     if resume_checkpoint is not None and resume_checkpoint.get("run_state") == "FAILED":
         prior_first_cause = resume_checkpoint.get("first_cause_gate")
         try:
@@ -334,7 +355,6 @@ def execute_rollback(
         with tempfile.TemporaryDirectory(prefix="wc104-rollback-") as temporary_directory:
             pr_body_file = Path(temporary_directory) / "pr-body.md"
             pr_body_file.write_text(qualification_context.pr_body, encoding="utf-8")
-            nodes_by_gate = {node["gate_id"]: node for node in plan["nodes"]}
             current_phase: str | None = None
             for gate_id in plan_execution_order(plan):
                 started = time.monotonic()
@@ -447,6 +467,10 @@ def execute_rollback(
                     returncode = 1
                     error = "KeyboardInterrupt: operator cancellation"
                     disposition = "OPERATOR_CANCELLED"
+                except subprocess.TimeoutExpired as exception:
+                    returncode = 124
+                    error = f"TimeoutExpired: {exception}"
+                    disposition = "TIMEOUT"
                 except Exception as exception:
                     returncode = 1
                     error = f"{type(exception).__name__}: {exception}"
@@ -492,6 +516,7 @@ def execute_rollback(
         for result in gate_results
     )
     manifest["run_state"] = "PASSED" if manifest["passed"] else "FAILED"
+    checkpoint()
     return manifest
 
 
@@ -503,6 +528,7 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--repair-context", type=Path)
+    parser.add_argument("--invalidate-gate", action="append", default=[])
     arguments = parser.parse_args()
     repository = arguments.repository.resolve()
     catalog = yaml.safe_load((repository / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
@@ -529,6 +555,7 @@ def main() -> int:
         checkpoint_path=arguments.output,
         resume_checkpoint=resume_checkpoint,
         repair_context=repair_context,
+        invalidated_gates=tuple(arguments.invalidate_gate),
     )
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
     temporary_output = arguments.output.with_suffix(arguments.output.suffix + ".tmp")

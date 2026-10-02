@@ -4,6 +4,7 @@ from copy import deepcopy
 import json
 import os
 from pathlib import Path
+import subprocess
 
 import pytest
 import yaml
@@ -260,6 +261,41 @@ def test_rollback_atomically_checkpoints_each_terminal_gate(tmp_path: Path) -> N
     assert not list(tmp_path.glob("rollback.json.tmp-*"))
 
 
+def test_rollback_process_interruption_preserves_completed_chunks(tmp_path: Path) -> None:
+    checkpoint = tmp_path / "rollback.json"
+
+    def interrupt(repository: Path, gate: str, head: str, base: str, common: Path, **context: object) -> int:
+        if gate == "secrets":
+            raise SystemExit(143)
+        return 0
+
+    with pytest.raises(SystemExit, match="143"):
+        execute_rollback(
+            tmp_path,
+            load_catalog(),
+            candidate_sha=HEAD_SHA,
+            base_sha=BASE_SHA,
+            git_common_dir=tmp_path,
+            qualification_context=qualification_context(),
+            checkpoint_path=checkpoint,
+            execution_preflight=execution_ready,
+            resource_preflight=resources_ready,
+            runner_resolver=lambda repository, runner: {
+                "build_count": 1,
+                "trust_source": "local-identity-build",
+                "runner_id": runner,
+            },
+            service_resolver=resolve_services,
+            gate_executor=interrupt,
+        )
+
+    retained = json.loads(checkpoint.read_text(encoding="utf-8"))
+    assert retained["run_state"] == "IN_PROGRESS"
+    assert [item["gate_id"] for item in retained["gate_results"]] == ["build"]
+    assert retained["gate_results"][0]["result"] == "PASS"
+    assert not list(tmp_path.glob("rollback.json.tmp-*"))
+
+
 def test_rollback_records_operator_cancellation_and_suppresses_later_work(tmp_path: Path) -> None:
     catalog = load_catalog()
     checkpoint = tmp_path / "rollback.json"
@@ -294,6 +330,44 @@ def test_rollback_records_operator_cancellation_and_suppresses_later_work(tmp_pa
     assert result["gate_results"][1]["result"] == "BLOCKED"
     assert result["gate_results"][1]["disposition"] == "OPERATOR_CANCELLED"
     assert json.loads(checkpoint.read_text(encoding="utf-8"))["gate_results"] == result["gate_results"]
+
+
+def test_rollback_records_timeout_as_terminal_evidence(tmp_path: Path) -> None:
+    catalog = load_catalog()
+    checkpoint = tmp_path / "rollback.json"
+    executed: list[str] = []
+
+    def timeout(repository: Path, gate: str, head: str, base: str, common: Path, **context: object) -> int:
+        executed.append(gate)
+        if gate == "secrets":
+            raise subprocess.TimeoutExpired(gate, timeout=30)
+        return 0
+
+    result = execute_rollback(
+        tmp_path,
+        catalog,
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        checkpoint_path=checkpoint,
+        execution_preflight=execution_ready,
+        resource_preflight=resources_ready,
+        runner_resolver=lambda repository, runner: {
+            "build_count": 1,
+            "trust_source": "local-identity-build",
+            "runner_id": runner,
+        },
+        service_resolver=resolve_services,
+        gate_executor=timeout,
+    )
+
+    timed_out = next(item for item in result["gate_results"] if item["gate_id"] == "secrets")
+    assert executed == ["build", "secrets"]
+    assert timed_out["result"] == "BLOCKED"
+    assert timed_out["disposition"] == "TIMEOUT"
+    assert timed_out["returncode"] == 124
+    assert json.loads(checkpoint.read_text(encoding="utf-8")) == result
 
 
 def test_rollback_service_supply_failure_blocks_before_runner_build(tmp_path: Path) -> None:
@@ -597,6 +671,91 @@ def test_rollback_failure_retains_independent_reusable_results_only(tmp_path: Pa
     assert next(item for item in resumed["gate_results"] if item["gate_id"] == dependent_gate)["disposition"] == (
         "PREREQUISITE_EVIDENCE_BLOCKED"
     )
+
+
+def test_rollback_resume_runs_only_invalidated_dependency_closure(tmp_path: Path) -> None:
+    catalog = load_catalog()
+    plan = build_execution_plan(catalog, catalog["full_gates"], mode="qualification", head_sha=HEAD_SHA, run_id="invalidate")
+    ordered_gates = plan_execution_order(plan)
+    nodes_by_gate = {node["gate_id"]: node for node in plan["nodes"]}
+    selected_gate = next(
+        gate_id
+        for gate_id in ordered_gates
+        if nodes_by_gate[gate_id]["downstream_dependents"] and gate_id not in BLOCKED_DEFERRED_GATES
+    )
+    invalidated = {selected_gate}
+    pending = [selected_gate]
+    while pending:
+        for dependent in nodes_by_gate[pending.pop()]["downstream_dependents"]:
+            if dependent not in invalidated:
+                invalidated.add(dependent)
+                pending.append(dependent)
+    completed = execute_rollback(
+        tmp_path,
+        catalog,
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        execution_preflight=execution_ready,
+        resource_preflight=resources_ready,
+        runner_resolver=lambda repository, runner: {
+            "build_count": 1,
+            "trust_source": "local-identity-build",
+            "runner_id": runner,
+        },
+        service_resolver=resolve_services,
+        gate_executor=lambda repository, gate, head, base, common, **context: 0,
+    )
+    executed: list[str] = []
+
+    resumed = execute_rollback(
+        tmp_path,
+        catalog,
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        resume_checkpoint=completed,
+        invalidated_gates=(selected_gate,),
+        execution_preflight=execution_ready,
+        resource_preflight=resources_ready,
+        runner_resolver=lambda repository, runner: {
+            "build_count": 1,
+            "trust_source": "local-identity-build",
+            "runner_id": runner,
+        },
+        service_resolver=resolve_services,
+        gate_executor=lambda repository, gate, head, base, common, **context: executed.append(gate) or 0,
+    )
+
+    expected = [gate for gate in ordered_gates if gate in invalidated and gate not in BLOCKED_DEFERRED_GATES]
+    assert executed == expected
+    assert resumed["invalidated_gates"] == [gate for gate in ordered_gates if gate in invalidated]
+    assert resumed["execution_summary"]["resumed_gate_count"] == sum(
+        gate not in invalidated and gate not in BLOCKED_DEFERRED_GATES for gate in ordered_gates
+    )
+
+
+def test_rollback_unknown_invalidation_blocks_before_costly_work(tmp_path: Path) -> None:
+    result = execute_rollback(
+        tmp_path,
+        load_catalog(),
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        invalidated_gates=("unknown-gate",),
+        execution_preflight=lambda repository: pytest.fail("execution preflight must not run"),
+        resource_preflight=lambda repository, nodes, namespace: pytest.fail("resource preflight must not run"),
+        runner_resolver=lambda repository, runner: pytest.fail("runner must not resolve"),
+        service_resolver=lambda repository, node: pytest.fail("service must not resolve"),
+        gate_executor=lambda repository, gate, head, base, common, **context: pytest.fail("gate must not execute"),
+    )
+
+    assert result["run_state"] == "BLOCKED"
+    assert result["first_cause_gate"] == "preflight:invalidation"
+    assert result["execution_summary"]["executed_gate_count"] == 0
 
 
 def test_rollback_resume_rejects_identity_mismatch_before_execution(tmp_path: Path) -> None:

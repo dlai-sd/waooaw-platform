@@ -554,7 +554,10 @@ requirements:
     completion_rule: Each completed chunk survives interruption; resume rejects incompatible evidence and runs only missing, failed or invalidated chunks.
     evidence_refs:
       - scripts/validation_control/evidence_controller.py
-      - tests/validation_control/test_wc109_execution_outcomes.py
+      - scripts/validation_control/wc104_rollback.py
+      - tests/validation_control/test_wc109_evidence_controller.py
+      - tests/validation_control/test_wc104_rollback.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R045
