@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -34,6 +35,41 @@ class QualificationContext:
     base_branch: str
     pr_number: str
     repository_name: str
+
+
+def rollback_catalog_digest(catalog: dict[str, Any]) -> str:
+    canonical = json.dumps(catalog, sort_keys=True, separators=(",", ":")).encode()
+    return "sha256:" + hashlib.sha256(canonical).hexdigest()
+
+
+def resume_pass_results(
+    checkpoint: dict[str, Any],
+    manifest: dict[str, Any],
+    *,
+    base_sha: str,
+    catalog_digest: str,
+) -> dict[str, dict[str, Any]]:
+    required_identity = {
+        "schema": manifest["schema"],
+        "candidate_sha": manifest["candidate_sha"],
+        "base_sha": base_sha,
+        "catalog_digest": catalog_digest,
+        "required_gates": manifest["required_gates"],
+    }
+    if any(checkpoint.get(field) != value for field, value in required_identity.items()):
+        raise ValueError("rollback checkpoint identity does not match the requested run")
+    gate_results = checkpoint.get("gate_results")
+    if not isinstance(gate_results, list):
+        raise ValueError("rollback checkpoint gate results must be a list")
+    by_gate: dict[str, dict[str, Any]] = {}
+    for result in gate_results:
+        if not isinstance(result, dict) or result.get("gate_id") not in manifest["required_gates"]:
+            raise ValueError("rollback checkpoint contains an unknown gate result")
+        gate_id = str(result["gate_id"])
+        if gate_id in by_gate:
+            raise ValueError("rollback checkpoint contains duplicate gate results")
+        by_gate[gate_id] = result
+    return {gate_id: result for gate_id, result in by_gate.items() if result.get("result") == "PASS"}
 
 
 def git_head(repository: Path) -> str:
@@ -129,11 +165,13 @@ def execute_rollback(
     git_common_dir: Path,
     qualification_context: QualificationContext | None = None,
     checkpoint_path: Path | None = None,
+    resume_checkpoint: dict[str, Any] | None = None,
     runner_resolver: Callable[[Path, str], dict[str, Any]] = resolve_runner,
     service_resolver: Callable[[Path, dict[str, Any]], dict[str, str]] = required_service_identities,
     gate_executor: Callable[..., int] = execute_gate,
 ) -> dict[str, Any]:
     manifest = build_wc104_rollback_manifest(catalog, candidate_sha=candidate_sha)
+    manifest["catalog_digest"] = rollback_catalog_digest(catalog)
     previous = {name: os.environ.get(name) for name in manifest["environment"]}
     runner_results: dict[str, Any] = {}
     service_results: dict[str, Any] = {}
@@ -141,6 +179,16 @@ def execute_rollback(
     first_cause_gate: str | None = None
     if qualification_context is None:
         qualification_context = resolve_qualification_context(repository, base_sha, candidate_sha)
+    resumed_results = (
+        resume_pass_results(
+            resume_checkpoint,
+            manifest,
+            base_sha=base_sha,
+            catalog_digest=manifest["catalog_digest"],
+        )
+        if resume_checkpoint is not None
+        else {}
+    )
 
     def checkpoint() -> None:
         if checkpoint_path is not None:
@@ -203,6 +251,7 @@ def execute_rollback(
                     "first_cause_gate": first_cause_gate,
                     "execution_summary": {
                         "executed_gate_count": 0,
+                        "resumed_gate_count": 0,
                         "suppressed_gate_count": len(manifest["required_gates"]) - len(BLOCKED_DEFERRED_GATES),
                         "deferred_gate_count": len(BLOCKED_DEFERRED_GATES),
                     },
@@ -229,6 +278,15 @@ def execute_rollback(
             pr_body_file.write_text(qualification_context.pr_body, encoding="utf-8")
             for gate_id in manifest["required_gates"]:
                 started = time.monotonic()
+                if gate_id in resumed_results:
+                    gate_results.append(
+                        {
+                            **resumed_results[gate_id],
+                            "evidence_disposition": "same-run-checkpoint",
+                        }
+                    )
+                    checkpoint()
+                    continue
                 if gate_id in BLOCKED_DEFERRED_GATES:
                     gate_results.append(
                         {
@@ -282,6 +340,7 @@ def execute_rollback(
                     "gate_id": gate_id,
                     "returncode": returncode,
                     "result": "PASS" if returncode == 0 else "FAIL",
+                    "evidence_disposition": "executed",
                     "duration_seconds": round(time.monotonic() - started, 3),
                 }
                 if error is not None:
@@ -305,7 +364,8 @@ def execute_rollback(
     manifest["gate_results"] = gate_results
     manifest["first_cause_gate"] = first_cause_gate
     manifest["execution_summary"] = {
-        "executed_gate_count": sum("returncode" in result for result in gate_results),
+        "executed_gate_count": sum(result.get("evidence_disposition") == "executed" for result in gate_results),
+        "resumed_gate_count": sum(result.get("evidence_disposition") == "same-run-checkpoint" for result in gate_results),
         "suppressed_gate_count": sum(result.get("disposition") == "SUPPRESSED_AFTER_FAILURE" for result in gate_results),
         "deferred_gate_count": sum(result.get("disposition") == "BLOCKED-DEFERRED" for result in gate_results),
     }
@@ -323,11 +383,19 @@ def main() -> int:
     parser.add_argument("--base", required=True)
     parser.add_argument("--git-common-dir", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--resume", action="store_true")
     arguments = parser.parse_args()
     repository = arguments.repository.resolve()
     catalog = yaml.safe_load((repository / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
     if not isinstance(catalog, dict):
         raise ValueError("validation catalog root must be a mapping")
+    resume_checkpoint = None
+    if arguments.resume:
+        if not arguments.output.is_file():
+            raise ValueError("--resume requires an existing checkpoint at --output")
+        resume_checkpoint = json.loads(arguments.output.read_text(encoding="utf-8"))
+        if not isinstance(resume_checkpoint, dict):
+            raise ValueError("rollback checkpoint root must be a mapping")
     manifest = execute_rollback(
         repository,
         catalog,
@@ -335,6 +403,7 @@ def main() -> int:
         base_sha=arguments.base,
         git_common_dir=arguments.git_common_dir.resolve(),
         checkpoint_path=arguments.output,
+        resume_checkpoint=resume_checkpoint,
     )
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
     temporary_output = arguments.output.with_suffix(arguments.output.suffix + ".tmp")

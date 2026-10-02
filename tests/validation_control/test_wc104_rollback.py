@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 
+import pytest
 import yaml
 
 from validation_control.evidence_controller import BLOCKED_DEFERRED_AMENDMENT, BLOCKED_DEFERRED_GATES
@@ -82,6 +83,7 @@ def test_rollback_clean_builds_each_runner_once_then_executes_full_inventory(tmp
     assert result["first_cause_gate"] is None
     assert result["execution_summary"] == {
         "executed_gate_count": len(executable_gates),
+        "resumed_gate_count": 0,
         "suppressed_gate_count": 0,
         "deferred_gate_count": len(BLOCKED_DEFERRED_GATES),
     }
@@ -117,6 +119,7 @@ def test_rollback_failure_suppresses_remaining_executable_inventory(tmp_path: Pa
     assert executed == catalog["full_gates"][:2]
     assert result["first_cause_gate"] == catalog["full_gates"][1]
     assert result["execution_summary"]["executed_gate_count"] == 2
+    assert result["execution_summary"]["resumed_gate_count"] == 0
     assert result["execution_summary"]["suppressed_gate_count"] == len(catalog["full_gates"]) - 5
     assert all(
         item["result"] == "BLOCKED" and item["first_cause_gate"] == catalog["full_gates"][1]
@@ -247,6 +250,7 @@ def test_rollback_service_supply_failure_blocks_before_runner_build(tmp_path: Pa
     assert result["first_cause_gate"] == "preflight:integration:multi-tenant"
     assert result["execution_summary"] == {
         "executed_gate_count": 0,
+        "resumed_gate_count": 0,
         "suppressed_gate_count": len(catalog["full_gates"]) - len(BLOCKED_DEFERRED_GATES),
         "deferred_gate_count": len(BLOCKED_DEFERRED_GATES),
     }
@@ -254,3 +258,86 @@ def test_rollback_service_supply_failure_blocks_before_runner_build(tmp_path: Pa
         "ValueError: required service image is unavailable: postgres"
     )
     assert json.loads(checkpoint.read_text(encoding="utf-8"))["run_state"] == "BLOCKED"
+
+
+def test_rollback_resume_reuses_only_same_identity_pass_results(tmp_path: Path) -> None:
+    catalog = load_catalog()
+    checkpoint = tmp_path / "rollback.json"
+
+    failed = execute_rollback(
+        tmp_path,
+        catalog,
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        checkpoint_path=checkpoint,
+        runner_resolver=lambda repository, runner: {
+            "build_count": 1,
+            "trust_source": "local-identity-build",
+            "runner_id": runner,
+        },
+        service_resolver=resolve_services,
+        gate_executor=lambda repository, gate, head, base, common, **context: 9 if gate == "secrets" else 0,
+    )
+    resumed_calls: list[str] = []
+
+    resumed = execute_rollback(
+        tmp_path,
+        catalog,
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        checkpoint_path=checkpoint,
+        resume_checkpoint=failed,
+        runner_resolver=lambda repository, runner: {
+            "build_count": 1,
+            "trust_source": "local-identity-build",
+            "runner_id": runner,
+        },
+        service_resolver=resolve_services,
+        gate_executor=lambda repository, gate, head, base, common, **context: resumed_calls.append(gate) or 0,
+    )
+
+    assert "build" not in resumed_calls
+    assert resumed_calls[0] == "secrets"
+    assert resumed["passed"] is True
+    assert resumed["execution_summary"]["resumed_gate_count"] == 1
+    assert next(item for item in resumed["gate_results"] if item["gate_id"] == "build")["evidence_disposition"] == (
+        "same-run-checkpoint"
+    )
+
+
+def test_rollback_resume_rejects_identity_mismatch_before_execution(tmp_path: Path) -> None:
+    catalog = load_catalog()
+    manifest = execute_rollback(
+        tmp_path,
+        catalog,
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        runner_resolver=lambda repository, runner: {
+            "build_count": 1,
+            "trust_source": "local-identity-build",
+            "runner_id": runner,
+        },
+        service_resolver=resolve_services,
+        gate_executor=lambda repository, gate, head, base, common, **context: 0,
+    )
+    manifest["candidate_sha"] = "d" * 40
+
+    with pytest.raises(ValueError, match="identity does not match"):
+        execute_rollback(
+            tmp_path,
+            catalog,
+            candidate_sha=HEAD_SHA,
+            base_sha=BASE_SHA,
+            git_common_dir=tmp_path,
+            qualification_context=qualification_context(),
+            resume_checkpoint=manifest,
+            runner_resolver=lambda repository, runner: pytest.fail("runner must not resolve"),
+            service_resolver=lambda repository, node: pytest.fail("service must not resolve"),
+            gate_executor=lambda repository, gate, head, base, common, **context: pytest.fail("gate must not execute"),
+        )
