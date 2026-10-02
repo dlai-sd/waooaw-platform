@@ -167,6 +167,14 @@ def test_repository_wc109_wc110_integration_record_is_valid() -> None:
     result = validate_wc109_wc110_integration(record)
 
     assert result["partition_commit"] == "07a091c920ac49fc75be0b3e6a9d279739aac6f0"
+    assert record["post_wc110_integration"] == {
+        "merged_base_sha": "1fedf83e744b2099de1c3707f1fec770159124e8",
+        "integration_commit": "cc4acb21193b460513f1caf85d69e50bcb732dbf",
+        "effective_candidate_paths": ["tests/validation_control/test_runner_contracts.py"],
+        "scope_violations": [],
+        "historical_results_promoted": False,
+        "focused_docker_tests": {"passed": 143, "failed": 0},
+    }
     assert result["passed"] is True
 
 

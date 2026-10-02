@@ -30,6 +30,19 @@
     "execution_boundary": "repository-docker-runner",
     "scope_check": "candidate_paths=86 violations=0"
   },
+  "post_wc110_integration": {
+    "merged_base_sha": "1fedf83e744b2099de1c3707f1fec770159124e8",
+    "integration_commit": "cc4acb21193b460513f1caf85d69e50bcb732dbf",
+    "effective_candidate_paths": [
+      "tests/validation_control/test_runner_contracts.py"
+    ],
+    "scope_violations": [],
+    "historical_results_promoted": false,
+    "focused_docker_tests": {
+      "passed": 143,
+      "failed": 0
+    }
+  },
   "limitations": [
     "This record proves repository scope partition and local Docker control-plane regression only.",
     "It does not promote historical product results, prove WC-110 completion, or authorize qualification, hosted execution, deployment, or product readiness."
