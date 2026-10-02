@@ -28,6 +28,7 @@ from validation_control.qualification import build_wc104_rollback_manifest, rend
 from validation_control.local_catalog_gate import execute_gate, required_service_identities, resolve_runner
 from validation_control.orchestrator import (
     build_execution_plan,
+    phase_transition_record,
     plan_execution_order,
     prerequisite_evidence_blockers,
     suppression_reason,
@@ -144,6 +145,7 @@ def publish_rollback_checkpoint(
     runner_results: dict[str, Any],
     service_results: dict[str, Any],
     gate_results: list[dict[str, Any]],
+    phase_transitions: list[dict[str, Any]],
     first_cause_gate: str | None,
 ) -> None:
     checkpoint = {
@@ -152,6 +154,7 @@ def publish_rollback_checkpoint(
         "runner_results": runner_results,
         "service_results": service_results,
         "gate_results": gate_results,
+        "phase_transitions": phase_transitions,
         "first_cause_gate": first_cause_gate,
         "run_state": manifest.get("run_state", "FAILED" if first_cause_gate is not None else "IN_PROGRESS"),
         "passed": False,
@@ -188,6 +191,7 @@ def execute_rollback(
     runner_results: dict[str, Any] = {}
     service_results: dict[str, Any] = {}
     gate_results: list[dict[str, Any]] = []
+    phase_transitions: list[dict[str, Any]] = []
     first_cause_gate: str | None = None
     stop_all_after_first_cause = False
     resumed_results = (
@@ -202,6 +206,9 @@ def execute_rollback(
     )
 
     def checkpoint() -> None:
+        for result in gate_results:
+            result.setdefault("head_sha", candidate_sha)
+            result.setdefault("catalog_digest", manifest["catalog_digest"])
         if checkpoint_path is not None:
             publish_rollback_checkpoint(
                 checkpoint_path,
@@ -210,6 +217,7 @@ def execute_rollback(
                 runner_results=runner_results,
                 service_results=service_results,
                 gate_results=gate_results,
+                phase_transitions=phase_transitions,
                 first_cause_gate=first_cause_gate,
             )
 
@@ -248,6 +256,7 @@ def execute_rollback(
                 "runner_results": runner_results,
                 "service_results": service_results,
                 "gate_results": gate_results,
+                "phase_transitions": phase_transitions,
                 "first_cause_gate": first_cause_gate,
                 "preflight_error": error,
                 "execution_summary": {
@@ -307,8 +316,34 @@ def execute_rollback(
             pr_body_file = Path(temporary_directory) / "pr-body.md"
             pr_body_file.write_text(qualification_context.pr_body, encoding="utf-8")
             nodes_by_gate = {node["gate_id"]: node for node in plan["nodes"]}
+            current_phase: str | None = None
             for gate_id in plan_execution_order(plan):
                 started = time.monotonic()
+                node = nodes_by_gate[gate_id]
+                if first_cause_gate is None and node["phase"] != current_phase:
+                    transition = phase_transition_record(
+                        plan,
+                        node["phase"],
+                        gate_results,
+                        catalog_digest=manifest["catalog_digest"],
+                    )
+                    phase_transitions.append(transition)
+                    if transition["result"] != "PASS":
+                        first_cause_gate = gate_id
+                        gate_results.append(
+                            {
+                                "gate_id": gate_id,
+                                "result": "BLOCKED",
+                                "disposition": "PHASE_TRANSITION_BLOCKED",
+                                "first_cause_gate": first_cause_gate,
+                                "phase_blockers": transition["blockers"],
+                                "duration_seconds": 0.0,
+                            }
+                        )
+                        checkpoint()
+                        continue
+                    current_phase = node["phase"]
+                    checkpoint()
                 if gate_id in BLOCKED_DEFERRED_GATES:
                     gate_results.append(
                         {
@@ -344,7 +379,7 @@ def execute_rollback(
                     )
                     checkpoint()
                     continue
-                prerequisite_blockers = prerequisite_evidence_blockers(nodes_by_gate[gate_id], gate_results)
+                prerequisite_blockers = prerequisite_evidence_blockers(node, gate_results)
                 if prerequisite_blockers:
                     if first_cause_gate is None:
                         first_cause_gate = gate_id
@@ -420,6 +455,7 @@ def execute_rollback(
     manifest["runner_results"] = runner_results
     manifest["service_results"] = service_results
     manifest["gate_results"] = gate_results
+    manifest["phase_transitions"] = phase_transitions
     manifest["first_cause_gate"] = first_cause_gate
     manifest["execution_summary"] = {
         "executed_gate_count": sum(result.get("evidence_disposition") == "executed" for result in gate_results),

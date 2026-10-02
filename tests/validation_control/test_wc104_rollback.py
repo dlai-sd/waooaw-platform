@@ -99,6 +99,17 @@ def test_rollback_clean_builds_each_runner_once_then_executes_full_inventory(tmp
         for item in deferred
     )
     assert result["first_cause_gate"] is None
+    assert [transition["phase"] for transition in result["phase_transitions"]] == [
+        "A_DESIGN",
+        "B_COMPONENT",
+        "C_DEPENDENCY_INTEGRATION",
+        "D_SYSTEM_STITCHING",
+        "E_QUALIFICATION_HANDOFF",
+    ]
+    assert all(transition["result"] == "PASS" for transition in result["phase_transitions"])
+    assert all(
+        item["head_sha"] == HEAD_SHA and item["catalog_digest"] == result["catalog_digest"] for item in result["gate_results"]
+    )
     assert result["execution_summary"] == {
         "executed_gate_count": len(executable_gates),
         "resumed_gate_count": 0,
@@ -146,6 +157,7 @@ def test_rollback_failure_suppresses_remaining_executable_inventory(tmp_path: Pa
     ]
     assert executed == expected_executed
     assert result["first_cause_gate"] == catalog["full_gates"][1]
+    assert [transition["phase"] for transition in result["phase_transitions"]] == ["A_DESIGN"]
     assert result["execution_summary"]["executed_gate_count"] == len(expected_executed)
     assert result["execution_summary"]["resumed_gate_count"] == 0
     assert result["execution_summary"]["suppressed_gate_count"] == sum(

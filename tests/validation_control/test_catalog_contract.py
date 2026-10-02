@@ -20,6 +20,7 @@ from validation_control.candidate_controller import catalog_candidate_inputs
 from validation_control.evidence_controller import BLOCKED_DEFERRED_AMENDMENT
 from validation_control.orchestrator import (
     build_execution_plan,
+    phase_transition_record,
     plan_execution_order,
     prerequisite_evidence_blockers,
     suppression_reason,
@@ -201,6 +202,45 @@ def test_prerequisite_evidence_accepts_pass_and_exact_founder_deferral() -> None
         )
         == []
     )
+
+
+def test_phase_transition_rejects_missing_failed_stale_and_broad_bypass_evidence() -> None:
+    plan = build_execution_plan(
+        load_catalog(),
+        ["build:web", "test-web", "e2e:accessibility"],
+        mode="focused",
+        head_sha="a" * 40,
+        run_id="phase-evidence",
+    )
+    digest = "sha256:" + "d" * 64
+
+    assert phase_transition_record(plan, "B_COMPONENT", [], catalog_digest=digest)["blockers"] == ["missing:build:web"]
+    assert phase_transition_record(
+        plan,
+        "B_COMPONENT",
+        [{"gate_id": "build:web", "result": "FAIL", "head_sha": "a" * 40, "catalog_digest": digest}],
+        catalog_digest=digest,
+    )["blockers"] == ["incompatible:build:web:FAIL"]
+    assert phase_transition_record(
+        plan,
+        "B_COMPONENT",
+        [{"gate_id": "build:web", "result": "PASS", "head_sha": "b" * 40, "catalog_digest": digest}],
+        catalog_digest=digest,
+    )["blockers"] == ["stale:build:web"]
+    assert phase_transition_record(
+        plan,
+        "B_COMPONENT",
+        [{"gate_id": "build:web", "result": "PASS", "head_sha": "a" * 40, "catalog_digest": "sha256:" + "e" * 64}],
+        catalog_digest=digest,
+    )["blockers"] == ["stale:build:web"]
+    bypass = phase_transition_record(
+        plan,
+        "D_SYSTEM_STITCHING",
+        [{"gate_id": "build:web", "result": "PASS", "head_sha": "a" * 40, "catalog_digest": digest}],
+        catalog_digest=digest,
+    )
+    assert bypass["result"] == "BLOCKED"
+    assert bypass["blockers"] == ["missing:test-web"]
     assert (
         prerequisite_evidence_blockers(
             {"direct_prerequisites": ["acceptance:as-001"]},

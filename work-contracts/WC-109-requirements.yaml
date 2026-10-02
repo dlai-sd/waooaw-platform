@@ -497,7 +497,10 @@ requirements:
     completion_rule: Only complete compatible PASS evidence advances one phase; broader or later execution cannot bypass an earlier phase.
     evidence_refs:
       - scripts/validation_control/orchestrator.py
-      - tests/validation_control/test_wc109_execution_outcomes.py
+      - scripts/validation_control/wc104_rollback.py
+      - tests/validation_control/test_catalog_contract.py
+      - tests/validation_control/test_wc104_rollback.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R041

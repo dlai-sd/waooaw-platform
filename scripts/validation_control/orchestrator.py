@@ -22,6 +22,13 @@ from validation_control.evidence_controller import BLOCKED_DEFERRED_AMENDMENT, B
 Mode = Literal["focused", "qualification"]
 UNSAFE_PATH_SEGMENT = re.compile(r"[^A-Za-z0-9_.-]+")
 COST_ORDER = ("STATIC", "FOCUSED", "INTEGRATION", "MUTATION", "BROWSER", "FUZZ", "HOSTED", "QUALIFICATION")
+PHASE_ORDER = (
+    "A_DESIGN",
+    "B_COMPONENT",
+    "C_DEPENDENCY_INTEGRATION",
+    "D_SYSTEM_STITCHING",
+    "E_QUALIFICATION_HANDOFF",
+)
 PHASE_BY_COST = {
     "STATIC": "A_DESIGN",
     "FOCUSED": "B_COMPONENT",
@@ -108,6 +115,40 @@ def prerequisite_evidence_blockers(node: dict[str, Any], gate_results: list[dict
         else:
             blockers.append(f"incompatible:{prerequisite}:{result.get('result')}")
     return blockers
+
+
+def phase_transition_record(
+    plan: dict[str, Any],
+    target_phase: str,
+    gate_results: list[dict[str, Any]],
+    *,
+    catalog_digest: str,
+) -> dict[str, Any]:
+    if target_phase not in PHASE_ORDER:
+        raise ValueError(f"unknown execution phase: {target_phase}")
+    nodes = plan.get("nodes")
+    if not isinstance(nodes, list) or not all(isinstance(node, dict) for node in nodes):
+        raise ValueError("execution plan nodes must be a mapping list")
+    target_index = PHASE_ORDER.index(target_phase)
+    required_gates = [node["gate_id"] for node in nodes if PHASE_ORDER.index(node["phase"]) < target_index]
+    by_gate = {result.get("gate_id"): result for result in gate_results if isinstance(result, dict)}
+    blockers: list[str] = []
+    for gate_id in required_gates:
+        result = by_gate.get(gate_id)
+        if result is None:
+            blockers.append(f"missing:{gate_id}")
+        elif result.get("head_sha") != plan.get("head_sha") or result.get("catalog_digest") != catalog_digest:
+            blockers.append(f"stale:{gate_id}")
+        elif prerequisite_evidence_blockers({"direct_prerequisites": [gate_id]}, [result]):
+            blockers.append(f"incompatible:{gate_id}:{result.get('result')}")
+    return {
+        "phase": target_phase,
+        "result": "PASS" if not blockers else "BLOCKED",
+        "required_evidence_gates": required_gates,
+        "blockers": blockers,
+        "head_sha": plan.get("head_sha"),
+        "catalog_digest": catalog_digest,
+    }
 
 
 def build_execution_plan(
