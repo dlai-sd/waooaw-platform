@@ -1,0 +1,13 @@
+{
+  "schema": "waooaw.wc109-implementation-availability/v1",
+  "branch": "wc/109-agentic-validation-implementation",
+  "hosted_shadow_commit": "0ca581718a002da474e596a9ea292b9470aa3ef8",
+  "pilot_recorder_commit": "698bf81ecf1dfd24cb0fe718a827adb85aaeee25",
+  "hosted_manifest_repair_commit": "56ea78232b8b0cb976415f28a799d222f1e6c376",
+  "observed_published_ref": "c5d5a64e034eb79355fe7b44eceff4f23cfce1e1",
+  "observed_at": "2026-10-01T08:06:47Z",
+  "observation_method": "git ls-remote --heads origin wc/109-agentic-validation-implementation",
+  "eligibility_rule": "The Founder-approved WC-109 implementation PR created_at must be at or after observed_at and must contain the hosted Shadow implementation.",
+  "hosted_execution_claimed": false,
+  "pilot_completion_claimed": false
+}

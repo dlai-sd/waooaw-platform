@@ -6,6 +6,11 @@
   "pnpm": {
     "overrides": {
       "@rollup/plugin-terser>serialize-javascript": "7.1.0",
+      "axios@<1.20.0": "1.20.0",
+      "basic-ftp@<=6.2.0": "6.2.1",
+      "brace-expansion@<1.1.20": "1.1.20",
+      "brace-expansion@>=2.0.0 <2.1.6": "2.1.6",
+      "brace-expansion@>=4.0.0 <5.0.11": "5.0.11",
       "fast-uri@>=3.0.0 <3.1.7": "3.1.7",
       "glob@>=10.2.0 <10.5.0": "10.5.0",
       "js-yaml@>=3.0.0 <3.15.2": "3.15.2",

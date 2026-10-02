@@ -85,5 +85,26 @@ def build_wc104_rollback_manifest(catalog: dict[str, Any], *, candidate_sha: str
     }
 
 
+def build_wc104_qualification_manifest(catalog: dict[str, Any], *, candidate_sha: str) -> dict[str, Any]:
+    manifest = build_wc104_rollback_manifest(catalog, candidate_sha=candidate_sha)
+    manifest.update(
+        {
+            "schema": "waooaw.wc104-qualification/v1",
+            "mode": "staged-qualification",
+            "environment": {
+                "DOCKER_CONFIG": str(Path(tempfile.gettempdir()) / f"wc104-docker-{candidate_sha}"),
+                "WC104_DISABLE_REGISTRY_REUSE": "0",
+                "WC104_FORCE_LOCAL_BUILD": "0",
+                "WC100_DISABLE_REUSE": "0",
+                "WC100_PRECHECK_MODE": "serial",
+            },
+            "registry_reuse": True,
+            "local_image_reuse": True,
+            "reuse_prior_results": True,
+        }
+    )
+    return manifest
+
+
 def render_manifest(manifest: dict[str, Any]) -> str:
     return json.dumps(manifest, indent=2, sort_keys=True) + "\n"

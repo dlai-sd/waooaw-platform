@@ -1,0 +1,44 @@
+{
+  "schema": "waooaw.wc109-stage3-evidence/v1",
+  "authority": "diagnostic-local-only",
+  "base_sha": "b55e1323ea1a83997ad13e604a77999536bebb43",
+  "implementation_head": "1e742f793442b55a564692b35c1f83b5433fe524",
+  "requirements": [
+    "WC109-R010",
+    "WC109-R017",
+    "WC109-R018",
+    "WC109-R019",
+    "WC109-R020",
+    "WC109-R021",
+    "WC109-R022",
+    "WC109-R023",
+    "WC109-R024",
+    "WC109-R028"
+  ],
+  "focused_validation": {
+    "docker_tests_passed": 112,
+    "ruff_check": "PASS",
+    "ruff_format_check": "PASS"
+  },
+  "integrated_sample": {
+    "execution_namespace": "wc109-8a2a734fe0e423f8",
+    "gate_id": "build:professional-runtime",
+    "command_id": "build-professional-runtime",
+    "component": "professional-runtime",
+    "result": "PASS",
+    "disposition": "executed",
+    "routing_class": "NONE",
+    "runner_identity": "sha256:97aa50c218fcbf9ea1562acc4b7a52c82d8879807e813fc96aa4f495f44fa833",
+    "test_execution_identity": "sha256:a39df7e68436676383f66ba99c6764a58029ca1c3cf12d71932717428109673e",
+    "evidence_identity": "sha256:4f089c5de44aa90f07297ed7ac14ca2df357735b19795a770b2cc9f583482631",
+    "native_artifact_digest": "sha256:15df922cdf652a370ef5fdf8e4fc23a46bd18278785f5505ac6896e87a034602",
+    "trust_source": "local-diagnostic"
+  },
+  "post_execution_resources": {
+    "wc109_networks": 0
+  },
+  "limitations": [
+    "The integrated sample is local diagnostic evidence and does not qualify a candidate.",
+    "Catalog signatures are verified during publication with an ephemeral local control key; hosted trust remains Stage 5 work."
+  ]
+}

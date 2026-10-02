@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import fcntl
 import hashlib
 import json
@@ -15,6 +16,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +28,12 @@ if str(SCRIPTS_ROOT) not in sys.path:
 
 from validation_control.orchestrator import build_execution_plan  # noqa: E402
 from validation_control.execution_contract import orchestration_preflight  # noqa: E402
+from validation_control.evidence_controller import (  # noqa: E402
+    catalog_invocation_signature,
+    publish_envelope,
+    route_failure,
+)
+from validation_control.identity import evidence_manifest, test_execution_manifest  # noqa: E402
 from validation_control.runner_supply import (  # noqa: E402
     create_context,
     load_supply_config,
@@ -60,6 +68,46 @@ def image_id(image: str, repository: Path) -> str | None:
     )
     candidate = completed.stdout.strip()
     return candidate if completed.returncode == 0 and SHA256.fullmatch(candidate) else None
+
+
+def ensure_service_image(repository: Path, image: str) -> str:
+    resolved_id = image_id(image, repository)
+    if resolved_id is not None:
+        return resolved_id
+    pull = subprocess.run(  # noqa: S603
+        [docker_executable(), "pull", image],
+        cwd=repository,
+        check=False,
+    )
+    resolved_id = image_id(image, repository)
+    if pull.returncode != 0 or resolved_id is None:
+        raise ValueError(f"required service image is unavailable: {image}")
+    return resolved_id
+
+
+def required_service_identities(repository: Path, node: dict[str, Any]) -> dict[str, str]:
+    required_services = node.get("required_services", [])
+    if not required_services:
+        return {}
+    completed = subprocess.run(  # noqa: S603
+        [docker_executable(), "compose", "--profile", node["profile"], "config", "--format", "json"],
+        cwd=repository,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    compose = json.loads(completed.stdout)
+    services = compose.get("services")
+    if not isinstance(services, dict):
+        raise ValueError("rendered Compose services must be a mapping")
+    identities: dict[str, str] = {}
+    for service_name in required_services:
+        service = services.get(service_name)
+        image = service.get("image") if isinstance(service, dict) else None
+        if not isinstance(image, str) or not image:
+            raise ValueError(f"required service has no rendered image: {service_name}")
+        identities[service_name] = ensure_service_image(repository, image)
+    return identities
 
 
 def trusted_runner(
@@ -241,6 +289,7 @@ def gate_execution_identity(repository: Path, gate_id: str, head_sha: str) -> di
         if not isinstance(runner_digest, str) or not SHA256.fullmatch(runner_digest):
             raise ValueError(f"host-only gate has no immutable tool digest: {gate_id}")
     environment = {name: os.environ.get(name) for name in node.get("environment", [])}
+    service_identities = required_service_identities(repository, node)
     implementation = {key: value for key, value in node.items() if key not in {"runner_manifest"}}
     return {
         "catalog_version": str(plan["catalog_version"]),
@@ -251,16 +300,69 @@ def gate_execution_identity(repository: Path, gate_id: str, head_sha: str) -> di
         ).hexdigest(),
         "runner_digest": runner_digest,
         "environment_digest": hashlib.sha256(json.dumps(environment, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
+        "service_digest": hashlib.sha256(
+            json.dumps(service_identities, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest(),
     }
 
 
-def write_commit_metadata(repository: Path, base_sha: str, head_sha: str) -> None:
-    evidence_root = repository / "test-results/wc104"
+def write_commit_metadata(repository: Path, base_sha: str, head_sha: str, artifact_root: Path | None = None) -> None:
+    evidence_root = (artifact_root if artifact_root is not None else repository / "test-results") / "wc104"
     for relative in ("metadata", "c059", "c065"):
         directory = evidence_root / relative
         directory.mkdir(parents=True, exist_ok=True)
         (directory / "base-sha.txt").write_text(base_sha + "\n", encoding="utf-8")
         (directory / "head-sha.txt").write_text(head_sha + "\n", encoding="utf-8")
+
+
+def write_pr_body(pr_body_file: Path | None, gate_id: str, artifact_root: Path) -> None:
+    if gate_id not in {"constitutional-commit-gate", "author-review-gate"}:
+        return
+    if pr_body_file is None:
+        raise ValueError(f"{gate_id} local execution requires --pr-body-file")
+    if not pr_body_file.is_file():
+        raise ValueError(f"PR body file does not exist: {pr_body_file}")
+    destination = artifact_root / "wc104" / ("c059" if gate_id == "constitutional-commit-gate" else "c065")
+    destination.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(pr_body_file, destination / "pr-body.md")
+
+
+def write_authorization_context(
+    gate_id: str,
+    artifact_root: Path,
+    base_branch: str | None,
+    pr_number: str | None,
+    repository_name: str | None,
+) -> None:
+    if gate_id != "authorization-tier-check":
+        return
+    values = {
+        "base-branch.txt": base_branch,
+        "pr-number.txt": pr_number,
+        "repository.txt": repository_name,
+    }
+    missing = [name for name, value in values.items() if not value]
+    if missing:
+        raise ValueError("authorization-tier-check local execution requires explicit PR context")
+    destination = artifact_root / "wc104/c066"
+    destination.mkdir(parents=True, exist_ok=True)
+    for name, value in values.items():
+        assert value is not None
+        (destination / name).write_text(value + "\n", encoding="utf-8")
+
+
+def write_requirement_scope(repository: Path, changed_files: list[str], artifact_root: Path | None = None) -> None:
+    if not changed_files:
+        raise ValueError("requirement-ledger local execution requires --changed-file")
+    normalized: set[str] = set()
+    for changed_file in changed_files:
+        path = Path(changed_file)
+        if path.is_absolute() or ".." in path.parts:
+            raise ValueError(f"changed file must be repository-relative: {changed_file}")
+        normalized.add(path.as_posix())
+    output = (artifact_root if artifact_root is not None else repository / "test-results") / "wc102/changed-files.txt"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text("".join(f"{path}\n" for path in sorted(normalized)), encoding="utf-8")
 
 
 def execute_gate(
@@ -269,14 +371,30 @@ def execute_gate(
     head_sha: str,
     base_sha: str,
     git_common_dir: Path,
-) -> int:
+    changed_files: list[str] | None = None,
+    mode: str = "qualification",
+    pr_body_file: Path | None = None,
+    base_branch: str | None = None,
+    pr_number: str | None = None,
+    repository_name: str | None = None,
+    return_evidence_ref: bool = False,
+) -> int | tuple[int, str]:
+    if mode not in {"focused", "qualification"}:
+        raise ValueError(f"unsupported local execution mode: {mode}")
     orchestration_preflight(repository)
-    write_commit_metadata(repository, base_sha, head_sha)
     catalog = yaml.safe_load((repository / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
     if not isinstance(catalog, dict):
         raise ValueError("validation catalog root must be a mapping")
-    plan = build_execution_plan(catalog, [gate_id], mode="qualification", head_sha=head_sha, run_id=f"local-{gate_id}")
+    run_id = f"local-{gate_id}-{os.getpid()}-{time.time_ns()}"
+    plan = build_execution_plan(catalog, [gate_id], mode=mode, head_sha=head_sha, run_id=run_id)
     node = plan["nodes"][0]
+    artifact_root = repository / node["output_directory"]
+    service_identities = required_service_identities(repository, node)
+    write_commit_metadata(repository, base_sha, head_sha, artifact_root)
+    write_pr_body(pr_body_file, gate_id, artifact_root)
+    write_authorization_context(gate_id, artifact_root, base_branch, pr_number, repository_name)
+    if gate_id == "requirement-ledger":
+        write_requirement_scope(repository, changed_files or [], artifact_root)
     plan_path = repository / "test-results/wc104/local-plans" / f"{gate_id.replace(':', '-')}.json"
     plan_path.parent.mkdir(parents=True, exist_ok=True)
     plan_path.write_text(json.dumps(plan, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -299,17 +417,142 @@ def execute_gate(
         "--gate",
         gate_id,
     ]
+    resolution: dict[str, Any] | None = None
     if node.get("runner_required", True):
         runner_id = node["runner_id"]
         resolution = resolve_runner(repository, runner_id)
         environment[f"WAOOAW_RUNNER_{runner_id.upper()}_IMAGE"] = resolution["image"]
         command.extend(("--image-id", resolution["image_id"]))
+    started_at = datetime.now(timezone.utc).isoformat()
+    started_monotonic = time.monotonic()
     completed = subprocess.run(  # noqa: S603
         command,
         cwd=repository,
         env=environment,
         check=False,
     )
+    duration_ms = round((time.monotonic() - started_monotonic) * 1000)
+    record_path = repository / node["output_directory"] / "wc109-execution.json"
+    record_path.parent.mkdir(parents=True, exist_ok=True)
+    record = {
+        "schema": "waooaw.wc109-tier2-execution/v1",
+        "authority": "diagnostic-local-only",
+        "catalog_controlled": True,
+        "compose_project": node["compose_project"],
+        "execution_namespace": plan["execution_namespace"],
+        "base_sha": base_sha,
+        "gate_id": gate_id,
+        "head_sha": head_sha,
+        "invocation_source": "catalog",
+        "mode": mode,
+        "output_directory": node["output_directory"],
+        "product_image_build_events": len(node.get("product_image_builds", [])),
+        "result": "PASS" if completed.returncode == 0 else "FAIL",
+        "return_code": completed.returncode,
+        "runner_build_events": resolution["build_count"] if resolution is not None else 0,
+        "runner_digest": resolution["runner_digest"] if resolution is not None else node.get("tool_digest"),
+        "service_identities": service_identities,
+    }
+    temporary = record_path.with_suffix(f".tmp-{os.getpid()}")
+    temporary.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    os.replace(temporary, record_path)
+    runner_digest = record["runner_digest"]
+    if not isinstance(runner_digest, str):
+        raise ValueError("catalog execution has no runner digest for evidence binding")
+    source_identity = "sha256:" + hashlib.sha256(head_sha.encode()).hexdigest()
+    environment_identity = [
+        {
+            "name_digest": hashlib.sha256(name.encode()).hexdigest(),
+            "value_digest": hashlib.sha256(str(environment.get(name)).encode()).hexdigest(),
+        }
+        for name in sorted(node.get("environment", []))
+    ]
+    execution_identity = test_execution_manifest(
+        {
+            "mounted_source_identity": source_identity,
+            "runner_digest": runner_digest,
+            "command_id": node["command_id"],
+            "policy_version": str(plan["catalog_version"]),
+            "environment": environment_identity,
+            "service_identities": service_identities,
+            "disposable_state_contract": {
+                "compose_project": node["compose_project"],
+                "output_directory": node["output_directory"],
+            },
+            "architecture": "amd64",
+            "platform": "linux",
+            "test_execution_schema_version": "v1",
+        }
+    )["digest"]
+    evidence_identity = evidence_manifest(
+        {
+            "subject_identity": source_identity,
+            "test_execution_identity": execution_identity,
+            "runner_digest": runner_digest,
+            "command_id": node["command_id"],
+            "policy_version": str(plan["catalog_version"]),
+            "environment": environment_identity,
+            "evidence_schema_version": "v1",
+            "trust_source": "local-diagnostic",
+            "freshness": {"head_sha": head_sha, "policy": "executed-now"},
+        }
+    )["digest"]
+    claim = {
+        "namespace": plan["execution_namespace"],
+        "gate_id": gate_id,
+        "command_id": node["command_id"],
+        "head_sha": head_sha,
+    }
+    control_key = os.urandom(32)
+    routing_class = (
+        "NONE"
+        if completed.returncode == 0
+        else (
+            "RUNNER" if completed.returncode == 78 else "WORKFLOW" if completed.returncode == 124 else route_failure("assertion")
+        )
+    )
+    envelope = {
+        "schema": "waooaw.validation-evidence-envelope/v1",
+        "base_sha": base_sha,
+        "head_sha": head_sha,
+        "identities": {
+            "runner": runner_digest,
+            "test_execution": execution_identity,
+            "subject": source_identity,
+            "evidence": evidence_identity,
+        },
+        "component": ",".join(node["components"]) if node["components"] else "cross-cutting",
+        "gate_id": gate_id,
+        "command_id": node["command_id"],
+        "started_at": started_at,
+        "duration_ms": duration_ms,
+        "result": record["result"],
+        "routing_class": routing_class,
+        "first_cause": "none" if completed.returncode == 0 else f"exit-code:{completed.returncode}",
+        "artifacts": [
+            {
+                "path": str(record_path.relative_to(repository)),
+                "digest": "sha256:" + hashlib.sha256(record_path.read_bytes()).hexdigest(),
+            }
+        ],
+        "disposition": "executed",
+        "disposition_proof": {"execution_fresh": True},
+        "invocation": {
+            "source": "catalog",
+            "namespace": plan["execution_namespace"],
+            "signature": catalog_invocation_signature(claim, control_key),
+        },
+        "trust_source": "local-diagnostic",
+    }
+    publish_envelope(
+        repository / node["output_directory"] / "evidence-envelope.json",
+        envelope,
+        control_key,
+        required_trust_source="local-diagnostic",
+        artifact_root=repository,
+    )
+    if return_evidence_ref:
+        return completed.returncode, node["output_directory"]
     return completed.returncode
 
 
@@ -319,9 +562,27 @@ def main() -> int:
     parser.add_argument("--head", required=True)
     parser.add_argument("--base", required=True)
     parser.add_argument("--git-common-dir", type=Path, required=True)
+    parser.add_argument("--changed-file", action="append", default=[])
+    parser.add_argument("--pr-body-file", type=Path)
+    parser.add_argument("--base-branch")
+    parser.add_argument("--pr-number")
+    parser.add_argument("--repository")
+    parser.add_argument("--mode", choices=("focused", "qualification"), default="qualification")
     arguments = parser.parse_args()
     repository = Path.cwd().resolve()
-    return execute_gate(repository, arguments.gate, arguments.head, arguments.base, arguments.git_common_dir.resolve())
+    return execute_gate(
+        repository,
+        arguments.gate,
+        arguments.head,
+        arguments.base,
+        arguments.git_common_dir.resolve(),
+        arguments.changed_file,
+        arguments.mode,
+        arguments.pr_body_file.resolve() if arguments.pr_body_file is not None else None,
+        arguments.base_branch,
+        arguments.pr_number,
+        arguments.repository,
+    )
 
 
 if __name__ == "__main__":

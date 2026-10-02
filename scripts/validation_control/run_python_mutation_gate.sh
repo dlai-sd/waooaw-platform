@@ -1,13 +1,34 @@
 #!/bin/sh
 set -eu
 
-mkdir -p /tmp/mutation/src /tmp/mutation/tests/unit
-cp -a src/ai-runtime /tmp/mutation/src/ai-runtime
-cp -a tests/unit/ai-runtime /tmp/mutation/tests/unit/ai-runtime
-cd /tmp/mutation/src/ai-runtime
-mutmut run --paths-to-mutate=. --tests-dir=../../tests/unit/ai-runtime/
+worktree=/tmp/ai-runtime-mutation
+rm -rf "$worktree"
+mkdir -p "$worktree/tests"
+cp -a src/ai-runtime/. "$worktree/"
+cp -a src/trust-layer "$worktree/trust-layer"
+cp -a tests/ai-runtime "$worktree/tests/ai-runtime"
+cat > "$worktree/setup.cfg" <<'EOF'
+[mutmut]
+source_paths =
+    main.py
+    transcription.py
+    pii
+    providers
+    pse
+    rag
+    skeleton
+also_copy = trust-layer
+pytest_add_cli_args_test_selection = tests/ai-runtime
+
+[tool:pytest]
+asyncio_mode = auto
+EOF
+cd "$worktree"
+PYTHONPATH="$worktree/trust-layer:${PYTHONPATH:-}" mutmut run
 mutmut results
-score=$(mutmut results | grep -oE '[0-9]+%' | head -1 | tr -d '%')
+mutmut export-cicd-stats
+score=$(python -c 'import json; stats=json.load(open("mutants/mutmut-cicd-stats.json")); tested=stats["total"]-stats["skipped"]; print(0 if tested <= 0 else int((stats["killed"]+stats["timeout"])*100/tested))')
+echo "Mutation score ${score}%"
 if [ "${score:-0}" -lt 60 ]; then
     echo "Mutation score ${score:-0}% < 60% - C-072"
     exit 1

@@ -9,7 +9,6 @@ using Waooaw.BusinessPlatform.Services;
 namespace Waooaw.BusinessPlatform.Controllers;
 
 [ApiController]
-[NonController]
 [AllowAnonymous]
 [Route("api/v1/whatsapp/webhook")]
 public sealed class WhatsAppJourneyController(WhatsAppJourneyService service) : ControllerBase

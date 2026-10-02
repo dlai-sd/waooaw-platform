@@ -1,0 +1,370 @@
+{
+  "base_sha": "b55e1323ea1a83997ad13e604a77999536bebb43",
+  "candidate_sha": "602cea4000ffdf271348711fd4fd20538c5b5e7e",
+  "environment": {
+    "DOCKER_CONFIG": "/tmp/wc104-docker-602cea4000ffdf271348711fd4fd20538c5b5e7e",
+    "WC100_DISABLE_REUSE": "1",
+    "WC100_PRECHECK_MODE": "serial",
+    "WC104_DISABLE_REGISTRY_REUSE": "1",
+    "WC104_FORCE_LOCAL_BUILD": "1"
+  },
+  "gate_results": [
+    {
+      "duration_seconds": 1.82,
+      "gate_id": "build",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 1.934,
+      "gate_id": "secrets",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 19.748,
+      "gate_id": "test-dotnet",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 24.788,
+      "gate_id": "test-python",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 38.396,
+      "gate_id": "test-web",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 8.339,
+      "gate_id": "spec-lint",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 3.152,
+      "gate_id": "sast",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 58.697,
+      "gate_id": "dep-scan:python",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 19.696,
+      "gate_id": "dep-scan:dotnet",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 3.852,
+      "gate_id": "dep-scan:typescript",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 297.943,
+      "gate_id": "license-check",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 227.086,
+      "gate_id": "release-qualification",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 1.674,
+      "gate_id": "constitutional-commit-gate",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 1.738,
+      "gate_id": "requirement-ledger",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 1.753,
+      "gate_id": "author-review-gate",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 1.612,
+      "gate_id": "authorization-tier-check",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 14.106,
+      "gate_id": "quality:scripts",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 2.034,
+      "gate_id": "quality:commitlint",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 11.134,
+      "gate_id": "quality:dotnet:constitutional-engine",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 23.744,
+      "gate_id": "quality:dotnet:business-platform",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 12.202,
+      "gate_id": "quality:python:professional-runtime",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 37.279,
+      "gate_id": "quality:python:ai-runtime",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 69.294,
+      "gate_id": "quality:typescript",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 23.927,
+      "gate_id": "quality:sql",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 2.362,
+      "gate_id": "quality:proto",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 1.652,
+      "gate_id": "quality:observability",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 1.921,
+      "gate_id": "quality:traceability",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 1.701,
+      "gate_id": "quality:constitutional-naming",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 429.104,
+      "gate_id": "mutation:dotnet",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 558.952,
+      "gate_id": "mutation:python",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 0.193,
+      "error": "ValueError: required service image is unavailable: postgres",
+      "gate_id": "integration:multi-tenant",
+      "result": "FAIL",
+      "returncode": 1
+    },
+    {
+      "duration_seconds": 0.191,
+      "error": "ValueError: required service image is unavailable: postgres",
+      "gate_id": "integration:postgres-migrations",
+      "result": "FAIL",
+      "returncode": 1
+    },
+    {
+      "duration_seconds": 305.381,
+      "gate_id": "integration:dotnet",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 11.871,
+      "gate_id": "integration:python",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 421.352,
+      "gate_id": "contract:rest",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 7.553,
+      "gate_id": "contract:seed-prompts",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 7.743,
+      "gate_id": "security:prompt-injection",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 109.475,
+      "gate_id": "e2e:accessibility",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 7.391,
+      "gate_id": "acceptance:as-001",
+      "result": "FAIL",
+      "returncode": 4
+    },
+    {
+      "duration_seconds": 7.102,
+      "gate_id": "acceptance:as-003",
+      "result": "FAIL",
+      "returncode": 4
+    },
+    {
+      "duration_seconds": 7.152,
+      "gate_id": "acceptance:as-005",
+      "result": "FAIL",
+      "returncode": 4
+    },
+    {
+      "duration_seconds": 7.85,
+      "gate_id": "acceptance:pse-failover",
+      "result": "PASS",
+      "returncode": 0
+    },
+    {
+      "duration_seconds": 38.54,
+      "gate_id": "e2e:emergency-stop",
+      "result": "PASS",
+      "returncode": 0
+    }
+  ],
+  "local_image_reuse": false,
+  "mode": "full-clean-qualification",
+  "passed": false,
+  "registry_reuse": false,
+  "required_gates": [
+    "build",
+    "secrets",
+    "test-dotnet",
+    "test-python",
+    "test-web",
+    "spec-lint",
+    "sast",
+    "dep-scan:python",
+    "dep-scan:dotnet",
+    "dep-scan:typescript",
+    "license-check",
+    "release-qualification",
+    "constitutional-commit-gate",
+    "requirement-ledger",
+    "author-review-gate",
+    "authorization-tier-check",
+    "quality:scripts",
+    "quality:commitlint",
+    "quality:dotnet:constitutional-engine",
+    "quality:dotnet:business-platform",
+    "quality:python:professional-runtime",
+    "quality:python:ai-runtime",
+    "quality:typescript",
+    "quality:sql",
+    "quality:proto",
+    "quality:observability",
+    "quality:traceability",
+    "quality:constitutional-naming",
+    "mutation:dotnet",
+    "mutation:python",
+    "integration:multi-tenant",
+    "integration:postgres-migrations",
+    "integration:dotnet",
+    "integration:python",
+    "contract:rest",
+    "contract:seed-prompts",
+    "security:prompt-injection",
+    "e2e:accessibility",
+    "acceptance:as-001",
+    "acceptance:as-003",
+    "acceptance:as-005",
+    "acceptance:pse-failover",
+    "e2e:emergency-stop"
+  ],
+  "required_runners": [
+    "python",
+    "dotnet",
+    "typescript",
+    "full"
+  ],
+  "reuse_prior_results": false,
+  "runner_results": {
+    "dotnet": {
+      "build_count": 1,
+      "image": "waooaw-validation-runner-dotnet:local-e94da25328358df61bdac7cfdfdc1e932811f0d7b67ffeb413453b81c6a4d487",
+      "image_id": "sha256:144a8de8a8c262bcc6b56aa6d9de0294c27afab67d18280e019daa6ed7b2880a",
+      "runner_digest": "sha256:144a8de8a8c262bcc6b56aa6d9de0294c27afab67d18280e019daa6ed7b2880a",
+      "runner_id": "dotnet",
+      "runner_identity": "sha256:e94da25328358df61bdac7cfdfdc1e932811f0d7b67ffeb413453b81c6a4d487",
+      "trust_source": "local-identity-build"
+    },
+    "full": {
+      "build_count": 1,
+      "image": "waooaw-validation-runner-full:local-9b24e1a20bbd9140d23505839c2cca5e13620e5ca794d13e9b5cdd82a909f4fd",
+      "image_id": "sha256:6de95d45abc989864ca16cca6d76141c4e6c26a2ba87a277b73dd4959e153524",
+      "runner_digest": "sha256:6de95d45abc989864ca16cca6d76141c4e6c26a2ba87a277b73dd4959e153524",
+      "runner_id": "full",
+      "runner_identity": "sha256:9b24e1a20bbd9140d23505839c2cca5e13620e5ca794d13e9b5cdd82a909f4fd",
+      "trust_source": "local-identity-build"
+    },
+    "python": {
+      "build_count": 1,
+      "image": "waooaw-validation-runner-python:local-b8a7b0d0e04522a79cdce69e6299888ce69ad3941d29b715bf0251c9fe80aa8e",
+      "image_id": "sha256:b8b8a0d0b61d81ca8d03b8e61966f6a684fa5e605bab05a093ee3e869ade6d1a",
+      "runner_digest": "sha256:b8b8a0d0b61d81ca8d03b8e61966f6a684fa5e605bab05a093ee3e869ade6d1a",
+      "runner_id": "python",
+      "runner_identity": "sha256:b8a7b0d0e04522a79cdce69e6299888ce69ad3941d29b715bf0251c9fe80aa8e",
+      "trust_source": "local-identity-build"
+    },
+    "typescript": {
+      "build_count": 1,
+      "image": "waooaw-validation-runner-typescript:local-271771f105cffedbe7602a8e43420aef06f88d9e1e43d02a1d7cddb934e21e78",
+      "image_id": "sha256:c6732f1b6f223f052fb3f9d96f50ce2aec41cc7558cf9b7a62f1f3d3cf32b3fc",
+      "runner_digest": "sha256:c6732f1b6f223f052fb3f9d96f50ce2aec41cc7558cf9b7a62f1f3d3cf32b3fc",
+      "runner_id": "typescript",
+      "runner_identity": "sha256:271771f105cffedbe7602a8e43420aef06f88d9e1e43d02a1d7cddb934e21e78",
+      "trust_source": "local-identity-build"
+    }
+  },
+  "schema": "waooaw.wc104-rollback/v1",
+  "selective_enforcement": false,
+  "serial_orchestration": true
+}

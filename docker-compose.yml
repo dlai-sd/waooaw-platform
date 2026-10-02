@@ -53,10 +53,10 @@ services:
     build:
       context: .
       dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner-python
+    user: "1000:1000"
     volumes:
       - .:/workspace:ro
       - ./test-results:/workspace/test-results
-      - /var/run/docker.sock:/var/run/docker.sock
     group_add: ["${DOCKER_GID:-0}"]
     read_only: true
     tmpfs: ["/tmp:size=1g,mode=1777,exec"]
@@ -67,8 +67,8 @@ services:
     pids_limit: 512
     extra_hosts: ["host.docker.internal:host-gateway"]
     environment:
-      HOME: /tmp/wc106-home
-      DATABASE_URL: postgresql://waooaw:${POSTGRES_PASSWORD:-changeme}@postgres:5432/waooaw_test
+      HOME: /tmp
+      DATABASE_URL: postgresql://waooaw:${POSTGRES_PASSWORD:-waooaw-local-dev-only}@postgres:5432/waooaw
       PYTHONPATH: /workspace
       PYTEST_ADDOPTS: -o cache_dir=/tmp/pytest_cache
       HYPOTHESIS_STORAGE_DIRECTORY: /tmp/hypothesis
@@ -81,11 +81,10 @@ services:
     build:
       context: .
       dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner-dotnet
+    user: "1000:1000"
     volumes:
       - .:/workspace:ro
       - ./test-results:/workspace/test-results
-      - wc102_nuget_cache:/opt/nuget/packages
-      - /var/run/docker.sock:/var/run/docker.sock
     group_add: ["${DOCKER_GID:-0}"]
     read_only: true
     tmpfs: ["/tmp:size=2g,mode=1777,exec"]
@@ -96,8 +95,10 @@ services:
     pids_limit: 512
     extra_hosts: ["host.docker.internal:host-gateway"]
     environment:
-      HOME: /tmp/wc106-home
+      HOME: /tmp
       GITHUB_WORKSPACE: /workspace
+      DATABASE_URL: postgresql://waooaw:${POSTGRES_PASSWORD:-waooaw-local-dev-only}@postgres:5432/waooaw
+      TESTCONTAINERS_HOST_OVERRIDE: host.docker.internal
     profiles:
       - test-dotnet
 
@@ -106,18 +107,19 @@ services:
     build:
       context: .
       dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner-ts
+    user: "1000:1000"
     volumes:
       - .:/workspace:ro
       - ./test-results:/workspace/test-results
     read_only: true
-    tmpfs: ["/tmp:size=1g,mode=1777"]
+    tmpfs: ["/tmp:size=1g,mode=1777,exec"]
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     cpus: 2.0
     mem_limit: 4g
     pids_limit: 512
     environment:
-      HOME: /tmp/wc106-home
+      HOME: /tmp
     profiles:
       - test-ts
 
@@ -131,10 +133,10 @@ services:
     build:
       context: .
       dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner
+    user: "1000:1000"
     volumes:
       - .:/workspace:ro                 # source is current but cannot become retained correctness state
       - ./test-results:/workspace/test-results
-      - /var/run/docker.sock:/var/run/docker.sock  # testcontainers: access to Docker daemon
     group_add: ["${DOCKER_GID:-0}"]
     read_only: true
     tmpfs: ["/tmp:size=2g,mode=1777,exec", "/workspace/.deepeval:size=16m,mode=1770"]
@@ -144,10 +146,12 @@ services:
     mem_limit: 6g
     pids_limit: 768
     environment:
-      HOME: /tmp/wc106-home
-      DATABASE_URL: postgresql://waooaw:${POSTGRES_PASSWORD:-changeme}@postgres:5432/waooaw_test
+      HOME: /tmp
+      DATABASE_URL: postgresql://waooaw:${POSTGRES_PASSWORD:-waooaw-local-dev-only}@postgres:5432/waooaw
       PYTHONPATH: /workspace
       PYTEST_ADDOPTS: -o cache_dir=/tmp/pytest_cache
+      HYPOTHESIS_STORAGE_DIRECTORY: /tmp/hypothesis
+      RUFF_CACHE_DIR: /tmp/ruff_cache
     profiles:
       - test                            # only starts when --profile test is specified
 
@@ -203,9 +207,9 @@ services:
   # ─── Infrastructure ────────────────────────────────────────────────────────
 
   postgres:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b
     ports:
-      - "5432:5432"
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
     environment:
       POSTGRES_USER: waooaw
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-waooaw-local-dev-only}
@@ -214,7 +218,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U waooaw"]
+      test: ["CMD-SHELL", "test \"$(head -n 1 /var/lib/postgresql/data/postmaster.pid)\" = 1 && pg_isready -U waooaw -d waooaw"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -253,10 +257,12 @@ services:
     image: quay.io/keycloak/keycloak@sha256:82c5b7a110456dbd42b86ea572e728878549954cc8bd03cd65410d75328095d2
     command: start-dev --import-realm
     ports:
-      - "8443:8080"
+      - "${KEYCLOAK_HOST_PORT:-8443}:8080"
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-waooaw-keycloak-local-dev-only}
+      DEV_TEST_PASSWORD: ${DEV_TEST_PASSWORD:-Waooaw-local-dev-only-1!}
+      KC_HEALTH_ENABLED: "true"
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/waooaw
       KC_DB_USERNAME: waooaw
@@ -268,7 +274,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health/ready || exit 1"]
+      test: ["CMD", "/bin/bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9000; printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3; grep -q '200 OK' <&3"]
       interval: 10s
       timeout: 5s
       retries: 15
@@ -295,7 +301,7 @@ services:
   temporal:
     image: temporalio/auto-setup:1.24
     ports:
-      - "7233:7233"
+      - "${TEMPORAL_HOST_PORT:-7233}:7233"
     environment:
       DB: postgres12
       DB_PORT: 5432
@@ -308,6 +314,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "tctl --address \"$$(hostname -i | awk '{print $$1}'):7233\" cluster health"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
 
   temporal-ui:
     image: temporalio/ui:2.26
@@ -373,7 +384,7 @@ services:
       context: .
       dockerfile: src/constitutional-engine/Dockerfile
     ports:
-      - "5002:5002"
+      - "${CONSTITUTIONAL_ENGINE_HOST_PORT:-5002}:5002"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=waooaw;Username=constitutional_app;Password=${POSTGRES_PASSWORD:-waooaw-local-dev-only}"
@@ -383,9 +394,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      # Dev: TCP port check (nc). Production Dockerfile installs grpc_health_probe.
-      # See architecture/reference/dockerfiles/Dockerfile.dotnet-service for full spec.
-      test: ["CMD-SHELL", "nc -z localhost 5002 || exit 1"]
+      test: ["CMD", "grpc_health_probe", "-addr=localhost:5002"]
       interval: 10s
       retries: 5
 
@@ -394,21 +403,31 @@ services:
       context: .
       dockerfile: src/business-platform/Dockerfile
     ports:
-      - "5001:5001"
+      - "${BUSINESS_PLATFORM_HOST_PORT:-5001}:5001"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=waooaw;Username=business_app;Password=${POSTGRES_PASSWORD:-waooaw-local-dev-only}"
       ConstitutionalEngine__Address: http://constitutional-engine:5002
       ConstitutionalEngine__GrpcUrl: http://constitutional-engine:5002
       Temporal__Address: temporal:7233
+      Temporal__Host: temporal:7233
       Keycloak__Authority: http://keycloak:8080/realms/waooaw
       Keycloak__Audience: waooaw-platform
+      IdentityProviderPreview__ClaimsProofEnabled: "true"
+      IdentityEnvironment__Providers__0__Enabled: "true"
+      IdentityEnvironment__Providers__0__UnavailableReason: ""
+      IdentityEnvironment__Providers__0__SecretReference: kv://local-preview/google
+      IdentityEnvironment__Providers__0__ReadinessEvidenceReference: LOCAL-CONTRACT-TESTING
       Identity__Hmac__Key: ${IDENTITY_HMAC_KEY:-waooaw-identity-local-dev-only-32chars}
       Identity__Hmac__ActiveVersion: ${IDENTITY_HMAC_ACTIVE_VERSION:-v1}
+      IdentityVerification__LocalDispatchEnabled: "true"
       IdentitySecurityEvents__Ingest__SigningKey: ${IDENTITY_EVENT_SIGNING_KEY:-waooaw-identity-event-local-dev-only-32chars}
       PhoneIdentity__SigningKey: ${PHONE_IDENTITY_SIGNING_KEY:-waooaw-phone-proof-local-dev-only-32chars}
       WhatsApp__WebhookSecret: ${WHATSAPP_WEBHOOK_SECRET:-waooaw-webhook-local-dev-only-32chars}
       WhatsApp__TenantTokenKey: ${WHATSAPP_TENANT_TOKEN_KEY:-waooaw-tenant-token-local-dev-only-32chars}
+      Conversation__CursorHmacKey: ${CONVERSATION_CURSOR_HMAC_KEY:-waooaw-conversation-cursor-local-dev-only}
+      ChannelContinuity__EnvelopeHmacKey: ${CHANNEL_CONTINUITY_HMAC_KEY:-d2Fvb2F3LWNvbnRpbnVpdHktbG9jYWwtZGV2LWtleSE=}
+      Voice__ContentEncryptionKey: ${VOICE_CONTENT_ENCRYPTION_KEY:-d2Fvb2F3LXZvaWNlLWNvbnRlbnQtbG9jYWwta2V5ISE=}
       OTLP_ENDPOINT: http://jaeger:4317
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
       SERVICE_REVISION: ${SERVICE_REVISION:-development}
@@ -418,7 +437,7 @@ services:
       keycloak:
         condition: service_healthy
       temporal:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:5001/health || exit 1"]
       interval: 10s
@@ -451,7 +470,7 @@ services:
       context: .
       dockerfile: src/professional-runtime/Dockerfile
     ports:
-      - "5003:5003"
+      - "${PROFESSIONAL_RUNTIME_HOST_PORT:-5003}:5003"
     environment:
       ENVIRONMENT: development
       DATABASE_URL: "postgresql+asyncpg://runtime_app:${POSTGRES_PASSWORD:-waooaw-local-dev-only}@postgres:5432/waooaw"
@@ -470,7 +489,7 @@ services:
       business-platform:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:5003/health || exit 1"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5003/health', timeout=3)"]
       interval: 10s
       retries: 5
 
@@ -1351,7 +1370,6 @@ services:
 volumes:
   postgres_data:
   ollama_data:      # Persists downloaded models across restarts (ADR-029 — LOCAL tier)
-  wc102_nuget_cache:
 
 networks:
   agent-runtime-private:

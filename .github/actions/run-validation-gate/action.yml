@@ -39,6 +39,9 @@ outputs:
   image_id:
     description: Verified Docker image ID used by the gate
     value: ${{ steps.runner.outputs.image_id }}
+  output_directory:
+    description: Host directory containing the isolated gate outputs
+    value: ${{ steps.gate.outputs.output_directory }}
 runs:
   using: composite
   steps:
@@ -56,13 +59,20 @@ runs:
         count=$(jq --arg gate "$GATE_ID" '[.nodes[] | select(.gate_id == $gate)] | length' "$plan")
         [[ "$count" == 1 ]]
         runner_id=$(jq -r --arg gate "$GATE_ID" '.nodes[] | select(.gate_id == $gate) | .runner_id' "$plan")
-        echo "runner_id=$runner_id" >> "$GITHUB_OUTPUT"
+        output_directory=$(jq -r --arg gate "$GATE_ID" '.nodes[] | select(.gate_id == $gate) | .output_directory' "$plan")
+        artifact_gate=$(tr -c 'A-Za-z0-9_.-' '-' <<< "$GATE_ID" | sed 's/-$//')
+        {
+          echo "runner_id=$runner_id"
+          echo "output_directory=$output_directory"
+          echo "artifact_name=wc109-gate-${GITHUB_JOB}-${artifact_gate}"
+        } >> "$GITHUB_OUTPUT"
     - uses: ./.github/actions/use-validation-runner
       id: runner
       with:
         runner-id: ${{ steps.gate.outputs.runner_id }}
         token: ${{ inputs.token }}
     - name: Execute catalog command
+      id: execution
       shell: bash
       env:
         GATE_ID: ${{ inputs.gate-id }}
@@ -75,13 +85,20 @@ runs:
         ATTEMPTS: ${{ inputs.attempts }}
         RETRY_DELAY_SECONDS: ${{ inputs.retry-delay-seconds }}
       run: |
+        started_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        started_ms=$(date +%s%3N)
         [[ "$ATTEMPTS" =~ ^[1-9][0-9]*$ ]]
         [[ "$RETRY_DELAY_SECONDS" =~ ^[0-9]+$ ]]
+        final_status=1
         if [[ -n "$PR_NUMBER" ]]; then
           [[ -n "$REPOSITORY" && -n "$METADATA_DIRECTORY" && -n "$BASE_SHA" && -n "$HEAD_SHA" ]]
           mkdir -p "$METADATA_DIRECTORY"
           printf '%s\n' "$BASE_SHA" > "$METADATA_DIRECTORY/base-sha.txt"
           printf '%s\n' "$HEAD_SHA" > "$METADATA_DIRECTORY/head-sha.txt"
+        fi
+        input_arguments=()
+        if [[ -n "$METADATA_DIRECTORY" ]]; then
+          input_arguments=(--input-directory "$METADATA_DIRECTORY")
         fi
         for ((attempt = 1; attempt <= ATTEMPTS; attempt++)); do
           if [[ -n "$PR_NUMBER" ]]; then
@@ -99,14 +116,106 @@ runs:
           python3 scripts/validation_control/catalog_execution.py \
             --plan test-results/wc104/catalog-plan/qualification-plan.json \
             --gate "$GATE_ID" \
-            --image-id '${{ steps.runner.outputs.image_id }}' || execution_status=$?
+            --image-id '${{ steps.runner.outputs.image_id }}' \
+            "${input_arguments[@]}" || execution_status=$?
           if ((execution_status == 0)); then
-            exit 0
+            final_status=0
+            break
           fi
           if ((execution_status == 78)); then
             echo "$GATE_ID stopped by the WC-106 execution contract; unchanged retry is prohibited" >&2
-            exit 78
+            final_status=78
+            break
           fi
         done
-        echo "$GATE_ID failed after $ATTEMPTS attempts" >&2
-        exit 1
+        if ((final_status != 0)); then
+          echo "$GATE_ID failed after $ATTEMPTS attempts" >&2
+        fi
+        {
+          echo "return_code=$final_status"
+          echo "started_at=$started_at"
+          echo "duration_ms=$(($(date +%s%3N) - started_ms))"
+        } >> "$GITHUB_OUTPUT"
+    - name: Record exact hosted gate evidence
+      if: always()
+      shell: bash
+      env:
+        ARTIFACT_NAME: ${{ steps.gate.outputs.artifact_name }}
+        BASE_SHA: ${{ inputs.base-sha || github.event.pull_request.base.sha || github.event.before }}
+        DURATION_MS: ${{ steps.execution.outputs.duration_ms || '0' }}
+        GATE_ID: ${{ inputs.gate-id }}
+        HEAD_SHA: ${{ inputs.head-sha || github.event.pull_request.head.sha || github.sha }}
+        OUTPUT_DIRECTORY: ${{ steps.gate.outputs.output_directory }}
+        RETURN_CODE: ${{ steps.execution.outputs.return_code || '1' }}
+        RUNNER_DIGEST: ${{ steps.runner.outputs.image_id }}
+        STARTED_AT: ${{ steps.execution.outputs.started_at }}
+      run: |
+        plan=test-results/wc104/catalog-plan/qualification-plan.json
+        [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+        [[ "$HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]
+        [[ "$DURATION_MS" =~ ^[0-9]+$ ]]
+        [[ "$RETURN_CODE" =~ ^[0-9]+$ ]]
+        mkdir -p "$OUTPUT_DIRECTORY"
+        product_build_events=$(jq --arg gate "$GATE_ID" \
+          '[.nodes[] | select(.gate_id == $gate) | (.product_image_builds // [])[]] | length' "$plan")
+        result=FAIL
+        if [[ "$RETURN_CODE" == 0 ]]; then
+          result=PASS
+        fi
+        temporary="$OUTPUT_DIRECTORY/wc109-execution.json.tmp-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+        jq -n \
+          --arg artifact_name "$ARTIFACT_NAME" \
+          --arg authority hosted-authoritative \
+          --arg base_sha "$BASE_SHA" \
+          --arg compose_project "$(jq -r --arg gate "$GATE_ID" '.nodes[] | select(.gate_id == $gate) | .compose_project' "$plan")" \
+          --arg execution_namespace "$(jq -r '.execution_namespace' "$plan")" \
+          --arg gate_id "$GATE_ID" \
+          --arg head_sha "$HEAD_SHA" \
+          --arg output_directory "$OUTPUT_DIRECTORY" \
+          --arg result "$result" \
+          --arg runner_digest "$RUNNER_DIGEST" \
+          --arg started_at "$STARTED_AT" \
+          --argjson duration_ms "$DURATION_MS" \
+          --argjson product_image_build_events "$product_build_events" \
+          --argjson return_code "$RETURN_CODE" \
+          --argjson workflow_run_attempt "$GITHUB_RUN_ATTEMPT" \
+          --argjson workflow_run_id "$GITHUB_RUN_ID" \
+          '{
+            schema: "waooaw.wc109-tier2-execution/v1",
+            authority: $authority,
+            catalog_controlled: true,
+            compose_project: $compose_project,
+            execution_namespace: $execution_namespace,
+            base_sha: $base_sha,
+            gate_id: $gate_id,
+            head_sha: $head_sha,
+            invocation_source: "hosted-catalog",
+            mode: "hosted-shadow",
+            output_directory: $output_directory,
+            product_image_build_events: $product_image_build_events,
+            result: $result,
+            return_code: $return_code,
+            runner_build_events: 0,
+            runner_digest: $runner_digest,
+            service_identities: {},
+            started_at: $started_at,
+            duration_ms: $duration_ms,
+            workflow_run_id: $workflow_run_id,
+            workflow_run_attempt: $workflow_run_attempt,
+            artifact_name: $artifact_name
+          }' > "$temporary"
+        mv "$temporary" "$OUTPUT_DIRECTORY/wc109-execution.json"
+    - name: Retain exact gate execution evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.gate.outputs.artifact_name }}
+        path: ${{ steps.gate.outputs.output_directory }}/wc109-execution.json
+        if-no-files-found: error
+        retention-days: 90
+    - name: Enforce catalog command result
+      if: steps.execution.outputs.return_code != '0'
+      shell: bash
+      env:
+        RETURN_CODE: ${{ steps.execution.outputs.return_code }}
+      run: exit "$RETURN_CODE"

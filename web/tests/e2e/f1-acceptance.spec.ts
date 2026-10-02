@@ -2,10 +2,10 @@
 // Constitutional basis: C-023 (Evidence First), C-059 (Implementation Traceability)
 
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import { type BrowserContext, type Page, expect, test } from '@playwright/test';
 import { encode } from 'next-auth/jwt';
 import { messages } from '../../lib/i18n';
-import { supportedLocales, type SupportedLocale } from '../../lib/preferences';
+import { type SupportedLocale, supportedLocales } from '../../lib/preferences';
 
 const secret = 'playwright-only-not-a-runtime-secret';
 const f1Routes = [
@@ -143,22 +143,35 @@ test('CCT-UX-I18N-01 CCT-UX-RTL-01 CCT-UX-RTL-02 UX-RESP-06: all scripts transla
   }
 });
 
-test('CCT-UX-A11Y-01 CCT-UX-A11Y-03 CCT-UX-MOTION-01: keyboard, focus, motion, and axe pass', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
+test('CCT-UX-A11Y-01 CCT-UX-A11Y-03 CCT-UX-MOTION-01: keyboard, focus, motion, and axe pass', async ({ context }) => {
   for (const path of ['/', '/login', '/register', '/403', '/offline']) {
+    const page = await context.newPage();
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto(path);
-    const skipLink = page.getByRole('link', { name: messages.en.skipToContent });
-    if (await skipLink.count()) {
+    const dialog = page.getByRole('dialog');
+    if (await dialog.isVisible()) {
+      expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(true);
       await page.keyboard.press('Tab');
-      await expect(skipLink).toBeFocused();
-      await skipLink.press('Enter');
-      await expect(page.locator('#main-content')).toBeFocused();
+      expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(true);
+    } else {
+      const skipLink = page.getByRole('link', { name: messages.en.skipToContent });
+      if (await skipLink.count()) {
+        await page.keyboard.press('Tab');
+        const activeElement = await page.evaluate(() => {
+          const active = document.activeElement;
+          return active ? `${active.tagName.toLowerCase()}#${active.id}.${active.className}` : 'none';
+        });
+        await expect(skipLink, `${path} first Tab focused ${activeElement}`).toBeFocused();
+        await skipLink.press('Enter');
+        await expect(page.locator('#main-content')).toBeFocused();
+      }
     }
     const results = await new AxeBuilder({ page }).analyze();
     const blocking = results.violations.filter(
       (violation) => violation.impact === 'critical' || violation.impact === 'serious'
     );
     expect(blocking, `${path} has unreviewed serious or critical axe findings`).toEqual([]);
+    await page.close();
   }
 });
 

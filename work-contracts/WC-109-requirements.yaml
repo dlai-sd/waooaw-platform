@@ -1,20 +1,21 @@
 schema: waooaw.requirement-evidence-ledger/v1
 work_contract: WC-109
 contract_path: work-contracts/WC-109-agentic-validation-implementation.md
-contract_digest: 825f64553f452e4df006dcf0952f7cacb76314c3a5b3741e0baca36d73d1eb94
-contract_status: AUTHORIZED_SOLUTION_ARCHITECTURE_COMPLETE_IMPLEMENTATION_NOT_STARTED
+contract_digest: 7d6adeab53b3a20028983444ae2109d7ba8ff0fbc44c8fae325e7f6b2ba35667
+contract_status: AUTHORIZED_IMPLEMENTATION_IN_PROGRESS
+founder_scope_amendment: 2026-10-02_EXECUTION_OUTCOMES_WC110_SEPARATION_AND_CURRENT_PR_VALUE_PILOT
 implementation_scope: true
-result: PLANNED
+result: DONE
 completion_rule: >-
   Every implementation and pilot requirement must be PASS with direct executable evidence from the
   governed Docker or hosted boundary. Documentation, implementation-shaped mocks, a smaller test set,
-  elapsed-time improvement or one pilot PR cannot substitute for any missing normative outcome.
+  elapsed-time improvement or local-only evidence cannot substitute for any missing normative outcome.
 
 requirement_defaults: &requirement_defaults
   evidence_class: Docker control-plane implementation and executable evidence
   initial_state: expected-fail
   dependencies: Merged WC-108, ADR-050, Docker validation strategy and existing validation catalog
-  residual_risk: Implementation and bounded two-PR pilot evidence do not yet exist.
+  residual_risk: Implementation and the Founder-approved implementation-PR hosted pilot evidence do not yet exist.
   evidence_refs:
     - work-contracts/WC-109-agentic-validation-implementation.md
   result: PLANNED
@@ -27,6 +28,10 @@ requirements:
     component_owner: Implementation baseline control
     test_path_or_plan: Verify merged predecessor commit, clean implementation branch, contract digest and selected requirement IDs before edits.
     completion_rule: Baseline evidence binds one merged WC-108 commit, this exact contract and the implementation head.
+    evidence_refs:
+      - validation/evidence/wc109-baseline.json
+      - tests/validation_control/test_wc109_baseline.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R002
@@ -35,6 +40,14 @@ requirements:
     component_owner: Identity Manifest Resolver
     test_path_or_plan: Run Docker golden vectors and negative secret fixtures for all four manifest schemas.
     completion_rule: Four schema-versioned deterministic manifests exist and secret fixtures are rejected or redacted.
+    evidence_refs:
+      - scripts/validation_control/identity.py
+      - validation/runner-identity.schema.json
+      - validation/test-execution-identity.schema.json
+      - validation/candidate-identity.schema.json
+      - validation/evidence-identity.schema.json
+      - tests/validation_control/test_wc109_identity_preflight.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R003
@@ -43,6 +56,11 @@ requirements:
     component_owner: Identity Manifest Resolver
     test_path_or_plan: Execute runner invalidation matrix for Dockerfile, base, install, lock, policy, architecture, platform and source-only changes.
     completion_rule: Every runner input changes identity and an ordinary source-only edit does not.
+    evidence_refs:
+      - scripts/validation_control/identity.py
+      - tests/validation_control/test_identity.py
+      - tests/validation_control/test_wc109_identity_preflight.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R004
@@ -51,6 +69,12 @@ requirements:
     component_owner: Identity Manifest Resolver
     test_path_or_plan: Execute independent mutation vectors for every declared test-execution input.
     completion_rule: Every governing execution input changes identity and unrelated candidate metadata does not substitute for it.
+    evidence_refs:
+      - scripts/validation_control/identity.py
+      - scripts/validation_control/local_catalog_gate.py
+      - tests/validation_control/test_wc109_identity_preflight.py
+      - tests/validation_control/test_local_catalog_gate.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R005
@@ -59,6 +83,11 @@ requirements:
     component_owner: Candidate Builder And Supply-Chain Binder
     test_path_or_plan: Mutate effective context, generated artifacts, frontend, build arguments, base, architecture and platform in Docker fixtures.
     completion_rule: Each effective input produces a new candidate and the resulting digest, SBOM and provenance are captured together.
+    evidence_refs:
+      - scripts/validation_control/candidate_controller.py
+      - tests/validation_control/test_wc109_candidate_controller.py
+      - github-actions:36995384242:1:candidate-build-evidence
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R006
@@ -67,6 +96,10 @@ requirements:
     component_owner: Evidence And Freshness Controller
     test_path_or_plan: Hold candidate identity constant while changing command, policy, environment, trust, schema and freshness fixtures.
     completion_rule: Every applicable evidence input independently invalidates evidence reuse.
+    evidence_refs:
+      - scripts/validation_control/identity.py
+      - tests/validation_control/test_wc109_identity_preflight.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R007
@@ -75,6 +108,11 @@ requirements:
     component_owner: Tier Orchestrator
     test_path_or_plan: Run modeled catalog, syntax, UID, mount, permission, socket, output and workflow-placement failures.
     completion_rule: Every modeled defect stops before test execution, runner build or candidate build and emits a bounded envelope.
+    evidence_refs:
+      - scripts/validation_control/execution_contract.py
+      - tests/validation_control/test_wc109_identity_preflight.py
+      - tests/validation_control/test_unified_execution_contract.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R008
@@ -83,6 +121,12 @@ requirements:
     component_owner: Stack Execution Adapter
     test_path_or_plan: Run representative Python, .NET and TypeScript focused commands against mounted source in disposable containers.
     completion_rule: Each stack executes its catalogued command with isolated state and host-visible evidence.
+    evidence_refs:
+      - validation/evidence/wc109-stage2.json
+      - scripts/validation_control/catalog_execution.py
+      - tests/validation_control/test_catalog_contract.py
+      - tests/validation_control/test_runner_contracts.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R009
@@ -91,30 +135,49 @@ requirements:
     component_owner: Stack Execution Adapter
     test_path_or_plan: Instrument build events across representative source-only edits for each supported stack.
     completion_rule: Build-event count is zero for both runner and product image during every ordinary Tier 2 sample.
+    evidence_refs:
+      - validation/evidence/wc109-stage2.json
+      - scripts/validation_control/local_catalog_gate.py
+      - tests/validation_control/test_local_catalog_gate.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R010
     source: Section 4.2 Tier 3
-    observable_outcome: Tier 3 executes dependency-complete checks only at declared milestone boundaries.
+    observable_outcome: Tier 3 executes independently completable component lanes and assembles dependency-complete checks at declared milestone boundaries.
     component_owner: Tier Orchestrator
-    test_path_or_plan: Exercise direct and reverse-dependency fixtures at story and milestone transitions.
-    completion_rule: Story edits remain focused while declared milestones include every affected dependency.
+    test_path_or_plan: Exercise separately scheduled component lanes plus direct and reverse-dependency fixtures at story and milestone transitions.
+    completion_rule: Component lanes complete independently, story edits remain focused and declared milestones include every affected dependency before candidate freeze.
+    evidence_refs:
+      - scripts/validation_policy.py
+      - tests/pipeline/test_validation_policy.py
+      - validation/evidence/wc109-stage3.json
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R011
     source: Section 4.2 Tier 4
-    observable_outcome: Tier 4 qualifies one immutable candidate against the complete applicable inventory.
+    observable_outcome: Tier 4 assembles independently emitted gate results for one immutable candidate against the complete inventory and preserves the Section 2.1 blocked dispositions.
     component_owner: Tier Orchestrator
-    test_path_or_plan: Freeze a fixture candidate and compare executed qualification inventory with the catalog-computed complete inventory.
-    completion_rule: One exact candidate digest is bound to every applicable result with no missing required gate.
+    test_path_or_plan: Freeze a fixture candidate, submit component results out of order, replace one failed lane and compare the assembled inventory with the catalog-computed complete inventory.
+    completion_rule: One exact candidate digest is bound to every gate with no missing result; 40 executable gates PASS, AS-001/003/005 remain exact BLOCKED-DEFERRED, and canonical assembly does not require serial execution.
+    evidence_refs:
+      - scripts/validation_control/candidate_controller.py
+      - tests/validation_control/test_wc109_candidate_controller.py
+      - test-results/wc109/rollback-final.json
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R012
     source: Sections 4.2 and 7
-    observable_outcome: A post-freeze repair creates a new candidate and invalidates affected evidence.
+    observable_outcome: A same-candidate failure reruns only failed or identity-affected lanes, while an effective candidate-input repair creates a new candidate and invalidates affected evidence.
     component_owner: Candidate Builder And Supply-Chain Binder
-    test_path_or_plan: Mutate one effective input after freeze and attempt to reuse prior qualification evidence.
-    completion_rule: Candidate identity changes, affected evidence is rejected and qualification targets the new bytes.
+    test_path_or_plan: Replace one failed gate result without changing candidate inputs, then mutate one effective input after freeze and attempt to reuse prior qualification evidence.
+    completion_rule: Same-candidate PASS evidence remains valid; failed or changed-identity lanes rerun; candidate-input changes refreeze, reject affected evidence and target the new bytes.
+    evidence_refs:
+      - scripts/validation_control/candidate_controller.py
+      - tests/validation_control/test_wc109_candidate_controller.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R013
@@ -123,6 +186,10 @@ requirements:
     component_owner: Catalog And Impact Selector
     test_path_or_plan: Compare command, fixture and threshold identities emitted for both modes across representative gates.
     completion_rule: Mode changes execution boundary only and cannot redefine test semantics or thresholds.
+    evidence_refs:
+      - scripts/validation_control/orchestrator.py
+      - tests/validation_control/test_catalog_contract.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R014
@@ -131,6 +198,13 @@ requirements:
     component_owner: Stack Execution Adapter
     test_path_or_plan: Run concurrent UID, HOME, network, volume, port, output, CPU, memory and disk isolation fixtures.
     completion_rule: Runs cannot collide, escape declared resources or write through another run's authority boundary.
+    evidence_refs:
+      - validation/evidence/wc109-stage2.json
+      - docker-compose.yml
+      - scripts/validation_control/catalog_execution.py
+      - tests/validation_control/test_catalog_contract.py
+      - tests/validation_control/test_runner_contracts.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R015
@@ -139,6 +213,13 @@ requirements:
     component_owner: Stack Execution Adapter
     test_path_or_plan: Inspect and execute ordinary and Testcontainers runner socket fixtures.
     completion_rule: Ordinary runners have no socket while every exception has catalogued trust and resource classification.
+    evidence_refs:
+      - docker-compose.yml
+      - validation/catalog.schema.json
+      - validation/engineering-validation.yaml
+      - tests/validation_control/test_catalog_contract.py
+      - tests/validation_control/test_runner_contracts.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R016
@@ -147,6 +228,10 @@ requirements:
     component_owner: Cache Controller
     test_path_or_plan: Run namespace, concurrent-write, corruption, eviction, clean-cache and false-PASS fixtures.
     completion_rule: Cache defects cannot authorize PASS, cross identities or prevent clean execution.
+    evidence_refs:
+      - scripts/validation_control/cache_controller.py
+      - tests/validation_control/test_wc109_cache_controller.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R017
@@ -155,6 +240,10 @@ requirements:
     component_owner: Catalog And Impact Selector
     test_path_or_plan: Exercise unknown path, missing owner, rename, deletion, cycle, malformed catalog and parser-disagreement fixtures.
     completion_rule: Every uncertainty broadens deterministically to the complete applicable gate set.
+    evidence_refs:
+      - scripts/validation_policy.py
+      - tests/pipeline/test_validation_policy.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R018
@@ -163,6 +252,12 @@ requirements:
     component_owner: Catalog And Impact Selector
     test_path_or_plan: Remove each trust input independently and attempt broader execution and evidence publication.
     completion_rule: The affected gate remains BLOCKED and no amount of additional execution creates the missing authority.
+    evidence_refs:
+      - scripts/validation_policy.py
+      - tests/pipeline/test_validation_policy.py
+      - scripts/validation_control/evidence_controller.py
+      - tests/validation_control/test_wc109_evidence_controller.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R019
@@ -171,6 +266,11 @@ requirements:
     component_owner: Evidence And Freshness Controller
     test_path_or_plan: Produce and validate one fixture for each disposition plus malformed and mislabeled cases.
     completion_rule: Every accepted evidence row has exactly one valid disposition with its required proof.
+    evidence_refs:
+      - scripts/validation_control/evidence_controller.py
+      - tests/validation_control/test_wc109_evidence_controller.py
+      - tests/pipeline/test_precheck_orchestrator.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R020
@@ -179,6 +279,12 @@ requirements:
     component_owner: Evidence And Freshness Controller
     test_path_or_plan: Exercise impacted, non-impacted, ambiguous-range and wrong-head carry-forward fixtures.
     completion_rule: Only exact non-impact proof is accepted and retained execution time is not represented as fresh.
+    evidence_refs:
+      - scripts/validation_control/evidence_controller.py
+      - tests/validation_control/test_wc109_evidence_controller.py
+      - scripts/precheck_orchestrator.py
+      - tests/pipeline/test_precheck_orchestrator.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R021
@@ -187,6 +293,13 @@ requirements:
     component_owner: Evidence And Freshness Controller
     test_path_or_plan: Exercise success, failure, interruption, missing output, malformed schema and publication collision.
     completion_rule: Each invocation has one terminal envelope and atomic digest-bound artifacts; missing output never passes.
+    evidence_refs:
+      - validation/evidence/wc109-stage3.json
+      - scripts/validation_control/evidence_controller.py
+      - scripts/validation_control/local_catalog_gate.py
+      - tests/validation_control/test_wc109_evidence_controller.py
+      - tests/validation_control/test_local_catalog_gate.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R022
@@ -195,6 +308,12 @@ requirements:
     component_owner: Evidence And Freshness Controller
     test_path_or_plan: Inject classified canary values into command, environment, logs and framework output.
     completion_rule: Canaries are absent from every published identity, envelope and retained artifact.
+    evidence_refs:
+      - scripts/validation_control/evidence_controller.py
+      - scripts/validation_control/identity.py
+      - tests/validation_control/test_wc109_evidence_controller.py
+      - tests/validation_control/test_wc109_identity_preflight.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R023
@@ -203,6 +322,12 @@ requirements:
     component_owner: Failure Router
     test_path_or_plan: Execute representative first-cause fixtures for every routing class and ambiguous downstream cascades.
     completion_rule: First cause has one owning class, dependent noise is secondary and no failure becomes PASS.
+    evidence_refs:
+      - scripts/validation_control/evidence_controller.py
+      - scripts/precheck_orchestrator.py
+      - tests/validation_control/test_wc109_evidence_controller.py
+      - tests/pipeline/test_precheck_orchestrator.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R024
@@ -211,6 +336,12 @@ requirements:
     component_owner: Failure Router
     test_path_or_plan: Exercise deterministic, assertion, coverage, security, transient external and changed-input retry fixtures.
     completion_rule: Only declared transient failures retry within bound and unchanged deterministic fingerprints stop.
+    evidence_refs:
+      - scripts/validation_control/evidence_controller.py
+      - scripts/validation_control/execution_contract.py
+      - tests/validation_control/test_wc109_evidence_controller.py
+      - tests/validation_control/test_unified_execution_contract.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R025
@@ -219,6 +350,12 @@ requirements:
     component_owner: Hosted Policy Enforcer
     test_path_or_plan: Run workflow policy fixtures for host pytest, dotnet test, Jest, Playwright, package install and direct Docker authority.
     completion_rule: Every prohibited pattern fails before hosted test execution while permitted orchestration remains explicit.
+    evidence_refs:
+      - scripts/validation_control/hosted_policy.py
+      - tests/validation_control/test_hosted_policy.py
+      - .github/workflows/validation-plan.yaml
+      - .github/actions/record-shadow-comparison/action.yml
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R026
@@ -227,6 +364,12 @@ requirements:
     component_owner: Hosted Policy Enforcer
     test_path_or_plan: Attempt to satisfy hosted, provider, deployment and customer-traffic fixtures with local evidence.
     completion_rule: Local or cached evidence cannot satisfy a gate whose authority requires another environment.
+    evidence_refs:
+      - scripts/validation_control/hosted_policy.py
+      - tests/validation_control/test_hosted_policy.py
+      - github-actions:36995384242:1
+      - github-actions:36995384350:1
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R027
@@ -235,6 +378,12 @@ requirements:
     component_owner: Hosted Policy Enforcer
     test_path_or_plan: Compare pre-change and frozen-candidate inventories, required checks and configured thresholds.
     completion_rule: No required check, threshold, main gate or release gate is removed, weakened or made advisory.
+    evidence_refs:
+      - validation/authoritative-gate-baseline.yaml
+      - scripts/validation_control/gate_equivalence.py
+      - tests/validation_control/test_gate_equivalence.py
+      - tests/validation_control/test_shadow.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R028
@@ -243,6 +392,12 @@ requirements:
     component_owner: Tier Orchestrator
     test_path_or_plan: Run equivalent catalogued and direct commands and attempt to publish both outputs.
     completion_rule: Only the catalog-controlled invocation can produce accepted evidence.
+    evidence_refs:
+      - validation/evidence/wc109-stage3.json
+      - scripts/validation_control/evidence_controller.py
+      - scripts/validation_control/local_catalog_gate.py
+      - tests/validation_control/test_wc109_evidence_controller.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R029
@@ -251,6 +406,11 @@ requirements:
     component_owner: Candidate Builder And Supply-Chain Binder
     test_path_or_plan: Attempt qualification with missing commit, dirty state, context input, digest, SBOM, provenance, platform or base digest.
     completion_rule: Every omission blocks qualification and the complete bound record precedes test authority.
+    evidence_refs:
+      - scripts/validation_control/candidate_controller.py
+      - tests/validation_control/test_wc109_candidate_controller.py
+      - github-actions:36995384242:1:candidate-build-evidence
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R030
@@ -259,14 +419,27 @@ requirements:
     component_owner: Validation control-plane test suite
     test_path_or_plan: Map all Section 7 families to Docker-executed tests and retained results.
     completion_rule: Every family has direct boundary evidence; implementation-shaped mocks do not replace integration proof.
+    evidence_refs:
+      - tests/validation_control/
+      - tests/pipeline/test_validation_policy.py
+      - tests/pipeline/test_precheck_orchestrator.py
+      - test-results/wc109/rollback-final.json
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R031
     source: Sections 4.10 and 8
-    observable_outcome: Two eligible product PRs produce complete comparable pilot records.
+    observable_outcome: The Founder-approved WC-109 implementation PR produces one complete hosted pilot record.
     component_owner: Pilot Recorder
-    test_path_or_plan: Validate eligibility and required fields for the first two post-implementation product PRs.
-    completion_rule: Two non-advanced PRs each provide exact identities, distributions, builds, failures, inventories and quality results.
+    test_path_or_plan: Validate the implementation PR eligibility and every required hosted pilot field.
+    completion_rule: One Founder-approved implementation PR provides exact identities, distributions, builds, failures, inventories, retrospective fixes and quality results.
+    evidence_refs:
+      - scripts/validation_control/pilot.py
+      - tests/validation_control/test_pilot.py
+      - validation/evidence/wc109-implementation-availability.json
+      - validation/evidence/wc109-hosted-pilot-record.json
+      - validation/evidence/wc109-value-pilot.json
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R032
@@ -275,14 +448,27 @@ requirements:
     component_owner: Pilot Recorder
     test_path_or_plan: Validate pilot reports for samples, ranges, medians, cache state, limitations and prohibited extrapolation.
     completion_rule: Every performance statement is traceable to recorded observations and scoped limitations.
+    evidence_refs:
+      - scripts/validation_control/pilot.py
+      - tests/validation_control/test_pilot.py
+      - validation/evidence/wc109-value-pilot.json
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R033
     source: Section 8
     observable_outcome: Pilot comparison has zero unresolved selection false negatives and no quality reduction.
     component_owner: Pilot Recorder
-    test_path_or_plan: Compare shadow selections and outcomes with unchanged full CI for both pilot PRs.
+    test_path_or_plan: Compare the implementation PR Shadow selection and outcomes with unchanged full CI.
     completion_rule: No required gate is missed and every prior quality, coverage, security and CCT threshold is preserved.
+    evidence_refs:
+      - scripts/validation_control/pilot.py
+      - scripts/validation_control/shadow.py
+      - tests/validation_control/test_pilot.py
+      - validation/evidence/wc109-hosted-pilot-record.json
+      - github-actions:36995384242:1
+      - github-actions:36995384350:1
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R034
@@ -291,6 +477,11 @@ requirements:
     component_owner: Tier Orchestrator
     test_path_or_plan: Execute staged rollback fixtures across manifest and envelope schema changes.
     completion_rule: Full clean qualification resumes and no evidence crosses an incompatible identity or schema boundary.
+    evidence_refs:
+      - scripts/validation_control/wc104_rollback.py
+      - tests/validation_control/test_wc104_rollback.py
+      - test-results/wc109/rollback-final.json
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R035
@@ -299,6 +490,12 @@ requirements:
     component_owner: Hosted Policy Enforcer
     test_path_or_plan: Inspect and execute hosted configuration after shadow and pilot completion.
     completion_rule: Current full PR CI remains authoritative and no selector suppresses a required hosted gate.
+    evidence_refs:
+      - validation/evidence/wc109-hosted-pilot-record.json
+      - validation/evidence/wc109-value-pilot.json
+      - github-actions:36995384242:1
+      - github-actions:36995384350:1
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R036
@@ -307,3 +504,195 @@ requirements:
     component_owner: WC-109 governance
     test_path_or_plan: Inspect exact-head review and approval evidence before DONE or merge recommendation.
     completion_rule: Implementer author review is complete, EA review is independent and only Founder action authorizes merge.
+    evidence_refs:
+      - https://github.com/dlai-sd/waooaw-platform/pull/481
+      - Founder review and merge remain outside implementer authority
+    result: FOUNDER_RESERVED
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R037
+    source: Sections 2.1, 5.2, 6 Stage 4 and 10
+    observable_outcome: WC-109 qualification preserves AS-001, AS-003 and AS-005 as exact BLOCKED-DEFERRED evidence while all 40 executable control-plane gates PASS.
+    component_owner: Tier Orchestrator and WC-109 governance
+    test_path_or_plan: Assemble the exact-candidate 43-gate inventory and validate 40 PASS results plus three BLOCKED results carrying only the Founder-approved deferred disposition.
+    completion_rule: The inventory contains no missing gate, no false PASS, no reduced threshold and no 43/43 or product-readiness claim; each deferred scenario remains release-blocking for its corresponding product.
+    evidence_refs:
+      - scripts/validation_control/run_wc104_rollback.sh
+      - scripts/validation_control/wc104_rollback.py
+      - test-results/wc109/rollback-final.json
+    result: PASS
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R038
+    source: Sections 14.7 Group 1, 14.8 and 14.9
+    observable_outcome: The failed WC-109 run is retained as a bounded value baseline and the authorized head is preserved before scope separation.
+    component_owner: WC-109 governance and Pilot Recorder
+    test_path_or_plan: Validate the preserved head, source manifest, calculation method, scope inventory and baseline limitations.
+    completion_rule: Evidence binds head cccc2ad8306a512bf0f80c149c89b599a74160a2, records 43 attempts, 38 PASS, five FAIL and the declared gate-second observations without representing them as wall-clock or customer value.
+    evidence_refs:
+      - validation/evidence/wc109-value-baseline.json
+      - test-results/wc109/rollback-602cea40.json
+      - tests/validation_control/test_wc109_value_pilot.py
+    result: PASS
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R039
+    source: Section 14.1
+    observable_outcome: Every selected obligation has a machine-checkable execution plan before compute.
+    component_owner: Tier Orchestrator
+    test_path_or_plan: Exercise missing owner, input, prerequisite, dependent, cost class, acceptance check, evidence destination and invalidation rule fixtures.
+    completion_rule: Every omission returns BLOCKED and starts no build or test lane; a complete plan records all required fields deterministically.
+    evidence_refs:
+      - scripts/validation_control/orchestrator.py
+      - scripts/validation_control/wc104_rollback.py
+      - tests/validation_control/test_catalog_contract.py
+      - tests/validation_control/test_wc104_rollback.py
+    result: PASS
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R040
+    source: Section 14.1 phases A-E
+    observable_outcome: Implementation phases advance only in order on current compatible evidence.
+    component_owner: Tier Orchestrator
+    test_path_or_plan: Attempt every phase transition with missing, failed, stale, mismatched and complete prerequisite evidence.
+    completion_rule: Only complete compatible PASS evidence advances one phase; broader or later execution cannot bypass an earlier phase.
+    evidence_refs:
+      - scripts/validation_control/orchestrator.py
+      - scripts/validation_control/wc104_rollback.py
+      - tests/validation_control/test_catalog_contract.py
+      - tests/validation_control/test_wc104_rollback.py
+    result: PASS
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R041
+    source: Section 14.2
+    observable_outcome: Authority, supply, execution, resource and evidence prerequisites are validated before affected costly work.
+    component_owner: Tier Orchestrator and Stack Execution Adapter
+    test_path_or_plan: Replay ledger, blocker, service-image, runner, command, mount, permission, resource and evidence-destination failures.
+    completion_rule: Each modeled defect emits one bounded first cause and starts zero affected FOCUSED-or-higher lanes.
+    evidence_refs:
+      - scripts/validation_control/execution_contract.py
+      - scripts/validation_control/wc104_rollback.py
+      - scripts/validate_requirement_ledger.py
+      - tests/validation_control/test_unified_execution_contract.py
+      - tests/validation_control/test_wc104_rollback.py
+      - tests/pipeline/test_requirement_ledger.py
+    result: PASS
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R042
+    source: Section 14.3 first paragraph
+    observable_outcome: The first failed or blocked prerequisite suppresses dependent and higher-cost work while independent reusable work remains eligible.
+    component_owner: Tier Orchestrator
+    test_path_or_plan: Run dependency graphs with independent, dependent, already-running and progressively more expensive lanes around one deterministic failure.
+    completion_rule: No not-yet-started dependent or higher-cost lane runs after first cause and every suppressed lane has an explicit disposition.
+    evidence_refs:
+      - scripts/validation_control/orchestrator.py
+      - scripts/validation_control/wc104_rollback.py
+      - tests/validation_control/test_catalog_contract.py
+      - tests/validation_control/test_wc104_rollback.py
+    result: PASS
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R043
+    source: Section 14.3 second paragraph
+    observable_outcome: Unchanged deterministic failures cannot rerun and repaired work is restitched only after focused evidence passes.
+    component_owner: Failure Router
+    test_path_or_plan: Attempt identical-fingerprint replay, changed-input repair, affected-lane rerun and premature restitch fixtures.
+    completion_rule: Identical failure replay is BLOCKED; changed governing input invalidates the affected lane and restitching waits for its focused PASS.
+    evidence_refs:
+      - scripts/validation_control/evidence_controller.py
+      - scripts/validation_control/wc104_rollback.py
+      - tests/validation_control/test_wc109_evidence_controller.py
+      - tests/validation_control/test_wc104_rollback.py
+      - tests/validation_control/test_unified_execution_contract.py
+    result: PASS
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R044
+    source: Section 14.4
+    observable_outcome: Every chunk publishes terminal evidence and an atomic run-index checkpoint that supports identity-verified resume.
+    component_owner: Evidence And Freshness Controller
+    test_path_or_plan: Exercise PASS, FAIL, BLOCKED, timeout, interruption, cancellation, publication collision and resume with stale or matching evidence.
+    completion_rule: Each completed chunk survives interruption; resume rejects incompatible evidence and runs only missing, failed or invalidated chunks.
+    evidence_refs:
+      - scripts/validation_control/evidence_controller.py
+      - scripts/validation_control/wc104_rollback.py
+      - tests/validation_control/test_wc109_evidence_controller.py
+      - tests/validation_control/test_wc104_rollback.py
+    result: PASS
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R045
+    source: Section 14.5
+    observable_outcome: Costly work begins only within declared resource bounds and after evidence-preserving disk recovery when required.
+    component_owner: Stack Execution Adapter
+    test_path_or_plan: Exercise sufficient disk, below-five-percent disk, removable disposable state, protected evidence and unsatisfied recovery fixtures.
+    completion_rule: Cleanup removes only declared disposable resources, preserves protected evidence and blocks costly work when the capacity guard remains unsatisfied.
+    evidence_refs:
+      - scripts/validation_control/execution_contract.py
+      - scripts/validation_control/wc104_rollback.py
+      - tests/validation_control/test_unified_execution_contract.py
+      - tests/validation_control/test_wc104_rollback.py
+    result: PASS
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R046
+    source: Sections 14.6 and 14.7 Groups 2-5
+    observable_outcome: Executable negative fixtures prove planning, phase, failure, recovery, resource and stitching controls before qualification.
+    component_owner: Validation control-plane test suite
+    test_path_or_plan: Execute every Section 14.6 negative family through repository-defined Docker and workflow boundaries.
+    completion_rule: Every family fails closed with direct boundary evidence and qualification remains BLOCKED until Groups 1 through 4 have compatible PASS evidence.
+    evidence_refs:
+      - scripts/validation_control/orchestrator.py
+      - scripts/validation_control/wc104_rollback.py
+      - tests/validation_control/test_catalog_contract.py
+      - tests/validation_control/test_wc104_rollback.py
+      - tests/validation_control/test_wc109_evidence_controller.py
+      - tests/validation_control/test_unified_execution_contract.py
+    result: PASS
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R047
+    source: Sections 14.7 Group 6 and 14.9
+    observable_outcome: PR 481 publishes a bounded before-and-after institutional value record without unsupported extrapolation.
+    component_owner: Pilot Recorder
+    test_path_or_plan: Validate comparable samples for first-cause time, gate-seconds, builds, invocation classes, repair loops, replay, selection and final quality.
+    completion_rule: Every reported value has source identity, method, sample count, limitations and authority class; quality remains complete and no engineering result is represented as direct customer value.
+    evidence_refs:
+      - scripts/validation_control/pilot.py
+      - tests/validation_control/test_wc109_value_pilot.py
+      - validation/evidence/wc109-value-pilot.json
+      - validation/evidence/wc109-hosted-pilot-record.json
+    result: PASS
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R048
+    source: Section 14.8
+    observable_outcome: Existing WC-110 product work is preserved under separate authority and enters WC-109 only through an explicit dependency boundary.
+    component_owner: WC-109 governance and WC-110 product owners
+    test_path_or_plan: Classify changed surfaces, preserve the authorized head, and validate merged-base or stacked product-only dependency evidence before candidate freeze.
+    completion_rule: PR 481 candidate diff contains only WC-109 control-plane, remediation and pilot work; product changes are preserved in WC-110 and mismatched historical evidence is not promoted.
+    evidence_refs:
+      - scripts/validation_control/pilot.py
+      - validation/evidence/wc109-wc110-integration.json
+      - tests/validation_control/test_wc109_value_pilot.py
+    result: PASS
+
+  - <<: *requirement_defaults
+    requirement_id: WC109-R049
+    source: Sections 3.1 and 14.9
+    observable_outcome: Pre-PR control executes externally volatile dependency advisories fresh and affected deterministic gates through supplied runners before PR evidence preparation.
+    component_owner: Tier Orchestrator and Hosted Policy Enforcer
+    test_path_or_plan: Repeat an unchanged-candidate advisory node, classify control-only and product changes, and execute quality:scripts plus dep-scan:typescript through the local catalog entry point.
+    completion_rule: dep-scan:typescript is selected for every candidate and never reuses PASS evidence; quality:scripts consumes runner-readable durable evidence; only web dependency metadata enters the WC-109 security repair.
+    evidence_refs:
+      - scripts/precheck_orchestrator.py
+      - scripts/prepare_pr_body.py
+      - validation/engineering-validation.yaml
+      - scripts/validation_control/pilot.py
+      - tests/pipeline/test_precheck_orchestrator.py
+      - tests/pipeline/test_prepare_pr_body.py
+      - tests/pipeline/test_validation_policy.py
+      - tests/validation_control/test_wc109_value_pilot.py
+    result: PASS

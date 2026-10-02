@@ -6,9 +6,11 @@ AZURE_CLI_IMAGE="mcr.microsoft.com/azure-cli@sha256:4faeb3c955086c3842d4f8cf0ff1
 PYTHON_IMAGE="python@sha256:b64631e04e4920160c50fbe8d8df828f7f35f06f425cb44aa09bca53e708a35a"
 CURL_IMAGE="curlimages/curl@sha256:94e9e444bcba979c2ea12e27ae39bee4cd10bc7041a472c4727a558e213744e6"
 CONTAINERAPP_EXTENSION_VERSION="1.3.0b4"
-NETWORK="goal006-azure-verification-$$"
-EMULATOR="goal006-azure-emulator-$$"
-WORK_DIR=$(mktemp -d)
+mkdir -p "$REPO_ROOT/test-results"
+WORK_DIR=$(mktemp -d "$REPO_ROOT/test-results/goal006-local-azure.XXXXXX")
+RUN_ID=${WORK_DIR##*.}
+NETWORK="goal006-azure-verification-$RUN_ID"
+EMULATOR="goal006-azure-emulator-$RUN_ID"
 EVIDENCE_DIR="$WORK_DIR/evidence"
 AZURE_CONFIG_DIR="$WORK_DIR/azure-config"
 

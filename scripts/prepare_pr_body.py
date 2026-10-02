@@ -42,16 +42,20 @@ RUNTIME_EVIDENCE_SECTION = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 VALIDATION_POLICY_PATH = Path(__file__).resolve().parents[1] / "validation/engineering-validation.yaml"
-PRECHECK_GRAPH_VERSION = "wc103-prechecks-v6"
+PRECHECK_GRAPH_VERSION = "wc109-prechecks-v8"
 PRECHECK_ORDER = (
     "gitleaks",
     "scripts_quality",
+    "typescript_dependency_scan",
     "dotnet_quality_business_platform",
     "typescript_quality",
+    "test_web",
     "business_platform",
     "release_qualification",
 )
-STATIC_PRECHECKS = frozenset({"gitleaks", "scripts_quality", "dotnet_quality_business_platform", "typescript_quality"})
+STATIC_PRECHECKS = frozenset(
+    {"gitleaks", "scripts_quality", "typescript_dependency_scan", "dotnet_quality_business_platform", "typescript_quality"}
+)
 PRECHECK_CONFIGURATION_PATHS = (
     Path(__file__),
     Path(__file__).with_name("precheck_orchestrator.py"),
@@ -327,6 +331,7 @@ def runner_digest(nodes: list[PrecheckNode]) -> str:
             "gate_implementation_digest": node.gate_implementation_digest,
             "runner_digest": node.runner_digest,
             "environment_digest": node.environment_digest,
+            "service_digest": node.service_digest,
             "input_digest": node.input_digest,
             "input_patterns": node.input_patterns,
         }
@@ -379,6 +384,7 @@ def precheck_nodes(
     head: str,
     changed_files: list[str],
 ) -> list[PrecheckNode]:
+    base_sha = git("rev-parse", base)
     applicable_prechecks = selected_prechecks(changed_files)
     loaded = yaml.safe_load(VALIDATION_POLICY_PATH.read_text(encoding="utf-8"))
     precheck_config = loaded.get("prechecks") if isinstance(loaded, dict) else None
@@ -409,6 +415,8 @@ def precheck_nodes(
         dependencies: tuple[str, ...] = ()
         if name == "business_platform" and "dotnet_quality_business_platform" in applicable_prechecks:
             dependencies = ("dotnet_quality_business_platform",)
+        elif name == "test_web" and "typescript_quality" in applicable_prechecks:
+            dependencies = ("typescript_quality",)
         elif name == "release_qualification":
             dependencies = tuple(
                 static_name
@@ -424,7 +432,7 @@ def precheck_nodes(
                     "--gate",
                     gate_id,
                     "--base",
-                    base,
+                    base_sha,
                     "--head",
                     head,
                     "--git-common-dir",
@@ -434,6 +442,7 @@ def precheck_nodes(
                 dependencies=dependencies,
                 input_digest=gate_input_digest(head, input_patterns),
                 input_patterns=input_patterns,
+                reusable=config.get("reusable") is not False,
                 **identity,
             )
         )
@@ -443,12 +452,13 @@ def precheck_nodes(
 def run_ci_prechecks(base: str, head: str, changed_files: list[str]) -> dict[str, object]:
     repository_root = Path(git("rev-parse", "--show-toplevel"))
     git_common_dir = Path(git("rev-parse", "--path-format=absolute", "--git-common-dir"))
-    nodes = precheck_nodes(repository_root, git_common_dir, base, head, changed_files)
+    base_sha = git("rev-parse", base)
+    nodes = precheck_nodes(repository_root, git_common_dir, base_sha, head, changed_files)
     artifact_dir = repository_root / "test-results/wc100/prechecks" / head
     prior_evidence = sorted(path for path in artifact_dir.parent.glob(f"*/{EVIDENCE_FILE_NAME}") if path.parent != artifact_dir)
     return run_prechecks(
         nodes,
-        base_sha=git("rev-parse", base),
+        base_sha=base_sha,
         head_sha=head,
         changed_file_digest=changed_files_digest(changed_files),
         graph_version=PRECHECK_GRAPH_VERSION,

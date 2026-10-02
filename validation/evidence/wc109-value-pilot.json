@@ -1,0 +1,54 @@
+{
+  "observations": [
+    {
+      "change_class": "validation-control-plane-and-hosted-dependency-security",
+      "complete_applicable_gate_count": 26,
+      "head_sha": "81a45a3934a1b00893690ed442558fdd79385241",
+      "limitations": [
+        "One pull request is not a performance trend.",
+        "Summed gate-seconds are not workflow wall-clock time because hosted jobs overlap.",
+        "Engineering validation efficiency is not direct customer value.",
+        "Neutral or skipped workflow jobs are not PASS outcomes.",
+        "Selective hosted enforcement remains disabled; full CI is authoritative."
+      ],
+      "passed": true,
+      "pull_request_number": 481,
+      "repair_loop_count": 14,
+      "retrospective_fix_count": 14,
+      "selected_gate_count": 26,
+      "tier_elapsed_distributions": {
+        "tier1": {
+          "maximum_seconds": 79.303,
+          "median_seconds": 79.303,
+          "minimum_seconds": 79.303,
+          "samples": 1
+        },
+        "tier2": {
+          "maximum_seconds": 260.377,
+          "median_seconds": 260.377,
+          "minimum_seconds": 260.377,
+          "samples": 1
+        },
+        "tier3": {
+          "maximum_seconds": 255.423,
+          "median_seconds": 255.423,
+          "minimum_seconds": 255.423,
+          "samples": 1
+        },
+        "tier4": {
+          "maximum_seconds": 202.78,
+          "median_seconds": 202.78,
+          "minimum_seconds": 202.78,
+          "samples": 1
+        }
+      }
+    }
+  ],
+  "passed": true,
+  "pilot_count": 1,
+  "pilot_scope": "founder-approved-wc109-implementation-pr",
+  "schema": "waooaw.wc109-pilot-report/v2",
+  "selective_hosted_validation_authorized": false,
+  "thresholds_preserved": true,
+  "unresolved_selection_false_negatives": 0
+}

@@ -1,0 +1,395 @@
+{
+  "base_sha": "b55e1323ea1a83997ad13e604a77999536bebb43",
+  "candidate_sha": "823bfb270d0719ecbfa7027ad329a088e7ff4ccd",
+  "catalog_digest": "sha256:e84079003e15db064723caef262ad650ea5ffcdb28d59d4f6c18a23eb852e94a",
+  "environment": {
+    "DOCKER_CONFIG": "/tmp/wc104-docker-823bfb270d0719ecbfa7027ad329a088e7ff4ccd",
+    "WC100_DISABLE_REUSE": "1",
+    "WC100_PRECHECK_MODE": "serial",
+    "WC104_DISABLE_REGISTRY_REUSE": "1",
+    "WC104_FORCE_LOCAL_BUILD": "1"
+  },
+  "execution_summary": {
+    "deferred_gate_count": 3,
+    "executed_gate_count": 0,
+    "resumed_gate_count": 0,
+    "suppressed_gate_count": 40
+  },
+  "first_cause_gate": "preflight:qualification-context",
+  "gate_results": [
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "error": "ValueError: rollback PR head does not match candidate HEAD",
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "build",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "secrets",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "test-dotnet",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "test-python",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "test-web",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "spec-lint",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "sast",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "dep-scan:python",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "dep-scan:dotnet",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "dep-scan:typescript",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "license-check",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "release-qualification",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "constitutional-commit-gate",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "requirement-ledger",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "author-review-gate",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "authorization-tier-check",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "quality:scripts",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "quality:commitlint",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "quality:dotnet:constitutional-engine",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "quality:dotnet:business-platform",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "quality:python:professional-runtime",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "quality:python:ai-runtime",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "quality:typescript",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "quality:sql",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "quality:proto",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "quality:observability",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "quality:traceability",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "quality:constitutional-naming",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "mutation:dotnet",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "mutation:python",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "integration:multi-tenant",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "integration:postgres-migrations",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "integration:dotnet",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "integration:python",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "contract:rest",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "contract:seed-prompts",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "security:prompt-injection",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "e2e:accessibility",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "BLOCKED-DEFERRED",
+      "disposition_proof": {
+        "founder_scope_amendment": "2026-10-01_AS001_AS003_AS005_BLOCKED_DEFERRED_AND_SINGLE_IMPLEMENTATION_PR_PILOT",
+        "release_blocking": true
+      },
+      "duration_seconds": 0.0,
+      "gate_id": "acceptance:as-001",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "BLOCKED-DEFERRED",
+      "disposition_proof": {
+        "founder_scope_amendment": "2026-10-01_AS001_AS003_AS005_BLOCKED_DEFERRED_AND_SINGLE_IMPLEMENTATION_PR_PILOT",
+        "release_blocking": true
+      },
+      "duration_seconds": 0.0,
+      "gate_id": "acceptance:as-003",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "BLOCKED-DEFERRED",
+      "disposition_proof": {
+        "founder_scope_amendment": "2026-10-01_AS001_AS003_AS005_BLOCKED_DEFERRED_AND_SINGLE_IMPLEMENTATION_PR_PILOT",
+        "release_blocking": true
+      },
+      "duration_seconds": 0.0,
+      "gate_id": "acceptance:as-005",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "acceptance:pse-failover",
+      "result": "BLOCKED"
+    },
+    {
+      "disposition": "PREFLIGHT_BLOCKED",
+      "duration_seconds": 0.0,
+      "first_cause_gate": "preflight:qualification-context",
+      "gate_id": "e2e:emergency-stop",
+      "result": "BLOCKED"
+    }
+  ],
+  "local_image_reuse": false,
+  "mode": "full-clean-qualification",
+  "passed": false,
+  "preflight_error": "ValueError: rollback PR head does not match candidate HEAD",
+  "registry_reuse": false,
+  "required_gates": [
+    "build",
+    "secrets",
+    "test-dotnet",
+    "test-python",
+    "test-web",
+    "spec-lint",
+    "sast",
+    "dep-scan:python",
+    "dep-scan:dotnet",
+    "dep-scan:typescript",
+    "license-check",
+    "release-qualification",
+    "constitutional-commit-gate",
+    "requirement-ledger",
+    "author-review-gate",
+    "authorization-tier-check",
+    "quality:scripts",
+    "quality:commitlint",
+    "quality:dotnet:constitutional-engine",
+    "quality:dotnet:business-platform",
+    "quality:python:professional-runtime",
+    "quality:python:ai-runtime",
+    "quality:typescript",
+    "quality:sql",
+    "quality:proto",
+    "quality:observability",
+    "quality:traceability",
+    "quality:constitutional-naming",
+    "mutation:dotnet",
+    "mutation:python",
+    "integration:multi-tenant",
+    "integration:postgres-migrations",
+    "integration:dotnet",
+    "integration:python",
+    "contract:rest",
+    "contract:seed-prompts",
+    "security:prompt-injection",
+    "e2e:accessibility",
+    "acceptance:as-001",
+    "acceptance:as-003",
+    "acceptance:as-005",
+    "acceptance:pse-failover",
+    "e2e:emergency-stop"
+  ],
+  "required_runners": [
+    "python",
+    "dotnet",
+    "typescript",
+    "full"
+  ],
+  "reuse_prior_results": false,
+  "run_state": "BLOCKED",
+  "runner_results": {},
+  "schema": "waooaw.wc104-rollback/v1",
+  "selective_enforcement": false,
+  "serial_orchestration": true,
+  "service_results": {}
+}

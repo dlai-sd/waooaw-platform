@@ -1,7 +1,7 @@
 # Implements: architecture/agent-runtime-adapter-contract-v1-execution-plan.md §8 ARA-06
 # Constitutional basis: C-035, C-059, C-071, C-079
 
-FROM python:3.12-alpine
+FROM python:3.12-alpine@sha256:4c47124a8391cb7a9f571164147d154777cf012a4ece5f86097130d7a4478111
 
 RUN apk upgrade --no-cache \
     && addgroup -S adapter && adduser -S -G adapter -h /app adapter \

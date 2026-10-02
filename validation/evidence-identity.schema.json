@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://waooaw.com/schemas/evidence-identity-manifest-v1.json",
+  "type": "object",
+  "required": ["schema", "canonicalization_version", "identity_type", "inputs", "digest"],
+  "properties": {
+    "schema": {"const": "waooaw.evidence-identity-manifest/v1"},
+    "canonicalization_version": {"const": "waooaw.canonical-json/v1"},
+    "identity_type": {"const": "evidence"},
+    "inputs": {"type": "object"},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  },
+  "additionalProperties": false
+}

@@ -4,6 +4,7 @@ import sys
 from types import SimpleNamespace
 
 import pytest
+import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -18,11 +19,13 @@ from prepare_pr_body import (  # noqa: E402
     execution_preflight,
     load_runtime_evidence,
     main,
+    precheck_nodes,
     preparation_head,
     prepare_body,
     release_qualification_gate_required,
     run_ci_prechecks,
     runner_digest,
+    selected_prechecks,
     update_pull_request,
     validate_static_repository,
     validate_precheck_evidence,
@@ -310,7 +313,7 @@ def test_precheck_evidence_must_match_base_and_head() -> None:
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": digest,
-        "graph_version": "wc103-prechecks-v6",
+        "graph_version": "wc109-prechecks-v8",
         "configuration_digest": "c" * 64,
         "runner_digest": "r" * 64,
     }
@@ -361,7 +364,7 @@ def test_precheck_evidence_rejects_configuration_or_runner_mismatch() -> None:
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": "d" * 64,
-        "graph_version": "wc103-prechecks-v6",
+        "graph_version": "wc109-prechecks-v8",
         "configuration_digest": "c" * 64,
         "runner_digest": "r" * 64,
     }
@@ -376,6 +379,33 @@ def test_precheck_evidence_rejects_configuration_or_runner_mismatch() -> None:
             assert expected in str(error)
         else:
             raise AssertionError(f"stale {expected} identity was accepted")
+
+
+def test_precheck_graph_canonicalizes_symbolic_base_before_digesting(monkeypatch, tmp_path: Path) -> None:
+    base_sha = "b" * 40
+    monkeypatch.setattr("prepare_pr_body.git", lambda *arguments: base_sha)
+    monkeypatch.setattr("prepare_pr_body.selected_prechecks", lambda changed: {"scripts_quality"})
+    monkeypatch.setattr("prepare_pr_body.shutil.which", lambda executable: f"/usr/bin/{executable}")
+    monkeypatch.setattr("prepare_pr_body.gate_input_digest", lambda head, patterns: "p" * 64)
+    monkeypatch.setattr(
+        "prepare_pr_body.gate_execution_identity",
+        lambda repository, gate, head: {
+            "catalog_version": "test",
+            "gate_id": gate,
+            "command_id": gate,
+            "gate_implementation_digest": "i" * 64,
+            "runner_digest": "r" * 64,
+            "environment_digest": "e" * 64,
+            "service_digest": "s" * 64,
+        },
+    )
+
+    symbolic = precheck_nodes(tmp_path, tmp_path / ".git", "origin/main", HEAD, ["scripts/example.py"])
+    resolved = precheck_nodes(tmp_path, tmp_path / ".git", base_sha, HEAD, ["scripts/example.py"])
+
+    assert symbolic[0].command == resolved[0].command
+    assert symbolic[0].command[symbolic[0].command.index("--base") + 1] == base_sha
+    assert runner_digest(symbolic) == runner_digest(resolved)
 
 
 def test_prepare_pr_body_uses_requirement_ledger_validator() -> None:
@@ -438,35 +468,52 @@ def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path)
     assert [node.name for node in nodes] == [
         "gitleaks",
         "scripts_quality",
+        "typescript_dependency_scan",
         "dotnet_quality_business_platform",
         "typescript_quality",
+        "test_web",
         "business_platform",
         "release_qualification",
     ]
     assert [node.command[node.command.index("--gate") + 1] for node in nodes] == [
         "precheck:gitleaks",
         "quality:scripts",
+        "dep-scan:typescript",
         "quality:dotnet:business-platform",
         "quality:typescript",
+        "test-web",
         "test-dotnet:business-platform",
         "release-qualification",
     ]
     assert nodes[1].heavy is False
     assert nodes[2].heavy is False
+    assert nodes[2].reusable is False
     assert nodes[3].heavy is False
-    assert nodes[4].dependencies == ("dotnet_quality_business_platform",)
-    assert nodes[5].dependencies == (
+    assert nodes[4].heavy is False
+    assert nodes[5].dependencies == ("typescript_quality",)
+    assert nodes[6].dependencies == ("dotnet_quality_business_platform",)
+    assert nodes[7].dependencies == (
         "gitleaks",
         "scripts_quality",
+        "typescript_dependency_scan",
         "dotnet_quality_business_platform",
         "typescript_quality",
     )
     assert all("docker compose" not in " ".join(node.command) for node in nodes)
     assert all("run_release_qualification.sh" not in " ".join(node.command) for node in nodes)
-    assert captured["graph_version"] == "wc103-prechecks-v6"
+    assert all(node.command[node.command.index("--base") + 1] == "b" * 40 for node in nodes)
+    assert captured["graph_version"] == "wc109-prechecks-v8"
     assert captured["configuration_digest"] == configuration_digest()
     assert captured["runner_digest"] == runner_digest(nodes)
     assert nodes[0].runner_digest == "r" * 64
+
+
+def test_compose_change_selects_exact_web_gate() -> None:
+    selected = selected_prechecks(["docker-compose.yml"])
+    policy = yaml.safe_load((ROOT / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
+
+    assert "test_web" in selected
+    assert policy["prechecks"]["test_web"]["gate"] == "test-web"
 
 
 def test_runner_digest_binds_every_per_node_authority_field() -> None:
@@ -482,6 +529,7 @@ def test_runner_digest_binds_every_per_node_authority_field() -> None:
         {"gate_implementation_digest": "i" * 64},
         {"runner_digest": "sha256:" + "r" * 64},
         {"environment_digest": "e" * 64},
+        {"service_digest": "s" * 64},
         {"input_digest": "i" * 64},
         {"input_patterns": ("src/**",)},
     )

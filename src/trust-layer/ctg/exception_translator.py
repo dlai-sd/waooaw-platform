@@ -27,7 +27,7 @@ class ExceptionTranslator:
             "CTG provider call failed provider=%s exc_type=%s",
             provider_name,
             type(raw_exc).__name__,
-            exc_info=True,
+            exc_info=(type(raw_exc), raw_exc, raw_exc.__traceback__),
             extra={"secure": True},
         )
 
@@ -39,6 +39,12 @@ class ExceptionTranslator:
             )
         if isinstance(raw_exc, httpx.HTTPStatusError):
             status = raw_exc.response.status_code
+            if status == 429:
+                return MCPToolError(
+                    code="RATE_LIMIT",
+                    message="Provider rate limit exceeded",
+                    retry_eligible=True,
+                )
             if status in (401, 403):
                 return MCPToolError(
                     code="TOKEN_DEGRADED",

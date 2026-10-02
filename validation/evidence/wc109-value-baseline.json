@@ -1,0 +1,29 @@
+{
+  "schema": "waooaw.wc109-value-baseline/v1",
+  "preserved_head": "cccc2ad8306a512bf0f80c149c89b599a74160a2",
+  "source_manifest": {
+    "path": "validation/evidence/wc109-value-baseline-source.json",
+    "digest": "sha256:cf3fa3927ee8e61c9d61bef36b4740277ad5c10e4a0071cb132ac5e33babb10c",
+    "candidate_sha": "602cea4000ffdf271348711fd4fd20538c5b5e7e"
+  },
+  "measurements": {
+    "gate_counts": {
+      "attempted": 43,
+      "pass": 38,
+      "fail": 5
+    },
+    "total_gate_seconds": 2833.434,
+    "first_failure": {
+      "zero_based_index": 30,
+      "gate_id": "integration:multi-tenant"
+    },
+    "seconds_before_first_failure": 1901.640,
+    "seconds_after_first_failure": 931.601
+  },
+  "limitations": [
+    "Summed gate durations are not wall-clock elapsed time and may include serial or concurrent execution effects.",
+    "This local rollback rehearsal is a before-improvement engineering baseline, not hosted or release authority.",
+    "Engineering delivery efficiency is not direct customer-value realization."
+  ],
+  "customer_value_claimed": false
+}

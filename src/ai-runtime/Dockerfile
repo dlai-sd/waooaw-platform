@@ -1,11 +1,11 @@
 # Implements: architecture/reference/agents/platform-it-expert-agent.md Skill 17
 # Constitutional basis: C-059 (Implementation Traceability)
-FROM python:3.12-slim-bookworm AS dependencies
+FROM python:3.12-slim-bookworm@sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e AS dependencies
 WORKDIR /install
 COPY src/ai-runtime/requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install/packages -r requirements.txt
 
-FROM python:3.12-slim-bookworm
+FROM python:3.12-slim-bookworm@sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e
 RUN apt-get update \
 	&& apt-get upgrade --yes \
 	&& rm -rf /var/lib/apt/lists/* \

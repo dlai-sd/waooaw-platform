@@ -38,23 +38,9 @@ jobs:
     name: Multi-tenant isolation (adversarial)
     runs-on: ubuntu-latest
     needs: [runner-supply, validation-plan]
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_USER: waooaw
-          POSTGRES_PASSWORD: testpassword
-          POSTGRES_DB: waooaw_test
-        options: >-
-          --health-cmd "pg_isready -U waooaw"
-          --health-interval 5s
-          --health-retries 10
-        ports: ["5432:5432"]
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/run-validation-gate
-        env:
-          DATABASE_URL: postgresql://waooaw:testpassword@host.docker.internal:5432/waooaw_test
         with:
           gate-id: integration:multi-tenant
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -70,37 +56,17 @@ jobs:
     name: Service integration tests
     runs-on: ubuntu-latest
     needs: [runner-supply, validation-plan]
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_USER: waooaw
-          POSTGRES_PASSWORD: testpassword
-          POSTGRES_DB: waooaw_test
-        options: >-
-          --health-cmd "pg_isready -U waooaw"
-          --health-interval 5s
-          --health-retries 10
-        ports: ["5432:5432"]
     steps:
       - uses: actions/checkout@v4
-      - name: Resolve Docker socket group for Testcontainers
-        run: echo "DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)" >> "$GITHUB_ENV"
       - uses: ./.github/actions/run-validation-gate
-        env:
-          DATABASE_URL: postgresql://waooaw:testpassword@host.docker.internal:5432/waooaw_test
         with:
           gate-id: integration:postgres-migrations
           token: ${{ secrets.GITHUB_TOKEN }}
       - uses: ./.github/actions/run-validation-gate
-        env:
-          DATABASE_URL: "Host=host.docker.internal;Port=5432;Database=waooaw_test;Username=waooaw;Password=testpassword"
         with:
           gate-id: integration:dotnet
           token: ${{ secrets.GITHUB_TOKEN }}
       - uses: ./.github/actions/run-validation-gate
-        env:
-          DATABASE_URL: postgresql://waooaw:testpassword@host.docker.internal:5432/waooaw_test
         with:
           gate-id: integration:python
           token: ${{ secrets.GITHUB_TOKEN }}

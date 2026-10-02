@@ -167,8 +167,11 @@ def test_reusable_validation_plan_preserves_consumer_contract() -> None:
     assert rendered.count("./.github/actions/use-validation-runner") == 1
     assert '"runner-id": "full"' in rendered
     assert "wc104-qualification-plan-${{ github.run_id }}" in rendered
+    assert "wc109-shadow-plan-${{ github.run_id }}" in rendered
     assert "--all-gates" in rendered
-    assert ".selected_gates | index(\"release-qualification\") != null" in source
+    assert "scripts/validation_control/shadow.py plan" in source
+    assert "jq -r '.release_required' test-results/wc102/hosted-execution-plan.json" in source
+    assert plan["outputs"]["execution_gates"] == "${{ steps.plan.outputs.execution_gates }}"
     assert '[[ "$EVENT_NAME" == "schedule" || "$EVENT_NAME" == "workflow_dispatch" ]]' in source
     assert 'git rev-parse "$head_sha^"' in source
 
@@ -204,7 +207,7 @@ def test_code_quality_jobs_execute_catalog_gates() -> None:
     assert workflow[True]["schedule"] == [{"cron": "0 0 * * 0"}]
 
     for job_id in catalog_jobs - {"commitlint", "mutation-dotnet", "mutation-python"}:
-        assert "needs.validation-plan.outputs.selected_gates" in jobs[job_id].get("if", ""), job_id
+        assert "needs.validation-plan.outputs.execution_gates" in jobs[job_id].get("if", ""), job_id
 
     expected_runners = {
         "quality:commitlint": "typescript",
@@ -233,6 +236,19 @@ def test_code_quality_jobs_execute_catalog_gates() -> None:
     dotnet_mutation = (root / "scripts/validation_control/run_dotnet_mutation_gate.sh").read_text(encoding="utf-8")
     python_mutation = (root / "scripts/validation_control/run_python_mutation_gate.sh").read_text(encoding="utf-8")
     assert "--threshold-high 80 --threshold-low 75 --break-at 65" in dotnet_mutation
+    assert "tests/ai-runtime" in python_mutation
+    assert "tests/unit/ai-runtime" not in python_mutation
+    assert "cp -a src/ai-runtime/." in python_mutation
+    assert "source_paths =\n" in python_mutation
+    assert "    skeleton" in python_mutation
+    assert "also_copy = trust-layer" in python_mutation
+    assert "pytest_add_cli_args_test_selection = tests/ai-runtime" in python_mutation
+    assert "asyncio_mode = auto" in python_mutation
+    assert "--paths-to-mutate" not in python_mutation
+    assert "--tests-dir" not in python_mutation
+    assert "mutmut export-cicd-stats" in python_mutation
+    assert 'stats["total"]-stats["skipped"]' in python_mutation
+    assert 'stats["killed"]+stats["timeout"]' in python_mutation
     assert '"${score:-0}" -lt 60' in python_mutation
 
 
@@ -242,7 +258,7 @@ def test_integration_jobs_execute_catalog_gates() -> None:
     catalog = yaml.safe_load((root / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
     jobs = workflow["jobs"]
     expected_gates = {
-        "integration:multi-tenant": "python",
+        "integration:multi-tenant": "dotnet",
         "integration:postgres-migrations": "python",
         "integration:dotnet": "dotnet",
         "integration:python": "python",
@@ -271,12 +287,18 @@ def test_integration_jobs_execute_catalog_gates() -> None:
     for gate_id in expected_gates:
         assert gate_id in rendered_workflow
     assert jobs["multi-tenant-isolation"]["steps"][-1]["if"] == "always()"
+    assert "services" not in jobs["multi-tenant-isolation"]
+    assert "services" not in jobs["service-integration"]
     assert catalog["commands"]["contract-rest"]["execution"] == "host"
-    assert catalog["gates"]["integration:multi-tenant"]["environment"] == ["DATABASE_URL"]
-    assert catalog["gates"]["integration:dotnet"]["environment"] == ["DATABASE_URL"]
-    assert "--pull never test-runner-python" in (
-        root / "scripts/validation_control/run_rest_contract_gate.sh"
-    ).read_text(encoding="utf-8")
+    assert catalog["gates"]["integration:multi-tenant"]["environment"] == [
+        "DATABASE_URL",
+        "TESTCONTAINERS_HOST_OVERRIDE",
+    ]
+    assert catalog["gates"]["integration:dotnet"]["environment"] == ["TESTCONTAINERS_HOST_OVERRIDE"]
+    assert catalog["gates"]["integration:python"].get("environment", []) == []
+    assert "--pull never test-runner-python" in (root / "scripts/validation_control/run_rest_contract_gate.sh").read_text(
+        encoding="utf-8"
+    )
 
 
 def test_e2e_jobs_execute_catalog_gates() -> None:
@@ -303,8 +325,10 @@ def test_e2e_jobs_execute_catalog_gates() -> None:
         assert "docker compose" not in rendered, job_id
         assert '"runner-id"' not in rendered, job_id
 
-    assert catalog["gates"]["e2e:accessibility"]["runner_id"] == "full"
-    for gate_id in set(expected_gates.values()) - {"e2e:accessibility"}:
+    full_runner_gates = {"e2e:accessibility", "e2e:emergency-stop"}
+    for gate_id in full_runner_gates:
+        assert catalog["gates"][gate_id]["runner_id"] == "full"
+    for gate_id in set(expected_gates.values()) - full_runner_gates:
         assert catalog["gates"][gate_id]["runner_id"] == "python"
     assert jobs["accessibility"]["steps"][-1]["if"] == "always()"
     assert jobs["as-001-dma"]["steps"][-1]["if"] == "always()"
@@ -359,14 +383,14 @@ def test_dotnet_ci_executes_catalog_gates_without_duplicate_commands_or_runner_m
     rendered = json.dumps(job)
 
     assert set(job["needs"]) == {"runner-supply", "validation-plan"}
-    assert job["strategy"]["matrix"]["include"] == (
-        "${{ fromJSON(needs.validation-plan.outputs.dotnet_test_matrix) }}"
-    )
+    assert job["strategy"]["matrix"]["include"] == ("${{ fromJSON(needs.validation-plan.outputs.dotnet_test_matrix) }}")
     assert "./.github/actions/run-validation-gate" in rendered
     assert '"runner-id": "dotnet"' not in rendered
     assert "dotnet restore" not in rendered
     assert "dotnet test" not in rendered
     assert "line-rate" not in rendered
+    assert rendered.count("steps.runner-build.outputs.output_directory") == 2
+    assert "dotnet-coverage-${{ matrix.service }}-${{ github.run_id }}" in rendered
 
 
 def test_python_ci_executes_catalog_gates_without_duplicate_commands_or_runner_mapping() -> None:
@@ -376,15 +400,14 @@ def test_python_ci_executes_catalog_gates_without_duplicate_commands_or_runner_m
     rendered = json.dumps(job)
 
     assert set(job["needs"]) == {"runner-supply", "validation-plan"}
-    assert job["strategy"]["matrix"]["include"] == (
-        "${{ fromJSON(needs.validation-plan.outputs.python_test_matrix) }}"
-    )
+    assert job["strategy"]["matrix"]["include"] == ("${{ fromJSON(needs.validation-plan.outputs.python_test_matrix) }}")
     assert "./.github/actions/run-validation-gate" in rendered
     assert '"runner-id": "python"' not in rendered
     assert "matrix.source" not in rendered
     assert "matrix.tests" not in rendered
     assert "matrix.mypy_path" not in rendered
     assert "docker compose" not in rendered
+    assert rendered.count("steps.runner-build.outputs.output_directory") == 2
 
 
 def test_release_ci_executes_catalog_gate_without_duplicate_command_or_runner_mapping() -> None:
@@ -411,9 +434,7 @@ def test_dependency_ci_executes_catalog_gates_without_duplicate_commands_or_runn
     assert set(job["needs"]) == {"runner-supply", "validation-plan"}
     assert rendered.count("./.github/actions/run-validation-gate") == 3
     assert {
-        step["with"]["gate-id"]
-        for step in job["steps"]
-        if step.get("uses") == "./.github/actions/run-validation-gate"
+        step["with"]["gate-id"] for step in job["steps"] if step.get("uses") == "./.github/actions/run-validation-gate"
     } == split_gates
     assert split_gates.issubset(catalog["full_gates"])
     assert "dep-scan" not in catalog["full_gates"]
@@ -450,6 +471,7 @@ def test_c059_ci_executes_catalog_gate_without_duplicate_command_or_runner_mappi
     assert set(job["needs"]) == {"runner-supply", "validation-plan"}
     gate_step = next(step for step in job["steps"] if step.get("uses") == "./.github/actions/run-validation-gate")
     assert gate_step["with"]["gate-id"] == "constitutional-commit-gate"
+    assert gate_step["with"]["metadata-directory"] == "test-results/wc104/c059"
     assert '"runner-id"' not in rendered
     assert "python scripts/validate_c059.py" not in rendered
     assert "docker compose" not in rendered
@@ -501,6 +523,7 @@ def test_c066_ci_executes_catalog_gate_without_duplicate_command_or_runner_mappi
     assert set(job["needs"]) == {"runner-supply", "validation-plan"}
     gate_step = next(step for step in job["steps"] if step.get("uses") == "./.github/actions/run-validation-gate")
     assert gate_step["with"]["gate-id"] == "authorization-tier-check"
+    assert gate_step["with"]["metadata-directory"] == "test-results/wc104/c066"
     assert '"runner-id"' not in rendered
     assert 'test "$BASE_BRANCH" = "main"' not in rendered
     assert "docker compose" not in rendered

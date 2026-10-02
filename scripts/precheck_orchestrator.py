@@ -35,7 +35,7 @@ ACTIVE_PROCESSES_LOCK = threading.Lock()
 DEFAULT_PROGRESS_INTERVAL_SECONDS = 30.0
 EVIDENCE_FILE_NAME = "precheck-manifest.json"
 EVIDENCE_SCHEMA = "waooaw.pr-prechecks/v4"
-CARRY_FORWARD_SELECTOR_VERSION = "wc104-gate-inputs-v2"
+CARRY_FORWARD_SELECTOR_VERSION = "wc104-gate-inputs-v3"
 
 
 @dataclass(frozen=True)
@@ -53,8 +53,10 @@ class PrecheckNode:
     gate_implementation_digest: str = ""
     runner_digest: str = ""
     environment_digest: str = ""
+    service_digest: str = ""
     input_digest: str = ""
     input_patterns: tuple[str, ...] = ()
+    reusable: bool = True
 
 
 def utc_now() -> str:
@@ -147,7 +149,9 @@ def _node_identity(node: PrecheckNode, identity_inputs: dict[str, str]) -> str:
         "gate_implementation_digest": node.gate_implementation_digest,
         "runner_digest": node.runner_digest,
         "environment_digest": node.environment_digest,
+        "service_digest": node.service_digest,
         "input_digest": node.input_digest,
+        "reusable": node.reusable,
     }
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
@@ -160,6 +164,7 @@ def _node_authority(node: PrecheckNode) -> dict[str, str]:
         "gate_implementation_digest": node.gate_implementation_digest,
         "runner_digest": node.runner_digest,
         "environment_digest": node.environment_digest,
+        "service_digest": node.service_digest,
         "input_digest": node.input_digest,
         "selector_version": CARRY_FORWARD_SELECTOR_VERSION,
         "evidence_schema": EVIDENCE_SCHEMA,
@@ -216,7 +221,7 @@ def _load_reusable_results(
         assert isinstance(prior_nodes, list)
         prior_by_name = {item.get("name"): item for item in prior_nodes if isinstance(item, dict)}
         for node in nodes:
-            if node.name in reusable:
+            if node.name in reusable or not node.reusable:
                 continue
             prior = prior_by_name.get(node.name)
             if not isinstance(prior, dict) or prior.get("status") != "PASS":
@@ -400,6 +405,7 @@ def _run_node(
     artifact_dir: Path,
     heavy_slots: threading.Semaphore,
     evidence_identity: str,
+    failure_event: threading.Event,
 ) -> dict[str, object]:
     node_dir = artifact_dir / f"{node.name}.tmp"
     node_dir.mkdir(parents=True, exist_ok=True)
@@ -417,13 +423,26 @@ def _run_node(
     docker_socket = Path("/var/run/docker.sock")
     if docker_socket.exists():
         environment["DOCKER_GID"] = str(docker_socket.stat().st_gid)
-    started_at = utc_now()
     stdout_chunks: list[str] = []
     stderr_chunks: list[str] = []
     attempts = 0
     return_code = 1
     classification = "assertion"
     with heavy_slots if node.heavy else _NullContext():
+        if failure_event.is_set():
+            return {
+                "name": node.name,
+                "status": "SUPPRESSED_FAILURE",
+                "classification": "dependency",
+                "exit_code": None,
+                "attempts": 0,
+                "started_at": None,
+                "completed_at": utc_now(),
+                "stdout_artifact": None,
+                "stderr_artifact": None,
+                "reason": "suppressed after first causal failure",
+            }
+        started_at = utc_now()
         while attempts <= node.transient_retries:
             attempts += 1
             completed = _run_command(node.command, environment, node.name)
@@ -436,6 +455,8 @@ def _run_node(
             classification = classify_failure(return_code, f"{completed.stdout}\n{completed.stderr}")
             if classification != "infrastructure":
                 break
+        if return_code != 0:
+            failure_event.set()
     _write_bounded(stdout_path, stdout_chunks)
     _write_bounded(stderr_path, stderr_chunks)
     return {
@@ -527,6 +548,7 @@ def run_prechecks(
     )
     pending = set(names) - results.keys()
     heavy_slots = threading.Semaphore(max_heavy if mode == "parallel" else 1)
+    failure_event = threading.Event()
     while pending:
         ready = [
             name
@@ -579,6 +601,7 @@ def run_prechecks(
                         artifact_dir,
                         heavy_slots,
                         _node_identity(node, identity_inputs),
+                        failure_event,
                     )
                     for node in runnable
                 }
@@ -600,10 +623,12 @@ def run_prechecks(
                     artifact_dir,
                     heavy_slots,
                     _node_identity(node, identity_inputs),
+                    failure_event,
                 )
 
     ordered_results = [results[name] for name in names]
     failures = [result for result in ordered_results if result["status"] != "PASS"]
+    causal_failures = [result for result in ordered_results if result["status"] == "FAIL"]
     manifest = {
         "schema": EVIDENCE_SCHEMA,
         "passed": not failures,
@@ -619,7 +644,7 @@ def run_prechecks(
         "executed_count": sum(result.get("reuse", {}).get("reused") is not True for result in ordered_results),
         "reused_count": sum(result.get("reuse", {}).get("reused") is True for result in ordered_results),
         "fallback_reasons": fallback_reasons,
-        "first_causal_failure": failures[0]["name"] if failures else None,
+        "first_causal_failure": causal_failures[0]["name"] if causal_failures else None,
         "nodes": ordered_results,
     }
     _write_manifest_atomically(evidence_path, manifest)

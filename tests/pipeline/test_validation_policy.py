@@ -33,6 +33,54 @@ def test_classifier_direct_reverse_and_unknown_paths() -> None:
     assert unknown["reasons"] == ["unknown path: unexpected/new-system/file.txt"]
 
 
+def test_story_scope_stays_direct_while_milestone_includes_reverse_dependencies() -> None:
+    policy = load_policy()
+
+    story = classify_paths(policy, ["src/business-platform/Program.cs"], boundary="story")
+    milestone = classify_paths(policy, ["src/business-platform/Program.cs"], boundary="milestone")
+
+    assert story["selected_components"] == ["business-platform"]
+    assert set(story["selected_gates"]) < set(milestone["selected_gates"])
+    assert milestone["selected_components"] == [
+        "agent-runtime-adapter-digital-marketing",
+        "billing-engine",
+        "business-platform",
+        "professional-runtime",
+        "web",
+    ]
+
+
+def test_missing_gate_trust_blocks_without_manufacturing_authority() -> None:
+    policy = load_policy()
+    selected = classify_paths(policy, ["web/app/page.tsx"], boundary="milestone")
+    gate_trust = {
+        gate_id: {"identity": True, "provenance": True, "signature": True, "trust": True}
+        for gate_id in selected["selected_gates"]
+    }
+    gate_trust["test-web"]["signature"] = False
+
+    result = classify_paths(
+        policy,
+        ["web/app/page.tsx"],
+        boundary="milestone",
+        gate_trust=gate_trust,
+    )
+
+    assert result["full"] is False
+    assert "test-web" in result["selected_gates"]
+    assert result["blocked_gates"] == {"test-web": ["signature"]}
+
+
+def test_parser_disagreement_fails_safe_to_full_inventory() -> None:
+    policy = load_policy()
+
+    result = classify_paths(policy, ["web/app/page.tsx"], parser_agreement=False)
+
+    assert result["full"] is True
+    assert result["selected_gates"] == policy["full_gates"]
+    assert "impact parser disagreement" in result["reasons"]
+
+
 def test_classifier_failure_modes_select_full() -> None:
     policy = load_policy()
     policy["components"]["web"]["reverse_dependencies"] = ["constitutional-engine"]
@@ -140,15 +188,17 @@ def test_local_prechecks_are_scoped_independently_from_full_hosted_inventory() -
     hosted = classify_paths(policy, ["README.md"], event="push")
 
     assert evidence_only["full"] is True
-    assert evidence_only["selected_prechecks"] == ["gitleaks"]
+    assert evidence_only["selected_prechecks"] == ["gitleaks", "typescript_dependency_scan"]
     assert business["selected_prechecks"] == [
         "business_platform",
         "dotnet_quality_business_platform",
         "gitleaks",
         "release_qualification",
+        "test_web",
+        "typescript_dependency_scan",
         "typescript_quality",
     ]
-    assert release["selected_prechecks"] == ["gitleaks", "release_qualification"]
+    assert release["selected_prechecks"] == ["gitleaks", "release_qualification", "typescript_dependency_scan"]
     assert hosted["selected_gates"] == policy["full_gates"]
 
 

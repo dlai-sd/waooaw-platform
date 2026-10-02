@@ -33,7 +33,10 @@ own PR, access or mutate a provider without exact authority, or invoke another i
    stack-specific disposable story execution against mounted source; dependency-complete milestone checks;
    then one final qualification per immutable frozen candidate. Ordinary source edits must build neither
    runner nor product image. Resolve runner, test-execution, candidate and evidence identities separately.
-   A repair after freeze creates a new candidate and requires new affected evidence and qualification.
+   A repair after freeze creates a new candidate, carries forward only identity-compatible unaffected PASS evidence,
+   reruns the affected dependency closure, and then performs one stitched confirmation. Use
+   `scripts/validation_control/run_wc104_qualification.sh` for normal candidate qualification. Never use
+   `run_wc104_rollback.sh` as routine qualification; it is reserved for a Section 9 rollback trigger.
    Tier 2 remains the focused gate and publishes atomic host-visible evidence. Run one final qualification
    per immutable candidate after the bounded milestone checks pass.
    Invoke gates through `scripts/validation_control/local_catalog_gate.py` locally

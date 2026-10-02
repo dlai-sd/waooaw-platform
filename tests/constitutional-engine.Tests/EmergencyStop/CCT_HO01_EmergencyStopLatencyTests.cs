@@ -152,6 +152,13 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
             because: "C-023 (Evidence First): every Emergency Stop must produce a persisted record ID before returning");
         response.RecordedAt.Should().NotBeNull(
             because: "C-027 (append-only): recorded_at proves the record was written before the response was returned");
+
+        var persistedId = Guid.Parse(response.EmergencyStopRecordId["EMERGENCY_STOP:".Length..]);
+        await using var evidenceDb = await emergencyStopFactory.CreateDbContextAsync();
+        var persisted = await evidenceDb.EmergencyStopEvents.SingleAsync(e => e.Id == persistedId);
+        persisted.ContractId.Should().Be(Guid.Parse(contractId));
+        persisted.InitiatedByUserId.Should().Be("test-user-cct-ho01");
+        persisted.AffectedSessionIds.Should().BeEquivalentTo(request.ActiveSessionIds);
     }
 
     // CCT-HO-01b: C-001 — affected sessions are reflected in the response

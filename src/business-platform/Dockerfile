@@ -1,6 +1,6 @@
 # Implements: architecture/reference/components/business-platform.md §Runtime Requirements (for Dockerfile + startup)
 # Constitutional basis: C-059 (Implementation Traceability), C-071 (Quality Gates), C-080 (Docker Test Isolation)
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:9.0@sha256:01fabc4758d1d74e39eda700c8463dae6241a61481f973683692ddcb59a5eeb7 AS build
 WORKDIR /src
 COPY src/business-platform/business-platform.csproj .
 RUN dotnet restore --runtime linux-musl-x64
@@ -8,7 +8,7 @@ COPY src/business-platform/ .
 RUN dotnet publish --configuration Release --runtime linux-musl-x64 \
     --self-contained false --no-restore --output /app/publish
 
-FROM mcr.microsoft.com/dotnet/aspnet:9.0
+FROM mcr.microsoft.com/dotnet/aspnet:9.0@sha256:2680706c9656fafe34876446d694fd25077fd0b5da478f38d56073ac6c21d37e
 RUN apt-get update \
     && apt-get upgrade --yes \
     && apt-get install --yes --no-install-recommends curl postgresql-client \

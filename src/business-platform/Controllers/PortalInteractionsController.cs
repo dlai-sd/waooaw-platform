@@ -3,6 +3,7 @@
 // constitutional_basis: C-005, C-026, C-049, C-059, C-063
 
 using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Waooaw.BusinessPlatform.Infrastructure;
@@ -28,6 +29,16 @@ public sealed class PortalInteractionsController(
     {
         if (!TryGetAuthority(out var tenantId, out var participantId))
             return SessionRequired();
+        if (
+            Request.Query.Keys.Any(key => key is not "cursor" and not "limit")
+            || Request.Query.ContainsKey("cursor")
+                && (cursor is null || !IsValidCursorLength(cursor))
+        )
+            return Problem(
+                StatusCodes.Status400BadRequest,
+                "PORTAL_INTERACTION_REQUEST_INVALID",
+                "The portal interaction query is invalid."
+            );
         try
         {
             return Ok(
@@ -50,6 +61,15 @@ public sealed class PortalInteractionsController(
     {
         if (!TryGetAuthority(out var tenantId, out var participantId))
             return SessionRequired();
+        if (
+            request.Content.Any(block => block is null)
+            || request.ExpectedCursor is not null && !IsValidCursorLength(request.ExpectedCursor)
+        )
+            return Problem(
+                StatusCodes.Status400BadRequest,
+                "PORTAL_INTERACTION_REQUEST_INVALID",
+                "Message content must contain a text block."
+            );
         if (
             !Guid.TryParse(
                 Request.Headers["Idempotency-Key"].FirstOrDefault(),
@@ -103,6 +123,9 @@ public sealed class PortalInteractionsController(
         );
     }
 
+    private static bool IsValidCursorLength(string cursor) =>
+        cursor.EnumerateRunes().Count() is >= 16 and <= 2048;
+
     private bool TryGetAuthority(out Guid tenantId, out Guid participantId)
     {
         if (
@@ -152,8 +175,8 @@ public sealed class PortalInteractionsController(
             ),
             ConversationCursorExpiredException => Problem(
                 StatusCodes.Status410Gone,
-                "PORTAL_INTERACTION_CURSOR_EXPIRED",
-                "Portal interaction cursor can no longer be resumed."
+                "CONVERSATION_CURSOR_EXPIRED",
+                "Portal interaction cursor has expired."
             ),
             _ => Problem(
                 StatusCodes.Status503ServiceUnavailable,
