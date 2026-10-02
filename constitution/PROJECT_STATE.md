@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 235
+**State Revision:** 236
 **Last Updated:** 2026-10-02 (WC-109 OUTCOME REMEDIATION AUTHORIZED)
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -83,7 +83,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 - **WC-109 ordered-execution milestone:** Commit `be6483bd` adds deterministic topological scheduling by declared cost and direct prerequisites; rollback now follows PLAN order rather than legacy catalog order. Full-plan tests prove monotonic A-through-E phases and `release-qualification` last, while fail-fast and resume behavior remain intact across 108 focused tests. R040 remains PLANNED pending explicit prerequisite terminal-evidence checks at each transition.
 - **WC-109 prerequisite-evidence milestone:** Commit `5af05970` requires every non-deferred node, including exact PASS reuse, to find accepted terminal evidence for each direct PLAN prerequisite before execution. Missing, failed and forged deferred evidence block; only PASS or exact Founder-approved AS-001/003/005 `BLOCKED-DEFERRED` proof is accepted. Direct CLI execution and 110 focused tests pass. R040 remains PLANNED pending explicit transition records and stale-evidence phase fixtures.
 - **WC-109 ordered-phase completion:** Commit `3f56d85c` publishes atomic identity-bound A-through-E transition records and binds each terminal gate to candidate and catalog identity. Missing, failed, stale-head, catalog-mismatched and broad-phase bypass fixtures block; a complete run records five PASS transitions with qualification last. Ruff, format, 111 focused tests, the 48-row ledger validator and eight ledger regressions pass; R040 is PASS. R039 and R042 remain PLANNED for complete omission-to-BLOCKED and already-running-lane evidence.
-- **WC-109 execution-control group completion:** Commits `1143e8e7`, `2c0fd2d8`, `6a3c2e69`, `59984a6e`, `691d6461` and `532a67db` complete R039-R045: deterministic PLAN, digest-current contract authority, blocker/command/supply/execution/resource/evidence readiness, no-new-work fail-fast, identity-bound local repair, atomic chunk recovery and pre-supply/per-phase capacity guards. Timeout, cancellation and interruption are recoverable; resume reruns only missing, failed or dependency-invalidated chunks; bounded cleanup cannot target repository evidence. Ruff, format, 169 control-plane/ledger tests, the 48-row validator and eight ledger regressions pass. R046 remains PLANNED for aggregate negative-family evidence and qualification-handoff blocking.
+- **WC-109 execution-control and handoff enforcement completion:** Commits `1143e8e7`, `2c0fd2d8`, `6a3c2e69`, `59984a6e`, `691d6461`, `532a67db` and `b3093683` complete R039-R046: deterministic PLAN/readiness, no-new-work fail-fast, identity-bound repair, atomic recovery, phase capacity and qualification handoff. All eight negative families and Groups 1-4 must carry current candidate/catalog PASS evidence before canonical qualification; absent, stale or incomplete handoff emits a complete zero-work block. Ruff, format, 184 control-plane/ledger tests, the 48-row validator and eight ledger regressions pass. No actual Group 1-4 handoff artifact is asserted; Group 5, qualification, R047 pilot proof and R048 physical WC-110 partition remain open.
 
 ## Authorization Boundary
 
