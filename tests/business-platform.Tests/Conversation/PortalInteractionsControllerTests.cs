@@ -151,6 +151,23 @@ public sealed class PortalInteractionsControllerTests
     }
 
     [Fact]
+    public async Task CursorLengthUsesOpenApiUnicodeScalarSemantics()
+    {
+        var controller = CreateController(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        var shortCursor = string.Concat(Enumerable.Repeat("\U0001F680", 8));
+        controller.HttpContext.Request.QueryString = QueryString.Create("cursor", shortCursor);
+
+        Assert.Equal(
+            400,
+            Assert
+                .IsType<ObjectResult>(
+                    await controller.ListAsync(shortCursor, 40, CancellationToken.None)
+                )
+                .StatusCode
+        );
+    }
+
+    [Fact]
     public async Task ReplayAndServiceConflictsMapToStableHttpOutcomes()
     {
         var tenantId = Guid.NewGuid();

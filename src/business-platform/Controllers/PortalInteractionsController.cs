@@ -3,6 +3,7 @@
 // constitutional_basis: C-005, C-026, C-049, C-059, C-063
 
 using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Waooaw.BusinessPlatform.Infrastructure;
@@ -31,7 +32,7 @@ public sealed class PortalInteractionsController(
         if (
             Request.Query.Keys.Any(key => key is not "cursor" and not "limit")
             || Request.Query.ContainsKey("cursor")
-                && (cursor is null || cursor.Length is < 16 or > 2048)
+                && (cursor is null || !IsValidCursorLength(cursor))
         )
             return Problem(
                 StatusCodes.Status400BadRequest,
@@ -62,7 +63,7 @@ public sealed class PortalInteractionsController(
             return SessionRequired();
         if (
             request.Content.Any(block => block is null)
-            || request.ExpectedCursor is not null && request.ExpectedCursor.Length is < 16 or > 2048
+            || request.ExpectedCursor is not null && !IsValidCursorLength(request.ExpectedCursor)
         )
             return Problem(
                 StatusCodes.Status400BadRequest,
@@ -121,6 +122,9 @@ public sealed class PortalInteractionsController(
             HttpContext.TraceIdentifier
         );
     }
+
+    private static bool IsValidCursorLength(string cursor) =>
+        cursor.EnumerateRunes().Count() is >= 16 and <= 2048;
 
     private bool TryGetAuthority(out Guid tenantId, out Guid participantId)
     {
