@@ -521,6 +521,7 @@ def test_contract_authority_rejects_declared_requirement_blocker(tmp_path: Path)
     copy_contract_authority(tmp_path)
     ledger_path = tmp_path / "work-contracts/WC-109-requirements.yaml"
     ledger = yaml.safe_load(ledger_path.read_text(encoding="utf-8"))
+    ledger["result"] = "PLANNED"
     ledger["requirements"][0]["result"] = "BLOCKED"
     ledger_path.write_text(yaml.safe_dump(ledger, sort_keys=False), encoding="utf-8")
 
