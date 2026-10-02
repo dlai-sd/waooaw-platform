@@ -473,7 +473,9 @@ requirements:
     completion_rule: Evidence binds head cccc2ad8306a512bf0f80c149c89b599a74160a2, records 43 attempts, 38 PASS, five FAIL and the declared gate-second observations without representing them as wall-clock or customer value.
     evidence_refs:
       - validation/evidence/wc109-value-baseline.json
+      - test-results/wc109/rollback-602cea40.json
       - tests/validation_control/test_wc109_value_pilot.py
+    result: PASS
 
   - <<: *requirement_defaults
     requirement_id: WC109-R039

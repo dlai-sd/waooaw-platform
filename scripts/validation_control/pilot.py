@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import statistics
@@ -13,6 +14,7 @@ from typing import Any
 
 TIERS = ("tier1", "tier2", "tier3", "tier4")
 OUTCOMES = ("quality", "coverage", "security", "cct")
+VALUE_BASELINE_SCHEMA = "waooaw.wc109-value-baseline/v1"
 
 
 def _full_commit(value: object, field: str) -> str:
@@ -40,6 +42,118 @@ def _digest(value: object, field: str) -> str:
     if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
         raise ValueError(f"{field} must be a sha256 digest")
     return value
+
+
+def validate_value_baseline(record: dict[str, Any]) -> dict[str, Any]:
+    if record.get("schema") != VALUE_BASELINE_SCHEMA:
+        raise ValueError("unsupported value baseline schema")
+    preserved_head = _full_commit(record.get("preserved_head"), "preserved_head")
+    source_manifest = record.get("source_manifest")
+    if not isinstance(source_manifest, dict) or not isinstance(source_manifest.get("path"), str):
+        raise ValueError("source_manifest path and digest are required")
+    source_digest = _digest(source_manifest.get("digest"), "source_manifest.digest")
+    candidate_sha = _full_commit(source_manifest.get("candidate_sha"), "source_manifest.candidate_sha")
+
+    measurements = record.get("measurements")
+    if not isinstance(measurements, dict):
+        raise ValueError("measurements are required")
+    counts = measurements.get("gate_counts")
+    if not isinstance(counts, dict) or set(counts) != {"attempted", "pass", "fail"}:
+        raise ValueError("gate_counts must contain attempted, pass and fail")
+    if any(not isinstance(value, int) or isinstance(value, bool) or value < 0 for value in counts.values()):
+        raise ValueError("gate counts must be nonnegative integers")
+    if counts["attempted"] != counts["pass"] + counts["fail"]:
+        raise ValueError("attempted gate count must equal pass plus fail")
+
+    timing_fields = ("total_gate_seconds", "seconds_before_first_failure", "seconds_after_first_failure")
+    for field in timing_fields:
+        value = measurements.get(field)
+        if not isinstance(value, (int, float)) or isinstance(value, bool) or value < 0:
+            raise ValueError(f"{field} must be nonnegative")
+    first_failure = measurements.get("first_failure")
+    if (
+        not isinstance(first_failure, dict)
+        or not isinstance(first_failure.get("zero_based_index"), int)
+        or first_failure["zero_based_index"] < 0
+        or not isinstance(first_failure.get("gate_id"), str)
+        or not first_failure["gate_id"]
+    ):
+        raise ValueError("first_failure requires a nonnegative index and gate ID")
+    if first_failure["zero_based_index"] >= counts["attempted"]:
+        raise ValueError("first failure index must identify an attempted gate")
+    if counts["fail"] == 0:
+        raise ValueError("failed-run baseline must contain at least one failed gate")
+
+    limitations = record.get("limitations")
+    if (
+        not isinstance(limitations, list)
+        or not limitations
+        or not all(isinstance(limitation, str) and limitation for limitation in limitations)
+    ):
+        raise ValueError("baseline limitations are required")
+    if record.get("customer_value_claimed") is not False:
+        raise ValueError("engineering baseline cannot claim customer value")
+
+    return {
+        "preserved_head": preserved_head,
+        "source_candidate_sha": candidate_sha,
+        "source_digest": source_digest,
+        "attempted_gate_count": counts["attempted"],
+        "failed_gate_count": counts["fail"],
+        "total_gate_seconds": measurements["total_gate_seconds"],
+        "seconds_after_first_failure": measurements["seconds_after_first_failure"],
+        "passed": True,
+    }
+
+
+def validate_value_baseline_source(record: dict[str, Any], repository: Path) -> dict[str, Any]:
+    result = validate_value_baseline(record)
+    source_manifest = record["source_manifest"]
+    source_path = (repository / source_manifest["path"]).resolve()
+    repository = repository.resolve()
+    if not source_path.is_relative_to(repository) or not source_path.is_file():
+        raise ValueError("source manifest must be a repository file")
+    source_bytes = source_path.read_bytes()
+    source_digest = "sha256:" + hashlib.sha256(source_bytes).hexdigest()
+    if source_digest != source_manifest["digest"]:
+        raise ValueError("source manifest digest does not match retained evidence")
+    source = json.loads(source_bytes)
+    if not isinstance(source, dict) or source.get("candidate_sha") != source_manifest["candidate_sha"]:
+        raise ValueError("retained source candidate does not match baseline identity")
+    gate_results = source.get("gate_results")
+    if not isinstance(gate_results, list) or not gate_results:
+        raise ValueError("retained source must contain gate results")
+    observed_counts = {
+        "attempted": len(gate_results),
+        "pass": sum(gate.get("result") == "PASS" for gate in gate_results if isinstance(gate, dict)),
+        "fail": sum(gate.get("result") == "FAIL" for gate in gate_results if isinstance(gate, dict)),
+    }
+    measurements = record["measurements"]
+    if observed_counts != measurements["gate_counts"]:
+        raise ValueError("baseline gate counts do not match retained source")
+    first_failure_index = next(
+        (index for index, gate in enumerate(gate_results) if isinstance(gate, dict) and gate.get("result") == "FAIL"),
+        None,
+    )
+    if first_failure_index is None:
+        raise ValueError("retained source must contain a failed gate")
+    first_failure = measurements["first_failure"]
+    if first_failure != {
+        "zero_based_index": first_failure_index,
+        "gate_id": gate_results[first_failure_index].get("gate_id"),
+    }:
+        raise ValueError("baseline first failure does not match retained source")
+    durations = [gate.get("duration_seconds") for gate in gate_results if isinstance(gate, dict)]
+    if any(not isinstance(duration, (int, float)) or isinstance(duration, bool) for duration in durations):
+        raise ValueError("every retained gate requires numeric duration_seconds")
+    observed_timings = {
+        "total_gate_seconds": round(sum(durations), 3),
+        "seconds_before_first_failure": round(sum(durations[:first_failure_index]), 3),
+        "seconds_after_first_failure": round(sum(durations[first_failure_index + 1 :]), 3),
+    }
+    if any(measurements[field] != value for field, value in observed_timings.items()):
+        raise ValueError("baseline timings do not match retained source")
+    return result
 
 
 def validate_pilot_record(record: dict[str, Any]) -> dict[str, Any]:

@@ -23,7 +23,8 @@ import yaml
 
 from validation_control.evidence_controller import BLOCKED_DEFERRED_AMENDMENT, BLOCKED_DEFERRED_GATES
 from validation_control.qualification import build_wc104_rollback_manifest, render_manifest
-from validation_control.local_catalog_gate import execute_gate, resolve_runner
+from validation_control.local_catalog_gate import execute_gate, required_service_identities, resolve_runner
+from validation_control.orchestrator import build_execution_plan
 
 
 @dataclass(frozen=True)
@@ -90,6 +91,35 @@ def resolve_qualification_context(repository: Path, base_sha: str, candidate_sha
     )
 
 
+def publish_rollback_checkpoint(
+    path: Path,
+    manifest: dict[str, Any],
+    *,
+    base_sha: str,
+    runner_results: dict[str, Any],
+    service_results: dict[str, Any],
+    gate_results: list[dict[str, Any]],
+    first_cause_gate: str | None,
+) -> None:
+    checkpoint = {
+        **manifest,
+        "base_sha": base_sha,
+        "runner_results": runner_results,
+        "service_results": service_results,
+        "gate_results": gate_results,
+        "first_cause_gate": first_cause_gate,
+        "run_state": manifest.get("run_state", "FAILED" if first_cause_gate is not None else "IN_PROGRESS"),
+        "passed": False,
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + f".tmp-{os.getpid()}")
+    try:
+        temporary.write_text(render_manifest(checkpoint), encoding="utf-8")
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def execute_rollback(
     repository: Path,
     catalog: dict[str, Any],
@@ -98,15 +128,91 @@ def execute_rollback(
     base_sha: str,
     git_common_dir: Path,
     qualification_context: QualificationContext | None = None,
+    checkpoint_path: Path | None = None,
     runner_resolver: Callable[[Path, str], dict[str, Any]] = resolve_runner,
+    service_resolver: Callable[[Path, dict[str, Any]], dict[str, str]] = required_service_identities,
     gate_executor: Callable[..., int] = execute_gate,
 ) -> dict[str, Any]:
     manifest = build_wc104_rollback_manifest(catalog, candidate_sha=candidate_sha)
     previous = {name: os.environ.get(name) for name in manifest["environment"]}
     runner_results: dict[str, Any] = {}
+    service_results: dict[str, Any] = {}
     gate_results: list[dict[str, Any]] = []
+    first_cause_gate: str | None = None
     if qualification_context is None:
         qualification_context = resolve_qualification_context(repository, base_sha, candidate_sha)
+
+    def checkpoint() -> None:
+        if checkpoint_path is not None:
+            publish_rollback_checkpoint(
+                checkpoint_path,
+                manifest,
+                base_sha=base_sha,
+                runner_results=runner_results,
+                service_results=service_results,
+                gate_results=gate_results,
+                first_cause_gate=first_cause_gate,
+            )
+
+    plan = build_execution_plan(
+        catalog,
+        manifest["required_gates"],
+        mode="qualification",
+        head_sha=candidate_sha,
+        run_id=f"rollback-preflight-{candidate_sha}",
+    )
+    for node in plan["nodes"]:
+        if not node["required_services"] or node["gate_id"] in service_results:
+            continue
+        try:
+            service_results[node["gate_id"]] = service_resolver(repository, node)
+        except Exception as exception:
+            first_cause_gate = f"preflight:{node['gate_id']}"
+            error = f"{type(exception).__name__}: {exception}"
+            for gate_id in manifest["required_gates"]:
+                if gate_id in BLOCKED_DEFERRED_GATES:
+                    gate_results.append(
+                        {
+                            "gate_id": gate_id,
+                            "result": "BLOCKED",
+                            "disposition": "BLOCKED-DEFERRED",
+                            "disposition_proof": {
+                                "founder_scope_amendment": BLOCKED_DEFERRED_AMENDMENT,
+                                "release_blocking": True,
+                            },
+                            "duration_seconds": 0.0,
+                        }
+                    )
+                else:
+                    result = {
+                        "gate_id": gate_id,
+                        "result": "BLOCKED",
+                        "disposition": "PREFLIGHT_BLOCKED",
+                        "first_cause_gate": first_cause_gate,
+                        "duration_seconds": 0.0,
+                    }
+                    if gate_id == node["gate_id"]:
+                        result["error"] = error
+                    gate_results.append(result)
+            manifest.update(
+                {
+                    "base_sha": base_sha,
+                    "runner_results": runner_results,
+                    "service_results": service_results,
+                    "gate_results": gate_results,
+                    "first_cause_gate": first_cause_gate,
+                    "execution_summary": {
+                        "executed_gate_count": 0,
+                        "suppressed_gate_count": len(manifest["required_gates"]) - len(BLOCKED_DEFERRED_GATES),
+                        "deferred_gate_count": len(BLOCKED_DEFERRED_GATES),
+                    },
+                    "passed": False,
+                    "run_state": "BLOCKED",
+                }
+            )
+            checkpoint()
+            return manifest
+
     try:
         os.environ.update(manifest["environment"])
         docker_config = Path(os.environ["DOCKER_CONFIG"])
@@ -136,8 +242,22 @@ def execute_rollback(
                             "duration_seconds": round(time.monotonic() - started, 3),
                         }
                     )
+                    checkpoint()
+                    continue
+                if first_cause_gate is not None:
+                    gate_results.append(
+                        {
+                            "gate_id": gate_id,
+                            "result": "BLOCKED",
+                            "disposition": "SUPPRESSED_AFTER_FAILURE",
+                            "first_cause_gate": first_cause_gate,
+                            "duration_seconds": 0.0,
+                        }
+                    )
+                    checkpoint()
                     continue
                 error: str | None = None
+                disposition: str | None = None
                 try:
                     returncode = gate_executor(
                         repository,
@@ -151,6 +271,10 @@ def execute_rollback(
                         pr_number=qualification_context.pr_number,
                         repository_name=qualification_context.repository_name,
                     )
+                except KeyboardInterrupt:
+                    returncode = 1
+                    error = "KeyboardInterrupt: operator cancellation"
+                    disposition = "OPERATOR_CANCELLED"
                 except Exception as exception:
                     returncode = 1
                     error = f"{type(exception).__name__}: {exception}"
@@ -162,7 +286,13 @@ def execute_rollback(
                 }
                 if error is not None:
                     result["error"] = error
+                if disposition is not None:
+                    result["result"] = "BLOCKED"
+                    result["disposition"] = disposition
                 gate_results.append(result)
+                if result["result"] in {"FAIL", "BLOCKED"}:
+                    first_cause_gate = gate_id
+                checkpoint()
     finally:
         for name, value in previous.items():
             if value is None:
@@ -171,11 +301,19 @@ def execute_rollback(
                 os.environ[name] = value
     manifest["base_sha"] = base_sha
     manifest["runner_results"] = runner_results
+    manifest["service_results"] = service_results
     manifest["gate_results"] = gate_results
+    manifest["first_cause_gate"] = first_cause_gate
+    manifest["execution_summary"] = {
+        "executed_gate_count": sum("returncode" in result for result in gate_results),
+        "suppressed_gate_count": sum(result.get("disposition") == "SUPPRESSED_AFTER_FAILURE" for result in gate_results),
+        "deferred_gate_count": sum(result.get("disposition") == "BLOCKED-DEFERRED" for result in gate_results),
+    }
     manifest["passed"] = len(gate_results) == len(manifest["required_gates"]) and all(
         result["result"] == "PASS" or (result["result"] == "BLOCKED" and result.get("disposition") == "BLOCKED-DEFERRED")
         for result in gate_results
     )
+    manifest["run_state"] = "PASSED" if manifest["passed"] else "FAILED"
     return manifest
 
 
@@ -196,6 +334,7 @@ def main() -> int:
         candidate_sha=git_head(repository),
         base_sha=arguments.base,
         git_common_dir=arguments.git_common_dir.resolve(),
+        checkpoint_path=arguments.output,
     )
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
     temporary_output = arguments.output.with_suffix(arguments.output.suffix + ".tmp")

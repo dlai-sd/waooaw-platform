@@ -57,7 +57,7 @@ commands:
   requirement-ledger: {shell: "python scripts/validate_requirement_ledger.py --repository-root /workspace --changed-file-list test-results/wc102/changed-files.txt"}
   author-review-gate: {shell: "sh scripts/validation_control/run_c065_gate.sh"}
   authorization-tier-check: {shell: "sh scripts/validation_control/run_c066_gate.sh"}
-  quality-scripts: {shell: "ruff check scripts/ --config pyproject.toml && ruff format --check scripts/ && pytest tests/validation_control/test_unified_execution_contract.py -q && pytest tests/validation_control/test_pilot.py -q && python scripts/seed-prompts.py --dry-run"}
+  quality-scripts: {shell: "ruff check scripts/ --config pyproject.toml && ruff format --check scripts/ && pytest tests/validation_control/test_unified_execution_contract.py tests/validation_control/test_wc104_rollback.py -q && pytest tests/validation_control/test_pilot.py tests/validation_control/test_wc109_value_pilot.py -q && python scripts/seed-prompts.py --dry-run"}
   quality-commitlint: {shell: "sh scripts/validation_control/run_commitlint_quality_gate.sh"}
   quality-dotnet-constitutional-engine: {shell: "sh scripts/validation_control/run_dotnet_quality_gate.sh src/constitutional-engine constitutional-engine"}
   quality-dotnet-business-platform: {shell: "sh scripts/validation_control/run_dotnet_quality_gate.sh src/business-platform business-platform"}

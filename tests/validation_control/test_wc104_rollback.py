@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
@@ -27,7 +28,11 @@ def load_catalog() -> dict[str, object]:
     return yaml.safe_load(Path("validation/engineering-validation.yaml").read_text(encoding="utf-8"))
 
 
-def test_rollback_clean_builds_each_runner_once_then_executes_full_inventory_serially(tmp_path: Path) -> None:
+def resolve_services(repository: Path, node: dict[str, object]) -> dict[str, str]:
+    return {str(service): "sha256:" + "d" * 64 for service in node["required_services"]}
+
+
+def test_rollback_clean_builds_each_runner_once_then_executes_full_inventory(tmp_path: Path) -> None:
     catalog = load_catalog()
     events: list[tuple[str, str]] = []
 
@@ -60,6 +65,7 @@ def test_rollback_clean_builds_each_runner_once_then_executes_full_inventory_ser
         git_common_dir=tmp_path,
         qualification_context=qualification_context(),
         runner_resolver=resolve,
+        service_resolver=resolve_services,
         gate_executor=execute,
     )
 
@@ -73,10 +79,21 @@ def test_rollback_clean_builds_each_runner_once_then_executes_full_inventory_ser
         item["disposition_proof"] == {"founder_scope_amendment": BLOCKED_DEFERRED_AMENDMENT, "release_blocking": True}
         for item in deferred
     )
+    assert result["first_cause_gate"] is None
+    assert result["execution_summary"] == {
+        "executed_gate_count": len(executable_gates),
+        "suppressed_gate_count": 0,
+        "deferred_gate_count": len(BLOCKED_DEFERRED_GATES),
+    }
 
 
-def test_rollback_records_failure_without_reusing_prior_result(tmp_path: Path) -> None:
+def test_rollback_failure_suppresses_remaining_executable_inventory(tmp_path: Path) -> None:
     catalog = load_catalog()
+    executed: list[str] = []
+
+    def execute(repository: Path, gate: str, head: str, base: str, common: Path, **context: object) -> int:
+        executed.append(gate)
+        return 9 if gate == catalog["full_gates"][1] else 0
 
     result = execute_rollback(
         tmp_path,
@@ -90,15 +107,25 @@ def test_rollback_records_failure_without_reusing_prior_result(tmp_path: Path) -
             "trust_source": "local-identity-build",
             "runner_id": runner,
         },
-        gate_executor=lambda repository, gate, head, base, common, **context: 9 if gate == catalog["full_gates"][1] else 0,
+        service_resolver=resolve_services,
+        gate_executor=execute,
     )
 
     assert result["passed"] is False
     assert len(result["gate_results"]) == len(catalog["full_gates"])
     assert result["gate_results"][1]["result"] == "FAIL"
+    assert executed == catalog["full_gates"][:2]
+    assert result["first_cause_gate"] == catalog["full_gates"][1]
+    assert result["execution_summary"]["executed_gate_count"] == 2
+    assert result["execution_summary"]["suppressed_gate_count"] == len(catalog["full_gates"]) - 5
+    assert all(
+        item["result"] == "BLOCKED" and item["first_cause_gate"] == catalog["full_gates"][1]
+        for item in result["gate_results"][2:]
+        if item["gate_id"] not in BLOCKED_DEFERRED_GATES
+    )
 
 
-def test_rollback_records_gate_exception_and_continues_inventory(tmp_path: Path) -> None:
+def test_rollback_records_gate_exception_and_suppresses_remaining_inventory(tmp_path: Path) -> None:
     catalog = load_catalog()
     executed: list[str] = []
 
@@ -120,9 +147,110 @@ def test_rollback_records_gate_exception_and_continues_inventory(tmp_path: Path)
             "trust_source": "local-identity-build",
             "runner_id": runner,
         },
+        service_resolver=resolve_services,
         gate_executor=execute,
     )
 
-    assert executed == [gate for gate in catalog["full_gates"] if gate not in BLOCKED_DEFERRED_GATES]
+    assert executed == catalog["full_gates"][:2]
     assert result["passed"] is False
     assert result["gate_results"][1]["error"] == "ValueError: modeled execution defect"
+    assert result["first_cause_gate"] == catalog["full_gates"][1]
+
+
+def test_rollback_atomically_checkpoints_each_terminal_gate(tmp_path: Path) -> None:
+    catalog = load_catalog()
+    checkpoint = tmp_path / "rollback.json"
+
+    result = execute_rollback(
+        tmp_path,
+        catalog,
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        checkpoint_path=checkpoint,
+        runner_resolver=lambda repository, runner: {
+            "build_count": 1,
+            "trust_source": "local-identity-build",
+            "runner_id": runner,
+        },
+        service_resolver=resolve_services,
+        gate_executor=lambda repository, gate, head, base, common, **context: 7 if gate == "secrets" else 0,
+    )
+
+    retained = json.loads(checkpoint.read_text(encoding="utf-8"))
+    assert retained["run_state"] == "FAILED"
+    assert retained["first_cause_gate"] == "secrets"
+    assert retained["gate_results"] == result["gate_results"]
+    assert not list(tmp_path.glob("rollback.json.tmp-*"))
+
+
+def test_rollback_records_operator_cancellation_and_suppresses_later_work(tmp_path: Path) -> None:
+    catalog = load_catalog()
+    checkpoint = tmp_path / "rollback.json"
+    executed: list[str] = []
+
+    def cancel(repository: Path, gate: str, head: str, base: str, common: Path, **context: object) -> int:
+        executed.append(gate)
+        if gate == "secrets":
+            raise KeyboardInterrupt
+        return 0
+
+    result = execute_rollback(
+        tmp_path,
+        catalog,
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        checkpoint_path=checkpoint,
+        runner_resolver=lambda repository, runner: {
+            "build_count": 1,
+            "trust_source": "local-identity-build",
+            "runner_id": runner,
+        },
+        service_resolver=resolve_services,
+        gate_executor=cancel,
+    )
+
+    assert executed == ["build", "secrets"]
+    assert result["gate_results"][1]["result"] == "BLOCKED"
+    assert result["gate_results"][1]["disposition"] == "OPERATOR_CANCELLED"
+    assert json.loads(checkpoint.read_text(encoding="utf-8"))["gate_results"] == result["gate_results"]
+
+
+def test_rollback_service_supply_failure_blocks_before_runner_build(tmp_path: Path) -> None:
+    catalog = load_catalog()
+    checkpoint = tmp_path / "rollback.json"
+    runner_calls: list[str] = []
+    gate_calls: list[str] = []
+
+    def fail_postgres(repository: Path, node: dict[str, object]) -> dict[str, str]:
+        raise ValueError("required service image is unavailable: postgres")
+
+    result = execute_rollback(
+        tmp_path,
+        catalog,
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        checkpoint_path=checkpoint,
+        runner_resolver=lambda repository, runner: runner_calls.append(runner) or {},
+        service_resolver=fail_postgres,
+        gate_executor=lambda repository, gate, head, base, common, **context: gate_calls.append(gate) or 0,
+    )
+
+    assert runner_calls == []
+    assert gate_calls == []
+    assert result["run_state"] == "BLOCKED"
+    assert result["first_cause_gate"] == "preflight:integration:multi-tenant"
+    assert result["execution_summary"] == {
+        "executed_gate_count": 0,
+        "suppressed_gate_count": len(catalog["full_gates"]) - len(BLOCKED_DEFERRED_GATES),
+        "deferred_gate_count": len(BLOCKED_DEFERRED_GATES),
+    }
+    assert next(item for item in result["gate_results"] if item["gate_id"] == "integration:multi-tenant")["error"] == (
+        "ValueError: required service image is unavailable: postgres"
+    )
+    assert json.loads(checkpoint.read_text(encoding="utf-8"))["run_state"] == "BLOCKED"
