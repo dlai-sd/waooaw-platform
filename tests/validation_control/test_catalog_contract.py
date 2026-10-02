@@ -99,10 +99,21 @@ def test_plan_declares_machine_checkable_component_cost_and_evidence_graph() -> 
     assert by_gate["test-web"]["direct_prerequisites"] == ["build:web"]
     assert by_gate["test-web"]["phase"] == "B_COMPONENT"
     assert "web/**" in by_gate["test-web"]["invalidation_rule"]["changed_paths"]
+    assert "docker-compose*.yml" in by_gate["test-web"]["invalidation_rule"]["changed_paths"]
+    assert "scripts/validation_control/**" in by_gate["test-web"]["invalidation_rule"]["changed_paths"]
     assert by_gate["test-web"]["acceptance_check"] == catalog["commands"]["test-web"]["shell"]
     assert by_gate["test-web"]["expected_evidence"]["artifacts"] == catalog["gates"]["test-web"]["artifacts"]
     assert by_gate["e2e:accessibility"]["owner"] == "validation-control"
     assert by_gate["e2e:accessibility"]["cost_class"] == "BROWSER"
+
+    advisory = build_execution_plan(
+        catalog,
+        ["dep-scan:typescript"],
+        mode="qualification",
+        head_sha="a" * 40,
+        run_id="volatile",
+    )
+    assert advisory["nodes"][0]["reusable"] is False
 
 
 def test_plan_uses_component_reverse_dependencies_as_direct_prerequisites() -> None:
@@ -440,11 +451,14 @@ def test_qualification_handoff_accepts_complete_compatible_evidence() -> None:
 def test_typescript_plan_uses_immutable_dependencies_outside_read_only_source() -> None:
     catalog = load_catalog()
 
-    for gate_id in ("build:web", "test-web"):
-        plan = build_execution_plan(catalog, [gate_id], mode="focused", head_sha="a" * 40, run_id=gate_id)
-        command = plan["nodes"][0]["command"]
-        assert "cp -a web /tmp/web" in command
-        assert "ln -s /opt/waooaw-web/node_modules /tmp/web/node_modules" in command
+    build = build_execution_plan(catalog, ["build:web"], mode="focused", head_sha="a" * 40, run_id="build-web")
+    assert "cp -a web /tmp/web" in build["nodes"][0]["command"]
+
+    web = build_execution_plan(catalog, ["test-web"], mode="focused", head_sha="a" * 40, run_id="test-web")
+    assert web["nodes"][0]["command"] == "sh scripts/validation_control/run_web_test_gate.sh"
+    wrapper = (ROOT / "scripts/validation_control/run_web_test_gate.sh").read_text(encoding="utf-8")
+    assert 'cp -a "$workspace/web" "$run_directory"' in wrapper
+    assert 'ln -s /opt/waooaw-web/node_modules "$run_directory/node_modules"' in wrapper
 
 
 def test_full_runner_is_limited_to_cross_stack_release_gates() -> None:
@@ -467,8 +481,10 @@ def test_local_precheck_commands_are_catalog_owned_and_tool_pinned() -> None:
     assert {name: config["gate"] for name, config in catalog["prechecks"].items()} == {
         "gitleaks": "precheck:gitleaks",
         "scripts_quality": "quality:scripts",
+        "typescript_dependency_scan": "dep-scan:typescript",
         "dotnet_quality_business_platform": "quality:dotnet:business-platform",
         "typescript_quality": "quality:typescript",
+        "test_web": "test-web",
         "business_platform": "test-dotnet:business-platform",
         "release_qualification": "release-qualification",
     }

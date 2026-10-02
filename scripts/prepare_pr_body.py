@@ -42,13 +42,14 @@ RUNTIME_EVIDENCE_SECTION = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 VALIDATION_POLICY_PATH = Path(__file__).resolve().parents[1] / "validation/engineering-validation.yaml"
-PRECHECK_GRAPH_VERSION = "wc109-prechecks-v7"
+PRECHECK_GRAPH_VERSION = "wc109-prechecks-v8"
 PRECHECK_ORDER = (
     "gitleaks",
     "scripts_quality",
     "typescript_dependency_scan",
     "dotnet_quality_business_platform",
     "typescript_quality",
+    "test_web",
     "business_platform",
     "release_qualification",
 )
@@ -414,6 +415,8 @@ def precheck_nodes(
         dependencies: tuple[str, ...] = ()
         if name == "business_platform" and "dotnet_quality_business_platform" in applicable_prechecks:
             dependencies = ("dotnet_quality_business_platform",)
+        elif name == "test_web" and "typescript_quality" in applicable_prechecks:
+            dependencies = ("typescript_quality",)
         elif name == "release_qualification":
             dependencies = tuple(
                 static_name

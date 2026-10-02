@@ -339,6 +339,19 @@ def test_rollback_launcher_preserves_docker_authority_and_identity_boundaries() 
     assert "--output must be repository-relative below test-results" in launcher
     assert launcher.count('--handoff-evidence "$5"') == 2
     assert "--handoff-evidence requires a path" in launcher
+    assert launcher.count("--execution-profile rollback") == 2
+
+
+def test_normal_qualification_launcher_cannot_enter_rollback_mode() -> None:
+    root = Path(__file__).resolve().parents[2]
+    launcher_path = root / "scripts/validation_control/run_wc104_qualification.sh"
+    launcher = launcher_path.read_text(encoding="utf-8")
+
+    assert launcher_path.stat().st_mode & 0o111
+    assert launcher.count("--execution-profile qualification") == 2
+    assert "--execution-profile rollback" not in launcher
+    assert '"$repository:$repository:ro"' in launcher
+    assert '"$docker_socket:$docker_socket"' in launcher
 
 
 def test_resource_capacity_preflight_passes_without_cleanup_when_capacity_is_safe(tmp_path: Path) -> None:

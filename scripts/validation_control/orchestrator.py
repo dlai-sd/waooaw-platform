@@ -60,6 +60,16 @@ NEGATIVE_CONTROL_FAMILIES = (
     "PHASE_HANDOFF_BLOCK",
 )
 PREQUALIFICATION_GROUPS = ("GROUP_1", "GROUP_2", "GROUP_3", "GROUP_4")
+SHARED_EXECUTION_PATHS = (
+    "docker-compose*.yml",
+    "validation/runner-supply.json",
+    "scripts/validation_control/catalog_execution.py",
+    "scripts/validation_control/execution_contract.py",
+    "scripts/validation_control/local_catalog_gate.py",
+    "scripts/validation_control/orchestrator.py",
+    "scripts/validation_control/qualification.py",
+    "scripts/validation_control/wc104_rollback.py",
+)
 
 
 def safe_path_segment(value: str) -> str:
@@ -327,6 +337,9 @@ def build_execution_plan(
         raise ValueError("catalog gates, commands, runners and components must be mappings")
 
     execution_namespace = "wc109-" + hashlib.sha256(f"{run_id}:{mode}:{head_sha}".encode()).hexdigest()[:16]
+    prechecks = catalog.get("prechecks", {})
+    if not isinstance(prechecks, dict):
+        raise ValueError("catalog prechecks must be a mapping")
     nodes: list[dict[str, Any]] = []
     for gate_id in gate_ids:
         gate = gates.get(gate_id)
@@ -352,6 +365,14 @@ def build_execution_plan(
         owner_paths = components.get(owner, {}).get("paths", []) if owner != "validation-control" else []
         if not isinstance(owner_paths, list) or not all(isinstance(path, str) and path for path in owner_paths):
             raise ValueError(f"gate {gate_id} owner has invalid path contract: {owner}")
+        precheck_paths = {
+            path
+            for precheck in prechecks.values()
+            if isinstance(precheck, dict) and precheck.get("gate") == gate_id
+            for field in ("inputs", "paths")
+            for path in precheck.get(field, [])
+            if isinstance(path, str) and path
+        }
         output_directory = f"test-results/wc109/runs/{execution_namespace}/{safe_path_segment(gate_id)}"
         nodes.append(
             {
@@ -367,6 +388,7 @@ def build_execution_plan(
                 "components": component_owners,
                 "execution": command.get("execution", "container"),
                 "runner_required": command.get("runner_required", True),
+                "reusable": gate.get("reusable", True),
                 "tool_digest": command.get("tool_digest"),
                 "resources": gate["resources"],
                 "retry_policy": gate["retry_policy"],
@@ -395,8 +417,9 @@ def build_execution_plan(
                         {
                             "validation/catalog.schema.json",
                             "validation/engineering-validation.yaml",
-                            "scripts/validation_control/orchestrator.py",
+                            *SHARED_EXECUTION_PATHS,
                             *owner_paths,
+                            *precheck_paths,
                         }
                     ),
                     "identity_fields": ["head_sha", "catalog_version", "command_id", "runner_id", "environment"],

@@ -141,7 +141,7 @@ gates:
   sast:javascript: {<<: *security_gate, gate_id: sast:javascript, runner_id: typescript, command_id: sast-javascript, resources: *typescript_resources}
   dep-scan:python: {<<: *security_gate, gate_id: "dep-scan:python", command_id: dependency-scan-python}
   dep-scan:dotnet: {<<: *security_gate, gate_id: "dep-scan:dotnet", runner_id: dotnet, command_id: dependency-scan-dotnet, resources: *dotnet_resources}
-  dep-scan:typescript: {<<: *security_gate, gate_id: "dep-scan:typescript", runner_id: typescript, command_id: dependency-scan-typescript, resources: *typescript_resources}
+  dep-scan:typescript: {<<: *security_gate, gate_id: "dep-scan:typescript", runner_id: typescript, command_id: dependency-scan-typescript, resources: *typescript_resources, reusable: false}
   secrets: {<<: *security_gate, gate_id: secrets, command_id: secrets, global_trigger: true}
   license-check: {<<: *security_gate, gate_id: license-check, command_id: license-check, global_trigger: true}
   release-qualification: {<<: *python_static, gate_id: release-qualification, runner_id: full, command_id: release-qualification, evidence_class: release, cost_class: QUALIFICATION, resources: {cpus: 2, memory_mb: 6144, disk_mb: 2048, timeout_seconds: 3600, docker_socket: true, socket_classification: host-orchestration, concurrency_class: qualification}, global_trigger: true}
@@ -382,6 +382,21 @@ prechecks:
       - validation/**
       - scripts/validation_control/**
     gate: "quality:typescript"
+  test_web:
+    components: [web]
+    paths:
+      - web/**
+      - architecture/reference/dockerfiles/**
+      - docker-compose*.yml
+      - validation/**
+      - scripts/validation_control/**
+    inputs:
+      - web/**
+      - architecture/reference/dockerfiles/**
+      - docker-compose*.yml
+      - validation/**
+      - scripts/validation_control/**
+    gate: "test-web"
   business_platform:
     components: [business-platform]
     inputs:

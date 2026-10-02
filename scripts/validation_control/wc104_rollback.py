@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import hashlib
 import json
 import os
@@ -24,7 +25,11 @@ import yaml
 
 from validation_control.evidence_controller import BLOCKED_DEFERRED_AMENDMENT, BLOCKED_DEFERRED_GATES, repair_transition
 from validation_control.execution_contract import orchestration_preflight, resource_capacity_preflight
-from validation_control.qualification import build_wc104_rollback_manifest, render_manifest
+from validation_control.qualification import (
+    build_wc104_qualification_manifest,
+    build_wc104_rollback_manifest,
+    render_manifest,
+)
 from validation_control.local_catalog_gate import execute_gate, required_service_identities, resolve_runner
 from validation_control.orchestrator import (
     build_execution_plan,
@@ -79,6 +84,58 @@ def resume_pass_results(
             raise ValueError("rollback checkpoint contains duplicate gate results")
         by_gate[gate_id] = result
     return {gate_id: result for gate_id, result in by_gate.items() if result.get("result") == "PASS"}
+
+
+def qualification_carry_forward_results(
+    checkpoint: dict[str, Any],
+    manifest: dict[str, Any],
+    plan: dict[str, Any],
+    *,
+    repository: Path,
+    base_sha: str,
+    catalog_digest: str,
+    changed_paths: tuple[str, ...],
+) -> dict[str, dict[str, Any]]:
+    required_identity = {
+        "base_sha": base_sha,
+        "catalog_digest": catalog_digest,
+        "required_gates": manifest["required_gates"],
+    }
+    if any(checkpoint.get(field) != value for field, value in required_identity.items()):
+        raise ValueError("qualification carry-forward identity does not match the requested run")
+    source_head = checkpoint.get("candidate_sha")
+    if not isinstance(source_head, str) or len(source_head) != 40:
+        raise ValueError("qualification carry-forward has no valid source head")
+    nodes = {node["gate_id"]: node for node in plan["nodes"]}
+    carried: dict[str, dict[str, Any]] = {}
+    for result in checkpoint.get("gate_results", []):
+        if not isinstance(result, dict) or result.get("result") != "PASS":
+            continue
+        gate_id = result.get("gate_id")
+        node = nodes.get(gate_id)
+        evidence_ref = result.get("evidence_ref")
+        if (
+            not isinstance(node, dict)
+            or node.get("reusable") is not True
+            or not isinstance(evidence_ref, str)
+            or not (repository / evidence_ref).is_dir()
+        ):
+            continue
+        patterns = node["invalidation_rule"]["changed_paths"]
+        if any(fnmatch.fnmatchcase(path, pattern) for path in changed_paths for pattern in patterns):
+            continue
+        carried[str(gate_id)] = {
+            **result,
+            "head_sha": manifest["candidate_sha"],
+            "evidence_disposition": "verified-carry-forward",
+            "carry_forward": {
+                "source_head": source_head,
+                "target_head": manifest["candidate_sha"],
+                "changed_paths": list(changed_paths),
+                "non_intersection_proven": True,
+            },
+        }
+    return carried
 
 
 def git_head(repository: Path) -> str:
@@ -205,6 +262,7 @@ def execute_rollback(
     invalidated_gates: tuple[str, ...] = (),
     qualification_handoff: dict[str, Any] | None = None,
     enforce_qualification_handoff: bool = False,
+    execution_profile: str = "rollback",
     context_resolver: Callable[[Path, str, str], QualificationContext] = resolve_qualification_context,
     execution_preflight: Callable[[Path], None] = orchestration_preflight,
     resource_preflight: Callable[[Path, list[dict[str, Any]], str], dict[str, Any]] = resource_capacity_preflight,
@@ -212,7 +270,12 @@ def execute_rollback(
     service_resolver: Callable[[Path, dict[str, Any]], dict[str, str]] = required_service_identities,
     gate_executor: Callable[..., int] = execute_gate,
 ) -> dict[str, Any]:
-    manifest = build_wc104_rollback_manifest(catalog, candidate_sha=candidate_sha)
+    if execution_profile == "rollback":
+        manifest = build_wc104_rollback_manifest(catalog, candidate_sha=candidate_sha)
+    elif execution_profile == "qualification":
+        manifest = build_wc104_qualification_manifest(catalog, candidate_sha=candidate_sha)
+    else:
+        raise ValueError(f"unknown execution profile: {execution_profile}")
     manifest["catalog_digest"] = rollback_catalog_digest(catalog)
     previous = {name: os.environ.get(name) for name in manifest["environment"]}
     runner_results: dict[str, Any] = {}
@@ -221,6 +284,13 @@ def execute_rollback(
     phase_transitions: list[dict[str, Any]] = []
     first_cause_gate: str | None = None
     stop_all_after_first_cause = False
+    cross_head_checkpoint = (
+        resume_checkpoint
+        if resume_checkpoint is not None
+        and resume_checkpoint.get("candidate_sha") != candidate_sha
+        and execution_profile == "qualification"
+        else None
+    )
     resumed_results = (
         resume_pass_results(
             resume_checkpoint,
@@ -228,7 +298,7 @@ def execute_rollback(
             base_sha=base_sha,
             catalog_digest=manifest["catalog_digest"],
         )
-        if resume_checkpoint is not None
+        if resume_checkpoint is not None and cross_head_checkpoint is None
         else {}
     )
 
@@ -316,6 +386,31 @@ def execute_rollback(
     except Exception as exception:
         return block_preflight("preflight:plan", str(manifest["required_gates"][0]), exception)
     nodes_by_gate = {node["gate_id"]: node for node in plan["nodes"]}
+    if cross_head_checkpoint is not None:
+        source_head = str(cross_head_checkpoint["candidate_sha"])
+        git = shutil.which("git")
+        if git is None:
+            return block_preflight("preflight:carry-forward", str(manifest["required_gates"][0]), ValueError("git is required"))
+        changed = subprocess.run(  # noqa: S603
+            [git, "diff", "--name-only", f"{source_head}..{candidate_sha}"],
+            cwd=repository,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        try:
+            resumed_results = qualification_carry_forward_results(
+                cross_head_checkpoint,
+                manifest,
+                plan,
+                repository=repository,
+                base_sha=base_sha,
+                catalog_digest=manifest["catalog_digest"],
+                changed_paths=tuple(path for path in changed.stdout.splitlines() if path),
+            )
+        except Exception as exception:
+            return block_preflight("preflight:carry-forward", str(manifest["required_gates"][0]), exception)
+        manifest["carry_forward_gate_count"] = len(resumed_results)
     unknown_invalidations = sorted(set(invalidated_gates) - set(nodes_by_gate))
     if unknown_invalidations:
         return block_preflight(
@@ -372,25 +467,29 @@ def execute_rollback(
         manifest["resource_preflights"] = [{"scope": "SUPPLY", **manifest["resource_preflight"]}]
     except Exception as exception:
         return block_preflight("preflight:resources", str(manifest["required_gates"][0]), exception)
-    for node in plan["nodes"]:
-        if not node["required_services"] or node["gate_id"] in service_results:
-            continue
-        try:
-            service_results[node["gate_id"]] = service_resolver(repository, node)
-        except Exception as exception:
-            return block_preflight(f"preflight:{node['gate_id']}", str(node["gate_id"]), exception)
+    if execution_profile == "rollback":
+        for node in plan["nodes"]:
+            if not node["required_services"] or node["gate_id"] in service_results:
+                continue
+            try:
+                service_results[node["gate_id"]] = service_resolver(repository, node)
+            except Exception as exception:
+                return block_preflight(f"preflight:{node['gate_id']}", str(node["gate_id"]), exception)
 
     try:
         os.environ.update(manifest["environment"])
         docker_config = Path(os.environ["DOCKER_CONFIG"])
         docker_config.mkdir(parents=True, exist_ok=True)
         docker_config.chmod(0o700)
-        for runner_id in manifest["required_runners"]:
-            resolution = runner_resolver(repository, runner_id)
-            if resolution.get("build_count") != 1 or resolution.get("trust_source") != "local-identity-build":
-                raise ValueError(f"rollback did not clean-build runner: {runner_id}")
-            runner_results[runner_id] = resolution
-        os.environ["WC104_FORCE_LOCAL_BUILD"] = "0"
+        if execution_profile == "rollback":
+            for runner_id in manifest["required_runners"]:
+                supply_started = time.monotonic()
+                resolution = runner_resolver(repository, runner_id)
+                resolution["supply_duration_seconds"] = round(time.monotonic() - supply_started, 3)
+                if resolution.get("build_count") != 1 or resolution.get("trust_source") != "local-identity-build":
+                    raise ValueError(f"rollback did not clean-build runner: {runner_id}")
+                runner_results[runner_id] = resolution
+            os.environ["WC104_FORCE_LOCAL_BUILD"] = "0"
         with tempfile.TemporaryDirectory(prefix="wc104-rollback-") as temporary_directory:
             pr_body_file = Path(temporary_directory) / "pr-body.md"
             pr_body_file.write_text(qualification_context.pr_body, encoding="utf-8")
@@ -501,10 +600,50 @@ def execute_rollback(
                     checkpoint()
                     continue
                 if gate_id in resumed_results:
+                    resumed = resumed_results[gate_id]
                     gate_results.append(
                         {
-                            **resumed_results[gate_id],
-                            "evidence_disposition": "same-run-checkpoint",
+                            **resumed,
+                            "evidence_disposition": (
+                                "verified-carry-forward"
+                                if resumed.get("evidence_disposition") == "verified-carry-forward"
+                                else "same-run-checkpoint"
+                            ),
+                        }
+                    )
+                    checkpoint()
+                    continue
+                try:
+                    if node.get("runner_required", True):
+                        runner_id = node["runner_id"]
+                        if runner_id not in runner_results:
+                            supply_started = time.monotonic()
+                            resolution = runner_resolver(repository, runner_id)
+                            resolution["supply_duration_seconds"] = round(time.monotonic() - supply_started, 3)
+                            if resolution.get("build_count") not in {0, 1}:
+                                raise ValueError(f"qualification returned invalid build count for runner: {runner_id}")
+                            runner_results[runner_id] = resolution
+                        image = runner_results[runner_id].get("image")
+                        if isinstance(image, str) and image:
+                            os.environ[f"WAOOAW_RUNNER_{runner_id.upper()}_IMAGE"] = image
+                    if node["required_services"] and gate_id not in service_results:
+                        supply_started = time.monotonic()
+                        services = service_resolver(repository, node)
+                        service_results[gate_id] = {
+                            **services,
+                            "supply_duration_seconds": round(time.monotonic() - supply_started, 3),
+                        }
+                except Exception as exception:
+                    if first_cause_gate is None:
+                        first_cause_gate = gate_id
+                    gate_results.append(
+                        {
+                            "gate_id": gate_id,
+                            "result": "BLOCKED",
+                            "disposition": "SUPPLY_FAILED",
+                            "first_cause_gate": first_cause_gate,
+                            "error": f"{type(exception).__name__}: {exception}",
+                            "duration_seconds": round(time.monotonic() - started, 3),
                         }
                     )
                     checkpoint()
@@ -540,6 +679,7 @@ def execute_rollback(
                     "returncode": returncode,
                     "result": "PASS" if returncode == 0 else "FAIL",
                     "evidence_disposition": "executed",
+                    "evidence_ref": node["expected_evidence"]["directory"],
                     "duration_seconds": round(time.monotonic() - started, 3),
                 }
                 if error is not None:
@@ -571,6 +711,11 @@ def execute_rollback(
         "resumed_gate_count": sum(result.get("evidence_disposition") == "same-run-checkpoint" for result in gate_results),
         "suppressed_gate_count": sum(result.get("disposition") == "SUPPRESSED_AFTER_FAILURE" for result in gate_results),
         "deferred_gate_count": sum(result.get("disposition") == "BLOCKED-DEFERRED" for result in gate_results),
+        "carry_forward_gate_count": sum(
+            result.get("evidence_disposition") == "verified-carry-forward" for result in gate_results
+        ),
+        "runner_build_count": sum(result.get("build_count", 0) for result in runner_results.values()),
+        "runner_supply_seconds": round(sum(result.get("supply_duration_seconds", 0.0) for result in runner_results.values()), 3),
     }
     manifest["passed"] = len(gate_results) == len(manifest["required_gates"]) and all(
         result["result"] == "PASS" or (result["result"] == "BLOCKED" and result.get("disposition") == "BLOCKED-DEFERRED")
@@ -591,6 +736,7 @@ def main() -> int:
     parser.add_argument("--repair-context", type=Path)
     parser.add_argument("--invalidate-gate", action="append", default=[])
     parser.add_argument("--handoff-evidence", type=Path)
+    parser.add_argument("--execution-profile", choices=("qualification", "rollback"), default="qualification")
     arguments = parser.parse_args()
     repository = arguments.repository.resolve()
     catalog = yaml.safe_load((repository / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
@@ -625,6 +771,7 @@ def main() -> int:
         invalidated_gates=tuple(arguments.invalidate_gate),
         qualification_handoff=qualification_handoff,
         enforce_qualification_handoff=True,
+        execution_profile=arguments.execution_profile,
     )
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
     temporary_output = arguments.output.with_suffix(arguments.output.suffix + ".tmp")

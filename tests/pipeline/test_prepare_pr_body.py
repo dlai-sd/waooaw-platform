@@ -4,6 +4,7 @@ import sys
 from types import SimpleNamespace
 
 import pytest
+import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -24,6 +25,7 @@ from prepare_pr_body import (  # noqa: E402
     release_qualification_gate_required,
     run_ci_prechecks,
     runner_digest,
+    selected_prechecks,
     update_pull_request,
     validate_static_repository,
     validate_precheck_evidence,
@@ -311,7 +313,7 @@ def test_precheck_evidence_must_match_base_and_head() -> None:
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": digest,
-        "graph_version": "wc109-prechecks-v7",
+        "graph_version": "wc109-prechecks-v8",
         "configuration_digest": "c" * 64,
         "runner_digest": "r" * 64,
     }
@@ -362,7 +364,7 @@ def test_precheck_evidence_rejects_configuration_or_runner_mismatch() -> None:
         "base_sha": "b" * 40,
         "commit_sha": HEAD,
         "changed_file_digest": "d" * 64,
-        "graph_version": "wc109-prechecks-v7",
+        "graph_version": "wc109-prechecks-v8",
         "configuration_digest": "c" * 64,
         "runner_digest": "r" * 64,
     }
@@ -469,6 +471,7 @@ def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path)
         "typescript_dependency_scan",
         "dotnet_quality_business_platform",
         "typescript_quality",
+        "test_web",
         "business_platform",
         "release_qualification",
     ]
@@ -478,6 +481,7 @@ def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path)
         "dep-scan:typescript",
         "quality:dotnet:business-platform",
         "quality:typescript",
+        "test-web",
         "test-dotnet:business-platform",
         "release-qualification",
     ]
@@ -486,8 +490,9 @@ def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path)
     assert nodes[2].reusable is False
     assert nodes[3].heavy is False
     assert nodes[4].heavy is False
-    assert nodes[5].dependencies == ("dotnet_quality_business_platform",)
-    assert nodes[6].dependencies == (
+    assert nodes[5].dependencies == ("typescript_quality",)
+    assert nodes[6].dependencies == ("dotnet_quality_business_platform",)
+    assert nodes[7].dependencies == (
         "gitleaks",
         "scripts_quality",
         "typescript_dependency_scan",
@@ -497,10 +502,18 @@ def test_run_ci_prechecks_builds_current_gate_graph(monkeypatch, tmp_path: Path)
     assert all("docker compose" not in " ".join(node.command) for node in nodes)
     assert all("run_release_qualification.sh" not in " ".join(node.command) for node in nodes)
     assert all(node.command[node.command.index("--base") + 1] == "b" * 40 for node in nodes)
-    assert captured["graph_version"] == "wc109-prechecks-v7"
+    assert captured["graph_version"] == "wc109-prechecks-v8"
     assert captured["configuration_digest"] == configuration_digest()
     assert captured["runner_digest"] == runner_digest(nodes)
     assert nodes[0].runner_digest == "r" * 64
+
+
+def test_compose_change_selects_exact_web_gate() -> None:
+    selected = selected_prechecks(["docker-compose.yml"])
+    policy = yaml.safe_load((ROOT / "validation/engineering-validation.yaml").read_text(encoding="utf-8"))
+
+    assert "test_web" in selected
+    assert policy["prechecks"]["test_web"]["gate"] == "test-web"
 
 
 def test_runner_digest_binds_every_per_node_authority_field() -> None:

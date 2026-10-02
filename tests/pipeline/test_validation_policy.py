@@ -194,6 +194,7 @@ def test_local_prechecks_are_scoped_independently_from_full_hosted_inventory() -
         "dotnet_quality_business_platform",
         "gitleaks",
         "release_qualification",
+        "test_web",
         "typescript_dependency_scan",
         "typescript_quality",
     ]

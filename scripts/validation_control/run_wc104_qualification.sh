@@ -59,7 +59,7 @@ repository=$(realpath "$repository")
 git_common_dir=$(realpath "$(git -C "$repository" rev-parse --git-common-dir)")
 docker_socket=/var/run/docker.sock
 if [ ! -S "$docker_socket" ] || [ ! -r "$docker_socket" ] || [ ! -w "$docker_socket" ]; then
-    printf '%s\n' 'Docker socket is required for rollback runner supply' >&2
+    printf '%s\n' 'Docker socket is required for qualification runner supply' >&2
     exit 2
 fi
 docker_gid=$(stat -c '%g' "$docker_socket")
@@ -77,9 +77,9 @@ DOCKER_GID=$docker_gid docker compose --project-directory "$repository" --profil
         if [ "$4" = 1 ]; then
             exec python scripts/validation_control/wc104_rollback.py \
                 --repository "$PWD" --base "$1" --git-common-dir "$2" --output "$3" \
-                --handoff-evidence "$5" --execution-profile rollback --resume
+                --handoff-evidence "$5" --execution-profile qualification --resume
         fi
         exec python scripts/validation_control/wc104_rollback.py \
             --repository "$PWD" --base "$1" --git-common-dir "$2" --output "$3" \
-            --handoff-evidence "$5" --execution-profile rollback
-    ' rollback "$base_sha" "$git_common_dir" "$output" "$resume" "$handoff_evidence"
+            --handoff-evidence "$5" --execution-profile qualification
+    ' qualification "$base_sha" "$git_common_dir" "$output" "$resume" "$handoff_evidence"

@@ -20,6 +20,7 @@ from validation_control.orchestrator import (
 from validation_control.wc104_rollback import (
     QualificationContext,
     execute_rollback,
+    qualification_carry_forward_results,
     resolve_qualification_context,
     rollback_catalog_digest,
     validate_contract_authority,
@@ -156,7 +157,112 @@ def test_rollback_clean_builds_each_runner_once_then_executes_full_inventory(tmp
         "resumed_gate_count": 0,
         "suppressed_gate_count": 0,
         "deferred_gate_count": len(BLOCKED_DEFERRED_GATES),
+        "carry_forward_gate_count": 0,
+        "runner_build_count": len(catalog["runners"]),
+        "runner_supply_seconds": 0.0,
     }
+
+
+def test_qualification_supplies_runners_on_first_gate_demand(tmp_path: Path) -> None:
+    catalog = load_catalog()
+    events: list[tuple[str, str]] = []
+
+    def resolve(repository: Path, runner_id: str) -> dict[str, object]:
+        assert os.environ["WC104_FORCE_LOCAL_BUILD"] == "0"
+        events.append(("runner", runner_id))
+        return {
+            "build_count": 0,
+            "trust_source": "local-identity-build",
+            "runner_id": runner_id,
+            "image": f"runner:{runner_id}",
+        }
+
+    def execute(repository: Path, gate_id: str, head_sha: str, base_sha: str, git_common_dir: Path, **context: object) -> int:
+        events.append(("gate", gate_id))
+        return 0
+
+    result = execute_rollback(
+        tmp_path,
+        catalog,
+        candidate_sha=HEAD_SHA,
+        base_sha=BASE_SHA,
+        git_common_dir=tmp_path,
+        qualification_context=qualification_context(),
+        execution_profile="qualification",
+        execution_preflight=execution_ready,
+        resource_preflight=resources_ready,
+        runner_resolver=resolve,
+        service_resolver=resolve_services,
+        gate_executor=execute,
+    )
+
+    plan = build_execution_plan(catalog, catalog["full_gates"], mode="qualification", head_sha=HEAD_SHA, run_id="staged")
+    first_gate = plan_execution_order(plan)[0]
+    first_node = next(node for node in plan["nodes"] if node["gate_id"] == first_gate)
+    assert events[:2] == [("runner", first_node["runner_id"]), ("gate", first_gate)]
+    assert [event for event in events if event[0] == "runner"] == [
+        ("runner", runner_id)
+        for runner_id in dict.fromkeys(
+            node["runner_id"]
+            for gate_id in plan_execution_order(plan)
+            for node in plan["nodes"]
+            if node["gate_id"] == gate_id and node.get("runner_required", True)
+        )
+    ]
+    assert result["mode"] == "staged-qualification"
+    assert result["passed"] is True
+
+
+def test_qualification_carries_only_unaffected_nonvolatile_pass_evidence(tmp_path: Path) -> None:
+    catalog = load_catalog()
+    plan = build_execution_plan(catalog, catalog["full_gates"], mode="qualification", head_sha=HEAD_SHA, run_id="carry")
+    manifest = {
+        "candidate_sha": HEAD_SHA,
+        "required_gates": catalog["full_gates"],
+    }
+    digest = rollback_catalog_digest(catalog)
+    evidence = {
+        "build": "test-results/prior/build",
+        "test-web": "test-results/prior/test-web",
+        "dep-scan:typescript": "test-results/prior/dep-scan-typescript",
+    }
+    for path in evidence.values():
+        (tmp_path / path).mkdir(parents=True)
+    checkpoint = {
+        "candidate_sha": "a" * 40,
+        "base_sha": BASE_SHA,
+        "catalog_digest": digest,
+        "required_gates": catalog["full_gates"],
+        "gate_results": [
+            {"gate_id": gate_id, "result": "PASS", "evidence_ref": path, "head_sha": "a" * 40}
+            for gate_id, path in evidence.items()
+        ],
+    }
+
+    carried = qualification_carry_forward_results(
+        checkpoint,
+        manifest,
+        plan,
+        repository=tmp_path,
+        base_sha=BASE_SHA,
+        catalog_digest=digest,
+        changed_paths=("constitution/PROJECT_STATE.md",),
+    )
+
+    assert set(carried) == {"build", "test-web"}
+    assert all(result["evidence_disposition"] == "verified-carry-forward" for result in carried.values())
+    assert all(result["head_sha"] == HEAD_SHA for result in carried.values())
+
+    invalidated = qualification_carry_forward_results(
+        checkpoint,
+        manifest,
+        plan,
+        repository=tmp_path,
+        base_sha=BASE_SHA,
+        catalog_digest=digest,
+        changed_paths=("docker-compose.yml",),
+    )
+    assert invalidated == {}
 
 
 def completed_repair_context(gate_id: str) -> dict[str, object]:
