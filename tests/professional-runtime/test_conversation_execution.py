@@ -1091,6 +1091,7 @@ def test_openapi_conforms_to_canonical_conversation_contract() -> None:
     assert "/api/v1/paas/sessions" in generated["paths"]
     assert "HTTPValidationError" in generated["components"]["schemas"]
     assert generated["paths"]["/health"]["get"]["security"] == []
+    assert generated["paths"]["/health"]["get"]["responses"] == canonical["paths"]["/health"]["get"]["responses"]
 
 
 async def test_grpc_gateway_sends_canonical_validate_action_with_tenant_metadata() -> None:

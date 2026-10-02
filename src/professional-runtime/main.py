@@ -547,7 +547,14 @@ async def http_error(request: Request, error: StarletteHTTPException) -> JSONRes
     )
 
 
-@app.get("/health", operation_id="getPRHealth", response_model=HealthResponse, tags=["Health"])
+@app.get(
+    "/health",
+    operation_id="getPRHealth",
+    response_model=HealthResponse,
+    response_description="Service is healthy",
+    responses={503: {"model": HealthResponse, "description": "Service dependencies are unavailable"}},
+    tags=["Health"],
+)
 async def health(request: Request, response: Response) -> HealthResponse:
     """Report canonical runtime health without treating degraded dependencies as healthy."""
     temporal = getattr(request.app.state, "temporal_client", None)
