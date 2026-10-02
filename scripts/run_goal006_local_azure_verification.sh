@@ -8,7 +8,8 @@ CURL_IMAGE="curlimages/curl@sha256:94e9e444bcba979c2ea12e27ae39bee4cd10bc7041a47
 CONTAINERAPP_EXTENSION_VERSION="1.3.0b4"
 NETWORK="goal006-azure-verification-$$"
 EMULATOR="goal006-azure-emulator-$$"
-WORK_DIR=$(mktemp -d)
+mkdir -p "$REPO_ROOT/test-results"
+WORK_DIR=$(mktemp -d "$REPO_ROOT/test-results/goal006-local-azure.XXXXXX")
 EVIDENCE_DIR="$WORK_DIR/evidence"
 AZURE_CONFIG_DIR="$WORK_DIR/azure-config"
 

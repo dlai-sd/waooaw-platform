@@ -580,6 +580,7 @@ def test_post_deploy_verification_requires_the_exact_latest_revision() -> None:
     )
     assert "force-professional-runtime-unready" in rehearsal
     assert "unhealthy_revision_failure_proved: true" in rehearsal
+    assert 'mktemp -d "$REPO_ROOT/test-results/goal006-local-azure.XXXXXX"' in rehearsal
     assert rehearsal.count("-e AZURE_CORE_ONLY_SHOW_ERRORS=true") == 5
 
 
