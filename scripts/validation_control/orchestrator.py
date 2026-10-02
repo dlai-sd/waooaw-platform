@@ -177,19 +177,23 @@ def build_execution_plan(
     gate_order = {gate_id: index for index, gate_id in enumerate(gate_ids)}
     for node in nodes:
         node_rank = COST_ORDER.index(node["cost_class"])
-        prerequisites = {
-            candidate["gate_id"]
-            for candidate in nodes
-            if candidate["gate_id"] != node["gate_id"]
-            and (
-                (candidate["owner"] == node["owner"] and COST_ORDER.index(candidate["cost_class"]) < node_rank)
-                or (
-                    node["owner"] in component_prerequisites
-                    and candidate["owner"] in component_prerequisites[node["owner"]]
-                    and COST_ORDER.index(candidate["cost_class"]) <= node_rank
+        prerequisites: set[str] = set()
+        prerequisite_owners = {node["owner"]: node_rank - 1}
+        if node["owner"] in component_prerequisites:
+            prerequisite_owners.update({owner: node_rank for owner in component_prerequisites[node["owner"]]})
+        for owner, maximum_rank in prerequisite_owners.items():
+            candidates = [
+                candidate
+                for candidate in nodes
+                if candidate["gate_id"] != node["gate_id"]
+                and candidate["owner"] == owner
+                and COST_ORDER.index(candidate["cost_class"]) <= maximum_rank
+            ]
+            if candidates:
+                nearest_rank = max(COST_ORDER.index(candidate["cost_class"]) for candidate in candidates)
+                prerequisites.update(
+                    candidate["gate_id"] for candidate in candidates if COST_ORDER.index(candidate["cost_class"]) == nearest_rank
                 )
-            )
-        }
         node["direct_prerequisites"] = sorted(prerequisites, key=gate_order.__getitem__)
     by_gate = {node["gate_id"]: node for node in nodes}
     for node in nodes:
